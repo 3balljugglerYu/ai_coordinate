@@ -85,13 +85,46 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    /* モバイル向けスクロール最適化 */
+    scroll-behavior: smooth;
+    /* iOSのフォントサイズ自動調整を防ぐ */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans);
+    /* モバイル向けのタップハイライト最適化 */
+    -webkit-tap-highlight-color: transparent;
+    /* iOSセーフエリア対応（必要に応じて使用） */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    /* モバイル向けフォントレンダリング */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+    /* モバイル向けタップ感度向上 */
+    touch-action: manipulation;
+  }
+  
+  /* 入力フィールドのモバイル最適化 */
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* iOSのズームを防ぐ */
+  }
+  
+  @media (min-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: inherit; /* PCではデフォルトサイズ */
+    }
   }
 }
