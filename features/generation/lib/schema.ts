@@ -6,9 +6,14 @@ import { z } from "zod";
  */
 
 export const generationRequestSchema = z.object({
-  prompt: z.string().min(1, "Prompt is required").max(1000, "Prompt is too long"),
-  style: z.string().optional(),
-  size: z.enum(["small", "medium", "large"]).optional().default("medium"),
+  prompt: z
+    .string()
+    .min(1, "着せ替え内容を入力してください")
+    .max(1000, "プロンプトが長すぎます"),
+  sourceImageBase64: z.string().optional(),
+  sourceImageMimeType: z.string().optional(),
+  backgroundChange: z.boolean().optional().default(false),
+  count: z.number().int().min(1).max(4).optional().default(1),
 });
 
 export type GenerationRequestInput = z.infer<typeof generationRequestSchema>;

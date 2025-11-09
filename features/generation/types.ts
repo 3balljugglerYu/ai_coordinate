@@ -17,16 +17,25 @@ export interface Generation {
 
 export interface GenerationRequest {
   prompt: string;
-  style?: string;
-  size?: "small" | "medium" | "large";
-  sourceImage?: File | string;
+  sourceImage?: File;
+  backgroundChange?: boolean;
+  count?: number; // 1-4枚
 }
 
 export interface GenerationResponse {
   id: string;
   status: GenerationStatus;
-  imageUrl?: string;
+  images?: Array<{
+    url: string;
+    data?: string; // Base64データ
+  }>;
   error?: string;
+}
+
+export interface GeneratedImageData {
+  id: string;
+  url: string;
+  data?: string;
 }
 
 /**
