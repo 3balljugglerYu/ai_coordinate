@@ -98,15 +98,22 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
 }
 
 /**
- * OAuthサインイン（Google, GitHub, etc.）
+ * OAuthサインイン（Google, GitHub, Twitter）
  */
-export async function signInWithOAuth(provider: "google" | "github" | "twitter") {
+export async function signInWithOAuth(
+  provider: "google" | "github" | "twitter",
+  redirectTo?: string
+) {
   const supabase = createClient();
+
+  // リダイレクト先を設定（デフォルトは/coordinate）
+  const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
+  callbackUrl.searchParams.set("next", redirectTo || "/coordinate");
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: callbackUrl.toString(),
     },
   });
 

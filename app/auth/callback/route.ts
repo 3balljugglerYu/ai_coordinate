@@ -1,22 +1,53 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Supabase Auth Callback Handler
- * OAuth認証後のリダイレクト処理
+ * OAuth Callback Handler
+ * 
+ * OAuthプロバイダーからのコールバックを処理し、
+ * セッションを確立してユーザーをリダイレクトします。
  */
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/coordinate";
+  const next = requestUrl.searchParams.get("next") || "/";
+  const error = requestUrl.searchParams.get("error");
+  const errorDescription = requestUrl.searchParams.get("error_description");
 
-  if (code) {
-    const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+  // エラーハンドリング
+  if (error) {
+    console.error("OAuth error:", error, errorDescription);
+    return NextResponse.redirect(
+      `${requestUrl.origin}/login?error=${encodeURIComponent(
+        errorDescription || error
+      )}`
+    );
   }
 
-  // セッション確立後にリダイレクト
-  return NextResponse.redirect(new URL(next, requestUrl.origin));
-}
+  // 認証コードを使用してセッションを確立
+  if (code) {
+    const supabase = await createClient();
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
+    if (exchangeError) {
+      console.error("Code exchange error:", exchangeError);
+      return NextResponse.redirect(
+        `${requestUrl.origin}/login?error=${encodeURIComponent(
+          "認証に失敗しました"
+        )}`
+      );
+    }
+
+    // 新規ユーザーの場合、user_creditsテーブルが自動的に作成される（トリガーで実装済み）
+
+    // 成功: nextパラメータで指定された場所にリダイレクト
+    return NextResponse.redirect(`${requestUrl.origin}${next}`);
+  }
+
+  // コードがない場合はエラー
+  return NextResponse.redirect(
+    `${requestUrl.origin}/login?error=${encodeURIComponent(
+      "認証コードが見つかりません"
+    )}`
+  );
+}
