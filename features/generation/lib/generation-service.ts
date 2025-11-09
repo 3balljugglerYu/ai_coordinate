@@ -102,10 +102,9 @@ export async function generateAndSaveImages(
  * 認証チェック: ユーザーIDを取得
  */
 export async function getCurrentUserId(): Promise<string | null> {
-  // TODO: Supabase Authから現在のユーザーIDを取得
-  // Phase 2で認証機能を実装後に実装
-  // 開発モード: 認証なしの場合はNULLを返す
-  return null;
+  const { getCurrentUser } = await import("@/features/auth/lib/auth-client");
+  const user = await getCurrentUser();
+  return user?.id ?? null;
 }
 
 /**
@@ -114,5 +113,16 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function isAuthenticated(): Promise<boolean> {
   const userId = await getCurrentUserId();
   return userId !== null;
+}
+
+/**
+ * 認証が必要な操作の前にチェック
+ */
+export async function requireAuth(): Promise<string> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    throw new Error("ログインが必要です");
+  }
+  return userId;
 }
 
