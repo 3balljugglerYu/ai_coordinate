@@ -1,20 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
 import { GeneratedImageGallery } from "@/features/generation/components/GeneratedImageGallery";
 import {
   generateAndSaveImages,
   getCurrentUserId,
 } from "@/features/generation/lib/generation-service";
+import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import type { GeneratedImageData } from "@/features/generation/types";
 
 export default function CoordinatePage() {
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImageData[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingCount, setGeneratingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // 認証チェック
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        router.push("/login?next=/coordinate");
+        return;
+      }
+    } catch (err) {
+      console.error("Auth check error:", err);
+      router.push("/login?next=/coordinate");
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const handleGenerate = async (data: {
     prompt: string;
