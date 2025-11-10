@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const validationResult = generationRequestSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: validationResult.error.errors[0]?.message || "Invalid request" },
+        { error: validationResult.error.issues[0]?.message || "Invalid request" },
         { status: 400 }
       );
     }
@@ -81,13 +81,6 @@ export async function POST(request: NextRequest) {
         },
       ],
     };
-
-    // 生成枚数を指定（1-4枚）
-    if (count && count > 1) {
-      requestBody.generationConfig = {
-        candidateCount: Math.min(count, 4),
-      };
-    }
 
     // Google AI Studio APIを呼び出し
     const response = await fetch(

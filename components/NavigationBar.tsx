@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User, LogOut } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut } from "lucide-react";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "./ui/button";
@@ -53,7 +53,7 @@ export function NavigationBar() {
   const navItems = [
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
-    { path: "/my-page", label: "マイページ", icon: User },
+    { path: "/my-page", label: "マイページ", icon: UserIcon },
   ];
 
   return (
