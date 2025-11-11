@@ -6,14 +6,23 @@ import { Loader2, CreditCard, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MyImageGallery } from "@/features/my-page/components/MyImageGallery";
-import { getMyImages, getCreditBalance, deleteMyImage } from "@/features/my-page/lib/api";
+import {
+  getMyImages,
+  getCreditBalance,
+  deleteMyImage,
+  getCreditTransactions,
+  type CreditTransaction,
+} from "@/features/my-page/lib/api";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { CreditPurchaseSection } from "@/features/my-page/components/CreditPurchaseSection";
+import { CreditTransactions } from "@/features/my-page/components/CreditTransactions";
 
 export default function MyPagePage() {
   const router = useRouter();
   const [images, setImages] = useState<GeneratedImageRecord[]>([]);
   const [creditBalance, setCreditBalance] = useState<number>(0);
+  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,13 +43,15 @@ export default function MyPagePage() {
       }
 
       // データ取得
-      const [imagesData, balance] = await Promise.all([
+      const [imagesData, balance, creditTransactions] = await Promise.all([
         getMyImages(),
         getCreditBalance(),
+        getCreditTransactions(),
       ]);
 
       setImages(imagesData);
       setCreditBalance(balance);
+      setTransactions(creditTransactions);
     } catch (err) {
       console.error("Load error:", err);
       setError(err instanceof Error ? err.message : "データの読み込みに失敗しました");
@@ -57,6 +68,20 @@ export default function MyPagePage() {
     } catch (err) {
       alert(err instanceof Error ? err.message : "削除に失敗しました");
     }
+  };
+
+  const refreshTransactions = async () => {
+    try {
+      const creditTransactions = await getCreditTransactions();
+      setTransactions(creditTransactions);
+    } catch (err) {
+      console.error("Failed to refresh credit info:", err);
+    }
+  };
+
+  const handlePurchaseCompleted = async (balance: number) => {
+    setCreditBalance(balance);
+    await refreshTransactions();
   };
 
   if (isLoading) {
@@ -92,7 +117,13 @@ export default function MyPagePage() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" onClick={() => alert("クレジット購入機能は Phase 3 で実装されます")}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const element = document.getElementById("credit-purchase");
+                element?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               購入
             </Button>
@@ -105,6 +136,16 @@ export default function MyPagePage() {
             <p className="text-sm text-red-900">{error}</p>
           </Card>
         )}
+
+        {/* クレジット購入セクション */}
+        <div id="credit-purchase" className="mb-8">
+          <CreditPurchaseSection onBalanceUpdate={handlePurchaseCompleted} />
+        </div>
+
+        {/* 取引履歴 */}
+        <div className="mb-8">
+          <CreditTransactions transactions={transactions} />
+        </div>
 
         {/* 画像一覧 */}
         <div>

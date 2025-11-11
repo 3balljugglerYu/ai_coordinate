@@ -94,6 +94,42 @@ export async function getCreditBalance(): Promise<number> {
   return data?.balance || 0;
 }
 
+export interface CreditTransaction {
+  id: string;
+  amount: number;
+  transaction_type: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export async function getCreditTransactions(
+  limit = 10
+): Promise<CreditTransaction[]> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("credit_transactions")
+    .select("id, amount, transaction_type, metadata, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Credit transactions fetch error:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
 /**
  * 画像を削除
  */
