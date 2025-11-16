@@ -43,6 +43,13 @@ export default function RootLayout({
       >
         <NavigationBar />
         {children}
+        <footer className="mt-8 border-t bg-white/80">
+          <div className="mx-auto max-w-7xl px-4 py-6 text-center text-xs text-gray-600 md:text-sm">
+            <a href="/tokushoho" className="text-gray-700 underline underline-offset-2 hover:text-gray-900">
+              特定商取引法に基づく表記
+            </a>
+          </div>
+        </footer>
       </body>
     </html>
   );
