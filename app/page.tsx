@@ -5,7 +5,7 @@ export default async function Home() {
   const posts = await getPosts(20, 0);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pb-8 pt-0">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">投稿一覧</h1>
         <p className="mt-2 text-muted-foreground">

@@ -22,55 +22,46 @@ export function PostCard({ post }: PostCardProps) {
     "匿名ユーザー";
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden pt-0 pb-0 gap-1">
       <Link href={`/posts/${post.id}`}>
-        <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+        <div className="relative w-full overflow-hidden bg-gray-100">
           {imageUrl ? (
             <Image
               src={imageUrl}
               alt={post.caption || "投稿画像"}
-              fill
-              className="object-cover transition-transform hover:scale-105"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              width={800}
+              height={800}
+              className="w-full h-auto object-contain transition-transform hover:scale-105"
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-400">
+            <div className="flex aspect-square items-center justify-center text-gray-400">
               画像がありません
             </div>
           )}
         </div>
       </Link>
 
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200">
+      <CardContent className="px-1 pt-0 pb-1">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200">
             {post.user?.avatar_url ? (
               <Image
                 src={post.user.avatar_url}
                 alt={displayName}
-                width={40}
-                height={40}
+                width={24}
+                height={24}
                 className="rounded-full object-cover"
               />
             ) : (
-              <User className="h-5 w-5 text-gray-500" />
+              <User className="h-3.5 w-3.5 text-gray-500" />
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium text-gray-900">
+            <span className="block truncate text-xs font-medium text-gray-900">
               {displayName}
             </span>
-            {post.caption && (
-              <p className="mt-1 line-clamp-2 text-sm text-gray-600">
-                {post.caption}
-              </p>
-            )}
-            {post.posted_at && (
-              <p className="mt-1 text-xs text-gray-400">
-                {new Date(post.posted_at).toLocaleDateString("ja-JP")}
-              </p>
-            )}
           </div>
         </div>
       </CardContent>

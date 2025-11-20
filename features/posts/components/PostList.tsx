@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
+import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
 import { SortTabs, type SortType } from "./SortTabs";
 import type { Post } from "../types";
@@ -81,11 +82,21 @@ export function PostList({ initialPosts = [] }: PostListProps) {
       <div className="mb-4">
         <SortTabs value={sortType} onChange={setSortType} />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Masonry
+        breakpointCols={{
+          default: 3,
+          1024: 2,
+          640: 2,
+        }}
+        className="flex -ml-4 w-auto"
+        columnClassName="pl-4 bg-clip-padding"
+      >
         {posts.map((post) => (
-          <PostCard key={post.id} post={post} />
+          <div key={post.id} className="mb-4">
+            <PostCard post={post} />
+          </div>
         ))}
-      </div>
+      </Masonry>
 
       {/* 無限スクロール用のトリガー要素 */}
       {hasMore && (
