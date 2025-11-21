@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Download, ZoomIn } from "lucide-react";
+import { Loader2, Download, ZoomIn, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PostModal } from "@/features/posts/components/PostModal";
 import type { GeneratedImageData } from "../types";
 import { ImageModal } from "./ImageModal";
 
@@ -23,6 +24,7 @@ export function GeneratedImageGallery({
   onDownload,
 }: GeneratedImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
 
   const handleDownload = (image: GeneratedImageData) => {
     if (onDownload) {
@@ -83,6 +85,13 @@ export function GeneratedImageGallery({
                   </Button>
                   <Button
                     size="sm"
+                    variant="default"
+                    onClick={() => setPostModalImageId(image.id)}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="secondary"
                     onClick={() => handleDownload(image)}
                   >
@@ -107,6 +116,17 @@ export function GeneratedImageGallery({
           initialIndex={selectedImageIndex}
           onClose={() => setSelectedImageIndex(null)}
           onDownload={handleDownload}
+        />
+      )}
+
+      {/* 投稿モーダル */}
+      {postModalImageId && (
+        <PostModal
+          open={!!postModalImageId}
+          onOpenChange={(open) => {
+            if (!open) setPostModalImageId(null);
+          }}
+          imageId={postModalImageId}
         />
       )}
 

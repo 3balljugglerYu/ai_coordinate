@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Trash2, Share2, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Share2, Loader2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getImageDetail, deleteMyImage } from "@/features/my-page/lib/api";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
+import { PostModal } from "@/features/posts/components/PostModal";
+import { EditPostModal } from "@/features/posts/components/EditPostModal";
+import { DeletePostDialog } from "@/features/posts/components/DeletePostDialog";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
 export default function ImageDetailPage() {
@@ -18,6 +21,9 @@ export default function ImageDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     loadImage();
@@ -45,25 +51,16 @@ export default function ImageDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm("この画像を削除しますか？投稿済みの場合は投稿も削除されます。")) {
-      return;
-    }
-
-    try {
-      setIsDeleting(true);
-      await deleteMyImage(imageId);
-      alert("画像を削除しました");
-      router.push("/my-page");
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "削除に失敗しました");
-    } finally {
-      setIsDeleting(false);
-    }
+  const handleDelete = () => {
+    setDeleteDialogOpen(true);
   };
 
   const handlePost = () => {
-    alert("投稿機能は Phase 4 で実装されます");
+    setPostModalOpen(true);
+  };
+
+  const handleEdit = () => {
+    setEditModalOpen(true);
   };
 
   if (isLoading) {
@@ -104,10 +101,15 @@ export default function ImageDetailPage() {
           </Button>
           
           <div className="flex gap-2">
-            {!image.is_posted && (
+            {!image.is_posted ? (
               <Button onClick={handlePost}>
                 <Share2 className="mr-2 h-4 w-4" />
                 投稿
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={handleEdit}>
+                <Edit className="mr-2 h-4 w-4" />
+                編集
               </Button>
             )}
             <Button
@@ -124,6 +126,30 @@ export default function ImageDetailPage() {
             </Button>
           </div>
         </div>
+
+        {/* モーダル・ダイアログ */}
+        {image && (
+          <>
+            <PostModal
+              open={postModalOpen}
+              onOpenChange={setPostModalOpen}
+              imageId={image.id!}
+              currentCaption={image.caption}
+            />
+            <EditPostModal
+              open={editModalOpen}
+              onOpenChange={setEditModalOpen}
+              imageId={image.id!}
+              currentCaption={image.caption}
+            />
+            <DeletePostDialog
+              open={deleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+              imageId={image.id!}
+              imageUrl={image.image_url}
+            />
+          </>
+        )}
 
         {/* 投稿済みバッジ */}
         {image.is_posted && (

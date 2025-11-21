@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, Eye } from "lucide-react";
+import { Trash2, Eye, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PostModal } from "@/features/posts/components/PostModal";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { useRouter } from "next/navigation";
 
@@ -15,6 +16,7 @@ interface MyImageGalleryProps {
 export function MyImageGallery({ images, onDelete }: MyImageGalleryProps) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
 
   const handleDelete = async (imageId: string) => {
     if (!confirm("この画像を削除しますか？")) {
@@ -49,6 +51,7 @@ export function MyImageGallery({ images, onDelete }: MyImageGalleryProps) {
   }
 
   return (
+    <>
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {images.map((image) => (
         <Card key={image.id} className="group relative overflow-hidden">
@@ -57,6 +60,21 @@ export function MyImageGallery({ images, onDelete }: MyImageGalleryProps) {
             <div className="absolute top-2 left-2 z-10 rounded bg-blue-500 px-2 py-1 text-xs font-medium text-white">
               投稿済み
             </div>
+          )}
+
+          {/* 投稿ボタン（未投稿の場合のみ） */}
+          {!image.is_posted && (
+            <Button
+              size="sm"
+              variant="default"
+              className="absolute top-2 right-2 z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPostModalImageId(image.id!);
+              }}
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
           )}
 
           <div className="relative flex min-h-[200px] items-center justify-center bg-gray-100">
@@ -99,7 +117,19 @@ export function MyImageGallery({ images, onDelete }: MyImageGalleryProps) {
           </div>
         </Card>
       ))}
-    </div>
+      </div>
+
+      {/* 投稿モーダル */}
+      {postModalImageId && (
+        <PostModal
+          open={!!postModalImageId}
+          onOpenChange={(open) => {
+            if (!open) setPostModalImageId(null);
+          }}
+          imageId={postModalImageId}
+        />
+      )}
+    </>
   );
 }
 
