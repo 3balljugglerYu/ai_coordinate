@@ -12,13 +12,14 @@ import { cn } from "@/lib/utils";
 
 interface StickyHeaderProps {
   children?: React.ReactNode;
+  showBackButton?: boolean;
 }
 
 /**
  * Sticky headerコンポーネント
  * 下にスクロールで非表示、上にスクロールで表示
  */
-export function StickyHeader({ children }: StickyHeaderProps) {
+export function StickyHeader({ children, showBackButton = true }: StickyHeaderProps) {
   const scrollDirection = useScrollDirection();
   const [isVisible, setIsVisible] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
@@ -64,11 +65,13 @@ export function StickyHeader({ children }: StickyHeaderProps) {
     >
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
+          {showBackButton && (
+            <Link href="/">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
           <Link href="/" className="text-sm font-semibold text-gray-900 hover:text-gray-700">
             {APP_NAME}
           </Link>

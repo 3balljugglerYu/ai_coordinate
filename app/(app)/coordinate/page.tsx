@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
 import { GeneratedImageGallery } from "@/features/generation/components/GeneratedImageGallery";
 import {
@@ -92,39 +93,42 @@ export default function CoordinatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            コーディネート画面
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            人物画像をアップロードして、AIで着せ替えを楽しもう
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <StickyHeader showBackButton={false} />
+      <div className="py-8 px-4">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">
+              コーディネート画面
+            </h1>
+            <p className="mt-2 text-sm text-gray-600">
+              人物画像をアップロードして、AIで着せ替えを楽しもう
+            </p>
+          </div>
 
-        <div className="space-y-8">
-          {/* 生成フォーム */}
-          <GenerationForm onSubmit={handleGenerate} isGenerating={isGenerating} />
+          <div className="space-y-8">
+            {/* 生成フォーム */}
+            <GenerationForm onSubmit={handleGenerate} isGenerating={isGenerating} />
 
-          {/* エラー表示 */}
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <p className="text-sm text-red-900">{error}</p>
+            {/* エラー表示 */}
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-sm text-red-900">{error}</p>
+              </div>
+            )}
+
+            {/* 生成結果プレビュー */}
+            <div>
+              <h2 className="mb-4 text-xl font-semibold text-gray-900">
+                生成結果プレビュー
+              </h2>
+              <GeneratedImageGallery
+                images={generatedImages}
+                isGenerating={isGenerating}
+                generatingCount={generatingCount}
+                completedCount={completedCount}
+              />
             </div>
-          )}
-
-          {/* 生成結果プレビュー */}
-          <div>
-            <h2 className="mb-4 text-xl font-semibold text-gray-900">
-              生成結果プレビュー
-            </h2>
-            <GeneratedImageGallery
-              images={generatedImages}
-              isGenerating={isGenerating}
-              generatingCount={generatingCount}
-              completedCount={completedCount}
-            />
           </div>
         </div>
       </div>
