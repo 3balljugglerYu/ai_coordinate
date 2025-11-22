@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NavigationBar } from "@/components/NavigationBar";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,7 @@ export default function RootLayout({
       >
         <NavigationBar />
         {children}
+        <Toaster />
         <footer className="mt-8 border-t bg-white/80">
           <div className="mx-auto max-w-7xl px-4 py-6 text-center text-xs text-gray-600 md:text-sm">
             <a href="/tokushoho" className="text-gray-700 underline underline-offset-2 hover:text-gray-900">
