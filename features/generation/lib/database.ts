@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
 /**
  * generated_imagesテーブルへのデータベース操作
@@ -23,7 +23,7 @@ export interface GeneratedImageRecord {
 export async function saveGeneratedImage(
   data: Omit<GeneratedImageRecord, "id" | "created_at">
 ): Promise<GeneratedImageRecord> {
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const { data: record, error } = await supabase
     .from("generated_images")
@@ -45,7 +45,7 @@ export async function saveGeneratedImage(
 export async function saveGeneratedImages(
   images: Array<Omit<GeneratedImageRecord, "id" | "created_at">>
 ): Promise<GeneratedImageRecord[]> {
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const { data: records, error } = await supabase
     .from("generated_images")
@@ -68,7 +68,7 @@ export async function getGeneratedImages(
   limit = 50,
   offset = 0
 ): Promise<GeneratedImageRecord[]> {
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const { data, error } = await supabase
     .from("generated_images")
@@ -89,7 +89,7 @@ export async function getGeneratedImages(
  * 生成画像を削除
  */
 export async function deleteGeneratedImage(id: string): Promise<void> {
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const { error } = await supabase
     .from("generated_images")
@@ -102,29 +102,6 @@ export async function deleteGeneratedImage(id: string): Promise<void> {
   }
 }
 
-/**
- * 投稿済み画像一覧を取得（公開フィード用）
- */
-export async function getPostedImages(
-  limit = 50,
-  offset = 0
-): Promise<GeneratedImageRecord[]> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("generated_images")
-    .select("*")
-    .eq("is_posted", true)
-    .order("posted_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`投稿画像の取得に失敗しました: ${error.message}`);
-  }
-
-  return data || [];
-}
 
 /**
  * 画像を投稿
@@ -133,7 +110,7 @@ export async function postImage(
   id: string,
   caption?: string
 ): Promise<GeneratedImageRecord> {
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const { data, error } = await supabase
     .from("generated_images")
@@ -159,7 +136,7 @@ export async function postImage(
  * 投稿一覧からは削除されるが、マイページには残る
  */
 export async function unpostImage(id: string): Promise<GeneratedImageRecord> {
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const { data, error } = await supabase
     .from("generated_images")

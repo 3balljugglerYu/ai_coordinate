@@ -1,10 +1,34 @@
 import { createClient } from "@/lib/supabase/server";
-import { getPostedImages } from "@/features/generation/lib/database";
 import type { Post } from "../types";
+import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
 /**
  * 投稿機能のサーバーサイドAPI関数
  */
+
+/**
+ * 投稿済み画像一覧を取得（サーバーサイド専用）
+ */
+async function getPostedImages(
+  limit = 50,
+  offset = 0
+): Promise<GeneratedImageRecord[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("*")
+    .eq("is_posted", true)
+    .order("posted_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error("Database query error:", error);
+    throw new Error(`投稿画像の取得に失敗しました: ${error.message}`);
+  }
+
+  return data || [];
+}
 
 /**
  * 投稿一覧を取得（サーバーサイド）

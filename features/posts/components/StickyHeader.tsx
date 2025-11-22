@@ -96,7 +96,6 @@ export function StickyHeader({ children, showBackButton = true }: StickyHeaderPr
       // 状態を即座に更新
       setCurrentUser(null);
       router.push("/");
-      router.refresh();
     } catch (error) {
       console.error("Sign out error:", error);
     }
