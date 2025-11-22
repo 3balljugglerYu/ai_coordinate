@@ -96,7 +96,7 @@ export default function MyPagePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <StickyHeader showBackButton={false} />
-      <div className="py-8 px-4">
+      <div className="pt-1 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* ヘッダー */}
           <div className="mb-8">

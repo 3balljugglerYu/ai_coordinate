@@ -95,8 +95,8 @@ export default function CoordinatePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <StickyHeader showBackButton={false} />
-      <div className="py-8 px-4">
-        <div className="mx-auto max-w-4xl">
+      <div className="pt-1 pb-8 px-4">
+        <div className="mx-auto max-w-6xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
               コーディネート画面

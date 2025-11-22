@@ -8,7 +8,7 @@ export default async function Home() {
   return (
     <>
       <StickyHeader showBackButton={false} />
-      <div className="container mx-auto px-4 pb-8 pt-0">
+      <div className="mx-auto max-w-6xl px-4 pb-8 pt-1">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">投稿一覧</h1>
           <p className="mt-2 text-muted-foreground">

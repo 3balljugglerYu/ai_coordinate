@@ -57,7 +57,7 @@ export function NavigationBar() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white shadow-lg md:top-0 md:bottom-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white shadow-lg md:hidden">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         {/* ナビゲーションアイテム */}
         <div className="flex flex-1 items-center justify-around md:justify-start md:gap-8">
@@ -80,38 +80,6 @@ export function NavigationBar() {
           })}
         </div>
 
-        {/* 認証ボタン */}
-        <div className="hidden md:flex md:items-center md:gap-4">
-          {isLoading ? (
-            <div className="h-10 w-24 animate-pulse rounded bg-gray-200" />
-          ) : user ? (
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                {user.email}
-              </span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                ログアウト
-              </Button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/login")}
-              >
-                ログイン
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => router.push("/signup")}
-              >
-                新規登録
-              </Button>
-            </div>
-          )}
-        </div>
       </div>
     </nav>
   );
