@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
@@ -26,14 +26,27 @@ interface StickyHeaderProps {
 /**
  * Sticky headerコンポーネント
  * 下にスクロールで非表示、上にスクロールで表示
+ * パスに基づいて戻るボタンの表示を自動制御
  */
-export function StickyHeader({ children, showBackButton = true }: StickyHeaderProps) {
+export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const scrollDirection = useScrollDirection();
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isVisible, setIsVisible] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // トップレベルのページ（戻るボタン不要）
+  const topLevelPaths = ["/", "/coordinate", "/my-page", "/login", "/signup"];
+  const shouldShowBackButton =
+    showBackButton !== undefined
+      ? showBackButton
+      : !topLevelPaths.includes(pathname);
+
+  // 遷移元を確認して戻る先を決定
+  const fromParam = searchParams.get("from");
+  const backUrl = fromParam === "my-page" ? "/my-page" : "/";
 
   const navItems = [
     { path: "/", label: "ホーム", icon: Home },
@@ -118,8 +131,8 @@ export function StickyHeader({ children, showBackButton = true }: StickyHeaderPr
     >
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {showBackButton && (
-            <Link href="/">
+          {shouldShowBackButton && (
+            <Link href={backUrl}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <ArrowLeft className="h-4 w-4" />
               </Button>

@@ -45,7 +45,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Suspense fallback={<div className="h-16" />}>
-          <StickyHeader showBackButton={false} />
+          <StickyHeader />
         </Suspense>
         <Suspense fallback={<div className="h-16" />}>
           <NavigationBar />

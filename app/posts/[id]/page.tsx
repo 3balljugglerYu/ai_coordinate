@@ -9,11 +9,6 @@ interface PostDetailPageProps {
 
 export default async function PostDetailPage({ params }: PostDetailPageProps) {
   const { id } = await params;
-  const post = await getPost(id);
-
-  if (!post) {
-    notFound();
-  }
 
   // 現在のユーザーIDを取得（サーバーサイド）
   let currentUserId: string | null = null;
@@ -26,6 +21,13 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   } catch (error) {
     // 認証エラーは無視（ゲストユーザーとして扱う）
     console.error("Auth error:", error);
+  }
+
+  // 投稿詳細を取得（未投稿画像も所有者は閲覧可能）
+  const post = await getPost(id, currentUserId);
+
+  if (!post) {
+    notFound();
   }
 
   return <PostDetail post={post} currentUserId={currentUserId} />;

@@ -56,19 +56,29 @@ export async function getPosts(
 
 /**
  * 投稿詳細を取得（サーバーサイド）
+ * 投稿済み画像は全ユーザーが閲覧可能、未投稿画像は所有者のみ閲覧可能
  */
-export async function getPost(id: string): Promise<Post | null> {
+export async function getPost(id: string, currentUserId?: string | null): Promise<Post | null> {
   const supabase = await createClient();
 
+  // まず画像を取得（is_postedの条件なし）
   const { data, error } = await supabase
     .from("generated_images")
     .select("*")
     .eq("id", id)
-    .eq("is_posted", true)
     .single();
 
   if (error || !data) {
     return null;
+  }
+
+  // 投稿済みの場合は全ユーザーが閲覧可能
+  // 未投稿の場合は所有者のみ閲覧可能
+  if (!data.is_posted) {
+    if (!currentUserId || data.user_id !== currentUserId) {
+      // 未投稿画像で、所有者でない場合は404
+      return null;
+    }
   }
 
   return {

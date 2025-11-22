@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { User, Heart, Copy, Check, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { User, Heart, Copy, Check, MoreHorizontal, Edit, Trash2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,11 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StickyHeader } from "./StickyHeader";
 import { ImageFullscreen } from "./ImageFullscreen";
 import { CollapsibleText } from "./CollapsibleText";
 import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
+import { PostModal } from "./PostModal";
 import { getPostImageUrl } from "../lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import type { Post } from "../types";
@@ -33,6 +33,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   const [isPromptCopied, setIsPromptCopied] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [postModalOpen, setPostModalOpen] = useState(false);
   const { toast } = useToast();
 
   const imageUrl = getPostImageUrl(post);
@@ -94,9 +95,6 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Sticky Header */}
-      <StickyHeader />
-
       <div className="container mx-auto bg-white">
         {/* 画像セクション */}
         <div className="relative w-full overflow-hidden bg-white">
@@ -179,45 +177,62 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
                 {post.like_count ?? 0}
               </span>
             </div>
+
+            {/* 3点リーダー（所有者の場合） */}
+            {isOwner && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {!post.is_posted ? (
+                    <>
+                      <DropdownMenuItem onClick={() => setPostModalOpen(true)}>
+                        <Share2 className="mr-2 h-4 w-4" />
+                        投稿する
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        削除
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        編集
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        投稿を取り消す
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
         {/* キャプション */}
         {post.caption && (
           <div className="bg-white px-4 py-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <CollapsibleText text={post.caption} maxLines={3} />
-              </div>
-              {isOwner && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      編集
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setDeleteDialogOpen(true)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      投稿を取り消す
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+            <CollapsibleText text={post.caption} maxLines={3} />
           </div>
         )}
+
 
         {/* プロンプト */}
         {post.prompt && (
@@ -284,6 +299,17 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
           onOpenChange={setDeleteDialogOpen}
           imageId={post.id}
           imageUrl={imageUrl}
+          isPosted={post.is_posted}
+        />
+      )}
+
+      {/* 投稿モーダル（未投稿画像の場合） */}
+      {post.id && !post.is_posted && (
+        <PostModal
+          open={postModalOpen}
+          onOpenChange={setPostModalOpen}
+          imageId={post.id}
+          currentCaption={post.caption || undefined}
         />
       )}
     </div>
