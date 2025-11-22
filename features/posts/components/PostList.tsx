@@ -5,6 +5,7 @@ import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
 import { SortTabs, type SortType } from "./SortTabs";
+import { createClient } from "@/lib/supabase/client";
 import type { Post } from "../types";
 
 interface PostListProps {
@@ -17,10 +18,30 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   const [hasMore, setHasMore] = useState(initialPosts.length === 20);
   const [offset, setOffset] = useState(initialPosts.length);
   const [sortType, setSortType] = useState<SortType>("newest");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "200px",
   });
+
+  // 現在のユーザーIDを取得
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+    });
+
+    // 認証状態の変更を監視
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserId(session?.user?.id ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // ソートタイプが変更されたら投稿一覧をリセット
@@ -93,7 +114,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
       >
         {posts.map((post) => (
           <div key={post.id} className="mb-4">
-            <PostCard post={post} />
+            <PostCard post={post} currentUserId={currentUserId} />
           </div>
         ))}
       </Masonry>

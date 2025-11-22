@@ -4,14 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "lucide-react";
+import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostImageUrl } from "../lib/utils";
 import type { Post } from "../types";
 
 interface PostCardProps {
   post: Post;
+  currentUserId?: string | null;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, currentUserId }: PostCardProps) {
   // Supabase Storageから画像URLを生成（image_urlがない場合はstorage_pathから生成）
   const imageUrl = getPostImageUrl(post);
 
@@ -63,6 +65,16 @@ export function PostCard({ post }: PostCardProps) {
               {displayName}
             </span>
           </div>
+
+          {/* いいねボタン + いいね数 + コメント数 */}
+          {post.id && (
+            <PostCardLikeButton
+              imageId={post.id}
+              initialLikeCount={post.like_count || 0}
+              initialCommentCount={post.comment_count || 0}
+              currentUserId={currentUserId}
+            />
+          )}
         </div>
       </CardContent>
     </Card>

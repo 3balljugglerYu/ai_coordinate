@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { User, Heart, Copy, Check, MoreHorizontal, Edit, Trash2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,9 @@ import { CollapsibleText } from "./CollapsibleText";
 import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
 import { PostModal } from "./PostModal";
+import { LikeButton } from "./LikeButton";
+import { CommentInput } from "./CommentInput";
+import { CommentList, type CommentListRef } from "./CommentList";
 import { getPostImageUrl } from "../lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import type { Post } from "../types";
@@ -34,7 +37,9 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postModalOpen, setPostModalOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const { toast } = useToast();
+  const commentListRef = useRef<CommentListRef>(null);
 
   const imageUrl = getPostImageUrl(post);
 
@@ -163,20 +168,14 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
               フォロー
             </Button>
 
-            {/* いいねボタンといいね数 */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled
-                className="h-8 w-8 p-0"
-              >
-                <Heart className="h-5 w-5 text-gray-400" />
-              </Button>
-              <span className="text-sm text-gray-600">
-                {post.like_count ?? 0}
-              </span>
-            </div>
+            {/* いいねボタン・コメント数・閲覧数 */}
+            <LikeButton
+              imageId={post.id || ""}
+              initialLikeCount={post.like_count || 0}
+              initialCommentCount={commentCount}
+              initialViewCount={post.view_count || 0}
+              currentUserId={currentUserId}
+            />
 
             {/* 3点リーダー（所有者の場合） */}
             {isOwner && (
@@ -264,11 +263,29 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
           </div>
         )}
 
-        {/* コメントセクション（プレースホルダー） */}
-        <div className="border-t border-blue-200 bg-blue-50 px-4 py-3">
-          <p className="text-sm text-blue-900">
-            コメント機能はPhase 4で実装予定です
-          </p>
+        {/* コメントセクション */}
+        <div className="border-t border-gray-200 bg-white px-4 py-3">
+          <div className="mb-4">
+            <CommentInput
+              imageId={post.id || ""}
+              onCommentAdded={() => {
+                // コメントが追加されたら、CommentListをリフレッシュ
+                commentListRef.current?.refresh();
+                // コメント数をインクリメント
+                setCommentCount((prev) => prev + 1);
+              }}
+              currentUserId={currentUserId}
+            />
+          </div>
+          <CommentList
+            ref={commentListRef}
+            imageId={post.id || ""}
+            currentUserId={currentUserId}
+            onCommentAdded={() => {
+              // コメントが削除された場合にコメント数をデクリメント
+              setCommentCount((prev) => Math.max(0, prev - 1));
+            }}
+          />
         </div>
       </div>
 

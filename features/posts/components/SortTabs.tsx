@@ -12,9 +12,9 @@ interface SortTabsProps {
 export function SortTabs({ value, onChange }: SortTabsProps) {
   const tabs: { value: SortType; label: string; disabled?: boolean }[] = [
     { value: "newest", label: "新着" },
-    { value: "daily", label: "dailyいいね総数", disabled: true }, // Phase 4で実装予定
-    { value: "week", label: "weekいいね総数", disabled: true }, // Phase 4で実装予定
-    { value: "month", label: "monthいいね総数", disabled: true }, // Phase 4で実装予定
+    { value: "daily", label: "今日" },
+    { value: "week", label: "今週" },
+    { value: "month", label: "今月" },
   ];
 
   return (
