@@ -579,13 +579,24 @@ export async function deleteComment(
 ): Promise<void> {
   const supabase = await createClient();
 
+  // デバッグ: 認証状態を確認
+  const {
+    data: { user: authUser },
+    error: authError,
+  } = await supabase.auth.getUser();
+  console.log("[deleteComment] Auth user:", authUser?.id);
+  console.log("[deleteComment] Provided userId:", userId);
+  console.log("[deleteComment] Auth error:", authError);
+
   // まずコメントが存在し、所有者であることを確認
   const { data: existingComment, error: checkError } = await supabase
     .from("comments")
     .select("id, user_id")
     .eq("id", commentId)
-    .is("deleted_at", null)
     .single();
+
+  console.log("[deleteComment] Existing comment:", existingComment);
+  console.log("[deleteComment] Check error:", checkError);
 
   if (checkError || !existingComment) {
     console.error("Comment check error:", checkError);
@@ -593,22 +604,43 @@ export async function deleteComment(
   }
 
   if (existingComment.user_id !== userId) {
+    console.error(
+      "[deleteComment] User ID mismatch:",
+      existingComment.user_id,
+      "!=",
+      userId
+    );
     throw new Error("コメントを削除する権限がありません");
   }
 
-  // 論理削除を実行
-  // select()を削除して、シンプルなUPDATEのみを実行
+  // 認証ユーザーIDと一致するか確認
+  if (authUser?.id !== userId) {
+    console.error(
+      "[deleteComment] Auth user ID mismatch:",
+      authUser?.id,
+      "!=",
+      userId
+    );
+    throw new Error("認証ユーザーと一致しません");
+  }
+
+  console.log("[deleteComment] Attempting to delete comment:", commentId);
+
+  // 物理削除を実行
   const { error } = await supabase
     .from("comments")
-    .update({
-      deleted_at: new Date().toISOString(),
-    })
+    .delete()
     .eq("id", commentId)
     .eq("user_id", userId);
+
+  console.log("[deleteComment] Delete error:", error);
 
   if (error) {
     console.error("Database query error:", error);
     console.error("Error details:", JSON.stringify(error, null, 2));
+    console.error("[deleteComment] Comment ID:", commentId);
+    console.error("[deleteComment] User ID:", userId);
+    console.error("[deleteComment] Auth User ID:", authUser?.id);
     throw new Error(`コメントの削除に失敗しました: ${error.message}`);
   }
 }

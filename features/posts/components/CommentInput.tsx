@@ -109,6 +109,7 @@ export function CommentInput({
   };
 
   const remainingChars = MAX_LENGTH - content.length;
+  const isOverLimit = content.length > MAX_LENGTH;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
@@ -116,23 +117,33 @@ export function CommentInput({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="コメントを入力..."
-        maxLength={MAX_LENGTH}
-        rows={3}
-        className="resize-none"
+        rows={1}
+        className="resize-none !min-h-[2.5rem] py-2"
         disabled={isLoading || !currentUserId}
       />
       <div className="flex items-center justify-between">
         <span
           className={`text-xs ${
-            remainingChars < 20 ? "text-red-500" : "text-gray-500"
+            isOverLimit
+              ? "text-red-500"
+              : remainingChars < 20
+              ? "text-orange-500"
+              : "text-gray-500"
           }`}
         >
-          {remainingChars}文字
+          {isOverLimit
+            ? `${content.length - MAX_LENGTH}文字超過`
+            : `${remainingChars}文字`}
         </span>
         <Button
           type="submit"
           size="sm"
-          disabled={isLoading || !currentUserId || content.trim().length === 0}
+          disabled={
+            isLoading ||
+            !currentUserId ||
+            content.trim().length === 0 ||
+            content.trim().length > MAX_LENGTH
+          }
         >
           {isLoading ? "投稿中..." : "投稿"}
         </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Heart, Eye } from "lucide-react";
+import { Heart, Eye, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
@@ -127,7 +127,7 @@ export function LikeButton({
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 justify-start">
       <Button
         variant="ghost"
         size="sm"
@@ -143,9 +143,10 @@ export function LikeButton({
         <span className="text-sm font-medium">{likeCount}</span>
       </Button>
       {initialCommentCount > 0 && (
-        <span className="text-sm text-gray-600">
-          💬 {initialCommentCount}
-        </span>
+        <div className="flex items-center gap-1">
+          <MessageCircle className="h-4 w-4 text-gray-500" />
+          <span className="text-sm text-gray-600">{initialCommentCount}</span>
+        </div>
       )}
       {initialViewCount > 0 && (
         <div className="flex items-center gap-1">

@@ -33,3 +33,60 @@ export function getPostImageUrl(post: { image_url?: string | null; storage_path?
   return "";
 }
 
+/**
+ * 画像のアスペクト比をサーバー側で計算
+ * 画像のメタデータを読み込んで判定（簡易版）
+ * @param imageUrl 画像のURL
+ * @returns "portrait" | "landscape" | null
+ */
+export async function getImageAspectRatio(imageUrl: string): Promise<"portrait" | "landscape" | null> {
+  try {
+    // 画像のメタデータを取得するために、画像を読み込む
+    const response = await fetch(imageUrl, {
+      method: "GET",
+      headers: {
+        Range: "bytes=0-16384", // 最初の16KBのみ取得（メタデータに十分）
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // PNG形式の場合
+    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+      if (buffer.length >= 24) {
+        const width = buffer.readUInt32BE(16);
+        const height = buffer.readUInt32BE(20);
+        if (width > 0 && height > 0) {
+          return height > width ? "portrait" : "landscape";
+        }
+      }
+    }
+
+    // JPEG形式の場合
+    if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+      let offset = 2;
+      while (offset < buffer.length - 8) {
+        if (buffer[offset] === 0xff && buffer[offset + 1] === 0xc0) {
+          const height = buffer.readUInt16BE(offset + 5);
+          const width = buffer.readUInt16BE(offset + 7);
+          if (width > 0 && height > 0) {
+            return height > width ? "portrait" : "landscape";
+          }
+          break;
+        }
+        offset++;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Failed to get image aspect ratio:", error);
+    return null;
+  }
+}
+

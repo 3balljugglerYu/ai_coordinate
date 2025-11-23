@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { updateCommentAPI, deleteCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { CollapsibleText } from "./CollapsibleText";
 
 interface CommentItemProps {
   comment: {
@@ -193,9 +194,11 @@ export function CommentItem({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-900 whitespace-pre-wrap break-words">
-              {comment.content}
-            </p>
+            <CollapsibleText
+              text={comment.content}
+              maxLines={2}
+              textClassName="text-gray-900"
+            />
           )}
         </div>
 

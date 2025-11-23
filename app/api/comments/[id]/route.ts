@@ -54,6 +54,9 @@ export async function DELETE(
     const user = await requireAuth();
     const { id } = await params;
 
+    console.log("[DELETE /api/comments/[id]] User:", user.id);
+    console.log("[DELETE /api/comments/[id]] Comment ID:", id);
+
     if (!id) {
       return NextResponse.json(
         { error: "Comment ID is required" },
@@ -66,6 +69,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Comment deletion API error:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : "");
     return NextResponse.json(
       {
         error:
