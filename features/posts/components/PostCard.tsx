@@ -66,12 +66,12 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
             </span>
           </div>
 
-          {/* いいねボタン + いいね数 + コメント数 */}
+          {/* いいねボタン + いいね数 + ビュー数 */}
           {post.id && (
             <PostCardLikeButton
               imageId={post.id}
               initialLikeCount={post.like_count || 0}
-              initialCommentCount={post.comment_count || 0}
+              initialViewCount={post.view_count || 0}
               currentUserId={currentUserId}
             />
           )}

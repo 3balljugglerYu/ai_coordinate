@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { formatNumber } from "../lib/utils";
 
 interface LikeButtonProps {
   imageId: string;
@@ -140,18 +141,18 @@ export function LikeButton({
             isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
           }`}
         />
-        <span className="text-sm font-medium">{likeCount}</span>
+        <span className="text-sm font-medium">{formatNumber(likeCount)}</span>
       </Button>
       {initialCommentCount > 0 && (
         <div className="flex items-center gap-1">
           <MessageCircle className="h-4 w-4 text-gray-500" />
-          <span className="text-sm text-gray-600">{initialCommentCount}</span>
+          <span className="text-sm text-gray-600">{formatNumber(initialCommentCount)}</span>
         </div>
       )}
       {initialViewCount > 0 && (
         <div className="flex items-center gap-1">
           <Eye className="h-4 w-4 text-gray-500" />
-          <span className="text-sm text-gray-600">{initialViewCount}</span>
+          <span className="text-sm text-gray-600">{formatNumber(initialViewCount)}</span>
         </div>
       )}
     </div>

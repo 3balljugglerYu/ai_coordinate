@@ -3,6 +3,29 @@
  */
 
 /**
+ * 数値を短縮表示にフォーマット（K/M形式）
+ * @param num フォーマットする数値
+ * @returns フォーマットされた文字列（例: "1.2K", "10K", "100K", "1M"）
+ */
+export function formatNumber(num: number): string {
+  if (num < 1000) {
+    return num.toString();
+  }
+
+  if (num < 1000000) {
+    const k = num / 1000;
+    // 小数点以下1桁で表示、.0の場合は省略
+    const formatted = k % 1 === 0 ? k.toString() : k.toFixed(1);
+    return `${formatted}K`;
+  }
+
+  const m = num / 1000000;
+  // 小数点以下1桁で表示、.0の場合は省略
+  const formatted = m % 1 === 0 ? m.toString() : m.toFixed(1);
+  return `${formatted}M`;
+}
+
+/**
  * storage_pathからSupabase Storageの公開URLを生成（クライアント・サーバー両対応）
  */
 export function getImageUrlFromStoragePath(storagePath: string): string {
