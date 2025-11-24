@@ -100,6 +100,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
       router.push(`/login?next=${path}`);
       return;
     }
+    // ホームページへの遷移時はリセットパラメータを追加
+    if (path === "/") {
+      router.push("/?reset=true");
+      return;
+    }
     router.push(path);
   };
 
@@ -138,7 +143,10 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
               </Button>
             </Link>
           )}
-          <Link href="/" className="text-sm font-semibold text-gray-900 hover:text-gray-700">
+          <Link 
+            href="/?reset=true" 
+            className="text-sm font-semibold text-gray-900 hover:text-gray-700"
+          >
             {APP_NAME}
           </Link>
           {/* PC画面でのナビゲーションリンク */}

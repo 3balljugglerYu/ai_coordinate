@@ -45,7 +45,11 @@ export function NavigationBar() {
       router.push(`/login?next=${path}`);
       return;
     }
-
+    // ホームページへの遷移時はリセットパラメータを追加
+    if (path === "/") {
+      router.push("/?reset=true");
+      return;
+    }
     router.push(path);
   };
 
