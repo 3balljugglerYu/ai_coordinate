@@ -58,14 +58,17 @@ export async function POST(
 
     const supabase = await createClient();
 
-    // ファイル名を生成（ユーザーID + タイムスタンプ）
+    // Storageバケット名（既存のgenerated-imagesバケットを再利用）
+    const AVATAR_BUCKET = "generated-images";
+
+    // ファイル名を生成（フォルダ: avatars/{userId}/タイムスタンプ.拡張子）
     const fileExt = file.name.split(".").pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+    const fileName = `avatars/${userId}/${Date.now()}.${fileExt}`;
+    const filePath = fileName;
 
     // Supabase Storageにアップロード
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("avatars")
+      .from(AVATAR_BUCKET)
       .upload(filePath, file, {
         cacheControl: "3600",
         upsert: true,
@@ -74,7 +77,11 @@ export async function POST(
     if (uploadError) {
       console.error("Avatar upload error:", uploadError);
       return NextResponse.json(
-        { error: "画像のアップロードに失敗しました" },
+        {
+          error:
+            uploadError.message ||
+            "画像のアップロードに失敗しました",
+        },
         { status: 500 }
       );
     }
@@ -82,7 +89,7 @@ export async function POST(
     // 公開URLを取得
     const {
       data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath);
 
     // profilesテーブルのavatar_urlを更新
     const { data: updatedProfile, error: updateError } = await supabase
@@ -95,7 +102,7 @@ export async function POST(
     if (updateError) {
       console.error("Profile update error:", updateError);
       // アップロードは成功したが、プロフィール更新に失敗した場合は、アップロードしたファイルを削除
-      await supabase.storage.from("avatars").remove([filePath]);
+      await supabase.storage.from(AVATAR_BUCKET).remove([filePath]);
       return NextResponse.json(
         { error: "プロフィールの更新に失敗しました" },
         { status: 500 }
