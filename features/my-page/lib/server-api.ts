@@ -99,21 +99,34 @@ export async function getUserStatsServer(userId: string): Promise<UserStats> {
   let likeCount = 0;
   if (postedImageIds.length > 0) {
     // 投稿済み画像に対するいいね数を集計
+    // likesテーブルはimage_idカラムを使用（post_idではない）
     const { count } = await supabase
       .from("likes")
       .select("*", { count: "exact", head: true })
-      .in("post_id", postedImageIds);
+      .in("image_id", postedImageIds);
     likeCount = count || 0;
   }
 
+  // ビュー総数の集計（generated_imagesテーブルのview_countを合計）
+  const { data: postedImagesWithViews } = await supabase
+    .from("generated_images")
+    .select("view_count")
+    .eq("user_id", userId)
+    .eq("is_posted", true);
+
+  const viewCount =
+    postedImagesWithViews?.reduce(
+      (sum, img) => sum + (img.view_count || 0),
+      0
+    ) || 0;
+
   // Phase 5で実装予定: フォロー数・フォロワー数
-  // Phase 6で実装予定: 閲覧数
 
   return {
     generatedCount: generatedCount || 0,
     postedCount: postedCount || 0,
     likeCount: likeCount || 0,
-    viewCount: 0, // Phase 6で実装予定
+    viewCount: viewCount,
     followerCount: 0, // Phase 5で実装予定
     followingCount: 0, // Phase 5で実装予定
   };
