@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { User, MoreHorizontal, Edit, Trash2, Share2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,25 +112,43 @@ export function PostDetailStatic({
           {/* 1行目: ユーザーアイコン、ニックネーム、フォローボタン、3点リーダー */}
           <div className="flex items-center gap-3">
             {/* ユーザーアイコン */}
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200">
-              {post.user?.avatar_url ? (
-                <Image
-                  src={post.user.avatar_url}
-                  alt={displayName}
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                />
-              ) : (
+            {post.user?.id ? (
+              <Link
+                href={`/users/${post.user.id}`}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 hover:opacity-80 transition-opacity"
+              >
+                {post.user?.avatar_url ? (
+                  <Image
+                    src={post.user.avatar_url}
+                    alt={displayName}
+                    width={40}
+                    height={40}
+                    className="rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="h-5 w-5 text-gray-500" />
+                )}
+              </Link>
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200">
                 <User className="h-5 w-5 text-gray-500" />
-              )}
-            </div>
+              </div>
+            )}
 
             {/* ニックネーム */}
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-gray-900">
-                {displayName}
-              </span>
+              {post.user?.id ? (
+                <Link
+                  href={`/users/${post.user.id}`}
+                  className="block truncate text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
+                >
+                  {displayName}
+                </Link>
+              ) : (
+                <span className="block truncate text-sm font-medium text-gray-900">
+                  {displayName}
+                </span>
+              )}
             </div>
 
             {/* フォローボタン（自分の投稿の場合は表示しない） */}
