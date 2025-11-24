@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { User, Upload, X } from "lucide-react";
+import { User, Camera, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import Cropper, { Area } from "react-easy-crop";
+import { getCroppedImg } from "../lib/cropImage";
 import type { UserProfile } from "../lib/server-api";
 
 interface AvatarUploadProps {
@@ -12,10 +20,42 @@ interface AvatarUploadProps {
 }
 
 export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+  const [isCropMode, setIsCropMode] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewBlobUrlRef = useRef<string | null>(null);
+
+  // Blob URLのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (previewBlobUrlRef.current) {
+        URL.revokeObjectURL(previewBlobUrlRef.current);
+        previewBlobUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  // profile.avatar_urlが更新されたら、previewをクリア
+  useEffect(() => {
+    if (profile.avatar_url && previewBlobUrlRef.current) {
+      URL.revokeObjectURL(previewBlobUrlRef.current);
+      previewBlobUrlRef.current = null;
+      setPreview(null);
+    }
+  }, [profile.avatar_url]);
+
+  const displayAvatar = preview || profile.avatar_url;
+
+  const handleAvatarClick = () => {
+    setIsFullscreenOpen(true);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -36,22 +76,53 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
 
     setError(null);
 
-    // プレビューを生成
+    // 画像を読み込んでトリミング画面を表示
     const reader = new FileReader();
     reader.onloadend = () => {
-      setPreview(reader.result as string);
+      setImageSrc(reader.result as string);
+      setIsCropMode(true);
+      setZoom(1);
+      setCrop({ x: 0, y: 0 });
     };
     reader.readAsDataURL(file);
   };
 
-  const handleUpload = async () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) return;
+  const handleCameraClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleCropComplete = async (croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleCropDone = async () => {
+    if (!imageSrc || !croppedAreaPixels) return;
 
     setIsUploading(true);
     setError(null);
 
     try {
+      // トリミング後の画像を生成
+      const croppedImageBlob = await getCroppedImg(
+        imageSrc,
+        croppedAreaPixels
+      );
+
+      // BlobをFileに変換
+      const file = new File([croppedImageBlob], "avatar.png", {
+        type: "image/png",
+      });
+
+      // プレビューを生成
+      const previewUrl = URL.createObjectURL(croppedImageBlob);
+      // 以前のBlob URLをクリーンアップ
+      if (previewBlobUrlRef.current) {
+        URL.revokeObjectURL(previewBlobUrlRef.current);
+      }
+      previewBlobUrlRef.current = previewUrl;
+      setPreview(previewUrl);
+
+      // アップロード
       const formData = new FormData();
       formData.append("file", file);
 
@@ -66,8 +137,21 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       }
 
       const { avatar_url } = await response.json();
-      onAvatarUpdate(avatar_url);
+      
+      // アップロード成功後は、すぐにpreviewをクリアしてサーバーのURLを使用
+      // Blob URLをクリーンアップ
+      if (previewBlobUrlRef.current) {
+        URL.revokeObjectURL(previewBlobUrlRef.current);
+        previewBlobUrlRef.current = null;
+      }
       setPreview(null);
+      
+      onAvatarUpdate(avatar_url);
+      
+      // クリーンアップ
+      setIsCropMode(false);
+      setImageSrc(null);
+      setIsFullscreenOpen(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -79,20 +163,34 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
   };
 
   const handleCancel = () => {
+    // Blob URLをクリーンアップ
+    if (previewBlobUrlRef.current) {
+      URL.revokeObjectURL(previewBlobUrlRef.current);
+      previewBlobUrlRef.current = null;
+    }
     setPreview(null);
+    setImageSrc(null);
+    setIsCropMode(false);
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const displayAvatar = preview || profile.avatar_url;
+  const handleClose = () => {
+    setIsFullscreenOpen(false);
+    handleCancel();
+  };
 
   return (
-    <div className="space-y-3">
+    <>
       <div className="flex items-center gap-4">
-        {/* アバタープレビュー */}
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gray-200 overflow-hidden">
+        {/* アバター（クリック可能） */}
+        <button
+          type="button"
+          onClick={handleAvatarClick}
+          className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gray-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
+        >
           {displayAvatar ? (
             <Image
               src={displayAvatar}
@@ -100,67 +198,171 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
               width={80}
               height={80}
               className="rounded-full object-cover"
+              onError={() => {
+                // Blob URLが無効な場合、previewをクリア
+                if (previewBlobUrlRef.current) {
+                  URL.revokeObjectURL(previewBlobUrlRef.current);
+                  previewBlobUrlRef.current = null;
+                }
+                setPreview(null);
+              }}
             />
           ) : (
             <User className="h-10 w-10 text-gray-500" />
           )}
-        </div>
-
-        {/* アップロードボタン */}
-        <div className="flex-1 space-y-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="avatar-upload"
-          />
-          <label htmlFor="avatar-upload">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              asChild
-              disabled={isUploading}
-            >
-              <span>
-                <Upload className="h-4 w-4 mr-2" />
-                画像を選択
-              </span>
-            </Button>
-          </label>
-          {preview && (
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleUpload}
-                disabled={isUploading}
-              >
-                {isUploading ? "アップロード中..." : "アップロード"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCancel}
-                disabled={isUploading}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
+        </button>
       </div>
 
-      {/* エラーメッセージ */}
-      {error && (
-        <div className="rounded-md bg-red-50 p-3">
-          <p className="text-sm text-red-800">{error}</p>
-        </div>
-      )}
-    </div>
+      {/* ファイル入力（非表示） */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
+      {/* 全画面表示ダイアログ */}
+      <Dialog open={isFullscreenOpen} onOpenChange={setIsFullscreenOpen}>
+        <DialogContent 
+          className="!max-w-full !w-full !h-full !max-h-screen !p-0 !bg-black/95 !border-none !rounded-none !translate-x-0 !translate-y-0 !top-0 !left-0" 
+          showCloseButton={false}
+        >
+          <DialogTitle className="sr-only">プロフィール画像</DialogTitle>
+          
+          {isCropMode && imageSrc ? (
+            // トリミングモード
+            <>
+              <div className="relative w-full h-[calc(100vh-200px)] min-h-[400px] bg-black">
+                <Cropper
+                  image={imageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  cropShape="round"
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={handleCropComplete}
+                  style={{
+                    containerStyle: {
+                      width: "100%",
+                      height: "100%",
+                      position: "relative",
+                    },
+                  }}
+                />
+              </div>
+              {/* ズームコントロール */}
+              <div className="px-4 py-2 bg-black/50 border-t border-gray-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-white min-w-[3rem]">ズーム</span>
+                  <input
+                    type="range"
+                    value={zoom}
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-white min-w-[3rem] text-right">
+                    {zoom.toFixed(1)}x
+                  </span>
+                </div>
+              </div>
+              <DialogFooter className="border-t border-gray-700 bg-black/50 p-4">
+                <div className="flex gap-2 w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={isUploading}
+                    className="flex-1 bg-transparent text-white border-gray-600 hover:bg-gray-800"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    キャンセル
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleCropDone}
+                    disabled={isUploading || !croppedAreaPixels}
+                    className="flex-1 bg-white text-black hover:bg-gray-200"
+                  >
+                    {isUploading ? (
+                      "アップロード中..."
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        完了
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </>
+          ) : (
+            // 通常表示モード
+            <>
+              <div className="relative flex items-center justify-center h-full min-h-[50vh] p-4">
+                {/* 閉じるボタン */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-4 top-4 z-10 rounded-full bg-black/50 text-white hover:bg-black/70"
+                  onClick={handleClose}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+
+                {/* アバター画像 */}
+                <div className="flex-1 flex items-center justify-center">
+                  {displayAvatar ? (
+                    <Image
+                      src={displayAvatar}
+                      alt="プロフィール画像"
+                      width={400}
+                      height={400}
+                      className="rounded-full object-cover max-w-[80vw] max-h-[80vh] aspect-square"
+                      onError={() => {
+                        // Blob URLが無効な場合、previewをクリア
+                        if (previewBlobUrlRef.current) {
+                          URL.revokeObjectURL(previewBlobUrlRef.current);
+                          previewBlobUrlRef.current = null;
+                        }
+                        setPreview(null);
+                      }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center w-64 h-64 rounded-full bg-gray-200">
+                      <User className="h-32 w-32 text-gray-500" />
+                    </div>
+                  )}
+                </div>
+
+                {/* 右下の写真アイコン */}
+                <div className="absolute bottom-4 right-4">
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="h-14 w-14 rounded-full bg-white/90 hover:bg-white shadow-lg"
+                    onClick={handleCameraClick}
+                    disabled={isUploading}
+                  >
+                    <Camera className="h-7 w-7 text-gray-900" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* エラーメッセージ */}
+          {error && (
+            <div className="absolute bottom-20 left-4 right-4 rounded-md bg-red-50 p-3 border border-red-200">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
-
