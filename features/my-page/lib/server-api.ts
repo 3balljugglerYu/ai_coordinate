@@ -32,18 +32,20 @@ export interface UserStats {
 
 /**
  * ユーザープロフィール情報を取得（サーバーサイド）
- * 現時点ではauth.usersのuser_metadataから取得
- * Phase 5でprofilesテーブルに移行予定
+ * profilesテーブルから取得
  */
 export async function getUserProfileServer(userId: string): Promise<UserProfile> {
   const supabase = await createClient();
 
-  // 現在のユーザー情報を取得（自分のプロフィールの場合）
-  const { data: { user }, error } = await supabase.auth.getUser();
+  // profilesテーブルからプロフィール情報を取得
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id, nickname, bio, avatar_url")
+    .eq("user_id", userId)
+    .single();
 
-  if (error || !user || user.id !== userId) {
-    // 他のユーザーのプロフィールを取得する場合は、将来的にprofilesテーブルから取得
-    // 現時点では基本情報のみ返す
+  if (error || !profile) {
+    // プロフィールが存在しない場合は、基本情報のみ返す
     return {
       id: userId,
       nickname: null,
@@ -52,12 +54,16 @@ export async function getUserProfileServer(userId: string): Promise<UserProfile>
     };
   }
 
+  // 自分のプロフィールの場合は、emailも取得
+  const { data: { user } } = await supabase.auth.getUser();
+  const isOwnProfile = user?.id === userId;
+
   return {
-    id: user.id,
-    nickname: user.user_metadata?.nickname || user.user_metadata?.display_name || user.email?.split("@")[0] || null,
-    bio: user.user_metadata?.bio || null,
-    avatar_url: user.user_metadata?.avatar_url || null,
-    email: user.email,
+    id: profile.id,
+    nickname: profile.nickname,
+    bio: profile.bio,
+    avatar_url: profile.avatar_url,
+    email: isOwnProfile ? user?.email : undefined,
   };
 }
 
@@ -80,18 +86,77 @@ export async function getUserStatsServer(userId: string): Promise<UserStats> {
     .eq("user_id", userId)
     .eq("is_posted", true);
 
-  // Phase 4で実装予定: いいね総数
+  // いいね総数の集計（likesテーブルとgenerated_imagesテーブルをJOIN）
+  // まず、ユーザーの投稿済み画像IDを取得
+  const { data: postedImages } = await supabase
+    .from("generated_images")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_posted", true);
+
+  const postedImageIds = postedImages?.map((img) => img.id) || [];
+
+  let likeCount = 0;
+  if (postedImageIds.length > 0) {
+    // 投稿済み画像に対するいいね数を集計
+    // likesテーブルはimage_idカラムを使用（post_idではない）
+    const { count } = await supabase
+      .from("likes")
+      .select("*", { count: "exact", head: true })
+      .in("image_id", postedImageIds);
+    likeCount = count || 0;
+  }
+
+  // ビュー総数の集計（generated_imagesテーブルのview_countを合計）
+  const { data: postedImagesWithViews } = await supabase
+    .from("generated_images")
+    .select("view_count")
+    .eq("user_id", userId)
+    .eq("is_posted", true);
+
+  const viewCount =
+    postedImagesWithViews?.reduce(
+      (sum, img) => sum + (img.view_count || 0),
+      0
+    ) || 0;
+
   // Phase 5で実装予定: フォロー数・フォロワー数
-  // Phase 6で実装予定: 閲覧数
 
   return {
     generatedCount: generatedCount || 0,
     postedCount: postedCount || 0,
-    likeCount: 0, // Phase 4で実装予定
-    viewCount: 0, // Phase 6で実装予定
+    likeCount: likeCount || 0,
+    viewCount: viewCount,
     followerCount: 0, // Phase 5で実装予定
     followingCount: 0, // Phase 5で実装予定
   };
+}
+
+/**
+ * ユーザーの投稿済み画像一覧を取得（サーバーサイド）
+ * 他ユーザーのプロフィール画面用（投稿済みのみ）
+ */
+export async function getUserPostsServer(
+  userId: string,
+  limit = 20,
+  offset = 0
+): Promise<GeneratedImageRecord[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_posted", true)
+    .order("posted_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error("User posts fetch error:", error);
+    return [];
+  }
+
+  return data || [];
 }
 
 /**
