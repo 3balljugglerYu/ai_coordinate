@@ -56,7 +56,8 @@ export function ProfileEditModal({
         },
         body: JSON.stringify({
           nickname: nickname.trim() || null,
-          bio: bio.trim() || null,
+          // bioは改行を保持するため、先頭と末尾の空白のみ削除
+          bio: bio.replace(/^\s+|\s+$/g, "") || null,
         }),
       });
 
@@ -81,7 +82,7 @@ export function ProfileEditModal({
   const isBioValid = bioLength <= MAX_BIO_LENGTH;
   const hasChanges =
     nickname.trim() !== (profile.nickname || "") ||
-    bio.trim() !== (profile.bio || "");
+    bio.replace(/^\s+|\s+$/g, "") !== (profile.bio || "");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

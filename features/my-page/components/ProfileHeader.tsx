@@ -6,6 +6,7 @@ import { User, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditModal } from "./ProfileEditModal";
 import { AvatarUpload } from "./AvatarUpload";
+import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
 import type { UserProfile } from "../lib/server-api";
 
 interface ProfileHeaderProps {
@@ -62,7 +63,13 @@ export function ProfileHeader({
                 </Button>
               </div>
               {currentProfile.bio && (
-                <p className="mt-1 text-sm text-gray-600">{currentProfile.bio}</p>
+                <div className="mt-1">
+                  <CollapsibleText
+                    text={currentProfile.bio}
+                    maxLines={3}
+                    textClassName="text-sm text-gray-600"
+                  />
+                </div>
               )}
             </div>
           </>
@@ -85,7 +92,13 @@ export function ProfileHeader({
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
               {currentProfile.bio && (
-                <p className="mt-1 text-sm text-gray-600">{currentProfile.bio}</p>
+                <div className="mt-1">
+                  <CollapsibleText
+                    text={currentProfile.bio}
+                    maxLines={3}
+                    textClassName="text-sm text-gray-600"
+                  />
+                </div>
               )}
             </div>
           </div>
