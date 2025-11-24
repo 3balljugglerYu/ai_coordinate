@@ -23,4 +23,6 @@ export interface Post extends GeneratedImageRecord {
     avatar_url?: string | null;
   } | null;
   like_count?: number;
+  comment_count?: number;
+  view_count?: number;
 }

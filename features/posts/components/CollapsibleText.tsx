@@ -8,6 +8,7 @@ interface CollapsibleTextProps {
   text: string;
   maxLines: number;
   className?: string;
+  textClassName?: string;
 }
 
 /**
@@ -18,6 +19,7 @@ export function CollapsibleText({
   text,
   maxLines,
   className = "",
+  textClassName = "text-gray-700",
 }: CollapsibleTextProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
@@ -40,7 +42,7 @@ export function CollapsibleText({
     <div className={className}>
       <p
         ref={textRef}
-        className="text-sm text-gray-700 whitespace-pre-wrap"
+        className={`text-sm whitespace-pre-wrap break-words ${textClassName}`}
         style={
           !isExpanded && shouldShowButton
             ? {

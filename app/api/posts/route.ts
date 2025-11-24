@@ -25,9 +25,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Phase 3では新着順のみ実装
-    // daily/week/monthソートはPhase 4で実装予定
-    const posts = await getPosts(limit, offset);
+    const validSorts = ["newest", "daily", "week", "month"];
+    const sortType = validSorts.includes(sort) ? (sort as "newest" | "daily" | "week" | "month") : "newest";
+    
+    const posts = await getPosts(limit, offset, sortType);
 
     return NextResponse.json({
       posts,
