@@ -8,6 +8,9 @@ interface PostDetailStatsProps {
   initialCommentCount: number;
   initialViewCount: number;
   currentUserId?: string | null;
+  isPosted?: boolean;
+  caption?: string | null;
+  imageUrl?: string | null;
 }
 
 /**
@@ -20,6 +23,9 @@ export function PostDetailStats({
   initialCommentCount,
   initialViewCount,
   currentUserId,
+  isPosted = true,
+  caption,
+  imageUrl,
 }: PostDetailStatsProps) {
   return (
     <LikeButton
@@ -28,6 +34,9 @@ export function PostDetailStats({
       initialCommentCount={initialCommentCount}
       initialViewCount={initialViewCount}
       currentUserId={currentUserId}
+      isPosted={isPosted}
+      caption={caption}
+      imageUrl={imageUrl}
     />
   );
 }
