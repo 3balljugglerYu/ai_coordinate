@@ -7,6 +7,7 @@ import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatNumber } from "../lib/utils";
+import { ShareButton } from "./ShareButton";
 
 interface LikeButtonProps {
   imageId: string;
@@ -14,6 +15,9 @@ interface LikeButtonProps {
   initialCommentCount?: number;
   initialViewCount?: number;
   currentUserId?: string | null;
+  isPosted?: boolean;
+  caption?: string | null;
+  imageUrl?: string | null;
 }
 
 /**
@@ -26,6 +30,9 @@ export function LikeButton({
   initialCommentCount = 0,
   initialViewCount = 0,
   currentUserId,
+  isPosted = true,
+  caption,
+  imageUrl,
 }: LikeButtonProps) {
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLiked, setIsLiked] = useState(false);
@@ -154,6 +161,13 @@ export function LikeButton({
           <Eye className="h-4 w-4 text-gray-500" />
           <span className="text-sm text-gray-600">{formatNumber(initialViewCount)}</span>
         </div>
+      )}
+      {isPosted && (
+        <ShareButton
+          postId={imageId}
+          caption={caption}
+          imageUrl={imageUrl}
+        />
       )}
     </div>
   );
