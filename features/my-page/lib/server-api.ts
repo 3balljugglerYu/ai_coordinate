@@ -104,29 +104,44 @@ export async function getMyImagesServer(
   limit = 50,
   offset = 0
 ): Promise<GeneratedImageRecord[]> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  let query = supabase
-    .from("generated_images")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    let query = supabase
+      .from("generated_images")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
-  if (filter === "posted") {
-    query = query.eq("is_posted", true);
-  } else if (filter === "unposted") {
-    query = query.eq("is_posted", false);
+    if (filter === "posted") {
+      query = query.eq("is_posted", true);
+    } else if (filter === "unposted") {
+      query = query.eq("is_posted", false);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("[getMyImagesServer] Database query error:", error);
+      console.error("[getMyImagesServer] Error details:", JSON.stringify(error, null, 2));
+      console.error("[getMyImagesServer] Error message:", error.message);
+      console.error("[getMyImagesServer] Error code:", error.code);
+      console.error("[getMyImagesServer] Error hint:", error.hint);
+      console.error("[getMyImagesServer] User ID:", userId);
+      console.error("[getMyImagesServer] Filter:", filter);
+      throw new Error(`画像の取得に失敗しました: ${error.message || "Unknown error"}`);
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error("[getMyImagesServer] Unexpected error:", err);
+    if (err instanceof Error) {
+      console.error("[getMyImagesServer] Error stack:", err.stack);
+      throw err;
+    }
+    throw new Error(`画像の取得に失敗しました: ${err instanceof Error ? err.message : "Unknown error"}`);
   }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`画像の取得に失敗しました: ${error.message}`);
-  }
-
-  return data || [];
 }
 
 /**

@@ -1,6 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Post } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import {
+  getJSTStartOfDay,
+  getJSTEndOfDay,
+  getJSTYesterdayStart,
+  getJSTYesterdayEnd,
+  getJSTLastWeekStart,
+  getJSTLastWeekEnd,
+  getJSTLastMonthStart,
+  getJSTLastMonthEnd,
+} from "./date-utils";
 
 /**
  * 投稿機能のサーバーサイドAPI関数
@@ -43,13 +53,44 @@ export async function getPosts(
 ): Promise<Post[]> {
   const supabase = await createClient();
 
-  // まず投稿一覧を取得（新着順で取得）
-  const { data: postsData, error: postsError } = await supabase
+  // 投稿一覧を取得するクエリを構築
+  let postsQuery = supabase
     .from("generated_images")
     .select("*")
-    .eq("is_posted", true)
-    .order("posted_at", { ascending: false })
-    .limit(1000); // 期間別ソートのため、より多くの投稿を取得
+    .eq("is_posted", true);
+
+  // 期間別ソートの場合は、その期間に投稿されたもののみをフィルタリング
+  // posted_atがnullのレコードを除外
+  if (sort === "daily") {
+    // Daily: 昨日に投稿されたもののみ
+    const jstYesterdayStart = getJSTYesterdayStart();
+    const jstYesterdayEnd = getJSTYesterdayEnd();
+    postsQuery = postsQuery
+      .not("posted_at", "is", null)
+      .gte("posted_at", jstYesterdayStart.toISOString())
+      .lte("posted_at", jstYesterdayEnd.toISOString());
+  } else if (sort === "week") {
+    // Week: 先週に投稿されたもののみ
+    const jstLastWeekStart = getJSTLastWeekStart();
+    const jstLastWeekEnd = getJSTLastWeekEnd();
+    postsQuery = postsQuery
+      .not("posted_at", "is", null)
+      .gte("posted_at", jstLastWeekStart.toISOString())
+      .lte("posted_at", jstLastWeekEnd.toISOString());
+  } else if (sort === "month") {
+    // Month: 先月に投稿されたもののみ
+    const jstLastMonthStart = getJSTLastMonthStart();
+    const jstLastMonthEnd = getJSTLastMonthEnd();
+    postsQuery = postsQuery
+      .not("posted_at", "is", null)
+      .gte("posted_at", jstLastMonthStart.toISOString())
+      .lte("posted_at", jstLastMonthEnd.toISOString());
+  }
+
+  // 新着順で取得（期間別ソートの場合は、その期間内で新着順）
+  postsQuery = postsQuery.order("posted_at", { ascending: false }).limit(1000);
+
+  const { data: postsData, error: postsError } = await postsQuery;
 
   if (postsError) {
     console.error("Database query error:", postsError);
@@ -70,6 +111,7 @@ export async function getPosts(
   ]);
 
   // 期間別のいいね数を取得（daily/week/monthの場合）
+  // N+1問題を解消するため、バッチ処理で一括取得
   let rangeLikeCounts: Record<string, number> = {};
   if (sort !== "newest") {
     // sort型をLikeRange型にマッピング
@@ -80,18 +122,8 @@ export async function getPosts(
     };
     const likeRange = rangeMap[sort as "daily" | "week" | "month"];
     
-    const rangePromises = postIds.map(async (id) => {
-      const count = await getLikeCountInRange(id, likeRange);
-      return { id, count };
-    });
-    const rangeResults = await Promise.all(rangePromises);
-    rangeLikeCounts = rangeResults.reduce(
-      (acc, { id, count }) => {
-        acc[id] = count;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
+    // バッチ処理で一括取得（N+1問題の解消）
+    rangeLikeCounts = await getLikeCountsByRangeBatch(postIds, likeRange);
   }
 
   // 投稿データにユーザー情報・いいね数・コメント数を結合
@@ -115,13 +147,17 @@ export async function getPosts(
     // 新着順は既にソート済み
   } else {
     // daily/week/monthの場合は、期間別いいね数でソート
+    // いいね数0の投稿を除外
+    postsWithCounts = postsWithCounts.filter((post) => (post.range_like_count || 0) > 0);
+    
+    // 期間別いいね数でソート（降順）
     postsWithCounts.sort((a, b) => {
       const aCount = a.range_like_count || 0;
       const bCount = b.range_like_count || 0;
       if (bCount !== aCount) {
         return bCount - aCount; // 降順
       }
-      // いいね数が同じ場合は、投稿日時でソート
+      // いいね数が同じ場合は、投稿日時でソート（降順）
       return new Date(b.posted_at || b.created_at).getTime() - new Date(a.posted_at || a.created_at).getTime();
     });
   }
@@ -356,7 +392,81 @@ export async function toggleLike(imageId: string, userId: string): Promise<boole
 }
 
 /**
- * いいね数を期間別に集計（共通関数）
+ * 複数の投稿IDに対して期間別いいね数を一括取得（バッチ処理）
+ * N+1問題を解消するため、一度のクエリで複数投稿のいいね数を取得
+ * @param imageIds 投稿IDの配列
+ * @param range 集計期間（"day" | "week" | "month"）
+ * @returns 投稿IDをキー、いいね数を値とするオブジェクト
+ */
+export async function getLikeCountsByRangeBatch(
+  imageIds: string[],
+  range: LikeRange
+): Promise<Record<string, number>> {
+  if (imageIds.length === 0) {
+    return {};
+  }
+
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("likes")
+    .select("image_id")
+    .in("image_id", imageIds);
+
+  // JST基準で期間フィルタリング（昨日/先週/先月）
+  if (range === "day") {
+    // Daily: 昨日のいいねのみ
+    const jstYesterdayStart = getJSTYesterdayStart();
+    const jstYesterdayEnd = getJSTYesterdayEnd();
+    query = query
+      .gte("created_at", jstYesterdayStart.toISOString())
+      .lte("created_at", jstYesterdayEnd.toISOString());
+  } else if (range === "week") {
+    // Week: 先週のいいねのみ
+    const jstLastWeekStart = getJSTLastWeekStart();
+    const jstLastWeekEnd = getJSTLastWeekEnd();
+    query = query
+      .gte("created_at", jstLastWeekStart.toISOString())
+      .lte("created_at", jstLastWeekEnd.toISOString());
+  } else if (range === "month") {
+    // Month: 先月のいいねのみ
+    const jstLastMonthStart = getJSTLastMonthStart();
+    const jstLastMonthEnd = getJSTLastMonthEnd();
+    query = query
+      .gte("created_at", jstLastMonthStart.toISOString())
+      .lte("created_at", jstLastMonthEnd.toISOString());
+  }
+  // range === "all" の場合は期間制限なし
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Database query error:", error);
+    throw new Error(`いいね数の一括集計に失敗しました: ${error.message}`);
+  }
+
+  // image_idごとに集計
+  const counts: Record<string, number> = {};
+  // 初期化：すべての投稿IDに対して0を設定
+  imageIds.forEach((id) => {
+    counts[id] = 0;
+  });
+  // いいねがある投稿のカウントを増やす
+  data?.forEach((like) => {
+    if (like.image_id) {
+      counts[like.image_id] = (counts[like.image_id] || 0) + 1;
+    }
+  });
+
+  return counts;
+}
+
+/**
+ * いいね数を期間別に集計（単一投稿用）
+ * 単一投稿の詳細画面などで使用される
+ * @param imageId 投稿ID
+ * @param range 集計期間（"all" | "day" | "week" | "month"）
+ * @returns いいね数
  */
 export async function getLikeCountInRange(
   imageId: string,
@@ -366,12 +476,28 @@ export async function getLikeCountInRange(
 
   let query = supabase.from("likes").select("*", { count: "exact", head: true }).eq("image_id", imageId);
 
+  // JST基準で期間フィルタリング（昨日/先週/先月）
   if (range === "day") {
-    query = query.gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    // Daily: 昨日のいいねのみ
+    const jstYesterdayStart = getJSTYesterdayStart();
+    const jstYesterdayEnd = getJSTYesterdayEnd();
+    query = query
+      .gte("created_at", jstYesterdayStart.toISOString())
+      .lte("created_at", jstYesterdayEnd.toISOString());
   } else if (range === "week") {
-    query = query.gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+    // Week: 先週のいいねのみ
+    const jstLastWeekStart = getJSTLastWeekStart();
+    const jstLastWeekEnd = getJSTLastWeekEnd();
+    query = query
+      .gte("created_at", jstLastWeekStart.toISOString())
+      .lte("created_at", jstLastWeekEnd.toISOString());
   } else if (range === "month") {
-    query = query.gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+    // Month: 先月のいいねのみ
+    const jstLastMonthStart = getJSTLastMonthStart();
+    const jstLastMonthEnd = getJSTLastMonthEnd();
+    query = query
+      .gte("created_at", jstLastMonthStart.toISOString())
+      .lte("created_at", jstLastMonthEnd.toISOString());
   }
   // range === "all" の場合は期間制限なし
 
