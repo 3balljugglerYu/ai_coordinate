@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { getSiteUrlForClient } from "@/lib/env";
 
 /**
  * クライアントサイド認証ヘルパー関数
@@ -106,8 +107,9 @@ export async function signInWithOAuth(
 ) {
   const supabase = createClient();
 
-  // リダイレクト先を設定（デフォルトは/coordinate）
-  const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
+  // サイトURLの取得（環境変数優先、開発環境はlocalhost）
+  const siteUrl = getSiteUrlForClient();
+  const callbackUrl = new URL(`${siteUrl}/auth/callback`);
   callbackUrl.searchParams.set("next", redirectTo || "/coordinate");
 
   const { data, error } = await supabase.auth.signInWithOAuth({
