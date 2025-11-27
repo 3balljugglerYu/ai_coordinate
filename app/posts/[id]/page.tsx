@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getPost } from "@/features/posts/lib/server-api";
 import { getPostImageUrl, getImageAspectRatio } from "@/features/posts/lib/utils";
 import { PostDetailStatic } from "@/features/posts/components/PostDetailStatic";
@@ -8,9 +9,71 @@ import { PostDetailStatsSkeleton } from "@/features/posts/components/PostDetailS
 import { CommentSection } from "@/features/posts/components/CommentSection";
 import { CommentSectionSkeleton } from "@/features/posts/components/CommentSectionSkeleton";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/env";
 
 interface PostDetailPageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: PostDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  
+  // 投稿情報を取得（認証不要で取得可能な情報のみ）
+  let post;
+  try {
+    post = await getPost(id, null);
+  } catch (error) {
+    // エラーが発生した場合は404用のメタデータを返す
+    return {
+      title: "投稿が見つかりません | AI Coordinate",
+      description: "指定された投稿は見つかりませんでした。",
+    };
+  }
+
+  if (!post) {
+    return {
+      title: "投稿が見つかりません | AI Coordinate",
+      description: "指定された投稿は見つかりませんでした。",
+    };
+  }
+
+  const siteUrl = getSiteUrl();
+  const postUrl = siteUrl ? `${siteUrl}/posts/${id}` : "";
+  const imageUrl = getPostImageUrl(post);
+  const title = post.caption || "AI Coordinate - 投稿詳細";
+  const description = post.caption || "AI Coordinateで生成されたファッションコーディネート画像をシェア";
+
+  const metadata: Metadata = {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: postUrl,
+      siteName: "AI Coordinate",
+      type: "article",
+      ...(imageUrl && {
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: post.caption || "AI Coordinate 投稿画像",
+          },
+        ],
+      }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(imageUrl && {
+        images: [imageUrl],
+      }),
+    },
+  };
+
+  return metadata;
 }
 
 async function PostDetailStatsContent({

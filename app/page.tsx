@@ -1,7 +1,26 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { PostList } from "@/features/posts/components/PostList";
 import { getPosts } from "@/features/posts/lib/server-api";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
+import { getSiteUrl } from "@/lib/env";
+
+export const metadata: Metadata = {
+  title: "AI Coordinate - AIで生成されたファッションコーディネートをシェア",
+  description: "AI Coordinateは、AIで生成されたファッションコーディネート画像をシェアできるプラットフォームです。みんなのコーディネートを見て、インスピレーションを得ましょう。",
+  openGraph: {
+    title: "AI Coordinate",
+    description: "AIで生成されたファッションコーディネートをシェア",
+    url: getSiteUrl() || undefined,
+    siteName: "AI Coordinate",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Coordinate",
+    description: "AIで生成されたファッションコーディネートをシェア",
+  },
+};
 
 async function PostListContent() {
   const posts = await getPosts(20, 0);
