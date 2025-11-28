@@ -17,10 +17,27 @@ export async function signUp(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: getSiteUrlForClient() + "/auth/callback",
+    },
   });
 
   if (error) {
-    throw new Error(error.message);
+    // より詳細なエラー情報を提供
+    console.error("Sign up error:", {
+      message: error.message,
+      status: error.status,
+      name: error.name,
+    });
+    throw new Error(error.message || "サインアップに失敗しました");
+  }
+
+  // メール確認が必要な場合の情報を返す
+  if (data.user && !data.user.email_confirmed_at) {
+    console.log(
+      "User created but email confirmation required:",
+      data.user.email
+    );
   }
 
   return data;
@@ -38,7 +55,21 @@ export async function signIn(email: string, password: string) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    // より詳細なエラー情報を提供
+    console.error("Sign in error:", {
+      message: error.message,
+      status: error.status,
+      name: error.name,
+    });
+
+    // メール確認が必要な場合の特別なエラーメッセージ
+    if (error.message.includes("Email not confirmed") || error.status === 401) {
+      throw new Error(
+        "メールアドレスが確認されていません。確認メールをチェックしてください。メールが届いていない場合は、再送信を試してください。"
+      );
+    }
+
+    throw new Error(error.message || "ログインに失敗しました");
   }
 
   return data;
