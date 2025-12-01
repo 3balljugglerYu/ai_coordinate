@@ -135,8 +135,21 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
               minLength={6}
             />
           </div>
-          {isSignUp && (
-            <p className="mt-1 text-xs text-gray-500">6文字以上で入力してください</p>
+          {isSignUp ? (
+            <p className="mt-1 text-xs text-gray-500">
+              6文字以上で入力してください
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">
+              パスワードをお忘れの方は{" "}
+              <a
+                href="/reset-password"
+                className="font-medium text-primary hover:underline"
+              >
+                こちら
+              </a>
+              から再設定できます
+            </p>
           )}
         </div>
 

@@ -76,6 +76,56 @@ export async function signIn(email: string, password: string) {
 }
 
 /**
+ * パスワードリセットメールを送信
+ *
+ * 指定したメールアドレス宛てに、Supabase Auth 経由で
+ * パスワードリセット用のメールを送信します。
+ *
+ * redirectTo には、パスワード再設定フォームのURL
+ * （例: /reset-password/confirm）を指定します。
+ */
+export async function resetPasswordForEmail(
+  email: string,
+  redirectTo?: string
+) {
+  const supabase = createClient();
+
+  const siteUrl = getSiteUrlForClient();
+  const redirectUrl =
+    redirectTo ?? `${siteUrl.replace(/\/$/, "")}/reset-password/confirm`;
+
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectUrl,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
+ * 新しいパスワードを設定
+ *
+ * パスワードリセットリンクから遷移してきたブラウザコンテキストで実行することで、
+ * 現在のユーザーのパスワードを更新します。
+ */
+export async function updatePassword(newPassword: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
  * サインアウト
  */
 export async function signOut() {
