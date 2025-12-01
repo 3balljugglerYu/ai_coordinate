@@ -9,6 +9,85 @@ import { getSiteUrlForClient } from "@/lib/env";
  */
 
 /**
+ * Supabaseのエラーメッセージを日本語に変換
+ */
+function translateAuthError(errorMessage: string): string {
+  const errorLower = errorMessage.toLowerCase();
+
+  // ログイン認証エラー
+  if (
+    errorLower.includes("invalid login credentials") ||
+    errorLower.includes("invalid credentials") ||
+    errorLower.includes("email or password") ||
+    (errorLower.includes("invalid") && errorLower.includes("password"))
+  ) {
+    return "メールアドレスまたはパスワードが間違っています。";
+  }
+
+  // パスワードリセット関連のエラー
+  if (errorLower.includes("auth session missing") || errorLower.includes("session missing")) {
+    return "認証セッションが見つかりません。パスワード再設定リンクの有効期限が切れている可能性があります。もう一度パスワードリセットメールを送信してください。";
+  }
+
+  if (errorLower.includes("token has expired") || errorLower.includes("expired")) {
+    return "リンクの有効期限が切れています。パスワード再設定メールを再度送信してください。";
+  }
+
+  if (errorLower.includes("invalid token")) {
+    return "無効なリンクです。パスワード再設定メールを再度送信してください。";
+  }
+
+  if (errorLower.includes("password")) {
+    // 新しいパスワードが古いパスワードと同じ場合
+    if (
+      errorLower.includes("different from the old") ||
+      errorLower.includes("should be different") ||
+      (errorLower.includes("different") && errorLower.includes("old password"))
+    ) {
+      return "新しいパスワードは現在のパスワードと異なるものを入力してください。";
+    }
+    if (errorLower.includes("too short") || errorLower.includes("minimum")) {
+      return "パスワードは6文字以上で入力してください。";
+    }
+    if (errorLower.includes("weak") || errorLower.includes("common")) {
+      return "パスワードが弱すぎます。より複雑なパスワードを設定してください。";
+    }
+  }
+
+  // メール確認関連
+  if (errorLower.includes("email not confirmed") || errorLower.includes("not confirmed")) {
+    return "メールアドレスが確認されていません。確認メールをチェックしてください。";
+  }
+
+  // その他の一般的なエラー
+  if (errorLower.includes("network") || errorLower.includes("fetch")) {
+    return "ネットワークエラーが発生しました。インターネット接続を確認してください。";
+  }
+
+  // レート制限エラー（詳細なメッセージ）
+  if (
+    errorLower.includes("for security purposes") ||
+    errorLower.includes("only request this after") ||
+    (errorLower.includes("security") && errorLower.includes("after"))
+  ) {
+    // 秒数を抽出（例: "after 34 seconds"）
+    const secondsMatch = errorMessage.match(/(\d+)\s*seconds?/i);
+    if (secondsMatch) {
+      const seconds = secondsMatch[1];
+      return `セキュリティ上の理由により、${seconds}秒後に再度お試しください。`;
+    }
+    return "セキュリティ上の理由により、しばらく時間をおいてから再度お試しください。";
+  }
+
+  if (errorLower.includes("rate limit") || errorLower.includes("too many")) {
+    return "リクエストが多すぎます。しばらく時間をおいてから再度お試しください。";
+  }
+
+  // デフォルト: 元のエラーメッセージを返す
+  return errorMessage;
+}
+
+/**
  * メールアドレスとパスワードでサインアップ
  */
 export async function signUp(email: string, password: string) {
@@ -29,7 +108,9 @@ export async function signUp(email: string, password: string) {
       status: error.status,
       name: error.name,
     });
-    throw new Error(error.message || "サインアップに失敗しました");
+    // エラーメッセージを日本語に変換
+    const translatedMessage = translateAuthError(error.message || "サインアップに失敗しました");
+    throw new Error(translatedMessage);
   }
 
   // メール確認が必要な場合の情報を返す
@@ -69,7 +150,9 @@ export async function signIn(email: string, password: string) {
       );
     }
 
-    throw new Error(error.message || "ログインに失敗しました");
+    // エラーメッセージを日本語に変換
+    const translatedMessage = translateAuthError(error.message || "ログインに失敗しました");
+    throw new Error(translatedMessage);
   }
 
   return data;
@@ -99,7 +182,9 @@ export async function resetPasswordForEmail(
   });
 
   if (error) {
-    throw new Error(error.message);
+    // エラーメッセージを日本語に変換
+    const translatedMessage = translateAuthError(error.message);
+    throw new Error(translatedMessage);
   }
 
   return data;
@@ -119,7 +204,9 @@ export async function updatePassword(newPassword: string) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    // エラーメッセージを日本語に変換
+    const translatedMessage = translateAuthError(error.message);
+    throw new Error(translatedMessage);
   }
 
   return data;
@@ -134,7 +221,9 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
-    throw new Error(error.message);
+    // エラーメッセージを日本語に変換
+    const translatedMessage = translateAuthError(error.message);
+    throw new Error(translatedMessage);
   }
 }
 
@@ -201,7 +290,9 @@ export async function signInWithOAuth(
   });
 
   if (error) {
-    throw new Error(error.message);
+    // エラーメッセージを日本語に変換
+    const translatedMessage = translateAuthError(error.message);
+    throw new Error(translatedMessage);
   }
 
   return data;

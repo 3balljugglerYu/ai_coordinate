@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { updatePassword } from "@/features/auth/lib/auth-client";
 
 export default function ResetPasswordConfirmPage() {
@@ -17,6 +17,8 @@ export default function ResetPasswordConfirmPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,10 +60,10 @@ export default function ResetPasswordConfirmPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 pt-1">
-      <Card className="w-full max-w-md p-6">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-4 sm:pt-1">
+      <Card className="w-full max-w-md p-4 sm:p-6">
         <div className="mb-6 text-center">
-          <h2 className="text-2xl font-bold text-gray-900">新しいパスワードの設定</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">新しいパスワードの設定</h2>
           <p className="mt-2 text-sm text-gray-600">
             新しいパスワードを入力してください。
           </p>
@@ -69,13 +71,13 @@ export default function ResetPasswordConfirmPage() {
 
         {error && (
           <Alert variant="destructive" className="mb-4">
-            <p className="text-sm">{error}</p>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {successMessage && (
           <Alert className="mb-4">
-            <p className="text-sm">{successMessage}</p>
+            <AlertDescription>{successMessage}</AlertDescription>
           </Alert>
         )}
 
@@ -86,15 +88,28 @@ export default function ResetPasswordConfirmPage() {
               <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
                 id="new-password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10"
+                className="pl-10 pr-10"
                 disabled={isLoading}
                 required
                 minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                disabled={isLoading}
+                aria-label={showPassword ? "パスワードを非表示" : "パスワードを表示"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -104,15 +119,28 @@ export default function ResetPasswordConfirmPage() {
               <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
                 id="confirm-new-password"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10"
+                className="pl-10 pr-10"
                 disabled={isLoading}
                 required
                 minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                disabled={isLoading}
+                aria-label={showConfirmPassword ? "パスワードを非表示" : "パスワードを表示"}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
 
