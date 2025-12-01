@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,12 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
 
   const isSignUp = mode === "signup";
 
+  // コンポーネントマウント時またはmode変更時にローディング状態をリセット
+  useEffect(() => {
+    setIsLoading(false);
+    setError(null);
+  }, [mode]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -52,20 +58,26 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
         await signUp(email, password);
         // サインアップ成功
         setError(null);
+        // 1秒間ローディング表示を継続
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setIsLoading(false);
         alert("確認メールを送信しました。メールを確認してアカウントを有効化してください。");
       } else {
         await signIn(email, password);
         // サインイン成功
+        // 1秒間ローディング表示を継続
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         if (onSuccess) {
+          setIsLoading(false);
           onSuccess();
         } else {
+          // ローディングは遷移まで継続（遷移により自動的にアンマウントされる）
           router.push(redirectTo);
           router.refresh();
         }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -83,7 +95,19 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
   };
 
   return (
-    <Card className="w-full max-w-md p-4 sm:p-6">
+    <Card className="relative w-full max-w-md p-4 sm:p-6">
+      {/* ローディングオーバーレイ */}
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-medium text-gray-700">
+              {isSignUp ? "アカウントを作成中..." : "ログイン中..."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 text-center">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
           {isSignUp ? "新規登録" : "ログイン"}
