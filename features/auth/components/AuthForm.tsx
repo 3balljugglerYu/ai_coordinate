@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn, signUp, signInWithOAuth } from "../lib/auth-client";
 
 interface AuthFormProps {
@@ -23,6 +23,8 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isSignUp = mode === "signup";
 
@@ -81,9 +83,9 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
   };
 
   return (
-    <Card className="w-full max-w-md p-6">
+    <Card className="w-full max-w-md p-4 sm:p-6">
       <div className="mb-6 text-center">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
           {isSignUp ? "新規登録" : "ログイン"}
         </h2>
         <p className="mt-2 text-sm text-gray-600">
@@ -95,7 +97,7 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
 
       {error && (
         <Alert variant="destructive" className="mb-4">
-          <p className="text-sm">{error}</p>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -125,18 +127,44 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
             <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <Input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="pl-10"
+              className="pl-10 pr-10"
               disabled={isLoading}
               required
               minLength={6}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              disabled={isLoading}
+              aria-label={showPassword ? "パスワードを非表示" : "パスワードを表示"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
+            </button>
           </div>
-          {isSignUp && (
-            <p className="mt-1 text-xs text-gray-500">6文字以上で入力してください</p>
+          {isSignUp ? (
+            <p className="mt-1 text-xs text-gray-500">
+              6文字以上で入力してください
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">
+              パスワードをお忘れの方は{" "}
+              <a
+                href="/reset-password"
+                className="font-medium text-primary hover:underline"
+              >
+                こちら
+              </a>
+              から再設定できます
+            </p>
           )}
         </div>
 
@@ -148,15 +176,28 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
               <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
                 id="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10"
+                className="pl-10 pr-10"
                 disabled={isLoading}
                 required
                 minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                disabled={isLoading}
+                aria-label={showConfirmPassword ? "パスワードを非表示" : "パスワードを表示"}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
         )}
