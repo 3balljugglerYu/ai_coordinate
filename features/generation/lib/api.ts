@@ -7,6 +7,30 @@ import type { GeminiResponse } from "./nanobanana";
  */
 
 /**
+ * URLから画像を取得してBase64に変換
+ */
+async function urlToBase64(imageUrl: string): Promise<{ base64: string; mimeType: string }> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`画像の取得に失敗しました: ${response.statusText}`);
+  }
+  const blob = await response.blob();
+  const mimeType = blob.type || "image/png";
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      // data:image/png;base64, のプレフィックスを除去
+      const base64 = result.split(",")[1] || result;
+      resolve({ base64, mimeType });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
  * 単一画像を生成
  */
 async function generateSingleImage(
@@ -19,6 +43,16 @@ async function generateSingleImage(
   if (request.sourceImage) {
     sourceImageBase64 = await imageToBase64(request.sourceImage);
     sourceImageMimeType = request.sourceImage.type;
+  } else if (request.sourceImageStockId) {
+    // ストック画像IDから画像URLを取得してBase64に変換
+    const { getSourceImageStock } = await import("./database");
+    const stock = await getSourceImageStock(request.sourceImageStockId);
+    if (!stock) {
+      throw new Error("ストック画像が見つかりません");
+    }
+    const { base64, mimeType } = await urlToBase64(stock.image_url);
+    sourceImageBase64 = base64;
+    sourceImageMimeType = mimeType;
   }
 
   const response = await fetch("/api/generate", {

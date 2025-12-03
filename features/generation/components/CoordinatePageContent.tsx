@@ -19,6 +19,7 @@ export function CoordinatePageContent() {
   const handleGenerate = async (data: {
     prompt: string;
     sourceImage?: File;
+    sourceImageStockId?: string;
     backgroundChange: boolean;
     count: number;
   }) => {
@@ -34,6 +35,7 @@ export function CoordinatePageContent() {
       const result = await generateAndSaveImages({
         prompt: data.prompt,
         sourceImage: data.sourceImage,
+        sourceImageStockId: data.sourceImageStockId,
         backgroundChange: data.backgroundChange,
         count: data.count,
         userId,

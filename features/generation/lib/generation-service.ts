@@ -105,6 +105,13 @@ export async function generateAndSaveImages(
     is_posted: false,
     caption: null,
     posted_at: null,
+    generation_type: "coordinate" as const,
+    source_image_stock_id: generationRequest.sourceImageStockId || null,
+    input_images: generationRequest.sourceImageStockId
+      ? { stock_id: generationRequest.sourceImageStockId }
+      : generationRequest.sourceImage
+      ? { uploaded: true }
+      : null,
   }));
 
   const savedRecords = await saveGeneratedImages(imageRecords);

@@ -18,6 +18,7 @@ export interface Generation {
 export interface GenerationRequest {
   prompt: string;
   sourceImage?: File;
+  sourceImageStockId?: string;
   backgroundChange?: boolean;
   count?: number; // 1-4枚
 }
