@@ -14,6 +14,10 @@ export const generationRequestSchema = z.object({
   sourceImageMimeType: z.string().optional(),
   backgroundChange: z.boolean().optional().default(false),
   count: z.number().int().min(1).max(4).optional().default(1),
+  generationType: z
+    .enum(['coordinate', 'specified_coordinate', 'full_body', 'chibi'])
+    .optional()
+    .default('coordinate'),
 });
 
 export type GenerationRequestInput = z.infer<typeof generationRequestSchema>;

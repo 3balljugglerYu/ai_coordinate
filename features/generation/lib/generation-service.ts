@@ -105,7 +105,7 @@ export async function generateAndSaveImages(
     is_posted: false,
     caption: null,
     posted_at: null,
-    generation_type: "coordinate" as const,
+    generation_type: (generationRequest.generationType || 'coordinate') as 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi',
     source_image_stock_id: generationRequest.sourceImageStockId || null,
     input_images: generationRequest.sourceImageStockId
       ? { stock_id: generationRequest.sourceImageStockId }

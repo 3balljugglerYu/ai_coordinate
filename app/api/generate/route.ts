@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generationRequestSchema } from "@/features/generation/lib/schema";
+import { buildPrompt } from "@/features/generation/lib/prompt-builder";
 import type { GeminiResponse } from "@/features/generation/lib/nanobanana";
 
 /**
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { prompt, sourceImageBase64, sourceImageMimeType, backgroundChange, count } = validationResult.data;
+    const { prompt, sourceImageBase64, sourceImageMimeType, backgroundChange, count, generationType } = validationResult.data;
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY;
 
@@ -50,17 +51,18 @@ export async function POST(request: NextRequest) {
     }
 
     // プロンプトを構築
-    let fullPrompt = prompt;
+    let fullPrompt: string;
     
     if (sourceImageBase64) {
-      // 画像がある場合は着せ替え用のプロンプトを追加
-      fullPrompt = `この画像の人物の顔やスタイルはそのままに、${prompt}。`;
-      
-      if (backgroundChange) {
-        fullPrompt += "背景も新しいスタイルに合わせて変更してください。";
-      } else {
-        fullPrompt += "背景はできるだけそのままにしてください。";
-      }
+      // 画像がある場合はプロンプトテンプレートを使用して構築
+      fullPrompt = buildPrompt({
+        generationType: generationType || 'coordinate',
+        outfitDescription: prompt,
+        shouldChangeBackground: backgroundChange || false,
+      });
+    } else {
+      // 画像がない場合はユーザー入力のプロンプトをそのまま使用
+      fullPrompt = prompt;
     }
 
     parts.push({

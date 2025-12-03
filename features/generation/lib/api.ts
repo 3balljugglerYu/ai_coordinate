@@ -66,6 +66,7 @@ async function generateSingleImage(
       sourceImageMimeType,
       backgroundChange: request.backgroundChange || false,
       count: 1, // 常に1枚
+      generationType: request.generationType || 'coordinate',
     }),
   });
 
@@ -110,7 +111,9 @@ export async function generateImage(
     const image = await generateSingleImage({
       prompt: request.prompt,
       sourceImage: request.sourceImage,
+      sourceImageStockId: request.sourceImageStockId,
       backgroundChange: request.backgroundChange,
+      generationType: request.generationType,
     });
 
     results.push(image);
