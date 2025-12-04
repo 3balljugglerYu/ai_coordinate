@@ -324,10 +324,36 @@ export async function getSourceImageStock(id: string): Promise<SourceImageStock 
 export async function deleteSourceImageStock(id: string): Promise<void> {
   const supabase = createBrowserClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("ログインが必要です");
+  }
+
+  // ストック画像情報を取得して所有者を確認
+  const { data: stock, error: fetchError } = await supabase
+    .from("source_image_stocks")
+    .select("user_id")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .single();
+
+  if (fetchError || !stock) {
+    throw new Error("ストック画像が見つかりません");
+  }
+
+  if (stock.user_id !== user.id) {
+    throw new Error("このストック画像を削除する権限がありません");
+  }
+
+  // 論理削除を実行
   const { error } = await supabase
     .from("source_image_stocks")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     console.error("Database update error:", error);

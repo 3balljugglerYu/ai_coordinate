@@ -5,7 +5,7 @@ import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   validateImageFile,
   DEFAULT_IMAGE_CONFIG,
@@ -198,28 +198,25 @@ export function StockImageUploader({
 
   return (
     <div className={className}>
-      <div className="flex items-center justify-between mb-2">
-        <Label htmlFor="stock-image-upload" className="text-base font-medium">
-          ストック画像をアップロード
-        </Label>
-        {stockLimit !== null && currentCount !== null && (
+      {(stockLimit !== null && currentCount !== null) && (
+        <div className="flex items-center justify-end mb-2">
           <span className="text-xs text-gray-500">
             {currentCount} / {stockLimit} 枚
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {isLimitReached && (
         <Alert variant="destructive" className="mt-2 mb-3">
-          <p className="text-sm">
+          <AlertDescription>
             ストック画像の上限に達しています。不要なストックを削除するか、プランをアップグレードしてください。
-          </p>
+          </AlertDescription>
         </Alert>
       )}
 
       {error && (
         <Alert variant="destructive" className="mt-2">
-          <p className="text-sm">{error}</p>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
