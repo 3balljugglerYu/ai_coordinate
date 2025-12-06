@@ -63,7 +63,14 @@ export function GeneratedImageGallery({
           {images.map((image, index) => (
             <Card
               key={image.id}
-              className="group relative overflow-hidden"
+              className="group relative overflow-hidden sm:cursor-default cursor-pointer"
+              onClick={(e) => {
+                // モバイルのみ: カードタップで拡大モーダルを開く
+                // PCではボタンが表示されるので、カードクリックは無効
+                if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                  setSelectedImageIndex(index);
+                }
+              }}
             >
               <div className="relative flex min-h-[200px] items-center justify-center bg-gray-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -74,26 +81,36 @@ export function GeneratedImageGallery({
                 />
               </div>
               
-              <div className="absolute inset-0 bg-black/0 transition-all group-hover:bg-black/50">
+              {/* PC用: ホバー時にボタン表示 */}
+              <div className="hidden sm:block absolute inset-0 bg-black/0 transition-all group-hover:bg-black/50">
                 <div className="flex h-full items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setSelectedImageIndex(index)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImageIndex(index);
+                    }}
                   >
                     <ZoomIn className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="default"
-                    onClick={() => setPostModalImageId(image.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPostModalImageId(image.id);
+                    }}
                   >
                     <Share2 className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => handleDownload(image)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(image);
+                    }}
                   >
                     <Download className="h-4 w-4" />
                   </Button>
