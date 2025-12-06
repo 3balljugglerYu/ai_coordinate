@@ -136,6 +136,8 @@ export function CoordinatePageContent() {
     try {
       const userId = await getCurrentUserId();
 
+      let completed = 0;
+
       const result = await generateAndSaveImages({
         prompt: data.prompt,
         sourceImage: data.sourceImage,
@@ -143,7 +145,28 @@ export function CoordinatePageContent() {
         backgroundChange: data.backgroundChange,
         count: data.count,
         userId,
+        onProgress: ({ record }) => {
+          // 1枚生成・保存されるごとに進捗カウントを更新
+          completed += 1;
+          setCompletedCount(completed);
+
+          // DBに保存された画像を履歴に即時反映
+          if (record && record.id) {
+            const image: GeneratedImageData = {
+              id: record.id,
+              url: record.image_url,
+            };
+
+            setHistoryImages((prev) => {
+              const exists = prev.some((img) => img.id === image.id);
+              if (exists) return prev;
+              // 新しい画像を先頭に追加
+              return [image, ...prev];
+            });
+          }
+        },
       });
+      // 念のため最終的な完了枚数で補正
       setCompletedCount(result.images.length);
 
       if (result.records.length === 0) {

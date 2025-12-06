@@ -33,7 +33,7 @@ async function urlToBase64(imageUrl: string): Promise<{ base64: string; mimeType
 /**
  * 単一画像を生成
  */
-async function generateSingleImage(
+export async function generateSingleImage(
   request: Omit<GenerationRequest, "count">
 ): Promise<GeneratedImageData> {
   // 画像をBase64に変換
