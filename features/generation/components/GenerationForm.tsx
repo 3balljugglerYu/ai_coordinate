@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { ImageUploader } from "./ImageUploader";
-import { StockImageUploader } from "./StockImageUploader";
+import { StockImageUploadCard } from "./StockImageUploadCard";
 import { StockImageList } from "./StockImageList";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import type { UploadedImage } from "../types";
@@ -70,10 +70,12 @@ export function GenerationForm({
   const hasSourceImage = imageSourceType === "upload" ? !!uploadedImage : !!selectedStock;
   const isSubmitDisabled = !prompt.trim() || !hasSourceImage || isGenerating;
 
-  const handleStockSelect = (stock: SourceImageStock) => {
+  const handleStockSelect = (stock: SourceImageStock | null) => {
     setSelectedStock(stock);
     // ストック選択時はローカルアップロードをクリア
-    setUploadedImage(null);
+    if (stock) {
+      setUploadedImage(null);
+    }
   };
 
   const handleImageUpload = (image: UploadedImage) => {
@@ -109,7 +111,7 @@ export function GenerationForm({
               className="flex-1"
             >
               <Upload className="mr-2 h-4 w-4" />
-              ローカルからアップロード
+              ライプラリ
             </Button>
             <Button
               type="button"
@@ -122,7 +124,7 @@ export function GenerationForm({
               className="flex-1"
             >
               <Folder className="mr-2 h-4 w-4" />
-              ストックから選択
+              ストック
             </Button>
           </div>
         </div>
@@ -147,75 +149,39 @@ export function GenerationForm({
           </>
         ) : (
           <div className="space-y-4">
-            {selectedStock ? (
-              <>
-                <div>
-                  <Label className="text-base font-medium mb-3 block">
-                    選択中のストック画像
-                  </Label>
-                  <Card className="relative overflow-hidden">
-                    <div className="relative aspect-video">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={selectedStock.image_url}
-                        alt={selectedStock.name || "選択されたストック画像"}
-                        className="w-full h-full object-contain"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2"
-                        onClick={() => setSelectedStock(null)}
-                        disabled={isGenerating}
-                      >
-                        ×
-                      </Button>
-                    </div>
-                    {selectedStock.name && (
-                      <div className="p-3 bg-gray-50">
-                        <p className="text-sm text-gray-700">{selectedStock.name}</p>
-                      </div>
-                    )}
-                  </Card>
-                </div>
-                <div>
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                ストック画像
+              </Label>
+              <StockImageList
+                key={stockListKey}
+                selectedStockId={selectedStock?.id || null}
+                onSelect={handleStockSelect}
+                onDelete={() => {
+                  // 削除時もリストを再読み込み
+                  setStockListKey((prev) => prev + 1);
+                  // 削除された画像が選択されていた場合は選択を解除
+                  setSelectedStock(null);
+                }}
+                renderUploadCard={() => (
+                  <StockImageUploadCard
+                    onUploadSuccess={handleStockUploadSuccess}
+                    onUploadError={(error) => {
+                      console.error("Stock upload error:", error);
+                      alert(error);
+                    }}
+                  />
+                )}
+              />
+              {selectedStock && (
+                <div className="mt-4">
                   <GeneratedImagesFromSource
                     stockId={selectedStock.id}
                     storagePath={selectedStock.storage_path}
                   />
                 </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <Label className="text-base font-medium mb-3 block">
-                    ストック画像をアップロード
-                  </Label>
-                  <StockImageUploader
-                    onUploadSuccess={handleStockUploadSuccess}
-                    onUploadError={(error) => {
-                      console.error("Stock upload error:", error);
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label className="text-base font-medium mb-3 block">
-                    ストック画像一覧から選択
-                  </Label>
-                  <div className="max-h-[400px] overflow-y-auto">
-                    <StockImageList
-                      key={stockListKey}
-                      onSelect={handleStockSelect}
-                      onDelete={() => {
-                        // 削除時もリストを再読み込み
-                        setStockListKey((prev) => prev + 1);
-                      }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
         )}
 

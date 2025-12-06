@@ -12,15 +12,19 @@ import {
 import Image from "next/image";
 
 interface StockImageListProps {
-  onSelect?: (stock: SourceImageStock) => void;
+  onSelect?: (stock: SourceImageStock | null) => void;
   onDelete?: (stockId: string) => void;
+  selectedStockId?: string | null;
   className?: string;
+  renderUploadCard?: () => React.ReactNode;
 }
 
 export function StockImageList({
   onSelect,
   onDelete,
+  selectedStockId,
   className,
+  renderUploadCard,
 }: StockImageListProps) {
   const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,24 +103,39 @@ export function StockImageList({
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
+        {renderUploadCard && (
+          <div className="flex-shrink-0 w-[140px] sm:w-[160px]">
+            {renderUploadCard()}
+          </div>
+        )}
         {stocks.map((stock) => {
           const isDeleting = deletingIds.has(stock.id);
+          const isSelected = selectedStockId === stock.id;
           return (
             <Card
               key={stock.id}
-              className={`group relative overflow-hidden ${
+              className={`group relative overflow-hidden flex-shrink-0 w-[140px] sm:w-[160px] p-0 ${
                 onSelect ? "cursor-pointer hover:ring-2 hover:ring-primary" : ""
-              }`}
-              onClick={() => onSelect?.(stock)}
+              } ${isSelected ? "border-2 border-primary" : ""}`}
+              onClick={() => {
+                if (isSelected) {
+                  // 同じ画像を再クリックした場合は選択解除
+                  onSelect?.(null);
+                } else {
+                  // 別の画像を選択
+                  onSelect?.(stock);
+                }
+              }}
             >
-              <div className="relative aspect-square">
+              <div className="relative w-full overflow-hidden bg-gray-100">
                 <Image
                   src={stock.image_url}
                   alt={stock.name || "ストック画像"}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                  width={800}
+                  height={800}
+                  className="w-full h-auto object-contain"
+                  sizes="140px"
                 />
                 {isDeleting && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -126,9 +145,9 @@ export function StockImageList({
                 {!isDeleting && (
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="secondary"
                     size="icon"
-                    className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100"
+                    className="absolute top-2 right-2 bg-gray-400/80 hover:bg-gray-500/80 text-white opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(stock);
@@ -137,17 +156,12 @@ export function StockImageList({
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
+                {stock.usage_count > 0 && (
+                  <div className="absolute bottom-2 right-2 text-gray-600 text-xs">
+                    {stock.usage_count}回使用
+                  </div>
+                )}
               </div>
-              {stock.name && (
-                <div className="p-2">
-                  <p className="truncate text-xs text-gray-600">{stock.name}</p>
-                  {stock.usage_count > 0 && (
-                    <p className="mt-1 text-xs text-gray-400">
-                      使用回数: {stock.usage_count}
-                    </p>
-                  )}
-                </div>
-              )}
             </Card>
           );
         })}

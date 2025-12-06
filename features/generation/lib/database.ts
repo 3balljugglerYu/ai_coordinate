@@ -83,18 +83,28 @@ export async function saveGeneratedImages(
 
 /**
  * ユーザーの生成画像一覧を取得
+ * generationType が指定された場合はそのタイプのみを取得し、
+ * 指定されない場合は全てのタイプを取得する。
  */
 export async function getGeneratedImages(
   userId: string,
   limit = 50,
-  offset = 0
+  offset = 0,
+  generationType?: "coordinate" | "specified_coordinate" | "full_body" | "chibi"
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("generated_images")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", userId);
+
+  // generationType が指定された場合のみフィルタリング
+  if (generationType) {
+    query = query.eq("generation_type", generationType);
+  }
+
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -269,7 +279,7 @@ export async function saveSourceImageStock(
 
 /**
  * ストック画像一覧を取得
- * 使用順（last_used_at DESC NULLS LAST）で並び替え
+ * 作成日時順（created_at DESC）で並び替え（新しいものから）
  */
 export async function getSourceImageStocks(
   limit = 50,
@@ -281,7 +291,6 @@ export async function getSourceImageStocks(
     .from("source_image_stocks")
     .select("*")
     .is("deleted_at", null)
-    .order("last_used_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
