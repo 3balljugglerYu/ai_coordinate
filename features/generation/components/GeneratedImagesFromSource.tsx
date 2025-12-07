@@ -1,9 +1,9 @@
-"use client";
+ "use client";
 
 import { useState, useEffect } from "react";
-import { Image as ImageIcon, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { useInView } from "react-intersection-observer";
+import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   getGeneratedImagesBySourceImage,
   type GeneratedImageRecord,
@@ -18,7 +18,7 @@ interface GeneratedImagesFromSourceProps {
   className?: string;
 }
 
-const ITEMS_PER_PAGE = 10;
+const PAGE_SIZE = 4;
 
 export function GeneratedImagesFromSource({
   stockId,
@@ -29,7 +29,12 @@ export function GeneratedImagesFromSource({
   const [images, setImages] = useState<GeneratedImageRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const { ref: loadMoreRef, inView } = useInView({
+    rootMargin: "200px",
+    triggerOnce: false,
+  });
 
   useEffect(() => {
     if (!stockId && !storagePath) {
@@ -43,6 +48,7 @@ export function GeneratedImagesFromSource({
       try {
         const data = await getGeneratedImagesBySourceImage(stockId, storagePath);
         setImages(data);
+        setVisibleCount(Math.min(PAGE_SIZE, data.length));
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "生成画像の取得に失敗しました";
@@ -53,15 +59,22 @@ export function GeneratedImagesFromSource({
       }
     };
 
-    loadImages();
+    void loadImages();
   }, [stockId, storagePath]);
+
+  useEffect(() => {
+    if (!inView) return;
+    if (visibleCount >= images.length) return;
+
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, images.length));
+  }, [inView, visibleCount, images.length]);
 
   if (!stockId && !storagePath) {
     return null;
   }
 
-  const displayedImages = showAll ? images : images.slice(0, ITEMS_PER_PAGE);
-  const hasMore = images.length > ITEMS_PER_PAGE;
+  const displayedImages = images.slice(0, visibleCount);
+  const hasMore = visibleCount < images.length;
 
   if (isLoading) {
     return (
@@ -94,62 +107,47 @@ export function GeneratedImagesFromSource({
         <h3 className="text-sm font-medium text-gray-700">
           この元画像から生成された画像 ({images.length}件)
         </h3>
-        {hasMore && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowAll(!showAll)}
-            className="h-8 text-xs"
-          >
-            {showAll ? (
-              <>
-                <ChevronUp className="mr-1 h-3 w-3" />
-                折りたたむ
-              </>
-            ) : (
-              <>
-                <ChevronDown className="mr-1 h-3 w-3" />
-                すべて表示 ({images.length}件)
-              </>
-            )}
-          </Button>
-        )}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
         {displayedImages.map((image) => (
-          <Card
+          <div
             key={image.id}
-            className={`group relative overflow-hidden ${
-              onImageClick ? "cursor-pointer hover:ring-2 hover:ring-primary" : ""
-            }`}
-            onClick={() => onImageClick?.(image)}
+            className="flex-shrink-0 w-[140px] sm:w-[160px]"
           >
-            <div className="relative aspect-square">
-              <Image
-                src={image.image_url}
-                alt={image.prompt || "生成画像"}
-                fill
-                className="object-cover"
-                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-              />
-              {image.is_posted && image.id && (
-                <Link
-                  href={`/posts/${image.id}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute inset-0"
-                >
-                  <span className="sr-only">投稿詳細を見る</span>
-                </Link>
-              )}
-            </div>
-            {image.is_posted && (
-              <div className="absolute top-1 right-1 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
-                投稿済み
+            <Card
+              className={`group relative overflow-hidden p-0 ${
+                onImageClick ? "cursor-pointer hover:ring-2 hover:ring-primary" : ""
+              }`}
+              onClick={() => onImageClick?.(image)}
+            >
+              <div className="relative w-full overflow-hidden bg-gray-100">
+                <Image
+                  src={image.image_url}
+                  alt={image.prompt || "生成画像"}
+                  width={800}
+                  height={800}
+                  className="w-full h-auto object-contain"
+                  sizes="140px"
+                />
+                {image.is_posted && image.id && (
+                  <Link
+                    href={`/posts/${image.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute inset-0"
+                  >
+                    <span className="sr-only">投稿詳細を見る</span>
+                  </Link>
+                )}
+                {image.is_posted && (
+                  <div className="absolute top-1 right-1 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
+                    投稿済み
+                  </div>
+                )}
               </div>
-            )}
-          </Card>
+            </Card>
+          </div>
         ))}
+        {hasMore && <div ref={loadMoreRef} className="h-1 w-px flex-shrink-0" />}
       </div>
     </div>
   );

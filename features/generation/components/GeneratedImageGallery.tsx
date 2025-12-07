@@ -63,7 +63,7 @@ export function GeneratedImageGallery({
           {images.map((image, index) => (
             <Card
               key={image.id}
-              className="group relative overflow-hidden sm:cursor-default cursor-pointer"
+              className="group relative overflow-hidden p-0 sm:cursor-default cursor-pointer"
               onClick={(e) => {
                 // モバイルのみ: カードタップで拡大モーダルを開く
                 // PCではボタンが表示されるので、カードクリックは無効
@@ -72,12 +72,12 @@ export function GeneratedImageGallery({
                 }
               }}
             >
-              <div className="relative flex min-h-[200px] items-center justify-center bg-gray-100">
+              <div className="relative w-full overflow-hidden bg-gray-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={image.url}
                   alt={`生成画像 ${index + 1}`}
-                  className="h-auto w-full max-h-[300px] object-contain"
+                  className="w-full h-auto object-contain"
                 />
               </div>
               
@@ -115,12 +115,6 @@ export function GeneratedImageGallery({
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                <p className="text-xs font-medium text-white">
-                  画像 {index + 1}
-                </p>
               </div>
             </Card>
           ))}
