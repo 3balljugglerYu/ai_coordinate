@@ -10,10 +10,15 @@ import {
 } from "../lib/generation-service";
 import type { GeneratedImageData } from "../types";
 import { getGeneratedImages } from "../lib/database";
+import type { SourceImageStock } from "../lib/database";
 
 const PAGE_SIZE = 4;
 
-export function CoordinatePageContent() {
+interface CoordinatePageContentProps {
+  initialStocks?: SourceImageStock[];
+}
+
+export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageContentProps) {
   // 過去の生成画像（DBから取得した履歴）
   const [historyImages, setHistoryImages] = useState<GeneratedImageData[]>([]);
   const [historyOffset, setHistoryOffset] = useState(0);
@@ -195,7 +200,7 @@ export function CoordinatePageContent() {
   return (
     <div className="space-y-8">
       {/* 生成フォーム */}
-      <GenerationForm onSubmit={handleGenerate} isGenerating={isGenerating} />
+      <GenerationForm onSubmit={handleGenerate} isGenerating={isGenerating} initialStocks={initialStocks} />
 
       {/* エラー表示 */}
       {error && (

@@ -10,6 +10,7 @@ import {
 } from "../lib/database";
 import Image from "next/image";
 import Link from "next/link";
+import { GeneratedImagesFromSourceSkeleton } from "./GeneratedImagesFromSourceSkeleton";
 
 interface GeneratedImagesFromSourceProps {
   stockId: string | null;
@@ -78,8 +79,8 @@ export function GeneratedImagesFromSource({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center py-8 ${className}`}>
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      <div className={className}>
+        <GeneratedImagesFromSourceSkeleton />
       </div>
     );
   }

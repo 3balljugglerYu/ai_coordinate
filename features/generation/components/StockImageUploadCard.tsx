@@ -11,8 +11,6 @@ import {
 import { uploadFileToStorage } from "../lib/storage";
 import {
   saveSourceImageStock,
-  getStockImageLimit,
-  getCurrentStockImageCount,
   StockLimitExceededError,
 } from "../lib/database";
 import { getCurrentUserId } from "../lib/generation-service";
@@ -24,6 +22,8 @@ interface StockImageUploadCardProps {
   onUploadError?: (error: string) => void;
   config?: ImageUploadConfig;
   className?: string;
+  stockLimit?: number | null;
+  currentCount?: number | null;
 }
 
 export function StockImageUploadCard({
@@ -31,29 +31,18 @@ export function StockImageUploadCard({
   onUploadError,
   config = DEFAULT_IMAGE_CONFIG,
   className,
+  stockLimit: propStockLimit = null,
+  currentCount: propCurrentCount = null,
 }: StockImageUploadCardProps) {
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [stockLimit, setStockLimit] = useState<number | null>(null);
-  const [currentCount, setCurrentCount] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ストック画像制限数を取得
-  useEffect(() => {
-    const fetchLimit = async () => {
-      try {
-        const limit = await getStockImageLimit();
-        const count = await getCurrentStockImageCount();
-        setStockLimit(limit);
-        setCurrentCount(count);
-      } catch (err) {
-        console.error("Failed to fetch stock limit:", err);
-      }
-    };
-    fetchLimit();
-  }, []);
+  // propsから受け取った制限数を使用
+  const stockLimit = propStockLimit;
+  const currentCount = propCurrentCount;
 
   // コンポーネントのアンマウント時にpreviewUrlをクリーンアップ
   useEffect(() => {
@@ -131,8 +120,8 @@ export function StockImageUploadCard({
         URL.revokeObjectURL(uploadedImage.previewUrl);
       }
       setUploadedImage(null);
-      setCurrentCount((prev) => (prev !== null ? prev + 1 : null));
       onUploadSuccess?.(stock.id);
+      // GenerationFormのrefreshTriggerが更新され、制限数が再取得される
     } catch (err) {
       let errorMessage = "ストック画像のアップロードに失敗しました";
       

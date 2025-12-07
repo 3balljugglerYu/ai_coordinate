@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,10 +9,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { ImageUploader } from "./ImageUploader";
 import { StockImageUploadCard } from "./StockImageUploadCard";
-import { StockImageList } from "./StockImageList";
+import { StockImageListClient } from "./StockImageListClient";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
+import { getStockImageLimit, getCurrentStockImageCount } from "../lib/database";
 import type { UploadedImage } from "../types";
 import type { SourceImageStock } from "../lib/database";
+import { useRouter } from "next/navigation";
 
 interface GenerationFormProps {
   onSubmit: (data: {
@@ -23,6 +25,7 @@ interface GenerationFormProps {
     count: number;
   }) => void;
   isGenerating?: boolean;
+  initialStocks?: SourceImageStock[];
 }
 
 type ImageSourceType = "upload" | "stock";
@@ -30,6 +33,7 @@ type ImageSourceType = "upload" | "stock";
 export function GenerationForm({
   onSubmit,
   isGenerating = false,
+  initialStocks = [],
 }: GenerationFormProps) {
   const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
@@ -37,7 +41,25 @@ export function GenerationForm({
   const [prompt, setPrompt] = useState("");
   const [backgroundChange, setBackgroundChange] = useState(false);
   const [selectedCount, setSelectedCount] = useState(1);
-  const [stockListKey, setStockListKey] = useState(0); // StockImageListの再読み込み用
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [stockLimit, setStockLimit] = useState<number | null>(null);
+  const [currentCount, setCurrentCount] = useState<number | null>(null);
+  const router = useRouter();
+
+  // ストック画像制限数を取得（初回マウント時とrefreshTrigger変更時）
+  useEffect(() => {
+    const fetchLimit = async () => {
+      try {
+        const limit = await getStockImageLimit();
+        const count = await getCurrentStockImageCount();
+        setStockLimit(limit);
+        setCurrentCount(count);
+      } catch (err) {
+        console.error("Failed to fetch stock limit:", err);
+      }
+    };
+    fetchLimit();
+  }, [refreshTrigger]);
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -85,10 +107,18 @@ export function GenerationForm({
   };
 
   const handleStockUploadSuccess = (stockId: string) => {
-    // ストック画像アップロード成功時、リストを再読み込み
-    setStockListKey((prev) => prev + 1);
-    // アップロードしたストック画像を自動選択
-    // StockImageListが再読み込みされるので、手動で選択してもらう
+    // リフレッシュトリガーを更新してStockImageUploadCardの制限数を再取得
+    setRefreshTrigger((prev) => prev + 1);
+    // サーバーコンポーネントを再レンダリングしてデータを同期
+    router.refresh();
+  };
+
+  const handleStockDelete = () => {
+    // 削除された画像が選択されていた場合は選択を解除
+    setSelectedStock(null);
+    // リフレッシュトリガーを更新してStockImageUploadCardの制限数を再取得
+    setRefreshTrigger((prev) => prev + 1);
+    // router.refresh()はStockImageListClient内で呼び出される
   };
 
   return (
@@ -153,18 +183,16 @@ export function GenerationForm({
               <Label className="text-base font-medium mb-3 block">
                 ストック画像
               </Label>
-              <StockImageList
-                key={stockListKey}
+              <StockImageListClient
+                stocks={initialStocks}
                 selectedStockId={selectedStock?.id || null}
                 onSelect={handleStockSelect}
-                onDelete={() => {
-                  // 削除時もリストを再読み込み
-                  setStockListKey((prev) => prev + 1);
-                  // 削除された画像が選択されていた場合は選択を解除
-                  setSelectedStock(null);
-                }}
+                onDelete={handleStockDelete}
+                onRefreshTrigger={() => setRefreshTrigger((prev) => prev + 1)}
                 renderUploadCard={() => (
                   <StockImageUploadCard
+                    stockLimit={stockLimit}
+                    currentCount={currentCount}
                     onUploadSuccess={handleStockUploadSuccess}
                     onUploadError={(error) => {
                       console.error("Stock upload error:", error);
