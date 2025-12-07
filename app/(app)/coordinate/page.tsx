@@ -1,11 +1,22 @@
 import { Suspense } from "react";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, getUser } from "@/lib/auth";
 import { CoordinatePageContent } from "@/features/generation/components/CoordinatePageContent";
 import { CoordinatePageSkeleton } from "@/features/generation/components/CoordinatePageSkeleton";
+import { getSourceImageStocksServer } from "@/features/generation/lib/server-database";
+
+async function StockImageListWrapper() {
+  const user = await getUser();
+  if (!user) {
+    return null;
+  }
+  const stocks = await getSourceImageStocksServer(user.id, 50, 0);
+  return stocks;
+}
 
 async function CoordinatePageWrapper() {
   await requireAuth();
-  return <CoordinatePageContent />;
+  const initialStocks = await StockImageListWrapper();
+  return <CoordinatePageContent initialStocks={initialStocks || []} />;
 }
 
 export default async function CoordinatePage() {

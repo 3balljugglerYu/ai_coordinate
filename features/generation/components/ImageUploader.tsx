@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
+import { useCallback, useState, useEffect, useRef } from "react";
+import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -9,9 +9,9 @@ import { Alert } from "@/components/ui/alert";
 import {
   validateImageFile,
   DEFAULT_IMAGE_CONFIG,
-  getReadableFileFormat,
 } from "../lib/validation";
 import type { ImageUploadConfig, UploadedImage } from "../types";
+import NextImage from "next/image";
 
 interface ImageUploaderProps {
   onImageUpload: (image: UploadedImage) => void;
@@ -29,6 +29,7 @@ export function ImageUploader({
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // コンポーネントのアンマウント時にpreviewUrlをクリーンアップ
   useEffect(() => {
@@ -117,6 +118,15 @@ export function ImageUploader({
     setUploadedImage(null);
     setError(null);
     onImageRemove?.();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleCardClick = () => {
+    if (!uploadedImage && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   return (
@@ -133,64 +143,55 @@ export function ImageUploader({
 
       {!uploadedImage ? (
         <Card
-          className={`mt-3 border-2 border-dashed transition-colors ${
+          className={`mt-3 relative overflow-hidden w-full border-2 border-dashed transition-colors ${
             isDragging
               ? "border-primary bg-primary/5"
               : "border-gray-300 hover:border-gray-400"
-          }`}
+          } cursor-pointer`}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
+          onClick={handleCardClick}
         >
-          <label
-            htmlFor="image-upload"
-            className="flex cursor-pointer flex-col items-center justify-center py-12 px-6"
-          >
-            <Upload className="mb-4 h-12 w-12 text-gray-400" />
-            <p className="mb-2 text-sm font-medium text-gray-700">
-              クリックまたはドラッグ&ドロップで画像をアップロード
+          <div className="relative aspect-[2/1] flex flex-col items-center justify-center p-4">
+            <Upload className="mb-2 h-8 w-8 text-gray-400" />
+            <p className="text-xs font-medium text-center text-gray-700">
+              画像を追加
             </p>
-            <p className="text-xs text-gray-500">
-              対応形式: {getReadableFileFormat(config.allowedFormats)}
-            </p>
-            <p className="text-xs text-gray-500">
-              最大サイズ: {config.maxSizeMB}MB
-            </p>
-            <input
-              id="image-upload"
-              type="file"
-              accept={config.allowedFormats.join(",")}
-              onChange={handleInputChange}
-              className="hidden"
-            />
-          </label>
+          </div>
+          <input
+            ref={fileInputRef}
+            id="image-upload"
+            type="file"
+            accept={config.allowedFormats.join(",")}
+            onChange={handleInputChange}
+            className="hidden"
+          />
         </Card>
       ) : (
-        <Card className="relative mt-3 overflow-hidden">
-          <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+        <Card className="relative mt-3 w-full aspect-[2/1] overflow-hidden p-0">
+          <div className="relative w-full h-full overflow-hidden bg-gray-100">
+            <NextImage
               src={uploadedImage.previewUrl}
               alt="アップロードされた画像"
-              className="w-full h-auto max-h-[400px] object-contain"
+              width={800}
+              height={800}
+              className="w-full h-full object-contain"
+              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
             />
             <Button
               type="button"
               variant="destructive"
               size="icon"
               className="absolute top-2 right-2"
-              onClick={handleRemove}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemove();
+              }}
             >
               <X className="h-4 w-4" />
             </Button>
-          </div>
-          <div className="flex items-center gap-2 p-3 bg-gray-50 text-xs text-gray-600">
-            <ImageIcon className="h-4 w-4" />
-            <span>
-              {uploadedImage.file.name} ({uploadedImage.width} × {uploadedImage.height}
-              px)
-            </span>
           </div>
         </Card>
       )}

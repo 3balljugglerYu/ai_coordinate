@@ -15,11 +15,15 @@ export interface Generation {
   updatedAt: Date;
 }
 
+export type GenerationType = 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi';
+
 export interface GenerationRequest {
   prompt: string;
   sourceImage?: File;
+  sourceImageStockId?: string;
   backgroundChange?: boolean;
   count?: number; // 1-4枚
+  generationType?: GenerationType;
 }
 
 export interface GenerationResponse {

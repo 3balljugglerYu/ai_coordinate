@@ -1,6 +1,6 @@
-import { generateImage } from "./api";
+import { generateSingleImage } from "./api";
 import { uploadImageToStorage } from "./storage";
-import { saveGeneratedImages } from "./database";
+import { saveGeneratedImage } from "./database";
 import { consumeCredits, fetchCreditBalance } from "@/features/credits/lib/api";
 import { GENERATION_CREDIT_COST } from "@/features/credits/credit-packages";
 import type { GenerationRequest, GeneratedImageData } from "../types";
@@ -12,6 +12,15 @@ import type { GeneratedImageRecord } from "./database";
 
 export interface GenerateAndSaveOptions extends GenerationRequest {
   userId: string | null;
+  /**
+   * 各画像の保存完了ごとに呼ばれる進捗コールバック
+   */
+  onProgress?: (payload: {
+    image: GeneratedImageData;
+    record?: GeneratedImageRecord;
+    index: number;
+    total: number;
+  }) => void;
 }
 
 export interface GenerateAndSaveResult {
@@ -35,7 +44,7 @@ function isSupabaseConfigured(): boolean {
 export async function generateAndSaveImages(
   options: GenerateAndSaveOptions
 ): Promise<GenerateAndSaveResult> {
-  const { userId, ...generationRequest } = options;
+  const { userId, onProgress, ...generationRequest } = options;
   const imageCount = generationRequest.count || 1;
 
   const shouldConsumeCredits =
@@ -59,77 +68,110 @@ export async function generateAndSaveImages(
     }
   }
 
-  // 1. 画像を生成
-  const generatedImages = await generateImage(generationRequest);
+  const allImages: GeneratedImageData[] = [];
+  const allRecords: GeneratedImageRecord[] = [];
 
-  // 開発モード: Supabaseが設定されていない場合はローカルデータのみ返す
+  // Supabase が未設定の場合: 画像生成のみを行い、その都度コールバックを呼ぶ
   if (!isSupabaseConfigured()) {
     console.warn(
       "⚠️ Supabase is not configured. Running in development mode (images not saved)."
     );
+
+    for (let index = 0; index < imageCount; index++) {
+      const image = await generateSingleImage({
+        prompt: generationRequest.prompt,
+        sourceImage: generationRequest.sourceImage,
+        sourceImageStockId: generationRequest.sourceImageStockId,
+        backgroundChange: generationRequest.backgroundChange,
+        generationType: generationRequest.generationType,
+      });
+
+      allImages.push(image);
+
+      onProgress?.({
+        image,
+        record: undefined,
+        index,
+        total: imageCount,
+      });
+    }
+
     return {
-      images: generatedImages,
+      images: allImages,
       records: [],
     };
   }
 
-  // 2. Supabase Storageにアップロード
-  const uploadPromises = generatedImages.map(async (image) => {
-    if (!image.data) {
+  // Supabase 設定あり: 1枚ずつ生成 → アップロード → DB保存 → クレジット消費 → コールバック
+  for (let index = 0; index < imageCount; index++) {
+    const generated = await generateSingleImage({
+      prompt: generationRequest.prompt,
+      sourceImage: generationRequest.sourceImage,
+      sourceImageStockId: generationRequest.sourceImageStockId,
+      backgroundChange: generationRequest.backgroundChange,
+      generationType: generationRequest.generationType,
+    });
+
+    if (!generated.data) {
       throw new Error("画像データがありません");
     }
 
-    const mimeType = image.url.match(/data:(.+);base64/)?.[1] || "image/png";
+    const mimeType =
+      generated.url.match(/data:(.+);base64/)?.[1] || "image/png";
     const { path, url } = await uploadImageToStorage(
-      image.data,
+      generated.data,
       mimeType,
       userId
     );
 
-    return {
+    const recordToSave: Omit<GeneratedImageRecord, "id" | "created_at"> = {
+      user_id: userId,
+      image_url: url,
       storage_path: path,
-      public_url: url,
-      local_id: image.id,
+      prompt: generationRequest.prompt,
+      background_change: generationRequest.backgroundChange || false,
+      is_posted: false,
+      caption: null,
+      posted_at: null,
+      generation_type: (generationRequest.generationType ||
+        "coordinate") as "coordinate" | "specified_coordinate" | "full_body" | "chibi",
+      source_image_stock_id: generationRequest.sourceImageStockId || null,
+      input_images: generationRequest.sourceImageStockId
+        ? { stock_id: generationRequest.sourceImageStockId }
+        : generationRequest.sourceImage
+        ? { uploaded: true }
+        : null,
     };
-  });
 
-  const uploadResults = await Promise.all(uploadPromises);
+    const savedRecord = await saveGeneratedImage(recordToSave);
+    allRecords.push(savedRecord);
 
-  // 3. データベースにメタデータを保存
-  const imageRecords = uploadResults.map((result) => ({
-    user_id: userId,
-    image_url: result.public_url,
-    storage_path: result.storage_path,
-    prompt: generationRequest.prompt,
-    background_change: generationRequest.backgroundChange || false,
-    is_posted: false,
-    caption: null,
-    posted_at: null,
-  }));
-
-  const savedRecords = await saveGeneratedImages(imageRecords);
-
-  // 4. クレジットを消費
-  if (shouldConsumeCredits) {
-    for (const record of savedRecords) {
-      if (!record.id) continue;
+    if (shouldConsumeCredits && savedRecord.id) {
       await consumeCredits({
-        generationId: record.id,
+        generationId: savedRecord.id,
         credits: GENERATION_CREDIT_COST,
       });
     }
+
+    const imageForClient: GeneratedImageData = {
+      ...generated,
+      url,
+      id: savedRecord.id || generated.id,
+    };
+
+    allImages.push(imageForClient);
+
+    onProgress?.({
+      image: imageForClient,
+      record: savedRecord,
+      index,
+      total: imageCount,
+    });
   }
 
-  // 5. 生成画像データに公開URLを設定
-  const imagesWithPublicUrls = generatedImages.map((image, index) => ({
-    ...image,
-    url: uploadResults[index].public_url,
-    id: savedRecords[index].id || image.id,
-  }));
-
   return {
-    images: imagesWithPublicUrls,
-    records: savedRecords,
+    images: allImages,
+    records: allRecords,
   };
 }
 
