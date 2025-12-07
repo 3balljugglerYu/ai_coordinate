@@ -1,4 +1,5 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { deleteImageFromStorage } from "./storage";
 
 /**
  * generated_imagesテーブルへのデータベース操作
@@ -229,8 +230,7 @@ export async function getCurrentStockImageCount(): Promise<number> {
 
   const { count, error } = await supabase
     .from("source_image_stocks")
-    .select("*", { count: "exact", head: true })
-    .is("deleted_at", null);
+    .select("*", { count: "exact", head: true });
 
   if (error) {
     console.error("Database query error:", error);
@@ -290,7 +290,6 @@ export async function getSourceImageStocks(
   const { data, error } = await supabase
     .from("source_image_stocks")
     .select("*")
-    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -312,7 +311,6 @@ export async function getSourceImageStock(id: string): Promise<SourceImageStock 
     .from("source_image_stocks")
     .select("*")
     .eq("id", id)
-    .is("deleted_at", null)
     .single();
 
   if (error) {
@@ -328,7 +326,8 @@ export async function getSourceImageStock(id: string): Promise<SourceImageStock 
 }
 
 /**
- * ストック画像を削除（論理削除）
+ * ストック画像を削除（物理削除）
+ * データベースレコードとストレージ上の画像ファイルの両方を削除
  */
 export async function deleteSourceImageStock(id: string): Promise<void> {
   const supabase = createBrowserClient();
@@ -341,12 +340,11 @@ export async function deleteSourceImageStock(id: string): Promise<void> {
     throw new Error("ログインが必要です");
   }
 
-  // ストック画像情報を取得して所有者を確認
+  // ストック画像情報を取得して所有者を確認し、storage_pathを取得
   const { data: stock, error: fetchError } = await supabase
     .from("source_image_stocks")
-    .select("user_id")
+    .select("user_id, storage_path")
     .eq("id", id)
-    .is("deleted_at", null)
     .single();
 
   if (fetchError || !stock) {
@@ -357,15 +355,28 @@ export async function deleteSourceImageStock(id: string): Promise<void> {
     throw new Error("このストック画像を削除する権限がありません");
   }
 
-  // 論理削除を実行
+  // ストレージ上の画像ファイルを削除
+  // エラーが発生した場合はDB削除を中止する（推奨方針）
+  try {
+    await deleteImageFromStorage(stock.storage_path);
+  } catch (storageError) {
+    console.error("Storage delete error:", storageError);
+    throw new Error(
+      `ストレージ上の画像ファイルの削除に失敗しました: ${
+        storageError instanceof Error ? storageError.message : "不明なエラー"
+      }`
+    );
+  }
+
+  // 物理削除を実行
   const { error } = await supabase
     .from("source_image_stocks")
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq("id", id)
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Database update error:", error);
+    console.error("Database delete error:", error);
     throw new Error(`ストック画像の削除に失敗しました: ${error.message}`);
   }
 }

@@ -16,7 +16,6 @@ export async function getSourceImageStocksServer(
     .from("source_image_stocks")
     .select("*")
     .eq("user_id", userId)
-    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
