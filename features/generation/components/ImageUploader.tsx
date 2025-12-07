@@ -143,7 +143,7 @@ export function ImageUploader({
 
       {!uploadedImage ? (
         <Card
-          className={`mt-3 relative overflow-hidden w-full border-2 border-dashed transition-colors ${
+          className={`mt-3 relative overflow-hidden w-full h-[210px] sm:h-[240px] border-2 border-dashed transition-colors p-0 ${
             isDragging
               ? "border-primary bg-primary/5"
               : "border-gray-300 hover:border-gray-400"
@@ -154,7 +154,7 @@ export function ImageUploader({
           onDrop={handleDrop}
           onClick={handleCardClick}
         >
-          <div className="relative aspect-[2/1] flex flex-col items-center justify-center p-4">
+          <div className="relative h-[210px] sm:h-[240px] flex flex-col items-center justify-center p-4">
             <Upload className="mb-2 h-8 w-8 text-gray-400" />
             <p className="text-xs font-medium text-center text-gray-700">
               画像を追加
@@ -170,7 +170,7 @@ export function ImageUploader({
           />
         </Card>
       ) : (
-        <Card className="relative mt-3 w-full aspect-[2/1] overflow-hidden p-0">
+        <Card className="relative mt-3 w-full h-[210px] sm:h-[240px] overflow-hidden p-0">
           <div className="relative w-full h-full overflow-hidden bg-gray-100">
             <NextImage
               src={uploadedImage.previewUrl}
