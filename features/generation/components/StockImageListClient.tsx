@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Image as ImageIcon, Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { deleteSourceImageStock, type SourceImageStock } from "../lib/database";
@@ -64,16 +64,6 @@ export function StockImageListClient({
       });
     }
   };
-
-  if (stocks.length === 0) {
-    return (
-      <div className={`flex flex-col items-center justify-center py-12 text-gray-500 ${className}`}>
-        <ImageIcon className="mb-4 h-12 w-12 text-gray-300" />
-        <p className="text-sm">ストック画像がありません</p>
-        <p className="mt-1 text-xs">画像をアップロードしてストックに保存できます</p>
-      </div>
-    );
-  }
 
   return (
     <div className={className}>
