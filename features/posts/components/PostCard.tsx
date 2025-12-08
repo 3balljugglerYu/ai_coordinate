@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,9 +20,13 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
 
   // 投稿者情報の表示（Phase 5でプロフィール画面へのリンクを追加予定）
   const displayName =
+    post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
     post.user?.id?.slice(0, 8) ||
     "匿名ユーザー";
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    post.user?.avatar_url ?? null
+  );
 
   return (
     <Card className="overflow-hidden pt-0 pb-0 gap-1">
@@ -47,14 +52,18 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       <CardContent className="px-1 pt-0 pb-1">
         <div className="flex items-center gap-2">
           {post.user?.id ? (
-            <Link href={`/users/${post.user.id}`} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 hover:opacity-80 transition-opacity">
-              {post.user?.avatar_url ? (
+            <Link
+              href={`/users/${post.user.id}`}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 hover:opacity-80 transition-opacity"
+            >
+              {avatarUrl ? (
                 <Image
-                  src={post.user.avatar_url}
+                  src={avatarUrl}
                   alt={displayName}
                   width={24}
                   height={24}
                   className="rounded-full object-cover"
+                  onError={() => setAvatarUrl(null)}
                 />
               ) : (
                 <User className="h-3.5 w-3.5 text-gray-500" />
@@ -71,6 +80,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
               <Link
                 href={`/users/${post.user.id}`}
                 className="block truncate text-xs font-medium text-gray-900 hover:text-gray-600 transition-colors"
+                title={displayName}
               >
                 {displayName}
               </Link>
@@ -95,4 +105,3 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     </Card>
   );
 }
-
