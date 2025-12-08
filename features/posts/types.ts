@@ -20,6 +20,7 @@ export interface Post extends GeneratedImageRecord {
   user?: {
     id: string;
     email?: string;
+    nickname?: string | null;
     avatar_url?: string | null;
   } | null;
   like_count?: number;

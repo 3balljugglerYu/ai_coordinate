@@ -104,6 +104,36 @@ export async function getPosts(
   // 投稿IDのリストを取得
   const postIds = postsData.map((post) => post.id);
 
+  // ユーザーIDをユニークに抽出
+  const userIds = Array.from(
+    new Set(
+      postsData
+        .map((post) => post.user_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  // プロフィール情報を一括取得（JOINできないため別クエリで取得）
+  const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> =
+    {};
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("user_id,nickname,avatar_url")
+      .in("user_id", userIds);
+
+    if (profilesError) {
+      console.error("Profile fetch error:", profilesError);
+    } else if (profiles) {
+      for (const profile of profiles) {
+        profileMap[profile.user_id] = {
+          nickname: profile.nickname,
+          avatar_url: profile.avatar_url,
+        };
+      }
+    }
+  }
+
   // いいね数・コメント数を一括取得（バッチ取得）
   const [likeCounts, commentCounts] = await Promise.all([
     getLikeCountsBatch(postIds),
@@ -127,20 +157,25 @@ export async function getPosts(
   }
 
   // 投稿データにユーザー情報・いいね数・コメント数を結合
-  let postsWithCounts = postsData.map((post) => ({
-    ...post,
-    user: post.user_id
-      ? {
-          id: post.user_id,
-          email: undefined, // Phase 5で実装予定
-          avatar_url: null, // Phase 5で実装予定
-        }
-      : null,
-    like_count: likeCounts[post.id] || 0,
-    comment_count: commentCounts[post.id] || 0,
-    view_count: post.view_count || 0,
-    range_like_count: sort !== "newest" ? rangeLikeCounts[post.id] || 0 : 0,
-  }));
+  let postsWithCounts = postsData.map((post) => {
+    const profile = post.user_id ? profileMap[post.user_id] : undefined;
+
+    return {
+      ...post,
+      user: post.user_id
+        ? {
+            id: post.user_id,
+            email: undefined, // Phase 5で実装予定
+            nickname: profile?.nickname ?? null,
+            avatar_url: profile?.avatar_url ?? null,
+          }
+        : null,
+      like_count: likeCounts[post.id] || 0,
+      comment_count: commentCounts[post.id] || 0,
+      view_count: post.view_count || 0,
+      range_like_count: sort !== "newest" ? rangeLikeCounts[post.id] || 0 : 0,
+    };
+  });
 
   // ソート条件に応じてソート
   if (sort === "newest") {
@@ -199,6 +234,23 @@ export async function getPost(id: string, currentUserId?: string | null): Promis
     }
   }
 
+  // プロフィール情報を取得（別クエリ）
+  let profile: { nickname: string | null; avatar_url: string | null } | null = null;
+  if (data.user_id) {
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("user_id,nickname,avatar_url")
+      .eq("user_id", data.user_id)
+      .single();
+
+    if (!profileError && profileData) {
+      profile = {
+        nickname: profileData.nickname,
+        avatar_url: profileData.avatar_url,
+      };
+    }
+  }
+
   // いいね数・コメント数を取得
   const [likeCount, commentCount] = await Promise.all([
     getLikeCount(id),
@@ -221,7 +273,8 @@ export async function getPost(id: string, currentUserId?: string | null): Promis
       ? {
           id: data.user_id,
           email: undefined, // Phase 5で実装予定
-          avatar_url: null, // Phase 5で実装予定
+          nickname: profile?.nickname ?? null,
+          avatar_url: profile?.avatar_url ?? null,
         }
       : null,
     like_count: likeCount,
@@ -786,4 +839,3 @@ export async function incrementViewCount(imageId: string): Promise<void> {
     throw new Error(`閲覧数の更新に失敗しました: ${error.message}`);
   }
 }
-
