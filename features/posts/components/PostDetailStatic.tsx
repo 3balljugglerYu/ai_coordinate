@@ -46,6 +46,7 @@ export function PostDetailStatic({
 
   const imageUrl = getPostImageUrl(post);
   const displayName =
+    post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
     post.user?.id?.slice(0, 8) ||
     "匿名ユーザー";
@@ -297,4 +298,3 @@ export function PostDetailStatic({
     </div>
   );
 }
-

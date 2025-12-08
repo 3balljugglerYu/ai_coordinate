@@ -234,6 +234,23 @@ export async function getPost(id: string, currentUserId?: string | null): Promis
     }
   }
 
+  // プロフィール情報を取得（別クエリ）
+  let profile: { nickname: string | null; avatar_url: string | null } | null = null;
+  if (data.user_id) {
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("user_id,nickname,avatar_url")
+      .eq("user_id", data.user_id)
+      .single();
+
+    if (!profileError && profileData) {
+      profile = {
+        nickname: profileData.nickname,
+        avatar_url: profileData.avatar_url,
+      };
+    }
+  }
+
   // いいね数・コメント数を取得
   const [likeCount, commentCount] = await Promise.all([
     getLikeCount(id),
@@ -256,7 +273,8 @@ export async function getPost(id: string, currentUserId?: string | null): Promis
       ? {
           id: data.user_id,
           email: undefined, // Phase 5で実装予定
-          avatar_url: null, // Phase 5で実装予定
+          nickname: profile?.nickname ?? null,
+          avatar_url: profile?.avatar_url ?? null,
         }
       : null,
     like_count: likeCount,
