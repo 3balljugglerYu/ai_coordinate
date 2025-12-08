@@ -145,7 +145,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     }
 
     // スクロール位置が0〜10px付近の場合は方向判定を無視して表示
-    if (scrollY <= 10) {
+    if (scrollY <= 100) {
       setIsVisible(true);
       return;
     }
