@@ -127,4 +127,9 @@
       font-size: inherit; /* PCではデフォルトサイズ */
     }
   }
+  
+  /* モバイルナビゲーションバーのセーフエリア対応 */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
