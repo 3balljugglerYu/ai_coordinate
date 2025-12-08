@@ -34,10 +34,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isVisible, setIsVisible] = useState(true);
+  const [scrollY, setScrollY] = useState(0);
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // トップレベルのページ（戻るボタン不要）
+  // トップレベルのページ
   const topLevelPaths = ["/", "/coordinate", "/my-page", "/login", "/signup"];
   const shouldShowBackButton =
     showBackButton !== undefined
@@ -119,13 +120,49 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     }
   };
 
+  // スクロール位置を監視
   useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    // 初回レンダリング時にスクロール位置を記録
+    setScrollY(window.scrollY);
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  // スクロール方向と位置に基づいてヘッダーの表示を制御
+  useEffect(() => {
+    // スクロール位置が0以下の場合（オーバースクロール）は常に表示
+    if (scrollY <= 0) {
+      setIsVisible(true);
+      return;
+    }
+
+    // スクロール位置が0〜10px付近の場合は方向判定を無視して表示
+    if (scrollY <= 10) {
+      setIsVisible(true);
+      return;
+    }
+
+    // スクロール位置が0の場合は常に表示（上記の条件で既にカバーされているが、明示的に記述）
+    if (scrollY === 0) {
+      setIsVisible(true);
+      return;
+    }
+
+    // それ以外の場合は通常の方向判定を使用
     if (scrollDirection === "down") {
       setIsVisible(false);
     } else if (scrollDirection === "up") {
       setIsVisible(true);
     }
-  }, [scrollDirection]);
+  }, [scrollDirection, scrollY]);
 
   return (
     <header
