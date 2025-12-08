@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import { APP_NAME } from "@/constants";
 import { cn } from "@/lib/utils";
@@ -25,19 +24,17 @@ interface StickyHeaderProps {
 
 /**
  * Sticky headerコンポーネント
- * 下にスクロールで非表示、上にスクロールで表示
+ * 常に表示されるヘッダー
  * パスに基づいて戻るボタンの表示を自動制御
  */
 export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
-  const scrollDirection = useScrollDirection();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isVisible, setIsVisible] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // トップレベルのページ（戻るボタン不要）
+  // トップレベルのページ
   const topLevelPaths = ["/", "/coordinate", "/my-page", "/login", "/signup"];
   const shouldShowBackButton =
     showBackButton !== undefined
@@ -119,20 +116,9 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     }
   };
 
-  useEffect(() => {
-    if (scrollDirection === "down") {
-      setIsVisible(false);
-    } else if (scrollDirection === "up") {
-      setIsVisible(true);
-    }
-  }, [scrollDirection]);
-
   return (
     <header
-      className={cn(
-        "sticky top-0 z-40 w-full bg-white/80 backdrop-blur-sm border-b transition-transform duration-300",
-        isVisible ? "translate-y-0" : "-translate-y-full"
-      )}
+      className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-sm border-b"
     >
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
