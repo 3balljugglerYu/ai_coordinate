@@ -13,9 +13,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
+import {
+  getCurrentUser,
+  signOut,
+  onAuthStateChange,
+} from "@/features/auth/lib/auth-client";
 import { APP_NAME } from "@/constants";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 interface StickyHeaderProps {
   children?: React.ReactNode;
@@ -52,13 +57,33 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   ];
 
   useEffect(() => {
+    const supabase = createClient();
+    let isMounted = true;
+
+    const fetchProfileAvatar = async (userId: string) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        console.error("Profile fetch error:", error);
+        return null;
+      }
+
+      return data?.avatar_url ?? null;
+    };
+
     async function checkAuth() {
       try {
         const user = await getCurrentUser();
         if (user) {
+          const avatarUrl = await fetchProfileAvatar(user.id);
+          if (!isMounted) return;
           setCurrentUser({
             id: user.id,
-            avatar_url: user.user_metadata?.avatar_url || null,
+            avatar_url: avatarUrl,
           });
         } else {
           setCurrentUser(null);
@@ -75,18 +100,25 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
     // 認証状態の変更を監視
     const subscription = onAuthStateChange((user: SupabaseUser | null) => {
-      if (user) {
-        setCurrentUser({
-          id: user.id,
-          avatar_url: user.user_metadata?.avatar_url || null,
-        });
-      } else {
-        setCurrentUser(null);
-      }
-      setIsLoading(false);
+      const handleUserChange = async () => {
+        if (user) {
+          const avatarUrl = await fetchProfileAvatar(user.id);
+          if (!isMounted) return;
+          setCurrentUser({
+            id: user.id,
+            avatar_url: avatarUrl,
+          });
+        } else {
+          setCurrentUser(null);
+        }
+        setIsLoading(false);
+      };
+
+      handleUserChange();
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -210,4 +242,3 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     </header>
   );
 }
-
