@@ -13,6 +13,8 @@ export function NavigationBar() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // 楽観的UI更新: クリックしたパスを一時的に保持
+  const [clickedPath, setClickedPath] = useState<string | null>(null);
 
   useEffect(() => {
     // 初回ロード時のユーザー取得
@@ -31,6 +33,13 @@ export function NavigationBar() {
     };
   }, []);
 
+  // pathnameが更新されたら、楽観的UI更新をクリア（遷移完了）
+  useEffect(() => {
+    if (clickedPath && pathname === clickedPath) {
+      setClickedPath(null);
+    }
+  }, [pathname, clickedPath]);
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -41,6 +50,9 @@ export function NavigationBar() {
   };
 
   const handleNavigation = (path: string) => {
+    // 楽観的UI更新: 即座にアクティブ表示にする
+    setClickedPath(path);
+
     // コーディネートとマイページは認証必須
     if ((path === "/coordinate" || path === "/my-page") && !user) {
       router.push(`/login?next=${path}`);
@@ -66,7 +78,8 @@ export function NavigationBar() {
         {/* ナビゲーションアイテム */}
         <div className="flex flex-1 items-center justify-around">
           {navItems.map(({ path, label, icon: Icon }) => {
-            const isActive = pathname === path;
+            // 楽観的UI更新: pathnameまたはclickedPathのどちらかが一致すればアクティブ
+            const isActive = pathname === path || clickedPath === path;
             return (
               <button
                 key={path}
