@@ -132,4 +132,21 @@
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  
+  /* ナビゲーションバーのアクティブインジケーターアニメーション */
+  /* 中央から左右に広がるアニメーション（フェードイン時） */
+  @keyframes expandFromCenter {
+    from {
+      opacity: 0;
+      width: 0;
+    }
+    to {
+      opacity: 1;
+      width: 2rem; /* w-8 = 2rem */
+    }
+  }
+  
+  .nav-indicator-expand {
+    animation: expandFromCenter 0.2s ease-out;
+  }
 }

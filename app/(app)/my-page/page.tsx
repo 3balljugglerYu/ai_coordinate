@@ -36,6 +36,16 @@ export default async function MyPagePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="pt-1 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
+          {/* 静的コンテンツ: タイトルと説明文 */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">
+              マイページ
+            </h1>
+            <p className="mt-2 text-sm text-gray-600">
+              プロフィールや生成画像を管理できます
+            </p>
+          </div>
+
           {/* 動的コンテンツ */}
           <Suspense fallback={<MyPageSkeleton />}>
             <MyPageData />
