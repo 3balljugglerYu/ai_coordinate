@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Sparkles, User as UserIcon, LogOut } from "lucide-react";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
@@ -17,6 +17,8 @@ export function NavigationBar() {
   const [clickedPath, setClickedPath] = useState<string | null>(null);
   // トランジション状態: ナビゲーションを非ブロッキングにする
   const [isPending, startTransition] = useTransition();
+  // プリフェッチ実行フラグ: 1回のみ実行するため
+  const hasPrefetched = useRef(false);
 
   useEffect(() => {
     // 初回ロード時のユーザー取得
@@ -34,6 +36,16 @@ export function NavigationBar() {
       subscription.unsubscribe();
     };
   }, []);
+
+  // 認証済みユーザーに対して主要ページをプリフェッチ
+  useEffect(() => {
+    if (user && !hasPrefetched.current) {
+      // 認証が必要なページをプリフェッチ
+      router.prefetch("/coordinate");
+      router.prefetch("/my-page");
+      hasPrefetched.current = true;
+    }
+  }, [user, router]);
 
   // pathnameが更新されたら、楽観的UI更新をクリア（遷移完了）
   useEffect(() => {
