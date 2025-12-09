@@ -137,7 +137,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
         <>
           <Masonry
             breakpointCols={{
-              default: 3,
+              default: 4,
               1024: 2,
               640: 2,
             }}
