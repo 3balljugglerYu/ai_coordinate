@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Sparkles, User as UserIcon, LogOut } from "lucide-react";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
@@ -15,6 +15,8 @@ export function NavigationBar() {
   const [isLoading, setIsLoading] = useState(true);
   // 楽観的UI更新: クリックしたパスを一時的に保持
   const [clickedPath, setClickedPath] = useState<string | null>(null);
+  // トランジション状態: ナビゲーションを非ブロッキングにする
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     // 初回ロード時のユーザー取得
@@ -50,20 +52,28 @@ export function NavigationBar() {
   };
 
   const handleNavigation = (path: string) => {
-    // 楽観的UI更新: 即座にアクティブ表示にする
+    // 既にアクティブなパスへのタップは無視（連続タップの防止）
+    if (pathname === path && !clickedPath) {
+      return;
+    }
+
+    // 楽観的UI更新: 即座にアクティブ表示にする（最新のタップを優先）
     setClickedPath(path);
 
-    // コーディネートとマイページは認証必須
-    if ((path === "/coordinate" || path === "/my-page") && !user) {
-      router.push(`/login?next=${path}`);
-      return;
-    }
-    // ホームページへの遷移時はリセットパラメータを追加
-    if (path === "/") {
-      router.push("/?reset=true");
-      return;
-    }
-    router.push(path);
+    // startTransitionでナビゲーションを非ブロッキングにする
+    startTransition(() => {
+      // コーディネートとマイページは認証必須
+      if ((path === "/coordinate" || path === "/my-page") && !user) {
+        router.push(`/login?next=${path}`);
+        return;
+      }
+      // ホームページへの遷移時はリセットパラメータを追加
+      if (path === "/") {
+        router.push("/?reset=true");
+        return;
+      }
+      router.push(path);
+    });
   };
 
   const navItems = [
