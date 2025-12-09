@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -7,15 +8,16 @@ import { redirect } from "next/navigation";
 
 /**
  * 現在のユーザーを取得
+ * React Cacheでラップして、同一リクエスト内での重複実行を防止
  */
-export async function getUser() {
+export const getUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   return user;
-}
+});
 
 /**
  * 認証されたユーザーセッションを取得
