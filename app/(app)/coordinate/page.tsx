@@ -14,9 +14,14 @@ async function StockImageListWrapper() {
 }
 
 async function CoordinatePageWrapper() {
-  await requireAuth();
-  const initialStocks = await StockImageListWrapper();
-  return <CoordinatePageContent initialStocks={initialStocks || []} />;
+  // 認証チェックとデータ取得を並列実行
+  // getUser()はReact Cacheでラップされているため、同一リクエスト内では1回のみ実行される
+  const [user, stocks] = await Promise.all([
+    requireAuth(),
+    StockImageListWrapper(),
+  ]);
+
+  return <CoordinatePageContent initialStocks={stocks || []} />;
 }
 
 export default async function CoordinatePage() {
