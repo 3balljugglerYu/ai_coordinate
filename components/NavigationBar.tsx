@@ -116,9 +116,12 @@ export function NavigationBar() {
                 )}
               >
                 {/* アクティブインジケーター（上部のバー） */}
-                {isActive && (
-                  <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary nav-indicator" />
-                )}
+                <span 
+                  className={cn(
+                    "absolute top-0 left-1/2 h-0.5 -translate-x-1/2 rounded-full bg-primary transition-all duration-200 ease-out",
+                    isActive ? "opacity-100 w-8 nav-indicator-expand" : "opacity-0 w-0"
+                  )}
+                />
                 {/* アイコン */}
                 <Icon
                   className={cn(

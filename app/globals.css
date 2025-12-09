@@ -134,7 +134,7 @@
   }
   
   /* ナビゲーションバーのアクティブインジケーターアニメーション */
-  /* 中央から左右に広がるアニメーション */
+  /* 中央から左右に広がるアニメーション（フェードイン時） */
   @keyframes expandFromCenter {
     from {
       opacity: 0;
@@ -146,7 +146,7 @@
     }
   }
   
-  .nav-indicator {
+  .nav-indicator-expand {
     animation: expandFromCenter 0.2s ease-out;
   }
 }
