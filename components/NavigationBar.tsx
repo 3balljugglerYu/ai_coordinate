@@ -112,12 +112,12 @@ export function NavigationBar() {
                   "md:flex-row md:gap-2 md:text-sm",
                   isActive
                     ? "text-primary"
-                    : "text-gray-600"
+                    : "text-gray-400"
                 )}
               >
                 {/* アクティブインジケーター（上部のバー） */}
                 {isActive && (
-                  <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary transition-all duration-200" />
+                  <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary nav-indicator" />
                 )}
                 {/* アイコン */}
                 <Icon
