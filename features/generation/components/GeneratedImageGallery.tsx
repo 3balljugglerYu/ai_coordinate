@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Download, ZoomIn, Share2 } from "lucide-react";
+import Masonry from "react-masonry-css";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PostModal } from "@/features/posts/components/PostModal";
@@ -59,66 +60,75 @@ export function GeneratedImageGallery({
       )}
 
       {images.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <Masonry
+          breakpointCols={{
+            default: 4,
+            1024: 2,
+            640: 2,
+          }}
+          className="flex -ml-4 w-auto"
+          columnClassName="pl-4 bg-clip-padding"
+        >
           {images.map((image, index) => (
-            <Card
-              key={image.id}
-              className="group relative overflow-hidden p-0 sm:cursor-default cursor-pointer"
-              onClick={(e) => {
-                // モバイルのみ: カードタップで拡大モーダルを開く
-                // PCではボタンが表示されるので、カードクリックは無効
-                if (typeof window !== 'undefined' && window.innerWidth < 640) {
-                  setSelectedImageIndex(index);
-                }
-              }}
-            >
-              <div className="relative w-full overflow-hidden bg-gray-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={image.url}
-                  alt={`生成画像 ${index + 1}`}
-                  className="w-full h-auto object-contain"
-                />
-              </div>
-              
-              {/* PC用: ホバー時にボタン表示 */}
-              <div className="hidden sm:block absolute inset-0 bg-black/0 transition-all group-hover:bg-black/50">
-                <div className="flex h-full items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedImageIndex(index);
-                    }}
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPostModalImageId(image.id);
-                    }}
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(image);
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+            <div key={image.id} className="mb-4">
+              <Card
+                className="group relative overflow-hidden p-0 sm:cursor-default cursor-pointer"
+                onClick={(e) => {
+                  // モバイルのみ: カードタップで拡大モーダルを開く
+                  // PCではボタンが表示されるので、カードクリックは無効
+                  if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                    setSelectedImageIndex(index);
+                  }
+                }}
+              >
+                <div className="relative w-full overflow-hidden bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image.url}
+                    alt={`生成画像 ${index + 1}`}
+                    className="w-full h-auto object-contain"
+                  />
                 </div>
-              </div>
-            </Card>
+                
+                {/* PC用: ホバー時にボタン表示 */}
+                <div className="hidden sm:block absolute inset-0 bg-black/0 transition-all group-hover:bg-black/50">
+                  <div className="flex h-full items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImageIndex(index);
+                      }}
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPostModalImageId(image.id);
+                      }}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(image);
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
           ))}
-        </div>
+        </Masonry>
       )}
 
       {selectedImageIndex !== null && (

@@ -105,7 +105,7 @@ export function StockImageList({
     <div className={className}>
       <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
         {renderUploadCard && (
-          <div className="flex-shrink-0 w-[140px] sm:w-[160px]">
+          <div className="flex-shrink-0 min-w-[200px]">
             {renderUploadCard()}
           </div>
         )}
@@ -115,7 +115,7 @@ export function StockImageList({
           return (
             <Card
               key={stock.id}
-              className={`group relative overflow-hidden flex-shrink-0 w-[140px] sm:w-[160px] p-0 ${
+              className={`group relative overflow-hidden flex-shrink-0 inline-flex w-auto max-w-[200px] p-0 ${
                 onSelect ? "cursor-pointer hover:ring-2 hover:ring-primary" : ""
               } ${isSelected ? "border-2 border-primary" : ""}`}
               onClick={() => {
@@ -128,14 +128,14 @@ export function StockImageList({
                 }
               }}
             >
-              <div className="relative w-full overflow-hidden bg-gray-100">
+              <div className="relative flex items-center justify-center overflow-hidden bg-gray-100 max-w-[200px] max-h-[200px]">
                 <Image
                   src={stock.image_url}
                   alt={stock.name || "ストック画像"}
                   width={800}
                   height={800}
-                  className="w-full h-auto object-contain"
-                  sizes="140px"
+                  className="h-auto max-h-[200px] w-auto max-w-[200px] object-contain"
+                  sizes="200px"
                 />
                 {isDeleting && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -169,4 +169,3 @@ export function StockImageList({
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
- "use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { GenerationForm } from "./GenerationForm";
 import {
@@ -9,16 +9,19 @@ import {
 } from "../lib/generation-service";
 import type { SourceImageStock } from "../lib/database";
 
-interface CoordinatePageContentProps {
-  initialStocks?: SourceImageStock[];
-}
+interface GenerationFormContainerProps {}
 
-export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageContentProps) {
+/**
+ * クライアントコンポーネント: GenerationFormとその状態管理
+ * Suspenseの外に配置して即座に表示される
+ */
+export function GenerationFormContainer({}: GenerationFormContainerProps) {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingCount, setGeneratingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleGenerate = async (data: {
     prompt: string;
@@ -44,10 +47,21 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
         backgroundChange: data.backgroundChange,
         count: data.count,
         userId,
-        onProgress: () => {
+        onProgress: (payload) => {
           // 1枚生成・保存されるごとに進捗カウントを更新
           completed += 1;
           setCompletedCount(completed);
+
+          // 画像が保存された場合（recordが存在する場合）、生成結果一覧を更新
+          if (payload.record) {
+            // デバウンス: 前回のリフレッシュから300ms経過後に実行
+            if (refreshTimeoutRef.current) {
+              clearTimeout(refreshTimeoutRef.current);
+            }
+            refreshTimeoutRef.current = setTimeout(() => {
+              router.refresh();
+            }, 300);
+          }
         },
       });
       // 念のため最終的な完了枚数で補正
@@ -59,7 +73,12 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
         );
       }
       
-      // 生成完了後、サーバーコンポーネントを再レンダリングして生成結果一覧を更新
+      // 生成完了後、最後のリフレッシュを確実に実行
+      // デバウンスタイマーが残っている場合はクリアして即座に実行
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
       if (result.records.length > 0) {
         router.refresh();
       }
@@ -102,4 +121,3 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
     </div>
   );
 }
-
