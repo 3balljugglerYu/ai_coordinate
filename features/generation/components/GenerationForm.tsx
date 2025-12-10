@@ -8,12 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { ImageUploader } from "./ImageUploader";
-import { StockImageUploadCard } from "./StockImageUploadCard";
 import { StockImageListClient } from "./StockImageListClient";
+import { StockImageUploadCard } from "./StockImageUploadCard";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
-import { getStockImageLimit, getCurrentStockImageCount } from "../lib/database";
+import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
+import { getCurrentUserId } from "../lib/generation-service";
 import type { UploadedImage } from "../types";
-import type { SourceImageStock } from "../lib/database";
 import { useRouter } from "next/navigation";
 
 interface GenerationFormProps {
@@ -25,7 +25,6 @@ interface GenerationFormProps {
     count: number;
   }) => void;
   isGenerating?: boolean;
-  initialStocks?: SourceImageStock[];
 }
 
 type ImageSourceType = "upload" | "stock";
@@ -33,33 +32,28 @@ type ImageSourceType = "upload" | "stock";
 export function GenerationForm({
   onSubmit,
   isGenerating = false,
-  initialStocks = [],
 }: GenerationFormProps) {
   const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
-  const [selectedStock, setSelectedStock] = useState<SourceImageStock | null>(null);
+  const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [backgroundChange, setBackgroundChange] = useState(false);
   const [selectedCount, setSelectedCount] = useState(1);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const router = useRouter();
+  const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
-  const router = useRouter();
+  const [isLoadingStocks, setIsLoadingStocks] = useState(true);
 
-  // ストック画像制限数を取得（初回マウント時とrefreshTrigger変更時）
+  // localStorageから選択されたストック画像IDを取得
   useEffect(() => {
-    const fetchLimit = async () => {
-      try {
-        const limit = await getStockImageLimit();
-        const count = await getCurrentStockImageCount();
-        setStockLimit(limit);
-        setCurrentCount(count);
-      } catch (err) {
-        console.error("Failed to fetch stock limit:", err);
+    if (typeof window !== "undefined") {
+      const storedId = localStorage.getItem("selectedStockId");
+      if (storedId) {
+        setSelectedStockId(storedId);
       }
-    };
-    fetchLimit();
-  }, [refreshTrigger]);
+    }
+  }, []);
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -72,7 +66,7 @@ export function GenerationForm({
       return;
     }
 
-    if (imageSourceType === "stock" && !selectedStock) {
+    if (imageSourceType === "stock" && !selectedStockId) {
       alert("ストック画像を選択してください");
       return;
     }
@@ -83,43 +77,62 @@ export function GenerationForm({
     onSubmit({
       prompt: prompt.trim(),
       sourceImage: imageSourceType === "upload" ? uploadedImage?.file : undefined,
-      sourceImageStockId: imageSourceType === "stock" ? selectedStock?.id : undefined,
+      sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
       backgroundChange,
       count: selectedCount,
     });
   };
 
-  const hasSourceImage = imageSourceType === "upload" ? !!uploadedImage : !!selectedStock;
+  const hasSourceImage = imageSourceType === "upload" ? !!uploadedImage : !!selectedStockId;
   const isSubmitDisabled = !prompt.trim() || !hasSourceImage || isGenerating;
 
-  const handleStockSelect = (stock: SourceImageStock | null) => {
-    setSelectedStock(stock);
-    // ストック選択時はローカルアップロードをクリア
-    if (stock) {
-      setUploadedImage(null);
+  // localStorageの変更を監視
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handleStorageChange = () => {
+        const storedId = localStorage.getItem("selectedStockId");
+        setSelectedStockId(storedId);
+      };
+      window.addEventListener("storage", handleStorageChange);
+      return () => window.removeEventListener("storage", handleStorageChange);
     }
-  };
+  }, []);
+
+  // ストック画像と制限数を取得
+  useEffect(() => {
+    const fetchStocks = async () => {
+      try {
+        setIsLoadingStocks(true);
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          setIsLoadingStocks(false);
+          return;
+        }
+        const [stocksData, limit] = await Promise.all([
+          getSourceImageStocks(50, 0),
+          getStockImageLimit(),
+        ]);
+        setStocks(stocksData);
+        setStockLimit(limit);
+        setCurrentCount(stocksData.length);
+      } catch (error) {
+        console.error("Failed to fetch stocks:", error);
+      } finally {
+        setIsLoadingStocks(false);
+      }
+    };
+    void fetchStocks();
+  }, []);
 
   const handleImageUpload = (image: UploadedImage) => {
     setUploadedImage(image);
     // ローカルアップロード時はストック選択をクリア
-    setSelectedStock(null);
+    setSelectedStockId(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("selectedStockId");
+    }
   };
 
-  const handleStockUploadSuccess = (stockId: string) => {
-    // リフレッシュトリガーを更新してStockImageUploadCardの制限数を再取得
-    setRefreshTrigger((prev) => prev + 1);
-    // サーバーコンポーネントを再レンダリングしてデータを同期
-    router.refresh();
-  };
-
-  const handleStockDelete = () => {
-    // 削除された画像が選択されていた場合は選択を解除
-    setSelectedStock(null);
-    // リフレッシュトリガーを更新してStockImageUploadCardの制限数を再取得
-    setRefreshTrigger((prev) => prev + 1);
-    // router.refresh()はStockImageListClient内で呼び出される
-  };
 
   return (
     <Card className="p-6">
@@ -135,7 +148,10 @@ export function GenerationForm({
               variant={imageSourceType === "upload" ? "default" : "outline"}
               onClick={() => {
                 setImageSourceType("upload");
-                setSelectedStock(null);
+                setSelectedStockId(null);
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem("selectedStockId");
+                }
               }}
               disabled={isGenerating}
               className="flex-1"
@@ -183,29 +199,97 @@ export function GenerationForm({
               <Label className="text-base font-medium mb-3 block">
                 ストック画像
               </Label>
-              <StockImageListClient
-                stocks={initialStocks}
-                selectedStockId={selectedStock?.id || null}
-                onSelect={handleStockSelect}
-                onDelete={handleStockDelete}
-                onRefreshTrigger={() => setRefreshTrigger((prev) => prev + 1)}
-                renderUploadCard={() => (
-                  <StockImageUploadCard
-                    stockLimit={stockLimit}
-                    currentCount={currentCount}
-                    onUploadSuccess={handleStockUploadSuccess}
-                    onUploadError={(error) => {
-                      console.error("Stock upload error:", error);
-                      alert(error);
-                    }}
-                  />
-                )}
-              />
-              {selectedStock && (
+              {isLoadingStocks ? (
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex-shrink-0 w-[140px] sm:w-[160px]">
+                      <div className="aspect-square animate-pulse rounded bg-gray-200" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <StockImageListClient
+                  stocks={stocks}
+                  selectedStockId={selectedStockId}
+                  onSelect={(stock) => {
+                    if (stock) {
+                      setSelectedStockId(stock.id);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("selectedStockId", stock.id);
+                        window.dispatchEvent(new Event("storage"));
+                      }
+                    } else {
+                      setSelectedStockId(null);
+                      if (typeof window !== "undefined") {
+                        localStorage.removeItem("selectedStockId");
+                        window.dispatchEvent(new Event("storage"));
+                      }
+                    }
+                  }}
+                  onDelete={(stockId) => {
+                    if (selectedStockId === stockId) {
+                      setSelectedStockId(null);
+                      if (typeof window !== "undefined") {
+                        localStorage.removeItem("selectedStockId");
+                      }
+                    }
+                    // ストックリストから削除
+                    setStocks((prev) => prev.filter((s) => s.id !== stockId));
+                    setCurrentCount((prev) => (prev !== null ? Math.max(0, prev - 1) : null));
+                  }}
+                  onRefreshTrigger={async () => {
+                    // ストックリストを再取得
+                    try {
+                      const userId = await getCurrentUserId();
+                      if (userId) {
+                        const [stocksData, limit] = await Promise.all([
+                          getSourceImageStocks(50, 0),
+                          getStockImageLimit(),
+                        ]);
+                        setStocks(stocksData);
+                        setStockLimit(limit);
+                        setCurrentCount(stocksData.length);
+                      }
+                    } catch (error) {
+                      console.error("Failed to refresh stocks:", error);
+                    }
+                  }}
+                  renderUploadCard={() => (
+                    stockLimit !== null && currentCount !== null ? (
+                      <StockImageUploadCard
+                        stockLimit={stockLimit}
+                        currentCount={currentCount}
+                        onUploadSuccess={async () => {
+                          // ストックリストを再取得
+                          try {
+                            const userId = await getCurrentUserId();
+                            if (userId) {
+                              const [stocksData, limit] = await Promise.all([
+                                getSourceImageStocks(50, 0),
+                                getStockImageLimit(),
+                              ]);
+                              setStocks(stocksData);
+                              setStockLimit(limit);
+                              setCurrentCount(stocksData.length);
+                            }
+                          } catch (error) {
+                            console.error("Failed to refresh stocks:", error);
+                          }
+                        }}
+                        onUploadError={(error) => {
+                          console.error("Stock upload error:", error);
+                          alert(error);
+                        }}
+                      />
+                    ) : null
+                  )}
+                />
+              )}
+              {selectedStockId && (
                 <div className="mt-4">
                   <GeneratedImagesFromSource
-                    stockId={selectedStock.id}
-                    storagePath={selectedStock.storage_path}
+                    stockId={selectedStockId}
+                    storagePath={null}
                   />
                 </div>
               )}

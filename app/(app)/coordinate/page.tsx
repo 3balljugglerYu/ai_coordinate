@@ -1,27 +1,17 @@
 import { Suspense } from "react";
-import { requireAuth, getUser } from "@/lib/auth";
-import { CoordinatePageContent } from "@/features/generation/components/CoordinatePageContent";
-import { CoordinatePageSkeleton } from "@/features/generation/components/CoordinatePageSkeleton";
-import { getSourceImageStocksServer } from "@/features/generation/lib/server-database";
+import { requireAuth } from "@/lib/auth";
+import { GeneratedImageGalleryWrapper } from "@/features/generation/components/GeneratedImageGalleryWrapper";
+import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
+import { StockImageListWrapper } from "@/features/generation/components/StockImageListWrapper";
+import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
+import { StockImageListSkeleton } from "@/features/generation/components/StockImageListSkeleton";
+import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
 
-async function StockImageListWrapper() {
-  const user = await getUser();
-  if (!user) {
-    return null;
-  }
-  const stocks = await getSourceImageStocksServer(user.id, 50, 0);
-  return stocks;
-}
+async function GenerationFormWrapper() {
+  // 認証チェック
+  await requireAuth();
 
-async function CoordinatePageWrapper() {
-  // 認証チェックとデータ取得を並列実行
-  // getUser()はReact Cacheでラップされているため、同一リクエスト内では1回のみ実行される
-  const [user, stocks] = await Promise.all([
-    requireAuth(),
-    StockImageListWrapper(),
-  ]);
-
-  return <CoordinatePageContent initialStocks={stocks || []} />;
+  return <GenerationFormContainer />;
 }
 
 export default async function CoordinatePage() {
@@ -39,10 +29,20 @@ export default async function CoordinatePage() {
             </p>
           </div>
 
-          {/* 動的コンテンツ */}
-          <Suspense fallback={<CoordinatePageSkeleton />}>
-            <CoordinatePageWrapper />
+          {/* GenerationForm: Suspenseの外に配置して即座に表示 */}
+          <Suspense fallback={<GenerationFormSkeleton />}>
+            <GenerationFormWrapper />
           </Suspense>
+
+          {/* 生成結果一覧: 独立したSuspense境界（ストック画像リストと並列実行） */}
+          <div className="mt-8">
+            <h2 className="mb-4 text-xl font-semibold text-gray-900">
+              生成結果一覧
+            </h2>
+            <Suspense fallback={<GeneratedImageGallerySkeleton />}>
+              <GeneratedImageGalleryWrapper />
+            </Suspense>
+          </div>
         </div>
       </div>
     </div>
