@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
@@ -33,8 +34,9 @@ export interface UserStats {
 /**
  * ユーザープロフィール情報を取得（サーバーサイド）
  * profilesテーブルから取得
+ * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
-export async function getUserProfileServer(userId: string): Promise<UserProfile> {
+export const getUserProfileServer = cache(async (userId: string): Promise<UserProfile> => {
   const supabase = await createClient();
 
   // profilesテーブルからプロフィール情報を取得
@@ -65,12 +67,13 @@ export async function getUserProfileServer(userId: string): Promise<UserProfile>
     avatar_url: profile.avatar_url,
     email: isOwnProfile ? user?.email : undefined,
   };
-}
+});
 
 /**
  * ユーザーの統計情報を取得（サーバーサイド）
+ * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
-export async function getUserStatsServer(userId: string): Promise<UserStats> {
+export const getUserStatsServer = cache(async (userId: string): Promise<UserStats> => {
   const supabase = await createClient();
 
   // 生成画像数の集計
@@ -130,7 +133,7 @@ export async function getUserStatsServer(userId: string): Promise<UserStats> {
     followerCount: 0, // Phase 5で実装予定
     followingCount: 0, // Phase 5で実装予定
   };
-}
+});
 
 /**
  * ユーザーの投稿済み画像一覧を取得（サーバーサイド）
@@ -162,13 +165,14 @@ export async function getUserPostsServer(
 /**
  * ユーザーの生成画像一覧を取得（サーバーサイド）
  * @param filter - "all" | "posted" | "unposted"
+ * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
-export async function getMyImagesServer(
+export const getMyImagesServer = cache(async (
   userId: string,
   filter: "all" | "posted" | "unposted" = "all",
   limit = 50,
   offset = 0
-): Promise<GeneratedImageRecord[]> {
+): Promise<GeneratedImageRecord[]> => {
   try {
     const supabase = await createClient();
 
@@ -207,12 +211,13 @@ export async function getMyImagesServer(
     }
     throw new Error(`画像の取得に失敗しました: ${err instanceof Error ? err.message : "Unknown error"}`);
   }
-}
+});
 
 /**
  * ユーザーのクレジット残高を取得（サーバーサイド）
+ * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
-export async function getCreditBalanceServer(userId: string): Promise<number> {
+export const getCreditBalanceServer = cache(async (userId: string): Promise<number> => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -227,7 +232,7 @@ export async function getCreditBalanceServer(userId: string): Promise<number> {
   }
 
   return data?.balance || 0;
-}
+});
 
 /**
  * クレジット取引履歴を取得（サーバーサイド）
