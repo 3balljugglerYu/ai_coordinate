@@ -17,7 +17,7 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
   const commentListRef = useRef<CommentListRef>(null);
 
   return (
-    <div className="border-t border-gray-200 bg-white px-4 py-3">
+    <div className="container mx-auto max-w-4xl border-t border-gray-200 bg-white px-4 py-3">
       <div className="mb-4">
         <CommentInput
           imageId={postId}

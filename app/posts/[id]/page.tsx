@@ -11,6 +11,8 @@ import { CommentSectionSkeleton } from "@/features/posts/components/CommentSecti
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/env";
 
+// Next.js 16では、動的ルートはデフォルトで動的レンダリングされる
+// キャッシュはfetchのrevalidateオプションまたはReact.cache()で制御
 interface PostDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -144,9 +146,12 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
 
   // 画像URLとアスペクト比を取得
   const imageUrl = getPostImageUrl(post);
-  const imageAspectRatio = imageUrl
-    ? await getImageAspectRatio(imageUrl)
-    : null;
+  // データベースからアスペクト比を取得（フォールバック: 存在しない場合は計算）
+  let imageAspectRatio: "portrait" | "landscape" | null = post.aspect_ratio as "portrait" | "landscape" | null;
+  if (!imageAspectRatio && imageUrl) {
+    // フォールバック: データベースに値がない場合は計算（初回表示時など）
+    imageAspectRatio = await getImageAspectRatio(imageUrl);
+  }
 
   return (
     <>

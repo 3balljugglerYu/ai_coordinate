@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { User, MoreHorizontal, Edit, Trash2, Share2, Copy, Check } from "lucide-react";
@@ -11,7 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ImageFullscreen } from "./ImageFullscreen";
 import { CollapsibleText } from "./CollapsibleText";
 import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
@@ -19,6 +18,9 @@ import { PostModal } from "./PostModal";
 import { getPostImageUrl } from "../lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import type { Post } from "../types";
+
+// ImageFullscreenコンポーネントを動的インポート（SSR不要）
+const ImageFullscreen = lazy(() => import("./ImageFullscreen").then(module => ({ default: module.ImageFullscreen })));
 
 interface PostDetailStaticProps {
   post: Post;
@@ -75,7 +77,7 @@ export function PostDetailStatic({
 
   return (
     <div className="bg-white">
-      <div className="container mx-auto bg-white">
+      <div className="container mx-auto max-w-4xl bg-white">
         {/* 画像セクション */}
         <div className="relative w-full overflow-hidden bg-white">
           <div
@@ -83,7 +85,7 @@ export function PostDetailStatic({
               imageAspectRatio === "portrait"
                 ? "max-h-[50vh]"
                 : imageAspectRatio === "landscape"
-                ? "w-full"
+                ? "max-h-[50vh]"
                 : "aspect-square"
             }`}
             onClick={() => setIsFullscreenOpen(true)}
@@ -95,7 +97,9 @@ export function PostDetailStatic({
                 width={1200}
                 height={1200}
                 className={`w-full h-auto object-contain ${
-                  imageAspectRatio === "portrait" ? "max-h-[50vh]" : ""
+                  imageAspectRatio === "portrait" || imageAspectRatio === "landscape"
+                    ? "max-h-[50vh]"
+                    : ""
                 }`}
                 sizes="(max-width: 768px) 100vw, 80vw"
                 priority
@@ -257,12 +261,14 @@ export function PostDetailStatic({
 
       {/* 全画面表示 */}
       {imageUrl && (
-        <ImageFullscreen
-          imageUrl={imageUrl}
-          alt={post.caption || "投稿画像"}
-          isOpen={isFullscreenOpen}
-          onClose={() => setIsFullscreenOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <ImageFullscreen
+            imageUrl={imageUrl}
+            alt={post.caption || "投稿画像"}
+            isOpen={isFullscreenOpen}
+            onClose={() => setIsFullscreenOpen(false)}
+          />
+        </Suspense>
       )}
 
       {/* 編集モーダル */}

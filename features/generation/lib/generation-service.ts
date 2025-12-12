@@ -3,6 +3,7 @@ import { uploadImageToStorage } from "./storage";
 import { saveGeneratedImage } from "./database";
 import { consumeCredits, fetchCreditBalance } from "@/features/credits/lib/api";
 import { GENERATION_CREDIT_COST } from "@/features/credits/credit-packages";
+import { getImageAspectRatio } from "@/features/posts/lib/utils";
 import type { GenerationRequest, GeneratedImageData } from "../types";
 import type { GeneratedImageRecord } from "./database";
 
@@ -124,6 +125,15 @@ export async function generateAndSaveImages(
       userId
     );
 
+    // アスペクト比を計算
+    let aspectRatio: "portrait" | "landscape" | null = null;
+    try {
+      aspectRatio = await getImageAspectRatio(url);
+    } catch (error) {
+      // アスペクト比の計算に失敗した場合はnullのまま（後で計算される）
+      console.warn("Failed to calculate aspect ratio during generation:", error);
+    }
+
     const recordToSave: Omit<GeneratedImageRecord, "id" | "created_at"> = {
       user_id: userId,
       image_url: url,
@@ -141,6 +151,7 @@ export async function generateAndSaveImages(
         : generationRequest.sourceImage
         ? { uploaded: true }
         : null,
+      aspect_ratio: aspectRatio,
     };
 
     const savedRecord = await saveGeneratedImage(recordToSave);
