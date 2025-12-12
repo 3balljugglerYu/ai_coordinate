@@ -16,11 +16,14 @@ export interface GeneratedImageRecord {
   caption?: string | null;
   posted_at?: string | null;
   created_at?: string;
+  view_count?: number;
   // Phase 1で追加されたカラム（optional）
   generation_type?: 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi' | null;
   input_images?: Record<string, unknown> | null;
   generation_metadata?: Record<string, unknown> | null;
   source_image_stock_id?: string | null;
+  // Phase 2で追加されたカラム（optional）
+  aspect_ratio?: 'portrait' | 'landscape' | null;
 }
 
 /**

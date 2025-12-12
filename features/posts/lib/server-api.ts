@@ -1,6 +1,8 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Post } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { getImageAspectRatio } from "./utils";
 import {
   getJSTStartOfDay,
   getJSTEndOfDay,
@@ -210,8 +212,9 @@ export async function getPosts(
  * 投稿詳細を取得（サーバーサイド）
  * 投稿済み画像は全ユーザーが閲覧可能、未投稿画像は所有者のみ閲覧可能
  * いいね数・コメント数・閲覧数を取得し、閲覧数をインクリメント
+ * React.cache()でラップして、同一リクエスト内での重複取得を防止
  */
-export async function getPost(id: string, currentUserId?: string | null): Promise<Post | null> {
+export const getPost = cache(async (id: string, currentUserId?: string | null): Promise<Post | null> => {
   const supabase = await createClient();
 
   // まず画像を取得（is_postedの条件なし）
@@ -257,15 +260,46 @@ export async function getPost(id: string, currentUserId?: string | null): Promis
     getCommentCount(id),
   ]);
 
-  // 閲覧数をインクリメント（重複カウント）
-  await incrementViewCount(id);
+  // アスペクト比が存在しない場合は計算して保存
+  let aspectRatio: "portrait" | "landscape" | null = data.aspect_ratio as "portrait" | "landscape" | null;
+  if (!aspectRatio) {
+    // 画像URLを取得
+    const imageUrl = data.image_url || (data.storage_path ? 
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generated-images/${data.storage_path}` : 
+      null);
+    
+    if (imageUrl) {
+      try {
+        // アスペクト比を計算
+        aspectRatio = await getImageAspectRatio(imageUrl);
+        
+        // データベースに保存（競合対策: エラーハンドリングを実装）
+        if (aspectRatio) {
+          try {
+            await supabase
+              .from("generated_images")
+              .update({ aspect_ratio: aspectRatio })
+              .eq("id", id);
+          } catch (updateError) {
+            // 競合エラーは無視（他のリクエストが既に更新した可能性がある）
+            console.warn("Failed to update aspect_ratio:", updateError);
+          }
+        }
+      } catch (error) {
+        // アスペクト比の計算に失敗した場合はnullのまま
+        console.warn("Failed to calculate aspect ratio:", error);
+      }
+    }
+  }
 
-  // 更新後の閲覧数を取得
-  const { data: updatedData } = await supabase
-    .from("generated_images")
-    .select("view_count")
-    .eq("id", id)
-    .single();
+  // 閲覧数をインクリメント（重複カウント）
+  // オプティミスティック更新: 現在の閲覧数+1を使用（RPC関数の戻り値取得を待たない）
+  const currentViewCount = data.view_count || 0;
+  await incrementViewCount(id);
+  
+  // 更新後の閲覧数を取得（オプティミスティック更新のため、実際の値ではなく現在の値+1を使用）
+  // 注意: 実際の値が必要な場合は、RPC関数を修正して戻り値を返すようにする
+  const updatedViewCount = currentViewCount + 1;
 
   return {
     ...data,
@@ -279,9 +313,10 @@ export async function getPost(id: string, currentUserId?: string | null): Promis
       : null,
     like_count: likeCount,
     comment_count: commentCount,
-    view_count: updatedData?.view_count || data.view_count || 0,
+    view_count: updatedViewCount,
+    aspect_ratio: aspectRatio,
   };
-}
+});
 
 /**
  * いいね数を取得（単一）

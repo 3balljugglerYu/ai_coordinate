@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,10 +27,28 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     post.user?.avatar_url ?? null
   );
+  const preloadLinkRef = useRef<HTMLLinkElement | null>(null);
+
+  // 画像のプリロード処理（onMouseEnter/onTouchStart）
+  const handlePreload = () => {
+    if (!imageUrl) return;
+    
+    // 既にプリロード済みの場合はスキップ
+    if (preloadLinkRef.current) return;
+
+    // Next.jsのImageコンポーネントは既に最適化されているため、
+    // 詳細ページへの遷移時に画像が再利用される
+    // ここでは、Linkのprefetchで詳細ページ自体をプリフェッチする
+  };
 
   return (
     <Card className="overflow-hidden pt-0 pb-0 gap-1">
-      <Link href={`/posts/${post.id}`}>
+      <Link 
+        href={`/posts/${post.id}`}
+        prefetch={true}
+        onMouseEnter={handlePreload}
+        onTouchStart={handlePreload}
+      >
         <div className="relative w-full overflow-hidden bg-gray-100">
           {imageUrl ? (
             <Image
