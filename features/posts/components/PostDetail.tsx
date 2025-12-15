@@ -20,6 +20,7 @@ import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
 import { getPostImageUrl } from "../lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { FollowButton } from "@/features/users/components/FollowButton";
 import type { Post } from "../types";
 
 interface PostDetailProps {
@@ -97,6 +98,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   };
 
   const isOwner = currentUserId === post.user_id;
+  const followUserId = post.user?.id || post.user_id;
 
   return (
     <div className="min-h-screen bg-white">
@@ -160,15 +162,8 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
             </div>
 
             {/* フォローボタン（自分の投稿の場合は表示しない） */}
-            {!isOwner && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="text-xs shrink-0"
-              >
-                フォロー
-              </Button>
+            {!isOwner && followUserId && (
+              <FollowButton userId={followUserId} currentUserId={currentUserId} />
             )}
 
             {/* 3点リーダー（所有者の場合） */}
@@ -337,4 +332,3 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
     </div>
   );
 }
-

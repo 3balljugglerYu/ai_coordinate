@@ -95,50 +95,52 @@ export function NavigationBar() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur-sm shadow-lg md:hidden safe-area-inset-bottom">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-2">
-        {/* ナビゲーションアイテム */}
-        <div className="flex flex-1 items-center justify-around">
-          {navItems.map(({ path, label, icon: Icon }) => {
-            // 楽観的UI更新: pathnameまたはclickedPathのどちらかが一致すればアクティブ
-            const isActive = pathname === path || clickedPath === path;
-            return (
-              <button
-                key={path}
-                onClick={() => handleNavigation(path)}
-                className={cn(
-                  "relative flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-all duration-200 ease-out",
-                  "active:scale-80 active:opacity-80",
-                  "md:flex-row md:gap-2 md:text-sm",
-                  isActive
-                    ? "text-primary"
-                    : "text-gray-400"
-                )}
-              >
-                {/* アクティブインジケーター（上部のバー） */}
-                <span 
+    <>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur-sm shadow-lg md:hidden safe-area-inset-bottom">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-2">
+          {/* ナビゲーションアイテム */}
+          <div className="flex flex-1 items-center justify-around">
+            {navItems.map(({ path, label, icon: Icon }) => {
+              // 楽観的UI更新: pathnameまたはclickedPathのどちらかが一致すればアクティブ
+              const isActive = pathname === path || clickedPath === path;
+              return (
+                <button
+                  key={path}
+                  onClick={() => handleNavigation(path)}
                   className={cn(
-                    "absolute top-0 left-1/2 h-0.5 -translate-x-1/2 rounded-full bg-primary transition-all duration-200 ease-out",
-                    isActive ? "opacity-100 w-8 nav-indicator-expand" : "opacity-0 w-0"
+                    "relative flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-all duration-200 ease-out",
+                    "active:scale-80 active:opacity-80",
+                    "md:flex-row md:gap-2 md:text-sm",
+                    isActive
+                      ? "text-primary"
+                      : "text-gray-400"
                   )}
-                />
-                {/* アイコン */}
-                <Icon
-                  className={cn(
-                    "h-5 w-5 transition-all duration-200",
-                    isActive ? "scale-110" : "scale-100"
-                  )}
-                />
-                {/* ラベル */}
-                <span className="transition-all duration-200">
-                  {label}
-                </span>
-              </button>
-            );
-          })}
+                >
+                  {/* アクティブインジケーター（上部のバー） */}
+                  <span 
+                    className={cn(
+                      "absolute top-0 left-1/2 h-0.5 -translate-x-1/2 rounded-full bg-primary transition-all duration-200 ease-out",
+                      isActive ? "opacity-100 w-8 nav-indicator-expand" : "opacity-0 w-0"
+                    )}
+                  />
+                  {/* アイコン */}
+                  <Icon
+                    className={cn(
+                      "h-5 w-5 transition-all duration-200",
+                      isActive ? "scale-110" : "scale-100"
+                    )}
+                  />
+                  {/* ラベル */}
+                  <span className="transition-all duration-200">
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }
 

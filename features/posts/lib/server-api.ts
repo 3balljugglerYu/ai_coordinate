@@ -387,10 +387,9 @@ export async function getUserLikeStatus(imageId: string, userId: string): Promis
     .select("id")
     .eq("image_id", imageId)
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== "PGRST116") {
-    // PGRST116は「レコードが見つからない」エラー（正常）
+  if (error) {
     console.error("Database query error:", error);
     throw new Error(`いいね状態の取得に失敗しました: ${error.message}`);
   }
