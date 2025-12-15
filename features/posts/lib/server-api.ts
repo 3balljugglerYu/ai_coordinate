@@ -673,10 +673,13 @@ export async function getComments(
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  user_nickname: string | null;
+  user_avatar_url: string | null;
 }>> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // 1. コメントを取得
+  const { data: comments, error: commentsError } = await supabase
     .from("comments")
     .select("*")
     .eq("image_id", imageId)
@@ -685,12 +688,53 @@ export async function getComments(
     .order("id", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`コメントの取得に失敗しました: ${error.message}`);
+  if (commentsError) {
+    console.error("Database query error:", commentsError);
+    throw new Error(`コメントの取得に失敗しました: ${commentsError.message}`);
   }
 
-  return data || [];
+  if (!comments || comments.length === 0) {
+    return [];
+  }
+
+  // 2. user_idのリストを抽出（重複除去、null除外）
+  const userIds = Array.from(
+    new Set(comments.map((c) => c.user_id).filter(Boolean) as string[])
+  );
+
+  // 3. profilesテーブルから一括取得（空配列の場合はスキップ）
+  const profileMap: Record<
+    string,
+    { nickname: string | null; avatar_url: string | null }
+  > = {};
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("user_id, nickname, avatar_url")
+      .in("user_id", userIds);
+
+    // エラーが発生した場合はログに記録するが、コメント表示は続行
+    if (profilesError) {
+      console.error("Profile fetch error:", profilesError);
+      // profileMapは空のまま（すべてnullでフォールバック）
+    } else if (profiles) {
+      profiles.forEach((p) => {
+        profileMap[p.user_id] = {
+          nickname: p.nickname,
+          avatar_url: p.avatar_url,
+        };
+      });
+    }
+  }
+
+  // 4. コメントデータとマージ
+  const commentsWithProfiles = comments.map((comment) => ({
+    ...comment,
+    user_nickname: profileMap[comment.user_id]?.nickname ?? null,
+    user_avatar_url: profileMap[comment.user_id]?.avatar_url ?? null,
+  }));
+
+  return commentsWithProfiles;
 }
 
 /**
@@ -708,6 +752,8 @@ export async function createComment(
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  user_nickname: string | null;
+  user_avatar_url: string | null;
 }> {
   // サーバー側バリデーション
   const trimmedContent = content.trim();
@@ -717,7 +763,8 @@ export async function createComment(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // コメントを投稿
+  const { data: comment, error: commentError } = await supabase
     .from("comments")
     .insert({
       image_id: imageId,
@@ -727,12 +774,34 @@ export async function createComment(
     .select()
     .single();
 
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`コメントの投稿に失敗しました: ${error.message}`);
+  if (commentError) {
+    console.error("Database query error:", commentError);
+    throw new Error(`コメントの投稿に失敗しました: ${commentError.message}`);
   }
 
-  return data;
+  // プロフィール情報を取得
+  let user_nickname: string | null = null;
+  let user_avatar_url: string | null = null;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("nickname, avatar_url")
+    .eq("user_id", userId)
+    .single();
+
+  if (profileError) {
+    console.error("Profile fetch error:", profileError);
+    // エラーが発生してもコメントは返す（プロフィール情報はnullのまま）
+  } else if (profile) {
+    user_nickname = profile.nickname;
+    user_avatar_url = profile.avatar_url;
+  }
+
+  return {
+    ...comment,
+    user_nickname,
+    user_avatar_url,
+  };
 }
 
 /**

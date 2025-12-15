@@ -32,6 +32,8 @@ interface CommentItemProps {
     content: string;
     created_at: string;
     updated_at: string;
+    user_nickname: string | null;
+    user_avatar_url: string | null;
   };
   currentUserId?: string | null;
   onCommentUpdated: () => void;
@@ -128,16 +130,29 @@ export function CommentItem({
     }
   };
 
-  const displayName = comment.user_id.slice(0, 8);
+  // ニックネームが存在する場合は表示、存在しない場合はuser_idの最初の8文字をフォールバック
+  const displayName = comment.user_nickname || comment.user_id.slice(0, 8);
   const remainingChars = MAX_LENGTH - editContent.length;
 
   return (
     <>
       <div className="flex gap-3 py-3">
         {/* ユーザーアイコン */}
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
-          <User className="h-4 w-4 text-gray-500" />
-        </div>
+        {comment.user_avatar_url ? (
+          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
+            <Image
+              src={comment.user_avatar_url}
+              alt={displayName}
+              fill
+              className="object-cover"
+              sizes="32px"
+            />
+          </div>
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
+            <User className="h-4 w-4 text-gray-500" />
+          </div>
+        )}
 
         <div className="min-w-0 flex-1">
           {/* ユーザー名と日時 */}

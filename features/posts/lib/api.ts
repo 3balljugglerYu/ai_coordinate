@@ -149,6 +149,8 @@ export async function getCommentsAPI(
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  user_nickname: string | null;
+  user_avatar_url: string | null;
 }>> {
   const response = await fetch(
     `/api/posts/${imageId}/comments?limit=${limit}&offset=${offset}`
@@ -217,6 +219,8 @@ export async function createCommentAPI(
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  user_nickname: string | null;
+  user_avatar_url: string | null;
 }> {
   const response = await fetch(`/api/posts/${imageId}/comments`, {
     method: "POST",

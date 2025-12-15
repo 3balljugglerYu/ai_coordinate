@@ -14,6 +14,8 @@ interface Comment {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  user_nickname: string | null;
+  user_avatar_url: string | null;
 }
 
 interface CommentListProps {
@@ -119,13 +121,12 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
           }
 
           if (payload.eventType === "INSERT" && payload.new) {
-            const newComment = payload.new as Comment;
-            // 削除されていないコメントのみ追加
-            if (!newComment.deleted_at) {
-              setComments((prev) => [newComment, ...prev]);
-              // コメントが追加されたことを親コンポーネントに通知
-              onCommentAdded?.();
-            }
+            // リアルタイムで受信したコメントにはユーザー情報が含まれないため、
+            // loadComments(0, true)を呼び出して再取得する
+            // これにより、常にユーザー情報を含む完全なコメントデータが表示される
+            loadComments(0, true);
+            // コメントが追加されたことを親コンポーネントに通知
+            onCommentAdded?.();
           } else if (payload.eventType === "UPDATE" && payload.new) {
             const updatedComment = payload.new as Comment;
             // 削除された場合はリストから削除
@@ -157,7 +158,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [imageId, currentUserId]);
+  }, [imageId, currentUserId, loadComments]);
 
   const handleCommentUpdated = () => {
     // コメントが更新されたら再読み込み
