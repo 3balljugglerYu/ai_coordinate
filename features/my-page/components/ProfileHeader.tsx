@@ -7,17 +7,22 @@ import { Button } from "@/components/ui/button";
 import { ProfileEditModal } from "./ProfileEditModal";
 import { AvatarUpload } from "./AvatarUpload";
 import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
+import { FollowButton } from "@/features/users/components/FollowButton";
 import type { UserProfile } from "../lib/server-api";
 
 interface ProfileHeaderProps {
   profile: UserProfile;
   isOwnProfile: boolean;
+  userId: string;
+  currentUserId?: string | null;
   onProfileUpdate?: (updatedProfile: UserProfile) => void;
 }
 
 export function ProfileHeader({
   profile,
   isOwnProfile,
+  userId,
+  currentUserId,
   onProfileUpdate,
 }: ProfileHeaderProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -74,7 +79,7 @@ export function ProfileHeader({
             </div>
           </>
         ) : (
-          // 他ユーザーのプロフィールの場合: アバター表示のみ
+          // 他ユーザーのプロフィールの場合: アバター表示とフォローボタン
           <div className="flex items-start gap-4">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gray-200">
               {currentProfile.avatar_url ? (
@@ -90,7 +95,10 @@ export function ProfileHeader({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+                <FollowButton userId={userId} currentUserId={currentUserId} />
+              </div>
               {currentProfile.bio && (
                 <div className="mt-1">
                   <CollapsibleText

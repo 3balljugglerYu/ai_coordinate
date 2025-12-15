@@ -46,6 +46,8 @@ export function UserProfilePage({
       <ProfileHeader
         profile={profile}
         isOwnProfile={isOwnProfile}
+        userId={userId}
+        currentUserId={currentUserId}
         onProfileUpdate={handleProfileUpdate}
       />
 

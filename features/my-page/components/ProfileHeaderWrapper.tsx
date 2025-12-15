@@ -9,5 +9,12 @@ export async function ProfileHeaderWrapper() {
   const user = await requireAuth();
   const profile = await getUserProfileServer(user.id);
 
-  return <ProfileHeader profile={profile} isOwnProfile={true} />;
+  return (
+    <ProfileHeader
+      profile={profile}
+      isOwnProfile={true}
+      userId={user.id}
+      currentUserId={user.id}
+    />
+  );
 }

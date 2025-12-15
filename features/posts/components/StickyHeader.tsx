@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut } from "lucide-react";
+import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut, Bell } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,8 @@ import {
 import { APP_NAME } from "@/constants";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { NotificationList } from "@/features/notifications/components/NotificationList";
+import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 
 interface StickyHeaderProps {
   children?: React.ReactNode;
@@ -38,6 +40,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const searchParams = useSearchParams();
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const { unreadCount, markAllRead } = useNotifications();
 
   // トップレベルのページ
   const topLevelPaths = ["/", "/coordinate", "/my-page", "/login", "/signup"];
@@ -65,7 +69,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
         .from("profiles")
         .select("avatar_url")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Profile fetch error:", error);
@@ -150,7 +154,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   return (
     <header
-      className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-sm border-b"
+      className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm"
     >
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -192,6 +196,44 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
         <div className="flex items-center gap-2">
           {!isLoading && (
             <>
+              {/* 通知バッジ（認証済みユーザーのみ） */}
+              {currentUser && (
+                <DropdownMenu
+                  open={isNotificationOpen}
+                  onOpenChange={(open) => {
+                    setIsNotificationOpen(open);
+                    // ドロップダウンが開くタイミングで既読にする
+                    if (open) {
+                      markAllRead();
+                    }
+                  }}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="relative flex items-center justify-center p-2 h-auto"
+                      aria-label={`通知${unreadCount > 0 ? `（未読${unreadCount}件）` : ""}`}
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-80 max-h-[80vh] overflow-hidden flex flex-col p-0"
+                  >
+                    <div className="p-4 border-b">
+                      <h3 className="font-semibold">通知</h3>
+                    </div>
+                    <div className="overflow-y-auto flex-1 max-h-[60vh]">
+                      <NotificationList />
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               {currentUser ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

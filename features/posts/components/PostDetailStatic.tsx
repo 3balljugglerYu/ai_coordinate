@@ -17,6 +17,7 @@ import { DeletePostDialog } from "./DeletePostDialog";
 import { PostModal } from "./PostModal";
 import { getPostImageUrl } from "../lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { FollowButton } from "@/features/users/components/FollowButton";
 import type { Post } from "../types";
 
 // ImageFullscreenコンポーネントを動的インポート（SSR不要）
@@ -53,6 +54,7 @@ export function PostDetailStatic({
     post.user?.id?.slice(0, 8) ||
     "匿名ユーザー";
   const isOwner = currentUserId === post.user_id;
+  const followUserId = post.user?.id || post.user_id;
 
   const handleCopyPrompt = async () => {
     if (post.prompt) {
@@ -157,15 +159,8 @@ export function PostDetailStatic({
             </div>
 
             {/* フォローボタン（自分の投稿の場合は表示しない） */}
-            {!isOwner && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="text-xs shrink-0"
-              >
-                フォロー
-              </Button>
+            {!isOwner && followUserId && (
+              <FollowButton userId={followUserId} currentUserId={currentUserId} />
             )}
 
             {/* 3点リーダー（所有者の場合） */}
