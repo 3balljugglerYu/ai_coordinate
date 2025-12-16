@@ -27,8 +27,20 @@ export default function TokushohoPage() {
 					</CardHeader>
 					<CardContent>
 						<dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-							<div className="md:col-span-2">
-								<dt className="text-gray-500">販売事業者名／運営責任者／所在地／電話番号</dt>
+							<div>
+								<dt className="text-gray-500">法人名／屋号</dt>
+								<dd className="mt-1 text-gray-800">請求があった場合には遅滞なく開示いたします。</dd>
+							</div>
+							<div>
+								<dt className="text-gray-500">運営責任者</dt>
+								<dd className="mt-1 text-gray-800">請求があった場合には遅滞なく開示いたします。</dd>
+							</div>
+							<div>
+								<dt className="text-gray-500">所在地</dt>
+								<dd className="mt-1 text-gray-800">請求があった場合には遅滞なく開示いたします。</dd>
+							</div>
+							<div>
+								<dt className="text-gray-500">電話番号</dt>
 								<dd className="mt-1 text-gray-800">
 									請求があった場合には遅滞なく開示いたします。（お問い合わせはメールにてお願いいたします）
 								</dd>
@@ -61,10 +73,19 @@ export default function TokushohoPage() {
 						<dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
 							<div>
 								<dt className="text-gray-500">販売価格</dt>
-								<dd className="mt-1 text-gray-800">各商品・サービスページに税込価格で表示しています。</dd>
+								<dd className="mt-1 text-gray-800">
+									<Link href="/pricing" className="text-primary underline underline-offset-2">
+										料金ページ
+									</Link>
+									で税込価格を表示しています。
+								</dd>
 							</div>
 							<div>
 								<dt className="text-gray-500">商品代金以外の必要料金</dt>
+								<dd className="mt-1 text-gray-800">なし</dd>
+							</div>
+							<div>
+								<dt className="text-gray-500">追加手数料</dt>
 								<dd className="mt-1 text-gray-800">なし</dd>
 							</div>
 							<div>
@@ -73,7 +94,7 @@ export default function TokushohoPage() {
 							</div>
 							<div>
 								<dt className="text-gray-500">支払時期</dt>
-								<dd className="mt-1 text-gray-800">商品・サービス購入時に即時決済されます。</dd>
+								<dd className="mt-1 text-gray-800">クレジットカードは商品・サービス購入時に即時決済されます。</dd>
 							</div>
 							<div className="md:col-span-2">
 								<dt className="text-gray-500">商品の提供時期</dt>
@@ -91,9 +112,17 @@ export default function TokushohoPage() {
 						<CardDescription>デジタル商品の特性上のポリシーです。</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-gray-800">
-							デジタル商品の性質上、購入後の返金・キャンセルはできません。ただしサービスの不具合がある場合は個別に対応いたします。
-						</p>
+						<div className="space-y-3 text-sm text-gray-800">
+							<p>
+								デジタル商品の性質上、正常品については購入後の返金・キャンセル・交換はお受けしておりません。
+							</p>
+							<p>
+								不具合・障害など弊社責による問題がある場合は、購入後7日以内にメールにてご連絡ください。内容を確認のうえ、返金または再提供で対応いたします。
+							</p>
+							<p className="text-xs text-gray-600">
+								連絡先：<Link href="mailto:yuh.products@gmail.com" className="underline underline-offset-2">yuh.products@gmail.com</Link>
+							</p>
+						</div>
 					</CardContent>
 				</Card>
 
@@ -110,5 +139,3 @@ export default function TokushohoPage() {
 		</main>
 	);
 }
-
-

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut, Bell } from "lucide-react";
+import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut, Bell, Info } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -171,7 +171,9 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
           >
             {APP_NAME}
           </Link>
-          {/* PC画面でのナビゲーションリンク */}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* PC画面でのナビゲーションリンク（右寄せ） */}
           <nav className="hidden md:flex md:items-center md:gap-1">
             {navItems.map(({ path, label, icon: Icon }) => {
               const isActive = pathname === path;
@@ -192,8 +194,14 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
               );
             })}
           </nav>
-        </div>
-        <div className="flex items-center gap-2">
+          {/* PCのみ表示するサービス紹介リンク（マイページ右側に配置） */}
+          <Link
+            href="/about"
+            className="hidden md:inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          >
+            <Info className="h-4 w-4" />
+            サービス紹介
+          </Link>
           {!isLoading && (
             <>
               {/* 通知バッジ（認証済みユーザーのみ） */}

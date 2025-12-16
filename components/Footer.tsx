@@ -2,6 +2,8 @@ import Link from "next/link";
 
 export function Footer() {
 	const links = [
+		{ href: "/about", label: "サービス紹介" },
+		{ href: "/pricing", label: "料金" },
 		{ href: "/terms", label: "利用規約" },
 		{ href: "/privacy", label: "プライバシーポリシー" },
 		{ href: "/tokushoho", label: "特定商取引法" },
@@ -43,6 +45,4 @@ export function Footer() {
 		</footer>
 	);
 }
-
-
 
