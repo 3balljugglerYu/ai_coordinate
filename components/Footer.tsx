@@ -6,7 +6,7 @@ export function Footer() {
 		{ href: "/pricing", label: "料金" },
 		{ href: "/terms", label: "利用規約" },
 		{ href: "/privacy", label: "プライバシーポリシー" },
-		{ href: "/tokushoho", label: "特定商取引法" },
+		{ href: "/tokushoho", label: "「商取引に関する開示」(特定商取引法に基づく表記)　" },
 		{ href: "/payment-services-act", label: "資金決済法に基づく表示" },
 	];
 
@@ -45,4 +45,3 @@ export function Footer() {
 		</footer>
 	);
 }
-

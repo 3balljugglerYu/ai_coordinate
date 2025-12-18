@@ -4,7 +4,7 @@ import { ShieldQuestion, FileText, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-	title: "特定商取引法に基づく表記",
+	title: "「商取引に関する開示」(特定商取引法に基づく表記)",
 	description: "AI Coordinate の特商法表記ページ",
 };
 
@@ -12,7 +12,7 @@ export default function TokushohoPage() {
 	return (
 		<main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
 			<div className="mb-6">
-				<h1 className="text-xl font-semibold md:text-2xl">特定商取引法に基づく表記</h1>
+				<h1 className="text-xl font-semibold md:text-2xl">商取引に関する開示（特定商取引法に基づく表記）</h1>
 				<p className="mt-2 text-sm text-gray-600">「AI Coordinate」に関する法定表示です。</p>
 			</div>
 
