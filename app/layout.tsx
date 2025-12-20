@@ -6,6 +6,7 @@ import { NavigationBar } from "@/components/NavigationBar";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/ui/toaster";
 import { StickyHeader } from "@/features/posts/components/StickyHeader";
+import { AppSidebar } from "@/components/AppSidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,11 +49,16 @@ export default function RootLayout({
         <Suspense fallback={<div className="h-16" />}>
           <StickyHeader />
         </Suspense>
+        <Suspense fallback={null}>
+          <AppSidebar />
+        </Suspense>
+        <div className="main-content">
+          {children}
+          <Footer />
+        </div>
         <Suspense fallback={<div className="h-16" />}>
           <NavigationBar />
         </Suspense>
-        {children}
-        <Footer />
         <Toaster />
       </body>
     </html>

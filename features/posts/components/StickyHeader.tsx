@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut, Bell, Info } from "lucide-react";
+import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut, Bell, Info, Coins } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,9 +42,25 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const { unreadCount, markAllRead } = useNotifications();
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  const isSidebarPage = true; // 全てのページでサイドバーが表示されるため固定値に変更
 
   // トップレベルのページ
-  const topLevelPaths = ["/", "/coordinate", "/my-page", "/login", "/signup"];
+  const topLevelPaths = [
+    "/",
+    "/coordinate",
+    "/my-page",
+    "/my-page/credits",
+    "/login",
+    "/signup",
+    "/about",
+    "/pricing",
+    "/terms",
+    "/privacy",
+    "/tokushoho",
+    "/payment-services-act",
+  ];
   const shouldShowBackButton =
     showBackButton !== undefined
       ? showBackButton
@@ -58,7 +74,21 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
+    { path: "/my-page/credits", label: "クレジット", icon: Coins },
   ];
+
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      const height = headerRef.current?.offsetHeight ?? 0;
+      document.documentElement.style.setProperty("--app-header-height", `${height}px`);
+    };
+
+    updateHeaderHeight();
+    window.addEventListener("resize", updateHeaderHeight);
+    return () => {
+      window.removeEventListener("resize", updateHeaderHeight);
+    };
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -128,8 +158,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   }, []);
 
   const handleNavigation = (path: string) => {
-    // コーディネートとマイページは認証必須
-    if ((path === "/coordinate" || path === "/my-page") && !currentUser) {
+    // コーディネートとマイページ関連は認証必須
+    if ((path === "/coordinate" || path.startsWith("/my-page")) && !currentUser) {
       router.push(`/login?next=${path}`);
       return;
     }
@@ -154,9 +184,10 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   return (
     <header
+      ref={headerRef}
       className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm"
     >
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="w-full px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           {shouldShowBackButton && (
             <Link href={backUrl}>
@@ -174,7 +205,12 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
         </div>
         <div className="flex items-center gap-2">
           {/* PC画面でのナビゲーションリンク（右寄せ） */}
-          <nav className="hidden md:flex md:items-center md:gap-1">
+          <nav
+            className={cn(
+              "hidden md:flex md:items-center md:gap-1",
+              isSidebarPage ? "lg:hidden" : "lg:flex"
+            )}
+          >
             {navItems.map(({ path, label, icon: Icon }) => {
               const isActive = pathname === path;
               return (
@@ -197,7 +233,10 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
           {/* PCのみ表示するサービス紹介リンク（マイページ右側に配置） */}
           <Link
             href="/about"
-            className="hidden md:inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            className={cn(
+              "hidden md:inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors",
+              isSidebarPage ? "lg:hidden" : "lg:inline-flex"
+            )}
           >
             <Info className="h-4 w-4" />
             サービス紹介

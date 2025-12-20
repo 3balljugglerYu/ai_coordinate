@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut, Coins } from "lucide-react";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "./ui/button";
@@ -74,8 +74,8 @@ export function NavigationBar() {
 
     // startTransitionでナビゲーションを非ブロッキングにする
     startTransition(() => {
-      // コーディネートとマイページは認証必須
-      if ((path === "/coordinate" || path === "/my-page") && !user) {
+      // コーディネートとマイページ関連は認証必須
+      if ((path === "/coordinate" || path.startsWith("/my-page")) && !user) {
         router.push(`/login?next=${path}`);
         return;
       }
@@ -92,6 +92,7 @@ export function NavigationBar() {
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
+    { path: "/my-page/credits", label: "クレジット", icon: Coins },
   ];
 
   return (

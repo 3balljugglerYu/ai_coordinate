@@ -27,6 +27,8 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --app-sidebar-width: 0px;
+    --app-header-height: 64px;
   }
 
   .dark {
@@ -125,6 +127,13 @@
     textarea,
     select {
       font-size: inherit; /* PCではデフォルトサイズ */
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .main-content {
+      padding-left: var(--app-sidebar-width, 0px);
+      transition: padding-left 200ms ease;
     }
   }
   
