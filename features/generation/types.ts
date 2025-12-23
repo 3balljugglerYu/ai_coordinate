@@ -17,6 +17,57 @@ export interface Generation {
 
 export type GenerationType = 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi';
 
+// データベース保存用のモデル名型（サイズ情報を含む）
+export type GeminiModel = 
+  | 'gemini-2.5-flash-image'
+  | 'gemini-3-pro-image-1k'
+  | 'gemini-3-pro-image-2k'
+  | 'gemini-3-pro-image-4k';
+
+// APIエンドポイント用のモデル名型
+export type GeminiApiModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
+
+/**
+ * データベース保存用のモデル名に正規化（APIエンドポイント名から変換）
+ */
+export function normalizeModelName(model: string): GeminiModel {
+  // APIエンドポイント名をデータベース保存値に変換
+  if (model === 'gemini-2.5-flash-image-preview' || model === 'gemini-2.5-flash-image') {
+    return 'gemini-2.5-flash-image';
+  }
+  // gemini-3-pro-image-preview や gemini-3-pro-image はデフォルトで2Kとして扱う（後方互換性）
+  if (model === 'gemini-3-pro-image-preview' || model === 'gemini-3-pro-image') {
+    return 'gemini-3-pro-image-2k';
+  }
+  // サイズ情報を含むモデル名はそのまま返す
+  if (model === 'gemini-3-pro-image-1k' || model === 'gemini-3-pro-image-2k' || model === 'gemini-3-pro-image-4k') {
+    return model as GeminiModel;
+  }
+  // デフォルトはStable版
+  return 'gemini-2.5-flash-image';
+}
+
+/**
+ * データベース保存値をAPIエンドポイント名に変換
+ */
+export function toApiModelName(model: GeminiModel): GeminiApiModel {
+  // gemini-3-pro-image-* の場合は全て gemini-3-pro-image-preview を使用
+  if (model.startsWith('gemini-3-pro-image-')) {
+    return 'gemini-3-pro-image-preview';
+  }
+  return 'gemini-2.5-flash-image';
+}
+
+/**
+ * モデル名から画像サイズを抽出（Gemini 3 Pro Image Preview用）
+ */
+export function extractImageSize(model: GeminiModel): "1K" | "2K" | "4K" | null {
+  if (model === 'gemini-3-pro-image-1k') return "1K";
+  if (model === 'gemini-3-pro-image-2k') return "2K";
+  if (model === 'gemini-3-pro-image-4k') return "4K";
+  return null; // gemini-2.5-flash-imageの場合
+}
+
 export interface GenerationRequest {
   prompt: string;
   sourceImage?: File;
@@ -24,6 +75,7 @@ export interface GenerationRequest {
   backgroundChange?: boolean;
   count?: number; // 1-4枚
   generationType?: GenerationType;
+  model?: GeminiModel;
 }
 
 export interface GenerationResponse {

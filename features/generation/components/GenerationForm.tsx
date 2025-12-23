@@ -7,13 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageUploader } from "./ImageUploader";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageUploadCard } from "./StockImageUploadCard";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/generation-service";
-import type { UploadedImage } from "../types";
+import { getCreditCost } from "../lib/model-config";
+import type { UploadedImage, GeminiModel } from "../types";
 import { useRouter } from "next/navigation";
 
 interface GenerationFormProps {
@@ -23,6 +25,7 @@ interface GenerationFormProps {
     sourceImageStockId?: string;
     backgroundChange: boolean;
     count: number;
+    model: GeminiModel;
   }) => void;
   isGenerating?: boolean;
 }
@@ -39,6 +42,7 @@ export function GenerationForm({
   const [prompt, setPrompt] = useState("");
   const [backgroundChange, setBackgroundChange] = useState(false);
   const [selectedCount, setSelectedCount] = useState(1);
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-2.5-flash-image');
   const router = useRouter();
   const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [stockLimit, setStockLimit] = useState<number | null>(null);
@@ -80,6 +84,7 @@ export function GenerationForm({
       sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
       backgroundChange,
       count: selectedCount,
+      model: selectedModel,
     });
   };
 
@@ -331,6 +336,36 @@ export function GenerationForm({
           </Label>
         </div>
 
+        {/* モデル選択 */}
+        <div>
+          <Label className="text-base font-medium mb-3 block">
+            生成モデルを選択
+          </Label>
+          <Select
+            value={selectedModel}
+            onValueChange={(value) => setSelectedModel(value as GeminiModel)}
+            disabled={isGenerating}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gemini-2.5-flash-image">
+                標準モデル（20クレジット/枚）
+              </SelectItem>
+              <SelectItem value="gemini-3-pro-image-1k">
+                高精度モデル_1K（50クレジット/枚）
+              </SelectItem>
+              <SelectItem value="gemini-3-pro-image-2k">
+                高精度モデル_2K（80クレジット/枚）
+              </SelectItem>
+              <SelectItem value="gemini-3-pro-image-4k">
+                高精度モデル_4K（100クレジット/枚）
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* 生成枚数選択 */}
         <div>
           <Label className="text-base font-medium">生成枚数を選択</Label>
@@ -349,7 +384,7 @@ export function GenerationForm({
             ))}
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            {selectedCount}枚の生成には {selectedCount * 10} クレジットが必要です
+            {selectedCount}枚の生成には {selectedCount * getCreditCost(selectedModel)} クレジットが必要です
           </p>
         </div>
 

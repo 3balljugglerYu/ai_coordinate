@@ -29,6 +29,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     sourceImageStockId?: string;
     backgroundChange: boolean;
     count: number;
+    model: import("../types").GeminiModel;
   }) => {
     setIsGenerating(true);
     setError(null);
@@ -46,6 +47,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         sourceImageStockId: data.sourceImageStockId,
         backgroundChange: data.backgroundChange,
         count: data.count,
+        model: data.model,
         userId,
         onProgress: (payload) => {
           // 1枚生成・保存されるごとに進捗カウントを更新

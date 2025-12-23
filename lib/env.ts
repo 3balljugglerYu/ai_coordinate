@@ -15,6 +15,9 @@ const envSchema = {
     process.env.NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY,
   NEXT_PUBLIC_NANOBANANA_API_KEY:
     process.env.NEXT_PUBLIC_NANOBANANA_API_KEY,
+  
+  // Google AI Studio (サーバー側のみ)
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 
   // Stripe
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
@@ -70,6 +73,7 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY || "",
     NEXT_PUBLIC_NANOBANANA_API_KEY:
       envSchema.NEXT_PUBLIC_NANOBANANA_API_KEY || "",
+    GEMINI_API_KEY: envSchema.GEMINI_API_KEY || "",
     SUPABASE_SERVICE_ROLE_KEY:
       envSchema.SUPABASE_SERVICE_ROLE_KEY || "",
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
