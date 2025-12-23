@@ -1,5 +1,6 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { deleteImageFromStorage } from "./storage";
+import type { GeminiModel } from "../types";
 
 /**
  * generated_imagesテーブルへのデータベース操作
@@ -24,6 +25,8 @@ export interface GeneratedImageRecord {
   source_image_stock_id?: string | null;
   // Phase 2で追加されたカラム（optional）
   aspect_ratio?: 'portrait' | 'landscape' | null;
+  // Phase 3で追加されたカラム（optional）
+  model?: GeminiModel | null;
 }
 
 /**

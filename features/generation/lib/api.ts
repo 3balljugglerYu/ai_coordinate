@@ -67,6 +67,7 @@ export async function generateSingleImage(
       backgroundChange: request.backgroundChange || false,
       count: 1, // 常に1枚
       generationType: request.generationType || 'coordinate',
+      model: request.model || 'gemini-2.5-flash-image',
     }),
   });
 
@@ -114,6 +115,7 @@ export async function generateImage(
       sourceImageStockId: request.sourceImageStockId,
       backgroundChange: request.backgroundChange,
       generationType: request.generationType,
+      model: request.model,
     });
 
     results.push(image);

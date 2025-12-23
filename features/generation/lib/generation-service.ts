@@ -2,7 +2,7 @@ import { generateSingleImage } from "./api";
 import { uploadImageToStorage } from "./storage";
 import { saveGeneratedImage } from "./database";
 import { consumeCredits, fetchCreditBalance } from "@/features/credits/lib/api";
-import { GENERATION_CREDIT_COST } from "@/features/credits/credit-packages";
+import { getCreditCost } from "./model-config";
 import { getImageAspectRatio } from "@/features/posts/lib/utils";
 import type { GenerationRequest, GeneratedImageData } from "../types";
 import type { GeneratedImageRecord } from "./database";
@@ -52,7 +52,9 @@ export async function generateAndSaveImages(
     !!userId && isSupabaseConfigured() && imageCount > 0;
 
   if (shouldConsumeCredits) {
-    const requiredCredits = imageCount * GENERATION_CREDIT_COST;
+    // モデルに応じたクレジット消費量を動的に計算
+    const creditCost = getCreditCost(generationRequest.model || 'gemini-2.5-flash-image');
+    const requiredCredits = imageCount * creditCost;
 
     try {
       const { balance } = await fetchCreditBalance();
@@ -85,6 +87,7 @@ export async function generateAndSaveImages(
         sourceImageStockId: generationRequest.sourceImageStockId,
         backgroundChange: generationRequest.backgroundChange,
         generationType: generationRequest.generationType,
+        model: generationRequest.model,
       });
 
       allImages.push(image);
@@ -111,6 +114,7 @@ export async function generateAndSaveImages(
       sourceImageStockId: generationRequest.sourceImageStockId,
       backgroundChange: generationRequest.backgroundChange,
       generationType: generationRequest.generationType,
+      model: generationRequest.model,
     });
 
     if (!generated.data) {
@@ -152,15 +156,18 @@ export async function generateAndSaveImages(
         ? { uploaded: true }
         : null,
       aspect_ratio: aspectRatio,
+      model: generationRequest.model || null,
     };
 
     const savedRecord = await saveGeneratedImage(recordToSave);
     allRecords.push(savedRecord);
 
     if (shouldConsumeCredits && savedRecord.id) {
+      // モデルに応じたクレジット消費量を動的に計算
+      const creditCost = getCreditCost(generationRequest.model || 'gemini-2.5-flash-image');
       await consumeCredits({
         generationId: savedRecord.id,
-        credits: GENERATION_CREDIT_COST,
+        credits: creditCost,
       });
     }
 
