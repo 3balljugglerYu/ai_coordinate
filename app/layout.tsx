@@ -43,7 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-16 md:pb-0`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-16 lg:pb-0`}
         suppressHydrationWarning
       >
         <Suspense fallback={<div className="h-16" />}>

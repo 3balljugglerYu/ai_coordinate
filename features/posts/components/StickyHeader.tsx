@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, Home, Sparkles, User as UserIcon, LogOut, Bell, Info, Coins } from "lucide-react";
+import { ArrowLeft, User, User as UserIcon, LogOut, Bell } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,6 @@ import {
   onAuthStateChange,
 } from "@/features/auth/lib/auth-client";
 import { APP_NAME } from "@/constants";
-import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { NotificationList } from "@/features/notifications/components/NotificationList";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
@@ -44,8 +43,6 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const { unreadCount, markAllRead } = useNotifications();
   const headerRef = useRef<HTMLElement | null>(null);
 
-  const isSidebarPage = true; // 全てのページでサイドバーが表示されるため固定値に変更
-
   // トップレベルのページ
   const topLevelPaths = [
     "/",
@@ -69,13 +66,6 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   // 遷移元を確認して戻る先を決定
   const fromParam = searchParams.get("from");
   const backUrl = fromParam === "my-page" ? "/my-page" : "/";
-
-  const navItems = [
-    { path: "/", label: "ホーム", icon: Home },
-    { path: "/coordinate", label: "コーディネート", icon: Sparkles },
-    { path: "/my-page", label: "マイページ", icon: UserIcon },
-    { path: "/my-page/credits", label: "クレジット", icon: Coins },
-  ];
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -157,20 +147,6 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     };
   }, []);
 
-  const handleNavigation = (path: string) => {
-    // コーディネートとマイページ関連は認証必須
-    if ((path === "/coordinate" || path.startsWith("/my-page")) && !currentUser) {
-      router.push(`/login?next=${path}`);
-      return;
-    }
-    // ホームページへの遷移時はリセットパラメータを追加
-    if (path === "/") {
-      router.push("/?reset=true");
-      return;
-    }
-    router.push(path);
-  };
-
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -204,43 +180,6 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          {/* PC画面でのナビゲーションリンク（右寄せ） */}
-          <nav
-            className={cn(
-              "hidden md:flex md:items-center md:gap-1",
-              isSidebarPage ? "lg:hidden" : "lg:flex"
-            )}
-          >
-            {navItems.map(({ path, label, icon: Icon }) => {
-              const isActive = pathname === path;
-              return (
-                <button
-                  key={path}
-                  onClick={() => handleNavigation(path)}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors rounded-md",
-                    isActive
-                      ? "text-primary bg-primary/10"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </nav>
-          {/* PCのみ表示するサービス紹介リンク（マイページ右側に配置） */}
-          <Link
-            href="/about"
-            className={cn(
-              "hidden md:inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors",
-              isSidebarPage ? "lg:hidden" : "lg:inline-flex"
-            )}
-          >
-            <Info className="h-4 w-4" />
-            サービス紹介
-          </Link>
           {!isLoading && (
             <>
               {/* 通知バッジ（認証済みユーザーのみ） */}
