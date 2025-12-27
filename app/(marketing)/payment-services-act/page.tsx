@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export const metadata: Metadata = {
 	title: "資金決済法に基づく表示",
-	description: "AI Coordinate の資金決済法に基づく表示",
+	description: "Persta.AI の資金決済法に基づく表示",
 };
 
 export default function PaymentServicesActPage() {
@@ -12,7 +12,7 @@ export default function PaymentServicesActPage() {
 		<main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
 			<div className="mb-6">
 				<h1 className="text-xl font-semibold md:text-2xl">資金決済法に基づく表示</h1>
-				<p className="mt-2 text-sm text-gray-600">「AI Coordinate」に関する資金決済法に基づく表示です。</p>
+				<p className="mt-2 text-sm text-gray-600">「Persta.AI」に関する資金決済法に基づく表示です。</p>
 			</div>
 
 			<div className="grid gap-6">
@@ -135,6 +135,7 @@ export default function PaymentServicesActPage() {
 		</main>
 	);
 }
+
 
 
 

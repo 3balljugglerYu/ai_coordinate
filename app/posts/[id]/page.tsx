@@ -27,14 +27,14 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   } catch (error) {
     // エラーが発生した場合は404用のメタデータを返す
     return {
-      title: "投稿が見つかりません | AI Coordinate",
+      title: "投稿が見つかりません | Persta.AI",
       description: "指定された投稿は見つかりませんでした。",
     };
   }
 
   if (!post) {
     return {
-      title: "投稿が見つかりません | AI Coordinate",
+      title: "投稿が見つかりません | Persta.AI",
       description: "指定された投稿は見つかりませんでした。",
     };
   }
@@ -42,8 +42,8 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const siteUrl = getSiteUrl();
   const postUrl = siteUrl ? `${siteUrl}/posts/${id}` : "";
   const imageUrl = getPostImageUrl(post);
-  const title = post.caption || "AI Coordinate - 投稿詳細";
-  const description = post.caption || "AI Coordinateで生成されたファッションコーディネート画像をシェア";
+  const title = post.caption || "Persta.AI - 投稿詳細";
+  const description = post.caption || "Persta.AIで生成されたファッションコーディネート画像をシェア";
 
   const metadata: Metadata = {
     title,
@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
       title,
       description,
       url: postUrl,
-      siteName: "AI Coordinate",
+      siteName: "Persta.AI",
       type: "article",
       ...(imageUrl && {
         images: [
@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
             url: imageUrl,
             width: 1200,
             height: 630,
-            alt: post.caption || "AI Coordinate 投稿画像",
+            alt: post.caption || "Persta.AI 投稿画像",
           },
         ],
       }),

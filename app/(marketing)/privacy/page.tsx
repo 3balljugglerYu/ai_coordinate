@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export const metadata: Metadata = {
 	title: "プライバシーポリシー",
-	description: "AI Coordinate のプライバシーポリシー",
+	description: "Persta.AI のプライバシーポリシー",
 };
 
 export default function PrivacyPage() {
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
 		<main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
 			<div className="mb-6">
 				<h1 className="text-xl font-semibold md:text-2xl">プライバシーポリシー</h1>
-				<p className="mt-2 text-sm text-gray-600">「AI Coordinate」のプライバシーポリシーです。</p>
+				<p className="mt-2 text-sm text-gray-600">「Persta.AI」のプライバシーポリシーです。</p>
 			</div>
 
 			<div className="grid gap-6">
@@ -158,6 +158,7 @@ export default function PrivacyPage() {
 		</main>
 	);
 }
+
 
 
 

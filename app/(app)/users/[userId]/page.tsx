@@ -24,21 +24,21 @@ export async function generateMetadata({
   } catch (error) {
     // エラーが発生した場合は404用のメタデータを返す
     return {
-      title: "ユーザーが見つかりません | AI Coordinate",
+      title: "ユーザーが見つかりません | Persta.AI",
       description: "指定されたユーザーは見つかりませんでした。",
     };
   }
 
   if (!profile || !profile.nickname) {
     return {
-      title: "ユーザーが見つかりません | AI Coordinate",
+      title: "ユーザーが見つかりません | Persta.AI",
       description: "指定されたユーザーは見つかりませんでした。",
     };
   }
 
   const siteUrl = getSiteUrl();
   const userUrl = siteUrl ? `${siteUrl}/users/${userId}` : "";
-  const title = `${profile.nickname} | AI Coordinate`;
+  const title = `${profile.nickname} | Persta.AI`;
   const description = profile.bio || `${profile.nickname}のプロフィールページ`;
 
   // プロフィール画像のURLを取得（絶対URLに変換）
@@ -59,7 +59,7 @@ export async function generateMetadata({
       title,
       description,
       url: userUrl,
-      siteName: "AI Coordinate",
+      siteName: "Persta.AI",
       type: "profile",
       ...(avatarUrl && {
         images: [

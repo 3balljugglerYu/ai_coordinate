@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export const metadata: Metadata = {
 	title: "「商取引に関する開示」(特定商取引法に基づく表記)",
-	description: "AI Coordinate の特商法表記ページ",
+	description: "Persta.AI の特商法表記ページ",
 };
 
 export default function TokushohoPage() {
@@ -13,7 +13,7 @@ export default function TokushohoPage() {
 		<main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
 			<div className="mb-6">
 				<h1 className="text-xl font-semibold md:text-2xl">商取引に関する開示（特定商取引法に基づく表記）</h1>
-				<p className="mt-2 text-sm text-gray-600">「AI Coordinate」に関する法定表示です。</p>
+				<p className="mt-2 text-sm text-gray-600">「Persta.AI」に関する法定表示です。</p>
 			</div>
 
 			<div className="grid gap-6">
@@ -132,7 +132,7 @@ export default function TokushohoPage() {
 						<CardDescription>当サービスの名称です。</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-gray-800">AI Coordinate</p>
+						<p className="text-sm text-gray-800">Persta.AI</p>
 					</CardContent>
 				</Card>
 			</div>

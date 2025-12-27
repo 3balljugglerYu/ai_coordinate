@@ -2,7 +2,7 @@
  * アプリケーション定数
  */
 
-export const APP_NAME = "AI Coordinate";
+export const APP_NAME = "Persta.AI";
 
 export const ROUTES = {
   HOME: "/",

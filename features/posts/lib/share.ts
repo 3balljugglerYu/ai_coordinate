@@ -58,7 +58,7 @@ export async function sharePost(
 
   // URLとテキストを含めてシェア（画像なし、または画像のみのシェアが失敗した場合）
   const shareData: ShareData = {
-    title: "AI Coordinate",
+    title: "Persta.AI",
     text: text || "",
     url: url,
   };

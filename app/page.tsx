@@ -6,18 +6,18 @@ import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import { getSiteUrl } from "@/lib/env";
 
 export const metadata: Metadata = {
-  title: "AI Coordinate - AIで生成されたファッションコーディネートをシェア",
-  description: "AI Coordinateは、AIで生成されたファッションコーディネート画像をシェアできるプラットフォームです。みんなのコーディネートを見て、インスピレーションを得ましょう。",
+  title: "Persta.AI - AIで生成されたファッションコーディネートをシェア",
+  description: "Persta.AIは、AIで生成されたファッションコーディネート画像をシェアできるプラットフォームです。みんなのコーディネートを見て、インスピレーションを得ましょう。",
   openGraph: {
-    title: "AI Coordinate",
+    title: "Persta.AI",
     description: "AIで生成されたファッションコーディネートをシェア",
     url: getSiteUrl() || undefined,
-    siteName: "AI Coordinate",
+    siteName: "Persta.AI",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Coordinate",
+    title: "Persta.AI",
     description: "AIで生成されたファッションコーディネートをシェア",
   },
 };

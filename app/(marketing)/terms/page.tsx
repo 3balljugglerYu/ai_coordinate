@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export const metadata: Metadata = {
 	title: "利用規約",
-	description: "AI Coordinate の利用規約",
+	description: "Persta.AI の利用規約",
 };
 
 export default function TermsPage() {
@@ -12,7 +12,7 @@ export default function TermsPage() {
 		<main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
 			<div className="mb-6">
 				<h1 className="text-xl font-semibold md:text-2xl">利用規約</h1>
-				<p className="mt-2 text-sm text-gray-600">「AI Coordinate」の利用規約です。</p>
+				<p className="mt-2 text-sm text-gray-600">「Persta.AI」の利用規約です。</p>
 			</div>
 
 			<div className="grid gap-6">
@@ -26,7 +26,7 @@ export default function TermsPage() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-sm text-gray-800">
-							本規約は、AI Coordinate（以下「当サービス」）の利用条件を定めるものです。登録ユーザーの皆さま（以下「ユーザー」）には、本規約に従って、当サービスをご利用いただきます。
+							本規約は、Persta.AI（以下「当サービス」）の利用条件を定めるものです。登録ユーザーの皆さま（以下「ユーザー」）には、本規約に従って、当サービスをご利用いただきます。
 						</p>
 					</CardContent>
 				</Card>
@@ -149,6 +149,7 @@ export default function TermsPage() {
 		</main>
 	);
 }
+
 
 
 

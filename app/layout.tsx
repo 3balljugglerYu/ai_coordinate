@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Coordinate",
+  title: "Persta.AI",
   description: "AI-powered image generation platform",
 };
 

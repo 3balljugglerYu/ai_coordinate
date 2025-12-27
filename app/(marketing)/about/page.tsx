@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export const metadata: Metadata = {
   title: "サービス紹介",
-  description: "AI Coordinate のサービス概要と提供内容",
+  description: "Persta.AI のサービス概要と提供内容",
 };
 
 export default function AboutPage() {
@@ -13,7 +13,7 @@ export default function AboutPage() {
     <main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
       <div className="mb-6">
         <h1 className="text-xl font-semibold md:text-2xl">サービス紹介</h1>
-        <p className="mt-2 text-sm text-gray-600">AI Coordinate の提供内容とご利用条件についてご案内します。</p>
+        <p className="mt-2 text-sm text-gray-600">Persta.AI の提供内容とご利用条件についてご案内します。</p>
       </div>
 
       <div className="grid gap-6">

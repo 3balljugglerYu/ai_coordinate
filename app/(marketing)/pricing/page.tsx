@@ -6,7 +6,7 @@ import { CREDIT_PACKAGES, GENERATION_CREDIT_COST } from "@/features/credits/cred
 
 export const metadata: Metadata = {
   title: "料金",
-  description: "AI Coordinate の料金と支払い条件",
+  description: "Persta.AI の料金と支払い条件",
 };
 
 export default function PricingPage() {
