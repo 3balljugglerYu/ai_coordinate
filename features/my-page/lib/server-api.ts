@@ -123,15 +123,26 @@ export const getUserStatsServer = cache(async (userId: string): Promise<UserStat
       0
     ) || 0;
 
-  // Phase 5で実装予定: フォロー数・フォロワー数
+  // フォロー数・フォロワー数を1回のRPCコールで取得
+  const { data: followCounts, error: followCountsError } = await supabase
+    .rpc("get_follow_counts", { p_user_id: userId })
+    .single<{ following_count: number; follower_count: number }>();
+
+  const followingCount = followCounts?.following_count ?? 0;
+  const followerCount = followCounts?.follower_count ?? 0;
+
+  if (followCountsError) {
+    console.error("Follow counts fetch error:", followCountsError);
+    // エラーが発生した場合は0を返す（既にデフォルト値で設定済み）
+  }
 
   return {
     generatedCount: generatedCount || 0,
     postedCount: postedCount || 0,
     likeCount: likeCount || 0,
     viewCount: viewCount,
-    followerCount: 0, // Phase 5で実装予定
-    followingCount: 0, // Phase 5で実装予定
+    followerCount: followerCount,
+    followingCount: followingCount,
   };
 });
 
