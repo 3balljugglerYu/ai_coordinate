@@ -22,6 +22,101 @@ import {
 export type LikeRange = "all" | "day" | "week" | "month";
 
 /**
+ * プロフィール情報を一括取得するヘルパー関数
+ */
+async function getProfileMap(
+  userIds: string[]
+): Promise<Record<string, { nickname: string | null; avatar_url: string | null }>> {
+  const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> = {};
+  
+  if (userIds.length === 0) {
+    return profileMap;
+  }
+
+  const supabase = await createClient();
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("user_id,nickname,avatar_url")
+    .in("user_id", userIds);
+
+  if (profilesError) {
+    console.error("Profile fetch error:", profilesError);
+    return profileMap;
+  }
+
+  if (profiles) {
+    for (const profile of profiles) {
+      profileMap[profile.user_id] = {
+        nickname: profile.nickname,
+        avatar_url: profile.avatar_url,
+      };
+    }
+  }
+
+  return profileMap;
+}
+
+/**
+ * 投稿データにユーザー情報・いいね数・コメント数を付与するヘルパー関数
+ * @param postsData 投稿データの配列
+ * @param rangeLikeCounts 期間別いいね数（オプショナル、daily/week/monthの場合のみ）
+ * @returns エンリッチされた投稿データの配列
+ */
+async function enrichPosts(
+  postsData: GeneratedImageRecord[],
+  rangeLikeCounts?: Record<string, number>
+): Promise<Array<Post & { range_like_count?: number }>> {
+  if (!postsData || postsData.length === 0) {
+    return [];
+  }
+
+  // 投稿IDを抽出（idが存在するもののみ）
+  const postIds = postsData
+    .map((post) => post.id)
+    .filter((id): id is string => Boolean(id));
+
+  // ユーザーIDをユニークに抽出
+  const userIds = Array.from(
+    new Set(
+      postsData
+        .map((post) => post.user_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  // プロフィール情報を一括取得
+  const profileMap = await getProfileMap(userIds);
+
+  // いいね数・コメント数を一括取得（バッチ取得）
+  const [likeCounts, commentCounts] = await Promise.all([
+    getLikeCountsBatch(postIds),
+    getCommentCountsBatch(postIds),
+  ]);
+
+  // 投稿データにユーザー情報・いいね数・コメント数を結合
+  return postsData.map((post) => {
+    const profile = post.user_id ? profileMap[post.user_id] : undefined;
+    const postId = post.id || "";
+
+    return {
+      ...post,
+      user: post.user_id
+        ? {
+            id: post.user_id,
+            email: undefined, // Phase 5で実装予定
+            nickname: profile?.nickname ?? null,
+            avatar_url: profile?.avatar_url ?? null,
+          }
+        : null,
+      like_count: likeCounts[postId] || 0,
+      comment_count: commentCounts[postId] || 0,
+      view_count: post.view_count || 0,
+      range_like_count: rangeLikeCounts ? rangeLikeCounts[postId] || 0 : undefined,
+    };
+  });
+}
+
+/**
  * 投稿済み画像一覧を取得（サーバーサイド専用）
  */
 async function getPostedImages(
@@ -85,86 +180,23 @@ export const getPosts = cache(async (
     const followedUserIds = follows.map((f) => f.followee_id);
 
     // フォローしているユーザーが投稿した画像のみを取得
+    // データベース側でページネーションを適用（posted_atでソートするだけなので効率的）
     const { data: postsData, error: postsError } = await supabase
       .from("generated_images")
       .select("*")
       .eq("is_posted", true)
       .in("user_id", followedUserIds)
       .order("posted_at", { ascending: false })
-      .limit(1000);
+      .range(offset, offset + limit - 1);
 
     if (postsError) {
       console.error("Database query error:", postsError);
       throw new Error(`投稿画像の取得に失敗しました: ${postsError.message}`);
     }
 
-    if (!postsData || postsData.length === 0) {
-      return [];
-    }
-
-    // 以降の処理は既存ロジックと同じ
-    const postIds = postsData.map((post) => post.id);
-
-    // ユーザーIDをユニークに抽出
-    const userIds = Array.from(
-      new Set(
-        postsData
-          .map((post) => post.user_id)
-          .filter((id): id is string => Boolean(id))
-      )
-    );
-
-    // プロフィール情報を一括取得（JOINできないため別クエリで取得）
-    const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> =
-      {};
-    if (userIds.length > 0) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("user_id,nickname,avatar_url")
-        .in("user_id", userIds);
-
-      if (profilesError) {
-        console.error("Profile fetch error:", profilesError);
-      } else if (profiles) {
-        for (const profile of profiles) {
-          profileMap[profile.user_id] = {
-            nickname: profile.nickname,
-            avatar_url: profile.avatar_url,
-          };
-        }
-      }
-    }
-
-    // いいね数・コメント数を一括取得（バッチ取得）
-    const [likeCounts, commentCounts] = await Promise.all([
-      getLikeCountsBatch(postIds),
-      getCommentCountsBatch(postIds),
-    ]);
-
-    // 投稿データにユーザー情報・いいね数・コメント数を結合
-    const postsWithCounts = postsData.map((post) => {
-      const profile = post.user_id ? profileMap[post.user_id] : undefined;
-
-      return {
-        ...post,
-        user: post.user_id
-          ? {
-              id: post.user_id,
-              email: undefined, // Phase 5で実装予定
-              nickname: profile?.nickname ?? null,
-              avatar_url: profile?.avatar_url ?? null,
-            }
-          : null,
-        like_count: likeCounts[post.id] || 0,
-        comment_count: commentCounts[post.id] || 0,
-        view_count: post.view_count || 0,
-      };
-    });
-
-    // ページネーション適用
-    const paginatedPosts = postsWithCounts.slice(offset, offset + limit);
-
-    return paginatedPosts;
+    // 投稿データにユーザー情報・いいね数・コメント数を付与
+    // データベース側で既にページネーション済みなので、そのまま返す
+    return await enrichPosts(postsData);
   }
 
   // 投稿一覧を取得するクエリを構築
@@ -202,7 +234,15 @@ export const getPosts = cache(async (
   }
 
   // 新着順で取得（期間別ソートの場合は、その期間内で新着順）
-  postsQuery = postsQuery.order("posted_at", { ascending: false }).limit(1000);
+  postsQuery = postsQuery.order("posted_at", { ascending: false });
+  
+  // 新着タブの場合はデータベース側でページネーションを適用
+  // daily/week/monthの場合は期間別いいね数でソートする必要があるため、limit(1000)で取得
+  if (sort === "newest") {
+    postsQuery = postsQuery.range(offset, offset + limit - 1);
+  } else {
+    postsQuery = postsQuery.limit(1000);
+  }
 
   const { data: postsData, error: postsError } = await postsQuery;
 
@@ -215,48 +255,9 @@ export const getPosts = cache(async (
     return [];
   }
 
-  // 投稿IDのリストを取得
-  const postIds = postsData.map((post) => post.id);
-
-  // ユーザーIDをユニークに抽出
-  const userIds = Array.from(
-    new Set(
-      postsData
-        .map((post) => post.user_id)
-        .filter((id): id is string => Boolean(id))
-    )
-  );
-
-  // プロフィール情報を一括取得（JOINできないため別クエリで取得）
-  const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> =
-    {};
-  if (userIds.length > 0) {
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("user_id,nickname,avatar_url")
-      .in("user_id", userIds);
-
-    if (profilesError) {
-      console.error("Profile fetch error:", profilesError);
-    } else if (profiles) {
-      for (const profile of profiles) {
-        profileMap[profile.user_id] = {
-          nickname: profile.nickname,
-          avatar_url: profile.avatar_url,
-        };
-      }
-    }
-  }
-
-  // いいね数・コメント数を一括取得（バッチ取得）
-  const [likeCounts, commentCounts] = await Promise.all([
-    getLikeCountsBatch(postIds),
-    getCommentCountsBatch(postIds),
-  ]);
-
   // 期間別のいいね数を取得（daily/week/monthの場合）
   // N+1問題を解消するため、バッチ処理で一括取得
-  let rangeLikeCounts: Record<string, number> = {};
+  let rangeLikeCounts: Record<string, number> | undefined = undefined;
   if (sort !== "newest") {
     // sort型をLikeRange型にマッピング
     const rangeMap: Record<"daily" | "week" | "month", LikeRange> = {
@@ -266,34 +267,24 @@ export const getPosts = cache(async (
     };
     const likeRange = rangeMap[sort as "daily" | "week" | "month"];
     
+    // 投稿IDのリストを取得
+    const postIds = postsData.map((post) => post.id);
+    
     // バッチ処理で一括取得（N+1問題の解消）
     rangeLikeCounts = await getLikeCountsByRangeBatch(postIds, likeRange);
   }
 
-  // 投稿データにユーザー情報・いいね数・コメント数を結合
-  let postsWithCounts = postsData.map((post) => {
-    const profile = post.user_id ? profileMap[post.user_id] : undefined;
-
-    return {
-      ...post,
-      user: post.user_id
-        ? {
-            id: post.user_id,
-            email: undefined, // Phase 5で実装予定
-            nickname: profile?.nickname ?? null,
-            avatar_url: profile?.avatar_url ?? null,
-          }
-        : null,
-      like_count: likeCounts[post.id] || 0,
-      comment_count: commentCounts[post.id] || 0,
-      view_count: post.view_count || 0,
-      range_like_count: sort !== "newest" ? rangeLikeCounts[post.id] || 0 : 0,
-    };
-  });
+  // 投稿データにユーザー情報・いいね数・コメント数を付与
+  let postsWithCounts = await enrichPosts(postsData, rangeLikeCounts);
 
   // ソート条件に応じてソート
   if (sort === "newest") {
-    // 新着順は既にソート済み
+    // 新着順は既にソート済み、データベース側でページネーション済み
+    // そのまま返す（range_like_countを除外）
+    return postsWithCounts.map((post) => {
+      const { range_like_count, ...postWithoutRangeLikeCount } = post;
+      return postWithoutRangeLikeCount;
+    });
   } else {
     // daily/week/monthの場合は、期間別いいね数でソート
     // いいね数0の投稿を除外
@@ -307,17 +298,20 @@ export const getPosts = cache(async (
         return bCount - aCount; // 降順
       }
       // いいね数が同じ場合は、投稿日時でソート（降順）
-      return new Date(b.posted_at || b.created_at).getTime() - new Date(a.posted_at || a.created_at).getTime();
+      const aPostedAt = a.posted_at || a.created_at || "";
+      const bPostedAt = b.posted_at || b.created_at || "";
+      return new Date(bPostedAt).getTime() - new Date(aPostedAt).getTime();
+    });
+    
+    // ページネーション適用（サーバー側でソート後）
+    const paginatedPosts = postsWithCounts.slice(offset, offset + limit);
+    
+    // range_like_countを除外して返す
+    return paginatedPosts.map((post) => {
+      const { range_like_count, ...postWithoutRangeLikeCount } = post;
+      return postWithoutRangeLikeCount;
     });
   }
-
-  // ページネーション適用
-  const paginatedPosts = postsWithCounts.slice(offset, offset + limit);
-
-  return paginatedPosts.map((post) => ({
-    ...post,
-    range_like_count: undefined, // レスポンスから除外
-  }));
 });
 
 /**
