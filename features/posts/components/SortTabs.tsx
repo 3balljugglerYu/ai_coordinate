@@ -2,16 +2,18 @@
 
 import { cn } from "@/lib/utils";
 
-export type SortType = "newest" | "daily" | "week" | "month";
+export type SortType = "newest" | "following" | "daily" | "week" | "month";
 
 interface SortTabsProps {
   value: SortType;
   onChange: (value: SortType) => void;
+  currentUserId?: string | null;
 }
 
-export function SortTabs({ value, onChange }: SortTabsProps) {
+export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
   const tabs: { value: SortType; label: string; disabled?: boolean }[] = [
     { value: "newest", label: "新着" },
+    { value: "following", label: "フォロー" },
     { value: "daily", label: "Daily" },
     { value: "week", label: "Weekly" },
     { value: "month", label: "Monthly" },
