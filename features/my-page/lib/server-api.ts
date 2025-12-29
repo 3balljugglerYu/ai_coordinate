@@ -126,7 +126,7 @@ export const getUserStatsServer = cache(async (userId: string): Promise<UserStat
   // フォロー数・フォロワー数を1回のRPCコールで取得
   const { data: followCounts, error: followCountsError } = await supabase
     .rpc("get_follow_counts", { p_user_id: userId })
-    .single();
+    .single<{ following_count: number; follower_count: number }>();
 
   const followingCount = followCounts?.following_count ?? 0;
   const followerCount = followCounts?.follower_count ?? 0;
