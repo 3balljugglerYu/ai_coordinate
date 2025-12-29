@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const validSorts = ["newest", "daily", "week", "month"];
-    const sortType = validSorts.includes(sort) ? (sort as "newest" | "daily" | "week" | "month") : "newest";
+    const validSorts = ["newest", "following", "daily", "week", "month"];
+    const sortType = validSorts.includes(sort) ? (sort as "newest" | "following" | "daily" | "week" | "month") : "newest";
     
     const posts = await getPosts(limit, offset, sortType);
 

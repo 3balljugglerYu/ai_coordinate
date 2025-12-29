@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/auth";
 import type { Post } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getImageAspectRatio } from "./utils";
@@ -47,13 +48,124 @@ async function getPostedImages(
 /**
  * 投稿一覧を取得（サーバーサイド）
  * SQL JOIN/サブクエリでいいね数・コメント数を一括取得（N+1問題を回避）
+ * React.cache()でラップして、同一リクエスト内での重複取得を防止
  */
-export async function getPosts(
+export const getPosts = cache(async (
   limit = 20,
   offset = 0,
-  sort: "newest" | "daily" | "week" | "month" = "newest"
-): Promise<Post[]> {
+  sort: "newest" | "following" | "daily" | "week" | "month" = "newest"
+): Promise<Post[]> => {
   const supabase = await createClient();
+
+  // フォロータブの場合の処理
+  if (sort === "following") {
+    const user = await getUser();
+    
+    // 未認証ユーザーの場合は空配列を返す
+    if (!user) {
+      return [];
+    }
+
+    // フォローしているユーザーIDのリストを取得
+    const { data: follows, error: followsError } = await supabase
+      .from("follows")
+      .select("followee_id")
+      .eq("follower_id", user.id);
+
+    if (followsError) {
+      console.error("Follows fetch error:", followsError);
+      return [];
+    }
+
+    // フォローしているユーザーが0人の場合は空配列を返す
+    if (!follows || follows.length === 0) {
+      return [];
+    }
+
+    const followedUserIds = follows.map((f) => f.followee_id);
+
+    // フォローしているユーザーが投稿した画像のみを取得
+    const { data: postsData, error: postsError } = await supabase
+      .from("generated_images")
+      .select("*")
+      .eq("is_posted", true)
+      .in("user_id", followedUserIds)
+      .order("posted_at", { ascending: false })
+      .limit(1000);
+
+    if (postsError) {
+      console.error("Database query error:", postsError);
+      throw new Error(`投稿画像の取得に失敗しました: ${postsError.message}`);
+    }
+
+    if (!postsData || postsData.length === 0) {
+      return [];
+    }
+
+    // 以降の処理は既存ロジックと同じ
+    const postIds = postsData.map((post) => post.id);
+
+    // ユーザーIDをユニークに抽出
+    const userIds = Array.from(
+      new Set(
+        postsData
+          .map((post) => post.user_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    // プロフィール情報を一括取得（JOINできないため別クエリで取得）
+    const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> =
+      {};
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id,nickname,avatar_url")
+        .in("user_id", userIds);
+
+      if (profilesError) {
+        console.error("Profile fetch error:", profilesError);
+      } else if (profiles) {
+        for (const profile of profiles) {
+          profileMap[profile.user_id] = {
+            nickname: profile.nickname,
+            avatar_url: profile.avatar_url,
+          };
+        }
+      }
+    }
+
+    // いいね数・コメント数を一括取得（バッチ取得）
+    const [likeCounts, commentCounts] = await Promise.all([
+      getLikeCountsBatch(postIds),
+      getCommentCountsBatch(postIds),
+    ]);
+
+    // 投稿データにユーザー情報・いいね数・コメント数を結合
+    const postsWithCounts = postsData.map((post) => {
+      const profile = post.user_id ? profileMap[post.user_id] : undefined;
+
+      return {
+        ...post,
+        user: post.user_id
+          ? {
+              id: post.user_id,
+              email: undefined, // Phase 5で実装予定
+              nickname: profile?.nickname ?? null,
+              avatar_url: profile?.avatar_url ?? null,
+            }
+          : null,
+        like_count: likeCounts[post.id] || 0,
+        comment_count: commentCounts[post.id] || 0,
+        view_count: post.view_count || 0,
+      };
+    });
+
+    // ページネーション適用
+    const paginatedPosts = postsWithCounts.slice(offset, offset + limit);
+
+    return paginatedPosts;
+  }
 
   // 投稿一覧を取得するクエリを構築
   let postsQuery = supabase
@@ -206,7 +318,7 @@ export async function getPosts(
     ...post,
     range_like_count: undefined, // レスポンスから除外
   }));
-}
+});
 
 /**
  * 投稿詳細を取得（サーバーサイド）

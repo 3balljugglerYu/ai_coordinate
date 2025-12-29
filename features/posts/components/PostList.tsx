@@ -7,6 +7,8 @@ import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
 import { SortTabs, type SortType } from "./SortTabs";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
 import type { Post } from "../types";
 
 interface PostListProps {
@@ -24,6 +26,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const prevPathnameRef = useRef<string | null>(null);
+  const { toast } = useToast();
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "200px",
@@ -58,6 +61,39 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     }
     prevPathnameRef.current = pathname;
   }, [pathname, searchParams.toString(), router]);
+
+  // URLパラメータでsort=followingが指定されている場合、未認証ユーザーは自動的にsort=newestにリセット
+  useEffect(() => {
+    const sortParam = searchParams.get("sort");
+    if (pathname === "/" && sortParam === "following" && !currentUserId) {
+      setSortType("newest");
+      router.replace("/", { scroll: false });
+    }
+  }, [pathname, searchParams, currentUserId, router]);
+
+  // ソートタイプ変更時の処理（未認証ユーザーが「フォロー」タブを選択した場合の処理）
+  const handleSortChange = useCallback((newSortType: SortType) => {
+    if (newSortType === "following" && !currentUserId) {
+      // 未認証ユーザーが「フォロー」タブをクリックした場合、Toast通知を表示
+      toast({
+        title: "ログインが必要です",
+        description: "フォローしているユーザーの投稿を見るには、ログインしてください。",
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              router.push("/login?redirect=/");
+            }}
+          >
+            ログイン
+          </Button>
+        ),
+      });
+      return;
+    }
+    setSortType(newSortType);
+  }, [currentUserId, toast, router]);
 
   const loadPosts = useCallback(async (newOffset: number, reset: boolean = false) => {
     setIsLoading(true);
@@ -103,7 +139,9 @@ export function PostList({ initialPosts = [] }: PostListProps) {
 
   // 期間別ソートの場合のメッセージ
   const getEmptyMessage = () => {
-    if (sortType === "daily") {
+    if (sortType === "following") {
+      return "フォローしているユーザーの投稿がありません";
+    } else if (sortType === "daily") {
       return "昨日は投稿がありませんでした";
     } else if (sortType === "week") {
       return "先週は投稿がありませんでした";
@@ -116,7 +154,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   return (
     <>
       <div className="mb-4">
-        <SortTabs value={sortType} onChange={setSortType} />
+        <SortTabs value={sortType} onChange={handleSortChange} currentUserId={currentUserId} />
       </div>
       {posts.length === 0 ? (
         // ローディング中はインジケータのみ表示
@@ -125,9 +163,9 @@ export function PostList({ initialPosts = [] }: PostListProps) {
             <div className="text-muted-foreground">読み込み中...</div>
           </div>
         ) : (
-          // ローディング完了後、期間別ソートの場合はメッセージを表示
+          // ローディング完了後、期間別ソートまたはフォロータブの場合はメッセージを表示
           // 「新着」タブの場合は何も表示しない
-          sortType !== "newest" && (
+          (sortType !== "newest") && (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">{getEmptyMessage()}</p>
             </div>
