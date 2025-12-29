@@ -3,20 +3,6 @@
  */
 
 /**
- * 数値を短縮表示にフォーマット（K/M形式）
- * @deprecated この関数は非推奨です。代わりに `@/lib/utils` の `formatCountEnUS` を使用してください。
- * @param num フォーマットする数値
- * @returns フォーマットされた文字列
- */
-export function formatNumber(num: number): string {
-  // 後方互換性のため、lib/utils.tsのformatCountEnUSを呼び出す
-  // 循環参照を避けるため、動的インポートを使用
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { formatCountEnUS } = require("@/lib/utils");
-  return formatCountEnUS(num);
-}
-
-/**
  * storage_pathからSupabase Storageの公開URLを生成（クライアント・サーバー両対応）
  */
 export function getImageUrlFromStoragePath(storagePath: string): string {

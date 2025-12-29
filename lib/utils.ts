@@ -25,7 +25,6 @@ export function formatCountEnUS(n: number): string {
   if (n < 1000) return Math.floor(n).toString();
 
   const units: Unit[] = [
-    { suffix: "",  value: 1 },
     { suffix: "K", value: 1_000 },
     { suffix: "M", value: 1_000_000 },
     { suffix: "B", value: 1_000_000_000 },
@@ -89,14 +88,9 @@ export function formatCountEnUS(n: number): string {
     }
 
     // .0 省略
-    let s: string;
-    if (decimals === 0) {
-      s = v.toFixed(0);
-    } else if (decimals === 1) {
-      s = v % 1 === 0 ? v.toFixed(0) : v.toFixed(1);
-    } else {
-      const formatted = v % 1 === 0 ? v.toFixed(0) : v.toFixed(2);
-      s = formatted.replace(/0+$/, "").replace(/\.$/, "");
+    let s = v.toFixed(decimals);
+    if (s.includes('.')) {
+      s = s.replace(/0+$/, "").replace(/\.$/, "");
     }
 
     return s + units[u].suffix;

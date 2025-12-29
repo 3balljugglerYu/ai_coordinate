@@ -20,8 +20,8 @@ export function UserStats({ stats }: UserStatsProps) {
   return (
     <div className="mb-6 border-t border-b border-gray-200 py-4">
       <div className="grid grid-cols-6 gap-4 text-center">
-        {statItems.map((item, index) => (
-          <div key={index}>
+        {statItems.map((item) => (
+          <div key={item.label}>
             <div className="text-lg font-bold text-gray-900">{item.value}</div>
             <div className="text-xs text-gray-600">{item.label}</div>
           </div>
