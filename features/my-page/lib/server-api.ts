@@ -123,15 +123,25 @@ export const getUserStatsServer = cache(async (userId: string): Promise<UserStat
       0
     ) || 0;
 
-  // Phase 5で実装予定: フォロー数・フォロワー数
+  // フォロー数（自分がフォローしている人数）
+  const { count: followingCount } = await supabase
+    .from("follows")
+    .select("*", { count: "exact", head: true })
+    .eq("follower_id", userId);
+
+  // フォロワー数（自分をフォローしている人数）
+  const { count: followerCount } = await supabase
+    .from("follows")
+    .select("*", { count: "exact", head: true })
+    .eq("followee_id", userId);
 
   return {
     generatedCount: generatedCount || 0,
     postedCount: postedCount || 0,
     likeCount: likeCount || 0,
     viewCount: viewCount,
-    followerCount: 0, // Phase 5で実装予定
-    followingCount: 0, // Phase 5で実装予定
+    followerCount: followerCount || 0,
+    followingCount: followingCount || 0,
   };
 });
 

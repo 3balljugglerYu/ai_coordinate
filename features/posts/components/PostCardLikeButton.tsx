@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { formatNumber } from "../lib/utils";
+import { formatCountEnUS } from "@/lib/utils";
 
 interface PostCardLikeButtonProps {
   imageId: string;
@@ -138,12 +138,12 @@ export function PostCardLikeButton({
             isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
           }`}
         />
-        <span className="text-xs font-medium">{formatNumber(likeCount)}</span>
+        <span className="text-xs font-medium">{formatCountEnUS(likeCount)}</span>
       </Button>
       {initialViewCount > 0 && (
         <div className="flex items-center gap-1">
           <Eye className="h-4 w-4 text-gray-500" />
-          <span className="text-xs text-gray-600">{formatNumber(initialViewCount)}</span>
+          <span className="text-xs text-gray-600">{formatCountEnUS(initialViewCount)}</span>
         </div>
       )}
     </div>
