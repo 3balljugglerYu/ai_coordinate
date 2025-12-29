@@ -43,43 +43,17 @@ export function formatCountEnUS(n: number): string {
     if (v < 10) decimals = 2;
     else if (v < 100) decimals = 1;
 
-    // decimals が落ち着くまで最大2回やり直し
-    // 丸めで桁が増えたら decimals を減らして再丸め
-    for (let i = 0; i < 2; i++) {
-      const factor = 10 ** decimals;
-      const rounded = Math.round((v + Number.EPSILON) * factor) / factor;
-
-      // 丸めで桁が増えたら decimals を減らす（例: 9.995 -> 10.0）
-      if (decimals === 2 && rounded >= 10) {
-        decimals = 1;
-        continue; // 再丸め
-      }
-      if (decimals === 1 && rounded >= 100) {
-        decimals = 0;
-        continue; // 再丸め
-      }
-
-      // 小数2桁で丸めた結果が10未満だが、小数1桁で丸めると10以上になる場合
-      // 例: 9.95 (小数2桁) -> 9.95, 9.95 (小数1桁) -> 10.0
-      if (decimals === 2 && rounded < 10) {
-        const rounded1 = Math.round((v + Number.EPSILON) * 10) / 10;
-        if (rounded1 >= 10) {
-          decimals = 1;
-          continue; // 再丸め
-        }
-      }
-      // 小数1桁で丸めた結果が100未満だが、整数で丸めると100以上になる場合
-      if (decimals === 1 && rounded < 100) {
-        const rounded0 = Math.round(v + Number.EPSILON);
-        if (rounded0 >= 100) {
-          decimals = 0;
-          continue; // 再丸め
-        }
-      }
-
-      v = rounded;
-      break;
+    // 丸めによって桁上がりする場合を考慮して、小数桁を再調整する
+    // 例: 9.95K -> 10K, 99.5K -> 100K
+    if (decimals === 2 && Math.round((v + Number.EPSILON) * 10) / 10 >= 10) {
+      decimals = 1;
     }
+    if (decimals === 1 && Math.round(v + Number.EPSILON) >= 100) {
+      decimals = 0;
+    }
+
+    const factor = 10 ** decimals;
+    v = Math.round((v + Number.EPSILON) * factor) / factor;
 
     // 1000到達なら上位単位へ（可能なら）
     if (v >= 1000 && u < units.length - 1) {
