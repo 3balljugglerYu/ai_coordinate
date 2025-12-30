@@ -59,6 +59,13 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     }
   }, [pathname, searchParams, currentUserId, router]);
 
+  // ログアウト後にフォロータブが選択されていたら新着に戻す
+  useEffect(() => {
+    if (sortType === "following" && !currentUserId) {
+      setSortType("newest");
+    }
+  }, [sortType, currentUserId]);
+
   // ソートタイプ変更時の処理（未認証ユーザーが「フォロー」タブを選択した場合の処理）
   const handleSortChange = useCallback((newSortType: SortType) => {
     if (newSortType === "following" && !currentUserId) {
