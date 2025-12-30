@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 
 interface CommentInputProps {
   imageId: string;
@@ -24,6 +25,7 @@ export function CommentInput({
 }: CommentInputProps) {
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
 
   // ブラウザ拡張機能によるエラーを抑制
@@ -62,11 +64,7 @@ export function CommentInput({
     e.preventDefault();
 
     if (!currentUserId) {
-      toast({
-        title: "ログインが必要です",
-        description: "コメントするにはログインしてください",
-        variant: "destructive",
-      });
+      setShowAuthModal(true);
       return;
     }
 
@@ -112,43 +110,61 @@ export function CommentInput({
   const isOverLimit = content.length > MAX_LENGTH;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="コメントを入力..."
-        rows={1}
-        className="resize-none !min-h-[2.5rem] py-2"
-        disabled={isLoading || !currentUserId}
+    <>
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <Textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="コメントを入力..."
+          rows={1}
+          className="resize-none !min-h-[2.5rem] py-2"
+          disabled={isLoading}
+          readOnly={!currentUserId}
+          onFocus={(e) => {
+            if (!currentUserId) {
+              e.currentTarget.blur();
+              setShowAuthModal(true);
+            }
+          }}
+          onClick={(e) => {
+            if (!currentUserId) {
+              e.currentTarget.blur();
+              setShowAuthModal(true);
+            }
+          }}
+        />
+        <div className="flex items-center justify-between">
+          <span
+            className={`text-xs ${
+              isOverLimit
+                ? "text-red-500"
+                : remainingChars < 20
+                ? "text-orange-500"
+                : "text-gray-500"
+            }`}
+          >
+            {isOverLimit
+              ? `${content.length - MAX_LENGTH}文字超過`
+              : `${remainingChars}文字`}
+          </span>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={
+              isLoading ||
+              content.trim().length === 0 ||
+              content.trim().length > MAX_LENGTH
+            }
+          >
+            {isLoading ? "投稿中..." : "投稿"}
+          </Button>
+        </div>
+      </form>
+      <AuthModal
+        open={showAuthModal && !currentUserId}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo="/"
       />
-      <div className="flex items-center justify-between">
-        <span
-          className={`text-xs ${
-            isOverLimit
-              ? "text-red-500"
-              : remainingChars < 20
-              ? "text-orange-500"
-              : "text-gray-500"
-          }`}
-        >
-          {isOverLimit
-            ? `${content.length - MAX_LENGTH}文字超過`
-            : `${remainingChars}文字`}
-        </span>
-        <Button
-          type="submit"
-          size="sm"
-          disabled={
-            isLoading ||
-            !currentUserId ||
-            content.trim().length === 0 ||
-            content.trim().length > MAX_LENGTH
-          }
-        >
-          {isLoading ? "投稿中..." : "投稿"}
-        </Button>
-      </div>
-    </form>
+    </>
   );
 }
-
