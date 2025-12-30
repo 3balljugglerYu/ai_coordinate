@@ -173,7 +173,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
             </Link>
           )}
           <Link 
-            href="/?reset=true" 
+            href="/" 
             className="text-sm font-semibold text-gray-900 hover:text-gray-700"
           >
             {APP_NAME}
