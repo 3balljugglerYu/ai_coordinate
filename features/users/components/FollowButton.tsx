@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 
 interface FollowButtonProps {
   userId: string;
@@ -20,6 +21,7 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
 
   // 現在のユーザーIDを取得
@@ -57,11 +59,7 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
 
   const handleToggleFollow = async () => {
     if (!currentUserId) {
-      toast({
-        title: "ログインが必要です",
-        description: "フォローするにはログインしてください",
-        variant: "destructive",
-      });
+      setShowAuthModal(true);
       return;
     }
 
@@ -118,11 +116,6 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
     return null;
   }
 
-  // 未ログインの場合は表示しない
-  if (!currentUserId) {
-    return null;
-  }
-
   if (isLoadingStatus) {
     return (
       <Button variant="default" size="sm" disabled className="flex items-center gap-2">
@@ -133,24 +126,31 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
   }
 
   return (
-    <Button
-      variant={isFollowing ? "outline" : "default"}
-      size="sm"
-      onClick={handleToggleFollow}
-      disabled={isLoading}
-      className="flex items-center gap-2"
-    >
-      {isFollowing ? (
-        <>
-          <UserMinus className="h-4 w-4" />
-          <span>フォロー解除</span>
-        </>
-      ) : (
-        <>
-          <UserPlus className="h-4 w-4" />
-          <span>フォロー</span>
-        </>
-      )}
-    </Button>
+    <>
+      <Button
+        variant={isFollowing ? "outline" : "default"}
+        size="sm"
+        onClick={handleToggleFollow}
+        disabled={isLoading}
+        className="flex items-center gap-2"
+      >
+        {isFollowing ? (
+          <>
+            <UserMinus className="h-4 w-4" />
+            <span>フォロー解除</span>
+          </>
+        ) : (
+          <>
+            <UserPlus className="h-4 w-4" />
+            <span>フォロー</span>
+          </>
+        )}
+      </Button>
+      <AuthModal
+        open={showAuthModal && !currentUserId}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo="/"
+      />
+    </>
   );
 }
