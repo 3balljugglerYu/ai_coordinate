@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
 import { SortTabs, type SortType } from "./SortTabs";
 import { createClient } from "@/lib/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 import type { Post } from "../types";
 
 interface PostListProps {
@@ -21,11 +20,10 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   const [hasMore, setHasMore] = useState(initialPosts.length === 20);
   const [offset, setOffset] = useState(initialPosts.length);
   const [sortType, setSortType] = useState<SortType>("newest");
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const { toast } = useToast();
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "200px",
@@ -50,47 +48,35 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     };
   }, []);
 
-  // URLパラメータでsort=followingが指定されている場合、未認証ユーザーは自動的にsort=newestにリセット
+  // URLパラメータでsort=followingが指定されている場合、ログイン画面コンテナを表示
   useEffect(() => {
     const sortParam = searchParams.get("sort");
-    if (pathname === "/" && sortParam === "following" && !currentUserId) {
-      setSortType("newest");
-      router.replace("/", { scroll: false });
+    if (pathname === "/" && sortParam === "following") {
+      if (currentUserId) {
+        setSortType("following");
+      } else {
+        setShowAuthPrompt(true);
+      }
     }
-  }, [pathname, searchParams, currentUserId, router]);
-
-  // ログアウト後にフォロータブが選択されていたら新着に戻す
-  useEffect(() => {
-    if (sortType === "following" && !currentUserId) {
-      setSortType("newest");
-    }
-  }, [sortType, currentUserId]);
+  }, [pathname, searchParams, currentUserId]);
 
   // ソートタイプ変更時の処理（未認証ユーザーが「フォロー」タブを選択した場合の処理）
   const handleSortChange = useCallback((newSortType: SortType) => {
     if (newSortType === "following" && !currentUserId) {
-      // 未認証ユーザーが「フォロー」タブをクリックした場合、Toast通知を表示
-      toast({
-        title: "ログインが必要です",
-        description: "フォローしているユーザーの投稿を見るには、ログインしてください。",
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              router.push("/login?redirect=/");
-            }}
-          >
-            ログイン
-          </Button>
-        ),
-      });
+      setShowAuthPrompt(true);
       return;
     }
+    setShowAuthPrompt(false);
     setSortType(newSortType);
-  }, [currentUserId, toast, router]);
+  }, [currentUserId]);
 
   const loadPosts = useCallback(async (newOffset: number, reset: boolean = false) => {
+    if (sortType === "following" && !currentUserId) {
+      setPosts([]);
+      setHasMore(false);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -115,7 +101,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [sortType]);
+  }, [sortType, currentUserId]);
 
   const loadMorePosts = useCallback(() => {
     loadPosts(offset, false);
@@ -125,6 +111,19 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     // ソートタイプが変更されたら投稿一覧をリセット
     loadPosts(0, true);
   }, [sortType, loadPosts]);
+
+  useEffect(() => {
+    if (currentUserId && sortType === "following") {
+      setShowAuthPrompt(false);
+      loadPosts(0, true);
+    }
+  }, [currentUserId, sortType, loadPosts]);
+
+  useEffect(() => {
+    if (!currentUserId && sortType === "following") {
+      setShowAuthPrompt(true);
+    }
+  }, [currentUserId, sortType]);
 
   useEffect(() => {
     if (inView && hasMore && !isLoading) {
@@ -160,7 +159,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
         ) : (
           // ローディング完了後、期間別ソートまたはフォロータブの場合はメッセージを表示
           // 「新着」タブの場合は何も表示しない
-          (sortType !== "newest") && (
+          sortType !== "newest" && (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">{getEmptyMessage()}</p>
             </div>
@@ -201,6 +200,11 @@ export function PostList({ initialPosts = [] }: PostListProps) {
           )}
         </>
       )}
+      <AuthModal
+        open={showAuthPrompt && !currentUserId}
+        onClose={() => setShowAuthPrompt(false)}
+        redirectTo="/"
+      />
     </>
   );
 }
