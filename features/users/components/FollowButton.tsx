@@ -10,13 +10,18 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 interface FollowButtonProps {
   userId: string;
   currentUserId?: string | null;
+  onFollowChange?: (isFollowing: boolean) => void;
 }
 
 /**
  * フォローボタンコンポーネント
  * フォロー/フォロー解除ボタン、オプティミスティックUI更新
  */
-export function FollowButton({ userId, currentUserId: propCurrentUserId }: FollowButtonProps) {
+export function FollowButton({
+  userId,
+  currentUserId: propCurrentUserId,
+  onFollowChange,
+}: FollowButtonProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(propCurrentUserId || null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,6 +54,7 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
       })
       .then((data) => {
         setIsFollowing(data.isFollowing || false);
+        onFollowChange?.(data.isFollowing || false);
         setIsLoadingStatus(false);
       })
       .catch((error) => {
@@ -57,15 +63,8 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
       });
   }, [userId, currentUserId]);
 
-  const handleToggleFollow = async () => {
-    if (!currentUserId) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    if (currentUserId === userId) {
-      return;
-    }
+  const toggleFollow = async () => {
+    if (isLoading) return;
 
     setIsLoading(true);
 
@@ -84,6 +83,8 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
           const error = await response.json();
           throw new Error(error.error || "フォロー解除に失敗しました");
         }
+
+        onFollowChange?.(false);
       } else {
         // フォロー
         const response = await fetch(`/api/users/${userId}/follow`, {
@@ -94,10 +95,13 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
           const error = await response.json();
           throw new Error(error.error || "フォローに失敗しました");
         }
+
+        onFollowChange?.(true);
       }
     } catch (error) {
       // エラー時は元の状態に戻す
       setIsFollowing(previousIsFollowing);
+      onFollowChange?.(previousIsFollowing);
       toast({
         title: "エラー",
         description:
@@ -109,6 +113,40 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleToggleFollow = async () => {
+    if (!currentUserId) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    if (currentUserId === userId) {
+      return;
+    }
+
+    // フォロー解除時はトーストのアクションのみで実行
+    if (isFollowing) {
+      const confirmToast = toast({
+        title: "フォロー解除の確認",
+        description: "本当にフォローを解除しますか？",
+        action: (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              await toggleFollow();
+              confirmToast.dismiss();
+            }}
+          >
+            解除する
+          </Button>
+        ),
+      });
+      return;
+    }
+
+    await toggleFollow();
   };
 
   // 自分自身の場合は表示しない

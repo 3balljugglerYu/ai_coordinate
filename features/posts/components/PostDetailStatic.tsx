@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { User, MoreHorizontal, Edit, Trash2, Share2, Copy, Check } from "lucide-react";
@@ -55,8 +55,17 @@ export function PostDetailStatic({
     "匿名ユーザー";
   const isOwner = currentUserId === post.user_id;
   const followUserId = post.user?.id || post.user_id;
+  const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
+  const canViewPrompt = isOwner || isFollowingAuthor;
 
   const handleCopyPrompt = async () => {
+    if (!canViewPrompt || !post.prompt) {
+      toast({
+        title: "フォローが必要です",
+        description: "『フォロー』することでコピーできるようになります。",
+      });
+      return;
+    }
     if (post.prompt) {
       try {
         await navigator.clipboard.writeText(post.prompt);
@@ -76,6 +85,30 @@ export function PostDetailStatic({
       }
     }
   };
+
+  useEffect(() => {
+    const fetchFollowStatus = async () => {
+      if (!currentUserId || !followUserId || isOwner) {
+        setIsFollowingAuthor(isOwner);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/users/${followUserId}/follow-status`);
+        if (!res.ok) {
+          setIsFollowingAuthor(false);
+          return;
+        }
+        const data = await res.json();
+        setIsFollowingAuthor(Boolean(data.isFollowing));
+      } catch (error) {
+        console.error("Failed to fetch follow status:", error);
+        setIsFollowingAuthor(false);
+      }
+    };
+    fetchFollowStatus();
+  }, [currentUserId, followUserId, isOwner]);
+
+  const maskedPrompt = post.prompt ? "*".repeat(post.prompt.length) : "";
 
   return (
     <div className="bg-white">
@@ -160,7 +193,11 @@ export function PostDetailStatic({
 
             {/* フォローボタン（自分の投稿の場合は表示しない） */}
             {!isOwner && followUserId && (
-              <FollowButton userId={followUserId} currentUserId={currentUserId} />
+              <FollowButton
+                userId={followUserId}
+                currentUserId={currentUserId}
+                onFollowChange={setIsFollowingAuthor}
+              />
             )}
 
             {/* 3点リーダー（所有者の場合） */}
@@ -226,30 +263,32 @@ export function PostDetailStatic({
         {/* プロンプト */}
         {post.prompt && (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-sm font-bold text-gray-700">
                 プロンプト
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyPrompt}
-                className="h-7 px-2 text-xs"
-              >
-                {isPromptCopied ? (
-                  <>
-                    <Check className="mr-1 h-3 w-3" />
-                    コピー済み
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-1 h-3 w-3" />
-                    コピー
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyPrompt}
+                  className="h-7 px-2 text-xs"
+                >
+                  {isPromptCopied ? (
+                    <>
+                      <Check className="mr-1 h-3 w-3" />
+                      コピー済み
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-1 h-3 w-3" />
+                      コピー
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-            <CollapsibleText text={post.prompt} maxLines={1} />
+            <CollapsibleText text={canViewPrompt ? post.prompt : maskedPrompt} maxLines={1} />
           </div>
         )}
       </div>
