@@ -98,10 +98,6 @@ export function AppSidebar() {
         router.push(`/login?next=${path}`);
         return;
       }
-      if (path === "/") {
-        router.push("/?reset=true");
-        return;
-      }
       router.push(path);
     });
   };

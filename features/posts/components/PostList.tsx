@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
@@ -25,7 +25,6 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const prevPathnameRef = useRef<string | null>(null);
   const { toast } = useToast();
   const { ref, inView } = useInView({
     threshold: 0,
@@ -51,17 +50,6 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     };
   }, []);
 
-  // ホームページに遷移したときにタブを「新着」にリセット
-  useEffect(() => {
-    const reset = searchParams.get("reset");
-    if (pathname === "/" && reset === "true") {
-      setSortType("newest");
-      // クエリパラメータを削除
-      router.replace("/", { scroll: false });
-    }
-    prevPathnameRef.current = pathname;
-  }, [pathname, searchParams.toString(), router]);
-
   // URLパラメータでsort=followingが指定されている場合、未認証ユーザーは自動的にsort=newestにリセット
   useEffect(() => {
     const sortParam = searchParams.get("sort");
@@ -70,6 +58,13 @@ export function PostList({ initialPosts = [] }: PostListProps) {
       router.replace("/", { scroll: false });
     }
   }, [pathname, searchParams, currentUserId, router]);
+
+  // ログアウト後にフォロータブが選択されていたら新着に戻す
+  useEffect(() => {
+    if (sortType === "following" && !currentUserId) {
+      setSortType("newest");
+    }
+  }, [sortType, currentUserId]);
 
   // ソートタイプ変更時の処理（未認証ユーザーが「フォロー」タブを選択した場合の処理）
   const handleSortChange = useCallback((newSortType: SortType) => {
