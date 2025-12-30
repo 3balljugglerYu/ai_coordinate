@@ -7,6 +7,7 @@ import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 
 interface PostCardLikeButtonProps {
   imageId: string;
@@ -29,6 +30,7 @@ export function PostCardLikeButton({
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
 
   // 初期いいね状態を取得
@@ -89,11 +91,7 @@ export function PostCardLikeButton({
     e.stopPropagation(); // カードクリックイベントを防止
 
     if (!currentUserId) {
-      toast({
-        title: "ログインが必要です",
-        description: "いいねするにはログインしてください",
-        variant: "destructive",
-      });
+      setShowAuthModal(true);
       return;
     }
 
@@ -130,7 +128,7 @@ export function PostCardLikeButton({
         variant="ghost"
         size="sm"
         onClick={handleToggleLike}
-        disabled={isLoading || !currentUserId || isLoadingStatus}
+        disabled={isLoading || isLoadingStatus}
         className="flex items-center gap-1 h-6 !px-0 pl-1.5 py-0.5"
       >
         <Heart
@@ -146,7 +144,11 @@ export function PostCardLikeButton({
           <span className="text-xs text-gray-600">{formatCountEnUS(initialViewCount)}</span>
         </div>
       )}
+      <AuthModal
+        open={showAuthModal && !currentUserId}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo="/"
+      />
     </div>
   );
 }
-

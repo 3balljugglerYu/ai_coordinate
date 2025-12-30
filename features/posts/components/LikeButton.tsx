@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
 import { ShareButton } from "./ShareButton";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 
 interface LikeButtonProps {
   imageId: string;
@@ -38,6 +39,7 @@ export function LikeButton({
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
 
   // 初期いいね状態を取得
@@ -96,11 +98,7 @@ export function LikeButton({
 
   const handleToggleLike = async () => {
     if (!currentUserId) {
-      toast({
-        title: "ログインが必要です",
-        description: "いいねするにはログインしてください",
-        variant: "destructive",
-      });
+      setShowAuthModal(true);
       return;
     }
 
@@ -140,7 +138,7 @@ export function LikeButton({
         variant="ghost"
         size="sm"
         onClick={handleToggleLike}
-        disabled={isLoading || !currentUserId || isLoadingStatus}
+        disabled={isLoading || isLoadingStatus}
         className="flex items-center gap-1.5 px-2 py-1 h-auto"
       >
         <Heart
@@ -169,7 +167,11 @@ export function LikeButton({
           imageUrl={imageUrl}
         />
       )}
+      <AuthModal
+        open={showAuthModal && !currentUserId}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo="/"
+      />
     </div>
   );
 }
-
