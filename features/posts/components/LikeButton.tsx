@@ -16,6 +16,7 @@ interface LikeButtonProps {
   initialCommentCount?: number;
   initialViewCount?: number;
   currentUserId?: string | null;
+  ownerId?: string | null;
   isPosted?: boolean;
   caption?: string | null;
   imageUrl?: string | null;
@@ -34,6 +35,7 @@ export function LikeButton({
   isPosted = true,
   caption,
   imageUrl,
+  ownerId,
 }: LikeButtonProps) {
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLiked, setIsLiked] = useState(false);
@@ -165,6 +167,7 @@ export function LikeButton({
           postId={imageId}
           caption={caption}
           imageUrl={imageUrl}
+          isOwner={currentUserId === ownerId}
         />
       )}
       <AuthModal

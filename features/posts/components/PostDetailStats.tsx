@@ -8,6 +8,7 @@ interface PostDetailStatsProps {
   initialCommentCount: number;
   initialViewCount: number;
   currentUserId?: string | null;
+  ownerId?: string | null;
   isPosted?: boolean;
   caption?: string | null;
   imageUrl?: string | null;
@@ -23,6 +24,7 @@ export function PostDetailStats({
   initialCommentCount,
   initialViewCount,
   currentUserId,
+  ownerId,
   isPosted = true,
   caption,
   imageUrl,
@@ -34,10 +36,10 @@ export function PostDetailStats({
       initialCommentCount={initialCommentCount}
       initialViewCount={initialViewCount}
       currentUserId={currentUserId}
+      ownerId={ownerId}
       isPosted={isPosted}
       caption={caption}
       imageUrl={imageUrl}
     />
   );
 }
-

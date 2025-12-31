@@ -258,6 +258,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
               initialCommentCount={commentCount}
               initialViewCount={post.view_count || 0}
               currentUserId={currentUserId}
+              ownerId={post.user_id}
             />
           </div>
         </div>
