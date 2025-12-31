@@ -21,7 +21,7 @@ export function ShareButton({
   postId,
   caption,
   imageUrl,
-  isOwner = true,
+  isOwner = false,
 }: ShareButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isUrlCopied, setIsUrlCopied] = useState(false);
