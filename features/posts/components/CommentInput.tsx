@@ -27,6 +27,12 @@ export function CommentInput({
   const [isLoading, setIsLoading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const handleInteraction = (e: React.FocusEvent<HTMLTextAreaElement> | React.MouseEvent<HTMLTextAreaElement>) => {
+    if (!currentUserId) {
+      e.currentTarget.blur();
+      setShowAuthModal(true);
+    }
+  };
 
   // ブラウザ拡張機能によるエラーを抑制
   useEffect(() => {
@@ -117,22 +123,12 @@ export function CommentInput({
           onChange={(e) => setContent(e.target.value)}
           placeholder="コメントを入力..."
           rows={1}
-          className="resize-none !min-h-[2.5rem] py-2"
-          disabled={isLoading}
-          readOnly={!currentUserId}
-          onFocus={(e) => {
-            if (!currentUserId) {
-              e.currentTarget.blur();
-              setShowAuthModal(true);
-            }
-          }}
-          onClick={(e) => {
-            if (!currentUserId) {
-              e.currentTarget.blur();
-              setShowAuthModal(true);
-            }
-          }}
-        />
+        className="resize-none !min-h-[2.5rem] py-2"
+        disabled={isLoading}
+        readOnly={!currentUserId}
+        onFocus={handleInteraction}
+        onClick={handleInteraction}
+      />
         <div className="flex items-center justify-between">
           <span
             className={`text-xs ${
