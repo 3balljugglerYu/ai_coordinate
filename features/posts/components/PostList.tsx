@@ -20,6 +20,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   const [hasMore, setHasMore] = useState(initialPosts.length === 20);
   const [offset, setOffset] = useState(initialPosts.length);
   const [sortType, setSortType] = useState<SortType>("newest");
+  const [prevSortType, setPrevSortType] = useState<SortType>("newest");
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const pathname = usePathname();
@@ -48,27 +49,20 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     };
   }, []);
 
-  // URLパラメータでsort=followingが指定されている場合、ログイン画面コンテナを表示
+  // URLパラメータでsort=followingが指定されている場合
   useEffect(() => {
     const sortParam = searchParams.get("sort");
     if (pathname === "/" && sortParam === "following") {
-      if (currentUserId) {
-        setSortType("following");
-      } else {
-        setShowAuthPrompt(true);
-      }
+      setPrevSortType((prev) => prev); // 現在のタブを記録（デフォルト保持）
+      setSortType("following");
     }
-  }, [pathname, searchParams, currentUserId]);
+  }, [pathname, searchParams]);
 
-  // ソートタイプ変更時の処理（未認証ユーザーが「フォロー」タブを選択した場合の処理）
+  // ソートタイプ変更時の処理（タブの見た目を即反映）
   const handleSortChange = useCallback((newSortType: SortType) => {
-    if (newSortType === "following" && !currentUserId) {
-      setShowAuthPrompt(true);
-      return;
-    }
-    setShowAuthPrompt(false);
+    setPrevSortType((prev) => sortType);
     setSortType(newSortType);
-  }, [currentUserId]);
+  }, [sortType]);
 
   const loadPosts = useCallback(async (newOffset: number, reset: boolean = false) => {
     if (sortType === "following" && !currentUserId) {
@@ -107,23 +101,19 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     loadPosts(offset, false);
   }, [loadPosts, offset]);
 
+  // sortType / currentUserId に応じたモーダル表示とデータロード
   useEffect(() => {
-    // ソートタイプが変更されたら投稿一覧をリセット
-    loadPosts(0, true);
-  }, [sortType, loadPosts]);
-
-  useEffect(() => {
-    if (currentUserId && sortType === "following") {
-      setShowAuthPrompt(false);
+    const shouldShowAuth = sortType === "following" && !currentUserId;
+    setShowAuthPrompt(shouldShowAuth);
+    if (!shouldShowAuth) {
+      // フォロータブかつログイン済み、または他タブの場合のみロード
       loadPosts(0, true);
+    } else {
+      // 未ログインのフォロータブはリストをクリア
+      setPosts([]);
+      setHasMore(false);
     }
-  }, [currentUserId, sortType, loadPosts]);
-
-  useEffect(() => {
-    if (!currentUserId && sortType === "following") {
-      setShowAuthPrompt(true);
-    }
-  }, [currentUserId, sortType]);
+  }, [sortType, currentUserId, loadPosts]);
 
   useEffect(() => {
     if (inView && hasMore && !isLoading) {
@@ -178,10 +168,10 @@ export function PostList({ initialPosts = [] }: PostListProps) {
           >
             {posts.map((post) => (
               <div key={post.id} className="mb-4">
-                <PostCard post={post} currentUserId={currentUserId} />
-              </div>
-            ))}
-          </Masonry>
+        <PostCard post={post} currentUserId={currentUserId} />
+      </div>
+    ))}
+  </Masonry>
 
           {/* 無限スクロール用のトリガー要素 */}
           {hasMore && (
@@ -202,7 +192,12 @@ export function PostList({ initialPosts = [] }: PostListProps) {
       )}
       <AuthModal
         open={showAuthPrompt && !currentUserId}
-        onClose={() => setShowAuthPrompt(false)}
+        onClose={() => {
+          setShowAuthPrompt(false);
+          if (!currentUserId && sortType === "following") {
+            setSortType(prevSortType);
+          }
+        }}
         redirectTo="/"
       />
     </>
