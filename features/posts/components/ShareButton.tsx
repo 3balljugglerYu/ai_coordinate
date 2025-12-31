@@ -121,13 +121,7 @@ export function ShareButton({
     }
   };
 
-  const handleShare = async () => {
-    // PC版はダウンロード動作に変更
-    if (!isMobile()) {
-      await handleDownload();
-      return;
-    }
-
+  const handleShareMobile = async () => {
     if (isLoading) return;
 
     setIsLoading(true);
@@ -176,16 +170,29 @@ export function ShareButton({
 
   return (
     <div className="flex items-center gap-1">
-      {isOwner && (
+      {/* モバイル: シェア。PC: オーナーのみダウンロード */}
+      {isMobile() ? (
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleShare}
+          onClick={handleShareMobile}
           disabled={isLoading}
           className="flex items-center gap-1.5 px-2 py-1 h-auto"
         >
           <Download className="h-5 w-5 text-gray-600" />
         </Button>
+      ) : (
+        isOwner && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownload}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-2 py-1 h-auto"
+          >
+            <Download className="h-5 w-5 text-gray-600" />
+          </Button>
+        )
       )}
       <Button
         variant="ghost"
