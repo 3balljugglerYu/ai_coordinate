@@ -11,6 +11,7 @@ interface ShareButtonProps {
   caption?: string | null;
   imageUrl?: string | null;
   isOwner?: boolean;
+  showCopy?: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ export function ShareButton({
   caption,
   imageUrl,
   isOwner = false,
+  showCopy = true,
 }: ShareButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isUrlCopied, setIsUrlCopied] = useState(false);
@@ -170,19 +172,19 @@ export function ShareButton({
 
   return (
     <div className="flex items-center gap-1">
-      {/* モバイル: シェア。PC: オーナーのみダウンロード */}
-      {isMobile() ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleShareMobile}
-          disabled={isLoading}
-          className="flex items-center gap-1.5 px-2 py-1 h-auto"
-        >
-          <Download className="h-5 w-5 text-gray-600" />
-        </Button>
-      ) : (
-        isOwner && (
+      {/* モバイル: オーナーのみシェア/ダウンロード。PC: オーナーのみダウンロード */}
+      {isOwner && (
+        isMobile() ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleShareMobile}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-2 py-1 h-auto"
+          >
+            <Download className="h-5 w-5 text-gray-600" />
+          </Button>
+        ) : (
           <Button
             variant="ghost"
             size="sm"
@@ -194,19 +196,21 @@ export function ShareButton({
           </Button>
         )
       )}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleCopyUrl}
-        disabled={isUrlCopied}
-        className="flex items-center gap-1.5 px-2 py-1 h-auto"
-      >
-        {isUrlCopied ? (
-          <Check className="h-5 w-5 text-green-600" />
-        ) : (
-          <Copy className="h-5 w-5 text-gray-600" />
-        )}
-      </Button>
+      {showCopy && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopyUrl}
+          disabled={isUrlCopied}
+          className="flex items-center gap-1.5 px-2 py-1 h-auto"
+        >
+          {isUrlCopied ? (
+            <Check className="h-5 w-5 text-green-600" />
+          ) : (
+            <Copy className="h-5 w-5 text-gray-600" />
+          )}
+        </Button>
+      )}
     </div>
   );
 }

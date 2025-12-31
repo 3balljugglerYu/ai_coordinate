@@ -73,6 +73,11 @@ export function ImageModal({
   const currentImage = images[currentIndex];
   const hasMultipleImages = images.length > 1;
 
+  const isMobile = () => {
+    if (typeof navigator === "undefined") return false;
+    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  };
+
   // キーボードナビゲーション
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -191,6 +196,30 @@ export function ImageModal({
     }
   };
 
+  const handleShareMobile = async () => {
+    // Web Share APIが利用できる場合は共有、なければダウンロードにフォールバック
+    if (typeof navigator !== "undefined" && (navigator as any).share) {
+      try {
+        await (navigator as any).share({
+          url: currentImage.url,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : "";
+        // キャンセルやジェスチャー不足は無視
+        if (
+          (error instanceof DOMException && error.name === "AbortError") ||
+          message.includes("user gesture") ||
+          message.includes("share request")
+        ) {
+          return;
+        }
+        console.error("共有エラー:", error);
+      }
+    } else {
+      await handleDownload();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
       {/* ヘッダー */}
@@ -203,7 +232,13 @@ export function ImageModal({
             size="icon"
             variant="ghost"
             className="text-white hover:bg-white/20"
-            onClick={handleDownload}
+            onClick={() => {
+              if (isMobile()) {
+                handleShareMobile();
+              } else {
+                handleDownload();
+              }
+            }}
           >
             <Download className="h-5 w-5" />
           </Button>
@@ -275,4 +310,3 @@ export function ImageModal({
     </div>
   );
 }
-

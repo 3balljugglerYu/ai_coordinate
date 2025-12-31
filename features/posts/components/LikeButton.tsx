@@ -43,6 +43,7 @@ export function LikeButton({
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const isOwner = currentUserId && ownerId ? currentUserId === ownerId : false;
 
   // 初期いいね状態を取得
   useEffect(() => {
@@ -162,12 +163,13 @@ export function LikeButton({
           <span className="text-sm text-gray-600">{formatCountEnUS(initialViewCount)}</span>
         </div>
       )}
-      {isPosted && (
+      {(isOwner || isPosted) && (
         <ShareButton
           postId={imageId}
           caption={caption}
           imageUrl={imageUrl}
-          isOwner={currentUserId === ownerId}
+          isOwner={isOwner}
+          showCopy={isPosted}
         />
       )}
       <AuthModal
