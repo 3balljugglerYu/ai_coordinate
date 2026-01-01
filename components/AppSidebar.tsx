@@ -95,7 +95,7 @@ export function AppSidebar() {
 
     startTransition(() => {
       if ((path === "/coordinate" || path.startsWith("/my-page")) && !user) {
-        router.push(`/login?next=${path}`);
+        router.push(`/login?redirect=/`);
         return;
       }
       router.push(path);

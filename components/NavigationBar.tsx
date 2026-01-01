@@ -76,7 +76,7 @@ export function NavigationBar() {
     startTransition(() => {
       // コーディネートとマイページ関連は認証必須
       if ((path === "/coordinate" || path.startsWith("/my-page")) && !user) {
-        router.push(`/login?next=${path}`);
+        router.push(`/login?redirect=/`);
         return;
       }
       router.push(path);
