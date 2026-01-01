@@ -5,22 +5,31 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
+import { AuthModal } from "@/features/auth/components/AuthModal";
+import { usePathname } from "next/navigation";
 
 interface FollowButtonProps {
   userId: string;
   currentUserId?: string | null;
+  onFollowChange?: (isFollowing: boolean) => void;
 }
 
 /**
  * フォローボタンコンポーネント
  * フォロー/フォロー解除ボタン、オプティミスティックUI更新
  */
-export function FollowButton({ userId, currentUserId: propCurrentUserId }: FollowButtonProps) {
+export function FollowButton({
+  userId,
+  currentUserId: propCurrentUserId,
+  onFollowChange,
+}: FollowButtonProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(propCurrentUserId || null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const pathname = usePathname();
 
   // 現在のユーザーIDを取得
   useEffect(() => {
@@ -47,6 +56,7 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
       })
       .then((data) => {
         setIsFollowing(data.isFollowing || false);
+        onFollowChange?.(data.isFollowing || false);
         setIsLoadingStatus(false);
       })
       .catch((error) => {
@@ -55,19 +65,8 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
       });
   }, [userId, currentUserId]);
 
-  const handleToggleFollow = async () => {
-    if (!currentUserId) {
-      toast({
-        title: "ログインが必要です",
-        description: "フォローするにはログインしてください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (currentUserId === userId) {
-      return;
-    }
+  const toggleFollow = async () => {
+    if (isLoading) return;
 
     setIsLoading(true);
 
@@ -86,6 +85,8 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
           const error = await response.json();
           throw new Error(error.error || "フォロー解除に失敗しました");
         }
+
+        onFollowChange?.(false);
       } else {
         // フォロー
         const response = await fetch(`/api/users/${userId}/follow`, {
@@ -96,10 +97,13 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
           const error = await response.json();
           throw new Error(error.error || "フォローに失敗しました");
         }
+
+        onFollowChange?.(true);
       }
     } catch (error) {
       // エラー時は元の状態に戻す
       setIsFollowing(previousIsFollowing);
+      onFollowChange?.(previousIsFollowing);
       toast({
         title: "エラー",
         description:
@@ -113,13 +117,42 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
     }
   };
 
+  const handleToggleFollow = async () => {
+    if (!currentUserId) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    if (currentUserId === userId) {
+      return;
+    }
+
+    // フォロー解除時はトーストのアクションのみで実行
+    if (isFollowing) {
+      const confirmToast = toast({
+        title: "フォロー解除の確認",
+        description: "本当にフォローを解除しますか？",
+        action: (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              await toggleFollow();
+              confirmToast.dismiss();
+            }}
+          >
+            解除する
+          </Button>
+        ),
+      });
+      return;
+    }
+
+    await toggleFollow();
+  };
+
   // 自分自身の場合は表示しない
   if (currentUserId === userId) {
-    return null;
-  }
-
-  // 未ログインの場合は表示しない
-  if (!currentUserId) {
     return null;
   }
 
@@ -133,24 +166,31 @@ export function FollowButton({ userId, currentUserId: propCurrentUserId }: Follo
   }
 
   return (
-    <Button
-      variant={isFollowing ? "outline" : "default"}
-      size="sm"
-      onClick={handleToggleFollow}
-      disabled={isLoading}
-      className="flex items-center gap-2"
-    >
-      {isFollowing ? (
-        <>
-          <UserMinus className="h-4 w-4" />
-          <span>フォロー解除</span>
-        </>
-      ) : (
-        <>
-          <UserPlus className="h-4 w-4" />
-          <span>フォロー</span>
-        </>
-      )}
-    </Button>
+    <>
+      <Button
+        variant={isFollowing ? "outline" : "default"}
+        size="sm"
+        onClick={handleToggleFollow}
+        disabled={isLoading}
+        className="flex items-center gap-2"
+      >
+        {isFollowing ? (
+          <>
+            <UserMinus className="h-4 w-4" />
+            <span>フォロー解除</span>
+          </>
+        ) : (
+          <>
+            <UserPlus className="h-4 w-4" />
+            <span>フォロー</span>
+          </>
+        )}
+      </Button>
+      <AuthModal
+        open={showAuthModal && !currentUserId}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo={pathname}
+      />
+    </>
   );
 }

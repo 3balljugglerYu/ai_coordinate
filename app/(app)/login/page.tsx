@@ -1,10 +1,16 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
 import { AuthForm } from "@/features/auth/components/AuthForm";
+import { AuthPageContainer } from "@/features/auth/components/AuthPageContainer";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || searchParams.get("next") || "/coordinate";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-4 sm:pt-1">
-      <AuthForm mode="signin" />
-    </div>
+    <AuthPageContainer>
+      <AuthForm mode="signin" redirectTo={redirect} />
+    </AuthPageContainer>
   );
 }
-

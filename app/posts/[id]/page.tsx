@@ -84,6 +84,7 @@ async function PostDetailStatsContent({
   initialCommentCount,
   initialViewCount,
   currentUserId,
+  ownerId,
   isPosted,
   caption,
   imageUrl,
@@ -93,6 +94,7 @@ async function PostDetailStatsContent({
   initialCommentCount: number;
   initialViewCount: number;
   currentUserId?: string | null;
+  ownerId?: string | null;
   isPosted: boolean;
   caption?: string | null;
   imageUrl?: string | null;
@@ -104,6 +106,7 @@ async function PostDetailStatsContent({
       initialCommentCount={initialCommentCount}
       initialViewCount={initialViewCount}
       currentUserId={currentUserId}
+      ownerId={ownerId}
       isPosted={isPosted}
       caption={caption}
       imageUrl={imageUrl}
@@ -169,6 +172,7 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
             initialCommentCount={post.comment_count || 0}
             initialViewCount={post.view_count || 0}
             currentUserId={currentUserId}
+            ownerId={post.user_id}
             isPosted={post.is_posted || false}
             caption={post.caption}
             imageUrl={imageUrl}

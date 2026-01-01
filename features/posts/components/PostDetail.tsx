@@ -39,6 +39,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
+  const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const { toast } = useToast();
   const commentListRef = useRef<CommentListRef>(null);
 
@@ -75,8 +76,19 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
     post.user?.id?.slice(0, 8) ||
     "匿名ユーザー";
 
+  const followUserId = post.user?.id || post.user_id;
+  const isOwner = currentUserId === post.user_id;
+  const canViewPrompt = isOwner || isFollowingAuthor;
+
   // プロンプトのコピー機能
   const handleCopyPrompt = async () => {
+    if (!canViewPrompt || !post.prompt) {
+      toast({
+        title: "フォローが必要です",
+        description: "『フォロー』することでコピーできるようになります。",
+      });
+      return;
+    }
     if (post.prompt) {
       try {
         await navigator.clipboard.writeText(post.prompt);
@@ -97,8 +109,29 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
     }
   };
 
-  const isOwner = currentUserId === post.user_id;
-  const followUserId = post.user?.id || post.user_id;
+  useEffect(() => {
+    const fetchFollowStatus = async () => {
+      if (!currentUserId || !followUserId || isOwner) {
+        setIsFollowingAuthor(isOwner);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/users/${followUserId}/follow-status`);
+        if (!res.ok) {
+          setIsFollowingAuthor(false);
+          return;
+        }
+        const data = await res.json();
+        setIsFollowingAuthor(Boolean(data.isFollowing));
+      } catch (error) {
+        console.error("Failed to fetch follow status:", error);
+        setIsFollowingAuthor(false);
+      }
+    };
+    fetchFollowStatus();
+  }, [currentUserId, followUserId, isOwner]);
+
+  const maskedPrompt = post.prompt ? "*".repeat(post.prompt.length) : "";
 
   return (
     <div className="min-h-screen bg-white">
@@ -163,7 +196,11 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
 
             {/* フォローボタン（自分の投稿の場合は表示しない） */}
             {!isOwner && followUserId && (
-              <FollowButton userId={followUserId} currentUserId={currentUserId} />
+              <FollowButton
+                userId={followUserId}
+                currentUserId={currentUserId}
+                onFollowChange={setIsFollowingAuthor}
+              />
             )}
 
             {/* 3点リーダー（所有者の場合） */}
@@ -221,6 +258,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
               initialCommentCount={commentCount}
               initialViewCount={post.view_count || 0}
               currentUserId={currentUserId}
+              ownerId={post.user_id}
             />
           </div>
         </div>
@@ -236,30 +274,30 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
         {/* プロンプト */}
         {post.prompt && (
           <div className="border-t border-gray-200 bg-white px-4 py-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-700">
-                  プロンプト
-                </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyPrompt}
-                className="h-7 px-2 text-xs"
-              >
-                {isPromptCopied ? (
-                  <>
-                    <Check className="mr-1 h-3 w-3" />
-                    コピー済み
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-1 h-3 w-3" />
-                    コピー
-                  </>
-                )}
-              </Button>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-sm font-bold text-gray-700">プロンプト</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyPrompt}
+                  className="h-7 px-2 text-xs"
+                >
+                  {isPromptCopied ? (
+                    <>
+                      <Check className="mr-1 h-3 w-3" />
+                      コピー済み
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-1 h-3 w-3" />
+                      コピー
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-            <CollapsibleText text={post.prompt} maxLines={1} />
+            <CollapsibleText text={canViewPrompt ? post.prompt : maskedPrompt} maxLines={1} />
           </div>
         )}
 

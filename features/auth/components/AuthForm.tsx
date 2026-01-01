@@ -86,7 +86,7 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
     try {
       setError(null);
       setIsLoading(true);
-      await signInWithOAuth(provider);
+      await signInWithOAuth(provider, redirectTo);
       // OAuthプロバイダーのページにリダイレクトされる
     } catch (err) {
       setError(err instanceof Error ? err.message : "OAuth認証に失敗しました");
@@ -275,6 +275,7 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
           </Button>
 
           {/* Twitter/X */}
+          {/*
           <Button
             type="button"
             variant="outline"
@@ -287,8 +288,10 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
             </svg>
             X (Twitter)で続ける
           </Button>
+          */}
 
           {/* GitHub */}
+          {/*
           <Button
             type="button"
             variant="outline"
@@ -301,6 +304,7 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
             </svg>
             GitHubで続ける
           </Button>
+          */}
         </div>
       </div>
 
@@ -325,4 +329,3 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
     </Card>
   );
 }
-

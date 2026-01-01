@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
 import { ShareButton } from "./ShareButton";
+import { AuthModal } from "@/features/auth/components/AuthModal";
+import { usePathname } from "next/navigation";
 
 interface LikeButtonProps {
   imageId: string;
@@ -15,6 +17,7 @@ interface LikeButtonProps {
   initialCommentCount?: number;
   initialViewCount?: number;
   currentUserId?: string | null;
+  ownerId?: string | null;
   isPosted?: boolean;
   caption?: string | null;
   imageUrl?: string | null;
@@ -33,12 +36,16 @@ export function LikeButton({
   isPosted = true,
   caption,
   imageUrl,
+  ownerId,
 }: LikeButtonProps) {
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const pathname = usePathname();
+  const isOwner = currentUserId && ownerId ? currentUserId === ownerId : false;
 
   // 初期いいね状態を取得
   useEffect(() => {
@@ -96,11 +103,7 @@ export function LikeButton({
 
   const handleToggleLike = async () => {
     if (!currentUserId) {
-      toast({
-        title: "ログインが必要です",
-        description: "いいねするにはログインしてください",
-        variant: "destructive",
-      });
+      setShowAuthModal(true);
       return;
     }
 
@@ -140,7 +143,7 @@ export function LikeButton({
         variant="ghost"
         size="sm"
         onClick={handleToggleLike}
-        disabled={isLoading || !currentUserId || isLoadingStatus}
+        disabled={isLoading || isLoadingStatus}
         className="flex items-center gap-1.5 px-2 py-1 h-auto"
       >
         <Heart
@@ -162,14 +165,20 @@ export function LikeButton({
           <span className="text-sm text-gray-600">{formatCountEnUS(initialViewCount)}</span>
         </div>
       )}
-      {isPosted && (
+      {(isOwner || isPosted) && (
         <ShareButton
           postId={imageId}
           caption={caption}
           imageUrl={imageUrl}
+          isOwner={isOwner}
+          showCopy={isPosted}
         />
       )}
+      <AuthModal
+        open={showAuthModal && !currentUserId}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo={pathname}
+      />
     </div>
   );
 }
-
