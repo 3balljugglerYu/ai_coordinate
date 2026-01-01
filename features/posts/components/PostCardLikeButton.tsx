@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
 import { AuthModal } from "@/features/auth/components/AuthModal";
+import { usePathname, useSearchParams } from "next/navigation";
 
 interface PostCardLikeButtonProps {
   imageId: string;
@@ -32,6 +33,10 @@ export function PostCardLikeButton({
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const redirectPath =
+    searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
 
   // 初期いいね状態を取得
   useEffect(() => {
@@ -147,7 +152,7 @@ export function PostCardLikeButton({
       <AuthModal
         open={showAuthModal && !currentUserId}
         onClose={() => setShowAuthModal(false)}
-        redirectTo="/"
+        redirectTo={redirectPath}
       />
     </div>
   );
