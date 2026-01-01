@@ -86,7 +86,7 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
     try {
       setError(null);
       setIsLoading(true);
-      await signInWithOAuth(provider);
+      await signInWithOAuth(provider, redirectTo);
       // OAuthプロバイダーのページにリダイレクトされる
     } catch (err) {
       setError(err instanceof Error ? err.message : "OAuth認証に失敗しました");

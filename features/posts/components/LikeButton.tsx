@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
 import { ShareButton } from "./ShareButton";
 import { AuthModal } from "@/features/auth/components/AuthModal";
+import { usePathname } from "next/navigation";
 
 interface LikeButtonProps {
   imageId: string;
@@ -43,6 +44,7 @@ export function LikeButton({
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const pathname = usePathname();
   const isOwner = currentUserId && ownerId ? currentUserId === ownerId : false;
 
   // 初期いいね状態を取得
@@ -175,7 +177,7 @@ export function LikeButton({
       <AuthModal
         open={showAuthModal && !currentUserId}
         onClose={() => setShowAuthModal(false)}
-        redirectTo="/"
+        redirectTo={pathname}
       />
     </div>
   );

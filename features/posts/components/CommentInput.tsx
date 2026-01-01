@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthModal } from "@/features/auth/components/AuthModal";
+import { usePathname } from "next/navigation";
 
 interface CommentInputProps {
   imageId: string;
@@ -27,6 +28,7 @@ export function CommentInput({
   const [isLoading, setIsLoading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const pathname = usePathname();
   const handleInteraction = (e: React.FocusEvent<HTMLTextAreaElement> | React.MouseEvent<HTMLTextAreaElement>) => {
     if (!currentUserId) {
       e.currentTarget.blur();
@@ -159,7 +161,7 @@ export function CommentInput({
       <AuthModal
         open={showAuthModal && !currentUserId}
         onClose={() => setShowAuthModal(false)}
-        redirectTo="/"
+        redirectTo={pathname}
       />
     </>
   );

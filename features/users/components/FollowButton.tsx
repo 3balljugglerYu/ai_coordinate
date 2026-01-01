@@ -6,6 +6,7 @@ import { UserPlus, UserMinus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
+import { usePathname } from "next/navigation";
 
 interface FollowButtonProps {
   userId: string;
@@ -28,6 +29,7 @@ export function FollowButton({
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const pathname = usePathname();
 
   // 現在のユーザーIDを取得
   useEffect(() => {
@@ -187,7 +189,7 @@ export function FollowButton({
       <AuthModal
         open={showAuthModal && !currentUserId}
         onClose={() => setShowAuthModal(false)}
-        redirectTo="/"
+        redirectTo={pathname}
       />
     </>
   );

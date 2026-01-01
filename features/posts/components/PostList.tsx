@@ -25,6 +25,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const currentPath = pathname;
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "200px",
@@ -198,7 +199,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
             setSortType(prevSortType);
           }
         }}
-        redirectTo="/"
+        redirectTo={currentPath}
       />
     </>
   );
