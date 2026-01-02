@@ -13,14 +13,15 @@ interface SortTabsProps {
 export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
   const tabs: { value: SortType; label: string; disabled?: boolean }[] = [
     { value: "newest", label: "新着" },
+    { value: "week", label: "オススメ" },
     { value: "following", label: "フォロー" },
-    { value: "daily", label: "Daily" },
-    { value: "week", label: "Weekly" },
-    { value: "month", label: "Monthly" },
+    // { value: "daily", label: "Daily" },
+    // { value: "week", label: "Weekly" },
+    // { value: "month", label: "Monthly" },
   ];
 
   return (
-    <div className="flex gap-2 overflow-x-auto border-b">
+    <div className="flex flex-wrap gap-2 border-b">
       {tabs.map((tab) => (
         <button
           key={tab.value}
@@ -41,4 +42,3 @@ export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
     </div>
   );
 }
-

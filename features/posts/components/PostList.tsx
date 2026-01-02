@@ -127,11 +127,11 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     if (sortType === "following") {
       return "フォローしているユーザーの投稿がありません";
     } else if (sortType === "daily") {
-      return "昨日は投稿がありませんでした";
+      return "準備中...";
     } else if (sortType === "week") {
-      return "先週は投稿がありませんでした";
+      return "準備中...";
     } else if (sortType === "month") {
-      return "先月は投稿がありませんでした";
+      return "準備中...";
     }
     return "まだ投稿がありません。最初の投稿をしてみましょう！";
   };
