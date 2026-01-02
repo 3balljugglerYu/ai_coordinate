@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { getUserLikeStatus } from "@/features/posts/lib/server-api";
 
 /**
@@ -10,8 +10,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await getUser();
     const { id } = await params;
+
+    // 未認証の場合はリダイレクトせず401を返す
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     if (!id) {
       return NextResponse.json(
@@ -36,4 +41,3 @@ export async function GET(
     );
   }
 }
-
