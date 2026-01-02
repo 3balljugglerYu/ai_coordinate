@@ -172,10 +172,17 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
               </Button>
             </Link>
           )}
-          <Link 
-            href="/" 
-            className="text-sm font-semibold text-gray-900 hover:text-gray-700"
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700"
           >
+            <Image
+              src="/icons/icon-192.png"
+              alt="Persta.AI ロゴ"
+              width={24}
+              height={24}
+              className="rounded-md"
+            />
             {APP_NAME}
           </Link>
         </div>
