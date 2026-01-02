@@ -6,7 +6,7 @@ import { AuthPageContainer } from "@/features/auth/components/AuthPageContainer"
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || searchParams.get("next") || "/coordinate";
+  const redirect = searchParams.get("redirect") || searchParams.get("next") || "/";
 
   return (
     <AuthPageContainer>

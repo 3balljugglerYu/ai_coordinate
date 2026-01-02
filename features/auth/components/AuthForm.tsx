@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn, signUp, signInWithOAuth } from "../lib/auth-client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -16,7 +17,7 @@ interface AuthFormProps {
   redirectTo?: string;
 }
 
-export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFormProps) {
+export function AuthForm({ mode, onSuccess, redirectTo = "/login" }: AuthFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +26,7 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { toast } = useToast();
 
   const isSignUp = mode === "signup";
 
@@ -58,10 +60,12 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/coordinate" }: AuthFo
         await signUp(email, password);
         // サインアップ成功
         setError(null);
-        // 1秒間ローディング表示を継続
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        toast({
+          title: "確認メールを送信しました",
+          description: "メールを確認してアカウントを有効化してください。",
+        });
+        router.push("/login");
         setIsLoading(false);
-        alert("確認メールを送信しました。メールを確認してアカウントを有効化してください。");
       } else {
         await signIn(email, password);
         // サインイン成功
