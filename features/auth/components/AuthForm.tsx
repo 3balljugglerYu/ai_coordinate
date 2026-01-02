@@ -17,7 +17,7 @@ interface AuthFormProps {
   redirectTo?: string;
 }
 
-export function AuthForm({ mode, onSuccess, redirectTo = "/" }: AuthFormProps) {
+export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
