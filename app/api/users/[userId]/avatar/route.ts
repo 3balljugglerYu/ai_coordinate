@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { env } from "@/lib/env";
 
 /**
  * プロフィール画像アップロードAPI（POST）
@@ -61,6 +63,13 @@ export async function POST(
     // Storageバケット名（既存のgenerated-imagesバケットを再利用）
     const AVATAR_BUCKET = "generated-images";
 
+    // 既存のavatar_urlを取得（古い画像を削除するため）
+    const { data: currentProfile } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("user_id", userId)
+      .single();
+
     // ファイル名を生成（フォルダ: avatars/{userId}/タイムスタンプ.拡張子）
     const fileExt = file.name.split(".").pop();
     const fileName = `avatars/${userId}/${Date.now()}.${fileExt}`;
@@ -107,6 +116,85 @@ export async function POST(
         { error: "プロフィールの更新に失敗しました" },
         { status: 500 }
       );
+    }
+
+    // 古い画像を削除（新しい画像のアップロードと更新が成功した場合のみ）
+    if (currentProfile?.avatar_url) {
+      try {
+        const oldAvatarUrl = currentProfile.avatar_url;
+        
+        // Supabase StorageのURLかどうかを確認
+        // 形式: https://{project-ref}.supabase.co/storage/v1/object/public/{bucket}/{path}
+        // または: https://{project-ref}.supabase.co/storage/v1/object/sign/{bucket}/{path}?...
+        const isSupabaseStorageUrl = oldAvatarUrl.includes("/storage/v1/object/") && 
+                                     oldAvatarUrl.includes(`/${AVATAR_BUCKET}/`);
+        
+        if (!isSupabaseStorageUrl) {
+          // Google OAuthなどの外部URLの場合は削除不要
+          console.log("Old avatar URL is not from Supabase Storage, skipping deletion:", oldAvatarUrl);
+        } else {
+          // URLからパスを抽出
+          let oldPath: string | null = null;
+          
+          // パターン1: /{bucket}/ で分割（最も確実）
+          const urlParts = oldAvatarUrl.split(`/${AVATAR_BUCKET}/`);
+          if (urlParts.length === 2) {
+            // クエリパラメータや署名を除去してパスのみを取得
+            oldPath = urlParts[1].split("?")[0].split("#")[0].trim();
+          }
+          
+          // パターン2: 正規表現で抽出（フォールバック）
+          if (!oldPath) {
+            const match = oldAvatarUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/[^\/]+\/(.+?)(?:\?|#|$)/);
+            if (match && match[1]) {
+              oldPath = decodeURIComponent(match[1]);
+            }
+          }
+          
+          if (oldPath && oldPath.startsWith("avatars/")) {
+            // 古い画像を削除（エラーが発生しても処理は続行）
+            console.log("Deleting old avatar image:", oldPath);
+            
+            // Service Role Keyを使用して削除（RLSポリシーをバイパス）
+            let deleteError = null;
+            if (env.SUPABASE_SERVICE_ROLE_KEY && env.NEXT_PUBLIC_SUPABASE_URL) {
+              const serviceRoleClient = createSupabaseClient(
+                env.NEXT_PUBLIC_SUPABASE_URL,
+                env.SUPABASE_SERVICE_ROLE_KEY
+              );
+              const { error } = await serviceRoleClient.storage
+                .from(AVATAR_BUCKET)
+                .remove([oldPath]);
+              deleteError = error;
+            } else {
+              // Service Role Keyが設定されていない場合は通常のクライアントを使用
+              const { error } = await supabase.storage
+                .from(AVATAR_BUCKET)
+                .remove([oldPath]);
+              deleteError = error;
+            }
+            
+            if (deleteError) {
+              // 削除エラーはログに記録するが、レスポンスは成功を返す
+              console.error("Failed to delete old avatar image:", {
+                path: oldPath,
+                error: deleteError,
+                url: oldAvatarUrl,
+              });
+            } else {
+              console.log("Successfully deleted old avatar image:", oldPath);
+            }
+          } else {
+            console.warn("Could not extract valid path from old avatar URL:", {
+              url: oldAvatarUrl,
+              extractedPath: oldPath,
+            });
+          }
+        }
+      } catch (deleteError) {
+        // 削除処理でエラーが発生しても、新しい画像のアップロードは成功しているので続行
+        console.error("Error while deleting old avatar image:", deleteError);
+      }
     }
 
     return NextResponse.json({
