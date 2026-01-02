@@ -136,19 +136,17 @@ export async function POST(
           // URLからパスを抽出
           let oldPath: string | null = null;
           
-          // パターン1: /{bucket}/ で分割（最も確実）
-          const urlParts = oldAvatarUrl.split(`/${AVATAR_BUCKET}/`);
-          if (urlParts.length === 2) {
-            // クエリパラメータや署名を除去してパスのみを取得
-            oldPath = urlParts[1].split("?")[0].split("#")[0].trim();
-          }
-          
-          // パターン2: 正規表現で抽出（フォールバック）
-          if (!oldPath) {
-            const match = oldAvatarUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/[^\/]+\/(.+?)(?:\?|#|$)/);
-            if (match && match[1]) {
-              oldPath = decodeURIComponent(match[1]);
+          try {
+            // URLコンストラクタを使用して堅牢に解析
+            const url = new URL(oldAvatarUrl);
+            // pathnameを分割してバケット内のパスを取得
+            const pathSegments = url.pathname.split(`/${AVATAR_BUCKET}/`);
+            if (pathSegments.length === 2) {
+              // パスはデコードする必要がある
+              oldPath = decodeURIComponent(pathSegments[1]);
             }
+          } catch (e) {
+            console.warn("古いアバターURLを解析できませんでした。完全なURLではない可能性があります:", { url: oldAvatarUrl, error: e });
           }
           
           if (oldPath && oldPath.startsWith("avatars/")) {
