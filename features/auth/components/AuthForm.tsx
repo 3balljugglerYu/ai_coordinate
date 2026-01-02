@@ -42,6 +42,8 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/" }: AuthFormProps) {
     setIsLoading(true);
 
     try {
+      const redirectTarget = redirectTo ?? "/";
+
       // バリデーション
       if (!email || !password) {
         throw new Error("メールアドレスとパスワードを入力してください");
@@ -65,7 +67,6 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/" }: AuthFormProps) {
           description: "メールを確認してアカウントを有効化してください。",
         });
         router.push("/login");
-        setIsLoading(false);
       } else {
         await signIn(email, password);
         // サインイン成功
@@ -76,7 +77,7 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/" }: AuthFormProps) {
           onSuccess();
         } else {
           // ローディングは遷移まで継続（遷移により自動的にアンマウントされる）
-          router.push(redirectTo);
+          router.push(redirectTarget);
           router.refresh();
         }
       }
@@ -90,7 +91,8 @@ export function AuthForm({ mode, onSuccess, redirectTo = "/" }: AuthFormProps) {
     try {
       setError(null);
       setIsLoading(true);
-      await signInWithOAuth(provider, redirectTo);
+      const redirectTarget = redirectTo ?? "/";
+      await signInWithOAuth(provider, redirectTarget);
       // OAuthプロバイダーのページにリダイレクトされる
     } catch (err) {
       setError(err instanceof Error ? err.message : "OAuth認証に失敗しました");
