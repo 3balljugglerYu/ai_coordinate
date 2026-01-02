@@ -147,6 +147,12 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       setPreview(null);
       
       onAvatarUpdate(avatar_url);
+      // 他コンポーネント（ヘッダー等）に即時反映させるため通知
+      window.dispatchEvent(
+        new CustomEvent("profile:avatarUpdated", {
+          detail: { avatarUrl: avatar_url },
+        })
+      );
       
       // クリーンアップ
       setIsCropMode(false);

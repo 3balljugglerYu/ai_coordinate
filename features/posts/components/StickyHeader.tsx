@@ -147,6 +147,22 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const handleAvatarUpdated = (event: Event) => {
+      const newAvatarUrl =
+        (event as CustomEvent<{ avatarUrl?: string | null }>).detail?.avatarUrl ?? null;
+
+      setCurrentUser((prev) =>
+        prev ? { ...prev, avatar_url: newAvatarUrl } : prev
+      );
+    };
+
+    window.addEventListener("profile:avatarUpdated", handleAvatarUpdated);
+    return () => {
+      window.removeEventListener("profile:avatarUpdated", handleAvatarUpdated);
+    };
+  }, []);
+
   const handleSignOut = async () => {
     try {
       await signOut();
