@@ -154,23 +154,18 @@ export async function POST(
             console.log("Deleting old avatar image:", oldPath);
             
             // Service Role Keyを使用して削除（RLSポリシーをバイパス）
-            let deleteError = null;
-            if (env.SUPABASE_SERVICE_ROLE_KEY && env.NEXT_PUBLIC_SUPABASE_URL) {
-              const serviceRoleClient = createSupabaseClient(
-                env.NEXT_PUBLIC_SUPABASE_URL,
-                env.SUPABASE_SERVICE_ROLE_KEY
-              );
-              const { error } = await serviceRoleClient.storage
-                .from(AVATAR_BUCKET)
-                .remove([oldPath]);
-              deleteError = error;
-            } else {
-              // Service Role Keyが設定されていない場合は通常のクライアントを使用
-              const { error } = await supabase.storage
-                .from(AVATAR_BUCKET)
-                .remove([oldPath]);
-              deleteError = error;
-            }
+            // 適切なクライアントを選択
+            const storageClient =
+              env.SUPABASE_SERVICE_ROLE_KEY && env.NEXT_PUBLIC_SUPABASE_URL
+                ? createSupabaseClient(
+                    env.NEXT_PUBLIC_SUPABASE_URL,
+                    env.SUPABASE_SERVICE_ROLE_KEY
+                  )
+                : supabase;
+            
+            const { error: deleteError } = await storageClient.storage
+              .from(AVATAR_BUCKET)
+              .remove([oldPath]);
             
             if (deleteError) {
               // 削除エラーはログに記録するが、レスポンスは成功を返す
