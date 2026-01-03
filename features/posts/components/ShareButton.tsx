@@ -92,17 +92,13 @@ export function ShareButton({
       const result = await sharePost(url, text, imageUrl || undefined);
 
       // sharePostが「何をしたか」を返す想定
-      if (result.method === "share") {
-        toast({
-          title: "共有画面を開きました",
-          description: "共有先（Xなど）を選択してください",
-        });
-      } else if (result.method === "clipboard") {
+      if (result.method === "clipboard") {
         toast({
           title: "共有文をコピーしました",
           description: "SNSに貼り付けて投稿できます",
         });
       }
+      // result.method === "share" の場合はトーストを表示しない（共有画面が開かれるため）
     } catch (error) {
       // ユーザーキャンセルは無視（トーストを表示しない）
       const e = error as any;
