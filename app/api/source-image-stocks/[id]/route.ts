@@ -72,17 +72,25 @@ export async function DELETE(
           .remove([stock.storage_path]);
 
         if (deleteError) {
-          // 削除エラーはログに記録するが、データベース削除は続行
+          // 削除エラーはログに記録し、処理を中断
           console.error("Failed to delete stock image from storage:", {
             path: stock.storage_path,
             error: deleteError,
           });
+          return NextResponse.json(
+            { error: "ストレージからの画像削除に失敗しました。" },
+            { status: 500 }
+          );
         } else {
           console.log("Successfully deleted stock image from storage:", stock.storage_path);
         }
       } catch (storageError) {
-        // ストレージ削除エラーはログに記録するが、データベース削除は続行
+        // ストレージ削除エラーはログに記録し、処理を中断
         console.error("Error while deleting stock image from storage:", storageError);
+        return NextResponse.json(
+          { error: "ストレージからの画像削除に失敗しました。" },
+          { status: 500 }
+        );
       }
     }
 
