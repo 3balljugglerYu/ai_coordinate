@@ -26,11 +26,6 @@ export function ShareButton({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const isMobile = () => {
-    if (typeof navigator === "undefined") return false;
-    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  };
-
   const getPostUrl = () => {
     return `${window.location.origin}/posts/${postId}`;
   };
@@ -94,38 +89,33 @@ export function ShareButton({
       const text = "お着替えしました♪";
 
       // シェアを実行
-      await sharePost(url, text, imageUrl || undefined);
+      const result = await sharePost(url, text, imageUrl || undefined);
 
-      toast({
-        title: "シェアしました",
-        description: "投稿をシェアしました",
-      });
+      // sharePostが「何をしたか」を返す想定
+      if (result.method === "share") {
+        toast({
+          title: "共有画面を開きました",
+          description: "共有先（Xなど）を選択してください",
+        });
+      } else if (result.method === "clipboard") {
+        toast({
+          title: "共有文をコピーしました",
+          description: "SNSに貼り付けて投稿できます",
+        });
+      }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "シェアに失敗しました";
-
-      // ユーザーキャンセルやジェスチャー判定エラーは無視
-      if (
-        (error instanceof DOMException && error.name === "AbortError") ||
-        errorMessage.toLowerCase().includes("user gesture") ||
-        errorMessage.toLowerCase().includes("share request")
-      ) {
+      // ユーザーキャンセルは無視（トーストを表示しない）
+      const e = error as any;
+      if (e?.name === "AbortError") {
         return;
       }
 
-      // Web Share APIがサポートされていない場合のフォールバック
-      if (errorMessage.includes("copied to clipboard")) {
-        toast({
-          title: "URLをコピーしました",
-          description: "シェア機能はモバイルブラウザでのみ利用可能です",
-        });
-      } else {
-        toast({
-          title: "エラー",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
+      // その他のエラーのみトースト表示
+      toast({
+        title: "エラー",
+        description: e instanceof Error ? e.message : "共有に失敗しました",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
