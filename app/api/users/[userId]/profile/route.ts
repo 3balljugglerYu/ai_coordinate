@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 
 const MAX_NICKNAME_LENGTH = 20;
 const MAX_BIO_LENGTH = 200;
@@ -84,54 +85,76 @@ export async function PATCH(
     const body = await request.json();
     const { nickname, bio } = body;
 
-    // バリデーション
+    const supabase = await createClient();
+
+    // プロフィール情報を更新
+    const updateData: { nickname?: string | null; bio?: string | null } = {};
+
+    // ニックネームのバリデーションとサニタイズ
     if (nickname !== undefined) {
       if (nickname === null) {
         // nicknameをnullに設定してクリアすることを許可する
+        updateData.nickname = null;
       } else if (typeof nickname !== "string") {
         // null以外の文字列ではない型（数値など）の場合
         return NextResponse.json(
           { error: "ニックネームは文字列である必要があります" },
           { status: 400 }
         );
-      } else if (nickname.trim() === "") {
-        // 空文字列または空白のみの文字列の場合
-        return NextResponse.json(
-          { error: "ニックネームが空欄のため保存できません" },
-          { status: 400 }
+      } else {
+        // サニタイズ
+        const sanitized = sanitizeProfileText(nickname);
+        
+        // バリデーション（空文字は許可するため、空文字チェックは不要）
+        const validation = validateProfileText(
+          sanitized.value,
+          MAX_NICKNAME_LENGTH,
+          "ニックネーム"
         );
-      } else if (nickname.length > MAX_NICKNAME_LENGTH) {
-        return NextResponse.json(
-          { error: `ニックネームは${MAX_NICKNAME_LENGTH}文字以内で入力してください` },
-          { status: 400 }
-        );
+        
+        if (!validation.valid) {
+          return NextResponse.json(
+            { error: validation.error },
+            { status: 400 }
+          );
+        }
+        
+        // サニタイズ後の値（空文字の場合はnull）
+        updateData.nickname = sanitized.value || null;
       }
     }
 
-    if (bio !== undefined && bio !== null) {
-      if (typeof bio !== "string") {
+    // 自己紹介のバリデーションとサニタイズ
+    if (bio !== undefined) {
+      if (bio === null) {
+        // bioをnullに設定してクリアすることを許可する
+        updateData.bio = null;
+      } else if (typeof bio !== "string") {
         return NextResponse.json(
           { error: "自己紹介は文字列である必要があります" },
           { status: 400 }
         );
-      }
-      if (bio.length > MAX_BIO_LENGTH) {
-        return NextResponse.json(
-          { error: `自己紹介は${MAX_BIO_LENGTH}文字以内で入力してください` },
-          { status: 400 }
+      } else {
+        // サニタイズ
+        const sanitized = sanitizeProfileText(bio);
+        
+        // バリデーション
+        const validation = validateProfileText(
+          sanitized.value,
+          MAX_BIO_LENGTH,
+          "自己紹介"
         );
+        
+        if (!validation.valid) {
+          return NextResponse.json(
+            { error: validation.error },
+            { status: 400 }
+          );
+        }
+        
+        // サニタイズ後の値（空文字の場合はnull）
+        updateData.bio = sanitized.value || null;
       }
-    }
-
-    const supabase = await createClient();
-
-    // プロフィール情報を更新
-    const updateData: { nickname?: string; bio?: string } = {};
-    if (nickname !== undefined) {
-      updateData.nickname = nickname.trim() || null;
-    }
-    if (bio !== undefined) {
-      updateData.bio = bio !== null ? bio.trim() || null : null;
     }
 
     const { data: updatedProfile, error } = await supabase

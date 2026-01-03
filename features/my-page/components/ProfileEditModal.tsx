@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import type { UserProfile } from "../lib/server-api";
 
 const MAX_NICKNAME_LENGTH = 20;
@@ -35,13 +36,51 @@ export function ProfileEditModal({
   const [bio, setBio] = useState(profile.bio || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [bioError, setBioError] = useState<string | null>(null);
 
   // プロフィールが変更されたらフォームを更新
   useEffect(() => {
     setNickname(profile.nickname || "");
     setBio(profile.bio || "");
     setError(null);
+    setNicknameError(null);
+    setBioError(null);
   }, [profile, open]);
+
+  // サニタイズ後の値とバリデーション結果を計算
+  const nicknameSanitized = useMemo(() => {
+    return sanitizeProfileText(nickname);
+  }, [nickname]);
+
+  const bioSanitized = useMemo(() => {
+    return sanitizeProfileText(bio);
+  }, [bio]);
+
+  const nicknameValidation = useMemo(() => {
+    return validateProfileText(
+      nicknameSanitized.value,
+      MAX_NICKNAME_LENGTH,
+      "ニックネーム"
+    );
+  }, [nicknameSanitized.value]);
+
+  const bioValidation = useMemo(() => {
+    return validateProfileText(
+      bioSanitized.value,
+      MAX_BIO_LENGTH,
+      "自己紹介"
+    );
+  }, [bioSanitized.value]);
+
+  // エラーメッセージを更新
+  useEffect(() => {
+    setNicknameError(nicknameValidation.valid ? null : nicknameValidation.error || null);
+  }, [nicknameValidation]);
+
+  useEffect(() => {
+    setBioError(bioValidation.valid ? null : bioValidation.error || null);
+  }, [bioValidation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,15 +88,22 @@ export function ProfileEditModal({
     setIsSubmitting(true);
 
     try {
+      // バリデーション確認
+      if (!nicknameValidation.valid || !bioValidation.valid) {
+        setError(nicknameValidation.error || bioValidation.error || "入力内容を確認してください");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // サニタイズ後の値をAPIに送信
       const response = await fetch(`/api/users/${profile.id}/profile`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          nickname: nickname.trim() || null,
-          // bioは改行を保持するため、先頭と末尾の空白のみ削除
-          bio: bio.replace(/^\s+|\s+$/g, "") || null,
+          nickname: nicknameSanitized.value || null,
+          bio: bioSanitized.value || null,
         }),
       });
 
@@ -76,13 +122,14 @@ export function ProfileEditModal({
     }
   };
 
-  const nicknameLength = nickname.length;
-  const bioLength = bio.length;
-  const isNicknameValid = nicknameLength <= MAX_NICKNAME_LENGTH;
-  const isBioValid = bioLength <= MAX_BIO_LENGTH;
+  // サニタイズ後の値で文字数とバリデーション状態を計算
+  const nicknameLength = nicknameSanitized.value.length;
+  const bioLength = bioSanitized.value.length;
+  const isNicknameValid = nicknameValidation.valid;
+  const isBioValid = bioValidation.valid;
   const hasChanges =
-    nickname.trim() !== (profile.nickname || "") ||
-    bio.replace(/^\s+|\s+$/g, "") !== (profile.bio || "");
+    nicknameSanitized.value !== (profile.nickname || "") ||
+    bioSanitized.value !== (profile.bio || "");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,9 +159,9 @@ export function ProfileEditModal({
                 placeholder="ニックネームを入力"
                 aria-invalid={!isNicknameValid}
               />
-              {!isNicknameValid && (
+              {nicknameError && (
                 <p className="text-sm text-red-600">
-                  {MAX_NICKNAME_LENGTH}文字以内で入力してください
+                  {nicknameError}
                 </p>
               )}
             </div>
@@ -136,9 +183,9 @@ export function ProfileEditModal({
                 rows={4}
                 aria-invalid={!isBioValid}
               />
-              {!isBioValid && (
+              {bioError && (
                 <p className="text-sm text-red-600">
-                  {MAX_BIO_LENGTH}文字以内で入力してください
+                  {bioError}
                 </p>
               )}
             </div>

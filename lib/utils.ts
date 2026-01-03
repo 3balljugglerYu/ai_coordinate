@@ -71,3 +71,69 @@ export function formatCountEnUS(n: number): string {
   }
 }
 
+/**
+ * プロフィールテキストのサニタイゼーション
+ * Unicode正規化、不可視文字除去、trim処理を実行
+ * 
+ * @param value サニタイズする文字列
+ * @returns サニタイズ後の値と変更フラグ
+ */
+export function sanitizeProfileText(value: string): {
+  value: string;
+  changed: boolean;
+} {
+  const original = value;
+  
+  // 1. Unicode正規化（NFKC）
+  let sanitized = value.normalize("NFKC");
+  
+  // 2. 不可視文字除去
+  sanitized = sanitized.replace(/[\u200B-\u200D\uFEFF\u202E]/g, "");
+  
+  // 3. trim処理
+  sanitized = sanitized.trim();
+  
+  return {
+    value: sanitized,
+    changed: original !== sanitized,
+  };
+}
+
+/**
+ * プロフィールテキストのバリデーション
+ * 正規表現チェック（< >禁止）と文字数チェックを実行
+ * 
+ * @param value バリデーションする文字列
+ * @param maxLength 最大文字数
+ * @param fieldName フィールド名（エラーメッセージ用）
+ * @returns バリデーション結果
+ */
+export function validateProfileText(
+  value: string,
+  maxLength: number,
+  fieldName: string
+): {
+  valid: boolean;
+  error?: string;
+} {
+  // 1. 正規表現チェック（< >を検出）
+  if (/[<>]/.test(value)) {
+    return {
+      valid: false,
+      error: "< と > は使用できません",
+    };
+  }
+  
+  // 2. 文字数チェック
+  if (value.length > maxLength) {
+    return {
+      valid: false,
+      error: `${fieldName}は${maxLength}文字以内で入力してください`,
+    };
+  }
+  
+  return {
+    valid: true,
+  };
+}
+
