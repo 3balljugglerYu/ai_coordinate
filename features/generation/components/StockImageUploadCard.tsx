@@ -200,13 +200,13 @@ export function StockImageUploadCard({
   if (uploadedImage) {
     return (
       <Card className={`relative overflow-hidden w-full p-0 ${className || ""}`}>
-        <div className="relative w-full overflow-hidden bg-gray-100">
+        <div className="relative flex items-center justify-center bg-gray-100 w-full max-w-[200px] max-h-[200px] aspect-square mx-auto overflow-hidden">
           <NextImage
             src={uploadedImage.previewUrl}
             alt="アップロードされた画像"
             width={800}
             height={800}
-            className="w-full h-auto object-contain"
+            className="h-full w-full object-contain"
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
           />
           <Button
@@ -295,4 +295,3 @@ export function StockImageUploadCard({
     </Card>
   );
 }
-

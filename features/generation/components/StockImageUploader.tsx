@@ -20,6 +20,7 @@ import {
 } from "../lib/database";
 import { getCurrentUserId } from "../lib/generation-service";
 import type { ImageUploadConfig, UploadedImage } from "../types";
+import NextImage from "next/image";
 
 interface StockImageUploaderProps {
   onUploadSuccess?: (stockId: string) => void;
@@ -266,12 +267,14 @@ export function StockImageUploader({
         </Card>
       ) : (
         <Card className="relative mt-3 overflow-hidden">
-          <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative flex items-center justify-center bg-gray-100 w-full max-w-[200px] max-h-[200px] aspect-square mx-auto overflow-hidden">
+            <NextImage
               src={uploadedImage.previewUrl}
               alt="アップロードされた画像"
-              className="w-full h-auto max-h-[400px] object-contain"
+              width={uploadedImage.width}
+              height={uploadedImage.height}
+              className="h-full w-full object-contain"
+              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
             />
             <Button
               type="button"
@@ -316,4 +319,3 @@ export function StockImageUploader({
     </div>
   );
 }
-
