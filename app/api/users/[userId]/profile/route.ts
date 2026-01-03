@@ -90,71 +90,73 @@ export async function PATCH(
     // プロフィール情報を更新
     const updateData: { nickname?: string | null; bio?: string | null } = {};
 
-    // ニックネームのバリデーションとサニタイズ
-    if (nickname !== undefined) {
-      if (nickname === null) {
-        // nicknameをnullに設定してクリアすることを許可する
-        updateData.nickname = null;
-      } else if (typeof nickname !== "string") {
+    /**
+     * プロフィールフィールドの処理（サニタイズ・バリデーション）
+     * @param value 処理する値
+     * @param maxLength 最大文字数
+     * @param fieldName フィールド名（エラーメッセージ用）
+     * @returns 成功時はデータ、失敗時はエラーレスポンス
+     */
+    const processProfileField = (
+      value: unknown,
+      maxLength: number,
+      fieldName: string
+    ): { success: true; data: string | null } | { success: false; response: NextResponse } => {
+      if (value === null) {
+        // nullに設定してクリアすることを許可する
+        return { success: true, data: null };
+      }
+      if (typeof value !== "string") {
         // null以外の文字列ではない型（数値など）の場合
-        return NextResponse.json(
-          { error: "ニックネームは文字列である必要があります" },
-          { status: 400 }
-        );
-      } else {
-        // サニタイズ
-        const sanitized = sanitizeProfileText(nickname);
-        
-        // バリデーション（空文字は許可するため、空文字チェックは不要）
-        const validation = validateProfileText(
-          sanitized.value,
-          MAX_NICKNAME_LENGTH,
-          "ニックネーム"
-        );
-        
-        if (!validation.valid) {
-          return NextResponse.json(
+        return {
+          success: false,
+          response: NextResponse.json(
+            { error: `${fieldName}は文字列である必要があります` },
+            { status: 400 }
+          ),
+        };
+      }
+
+      // サニタイズ
+      const sanitized = sanitizeProfileText(value);
+
+      // バリデーション（空文字は許可するため、空文字チェックは不要）
+      const validation = validateProfileText(
+        sanitized.value,
+        maxLength,
+        fieldName
+      );
+
+      if (!validation.valid) {
+        return {
+          success: false,
+          response: NextResponse.json(
             { error: validation.error },
             { status: 400 }
-          );
-        }
-        
-        // サニタイズ後の値（空文字の場合はnull）
-        updateData.nickname = sanitized.value || null;
+          ),
+        };
       }
+
+      // サニタイズ後の値（空文字の場合はnull）
+      return { success: true, data: sanitized.value || null };
+    };
+
+    // ニックネームの処理
+    if (nickname !== undefined) {
+      const result = processProfileField(
+        nickname,
+        MAX_NICKNAME_LENGTH,
+        "ニックネーム"
+      );
+      if (!result.success) return result.response;
+      updateData.nickname = result.data;
     }
 
-    // 自己紹介のバリデーションとサニタイズ
+    // 自己紹介の処理
     if (bio !== undefined) {
-      if (bio === null) {
-        // bioをnullに設定してクリアすることを許可する
-        updateData.bio = null;
-      } else if (typeof bio !== "string") {
-        return NextResponse.json(
-          { error: "自己紹介は文字列である必要があります" },
-          { status: 400 }
-        );
-      } else {
-        // サニタイズ
-        const sanitized = sanitizeProfileText(bio);
-        
-        // バリデーション
-        const validation = validateProfileText(
-          sanitized.value,
-          MAX_BIO_LENGTH,
-          "自己紹介"
-        );
-        
-        if (!validation.valid) {
-          return NextResponse.json(
-            { error: validation.error },
-            { status: 400 }
-          );
-        }
-        
-        // サニタイズ後の値（空文字の場合はnull）
-        updateData.bio = sanitized.value || null;
-      }
+      const result = processProfileField(bio, MAX_BIO_LENGTH, "自己紹介");
+      if (!result.success) return result.response;
+      updateData.bio = result.data;
     }
 
     const { data: updatedProfile, error } = await supabase
