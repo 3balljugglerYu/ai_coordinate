@@ -195,14 +195,14 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
         <button
           type="button"
           onClick={handleAvatarClick}
-          className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gray-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
+          className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gray-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
         >
           {displayAvatar ? (
             <Image
               src={displayAvatar}
               alt="プロフィール画像"
-              width={80}
-              height={80}
+              width={96}
+              height={96}
               className="rounded-full object-cover"
               onError={() => {
                 // Blob URLが無効な場合、previewをクリア
@@ -214,7 +214,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
               }}
             />
           ) : (
-            <User className="h-10 w-10 text-gray-500" />
+            <User className="h-12 w-12 text-gray-500" />
           )}
         </button>
       </div>

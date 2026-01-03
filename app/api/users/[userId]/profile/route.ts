@@ -86,13 +86,21 @@ export async function PATCH(
 
     // バリデーション
     if (nickname !== undefined) {
-      if (typeof nickname !== "string") {
+      if (nickname === null) {
+        // nicknameをnullに設定してクリアすることを許可する
+      } else if (typeof nickname !== "string") {
+        // null以外の文字列ではない型（数値など）の場合
         return NextResponse.json(
           { error: "ニックネームは文字列である必要があります" },
           { status: 400 }
         );
-      }
-      if (nickname.length > MAX_NICKNAME_LENGTH) {
+      } else if (nickname.trim() === "") {
+        // 空文字列または空白のみの文字列の場合
+        return NextResponse.json(
+          { error: "ニックネームが空欄のため保存できません" },
+          { status: 400 }
+        );
+      } else if (nickname.length > MAX_NICKNAME_LENGTH) {
         return NextResponse.json(
           { error: `ニックネームは${MAX_NICKNAME_LENGTH}文字以内で入力してください` },
           { status: 400 }
@@ -100,7 +108,7 @@ export async function PATCH(
       }
     }
 
-    if (bio !== undefined) {
+    if (bio !== undefined && bio !== null) {
       if (typeof bio !== "string") {
         return NextResponse.json(
           { error: "自己紹介は文字列である必要があります" },
@@ -123,7 +131,7 @@ export async function PATCH(
       updateData.nickname = nickname.trim() || null;
     }
     if (bio !== undefined) {
-      updateData.bio = bio.trim() || null;
+      updateData.bio = bio !== null ? bio.trim() || null : null;
     }
 
     const { data: updatedProfile, error } = await supabase
