@@ -106,10 +106,7 @@ export async function DELETE(
     console.error("Stock image delete API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "ストック画像の削除に失敗しました",
+        error: "ストック画像の削除に失敗しました",
       },
       { status: 500 }
     );
