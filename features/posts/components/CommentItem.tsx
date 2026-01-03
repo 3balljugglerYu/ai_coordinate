@@ -24,6 +24,8 @@ import {
 import { updateCommentAPI, deleteCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsibleText } from "./CollapsibleText";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { COMMENT_MAX_LENGTH } from "@/constants";
 
 interface CommentItemProps {
   comment: {
@@ -39,8 +41,6 @@ interface CommentItemProps {
   onCommentUpdated: () => void;
   onCommentDeleted: () => void;
 }
-
-const MAX_LENGTH = 200;
 
 /**
  * コメントアイテムコンポーネント
@@ -72,20 +72,21 @@ export function CommentItem({
   };
 
   const handleSaveEdit = async () => {
-    const trimmedContent = editContent.trim();
-    if (trimmedContent.length === 0) {
-      toast({
-        title: "コメントを入力してください",
-        description: "空のコメントは保存できません",
-        variant: "destructive",
-      });
-      return;
-    }
+    // サニタイズ
+    const sanitized = sanitizeProfileText(editContent);
 
-    if (trimmedContent.length > MAX_LENGTH) {
+    // バリデーション（空文字は許可しない）
+    const validation = validateProfileText(
+      sanitized.value,
+      COMMENT_MAX_LENGTH,
+      "コメント",
+      false // 空文字を許可しない
+    );
+
+    if (!validation.valid) {
       toast({
-        title: "文字数制限を超えています",
-        description: `コメントは${MAX_LENGTH}文字以内で入力してください`,
+        title: "エラー",
+        description: validation.error || "入力内容を確認してください",
         variant: "destructive",
       });
       return;
@@ -93,7 +94,8 @@ export function CommentItem({
 
     setIsLoading(true);
     try {
-      await updateCommentAPI(comment.id, trimmedContent);
+      // サニタイズ後の値をAPIに送信
+      await updateCommentAPI(comment.id, sanitized.value);
       setIsEditing(false);
       onCommentUpdated();
     } catch (error) {
@@ -132,7 +134,7 @@ export function CommentItem({
 
   // ニックネームが存在する場合は表示、存在しない場合はuser_idの最初の8文字をフォールバック
   const displayName = comment.user_nickname || comment.user_id.slice(0, 8);
-  const remainingChars = MAX_LENGTH - editContent.length;
+  const remainingChars = COMMENT_MAX_LENGTH - editContent.length;
 
   return (
     <>
@@ -176,7 +178,7 @@ export function CommentItem({
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                maxLength={MAX_LENGTH}
+                maxLength={COMMENT_MAX_LENGTH}
                 rows={3}
                 className="resize-none text-sm"
                 disabled={isLoading}

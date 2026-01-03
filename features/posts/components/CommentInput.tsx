@@ -7,14 +7,14 @@ import { createCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname } from "next/navigation";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { COMMENT_MAX_LENGTH } from "@/constants";
 
 interface CommentInputProps {
   imageId: string;
   onCommentAdded: () => void;
   currentUserId?: string | null;
 }
-
-const MAX_LENGTH = 200;
 
 /**
  * コメント入力欄コンポーネント
@@ -76,20 +76,21 @@ export function CommentInput({
       return;
     }
 
-    const trimmedContent = content.trim();
-    if (trimmedContent.length === 0) {
-      toast({
-        title: "コメントを入力してください",
-        description: "空のコメントは投稿できません",
-        variant: "destructive",
-      });
-      return;
-    }
+    // サニタイズ
+    const sanitized = sanitizeProfileText(content);
 
-    if (trimmedContent.length > MAX_LENGTH) {
+    // バリデーション（空文字は許可しない）
+    const validation = validateProfileText(
+      sanitized.value,
+      COMMENT_MAX_LENGTH,
+      "コメント",
+      false // 空文字を許可しない
+    );
+
+    if (!validation.valid) {
       toast({
-        title: "文字数制限を超えています",
-        description: `コメントは${MAX_LENGTH}文字以内で入力してください`,
+        title: "エラー",
+        description: validation.error || "入力内容を確認してください",
         variant: "destructive",
       });
       return;
@@ -97,7 +98,8 @@ export function CommentInput({
 
     setIsLoading(true);
     try {
-      await createCommentAPI(imageId, trimmedContent);
+      // サニタイズ後の値をAPIに送信
+      await createCommentAPI(imageId, sanitized.value);
       setContent("");
       onCommentAdded();
     } catch (error) {
@@ -114,8 +116,8 @@ export function CommentInput({
     }
   };
 
-  const remainingChars = MAX_LENGTH - content.length;
-  const isOverLimit = content.length > MAX_LENGTH;
+  const remainingChars = COMMENT_MAX_LENGTH - content.length;
+  const isOverLimit = content.length > COMMENT_MAX_LENGTH;
 
   return (
     <>
@@ -142,7 +144,7 @@ export function CommentInput({
             }`}
           >
             {isOverLimit
-              ? `${content.length - MAX_LENGTH}文字超過`
+              ? `${content.length - COMMENT_MAX_LENGTH}文字超過`
               : `${remainingChars}文字`}
           </span>
           <Button
@@ -151,7 +153,7 @@ export function CommentInput({
             disabled={
               isLoading ||
               content.trim().length === 0 ||
-              content.trim().length > MAX_LENGTH
+              content.trim().length > COMMENT_MAX_LENGTH
             }
           >
             {isLoading ? "投稿中..." : "投稿"}
