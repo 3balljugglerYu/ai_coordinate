@@ -60,6 +60,34 @@ function getExtensionFromMimeType(mimeType: string): string {
   return mimeToExt[normalizedMime] || 'png';
 }
 
+/**
+ * ファイル名を決定する共通ロジック
+ * 優先順位: Content-Disposition > URL抽出 > MIMEタイプから推測
+ */
+function determineFileName(
+  response: Response,
+  imageUrl: string,
+  imageId: string,
+  mimeType: string
+): string {
+  const fileNameFromDisposition = extractFileNameFromContentDisposition(
+    response.headers.get('content-disposition')
+  );
+  const fileNameFromUrl = extractFileNameFromUrl(imageUrl);
+  
+  if (fileNameFromDisposition) {
+    // Content-Dispositionヘッダーが最優先
+    return fileNameFromDisposition;
+  } else if (fileNameFromUrl) {
+    // URLから抽出したファイル名
+    return fileNameFromUrl;
+  } else {
+    // MIMEタイプから拡張子を推測
+    const extension = getExtensionFromMimeType(mimeType);
+    return `generated-${imageId}.${extension}`;
+  }
+}
+
 export function ImageModal({
   images,
   initialIndex,
@@ -152,25 +180,13 @@ export function ImageModal({
       // blob.typeはBlobオブジェクトが持つMIMEタイプで、より信頼性が高い
       const mimeType = blob.type || response.headers.get('content-type') || 'image/png';
       
-      // ファイル名の取得順序: Content-Disposition > URL抽出 > MIMEタイプから推測
-      const fileNameFromDisposition = extractFileNameFromContentDisposition(
-        response.headers.get('content-disposition')
+      // ファイル名を決定（共通ロジックを使用）
+      const downloadFileName = determineFileName(
+        response,
+        currentImage.url,
+        currentImage.id,
+        mimeType
       );
-      const fileNameFromUrl = extractFileNameFromUrl(currentImage.url);
-      
-      // ファイル名を決定
-      let downloadFileName: string;
-      if (fileNameFromDisposition) {
-        // Content-Dispositionヘッダーが最優先
-        downloadFileName = fileNameFromDisposition;
-      } else if (fileNameFromUrl) {
-        // URLから抽出したファイル名
-        downloadFileName = fileNameFromUrl;
-      } else {
-        // MIMEタイプから拡張子を推測
-        const extension = getExtensionFromMimeType(mimeType);
-        downloadFileName = `generated-${currentImage.id}.${extension}`;
-      }
       
       // ObjectURLを作成
       const objectUrl = URL.createObjectURL(blob);
@@ -216,21 +232,13 @@ export function ImageModal({
       // MIMEタイプの取得（handleDownloadと同じロジック）
       const mimeType = blob.type || res.headers.get('content-type') || 'image/png';
       
-      // ファイル名の取得（handleDownloadと同じロジック）
-      const fileNameFromDisposition = extractFileNameFromContentDisposition(
-        res.headers.get('content-disposition')
+      // ファイル名を決定（共通ロジックを使用）
+      const fileName = determineFileName(
+        res,
+        currentImage.url,
+        currentImage.id,
+        mimeType
       );
-      const fileNameFromUrl = extractFileNameFromUrl(currentImage.url);
-      
-      let fileName: string;
-      if (fileNameFromDisposition) {
-        fileName = fileNameFromDisposition;
-      } else if (fileNameFromUrl) {
-        fileName = fileNameFromUrl;
-      } else {
-        const extension = getExtensionFromMimeType(mimeType);
-        fileName = `generated-${currentImage.id}.${extension}`;
-      }
       
       // Fileオブジェクトを作成
       const file = new File(
