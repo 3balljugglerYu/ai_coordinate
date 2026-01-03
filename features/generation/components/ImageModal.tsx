@@ -213,8 +213,8 @@ export function ImageModal({
       // Blobに変換
       const blob = await res.blob();
       
-      // MIMEタイプの取得
-      const mimeType = blob.type || res.headers.get('content-type') || 'image/jpeg';
+      // MIMEタイプの取得（handleDownloadと同じロジック）
+      const mimeType = blob.type || res.headers.get('content-type') || 'image/png';
       
       // ファイル名の取得（handleDownloadと同じロジック）
       const fileNameFromDisposition = extractFileNameFromContentDisposition(
