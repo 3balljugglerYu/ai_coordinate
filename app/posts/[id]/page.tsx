@@ -42,25 +42,37 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const siteUrl = getSiteUrl();
   const postUrl = siteUrl ? `${siteUrl}/posts/${id}` : "";
   const imageUrl = getPostImageUrl(post);
-  const title = post.caption || "Persta.AI - 投稿詳細";
-  const description = post.caption || "Persta.AIで生成されたファッションコーディネート画像をシェア";
+  
+  // シェア用の固定文言
+  const shareText = "お着替えしました♪";
+  const title = `Persta.AI | ${shareText}`;
+  const description = shareText;
+  
+  // 画像URLが絶対URLであることを保証
+  const ogImage = imageUrl && imageUrl.startsWith("http")
+    ? imageUrl
+    : siteUrl && imageUrl
+    ? `${siteUrl}${imageUrl}`
+    : imageUrl;
 
   const metadata: Metadata = {
+    metadataBase: siteUrl ? new URL(siteUrl) : undefined,
     title,
     description,
+    alternates: postUrl ? { canonical: postUrl } : undefined,
     openGraph: {
       title,
       description,
       url: postUrl,
       siteName: "Persta.AI",
       type: "article",
-      ...(imageUrl && {
+      ...(ogImage && {
         images: [
           {
-            url: imageUrl,
+            url: ogImage,
             width: 1200,
             height: 630,
-            alt: post.caption || "Persta.AI 投稿画像",
+            alt: "Persta.AI 投稿画像",
           },
         ],
       }),
@@ -69,8 +81,8 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
       card: "summary_large_image",
       title,
       description,
-      ...(imageUrl && {
-        images: [imageUrl],
+      ...(ogImage && {
+        images: [ogImage],
       }),
     },
   };

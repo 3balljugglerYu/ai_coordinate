@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Copy, Check } from "lucide-react";
+import { Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "../lib/share";
@@ -11,7 +11,6 @@ interface ShareButtonProps {
   caption?: string | null;
   imageUrl?: string | null;
   isOwner?: boolean;
-  showCopy?: boolean;
 }
 
 /**
@@ -23,10 +22,8 @@ export function ShareButton({
   caption,
   imageUrl,
   isOwner = false,
-  showCopy = true,
 }: ShareButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isUrlCopied, setIsUrlCopied] = useState(false);
   const { toast } = useToast();
 
   const isMobile = () => {
@@ -86,44 +83,7 @@ export function ShareButton({
     }
   };
 
-  const handleCopyUrl = async () => {
-    try {
-      const url = getPostUrl();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-        setIsUrlCopied(true);
-        toast({
-          title: "URLをコピーしました",
-          description: "投稿のURLをクリップボードにコピーしました",
-        });
-        setTimeout(() => setIsUrlCopied(false), 2000);
-      } else {
-        // フォールバック: 古いブラウザ向け
-        const textArea = document.createElement("textarea");
-        textArea.value = url;
-        textArea.style.position = "fixed";
-        textArea.style.opacity = "0";
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-        setIsUrlCopied(true);
-        toast({
-          title: "URLをコピーしました",
-          description: "投稿のURLをクリップボードにコピーしました",
-        });
-        setTimeout(() => setIsUrlCopied(false), 2000);
-      }
-    } catch (error) {
-      toast({
-        title: "エラー",
-        description: "URLのコピーに失敗しました",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleShareMobile = async () => {
+  const handleShare = async () => {
     if (isLoading) return;
 
     setIsLoading(true);
@@ -131,9 +91,10 @@ export function ShareButton({
     try {
       // 投稿詳細ページの絶対URLを生成
       const url = getPostUrl();
+      const text = "お着替えしました♪";
 
       // シェアを実行
-      await sharePost(url, caption || undefined, imageUrl || undefined);
+      await sharePost(url, text, imageUrl || undefined);
 
       toast({
         title: "シェアしました",
@@ -172,45 +133,28 @@ export function ShareButton({
 
   return (
     <div className="flex items-center gap-1">
-      {/* モバイル: オーナーのみシェア/ダウンロード。PC: オーナーのみダウンロード */}
+      {/* オーナーのみダウンロードボタン（PC/モバイル共通） */}
       {isOwner && (
-        isMobile() ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleShareMobile}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 px-2 py-1 h-auto"
-          >
-            <Download className="h-5 w-5 text-gray-600" />
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDownload}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 px-2 py-1 h-auto"
-          >
-            <Download className="h-5 w-5 text-gray-600" />
-          </Button>
-        )
-      )}
-      {showCopy && (
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleCopyUrl}
-          disabled={isUrlCopied}
+          onClick={handleDownload}
+          disabled={isLoading}
           className="flex items-center gap-1.5 px-2 py-1 h-auto"
         >
-          {isUrlCopied ? (
-            <Check className="h-5 w-5 text-green-600" />
-          ) : (
-            <Copy className="h-5 w-5 text-gray-600" />
-          )}
+          <Download className="h-5 w-5 text-gray-600" />
         </Button>
       )}
+      {/* シェアボタン（投稿済みの場合のみ表示） */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleShare}
+        disabled={isLoading}
+        className="flex items-center gap-1.5 px-2 py-1 h-auto"
+      >
+        <Share2 className="h-5 w-5 text-gray-600" />
+      </Button>
     </div>
   );
 }
