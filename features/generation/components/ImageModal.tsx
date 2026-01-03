@@ -60,6 +60,34 @@ function getExtensionFromMimeType(mimeType: string): string {
   return mimeToExt[normalizedMime] || 'png';
 }
 
+/**
+ * ファイル名を決定する共通ロジック
+ * 優先順位: Content-Disposition > URL抽出 > MIMEタイプから推測
+ */
+function determineFileName(
+  response: Response,
+  imageUrl: string,
+  imageId: string,
+  mimeType: string
+): string {
+  const fileNameFromDisposition = extractFileNameFromContentDisposition(
+    response.headers.get('content-disposition')
+  );
+  const fileNameFromUrl = extractFileNameFromUrl(imageUrl);
+  
+  if (fileNameFromDisposition) {
+    // Content-Dispositionヘッダーが最優先
+    return fileNameFromDisposition;
+  } else if (fileNameFromUrl) {
+    // URLから抽出したファイル名
+    return fileNameFromUrl;
+  } else {
+    // MIMEタイプから拡張子を推測
+    const extension = getExtensionFromMimeType(mimeType);
+    return `generated-${imageId}.${extension}`;
+  }
+}
+
 export function ImageModal({
   images,
   initialIndex,
@@ -152,25 +180,13 @@ export function ImageModal({
       // blob.typeはBlobオブジェクトが持つMIMEタイプで、より信頼性が高い
       const mimeType = blob.type || response.headers.get('content-type') || 'image/png';
       
-      // ファイル名の取得順序: Content-Disposition > URL抽出 > MIMEタイプから推測
-      const fileNameFromDisposition = extractFileNameFromContentDisposition(
-        response.headers.get('content-disposition')
+      // ファイル名を決定（共通ロジックを使用）
+      const downloadFileName = determineFileName(
+        response,
+        currentImage.url,
+        currentImage.id,
+        mimeType
       );
-      const fileNameFromUrl = extractFileNameFromUrl(currentImage.url);
-      
-      // ファイル名を決定
-      let downloadFileName: string;
-      if (fileNameFromDisposition) {
-        // Content-Dispositionヘッダーが最優先
-        downloadFileName = fileNameFromDisposition;
-      } else if (fileNameFromUrl) {
-        // URLから抽出したファイル名
-        downloadFileName = fileNameFromUrl;
-      } else {
-        // MIMEタイプから拡張子を推測
-        const extension = getExtensionFromMimeType(mimeType);
-        downloadFileName = `generated-${currentImage.id}.${extension}`;
-      }
       
       // ObjectURLを作成
       const objectUrl = URL.createObjectURL(blob);
@@ -197,25 +213,67 @@ export function ImageModal({
   };
 
   const handleShareMobile = async () => {
-    // Web Share APIが利用できる場合は共有、なければダウンロードにフォールバック
-    if (typeof navigator !== "undefined" && (navigator as any).share) {
-      try {
-        await (navigator as any).share({
-          url: currentImage.url,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message.toLowerCase() : "";
-        // キャンセルやジェスチャー不足は無視
-        if (
-          (error instanceof DOMException && error.name === "AbortError") ||
-          message.includes("user gesture") ||
-          message.includes("share request")
-        ) {
-          return;
-        }
-        console.error("共有エラー:", error);
+    try {
+      // 画像をfetch（CORS対応）
+      const res = await fetch(currentImage.url, { mode: "cors" });
+      
+      // 認証エラーのハンドリング（401/403）
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
       }
-    } else {
+      
+      if (!res.ok) {
+        throw new Error(`画像の取得に失敗しました: ${res.statusText}`);
+      }
+      
+      // Blobに変換
+      const blob = await res.blob();
+      
+      // MIMEタイプの取得（handleDownloadと同じロジック）
+      const mimeType = blob.type || res.headers.get('content-type') || 'image/png';
+      
+      // ファイル名を決定（共通ロジックを使用）
+      const fileName = determineFileName(
+        res,
+        currentImage.url,
+        currentImage.id,
+        mimeType
+      );
+      
+      // Fileオブジェクトを作成
+      const file = new File(
+        [blob],
+        fileName,
+        { type: mimeType }
+      );
+      
+      // Web Share API Level 2（files）のサポート確認
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
+        await navigator.share({
+          files: [file],
+          title: "Persta.AI",
+        });
+        return;
+      }
+      
+      // フォールバック: 通常のダウンロード
+      await handleDownload();
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      // キャンセルやジェスチャー不足は無視
+      if (
+        (error instanceof DOMException && error.name === "AbortError") ||
+        message.includes("user gesture") ||
+        message.includes("share request")
+      ) {
+        return;
+      }
+      console.error("Share Sheet失敗:", error);
+      // エラー時もダウンロードにフォールバック
       await handleDownload();
     }
   };
