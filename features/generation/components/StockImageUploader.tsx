@@ -266,12 +266,12 @@ export function StockImageUploader({
         </Card>
       ) : (
         <Card className="relative mt-3 overflow-hidden">
-          <div className="relative">
+          <div className="relative flex items-center justify-center bg-gray-100 w-full max-w-[200px] max-h-[200px] aspect-square mx-auto overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={uploadedImage.previewUrl}
               alt="アップロードされた画像"
-              className="w-full h-auto max-h-[400px] object-contain"
+              className="h-full w-full object-contain"
             />
             <Button
               type="button"
@@ -316,4 +316,3 @@ export function StockImageUploader({
     </div>
   );
 }
-
