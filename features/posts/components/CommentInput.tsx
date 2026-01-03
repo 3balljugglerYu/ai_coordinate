@@ -7,6 +7,7 @@ import { createCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname } from "next/navigation";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 
 interface CommentInputProps {
   imageId: string;
@@ -76,20 +77,21 @@ export function CommentInput({
       return;
     }
 
-    const trimmedContent = content.trim();
-    if (trimmedContent.length === 0) {
-      toast({
-        title: "コメントを入力してください",
-        description: "空のコメントは投稿できません",
-        variant: "destructive",
-      });
-      return;
-    }
+    // サニタイズ
+    const sanitized = sanitizeProfileText(content);
 
-    if (trimmedContent.length > MAX_LENGTH) {
+    // バリデーション（空文字は許可しない）
+    const validation = validateProfileText(
+      sanitized.value,
+      MAX_LENGTH,
+      "コメント",
+      false // 空文字を許可しない
+    );
+
+    if (!validation.valid) {
       toast({
-        title: "文字数制限を超えています",
-        description: `コメントは${MAX_LENGTH}文字以内で入力してください`,
+        title: "エラー",
+        description: validation.error || "入力内容を確認してください",
         variant: "destructive",
       });
       return;
@@ -97,7 +99,8 @@ export function CommentInput({
 
     setIsLoading(true);
     try {
-      await createCommentAPI(imageId, trimmedContent);
+      // サニタイズ後の値をAPIに送信
+      await createCommentAPI(imageId, sanitized.value);
       setContent("");
       onCommentAdded();
     } catch (error) {

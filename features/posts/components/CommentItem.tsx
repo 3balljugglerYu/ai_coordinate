@@ -24,6 +24,7 @@ import {
 import { updateCommentAPI, deleteCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsibleText } from "./CollapsibleText";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 
 interface CommentItemProps {
   comment: {
@@ -72,20 +73,21 @@ export function CommentItem({
   };
 
   const handleSaveEdit = async () => {
-    const trimmedContent = editContent.trim();
-    if (trimmedContent.length === 0) {
-      toast({
-        title: "コメントを入力してください",
-        description: "空のコメントは保存できません",
-        variant: "destructive",
-      });
-      return;
-    }
+    // サニタイズ
+    const sanitized = sanitizeProfileText(editContent);
 
-    if (trimmedContent.length > MAX_LENGTH) {
+    // バリデーション（空文字は許可しない）
+    const validation = validateProfileText(
+      sanitized.value,
+      MAX_LENGTH,
+      "コメント",
+      false // 空文字を許可しない
+    );
+
+    if (!validation.valid) {
       toast({
-        title: "文字数制限を超えています",
-        description: `コメントは${MAX_LENGTH}文字以内で入力してください`,
+        title: "エラー",
+        description: validation.error || "入力内容を確認してください",
         variant: "destructive",
       });
       return;
@@ -93,7 +95,8 @@ export function CommentItem({
 
     setIsLoading(true);
     try {
-      await updateCommentAPI(comment.id, trimmedContent);
+      // サニタイズ後の値をAPIに送信
+      await updateCommentAPI(comment.id, sanitized.value);
       setIsEditing(false);
       onCommentUpdated();
     } catch (error) {

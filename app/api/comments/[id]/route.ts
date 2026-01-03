@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { updateComment, deleteComment } from "@/features/posts/lib/server-api";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 
 /**
  * コメント編集・削除API
@@ -29,7 +30,26 @@ export async function PUT(
       );
     }
 
-    const comment = await updateComment(id, user.id, content);
+    // サニタイズ
+    const sanitized = sanitizeProfileText(content);
+
+    // バリデーション（空文字は許可しない）
+    const validation = validateProfileText(
+      sanitized.value,
+      200, // MAX_LENGTH
+      "コメント",
+      false // 空文字を許可しない
+    );
+
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      );
+    }
+
+    // サニタイズ後の値をサーバーサイド関数に渡す
+    const comment = await updateComment(id, user.id, sanitized.value);
 
     return NextResponse.json({ comment });
   } catch (error) {

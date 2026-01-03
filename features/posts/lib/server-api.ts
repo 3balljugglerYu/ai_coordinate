@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
+import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import type { Post } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getImageAspectRatio } from "./utils";
@@ -861,21 +862,30 @@ export async function createComment(
   user_nickname: string | null;
   user_avatar_url: string | null;
 }> {
-  // サーバー側バリデーション
-  const trimmedContent = content.trim();
-  if (trimmedContent.length === 0 || trimmedContent.length > 200) {
-    throw new Error("コメントは1文字以上200文字以内で入力してください");
+  // サニタイズ（既にAPIでサニタイズ済みだが、念のため再実行）
+  const sanitized = sanitizeProfileText(content);
+
+  // バリデーション（空文字は許可しない）
+  const validation = validateProfileText(
+    sanitized.value,
+    200, // MAX_LENGTH
+    "コメント",
+    false // 空文字を許可しない
+  );
+
+  if (!validation.valid) {
+    throw new Error(validation.error || "コメントのバリデーションに失敗しました");
   }
 
   const supabase = await createClient();
 
-  // コメントを投稿
+  // コメントを投稿（サニタイズ後の値を使用）
   const { data: comment, error: commentError } = await supabase
     .from("comments")
     .insert({
       image_id: imageId,
       user_id: userId,
-      content: trimmedContent,
+      content: sanitized.value,
     })
     .select()
     .single();
@@ -926,10 +936,19 @@ export async function updateComment(
   updated_at: string;
   deleted_at: string | null;
 }> {
-  // サーバー側バリデーション
-  const trimmedContent = content.trim();
-  if (trimmedContent.length === 0 || trimmedContent.length > 200) {
-    throw new Error("コメントは1文字以上200文字以内で入力してください");
+  // サニタイズ（既にAPIでサニタイズ済みだが、念のため再実行）
+  const sanitized = sanitizeProfileText(content);
+
+  // バリデーション（空文字は許可しない）
+  const validation = validateProfileText(
+    sanitized.value,
+    200, // MAX_LENGTH
+    "コメント",
+    false // 空文字を許可しない
+  );
+
+  if (!validation.valid) {
+    throw new Error(validation.error || "コメントのバリデーションに失敗しました");
   }
 
   const supabase = await createClient();
@@ -937,7 +956,7 @@ export async function updateComment(
   const { data, error } = await supabase
     .from("comments")
     .update({
-      content: trimmedContent,
+      content: sanitized.value,
       updated_at: new Date().toISOString(),
     })
     .eq("id", commentId)
