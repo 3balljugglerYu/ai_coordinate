@@ -1,5 +1,4 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
-import { deleteImageFromStorage } from "./storage";
 import type { GeminiModel } from "../types";
 
 /**
@@ -334,56 +333,18 @@ export async function getSourceImageStock(id: string): Promise<SourceImageStock 
 /**
  * ストック画像を削除（物理削除）
  * データベースレコードとストレージ上の画像ファイルの両方を削除
+ * サーバーサイドのAPI Route Handlerを呼び出して削除を実行
  */
 export async function deleteSourceImageStock(id: string): Promise<void> {
-  const supabase = createBrowserClient();
+  const response = await fetch(`/api/source-image-stocks/${id}`, {
+    method: "DELETE",
+  });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("ログインが必要です");
-  }
-
-  // ストック画像情報を取得して所有者を確認し、storage_pathを取得
-  const { data: stock, error: fetchError } = await supabase
-    .from("source_image_stocks")
-    .select("user_id, storage_path")
-    .eq("id", id)
-    .single();
-
-  if (fetchError || !stock) {
-    throw new Error("ストック画像が見つかりません");
-  }
-
-  if (stock.user_id !== user.id) {
-    throw new Error("このストック画像を削除する権限がありません");
-  }
-
-  // ストレージ上の画像ファイルを削除
-  // エラーが発生した場合はDB削除を中止する（推奨方針）
-  try {
-    await deleteImageFromStorage(stock.storage_path);
-  } catch (storageError) {
-    console.error("Storage delete error:", storageError);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
     throw new Error(
-      `ストレージ上の画像ファイルの削除に失敗しました: ${
-        storageError instanceof Error ? storageError.message : "不明なエラー"
-      }`
+      data.error || `ストック画像の削除に失敗しました: ${response.statusText}`
     );
-  }
-
-  // 物理削除を実行
-  const { error } = await supabase
-    .from("source_image_stocks")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
-
-  if (error) {
-    console.error("Database delete error:", error);
-    throw new Error(`ストック画像の削除に失敗しました: ${error.message}`);
   }
 }
 
