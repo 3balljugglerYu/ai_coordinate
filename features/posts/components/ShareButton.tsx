@@ -85,12 +85,9 @@ export function ShareButton({
       document.body.removeChild(link);
       
       // メモリリークを防ぐためにObjectURLを解放
-      // requestAnimationFrameを使用して、ブラウザの描画サイクル後に確実に解放
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          URL.revokeObjectURL(objectUrl);
-        }, 100);
-      });
+      setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 100);
       
       toast({
         title: "ダウンロードしました",
