@@ -10,6 +10,7 @@ import { CommentSection } from "@/features/posts/components/CommentSection";
 import { CommentSectionSkeleton } from "@/features/posts/components/CommentSectionSkeleton";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/env";
+import { DEFAULT_SHARE_TEXT } from "@/constants";
 
 // Next.js 16では、動的ルートはデフォルトで動的レンダリングされる
 // キャッシュはfetchのrevalidateオプションまたはReact.cache()で制御
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const imageUrl = getPostImageUrl(post);
   
   // シェア用の固定文言
-  const shareText = "お着替えしました♪";
+  const shareText = DEFAULT_SHARE_TEXT;
   const title = `Persta.AI | ${shareText}`;
   const description = post.caption || shareText;
   

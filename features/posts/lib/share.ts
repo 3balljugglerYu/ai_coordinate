@@ -2,6 +2,8 @@
  * Web Share APIを使用したシェア機能のユーティリティ関数
  */
 
+import { DEFAULT_SHARE_TEXT } from "@/constants";
+
 export type ShareMethod = "share" | "clipboard";
 
 export interface ShareResult {
@@ -19,7 +21,7 @@ export async function sharePost(
   url: string,
   text?: string
 ): Promise<ShareResult> {
-  const shareText = text || "お着替えしました♪";
+  const shareText = text || DEFAULT_SHARE_TEXT;
   const shareData: ShareData = {
     title: "Persta.AI",
     text: shareText,

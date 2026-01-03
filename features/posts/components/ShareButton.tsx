@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "../lib/share";
 import { determineFileName } from "@/lib/utils";
+import { DEFAULT_SHARE_TEXT } from "@/constants";
 
 interface ShareButtonProps {
   postId: string;
@@ -186,7 +187,7 @@ export function ShareButton({
     try {
       // 投稿詳細ページの絶対URLを生成
       const url = getPostUrl();
-      const text = "お着替えしました♪";
+      const text = DEFAULT_SHARE_TEXT;
 
       // シェアを実行
       const result = await sharePost(url, text);
