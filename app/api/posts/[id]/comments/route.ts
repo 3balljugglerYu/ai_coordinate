@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getComments, createComment } from "@/features/posts/lib/server-api";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { COMMENT_MAX_LENGTH } from "@/constants";
 
 /**
  * コメント一覧取得・コメント投稿API
@@ -84,7 +85,7 @@ export async function POST(
     // バリデーション（空文字は許可しない）
     const validation = validateProfileText(
       sanitized.value,
-      200, // MAX_LENGTH
+      COMMENT_MAX_LENGTH,
       "コメント",
       false // 空文字を許可しない
     );

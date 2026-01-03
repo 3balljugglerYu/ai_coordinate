@@ -25,6 +25,7 @@ import { updateCommentAPI, deleteCommentAPI } from "../lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsibleText } from "./CollapsibleText";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { COMMENT_MAX_LENGTH } from "@/constants";
 
 interface CommentItemProps {
   comment: {
@@ -40,8 +41,6 @@ interface CommentItemProps {
   onCommentUpdated: () => void;
   onCommentDeleted: () => void;
 }
-
-const MAX_LENGTH = 200;
 
 /**
  * コメントアイテムコンポーネント
@@ -79,7 +78,7 @@ export function CommentItem({
     // バリデーション（空文字は許可しない）
     const validation = validateProfileText(
       sanitized.value,
-      MAX_LENGTH,
+      COMMENT_MAX_LENGTH,
       "コメント",
       false // 空文字を許可しない
     );
@@ -135,7 +134,7 @@ export function CommentItem({
 
   // ニックネームが存在する場合は表示、存在しない場合はuser_idの最初の8文字をフォールバック
   const displayName = comment.user_nickname || comment.user_id.slice(0, 8);
-  const remainingChars = MAX_LENGTH - editContent.length;
+  const remainingChars = COMMENT_MAX_LENGTH - editContent.length;
 
   return (
     <>
@@ -179,7 +178,7 @@ export function CommentItem({
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                maxLength={MAX_LENGTH}
+                maxLength={COMMENT_MAX_LENGTH}
                 rows={3}
                 className="resize-none text-sm"
                 disabled={isLoading}

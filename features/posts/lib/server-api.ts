@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { COMMENT_MAX_LENGTH } from "@/constants";
 import type { Post } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getImageAspectRatio } from "./utils";
@@ -868,7 +869,7 @@ export async function createComment(
   // バリデーション（空文字は許可しない）
   const validation = validateProfileText(
     sanitized.value,
-    200, // MAX_LENGTH
+    COMMENT_MAX_LENGTH,
     "コメント",
     false // 空文字を許可しない
   );
@@ -942,7 +943,7 @@ export async function updateComment(
   // バリデーション（空文字は許可しない）
   const validation = validateProfileText(
     sanitized.value,
-    200, // MAX_LENGTH
+    COMMENT_MAX_LENGTH,
     "コメント",
     false // 空文字を許可しない
   );

@@ -8,14 +8,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname } from "next/navigation";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { COMMENT_MAX_LENGTH } from "@/constants";
 
 interface CommentInputProps {
   imageId: string;
   onCommentAdded: () => void;
   currentUserId?: string | null;
 }
-
-const MAX_LENGTH = 200;
 
 /**
  * コメント入力欄コンポーネント
@@ -83,7 +82,7 @@ export function CommentInput({
     // バリデーション（空文字は許可しない）
     const validation = validateProfileText(
       sanitized.value,
-      MAX_LENGTH,
+      COMMENT_MAX_LENGTH,
       "コメント",
       false // 空文字を許可しない
     );
@@ -117,8 +116,8 @@ export function CommentInput({
     }
   };
 
-  const remainingChars = MAX_LENGTH - content.length;
-  const isOverLimit = content.length > MAX_LENGTH;
+  const remainingChars = COMMENT_MAX_LENGTH - content.length;
+  const isOverLimit = content.length > COMMENT_MAX_LENGTH;
 
   return (
     <>
@@ -145,7 +144,7 @@ export function CommentInput({
             }`}
           >
             {isOverLimit
-              ? `${content.length - MAX_LENGTH}文字超過`
+              ? `${content.length - COMMENT_MAX_LENGTH}文字超過`
               : `${remainingChars}文字`}
           </span>
           <Button
@@ -154,7 +153,7 @@ export function CommentInput({
             disabled={
               isLoading ||
               content.trim().length === 0 ||
-              content.trim().length > MAX_LENGTH
+              content.trim().length > COMMENT_MAX_LENGTH
             }
           >
             {isLoading ? "投稿中..." : "投稿"}
