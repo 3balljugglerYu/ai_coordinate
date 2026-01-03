@@ -52,15 +52,20 @@ export async function DELETE(
 
     // ストレージ上の画像ファイルを削除（Service Role Keyを使用）
     if (stock.storage_path) {
+      // Service Role Keyを使用して削除（RLSポリシーをバイパス）
+      if (!env.SUPABASE_SERVICE_ROLE_KEY || !env.NEXT_PUBLIC_SUPABASE_URL) {
+        console.error("Service role key or Supabase URL is missing for storage operation");
+        return NextResponse.json(
+          { error: "サーバー設定エラーにより画像を削除できませんでした。" },
+          { status: 500 }
+        );
+      }
+
       try {
-        // Service Role Keyを使用して削除（RLSポリシーをバイパス）
-        const storageClient =
-          env.SUPABASE_SERVICE_ROLE_KEY && env.NEXT_PUBLIC_SUPABASE_URL
-            ? createSupabaseClient(
-                env.NEXT_PUBLIC_SUPABASE_URL,
-                env.SUPABASE_SERVICE_ROLE_KEY
-              )
-            : supabase;
+        const storageClient = createSupabaseClient(
+          env.NEXT_PUBLIC_SUPABASE_URL,
+          env.SUPABASE_SERVICE_ROLE_KEY
+        );
 
         const { error: deleteError } = await storageClient.storage
           .from(STORAGE_BUCKET)

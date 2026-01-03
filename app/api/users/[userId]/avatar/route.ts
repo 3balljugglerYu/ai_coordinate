@@ -154,28 +154,36 @@ export async function POST(
             console.log("Deleting old avatar image:", oldPath);
             
             // Service Role Keyを使用して削除（RLSポリシーをバイパス）
-            // 適切なクライアントを選択
-            const storageClient =
-              env.SUPABASE_SERVICE_ROLE_KEY && env.NEXT_PUBLIC_SUPABASE_URL
-                ? createSupabaseClient(
-                    env.NEXT_PUBLIC_SUPABASE_URL,
-                    env.SUPABASE_SERVICE_ROLE_KEY
-                  )
-                : supabase;
-            
-            const { error: deleteError } = await storageClient.storage
-              .from(AVATAR_BUCKET)
-              .remove([oldPath]);
-            
-            if (deleteError) {
-              // 削除エラーはログに記録するが、レスポンスは成功を返す
-              console.error("Failed to delete old avatar image:", {
-                path: oldPath,
-                error: deleteError,
-                url: oldAvatarUrl,
-              });
+            if (!env.SUPABASE_SERVICE_ROLE_KEY || !env.NEXT_PUBLIC_SUPABASE_URL) {
+              // Service Role Keyが存在しない場合は、古い画像の削除をスキップ
+              // 新しい画像のアップロードは既に成功しているため、処理は続行
+              // 古い画像はStorageに残るが、新しい画像は正常にアップロードされている
+              console.warn("Service role key or Supabase URL is missing. Old avatar image will not be deleted from storage.");
             } else {
-              console.log("Successfully deleted old avatar image:", oldPath);
+              try {
+                const storageClient = createSupabaseClient(
+                  env.NEXT_PUBLIC_SUPABASE_URL,
+                  env.SUPABASE_SERVICE_ROLE_KEY
+                );
+
+                const { error: deleteError } = await storageClient.storage
+                  .from(AVATAR_BUCKET)
+                  .remove([oldPath]);
+
+                if (deleteError) {
+                  // 削除エラーはログに記録するが、レスポンスは成功を返す
+                  console.error("Failed to delete old avatar image:", {
+                    path: oldPath,
+                    error: deleteError,
+                    url: oldAvatarUrl,
+                  });
+                } else {
+                  console.log("Successfully deleted old avatar image:", oldPath);
+                }
+              } catch (storageError) {
+                // ストレージ削除エラーはログに記録するが、レスポンスは成功を返す
+                console.error("Error while deleting old avatar image:", storageError);
+              }
             }
           } else {
             console.warn("Could not extract valid path from old avatar URL:", {
