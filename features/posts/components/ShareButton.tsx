@@ -30,14 +30,80 @@ export function ShareButton({
     return `${window.location.origin}/posts/${postId}`;
   };
 
-  const getExtensionFromMime = (mime: string) => {
-    const map: Record<string, string> = {
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/gif": "gif",
-      "image/webp": "webp",
+  /**
+   * URLからファイル名を抽出
+   * 例: https://...supabase.co/storage/.../1766523926783-c2p76akbrgw.jpeg
+   *     -> 1766523926783-c2p76akbrgw.jpeg
+   */
+  const extractFileNameFromUrl = (url: string): string | null => {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const fileName = pathname.split('/').pop();
+      return fileName && fileName.includes('.') ? fileName : null;
+    } catch {
+      return null;
+    }
+  };
+
+  /**
+   * Content-Dispositionヘッダーからファイル名を抽出
+   * 例: attachment; filename="image.jpeg"
+   */
+  const extractFileNameFromContentDisposition = (contentDisposition: string | null): string | null => {
+    if (!contentDisposition) return null;
+    
+    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    if (filenameMatch && filenameMatch[1]) {
+      // クォートを除去
+      return filenameMatch[1].replace(/['"]/g, '');
+    }
+    return null;
+  };
+
+  /**
+   * MIMEタイプから拡張子を取得
+   * image/jpg は非標準だが、image/jpeg として扱う
+   */
+  const getExtensionFromMimeType = (mimeType: string): string => {
+    // image/jpg を image/jpeg に正規化
+    const normalizedMime = mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
+    
+    const mimeToExt: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
     };
-    return map[mime.toLowerCase()] || "png";
+    return mimeToExt[normalizedMime] || 'png';
+  };
+
+  /**
+   * ファイル名を決定する共通ロジック
+   * 優先順位: Content-Disposition > URL抽出 > MIMEタイプから推測
+   */
+  const determineFileName = (
+    response: Response,
+    imageUrl: string,
+    imageId: string,
+    mimeType: string
+  ): string => {
+    const fileNameFromDisposition = extractFileNameFromContentDisposition(
+      response.headers.get('content-disposition')
+    );
+    const fileNameFromUrl = extractFileNameFromUrl(imageUrl);
+    
+    if (fileNameFromDisposition) {
+      // Content-Dispositionヘッダーが最優先
+      return fileNameFromDisposition;
+    } else if (fileNameFromUrl) {
+      // URLから抽出したファイル名
+      return fileNameFromUrl;
+    } else {
+      // MIMEタイプから拡張子を推測
+      const extension = getExtensionFromMimeType(mimeType);
+      return `generated-${imageId}.${extension}`;
+    }
   };
 
   const handleDownload = async () => {
@@ -51,28 +117,60 @@ export function ShareButton({
     }
 
     try {
+      // 画像をfetchで取得
       const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error("画像の取得に失敗しました");
+      
+      // 認証エラーのハンドリング（401/403）
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
       }
+      
+      if (!response.ok) {
+        throw new Error(`画像の取得に失敗しました: ${response.statusText}`);
+      }
+      
+      // Blobに変換（MIMEタイプを保持）
       const blob = await response.blob();
-      const ext = getExtensionFromMime(blob.type || "image/png");
+      
+      // MIMEタイプの取得順序: blob.type を優先、次にContent-Typeヘッダー、最後にデフォルト
+      const mimeType = blob.type || response.headers.get('content-type') || 'image/png';
+      
+      // ファイル名を決定（共通ロジックを使用）
+      const downloadFileName = determineFileName(
+        response,
+        imageUrl,
+        postId,
+        mimeType
+      );
+      
+      // ObjectURLを作成
       const objectUrl = URL.createObjectURL(blob);
+      
+      // ダウンロードリンクを作成
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = `persta-image.${ext}`;
+      link.download = downloadFileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
+      
+      // メモリリークを防ぐためにObjectURLを解放
+      // requestAnimationFrameを使用して、ブラウザの描画サイクル後に確実に解放
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          URL.revokeObjectURL(objectUrl);
+        }, 100);
+      });
+      
       toast({
         title: "ダウンロードしました",
         description: "画像を保存しました",
       });
     } catch (error) {
+      console.error("ダウンロードエラー:", error);
       toast({
         title: "エラー",
-        description: error instanceof Error ? error.message : "ダウンロードに失敗しました",
+        description: error instanceof Error ? error.message : "画像のダウンロードに失敗しました",
         variant: "destructive",
       });
     }
