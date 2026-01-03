@@ -57,7 +57,8 @@ export function ProfileEditModal({
     return validateProfileText(
       nicknameSanitized.value,
       MAX_NICKNAME_LENGTH,
-      "ニックネーム"
+      "ニックネーム",
+      false // 空文字を許可しない
     );
   }, [nicknameSanitized.value]);
 

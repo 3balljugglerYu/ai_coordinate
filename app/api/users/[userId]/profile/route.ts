@@ -95,12 +95,14 @@ export async function PATCH(
      * @param value 処理する値
      * @param maxLength 最大文字数
      * @param fieldName フィールド名（エラーメッセージ用）
+     * @param allowEmpty 空文字を許可するか（デフォルト: true）
      * @returns 成功時はデータ、失敗時はエラーレスポンス
      */
     const processProfileField = (
       value: unknown,
       maxLength: number,
-      fieldName: string
+      fieldName: string,
+      allowEmpty: boolean = true
     ): { success: true; data: string | null } | { success: false; response: NextResponse } => {
       if (value === null) {
         // nullに設定してクリアすることを許可する
@@ -120,11 +122,12 @@ export async function PATCH(
       // サニタイズ
       const sanitized = sanitizeProfileText(value);
 
-      // バリデーション（空文字は許可するため、空文字チェックは不要）
+      // バリデーション
       const validation = validateProfileText(
         sanitized.value,
         maxLength,
-        fieldName
+        fieldName,
+        allowEmpty
       );
 
       if (!validation.valid) {
@@ -141,12 +144,13 @@ export async function PATCH(
       return { success: true, data: sanitized.value || null };
     };
 
-    // ニックネームの処理
+    // ニックネームの処理（空文字は許可しない）
     if (nickname !== undefined) {
       const result = processProfileField(
         nickname,
         MAX_NICKNAME_LENGTH,
-        "ニックネーム"
+        "ニックネーム",
+        false // 空文字を許可しない
       );
       if (!result.success) return result.response;
       updateData.nickname = result.data;

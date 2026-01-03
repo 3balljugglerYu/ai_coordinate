@@ -106,17 +106,27 @@ export function sanitizeProfileText(value: string): {
  * @param value バリデーションする文字列
  * @param maxLength 最大文字数
  * @param fieldName フィールド名（エラーメッセージ用）
+ * @param allowEmpty 空文字を許可するか（デフォルト: true）
  * @returns バリデーション結果
  */
 export function validateProfileText(
   value: string,
   maxLength: number,
-  fieldName: string
+  fieldName: string,
+  allowEmpty: boolean = true
 ): {
   valid: boolean;
   error?: string;
 } {
-  // 1. 正規表現チェック（< >を検出）
+  // 1. 空文字チェック（allowEmptyがfalseの場合）
+  if (!allowEmpty && value.length === 0) {
+    return {
+      valid: false,
+      error: `${fieldName}を入力してください`,
+    };
+  }
+  
+  // 2. 正規表現チェック（< >を検出）
   if (/[<>]/.test(value)) {
     return {
       valid: false,
@@ -124,7 +134,7 @@ export function validateProfileText(
     };
   }
   
-  // 2. 文字数チェック
+  // 3. 文字数チェック
   if (value.length > maxLength) {
     return {
       valid: false,
