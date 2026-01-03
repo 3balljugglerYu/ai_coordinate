@@ -5,6 +5,7 @@ import { Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "../lib/share";
+import { determineFileName } from "@/lib/utils";
 
 interface ShareButtonProps {
   postId: string;
@@ -33,82 +34,6 @@ export function ShareButton({
 
   const getPostUrl = () => {
     return `${window.location.origin}/posts/${postId}`;
-  };
-
-  /**
-   * URLからファイル名を抽出
-   * 例: https://...supabase.co/storage/.../1766523926783-c2p76akbrgw.jpeg
-   *     -> 1766523926783-c2p76akbrgw.jpeg
-   */
-  const extractFileNameFromUrl = (url: string): string | null => {
-    try {
-      const urlObj = new URL(url);
-      const pathname = urlObj.pathname;
-      const fileName = pathname.split('/').pop();
-      return fileName && fileName.includes('.') ? fileName : null;
-    } catch {
-      return null;
-    }
-  };
-
-  /**
-   * Content-Dispositionヘッダーからファイル名を抽出
-   * 例: attachment; filename="image.jpeg"
-   */
-  const extractFileNameFromContentDisposition = (contentDisposition: string | null): string | null => {
-    if (!contentDisposition) return null;
-    
-    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-    if (filenameMatch && filenameMatch[1]) {
-      // クォートを除去
-      return filenameMatch[1].replace(/['"]/g, '');
-    }
-    return null;
-  };
-
-  /**
-   * MIMEタイプから拡張子を取得
-   * image/jpg は非標準だが、image/jpeg として扱う
-   */
-  const getExtensionFromMimeType = (mimeType: string): string => {
-    // image/jpg を image/jpeg に正規化
-    const normalizedMime = mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
-    
-    const mimeToExt: Record<string, string> = {
-      'image/jpeg': 'jpg',
-      'image/png': 'png',
-      'image/gif': 'gif',
-      'image/webp': 'webp',
-    };
-    return mimeToExt[normalizedMime] || 'png';
-  };
-
-  /**
-   * ファイル名を決定する共通ロジック
-   * 優先順位: Content-Disposition > URL抽出 > MIMEタイプから推測
-   */
-  const determineFileName = (
-    response: Response,
-    imageUrl: string,
-    imageId: string,
-    mimeType: string
-  ): string => {
-    const fileNameFromDisposition = extractFileNameFromContentDisposition(
-      response.headers.get('content-disposition')
-    );
-    const fileNameFromUrl = extractFileNameFromUrl(imageUrl);
-    
-    if (fileNameFromDisposition) {
-      // Content-Dispositionヘッダーが最優先
-      return fileNameFromDisposition;
-    } else if (fileNameFromUrl) {
-      // URLから抽出したファイル名
-      return fileNameFromUrl;
-    } else {
-      // MIMEタイプから拡張子を推測
-      const extension = getExtensionFromMimeType(mimeType);
-      return `generated-${imageId}.${extension}`;
-    }
   };
 
   const handleDownload = async () => {
