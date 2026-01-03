@@ -80,25 +80,26 @@ export function ProfileHeader({
           </>
         ) : (
           // 他ユーザーのプロフィールの場合: アバター表示とフォローボタン
-          <div className="flex items-start gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gray-200">
-              {currentProfile.avatar_url ? (
-                <Image
-                  src={currentProfile.avatar_url}
-                  alt={displayName}
-                  width={80}
-                  height={80}
-                  className="rounded-full object-cover"
-                />
-              ) : (
-                <User className="h-10 w-10 text-gray-500" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
-                <FollowButton userId={userId} currentUserId={currentUserId} />
+          <>
+            <div className="flex items-end justify-between">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gray-200">
+                {currentProfile.avatar_url ? (
+                  <Image
+                    src={currentProfile.avatar_url}
+                    alt={displayName}
+                    width={96}
+                    height={96}
+                    className="rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="h-12 w-12 text-gray-500" />
+                )}
               </div>
+              <FollowButton userId={userId} currentUserId={currentUserId} />
+            </div>
+            {/* プロフィール情報 */}
+            <div className="mt-4">
+              <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
               {currentProfile.bio && (
                 <div className="mt-1">
                   <CollapsibleText
@@ -109,7 +110,7 @@ export function ProfileHeader({
                 </div>
               )}
             </div>
-          </div>
+          </>
         )}
       </div>
 
