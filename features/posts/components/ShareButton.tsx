@@ -267,7 +267,7 @@ export function ShareButton({
       const text = "お着替えしました♪";
 
       // シェアを実行
-      const result = await sharePost(url, text, imageUrl || undefined);
+      const result = await sharePost(url, text);
 
       // sharePostが「何をしたか」を返す想定
       if (result.method === "clipboard") {

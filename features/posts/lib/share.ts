@@ -12,14 +12,12 @@ export interface ShareResult {
  * 投稿をシェアする
  * @param url 投稿詳細ページの絶対URL
  * @param text シェアするテキスト（キャプションなど）
- * @param imageUrl シェアする画像のURL（オプショナル）
  * @returns シェア方法を返す（"share" または "clipboard"）
  * @throws ユーザーがキャンセルした場合（AbortError）や、クリップボードAPIも失敗した場合
  */
 export async function sharePost(
   url: string,
-  text?: string,
-  imageUrl?: string
+  text?: string
 ): Promise<ShareResult> {
   const shareText = text || "お着替えしました♪";
   const shareData: ShareData = {
