@@ -36,16 +36,12 @@ export function ProfileEditModal({
   const [bio, setBio] = useState(profile.bio || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nicknameError, setNicknameError] = useState<string | null>(null);
-  const [bioError, setBioError] = useState<string | null>(null);
 
   // プロフィールが変更されたらフォームを更新
   useEffect(() => {
     setNickname(profile.nickname || "");
     setBio(profile.bio || "");
     setError(null);
-    setNicknameError(null);
-    setBioError(null);
   }, [profile, open]);
 
   // サニタイズ後の値とバリデーション結果を計算
@@ -72,15 +68,6 @@ export function ProfileEditModal({
       "自己紹介"
     );
   }, [bioSanitized.value]);
-
-  // エラーメッセージを更新
-  useEffect(() => {
-    setNicknameError(nicknameValidation.valid ? null : nicknameValidation.error || null);
-  }, [nicknameValidation]);
-
-  useEffect(() => {
-    setBioError(bioValidation.valid ? null : bioValidation.error || null);
-  }, [bioValidation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,6 +117,10 @@ export function ProfileEditModal({
   const hasChanges =
     nicknameSanitized.value !== (profile.nickname || "") ||
     bioSanitized.value !== (profile.bio || "");
+
+  // エラーメッセージを直接導出（useMemoでメモ化されているため効率的）
+  const nicknameError = nicknameValidation.valid ? null : nicknameValidation.error || null;
+  const bioError = bioValidation.valid ? null : bioValidation.error || null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
