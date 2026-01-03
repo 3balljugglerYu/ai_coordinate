@@ -204,15 +204,14 @@ export function ShareButton({
       // result.method === "share" の場合はトーストを表示しない（共有画面が開かれるため）
     } catch (error) {
       // ユーザーキャンセルは無視（トーストを表示しない）
-      const e = error as any;
-      if (e?.name === "AbortError") {
+      if (error instanceof DOMException && error.name === "AbortError") {
         return;
       }
 
       // その他のエラーのみトースト表示
       toast({
         title: "エラー",
-        description: e instanceof Error ? e.message : "共有に失敗しました",
+        description: error instanceof Error ? error.message : "共有に失敗しました",
         variant: "destructive",
       });
     } finally {
