@@ -88,7 +88,7 @@ export async function PATCH(
     if (nickname !== undefined) {
       if (typeof nickname !== "string") {
         return NextResponse.json(
-          { error: "ニックネームは文字列である必要があります" },
+          { error: "ニックネームが空欄のため保存できません" },
           { status: 400 }
         );
       }
@@ -100,7 +100,7 @@ export async function PATCH(
       }
     }
 
-    if (bio !== undefined) {
+    if (bio !== undefined && bio !== null) {
       if (typeof bio !== "string") {
         return NextResponse.json(
           { error: "自己紹介は文字列である必要があります" },
@@ -123,7 +123,7 @@ export async function PATCH(
       updateData.nickname = nickname.trim() || null;
     }
     if (bio !== undefined) {
-      updateData.bio = bio.trim() || null;
+      updateData.bio = bio !== null ? bio.trim() || null : null;
     }
 
     const { data: updatedProfile, error } = await supabase
