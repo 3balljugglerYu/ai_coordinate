@@ -10,7 +10,7 @@ import { CommentSection } from "@/features/posts/components/CommentSection";
 import { CommentSectionSkeleton } from "@/features/posts/components/CommentSectionSkeleton";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/env";
-import { DEFAULT_TITLE_TAGLINE, DEFAULT_SHARE_DESCRIPTION } from "@/constants";
+import { DEFAULT_TITLE_TAGLINE } from "@/constants";
 
 // Next.js 16では、動的ルートはデフォルトで動的レンダリングされる
 // キャッシュはfetchのrevalidateオプションまたはReact.cache()で制御
@@ -45,8 +45,6 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const imageUrl = getPostImageUrl(post);
   
   const title = `Persta.AI | ${DEFAULT_TITLE_TAGLINE}`;
-  const description = DEFAULT_SHARE_DESCRIPTION;
-  
   // 画像URLが絶対URLであることを保証
   const ogImage = imageUrl && imageUrl.startsWith("http")
     ? imageUrl
@@ -57,11 +55,9 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const metadata: Metadata = {
     metadataBase: siteUrl ? new URL(siteUrl) : undefined,
     title,
-    description,
     alternates: postUrl ? { canonical: postUrl } : undefined,
     openGraph: {
       title,
-      description,
       url: postUrl,
       siteName: "Persta.AI",
       type: "article",
@@ -79,7 +75,6 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
     twitter: {
       card: "summary_large_image",
       title,
-      description,
       ...(ogImage && {
         images: [ogImage],
       }),
