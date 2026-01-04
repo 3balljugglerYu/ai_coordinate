@@ -1,8 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-
-export type SortType = "newest" | "following" | "daily" | "week" | "month";
+import type { SortType } from "../types";
 
 interface SortTabsProps {
   value: SortType;
@@ -16,8 +15,8 @@ export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
     { value: "week", label: "オススメ" },
     { value: "following", label: "フォロー" },
     // { value: "daily", label: "Daily" },
-    // { value: "week", label: "Weekly" },
     // { value: "month", label: "Monthly" },
+    // { value: "popular", label: "いいね" }, // 検索画面でのみ使用
   ];
 
   return (

@@ -25,10 +25,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const validSorts = ["newest", "following", "daily", "week", "month"];
-    const sortType = validSorts.includes(sort) ? (sort as "newest" | "following" | "daily" | "week" | "month") : "newest";
+    const validSorts = ["newest", "following", "daily", "week", "month", "popular"];
+    const sortType = validSorts.includes(sort) ? (sort as "newest" | "following" | "daily" | "week" | "month" | "popular") : "newest";
     
-    const posts = await getPosts(limit, offset, sortType);
+    // 検索クエリを取得（空文字列の場合はundefinedとして扱う）
+    const searchQuery = searchParams.get("q");
+    const normalizedSearchQuery = searchQuery?.trim() || undefined;
+    
+    const posts = await getPosts(limit, offset, sortType, normalizedSearchQuery);
 
     return NextResponse.json({
       posts,

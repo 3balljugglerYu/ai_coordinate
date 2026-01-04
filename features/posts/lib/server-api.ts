@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
-import type { Post } from "../types";
+import type { Post, SortType } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getImageAspectRatio } from "./utils";
 import {
@@ -150,9 +150,23 @@ async function getPostedImages(
 export const getPosts = cache(async (
   limit = 20,
   offset = 0,
-  sort: "newest" | "following" | "daily" | "week" | "month" = "newest"
+  sort: SortType = "newest",
+  searchQuery?: string
 ): Promise<Post[]> => {
   const supabase = await createClient();
+
+  // 検索クエリのバリデーションと正規化
+  let normalizedSearchQuery: string | undefined = undefined;
+  if (searchQuery) {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length > 0) {
+      // 最大長100文字に制限
+      if (trimmed.length > 100) {
+        throw new Error("検索クエリは100文字以内で入力してください");
+      }
+      normalizedSearchQuery = trimmed;
+    }
+  }
 
   // フォロータブの場合の処理
   if (sort === "following") {
@@ -183,11 +197,18 @@ export const getPosts = cache(async (
 
     // フォローしているユーザーが投稿した画像のみを取得
     // データベース側でページネーションを適用（posted_atでソートするだけなので効率的）
-    const { data: postsData, error: postsError } = await supabase
+    let followingQuery = supabase
       .from("generated_images")
       .select("*")
       .eq("is_posted", true)
-      .in("user_id", followedUserIds)
+      .in("user_id", followedUserIds);
+
+    // 検索クエリが指定されている場合、プロンプト文を検索
+    if (normalizedSearchQuery) {
+      followingQuery = followingQuery.ilike("prompt", `%${normalizedSearchQuery}%`);
+    }
+
+    const { data: postsData, error: postsError } = await followingQuery
       .order("posted_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -206,6 +227,11 @@ export const getPosts = cache(async (
     .from("generated_images")
     .select("*")
     .eq("is_posted", true);
+
+  // 検索クエリが指定されている場合、プロンプト文を検索
+  if (normalizedSearchQuery) {
+    postsQuery = postsQuery.ilike("prompt", `%${normalizedSearchQuery}%`);
+  }
 
   // 期間別ソートの場合は、その期間に投稿されたもののみをフィルタリング
   // posted_atがnullのレコードを除外
@@ -236,10 +262,11 @@ export const getPosts = cache(async (
   }
 
   // 新着順で取得（期間別ソートの場合は、その期間内で新着順）
+  // popularソートの場合は全件取得してからソートするため、limit(1000)で取得
   postsQuery = postsQuery.order("posted_at", { ascending: false });
   
   // 新着タブの場合はデータベース側でページネーションを適用
-  // daily/week/monthの場合は期間別いいね数でソートする必要があるため、limit(1000)で取得
+  // daily/week/month/popularの場合はソート後にページネーションを適用するため、limit(1000)で取得
   if (sort === "newest") {
     postsQuery = postsQuery.range(offset, offset + limit - 1);
   } else {
@@ -258,9 +285,10 @@ export const getPosts = cache(async (
   }
 
   // 期間別のいいね数を取得（daily/week/monthの場合）
+  // popularソートの場合は全期間のいいね数を使用（enrichPostsで取得済み）
   // N+1問題を解消するため、バッチ処理で一括取得
   let rangeLikeCounts: Record<string, number> | undefined = undefined;
-  if (sort !== "newest") {
+  if (sort !== "newest" && sort !== "popular") {
     // sort型をLikeRange型にマッピング
     const rangeMap: Record<"daily" | "week" | "month", LikeRange> = {
       daily: "day",
@@ -284,6 +312,29 @@ export const getPosts = cache(async (
     // 新着順は既にソート済み、データベース側でページネーション済み
     // そのまま返す（range_like_countを除外）
     return postsWithCounts.map((post) => {
+      const { range_like_count, ...postWithoutRangeLikeCount } = post;
+      return postWithoutRangeLikeCount;
+    });
+  } else if (sort === "popular") {
+    // popularソートの場合は、全期間のいいね数（like_count）でソート
+    // いいね数でソート（降順）
+    postsWithCounts.sort((a, b) => {
+      const aCount = a.like_count || 0;
+      const bCount = b.like_count || 0;
+      if (bCount !== aCount) {
+        return bCount - aCount; // 降順
+      }
+      // いいね数が同じ場合は、投稿日時でソート（降順）
+      const aPostedAt = a.posted_at || a.created_at || "";
+      const bPostedAt = b.posted_at || b.created_at || "";
+      return new Date(bPostedAt).getTime() - new Date(aPostedAt).getTime();
+    });
+    
+    // ページネーション適用（サーバー側でソート後）
+    const paginatedPosts = postsWithCounts.slice(offset, offset + limit);
+    
+    // range_like_countを除外して返す
+    return paginatedPosts.map((post) => {
       const { range_like_count, ...postWithoutRangeLikeCount } = post;
       return postWithoutRangeLikeCount;
     });
