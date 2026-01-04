@@ -310,7 +310,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
           <div className="flex-1 min-w-0 mx-2 hidden md:block md:max-w-xs lg:max-w-sm">
             <SearchBar />
           </div>
-          <div className="flex-1 min-w-0 mx-2 md:hidden max-w-[140px]">
+          <div className="flex-1 min-w-0 mx-2 md:hidden max-w-[180px]">
             <SearchBar />
           </div>
         </>
