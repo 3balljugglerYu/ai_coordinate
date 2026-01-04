@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+// デスクトップ判定（mdブレークポイント: 768px）
+const DESKTOP_BREAKPOINT = 768;
+
+function isDesktop(): boolean {
+  return typeof window !== "undefined" && window.innerWidth >= DESKTOP_BREAKPOINT;
+}
+
 export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,21 +30,23 @@ export function SearchBar() {
     }
   }, [searchParams]);
 
-  // 検索実行処理
-  const handleSearch = useCallback(() => {
+  // 検索クエリを含むURLパラメータを構築
+  const buildSearchParams = useCallback((query: string): URLSearchParams => {
     const params = new URLSearchParams(searchParams.toString());
-    
-    if (searchQuery.trim()) {
-      params.set("q", searchQuery.trim());
+    if (query.trim()) {
+      params.set("q", query.trim());
     } else {
       params.delete("q");
     }
+    return params;
+  }, [searchParams]);
 
-    // PC版（md以上、768px以上）の場合は検索画面に遷移
-    const isDesktop = typeof window !== "undefined" && window.innerWidth >= 768;
+  // 検索実行処理
+  const handleSearch = useCallback(() => {
+    const params = buildSearchParams(searchQuery);
     
-    if (isDesktop && !isSearchPage) {
-      // PC版で検索画面以外の場合、検索画面に遷移
+    // PC版の場合は検索画面に遷移
+    if (isDesktop() && !isSearchPage) {
       const newUrl = params.toString() 
         ? `/search?${params.toString()}`
         : "/search";
@@ -49,7 +58,7 @@ export function SearchBar() {
         : window.location.pathname;
       router.replace(newUrl, { scroll: false });
     }
-  }, [searchQuery, router, searchParams, isSearchPage]);
+  }, [searchQuery, router, searchParams, isSearchPage, buildSearchParams]);
 
   // Enterキーで検索実行（IME確定時はスキップ）
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -63,23 +72,16 @@ export function SearchBar() {
   const handleClear = useCallback(() => {
     setSearchQuery("");
     // クリア時も検索を実行（URLパラメータを削除）
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("q");
+    const params = buildSearchParams("");
     const newUrl = params.toString() 
       ? `${window.location.pathname}?${params.toString()}`
       : window.location.pathname;
     router.replace(newUrl, { scroll: false });
-  }, [router, searchParams]);
+  }, [router, buildSearchParams]);
 
   // フォーカス時の検索画面遷移（入力値保持、モバイル版のみ）
   const handleFocus = useCallback(() => {
-    if (!isSearchPage) {
-      // PC版（md以上、768px以上）の場合は遷移しない
-      const isDesktop = typeof window !== "undefined" && window.innerWidth >= 768;
-      if (isDesktop) {
-        return;
-      }
-      
+    if (!isSearchPage && !isDesktop()) {
       // モバイル版のみ検索画面に遷移
       const params = new URLSearchParams();
       if (searchQuery.trim()) {

@@ -54,21 +54,24 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     };
   }, []);
 
+  // SortTypeの型ガード関数
+  const isValidSortType = useCallback((value: string): value is SortType => {
+    const validSorts: SortType[] = ["newest", "following", "daily", "week", "month", "popular"];
+    return validSorts.includes(value as SortType);
+  }, []);
+
   // URLパラメータでsortが指定されている場合
   useEffect(() => {
     const sortParam = searchParams.get("sort");
-    if (sortParam) {
-      const validSorts: SortType[] = ["newest", "following", "daily", "week", "month", "popular"];
-      if (validSorts.includes(sortParam as SortType)) {
-        setPrevSortType((prev) => sortType); // 現在のタブを記録
-        setSortType(sortParam as SortType);
-      }
+    if (sortParam && isValidSortType(sortParam)) {
+      setPrevSortType((prev) => sortType); // 現在のタブを記録
+      setSortType(sortParam);
     } else {
       // sortパラメータがない場合はデフォルト値を使用
       setSortType(defaultSortType);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, isValidSortType]);
 
   // ソートタイプ変更時の処理（タブの見た目を即反映）
   const handleSortChange = useCallback((newSortType: SortType) => {

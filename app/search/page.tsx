@@ -26,6 +26,11 @@ interface SearchPageProps {
   searchParams: Promise<{ q?: string; sort?: string }>;
 }
 
+// SortTypeの型ガード関数
+function isValidSortType(value: string): value is "newest" | "following" | "daily" | "week" | "month" | "popular" {
+  return ["newest", "following", "daily", "week", "month", "popular"].includes(value);
+}
+
 async function PostListContent({ searchQuery, sortType }: { searchQuery?: string; sortType?: string }) {
   // 検索クエリがない場合は空配列を返す（PostListコンポーネントで空の状態メッセージを表示）
   if (!searchQuery || !searchQuery.trim()) {
@@ -33,9 +38,7 @@ async function PostListContent({ searchQuery, sortType }: { searchQuery?: string
   }
 
   // デフォルトはpopularソート
-  const sort = (sortType === "newest" || sortType === "following" || sortType === "daily" || sortType === "week" || sortType === "month" || sortType === "popular") 
-    ? sortType 
-    : "popular";
+  const sort = (sortType && isValidSortType(sortType)) ? sortType : "popular";
   const posts = await getPosts(20, 0, sort, searchQuery);
   return <PostList initialPosts={posts} />;
 }
