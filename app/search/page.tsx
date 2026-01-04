@@ -28,14 +28,9 @@ interface SearchPageProps {
   searchParams: Promise<{ q?: string; sort?: string }>;
 }
 
-async function PostListContent({ searchQuery, sortType }: { searchQuery?: string; sortType?: string }) {
-  // 検索クエリがない場合は空配列を返す（PostListコンポーネントで空の状態メッセージを表示）
-  if (!searchQuery || !searchQuery.trim()) {
-    return null;
-  }
-
+async function PostListContent({ searchQuery, sortType }: { searchQuery: string; sortType: string }) {
   // デフォルトはpopularソート
-  const sort: SortType = (sortType && isValidSortType(sortType)) ? sortType : "popular";
+  const sort: SortType = isValidSortType(sortType) ? sortType : "popular";
   const posts = await getPosts(20, 0, sort, searchQuery);
   return <PostList initialPosts={posts} />;
 }
