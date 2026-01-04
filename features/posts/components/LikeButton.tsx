@@ -171,7 +171,6 @@ export function LikeButton({
           caption={caption}
           imageUrl={imageUrl}
           isOwner={isOwner}
-          showCopy={isPosted}
         />
       )}
       <AuthModal

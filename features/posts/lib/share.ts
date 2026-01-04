@@ -2,67 +2,58 @@
  * Web Share APIを使用したシェア機能のユーティリティ関数
  */
 
+import { DEFAULT_SHARE_TEXT } from "@/constants";
+
+export type ShareMethod = "share" | "clipboard";
+
+export interface ShareResult {
+  method: ShareMethod;
+}
+
 /**
  * 投稿をシェアする
  * @param url 投稿詳細ページの絶対URL
  * @param text シェアするテキスト（キャプションなど）
- * @param imageUrl シェアする画像のURL（オプショナル）
- * @throws Web Share APIがサポートされていない場合、クリップボードにURLをコピーしてエラーをスロー
+ * @returns シェア方法を返す（"share" または "clipboard"）
+ * @throws ユーザーがキャンセルした場合（AbortError）や、クリップボードAPIも失敗した場合
  */
 export async function sharePost(
   url: string,
-  text?: string,
-  imageUrl?: string
-): Promise<void> {
-  // Web Share APIがサポートされているかチェック
-  if (!navigator.share) {
-    // フォールバック: クリップボードにURLをコピー
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(url);
-        throw new Error("Web Share API is not supported. URL copied to clipboard.");
-      } catch (error) {
-        // クリップボードAPIも失敗した場合
-        throw new Error("Web Share API and Clipboard API are not supported.");
-      }
-    } else {
-      throw new Error("Web Share API and Clipboard API are not supported.");
-    }
-  }
-
-  // まず画像を含めてシェアを試行
-  if (imageUrl) {
-    try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error("Failed to fetch image");
-      }
-      const blob = await response.blob();
-      const file = new File([blob], "image.png", { type: blob.type });
-      
-      // 画像のみでシェアを試行（エアドロップなどでURL/テキストと画像の同時送信ができない場合があるため）
-      try {
-        await navigator.share({
-          files: [file],
-        });
-        return; // 成功したら終了
-      } catch (shareError) {
-        // 画像のみのシェアが失敗した場合、URL/テキストを含めて再試行
-        console.warn("Image-only share failed, trying with URL and text:", shareError);
-      }
-    } catch (error) {
-      // 画像の取得に失敗した場合は画像なしでシェア
-      console.warn("Failed to fetch image for sharing:", error);
-    }
-  }
-
-  // URLとテキストを含めてシェア（画像なし、または画像のみのシェアが失敗した場合）
+  text?: string
+): Promise<ShareResult> {
+  const shareText = text || DEFAULT_SHARE_TEXT;
   const shareData: ShareData = {
     title: "Persta.AI",
-    text: text || "",
+    text: shareText,
     url: url,
   };
 
-  await navigator.share(shareData);
+  // 1) Share Sheet（URL+textを優先。OGPが主軸なので、まずはリンク共有）
+  if ("share" in navigator) {
+    try {
+      await (navigator as any).share(shareData);
+      return { method: "share" };
+    } catch (e: any) {
+      // ユーザーキャンセルは呼び出し側で処理
+      if (e?.name === "AbortError") {
+        throw e;
+      }
+      // その他のエラーはフォールバックへ続行
+    }
+  }
+
+  // 2) フォールバック: クリップボードに text + "\n" + url をコピー
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      const clipboardText = `${shareText}\n${url}`;
+      await navigator.clipboard.writeText(clipboardText);
+      return { method: "clipboard" };
+    } catch (error) {
+      // クリップボードAPIも失敗した場合はエラーをスロー
+      throw new Error("Web Share API and Clipboard API are not supported.");
+    }
+  } else {
+    throw new Error("Web Share API and Clipboard API are not supported.");
+  }
 }
 

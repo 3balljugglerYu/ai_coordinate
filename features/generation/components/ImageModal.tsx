@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GeneratedImageData } from "../types";
+import { determineFileName } from "@/lib/utils";
 
 interface ImageModalProps {
   images: GeneratedImageData[];
@@ -12,81 +13,6 @@ interface ImageModalProps {
   onDownload?: (image: GeneratedImageData) => void;
 }
 
-/**
- * URLからファイル名を抽出
- * 例: https://...supabase.co/storage/.../1766523926783-c2p76akbrgw.jpeg
- *     -> 1766523926783-c2p76akbrgw.jpeg
- */
-function extractFileNameFromUrl(url: string): string | null {
-  try {
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
-    const fileName = pathname.split('/').pop();
-    return fileName && fileName.includes('.') ? fileName : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Content-Dispositionヘッダーからファイル名を抽出（将来の拡張性のため）
- * 例: attachment; filename="image.jpeg"
- */
-function extractFileNameFromContentDisposition(contentDisposition: string | null): string | null {
-  if (!contentDisposition) return null;
-  
-  const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-  if (filenameMatch && filenameMatch[1]) {
-    // クォートを除去
-    return filenameMatch[1].replace(/['"]/g, '');
-  }
-  return null;
-}
-
-/**
- * MIMEタイプから拡張子を取得
- * image/jpg は非標準だが、image/jpeg として扱う
- */
-function getExtensionFromMimeType(mimeType: string): string {
-  // image/jpg を image/jpeg に正規化
-  const normalizedMime = mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
-  
-  const mimeToExt: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/gif': 'gif',
-    'image/webp': 'webp',
-  };
-  return mimeToExt[normalizedMime] || 'png';
-}
-
-/**
- * ファイル名を決定する共通ロジック
- * 優先順位: Content-Disposition > URL抽出 > MIMEタイプから推測
- */
-function determineFileName(
-  response: Response,
-  imageUrl: string,
-  imageId: string,
-  mimeType: string
-): string {
-  const fileNameFromDisposition = extractFileNameFromContentDisposition(
-    response.headers.get('content-disposition')
-  );
-  const fileNameFromUrl = extractFileNameFromUrl(imageUrl);
-  
-  if (fileNameFromDisposition) {
-    // Content-Dispositionヘッダーが最優先
-    return fileNameFromDisposition;
-  } else if (fileNameFromUrl) {
-    // URLから抽出したファイル名
-    return fileNameFromUrl;
-  } else {
-    // MIMEタイプから拡張子を推測
-    const extension = getExtensionFromMimeType(mimeType);
-    return `generated-${imageId}.${extension}`;
-  }
-}
 
 export function ImageModal({
   images,
@@ -200,12 +126,9 @@ export function ImageModal({
       document.body.removeChild(link);
       
       // メモリリークを防ぐためにObjectURLを解放
-      // requestAnimationFrameを使用して、ブラウザの描画サイクル後に確実に解放
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          URL.revokeObjectURL(objectUrl);
-        }, 100);
-      });
+      setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 100);
     } catch (error) {
       console.error("ダウンロードエラー:", error);
       alert(error instanceof Error ? error.message : "画像のダウンロードに失敗しました");

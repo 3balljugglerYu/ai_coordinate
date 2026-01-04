@@ -19,3 +19,6 @@ export const API_ENDPOINTS = {
 // コメントの最大文字数
 export const COMMENT_MAX_LENGTH = 200;
 
+// シェア用のデフォルトテキスト
+export const DEFAULT_SHARE_TEXT = "お着替えしました♪";
+

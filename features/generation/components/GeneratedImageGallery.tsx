@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PostModal } from "@/features/posts/components/PostModal";
 import type { GeneratedImageData } from "../types";
 import { ImageModal } from "./ImageModal";
+import { determineFileName } from "@/lib/utils";
 
 interface GeneratedImageGalleryProps {
   images: GeneratedImageData[];
@@ -17,53 +18,6 @@ interface GeneratedImageGalleryProps {
   onDownload?: (image: GeneratedImageData) => void;
 }
 
-/**
- * URLからファイル名を抽出
- * 例: https://...supabase.co/storage/.../1766523926783-c2p76akbrgw.jpeg
- *     -> 1766523926783-c2p76akbrgw.jpeg
- */
-function extractFileNameFromUrl(url: string): string | null {
-  try {
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
-    const fileName = pathname.split('/').pop();
-    return fileName && fileName.includes('.') ? fileName : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Content-Dispositionヘッダーからファイル名を抽出（将来の拡張性のため）
- * 例: attachment; filename="image.jpeg"
- */
-function extractFileNameFromContentDisposition(contentDisposition: string | null): string | null {
-  if (!contentDisposition) return null;
-  
-  const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-  if (filenameMatch && filenameMatch[1]) {
-    // クォートを除去
-    return filenameMatch[1].replace(/['"]/g, '');
-  }
-  return null;
-}
-
-/**
- * MIMEタイプから拡張子を取得
- * image/jpg は非標準だが、image/jpeg として扱う
- */
-function getExtensionFromMimeType(mimeType: string): string {
-  // image/jpg を image/jpeg に正規化
-  const normalizedMime = mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
-  
-  const mimeToExt: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/gif': 'gif',
-    'image/webp': 'webp',
-  };
-  return mimeToExt[normalizedMime] || 'png';
-}
 
 export function GeneratedImageGallery({
   images,
@@ -101,25 +55,13 @@ export function GeneratedImageGallery({
       // blob.typeはBlobオブジェクトが持つMIMEタイプで、より信頼性が高い
       const mimeType = blob.type || response.headers.get('content-type') || 'image/png';
       
-      // ファイル名の取得順序: Content-Disposition > URL抽出 > MIMEタイプから推測
-      const fileNameFromDisposition = extractFileNameFromContentDisposition(
-        response.headers.get('content-disposition')
+      // ファイル名を決定（共通ロジックを使用）
+      const downloadFileName = determineFileName(
+        response,
+        image.url,
+        image.id,
+        mimeType
       );
-      const fileNameFromUrl = extractFileNameFromUrl(image.url);
-      
-      // ファイル名を決定
-      let downloadFileName: string;
-      if (fileNameFromDisposition) {
-        // Content-Dispositionヘッダーが最優先
-        downloadFileName = fileNameFromDisposition;
-      } else if (fileNameFromUrl) {
-        // URLから抽出したファイル名
-        downloadFileName = fileNameFromUrl;
-      } else {
-        // MIMEタイプから拡張子を推測
-        const extension = getExtensionFromMimeType(mimeType);
-        downloadFileName = `generated-${image.id}.${extension}`;
-      }
       
       // ObjectURLを作成
       const objectUrl = URL.createObjectURL(blob);
