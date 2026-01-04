@@ -147,7 +147,7 @@ export function SearchBar() {
             onKeyDown={handleKeyDown}
             onFocus={handleFocus}
             className={cn(
-              "h-7 pl-7 pr-7 text-xs py-1",
+              "h-7 pl-7 pr-7 text-base py-1",
               searchQuery && "pr-7"
             )}
           />
