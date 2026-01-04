@@ -95,10 +95,13 @@ export function SearchBar() {
     updateCurrentPageQuery("");
   }, [updateCurrentPageQuery]);
 
-  // フォーカス時の検索画面遷移（入力値保持、モバイル版のみ）
-  const handleFocus = useCallback(() => {
+  // クリック時の検索画面遷移（入力値保持、モバイル版のみ）
+  // onFocusではなくonClickを使用することで、キーボードを表示させずに遷移できる
+  const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
     if (!isSearchPage && !isDesktop) {
       // モバイル版のみ検索画面に遷移
+      e.preventDefault();
+      e.currentTarget.blur(); // フォーカスを外してキーボードを表示させない
       const params = new URLSearchParams();
       if (searchQuery.trim()) {
         params.set("q", searchQuery.trim());
@@ -145,9 +148,9 @@ export function SearchBar() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={handleFocus}
+            onClick={handleClick}
             className={cn(
-              "h-7 pl-7 pr-7 text-xs py-1",
+              "h-7 pl-7 pr-7 text-base py-1",
               searchQuery && "pr-7"
             )}
           />
