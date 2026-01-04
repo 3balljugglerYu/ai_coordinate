@@ -55,6 +55,15 @@ export function SearchBar() {
     return params;
   }, [searchParams]);
 
+  // 現在のページのURLを更新する共通ヘルパー関数
+  const updateCurrentPageQuery = useCallback((query: string) => {
+    const params = buildSearchParams(query);
+    const newUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [buildSearchParams, pathname, router]);
+
   // 検索実行処理
   const handleSearch = useCallback(() => {
     const params = buildSearchParams(searchQuery);
@@ -67,12 +76,9 @@ export function SearchBar() {
       router.push(newUrl);
     } else {
       // モバイル版、または既に検索画面にいる場合は現在の画面で検索結果を更新
-      const newUrl = params.toString() 
-        ? `${window.location.pathname}?${params.toString()}`
-        : window.location.pathname;
-      router.replace(newUrl, { scroll: false });
+      updateCurrentPageQuery(searchQuery);
     }
-  }, [searchQuery, router, searchParams, isSearchPage, buildSearchParams, isDesktop]);
+  }, [searchQuery, router, searchParams, isSearchPage, buildSearchParams, isDesktop, updateCurrentPageQuery]);
 
   // Enterキーで検索実行（IME確定時はスキップ）
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -86,12 +92,8 @@ export function SearchBar() {
   const handleClear = useCallback(() => {
     setSearchQuery("");
     // クリア時も検索を実行（URLパラメータを削除）
-    const params = buildSearchParams("");
-    const newUrl = params.toString() 
-      ? `${window.location.pathname}?${params.toString()}`
-      : window.location.pathname;
-    router.replace(newUrl, { scroll: false });
-  }, [router, buildSearchParams]);
+    updateCurrentPageQuery("");
+  }, [updateCurrentPageQuery]);
 
   // フォーカス時の検索画面遷移（入力値保持、モバイル版のみ）
   const handleFocus = useCallback(() => {
