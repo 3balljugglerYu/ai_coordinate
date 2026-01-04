@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   // シェア用の固定文言
   const shareText = DEFAULT_SHARE_TEXT;
   const title = `Persta.AI | 着てみたいを、今すぐ。`;
-  const description = post.caption || shareText;
+  const description = "#PerstaAI で、お着替えしてみました♪";
   
   // 画像URLが絶対URLであることを保証
   const ogImage = imageUrl && imageUrl.startsWith("http")
