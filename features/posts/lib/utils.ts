@@ -2,6 +2,17 @@
  * 投稿機能のユーティリティ関数
  */
 
+import type { SortType } from "../types";
+
+/**
+ * SortTypeの型ガード関数
+ * 文字列が有効なSortTypeかどうかを判定する
+ */
+export function isValidSortType(value: string): value is SortType {
+  const validSorts: SortType[] = ["newest", "following", "daily", "week", "month", "popular"];
+  return validSorts.includes(value as SortType);
+}
+
 /**
  * storage_pathからSupabase Storageの公開URLを生成（クライアント・サーバー両対応）
  */

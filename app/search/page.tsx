@@ -4,6 +4,8 @@ import { PostList } from "@/features/posts/components/PostList";
 import { getPosts } from "@/features/posts/lib/server-api";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import { getSiteUrl } from "@/lib/env";
+import type { SortType } from "@/features/posts/types";
+import { isValidSortType } from "@/features/posts/lib/utils";
 
 export const metadata: Metadata = {
   title: "検索 - Persta.AI",
@@ -26,11 +28,6 @@ interface SearchPageProps {
   searchParams: Promise<{ q?: string; sort?: string }>;
 }
 
-// SortTypeの型ガード関数
-function isValidSortType(value: string): value is "newest" | "following" | "daily" | "week" | "month" | "popular" {
-  return ["newest", "following", "daily", "week", "month", "popular"].includes(value);
-}
-
 async function PostListContent({ searchQuery, sortType }: { searchQuery?: string; sortType?: string }) {
   // 検索クエリがない場合は空配列を返す（PostListコンポーネントで空の状態メッセージを表示）
   if (!searchQuery || !searchQuery.trim()) {
@@ -38,7 +35,7 @@ async function PostListContent({ searchQuery, sortType }: { searchQuery?: string
   }
 
   // デフォルトはpopularソート
-  const sort = (sortType && isValidSortType(sortType)) ? sortType : "popular";
+  const sort: SortType = (sortType && isValidSortType(sortType)) ? sortType : "popular";
   const posts = await getPosts(20, 0, sort, searchQuery);
   return <PostList initialPosts={posts} />;
 }

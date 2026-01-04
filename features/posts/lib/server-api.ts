@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
-import type { Post } from "../types";
+import type { Post, SortType } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getImageAspectRatio } from "./utils";
 import {
@@ -150,7 +150,7 @@ async function getPostedImages(
 export const getPosts = cache(async (
   limit = 20,
   offset = 0,
-  sort: "newest" | "following" | "daily" | "week" | "month" | "popular" = "newest",
+  sort: SortType = "newest",
   searchQuery?: string
 ): Promise<Post[]> => {
   const supabase = await createClient();

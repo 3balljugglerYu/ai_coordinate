@@ -5,10 +5,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
-import { SortTabs, type SortType } from "./SortTabs";
+import { SortTabs } from "./SortTabs";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
-import type { Post } from "../types";
+import type { Post, SortType } from "../types";
+import { isValidSortType } from "../lib/utils";
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -54,12 +55,6 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     };
   }, []);
 
-  // SortTypeの型ガード関数
-  const isValidSortType = useCallback((value: string): value is SortType => {
-    const validSorts: SortType[] = ["newest", "following", "daily", "week", "month", "popular"];
-    return validSorts.includes(value as SortType);
-  }, []);
-
   // URLパラメータでsortが指定されている場合
   useEffect(() => {
     const sortParam = searchParams.get("sort");
@@ -71,7 +66,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
       setSortType(defaultSortType);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParams, isValidSortType]);
+  }, [pathname, searchParams]);
 
   // ソートタイプ変更時の処理（タブの見た目を即反映）
   const handleSortChange = useCallback((newSortType: SortType) => {

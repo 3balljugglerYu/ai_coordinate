@@ -1,8 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-
-export type SortType = "newest" | "following" | "daily" | "week" | "month" | "popular";
+import type { SortType } from "../types";
 
 interface SortTabsProps {
   value: SortType;

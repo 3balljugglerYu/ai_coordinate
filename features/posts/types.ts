@@ -27,3 +27,8 @@ export interface Post extends GeneratedImageRecord {
   comment_count?: number;
   view_count?: number;
 }
+
+/**
+ * 投稿のソートタイプ
+ */
+export type SortType = "newest" | "following" | "daily" | "week" | "month" | "popular";
