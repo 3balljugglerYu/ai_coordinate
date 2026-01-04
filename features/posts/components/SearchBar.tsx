@@ -101,7 +101,7 @@ export function SearchBar() {
     if (!isSearchPage && !isDesktop) {
       // モバイル版のみ検索画面に遷移
       e.preventDefault();
-      // blur()は呼ばない（遷移後の自動フォーカスのために）
+      e.currentTarget.blur(); // フォーカスを外してキーボードを表示させない
       const params = new URLSearchParams();
       if (searchQuery.trim()) {
         params.set("q", searchQuery.trim());
@@ -116,16 +116,13 @@ export function SearchBar() {
   // 検索画面での自動フォーカス
   useEffect(() => {
     if (isSearchPage && inputRef.current) {
-      // 遷移完了を待つため、少し長めの遅延を設定
+      // 少し遅延させてフォーカス（レンダリング完了後）
       const timer = setTimeout(() => {
-        // フォーカス可能か確認してからフォーカス
-        if (inputRef.current && document.activeElement !== inputRef.current) {
-          inputRef.current.focus();
-        }
-      }, 300);
+        inputRef.current?.focus();
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isSearchPage, pathname]);
+  }, [isSearchPage]);
 
   return (
     <div className="relative flex-1 max-w-md min-w-[120px]">
