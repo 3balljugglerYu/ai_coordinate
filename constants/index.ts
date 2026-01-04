@@ -22,3 +22,9 @@ export const COMMENT_MAX_LENGTH = 200;
 // シェア用のデフォルトテキスト
 export const DEFAULT_SHARE_TEXT = "お着替えしました♪";
 
+// OGP用のタイトルタグライン
+export const DEFAULT_TITLE_TAGLINE = "着てみたいを、今すぐ。";
+
+// OGP用のシェア説明文
+export const DEFAULT_SHARE_DESCRIPTION = "#PerstaAI で、お着替えしてみました♪";
+
