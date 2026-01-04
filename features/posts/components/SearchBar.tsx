@@ -119,7 +119,7 @@ export function SearchBar() {
       // 少し遅延させてフォーカス（レンダリング完了後）
       const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 1000);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [isSearchPage]);
