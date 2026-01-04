@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 async function PostListContent() {
-  const posts = await getPosts(20, 0);
+  const posts = await getPosts(20, 0, "newest");
   return <PostList initialPosts={posts} />;
 }
 

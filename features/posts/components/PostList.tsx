@@ -19,13 +19,17 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialPosts.length === 20);
   const [offset, setOffset] = useState(initialPosts.length);
-  const [sortType, setSortType] = useState<SortType>("newest");
-  const [prevSortType, setPrevSortType] = useState<SortType>("newest");
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentPath = pathname;
+  const searchQuery = searchParams.get("q") || "";
+  const isSearchPage = pathname === "/search";
+  // 検索画面の場合はデフォルトでpopular、それ以外はnewest
+  const defaultSortType: SortType = isSearchPage ? "popular" : "newest";
+  const [sortType, setSortType] = useState<SortType>(defaultSortType);
+  const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "200px",
@@ -50,13 +54,20 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     };
   }, []);
 
-  // URLパラメータでsort=followingが指定されている場合
+  // URLパラメータでsortが指定されている場合
   useEffect(() => {
     const sortParam = searchParams.get("sort");
-    if (pathname === "/" && sortParam === "following") {
-      setPrevSortType((prev) => prev); // 現在のタブを記録（デフォルト保持）
-      setSortType("following");
+    if (sortParam) {
+      const validSorts: SortType[] = ["newest", "following", "daily", "week", "month", "popular"];
+      if (validSorts.includes(sortParam as SortType)) {
+        setPrevSortType((prev) => sortType); // 現在のタブを記録
+        setSortType(sortParam as SortType);
+      }
+    } else {
+      // sortパラメータがない場合はデフォルト値を使用
+      setSortType(defaultSortType);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
 
   // ソートタイプ変更時の処理（タブの見た目を即反映）
@@ -74,9 +85,17 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     }
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/posts?limit=20&offset=${newOffset}&sort=${sortType}`
-      );
+      // 検索クエリが存在する場合、APIリクエストにqパラメータを追加
+      const params = new URLSearchParams({
+        limit: "20",
+        offset: newOffset.toString(),
+        sort: sortType,
+      });
+      if (searchQuery.trim()) {
+        params.set("q", searchQuery.trim());
+      }
+      
+      const response = await fetch(`/api/posts?${params.toString()}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -96,25 +115,26 @@ export function PostList({ initialPosts = [] }: PostListProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [sortType, currentUserId]);
+  }, [sortType, currentUserId, searchQuery]);
 
   const loadMorePosts = useCallback(() => {
     loadPosts(offset, false);
   }, [loadPosts, offset]);
 
-  // sortType / currentUserId に応じたモーダル表示とデータロード
+  // sortType / currentUserId / searchQuery に応じたモーダル表示とデータロード
   useEffect(() => {
     const shouldShowAuth = sortType === "following" && !currentUserId;
     setShowAuthPrompt(shouldShowAuth);
     if (!shouldShowAuth) {
       // フォロータブかつログイン済み、または他タブの場合のみロード
+      // 検索クエリ変更時もリセットして再取得
       loadPosts(0, true);
     } else {
       // 未ログインのフォロータブはリストをクリア
       setPosts([]);
       setHasMore(false);
     }
-  }, [sortType, currentUserId, loadPosts]);
+  }, [sortType, currentUserId, searchQuery, loadPosts]);
 
   useEffect(() => {
     if (inView && hasMore && !isLoading) {
@@ -124,6 +144,11 @@ export function PostList({ initialPosts = [] }: PostListProps) {
 
   // 期間別ソートの場合のメッセージ
   const getEmptyMessage = () => {
+    // 検索クエリが存在する場合は専用メッセージを表示
+    if (searchQuery.trim()) {
+      return `"${searchQuery.trim()}"に一致する投稿が見つかりませんでした`;
+    }
+    
     if (sortType === "following") {
       return "フォローしているユーザーの投稿がありません";
     } else if (sortType === "daily") {
@@ -138,9 +163,12 @@ export function PostList({ initialPosts = [] }: PostListProps) {
 
   return (
     <>
-      <div className="mb-4">
-        <SortTabs value={sortType} onChange={handleSortChange} currentUserId={currentUserId} />
-      </div>
+      {/* 検索画面ではSortTabsを非表示 */}
+      {!isSearchPage && (
+        <div className="mb-4">
+          <SortTabs value={sortType} onChange={handleSortChange} currentUserId={currentUserId} />
+        </div>
+      )}
       {posts.length === 0 ? (
         // ローディング中はインジケータのみ表示
         isLoading ? (
@@ -148,9 +176,9 @@ export function PostList({ initialPosts = [] }: PostListProps) {
             <div className="text-muted-foreground">読み込み中...</div>
           </div>
         ) : (
-          // ローディング完了後、期間別ソートまたはフォロータブの場合はメッセージを表示
-          // 「新着」タブの場合は何も表示しない
-          sortType !== "newest" && (
+          // ローディング完了後、期間別ソート、フォロータブ、または検索結果が0件の場合はメッセージを表示
+          // 「新着」タブで検索クエリがない場合は何も表示しない
+          (sortType !== "newest" || searchQuery.trim()) && (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">{getEmptyMessage()}</p>
             </div>

@@ -22,6 +22,7 @@ import { APP_NAME } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
 import { NotificationList } from "@/features/notifications/components/NotificationList";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
+import { SearchBar } from "@/features/posts/components/SearchBar";
 
 interface StickyHeaderProps {
   children?: React.ReactNode;
@@ -174,13 +175,149 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     }
   };
 
+  const isSearchPage = pathname === "/search";
+
+  // 検索画面の場合はモバイル版のみ簡素化されたヘッダーを表示、PC版は通常のヘッダー
+  if (isSearchPage) {
+    return (
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm"
+      >
+        {/* モバイル版: 簡素化されたヘッダー（検索バーのみ） */}
+        <div className="w-full px-4 py-3 flex items-center justify-center md:hidden">
+          <div className="w-full max-w-2xl">
+            <SearchBar />
+          </div>
+        </div>
+        {/* PC版: 通常のヘッダー */}
+        <div className="w-full px-4 py-3 hidden md:flex items-center justify-between gap-2 flex-nowrap">
+          <div className="flex items-center gap-4 flex-shrink-0">
+            {shouldShowBackButton && (
+              <Link href={backUrl}>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700 whitespace-nowrap"
+            >
+              <Image
+                src="/icons/icon-192.png"
+                alt="Persta.AI ロゴ"
+                width={24}
+                height={24}
+                className="rounded-md"
+              />
+              <span>{APP_NAME}</span>
+            </Link>
+          </div>
+          {/* 検索バー（中央配置、レスポンシブ調整） */}
+          <div className="flex-1 min-w-0 mx-2 md:max-w-xs lg:max-w-sm">
+            <SearchBar />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!isLoading && (
+              <>
+                {/* 通知バッジ（認証済みユーザーのみ） */}
+                {currentUser && (
+                  <DropdownMenu
+                    open={isNotificationOpen}
+                    onOpenChange={(open) => {
+                      setIsNotificationOpen(open);
+                      // ドロップダウンが開くタイミングで既読にする
+                      if (open) {
+                        markAllRead();
+                      }
+                    }}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="relative flex items-center justify-center p-2 h-auto"
+                        aria-label={`通知${unreadCount > 0 ? `（未読${unreadCount}件）` : ""}`}
+                      >
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-80 max-h-[80vh] overflow-hidden flex flex-col p-0"
+                    >
+                      <div className="p-4 border-b">
+                        <h3 className="font-semibold">通知</h3>
+                      </div>
+                      <div className="overflow-y-auto flex-1 max-h-[60vh]">
+                        <NotificationList />
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {currentUser ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                        {currentUser.avatar_url ? (
+                          <Image
+                            src={currentUser.avatar_url}
+                            alt="ユーザー"
+                            width={32}
+                            height={32}
+                            className="rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                            <User className="h-4 w-4 text-gray-500" />
+                          </div>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link href="/my-page" className="cursor-pointer">
+                          <UserIcon className="mr-2 h-4 w-4" />
+                          マイページ
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={handleSignOut}
+                        className="text-destructive cursor-pointer"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        ログアウト
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Link href="/login">
+                    <Button variant="outline" size="sm" className="text-xs">
+                      ログイン
+                    </Button>
+                  </Link>
+                )}
+              </>
+            )}
+            {children}
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // 通常のヘッダー
   return (
     <header
       ref={headerRef}
       className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm"
     >
-      <div className="w-full px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="w-full px-4 py-3 flex items-center justify-between gap-2 flex-nowrap">
+        <div className="flex items-center gap-4 flex-shrink-0">
           {shouldShowBackButton && (
             <Link href={backUrl}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -190,7 +327,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
           )}
           <Link
             href="/"
-            className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700"
+            className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700 whitespace-nowrap"
           >
             <Image
               src="/icons/icon-192.png"
@@ -199,10 +336,17 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
               height={24}
               className="rounded-md"
             />
-            {APP_NAME}
+            <span>{APP_NAME}</span>
           </Link>
         </div>
-        <div className="flex items-center gap-2">
+        {/* 検索バー（中央配置、レスポンシブ調整） */}
+        <div className="flex-1 min-w-0 mx-2 hidden md:block md:max-w-xs lg:max-w-sm">
+          <SearchBar />
+        </div>
+        <div className="flex-1 min-w-0 mx-2 md:hidden max-w-[140px]">
+          <SearchBar />
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {!isLoading && (
             <>
               {/* 通知バッジ（認証済みユーザーのみ） */}
