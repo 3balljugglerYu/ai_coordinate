@@ -10,17 +10,31 @@ import { cn } from "@/lib/utils";
 // デスクトップ判定（mdブレークポイント: 768px）
 const DESKTOP_BREAKPOINT = 768;
 
-function isDesktop(): boolean {
-  return typeof window !== "undefined" && window.innerWidth >= DESKTOP_BREAKPOINT;
-}
-
 export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isDesktop, setIsDesktop] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSearchPage = pathname === "/search";
+
+  // デスクトップ判定（クライアントサイドでのみ実行）
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
+    };
+    
+    // 初期チェック
+    checkIsDesktop();
+    
+    // リサイズイベントリスナーを追加
+    window.addEventListener("resize", checkIsDesktop);
+    
+    return () => {
+      window.removeEventListener("resize", checkIsDesktop);
+    };
+  }, []);
 
   // URLパラメータから初期値を取得
   useEffect(() => {
@@ -46,7 +60,7 @@ export function SearchBar() {
     const params = buildSearchParams(searchQuery);
     
     // PC版の場合は検索画面に遷移
-    if (isDesktop() && !isSearchPage) {
+    if (isDesktop && !isSearchPage) {
       const newUrl = params.toString() 
         ? `/search?${params.toString()}`
         : "/search";
@@ -58,7 +72,7 @@ export function SearchBar() {
         : window.location.pathname;
       router.replace(newUrl, { scroll: false });
     }
-  }, [searchQuery, router, searchParams, isSearchPage, buildSearchParams]);
+  }, [searchQuery, router, searchParams, isSearchPage, buildSearchParams, isDesktop]);
 
   // Enterキーで検索実行（IME確定時はスキップ）
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -81,7 +95,7 @@ export function SearchBar() {
 
   // フォーカス時の検索画面遷移（入力値保持、モバイル版のみ）
   const handleFocus = useCallback(() => {
-    if (!isSearchPage && !isDesktop()) {
+    if (!isSearchPage && !isDesktop) {
       // モバイル版のみ検索画面に遷移
       const params = new URLSearchParams();
       if (searchQuery.trim()) {
@@ -92,7 +106,7 @@ export function SearchBar() {
         : "/search";
       router.push(newUrl);
     }
-  }, [router, searchQuery, isSearchPage]);
+  }, [router, searchQuery, isSearchPage, isDesktop]);
 
   // 検索画面での自動フォーカス
   useEffect(() => {
