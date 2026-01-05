@@ -373,7 +373,7 @@ export const getPosts = cache(async (
  * いいね数・コメント数・閲覧数を取得し、閲覧数をインクリメント
  * React.cache()でラップして、同一リクエスト内での重複取得を防止
  */
-export const getPost = cache(async (id: string, currentUserId?: string | null): Promise<Post | null> => {
+export const getPost = cache(async (id: string, currentUserId?: string | null, skipViewCount?: boolean): Promise<Post | null> => {
   const supabase = await createClient();
 
   // まず画像を取得（is_postedの条件なし）
@@ -452,13 +452,18 @@ export const getPost = cache(async (id: string, currentUserId?: string | null): 
   }
 
   // 閲覧数をインクリメント（重複カウント）
-  // オプティミスティック更新: 現在の閲覧数+1を使用（RPC関数の戻り値取得を待たない）
+  // skipViewCountがtrueの場合はカウントをスキップ
   const currentViewCount = data.view_count || 0;
-  await incrementViewCount(id);
+  let updatedViewCount = currentViewCount;
   
-  // 更新後の閲覧数を取得（オプティミスティック更新のため、実際の値ではなく現在の値+1を使用）
-  // 注意: 実際の値が必要な場合は、RPC関数を修正して戻り値を返すようにする
-  const updatedViewCount = currentViewCount + 1;
+  if (!skipViewCount) {
+    // オプティミスティック更新: 現在の閲覧数+1を使用（RPC関数の戻り値取得を待たない）
+    await incrementViewCount(id);
+    
+    // 更新後の閲覧数を取得（オプティミスティック更新のため、実際の値ではなく現在の値+1を使用）
+    // 注意: 実際の値が必要な場合は、RPC関数を修正して戻り値を返すようにする
+    updatedViewCount = currentViewCount + 1;
+  }
 
   return {
     ...data,

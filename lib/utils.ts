@@ -223,3 +223,73 @@ export function determineFileName(
   }
 }
 
+/**
+ * クローラーかどうかを判定
+ * User-Agentを小文字に正規化し、部分一致で判定
+ * 
+ * @param userAgent User-Agent文字列
+ * @returns クローラーの場合true
+ */
+export function isCrawler(userAgent: string | null): boolean {
+  if (!userAgent) return false;
+  
+  const ua = userAgent.toLowerCase();
+  
+  const crawlerPatterns = [
+    'bot',
+    'crawler',
+    'spider',
+    'facebookexternalhit',
+    'twitterbot',
+    'googlebot',
+    'bingbot',
+    'slackbot',
+    'linkedinbot',
+    'whatsapp',
+    'telegrambot',
+    'linebot',
+    'applebot',
+    'baiduspider',
+    'yandexbot',
+    'duckduckbot',
+  ];
+  
+  return crawlerPatterns.some(pattern => ua.includes(pattern));
+}
+
+/**
+ * Next.jsのプリフェッチリクエストかどうかを判定
+ * 複数シグナルで判定し、安全側（誤判定してもskip）に倒す
+ * 
+ * @param headers リクエストヘッダー
+ * @returns プリフェッチリクエストの場合true
+ */
+export function isPrefetchRequest(headers: Headers): boolean {
+  // 主要なシグナル（確実性が高い順）
+  const nextRouterPrefetch = headers.get('next-router-prefetch');
+  const purpose = headers.get('purpose')?.toLowerCase();
+  const secPurpose = headers.get('sec-purpose')?.toLowerCase();
+  const xMiddlewarePrefetch = headers.get('x-middleware-prefetch');
+  
+  // 主要シグナルのいずれかが該当すれば true
+  if (
+    nextRouterPrefetch === '1' ||
+    purpose === 'prefetch' ||
+    secPurpose === 'prefetch' ||
+    xMiddlewarePrefetch === '1'
+  ) {
+    return true;
+  }
+  
+  // 補助的シグナル（誤判定リスクがあるため慎重に）
+  const nextUrl = headers.get('next-url');
+  const secFetchDest = headers.get('sec-fetch-dest');
+  const secFetchMode = headers.get('sec-fetch-mode');
+  
+  if (nextUrl && secFetchDest && secFetchDest !== 'document' && secFetchMode !== 'navigate') {
+    return true;
+  }
+  
+  return false;
+}
+
