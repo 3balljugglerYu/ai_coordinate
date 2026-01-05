@@ -186,15 +186,10 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     const headersList = await headers();
     const userAgent = headersList.get('user-agent');
     
-    // プリフェッチ判定
-    if (isPrefetchRequest(headersList)) {
-      shouldSkipViewCount = true;
-    }
-    
-    // クローラー判定（プリフェッチでない場合のみ）
-    if (!shouldSkipViewCount && isCrawler(userAgent)) {
-      shouldSkipViewCount = true;
-    }
+    const isPrefetch = isPrefetchRequest(headersList);
+    // isCrawlerはisPrefetchがfalseの場合のみ評価される
+    const isCrawlerReq = !isPrefetch && isCrawler(userAgent);
+    shouldSkipViewCount = isPrefetch || isCrawlerReq;
     
     // デバッグ用ログ（開発環境のみ）
     if (process.env.NODE_ENV === 'development') {
@@ -202,8 +197,8 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
         'next-router-prefetch': headersList.get('next-router-prefetch'),
         'purpose': headersList.get('purpose'),
         'user-agent': userAgent,
-        'isPrefetch': isPrefetchRequest(headersList),
-        'isCrawler': isCrawler(userAgent),
+        'isPrefetch': isPrefetch,
+        'isCrawler': isCrawlerReq,
         'shouldSkipViewCount': shouldSkipViewCount,
       });
     }
