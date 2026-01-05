@@ -18,6 +18,31 @@ interface PostDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+function buildSanitizedText(
+  text: string | null | undefined,
+  fallback: string,
+  maxLength: number
+) {
+  if (!text) return fallback;
+
+  const normalized = text
+    .replace(/\s+/g, " ")
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, "")
+    .trim();
+
+  if (!normalized) return fallback;
+
+  return normalized.slice(0, maxLength);
+}
+
+function buildDescription(caption?: string | null) {
+  return buildSanitizedText(caption, "Persta.AIで作成したコーデ画像です。", 120);
+}
+
+function buildImageAlt(caption?: string | null) {
+  return buildSanitizedText(caption, "Persta.AI 投稿画像", 80);
+}
+
 export async function generateMetadata({ params }: PostDetailPageProps): Promise<Metadata> {
   const { id } = await params;
   
@@ -45,6 +70,8 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const imageUrl = getPostImageUrl(post);
   
   const title = `Persta.AI | ${DEFAULT_TITLE_TAGLINE}`;
+  const description = buildDescription(post.caption);
+  const imageAlt = buildImageAlt(post.caption);
   // 画像URLが絶対URLであることを保証
   const ogImage = imageUrl && imageUrl.startsWith("http")
     ? imageUrl
@@ -55,9 +82,11 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const metadata: Metadata = {
     metadataBase: siteUrl ? new URL(siteUrl) : undefined,
     title,
+    description,
     alternates: postUrl ? { canonical: postUrl } : undefined,
     openGraph: {
       title,
+      description,
       url: postUrl,
       siteName: "Persta.AI",
       type: "article",
@@ -67,7 +96,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
             url: ogImage,
             width: 1200,
             height: 630,
-            alt: post.caption || "Persta.AI 投稿画像",
+            alt: imageAlt,
           },
         ],
       }),
@@ -75,6 +104,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
     twitter: {
       card: "summary_large_image",
       title,
+      description,
       ...(ogImage && {
         images: [ogImage],
       }),
