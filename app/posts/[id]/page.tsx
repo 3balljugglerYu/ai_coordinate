@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { getPost } from "@/features/posts/lib/server-api";
 import { getPostImageUrl, getImageAspectRatio } from "@/features/posts/lib/utils";
+import { isCrawler, isPrefetchRequest } from "@/lib/utils";
 import { PostDetailStatic } from "@/features/posts/components/PostDetailStatic";
 import { PostDetailStats } from "@/features/posts/components/PostDetailStats";
 import { PostDetailStatsSkeleton } from "@/features/posts/components/PostDetailStatsSkeleton";
@@ -47,9 +49,10 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const { id } = await params;
   
   // 投稿情報を取得（認証不要で取得可能な情報のみ）
+  // メタデータ生成時は常に閲覧数カウントをスキップ
   let post;
   try {
-    post = await getPost(id, null);
+    post = await getPost(id, null, true);
   } catch (error) {
     // エラーが発生した場合は404用のメタデータを返す
     return {
@@ -176,8 +179,42 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     console.error("Auth error:", error);
   }
 
+  // プリフェッチまたはクローラーかどうかを判定
+  let shouldSkipViewCount = false;
+  
+  try {
+    const headersList = await headers();
+    const userAgent = headersList.get('user-agent');
+    
+    // プリフェッチ判定
+    if (isPrefetchRequest(headersList)) {
+      shouldSkipViewCount = true;
+    }
+    
+    // クローラー判定（プリフェッチでない場合のみ）
+    if (!shouldSkipViewCount && isCrawler(userAgent)) {
+      shouldSkipViewCount = true;
+    }
+    
+    // デバッグ用ログ（開発環境のみ）
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Request headers:', {
+        'next-router-prefetch': headersList.get('next-router-prefetch'),
+        'purpose': headersList.get('purpose'),
+        'user-agent': userAgent,
+        'isPrefetch': isPrefetchRequest(headersList),
+        'isCrawler': isCrawler(userAgent),
+        'shouldSkipViewCount': shouldSkipViewCount,
+      });
+    }
+  } catch (error) {
+    // headers()の取得に失敗した場合は安全側に倒す（カウントしない）
+    console.warn('Failed to get headers, skipping view count:', error);
+    shouldSkipViewCount = true;
+  }
+
   // 投稿詳細を取得（未投稿画像も所有者は閲覧可能）
-  const post = await getPost(id, currentUserId);
+  const post = await getPost(id, currentUserId, shouldSkipViewCount);
 
   if (!post) {
     notFound();
