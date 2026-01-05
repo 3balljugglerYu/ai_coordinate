@@ -18,32 +18,29 @@ interface PostDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-function buildDescription(caption?: string | null) {
-  const fallback = "Persta.AIで作成したコーデ画像です。";
-  if (!caption) return fallback;
+function buildSanitizedText(
+  text: string | null | undefined,
+  fallback: string,
+  maxLength: number
+) {
+  if (!text) return fallback;
 
-  const normalized = caption
+  const normalized = text
     .replace(/\s+/g, " ")
     .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, "")
     .trim();
 
   if (!normalized) return fallback;
 
-  return normalized.slice(0, 120);
+  return normalized.slice(0, maxLength);
+}
+
+function buildDescription(caption?: string | null) {
+  return buildSanitizedText(caption, "Persta.AIで作成したコーデ画像です。", 120);
 }
 
 function buildImageAlt(caption?: string | null) {
-  const fallback = "Persta.AI 投稿画像";
-  if (!caption) return fallback;
-
-  const normalized = caption
-    .replace(/\s+/g, " ")
-    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, "")
-    .trim();
-
-  if (!normalized) return fallback;
-
-  return normalized.slice(0, 80);
+  return buildSanitizedText(caption, "Persta.AI 投稿画像", 80);
 }
 
 export async function generateMetadata({ params }: PostDetailPageProps): Promise<Metadata> {
