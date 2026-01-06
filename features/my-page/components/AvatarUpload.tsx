@@ -67,6 +67,14 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       return;
     }
 
+    // HEIF形式の検出と警告
+    const isHeifFormat = file.type === "image/heic" || file.type === "image/heif";
+    if (isHeifFormat) {
+      // HEIF形式の場合、ブラウザがサポートしていない可能性があるため警告を表示
+      // ただし、処理は続行（getCroppedImg関数でPNG形式に変換される）
+      console.warn("HEIF形式のファイルが検出されました。PNG形式に変換されます。");
+    }
+
     // ファイルサイズの検証（10MB制限）
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     if (file.size > MAX_FILE_SIZE) {
@@ -83,6 +91,14 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       setIsCropMode(true);
       setZoom(1);
       setCrop({ x: 0, y: 0 });
+    };
+    reader.onerror = () => {
+      // HEIF形式をサポートしていないブラウザの場合、エラーが発生する可能性がある
+      if (isHeifFormat) {
+        setError("HEIF形式のファイルは、お使いのブラウザではサポートされていません。JPEGまたはPNG形式のファイルをご利用ください。");
+      } else {
+        setError("画像の読み込みに失敗しました");
+      }
     };
     reader.readAsDataURL(file);
   };

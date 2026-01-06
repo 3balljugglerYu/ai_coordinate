@@ -66,7 +66,10 @@ function createImage(url: string): Promise<HTMLImageElement> {
     const image = new Image();
     image.crossOrigin = "anonymous";
     image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", (error) => reject(error));
+    image.addEventListener("error", (error) => {
+      // HEIF形式をサポートしていないブラウザの場合、より分かりやすいエラーメッセージを提供
+      reject(new Error("画像の読み込みに失敗しました。HEIF形式のファイルは、お使いのブラウザではサポートされていない可能性があります。"));
+    });
     image.src = url;
   });
 }
