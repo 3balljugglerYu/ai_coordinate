@@ -296,7 +296,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                   </span>
                 </div>
               </div>
-              <DialogFooter className="border-t border-gray-700 bg-black/50 p-4 pb-16 safe-area-inset-bottom">
+              <DialogFooter className="border-t border-gray-700 bg-black/50 p-4 pb-32 safe-area-inset-bottom">
                 <div className="flex gap-2 w-full">
                   <Button
                     type="button"
