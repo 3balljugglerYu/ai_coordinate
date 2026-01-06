@@ -6,14 +6,15 @@ import { Area } from "react-easy-crop";
  */
 export async function getCroppedImg(
   imageSrc: string,
-  pixelCrop: Area
+  pixelCrop: Area,
+  isHeifFormat?: boolean
 ): Promise<Blob> {
-  const image = await createImage(imageSrc);
+  const image = await createImage(imageSrc, isHeifFormat);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
   if (!ctx) {
-    throw new Error("Canvas context is not available");
+    throw new Error("Canvasコンテキストを取得できませんでした");
   }
 
   // キャンバスサイズをトリミングサイズに設定
@@ -47,28 +48,32 @@ export async function getCroppedImg(
   ctx.fill();
 
   return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("Canvas is empty"));
-          return;
-        }
-        resolve(blob);
-      },
-      "image/png",
-      1.0
-    );
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("画像の生成に失敗しました"));
+            return;
+          }
+          resolve(blob);
+        },
+        "image/png",
+        1.0
+      );
   });
 }
 
-function createImage(url: string): Promise<HTMLImageElement> {
+function createImage(url: string, isHeifFormat?: boolean): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
     image.addEventListener("load", () => resolve(image));
     image.addEventListener("error", (error) => {
-      // HEIF形式をサポートしていないブラウザの場合、より分かりやすいエラーメッセージを提供
-      reject(new Error("画像の読み込みに失敗しました。HEIF形式のファイルは、お使いのブラウザではサポートされていない可能性があります。"));
+      // HEIF形式の場合のみ、HEIF形式に関するエラーメッセージを表示
+      if (isHeifFormat) {
+        reject(new Error("画像の読み込みに失敗しました。HEIF形式のファイルは、お使いのブラウザではサポートされていない可能性があります。JPEGまたはPNG形式のファイルをご利用ください。"));
+      } else {
+        reject(new Error("画像の読み込みに失敗しました。ファイルが破損しているか、サポートされていない形式の可能性があります。"));
+      }
     });
     image.src = url;
   });

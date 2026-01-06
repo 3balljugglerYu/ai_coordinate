@@ -29,6 +29,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isHeifFormat, setIsHeifFormat] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewBlobUrlRef = useRef<string | null>(null);
 
@@ -68,8 +69,9 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
     }
 
     // HEIF形式の検出と警告
-    const isHeifFormat = file.type === "image/heic" || file.type === "image/heif";
-    if (isHeifFormat) {
+    const detectedIsHeifFormat = file.type === "image/heic" || file.type === "image/heif";
+    setIsHeifFormat(detectedIsHeifFormat);
+    if (detectedIsHeifFormat) {
       // HEIF形式の場合、ブラウザがサポートしていない可能性があるため警告を表示
       // ただし、処理は続行（getCroppedImg関数でPNG形式に変換される）
       console.warn("HEIF形式のファイルが検出されました。PNG形式に変換されます。");
@@ -94,7 +96,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
     };
     reader.onerror = () => {
       // HEIF形式をサポートしていないブラウザの場合、エラーが発生する可能性がある
-      if (isHeifFormat) {
+      if (detectedIsHeifFormat) {
         setError("HEIF形式のファイルは、お使いのブラウザではサポートされていません。JPEGまたはPNG形式のファイルをご利用ください。");
       } else {
         setError("画像の読み込みに失敗しました");
@@ -121,7 +123,8 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       // トリミング後の画像を生成
       const croppedImageBlob = await getCroppedImg(
         imageSrc,
-        croppedAreaPixels
+        croppedAreaPixels,
+        isHeifFormat
       );
 
       // BlobをFileに変換
@@ -194,6 +197,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
     setImageSrc(null);
     setIsCropMode(false);
     setError(null);
+    setIsHeifFormat(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
