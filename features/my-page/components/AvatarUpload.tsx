@@ -259,7 +259,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
           {isCropMode && imageSrc ? (
             // トリミングモード
             <>
-              <div className="relative w-full h-[70vh] min-h-[400px] bg-black">
+              <div className="relative w-full h-[70dvh] min-h-[400px] bg-black">
                 <Cropper
                   image={imageSrc}
                   crop={crop}
@@ -329,7 +329,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
           ) : (
             // 通常表示モード
             <>
-              <div className="relative flex items-center justify-center h-full min-h-[50vh] p-4">
+              <div className="relative flex items-center justify-center h-full min-h-[50dvh] p-4">
                 {/* 閉じるボタン */}
                 <Button
                   variant="ghost"
@@ -348,7 +348,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                       alt="プロフィール画像"
                       width={400}
                       height={400}
-                      className="rounded-full object-cover max-w-[80vw] max-h-[80vh] aspect-square"
+                      className="rounded-full object-cover max-w-[80vw] max-h-[80dvh] aspect-square"
                       onError={() => {
                         // Blob URLが無効な場合、previewをクリア
                         if (previewBlobUrlRef.current) {
