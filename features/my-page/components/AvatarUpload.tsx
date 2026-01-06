@@ -255,7 +255,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
           {isCropMode && imageSrc ? (
             // トリミングモード
             <>
-              <div className="relative w-full h-[calc(100vh-200px)] min-h-[400px] bg-black">
+              <div className="relative w-full h-[70vh] min-h-[400px] bg-black">
                 <Cropper
                   image={imageSrc}
                   crop={crop}
