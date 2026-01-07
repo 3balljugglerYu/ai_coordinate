@@ -52,7 +52,7 @@ export async function generateAndSaveImages(
     !!userId && isSupabaseConfigured() && imageCount > 0;
 
   if (shouldConsumeCredits) {
-    // モデルに応じたクレジット消費量を動的に計算
+    // モデルに応じたペルコイン消費量を動的に計算
     const creditCost = getCreditCost(generationRequest.model || 'gemini-2.5-flash-image');
     const requiredCredits = imageCount * creditCost;
 
@@ -60,14 +60,14 @@ export async function generateAndSaveImages(
       const { balance } = await fetchCreditBalance();
       if (balance < requiredCredits) {
         throw new Error(
-          `クレジット残高が不足しています。生成には${requiredCredits}クレジット必要ですが、現在の残高は${balance}クレジットです。`
+          `ペルコイン残高が不足しています。生成には${requiredCredits}ペルコイン必要ですが、現在の残高は${balance}ペルコインです。`
         );
       }
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error("クレジット残高の確認に失敗しました");
+      throw new Error("ペルコイン残高の確認に失敗しました");
     }
   }
 
@@ -106,7 +106,7 @@ export async function generateAndSaveImages(
     };
   }
 
-  // Supabase 設定あり: 1枚ずつ生成 → アップロード → DB保存 → クレジット消費 → コールバック
+  // Supabase 設定あり: 1枚ずつ生成 → アップロード → DB保存 → ペルコイン消費 → コールバック
   for (let index = 0; index < imageCount; index++) {
     const generated = await generateSingleImage({
       prompt: generationRequest.prompt,
@@ -163,7 +163,7 @@ export async function generateAndSaveImages(
     allRecords.push(savedRecord);
 
     if (shouldConsumeCredits && savedRecord.id) {
-      // モデルに応じたクレジット消費量を動的に計算
+      // モデルに応じたペルコイン消費量を動的に計算
       const creditCost = getCreditCost(generationRequest.model || 'gemini-2.5-flash-image');
       await consumeCredits({
         generationId: savedRecord.id,
@@ -220,4 +220,3 @@ export async function requireAuth(): Promise<string> {
   }
   return userId;
 }
-

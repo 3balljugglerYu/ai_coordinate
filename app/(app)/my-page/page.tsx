@@ -23,12 +23,12 @@ export default async function MyPagePage() {
             <UserStatsWrapper />
           </Suspense>
 
-          {/* クレジット残高: 独立したSuspense境界（統計情報と並列実行） */}
+          {/* ペルコイン残高: 独立したSuspense境界（統計情報と並列実行） */}
           <Suspense fallback={<CreditBalanceSkeleton />}>
             <CreditBalanceWrapper />
           </Suspense>
 
-          {/* 画像一覧: 独立したSuspense境界（クレジット残高と並列実行） */}
+          {/* 画像一覧: 独立したSuspense境界（ペルコイン残高と並列実行） */}
           <div className="mt-8">
             <h2 className="mb-4 text-xl font-semibold text-gray-900">
               生成画像一覧
@@ -42,4 +42,3 @@ export default async function MyPagePage() {
     </div>
   );
 }
-

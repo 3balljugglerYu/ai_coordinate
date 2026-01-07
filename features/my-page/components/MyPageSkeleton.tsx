@@ -11,7 +11,7 @@ export function MyPageSkeleton() {
       {/* 統計情報スケルトン */}
       <UserStatsSkeleton />
 
-      {/* クレジット残高カードスケルトン */}
+      {/* ペルコイン残高カードスケルトン */}
       <Card className="mb-6 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

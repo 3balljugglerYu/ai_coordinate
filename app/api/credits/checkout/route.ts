@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { findCreditPackage } from "@/features/credits/credit-packages";
 
 /**
- * クレジット購入用のCheckoutセッションを作成
+ * ペルコイン購入用のCheckoutセッションを作成
  * Stripe承認前はモードをmockとして動作させる
  */
 export async function POST(request: NextRequest) {
@@ -59,5 +59,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 

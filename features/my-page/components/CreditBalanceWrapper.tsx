@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { getCreditBalanceServer } from "../lib/server-api";
 
 /**
- * サーバーコンポーネント: クレジット残高のデータ取得と表示
+ * サーバーコンポーネント: ペルコイン残高のデータ取得と表示
  */
 export async function CreditBalanceWrapper() {
   const user = await requireAuth();
@@ -20,9 +20,9 @@ export async function CreditBalanceWrapper() {
               <CreditCard className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">クレジット残高</p>
+              <p className="text-sm text-gray-600">ペルコイン残高</p>
               <p className="text-xl font-bold text-gray-900">
-                {creditBalance.toLocaleString()} クレジット
+                {creditBalance.toLocaleString()} ペルコイン
               </p>
             </div>
           </div>

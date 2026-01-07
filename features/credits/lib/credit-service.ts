@@ -26,7 +26,7 @@ async function ensureCreditAccount(
     .maybeSingle();
 
   if (error) {
-    throw new Error(`クレジット残高の取得に失敗しました: ${error.message}`);
+    throw new Error(`ペルコイン残高の取得に失敗しました: ${error.message}`);
   }
 
   if (data) {
@@ -41,7 +41,7 @@ async function ensureCreditAccount(
 
   if (insertError || !created) {
     throw new Error(
-      `クレジットアカウントの初期化に失敗しました: ${insertError?.message}`
+      `ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`
     );
   }
 
@@ -57,7 +57,7 @@ async function updateBalance(
   const newBalance = account.balance + amount;
 
   if (newBalance < 0) {
-    throw new Error("クレジット残高が不足しています");
+    throw new Error("ペルコイン残高が不足しています");
   }
 
   const { data, error } = await supabase
@@ -68,7 +68,7 @@ async function updateBalance(
     .single();
 
   if (error || !data) {
-    throw new Error(`クレジット残高の更新に失敗しました: ${error?.message}`);
+    throw new Error(`ペルコイン残高の更新に失敗しました: ${error?.message}`);
   }
 
   return data.balance;
@@ -160,5 +160,4 @@ export async function deductCredits(params: {
 
   return { balance };
 }
-
 

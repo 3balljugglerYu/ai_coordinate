@@ -31,9 +31,9 @@ export default async function CreditsPage() {
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトル */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">クレジット</h1>
+            <h1 className="text-3xl font-bold text-gray-900">ペルコイン</h1>
             <p className="mt-2 text-sm text-gray-600">
-              クレジットの購入と取引履歴を確認できます
+              ペルコインの購入と取引履歴を確認できます
             </p>
           </div>
 
@@ -46,4 +46,3 @@ export default async function CreditsPage() {
     </div>
   );
 }
-

@@ -60,10 +60,10 @@ export default function PaymentServicesActPage() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-sm text-gray-800">
-							当サービスでは、クレジット購入により取得できる「クレジット」を前払式支払手段として発行しています。
+							当サービスでは、ペルコイン購入により取得できる「ペルコイン」を前払式支払手段として発行しています。
 						</p>
 						<p className="mt-2 text-sm text-gray-800">
-							クレジットは、当サービス内でのみ使用可能なデジタル通貨であり、画像生成サービスの利用料金の支払いに使用できます。
+							ペルコインは、当サービス内でのみ使用可能なデジタル通貨であり、画像生成サービスの利用料金の支払いに使用できます。
 						</p>
 					</CardContent>
 				</Card>
@@ -74,11 +74,11 @@ export default function PaymentServicesActPage() {
 							<AlertCircle className="h-4 w-4 text-gray-500" />
 							前払式支払手段の利用可能期間
 						</CardTitle>
-						<CardDescription>クレジットの有効期限について</CardDescription>
+						<CardDescription>ペルコインの有効期限について</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<p className="text-sm text-gray-800">
-							当サービスで発行するクレジットには、有効期限は設定しておりません。ただし、当サービスの終了、または法令に基づく場合を除き、クレジットは無期限に使用可能です。
+							当サービスで発行するペルコインには、有効期限は設定しておりません。ただし、当サービスの終了、または法令に基づく場合を除き、ペルコインは無期限に使用可能です。
 						</p>
 					</CardContent>
 				</Card>
@@ -90,11 +90,11 @@ export default function PaymentServicesActPage() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-sm text-gray-800">
-							クレジットの未使用残高について、原則として返金は行っておりません。ただし、以下の場合には返金に対応する場合があります。
+							ペルコインの未使用残高について、原則として返金は行っておりません。ただし、以下の場合には返金に対応する場合があります。
 						</p>
 						<ul className="mt-2 list-disc list-inside space-y-1 text-sm text-gray-800">
-							<li>当サービスの不具合により、クレジットが正常に使用できない場合</li>
-							<li>当サービスの終了により、クレジットが使用できなくなった場合</li>
+							<li>当サービスの不具合により、ペルコインが正常に使用できない場合</li>
+							<li>当サービスの終了により、ペルコインが使用できなくなった場合</li>
 							<li>その他、当サービスが返金を認めた場合</li>
 						</ul>
 						<p className="mt-2 text-sm text-gray-800">
@@ -135,7 +135,6 @@ export default function PaymentServicesActPage() {
 		</main>
 	);
 }
-
 
 
 

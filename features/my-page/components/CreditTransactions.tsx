@@ -32,13 +32,13 @@ export function CreditTransactions({ transactions }: CreditTransactionsProps) {
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-gray-900">最近の取引履歴</h2>
         <p className="mt-2 text-sm text-gray-600">
-          モック購入や画像生成によるクレジット消費の履歴が表示されます。
+          モック購入や画像生成によるペルコイン消費の履歴が表示されます。
         </p>
       </div>
 
       {transactions.length === 0 ? (
         <p className="text-sm text-gray-500">
-          まだ取引履歴がありません。クレジットを購入するか、画像を生成すると履歴が表示されます。
+          まだ取引履歴がありません。ペルコインを購入するか、画像を生成すると履歴が表示されます。
         </p>
       ) : (
         <ul className="space-y-3">
@@ -54,7 +54,7 @@ export function CreditTransactions({ transactions }: CreditTransactionsProps) {
                   }`}
                 >
                   {tx.amount >= 0 ? "+" : ""}
-                  {tx.amount}クレジット
+                  {tx.amount}ペルコイン
                 </span>
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-gray-500">

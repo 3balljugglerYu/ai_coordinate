@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 export function CreditsPageSkeleton() {
   return (
     <>
-      {/* クレジット残高カードスケルトン */}
+      {/* ペルコイン残高カードスケルトン */}
       <Card className="mb-8 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -16,7 +16,7 @@ export function CreditsPageSkeleton() {
         </div>
       </Card>
 
-      {/* クレジット購入セクションスケルトン */}
+      {/* ペルコイン購入セクションスケルトン */}
       <div className="mb-8">
         <div className="mb-4 h-7 w-32 animate-pulse rounded bg-gray-200" />
         <Card className="p-6">
@@ -42,4 +42,3 @@ export function CreditsPageSkeleton() {
     </>
   );
 }
-

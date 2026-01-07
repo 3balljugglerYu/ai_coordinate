@@ -67,7 +67,7 @@ export async function getImageDetail(imageId: string): Promise<GeneratedImageRec
 }
 
 /**
- * ユーザーのクレジット残高を取得
+ * ユーザーのペルコイン残高を取得
  */
 export async function getCreditBalance(): Promise<number> {
   const supabase = createClient();
@@ -179,4 +179,3 @@ export async function deleteMyImage(imageId: string): Promise<void> {
     throw new Error(`画像の削除に失敗しました: ${deleteError.message}`);
   }
 }
-

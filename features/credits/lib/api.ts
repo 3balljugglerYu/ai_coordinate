@@ -5,7 +5,7 @@ export async function fetchCreditBalance() {
   });
 
   if (!response.ok) {
-    throw new Error("クレジット残高の取得に失敗しました");
+    throw new Error("ペルコイン残高の取得に失敗しました");
   }
 
   return response.json() as Promise<{ balance: number }>;
@@ -26,7 +26,7 @@ export async function consumeCredits(options: {
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.error || "クレジットの消費に失敗しました");
+    throw new Error(error?.error || "ペルコインの消費に失敗しました");
   }
 
   return response.json() as Promise<{ balance: number }>;
@@ -44,10 +44,9 @@ export async function completeMockPurchase(options: { packageId: string }) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.error || "クレジット購入処理に失敗しました");
+    throw new Error(error?.error || "ペルコイン購入処理に失敗しました");
   }
 
   return response.json() as Promise<{ balance: number }>;
 }
-
 

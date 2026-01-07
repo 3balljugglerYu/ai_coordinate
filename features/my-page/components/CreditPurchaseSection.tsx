@@ -45,7 +45,7 @@ export function CreditPurchaseSection({
       if (data.mode === "mock") {
         const result = await completeMockPurchase({ packageId });
         onBalanceUpdate(result.balance);
-        setSuccessMessage("クレジットを付与しました（モックモード）");
+        setSuccessMessage("ペルコインを付与しました（モックモード）");
       } else if (data.checkoutUrl) {
         // Stripe連携時はCheckoutにリダイレクト
         window.location.href = data.checkoutUrl;
@@ -62,9 +62,9 @@ export function CreditPurchaseSection({
   return (
     <Card className="p-6">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">クレジット購入</h2>
+        <h2 className="text-xl font-semibold text-gray-900">ペルコイン購入</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Stripe承認完了まではモック決済でクレジットを付与します。承認後は同じUIでStripe Checkoutに切り替わります。
+          Stripe承認完了まではモック決済でペルコインを付与します。承認後は同じUIでStripe Checkoutに切り替わります。
         </p>
       </div>
 
@@ -90,7 +90,7 @@ export function CreditPurchaseSection({
             <div className="mb-4 flex items-baseline gap-2">
               <span className="text-3xl font-bold text-gray-900">¥{pkg.priceYen.toLocaleString()}</span>
               <span className="text-sm text-gray-500">
-                ({pkg.credits}クレジット)
+                ({pkg.credits}ペルコイン)
               </span>
             </div>
             <Button
@@ -106,5 +106,4 @@ export function CreditPurchaseSection({
     </Card>
   );
 }
-
 

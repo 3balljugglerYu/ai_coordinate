@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 
 /**
- * クレジット残高カード用スケルトン
+ * ペルコイン残高カード用スケルトン
  */
 export function CreditBalanceSkeleton() {
   return (

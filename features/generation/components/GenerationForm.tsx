@@ -351,16 +351,16 @@ export function GenerationForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="gemini-2.5-flash-image">
-                標準モデル（20クレジット/枚）
+                標準モデル（20ペルコイン/枚）
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-1k">
-                高精度モデル_1K（50クレジット/枚）
+                高精度モデル_1K（50ペルコイン/枚）
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-2k">
-                高精度モデル_2K（80クレジット/枚）
+                高精度モデル_2K（80ペルコイン/枚）
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-4k">
-                高精度モデル_4K（100クレジット/枚）
+                高精度モデル_4K（100ペルコイン/枚）
               </SelectItem>
             </SelectContent>
           </Select>
@@ -384,7 +384,7 @@ export function GenerationForm({
             ))}
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            {selectedCount}枚の生成には {selectedCount * getCreditCost(selectedModel)} クレジットが必要です
+            {selectedCount}枚の生成には {selectedCount * getCreditCost(selectedModel)} ペルコインが必要です
           </p>
         </div>
 
@@ -411,4 +411,3 @@ export function GenerationForm({
     </Card>
   );
 }
-

@@ -225,7 +225,7 @@ export const getMyImagesServer = cache(async (
 });
 
 /**
- * ユーザーのクレジット残高を取得（サーバーサイド）
+ * ユーザーのペルコイン残高を取得（サーバーサイド）
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
 export const getCreditBalanceServer = cache(async (userId: string): Promise<number> => {
@@ -246,7 +246,7 @@ export const getCreditBalanceServer = cache(async (userId: string): Promise<numb
 });
 
 /**
- * クレジット取引履歴を取得（サーバーサイド）
+ * ペルコイン取引履歴を取得（サーバーサイド）
  */
 export async function getCreditTransactionsServer(
   userId: string,

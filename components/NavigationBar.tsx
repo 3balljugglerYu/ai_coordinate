@@ -87,7 +87,7 @@ export function NavigationBar() {
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
-    { path: "/my-page/credits", label: "クレジット", icon: Coins },
+    { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
 
   return (

@@ -39,7 +39,7 @@ export function CreditsPageContent({
 
   return (
     <>
-      {/* クレジット残高カード */}
+      {/* ペルコイン残高カード */}
       <Card className="mb-8 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -47,19 +47,19 @@ export function CreditsPageContent({
               <CreditCard className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">クレジット残高</p>
+              <p className="text-sm text-gray-600">ペルコイン残高</p>
               <p className="text-2xl font-bold text-gray-900">
-                {creditBalance.toLocaleString()} クレジット
+                {creditBalance.toLocaleString()} ペルコイン
               </p>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* クレジット購入セクション */}
+      {/* ペルコイン購入セクション */}
       <div id="credit-purchase" className="mb-8">
         <h2 className="mb-4 text-xl font-semibold text-gray-900">
-          クレジット購入
+          ペルコイン購入
         </h2>
         <CreditPurchaseSection onBalanceUpdate={handlePurchaseCompleted} />
       </div>
@@ -74,4 +74,3 @@ export function CreditsPageContent({
     </>
   );
 }
-
