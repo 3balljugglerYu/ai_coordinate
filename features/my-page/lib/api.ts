@@ -67,9 +67,9 @@ export async function getImageDetail(imageId: string): Promise<GeneratedImageRec
 }
 
 /**
- * ユーザーのクレジット残高を取得
+ * ユーザーのペルコイン残高を取得
  */
-export async function getCreditBalance(): Promise<number> {
+export async function getPercoinBalance(): Promise<number> {
   const supabase = createClient();
 
   const {
@@ -94,7 +94,7 @@ export async function getCreditBalance(): Promise<number> {
   return data?.balance || 0;
 }
 
-export interface CreditTransaction {
+export interface PercoinTransaction {
   id: string;
   amount: number;
   transaction_type: string;
@@ -102,9 +102,9 @@ export interface CreditTransaction {
   created_at: string;
 }
 
-export async function getCreditTransactions(
+export async function getPercoinTransactions(
   limit = 10
-): Promise<CreditTransaction[]> {
+): Promise<PercoinTransaction[]> {
   const supabase = createClient();
 
   const {
@@ -123,7 +123,7 @@ export async function getCreditTransactions(
     .limit(limit);
 
   if (error) {
-    console.error("Credit transactions fetch error:", error);
+    console.error("Percoin transactions fetch error:", error);
     return [];
   }
 
@@ -179,4 +179,3 @@ export async function deleteMyImage(imageId: string): Promise<void> {
     throw new Error(`画像の削除に失敗しました: ${deleteError.message}`);
   }
 }
-

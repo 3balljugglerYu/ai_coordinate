@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Tag, CreditCard, Timer, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CREDIT_PACKAGES, GENERATION_CREDIT_COST } from "@/features/credits/credit-packages";
+import { PERCOIN_PACKAGES, GENERATION_PERCOIN_COST } from "@/features/credits/percoin-packages";
 
 export const metadata: Metadata = {
   title: "料金",
@@ -14,7 +14,7 @@ export default function PricingPage() {
     <main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
       <div className="mb-6">
         <h1 className="text-xl font-semibold md:text-2xl">料金</h1>
-        <p className="mt-2 text-sm text-gray-600">クレジット購入の価格とお支払い条件についてご案内します。</p>
+        <p className="mt-2 text-sm text-gray-600">ペルコイン購入の価格とお支払い条件についてご案内します。</p>
       </div>
 
       <div className="grid gap-6">
@@ -22,13 +22,13 @@ export default function PricingPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Tag className="h-4 w-4 text-gray-500" />
-              クレジット料金表（すべて税込）
+              ペルコイン料金表（すべて税込）
             </CardTitle>
             <CardDescription>購入画面でも税込価格を表示します。</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
-              {CREDIT_PACKAGES.map((pkg) => (
+              {PERCOIN_PACKAGES.map((pkg) => (
                 <div key={pkg.id} className="rounded-lg border border-gray-200 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -37,14 +37,14 @@ export default function PricingPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-gray-900">¥{pkg.priceYen.toLocaleString()}</div>
-                      <div className="text-xs text-gray-500">({pkg.credits}クレジット)</div>
+                      <div className="text-xs text-gray-500">({pkg.credits}ペルコイン)</div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-xs text-gray-600">
-              目安：画像生成1回あたり {GENERATION_CREDIT_COST} クレジットを消費します。
+              目安：画像生成1回あたり {GENERATION_PERCOIN_COST} ペルコインを消費します。
             </p>
           </CardContent>
         </Card>
@@ -85,7 +85,7 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-gray-800">
-              決済完了後、即時にクレジットが付与され利用可能です。通信状況等により反映に時間がかかる場合があります。
+              決済完了後、即時にペルコインが付与され利用可能です。通信状況等により反映に時間がかかる場合があります。
             </p>
           </CardContent>
         </Card>

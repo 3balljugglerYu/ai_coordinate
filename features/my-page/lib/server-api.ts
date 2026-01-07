@@ -2,7 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
-export interface CreditTransaction {
+export interface PercoinTransaction {
   id: string;
   amount: number;
   transaction_type: string;
@@ -225,10 +225,10 @@ export const getMyImagesServer = cache(async (
 });
 
 /**
- * ユーザーのクレジット残高を取得（サーバーサイド）
+ * ユーザーのペルコイン残高を取得（サーバーサイド）
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
-export const getCreditBalanceServer = cache(async (userId: string): Promise<number> => {
+export const getPercoinBalanceServer = cache(async (userId: string): Promise<number> => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -246,12 +246,12 @@ export const getCreditBalanceServer = cache(async (userId: string): Promise<numb
 });
 
 /**
- * クレジット取引履歴を取得（サーバーサイド）
+ * ペルコイン取引履歴を取得（サーバーサイド）
  */
-export async function getCreditTransactionsServer(
+export async function getPercoinTransactionsServer(
   userId: string,
   limit = 10
-): Promise<CreditTransaction[]> {
+): Promise<PercoinTransaction[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -262,7 +262,7 @@ export async function getCreditTransactionsServer(
     .limit(limit);
 
   if (error) {
-    console.error("Credit transactions fetch error:", error);
+    console.error("Percoin transactions fetch error:", error);
     return [];
   }
 

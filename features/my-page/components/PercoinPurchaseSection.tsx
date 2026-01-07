@@ -4,17 +4,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  CREDIT_PACKAGES,
-} from "@/features/credits/credit-packages";
-import { completeMockPurchase } from "@/features/credits/lib/api";
+  PERCOIN_PACKAGES,
+} from "@/features/credits/percoin-packages";
+import { completeMockPercoinPurchase } from "@/features/credits/lib/api";
 
-interface CreditPurchaseSectionProps {
+interface PercoinPurchaseSectionProps {
   onBalanceUpdate: (balance: number) => void;
 }
 
-export function CreditPurchaseSection({
+export function PercoinPurchaseSection({
   onBalanceUpdate,
-}: CreditPurchaseSectionProps) {
+}: PercoinPurchaseSectionProps) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -43,9 +43,9 @@ export function CreditPurchaseSection({
       }
 
       if (data.mode === "mock") {
-        const result = await completeMockPurchase({ packageId });
+        const result = await completeMockPercoinPurchase({ packageId });
         onBalanceUpdate(result.balance);
-        setSuccessMessage("クレジットを付与しました（モックモード）");
+        setSuccessMessage("ペルコインを付与しました（モックモード）");
       } else if (data.checkoutUrl) {
         // Stripe連携時はCheckoutにリダイレクト
         window.location.href = data.checkoutUrl;
@@ -62,9 +62,9 @@ export function CreditPurchaseSection({
   return (
     <Card className="p-6">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">クレジット購入</h2>
+        <h2 className="text-xl font-semibold text-gray-900">ペルコイン購入</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Stripe承認完了まではモック決済でクレジットを付与します。承認後は同じUIでStripe Checkoutに切り替わります。
+          Stripe承認完了まではモック決済でペルコインを付与します。承認後は同じUIでStripe Checkoutに切り替わります。
         </p>
       </div>
 
@@ -81,7 +81,7 @@ export function CreditPurchaseSection({
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {CREDIT_PACKAGES.map((pkg) => (
+        {PERCOIN_PACKAGES.map((pkg) => (
           <Card key={pkg.id} className="border border-gray-200 p-4">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{pkg.name}</h3>
@@ -90,7 +90,7 @@ export function CreditPurchaseSection({
             <div className="mb-4 flex items-baseline gap-2">
               <span className="text-3xl font-bold text-gray-900">¥{pkg.priceYen.toLocaleString()}</span>
               <span className="text-sm text-gray-500">
-                ({pkg.credits}クレジット)
+                ({pkg.credits}ペルコイン)
               </span>
             </div>
             <Button
@@ -106,5 +106,3 @@ export function CreditPurchaseSection({
     </Card>
   );
 }
-
-

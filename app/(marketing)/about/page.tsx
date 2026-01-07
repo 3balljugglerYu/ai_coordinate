@@ -28,7 +28,7 @@ export default function AboutPage() {
           <CardContent>
             <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
               <li>ユーザーが生成したコーディネート画像を投稿し、コミュニティで共有・閲覧できます。</li>
-              <li>生成用のクレジットを購入すると、コーディネート生成を追加で利用できます。</li>
+              <li>生成用のペルコインを購入すると、コーディネート生成を追加で利用できます。</li>
               <li>基本機能はWebブラウザから利用でき、追加のソフトウェアインストールは不要です。</li>
             </ul>
           </CardContent>

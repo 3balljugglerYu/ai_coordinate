@@ -1,9 +1,9 @@
 import { Card } from "@/components/ui/card";
 
 /**
- * クレジット残高カード用スケルトン
+ * ペルコイン残高カード用スケルトン
  */
-export function CreditBalanceSkeleton() {
+export function PercoinBalanceSkeleton() {
   return (
     <Card className="mb-6 p-4">
       <div className="flex items-center justify-between">

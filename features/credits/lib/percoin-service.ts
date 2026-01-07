@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
-import type { CreditPackage } from "@/features/credits/credit-packages";
+import type { PercoinPackage } from "@/features/credits/percoin-packages";
 
-export type CreditTransactionType =
+export type PercoinTransactionType =
   | "purchase"
   | "consumption"
   | "refund"
@@ -11,11 +11,11 @@ export type CreditTransactionType =
   | "streak"
   | "referral";
 
-export type CreditTransactionMetadata = Record<string, unknown>;
+export type PercoinTransactionMetadata = Record<string, unknown>;
 
 type Supabase = SupabaseClient<any, "public", any>;
 
-async function ensureCreditAccount(
+async function ensurePercoinAccount(
   supabase: Supabase,
   userId: string
 ): Promise<{ id: string; balance: number }> {
@@ -26,7 +26,7 @@ async function ensureCreditAccount(
     .maybeSingle();
 
   if (error) {
-    throw new Error(`クレジット残高の取得に失敗しました: ${error.message}`);
+    throw new Error(`ペルコイン残高の取得に失敗しました: ${error.message}`);
   }
 
   if (data) {
@@ -41,23 +41,23 @@ async function ensureCreditAccount(
 
   if (insertError || !created) {
     throw new Error(
-      `クレジットアカウントの初期化に失敗しました: ${insertError?.message}`
+      `ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`
     );
   }
 
   return created;
 }
 
-async function updateBalance(
+async function updatePercoinBalance(
   supabase: Supabase,
   userId: string,
   amount: number
 ): Promise<number> {
-  const account = await ensureCreditAccount(supabase, userId);
+  const account = await ensurePercoinAccount(supabase, userId);
   const newBalance = account.balance + amount;
 
   if (newBalance < 0) {
-    throw new Error("クレジット残高が不足しています");
+    throw new Error("ペルコイン残高が不足しています");
   }
 
   const { data, error } = await supabase
@@ -68,7 +68,7 @@ async function updateBalance(
     .single();
 
   if (error || !data) {
-    throw new Error(`クレジット残高の更新に失敗しました: ${error?.message}`);
+    throw new Error(`ペルコイン残高の更新に失敗しました: ${error?.message}`);
   }
 
   return data.balance;
@@ -79,10 +79,10 @@ async function insertTransaction(
   params: {
     userId: string;
     amount: number;
-    transactionType: CreditTransactionType;
+    transactionType: PercoinTransactionType;
     stripePaymentIntentId?: string | null;
     relatedGenerationId?: string | null;
-    metadata?: CreditTransactionMetadata;
+    metadata?: PercoinTransactionMetadata;
   }
 ) {
   const { error } = await supabase.from("credit_transactions").insert({
@@ -99,20 +99,20 @@ async function insertTransaction(
   }
 }
 
-export async function recordCreditPurchase(params: {
+export async function recordPercoinPurchase(params: {
   userId: string;
-  creditAmount: number;
-  metadata?: CreditTransactionMetadata;
+  percoinAmount: number;
+  metadata?: PercoinTransactionMetadata;
   stripePaymentIntentId?: string | null;
   supabaseClient?: Supabase;
 }) {
   const supabase =
     params.supabaseClient ?? (await createServerSupabaseClient());
-  const balance = await updateBalance(supabase, params.userId, params.creditAmount);
+  const balance = await updatePercoinBalance(supabase, params.userId, params.percoinAmount);
 
   await insertTransaction(supabase, {
     userId: params.userId,
-    amount: params.creditAmount,
+    amount: params.percoinAmount,
     transactionType: "purchase",
     stripePaymentIntentId: params.stripePaymentIntentId,
     metadata: params.metadata,
@@ -121,38 +121,38 @@ export async function recordCreditPurchase(params: {
   return { balance };
 }
 
-export async function recordMockCreditPurchase(params: {
+export async function recordMockPercoinPurchase(params: {
   userId: string;
-  creditPackage: CreditPackage;
+  percoinPackage: PercoinPackage;
   supabaseClient?: Supabase;
 }) {
-  return recordCreditPurchase({
+  return recordPercoinPurchase({
     userId: params.userId,
-    creditAmount: params.creditPackage.credits,
+    percoinAmount: params.percoinPackage.credits,
     supabaseClient: params.supabaseClient,
     metadata: {
       mode: "mock",
-      packageId: params.creditPackage.id,
-      priceYen: params.creditPackage.priceYen,
+      packageId: params.percoinPackage.id,
+      priceYen: params.percoinPackage.priceYen,
     },
   });
 }
 
-export async function deductCredits(params: {
+export async function deductPercoins(params: {
   userId: string;
-  creditAmount: number;
-  transactionType?: Extract<CreditTransactionType, "consumption" | "refund">;
-  metadata?: CreditTransactionMetadata;
+  percoinAmount: number;
+  transactionType?: Extract<PercoinTransactionType, "consumption" | "refund">;
+  metadata?: PercoinTransactionMetadata;
   relatedGenerationId?: string | null;
   supabaseClient?: Supabase;
 }) {
   const supabase =
     params.supabaseClient ?? (await createServerSupabaseClient());
-  const balance = await updateBalance(supabase, params.userId, -params.creditAmount);
+  const balance = await updatePercoinBalance(supabase, params.userId, -params.percoinAmount);
 
   await insertTransaction(supabase, {
     userId: params.userId,
-    amount: -params.creditAmount,
+    amount: -params.percoinAmount,
     transactionType: params.transactionType ?? "consumption",
     relatedGenerationId: params.relatedGenerationId ?? null,
     metadata: params.metadata,
@@ -160,5 +160,3 @@ export async function deductCredits(params: {
 
   return { balance };
 }
-
-

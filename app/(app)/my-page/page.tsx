@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import { ProfileHeaderWrapper } from "@/features/my-page/components/ProfileHeaderWrapper";
 import { UserStatsWrapper } from "@/features/my-page/components/UserStatsWrapper";
-import { CreditBalanceWrapper } from "@/features/my-page/components/CreditBalanceWrapper";
+import { PercoinBalanceWrapper } from "@/features/my-page/components/PercoinBalanceWrapper";
 import { MyPageImageGalleryWrapper } from "@/features/my-page/components/MyPageImageGalleryWrapper";
 import { ProfileHeaderSkeleton } from "@/features/my-page/components/ProfileHeaderSkeleton";
 import { UserStatsSkeleton } from "@/features/my-page/components/UserStatsSkeleton";
-import { CreditBalanceSkeleton } from "@/features/my-page/components/CreditBalanceSkeleton";
+import { PercoinBalanceSkeleton } from "@/features/my-page/components/PercoinBalanceSkeleton";
 import { MyPageImageGallerySkeleton } from "@/features/my-page/components/MyPageImageGallerySkeleton";
 
 export default async function MyPagePage() {
@@ -23,12 +23,12 @@ export default async function MyPagePage() {
             <UserStatsWrapper />
           </Suspense>
 
-          {/* クレジット残高: 独立したSuspense境界（統計情報と並列実行） */}
-          <Suspense fallback={<CreditBalanceSkeleton />}>
-            <CreditBalanceWrapper />
+          {/* ペルコイン残高: 独立したSuspense境界（統計情報と並列実行） */}
+          <Suspense fallback={<PercoinBalanceSkeleton />}>
+            <PercoinBalanceWrapper />
           </Suspense>
 
-          {/* 画像一覧: 独立したSuspense境界（クレジット残高と並列実行） */}
+          {/* 画像一覧: 独立したSuspense境界（ペルコイン残高と並列実行） */}
           <div className="mt-8">
             <h2 className="mb-4 text-xl font-semibold text-gray-900">
               生成画像一覧
@@ -42,4 +42,3 @@ export default async function MyPagePage() {
     </div>
   );
 }
-
