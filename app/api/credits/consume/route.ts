@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { deductCredits } from "@/features/credits/lib/credit-service";
+import { deductPercoins } from "@/features/credits/lib/percoin-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,11 +15,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null);
     const generationId = body?.generationId as string | undefined;
-    const credits = Number(body?.credits);
+    const percoins = Number(body?.credits);
 
-    if (!generationId || Number.isNaN(credits) || credits <= 0) {
+    if (!generationId || Number.isNaN(percoins) || percoins <= 0) {
       return NextResponse.json(
-        { error: "generationId and positive credits are required" },
+        { error: "generationId and positive percoins are required" },
         { status: 400 }
       );
     }
@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const result = await deductCredits({
+    const result = await deductPercoins({
       userId: user.id,
-      creditAmount: credits,
+      percoinAmount: percoins,
       relatedGenerationId: generationId,
       metadata: { reason: "image_generation" },
       supabaseClient: supabase,
@@ -49,10 +49,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ balance: result.balance });
   } catch (error) {
-    console.error("Credit consumption error:", error);
+    console.error("Percoin consumption error:", error);
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
-

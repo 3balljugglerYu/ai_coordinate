@@ -4,17 +4,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  CREDIT_PACKAGES,
-} from "@/features/credits/credit-packages";
-import { completeMockPurchase } from "@/features/credits/lib/api";
+  PERCOIN_PACKAGES,
+} from "@/features/credits/percoin-packages";
+import { completeMockPercoinPurchase } from "@/features/credits/lib/api";
 
-interface CreditPurchaseSectionProps {
+interface PercoinPurchaseSectionProps {
   onBalanceUpdate: (balance: number) => void;
 }
 
-export function CreditPurchaseSection({
+export function PercoinPurchaseSection({
   onBalanceUpdate,
-}: CreditPurchaseSectionProps) {
+}: PercoinPurchaseSectionProps) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export function CreditPurchaseSection({
       }
 
       if (data.mode === "mock") {
-        const result = await completeMockPurchase({ packageId });
+        const result = await completeMockPercoinPurchase({ packageId });
         onBalanceUpdate(result.balance);
         setSuccessMessage("ペルコインを付与しました（モックモード）");
       } else if (data.checkoutUrl) {
@@ -81,7 +81,7 @@ export function CreditPurchaseSection({
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {CREDIT_PACKAGES.map((pkg) => (
+        {PERCOIN_PACKAGES.map((pkg) => (
           <Card key={pkg.id} className="border border-gray-200 p-4">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{pkg.name}</h3>
@@ -106,4 +106,3 @@ export function CreditPurchaseSection({
     </Card>
   );
 }
-

@@ -2,14 +2,14 @@ import Link from "next/link";
 import { CreditCard } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { requireAuth } from "@/lib/auth";
-import { getCreditBalanceServer } from "../lib/server-api";
+import { getPercoinBalanceServer } from "../lib/server-api";
 
 /**
  * サーバーコンポーネント: ペルコイン残高のデータ取得と表示
  */
-export async function CreditBalanceWrapper() {
+export async function PercoinBalanceWrapper() {
   const user = await requireAuth();
-  const creditBalance = await getCreditBalanceServer(user.id);
+  const percoinBalance = await getPercoinBalanceServer(user.id);
 
   return (
     <Link href="/my-page/credits" className="block mb-6">
@@ -22,7 +22,7 @@ export async function CreditBalanceWrapper() {
             <div>
               <p className="text-sm text-gray-600">ペルコイン残高</p>
               <p className="text-xl font-bold text-gray-900">
-                {creditBalance.toLocaleString()} ペルコイン
+                {percoinBalance.toLocaleString()} ペルコイン
               </p>
             </div>
           </div>

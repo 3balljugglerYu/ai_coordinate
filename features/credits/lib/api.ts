@@ -1,4 +1,4 @@
-export async function fetchCreditBalance() {
+export async function fetchPercoinBalance() {
   const response = await fetch("/api/credits/balance", {
     method: "GET",
     credentials: "include",
@@ -11,9 +11,9 @@ export async function fetchCreditBalance() {
   return response.json() as Promise<{ balance: number }>;
 }
 
-export async function consumeCredits(options: {
+export async function consumePercoins(options: {
   generationId: string;
-  credits: number;
+  percoins: number;
 }) {
   const response = await fetch("/api/credits/consume", {
     method: "POST",
@@ -21,7 +21,10 @@ export async function consumeCredits(options: {
       "Content-Type": "application/json",
     },
     credentials: "include",
-    body: JSON.stringify(options),
+    body: JSON.stringify({
+      generationId: options.generationId,
+      credits: options.percoins,
+    }),
   });
 
   if (!response.ok) {
@@ -32,7 +35,7 @@ export async function consumeCredits(options: {
   return response.json() as Promise<{ balance: number }>;
 }
 
-export async function completeMockPurchase(options: { packageId: string }) {
+export async function completeMockPercoinPurchase(options: { packageId: string }) {
   const response = await fetch("/api/credits/mock-complete", {
     method: "POST",
     headers: {
@@ -49,4 +52,3 @@ export async function completeMockPurchase(options: { packageId: string }) {
 
   return response.json() as Promise<{ balance: number }>;
 }
-

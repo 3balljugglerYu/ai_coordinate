@@ -1,30 +1,30 @@
 import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
 import {
-  getCreditBalanceServer,
-  getCreditTransactionsServer,
+  getPercoinBalanceServer,
+  getPercoinTransactionsServer,
 } from "@/features/my-page/lib/server-api";
-import { CreditsPageContent } from "@/features/my-page/components/CreditsPageContent";
-import { CreditsPageSkeleton } from "@/features/my-page/components/CreditsPageSkeleton";
+import { PercoinPageContent } from "@/features/my-page/components/PercoinPageContent";
+import { PercoinPageSkeleton } from "@/features/my-page/components/PercoinPageSkeleton";
 
-async function CreditsPageData() {
+async function PercoinPageData() {
   const user = await requireAuth();
   const userId = user.id;
 
-  const [creditBalance, transactions] = await Promise.all([
-    getCreditBalanceServer(userId),
-    getCreditTransactionsServer(userId),
+  const [percoinBalance, transactions] = await Promise.all([
+    getPercoinBalanceServer(userId),
+    getPercoinTransactionsServer(userId),
   ]);
 
   return (
-    <CreditsPageContent
-      creditBalance={creditBalance}
+    <PercoinPageContent
+      percoinBalance={percoinBalance}
       transactions={transactions}
     />
   );
 }
 
-export default async function CreditsPage() {
+export default async function PercoinPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-1 pb-8 px-4">
@@ -38,8 +38,8 @@ export default async function CreditsPage() {
           </div>
 
           {/* 動的コンテンツ */}
-          <Suspense fallback={<CreditsPageSkeleton />}>
-            <CreditsPageData />
+          <Suspense fallback={<PercoinPageSkeleton />}>
+            <PercoinPageData />
           </Suspense>
         </div>
       </div>

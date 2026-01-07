@@ -1,8 +1,8 @@
 import { generateSingleImage } from "./api";
 import { uploadImageToStorage } from "./storage";
 import { saveGeneratedImage } from "./database";
-import { consumeCredits, fetchCreditBalance } from "@/features/credits/lib/api";
-import { getCreditCost } from "./model-config";
+import { consumePercoins, fetchPercoinBalance } from "@/features/credits/lib/api";
+import { getPercoinCost } from "./model-config";
 import { getImageAspectRatio } from "@/features/posts/lib/utils";
 import type { GenerationRequest, GeneratedImageData } from "../types";
 import type { GeneratedImageRecord } from "./database";
@@ -48,19 +48,19 @@ export async function generateAndSaveImages(
   const { userId, onProgress, ...generationRequest } = options;
   const imageCount = generationRequest.count || 1;
 
-  const shouldConsumeCredits =
+  const shouldConsumePercoins =
     !!userId && isSupabaseConfigured() && imageCount > 0;
 
-  if (shouldConsumeCredits) {
+  if (shouldConsumePercoins) {
     // モデルに応じたペルコイン消費量を動的に計算
-    const creditCost = getCreditCost(generationRequest.model || 'gemini-2.5-flash-image');
-    const requiredCredits = imageCount * creditCost;
+    const percoinCost = getPercoinCost(generationRequest.model || 'gemini-2.5-flash-image');
+    const requiredPercoins = imageCount * percoinCost;
 
     try {
-      const { balance } = await fetchCreditBalance();
-      if (balance < requiredCredits) {
+      const { balance } = await fetchPercoinBalance();
+      if (balance < requiredPercoins) {
         throw new Error(
-          `ペルコイン残高が不足しています。生成には${requiredCredits}ペルコイン必要ですが、現在の残高は${balance}ペルコインです。`
+          `ペルコイン残高が不足しています。生成には${requiredPercoins}ペルコイン必要ですが、現在の残高は${balance}ペルコインです。`
         );
       }
     } catch (error) {
@@ -162,12 +162,12 @@ export async function generateAndSaveImages(
     const savedRecord = await saveGeneratedImage(recordToSave);
     allRecords.push(savedRecord);
 
-    if (shouldConsumeCredits && savedRecord.id) {
+    if (shouldConsumePercoins && savedRecord.id) {
       // モデルに応じたペルコイン消費量を動的に計算
-      const creditCost = getCreditCost(generationRequest.model || 'gemini-2.5-flash-image');
-      await consumeCredits({
+      const percoinCost = getPercoinCost(generationRequest.model || 'gemini-2.5-flash-image');
+      await consumePercoins({
         generationId: savedRecord.id,
-        credits: creditCost,
+        percoins: percoinCost,
       });
     }
 

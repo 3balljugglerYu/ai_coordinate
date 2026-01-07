@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { findCreditPackage } from "@/features/credits/credit-packages";
-import { recordMockCreditPurchase } from "@/features/credits/lib/credit-service";
+import { findPercoinPackage } from "@/features/credits/percoin-packages";
+import { recordMockPercoinPurchase } from "@/features/credits/lib/percoin-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,24 +24,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const creditPackage = findCreditPackage(packageId);
-    if (!creditPackage) {
+    const percoinPackage = findPercoinPackage(packageId);
+    if (!percoinPackage) {
       return NextResponse.json(
-        { error: "Invalid credit package" },
+        { error: "Invalid percoin package" },
         { status: 404 }
       );
     }
 
-    const result = await recordMockCreditPurchase({
+    const result = await recordMockPercoinPurchase({
       userId: user.id,
-      creditPackage,
+      percoinPackage,
       supabaseClient: supabase,
     });
 
     return NextResponse.json({
       success: true,
       balance: result.balance,
-      package: creditPackage,
+      package: percoinPackage,
     });
   } catch (error) {
     console.error("Mock purchase completion error:", error);
@@ -51,5 +51,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

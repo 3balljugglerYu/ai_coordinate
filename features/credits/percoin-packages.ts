@@ -1,4 +1,4 @@
-export type CreditPackage = {
+export type PercoinPackage = {
   id: string;
   name: string;
   credits: number;
@@ -7,7 +7,7 @@ export type CreditPackage = {
   description?: string;
 };
 
-export const CREDIT_PACKAGES: CreditPackage[] = [
+export const PERCOIN_PACKAGES: PercoinPackage[] = [
   {
     id: "credit-100",
     name: "100ペルコイン",
@@ -38,8 +38,8 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
   },
 ];
 
-export function findCreditPackage(packageId: string): CreditPackage | undefined {
-  return CREDIT_PACKAGES.find((pkg) => pkg.id === packageId);
+export function findPercoinPackage(packageId: string): PercoinPackage | undefined {
+  return PERCOIN_PACKAGES.find((pkg) => pkg.id === packageId);
 }
 
-export const GENERATION_CREDIT_COST = 10;
+export const GENERATION_PERCOIN_COST = 10;

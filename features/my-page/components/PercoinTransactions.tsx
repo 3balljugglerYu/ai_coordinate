@@ -1,8 +1,8 @@
 import { Card } from "@/components/ui/card";
-import type { CreditTransaction } from "@/features/my-page/lib/api";
+import type { PercoinTransaction } from "@/features/my-page/lib/api";
 
-interface CreditTransactionsProps {
-  transactions: CreditTransaction[];
+interface PercoinTransactionsProps {
+  transactions: PercoinTransaction[];
 }
 
 function formatTransactionType(type: string) {
@@ -26,7 +26,7 @@ function formatTransactionType(type: string) {
   }
 }
 
-export function CreditTransactions({ transactions }: CreditTransactionsProps) {
+export function PercoinTransactions({ transactions }: PercoinTransactionsProps) {
   return (
     <Card className="p-6">
       <div className="mb-4">

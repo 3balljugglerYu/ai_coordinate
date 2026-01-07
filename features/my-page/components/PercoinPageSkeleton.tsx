@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 
-export function CreditsPageSkeleton() {
+export function PercoinPageSkeleton() {
   return (
     <>
       {/* ペルコイン残高カードスケルトン */}

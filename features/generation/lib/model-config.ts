@@ -7,7 +7,7 @@ import { normalizeModelName, type GeminiModel } from "../types";
 /**
  * モデルごとのペルコイン消費量
  */
-export const MODEL_CREDIT_COSTS = {
+export const MODEL_PERCOIN_COSTS = {
   'gemini-2.5-flash-image': 20,
   'gemini-3-pro-image-1k': 50,
   'gemini-3-pro-image-2k': 80,
@@ -17,7 +17,7 @@ export const MODEL_CREDIT_COSTS = {
 /**
  * モデル名からペルコイン消費量を取得
  */
-export function getCreditCost(model: string): number {
+export function getPercoinCost(model: string): number {
   const normalized = normalizeModelName(model);
-  return MODEL_CREDIT_COSTS[normalized as keyof typeof MODEL_CREDIT_COSTS] ?? 20;
+  return MODEL_PERCOIN_COSTS[normalized as keyof typeof MODEL_PERCOIN_COSTS] ?? 20;
 }

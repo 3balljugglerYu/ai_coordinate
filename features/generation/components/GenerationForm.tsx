@@ -14,7 +14,7 @@ import { StockImageUploadCard } from "./StockImageUploadCard";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/generation-service";
-import { getCreditCost } from "../lib/model-config";
+import { getPercoinCost } from "../lib/model-config";
 import type { UploadedImage, GeminiModel } from "../types";
 import { useRouter } from "next/navigation";
 
@@ -384,7 +384,7 @@ export function GenerationForm({
             ))}
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            {selectedCount}枚の生成には {selectedCount * getCreditCost(selectedModel)} ペルコインが必要です
+            {selectedCount}枚の生成には {selectedCount * getPercoinCost(selectedModel)} ペルコインが必要です
           </p>
         </div>
 

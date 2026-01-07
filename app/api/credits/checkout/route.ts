@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findCreditPackage } from "@/features/credits/credit-packages";
+import { findPercoinPackage } from "@/features/credits/percoin-packages";
 
 /**
  * ペルコイン購入用のCheckoutセッションを作成
@@ -19,10 +19,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const creditPackage = findCreditPackage(packageId);
-    if (!creditPackage) {
+    const percoinPackage = findPercoinPackage(packageId);
+    if (!percoinPackage) {
       return NextResponse.json(
-        { error: "Invalid credit package" },
+        { error: "Invalid percoin package" },
         { status: 404 }
       );
     }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         checkoutUrl: `${redirectUrl}?mockPurchase=1&packageId=${encodeURIComponent(
           packageId
         )}`,
-        package: creditPackage,
+        package: percoinPackage,
       });
     }
 
@@ -59,4 +59,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

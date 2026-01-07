@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Tag, CreditCard, Timer, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CREDIT_PACKAGES, GENERATION_CREDIT_COST } from "@/features/credits/credit-packages";
+import { PERCOIN_PACKAGES, GENERATION_PERCOIN_COST } from "@/features/credits/percoin-packages";
 
 export const metadata: Metadata = {
   title: "料金",
@@ -28,7 +28,7 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
-              {CREDIT_PACKAGES.map((pkg) => (
+              {PERCOIN_PACKAGES.map((pkg) => (
                 <div key={pkg.id} className="rounded-lg border border-gray-200 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -44,7 +44,7 @@ export default function PricingPage() {
               ))}
             </div>
             <p className="mt-4 text-xs text-gray-600">
-              目安：画像生成1回あたり {GENERATION_CREDIT_COST} ペルコインを消費します。
+              目安：画像生成1回あたり {GENERATION_PERCOIN_COST} ペルコインを消費します。
             </p>
           </CardContent>
         </Card>
