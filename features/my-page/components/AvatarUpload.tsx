@@ -29,6 +29,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isHeifFormat, setIsHeifFormat] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewBlobUrlRef = useRef<string | null>(null);
 
@@ -67,6 +68,15 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       return;
     }
 
+    // HEIF形式の検出と警告
+    const detectedIsHeifFormat = file.type === "image/heic" || file.type === "image/heif";
+    setIsHeifFormat(detectedIsHeifFormat);
+    if (detectedIsHeifFormat) {
+      // HEIF形式の場合、ブラウザがサポートしていない可能性があるため警告を表示
+      // ただし、処理は続行（getCroppedImg関数でPNG形式に変換される）
+      console.warn("HEIF形式のファイルが検出されました。PNG形式に変換されます。");
+    }
+
     // ファイルサイズの検証（10MB制限）
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     if (file.size > MAX_FILE_SIZE) {
@@ -83,6 +93,14 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       setIsCropMode(true);
       setZoom(1);
       setCrop({ x: 0, y: 0 });
+    };
+    reader.onerror = () => {
+      // HEIF形式をサポートしていないブラウザの場合、エラーが発生する可能性がある
+      if (detectedIsHeifFormat) {
+        setError("HEIF形式のファイルは、お使いのブラウザではサポートされていません。JPEGまたはPNG形式のファイルをご利用ください。");
+      } else {
+        setError("画像の読み込みに失敗しました");
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -105,7 +123,8 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       // トリミング後の画像を生成
       const croppedImageBlob = await getCroppedImg(
         imageSrc,
-        croppedAreaPixels
+        croppedAreaPixels,
+        isHeifFormat
       );
 
       // BlobをFileに変換
@@ -178,6 +197,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
     setImageSrc(null);
     setIsCropMode(false);
     setError(null);
+    setIsHeifFormat(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -239,7 +259,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
           {isCropMode && imageSrc ? (
             // トリミングモード
             <>
-              <div className="relative w-full h-[calc(100vh-200px)] min-h-[400px] bg-black">
+              <div className="relative w-full h-[70dvh] min-h-[400px] bg-black">
                 <Cropper
                   image={imageSrc}
                   crop={crop}
@@ -276,7 +296,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                   </span>
                 </div>
               </div>
-              <DialogFooter className="border-t border-gray-700 bg-black/50 p-4">
+              <DialogFooter className="border-t border-gray-700 bg-black/50 p-4 pb-32 safe-area-inset-bottom">
                 <div className="flex gap-2 w-full">
                   <Button
                     type="button"
@@ -309,7 +329,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
           ) : (
             // 通常表示モード
             <>
-              <div className="relative flex items-center justify-center h-full min-h-[50vh] p-4">
+              <div className="relative flex items-center justify-center h-full min-h-[50dvh] p-4">
                 {/* 閉じるボタン */}
                 <Button
                   variant="ghost"
@@ -328,7 +348,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                       alt="プロフィール画像"
                       width={400}
                       height={400}
-                      className="rounded-full object-cover max-w-[80vw] max-h-[80vh] aspect-square"
+                      className="rounded-full object-cover max-w-[80vw] max-h-[80dvh] aspect-square"
                       onError={() => {
                         // Blob URLが無効な場合、previewをクリア
                         if (previewBlobUrlRef.current) {

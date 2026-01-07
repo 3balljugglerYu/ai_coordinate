@@ -63,6 +63,23 @@ export async function POST(
     // Storageバケット名（既存のgenerated-imagesバケットを再利用）
     const AVATAR_BUCKET = "generated-images";
 
+    /**
+     * MIMEタイプから拡張子を取得
+     * HEIF形式の場合はPNGにマッピング（Supabase Storageが.heic/.heifを許可していないため）
+     */
+    function getFileExtensionFromMimeType(mimeType: string): string {
+      const mimeToExt: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/webp': 'webp',
+        // HEIF形式はPNGにマッピング（クライアント側で変換済みのはずだが、念のため）
+        'image/heic': 'png',
+        'image/heif': 'png',
+      };
+      return mimeToExt[mimeType.toLowerCase()] || 'png'; // デフォルトはpng
+    }
+
     // 既存のavatar_urlを取得（古い画像を削除するため）
     const { data: currentProfile } = await supabase
       .from("profiles")
@@ -71,7 +88,8 @@ export async function POST(
       .single();
 
     // ファイル名を生成（フォルダ: avatars/{userId}/タイムスタンプ.拡張子）
-    const fileExt = file.name.split(".").pop();
+    // MIMEタイプから拡張子を決定（file.nameに依存しない）
+    const fileExt = getFileExtensionFromMimeType(file.type);
     const fileName = `avatars/${userId}/${Date.now()}.${fileExt}`;
     const filePath = fileName;
 
