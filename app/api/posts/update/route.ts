@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { postImage } from "@/features/generation/lib/database";
+import { postImageServer } from "@/features/generation/lib/server-database";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * キャプション更新API
  */
 export async function PUT(request: NextRequest) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
 
     const body = await request.json();
     const { id, caption } = body;
@@ -19,7 +20,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const result = await postImage(id, caption);
+    // キャプション更新処理
+    const result = await postImageServer(id, caption);
+
+    // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
+    // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
 
     return NextResponse.json({
       id: result.id!,

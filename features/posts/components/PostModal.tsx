@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 import { postImageAPI } from "../lib/api";
 
 interface PostModalProps {
@@ -31,6 +32,7 @@ export function PostModal({
   currentCaption,
 }: PostModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [caption, setCaption] = useState(currentCaption || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,16 +49,26 @@ export function PostModal({
     setIsSubmitting(true);
 
     try {
-      await postImageAPI({
+      const response = await postImageAPI({
         id: imageId,
         caption: caption.trim() || undefined,
       });
+
+      // デイリー投稿特典が付与された場合、Toast通知を表示
+      if (response.bonus_granted && response.bonus_granted > 0) {
+        toast({
+          title: "特典獲得！",
+          description: "今日の投稿で50ペルコインを獲得しました！",
+          variant: "default",
+        });
+      }
 
       // 投稿完了後、投稿一覧画面に遷移
       onOpenChange(false);
       router.push("/");
       router.refresh();
     } catch (err) {
+      // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
       console.error("Post error:", err);
       setError(
         err instanceof Error
