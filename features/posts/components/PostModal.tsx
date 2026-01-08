@@ -49,23 +49,18 @@ export function PostModal({
     setIsSubmitting(true);
 
     try {
-      console.log("[PostModal] Calling postImageAPI with:", { id: imageId, caption });
       const response = await postImageAPI({
         id: imageId,
         caption: caption.trim() || undefined,
       });
-      console.log("[PostModal] Post API response:", response);
 
       // デイリー投稿特典が付与された場合、Toast通知を表示
       if (response.bonus_granted && response.bonus_granted > 0) {
-        console.log("[PostModal] Bonus granted:", response.bonus_granted);
         toast({
           title: "特典獲得！",
           description: "今日の投稿で50ペルコインを獲得しました！",
           variant: "default",
         });
-      } else {
-        console.log("[PostModal] No bonus granted. bonus_granted:", response.bonus_granted);
       }
 
       // 投稿完了後、投稿一覧画面に遷移
@@ -73,6 +68,7 @@ export function PostModal({
       router.push("/");
       router.refresh();
     } catch (err) {
+      // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
       console.error("Post error:", err);
       setError(
         err instanceof Error
