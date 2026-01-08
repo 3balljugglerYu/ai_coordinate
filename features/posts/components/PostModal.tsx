@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 import { postImageAPI } from "../lib/api";
 
 interface PostModalProps {
@@ -31,6 +32,7 @@ export function PostModal({
   currentCaption,
 }: PostModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [caption, setCaption] = useState(currentCaption || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,10 +49,24 @@ export function PostModal({
     setIsSubmitting(true);
 
     try {
-      await postImageAPI({
+      console.log("[PostModal] Calling postImageAPI with:", { id: imageId, caption });
+      const response = await postImageAPI({
         id: imageId,
         caption: caption.trim() || undefined,
       });
+      console.log("[PostModal] Post API response:", response);
+
+      // デイリー投稿特典が付与された場合、Toast通知を表示
+      if (response.bonus_granted && response.bonus_granted > 0) {
+        console.log("[PostModal] Bonus granted:", response.bonus_granted);
+        toast({
+          title: "特典獲得！",
+          description: "今日の投稿で50ペルコインを獲得しました！",
+          variant: "default",
+        });
+      } else {
+        console.log("[PostModal] No bonus granted. bonus_granted:", response.bonus_granted);
+      }
 
       // 投稿完了後、投稿一覧画面に遷移
       onOpenChange(false);

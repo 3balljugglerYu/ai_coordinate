@@ -102,3 +102,31 @@ export const getGeneratedImagesServer = cache(async (
   return data || [];
 });
 
+/**
+ * サーバーサイドで画像を投稿
+ */
+export async function postImageServer(
+  id: string,
+  caption?: string
+): Promise<GeneratedImageRecord> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .update({
+      is_posted: true,
+      caption: caption || null,
+      posted_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Database update error:", error);
+    throw new Error(`画像の投稿に失敗しました: ${error.message}`);
+  }
+
+  return data;
+}
+

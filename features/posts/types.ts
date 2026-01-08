@@ -14,6 +14,7 @@ export interface PostImageResponse {
   is_posted: boolean;
   caption: string | null;
   posted_at: string;
+  bonus_granted?: number; // デイリー投稿特典で付与されたペルコイン数（0: 未付与、50: 付与成功）
 }
 
 export interface Post extends GeneratedImageRecord {
