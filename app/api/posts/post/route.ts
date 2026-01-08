@@ -4,6 +4,48 @@ import { postImageServer } from "@/features/generation/lib/server-database";
 import { createClient } from "@/lib/supabase/server";
 
 /**
+ * デイリー投稿特典を付与するヘルパー関数
+ * べき等性を保証し、同じ投稿IDで複数回呼び出しても1回のみ特典が付与されます
+ * @param userId ユーザーID
+ * @param generationId 投稿された画像のID
+ * @returns 付与されたペルコイン数（0: 未付与、50: 付与成功）
+ */
+async function grantDailyPostBonus(
+  userId: string,
+  generationId: string
+): Promise<number> {
+  try {
+    console.log("[Daily Post Bonus] Attempting to grant bonus for user:", userId, "generation:", generationId);
+    const supabase = await createClient();
+    const { data, error: rpcError } = await supabase.rpc(
+      "grant_daily_post_bonus",
+      {
+        p_user_id: userId,
+        p_generation_id: generationId,
+      }
+    );
+
+    console.log("[Daily Post Bonus] RPC response:", { data, error: rpcError });
+
+    if (!rpcError && typeof data === "number") {
+      const bonusAmount = data;
+      console.log("[Daily Post Bonus] Bonus granted:", bonusAmount);
+      return bonusAmount;
+    } else if (rpcError) {
+      console.error("[Daily Post Bonus] RPC error:", rpcError);
+      // エラー時は0を返す（投稿は成功させる）
+      return 0;
+    }
+
+    return 0;
+  } catch (error) {
+    console.error("[Daily Post Bonus] Exception:", error);
+    // エラー時は0を返す（投稿は成功させる）
+    return 0;
+  }
+}
+
+/**
  * 投稿API
  */
 export async function POST(request: NextRequest) {
@@ -29,31 +71,9 @@ export async function POST(request: NextRequest) {
     console.log("[Post API] Post result:", { id: result.id, is_posted: result.is_posted });
 
     // デイリー投稿特典の付与（エラーが発生しても投稿は成功させる）
-    let bonus_granted = 0;
-    try {
-      console.log("[Daily Post Bonus] Attempting to grant bonus for user:", user.id, "generation:", result.id!);
-      const supabase = await createClient();
-      const { data, error: rpcError } = await supabase.rpc(
-        "grant_daily_post_bonus",
-        {
-          p_user_id: user.id,
-          p_generation_id: result.id!,
-        }
-      );
-
-      console.log("[Daily Post Bonus] RPC response:", { data, error: rpcError });
-
-      if (!rpcError && typeof data === "number") {
-        bonus_granted = data;
-        console.log("[Daily Post Bonus] Bonus granted:", bonus_granted);
-      } else if (rpcError) {
-        console.error("[Daily Post Bonus] RPC error:", rpcError);
-        // エラー時はbonus_granted=0のまま（投稿は成功させる）
-      }
-    } catch (error) {
-      console.error("[Daily Post Bonus] Exception:", error);
-      // エラー時はbonus_granted=0のまま（投稿は成功させる）
-    }
+    // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
+    // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
+    const bonus_granted = await grantDailyPostBonus(user.id, result.id!);
 
     return NextResponse.json({
       id: result.id!,
