@@ -2,7 +2,7 @@
  * 通知機能の型定義
  */
 
-export type NotificationType = 'like' | 'comment' | 'follow';
+export type NotificationType = 'like' | 'comment' | 'follow' | 'bonus';
 export type EntityType = 'post' | 'comment' | 'user';
 
 export interface Notification {
