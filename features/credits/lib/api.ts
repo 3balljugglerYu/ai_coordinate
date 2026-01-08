@@ -52,3 +52,17 @@ export async function completeMockPercoinPurchase(options: { packageId: string }
 
   return response.json() as Promise<{ balance: number }>;
 }
+
+export async function checkStreakBonus() {
+  const response = await fetch("/api/streak/check", {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error || "連続ログインボーナスの確認に失敗しました");
+  }
+
+  return response.json() as Promise<{ bonus_granted: number; streak_days: number | null }>;
+}

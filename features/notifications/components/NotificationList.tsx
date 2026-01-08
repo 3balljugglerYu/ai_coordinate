@@ -70,6 +70,8 @@ export function NotificationList() {
         return <MessageCircle className="h-4 w-4 text-blue-500" />;
       case "follow":
         return <UserPlus className="h-4 w-4 text-green-500" />;
+      case "bonus":
+        return <Bell className="h-4 w-4 text-yellow-500 fill-yellow-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }

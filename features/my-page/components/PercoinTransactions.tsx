@@ -16,9 +16,9 @@ function formatTransactionType(type: string) {
     case "signup_bonus":
       return "新規登録特典";
     case "daily_post":
-      return "デイリー特典";
+      return "デイリー投稿特典";
     case "streak":
-      return "ストリークトークン";
+      return "連続ログイン特典";
     case "referral":
       return "紹介特典";
     default:
