@@ -88,16 +88,6 @@ export function ReferralCodeDisplay() {
   return (
     <Card className="p-6">
       <div className="space-y-6">
-        {/* 紹介コード表示 */}
-        <div>
-          <h2 className="text-xl font-semibold mb-2">紹介コード</h2>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 px-4 py-2 bg-muted rounded-md text-lg font-mono text-center">
-              {referralCode}
-            </code>
-          </div>
-        </div>
-
         {/* 紹介リンク */}
         <div>
           <h3 className="text-lg font-semibold mb-2">紹介リンク</h3>
