@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut, Coins } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut /* , Coins */ } from "lucide-react";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "./ui/button";
@@ -87,7 +87,7 @@ export function NavigationBar() {
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
-    { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
+    // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
 
   return (

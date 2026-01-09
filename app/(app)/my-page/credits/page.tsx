@@ -31,9 +31,9 @@ export default async function PercoinPage() {
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトル */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">ペルコイン</h1>
+            <h1 className="text-3xl font-bold text-gray-900">ペルコイン管理</h1>
             <p className="mt-2 text-sm text-gray-600">
-              ペルコインの購入と取引履歴を確認できます
+              残高と取引履歴を確認できます
             </p>
           </div>
 
