@@ -7,3 +7,8 @@ export interface GenerateReferralCodeResponse {
   error?: string;
 }
 
+export interface CheckFirstLoginResponse {
+  bonus_granted: number;
+  error?: string;
+}
+

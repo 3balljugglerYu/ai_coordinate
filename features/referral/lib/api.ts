@@ -2,15 +2,10 @@
  * リファラル（紹介）特典機能のAPIクライアント関数
  */
 
-export interface GenerateReferralCodeResponse {
-  referral_code: string | null;
-  error?: string;
-}
-
-export interface CheckFirstLoginResponse {
-  bonus_granted: number;
-  error?: string;
-}
+import type {
+  GenerateReferralCodeResponse,
+  CheckFirstLoginResponse,
+} from "../types";
 
 /**
  * 紹介コードを生成または取得
