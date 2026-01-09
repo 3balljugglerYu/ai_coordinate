@@ -55,30 +55,51 @@ export async function GET(request: Request) {
         // 1. 紹介コードをメタデータに保存（未設定の場合のみ）
         if (referralCode && !sessionData.user.user_metadata?.referral_code) {
           // エラーはログに記録するが、認証フローはブロックしない
-          supabase.auth
-            .updateUser({
-              data: { referral_code: referralCode },
-            })
-            .catch((updateError) => {
+          void (async () => {
+            try {
+              const { error: updateError } = await supabase.auth.updateUser({
+                data: { referral_code: referralCode },
+              });
+              if (updateError) {
+                console.error(
+                  "Failed to update user metadata with referral code:",
+                  updateError
+                );
+              }
+            } catch (err) {
               console.error(
                 "Failed to update user metadata with referral code:",
-                updateError
+                err
               );
-            });
+            }
+          })();
         }
 
         // 2. 紹介特典をチェック（べき等性が保証されているため、複数回呼び出しても問題ない）
         // OAuthユーザーは通常 email_confirmed_at が設定されている
         if (sessionData.user.email_confirmed_at) {
           // エラーはログに記録するが、認証フローはブロックしない
-          supabase.rpc("check_and_grant_referral_bonus_on_first_login", {
-            p_user_id: sessionData.user.id,
-          }).catch((bonusError) => {
-            console.error(
-              "Failed to check referral bonus on first login:",
-              bonusError
-            );
-          });
+          void (async () => {
+            try {
+              const { error: bonusError } = await supabase.rpc(
+                "check_and_grant_referral_bonus_on_first_login",
+                {
+                  p_user_id: sessionData.user.id,
+                }
+              );
+              if (bonusError) {
+                console.error(
+                  "Failed to check referral bonus on first login:",
+                  bonusError
+                );
+              }
+            } catch (err) {
+              console.error(
+                "Failed to check referral bonus on first login:",
+                err
+              );
+            }
+          })();
         }
       }
     }
