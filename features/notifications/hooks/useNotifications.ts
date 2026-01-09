@@ -96,7 +96,6 @@ export function useNotifications() {
   // 初期読み込み時に未読のボーナス通知があればToastを表示
   useEffect(() => {
     // ローディング中、通知未取得、または既にチェック済みの場合は実行しない
-    // unreadCountの更新を待つため、依存配列に含める（通知取得と未読数取得の両方が完了するまで待つ）
     if (
       !currentUserId ||
       isLoading ||
@@ -122,7 +121,7 @@ export function useNotifications() {
 
     // チェック済みフラグを立てる
     hasCheckedInitialBonusNotifications.current = true;
-  }, [currentUserId, isLoading, notifications.length, unreadCount, toast]); // 通知取得と未読数取得の両方が完了するまで待つ
+  }, [currentUserId, isLoading, notifications, toast]); // 通知取得が完了するまで待つ
 
   // Realtime購読
   useEffect(() => {
