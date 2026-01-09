@@ -40,67 +40,59 @@ export async function GET(request: Request) {
       );
     }
 
-    // 新規ユーザーの初回ログイン処理
+    // 紹介コードと紹介特典の処理
+    // 時間ベースの初回ログイン判定は不安定なため削除。
+    // 後続の処理（メタデータ更新、RPC呼び出し）はべき等性が保証されているため、毎回実行しても問題ない。
+    // これにより、メール/パスワード認証のフローとも一貫性が保たれる。
     if (sessionData.user) {
-      const createdAt = new Date(sessionData.user.created_at).getTime();
-      // `last_sign_in_at` はこのコールバックで更新されるため `created_at` と近いはず
-      const lastSignInAt = sessionData.user.last_sign_in_at
-        ? new Date(sessionData.user.last_sign_in_at).getTime()
-        : createdAt;
-
-      // 作成時刻と最終ログイン時刻が非常に近い場合、初回ログインと判断（許容誤差: 60秒）
-      const isFirstLogin = Math.abs(createdAt - lastSignInAt) < 60 * 1000;
-
-      if (isFirstLogin) {
-        // 1. 紹介コードをメタデータに保存（未設定の場合のみ）
-        if (referralCode && !sessionData.user.user_metadata?.referral_code) {
-          // エラーはログに記録するが、認証フローはブロックしない
-          void (async () => {
-            try {
-              const { error: updateError } = await supabase.auth.updateUser({
-                data: { referral_code: referralCode },
-              });
-              if (updateError) {
-                console.error(
-                  "Failed to update user metadata with referral code:",
-                  updateError
-                );
-              }
-            } catch (err) {
+      // 1. 紹介コードをメタデータに保存（未設定の場合のみ）
+      if (referralCode && !sessionData.user.user_metadata?.referral_code) {
+        // エラーはログに記録するが、認証フローはブロックしない
+        void (async () => {
+          try {
+            const { error: updateError } = await supabase.auth.updateUser({
+              data: { referral_code: referralCode },
+            });
+            if (updateError) {
               console.error(
                 "Failed to update user metadata with referral code:",
-                err
+                updateError
               );
             }
-          })();
-        }
+          } catch (err) {
+            console.error(
+              "Failed to update user metadata with referral code:",
+              err
+            );
+          }
+        })();
+      }
 
-        // 2. 紹介特典をチェック（べき等性が保証されているため、複数回呼び出しても問題ない）
-        // OAuthユーザーは通常 email_confirmed_at が設定されている
-        if (sessionData.user.email_confirmed_at) {
-          // エラーはログに記録するが、認証フローはブロックしない
-          void (async () => {
-            try {
-              const { error: bonusError } = await supabase.rpc(
-                "check_and_grant_referral_bonus_on_first_login",
-                {
-                  p_user_id: sessionData.user.id,
-                }
-              );
-              if (bonusError) {
-                console.error(
-                  "Failed to check referral bonus on first login:",
-                  bonusError
-                );
+      // 2. 紹介特典をチェック（べき等性が保証されているため、複数回呼び出しても問題ない）
+      // OAuthユーザーは通常 email_confirmed_at が設定されている
+      if (sessionData.user.email_confirmed_at) {
+        // エラーはログに記録するが、認証フローはブロックしない
+        void (async () => {
+          try {
+            const { error: bonusError } = await supabase.rpc(
+              "check_and_grant_referral_bonus_on_first_login",
+              {
+                p_user_id: sessionData.user.id,
               }
-            } catch (err) {
+            );
+            if (bonusError) {
               console.error(
                 "Failed to check referral bonus on first login:",
-                err
+                bonusError
               );
             }
-          })();
-        }
+          } catch (err) {
+            console.error(
+              "Failed to check referral bonus on first login:",
+              err
+            );
+          }
+        })();
       }
     }
 
