@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -8,7 +8,18 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+
+    // 未認証の場合はエラーレスポンスを返す（リダイレクトではなく）
+    if (!user) {
+      return NextResponse.json(
+        {
+          referral_code: null,
+          error: "認証が必要です",
+        },
+        { status: 401 }
+      );
+    }
 
     const supabase = await createClient();
     const { data, error: rpcError } = await supabase.rpc(
