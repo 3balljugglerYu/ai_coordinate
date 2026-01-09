@@ -60,6 +60,12 @@ export async function checkStreakBonus() {
   });
 
   if (!response.ok) {
+    // 401エラー（認証エラー）の場合は、例外をthrowせずに空のレスポンスを返す
+    // 認証状態のチェックは呼び出し元（StreakChecker）で行うため、ここでは静かに失敗
+    if (response.status === 401) {
+      return { bonus_granted: 0, streak_days: null };
+    }
+
     const error = await response.json().catch(() => null);
     throw new Error(error?.error || "連続ログインボーナスの確認に失敗しました");
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ interface AuthFormProps {
 
 export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -29,6 +30,9 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   const { toast } = useToast();
 
   const isSignUp = mode === "signup";
+
+  // URLクエリパラメータから紹介コードを取得
+  const referralCode = searchParams.get("ref");
 
   // コンポーネントマウント時またはmode変更時にローディング状態をリセット
   useEffect(() => {
@@ -59,12 +63,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
       // 認証処理
       if (isSignUp) {
-        await signUp(email, password);
+        await signUp(email, password, referralCode || undefined);
         // サインアップ成功
         setError(null);
         toast({
-          title: "確認メールを送信しました",
-          description: "メールを確認してアカウントを有効化してください。",
+          title: "確認メールを送信しました。",
+          description: "新規登録を受け付けました。メールをご確認ください。",
         });
         router.push("/login");
       } else {
@@ -92,7 +96,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
       setError(null);
       setIsLoading(true);
       const redirectTarget = redirectTo ?? "/";
-      await signInWithOAuth(provider, redirectTarget);
+      await signInWithOAuth(provider, redirectTarget, referralCode || undefined);
       // OAuthプロバイダーのページにリダイレクトされる
     } catch (err) {
       setError(err instanceof Error ? err.message : "OAuth認証に失敗しました");

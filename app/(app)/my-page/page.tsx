@@ -8,6 +8,7 @@ import { UserStatsSkeleton } from "@/features/my-page/components/UserStatsSkelet
 import { PercoinBalanceSkeleton } from "@/features/my-page/components/PercoinBalanceSkeleton";
 import { MyPageImageGallerySkeleton } from "@/features/my-page/components/MyPageImageGallerySkeleton";
 import { StreakChecker } from "@/components/StreakChecker";
+import { ReferralCodeDisplay } from "@/features/referral/components/ReferralCodeDisplay";
 
 export default async function MyPagePage() {
   return (
@@ -29,6 +30,13 @@ export default async function MyPagePage() {
           <Suspense fallback={<PercoinBalanceSkeleton />}>
             <PercoinBalanceWrapper />
           </Suspense>
+
+          {/* 紹介コード表示: 独立したSuspense境界 */}
+          <div className="mt-8">
+            <Suspense fallback={<div className="h-64 bg-gray-100 rounded-lg animate-pulse" />}>
+              <ReferralCodeDisplay />
+            </Suspense>
+          </div>
 
           {/* 画像一覧: 独立したSuspense境界（ペルコイン残高と並列実行） */}
           <div className="mt-8">

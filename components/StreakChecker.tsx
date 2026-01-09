@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { checkStreakBonus } from "@/features/credits/lib/api";
+import { getCurrentUser } from "@/features/auth/lib/auth-client";
 
 /**
  * ストリーク（連続ログイン）特典チェックコンポーネント
@@ -13,6 +14,12 @@ export function StreakChecker() {
 
   useEffect(() => {
     const checkBonus = async () => {
+      // 認証状態をチェック（未認証の場合は静かに終了）
+      const user = await getCurrentUser();
+      if (!user) {
+        return;
+      }
+
       // セッション内で既にチェック済みか確認
       const hasChecked = sessionStorage.getItem("streakBonusChecked");
       if (hasChecked) {
