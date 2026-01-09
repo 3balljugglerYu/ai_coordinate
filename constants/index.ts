@@ -36,7 +36,7 @@ export const REFERRAL_BONUS_AMOUNT = 100;
 // デイリー投稿特典の金額（ペルコイン）
 // 注意: この値はデータベース関数（grant_daily_post_bonus）でも使用されています
 // 金額を変更する場合は、データベース関数も同時に更新してください
-export const DAILY_POST_BONUS_AMOUNT = 50;
+export const DAILY_POST_BONUS_AMOUNT = 30;
 
 // ストリーク（連続ログイン）特典のスケジュール（2週間ループ）
 // 注意: この値はデータベース関数（grant_streak_bonus）でも使用されています
