@@ -27,3 +27,34 @@ export const DEFAULT_TITLE_TAGLINE = "着てみたいを、今すぐ。";
 
 // OGP用のシェア説明文
 export const DEFAULT_SHARE_DESCRIPTION = "#PerstaAI で、お着替えしてみました♪";
+
+// 紹介特典の金額（ペルコイン）
+// 注意: この値はデータベース関数（grant_referral_bonus）でも使用されています
+// 金額を変更する場合は、データベース関数も同時に更新してください
+export const REFERRAL_BONUS_AMOUNT = 100;
+
+// デイリー投稿特典の金額（ペルコイン）
+// 注意: この値はデータベース関数（grant_daily_post_bonus）でも使用されています
+// 金額を変更する場合は、データベース関数も同時に更新してください
+export const DAILY_POST_BONUS_AMOUNT = 50;
+
+// ストリーク（連続ログイン）特典のスケジュール（2週間ループ）
+// 注意: この値はデータベース関数（grant_streak_bonus）でも使用されています
+// 金額を変更する場合は、データベース関数も同時に更新してください
+// 配列のインデックスは連続ログイン日数（1-14）に対応
+export const STREAK_BONUS_SCHEDULE = [
+  10, // 1日目
+  10, // 2日目
+  20, // 3日目
+  10, // 4日目
+  10, // 5日目
+  10, // 6日目
+  50, // 7日目
+  10, // 8日目
+  10, // 9日目
+  10, // 10日目
+  10, // 11日目
+  10, // 12日目
+  10, // 13日目
+  100, // 14日目
+] as const;
