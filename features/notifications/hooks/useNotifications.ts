@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -11,6 +11,7 @@ import {
 } from "../lib/api";
 import type { Notification } from "../types";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
+import { useToast } from "@/components/ui/use-toast";
 
 /**
  * 通知機能のカスタムフック
@@ -18,6 +19,7 @@ import { getCurrentUser } from "@/features/auth/lib/auth-client";
  */
 export function useNotifications() {
   const router = useRouter();
+  const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,11 +27,14 @@ export function useNotifications() {
   const [hasMore, setHasMore] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const hasCheckedInitialBonusNotifications = useRef(false);
 
   // 初期化: ユーザーIDを取得
   useEffect(() => {
     getCurrentUser().then((user) => {
       setCurrentUserId(user?.id || null);
+      // ユーザーIDが変更されたら、チェック済みフラグをリセット
+      hasCheckedInitialBonusNotifications.current = false;
     });
   }, []);
 
@@ -88,6 +93,36 @@ export function useNotifications() {
     }
   }, [currentUserId, fetchNotifications, fetchUnreadCount]);
 
+  // 初期読み込み時に未読のボーナス通知があればToastを表示
+  useEffect(() => {
+    // ローディング中、通知未取得、または既にチェック済みの場合は実行しない
+    if (
+      !currentUserId ||
+      isLoading ||
+      notifications.length === 0 ||
+      hasCheckedInitialBonusNotifications.current
+    )
+      return;
+
+    // 未読のボーナス通知をチェック
+    const unreadBonusNotifications = notifications.filter(
+      (n) => !n.is_read && n.type === "bonus"
+    );
+
+    // 未読のボーナス通知があれば、最新の1件をToastで表示
+    if (unreadBonusNotifications.length > 0) {
+      const latestBonusNotification = unreadBonusNotifications[0];
+      toast({
+        title: latestBonusNotification.title,
+        description: latestBonusNotification.body,
+        variant: "default",
+      });
+    }
+
+    // チェック済みフラグを立てる
+    hasCheckedInitialBonusNotifications.current = true;
+  }, [currentUserId, isLoading, notifications, toast]); // 通知取得が完了するまで待つ
+
   // Realtime購読
   useEffect(() => {
     if (!currentUserId) return;
@@ -108,6 +143,15 @@ export function useNotifications() {
           const newNotification = payload.new as Notification;
           setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((prev) => prev + 1);
+
+          // ボーナス通知の場合はToastを表示
+          if (newNotification.type === "bonus") {
+            toast({
+              title: newNotification.title,
+              description: newNotification.body,
+              variant: "default",
+            });
+          }
         }
       )
       .subscribe();
@@ -115,7 +159,7 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId]);
+  }, [currentUserId, toast]);
 
   // 通知を既読化
   const markRead = useCallback(

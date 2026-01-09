@@ -89,16 +89,33 @@ function translateAuthError(errorMessage: string): string {
 
 /**
  * メールアドレスとパスワードでサインアップ
+ * @param referralCode 紹介コード（オプション）
  */
-export async function signUp(email: string, password: string) {
+export async function signUp(
+  email: string,
+  password: string,
+  referralCode?: string
+) {
   const supabase = createClient();
+
+  const signUpOptions: {
+    emailRedirectTo: string;
+    data?: { referral_code?: string };
+  } = {
+    emailRedirectTo: getSiteUrlForClient() + "/auth/callback",
+  };
+
+  // 紹介コードが存在する場合、options.dataに設定
+  if (referralCode) {
+    signUpOptions.data = {
+      referral_code: referralCode,
+    };
+  }
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      emailRedirectTo: getSiteUrlForClient() + "/auth/callback",
-    },
+    options: signUpOptions,
   });
 
   if (error) {
@@ -126,6 +143,7 @@ export async function signUp(email: string, password: string) {
 
 /**
  * メールアドレスとパスワードでサインイン
+ * 初回ログイン成功時（メール確認完了後）に紹介特典をチェック
  */
 export async function signIn(email: string, password: string) {
   const supabase = createClient();
@@ -153,6 +171,20 @@ export async function signIn(email: string, password: string) {
     // エラーメッセージを日本語に変換
     const translatedMessage = translateAuthError(error.message || "ログインに失敗しました");
     throw new Error(translatedMessage);
+  }
+
+  // 初回ログイン成功時（メール確認完了後）に紹介特典をチェック
+  // 時間ベースの初回ログイン判定は不安定なため削除。
+  // RPCがべき等であるため、メール確認済みのユーザーがログインするたびにチェックを試みる。
+  // パフォーマンスが懸念される場合は、user_metadataにフラグを立てるなどの方法を検討してください。
+  if (data.user && data.user.email_confirmed_at) {
+    // エラーは静かに処理（ユーザー体験を損なわない）
+    await fetch("/api/referral/check-first-login", {
+      method: "GET",
+      credentials: "include",
+    }).catch((err) => {
+      console.error("[Referral Bonus] Failed to check on first login:", err);
+    });
   }
 
   return data;
@@ -270,10 +302,12 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
 
 /**
  * OAuthサインイン（Google, GitHub, Twitter）
+ * @param referralCode 紹介コード（オプション）
  */
 export async function signInWithOAuth(
   provider: "google" | "github" | "twitter",
-  redirectTo?: string
+  redirectTo?: string,
+  referralCode?: string
 ) {
   const supabase = createClient();
 
@@ -281,6 +315,11 @@ export async function signInWithOAuth(
   const siteUrl = getSiteUrlForClient();
   const callbackUrl = new URL(`${siteUrl}/auth/callback`);
   callbackUrl.searchParams.set("next", redirectTo || "/");
+  
+  // 紹介コードが存在する場合、コールバックURLに含める
+  if (referralCode) {
+    callbackUrl.searchParams.set("ref", referralCode);
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,

@@ -58,7 +58,7 @@ export function PostModal({
       if (response.bonus_granted && response.bonus_granted > 0) {
         toast({
           title: "特典獲得！",
-          description: "今日の投稿で50ペルコインを獲得しました！",
+          description: `今日の投稿で${response.bonus_granted}ペルコインを獲得しました！`,
           variant: "default",
         });
       }
