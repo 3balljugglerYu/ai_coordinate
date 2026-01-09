@@ -26,7 +26,7 @@ export async function PercoinBalanceWrapper() {
               </p>
             </div>
           </div>
-          <div className="text-sm font-medium text-gray-600">購入</div>
+          <div className="text-sm font-medium text-gray-600">取引履歴</div>
         </div>
       </Card>
     </Link>

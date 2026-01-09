@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Coins } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight /* , Coins */ } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -106,7 +106,7 @@ export function AppSidebar() {
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
-    { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
+    // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
 
   return (

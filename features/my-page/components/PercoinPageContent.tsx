@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CreditCard /* , Plus */ } from "lucide-react";
+// 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト
+// import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { PercoinPurchaseSection } from "./PercoinPurchaseSection";
+// 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト
+// import { PercoinPurchaseSection } from "./PercoinPurchaseSection";
 import { PercoinTransactions } from "./PercoinTransactions";
 import {
   getPercoinTransactions,
@@ -32,10 +34,12 @@ export function PercoinPageContent({
     }
   };
 
-  const handlePurchaseCompleted = async (balance: number) => {
-    setPercoinBalance(balance);
-    await refreshTransactions();
-  };
+  // 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト
+  // 購入完了時のバランス更新ロジック（将来の復活用に保持）
+  // const handlePurchaseCompleted = async (balance: number) => {
+  //   setPercoinBalance(balance);
+  //   await refreshTransactions();
+  // };
 
   return (
     <>
@@ -57,12 +61,13 @@ export function PercoinPageContent({
       </Card>
 
       {/* ペルコイン購入セクション */}
-      <div id="percoin-purchase" className="mb-8">
+      {/* 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト */}
+      {/* <div id="percoin-purchase" className="mb-8">
         <h2 className="mb-4 text-xl font-semibold text-gray-900">
           ペルコイン購入
         </h2>
         <PercoinPurchaseSection onBalanceUpdate={handlePurchaseCompleted} />
-      </div>
+      </div> */}
 
       {/* 取引履歴 */}
       <div className="mb-8">
