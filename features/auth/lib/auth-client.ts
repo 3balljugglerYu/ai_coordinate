@@ -174,28 +174,17 @@ export async function signIn(email: string, password: string) {
   }
 
   // 初回ログイン成功時（メール確認完了後）に紹介特典をチェック
+  // 時間ベースの初回ログイン判定は不安定なため削除。
+  // RPCがべき等であるため、メール確認済みのユーザーがログインするたびにチェックを試みる。
+  // パフォーマンスが懸念される場合は、user_metadataにフラグを立てるなどの方法を検討してください。
   if (data.user && data.user.email_confirmed_at) {
-    try {
-      // 初回ログイン判定: email_confirmed_atが最近（5分以内）に更新された場合
-      const confirmedAt = new Date(data.user.email_confirmed_at);
-      const now = new Date();
-      const minutesSinceConfirmation = (now.getTime() - confirmedAt.getTime()) / 1000 / 60;
-
-      // 5分以内に確認された場合は初回ログインとみなす
-      if (minutesSinceConfirmation < 5) {
-        // 紹介特典をチェック（べき等性が保証されているため、複数回呼び出しても問題ない）
-        await fetch("/api/referral/check-first-login", {
-          method: "GET",
-          credentials: "include",
-        }).catch((err) => {
-          // エラーは静かに処理（ユーザー体験を損なわない）
-          console.error("[Referral Bonus] Failed to check on first login:", err);
-        });
-      }
-    } catch (err) {
-      // エラーは静かに処理（ユーザー体験を損なわない）
-      console.error("[Referral Bonus] Error checking on first login:", err);
-    }
+    // エラーは静かに処理（ユーザー体験を損なわない）
+    await fetch("/api/referral/check-first-login", {
+      method: "GET",
+      credentials: "include",
+    }).catch((err) => {
+      console.error("[Referral Bonus] Failed to check on first login:", err);
+    });
   }
 
   return data;
