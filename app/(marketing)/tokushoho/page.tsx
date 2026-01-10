@@ -23,27 +23,16 @@ export default function TokushohoPage() {
 							<FileText className="h-4 w-4 text-gray-500" />
 							基本情報
 						</CardTitle>
-						<CardDescription>氏名・住所・電話番号は請求時に開示いたします。</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-							<div>
+							{/* <div>
 								<dt className="text-gray-500">法人名／屋号</dt>
 								<dd className="mt-1 text-gray-800">請求があった場合には遅滞なく開示いたします。</dd>
-							</div>
+							</div> */}
 							<div>
 								<dt className="text-gray-500">運営責任者</dt>
-								<dd className="mt-1 text-gray-800">請求があった場合には遅滞なく開示いたします。</dd>
-							</div>
-							<div>
-								<dt className="text-gray-500">所在地</dt>
-								<dd className="mt-1 text-gray-800">請求があった場合には遅滞なく開示いたします。</dd>
-							</div>
-							<div>
-								<dt className="text-gray-500">電話番号</dt>
-								<dd className="mt-1 text-gray-800">
-									請求があった場合には遅滞なく開示いたします。（お問い合わせはメールにてお願いいたします）
-								</dd>
+								<dd className="mt-1 text-gray-800">土井秀悠</dd>
 							</div>
 							<div className="md:col-span-2">
 								<dt className="text-gray-500">メールアドレス</dt>
@@ -55,6 +44,16 @@ export default function TokushohoPage() {
 										<Clock className="h-3.5 w-3.5" />
 										お問い合わせ対応：平日10:00-18:00、3営業日以内に回答
 									</p>
+								</dd>
+							</div>
+							<div>
+								<dt className="text-gray-500">所在地</dt>
+								<dd className="mt-1 text-gray-800">請求があった場合には遅滞なく開示いたします。</dd>
+							</div>
+							<div>
+								<dt className="text-gray-500">電話番号</dt>
+								<dd className="mt-1 text-gray-800">
+									請求があった場合には遅滞なく開示いたします。（お問い合わせはメールにてお願いいたします）
 								</dd>
 							</div>
 						</dl>
@@ -73,12 +72,7 @@ export default function TokushohoPage() {
 						<dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
 							<div>
 								<dt className="text-gray-500">販売価格</dt>
-								<dd className="mt-1 text-gray-800">
-									<Link href="/pricing" className="text-primary underline underline-offset-2">
-										料金ページ
-									</Link>
-									で税込価格を表示しています。
-								</dd>
+								<dd className="mt-1 text-gray-800">税込価格を表示しています。</dd>
 							</div>
 							<div>
 								<dt className="text-gray-500">商品代金以外の必要料金</dt>
