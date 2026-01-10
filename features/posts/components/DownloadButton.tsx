@@ -28,6 +28,8 @@ export function DownloadButton({
   };
 
   const handleDownload = async () => {
+    if (isLoading) return;
+
     if (!imageUrl) {
       toast({
         title: "エラー",
@@ -37,6 +39,7 @@ export function DownloadButton({
       return;
     }
 
+    setIsLoading(true);
     try {
       // 画像をfetchで取得
       const response = await fetch(imageUrl);
@@ -91,10 +94,14 @@ export function DownloadButton({
         description: error instanceof Error ? error.message : "画像のダウンロードに失敗しました",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDownloadMobile = async () => {
+    if (isLoading) return;
+
     if (!imageUrl) {
       toast({
         title: "エラー",
@@ -104,6 +111,7 @@ export function DownloadButton({
       return;
     }
 
+    setIsLoading(true);
     try {
       // 画像をfetch（CORS対応）
       const res = await fetch(imageUrl, { mode: "cors" });
@@ -153,6 +161,7 @@ export function DownloadButton({
       
       // フォールバック: 通常のダウンロード
       await handleDownload();
+      // handleDownloadのfinallyでisLoadingはfalseになる
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : "";
       // キャンセルやジェスチャー不足は無視
@@ -161,11 +170,21 @@ export function DownloadButton({
         message.includes("user gesture") ||
         message.includes("share request")
       ) {
+        setIsLoading(false);
         return;
       }
       console.error("Share Sheet失敗:", error);
       // エラー時もダウンロードにフォールバック
-      await handleDownload();
+      try {
+        await handleDownload();
+      } catch {
+        // handleDownloadのエラーは既にhandleDownload内で処理される
+        // ここでは何もしない
+      }
+    } finally {
+      // handleDownloadが呼ばれた場合は、そのfinallyでisLoadingがfalseになる
+      // 呼ばれなかった場合（早期リターンなど）のみここで設定
+      setIsLoading(false);
     }
   };
 

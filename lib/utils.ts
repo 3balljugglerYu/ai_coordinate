@@ -164,8 +164,33 @@ export function extractFileNameFromUrl(url: string): string | null {
 }
 
 /**
+ * ファイル名をサニタイズ（Path Traversal対策）
+ * パス関連の文字（../, /, \, :, null文字など）を除去し、ベースファイル名のみを返す
+ */
+function sanitizeFileName(fileName: string): string {
+  // パストラバーサル文字を除去
+  let sanitized = fileName
+    .replace(/\.\./g, '') // .. を除去
+    .replace(/[/\\]/g, '') // / と \ を除去
+    .replace(/:/g, '') // : を除去（Windowsパス対策）
+    .replace(/\0/g, ''); // null文字を除去
+  
+  // ベースファイル名のみを取得（最後のスラッシュ以降）
+  const parts = sanitized.split(/[/\\]/);
+  sanitized = parts[parts.length - 1] || sanitized;
+  
+  // 空文字の場合はnullを返す
+  if (!sanitized.trim()) {
+    return '';
+  }
+  
+  return sanitized;
+}
+
+/**
  * Content-Dispositionヘッダーからファイル名を抽出
  * 例: attachment; filename="image.jpeg"
+ * Path Traversal対策として、ファイル名をサニタイズする
  */
 export function extractFileNameFromContentDisposition(contentDisposition: string | null): string | null {
   if (!contentDisposition) return null;
@@ -173,7 +198,15 @@ export function extractFileNameFromContentDisposition(contentDisposition: string
   const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
   if (filenameMatch && filenameMatch[1]) {
     // クォートを除去
-    return filenameMatch[1].replace(/['"]/g, '');
+    let fileName = filenameMatch[1].replace(/['"]/g, '');
+    
+    // Path Traversal対策: ファイル名をサニタイズ
+    fileName = sanitizeFileName(fileName);
+    
+    // サニタイズ後のファイル名が空の場合はnullを返す
+    if (!fileName) return null;
+    
+    return fileName;
   }
   return null;
 }
