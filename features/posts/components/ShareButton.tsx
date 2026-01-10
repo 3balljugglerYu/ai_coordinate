@@ -1,18 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Share2 } from "lucide-react";
+import { Share2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "../lib/share";
-import { determineFileName } from "@/lib/utils";
 import { DEFAULT_SHARE_TEXT } from "@/constants";
 
 interface ShareButtonProps {
   postId: string;
   caption?: string | null;
   imageUrl?: string | null;
-  isOwner?: boolean;
 }
 
 /**
@@ -23,7 +27,6 @@ export function ShareButton({
   postId,
   caption,
   imageUrl,
-  isOwner = false,
 }: ShareButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -37,148 +40,73 @@ export function ShareButton({
     return `${window.location.origin}/posts/${postId}`;
   };
 
-  const handleDownload = async () => {
-    if (!imageUrl) {
-      toast({
-        title: "エラー",
-        description: "ダウンロードできる画像がありません",
-        variant: "destructive",
-      });
-      return;
-    }
+  // URLのみをコピーする関数
+  const handleCopyLink = async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
 
     try {
-      // 画像をfetchで取得
-      const response = await fetch(imageUrl);
+      const url = getPostUrl();
       
-      // 認証エラーのハンドリング（401/403）
-      if (response.status === 401 || response.status === 403) {
-        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
-      }
-      
-      if (!response.ok) {
-        throw new Error(`画像の取得に失敗しました: ${response.statusText}`);
-      }
-      
-      // Blobに変換（MIMEタイプを保持）
-      const blob = await response.blob();
-      
-      // MIMEタイプの取得順序: blob.type を優先、次にContent-Typeヘッダー、最後にデフォルト
-      const mimeType = blob.type || response.headers.get('content-type') || 'image/png';
-      
-      // ファイル名を決定（共通ロジックを使用）
-      const downloadFileName = determineFileName(
-        response,
-        imageUrl,
-        postId,
-        mimeType
-      );
-      
-      // ObjectURLを作成
-      const objectUrl = URL.createObjectURL(blob);
-      
-      // ダウンロードリンクを作成
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = downloadFileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // メモリリークを防ぐためにObjectURLを解放
-      setTimeout(() => {
-        URL.revokeObjectURL(objectUrl);
-      }, 100);
-      
-      toast({
-        title: "ダウンロードしました",
-        description: "画像を保存しました",
-      });
-    } catch (error) {
-      console.error("ダウンロードエラー:", error);
-      toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "画像のダウンロードに失敗しました",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDownloadMobile = async () => {
-    if (!imageUrl) {
-      toast({
-        title: "エラー",
-        description: "ダウンロードできる画像がありません",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // 画像をfetch（CORS対応）
-      const res = await fetch(imageUrl, { mode: "cors" });
-      
-      // 認証エラーのハンドリング（401/403）
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
-      }
-      
-      if (!res.ok) {
-        throw new Error(`画像の取得に失敗しました: ${res.statusText}`);
-      }
-      
-      // Blobに変換
-      const blob = await res.blob();
-      
-      // MIMEタイプの取得（handleDownloadと同じロジック）
-      const mimeType = blob.type || res.headers.get('content-type') || 'image/png';
-      
-      // ファイル名を決定（共通ロジックを使用）
-      const fileName = determineFileName(
-        res,
-        imageUrl,
-        postId,
-        mimeType
-      );
-      
-      // Fileオブジェクトを作成
-      const file = new File(
-        [blob],
-        fileName,
-        { type: mimeType }
-      );
-      
-      // Web Share API Level 2（files）のサポート確認
-      if (
-        typeof navigator !== "undefined" &&
-        navigator.canShare &&
-        navigator.canShare({ files: [file] })
-      ) {
-        await navigator.share({
-          files: [file],
-          title: "Persta.AI",
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast({
+          title: "URLをコピーしました",
+          description: "クリップボードにコピーしました",
         });
-        return;
+      } else {
+        throw new Error("クリップボードAPIがサポートされていません");
       }
-      
-      // フォールバック: 通常のダウンロード
-      await handleDownload();
     } catch (error) {
-      const message = error instanceof Error ? error.message.toLowerCase() : "";
-      // キャンセルやジェスチャー不足は無視
-      if (
-        (error instanceof DOMException && error.name === "AbortError") ||
-        message.includes("user gesture") ||
-        message.includes("share request")
-      ) {
-        return;
-      }
-      console.error("Share Sheet失敗:", error);
-      // エラー時もダウンロードにフォールバック
-      await handleDownload();
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : "URLのコピーに失敗しました",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Web Share APIを直接呼び出す関数（「その他の方法で共有」用）
+  const handleShareViaWebAPI = async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+
+    try {
+      const url = getPostUrl();
+      const shareData: ShareData = {
+        title: "Persta.AI",
+        text: DEFAULT_SHARE_TEXT,
+        url: url,
+      };
+
+      if ("share" in navigator) {
+        await (navigator as any).share(shareData);
+        // Share Sheetが開かれた場合はトーストを表示しない
+      } else {
+        throw new Error("Web Share APIがサポートされていません");
+      }
+    } catch (error) {
+      // ユーザーキャンセルは無視（トーストを表示しない）
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      // その他のエラーのみトースト表示
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : "共有に失敗しました",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // モバイル版用のシェア関数（従来通り）
   const handleShare = async () => {
     if (isLoading) return;
 
@@ -217,36 +145,45 @@ export function ShareButton({
     }
   };
 
-  return (
-    <div className="flex items-center gap-1">
-      {/* オーナーのみダウンロードボタン（モバイル: Web Share API Level 2、PC: 通常ダウンロード） */}
-      {isOwner && (
+  // モバイル版のシェアボタン（従来通り）
+  const mobileShareButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleShare}
+      disabled={isLoading}
+      className="flex items-center gap-1.5 px-2 py-1 h-auto"
+    >
+      <Share2 className="h-5 w-5 text-gray-600" />
+    </Button>
+  );
+
+  // PC版のシェアボタン（ドロップダウンメニュー付き）
+  const desktopShareButton = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
-            if (isMobile()) {
-              handleDownloadMobile();
-            } else {
-              handleDownload();
-            }
-          }}
           disabled={isLoading}
           className="flex items-center gap-1.5 px-2 py-1 h-auto"
         >
-          <Download className="h-5 w-5 text-gray-600" />
+          <Share2 className="h-5 w-5 text-gray-600" />
         </Button>
-      )}
-      {/* シェアボタン（投稿済みの場合のみ表示） */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleShare}
-        disabled={isLoading}
-        className="flex items-center gap-1.5 px-2 py-1 h-auto"
-      >
-        <Share2 className="h-5 w-5 text-gray-600" />
-      </Button>
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onClick={handleCopyLink}>
+          <Copy className="mr-2 h-4 w-4" />
+          リンクをコピー
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleShareViaWebAPI}>
+          <Share2 className="mr-2 h-4 w-4" />
+          その他の方法で共有
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
+
+  // シェアボタン（PC版: ドロップダウンメニュー、モバイル版: 直接シェア）
+  return isMobile() ? mobileShareButton : desktopShareButton;
 }

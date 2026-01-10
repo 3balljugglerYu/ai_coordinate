@@ -1,6 +1,6 @@
 "use client";
 
-import { LikeButton } from "./LikeButton";
+import { PostActions } from "./PostActions";
 
 interface PostDetailStatsProps {
   postId: string;
@@ -30,8 +30,8 @@ export function PostDetailStats({
   imageUrl,
 }: PostDetailStatsProps) {
   return (
-    <LikeButton
-      imageId={postId}
+    <PostActions
+      postId={postId}
       initialLikeCount={initialLikeCount}
       initialCommentCount={initialCommentCount}
       initialViewCount={initialViewCount}

@@ -1,26 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Heart, Eye, MessageCircle } from "lucide-react";
+import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
-import { ShareButton } from "./ShareButton";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname } from "next/navigation";
 
 interface LikeButtonProps {
   imageId: string;
   initialLikeCount: number;
-  initialCommentCount?: number;
-  initialViewCount?: number;
   currentUserId?: string | null;
-  ownerId?: string | null;
-  isPosted?: boolean;
-  caption?: string | null;
-  imageUrl?: string | null;
 }
 
 /**
@@ -30,13 +23,7 @@ interface LikeButtonProps {
 export function LikeButton({
   imageId,
   initialLikeCount,
-  initialCommentCount = 0,
-  initialViewCount = 0,
   currentUserId,
-  isPosted = true,
-  caption,
-  imageUrl,
-  ownerId,
 }: LikeButtonProps) {
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLiked, setIsLiked] = useState(false);
@@ -45,7 +32,6 @@ export function LikeButton({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
   const pathname = usePathname();
-  const isOwner = currentUserId && ownerId ? currentUserId === ownerId : false;
 
   // 初期いいね状態を取得
   useEffect(() => {
@@ -138,7 +124,7 @@ export function LikeButton({
   };
 
   return (
-    <div className="flex items-center gap-3 justify-start">
+    <>
       <Button
         variant="ghost"
         size="sm"
@@ -153,31 +139,11 @@ export function LikeButton({
         />
         <span className="text-sm font-medium">{formatCountEnUS(likeCount)}</span>
       </Button>
-      {initialCommentCount > 0 && (
-        <div className="flex items-center gap-1">
-          <MessageCircle className="h-4 w-4 text-gray-500" />
-          <span className="text-sm text-gray-600">{formatCountEnUS(initialCommentCount)}</span>
-        </div>
-      )}
-      {initialViewCount > 0 && (
-        <div className="flex items-center gap-1">
-          <Eye className="h-4 w-4 text-gray-500" />
-          <span className="text-sm text-gray-600">{formatCountEnUS(initialViewCount)}</span>
-        </div>
-      )}
-      {(isOwner || isPosted) && (
-        <ShareButton
-          postId={imageId}
-          caption={caption}
-          imageUrl={imageUrl}
-          isOwner={isOwner}
-        />
-      )}
       <AuthModal
         open={showAuthModal && !currentUserId}
         onClose={() => setShowAuthModal(false)}
         redirectTo={pathname}
       />
-    </div>
+    </>
   );
 }

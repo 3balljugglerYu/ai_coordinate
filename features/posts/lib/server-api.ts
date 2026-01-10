@@ -457,12 +457,19 @@ export const getPost = cache(async (id: string, currentUserId?: string | null, s
   let updatedViewCount = currentViewCount;
   
   if (!skipViewCount) {
-    // オプティミスティック更新: 現在の閲覧数+1を使用（RPC関数の戻り値取得を待たない）
-    await incrementViewCount(id);
-    
-    // 更新後の閲覧数を取得（オプティミスティック更新のため、実際の値ではなく現在の値+1を使用）
-    // 注意: 実際の値が必要な場合は、RPC関数を修正して戻り値を返すようにする
-    updatedViewCount = currentViewCount + 1;
+    try {
+      // オプティミスティック更新: 現在の閲覧数+1を使用（RPC関数の戻り値取得を待たない）
+      await incrementViewCount(id);
+      
+      // 更新後の閲覧数を取得（オプティミスティック更新のため、実際の値ではなく現在の値+1を使用）
+      // 注意: 実際の値が必要な場合は、RPC関数を修正して戻り値を返すようにする
+      updatedViewCount = currentViewCount + 1;
+    } catch (error) {
+      // 閲覧数の更新に失敗した場合でも、ページの表示は続行する
+      // エラーはログに記録するが、ページの読み込みは妨げない
+      console.error("Failed to increment view count, continuing without update:", error);
+      // 閲覧数は現在の値のまま（更新しない）
+    }
   }
 
   return {
@@ -1121,6 +1128,26 @@ export async function incrementViewCount(imageId: string): Promise<void> {
 
   if (error) {
     console.error("Database query error:", error);
-    throw new Error(`閲覧数の更新に失敗しました: ${error.message}`);
+    console.error("Error details:", JSON.stringify(error, null, 2));
+    
+    // エラーメッセージの安全な取得
+    let errorMessage = "不明なエラー";
+    if (error && typeof error === "object") {
+      if ("message" in error && typeof error.message === "string") {
+        errorMessage = error.message;
+      } else if ("error" in error && typeof error.error === "string") {
+        errorMessage = error.error;
+      } else if ("code" in error) {
+        errorMessage = `エラーコード: ${error.code}`;
+      }
+    }
+    
+    // HTMLレスポンスが含まれている場合（Cloudflareエラーなど）を検出
+    if (errorMessage.includes("<!DOCTYPE") || errorMessage.includes("<html")) {
+      console.error("HTMLレスポンスが返されました。Supabaseへの接続に問題がある可能性があります。");
+      errorMessage = "データベースへの接続に失敗しました。しばらく待ってから再度お試しください。";
+    }
+    
+    throw new Error(`閲覧数の更新に失敗しました: ${errorMessage}`);
   }
 }

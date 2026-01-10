@@ -15,7 +15,7 @@ import { CollapsibleText } from "./CollapsibleText";
 import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
 import { PostModal } from "./PostModal";
-import { LikeButton } from "./LikeButton";
+import { PostActions } from "./PostActions";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
 import { getPostImageUrl } from "../lib/utils";
@@ -252,13 +252,16 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
 
           {/* 2行目: いいね、コメント、ビュー（画面の左端から） */}
           <div>
-            <LikeButton
-              imageId={post.id || ""}
+            <PostActions
+              postId={post.id || ""}
               initialLikeCount={post.like_count || 0}
               initialCommentCount={commentCount}
               initialViewCount={post.view_count || 0}
               currentUserId={currentUserId}
               ownerId={post.user_id}
+              isPosted={post.is_posted}
+              caption={post.caption}
+              imageUrl={imageUrl}
             />
           </div>
         </div>
