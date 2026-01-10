@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
 import { ShareButton } from "./ShareButton";
+import { DownloadButton } from "./DownloadButton";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname } from "next/navigation";
 
@@ -165,14 +166,23 @@ export function LikeButton({
           <span className="text-sm text-gray-600">{formatCountEnUS(initialViewCount)}</span>
         </div>
       )}
-      {(isOwner || isPosted) && (
-        <ShareButton
-          postId={imageId}
-          caption={caption}
-          imageUrl={imageUrl}
-          isOwner={isOwner}
-        />
-      )}
+      <div className="flex items-center gap-1">
+        {/* オーナーのみダウンロードボタン（投稿済み・未投稿問わず表示） */}
+        {isOwner && (
+          <DownloadButton
+            postId={imageId}
+            imageUrl={imageUrl}
+          />
+        )}
+        {/* シェアボタン（投稿済みの場合のみ表示） */}
+        {isPosted && (
+          <ShareButton
+            postId={imageId}
+            caption={caption}
+            imageUrl={imageUrl}
+          />
+        )}
+      </div>
       <AuthModal
         open={showAuthModal && !currentUserId}
         onClose={() => setShowAuthModal(false)}
