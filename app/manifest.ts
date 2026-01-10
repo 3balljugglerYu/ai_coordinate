@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Persta.AI",
     short_name: "Persta.AI",
-    description: "AIで生成されたファッションコーディネートをシェア",
+    description: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

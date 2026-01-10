@@ -19,15 +19,15 @@ export default async function CoordinatePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <StreakChecker />
-      <div className="pt-1 pb-8 px-4">
+      <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトルと説明文 */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              コーディネート画面
+              コーディネート
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              人物画像をアップロードして、AIで着せ替えを楽しもう
+              人物画像をアップロードして、着せ替えを楽しみましょう
             </p>
           </div>
 

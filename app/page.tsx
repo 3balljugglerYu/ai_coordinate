@@ -7,11 +7,11 @@ import { getSiteUrl } from "@/lib/env";
 import { StreakChecker } from "@/components/StreakChecker";
 
 export const metadata: Metadata = {
-  title: "Persta.AI - AIで生成されたファッションコーディネートをシェア",
-  description: "Persta.AIは、AIで生成されたファッションコーディネート画像をシェアできるプラットフォームです。みんなのコーディネートを見て、インスピレーションを得ましょう。",
+  title: "Persta.AI - 着てみたいも、なりたいも。AIスタイリングプラットフォーム",
+  description: "Persta.AIは、AIでファッション・キャラクターなどのビジュアル表現を自由にスタイリングできるプラットフォームです。みんなの作品を見て、インスピレーションを得ましょう。",
   openGraph: {
     title: "Persta.AI",
-    description: "AIで生成されたファッションコーディネートをシェア",
+    description: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
     url: getSiteUrl() || undefined,
     siteName: "Persta.AI",
     type: "website",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Persta.AI",
-    description: "AIで生成されたファッションコーディネートをシェア",
+    description: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
   },
 };
 
@@ -32,11 +32,11 @@ export default async function Home() {
   return (
     <>
       <StreakChecker />
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-1">
+      <div className="mx-auto max-w-6xl px-4 pb-8 pt-6 md:pt-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">投稿一覧</h1>
+          <h1 className="text-3xl font-bold">Persta | ペルスタ</h1>
           <p className="mt-2 text-muted-foreground">
-            みんなのコーディネートを見てみましょう
+            着てみたいも、なりたいも。AIスタイリングプラットフォーム
           </p>
         </div>
         <Suspense fallback={<PostListSkeleton />}>

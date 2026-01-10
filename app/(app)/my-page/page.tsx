@@ -14,7 +14,7 @@ export default async function MyPagePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <StreakChecker />
-      <div className="pt-1 pb-8 px-4">
+      <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* プロフィールヘッダー: 独立したSuspense境界 */}
           <Suspense fallback={<ProfileHeaderSkeleton />}>

@@ -9,10 +9,10 @@ import { isValidSortType } from "@/features/posts/lib/utils";
 
 export const metadata: Metadata = {
   title: "検索 - Persta.AI",
-  description: "プロンプトを検索して、AIで生成されたファッションコーディネートを見つけましょう",
+  description: "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう",
   openGraph: {
     title: "検索 - Persta.AI",
-    description: "プロンプトを検索して、AIで生成されたファッションコーディネートを見つけましょう",
+    description: "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう",
     url: getSiteUrl() ? `${getSiteUrl()}/search` : undefined,
     siteName: "Persta.AI",
     type: "website",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "検索 - Persta.AI",
-    description: "プロンプトを検索して、AIで生成されたファッションコーディネートを見つけましょう",
+    description: "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう",
   },
 };
 
@@ -42,7 +42,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const sortType = params.sort || "popular";
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-8 pt-1">
+    <div className="mx-auto max-w-6xl px-4 pb-8 pt-6 md:pt-8">
       {/* 検索結果 */}
       {!searchQuery || !searchQuery.trim() ? (
         <div className="py-12 text-center">

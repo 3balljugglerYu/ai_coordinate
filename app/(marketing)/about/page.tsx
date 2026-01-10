@@ -23,7 +23,7 @@ export default function AboutPage() {
               <Info className="h-4 w-4 text-gray-500" />
               サービス概要
             </CardTitle>
-            <CardDescription>AIで生成されたファッションコーディネート画像を共有・閲覧できるプラットフォームです。</CardDescription>
+            <CardDescription>Persta.AIは、AIでファッション・キャラクターなどのビジュアル表現を自由にスタイリングできるプラットフォームです。</CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">

@@ -20,13 +20,13 @@ export const API_ENDPOINTS = {
 export const COMMENT_MAX_LENGTH = 200;
 
 // シェア用のデフォルトテキスト
-export const DEFAULT_SHARE_TEXT = "#PerstaAI で、お着替えしてみました♪";
+export const DEFAULT_SHARE_TEXT = "#PerstaAI で、イメージ通りに作れました！";
 
 // OGP用のタイトルタグライン
-export const DEFAULT_TITLE_TAGLINE = "着てみたいを、今すぐ。";
+export const DEFAULT_TITLE_TAGLINE = "着てみたいも、なりたいも。";
 
 // OGP用のシェア説明文
-export const DEFAULT_SHARE_DESCRIPTION = "#PerstaAI で、お着替えしてみました♪";
+export const DEFAULT_SHARE_DESCRIPTION = "#PerstaAI で、イメージ通りに作れました！";
 
 // 紹介特典の金額（ペルコイン）
 // 注意: この値はデータベース関数（grant_referral_bonus）でも使用されています
