@@ -58,7 +58,7 @@ export function PercoinPageContent({
           <Link href="/my-page/credits/purchase">
             <Button className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              ペルコインを購入
+              購入
             </Button>
           </Link>
         </div>
