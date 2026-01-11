@@ -27,13 +27,6 @@ export function StripePricingTable({ userId }: StripePricingTableProps) {
     );
   }
 
-  // デバッグ用: userIdが設定されているか確認
-  if (!userId) {
-    console.warn("[StripePricingTable] userId is not provided. client-reference-id will not be set.");
-  } else {
-    console.log("[StripePricingTable] Setting client-reference-id:", userId);
-  }
-
   return (
     <>
       <Script
