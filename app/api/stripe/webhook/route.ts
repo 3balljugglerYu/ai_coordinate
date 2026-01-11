@@ -145,46 +145,26 @@ export async function POST(request: NextRequest) {
 
       // Price IDからペルコイン数を取得
       console.log(`[Stripe Webhook] Price ID: ${priceId}`);
-      let percoins = getPercoinsFromPriceId(priceId);
+      const percoins = getPercoinsFromPriceId(priceId);
       console.log(`[Stripe Webhook] Percoins amount: ${percoins}`);
 
-      // Price IDが見つからない場合は、金額から推測を試みる（デバッグ用）
+      // Price IDが見つからない場合は、即座にエラーとして処理を中断
       if (!percoins) {
         const amountTotal = lineItems.data[0].amount_total || session.amount_total || 0;
-        // Stripeの金額: JPYの場合は1円 = 1単位、他の通貨（USD等）は1ドル = 100単位
         const currency = session.currency || lineItems.data[0].price?.currency || 'jpy';
-        const amountInYen = currency.toLowerCase() === 'jpy' ? amountTotal : amountTotal / 100;
         
-        console.error(`Unknown price ID: ${priceId}`, {
+        console.error(`[Stripe Webhook] ❌ Unknown price ID: ${priceId}. This must be added to the price mapping.`, {
           sessionId: session.id,
           priceId,
           amountTotal,
-          amountInYen,
+          currency,
           availablePriceIds: Object.keys(STRIPE_PRICE_ID_TO_PERCOINS),
         });
-
-        // 金額からペルコイン数を推測（モネタイズルールに基づく）
-        // 500円 = 100, 1000円 = 220, 3000円 = 760, 5000円 = 1600, 10000円 = 4700
-        const amountToPercoins: Record<number, number> = {
-          500: 100,
-          1000: 220,
-          3000: 760,
-          5000: 1600,
-          10000: 4700,
-        };
-
-        percoins = amountToPercoins[amountInYen] || null;
         
-        if (percoins) {
-          console.warn(`[Stripe Webhook] ⚠️ Price ID not found, but estimated percoins from amount: ${amountInYen}円 = ${percoins}ペルコイン`);
-          console.warn(`[Stripe Webhook] ⚠️ Please add this Price ID to mapping: ${priceId} = ${percoins}ペルコイン`);
-        } else {
-          console.error(`[Stripe Webhook] ❌ Could not determine percoins for amount: ${amountInYen}円`);
-          return NextResponse.json(
-            { error: `Unknown price ID: ${priceId}. Amount: ${amountInYen}円. Please add this Price ID to the mapping table.` },
-            { status: 400 }
-          );
-        }
+        return NextResponse.json(
+          { error: `Unknown price ID: ${priceId}. Please add this to the mapping table.` },
+          { status: 400 }
+        );
       }
 
       // べき等性チェック: 既に処理済みのpayment_intent_idか確認
