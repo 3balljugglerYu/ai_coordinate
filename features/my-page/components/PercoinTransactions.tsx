@@ -56,11 +56,18 @@ export function PercoinTransactions({ transactions }: PercoinTransactionsProps) 
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                 <span>{new Date(tx.created_at).toLocaleString("ja-JP")}</span>
-                {((tx.metadata as { mode?: string } | null)?.mode === "mock") && (
-                  <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600">
-                    モック
-                  </span>
-                )}
+                <div className="flex gap-2">
+                  {((tx.metadata as { mode?: string } | null)?.mode === "mock") && (
+                    <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600">
+                      モック
+                    </span>
+                  )}
+                  {((tx.metadata as { mode?: string } | null)?.mode === "test") && (
+                    <span className="rounded bg-yellow-100 px-2 py-1 text-[10px] font-medium text-yellow-700">
+                      テスト
+                    </span>
+                  )}
+                </div>
               </div>
             </li>
           ))}

@@ -24,6 +24,8 @@ const envSchema = {
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICING_TABLE_ID: process.env.STRIPE_PRICING_TABLE_ID,
+  NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID: process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID,
 
   // Node.js環境のみ（サーバーサイド）
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -80,6 +82,10 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
     STRIPE_SECRET_KEY: envSchema.STRIPE_SECRET_KEY || "",
     STRIPE_WEBHOOK_SECRET: envSchema.STRIPE_WEBHOOK_SECRET || "",
+    STRIPE_PRICING_TABLE_ID:
+      envSchema.STRIPE_PRICING_TABLE_ID || "",
+    NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID:
+      envSchema.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID || "",
     NEXT_PUBLIC_SITE_URL:
       envSchema.NEXT_PUBLIC_SITE_URL || "",
   };
@@ -130,3 +136,11 @@ export function getSiteUrlForClient(): string {
   return "";
 }
 
+/**
+ * Stripeがテストモードか本番モードかを判定
+ * 公開キーのプレフィックスで判定（pk_test_... = テスト、pk_live_... = 本番）
+ */
+export function isStripeTestMode(): boolean {
+  const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  return publishableKey.startsWith("pk_test_");
+}

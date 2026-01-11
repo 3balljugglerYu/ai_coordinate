@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard /* , Plus */ } from "lucide-react";
-// 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト
-// import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { CreditCard, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-// 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト
-// import { PercoinPurchaseSection } from "./PercoinPurchaseSection";
 import { PercoinTransactions } from "./PercoinTransactions";
 import {
   getPercoinTransactions,
@@ -57,6 +55,12 @@ export function PercoinPageContent({
               </p>
             </div>
           </div>
+          <Link href="/my-page/credits/purchase">
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              購入
+            </Button>
+          </Link>
         </div>
       </Card>
 
