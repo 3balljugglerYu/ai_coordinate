@@ -9,10 +9,9 @@ interface StripePricingTableProps {
 
 export function StripePricingTable({ userId }: StripePricingTableProps) {
   // 環境変数から取得、なければデフォルト値（テスト環境のID）を使用
+  // クライアントコンポーネントでは NEXT_PUBLIC_ プレフィックスを持つ環境変数のみ使用可能
   const pricingTableId =
-    env.STRIPE_PRICING_TABLE_ID ||
     env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID ||
-    process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID ||
     "prctbl_1So3YGEtgRYjQynQvtDbE755"; // テスト環境のデフォルト値
 
   const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
