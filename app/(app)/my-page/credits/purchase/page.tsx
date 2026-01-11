@@ -3,9 +3,21 @@ import { requireAuth } from "@/lib/auth";
 import { StripePricingTable } from "@/features/credits/components/StripePricingTable";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CheckCircle2, XCircle, ShoppingCart } from "lucide-react";
+import { env } from "@/lib/env";
 
 async function PurchasePageContent() {
   const user = await requireAuth();
+
+  // サーバーサイドで環境変数を取得してクライアントコンポーネントに渡す
+  const publishableKey =
+    env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    "";
+
+  const pricingTableId =
+    env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID ||
+    process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID ||
+    "prctbl_1So3YGEtgRYjQynQvtDbE755"; // テスト環境のデフォルト値
 
   return (
     <Card>
@@ -20,7 +32,11 @@ async function PurchasePageContent() {
       </CardHeader>
       <CardContent>
         <div className="mt-6">
-          <StripePricingTable userId={user.id} />
+          <StripePricingTable
+            userId={user.id}
+            publishableKey={publishableKey}
+            pricingTableId={pricingTableId}
+          />
         </div>
       </CardContent>
     </Card>
