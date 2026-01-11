@@ -60,16 +60,8 @@ export async function POST(request: NextRequest) {
 
   // checkout.session.completedイベントの処理
   if (event.type === "checkout.session.completed") {
-    console.log(`[Stripe Webhook] Processing checkout.session.completed event`);
     try {
       const session = event.data.object as Stripe.Checkout.Session;
-
-      // デバッグ用: セッション全体の情報をログに出力（重要情報のみ）
-      console.log(`[Stripe Webhook] Session ID: ${session.id}`);
-      console.log(`[Stripe Webhook] client_reference_id: ${session.client_reference_id}`);
-      console.log(`[Stripe Webhook] payment_intent: ${typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id}`);
-      console.log(`[Stripe Webhook] amount_total: ${session.amount_total}`);
-      console.log(`[Stripe Webhook] currency: ${session.currency}`);
 
       // ユーザーIDの取得（client_reference_idから）
       const userId = session.client_reference_id;
@@ -135,18 +127,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // デバッグ用: line_itemの詳細情報をログに出力
-      console.log(`[Stripe Webhook] Line item details:`, {
-        priceId,
-        amount: lineItems.data[0].amount_total,
-        quantity: lineItems.data[0].quantity,
-        description: lineItems.data[0].description,
-      });
-
       // Price IDからペルコイン数を取得
-      console.log(`[Stripe Webhook] Price ID: ${priceId}`);
       const percoins = getPercoinsFromPriceId(priceId);
-      console.log(`[Stripe Webhook] Percoins amount: ${percoins}`);
 
       // Price IDが見つからない場合は、即座にエラーとして処理を中断
       if (!percoins) {
@@ -176,9 +158,6 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (existingTransaction) {
-        console.log(
-          `Payment intent ${paymentIntentId} already processed. Skipping.`
-        );
         return NextResponse.json({
           received: true,
           handled: true,
@@ -195,7 +174,6 @@ export async function POST(request: NextRequest) {
           ? session.customer.email
           : null;
 
-      console.log(`[Stripe Webhook] Attempting to credit ${percoins} percoins to user ${userId}`);
       try {
         await recordPercoinPurchase({
           userId,
@@ -208,12 +186,6 @@ export async function POST(request: NextRequest) {
             mode: isStripeTestMode() ? "test" : "live",
           },
           supabaseClient: supabase,
-        });
-
-        console.log(`[Stripe Webhook] ✅ Successfully credited ${percoins} percoins to user ${userId}`, {
-          sessionId: session.id,
-          paymentIntentId,
-          priceId,
         });
       } catch (purchaseError) {
         console.error(`[Stripe Webhook] ❌ Failed to credit percoins:`, purchaseError);
@@ -237,7 +209,6 @@ export async function POST(request: NextRequest) {
   }
 
   // その他のイベントタイプは処理しない（ただし200を返す）
-  console.log(`Unhandled event type: ${event.type}`);
   return NextResponse.json({
     received: true,
     handled: false,
