@@ -77,10 +77,12 @@ export function ChallengeCard({
       {/* 背景装飾 */}
       <div className={cn(
         "absolute -right-8 -bottom-8 w-32 h-32 rounded-full opacity-10 blur-2xl transition-transform duration-500 group-hover:scale-150",
-        color === "blue" && "bg-blue-500",
-        color === "purple" && "bg-purple-500",
-        color === "orange" && "bg-orange-500",
-        color === "green" && "bg-green-500"
+        {
+          "bg-blue-500": color === "blue",
+          "bg-purple-500": color === "purple",
+          "bg-orange-500": color === "orange",
+          "bg-green-500": color === "green",
+        }
       )} />
     </Card>
   );
