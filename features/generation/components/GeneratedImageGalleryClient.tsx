@@ -59,7 +59,7 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
             return {
               id: record.id,
               url: record.image_url,
-              is_posted: record.is_posted,
+              is_posted: record.is_posted ?? false,
             } as GeneratedImageData;
           })
           .filter((img): img is GeneratedImageData => img !== null);
