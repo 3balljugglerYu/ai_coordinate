@@ -23,7 +23,7 @@ export function MyImageCard({ image, currentUserId }: MyImageCardProps) {
 
   return (
     <Card className="overflow-hidden p-0">
-      <Link href={detailUrl}>
+      <Link href={detailUrl} prefetch={false}>
         <div className="relative w-full overflow-hidden bg-gray-100">
           {imageUrl ? (
             <Image

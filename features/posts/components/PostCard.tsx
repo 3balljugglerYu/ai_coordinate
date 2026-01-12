@@ -45,7 +45,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     <Card className="overflow-hidden pt-0 pb-0 gap-1">
       <Link 
         href={`/posts/${post.id}`}
-        prefetch={true}
+        prefetch={false}
         onMouseEnter={handlePreload}
         onTouchStart={handlePreload}
       >
