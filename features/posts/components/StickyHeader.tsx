@@ -48,6 +48,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const topLevelPaths = [
     "/",
     "/coordinate",
+    "/challenge",
     "/my-page",
     "/my-page/credits",
     "/login",

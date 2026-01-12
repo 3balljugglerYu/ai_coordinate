@@ -102,13 +102,6 @@ export function ChallengePageContent() {
 
   return (
     <div className="animate-in fade-in duration-500">
-      <div className="mb-8 text-center md:text-left">
-        <h1 className="text-3xl font-bold mb-2">チャレンジ</h1>
-        <p className="text-muted-foreground">
-          ミッションを達成してペルコインを獲得しよう
-        </p>
-      </div>
-
       <Masonry
         breakpointCols={breakpointColumnsObj}
         className="flex w-auto -ml-6"
