@@ -133,11 +133,11 @@ export function ChallengePageContent() {
                   現在の連続記録: <span className="text-lg font-bold">{streakDays}</span> 日
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  あと {14 - streakDays} 日でコンプリート
+                  あと {STREAK_BONUS_SCHEDULE.length - streakDays} 日でコンプリート
                 </span>
               </div>
 
-              {/* 5列x3行のグリッド (14日 + ゴール) */}
+              {/* 5列x3行のグリッド (ストリーク日数 + ゴール) */}
               <div className="grid grid-cols-5 gap-2">
                 {STREAK_BONUS_SCHEDULE.map((amount, index) => {
                   const day = index + 1;
@@ -189,26 +189,26 @@ export function ChallengePageContent() {
                   );
                 })}
 
-                {/* 15マス目: ゴール */}
+                {/* ゴールマス */}
                 <div className={cn(
                   "relative flex flex-col items-center justify-center p-2 rounded-lg border transition-all duration-300 aspect-square",
-                  // 14日達成済みならゴールも達成扱い
-                  streakDays >= 14
+                  // ストリーク日数達成済みならゴールも達成扱い
+                  streakDays >= STREAK_BONUS_SCHEDULE.length
                     ? "bg-yellow-400 border-yellow-500 text-white shadow-md"
                     : "bg-yellow-50 border-yellow-200 text-yellow-600"
                 )}>
                    <span className={cn(
                         "text-[10px] font-bold mb-1",
-                        streakDays >= 14 ? "text-yellow-100" : "text-yellow-600/70"
+                        streakDays >= STREAK_BONUS_SCHEDULE.length ? "text-yellow-100" : "text-yellow-600/70"
                       )}>
                         GOAL
                       </span>
                   <Trophy className={cn(
                     "w-6 h-6 mb-1", 
-                    streakDays >= 14 ? "text-white animate-bounce" : "text-yellow-500"
+                    streakDays >= STREAK_BONUS_SCHEDULE.length ? "text-white animate-bounce" : "text-yellow-500"
                   )} strokeWidth={2} />
                   
-                  {streakDays >= 14 && (
+                  {streakDays >= STREAK_BONUS_SCHEDULE.length && (
                      <div className="absolute inset-0 flex items-center justify-center">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-lg bg-yellow-400 opacity-20"></span>
                      </div>
