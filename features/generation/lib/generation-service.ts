@@ -175,6 +175,7 @@ export async function generateAndSaveImages(
       ...generated,
       url,
       id: savedRecord.id || generated.id,
+      is_posted: false,
     };
 
     allImages.push(imageForClient);

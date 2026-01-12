@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Download, ZoomIn, Plus } from "lucide-react";
 import Masonry from "react-masonry-css";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PostModal } from "@/features/posts/components/PostModal";
@@ -134,6 +135,22 @@ export function GeneratedImageGallery({
                     alt={`生成画像 ${index + 1}`}
                     className="w-full h-auto object-contain"
                   />
+                  {image.is_posted && image.id && (
+                    <Link
+                      href={`/posts/${image.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-1 right-1 z-10"
+                    >
+                      <div className="rounded bg-primary px-1.5 py-0.5 text-xs text-white">
+                        投稿済み
+                      </div>
+                    </Link>
+                  )}
+                  {image.is_posted && !image.id && (
+                    <div className="absolute top-1 right-1 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
+                      投稿済み
+                    </div>
+                  )}
                 </div>
                 
                 {/* PC用: ホバー時にボタン表示 */}
@@ -155,16 +172,18 @@ export function GeneratedImageGallery({
                     >
                       <ZoomIn className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPostModalImageId(image.id);
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    {!image.is_posted && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPostModalImageId(image.id);
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="secondary"
