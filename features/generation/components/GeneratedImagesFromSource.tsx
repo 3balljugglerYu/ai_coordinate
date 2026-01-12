@@ -56,12 +56,15 @@ export function GeneratedImagesFromSource({
   useEffect(() => {
     if (!stockId && !storagePath) {
       setImages([]);
+      setSelectedImageIndex(null);
       return;
     }
 
     const loadImages = async () => {
       setIsLoading(true);
       setError(null);
+      // 画像を再読み込みする際にモーダルを閉じる
+      setSelectedImageIndex(null);
       try {
         const data = await getGeneratedImagesBySourceImage(stockId, storagePath);
         setImages(data);
@@ -168,7 +171,9 @@ export function GeneratedImagesFromSource({
       </div>
 
       {/* 拡大表示モーダル */}
-      {selectedImageIndex !== null && imageDataList.length > 0 && (
+      {selectedImageIndex !== null && 
+       imageDataList.length > 0 && 
+       selectedImageIndex < imageDataList.length && (
         <ImageModal
           images={imageDataList}
           initialIndex={selectedImageIndex}
