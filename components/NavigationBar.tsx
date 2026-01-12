@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut /* , Coins */ } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut, Trophy /* , Coins */ } from "lucide-react";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "./ui/button";
@@ -42,6 +42,7 @@ export function NavigationBar() {
     if (user && !hasPrefetched.current) {
       // 認証が必要なページをプリフェッチ
       router.prefetch("/coordinate");
+      router.prefetch("/challenge");
       router.prefetch("/my-page");
       hasPrefetched.current = true;
     }
@@ -75,7 +76,7 @@ export function NavigationBar() {
     // startTransitionでナビゲーションを非ブロッキングにする
     startTransition(() => {
       // コーディネートとマイページ関連は認証必須
-      if ((path === "/coordinate" || path.startsWith("/my-page")) && !user) {
+      if ((path === "/coordinate" || path === "/challenge" || path.startsWith("/my-page")) && !user) {
         router.push(`/login?redirect=/`);
         return;
       }
@@ -86,6 +87,7 @@ export function NavigationBar() {
   const navItems = [
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
+    { path: "/challenge", label: "チャレンジ", icon: Trophy },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
     // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
