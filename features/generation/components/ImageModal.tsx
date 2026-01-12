@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GeneratedImageData } from "../types";
 import { determineFileName } from "@/lib/utils";
@@ -11,6 +11,7 @@ interface ImageModalProps {
   initialIndex: number;
   onClose: () => void;
   onDownload?: (image: GeneratedImageData) => void;
+  onPost?: (image: GeneratedImageData) => void;
 }
 
 
@@ -19,6 +20,7 @@ export function ImageModal({
   initialIndex,
   onClose,
   onDownload,
+  onPost,
 }: ImageModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -209,6 +211,16 @@ export function ImageModal({
           {currentIndex + 1} / {images.length}
         </div>
         <div className="flex gap-2">
+          {onPost && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-white hover:bg-white/20"
+              onClick={() => onPost(currentImage)}
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          )}
           <Button
             size="icon"
             variant="ghost"

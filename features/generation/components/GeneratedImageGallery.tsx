@@ -189,6 +189,10 @@ export function GeneratedImageGallery({
           initialIndex={selectedImageIndex}
           onClose={() => setSelectedImageIndex(null)}
           onDownload={handleDownload}
+          onPost={(image) => {
+            setPostModalImageId(image.id);
+            setSelectedImageIndex(null);
+          }}
         />
       )}
 
