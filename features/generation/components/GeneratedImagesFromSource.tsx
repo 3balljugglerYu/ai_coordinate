@@ -130,19 +130,21 @@ export function GeneratedImagesFromSource({
                   className="w-full h-auto object-contain"
                   sizes="140px"
                 />
-                {image.is_posted && image.id && (
-                  <Link
-                    href={`/posts/${image.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute inset-0"
-                  >
-                    <span className="sr-only">投稿詳細を見る</span>
-                  </Link>
-                )}
                 {image.is_posted && (
-                  <div className="absolute top-1 right-1 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
-                    投稿済み
-                  </div>
+                  <>
+                    {image.id && (
+                      <Link
+                        href={`/posts/${encodeURIComponent(image.id)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute inset-0 z-10"
+                      >
+                        <span className="sr-only">投稿詳細を見る</span>
+                      </Link>
+                    )}
+                    <div className="absolute top-1 right-1 z-10 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
+                      投稿済み
+                    </div>
+                  </>
                 )}
               </div>
             </Card>

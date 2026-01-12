@@ -135,21 +135,22 @@ export function GeneratedImageGallery({
                     alt={`生成画像 ${index + 1}`}
                     className="w-full h-auto object-contain"
                   />
-                  {image.is_posted && image.id && (
-                    <Link
-                      href={`/posts/${image.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute top-1 right-1 z-10"
-                    >
-                      <div className="rounded bg-primary px-1.5 py-0.5 text-xs text-white">
+                  {image.is_posted && (
+                    image.id ? (
+                      <Link
+                        href={`/posts/${encodeURIComponent(image.id)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-1 right-1 z-10"
+                      >
+                        <div className="rounded bg-primary px-1.5 py-0.5 text-xs text-white">
+                          投稿済み
+                        </div>
+                      </Link>
+                    ) : (
+                      <div className="absolute top-1 right-1 z-10 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
                         投稿済み
                       </div>
-                    </Link>
-                  )}
-                  {image.is_posted && !image.id && (
-                    <div className="absolute top-1 right-1 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
-                      投稿済み
-                    </div>
+                    )
                   )}
                 </div>
                 
