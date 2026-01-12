@@ -8,7 +8,10 @@ import {
   CalendarCheck2,
   Check,
   Gift,
-  Trophy
+  Trophy,
+  Clock,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { ChallengeCard } from "./ChallengeCard";
 import { ReferralCodeDisplay } from "@/features/referral/components/ReferralCodeDisplay";
@@ -17,7 +20,7 @@ import {
   DAILY_POST_BONUS_AMOUNT, 
   STREAK_BONUS_SCHEDULE 
 } from "@/constants";
-import { getStreakDays } from "@/features/challenges/lib/api";
+import { getChallengeStatus } from "@/features/challenges/lib/api";
 import { cn } from "@/lib/utils";
 
 const breakpointColumnsObj = {
@@ -30,17 +33,71 @@ export function ChallengePageContent() {
   const maxStreakBonus = Math.max(...STREAK_BONUS_SCHEDULE);
   const totalStreakBonus = STREAK_BONUS_SCHEDULE.reduce((a, b) => a + b, 0);
   const [streakDays, setStreakDays] = useState<number>(0);
+  const [isDailyBonusReceived, setIsDailyBonusReceived] = useState<boolean>(false);
+  const [timeToReset, setTimeToReset] = useState<string>("");
 
   useEffect(() => {
-    const fetchStreakDays = async () => {
+    const fetchData = async () => {
       try {
-        const days = await getStreakDays();
-        setStreakDays(days);
+        const status = await getChallengeStatus();
+        setStreakDays(status.streakDays);
+
+        // デイリーボーナス取得状況の判定（JST基準）
+        if (status.lastDailyPostBonusAt) {
+          const lastBonusDate = new Date(status.lastDailyPostBonusAt);
+          const now = new Date();
+          
+          // JSTオフセット (9時間)
+          const jstOffset = 9 * 60 * 60 * 1000;
+          
+          // UTCタイムスタンプに9時間を足して、UTCメソッドでJSTの日時が取れるようにする
+          const lastBonusJstTime = lastBonusDate.getTime() + jstOffset;
+          const nowJstTime = now.getTime() + jstOffset;
+          
+          const lastBonusJstDate = new Date(lastBonusJstTime);
+          const nowJstDate = new Date(nowJstTime);
+          
+          const isSameDay = 
+            lastBonusJstDate.getUTCFullYear() === nowJstDate.getUTCFullYear() &&
+            lastBonusJstDate.getUTCMonth() === nowJstDate.getUTCMonth() &&
+            lastBonusJstDate.getUTCDate() === nowJstDate.getUTCDate();
+            
+          setIsDailyBonusReceived(isSameDay);
+        } else {
+          setIsDailyBonusReceived(false);
+        }
       } catch (error) {
-        console.error("Failed to fetch streak days:", error);
+        console.error("Failed to fetch challenge status:", error);
       }
     };
-    fetchStreakDays();
+    fetchData();
+
+    // カウントダウンタイマー（JST 0:00 = UTC 15:00 まで）
+    const updateTimer = () => {
+      const now = new Date();
+      const target = new Date(now);
+      
+      // JST 0時は UTC 15時
+      target.setUTCHours(15, 0, 0, 0);
+      
+      // もし現在時刻が15時を過ぎていれば、ターゲットは翌日の15時
+      if (target <= now) {
+        target.setUTCDate(target.getUTCDate() + 1);
+      }
+      
+      const diff = target.getTime() - now.getTime();
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setTimeToReset(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    updateTimer();
+    const intervalId = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
@@ -146,8 +203,7 @@ export function ChallengePageContent() {
                 {/* 15マス目: ゴール */}
                 <div className={cn(
                   "relative flex flex-col items-center justify-center p-2 rounded-lg border transition-all duration-300 aspect-square",
-                  // 14日達成済みならゴールも達成扱いにするか、あるいは常に特別なスタイルにするか
-                  // ここでは「14日達成したらゴールも達成色」にする例
+                  // 14日達成済みならゴールも達成扱い
                   streakDays >= 14
                     ? "bg-yellow-400 border-yellow-500 text-white shadow-md"
                     : "bg-yellow-50 border-yellow-200 text-yellow-600"
@@ -184,9 +240,61 @@ export function ChallengePageContent() {
             color="blue"
             className="h-full"
           >
-            <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
-              <span className="font-bold">Tips:</span>
-              <span>日本時間（JST）で毎日0時にリセットされます</span>
+            <div className="space-y-4">
+              {/* ステータス表示 */}
+              <div className={cn(
+                "flex items-center justify-between p-4 rounded-lg border transition-colors",
+                isDailyBonusReceived 
+                  ? "bg-green-50 border-green-200" 
+                  : "bg-gray-50 border-gray-100"
+              )}>
+                <div className="flex items-center gap-3">
+                  {isDailyBonusReceived ? (
+                    <div className="bg-green-100 p-2 rounded-full">
+                      <CheckCircle2 className="w-6 h-6 text-green-600" />
+                    </div>
+                  ) : (
+                    <div className="bg-gray-200 p-2 rounded-full">
+                      <XCircle className="w-6 h-6 text-gray-500" />
+                    </div>
+                  )}
+                  <div>
+                    <div className={cn(
+                      "font-bold",
+                      isDailyBonusReceived ? "text-green-800" : "text-gray-700"
+                    )}>
+                      {isDailyBonusReceived ? "今日のボーナス獲得済み" : "まだ投稿していません"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {isDailyBonusReceived 
+                        ? "明日も投稿してコインをゲットしよう！" 
+                        : "画像を投稿して30コインをゲット！"}
+                    </div>
+                  </div>
+                </div>
+                
+                {isDailyBonusReceived && (
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground mb-1">リセットまで</div>
+                    <div className="flex items-center justify-end gap-1.5 font-mono text-lg font-bold text-green-700">
+                      <Clock className="w-4 h-4" />
+                      {timeToReset}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!isDailyBonusReceived && (
+                 <div className="flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>リセットまで {timeToReset}</span>
+                 </div>
+              )}
+              
+              <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                <span className="font-bold shrink-0">Tips:</span>
+                <span>日本時間（JST）で毎日0時にリセットされます</span>
+              </div>
             </div>
           </ChallengeCard>
         </div>
