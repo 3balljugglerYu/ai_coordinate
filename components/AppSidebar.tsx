@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight /* , Coins */ } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy /* , Coins */ } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,7 @@ export function AppSidebar() {
   useEffect(() => {
     if (user && !hasPrefetched.current) {
       router.prefetch("/coordinate");
+      router.prefetch("/challenge");
       router.prefetch("/my-page");
       hasPrefetched.current = true;
     }
@@ -94,7 +95,7 @@ export function AppSidebar() {
     }
 
     startTransition(() => {
-      if ((path === "/coordinate" || path.startsWith("/my-page")) && !user) {
+      if ((path === "/coordinate" || path === "/challenge" || path.startsWith("/my-page")) && !user) {
         router.push(`/login?redirect=/`);
         return;
       }
@@ -105,6 +106,7 @@ export function AppSidebar() {
   const navItems = [
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
+    { path: "/challenge", label: "チャレンジ", icon: Trophy },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
     // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
