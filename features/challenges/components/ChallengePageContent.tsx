@@ -46,23 +46,19 @@ export function ChallengePageContent() {
         if (status.lastDailyPostBonusAt) {
           const lastBonusDate = new Date(status.lastDailyPostBonusAt);
           const now = new Date();
-          
-          // JSTオフセット (9時間)
-          const jstOffset = 9 * 60 * 60 * 1000;
-          
-          // UTCタイムスタンプに9時間を足して、UTCメソッドでJSTの日時が取れるようにする
-          const lastBonusJstTime = lastBonusDate.getTime() + jstOffset;
-          const nowJstTime = now.getTime() + jstOffset;
-          
-          const lastBonusJstDate = new Date(lastBonusJstTime);
-          const nowJstDate = new Date(nowJstTime);
-          
-          const isSameDay = 
-            lastBonusJstDate.getUTCFullYear() === nowJstDate.getUTCFullYear() &&
-            lastBonusJstDate.getUTCMonth() === nowJstDate.getUTCMonth() &&
-            lastBonusJstDate.getUTCDate() === nowJstDate.getUTCDate();
-            
-          setIsDailyBonusReceived(isSameDay);
+
+          // 'ja-JP'ロケールと'Asia/Tokyo'タイムゾーンを使用して日付を'YYYY/MM/DD'形式の文字列にフォーマット
+          const jstDateFormatter = new Intl.DateTimeFormat('ja-JP', {
+            timeZone: 'Asia/Tokyo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          });
+
+          const lastBonusJstDateString = jstDateFormatter.format(lastBonusDate);
+          const nowJstDateString = jstDateFormatter.format(now);
+
+          setIsDailyBonusReceived(lastBonusJstDateString === nowJstDateString);
         } else {
           setIsDailyBonusReceived(false);
         }
