@@ -9,8 +9,9 @@ import {
   type GeneratedImageRecord,
 } from "../lib/database";
 import Image from "next/image";
-import Link from "next/link";
 import { GeneratedImagesFromSourceSkeleton } from "./GeneratedImagesFromSourceSkeleton";
+import { ImageModal } from "./ImageModal";
+import type { GeneratedImageData } from "../types";
 
 interface GeneratedImagesFromSourceProps {
   stockId: string | null;
@@ -31,6 +32,21 @@ export function GeneratedImagesFromSource({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
+  // GeneratedImageRecord -> GeneratedImageData 変換
+  const convertToGeneratedImageData = (record: GeneratedImageRecord): GeneratedImageData | null => {
+    if (!record.id) return null;
+    return {
+      id: record.id,
+      url: record.image_url,
+      is_posted: record.is_posted ?? false,
+    };
+  };
+
+  const imageDataList: GeneratedImageData[] = images
+    .map(convertToGeneratedImageData)
+    .filter((img): img is GeneratedImageData => img !== null);
 
   const { ref: loadMoreRef, inView } = useInView({
     rootMargin: "200px",
@@ -40,12 +56,15 @@ export function GeneratedImagesFromSource({
   useEffect(() => {
     if (!stockId && !storagePath) {
       setImages([]);
+      setSelectedImageIndex(null);
       return;
     }
 
     const loadImages = async () => {
       setIsLoading(true);
       setError(null);
+      // 画像を再読み込みする際にモーダルを閉じる
+      setSelectedImageIndex(null);
       try {
         const data = await getGeneratedImagesBySourceImage(stockId, storagePath);
         setImages(data);
@@ -116,10 +135,19 @@ export function GeneratedImagesFromSource({
             className="flex-shrink-0 w-[140px] sm:w-[160px]"
           >
             <Card
-              className={`group relative overflow-hidden p-0 ${
-                onImageClick ? "cursor-pointer hover:ring-2 hover:ring-primary" : ""
-              }`}
-              onClick={() => onImageClick?.(image)}
+              className="group relative overflow-hidden p-0 cursor-pointer hover:ring-2 hover:ring-primary"
+              onClick={() => {
+                if (onImageClick) {
+                  onImageClick(image);
+                } else {
+                  // 拡大表示を開く
+                  // imageDataList内でのインデックスを探す
+                  const index = imageDataList.findIndex((img) => img.id === image.id);
+                  if (index !== -1) {
+                    setSelectedImageIndex(index);
+                  }
+                }
+              }}
             >
               <div className="relative w-full overflow-hidden bg-gray-100">
                 <Image
@@ -130,17 +158,8 @@ export function GeneratedImagesFromSource({
                   className="w-full h-auto object-contain"
                   sizes="140px"
                 />
-                {image.is_posted && image.id && (
-                  <Link
-                    href={`/posts/${image.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute inset-0"
-                  >
-                    <span className="sr-only">投稿詳細を見る</span>
-                  </Link>
-                )}
                 {image.is_posted && (
-                  <div className="absolute top-1 right-1 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
+                  <div className="absolute top-1 right-1 z-10 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
                     投稿済み
                   </div>
                 )}
@@ -150,6 +169,17 @@ export function GeneratedImagesFromSource({
         ))}
         {hasMore && <div ref={loadMoreRef} className="h-1 w-px flex-shrink-0" />}
       </div>
+
+      {/* 拡大表示モーダル */}
+      {selectedImageIndex !== null && 
+       imageDataList.length > 0 && 
+       selectedImageIndex < imageDataList.length && (
+        <ImageModal
+          images={imageDataList}
+          initialIndex={selectedImageIndex}
+          onClose={() => setSelectedImageIndex(null)}
+        />
+      )}
     </div>
   );
 }

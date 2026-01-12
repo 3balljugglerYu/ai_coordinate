@@ -41,37 +41,45 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     // ここでは、Linkのprefetchで詳細ページ自体をプリフェッチする
   };
 
+  const imageContent = (
+    <div className="relative w-full overflow-hidden bg-gray-100">
+      {imageUrl ? (
+        <Image
+          src={imageUrl}
+          alt={post.caption || "投稿画像"}
+          width={800}
+          height={800}
+          className="w-full h-auto object-contain transition-transform hover:scale-105"
+          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
+        />
+      ) : (
+        <div className="flex aspect-square items-center justify-center text-gray-400">
+          画像がありません
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Card className="overflow-hidden pt-0 pb-0 gap-1">
-      <Link 
-        href={`/posts/${post.id}`}
-        prefetch={false}
-        onMouseEnter={handlePreload}
-        onTouchStart={handlePreload}
-      >
-        <div className="relative w-full overflow-hidden bg-gray-100">
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt={post.caption || "投稿画像"}
-              width={800}
-              height={800}
-              className="w-full h-auto object-contain transition-transform hover:scale-105"
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
-            />
-          ) : (
-            <div className="flex aspect-square items-center justify-center text-gray-400">
-              画像がありません
-            </div>
-          )}
-        </div>
-      </Link>
+      {post.id ? (
+        <Link 
+          href={`/posts/${encodeURIComponent(post.id)}`}
+          prefetch={false}
+          onMouseEnter={handlePreload}
+          onTouchStart={handlePreload}
+        >
+          {imageContent}
+        </Link>
+      ) : (
+        imageContent
+      )}
 
       <CardContent className="px-1 pt-0 pb-1">
         <div className="flex items-center gap-2">
           {post.user?.id ? (
             <Link
-              href={`/users/${post.user.id}`}
+              href={`/users/${encodeURIComponent(post.user.id)}`}
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 hover:opacity-80 transition-opacity"
             >
               {avatarUrl ? (
@@ -96,7 +104,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
           <div className="min-w-0 flex-1">
             {post.user?.id ? (
               <Link
-                href={`/users/${post.user.id}`}
+                href={`/users/${encodeURIComponent(post.user.id)}`}
                 className="block truncate text-xs font-medium text-gray-900 hover:text-gray-600 transition-colors"
                 title={displayName}
               >

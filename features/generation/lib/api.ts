@@ -91,6 +91,7 @@ export async function generateSingleImage(
     id: `${Date.now()}-${Math.random()}`,
     url: base64ToDataUrl(image.data, image.mimeType),
     data: image.data,
+    is_posted: false,
   };
 }
 

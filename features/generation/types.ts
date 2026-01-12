@@ -92,6 +92,7 @@ export interface GeneratedImageData {
   id: string;
   url: string;
   data?: string;
+  is_posted: boolean;
 }
 
 /**
