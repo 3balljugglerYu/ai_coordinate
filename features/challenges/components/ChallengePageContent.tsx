@@ -1,10 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Masonry from "react-masonry-css";
 import { 
   Users, 
   Flame, 
-  CalendarCheck2 
+  CalendarCheck2,
+  Check,
+  Gift,
+  Trophy
 } from "lucide-react";
 import { ChallengeCard } from "./ChallengeCard";
 import { ReferralCodeDisplay } from "@/features/referral/components/ReferralCodeDisplay";
@@ -13,6 +17,8 @@ import {
   DAILY_POST_BONUS_AMOUNT, 
   STREAK_BONUS_SCHEDULE 
 } from "@/constants";
+import { getStreakDays } from "@/features/challenges/lib/api";
+import { cn } from "@/lib/utils";
 
 const breakpointColumnsObj = {
   default: 3,
@@ -23,6 +29,19 @@ const breakpointColumnsObj = {
 export function ChallengePageContent() {
   const maxStreakBonus = Math.max(...STREAK_BONUS_SCHEDULE);
   const totalStreakBonus = STREAK_BONUS_SCHEDULE.reduce((a, b) => a + b, 0);
+  const [streakDays, setStreakDays] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchStreakDays = async () => {
+      try {
+        const days = await getStreakDays();
+        setStreakDays(days);
+      } catch (error) {
+        console.error("Failed to fetch streak days:", error);
+      }
+    };
+    fetchStreakDays();
+  }, []);
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -62,30 +81,94 @@ export function ChallengePageContent() {
             color="purple"
             className="h-full"
           >
-            <div className="mt-2 space-y-2 text-sm text-muted-foreground bg-white/50 p-4 rounded-lg">
-              <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                <span>1〜2日目</span>
-                <span className="font-bold text-purple-600">10 coin</span>
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-medium text-purple-900 bg-purple-50 px-3 py-1 rounded-full">
+                  現在の連続記録: <span className="text-lg font-bold">{streakDays}</span> 日
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  あと {14 - streakDays} 日でコンプリート
+                </span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                <span>3日目</span>
-                <span className="font-bold text-purple-600">20 coin</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                <span>4〜6日目</span>
-                <span className="font-bold text-purple-600">10 coin</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                <span>7日目</span>
-                <span className="font-bold text-purple-600">50 coin</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                <span>8〜13日目</span>
-                <span className="font-bold text-purple-600">10 coin</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span>14日目</span>
-                <span className="font-bold text-purple-600">100 coin</span>
+
+              {/* 5列x3行のグリッド (14日 + ゴール) */}
+              <div className="grid grid-cols-5 gap-2">
+                {STREAK_BONUS_SCHEDULE.map((amount, index) => {
+                  const day = index + 1;
+                  const isCompleted = day <= streakDays;
+                  const isNext = day === streakDays + 1;
+                  const isBigBonus = amount >= 50;
+
+                  return (
+                    <div
+                      key={day}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center p-2 rounded-lg border transition-all duration-300 aspect-square",
+                        isCompleted 
+                          ? "bg-purple-600 border-purple-600 text-white shadow-md" 
+                          : isNext
+                            ? "bg-white border-purple-400 border-2 shadow-sm scale-105 z-10"
+                            : "bg-gray-50 border-gray-100 text-gray-400"
+                      )}
+                    >
+                      <span className={cn(
+                        "text-[10px] font-bold mb-1",
+                        isCompleted ? "text-purple-200" : isNext ? "text-purple-600" : "text-gray-400"
+                      )}>
+                        Day {day}
+                      </span>
+                      
+                      {isCompleted ? (
+                        <Check className="w-5 h-5 animate-in zoom-in duration-300" strokeWidth={3} />
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          {isBigBonus ? (
+                            <Gift className={cn("w-4 h-4 mb-0.5", isNext ? "text-purple-500" : "text-gray-300")} />
+                          ) : (
+                            <div className={cn("w-3 h-3 rounded-full mb-1", isNext ? "bg-purple-200" : "bg-gray-200")} />
+                          )}
+                          <span className={cn("text-[10px] font-bold leading-none", isNext ? "text-purple-700" : "")}>
+                            +{amount}
+                          </span>
+                        </div>
+                      )}
+
+                      {isNext && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* 15マス目: ゴール */}
+                <div className={cn(
+                  "relative flex flex-col items-center justify-center p-2 rounded-lg border transition-all duration-300 aspect-square",
+                  // 14日達成済みならゴールも達成扱いにするか、あるいは常に特別なスタイルにするか
+                  // ここでは「14日達成したらゴールも達成色」にする例
+                  streakDays >= 14
+                    ? "bg-yellow-400 border-yellow-500 text-white shadow-md"
+                    : "bg-yellow-50 border-yellow-200 text-yellow-600"
+                )}>
+                   <span className={cn(
+                        "text-[10px] font-bold mb-1",
+                        streakDays >= 14 ? "text-yellow-100" : "text-yellow-600/70"
+                      )}>
+                        GOAL
+                      </span>
+                  <Trophy className={cn(
+                    "w-6 h-6 mb-1", 
+                    streakDays >= 14 ? "text-white animate-bounce" : "text-yellow-500"
+                  )} strokeWidth={2} />
+                  
+                  {streakDays >= 14 && (
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-lg bg-yellow-400 opacity-20"></span>
+                     </div>
+                  )}
+                </div>
               </div>
             </div>
           </ChallengeCard>
