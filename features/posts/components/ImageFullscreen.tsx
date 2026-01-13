@@ -178,6 +178,7 @@ export function ImageFullscreen({
           className="max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] object-contain"
           style={{ userSelect: "none" }}
           draggable={false}
+          sizes="100vw"
         />
       </div>
     </div>

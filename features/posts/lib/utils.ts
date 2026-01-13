@@ -45,6 +45,51 @@ export function getPostImageUrl(post: { image_url?: string | null; storage_path?
 }
 
 /**
+ * 投稿のサムネイル画像URLを取得（一覧表示用、WebP優先、フォールバック付き）
+ */
+export function getPostThumbUrl(post: { 
+  storage_path_thumb?: string | null; 
+  storage_path?: string | null; 
+  image_url?: string | null; 
+}): string {
+  // WebPサムネイルが存在する場合はそれを使用
+  if (post.storage_path_thumb) {
+    return getImageUrlFromStoragePath(post.storage_path_thumb);
+  }
+  
+  // フォールバック：既存のロジックを使用
+  return getPostImageUrl(post);
+}
+
+/**
+ * 投稿の表示用画像URLを取得（詳細表示用、WebP優先、フォールバック付き）
+ */
+export function getPostDisplayUrl(post: { 
+  storage_path_display?: string | null; 
+  storage_path?: string | null; 
+  image_url?: string | null; 
+}): string {
+  // WebP表示用が存在する場合はそれを使用
+  if (post.storage_path_display) {
+    return getImageUrlFromStoragePath(post.storage_path_display);
+  }
+  
+  // フォールバック：既存のロジックを使用
+  return getPostImageUrl(post);
+}
+
+/**
+ * 投稿の元画像URLを取得（ダウンロード用、PNG/JPEG）
+ */
+export function getPostOriginalUrl(post: { 
+  storage_path?: string | null; 
+  image_url?: string | null; 
+}): string {
+  // 既存のロジックを使用（元画像は常にPNG/JPEG）
+  return getPostImageUrl(post);
+}
+
+/**
  * 画像のアスペクト比をサーバー側で計算
  * 画像のメタデータを読み込んで判定（簡易版）
  * @param imageUrl 画像のURL

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
-import { getPostImageUrl } from "../lib/utils";
+import { getPostThumbUrl } from "../lib/utils";
 import type { Post } from "../types";
 
 interface PostCardProps {
@@ -15,8 +15,8 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, currentUserId }: PostCardProps) {
-  // Supabase Storageから画像URLを生成（image_urlがない場合はstorage_pathから生成）
-  const imageUrl = getPostImageUrl(post);
+  // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
+  const imageUrl = getPostThumbUrl(post);
 
   // 投稿者情報の表示（Phase 5でプロフィール画面へのリンクを追加予定）
   const displayName =
@@ -50,7 +50,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
           width={800}
           height={800}
           className="w-full h-auto object-contain transition-transform hover:scale-105"
-          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
+          unoptimized
         />
       ) : (
         <div className="flex aspect-square items-center justify-center text-gray-400">
