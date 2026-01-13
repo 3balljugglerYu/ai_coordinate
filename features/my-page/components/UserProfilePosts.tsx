@@ -6,7 +6,7 @@ import Masonry from "react-masonry-css";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
-import { getPostImageUrl } from "@/features/posts/lib/utils";
+import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
 interface UserProfilePostsProps {
@@ -86,7 +86,8 @@ export function UserProfilePosts({
         columnClassName="pl-4 bg-clip-padding"
       >
         {posts.map((post) => {
-          const imageUrl = getPostImageUrl({
+          const imageUrl = getPostThumbUrl({
+            storage_path_thumb: post.storage_path_thumb,
             image_url: post.image_url,
             storage_path: post.storage_path,
           });
@@ -104,7 +105,8 @@ export function UserProfilePosts({
                         width={800}
                         height={800}
                         className="w-full h-auto object-contain transition-transform hover:scale-105"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
+                        unoptimized
                       />
                     ) : (
                       <div className="flex aspect-square items-center justify-center text-gray-400">

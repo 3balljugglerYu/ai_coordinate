@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { AppSidebar } from "@/components/AppSidebar";
 import { getSiteUrl } from "@/lib/env";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,6 +64,8 @@ export default function RootLayout({
           <NavigationBar />
         </Suspense>
         <Toaster />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

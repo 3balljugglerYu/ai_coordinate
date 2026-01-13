@@ -26,6 +26,9 @@ export interface GeneratedImageRecord {
   aspect_ratio?: 'portrait' | 'landscape' | null;
   // Phase 3で追加されたカラム（optional）
   model?: GeminiModel | null;
+  // Phase 2-1で追加されたカラム（optional）
+  storage_path_display?: string | null;
+  storage_path_thumb?: string | null;
 }
 
 /**

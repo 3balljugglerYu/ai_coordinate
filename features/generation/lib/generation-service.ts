@@ -162,6 +162,32 @@ export async function generateAndSaveImages(
     const savedRecord = await saveGeneratedImage(recordToSave);
     allRecords.push(savedRecord);
 
+    // WebP生成処理（画像生成完了直後に実行、リトライ機能付き）
+    if (savedRecord.id) {
+      try {
+        const webpResponse = await fetch("/api/generate-webp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            imageUrl: url,
+            imageId: savedRecord.id,
+            storagePath: path,
+          }),
+        });
+
+        if (!webpResponse.ok) {
+          const errorData = await webpResponse.json().catch(() => ({}));
+          console.warn("WebP生成に失敗しました（元画像でフォールバック）:", errorData);
+          // WebP生成に失敗しても処理は継続（元画像でフォールバック）
+        }
+      } catch (error) {
+        console.warn("WebP生成中にエラーが発生しました（元画像でフォールバック）:", error);
+        // WebP生成中にエラーが発生しても処理は継続（元画像でフォールバック）
+      }
+    }
+
     if (shouldConsumePercoins && savedRecord.id) {
       // モデルに応じたペルコイン消費量を動的に計算
       const percoinCost = getPercoinCost(generationRequest.model || 'gemini-2.5-flash-image');

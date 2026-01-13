@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { getPostImageUrl } from "@/features/posts/lib/utils";
+import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
 interface MyImageCardProps {
@@ -12,8 +12,9 @@ interface MyImageCardProps {
 }
 
 export function MyImageCard({ image, currentUserId }: MyImageCardProps) {
-  // 画像URLを取得
-  const imageUrl = getPostImageUrl({
+  // 画像URLを取得（WebPサムネイル優先、フォールバック付き）
+  const imageUrl = getPostThumbUrl({
+    storage_path_thumb: image.storage_path_thumb,
     image_url: image.image_url,
     storage_path: image.storage_path,
   });
@@ -32,7 +33,8 @@ export function MyImageCard({ image, currentUserId }: MyImageCardProps) {
               width={800}
               height={800}
               className="w-full h-auto object-contain transition-transform hover:scale-105"
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
+              unoptimized
             />
           ) : (
             <div className="flex aspect-square items-center justify-center text-gray-400">
