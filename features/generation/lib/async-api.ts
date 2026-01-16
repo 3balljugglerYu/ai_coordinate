@@ -89,21 +89,46 @@ export async function getGenerationStatus(
 }
 
 /**
- * 非同期画像生成ステータスをポーリングで監視
+ * ポーリング停止可能な非同期画像生成ステータス監視
  */
-export async function pollGenerationStatus(
+export interface PollGenerationStatusResult {
+  promise: Promise<AsyncGenerationStatus>;
+  stop: () => void; // ポーリングを停止する関数
+}
+
+/**
+ * 非同期画像生成ステータスをポーリングで監視（停止可能）
+ * @returns ポーリングのPromiseと停止関数を含むオブジェクト
+ */
+export function pollGenerationStatus(
   jobId: string,
   options: {
     interval?: number; // ポーリング間隔（ミリ秒、デフォルト: 2000）
     timeout?: number; // タイムアウト（ミリ秒、デフォルト: 300000 = 5分）
     onStatusUpdate?: (status: AsyncGenerationStatus) => void; // ステータス更新時のコールバック
   } = {}
-): Promise<AsyncGenerationStatus> {
+): PollGenerationStatusResult {
   const { interval = 2000, timeout = 300000, onStatusUpdate } = options;
   const startTime = Date.now();
+  let timeoutId: NodeJS.Timeout | null = null;
+  let isStopped = false;
 
-  return new Promise((resolve, reject) => {
+  const stop = () => {
+    isStopped = true;
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+
+  const promise = new Promise<AsyncGenerationStatus>((resolve, reject) => {
     const poll = async () => {
+      // 停止された場合は処理を中断
+      if (isStopped) {
+        reject(new Error("ポーリングが停止されました"));
+        return;
+      }
+
       try {
         // タイムアウトチェック
         if (Date.now() - startTime > timeout) {
@@ -113,6 +138,12 @@ export async function pollGenerationStatus(
 
         const status = await getGenerationStatus(jobId);
         
+        // 停止された場合は処理を中断
+        if (isStopped) {
+          reject(new Error("ポーリングが停止されました"));
+          return;
+        }
+
         // コールバックを呼び出し
         if (onStatusUpdate) {
           onStatusUpdate(status);
@@ -125,8 +156,12 @@ export async function pollGenerationStatus(
         }
 
         // 続行中の場合は再ポーリング
-        setTimeout(poll, interval);
+        timeoutId = setTimeout(poll, interval);
       } catch (error) {
+        // 停止された場合は処理を中断（エラーを投げない）
+        if (isStopped) {
+          return;
+        }
         reject(error);
       }
     };
@@ -134,4 +169,6 @@ export async function pollGenerationStatus(
     // 初回ポーリングを開始
     poll();
   });
+
+  return { promise, stop };
 }

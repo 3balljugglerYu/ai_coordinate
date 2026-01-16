@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { GenerationForm } from "./GenerationForm";
 import { getCurrentUserId } from "../lib/generation-service";
@@ -24,7 +24,21 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
   const [completedCount, setCompletedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingIntervalsRef = useRef<Set<NodeJS.Timeout>>(new Set());
+  const pollingStopFunctionsRef = useRef<Set<() => void>>(new Set());
+
+  // コンポーネントのアンマウント時にポーリングを停止
+  useEffect(() => {
+    return () => {
+      // すべてのポーリングを停止
+      pollingStopFunctionsRef.current.forEach((stop) => stop());
+      pollingStopFunctionsRef.current.clear();
+      // リフレッシュタイマーもクリア
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleGenerate = async (data: {
     prompt: string;
@@ -40,9 +54,9 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     setGeneratingCount(data.count);
     setCompletedCount(0);
 
-    // 既存のポーリングをクリア
-    pollingIntervalsRef.current.forEach((interval) => clearTimeout(interval));
-    pollingIntervalsRef.current.clear();
+    // 既存のポーリングを停止
+    pollingStopFunctionsRef.current.forEach((stop) => stop());
+    pollingStopFunctionsRef.current.clear();
 
     try {
       const userId = await getCurrentUserId();
@@ -69,7 +83,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
       // 各ジョブのステータスをポーリングで監視
       const pollPromises = jobIds.map((jobId, index) => {
-        return pollGenerationStatus(jobId, {
+        const { promise, stop } = pollGenerationStatus(jobId, {
           interval: 2000, // 2秒ごとにポーリング
           timeout: 300000, // 5分でタイムアウト
           onStatusUpdate: (status: AsyncGenerationStatus) => {
@@ -81,7 +95,12 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               router.refresh();
             }, 500);
           },
-        })
+        });
+
+        // 停止関数を保存（コンポーネントのクリーンアップ用）
+        pollingStopFunctionsRef.current.add(stop);
+
+        return promise
           .then((status) => {
             if (status.status === "succeeded") {
               completed += 1;
@@ -137,9 +156,9 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       setError(err instanceof Error ? err.message : "画像の生成に失敗しました");
     } finally {
       setIsGenerating(false);
-      // ポーリングをクリア
-      pollingIntervalsRef.current.forEach((interval) => clearTimeout(interval));
-      pollingIntervalsRef.current.clear();
+      // ポーリングを停止
+      pollingStopFunctionsRef.current.forEach((stop) => stop());
+      pollingStopFunctionsRef.current.clear();
     }
   };
 
