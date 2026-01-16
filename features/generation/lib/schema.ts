@@ -13,6 +13,7 @@ export const generationRequestSchema = z.object({
     .max(1000, "プロンプトが長すぎます"),
   sourceImageBase64: z.string().optional(),
   sourceImageMimeType: z.string().optional(),
+  sourceImageStockId: z.string().uuid().optional(),
   backgroundChange: z.boolean().optional().default(false),
   count: z.number().int().min(1).max(4).optional().default(1),
   generationType: z

@@ -29,7 +29,8 @@ export interface AsyncGenerationStatus {
 export async function generateImageAsync(
   request: Omit<GenerationRequest, "count">
 ): Promise<AsyncGenerationResponse> {
-  // 画像をBase64に変換（sourceImageがある場合）
+  // 画像をBase64に変換（sourceImageがある場合のみ）
+  // ストック画像IDの場合は、サーバー側で処理するためBase64に変換しない
   let sourceImageBase64: string | undefined;
   let sourceImageMimeType: string | undefined;
 
@@ -37,30 +38,8 @@ export async function generateImageAsync(
     const { imageToBase64 } = await import("./nanobanana");
     sourceImageBase64 = await imageToBase64(request.sourceImage);
     sourceImageMimeType = request.sourceImage.type;
-  } else if (request.sourceImageStockId) {
-    // ストック画像IDから画像URLを取得してBase64に変換
-    const { getSourceImageStock } = await import("./database");
-    const stock = await getSourceImageStock(request.sourceImageStockId);
-    if (!stock) {
-      throw new Error("ストック画像が見つかりません");
-    }
-    const response = await fetch(stock.image_url);
-    if (!response.ok) {
-      throw new Error(`画像の取得に失敗しました: ${response.statusText}`);
-    }
-    const blob = await response.blob();
-    sourceImageMimeType = blob.type || "image/png";
-    sourceImageBase64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        const base64 = result.split(",")[1] || result;
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
   }
+  // sourceImageStockIdの場合は、サーバー側で処理するためここでは何もしない
 
   const response = await fetch("/api/generate-async", {
     method: "POST",
@@ -71,6 +50,7 @@ export async function generateImageAsync(
       prompt: request.prompt,
       sourceImageBase64,
       sourceImageMimeType,
+      sourceImageStockId: request.sourceImageStockId,
       backgroundChange: request.backgroundChange || false,
       generationType: request.generationType || "coordinate",
       model: request.model || "gemini-2.5-flash-image",

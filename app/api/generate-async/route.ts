@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       prompt,
       sourceImageBase64,
       sourceImageMimeType,
+      sourceImageStockId,
       backgroundChange,
       generationType,
       model,
@@ -44,16 +45,80 @@ export async function POST(request: NextRequest) {
     // 管理者クライアントを取得（RLSをバイパスしてQueueに送信するため）
     const supabase = createAdminClient();
 
-    // sourceImageBase64がある場合、input_image_urlを設定
-    // 実際のURLはEdge Function側で取得する（今回は簡略化のため、nullを設定）
-    const inputImageUrl: string | null = null;
+    // sourceImageBase64またはsourceImageStockIdがある場合、input_image_urlを設定
+    let inputImageUrl: string | null = null;
+    let stockId: string | null = null;
+
+    if (sourceImageStockId) {
+      // ストック画像IDがある場合、ストック画像のURLを取得
+      try {
+        const { data: stock, error: stockError } = await supabase
+          .from("source_image_stocks")
+          .select("id, image_url")
+          .eq("id", sourceImageStockId)
+          .eq("user_id", user.id) // ユーザーのストック画像のみ取得
+          .single();
+
+        if (stockError || !stock) {
+          console.error("Failed to fetch source image stock:", stockError);
+          return NextResponse.json(
+            { error: "ストック画像が見つかりません" },
+            { status: 404 }
+          );
+        }
+
+        inputImageUrl = stock.image_url;
+        stockId = stock.id;
+      } catch (error) {
+        console.error("Error fetching source image stock:", error);
+        return NextResponse.json(
+          { error: "ストック画像の取得に失敗しました" },
+          { status: 500 }
+        );
+      }
+    } else if (sourceImageBase64 && sourceImageMimeType) {
+      // sourceImageBase64がある場合、一時的にStorageにアップロードしてURLを取得
+      try {
+        // Base64をBufferに変換
+        const base64Data = sourceImageBase64.replace(/^data:.+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+
+        // 一時ファイル名を生成
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(2, 15);
+        const extension = sourceImageMimeType.split("/")[1] || "png";
+        const fileName = `temp/${user.id}/${timestamp}-${randomStr}.${extension}`;
+
+        // Storageにアップロード（generated-imagesバケットのtemp/フォルダに保存）
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("generated-images")
+          .upload(fileName, buffer, {
+            contentType: sourceImageMimeType,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error("Failed to upload source image:", uploadError);
+          // アップロードに失敗しても処理は続行（Edge Functionでエラーになる）
+        } else {
+          // 公開URLを取得
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("generated-images").getPublicUrl(uploadData.path);
+          inputImageUrl = publicUrl;
+        }
+      } catch (error) {
+        console.error("Error uploading source image:", error);
+        // エラーが発生しても処理は続行（Edge Functionでエラーになる）
+      }
+    }
 
     // image_jobsテーブルにレコード作成
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
       prompt_text: prompt,
       input_image_url: inputImageUrl,
-      source_image_stock_id: null, // TODO: sourceImageStockIdを処理（スキーマに含まれていない場合は後で追加）
+      source_image_stock_id: stockId,
       generation_type: generationType || "coordinate",
       model: model || null,
       background_change: backgroundChange || false,
@@ -76,16 +141,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Supabase Queueにメッセージ送信
-    const { error: queueError } = await supabase.schema("pgmq_public").rpc(
-      "send",
-      {
-        queue_name: "image_jobs",
-        message: {
-          job_id: job.id,
-        },
-        sleep_seconds: 0,
-      }
-    );
+    // 注意: PostgRESTはpublicとgraphql_publicスキーマのみを許可するため、
+    // pgmq_public.send()の代わりにpublic.pgmq_send()ラッパー関数を使用
+    const { error: queueError } = await supabase.rpc("pgmq_send", {
+      p_queue_name: "image_jobs",
+      p_message: {
+        job_id: job.id,
+      },
+      p_delay: 0,
+    });
 
     if (queueError) {
       console.error("Failed to send message to queue:", queueError);

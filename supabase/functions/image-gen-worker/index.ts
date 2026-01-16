@@ -178,13 +178,34 @@ function extractBase64FromDataUrl(dataUrl: string): { base64: string; mimeType: 
 Deno.serve(async (req: Request) => {
   try {
     // 環境変数の取得
+    // SUPABASE_URLは自動的に利用可能（Supabaseが提供）
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // SERVICE_ROLE_KEYは手動で設定する必要がある（SUPABASE_プレフィックスは使用不可）
+    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY");
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_STUDIO_API_KEY");
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    // 環境変数のチェック（詳細なエラーメッセージを返す）
+    if (!supabaseUrl) {
+      console.error("Missing SUPABASE_URL environment variable");
       return new Response(
-        JSON.stringify({ error: "Missing environment variables" }),
+        JSON.stringify({ 
+          error: "Missing environment variable: SUPABASE_URL",
+          message: "SUPABASE_URL should be automatically provided by Supabase"
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!serviceRoleKey) {
+      console.error("Missing SERVICE_ROLE_KEY environment variable");
+      return new Response(
+        JSON.stringify({ 
+          error: "Missing environment variable: SERVICE_ROLE_KEY",
+          message: "Please set SERVICE_ROLE_KEY in Edge Function Secrets (not SUPABASE_SERVICE_ROLE_KEY)"
+        }),
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
@@ -193,8 +214,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!geminiApiKey) {
+      console.error("Missing GEMINI_API_KEY environment variable");
       return new Response(
-        JSON.stringify({ error: "GEMINI_API_KEY is not configured" }),
+        JSON.stringify({ 
+          error: "Missing environment variable: GEMINI_API_KEY",
+          message: "Please set GEMINI_API_KEY or GOOGLE_AI_STUDIO_API_KEY in Edge Function Secrets"
+        }),
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
@@ -211,18 +236,46 @@ Deno.serve(async (req: Request) => {
     });
 
     // キューからのメッセージ取得
-    const { data: messages, error: readError } = await supabase
-      .schema("pgmq_public")
-      .rpc("read", {
-        queue_name: QUEUE_NAME,
-        vt: VISIBILITY_TIMEOUT,
-        qty: MAX_MESSAGES,
-      });
+    // 注意: PostgRESTはpublicとgraphql_publicスキーマのみを許可するため、
+    // pgmq_public.read()の代わりにpublic.pgmq_read()ラッパー関数を使用
+    let messages;
+    let readError;
+    
+    try {
+      const result = await supabase
+        .rpc("pgmq_read", {
+          p_queue_name: QUEUE_NAME,
+          p_vt: VISIBILITY_TIMEOUT,
+          p_qty: MAX_MESSAGES,
+        });
+      
+      messages = result.data;
+      readError = result.error;
+    } catch (err) {
+      console.error("Exception while reading from queue:", err);
+      return new Response(
+        JSON.stringify({ 
+          error: "Exception while reading from queue",
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
     if (readError) {
       console.error("Failed to read from queue:", readError);
       return new Response(
-        JSON.stringify({ error: "Failed to read from queue" }),
+        JSON.stringify({ 
+          error: "Failed to read from queue",
+          details: readError.message || String(readError),
+          code: readError.code,
+          hint: readError.hint,
+          queueName: QUEUE_NAME
+        }),
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
@@ -252,9 +305,9 @@ Deno.serve(async (req: Request) => {
       if (!jobId) {
         console.error("Message missing job_id:", message);
         // メッセージを削除してスキップ
-        await supabase.schema("pgmq_public").rpc("delete", {
-          queue_name: QUEUE_NAME,
-          msg_id: msgId,
+        await supabase.rpc("pgmq_delete", {
+          p_queue_name: QUEUE_NAME,
+          p_msg_id: msgId,
         });
         continue;
       }
@@ -270,9 +323,9 @@ Deno.serve(async (req: Request) => {
         if (jobError || !job) {
           console.error("Job not found:", jobId, jobError);
           // ジョブが見つからない場合はメッセージを削除
-          await supabase.schema("pgmq_public").rpc("delete", {
-            queue_name: QUEUE_NAME,
-            msg_id: msgId,
+          await supabase.rpc("pgmq_delete", {
+            p_queue_name: QUEUE_NAME,
+            p_msg_id: msgId,
           });
           continue;
         }
@@ -281,9 +334,9 @@ Deno.serve(async (req: Request) => {
         if (job.status === "processing" || job.status === "succeeded") {
           console.log("Job already processed, skipping:", jobId, job.status);
           // メッセージを削除
-          await supabase.schema("pgmq_public").rpc("delete", {
-            queue_name: QUEUE_NAME,
-            msg_id: msgId,
+          await supabase.rpc("pgmq_delete", {
+            p_queue_name: QUEUE_NAME,
+            p_msg_id: msgId,
           });
           skippedCount++;
           continue;
@@ -322,14 +375,67 @@ Deno.serve(async (req: Request) => {
 
           // 元画像がある場合は追加
           if (job.input_image_url) {
-            const imageData = extractBase64FromDataUrl(job.input_image_url);
-            if (imageData) {
+            let imageBase64: string | null = null;
+            let imageMimeType: string = "image/png";
+
+            // Data URL形式かStorage URLかを判定
+            if (job.input_image_url.startsWith("data:")) {
+              // Data URL形式の場合
+              const imageData = extractBase64FromDataUrl(job.input_image_url);
+              if (imageData) {
+                imageBase64 = imageData.base64;
+                imageMimeType = imageData.mimeType;
+              }
+            } else {
+              // Storage URLの場合、画像をダウンロードしてBase64に変換
+              try {
+                console.log("Downloading input image from URL:", job.input_image_url);
+                const imageResponse = await fetch(job.input_image_url);
+                if (imageResponse.ok) {
+                  const imageBlob = await imageResponse.blob();
+                  imageMimeType = imageBlob.type || "image/png";
+                  console.log("Image downloaded successfully, size:", imageBlob.size, "type:", imageMimeType);
+                  
+                  // BlobをBase64に変換
+                  const arrayBuffer = await imageBlob.arrayBuffer();
+                  const uint8Array = new Uint8Array(arrayBuffer);
+                  // Deno環境では、Uint8ArrayをBase64に変換
+                  // 手動でBase64エンコードを実装（btoaはLatin1範囲外の文字を処理できないため）
+                  const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+                  let base64 = "";
+                  let i = 0;
+                  while (i < uint8Array.length) {
+                    const a = uint8Array[i++];
+                    const b = i < uint8Array.length ? uint8Array[i++] : 0;
+                    const c = i < uint8Array.length ? uint8Array[i++] : 0;
+                    
+                    const bitmap = (a << 16) | (b << 8) | c;
+                    
+                    base64 += base64Chars.charAt((bitmap >> 18) & 63);
+                    base64 += base64Chars.charAt((bitmap >> 12) & 63);
+                    base64 += i - 2 < uint8Array.length ? base64Chars.charAt((bitmap >> 6) & 63) : "=";
+                    base64 += i - 1 < uint8Array.length ? base64Chars.charAt(bitmap & 63) : "=";
+                  }
+                  imageBase64 = base64;
+                  console.log("Image converted to Base64, length:", imageBase64.length);
+                } else {
+                  console.error("Failed to download input image:", imageResponse.status, imageResponse.statusText);
+                }
+              } catch (error) {
+                console.error("Error downloading input image:", error);
+              }
+            }
+
+            if (imageBase64) {
+              console.log("Adding input image to Gemini API request, mimeType:", imageMimeType);
               parts.push({
                 inline_data: {
-                  mime_type: imageData.mimeType,
-                  data: imageData.base64,
+                  mime_type: imageMimeType,
+                  data: imageBase64,
                 },
               });
+            } else {
+              console.warn("Input image Base64 is null, skipping image in request");
             }
           }
 
@@ -485,9 +591,9 @@ Deno.serve(async (req: Request) => {
           }
 
           // メッセージを削除（成功時）
-          await supabase.schema("pgmq_public").rpc("delete", {
-            queue_name: QUEUE_NAME,
-            msg_id: msgId,
+          await supabase.rpc("pgmq_delete", {
+            p_queue_name: QUEUE_NAME,
+            p_msg_id: msgId,
           });
 
           console.log("Job completed successfully:", jobId);
@@ -561,9 +667,15 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     console.error("Edge Function error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Internal server error",
+        error: "Internal server error",
+        message: errorMessage,
+        stack: errorStack,
+        type: error instanceof Error ? error.constructor.name : typeof error,
       }),
       {
         status: 500,
