@@ -89,6 +89,31 @@ export async function getGenerationStatus(
 }
 
 /**
+ * 未完了画像生成ジョブの型
+ */
+export interface InProgressJob {
+  id: string;
+  status: "queued" | "processing";
+  createdAt: string;
+}
+
+/**
+ * 未完了画像生成ジョブを取得
+ * @returns 未完了ジョブの一覧
+ */
+export async function getInProgressJobs(): Promise<InProgressJob[]> {
+  const response = await fetch("/api/generation-status/in-progress");
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "未完了ジョブの取得に失敗しました");
+  }
+
+  const data = await response.json();
+  return data.jobs || [];
+}
+
+/**
  * ポーリング停止可能な非同期画像生成ステータス監視
  */
 export interface PollGenerationStatusResult {
