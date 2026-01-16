@@ -158,21 +158,28 @@ export async function POST(request: NextRequest) {
     }
 
     // 即時処理の起動: Edge FunctionをHTTP経由で呼び出し（非同期、エラーは無視）
+    // 注意: Edge Functionは--no-verify-jwtフラグでデプロイされているため、
+    // Authorizationヘッダーは不要です。Service Role Keyの漏洩リスクを避けるため、
+    // 可能な限り削除を推奨します。
     const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (supabaseUrl && serviceRoleKey) {
+    if (supabaseUrl) {
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/image-gen-worker`;
       fetch(edgeFunctionUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
         },
         body: JSON.stringify({}),
       }).catch((error) => {
-        // エラーは無視（非同期処理のため）
-        console.error("Failed to invoke Edge Function (ignored):", error);
+        // Edge Functionの呼び出し自体が失敗した場合のログを強化
+        // 非同期処理のため、ここではAPIのレスポンスには影響を与えませんが、
+        // ログを詳細化することで、運用上の問題発見に役立ちます。
+        console.error("Failed to invoke Edge Function:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          edgeFunctionUrl,
+        });
       });
     }
 
