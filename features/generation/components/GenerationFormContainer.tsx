@@ -62,9 +62,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           });
 
           jobIds.push(response.jobId);
-          console.log(`ジョブ ${i + 1}/${data.count} を投入しました:`, response.jobId);
         } catch (err) {
-          console.error(`ジョブ ${i + 1} の投入に失敗:`, err);
           throw err;
         }
       }
@@ -75,8 +73,6 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           interval: 2000, // 2秒ごとにポーリング
           timeout: 300000, // 5分でタイムアウト
           onStatusUpdate: (status: AsyncGenerationStatus) => {
-            console.log(`ジョブ ${index + 1} のステータス更新:`, status.status);
-            
             // ステータスが更新されたら、生成結果一覧を更新
             if (refreshTimeoutRef.current) {
               clearTimeout(refreshTimeoutRef.current);
@@ -90,7 +86,6 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             if (status.status === "succeeded") {
               completed += 1;
               setCompletedCount(completed);
-              console.log(`ジョブ ${index + 1} が完了しました`);
 
               // 生成結果一覧を更新
               if (refreshTimeoutRef.current) {
@@ -102,7 +97,6 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             } else if (status.status === "failed") {
               completed += 1;
               setCompletedCount(completed);
-              console.error(`ジョブ ${index + 1} が失敗しました:`, status.errorMessage);
               throw new Error(status.errorMessage || "画像生成に失敗しました");
             }
             return status;
@@ -110,7 +104,6 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           .catch((err) => {
             completed += 1;
             setCompletedCount(completed);
-            console.error(`ジョブ ${index + 1} の監視中にエラー:`, err);
             throw err;
           });
       });
@@ -130,7 +123,6 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           throw new Error(`すべてのジョブが失敗しました: ${errorMessages.join(", ")}`);
         } else {
           // 一部のジョブが失敗した場合
-          console.warn(`一部のジョブが失敗しました: ${errorMessages.join(", ")}`);
           setError(`一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）`);
         }
       }
@@ -141,11 +133,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         refreshTimeoutRef.current = null;
       }
       router.refresh();
-
-      console.log("✅ すべてのジョブが完了しました");
     } catch (err) {
       setError(err instanceof Error ? err.message : "画像の生成に失敗しました");
-      console.error("Generation error:", err);
     } finally {
       setIsGenerating(false);
       // ポーリングをクリア

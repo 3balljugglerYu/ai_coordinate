@@ -332,7 +332,6 @@ Deno.serve(async (req: Request) => {
 
         // 冪等性チェック: 既に処理中または完了している場合はスキップ
         if (job.status === "processing" || job.status === "succeeded") {
-          console.log("Job already processed, skipping:", jobId, job.status);
           // メッセージを削除
           await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
@@ -389,12 +388,10 @@ Deno.serve(async (req: Request) => {
             } else {
               // Storage URLの場合、画像をダウンロードしてBase64に変換
               try {
-                console.log("Downloading input image from URL:", job.input_image_url);
                 const imageResponse = await fetch(job.input_image_url);
                 if (imageResponse.ok) {
                   const imageBlob = await imageResponse.blob();
                   imageMimeType = imageBlob.type || "image/png";
-                  console.log("Image downloaded successfully, size:", imageBlob.size, "type:", imageMimeType);
                   
                   // BlobをBase64に変換
                   const arrayBuffer = await imageBlob.arrayBuffer();
@@ -417,7 +414,6 @@ Deno.serve(async (req: Request) => {
                     base64 += i - 1 < uint8Array.length ? base64Chars.charAt(bitmap & 63) : "=";
                   }
                   imageBase64 = base64;
-                  console.log("Image converted to Base64, length:", imageBase64.length);
                 } else {
                   console.error("Failed to download input image:", imageResponse.status, imageResponse.statusText);
                 }
@@ -427,15 +423,12 @@ Deno.serve(async (req: Request) => {
             }
 
             if (imageBase64) {
-              console.log("Adding input image to Gemini API request, mimeType:", imageMimeType);
               parts.push({
                 inline_data: {
                   mime_type: imageMimeType,
                   data: imageBase64,
                 },
               });
-            } else {
-              console.warn("Input image Base64 is null, skipping image in request");
             }
           }
 
@@ -548,8 +541,6 @@ Deno.serve(async (req: Request) => {
             data: { publicUrl },
           } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(uploadData.path);
 
-          console.log("Image uploaded successfully:", jobId, "Path:", uploadData.path, "URL:", publicUrl);
-
           // ===== フェーズ4-3: generated_imagesテーブルへの保存 =====
           const { data: imageRecord, error: insertError } = await supabase
             .from("generated_images")
@@ -571,8 +562,6 @@ Deno.serve(async (req: Request) => {
             console.error("Database insert error:", insertError);
             throw new Error(`画像メタデータの保存に失敗しました: ${insertError.message}`);
           }
-
-          console.log("Image record saved successfully:", jobId, "Record ID:", imageRecord?.id);
 
           // ===== フェーズ4-4: 成功時の処理 =====
           // image_jobsテーブルを更新（成功時）
@@ -596,7 +585,6 @@ Deno.serve(async (req: Request) => {
             p_msg_id: msgId,
           });
 
-          console.log("Job completed successfully:", jobId);
           processedCount++;
         } catch (error) {
           // ===== フェーズ4-4: 失敗時の処理 =====
@@ -638,14 +626,10 @@ Deno.serve(async (req: Request) => {
 
           // メッセージの削除/アーカイブ（attempts >= 3の場合のみ）
           if (shouldMarkAsFailed) {
-            await supabase.schema("pgmq_public").rpc("delete", {
-              queue_name: QUEUE_NAME,
-              msg_id: msgId,
+            await supabase.rpc("pgmq_delete", {
+              p_queue_name: QUEUE_NAME,
+              p_msg_id: msgId,
             });
-            console.log("Job marked as failed after 3 attempts:", jobId);
-          } else {
-            // attempts < 3の場合はメッセージを削除しない（可視性タイムアウト後に再処理される）
-            console.log("Job failed, will retry (attempts:", newAttempts, "):", jobId);
           }
         }
       } catch (error) {
