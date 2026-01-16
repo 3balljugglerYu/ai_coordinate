@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
+import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 
@@ -79,23 +80,46 @@ export async function POST(request: NextRequest) {
     } else if (sourceImageBase64 && sourceImageMimeType) {
       // sourceImageBase64がある場合、一時的にStorageにアップロードしてURLを取得
       try {
+        // Base64データを取得（data:プレフィックスを除去）
+        let base64Data = sourceImageBase64.replace(/^data:.+;base64,/, "");
+        let mimeType = sourceImageMimeType;
+        let extension: string;
+
+        // HEIC/HEIF形式の場合はJPEGに変換
+        if (isHeicImage(sourceImageMimeType)) {
+          try {
+            const converted = await convertHeicBase64ToJpeg(base64Data, 0.9);
+            base64Data = converted.base64;
+            mimeType = converted.mimeType;
+            extension = "jpg";
+          } catch (conversionError) {
+            console.error("Failed to convert HEIC image:", conversionError);
+            return NextResponse.json(
+              { error: "HEIC画像の変換に失敗しました" },
+              { status: 400 }
+            );
+          }
+        } else {
+          // HEIC/HEIF以外の場合は、安全に拡張子を取得
+          extension = getSafeExtensionFromMimeType(sourceImageMimeType);
+        }
+
         // Base64をBufferに変換
-        const base64Data = sourceImageBase64.replace(/^data:.+;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");
 
         // 一時ファイル名を生成
         // パストラバーサル攻撃を防ぐため、MIMEタイプから安全に拡張子を取得
         const timestamp = Date.now();
         const randomStr = Math.random().toString(36).substring(2, 15);
-        const extension = getSafeExtensionFromMimeType(sourceImageMimeType);
         // ファイル名のパス要素も安全にする（user.idはUUIDで検証済み、timestampとrandomStrは数値/英数字のみ）
         const fileName = `temp/${user.id}/${timestamp}-${randomStr}.${extension}`;
 
         // Storageにアップロード（generated-imagesバケットのtemp/フォルダに保存）
+        // 注意: HEIC変換後の場合は、変換後のMIMEタイプ（JPEG）を使用
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("generated-images")
           .upload(fileName, buffer, {
-            contentType: sourceImageMimeType,
+            contentType: mimeType,
             upsert: false,
           });
 

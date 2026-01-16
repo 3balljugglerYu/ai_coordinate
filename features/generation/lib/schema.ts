@@ -7,12 +7,15 @@ import { normalizeModelName } from "../types";
  */
 
 // 許可された画像MIMEタイプ
+// 注意: HEIC/HEIFは変換処理を通るため、JPEG/PNGに変換される
 const ALLOWED_IMAGE_MIME_TYPES = [
   'image/png',
   'image/jpeg',
   'image/jpg',
   'image/webp',
   'image/gif',
+  'image/heic',
+  'image/heif',
 ] as const;
 
 /**
@@ -47,7 +50,7 @@ export const generationRequestSchema = z.object({
     .refine(
       (val) => !val || ALLOWED_IMAGE_MIME_TYPES.includes(val.toLowerCase().trim() as typeof ALLOWED_IMAGE_MIME_TYPES[number]),
       {
-        message: "許可されていない画像形式です。PNG、JPEG、WebP、GIFのみ対応しています。",
+        message: "許可されていない画像形式です。PNG、JPEG、WebP、GIF、HEIC（HEIF）のみ対応しています。",
       }
     ),
   sourceImageStockId: z.string().uuid().optional(),
