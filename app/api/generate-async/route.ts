@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generationRequestSchema } from "@/features/generation/lib/schema";
+import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 
@@ -84,9 +84,11 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(base64Data, "base64");
 
         // 一時ファイル名を生成
+        // パストラバーサル攻撃を防ぐため、MIMEタイプから安全に拡張子を取得
         const timestamp = Date.now();
         const randomStr = Math.random().toString(36).substring(2, 15);
-        const extension = sourceImageMimeType.split("/")[1] || "png";
+        const extension = getSafeExtensionFromMimeType(sourceImageMimeType);
+        // ファイル名のパス要素も安全にする（user.idはUUIDで検証済み、timestampとrandomStrは数値/英数字のみ）
         const fileName = `temp/${user.id}/${timestamp}-${randomStr}.${extension}`;
 
         // Storageにアップロード（generated-imagesバケットのtemp/フォルダに保存）
