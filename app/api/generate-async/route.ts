@@ -125,17 +125,25 @@ export async function POST(request: NextRequest) {
 
         if (uploadError) {
           console.error("Failed to upload source image:", uploadError);
-          // アップロードに失敗しても処理は続行（Edge Functionでエラーになる）
-        } else {
-          // 公開URLを取得
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("generated-images").getPublicUrl(uploadData.path);
-          inputImageUrl = publicUrl;
+          // アップロード失敗時は即座にエラーを返す（ユーザーへのフィードバックを早める）
+          return NextResponse.json(
+            { error: "元画像のアップロードに失敗しました。もう一度お試しください。" },
+            { status: 500 }
+          );
         }
+
+        // 公開URLを取得
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("generated-images").getPublicUrl(uploadData.path);
+        inputImageUrl = publicUrl;
       } catch (error) {
         console.error("Error uploading source image:", error);
-        // エラーが発生しても処理は続行（Edge Functionでエラーになる）
+        // エラーが発生した場合は即座にエラーを返す
+        return NextResponse.json(
+          { error: "元画像の処理中にエラーが発生しました。もう一度お試しください。" },
+          { status: 500 }
+        );
       }
     }
 
