@@ -24,30 +24,28 @@ export function GeneratedImageNotificationChecker() {
         return;
       }
 
-      // 初回チェックはスキップ（既存画像への通知を防止）
-      if (isFirstCheck) {
-        isFirstCheck = false;
-        return;
-      }
-
       try {
-        // sessionStorageから通知済み画像IDを取得
         const STORAGE_KEY = "notifiedGeneratedImageIds";
+
+        // 初回チェックは、既存画像への通知を防止するため、
+        // 最新の画像IDを通知済みとして登録する（ベースラインを確立）
+        if (isFirstCheck) {
+          isFirstCheck = false;
+          const initialImages = await getGeneratedImages(userId, 10, 0, "coordinate");
+          const initialImageIds = initialImages
+            .map((img) => img.id)
+            .filter((id): id is string => id !== null && id !== undefined);
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(initialImageIds));
+          return;
+        }
+
+        // sessionStorageから通知済み画像IDを取得（ベースライン + 既に通知した画像ID）
         const notifiedIds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
 
         // 最近作成された画像を取得（最大10件、coordinateタイプのみ）
-        const allRecentImages = await getGeneratedImages(userId, 10, 0, "coordinate");
+        const recentImages = await getGeneratedImages(userId, 10, 0, "coordinate");
 
-        // 直近5分以内に作成された画像をフィルタリング（クライアント側で処理）
-        // 時刻のずれを考慮して5分30秒以内に設定
-        const fiveMinutesThirtySecondsAgo = new Date(Date.now() - (5 * 60 + 30) * 1000);
-        const recentImages = allRecentImages.filter((img) => {
-          if (!img.created_at) return false;
-          const createdAt = new Date(img.created_at);
-          return createdAt >= fiveMinutesThirtySecondsAgo;
-        });
-
-        // 通知済みでない画像IDを抽出
+        // 通知済みでない画像IDを抽出（時間フィルタなしで、ベースラインとの差分で判定）
         const newImageIds = recentImages
           .filter((img) => img.id && !notifiedIds.includes(img.id))
           .map((img) => img.id!)
