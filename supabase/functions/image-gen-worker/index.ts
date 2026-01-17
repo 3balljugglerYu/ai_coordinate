@@ -569,7 +569,31 @@ Deno.serve(async (req: Request) => {
           // ファイル名を生成（ユーザーID + タイムスタンプ + ランダム文字列）
           const timestamp = Date.now();
           const randomStr = Math.random().toString(36).substring(2, 15);
-          const extension = generatedImage.mimeType.split("/")[1] || "png";
+          
+          // MIMEタイプから安全な拡張子を取得（パストラバーサル対策）
+          const getSafeExtension = (mimeType: string): string => {
+            // 許可されたMIMEタイプのマッピング
+            const allowedMimeTypes: Record<string, string> = {
+              "image/png": "png",
+              "image/jpeg": "jpg",
+              "image/jpg": "jpg",
+              "image/webp": "webp",
+              "image/gif": "gif",
+            };
+            
+            // MIMEタイプを正規化（小文字、前後の空白をトリム）
+            const normalizedMimeType = mimeType.toLowerCase().trim();
+            
+            // 許可されたMIMEタイプか確認
+            if (normalizedMimeType in allowedMimeTypes) {
+              return allowedMimeTypes[normalizedMimeType];
+            }
+            
+            // 許可されていない場合はデフォルトの拡張子を使用
+            return "png";
+          };
+          
+          const extension = getSafeExtension(generatedImage.mimeType);
           const fileName = `${job.user_id}/${timestamp}-${randomStr}.${extension}`;
 
           // Supabase Storageにアップロード
