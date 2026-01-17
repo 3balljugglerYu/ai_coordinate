@@ -72,13 +72,11 @@ export function GeneratedImageNotificationChecker() {
       }
     };
 
-    // 初回は10秒後に実行、以降は10秒ごとにポーリング
-    const firstCheckTimeout = setTimeout(checkNewImages, 10000);
+    // 10秒ごとにポーリング（初回実行も10秒後、isFirstCheckロジックでベースライン設定を実行）
     const intervalId = setInterval(checkNewImages, 10000);
 
     // クリーンアップ関数（ポーリングの停止）
     return () => {
-      clearTimeout(firstCheckTimeout);
       clearInterval(intervalId);
     };
   }, [toast]);
