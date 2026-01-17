@@ -185,36 +185,54 @@ export async function POST(request: NextRequest) {
       p_delay: 0,
     });
 
-    if (queueError) {
-      console.error("Failed to send message to queue:", queueError);
-      // キューへの送信に失敗しても、ジョブは作成されているので、処理は続行
-      // エラーログを記録し、Cronで処理されることを期待
-    }
-
     // 即時処理の起動: Edge FunctionをHTTP経由で呼び出し（非同期、エラーは無視）
     // 注意: Edge Functionは--no-verify-jwtフラグでデプロイされているため、
     // Authorizationヘッダーは不要です。Service Role Keyの漏洩リスクを避けるため、
     // 可能な限り削除を推奨します。
     const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+    let edgeFunctionInvoked = false;
 
     if (supabaseUrl) {
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/image-gen-worker`;
-      fetch(edgeFunctionUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      }).catch((error) => {
-        // Edge Functionの呼び出し自体が失敗した場合のログを強化
-        // 非同期処理のため、ここではAPIのレスポンスには影響を与えませんが、
-        // ログを詳細化することで、運用上の問題発見に役立ちます。
-        console.error("Failed to invoke Edge Function:", {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          edgeFunctionUrl,
+      try {
+        fetch(edgeFunctionUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        }).catch((error) => {
+          // Edge Functionの呼び出し自体が失敗した場合のログを強化
+          // 非同期処理のため、ここではAPIのレスポンスには影響を与えませんが、
+          // ログを詳細化することで、運用上の問題発見に役立ちます。
+          console.error("Failed to invoke Edge Function:", {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            edgeFunctionUrl,
+          });
         });
-      });
+        edgeFunctionInvoked = true;
+      } catch (error) {
+        console.error("Failed to initiate Edge Function call:", error);
+      }
+    }
+
+    // キュー送信失敗時の処理
+    if (queueError) {
+      console.error("Failed to send message to queue:", queueError);
+      // キューへの送信に失敗しても、ジョブは作成されている
+      // Edge Functionの即時呼び出しも失敗している可能性がある
+      // Cronジョブ（10秒ごと）が処理を拾うまで遅延する可能性があることをユーザーに通知
+      return NextResponse.json(
+        {
+          jobId: job.id,
+          status: job.status,
+          warning: queueError
+            ? "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。"
+            : undefined,
+        },
+        { status: 202 } // Accepted: リクエストは受理されたが、処理は完了していない
+      );
     }
 
     // レスポンス: ジョブIDとステータスを返却
