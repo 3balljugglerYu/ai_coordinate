@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useInView } from "react-intersection-observer";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import type { GeneratedImageData } from "../types";
 import { getCurrentUserId } from "../lib/generation-service";
 import { getGeneratedImages } from "../lib/database";
+import { useToast } from "@/components/ui/use-toast";
 
 const PAGE_SIZE = 4;
 
@@ -21,6 +22,8 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
   const [offset, setOffset] = useState(initialImages.length);
   const [hasMore, setHasMore] = useState(initialImages.length === PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(false);
+  const prevInitialImagesRef = useRef<GeneratedImageData[]>(initialImages);
+  const { toast } = useToast();
 
   const { ref: loadMoreRef, inView } = useInView({
     rootMargin: "200px",
@@ -29,10 +32,60 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
   // initialImagesが変更されたら状態を更新
   useEffect(() => {
-    setImages(initialImages);
-    setOffset(initialImages.length);
+    const prevImages = prevInitialImagesRef.current;
+    const prevImageIds = new Set(prevImages.map((img) => img.id));
+    
+    // 前回のinitialImagesと比較して、実際に新規に追加された画像を検出
+    const actuallyNewImages = initialImages.filter(
+      (img) => !prevImageIds.has(img.id)
+    );
+    
+    // initialImagesを先頭にし、既存の画像をその後に連結
+    setImages((prev) => {
+      // 既存画像のIDセットを作成
+      const existingIds = new Set(prev.map((img) => img.id));
+      
+      // initialImagesから新しい画像（まだ表示されていない画像）を抽出
+      const newImages = initialImages.filter((img) => !existingIds.has(img.id));
+      
+      // 新しい画像がある場合のみ更新
+      if (newImages.length > 0) {
+        // 既存画像から、initialImagesに含まれていない画像を抽出
+        const existingImagesNotInInitial = prev.filter(
+          (img) => !initialImages.some((initImg) => initImg.id === img.id)
+        );
+        // initialImagesを先頭に、既存画像をその後に連結
+        return [...initialImages, ...existingImagesNotInInitial];
+      }
+      
+      // 新しい画像がない場合は既存の状態を維持
+      return prev;
+    });
+    
+    // トースト通知を表示（実際に新規追加された画像のみ）
+    if (actuallyNewImages.length > 0) {
+      toast({
+        title: "新しい画像が生成されました",
+        description:
+          actuallyNewImages.length === 1
+            ? "画像が1枚追加されました"
+            : `${actuallyNewImages.length}枚の画像が追加されました`,
+      });
+    }
+    
+    // offsetは、既存画像の長さを考慮して調整
+    setOffset((prev) => {
+      // 新しい画像が追加されても、既に読み込んだ画像は保持するため、
+      // offsetは既存画像の長さとinitialImagesの長さの最大値にする
+      return Math.max(prev, initialImages.length);
+    });
+    
+    // hasMoreは、initialImagesの長さを基準に判定
     setHasMore(initialImages.length === PAGE_SIZE);
-  }, [initialImages]);
+    
+    // 前回のinitialImagesを更新
+    prevInitialImagesRef.current = initialImages;
+  }, [initialImages, toast]);
 
   // 無限スクロール: 最下部が表示されたら追加で取得
   useEffect(() => {
