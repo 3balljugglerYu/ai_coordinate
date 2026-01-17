@@ -89,24 +89,29 @@ export async function getGenerationStatus(
 }
 
 /**
- * 未完了画像生成ジョブの型
+ * 画像生成ジョブのステータス型（未完了・完了済みを含む）
  */
-export interface InProgressJob {
+export interface JobStatus {
   id: string;
-  status: "queued" | "processing";
+  status: "queued" | "processing" | "succeeded" | "failed";
   createdAt: string;
 }
 
 /**
  * 未完了画像生成ジョブを取得
- * @returns 未完了ジョブの一覧
+ * @param includeRecent 最近完了したジョブ（直近5分以内）も含めるかどうか
+ * @returns ジョブの一覧（未完了と最近完了したジョブ）
  */
-export async function getInProgressJobs(): Promise<InProgressJob[]> {
-  const response = await fetch("/api/generation-status/in-progress");
+export async function getInProgressJobs(includeRecent: boolean = false): Promise<JobStatus[]> {
+  const url = includeRecent
+    ? "/api/generation-status/in-progress?includeRecent=true"
+    : "/api/generation-status/in-progress";
+  
+  const response = await fetch(url);
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "未完了ジョブの取得に失敗しました");
+    throw new Error(error.error || "ジョブの取得に失敗しました");
   }
 
   const data = await response.json();

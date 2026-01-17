@@ -31,21 +31,33 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
   useEffect(() => {
     const checkInProgressJobs = async () => {
       try {
-        const jobs = await getInProgressJobs();
+        // 最近完了したジョブも含めて取得（直近5分以内）
+        const jobs = await getInProgressJobs(true);
         
-        if (jobs.length === 0) {
-          // 未完了ジョブがない場合は何もしない
+        // 未完了ジョブのみをフィルタリング
+        const inProgressJobs = jobs.filter((job) => 
+          job.status === "queued" || job.status === "processing"
+        );
+        
+        // 完了済みジョブをフィルタリング
+        const completedJobs = jobs.filter((job) => 
+          job.status === "succeeded" || job.status === "failed"
+        );
+        
+        if (inProgressJobs.length === 0 && completedJobs.length === 0) {
+          // 未完了ジョブも最近完了したジョブもない場合は何もしない
           return;
         }
+        
+        // 未完了ジョブがある場合のみ、ポーリングを再開
+        if (inProgressJobs.length > 0) {
+          setIsGenerating(true);
+          setGeneratingCount(inProgressJobs.length);
+          setCompletedCount(completedJobs.length);
+          setError(null);
 
-        // 未完了ジョブがある場合、ポーリングを再開
-        setIsGenerating(true);
-        setGeneratingCount(jobs.length);
-        setCompletedCount(0);
-        setError(null);
-
-        // 各ジョブのステータスをポーリングで監視
-        const pollPromises = jobs.map((job) => {
+        // 各未完了ジョブのステータスをポーリングで監視
+        const pollPromises = inProgressJobs.map((job) => {
           const { promise, stop } = pollGenerationStatus(job.id, {
             interval: 2000, // 2秒ごとにポーリング
             timeout: 300000, // 5分でタイムアウト
@@ -97,27 +109,36 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
         // 失敗したジョブがあるか確認
         const failedJobs = results.filter((result) => result.status === "rejected");
-        if (failedJobs.length > 0 && failedJobs.length < jobs.length) {
+        if (failedJobs.length > 0 && failedJobs.length < inProgressJobs.length) {
           // 一部のジョブが失敗した場合
           setError((prev) => {
-            const baseMsg = `一部の画像生成に失敗しました（${failedJobs.length}/${jobs.length}件）`;
+            const baseMsg = `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）`;
             return prev ? `${prev}; ${baseMsg}` : baseMsg;
           });
         }
 
-        // すべてのジョブが完了したので、生成状態を解除
+        // すべての未完了ジョブが完了したので、生成状態を解除
         setIsGenerating(false);
 
-        // 最終的なリフレッシュ
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
-          refreshTimeoutRef.current = null;
+          // 最終的なリフレッシュ
+          if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current);
+            refreshTimeoutRef.current = null;
+          }
+          router.refresh();
+        } else {
+          // 未完了ジョブがなく、完了済みジョブのみがある場合
+          // 状態をリセットして、表示をクリア
+          setIsGenerating(false);
+          setGeneratingCount(0);
+          setCompletedCount(0);
         }
-        router.refresh();
       } catch (err) {
         // エラーが発生した場合、エラーメッセージを設定して生成状態を解除
         console.error("Failed to check in-progress jobs:", err);
         setIsGenerating(false);
+        setGeneratingCount(0);
+        setCompletedCount(0);
       }
     };
 

@@ -91,14 +91,63 @@ function getBackgroundDirective(shouldChangeBackground: boolean): string {
 }
 
 /**
- * プロンプトを構築（簡易版）
+ * プロンプトインジェクション対策: ユーザー入力をサニタイズ
+ * - 制御文字の除去
+ * - 複数の連続改行を統一（最大2つの連続改行まで許可）
+ * - 禁止語句パターンの検出（基本的なインジェクション試行を防ぐ）
+ */
+function sanitizeUserInput(input: string): string {
+  // トリム
+  let sanitized = input.trim();
+  
+  // 制御文字を除去（タブ、改行以外の制御文字）
+  // タブはスペースに変換、改行は後で処理
+  sanitized = sanitized.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  
+  // 複数の連続改行を最大2つまでに制限（3つ以上は2つに統一）
+  sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
+  
+  // 禁止語句パターンの検出（基本的なプロンプトインジェクション試行）
+  // 注意: より厳密な検出が必要な場合は、より詳細なパターンマッチングを追加
+  const injectionPatterns = [
+    /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
+    /forget\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
+    /override\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
+    /disregard\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
+    /system\s*:?\s*(prompt|instruction|command)/i,
+    /<\|(system|user|assistant)\|>/i,
+  ];
+  
+  for (const pattern of injectionPatterns) {
+    if (pattern.test(sanitized)) {
+      // 禁止パターンが検出された場合は、その部分を除去または警告を出して空文字列に置換
+      // 本番環境では、より厳密な処理（エラーレスポンスなど）を検討
+      sanitized = sanitized.replace(pattern, '');
+    }
+  }
+  
+  // 再度トリム（禁止パターン除去後の余分な空白を削除）
+  sanitized = sanitized.trim();
+  
+  return sanitized;
+}
+
+/**
+ * プロンプトを構築（プロンプトインジェクション対策済み）
  */
 function buildPrompt(
   generationType: GenerationType,
   outfitDescription: string,
   shouldChangeBackground: boolean
 ): string {
-  const trimmedDescription = outfitDescription.trim();
+  // ユーザー入力をサニタイズ
+  const sanitizedDescription = sanitizeUserInput(outfitDescription);
+  
+  // サニタイズ後の入力が空の場合は、エラーとするかデフォルト値を返す
+  if (!sanitizedDescription || sanitizedDescription.length === 0) {
+    throw new Error("Invalid outfit description: empty or contains only prohibited content");
+  }
+  
   const backgroundDirective = getBackgroundDirective(shouldChangeBackground);
 
   // coordinateタイプのみ実装（他のタイプは後で拡張）
@@ -108,7 +157,7 @@ function buildPrompt(
 
 **New Outfit:**
 
-${trimmedDescription}
+${sanitizedDescription}
 
 Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
     } else {
@@ -116,7 +165,7 @@ Keep everything else consistent: face, hair, pose, expression, the entire backgr
 
 **New Outfit:**
 
-${trimmedDescription}
+${sanitizedDescription}
 
 Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Make sure the updated background still feels cohesive with the character and shares the same illustration style as the original.`;
     }
@@ -127,7 +176,7 @@ Keep everything else consistent: face, hair, pose, expression, lighting, and art
 
 **New Outfit:**
 
-${trimmedDescription}
+${sanitizedDescription}
 
 Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
 }
