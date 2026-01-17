@@ -7,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/ui/toaster";
 import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { AppSidebar } from "@/components/AppSidebar";
+import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
 import { getSiteUrl } from "@/lib/env";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -55,6 +56,9 @@ export default function RootLayout({
         </Suspense>
         <Suspense fallback={null}>
           <AppSidebar />
+        </Suspense>
+        <Suspense fallback={null}>
+          <GeneratedImageNotificationChecker />
         </Suspense>
         <div className="main-content">
           {children}

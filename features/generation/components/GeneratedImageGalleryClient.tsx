@@ -6,7 +6,6 @@ import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import type { GeneratedImageData } from "../types";
 import { getCurrentUserId } from "../lib/generation-service";
 import { getGeneratedImages } from "../lib/database";
-import { useToast } from "@/components/ui/use-toast";
 
 const PAGE_SIZE = 4;
 
@@ -23,7 +22,6 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
   const [hasMore, setHasMore] = useState(initialImages.length === PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(false);
   const prevInitialImagesRef = useRef<GeneratedImageData[]>(initialImages);
-  const { toast } = useToast();
 
   const { ref: loadMoreRef, inView } = useInView({
     rootMargin: "200px",
@@ -62,17 +60,6 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
       return prev;
     });
     
-    // トースト通知を表示（実際に新規追加された画像のみ）
-    if (actuallyNewImages.length > 0) {
-      toast({
-        title: "新しい画像が生成されました",
-        description:
-          actuallyNewImages.length === 1
-            ? "画像が1枚追加されました"
-            : `${actuallyNewImages.length}枚の画像が追加されました`,
-      });
-    }
-    
     // offsetは、既存画像の長さを考慮して調整
     setOffset((prev) => {
       // 新しい画像が追加されても、既に読み込んだ画像は保持するため、
@@ -85,7 +72,7 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
     
     // 前回のinitialImagesを更新
     prevInitialImagesRef.current = initialImages;
-  }, [initialImages, toast]);
+  }, [initialImages]);
 
   // 無限スクロール: 最下部が表示されたら追加で取得
   useEffect(() => {
