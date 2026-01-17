@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { getGenerationStatus, pollGenerationStatus, type AsyncGenerationStatus } from "../lib/async-api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,10 +24,10 @@ export function AsyncGenerationStatus({
   const [status, setStatus] = useState<AsyncGenerationStatus | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const stopPollingRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    let pollTimer: NodeJS.Timeout | null = null;
 
     const startPolling = async () => {
       try {
@@ -46,39 +46,44 @@ export function AsyncGenerationStatus({
           return;
         }
 
-        // ポーリングを開始
-        const poll = async () => {
-          try {
-            const currentStatus = await getGenerationStatus(jobId);
+        // pollGenerationStatusを使用してポーリングを開始
+        // タイムアウトとエラーハンドリングはpollGenerationStatus内で処理される
+        const { promise, stop } = pollGenerationStatus(jobId, {
+          interval: pollingInterval,
+          timeout: 300000, // 5分でタイムアウト
+          onStatusUpdate: (status) => {
             if (!isMounted) return;
+            setStatus(status);
+          },
+        });
 
-            setStatus(currentStatus);
+        // 停止関数を保存（クリーンアップ用）
+        stopPollingRef.current = stop;
 
-            // 完了または失敗した場合は終了
-            if (currentStatus.status === "succeeded" || currentStatus.status === "failed") {
-              if (pollTimer) {
-                clearInterval(pollTimer);
-              }
-              if (onComplete) {
-                onComplete(currentStatus);
-              }
+        // Promiseの解決または拒否を処理
+        promise
+          .then((finalStatus) => {
+            if (!isMounted) return;
+            setStatus(finalStatus);
+            if (onComplete) {
+              onComplete(finalStatus);
+            }
+          })
+          .catch((err) => {
+            if (!isMounted) return;
+            // ポーリング停止によるエラーは無視（正常な動作）
+            const errorMsg = err instanceof Error ? err.message : "";
+            if (errorMsg === "ポーリングが停止されました") {
               return;
             }
-          } catch (err) {
-            if (!isMounted) return;
+            // その他のエラーのみ表示
             const error = err instanceof Error ? err : new Error("ステータスの取得に失敗しました");
             setError(error);
             setIsLoading(false);
-            if (pollTimer) {
-              clearInterval(pollTimer);
-            }
             if (onError) {
               onError(error);
             }
-          }
-        };
-
-        pollTimer = setInterval(poll, pollingInterval);
+          });
       } catch (err) {
         if (!isMounted) return;
         const error = err instanceof Error ? err : new Error("ステータスの取得に失敗しました");
@@ -87,6 +92,7 @@ export function AsyncGenerationStatus({
         if (onError) {
           onError(error);
         }
+        return undefined;
       }
     };
 
@@ -94,8 +100,9 @@ export function AsyncGenerationStatus({
 
     return () => {
       isMounted = false;
-      if (pollTimer) {
-        clearInterval(pollTimer);
+      if (stopPollingRef.current) {
+        stopPollingRef.current();
+        stopPollingRef.current = null;
       }
     };
   }, [jobId, pollingInterval, onComplete, onError]);
