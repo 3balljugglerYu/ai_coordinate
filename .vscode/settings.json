@@ -1,0 +1,17 @@
+{
+  // Edge FunctionsディレクトリのみでDenoを有効化
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  // Edge FunctionsのディレクトリでDenoを有効化
+  "deno.enable": false,
+  "deno.enablePaths": [
+    "./supabase/functions"
+  ],
+  // Denoの型チェックを有効化
+  "deno.lint": true,
+  "deno.unstable": true
+}
