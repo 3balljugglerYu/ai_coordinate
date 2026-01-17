@@ -161,8 +161,49 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         
         if (failedJobs.length > 0 && failedJobs.length < inProgressJobs.length) {
           // 一部のジョブが失敗した場合
+          const errorMessages = failedJobs
+            .map((result) => result.status === "rejected" ? result.reason?.message || "不明なエラー" : null)
+            .filter((msg): msg is string => msg !== null);
+          
+          // ユニークなエラーメッセージを取得
+          const uniqueErrorMessages = Array.from(new Set(errorMessages));
+          
+          // エラーメッセージを要約
+          const formatErrorSummary = (messages: string[]): string => {
+            if (messages.length === 0) return "";
+            if (messages.length === 1) {
+              const msg = messages[0];
+              return msg.length > 100 ? `${msg.substring(0, 100)}...` : msg;
+            }
+            const messageCounts = new Map<string, number>();
+            messages.forEach((msg) => {
+              messageCounts.set(msg, (messageCounts.get(msg) || 0) + 1);
+            });
+            const sortedMessages = Array.from(messageCounts.entries()).sort(
+              (a, b) => b[1] - a[1]
+            );
+            const mostCommonMessage = sortedMessages[0][0];
+            const mostCommonCount = sortedMessages[0][1];
+            
+            if (mostCommonCount === messages.length) {
+              const msg = mostCommonMessage.length > 100 
+                ? `${mostCommonMessage.substring(0, 100)}...` 
+                : mostCommonMessage;
+              return msg;
+            } else {
+              const msg = mostCommonMessage.length > 80 
+                ? `${mostCommonMessage.substring(0, 80)}...` 
+                : mostCommonMessage;
+              return `${msg}（他 ${messages.length - 1}種類のエラー）`;
+            }
+          };
+          
+          const errorSummary = formatErrorSummary(uniqueErrorMessages);
+          const baseMsg = errorSummary
+            ? `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）: ${errorSummary}`
+            : `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）`;
+          
           setError((prev) => {
-            const baseMsg = `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）`;
             return prev ? `${prev}; ${baseMsg}` : baseMsg;
           });
         }
@@ -334,7 +375,51 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           throw new Error(`すべてのジョブが失敗しました: ${errorMessages.join(", ")}`);
         } else {
           // 一部のジョブが失敗した場合
-          setError(`一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）`);
+          // ユニークなエラーメッセージを取得（重複を除去）
+          const uniqueErrorMessages = Array.from(new Set(errorMessages));
+          
+          // エラーメッセージを要約（長すぎる場合は省略）
+          const formatErrorSummary = (messages: string[]): string => {
+            if (messages.length === 0) {
+              return "";
+            }
+            if (messages.length === 1) {
+              // 1つのエラーメッセージのみの場合、そのまま表示（長すぎる場合は省略）
+              const msg = messages[0];
+              return msg.length > 100 ? `${msg.substring(0, 100)}...` : msg;
+            }
+            // 複数のエラーメッセージがある場合、最も頻繁に出現するものを優先表示
+            const messageCounts = new Map<string, number>();
+            messages.forEach((msg) => {
+              messageCounts.set(msg, (messageCounts.get(msg) || 0) + 1);
+            });
+            const sortedMessages = Array.from(messageCounts.entries()).sort(
+              (a, b) => b[1] - a[1]
+            );
+            const mostCommonMessage = sortedMessages[0][0];
+            const mostCommonCount = sortedMessages[0][1];
+            
+            if (mostCommonCount === messages.length) {
+              // すべて同じエラーメッセージの場合
+              const msg = mostCommonMessage.length > 100 
+                ? `${mostCommonMessage.substring(0, 100)}...` 
+                : mostCommonMessage;
+              return msg;
+            } else {
+              // 異なるエラーメッセージがある場合
+              const msg = mostCommonMessage.length > 80 
+                ? `${mostCommonMessage.substring(0, 80)}...` 
+                : mostCommonMessage;
+              return `${msg}（他 ${messages.length - 1}種類のエラー）`;
+            }
+          };
+          
+          const errorSummary = formatErrorSummary(uniqueErrorMessages);
+          const errorText = errorSummary
+            ? `一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）: ${errorSummary}`
+            : `一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）`;
+          
+          setError(errorText);
         }
       }
 
