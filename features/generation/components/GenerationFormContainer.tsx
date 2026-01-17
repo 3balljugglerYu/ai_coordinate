@@ -252,12 +252,21 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       }
 
       // 各ジョブのステータスをポーリングで監視
+      const completedJobIds = new Set<string>(); // 完了済みジョブIDを追跡
+      
       const pollPromises = jobIds.map((jobId, index) => {
         const { promise, stop } = pollGenerationStatus(jobId, {
           interval: 2000, // 2秒ごとにポーリング
           timeout: 300000, // 5分でタイムアウト
           onStatusUpdate: (status: AsyncGenerationStatus) => {
-            // ステータスが更新されたら、生成結果一覧を更新
+            // 完了状態（succeeded/failed）の場合は、completedカウントを更新
+            if ((status.status === "succeeded" || status.status === "failed") && !completedJobIds.has(jobId)) {
+              completedJobIds.add(jobId);
+              completed += 1;
+              setCompletedCount(completed);
+            }
+            
+            // 生成結果一覧を更新
             if (refreshTimeoutRef.current) {
               clearTimeout(refreshTimeoutRef.current);
             }
@@ -272,27 +281,32 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
         return promise
           .then((status) => {
-            if (status.status === "succeeded") {
-              completed += 1;
-              setCompletedCount(completed);
-
-              // 生成結果一覧を更新
-              if (refreshTimeoutRef.current) {
-                clearTimeout(refreshTimeoutRef.current);
-              }
-              refreshTimeoutRef.current = setTimeout(() => {
-                router.refresh();
-              }, 500);
-            } else if (status.status === "failed") {
-              completed += 1;
-              setCompletedCount(completed);
+            // onStatusUpdateで完了カウントは既に更新されているので、
+            // ここではエラー処理のみ行う
+            if (status.status === "failed") {
               throw new Error(status.errorMessage || "画像生成に失敗しました");
             }
             return status;
           })
           .catch((err) => {
-            completed += 1;
-            setCompletedCount(completed);
+            // ポーリング停止によるエラーは無視（正常な動作）
+            const errorMsg = err instanceof Error ? err.message : "";
+            if (errorMsg === "ポーリングが停止されました") {
+              // 完了カウントが更新されていない場合のみ更新
+              if (!completedJobIds.has(jobId)) {
+                completedJobIds.add(jobId);
+                completed += 1;
+                setCompletedCount(completed);
+              }
+              // エラーとして扱わない
+              return { id: jobId, status: "queued" as const, resultImageUrl: null, errorMessage: null };
+            }
+            // 完了カウントが更新されていない場合のみ更新
+            if (!completedJobIds.has(jobId)) {
+              completedJobIds.add(jobId);
+              completed += 1;
+              setCompletedCount(completed);
+            }
             throw err;
           });
       });
