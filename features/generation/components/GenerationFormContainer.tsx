@@ -8,6 +8,7 @@ import {
   generateImageAsync,
   pollGenerationStatus,
   getInProgressJobs,
+  getGenerationStatus,
   type AsyncGenerationStatus,
 } from "../lib/async-api";
 
@@ -56,59 +57,108 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           setCompletedCount(completedJobs.length);
           setError(null);
 
-        // 各未完了ジョブのステータスをポーリングで監視
-        const pollPromises = inProgressJobs.map((job) => {
-          const { promise, stop } = pollGenerationStatus(job.id, {
-            interval: 2000, // 2秒ごとにポーリング
-            timeout: 300000, // 5分でタイムアウト
-            onStatusUpdate: (status: AsyncGenerationStatus) => {
-              // ステータスが更新されたら、生成結果一覧を更新
-              if (refreshTimeoutRef.current) {
-                clearTimeout(refreshTimeoutRef.current);
-              }
-              refreshTimeoutRef.current = setTimeout(() => {
-                router.refresh();
-              }, 500);
-            },
-          });
-
-          // 停止関数を保存（コンポーネントのクリーンアップ用）
-          pollingStopFunctionsRef.current.add(stop);
-
-          return promise
-            .then((status) => {
-              if (status.status === "succeeded") {
-                setCompletedCount((prev) => prev + 1);
-
-                // 生成結果一覧を更新
+          // 各未完了ジョブのステータスをポーリングで監視
+          // まず、各ジョブの現在のステータスを確認してからポーリングを開始
+          const pollPromises = inProgressJobs.map(async (job) => {
+            // まず現在のステータスを確認
+            let currentStatus: AsyncGenerationStatus;
+            try {
+              currentStatus = await getGenerationStatus(job.id);
+              // すでに完了している場合は、ポーリングを開始しない
+              if (currentStatus.status === "succeeded" || currentStatus.status === "failed") {
+                if (currentStatus.status === "succeeded") {
+                  setCompletedCount((prev) => prev + 1);
+                } else {
+                  setCompletedCount((prev) => prev + 1);
+                  setError((prev) => {
+                    const errorMsg = currentStatus.errorMessage || "画像生成に失敗しました";
+                    return prev ? `${prev}; ${errorMsg}` : errorMsg;
+                  });
+                }
+                // リフレッシュ
                 if (refreshTimeoutRef.current) {
                   clearTimeout(refreshTimeoutRef.current);
                 }
                 refreshTimeoutRef.current = setTimeout(() => {
                   router.refresh();
                 }, 500);
-              } else if (status.status === "failed") {
+                return currentStatus;
+              }
+            } catch (err) {
+              // ステータス取得に失敗した場合は、ポーリングを開始する（エラーは無視）
+              console.error("Failed to get initial job status:", err);
+            }
+
+            // 未完了の場合のみ、ポーリングを開始
+            const { promise, stop } = pollGenerationStatus(job.id, {
+              interval: 2000, // 2秒ごとにポーリング
+              timeout: 300000, // 5分でタイムアウト
+              onStatusUpdate: (status: AsyncGenerationStatus) => {
+                // ステータスが更新されたら、生成結果一覧を更新
+                if (refreshTimeoutRef.current) {
+                  clearTimeout(refreshTimeoutRef.current);
+                }
+                refreshTimeoutRef.current = setTimeout(() => {
+                  router.refresh();
+                }, 500);
+              },
+            });
+
+            // 停止関数を保存（コンポーネントのクリーンアップ用）
+            pollingStopFunctionsRef.current.add(stop);
+
+            return promise
+              .then((status) => {
+                if (status.status === "succeeded") {
+                  setCompletedCount((prev) => prev + 1);
+
+                  // 生成結果一覧を更新
+                  if (refreshTimeoutRef.current) {
+                    clearTimeout(refreshTimeoutRef.current);
+                  }
+                  refreshTimeoutRef.current = setTimeout(() => {
+                    router.refresh();
+                  }, 500);
+                } else if (status.status === "failed") {
+                  setCompletedCount((prev) => prev + 1);
+                  setError((prev) => {
+                    const errorMsg = status.errorMessage || "画像生成に失敗しました";
+                    return prev ? `${prev}; ${errorMsg}` : errorMsg;
+                  });
+                }
+                return status;
+              })
+              .catch((err) => {
+                // ポーリング停止によるエラーは無視（ユーザー操作による中断は正常）
+                const errorMsg = err instanceof Error ? err.message : "";
+                if (errorMsg === "ポーリングが停止されました") {
+                  // ポーリング停止は正常な動作なので、エラーとして扱わない
+                  setCompletedCount((prev) => prev + 1);
+                  return { id: job.id, status: "queued" as const, resultImageUrl: null, errorMessage: null };
+                }
+                // その他のエラーのみ表示
                 setCompletedCount((prev) => prev + 1);
                 setError((prev) => {
-                  const errorMsg = status.errorMessage || "画像生成に失敗しました";
-                  return prev ? `${prev}; ${errorMsg}` : errorMsg;
+                  const msg = errorMsg || "画像生成に失敗しました";
+                  return prev ? `${prev}; ${msg}` : msg;
                 });
-              }
-              return status;
-            })
-            .catch((err) => {
-              setCompletedCount((prev) => prev + 1);
-              const errorMsg = err instanceof Error ? err.message : "画像生成に失敗しました";
-              setError((prev) => (prev ? `${prev}; ${errorMsg}` : errorMsg));
-              throw err;
-            });
-        });
+                throw err;
+              });
+          });
 
         // すべてのジョブの完了を待つ
         const results = await Promise.allSettled(pollPromises);
 
-        // 失敗したジョブがあるか確認
-        const failedJobs = results.filter((result) => result.status === "rejected");
+        // 失敗したジョブがあるか確認（ポーリング停止によるエラーは除外）
+        const failedJobs = results.filter((result) => {
+          if (result.status === "rejected") {
+            const errorMsg = result.reason?.message || "";
+            // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
+            return errorMsg !== "ポーリングが停止されました";
+          }
+          return false;
+        });
+        
         if (failedJobs.length > 0 && failedJobs.length < inProgressJobs.length) {
           // 一部のジョブが失敗した場合
           setError((prev) => {
@@ -250,8 +300,16 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       // すべてのジョブの完了を待つ
       const results = await Promise.allSettled(pollPromises);
 
-      // 失敗したジョブがあるか確認
-      const failedJobs = results.filter((result) => result.status === "rejected");
+      // 失敗したジョブがあるか確認（ポーリング停止によるエラーは除外）
+      const failedJobs = results.filter((result) => {
+        if (result.status === "rejected") {
+          const errorMsg = result.reason?.message || "";
+          // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
+          return errorMsg !== "ポーリングが停止されました";
+        }
+        return false;
+      });
+      
       if (failedJobs.length > 0) {
         const errorMessages = failedJobs
           .map((result) => result.status === "rejected" ? result.reason?.message || "不明なエラー" : null)
