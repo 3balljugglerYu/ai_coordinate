@@ -1,12 +1,13 @@
 /**
  * プロンプトテンプレート設定
  * 各生成タイプごとに最適化されたプロンプトテンプレートを定義
+ * 注意: outfitDescriptionは prompt-builder.ts でサニタイズ済みであることを前提としています
  */
 
 export type GenerationType = 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi';
 
 export interface PromptVariables {
-  outfitDescription: string; // ユーザー入力（日本語のまま）
+  outfitDescription: string; // ユーザー入力（サニタイズ済み）
   backgroundDirective: string; // 背景変更の指示
 }
 
@@ -21,7 +22,7 @@ const PROMPT_CONFIGS: Record<GenerationType, PromptConfig> = {
   coordinate: {
     prompt_template: (vars: PromptVariables) => {
       const { outfitDescription, backgroundDirective } = vars;
-      const trimmedDescription = outfitDescription.trim();
+      // outfitDescriptionは既にサニタイズ済み（prompt-builder.tsで処理済み）
 
       if (backgroundDirective.includes('Keep the original background')) {
         // 背景変更なし
@@ -29,7 +30,7 @@ const PROMPT_CONFIGS: Record<GenerationType, PromptConfig> = {
 
 **New Outfit:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
       } else {
@@ -38,7 +39,7 @@ Keep everything else consistent: face, hair, pose, expression, the entire backgr
 
 **New Outfit:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Make sure the updated background still feels cohesive with the character and shares the same illustration style as the original.`;
       }
@@ -48,7 +49,7 @@ Keep everything else consistent: face, hair, pose, expression, lighting, and art
   specified_coordinate: {
     prompt_template: (vars: PromptVariables) => {
       const { outfitDescription, backgroundDirective } = vars;
-      const trimmedDescription = outfitDescription.trim();
+      // outfitDescriptionは既にサニタイズ済み（prompt-builder.tsで処理済み）
 
       // 指定コーディネート: 人物画像 + 服の画像（2枚入力）を組み合わせる
       // TODO: 将来的に実装時に詳細を調整
@@ -57,7 +58,7 @@ Keep everything else consistent: face, hair, pose, expression, lighting, and art
 
 **New Outfit:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
       } else {
@@ -65,7 +66,7 @@ Keep everything else consistent: face, hair, pose, expression, the entire backgr
 
 **New Outfit:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Make sure the updated background still feels cohesive with the character and shares the same illustration style as the original.`;
       }
@@ -75,7 +76,7 @@ Keep everything else consistent: face, hair, pose, expression, lighting, and art
   full_body: {
     prompt_template: (vars: PromptVariables) => {
       const { outfitDescription, backgroundDirective } = vars;
-      const trimmedDescription = outfitDescription.trim();
+      // outfitDescriptionは既にサニタイズ済み（prompt-builder.tsで処理済み）
 
       // 全身生成: 上半身のみから全身画像を生成
       // TODO: 将来的に実装時に詳細を調整
@@ -84,7 +85,7 @@ Keep everything else consistent: face, hair, pose, expression, lighting, and art
 
 **Outfit Description:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style. Extend the image naturally to show the full body while maintaining proportions.`;
       } else {
@@ -92,7 +93,7 @@ Keep everything else consistent: face, hair, pose, expression, the entire backgr
 
 **Outfit Description:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Extend the image naturally to show the full body while maintaining proportions. Generate a new background that complements the full-body composition.`;
       }
@@ -102,7 +103,7 @@ Keep everything else consistent: face, hair, pose, expression, lighting, and art
   chibi: {
     prompt_template: (vars: PromptVariables) => {
       const { outfitDescription, backgroundDirective } = vars;
-      const trimmedDescription = outfitDescription.trim();
+      // outfitDescriptionは既にサニタイズ済み（prompt-builder.tsで処理済み）
 
       // chibi生成: 人物画像から2頭身キャラクターを生成
       // TODO: 将来的に実装時に詳細を調整
@@ -111,7 +112,7 @@ Keep everything else consistent: face, hair, pose, expression, lighting, and art
 
 **Outfit Description:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face features, hair, pose, expression, the entire background, lighting, and art style. Apply chibi proportions (2-head ratio) while preserving the character's recognizable features.`;
       } else {
@@ -119,7 +120,7 @@ Keep everything else consistent: face features, hair, pose, expression, the enti
 
 **Outfit Description:**
 
-${trimmedDescription}
+${outfitDescription}
 
 Keep everything else consistent: face features, hair, pose, expression, lighting, and art style. Apply chibi proportions (2-head ratio) while preserving the character's recognizable features. Generate a new background that complements the chibi style.`;
       }
