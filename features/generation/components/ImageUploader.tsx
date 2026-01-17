@@ -5,7 +5,7 @@ import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   validateImageFile,
   DEFAULT_IMAGE_CONFIG,
@@ -137,7 +137,9 @@ export function ImageUploader({
 
       {error && (
         <Alert variant="destructive" className="mt-2">
-          <p className="text-sm">{error}</p>
+          <div className="col-start-2 text-sm text-destructive/90 whitespace-normal">
+            {error}
+          </div>
         </Alert>
       )}
 
