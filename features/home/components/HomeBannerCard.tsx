@@ -16,7 +16,7 @@ interface HomeBannerCardProps {
 export function HomeBannerCard({ banner }: HomeBannerCardProps) {
   return (
     <Link href={banner.linkUrl} className="block">
-      <Card className="overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform duration-200 p-0">
+      <Card className="overflow-hidden hover:scale-[1.02] transition-transform duration-200 p-0">
         <div className="relative w-full overflow-hidden bg-gray-100">
           <Image
             src={banner.imageUrl}

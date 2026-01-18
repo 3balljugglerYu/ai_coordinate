@@ -19,6 +19,6 @@ export const homeBanners: HomeBanner[] = [
     id: "event-01",
     imageUrl: "/banners/event-01.png",
     linkUrl: "/event/detail/01",
-    alt: "イベントバナー",
+    alt: "着せ替えお試し用素材 イベントバナー",
   },
 ];
