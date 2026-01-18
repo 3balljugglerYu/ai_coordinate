@@ -30,14 +30,6 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
   // initialImagesが変更されたら状態を更新
   useEffect(() => {
-    const prevImages = prevInitialImagesRef.current;
-    const prevImageIds = new Set(prevImages.map((img) => img.id));
-    
-    // 前回のinitialImagesと比較して、実際に新規に追加された画像を検出
-    const actuallyNewImages = initialImages.filter(
-      (img) => !prevImageIds.has(img.id)
-    );
-    
     // initialImagesを先頭にし、既存の画像をその後に連結
     setImages((prev) => {
       // 既存画像のIDセットを作成
@@ -49,8 +41,10 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
       // 新しい画像がある場合のみ更新
       if (newImages.length > 0) {
         // 既存画像から、initialImagesに含まれていない画像を抽出
+        // O(N*M)を避けるため、initialImagesのIDをSetに変換してO(1)ルックアップを使用
+        const initialImageIds = new Set(initialImages.map((img) => img.id));
         const existingImagesNotInInitial = prev.filter(
-          (img) => !initialImages.some((initImg) => initImg.id === img.id)
+          (img) => !initialImageIds.has(img.id)
         );
         // initialImagesを先頭に、既存画像をその後に連結
         return [...initialImages, ...existingImagesNotInInitial];

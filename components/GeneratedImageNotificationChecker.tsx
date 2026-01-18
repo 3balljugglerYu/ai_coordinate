@@ -48,8 +48,7 @@ export function GeneratedImageNotificationChecker() {
         // 通知済みでない画像IDを抽出（時間フィルタなしで、ベースラインとの差分で判定）
         const newImageIds = recentImages
           .filter((img) => img.id && !notifiedIds.includes(img.id))
-          .map((img) => img.id!)
-          .filter((id): id is string => id !== null && id !== undefined);
+          .map((img) => img.id!);
 
         // 新規画像があればトースト通知
         if (newImageIds.length > 0) {
