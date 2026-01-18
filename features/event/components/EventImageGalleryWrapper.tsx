@@ -2,15 +2,14 @@ import { EventImageGalleryClient } from "./EventImageGalleryClient";
 import type { EventImageData } from "../types";
 import { getEventImagesServer } from "../lib/server-api";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
-
-const PAGE_SIZE = 4;
+import { EVENT_PAGE_SIZE } from "../lib/constants";
 
 /**
  * サーバーコンポーネント: イベント画像一覧の初期データを取得
  */
 export async function EventImageGalleryWrapper() {
   try {
-    const records = await getEventImagesServer(PAGE_SIZE, 0);
+    const records = await getEventImagesServer(EVENT_PAGE_SIZE, 0);
 
     // GeneratedImageRecord -> EventImageData 変換
     const initialImages: EventImageData[] = records

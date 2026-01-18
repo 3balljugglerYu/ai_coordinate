@@ -7,8 +7,7 @@ import type { EventImageData } from "../types";
 import { getEventImages } from "../lib/database";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
-
-const PAGE_SIZE = 4;
+import { EVENT_PAGE_SIZE } from "../lib/constants";
 
 interface EventImageGalleryClientProps {
   initialImages: EventImageData[];
@@ -20,7 +19,7 @@ interface EventImageGalleryClientProps {
 export function EventImageGalleryClient({ initialImages }: EventImageGalleryClientProps) {
   const [images, setImages] = useState<EventImageData[]>(initialImages);
   const [offset, setOffset] = useState(initialImages.length);
-  const [hasMore, setHasMore] = useState(initialImages.length === PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(initialImages.length === EVENT_PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(false);
   const prevInitialImagesRef = useRef<EventImageData[]>(initialImages);
 
@@ -48,7 +47,7 @@ export function EventImageGalleryClient({ initialImages }: EventImageGalleryClie
     });
     
     setOffset((prev) => Math.max(prev, initialImages.length));
-    setHasMore(initialImages.length === PAGE_SIZE);
+    setHasMore(initialImages.length === EVENT_PAGE_SIZE);
     prevInitialImagesRef.current = initialImages;
   }, [initialImages]);
 
@@ -59,7 +58,7 @@ export function EventImageGalleryClient({ initialImages }: EventImageGalleryClie
     const fetchMore = async () => {
       try {
         setIsLoading(true);
-        const records = await getEventImages(PAGE_SIZE, offset);
+        const records = await getEventImages(EVENT_PAGE_SIZE, offset);
 
         // GeneratedImageRecord -> EventImageData 変換
         // getPostThumbUrl()を使用してサムネイルURLを取得
@@ -90,7 +89,7 @@ export function EventImageGalleryClient({ initialImages }: EventImageGalleryClie
         });
 
         setOffset((prev) => prev + records.length);
-        setHasMore(records.length === PAGE_SIZE);
+        setHasMore(records.length === EVENT_PAGE_SIZE);
       } catch (err) {
         console.error("[EventImageGalleryClient] 追加取得エラー:", err);
         setHasMore(false);
