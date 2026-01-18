@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import type { EventImageData } from "../types";
 import { ImageModal } from "@/features/generation/components/ImageModal";
 import { determineFileName } from "@/lib/utils";
+import { validateImageUrl } from "../lib/url-validation";
 
 interface EventImageGalleryProps {
   images: EventImageData[];
@@ -28,6 +29,9 @@ export function EventImageGallery({
     }
 
     try {
+      // URLの検証（セキュリティ対策）
+      validateImageUrl(image.url);
+
       // 画像をfetchで取得
       const response = await fetch(image.url);
       
@@ -173,6 +177,7 @@ export function EventImageGallery({
           onClose={() => setSelectedImageIndex(null)}
           onDownload={(img) => {
             const originalImage = images[selectedImageIndex!];
+            // handleDownload内でURL検証が行われる
             handleDownload(originalImage);
           }}
           // onPostは渡さない（投稿機能なし）
