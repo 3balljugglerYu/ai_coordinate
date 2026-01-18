@@ -32,6 +32,9 @@ const envSchema = {
 
   // Site URL
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+
+  // Event
+  NEXT_PUBLIC_EVENT_USER_ID: process.env.NEXT_PUBLIC_EVENT_USER_ID,
 } as const;
 
 /**
@@ -88,6 +91,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID || "",
     NEXT_PUBLIC_SITE_URL:
       envSchema.NEXT_PUBLIC_SITE_URL || "",
+    NEXT_PUBLIC_EVENT_USER_ID:
+      envSchema.NEXT_PUBLIC_EVENT_USER_ID || "",
   };
 }
 

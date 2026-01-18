@@ -1,4 +1,5 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { env } from "@/lib/env";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
 /**
@@ -11,8 +12,12 @@ export async function getEventImages(
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
 
-  // 固定ユーザーID
-  const EVENT_USER_ID = "dfe54c3c-3764-4758-89eb-2bd445fdc4c6";
+  // 環境変数からイベントユーザーIDを取得
+  const EVENT_USER_ID = env.NEXT_PUBLIC_EVENT_USER_ID;
+
+  if (!EVENT_USER_ID) {
+    throw new Error("NEXT_PUBLIC_EVENT_USER_ID環境変数が設定されていません");
+  }
 
   const { data, error } = await supabase
     .from("generated_images")
