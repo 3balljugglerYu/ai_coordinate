@@ -6,6 +6,7 @@ import Masonry from "react-masonry-css";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 import type { EventImageData } from "../types";
 import { ImageModal } from "@/features/generation/components/ImageModal";
 import { determineFileName } from "@/lib/utils";
@@ -21,6 +22,7 @@ export function EventImageGallery({
   onDownload,
 }: EventImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const { toast } = useToast();
 
   const handleDownload = async (image: EventImageData) => {
     if (onDownload) {
@@ -77,7 +79,11 @@ export function EventImageGallery({
       });
     } catch (error) {
       console.error("ダウンロードエラー:", error);
-      alert(error instanceof Error ? error.message : "画像のダウンロードに失敗しました");
+      toast({
+        variant: "destructive",
+        title: "ダウンロードエラー",
+        description: error instanceof Error ? error.message : "画像のダウンロードに失敗しました",
+      });
     }
   };
 
