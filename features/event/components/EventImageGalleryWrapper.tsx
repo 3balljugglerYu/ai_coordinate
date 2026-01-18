@@ -1,8 +1,7 @@
 import { EventImageGalleryClient } from "./EventImageGalleryClient";
-import type { EventImageData } from "../types";
 import { getEventImagesServer } from "../lib/server-api";
-import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import { EVENT_PAGE_SIZE } from "../lib/constants";
+import { convertGeneratedImageRecordsToEventImageData } from "../lib/utils";
 
 /**
  * サーバーコンポーネント: イベント画像一覧の初期データを取得
@@ -12,21 +11,7 @@ export async function EventImageGalleryWrapper() {
     const records = await getEventImagesServer(EVENT_PAGE_SIZE, 0);
 
     // GeneratedImageRecord -> EventImageData 変換
-    const initialImages: EventImageData[] = records
-      .map((record) => {
-        if (!record.id) return null;
-        const imageUrl = getPostThumbUrl({
-          storage_path_thumb: record.storage_path_thumb ?? null,
-          storage_path: record.storage_path ?? null,
-          image_url: record.image_url ?? null,
-        });
-        return {
-          id: record.id,
-          url: imageUrl,
-          is_posted: record.is_posted ?? false,
-        };
-      })
-      .filter((img): img is EventImageData => img !== null);
+    const initialImages = convertGeneratedImageRecordsToEventImageData(records);
 
     return <EventImageGalleryClient initialImages={initialImages} />;
   } catch (error) {

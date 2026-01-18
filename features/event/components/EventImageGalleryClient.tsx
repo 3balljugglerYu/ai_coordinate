@@ -5,9 +5,8 @@ import { useInView } from "react-intersection-observer";
 import { EventImageGallery } from "./EventImageGallery";
 import type { EventImageData } from "../types";
 import { getEventImages } from "../lib/database";
-import type { GeneratedImageRecord } from "@/features/generation/lib/database";
-import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import { EVENT_PAGE_SIZE } from "../lib/constants";
+import { convertGeneratedImageRecordsToEventImageData } from "../lib/utils";
 
 interface EventImageGalleryClientProps {
   initialImages: EventImageData[];
@@ -61,23 +60,7 @@ export function EventImageGalleryClient({ initialImages }: EventImageGalleryClie
         const records = await getEventImages(EVENT_PAGE_SIZE, offset);
 
         // GeneratedImageRecord -> EventImageData 変換
-        // getPostThumbUrl()を使用してサムネイルURLを取得
-        const converted: EventImageData[] = records
-          .map((record) => {
-            if (!record.id) return null;
-            // getPostThumbUrlを使用してサムネイルURLを取得
-            const imageUrl = getPostThumbUrl({
-              storage_path_thumb: record.storage_path_thumb ?? null,
-              storage_path: record.storage_path ?? null,
-              image_url: record.image_url ?? null,
-            });
-            return {
-              id: record.id,
-              url: imageUrl,
-              is_posted: record.is_posted ?? false,
-            } as EventImageData;
-          })
-          .filter((img): img is EventImageData => img !== null);
+        const converted = convertGeneratedImageRecordsToEventImageData(records);
 
         setImages((prev) => {
           const existingIds = new Set(prev.map((img) => img.id));
