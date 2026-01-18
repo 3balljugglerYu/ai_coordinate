@@ -15,10 +15,12 @@ export default async function EventDetailPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              着せ替えお試し用素材
+              着せ替えフリー素材
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              こちらに掲載しているイラストは、Perstaで着せ替えを試すために、自由にダウンロードして利用できる素材ページです。お好きな画像をダウンロードして、ぜひ着せ替えをお試しください！
+              Perstaで着せ替えを試せるイラスト素材です。画像はダウンロードしてご利用ください。
+              <br />
+              ※モバイル端末では画像を長押しすると保存できます。
             </p>
           </div>
 
