@@ -5,6 +5,7 @@ import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/feature
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
+import { getPercoinCost } from "@/features/generation/lib/model-config";
 
 /**
  * 非同期画像生成ジョブ投入API
@@ -145,6 +146,36 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    }
+
+    // 1枚分のペルコイン残高チェック
+    const percoinCost = getPercoinCost(model || 'gemini-2.5-flash-image');
+    
+    // 現在の残高を取得
+    const { data: creditData, error: creditError } = await supabase
+      .from("user_credits")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (creditError) {
+      console.error("Failed to fetch user credits:", creditError);
+      return NextResponse.json(
+        { error: "ペルコイン残高の取得に失敗しました" },
+        { status: 500 }
+      );
+    }
+
+    const currentBalance = creditData?.balance ?? 0;
+
+    // 残高チェック
+    if (currentBalance < percoinCost) {
+      return NextResponse.json(
+        {
+          error: `ペルコイン残高が不足しています。生成には${percoinCost}ペルコイン必要ですが、現在の残高は${currentBalance}ペルコインです。`,
+        },
+        { status: 400 }
+      );
     }
 
     // image_jobsテーブルにレコード作成

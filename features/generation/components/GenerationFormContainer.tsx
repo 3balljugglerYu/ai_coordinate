@@ -11,6 +11,8 @@ import {
   getGenerationStatus,
   type AsyncGenerationStatus,
 } from "../lib/async-api";
+import { getPercoinCost } from "../lib/model-config";
+import { fetchPercoinBalance } from "@/features/credits/lib/api";
 
 interface GenerationFormContainerProps {}
 
@@ -271,6 +273,23 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
     try {
       const userId = await getCurrentUserId();
+      
+      // 全体の必要ペルコイン数を計算
+      const percoinCost = getPercoinCost(data.model);
+      const requiredPercoins = data.count * percoinCost;
+      
+      // ペルコイン残高を取得
+      const { balance } = await fetchPercoinBalance();
+      
+      // 残高チェック
+      if (balance < requiredPercoins) {
+        setError(
+          `ペルコイン残高が不足しています。生成には${requiredPercoins}ペルコイン必要ですが、現在の残高は${balance}ペルコインです。`
+        );
+        setIsGenerating(false);
+        return;
+      }
+      
       const jobIds: string[] = [];
       let completed = 0;
 

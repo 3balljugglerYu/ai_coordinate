@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { CreditCard, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PercoinTransactions } from "./PercoinTransactions";
 import {
+  getPercoinBalance,
   getPercoinTransactions,
   type PercoinTransaction,
 } from "../lib/api";
@@ -23,6 +24,19 @@ export function PercoinPageContent({
   const [percoinBalance, setPercoinBalance] = useState(initialBalance);
   const [transactions, setTransactions] = useState(initialTransactions);
 
+  const refreshAll = useCallback(async () => {
+    try {
+      const [balance, percoinTransactions] = await Promise.all([
+        getPercoinBalance(),
+        getPercoinTransactions(),
+      ]);
+      setPercoinBalance(balance);
+      setTransactions(percoinTransactions);
+    } catch (err) {
+      console.error("Failed to refresh percoin info:", err);
+    }
+  }, []);
+
   const refreshTransactions = async () => {
     try {
       const percoinTransactions = await getPercoinTransactions();
@@ -31,6 +45,11 @@ export function PercoinPageContent({
       console.error("Failed to refresh percoin info:", err);
     }
   };
+
+  // ページ遷移時・マウント時にデータを再フェッチ（/my-page/creditsに遷移した際に最新データを取得）
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
 
   // 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト
   // 購入完了時のバランス更新ロジック（将来の復活用に保持）

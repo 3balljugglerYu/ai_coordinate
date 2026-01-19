@@ -82,6 +82,101 @@ function extractImageSize(model: GeminiModel): "1K" | "2K" | "4K" | null {
 }
 
 /**
+ * モデル名からペルコインコストを取得
+ */
+function getPercoinCost(model: string | null): number {
+  const normalized = normalizeModelName(model);
+  const costs: Record<string, number> = {
+    'gemini-2.5-flash-image': 20,
+    'gemini-3-pro-image-1k': 50,
+    'gemini-3-pro-image-2k': 80,
+    'gemini-3-pro-image-4k': 100,
+  };
+  return costs[normalized] ?? 20;
+}
+
+/**
+ * ペルコイン減算処理
+ */
+async function deductPercoinsFromGeneration(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  generationId: string,
+  percoinAmount: number
+): Promise<void> {
+  try {
+    // 1. アカウントを取得または作成
+    const { data: account, error: accountError } = await supabase
+      .from("user_credits")
+      .select("id, balance")
+      .eq("user_id", userId)
+      .maybeSingle();
+    
+    if (accountError) {
+      throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
+    }
+    
+    let accountId: string;
+    let currentBalance: number;
+    
+    if (account) {
+      accountId = account.id;
+      currentBalance = account.balance;
+    } else {
+      // アカウントが存在しない場合は作成
+      const { data: created, error: insertError } = await supabase
+        .from("user_credits")
+        .insert({ user_id: userId, balance: 0 })
+        .select("id, balance")
+        .single();
+      
+      if (insertError || !created) {
+        throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
+      }
+      
+      accountId = created.id;
+      currentBalance = created.balance;
+    }
+    
+    // 2. 残高チェック
+    const newBalance = currentBalance - percoinAmount;
+    if (newBalance < 0) {
+      throw new Error(`ペルコイン残高が不足しています（現在: ${currentBalance}, 必要: ${percoinAmount}）`);
+    }
+    
+    // 3. 残高を更新
+    const { error: updateError } = await supabase
+      .from("user_credits")
+      .update({ balance: newBalance })
+      .eq("id", accountId);
+    
+    if (updateError) {
+      throw new Error(`ペルコイン残高の更新に失敗しました: ${updateError.message}`);
+    }
+    
+    // 4. 取引履歴を記録
+    const { error: transactionError } = await supabase
+      .from("credit_transactions")
+      .insert({
+        user_id: userId,
+        amount: -percoinAmount,
+        transaction_type: "consumption",
+        related_generation_id: generationId,
+        metadata: { reason: "image_generation", source: "edge_function" },
+      });
+    
+    if (transactionError) {
+      // 取引履歴の保存に失敗しても、残高は既に更新されているため、ログに記録のみ
+      console.error("Failed to record credit transaction:", transactionError);
+    }
+  } catch (error) {
+    // エラーをログに記録して再throw
+    console.error("Error deducting percoins:", error);
+    throw error;
+  }
+}
+
+/**
  * 背景変更の指示文を生成
  */
 function getBackgroundDirective(shouldChangeBackground: boolean): string {
@@ -650,6 +745,21 @@ Deno.serve(async (req: Request) => {
           if (successUpdateError) {
             console.error("Failed to update job status to succeeded:", successUpdateError);
             throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
+          }
+
+          // ペルコイン減算処理
+          try {
+            const percoinCost = getPercoinCost(job.model);
+            await deductPercoinsFromGeneration(
+              supabase,
+              job.user_id,
+              imageRecord.id,
+              percoinCost
+            );
+          } catch (deductError) {
+            // ペルコイン減算に失敗しても、画像生成自体は成功しているため、ログに記録して処理を継続
+            console.error("Failed to deduct percoins after image generation:", deductError);
+            // エラーをログに記録するが、処理は継続（画像は既に生成・保存されているため）
           }
 
           // メッセージを削除（成功時）
