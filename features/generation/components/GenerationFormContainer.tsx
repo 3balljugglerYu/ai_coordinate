@@ -120,6 +120,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                   }
                   refreshTimeoutRef.current = setTimeout(() => {
                     router.refresh();
+                    // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+                    window.dispatchEvent(new CustomEvent('generation-complete'));
                   }, 500);
                 } else if (status.status === "failed") {
                   setCompletedCount((prev) => prev + 1);
@@ -127,6 +129,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                     const errorMsg = status.errorMessage || "画像生成に失敗しました";
                     return prev ? `${prev}; ${errorMsg}` : errorMsg;
                   });
+                  // 失敗時もイベントを発火（返金処理が実行される可能性があるため）
+                  window.dispatchEvent(new CustomEvent('generation-complete'));
                 }
                 return status;
               })
@@ -219,6 +223,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             refreshTimeoutRef.current = null;
           }
           router.refresh();
+          // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+          window.dispatchEvent(new CustomEvent('generation-complete'));
         } else {
           // 未完了ジョブがなく、完了済みジョブのみがある場合
           // 状態をリセットして、表示をクリア
@@ -332,6 +338,10 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             }
             refreshTimeoutRef.current = setTimeout(() => {
               router.refresh();
+              // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+              if (status.status === "succeeded" || status.status === "failed") {
+                window.dispatchEvent(new CustomEvent('generation-complete'));
+              }
             }, 500);
           },
         });
@@ -448,6 +458,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         refreshTimeoutRef.current = null;
       }
       router.refresh();
+      // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+      window.dispatchEvent(new CustomEvent('generation-complete'));
     } catch (err) {
       setError(err instanceof Error ? err.message : "画像の生成に失敗しました");
     } finally {

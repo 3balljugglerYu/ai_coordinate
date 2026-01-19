@@ -51,6 +51,24 @@ export function PercoinPageContent({
     refreshAll();
   }, [refreshAll]);
 
+  // 画像生成完了時に取引履歴を更新
+  useEffect(() => {
+    const handleGenerationComplete = () => {
+      // 画像生成が完了したら、少し遅延してから取引履歴を更新
+      // Edge Functionで取引履歴が保存されるまで少し時間がかかるため
+      setTimeout(() => {
+        refreshAll();
+      }, 2000); // 2秒後に更新
+    };
+
+    // カスタムイベントをリッスン
+    window.addEventListener('generation-complete', handleGenerationComplete);
+
+    return () => {
+      window.removeEventListener('generation-complete', handleGenerationComplete);
+    };
+  }, [refreshAll]);
+
   // 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト
   // 購入完了時のバランス更新ロジック（将来の復活用に保持）
   // const handlePurchaseCompleted = async (balance: number) => {
