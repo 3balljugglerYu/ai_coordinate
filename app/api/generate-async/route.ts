@@ -152,21 +152,24 @@ export async function POST(request: NextRequest) {
     const percoinCost = getPercoinCost(model || 'gemini-2.5-flash-image');
     
     // 現在の残高を取得
+    // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
     const { data: creditData, error: creditError } = await supabase
       .from("user_credits")
       .select("balance")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .single();
 
     if (creditError) {
       console.error("Failed to fetch user credits:", creditError);
+      // レコードが存在しない場合は、データ不整合の可能性があるためエラーを返す
+      // （新規ユーザーの場合はEdge Functionでレコードを作成する）
       return NextResponse.json(
         { error: "ペルコイン残高の取得に失敗しました" },
         { status: 500 }
       );
     }
 
-    const currentBalance = creditData?.balance ?? 0;
+    const currentBalance = creditData.balance;
 
     // 残高チェック
     if (currentBalance < percoinCost) {
