@@ -82,6 +82,235 @@ function extractImageSize(model: GeminiModel): "1K" | "2K" | "4K" | null {
 }
 
 /**
+ * モデル名からペルコインコストを取得
+ */
+function getPercoinCost(model: string | null): number {
+  const normalized = normalizeModelName(model);
+  const costs: Record<string, number> = {
+    'gemini-2.5-flash-image': 20,
+    'gemini-3-pro-image-1k': 50,
+    'gemini-3-pro-image-2k': 80,
+    'gemini-3-pro-image-4k': 100,
+  };
+  return costs[normalized] ?? 20;
+}
+
+/**
+ * ペルコイン減算処理
+ */
+async function deductPercoinsFromGeneration(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  generationId: string,
+  percoinAmount: number
+): Promise<void> {
+  try {
+    console.log(`[Percoin Deduction] Starting deduction for user ${userId}, job ${generationId}, amount ${percoinAmount}`);
+    
+    // 1. アカウントを取得
+    // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
+    const { data: account, error: accountError } = await supabase
+      .from("user_credits")
+      .select("id, balance")
+      .eq("user_id", userId)
+      .single();
+    
+    let accountId: string;
+    let currentBalance: number;
+    
+    if (accountError) {
+      // レコードが存在しない場合（PGRST116）は新規作成
+      // それ以外のエラー（複数レコードなど）はデータ整合性の問題として扱う
+      if (accountError.code === 'PGRST116') {
+        // アカウントが存在しない場合は作成
+        const { data: created, error: insertError } = await supabase
+          .from("user_credits")
+          .insert({ user_id: userId, balance: 0 })
+          .select("id, balance")
+          .single();
+        
+        if (insertError || !created) {
+          throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
+        }
+        
+        accountId = created.id;
+        currentBalance = created.balance;
+      } else {
+        // 複数レコードが存在する場合など、データ整合性の問題
+        throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
+      }
+    } else {
+      accountId = account.id;
+      currentBalance = account.balance;
+    }
+    
+    console.log(`[Percoin Deduction] Current balance: ${currentBalance}, amount to deduct: ${percoinAmount}`);
+    
+    // 2. 残高チェック
+    const newBalance = currentBalance - percoinAmount;
+    if (newBalance < 0) {
+      throw new Error(`ペルコイン残高が不足しています（現在: ${currentBalance}, 必要: ${percoinAmount}）`);
+    }
+    
+    // 3. 残高を更新
+    const { error: updateError } = await supabase
+      .from("user_credits")
+      .update({ balance: newBalance })
+      .eq("id", accountId);
+    
+    if (updateError) {
+      throw new Error(`ペルコイン残高の更新に失敗しました: ${updateError.message}`);
+    }
+    
+    console.log(`[Percoin Deduction] Balance updated to: ${newBalance}`);
+    
+    // 4. 取引履歴を記録
+    // 注意: related_generation_idは外部キー制約でgenerated_images.idを参照しているため、
+    // 画像生成前はNULLでINSERTし、画像生成成功後にgenerated_images.idに更新する
+    const { error: transactionError } = await supabase
+      .from("credit_transactions")
+      .insert({
+        user_id: userId,
+        amount: -percoinAmount,
+        transaction_type: "consumption",
+        related_generation_id: null, // 画像生成前はNULL（外部キー制約のため）
+        metadata: { 
+          reason: "image_generation", 
+          source: "edge_function",
+          job_id: generationId, // ジョブIDをmetadataに保存（後で更新するため）
+        },
+      });
+    
+    if (transactionError) {
+      // 取引履歴の保存に失敗しても、残高は既に更新されているため、ログに記録のみ
+      console.error("[Percoin Deduction] Failed to record credit transaction:", transactionError);
+      throw new Error(`取引履歴の保存に失敗しました: ${transactionError.message}`);
+    } else {
+      console.log(`[Percoin Deduction] Transaction recorded successfully`);
+    }
+  } catch (error) {
+    // エラーをログに記録して再throw
+    console.error("[Percoin Deduction] Error deducting percoins:", error);
+    throw error;
+  }
+}
+
+/**
+ * ペルコイン返金処理（冪等性保証付き）
+ */
+async function refundPercoinsFromGeneration(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  jobId: string,
+  percoinAmount: number
+): Promise<void> {
+  try {
+    console.log(`[Percoin Refund] Starting refund for user ${userId}, job ${jobId}, amount ${percoinAmount}`);
+    
+    // 1. 既に返金済みかチェック（冪等性保証）
+    const { data: existingRefund, error: checkError } = await supabase
+      .from("credit_transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("transaction_type", "refund")
+      .eq("metadata->>job_id", jobId) // metadata内のjob_idで検索
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error("[Percoin Refund] Failed to check existing refund:", checkError);
+      // チェックエラーでも処理を続行（重複返金のリスクはあるが、返金自体は重要）
+    }
+    
+    if (existingRefund) {
+      // 既に返金済みの場合は何もしない
+      console.log(`[Percoin Refund] Refund already processed for job ${jobId}, skipping`);
+      return;
+    }
+    
+    // 2. アカウントを取得
+    // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
+    // 返金処理では、既にペルコイン減算が行われている前提なので、レコードは存在するはず
+    const { data: account, error: accountError } = await supabase
+      .from("user_credits")
+      .select("id, balance")
+      .eq("user_id", userId)
+      .single();
+    
+    let accountId: string;
+    let currentBalance: number;
+    
+    if (accountError) {
+      // レコードが存在しない場合（PGRST116）は新規作成（エッジケース対応）
+      // それ以外のエラー（複数レコードなど）はデータ整合性の問題として扱う
+      if (accountError.code === 'PGRST116') {
+        // アカウントが存在しない場合は作成（通常は存在するはず）
+        const { data: created, error: insertError } = await supabase
+          .from("user_credits")
+          .insert({ user_id: userId, balance: 0 })
+          .select("id, balance")
+          .single();
+        
+        if (insertError || !created) {
+          throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
+        }
+        
+        accountId = created.id;
+        currentBalance = created.balance;
+      } else {
+        // 複数レコードが存在する場合など、データ整合性の問題
+        throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
+      }
+    } else {
+      accountId = account.id;
+      currentBalance = account.balance;
+    }
+    
+    console.log(`[Percoin Refund] Current balance: ${currentBalance}, amount to refund: ${percoinAmount}`);
+    
+    // 3. 残高を増加
+    const newBalance = currentBalance + percoinAmount;
+    const { error: updateError } = await supabase
+      .from("user_credits")
+      .update({ balance: newBalance })
+      .eq("id", accountId);
+    
+    if (updateError) {
+      throw new Error(`ペルコイン残高の更新に失敗しました: ${updateError.message}`);
+    }
+    
+    console.log(`[Percoin Refund] Balance updated to: ${newBalance}`);
+    
+    // 4. 取引履歴を記録（transaction_type: "refund"）
+    // 注意: related_generation_idは外部キー制約でgenerated_images.idを参照しているため、
+    // 返金時はNULLでINSERTする（画像生成が失敗したため、generated_images.idは存在しない）
+    const { error: transactionError } = await supabase
+      .from("credit_transactions")
+      .insert({
+        user_id: userId,
+        amount: percoinAmount,
+        transaction_type: "refund",
+        related_generation_id: null, // 画像生成失敗のためNULL
+        metadata: { 
+          reason: "image_generation_failed", 
+          source: "edge_function",
+          job_id: jobId, // ジョブIDをmetadataに保存
+        },
+      });
+    
+    if (transactionError) {
+      // 取引履歴の保存に失敗しても、残高は既に更新されているため、ログに記録のみ
+      console.error("[Percoin Refund] Failed to record credit transaction:", transactionError);
+    } else {
+      console.log(`[Percoin Refund] Transaction recorded successfully`);
+    }
+  } catch (error) {
+    // エラーをログに記録して再throw
+    console.error("[Percoin Refund] Error refunding percoins:", error);
+    throw error;
+  }
+}
+
+/**
  * 背景変更の指示文を生成
  */
 function getBackgroundDirective(shouldChangeBackground: boolean): string {
@@ -108,7 +337,7 @@ function sanitizeUserInput(input: string): string {
   sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
   
   // 禁止語句パターンの検出（基本的なプロンプトインジェクション試行）
-  // 注意: より厳密な検出が必要な場合は、より詳細なパターンマッチングを追加
+  // より多くのインジェクションパターンを検出
   const injectionPatterns = [
     /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
     /forget\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
@@ -116,17 +345,28 @@ function sanitizeUserInput(input: string): string {
     /disregard\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
     /system\s*:?\s*(prompt|instruction|command)/i,
     /<\|(system|user|assistant)\|>/i,
+    // 追加パターン
+    /you\s+are\s+(now|a|an)\s+/i,
+    /act\s+as\s+(if\s+)?(you\s+are\s+)?/i,
+    /pretend\s+(to\s+be|that\s+you\s+are)/i,
+    /roleplay\s+as/i,
+    /simulate\s+(being|that)/i,
+    /\[(system|user|assistant|instruction|prompt)\]/i,
+    /\{system\}/i,
+    /\{user\}/i,
+    /\{assistant\}/i,
+    /#\s*(system|user|assistant|instruction|prompt)/i,
+    /\/\*\s*(system|user|assistant|instruction|prompt)/i,
   ];
   
+  // 禁止パターンが検出された場合はエラーをthrow（汎用的なエラーメッセージ）
   for (const pattern of injectionPatterns) {
     if (pattern.test(sanitized)) {
-      // 禁止パターンが検出された場合は、その部分を除去または警告を出して空文字列に置換
-      // 本番環境では、より厳密な処理（エラーレスポンスなど）を検討
-      sanitized = sanitized.replace(pattern, '');
+      throw new Error("無効な入力です。入力内容を確認してください。");
     }
   }
   
-  // 再度トリム（禁止パターン除去後の余分な空白を削除）
+  // 再度トリム（処理後の余分な空白を削除）
   sanitized = sanitized.trim();
   
   return sanitized;
@@ -143,9 +383,9 @@ function buildPrompt(
   // ユーザー入力をサニタイズ
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
   
-  // サニタイズ後の入力が空の場合は、エラーとするかデフォルト値を返す
+  // サニタイズ後の入力が空の場合は、エラーとする
   if (!sanitizedDescription || sanitizedDescription.length === 0) {
-    throw new Error("Invalid outfit description: empty or contains only prohibited content");
+    throw new Error("無効な入力です。入力内容を確認してください。");
   }
   
   const backgroundDirective = getBackgroundDirective(shouldChangeBackground);
@@ -406,6 +646,36 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
+        // ===== ペルコイン減算処理（画像生成前に実行） =====
+        try {
+          const percoinCost = getPercoinCost(job.model);
+          await deductPercoinsFromGeneration(
+            supabase,
+            job.user_id,
+            jobId, // 一時的にjobIdを使用（画像生成後にgenerated_images.idに更新）
+            percoinCost
+          );
+        } catch (deductError) {
+          // ペルコイン減算失敗時はジョブを失敗としてマーク
+          console.error("[Job Processing] Failed to deduct percoins:", deductError);
+          await supabase
+            .from("image_jobs")
+            .update({
+              status: "failed",
+              error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", jobId);
+          
+          // メッセージを削除
+          await supabase.rpc("pgmq_delete", {
+            p_queue_name: QUEUE_NAME,
+            p_msg_id: msgId,
+          });
+          
+          continue; // 次のメッセージを処理
+        }
+
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         try {
           // モデル名の正規化
@@ -652,6 +922,28 @@ Deno.serve(async (req: Request) => {
             throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
           }
 
+          // credit_transactionsのrelated_generation_idを更新
+          // 画像生成前にNULLで保存していた取引履歴を、generated_images.idに更新
+          try {
+            const { error: updateTransactionError } = await supabase
+              .from("credit_transactions")
+              .update({ related_generation_id: imageRecord.id })
+              .eq("user_id", job.user_id)
+              .is("related_generation_id", null) // NULLの取引履歴を検索
+              .eq("transaction_type", "consumption")
+              .eq("metadata->>job_id", jobId); // metadata内のjob_idで特定
+            
+            if (updateTransactionError) {
+              console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
+              // エラーはログに記録するが、処理は継続
+            } else {
+              console.log(`[Job Success] Updated credit transaction related_generation_id to ${imageRecord.id}`);
+            }
+          } catch (updateTransactionError) {
+            console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
+            // エラーはログに記録するが、処理は継続
+          }
+
           // メッセージを削除（成功時）
           await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
@@ -661,8 +953,23 @@ Deno.serve(async (req: Request) => {
           processedCount++;
         } catch (error) {
           // ===== フェーズ4-4: 失敗時の処理 =====
-          console.error("Generation error:", error);
+          console.error("[Job Processing] Generation error:", error);
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+          // 既にペルコインを減算している場合は返金
+          try {
+            const percoinCost = getPercoinCost(job.model);
+            await refundPercoinsFromGeneration(
+              supabase,
+              job.user_id,
+              jobId,
+              percoinCost
+            );
+            console.log(`[Job Processing] Refunded ${percoinCost} percoins for failed job ${jobId}`);
+          } catch (refundError) {
+            // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
+            console.error("[Job Processing] Failed to refund percoins after generation failure:", refundError);
+          }
 
           // 現在のジョブのattemptsを取得（更新前に取得する必要がある）
           const { data: currentJob, error: jobFetchError } = await supabase

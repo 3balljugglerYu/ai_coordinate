@@ -247,11 +247,12 @@ export const getPercoinBalanceServer = cache(async (userId: string): Promise<num
 
 /**
  * ペルコイン取引履歴を取得（サーバーサイド）
+ * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
-export async function getPercoinTransactionsServer(
+export const getPercoinTransactionsServer = cache(async (
   userId: string,
   limit = 10
-): Promise<PercoinTransaction[]> {
+): Promise<PercoinTransaction[]> => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -267,4 +268,4 @@ export async function getPercoinTransactionsServer(
   }
 
   return data || [];
-}
+});

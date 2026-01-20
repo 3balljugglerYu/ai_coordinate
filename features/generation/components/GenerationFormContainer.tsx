@@ -11,6 +11,8 @@ import {
   getGenerationStatus,
   type AsyncGenerationStatus,
 } from "../lib/async-api";
+import { getPercoinCost } from "../lib/model-config";
+import { fetchPercoinBalance } from "@/features/credits/lib/api";
 
 interface GenerationFormContainerProps {}
 
@@ -118,6 +120,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                   }
                   refreshTimeoutRef.current = setTimeout(() => {
                     router.refresh();
+                    // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+                    window.dispatchEvent(new CustomEvent('generation-complete'));
                   }, 500);
                 } else if (status.status === "failed") {
                   setCompletedCount((prev) => prev + 1);
@@ -125,6 +129,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                     const errorMsg = status.errorMessage || "画像生成に失敗しました";
                     return prev ? `${prev}; ${errorMsg}` : errorMsg;
                   });
+                  // 失敗時もイベントを発火（返金処理が実行される可能性があるため）
+                  window.dispatchEvent(new CustomEvent('generation-complete'));
                 }
                 return status;
               })
@@ -217,6 +223,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             refreshTimeoutRef.current = null;
           }
           router.refresh();
+          // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+          window.dispatchEvent(new CustomEvent('generation-complete'));
         } else {
           // 未完了ジョブがなく、完了済みジョブのみがある場合
           // 状態をリセットして、表示をクリア
@@ -271,6 +279,23 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
     try {
       const userId = await getCurrentUserId();
+      
+      // 全体の必要ペルコイン数を計算
+      const percoinCost = getPercoinCost(data.model);
+      const requiredPercoins = data.count * percoinCost;
+      
+      // ペルコイン残高を取得
+      const { balance } = await fetchPercoinBalance();
+      
+      // 残高チェック
+      if (balance < requiredPercoins) {
+        setError(
+          `ペルコイン残高が不足しています。生成には${requiredPercoins}ペルコイン必要ですが、現在の残高は${balance}ペルコインです。`
+        );
+        setIsGenerating(false);
+        return;
+      }
+      
       const jobIds: string[] = [];
       let completed = 0;
 
@@ -313,6 +338,10 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             }
             refreshTimeoutRef.current = setTimeout(() => {
               router.refresh();
+              // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+              if (status.status === "succeeded" || status.status === "failed") {
+                window.dispatchEvent(new CustomEvent('generation-complete'));
+              }
             }, 500);
           },
         });
@@ -429,6 +458,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         refreshTimeoutRef.current = null;
       }
       router.refresh();
+      // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+      window.dispatchEvent(new CustomEvent('generation-complete'));
     } catch (err) {
       setError(err instanceof Error ? err.message : "画像の生成に失敗しました");
     } finally {
