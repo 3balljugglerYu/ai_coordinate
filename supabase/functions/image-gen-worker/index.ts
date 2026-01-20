@@ -107,37 +107,41 @@ async function deductPercoinsFromGeneration(
   try {
     console.log(`[Percoin Deduction] Starting deduction for user ${userId}, job ${generationId}, amount ${percoinAmount}`);
     
-    // 1. アカウントを取得または作成
+    // 1. アカウントを取得
+    // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
     const { data: account, error: accountError } = await supabase
       .from("user_credits")
       .select("id, balance")
       .eq("user_id", userId)
-      .maybeSingle();
-    
-    if (accountError) {
-      throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
-    }
+      .single();
     
     let accountId: string;
     let currentBalance: number;
     
-    if (account) {
+    if (accountError) {
+      // レコードが存在しない場合（PGRST116）は新規作成
+      // それ以外のエラー（複数レコードなど）はデータ整合性の問題として扱う
+      if (accountError.code === 'PGRST116') {
+        // アカウントが存在しない場合は作成
+        const { data: created, error: insertError } = await supabase
+          .from("user_credits")
+          .insert({ user_id: userId, balance: 0 })
+          .select("id, balance")
+          .single();
+        
+        if (insertError || !created) {
+          throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
+        }
+        
+        accountId = created.id;
+        currentBalance = created.balance;
+      } else {
+        // 複数レコードが存在する場合など、データ整合性の問題
+        throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
+      }
+    } else {
       accountId = account.id;
       currentBalance = account.balance;
-    } else {
-      // アカウントが存在しない場合は作成
-      const { data: created, error: insertError } = await supabase
-        .from("user_credits")
-        .insert({ user_id: userId, balance: 0 })
-        .select("id, balance")
-        .single();
-      
-      if (insertError || !created) {
-        throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
-      }
-      
-      accountId = created.id;
-      currentBalance = created.balance;
     }
     
     console.log(`[Percoin Deduction] Current balance: ${currentBalance}, amount to deduct: ${percoinAmount}`);
@@ -224,40 +228,51 @@ async function refundPercoinsFromGeneration(
     }
     
     // 2. アカウントを取得
+    // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
+    // 返金処理では、既にペルコイン減算が行われている前提なので、レコードは存在するはず
     const { data: account, error: accountError } = await supabase
       .from("user_credits")
       .select("id, balance")
       .eq("user_id", userId)
-      .maybeSingle();
+      .single();
+    
+    let accountId: string;
+    let currentBalance: number;
     
     if (accountError) {
-      throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
-    }
-    
-    if (!account) {
-      // アカウントが存在しない場合は作成（通常は存在するはず）
-      const { data: created, error: insertError } = await supabase
-        .from("user_credits")
-        .insert({ user_id: userId, balance: 0 })
-        .select("id, balance")
-        .single();
-      
-      if (insertError || !created) {
-        throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
+      // レコードが存在しない場合（PGRST116）は新規作成（エッジケース対応）
+      // それ以外のエラー（複数レコードなど）はデータ整合性の問題として扱う
+      if (accountError.code === 'PGRST116') {
+        // アカウントが存在しない場合は作成（通常は存在するはず）
+        const { data: created, error: insertError } = await supabase
+          .from("user_credits")
+          .insert({ user_id: userId, balance: 0 })
+          .select("id, balance")
+          .single();
+        
+        if (insertError || !created) {
+          throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
+        }
+        
+        accountId = created.id;
+        currentBalance = created.balance;
+      } else {
+        // 複数レコードが存在する場合など、データ整合性の問題
+        throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
       }
-      
-      account.id = created.id;
-      account.balance = created.balance;
+    } else {
+      accountId = account.id;
+      currentBalance = account.balance;
     }
     
-    console.log(`[Percoin Refund] Current balance: ${account.balance}, amount to refund: ${percoinAmount}`);
+    console.log(`[Percoin Refund] Current balance: ${currentBalance}, amount to refund: ${percoinAmount}`);
     
     // 3. 残高を増加
-    const newBalance = account.balance + percoinAmount;
+    const newBalance = currentBalance + percoinAmount;
     const { error: updateError } = await supabase
       .from("user_credits")
       .update({ balance: newBalance })
-      .eq("id", account.id);
+      .eq("id", accountId);
     
     if (updateError) {
       throw new Error(`ペルコイン残高の更新に失敗しました: ${updateError.message}`);
