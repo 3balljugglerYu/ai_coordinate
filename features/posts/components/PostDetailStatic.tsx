@@ -60,7 +60,7 @@ export function PostDetailStatic({
   const { toast } = useToast();
 
   // imageUrlはpropsから取得（重複定義を避けるため）
-  const displayImageUrl = (imageUrl || getPostImageUrl(post) || undefined) as string | undefined;
+  const displayImageUrl = imageUrl || getPostImageUrl(post) || undefined;
   const displayName =
     post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
