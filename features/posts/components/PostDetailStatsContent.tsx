@@ -17,7 +17,7 @@ interface PostDetailStatsContentProps {
 
 /**
  * 投稿詳細画面の統計情報コンテンツコンポーネント（クライアントコンポーネント）
- * PostDetailStaticからcloneElementでonPostClickを受け取るために必要
+ * PostDetailStatic内でSuspenseと共に使用するためのラッパーです。
  */
 export function PostDetailStatsContent({
   postId,
