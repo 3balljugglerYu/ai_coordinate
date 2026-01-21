@@ -6,7 +6,7 @@ import { getPost } from "@/features/posts/lib/server-api";
 import { getPostImageUrl, getImageAspectRatio } from "@/features/posts/lib/utils";
 import { isCrawler, isPrefetchRequest } from "@/lib/utils";
 import { PostDetailStatic } from "@/features/posts/components/PostDetailStatic";
-import { PostDetailStats } from "@/features/posts/components/PostDetailStats";
+import { PostDetailStatsContent } from "@/features/posts/components/PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "@/features/posts/components/PostDetailStatsSkeleton";
 import { CommentSection } from "@/features/posts/components/CommentSection";
 import { CommentSectionSkeleton } from "@/features/posts/components/CommentSectionSkeleton";
@@ -117,41 +117,6 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   return metadata;
 }
 
-async function PostDetailStatsContent({
-  postId,
-  initialLikeCount,
-  initialCommentCount,
-  initialViewCount,
-  currentUserId,
-  ownerId,
-  isPosted,
-  caption,
-  imageUrl,
-}: {
-  postId: string;
-  initialLikeCount: number;
-  initialCommentCount: number;
-  initialViewCount: number;
-  currentUserId?: string | null;
-  ownerId?: string | null;
-  isPosted: boolean;
-  caption?: string | null;
-  imageUrl?: string | null;
-}) {
-  return (
-    <PostDetailStats
-      postId={postId}
-      initialLikeCount={initialLikeCount}
-      initialCommentCount={initialCommentCount}
-      initialViewCount={initialViewCount}
-      currentUserId={currentUserId}
-      ownerId={ownerId}
-      isPosted={isPosted}
-      caption={caption}
-      imageUrl={imageUrl}
-    />
-  );
-}
 
 async function CommentSectionContent({
   postId,
@@ -231,22 +196,13 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
         post={post}
         currentUserId={currentUserId}
         imageAspectRatio={imageAspectRatio}
-      >
-        {/* 動的コンテンツ: いいね・コメント・ビュー数（ユーザー情報セクション内に配置） */}
-        <Suspense fallback={<PostDetailStatsSkeleton />}>
-          <PostDetailStatsContent
-            postId={post.id || ""}
-            initialLikeCount={post.like_count || 0}
-            initialCommentCount={post.comment_count || 0}
-            initialViewCount={post.view_count || 0}
-            currentUserId={currentUserId}
-            ownerId={post.user_id}
-            isPosted={post.is_posted || false}
-            caption={post.caption}
-            imageUrl={imageUrl}
-          />
-        </Suspense>
-      </PostDetailStatic>
+        postId={post.id || ""}
+        initialLikeCount={post.like_count || 0}
+        initialCommentCount={post.comment_count || 0}
+        initialViewCount={post.view_count || 0}
+        ownerId={post.user_id}
+        imageUrl={imageUrl}
+      />
 
       {/* 動的コンテンツ: コメントセクション */}
       <Suspense fallback={<CommentSectionSkeleton />}>

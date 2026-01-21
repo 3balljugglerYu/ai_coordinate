@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, lazy, Suspense } from "react";
+import { PostDetailStatsContent } from "./PostDetailStatsContent";
+import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
 import Image from "next/image";
 import Link from "next/link";
 import { User, MoreHorizontal, Edit, Trash2, Share2, Copy, Check } from "lucide-react";
@@ -27,7 +29,12 @@ interface PostDetailStaticProps {
   post: Post;
   currentUserId?: string | null;
   imageAspectRatio: "portrait" | "landscape" | null;
-  children?: React.ReactNode;
+  postId: string;
+  initialLikeCount: number;
+  initialCommentCount: number;
+  initialViewCount: number;
+  ownerId?: string | null;
+  imageUrl?: string | null;
 }
 
 /**
@@ -38,7 +45,12 @@ export function PostDetailStatic({
   post,
   currentUserId,
   imageAspectRatio,
-  children,
+  postId,
+  initialLikeCount,
+  initialCommentCount,
+  initialViewCount,
+  ownerId,
+  imageUrl,
 }: PostDetailStaticProps) {
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [isPromptCopied, setIsPromptCopied] = useState(false);
@@ -47,7 +59,8 @@ export function PostDetailStatic({
   const [postModalOpen, setPostModalOpen] = useState(false);
   const { toast } = useToast();
 
-  const imageUrl = getPostImageUrl(post);
+  // imageUrlはpropsから取得（重複定義を避けるため）
+  const displayImageUrl = imageUrl || getPostImageUrl(post) || undefined;
   const displayName =
     post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
@@ -125,9 +138,9 @@ export function PostDetailStatic({
             }`}
             onClick={() => setIsFullscreenOpen(true)}
           >
-            {imageUrl ? (
+            {displayImageUrl ? (
               <Image
-                src={imageUrl}
+                src={displayImageUrl}
                 alt={post.caption || "投稿画像"}
                 width={1200}
                 height={1200}
@@ -215,10 +228,6 @@ export function PostDetailStatic({
                 <DropdownMenuContent align="end">
                   {!post.is_posted ? (
                     <>
-                      <DropdownMenuItem onClick={() => setPostModalOpen(true)}>
-                        <Share2 className="mr-2 h-4 w-4" />
-                        投稿する
-                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setDeleteDialogOpen(true)}
                         className="text-destructive"
@@ -249,7 +258,20 @@ export function PostDetailStatic({
 
           {/* 2行目: いいね、コメント、ビュー（動的コンテンツのスロット） */}
           <div className="mt-2">
-            {children}
+            <Suspense fallback={<PostDetailStatsSkeleton />}>
+              <PostDetailStatsContent
+                postId={postId}
+                initialLikeCount={initialLikeCount}
+                initialCommentCount={initialCommentCount}
+                initialViewCount={initialViewCount}
+                currentUserId={currentUserId}
+                ownerId={ownerId}
+                isPosted={post.is_posted || false}
+                caption={post.caption}
+                imageUrl={imageUrl}
+                onPostClick={!post.is_posted ? () => setPostModalOpen(true) : undefined}
+              />
+            </Suspense>
           </div>
         </div>
 
@@ -294,10 +316,10 @@ export function PostDetailStatic({
       </div>
 
       {/* 全画面表示 */}
-      {imageUrl && (
+      {displayImageUrl && (
         <Suspense fallback={null}>
           <ImageFullscreen
-            imageUrl={imageUrl}
+            imageUrl={displayImageUrl}
             alt={post.caption || "投稿画像"}
             isOpen={isFullscreenOpen}
             onClose={() => setIsFullscreenOpen(false)}
@@ -321,7 +343,7 @@ export function PostDetailStatic({
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           imageId={post.id}
-          imageUrl={imageUrl}
+          imageUrl={displayImageUrl}
           isPosted={post.is_posted}
         />
       )}
