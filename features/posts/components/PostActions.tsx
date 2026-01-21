@@ -1,5 +1,7 @@
 "use client";
 
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { LikeButton } from "./LikeButton";
 import { ShareButton } from "./ShareButton";
 import { DownloadButton } from "./DownloadButton";
@@ -16,6 +18,7 @@ interface PostActionsProps {
   isPosted?: boolean;
   caption?: string | null;
   imageUrl?: string | null;
+  onPostClick?: () => void;
 }
 
 /**
@@ -32,6 +35,7 @@ export function PostActions({
   isPosted = true,
   caption,
   imageUrl,
+  onPostClick,
 }: PostActionsProps) {
   const isOwner = currentUserId && ownerId ? currentUserId === ownerId : false;
 
@@ -61,6 +65,18 @@ export function PostActions({
           />
         )}
       </div>
+      {/* 未投稿画像の場合のみ「＋ 投稿」ボタンを表示 */}
+      {!isPosted && isOwner && onPostClick && (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={onPostClick}
+          className="ml-auto"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="ml-1">投稿</span>
+        </Button>
+      )}
     </div>
   );
 }

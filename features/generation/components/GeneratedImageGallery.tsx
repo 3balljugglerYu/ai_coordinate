@@ -183,6 +183,7 @@ export function GeneratedImageGallery({
                         }}
                       >
                         <Plus className="h-4 w-4" />
+                        <span className="ml-1">投稿</span>
                       </Button>
                     )}
                     <Button

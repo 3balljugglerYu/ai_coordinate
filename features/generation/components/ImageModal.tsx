@@ -210,19 +210,20 @@ export function ImageModal({
         <div className="text-sm font-medium text-white">
           {currentIndex + 1} / {images.length}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {onPost && !currentImage.is_posted && (
             <Button
-              size="icon"
+              size="sm"
               variant="ghost"
               className="text-white hover:bg-white/20"
               onClick={() => onPost(currentImage)}
             >
               <Plus className="h-5 w-5" />
+              <span className="ml-1">投稿</span>
             </Button>
           )}
           <Button
-            size="icon"
+            size="sm"
             variant="ghost"
             className="text-white hover:bg-white/20"
             onClick={() => {
@@ -236,7 +237,7 @@ export function ImageModal({
             <Download className="h-5 w-5" />
           </Button>
           <Button
-            size="icon"
+            size="sm"
             variant="ghost"
             className="text-white hover:bg-white/20"
             onClick={onClose}

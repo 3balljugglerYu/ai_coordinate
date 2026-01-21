@@ -1,38 +1,38 @@
 "use client";
 
-import { PostActions } from "./PostActions";
+import { PostDetailStats } from "./PostDetailStats";
 
-interface PostDetailStatsProps {
+interface PostDetailStatsContentProps {
   postId: string;
   initialLikeCount: number;
   initialCommentCount: number;
   initialViewCount: number;
   currentUserId?: string | null;
   ownerId?: string | null;
-  isPosted?: boolean;
+  isPosted: boolean;
   caption?: string | null;
   imageUrl?: string | null;
   onPostClick?: () => void;
 }
 
 /**
- * 投稿詳細画面の統計情報コンポーネント（動的コンテンツ）
- * いいね数、コメント数、閲覧数など、リアルタイムで更新される可能性があるコンテンツ
+ * 投稿詳細画面の統計情報コンテンツコンポーネント（クライアントコンポーネント）
+ * PostDetailStaticからcloneElementでonPostClickを受け取るために必要
  */
-export function PostDetailStats({
+export function PostDetailStatsContent({
   postId,
   initialLikeCount,
   initialCommentCount,
   initialViewCount,
   currentUserId,
   ownerId,
-  isPosted = true,
+  isPosted,
   caption,
   imageUrl,
   onPostClick,
-}: PostDetailStatsProps) {
+}: PostDetailStatsContentProps) {
   return (
-    <PostActions
+    <PostDetailStats
       postId={postId}
       initialLikeCount={initialLikeCount}
       initialCommentCount={initialCommentCount}
