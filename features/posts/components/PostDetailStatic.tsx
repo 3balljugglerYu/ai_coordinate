@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, lazy, Suspense, cloneElement, isValidElement, type ReactElement } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { PostDetailStatsContent } from "./PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
 import Image from "next/image";
