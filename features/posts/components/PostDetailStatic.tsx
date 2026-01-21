@@ -29,7 +29,6 @@ interface PostDetailStaticProps {
   post: Post;
   currentUserId?: string | null;
   imageAspectRatio: "portrait" | "landscape" | null;
-  children?: React.ReactNode;
   postId: string;
   initialLikeCount: number;
   initialCommentCount: number;
@@ -46,7 +45,6 @@ export function PostDetailStatic({
   post,
   currentUserId,
   imageAspectRatio,
-  children,
   postId,
   initialLikeCount,
   initialCommentCount,
@@ -274,7 +272,6 @@ export function PostDetailStatic({
                 onPostClick={!post.is_posted ? () => setPostModalOpen(true) : undefined}
               />
             </Suspense>
-            {children}
           </div>
         </div>
 
