@@ -40,10 +40,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .filter((post) => post.id) // idが存在するもののみ
         .map((post) => ({
           url: `${baseUrl}/posts/${post.id}`,
-          lastModified: post.posted_at
-            ? new Date(post.posted_at)
-            : post.updated_at
+          lastModified: post.updated_at
             ? new Date(post.updated_at)
+            : post.posted_at
+            ? new Date(post.posted_at)
             : new Date(),
           changeFrequency: "weekly" as const,
           priority: 0.6,
