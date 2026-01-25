@@ -70,13 +70,6 @@ export default async function Home() {
             着てみたいも、なりたいも。AIスタイリングプラットフォーム
           </p>
         </div>
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Persta（ペルスタ）とは</h2>
-          <p className="text-base leading-relaxed mb-4">
-            Persta（ペルスタ）は、AIで生成したファッションコーデ画像やキャラクター画像をシェアできるプラットフォームです。
-            着てみたいも、なりたいも。AIスタイリングプラットフォームとして、みんなの作品を見て、インスピレーションを得ることができます。
-          </p>
-        </div>
         <HomeBannerList />
         <Suspense fallback={<PostListSkeleton />}>
           <PostListContent />
