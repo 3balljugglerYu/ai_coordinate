@@ -8,11 +8,6 @@ import { StreakChecker } from "@/components/StreakChecker";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 
 export const metadata: Metadata = {
-  title: "Persta.AI (ペルスタ) - 着てみたいも、なりたいも。AIスタイリングプラットフォーム",
-  description: "Persta（ペルスタ）は、AIでファッション・キャラクターなどのビジュアル表現を自由にスタイリングできるプラットフォームです。persta.aiで、みんなの作品を見て、インスピレーションを得ましょう。",
-  alternates: {
-    canonical: getSiteUrl() || "https://persta.ai",
-  },
   openGraph: {
     title: "Persta.AI (ペルスタ)",
     description: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
