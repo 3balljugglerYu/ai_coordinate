@@ -301,11 +301,16 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
 }
 
 /**
- * OAuthサインイン（Google, GitHub, Twitter）
+ * OAuthプロバイダーの型定義
+ */
+export type OAuthProvider = "google" | "github" | "x";
+
+/**
+ * OAuthサインイン（Google, GitHub, X/Twitter）
  * @param referralCode 紹介コード（オプション）
  */
 export async function signInWithOAuth(
-  provider: "google" | "github" | "twitter",
+  provider: OAuthProvider,
   redirectTo?: string,
   referralCode?: string
 ) {

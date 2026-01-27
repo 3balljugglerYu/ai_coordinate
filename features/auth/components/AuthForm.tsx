@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { signIn, signUp, signInWithOAuth } from "../lib/auth-client";
+import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 
 interface AuthFormProps {
@@ -91,7 +91,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     }
   };
 
-  const handleOAuthSignIn = async (provider: "google" | "github" | "twitter") => {
+  const handleOAuthSignIn = async (provider: OAuthProvider) => {
     try {
       setError(null);
       setIsLoading(true);
@@ -284,13 +284,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             Googleで続ける
           </Button>
 
-          {/* Twitter/X */}
-          {/*
+          {/* X (Twitter) */}
           <Button
             type="button"
             variant="outline"
             className="w-full"
-            onClick={() => handleOAuthSignIn("twitter")}
+            onClick={() => handleOAuthSignIn("x")}
             disabled={isLoading}
           >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -298,7 +297,6 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             </svg>
             X (Twitter)で続ける
           </Button>
-          */}
 
           {/* GitHub */}
           {/*
