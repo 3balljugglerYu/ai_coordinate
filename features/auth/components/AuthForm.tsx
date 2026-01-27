@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { signIn, signUp, signInWithOAuth } from "../lib/auth-client";
+import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 
 interface AuthFormProps {
@@ -91,7 +91,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     }
   };
 
-  const handleOAuthSignIn = async (provider: "google" | "github" | "x") => {
+  const handleOAuthSignIn = async (provider: OAuthProvider) => {
     try {
       setError(null);
       setIsLoading(true);
