@@ -99,7 +99,19 @@ export async function GET(request: Request) {
     // 新規ユーザーの場合、user_creditsテーブルが自動的に作成される（トリガーで実装済み）
 
     // 成功: nextパラメータで指定された場所にリダイレクト
-    return NextResponse.redirect(`${requestUrl.origin}${next}`);
+    // x-forwarded-hostヘッダーを確認（ロードバランサー経由の場合）
+    const forwardedHost = request.headers.get("x-forwarded-host");
+    const isLocalEnv = process.env.NODE_ENV === "development";
+    
+    if (isLocalEnv) {
+      // 開発環境ではoriginをそのまま使用
+      return NextResponse.redirect(`${requestUrl.origin}${next}`);
+    } else if (forwardedHost) {
+      // 本番環境でロードバランサー経由の場合
+      return NextResponse.redirect(`https://${forwardedHost}${next}`);
+    } else {
+      return NextResponse.redirect(`${requestUrl.origin}${next}`);
+    }
   }
 
   // コードがない場合はエラー
