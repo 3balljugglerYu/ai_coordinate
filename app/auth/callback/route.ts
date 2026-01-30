@@ -15,6 +15,9 @@ export async function GET(request: Request) {
   const referralCode = requestUrl.searchParams.get("ref");
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
+  // X OAuth識別用パラメータ（state 500文字制限回避のため）
+  // 参考: https://github.com/supabase/auth/issues/2340
+  const isXOAuth = requestUrl.searchParams.get("p") === "x";
 
   // エラーハンドリング
   if (error) {
@@ -98,19 +101,22 @@ export async function GET(request: Request) {
 
     // 新規ユーザーの場合、user_creditsテーブルが自動的に作成される（トリガーで実装済み）
 
-    // 成功: nextパラメータで指定された場所にリダイレクト
+    // 成功: リダイレクト先を決定
     // x-forwarded-hostヘッダーを確認（ロードバランサー経由の場合）
     const forwardedHost = request.headers.get("x-forwarded-host");
     const isLocalEnv = process.env.NODE_ENV === "development";
     
+    // X OAuthの場合は /auth/x-complete へリダイレクト（localStorageの値を処理するため）
+    const redirectPath = isXOAuth ? "/auth/x-complete" : next;
+    
     if (isLocalEnv) {
       // 開発環境ではoriginをそのまま使用
-      return NextResponse.redirect(`${requestUrl.origin}${next}`);
+      return NextResponse.redirect(`${requestUrl.origin}${redirectPath}`);
     } else if (forwardedHost) {
       // 本番環境でロードバランサー経由の場合
-      return NextResponse.redirect(`https://${forwardedHost}${next}`);
+      return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`);
     } else {
-      return NextResponse.redirect(`${requestUrl.origin}${next}`);
+      return NextResponse.redirect(`${requestUrl.origin}${redirectPath}`);
     }
   }
 

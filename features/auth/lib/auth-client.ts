@@ -308,6 +308,10 @@ export type OAuthProvider = "google" | "github" | "x";
 /**
  * OAuthサインイン（Google, GitHub, X/Twitter）
  * @param referralCode 紹介コード（オプション）
+ * 
+ * 注意: X（Twitter）OAuthの場合、Supabase Authのstateパラメータが
+ * X.comの500文字制限に近づくため、redirectToを最小化しています。
+ * 参考: https://github.com/supabase/auth/issues/2340
  */
 export async function signInWithOAuth(
   provider: OAuthProvider,
@@ -318,6 +322,39 @@ export async function signInWithOAuth(
 
   // サイトURLの取得（環境変数優先、開発環境はlocalhost）
   const siteUrl = getSiteUrlForClient();
+  
+  // X（Twitter）の場合、stateパラメータの500文字制限を回避するため
+  // redirectToを最小化（紹介コードとnextはlocalStorageに保存）
+  // 参考: https://github.com/supabase/auth/issues/2340
+  if (provider === "x") {
+    // リダイレクト先と紹介コードをlocalStorageに保存
+    if (typeof window !== "undefined") {
+      if (redirectTo && redirectTo !== "/") {
+        localStorage.setItem("x_oauth_redirect", redirectTo);
+      }
+      if (referralCode) {
+        localStorage.setItem("x_oauth_referral", referralCode);
+      }
+    }
+    
+    // 最小限のコールバックURLを使用
+    // p=x パラメータでX OAuthを識別し、コールバック後に /auth/x-complete へリダイレクト
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${siteUrl}/auth/callback?p=x`,
+      },
+    });
+
+    if (error) {
+      const translatedMessage = translateAuthError(error.message);
+      throw new Error(translatedMessage);
+    }
+
+    return data;
+  }
+
+  // Google/GitHubの場合は従来通り
   const callbackUrl = new URL(`${siteUrl}/auth/callback`);
   callbackUrl.searchParams.set("next", redirectTo || "/");
   
