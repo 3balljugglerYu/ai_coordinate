@@ -284,7 +284,8 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             Googleで続ける
           </Button>
 
-          {/* X (Twitter) */}
+          {/* X (Twitter) - 一時的に非表示 */}
+          {/*
           <Button
             type="button"
             variant="outline"
@@ -297,6 +298,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             </svg>
             X (Twitter)で続ける
           </Button>
+          */}
 
           {/* GitHub */}
           {/*
