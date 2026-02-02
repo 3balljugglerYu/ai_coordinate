@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -56,7 +55,7 @@ export default function ThanksPage() {
             <div className="flex items-center justify-center gap-2 text-xl font-bold text-slate-800 md:text-2xl">
               <Crown className="h-6 w-6 fill-yellow-500 text-yellow-600" />
               <h2 className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                Platinum Supporters
+                Platinum Supporter
               </h2>
             </div>
             
@@ -68,27 +67,18 @@ export default function ThanksPage() {
                 >
                   <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,45%,#D8EBFF,55%,transparent)] bg-[length:250%_100%] animate-shine opacity-60 mix-blend-overlay pointer-events-none" />
                   <CardHeader className="relative z-10 p-6">
-                    <div className="flex flex-col items-center gap-4 text-center md:flex-row md:text-left">
-                      <Avatar className="h-20 w-20 border-2 border-white shadow-sm">
-                        <AvatarImage src={supporter.perstaProfile?.avatarUrl} />
-                        <AvatarFallback className="bg-slate-100 text-2xl text-slate-500">
-                          {supporter.name.slice(0, 1)}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 space-y-2">
-                        <div className="flex flex-col items-center gap-2 md:flex-row md:items-start md:gap-3">
-                          <span className="text-2xl font-bold text-slate-900">
-                            {supporter.name}
-                          </span>
-                        </div>
-                        
-                        {supporter.message && (
-                          <p className="mt-2 font-medium leading-relaxed text-slate-700">
-                            {supporter.message}
-                          </p>
-                        )}
+                    <div className="space-y-2 text-center md:text-left">
+                      <div className="flex flex-col items-center gap-2 md:flex-row md:items-start md:gap-3">
+                        <span className="text-2xl font-bold text-slate-900">
+                          {supporter.name}
+                        </span>
                       </div>
+                      
+                      {supporter.message && (
+                        <p className="mt-2 font-medium leading-relaxed text-slate-700">
+                          {supporter.message}
+                        </p>
+                      )}
                     </div>
                   </CardHeader>
                 </Card>
@@ -112,15 +102,8 @@ export default function ThanksPage() {
                   className="relative overflow-hidden border border-[#8F7A28] bg-[linear-gradient(135deg,#FFF1B8_0%,#E6C766_30%,#D4AF37_55%,#A68A2A_75%,#FFF1B8_100%)] shadow-sm transition-shadow hover:shadow-md"
                 >
                   <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,45%,#FFF6D5,55%,transparent)] bg-[length:250%_100%] animate-shine opacity-50 mix-blend-overlay pointer-events-none" />
-                  <CardContent className="relative z-10 flex items-center gap-4 p-4">
-                    <Avatar className="h-12 w-12 border border-amber-200 shadow-sm">
-                      <AvatarImage src={supporter.perstaProfile?.avatarUrl} />
-                      <AvatarFallback className="bg-amber-100/50 text-amber-700">
-                        {supporter.name.slice(0, 1)}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex-1 min-w-0 space-y-2">
+                  <CardContent className="relative z-10 p-4">
+                    <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-bold text-slate-900 drop-shadow-sm truncate">
                           {supporter.name}
@@ -213,13 +196,13 @@ export default function ThanksPage() {
             {/* Friend Supporters (1,000円) - Visible & Small */}
             {friendSupporters.length > 0 && (
               <div className="space-y-1">
-                <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-400">
+                <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
                   <Heart className="h-3 w-3 text-pink-300" />
                   <span>Friend Supporters</span>
                 </div>
-                <Card className="border-none shadow-none bg-transparent">
+                <Card>
                   <CardContent className="p-2">
-                    <div className="grid grid-cols-4 gap-2 text-center md:grid-cols-5 lg:grid-cols-5 text-xs text-slate-400">
+                    <div className="grid grid-cols-4 gap-2 text-center md:grid-cols-5 lg:grid-cols-5 text-xs text-slate-600">
                       {friendSupporters.map((supporter) => (
                         <div key={supporter.id} className="truncate px-1">
                           {supporter.name}
