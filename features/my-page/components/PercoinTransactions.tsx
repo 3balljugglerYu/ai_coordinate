@@ -5,7 +5,10 @@ interface PercoinTransactionsProps {
   transactions: PercoinTransaction[];
 }
 
-function formatTransactionType(type: string) {
+function formatTransactionType(
+  type: string,
+  metadata?: Record<string, unknown> | null
+) {
   switch (type) {
     case "purchase":
       return "購入";
@@ -21,6 +24,12 @@ function formatTransactionType(type: string) {
       return "連続ログインボーナス";
     case "referral":
       return "紹介ボーナス";
+    case "admin_bonus":
+      // 付与理由があればそれを表示名として使用
+      if (metadata && typeof metadata.reason === "string" && metadata.reason.trim()) {
+        return metadata.reason;
+      }
+      return "運営者からのボーナス"; // フォールバック
     default:
       return type;
   }
@@ -41,12 +50,12 @@ export function PercoinTransactions({ transactions }: PercoinTransactionsProps) 
         <ul className="space-y-3">
           {transactions.map((tx) => (
             <li key={tx.id} className="rounded border border-gray-200 p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-900">
-                  {formatTransactionType(tx.transaction_type)}
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-medium text-gray-900 break-words min-w-0 flex-1">
+                  {formatTransactionType(tx.transaction_type, tx.metadata)}
                 </span>
                 <span
-                  className={`text-sm font-semibold ${
+                  className={`text-sm font-semibold shrink-0 whitespace-nowrap ${
                     tx.amount >= 0 ? "text-green-600" : "text-red-600"
                   }`}
                 >

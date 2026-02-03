@@ -35,6 +35,9 @@ const envSchema = {
 
   // Event
   NEXT_PUBLIC_EVENT_USER_ID: process.env.NEXT_PUBLIC_EVENT_USER_ID,
+
+  // Admin
+  ADMIN_USER_IDS: process.env.ADMIN_USER_IDS,
 } as const;
 
 /**
@@ -93,6 +96,7 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_SITE_URL || "",
     NEXT_PUBLIC_EVENT_USER_ID:
       envSchema.NEXT_PUBLIC_EVENT_USER_ID || "",
+    ADMIN_USER_IDS: envSchema.ADMIN_USER_IDS || "",
   };
 }
 
@@ -148,4 +152,20 @@ export function getSiteUrlForClient(): string {
 export function isStripeTestMode(): boolean {
   const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   return publishableKey.startsWith("pk_test_");
+}
+
+/**
+ * 管理者ユーザーIDリストを取得
+ * 環境変数ADMIN_USER_IDS（カンマ区切り）を配列に変換
+ * 空文字列の場合は空配列を返す
+ */
+export function getAdminUserIds(): string[] {
+  const adminUserIds = env.ADMIN_USER_IDS;
+  if (!adminUserIds || adminUserIds.trim() === "") {
+    return [];
+  }
+  return adminUserIds
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
 }
