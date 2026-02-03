@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     // RPC関数呼び出し
     const supabase = await createClient();
-    const { data, error: rpcError } = await supabase.rpc(
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
       "grant_admin_bonus",
       {
         p_user_id: user_id.trim(),
@@ -100,9 +100,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 付与されたペルコイン数を確認
-    if (typeof data !== "number" || data !== amount) {
-      console.error("[Admin Bonus] Unexpected RPC return value:", data);
+    // RPC関数の返り値を確認（TABLE型なので配列で返る）
+    if (
+      !Array.isArray(rpcResult) ||
+      rpcResult.length === 0 ||
+      !rpcResult[0] ||
+      typeof rpcResult[0].amount_granted !== "number" ||
+      rpcResult[0].amount_granted !== amount
+    ) {
+      console.error("[Admin Bonus] Unexpected RPC return value:", rpcResult);
       return NextResponse.json(
         {
           error: "ボーナス付与の処理に失敗しました",
@@ -110,6 +116,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const { amount_granted, transaction_id } = rpcResult[0];
 
     // 新しい残高を取得
     const { data: creditData, error: creditError } = await supabase
@@ -120,34 +128,12 @@ export async function POST(request: NextRequest) {
 
     if (creditError || !creditData) {
       console.error("[Admin Bonus] Failed to fetch new balance:", creditError);
-      // 残高取得に失敗しても、RPC関数は成功しているので、付与されたペルコイン数だけ返す
+      // 残高取得に失敗しても、RPC関数は成功しているので、付与されたペルコイン数とトランザクションIDだけ返す
       return NextResponse.json({
         success: true,
-        amount_granted: data,
+        amount_granted,
+        transaction_id,
         message: "ボーナスが付与されました（残高の取得に失敗しました）",
-      });
-    }
-
-    // 最新のトランザクションIDを取得
-    const { data: transactionData, error: transactionError } = await supabase
-      .from("credit_transactions")
-      .select("id")
-      .eq("user_id", user_id.trim())
-      .eq("transaction_type", "admin_bonus")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (transactionError || !transactionData) {
-      console.error(
-        "[Admin Bonus] Failed to fetch transaction ID:",
-        transactionError
-      );
-      // トランザクションID取得に失敗しても、RPC関数は成功しているので、残高だけ返す
-      return NextResponse.json({
-        success: true,
-        new_balance: creditData.balance,
-        amount_granted: data,
       });
     }
 
@@ -155,8 +141,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       new_balance: creditData.balance,
-      transaction_id: transactionData.id,
-      amount_granted: data,
+      transaction_id,
+      amount_granted,
     });
   } catch (error) {
     console.error("[Admin Bonus] Exception:", error);
