@@ -9,7 +9,8 @@ export type PercoinTransactionType =
   | "signup_bonus"
   | "daily_post"
   | "streak"
-  | "referral";
+  | "referral"
+  | "admin_bonus";
 
 export type PercoinTransactionMetadata = Record<string, unknown>;
 
