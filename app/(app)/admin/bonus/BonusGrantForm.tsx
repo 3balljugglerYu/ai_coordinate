@@ -17,6 +17,7 @@ interface GrantBonusResponse {
   new_balance?: number;
   transaction_id?: string;
   amount_granted?: number;
+  message?: string;
   error?: string;
 }
 
@@ -92,9 +93,21 @@ export function BonusGrantForm() {
       }
 
       if (data.success) {
+        // APIがmessageを返している場合はそれを優先使用
+        // そうでない場合は、new_balanceの有無に応じてメッセージを構築
+        let description: string;
+        if (data.message) {
+          description = data.message;
+        } else {
+          description = `${data.amount_granted}ペルコインを付与しました。`;
+          if (data.new_balance !== undefined) {
+            description += ` 新しい残高: ${data.new_balance}ペルコイン`;
+          }
+        }
+
         toast({
           title: "ボーナス付与成功",
-          description: `${data.amount_granted}ペルコインを付与しました。新しい残高: ${data.new_balance}ペルコイン`,
+          description,
           variant: "default",
         });
 
