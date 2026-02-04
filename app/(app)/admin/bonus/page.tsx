@@ -13,14 +13,6 @@ export default async function AdminBonusPage() {
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 
-  // デバッグ用ログ（本番環境でも確認可能）
-  if (process.env.NODE_ENV === "production") {
-    console.log("[Admin Bonus Page] User ID:", user?.id);
-    console.log("[Admin Bonus Page] Admin User IDs:", adminUserIds);
-    console.log("[Admin Bonus Page] ADMIN_USER_IDS env var:", process.env.ADMIN_USER_IDS);
-    console.log("[Admin Bonus Page] Is admin:", adminUserIds.includes(user?.id || ""));
-  }
-
   if (!user || adminUserIds.length === 0 || !adminUserIds.includes(user.id)) {
     redirect("/");
   }
