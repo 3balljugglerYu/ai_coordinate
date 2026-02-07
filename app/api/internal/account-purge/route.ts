@@ -29,12 +29,19 @@ function getAvatarStoragePath(avatarUrl: string | null): string | null {
     const pathname = decodeURIComponent(url.pathname);
     const match = pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/generated-images\/(.+)$/);
     if (!match) {
+      console.warn("Could not parse avatar storage path from URL (pattern mismatch)", {
+        avatarUrl,
+      });
       return null;
     }
 
     const path = match[1].split("?")[0];
     return path.startsWith("avatars/") ? path : null;
-  } catch {
+  } catch (error) {
+    console.warn("Could not parse avatar storage path from URL (invalid URL)", {
+      avatarUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
@@ -47,7 +54,10 @@ function chunkArray<T>(arr: T[], chunkSize: number): T[][] {
   return chunks;
 }
 
-async function collectStoragePathsForUser(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string[]> {
+async function collectStoragePathsForUser(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<{ paths: string[]; avatarPathParseFailed: boolean }> {
   const paths = new Set<string>();
 
   const [generatedResult, stockResult, profileResult] = await Promise.all([
@@ -86,12 +96,18 @@ async function collectStoragePathsForUser(admin: ReturnType<typeof createAdminCl
     if (row.storage_path) paths.add(row.storage_path);
   }
 
-  const avatarPath = getAvatarStoragePath(profileResult.data?.avatar_url ?? null);
+  const avatarUrl = profileResult.data?.avatar_url ?? null;
+  const avatarPath = getAvatarStoragePath(avatarUrl);
+  const avatarPathParseFailed =
+    Boolean(avatarUrl) && avatarPath === null;
   if (avatarPath) {
     paths.add(avatarPath);
   }
 
-  return [...paths];
+  return {
+    paths: [...paths],
+    avatarPathParseFailed,
+  };
 }
 
 function parseLimitFromRequest(request: NextRequest, method: "GET" | "POST"): Promise<number> | number {
@@ -152,6 +168,7 @@ async function runPurge(request: NextRequest, method: "GET" | "POST") {
 
     const failures: Array<{ user_id: string; reason: string }> = [];
     let deletedCount = 0;
+    let avatarPathParseFailedCount = 0;
 
     for (const candidate of candidates ?? []) {
       const userId = candidate.user_id as string;
@@ -162,7 +179,13 @@ async function runPurge(request: NextRequest, method: "GET" | "POST") {
           throw new Error("email is missing");
         }
 
-        const paths = await collectStoragePathsForUser(admin, userId);
+        const { paths, avatarPathParseFailed } = await collectStoragePathsForUser(
+          admin,
+          userId
+        );
+        if (avatarPathParseFailed) {
+          avatarPathParseFailedCount += 1;
+        }
         if (paths.length > 0) {
           for (const chunk of chunkArray(paths, STORAGE_REMOVE_CHUNK_SIZE)) {
             const { error: storageError } = await admin.storage
@@ -204,6 +227,7 @@ async function runPurge(request: NextRequest, method: "GET" | "POST") {
       processed_count: (candidates ?? []).length,
       deleted_count: deletedCount,
       failed_count: failures.length,
+      avatar_path_parse_failed_count: avatarPathParseFailedCount,
       failures,
     });
   } catch (error) {
