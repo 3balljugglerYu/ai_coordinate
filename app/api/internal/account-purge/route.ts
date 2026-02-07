@@ -94,7 +94,23 @@ async function collectStoragePathsForUser(admin: ReturnType<typeof createAdminCl
   return [...paths];
 }
 
-export async function POST(request: NextRequest) {
+function parseLimitFromRequest(request: NextRequest, method: "GET" | "POST"): Promise<number> | number {
+  if (method === "GET") {
+    const limitParam = request.nextUrl.searchParams.get("limit");
+    const limit = Number(limitParam ?? 100);
+    return Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
+  }
+
+  return request
+    .json()
+    .then((body) => {
+      const limit = Number(body?.limit ?? 100);
+      return Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
+    })
+    .catch(() => 100);
+}
+
+async function runPurge(request: NextRequest, method: "GET" | "POST") {
   try {
     const allowedSecrets = [
       env.ACCOUNT_PURGE_CRON_SECRET,
@@ -117,9 +133,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json().catch(() => ({}));
-    const limit = Number(body?.limit ?? 100);
-    const normalizedLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
+    const normalizedLimit = await parseLimitFromRequest(request, method);
 
     const admin = createAdminClient();
 
@@ -199,4 +213,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return runPurge(request, "GET");
+}
+
+export async function POST(request: NextRequest) {
+  return runPurge(request, "POST");
 }
