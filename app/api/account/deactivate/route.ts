@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+
+const deactivateRequestSchema = z.object({
+  confirmText: z.string(),
+  password: z.string().optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
-    const body = await request.json().catch(() => null);
-    const confirmText = body?.confirmText as string | undefined;
-    const password = body?.password as string | undefined;
+    const rawBody = await request.json().catch(() => null);
+    const parsed = deactivateRequestSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "無効なリクエストです" },
+        { status: 400 }
+      );
+    }
+
+    const { confirmText, password } = parsed.data;
 
     if (confirmText !== "DELETE") {
       return NextResponse.json(
