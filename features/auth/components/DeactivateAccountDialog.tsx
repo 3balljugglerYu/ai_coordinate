@@ -119,10 +119,6 @@ export function DeactivateAccountDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-            この操作は最終的に取り消せません。削除後は同じメールアドレスで新規登録が可能になります。
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="deactivate-confirm-text">確認のため DELETE と入力</Label>
             <Input

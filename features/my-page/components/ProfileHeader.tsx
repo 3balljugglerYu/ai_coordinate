@@ -2,12 +2,19 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { User, Edit } from "lucide-react";
+import { User, Edit, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ProfileEditModal } from "./ProfileEditModal";
 import { AvatarUpload } from "./AvatarUpload";
 import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
 import { FollowButton } from "@/features/users/components/FollowButton";
+import { DeactivateAccountDialog } from "@/features/auth/components/DeactivateAccountDialog";
 import type { UserProfile } from "../lib/server-api";
 
 interface ProfileHeaderProps {
@@ -26,6 +33,7 @@ export function ProfileHeader({
   onProfileUpdate,
 }: ProfileHeaderProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(profile);
 
   const displayName =
@@ -46,7 +54,31 @@ export function ProfileHeader({
 
   return (
     <>
-      <div className="mb-6">
+      <div className="relative mb-6">
+        {isOwnProfile && (
+          <div className="absolute right-0 top-0 z-10">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="メニューを開く"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setIsDeactivateDialogOpen(true)}
+                >
+                  アカウント削除
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
         {isOwnProfile ? (
           // 自分のプロフィールの場合: アバターアップロード機能付き
           <>
@@ -122,7 +154,13 @@ export function ProfileHeader({
           onUpdate={handleProfileUpdate}
         />
       )}
+
+      {isOwnProfile && (
+        <DeactivateAccountDialog
+          open={isDeactivateDialogOpen}
+          onOpenChange={setIsDeactivateDialogOpen}
+        />
+      )}
     </>
   );
 }
-
