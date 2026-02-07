@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import type { UserProfile } from "../lib/server-api";
+import { DeactivateAccountDialog } from "@/features/auth/components/DeactivateAccountDialog";
 
 const MAX_NICKNAME_LENGTH = 20;
 const MAX_BIO_LENGTH = 200;
@@ -36,6 +37,7 @@ export function ProfileEditModal({
   const [bio, setBio] = useState(profile.bio || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
 
   // プロフィールが変更されたらフォームを更新
   useEffect(() => {
@@ -190,30 +192,50 @@ export function ProfileEditModal({
             )}
           </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              キャンセル
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                isSubmitting ||
-                !hasChanges ||
-                !isNicknameValid ||
-                !isBioValid
-              }
-            >
-              {isSubmitting ? "保存中..." : "保存"}
-            </Button>
+          <DialogFooter className="flex-col items-stretch gap-3 sm:flex-col sm:justify-start">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                キャンセル
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting ||
+                  !hasChanges ||
+                  !isNicknameValid ||
+                  !isBioValid
+                }
+              >
+                {isSubmitting ? "保存中..." : "保存"}
+              </Button>
+            </div>
+
+            <div className="rounded-md border border-red-200 bg-red-50 p-3">
+              <p className="mb-2 text-xs text-red-800">
+                危険操作: アカウント削除を申請すると30日後に完全削除されます。
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setIsDeactivateDialogOpen(true)}
+                className="w-full"
+              >
+                アカウント削除へ進む
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <DeactivateAccountDialog
+        open={isDeactivateDialogOpen}
+        onOpenChange={setIsDeactivateDialogOpen}
+      />
     </Dialog>
   );
 }
-

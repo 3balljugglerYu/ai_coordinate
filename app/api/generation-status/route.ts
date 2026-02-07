@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const JOB_PROCESSING_TIMEOUT_MS = 6 * 60 * 1000;
 
 /**
  * 画像生成ステータス取得API
@@ -51,6 +54,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Edge Function異常終了などでprocessingが長時間継続するケースを救済
+    if (job.status === "processing") {
+      const startedAt = job.started_at ? new Date(job.started_at).getTime() : 0;
+      const now = Date.now();
+      const elapsed = now - startedAt;
+
+      if (!startedAt || elapsed >= JOB_PROCESSING_TIMEOUT_MS) {
+        const timeoutMessage = "処理がタイムアウトしました。入力画像サイズを下げて再試行してください。";
+        try {
+          const admin = createAdminClient();
+          const { error: timeoutUpdateError } = await admin
+            .from("image_jobs")
+            .update({
+              status: "failed",
+              error_message: timeoutMessage,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", job.id)
+            .eq("user_id", user.id)
+            .eq("status", "processing");
+
+          if (timeoutUpdateError) {
+            console.error("Failed to mark stale job as failed:", timeoutUpdateError);
+          } else {
+            job.status = "failed";
+            job.error_message = timeoutMessage;
+          }
+        } catch (timeoutError) {
+          console.error("Stale job rescue failed:", timeoutError);
+        }
+      }
+    }
+
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
       id: job.id,
@@ -66,4 +102,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

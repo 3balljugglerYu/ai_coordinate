@@ -38,6 +38,10 @@ const envSchema = {
 
   // Admin
   ADMIN_USER_IDS: process.env.ADMIN_USER_IDS,
+
+  // Account deletion / purge
+  ACCOUNT_PURGE_CRON_SECRET: process.env.ACCOUNT_PURGE_CRON_SECRET,
+  ACCOUNT_FORFEITURE_HASH_SALT: process.env.ACCOUNT_FORFEITURE_HASH_SALT,
 } as const;
 
 /**
@@ -97,6 +101,10 @@ function getEnv() {
     NEXT_PUBLIC_EVENT_USER_ID:
       envSchema.NEXT_PUBLIC_EVENT_USER_ID || "",
     ADMIN_USER_IDS: envSchema.ADMIN_USER_IDS || "",
+    ACCOUNT_PURGE_CRON_SECRET:
+      envSchema.ACCOUNT_PURGE_CRON_SECRET || "",
+    ACCOUNT_FORFEITURE_HASH_SALT:
+      envSchema.ACCOUNT_FORFEITURE_HASH_SALT || "",
   };
 }
 

@@ -7,6 +7,8 @@ import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
 
+const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
+
 /**
  * 非同期画像生成ジョブ投入API
  * ジョブを`image_jobs`テーブルに作成し、Supabase Queueにメッセージを送信
@@ -85,6 +87,15 @@ export async function POST(request: NextRequest) {
         let base64Data = sourceImageBase64.replace(/^data:.+;base64,/, "");
         let mimeType = sourceImageMimeType;
         let extension: string;
+
+        // 過大な入力画像を早期に拒否（base64長からデコード後バイト数を推定）
+        const estimatedBytes = Math.floor((base64Data.length * 3) / 4);
+        if (estimatedBytes > MAX_SOURCE_IMAGE_BYTES) {
+          return NextResponse.json(
+            { error: "画像サイズが大きすぎます。10MB以下の画像に圧縮して再試行してください。" },
+            { status: 400 }
+          );
+        }
 
         // HEIC/HEIF形式の場合はJPEGに変換
         if (isHeicImage(sourceImageMimeType)) {

@@ -2,6 +2,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -12,6 +13,7 @@ const QUEUE_NAME = "image_jobs";
 const VISIBILITY_TIMEOUT = 60; // 秒
 const MAX_MESSAGES = 20; // 1回の読み取りで取得する最大メッセージ数
 const STORAGE_BUCKET = "generated-images";
+const PROCESSING_STALE_TIMEOUT_SECONDS = 360; // processing状態がこの秒数を超えたら異常とみなす
 
 // 型定義
 type GenerationType = "coordinate" | "specified_coordinate" | "full_body" | "chibi";
@@ -106,17 +108,38 @@ async function deductPercoinsFromGeneration(
 ): Promise<void> {
   try {
     console.log(`[Percoin Deduction] Starting deduction for user ${userId}, job ${generationId}, amount ${percoinAmount}`);
+
+    // 0. 既に減算済みかチェック（冪等性保証）
+    const { data: existingConsumption, error: checkConsumptionError } = await supabase
+      .from("credit_transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("transaction_type", "consumption")
+      .eq("metadata->>job_id", generationId)
+      .maybeSingle();
+
+    if (checkConsumptionError) {
+      console.error("[Percoin Deduction] Failed to check existing consumption:", checkConsumptionError);
+      // チェック失敗時は処理を継続（減算漏れより二重減算回避を優先）
+    }
+
+    if (existingConsumption) {
+      console.log(`[Percoin Deduction] Consumption already recorded for job ${generationId}, skipping`);
+      return;
+    }
     
     // 1. アカウントを取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
     const { data: account, error: accountError } = await supabase
       .from("user_credits")
-      .select("id, balance")
+      .select("id, balance, paid_balance, promo_balance")
       .eq("user_id", userId)
       .single();
     
     let accountId: string;
     let currentBalance: number;
+    let currentPaidBalance: number;
+    let currentPromoBalance: number;
     
     if (accountError) {
       // レコードが存在しない場合（PGRST116）は新規作成
@@ -125,8 +148,8 @@ async function deductPercoinsFromGeneration(
         // アカウントが存在しない場合は作成
         const { data: created, error: insertError } = await supabase
           .from("user_credits")
-          .insert({ user_id: userId, balance: 0 })
-          .select("id, balance")
+          .insert({ user_id: userId, balance: 0, paid_balance: 0, promo_balance: 0 })
+          .select("id, balance, paid_balance, promo_balance")
           .single();
         
         if (insertError || !created) {
@@ -135,6 +158,8 @@ async function deductPercoinsFromGeneration(
         
         accountId = created.id;
         currentBalance = created.balance;
+        currentPaidBalance = created.paid_balance;
+        currentPromoBalance = created.promo_balance;
       } else {
         // 複数レコードが存在する場合など、データ整合性の問題
         throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
@@ -142,20 +167,30 @@ async function deductPercoinsFromGeneration(
     } else {
       accountId = account.id;
       currentBalance = account.balance;
+      currentPaidBalance = account.paid_balance;
+      currentPromoBalance = account.promo_balance;
     }
     
     console.log(`[Percoin Deduction] Current balance: ${currentBalance}, amount to deduct: ${percoinAmount}`);
     
-    // 2. 残高チェック
-    const newBalance = currentBalance - percoinAmount;
-    if (newBalance < 0) {
+    // 2. 残高チェックと消費内訳算出（無償 -> 有償）
+    const fromPromo = Math.min(currentPromoBalance, percoinAmount);
+    const fromPaid = percoinAmount - fromPromo;
+    if (fromPaid > currentPaidBalance) {
       throw new Error(`ペルコイン残高が不足しています（現在: ${currentBalance}, 必要: ${percoinAmount}）`);
     }
+    const newPromoBalance = currentPromoBalance - fromPromo;
+    const newPaidBalance = currentPaidBalance - fromPaid;
+    const newBalance = newPaidBalance + newPromoBalance;
     
     // 3. 残高を更新
     const { error: updateError } = await supabase
       .from("user_credits")
-      .update({ balance: newBalance })
+      .update({
+        paid_balance: newPaidBalance,
+        promo_balance: newPromoBalance,
+        balance: newBalance,
+      })
       .eq("id", accountId);
     
     if (updateError) {
@@ -178,6 +213,8 @@ async function deductPercoinsFromGeneration(
           reason: "image_generation", 
           source: "edge_function",
           job_id: generationId, // ジョブIDをmetadataに保存（後で更新するため）
+          from_promo: fromPromo,
+          from_paid: fromPaid,
         },
       });
     
@@ -232,12 +269,14 @@ async function refundPercoinsFromGeneration(
     // 返金処理では、既にペルコイン減算が行われている前提なので、レコードは存在するはず
     const { data: account, error: accountError } = await supabase
       .from("user_credits")
-      .select("id, balance")
+      .select("id, balance, paid_balance, promo_balance")
       .eq("user_id", userId)
       .single();
     
     let accountId: string;
     let currentBalance: number;
+    let currentPaidBalance: number;
+    let currentPromoBalance: number;
     
     if (accountError) {
       // レコードが存在しない場合（PGRST116）は新規作成（エッジケース対応）
@@ -246,8 +285,8 @@ async function refundPercoinsFromGeneration(
         // アカウントが存在しない場合は作成（通常は存在するはず）
         const { data: created, error: insertError } = await supabase
           .from("user_credits")
-          .insert({ user_id: userId, balance: 0 })
-          .select("id, balance")
+          .insert({ user_id: userId, balance: 0, paid_balance: 0, promo_balance: 0 })
+          .select("id, balance, paid_balance, promo_balance")
           .single();
         
         if (insertError || !created) {
@@ -256,6 +295,8 @@ async function refundPercoinsFromGeneration(
         
         accountId = created.id;
         currentBalance = created.balance;
+        currentPaidBalance = created.paid_balance;
+        currentPromoBalance = created.promo_balance;
       } else {
         // 複数レコードが存在する場合など、データ整合性の問題
         throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
@@ -263,15 +304,36 @@ async function refundPercoinsFromGeneration(
     } else {
       accountId = account.id;
       currentBalance = account.balance;
+      currentPaidBalance = account.paid_balance;
+      currentPromoBalance = account.promo_balance;
     }
     
     console.log(`[Percoin Refund] Current balance: ${currentBalance}, amount to refund: ${percoinAmount}`);
     
-    // 3. 残高を増加
-    const newBalance = currentBalance + percoinAmount;
+    // 3. 元の消費内訳を参照して返金先を決定（見つからなければ無償に返す）
+    const { data: consumptionTx } = await supabase
+      .from("credit_transactions")
+      .select("metadata")
+      .eq("user_id", userId)
+      .eq("transaction_type", "consumption")
+      .eq("metadata->>job_id", jobId)
+      .maybeSingle();
+
+    const metadata = (consumptionTx?.metadata as { from_promo?: number; from_paid?: number } | null) ?? null;
+    const refundToPromo = Math.max(0, Math.min(percoinAmount, Number(metadata?.from_promo ?? percoinAmount)));
+    const refundToPaid = Math.max(0, percoinAmount - refundToPromo);
+
+    // 4. 残高を増加
+    const newPromoBalance = currentPromoBalance + refundToPromo;
+    const newPaidBalance = currentPaidBalance + refundToPaid;
+    const newBalance = newPromoBalance + newPaidBalance;
     const { error: updateError } = await supabase
       .from("user_credits")
-      .update({ balance: newBalance })
+      .update({
+        paid_balance: newPaidBalance,
+        promo_balance: newPromoBalance,
+        balance: newBalance,
+      })
       .eq("id", accountId);
     
     if (updateError) {
@@ -280,7 +342,7 @@ async function refundPercoinsFromGeneration(
     
     console.log(`[Percoin Refund] Balance updated to: ${newBalance}`);
     
-    // 4. 取引履歴を記録（transaction_type: "refund"）
+    // 5. 取引履歴を記録（transaction_type: "refund"）
     // 注意: related_generation_idは外部キー制約でgenerated_images.idを参照しているため、
     // 返金時はNULLでINSERTする（画像生成が失敗したため、generated_images.idは存在しない）
     const { error: transactionError } = await supabase
@@ -294,6 +356,8 @@ async function refundPercoinsFromGeneration(
           reason: "image_generation_failed", 
           source: "edge_function",
           job_id: jobId, // ジョブIDをmetadataに保存
+          to_promo: refundToPromo,
+          to_paid: refundToPaid,
         },
       });
     
@@ -619,9 +683,74 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        // 冪等性チェック: 既に処理中または完了している場合はスキップ
-        if (job.status === "processing" || job.status === "succeeded") {
-          // メッセージを削除
+        // 冪等性チェック: 既に完了している場合はメッセージを削除してスキップ
+        if (job.status === "succeeded") {
+          await supabase.rpc("pgmq_delete", {
+            p_queue_name: QUEUE_NAME,
+            p_msg_id: msgId,
+          });
+          skippedCount++;
+          continue;
+        }
+
+        // processing中の場合は、スタック判定を行う
+        if (job.status === "processing") {
+          const startedAtMs = job.started_at ? new Date(job.started_at).getTime() : null;
+          const nowMs = Date.now();
+          const elapsedSeconds = startedAtMs ? Math.floor((nowMs - startedAtMs) / 1000) : Number.MAX_SAFE_INTEGER;
+          const isStale = elapsedSeconds >= PROCESSING_STALE_TIMEOUT_SECONDS;
+
+          if (!isStale) {
+            // まだ他のワーカーが処理中の可能性があるため、メッセージは削除しない
+            // （削除すると、クラッシュ時にジョブが永続的にprocessingになる）
+            skippedCount++;
+            continue;
+          }
+
+          // processingが長時間継続しているジョブは失敗として確定
+          const staleErrorMessage = "処理がタイムアウトしました。入力画像サイズを下げて再試行してください。";
+          const { error: staleUpdateError } = await supabase
+            .from("image_jobs")
+            .update({
+              status: "failed",
+              error_message: staleErrorMessage,
+              attempts: Math.max((job.attempts || 0) + 1, 3),
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", jobId)
+            .eq("status", "processing");
+
+          if (staleUpdateError) {
+            console.error("Failed to mark stale processing job as failed:", staleUpdateError);
+            // 更新できない場合はメッセージを削除しない（再試行）
+            continue;
+          }
+
+          // 消費履歴が存在する場合のみ返金（未減算ジョブの過剰返金を防ぐ）
+          try {
+            const { data: consumptionTx } = await supabase
+              .from("credit_transactions")
+              .select("id")
+              .eq("user_id", job.user_id)
+              .eq("transaction_type", "consumption")
+              .eq("metadata->>job_id", jobId)
+              .maybeSingle();
+
+            if (consumptionTx) {
+              const percoinCost = getPercoinCost(job.model);
+              await refundPercoinsFromGeneration(
+                supabase,
+                job.user_id,
+                jobId,
+                percoinCost
+              );
+              console.log(`[Job Processing] Refunded ${percoinCost} percoins for stale job ${jobId}`);
+            }
+          } catch (refundError) {
+            console.error("[Job Processing] Failed to refund stale job:", refundError);
+          }
+
+          // 失敗確定したためメッセージを削除
           await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
             p_msg_id: msgId,
@@ -711,28 +840,8 @@ Deno.serve(async (req: Request) => {
                 if (imageResponse.ok) {
                   const imageBlob = await imageResponse.blob();
                   imageMimeType = imageBlob.type || "image/png";
-                  
-                  // BlobをBase64に変換
                   const arrayBuffer = await imageBlob.arrayBuffer();
-                  const uint8Array = new Uint8Array(arrayBuffer);
-                  // Deno環境では、Uint8ArrayをBase64に変換
-                  // 手動でBase64エンコードを実装（btoaはLatin1範囲外の文字を処理できないため）
-                  const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-                  let base64 = "";
-                  let i = 0;
-                  while (i < uint8Array.length) {
-                    const a = uint8Array[i++];
-                    const b = i < uint8Array.length ? uint8Array[i++] : 0;
-                    const c = i < uint8Array.length ? uint8Array[i++] : 0;
-                    
-                    const bitmap = (a << 16) | (b << 8) | c;
-                    
-                    base64 += base64Chars.charAt((bitmap >> 18) & 63);
-                    base64 += base64Chars.charAt((bitmap >> 12) & 63);
-                    base64 += i - 2 < uint8Array.length ? base64Chars.charAt((bitmap >> 6) & 63) : "=";
-                    base64 += i - 1 < uint8Array.length ? base64Chars.charAt(bitmap & 63) : "=";
-                  }
-                  imageBase64 = base64;
+                  imageBase64 = encodeBase64(new Uint8Array(arrayBuffer));
                 } else {
                   console.error("Failed to download input image:", imageResponse.status, imageResponse.statusText);
                 }
@@ -827,14 +936,9 @@ Deno.serve(async (req: Request) => {
           const generatedImage = images[0];
 
           // ===== フェーズ4-2: Supabase Storageへの画像保存 =====
-          // Base64をUint8Arrayに変換（Deno環境ではatobが使用可能）
+          // Base64をUint8Arrayに変換
           const base64Data = generatedImage.data;
-          const byteCharacters = atob(base64Data);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
+          const byteArray = decodeBase64(base64Data);
 
           // ファイル名を生成（ユーザーID + タイムスタンプ + ランダム文字列）
           const timestamp = Date.now();
