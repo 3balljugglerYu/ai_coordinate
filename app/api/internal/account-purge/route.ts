@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -141,9 +141,19 @@ async function runPurge(request: NextRequest, method: "GET" | "POST") {
     }
 
     const authHeader = request.headers.get("authorization") ?? "";
-    const isAuthorized = allowedSecrets.some(
-      (secret) => authHeader === `Bearer ${secret}`
-    );
+    const bearerPrefix = "Bearer ";
+    const token = authHeader.startsWith(bearerPrefix)
+      ? authHeader.slice(bearerPrefix.length)
+      : "";
+    const tokenBuffer = Buffer.from(token, "utf8");
+
+    const isAuthorized = allowedSecrets.some((secret) => {
+      const secretBuffer = Buffer.from(secret, "utf8");
+      return (
+        tokenBuffer.length === secretBuffer.length &&
+        timingSafeEqual(tokenBuffer, secretBuffer)
+      );
+    });
 
     if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
