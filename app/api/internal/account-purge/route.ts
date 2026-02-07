@@ -96,16 +96,24 @@ async function collectStoragePathsForUser(admin: ReturnType<typeof createAdminCl
 
 export async function POST(request: NextRequest) {
   try {
-    const secret = env.ACCOUNT_PURGE_CRON_SECRET;
-    if (!secret) {
+    const allowedSecrets = [
+      env.ACCOUNT_PURGE_CRON_SECRET,
+      env.CRON_SECRET,
+    ].filter((value): value is string => Boolean(value));
+
+    if (allowedSecrets.length === 0) {
       return NextResponse.json(
-        { error: "ACCOUNT_PURGE_CRON_SECRET is not configured" },
+        { error: "ACCOUNT_PURGE_CRON_SECRET or CRON_SECRET is not configured" },
         { status: 500 }
       );
     }
 
     const authHeader = request.headers.get("authorization") ?? "";
-    if (authHeader !== `Bearer ${secret}`) {
+    const isAuthorized = allowedSecrets.some(
+      (secret) => authHeader === `Bearer ${secret}`
+    );
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
