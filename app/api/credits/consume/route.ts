@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { deductPercoins } from "@/features/credits/lib/percoin-service";
+import {
+  deductPercoins,
+  InsufficientPercoinBalanceError,
+} from "@/features/credits/lib/percoin-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +53,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ balance: result.balance });
   } catch (error) {
     console.error("Percoin consumption error:", error);
+    if (error instanceof InsufficientPercoinBalanceError) {
+      return NextResponse.json(
+        { error: "ペルコイン残高が不足しています" },
+        { status: 409 }
+      );
+    }
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
