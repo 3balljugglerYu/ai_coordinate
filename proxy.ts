@@ -43,7 +43,45 @@ export async function proxy(request: NextRequest) {
   });
 
   // セッションを更新
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const allowedWhileDeactivated = [
+      "/account/reactivate",
+      "/api/account/reactivate",
+      "/login",
+      "/auth/callback",
+      "/auth/x-complete",
+    ];
+
+    const isAllowedWhileDeactivated = allowedWhileDeactivated.some((path) =>
+      request.nextUrl.pathname.startsWith(path)
+    );
+
+    if (!isAllowedWhileDeactivated) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("deactivated_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (profile?.deactivated_at) {
+        if (request.nextUrl.pathname.startsWith("/api")) {
+          return NextResponse.json(
+            { error: "Account is deactivated" },
+            { status: 403 }
+          );
+        }
+
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/account/reactivate";
+        redirectUrl.search = "";
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+  }
 
   // 認証が必要なページ（(app)ルートグループ）の保護
   // /dashboard、/api/generate など認証が必要なパスを保護
@@ -53,10 +91,6 @@ export async function proxy(request: NextRequest) {
   );
 
   if (isProtectedPath) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     if (!user) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
@@ -80,4 +114,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-

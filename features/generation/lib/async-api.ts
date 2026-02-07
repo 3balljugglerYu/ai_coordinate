@@ -5,6 +5,83 @@
 
 import type { GenerationRequest } from "../types";
 
+const MAX_SOURCE_IMAGE_LONG_EDGE = 2048;
+
+function loadImageElement(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像の読み込みに失敗しました"));
+    };
+
+    img.src = url;
+  });
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  mimeType: string,
+  quality?: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("画像の変換に失敗しました"));
+        return;
+      }
+      resolve(blob);
+    }, mimeType, quality);
+  });
+}
+
+async function normalizeSourceImage(file: File): Promise<File> {
+  const image = await loadImageElement(file);
+  const originalWidth = image.naturalWidth;
+  const originalHeight = image.naturalHeight;
+  const longEdge = Math.max(originalWidth, originalHeight);
+
+  if (longEdge <= MAX_SOURCE_IMAGE_LONG_EDGE) {
+    return file;
+  }
+
+  const scale = MAX_SOURCE_IMAGE_LONG_EDGE / longEdge;
+  const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+  const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+  const canvas = document.createElement("canvas");
+
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("画像処理コンテキストの取得に失敗しました");
+  }
+
+  context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+  const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const outputBlob = await canvasToBlob(
+    canvas,
+    outputType,
+    outputType === "image/jpeg" ? 0.8 : undefined
+  );
+
+  const extension = outputType === "image/png" ? "png" : "jpg";
+  const baseName = file.name.replace(/\.[^.]+$/, "");
+  return new File([outputBlob], `${baseName}.${extension}`, {
+    type: outputType,
+    lastModified: Date.now(),
+  });
+}
+
 /**
  * 非同期画像生成ジョブ投入のレスポンス型
  */
@@ -36,8 +113,9 @@ export async function generateImageAsync(
 
   if (request.sourceImage) {
     const { imageToBase64 } = await import("./nanobanana");
-    sourceImageBase64 = await imageToBase64(request.sourceImage);
-    sourceImageMimeType = request.sourceImage.type;
+    const normalizedSourceImage = await normalizeSourceImage(request.sourceImage);
+    sourceImageBase64 = await imageToBase64(normalizedSourceImage);
+    sourceImageMimeType = normalizedSourceImage.type;
   }
   // sourceImageStockIdの場合は、サーバー側で処理するためここでは何もしない
 

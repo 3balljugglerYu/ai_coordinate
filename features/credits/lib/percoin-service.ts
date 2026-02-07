@@ -1,4 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PercoinPackage } from "@/features/credits/percoin-packages";
 
@@ -10,94 +9,66 @@ export type PercoinTransactionType =
   | "daily_post"
   | "streak"
   | "referral"
-  | "admin_bonus";
+  | "admin_bonus"
+  | "forfeiture";
 
 export type PercoinTransactionMetadata = Record<string, unknown>;
 
-type Supabase = SupabaseClient<any, "public", any>;
+type Supabase = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
-async function ensurePercoinAccount(
-  supabase: Supabase,
-  userId: string
-): Promise<{ id: string; balance: number }> {
-  const { data, error } = await supabase
-    .from("user_credits")
-    .select("id, balance")
-    .eq("user_id", userId)
-    .maybeSingle();
+type PercoinTransactionMode = "purchase_paid" | "purchase_promo" | "consumption";
 
-  if (error) {
-    throw new Error(`ペルコイン残高の取得に失敗しました: ${error.message}`);
+export class InsufficientPercoinBalanceError extends Error {
+  constructor() {
+    super("ペルコイン残高が不足しています");
+    this.name = "InsufficientPercoinBalanceError";
   }
-
-  if (data) {
-    return data;
-  }
-
-  const { data: created, error: insertError } = await supabase
-    .from("user_credits")
-    .insert({ user_id: userId, balance: 0 })
-    .select("id, balance")
-    .single();
-
-  if (insertError || !created) {
-    throw new Error(
-      `ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`
-    );
-  }
-
-  return created;
 }
 
-async function updatePercoinBalance(
-  supabase: Supabase,
-  userId: string,
-  amount: number
-): Promise<number> {
-  const account = await ensurePercoinAccount(supabase, userId);
-  const newBalance = account.balance + amount;
-
-  if (newBalance < 0) {
-    throw new Error("ペルコイン残高が不足しています");
-  }
-
-  const { data, error } = await supabase
-    .from("user_credits")
-    .update({ balance: newBalance })
-    .eq("user_id", userId)
-    .select("balance")
-    .single();
-
-  if (error || !data) {
-    throw new Error(`ペルコイン残高の更新に失敗しました: ${error?.message}`);
-  }
-
-  return data.balance;
+interface ApplyPercoinTransactionResult {
+  balance: number;
+  from_promo: number;
+  from_paid: number;
 }
 
-async function insertTransaction(
-  supabase: Supabase,
-  params: {
-    userId: string;
-    amount: number;
-    transactionType: PercoinTransactionType;
-    stripePaymentIntentId?: string | null;
-    relatedGenerationId?: string | null;
-    metadata?: PercoinTransactionMetadata;
-  }
-) {
-  const { error } = await supabase.from("credit_transactions").insert({
-    user_id: params.userId,
-    amount: params.amount,
-    transaction_type: params.transactionType,
-    stripe_payment_intent_id: params.stripePaymentIntentId ?? null,
-    related_generation_id: params.relatedGenerationId ?? null,
-    metadata: params.metadata ?? null,
+async function applyPercoinTransaction(params: {
+  supabase: Supabase;
+  userId: string;
+  amount: number;
+  mode: PercoinTransactionMode;
+  metadata?: PercoinTransactionMetadata;
+  stripePaymentIntentId?: string | null;
+  relatedGenerationId?: string | null;
+}): Promise<{ balance: number; fromPromo: number; fromPaid: number }> {
+  const { data, error } = await params.supabase.rpc("apply_percoin_transaction", {
+    p_user_id: params.userId,
+    p_amount: params.amount,
+    p_mode: params.mode,
+    p_metadata: params.metadata ?? null,
+    p_stripe_payment_intent_id: params.stripePaymentIntentId ?? null,
+    p_related_generation_id: params.relatedGenerationId ?? null,
   });
 
   if (error) {
-    throw new Error(`取引履歴の保存に失敗しました: ${error.message}`);
+    if (error.message.includes("insufficient balance")) {
+      throw new InsufficientPercoinBalanceError();
+    }
+    throw new Error(`ペルコイン取引に失敗しました: ${error.message}`);
   }
+
+  const row = (Array.isArray(data) ? data[0] : null) as
+    | ApplyPercoinTransactionResult
+    | undefined;
+
+  if (!row) {
+    throw new Error("ペルコイン取引の結果が取得できませんでした");
+  }
+
+  return {
+    balance: row.balance,
+    fromPromo: row.from_promo,
+    fromPaid: row.from_paid,
+  };
 }
 
 export async function recordPercoinPurchase(params: {
@@ -109,17 +80,20 @@ export async function recordPercoinPurchase(params: {
 }) {
   const supabase =
     params.supabaseClient ?? (await createServerSupabaseClient());
-  const balance = await updatePercoinBalance(supabase, params.userId, params.percoinAmount);
 
-  await insertTransaction(supabase, {
+  const result = await applyPercoinTransaction({
+    supabase,
     userId: params.userId,
     amount: params.percoinAmount,
-    transactionType: "purchase",
+    mode: "purchase_paid",
     stripePaymentIntentId: params.stripePaymentIntentId,
-    metadata: params.metadata,
+    metadata: {
+      ...(params.metadata ?? {}),
+      bucket: "paid",
+    },
   });
 
-  return { balance };
+  return { balance: result.balance };
 }
 
 export async function recordMockPercoinPurchase(params: {
@@ -127,37 +101,44 @@ export async function recordMockPercoinPurchase(params: {
   percoinPackage: PercoinPackage;
   supabaseClient?: Supabase;
 }) {
-  return recordPercoinPurchase({
+  const supabase =
+    params.supabaseClient ?? (await createServerSupabaseClient());
+
+  const result = await applyPercoinTransaction({
+    supabase,
     userId: params.userId,
-    percoinAmount: params.percoinPackage.credits,
-    supabaseClient: params.supabaseClient,
+    amount: params.percoinPackage.credits,
+    mode: "purchase_promo",
     metadata: {
       mode: "mock",
       packageId: params.percoinPackage.id,
       priceYen: params.percoinPackage.priceYen,
+      bucket: "promo",
     },
   });
+
+  return { balance: result.balance };
 }
 
 export async function deductPercoins(params: {
   userId: string;
   percoinAmount: number;
-  transactionType?: Extract<PercoinTransactionType, "consumption" | "refund">;
+  transactionType?: Extract<PercoinTransactionType, "consumption">;
   metadata?: PercoinTransactionMetadata;
   relatedGenerationId?: string | null;
   supabaseClient?: Supabase;
 }) {
   const supabase =
     params.supabaseClient ?? (await createServerSupabaseClient());
-  const balance = await updatePercoinBalance(supabase, params.userId, -params.percoinAmount);
 
-  await insertTransaction(supabase, {
+  const result = await applyPercoinTransaction({
+    supabase,
     userId: params.userId,
-    amount: -params.percoinAmount,
-    transactionType: params.transactionType ?? "consumption",
+    amount: params.percoinAmount,
+    mode: "consumption",
     relatedGenerationId: params.relatedGenerationId ?? null,
     metadata: params.metadata,
   });
 
-  return { balance };
+  return { balance: result.balance };
 }

@@ -259,6 +259,50 @@ export async function signOut() {
   }
 }
 
+interface DeactivateAccountParams {
+  confirmText: string;
+  password?: string;
+}
+
+export async function deactivateAccount(params: DeactivateAccountParams): Promise<{
+  success: true;
+  status: string;
+  scheduled_for: string | null;
+}> {
+  const response = await fetch("/api/account/deactivate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(params),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error || "アカウント削除の申請に失敗しました");
+  }
+
+  return payload;
+}
+
+export async function reactivateAccount(): Promise<{
+  success: true;
+  status: string;
+}> {
+  const response = await fetch("/api/account/reactivate", {
+    method: "POST",
+    credentials: "include",
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error || "アカウントの復帰に失敗しました");
+  }
+
+  return payload;
+}
+
 /**
  * 現在のユーザーを取得
  */
@@ -378,4 +422,3 @@ export async function signInWithOAuth(
 
   return data;
 }
-
