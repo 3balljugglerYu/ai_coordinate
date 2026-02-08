@@ -134,14 +134,35 @@ export default function TermsPage() {
 					</CardContent>
 				</Card>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">第9条（準拠法・裁判管轄）</CardTitle>
-						<CardDescription>準拠法と裁判管轄について</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<p className="text-sm text-gray-800">
-							本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、当サービスの本店所在地を管轄する裁判所を専属的合意管轄とします。
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">第9条（退会およびアカウント削除）</CardTitle>
+							<CardDescription>退会手続きと削除の効力について</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<p className="text-sm text-gray-800 mb-3">
+								ユーザーは当サービス所定の方法により退会手続きを行うことができます。退会手続き後、当サービスは退会申請日から30日間の経過後に当該アカウントを完全削除します。
+							</p>
+							<p className="text-sm text-gray-800 mb-3">
+								退会申請時点で、当該ユーザーが投稿中の画像は投稿取り消し（非公開）となります。
+							</p>
+							<p className="text-sm text-gray-800 mb-3">
+								完全削除時には、当サービス内で当該ユーザーに紐づくデータ（プロフィール情報、生成画像、投稿画像、コメント、いいね、保有ペルコイン残高等）を削除し、削除後は復元できません。退会により失効したペルコイン残高の返還・再発行は行いません。
+							</p>
+							<p className="text-sm text-gray-800">
+								アカウント完全削除後は、同一メールアドレスで再度登録できますが、再登録は新規登録として扱われ、削除前のデータ・権利・残高は引き継がれません。
+							</p>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">第10条（準拠法・裁判管轄）</CardTitle>
+							<CardDescription>準拠法と裁判管轄について</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<p className="text-sm text-gray-800">
+								本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、当サービスの本店所在地を管轄する裁判所を専属的合意管轄とします。
 						</p>
 					</CardContent>
 				</Card>
@@ -149,8 +170,6 @@ export default function TermsPage() {
 		</main>
 	);
 }
-
-
 
 
 
