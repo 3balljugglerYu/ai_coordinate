@@ -87,12 +87,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const normalizedErrorMessage =
+      job.status === "failed" && job.error_message === "No images generated"
+        ? "画像を生成できませんでした。"
+        : job.error_message;
+
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
       id: job.id,
       status: job.status,
       resultImageUrl: job.result_image_url,
-      errorMessage: job.error_message,
+      errorMessage: normalizedErrorMessage,
     });
   } catch (error) {
     console.error("Status check error:", error);

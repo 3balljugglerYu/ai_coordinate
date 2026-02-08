@@ -13,6 +13,7 @@ import {
 } from "../lib/async-api";
 import { getPercoinCost } from "../lib/model-config";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 
 interface GenerationFormContainerProps {}
 
@@ -23,6 +24,7 @@ interface GenerationFormContainerProps {}
  */
 export function GenerationFormContainer({}: GenerationFormContainerProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingCount, setGeneratingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
@@ -268,6 +270,14 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     model: import("../types").GeminiModel;
     generationType?: import("../types").GenerationType;
   }) => {
+    const showGenerationErrorToast = (message: string) => {
+      toast({
+        variant: "destructive",
+        title: "画像を生成できませんでした",
+        description: message,
+      });
+    };
+
     setIsGenerating(true);
     setError(null);
     setGeneratingCount(data.count);
@@ -400,8 +410,9 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           .filter((msg): msg is string => msg !== null);
         
         if (failedJobs.length === jobIds.length) {
-          // すべてのジョブが失敗した場合
-          throw new Error(`すべてのジョブが失敗しました: ${errorMessages.join(", ")}`);
+          // すべてのジョブが失敗した場合は、簡潔な1つの文言のみ表示
+          const firstErrorMessage = errorMessages[0] || "画像生成に失敗しました";
+          throw new Error(firstErrorMessage);
         } else {
           // 一部のジョブが失敗した場合
           // ユニークなエラーメッセージを取得（重複を除去）
@@ -449,6 +460,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             : `一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）`;
           
           setError(errorText);
+          showGenerationErrorToast(errorText);
         }
       }
 
@@ -461,7 +473,9 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
       window.dispatchEvent(new CustomEvent('generation-complete'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "画像の生成に失敗しました");
+      const errorMessage = err instanceof Error ? err.message : "画像の生成に失敗しました";
+      setError(errorMessage);
+      showGenerationErrorToast(errorMessage);
     } finally {
       setIsGenerating(false);
       // ポーリングを停止

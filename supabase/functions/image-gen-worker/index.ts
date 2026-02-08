@@ -1089,7 +1089,8 @@ Deno.serve(async (req: Request) => {
           }
 
           const newAttempts = (currentJob?.attempts || 0) + 1;
-          const shouldMarkAsFailed = newAttempts >= 3;
+          const isNonRetriable = errorMessage === "No images generated";
+          const shouldMarkAsFailed = isNonRetriable || newAttempts >= 3;
 
           // image_jobsテーブルを更新（失敗時）
           const { error: failUpdateError } = await supabase
@@ -1108,7 +1109,7 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          // メッセージの削除/アーカイブ（attempts >= 3の場合のみ）
+          // メッセージの削除/アーカイブ（即時失敗またはattempts >= 3の場合）
           if (shouldMarkAsFailed) {
             await supabase.rpc("pgmq_delete", {
               p_queue_name: QUEUE_NAME,
