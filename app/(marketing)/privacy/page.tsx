@@ -126,23 +126,35 @@ export default function PrivacyPage() {
 					</CardContent>
 				</Card>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">7. プライバシーポリシーの変更</CardTitle>
-						<CardDescription>プライバシーポリシーの変更について</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<p className="text-sm text-gray-800">
-							当サービスは、必要に応じて、本プライバシーポリシーを変更することがあります。変更後のプライバシーポリシーは、本ページに掲載した時点で効力を生じるものとします。
-						</p>
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">7. 退会・アカウント削除時の取扱い</CardTitle>
+							<CardDescription>退会手続き時のデータの取扱いについて</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<p className="text-sm text-gray-800 mb-3">
+								ユーザーが退会手続きを行った場合、退会申請時点で投稿中の画像は投稿取り消し（非公開）となります。また、当サービスは退会申請日から30日間の経過後にアカウントを完全削除します。完全削除時には、当サービス内で当該ユーザーに紐づくデータ（プロフィール情報、生成画像、投稿画像、コメント、いいね、保有ペルコイン残高等）を削除し、復元できません。
+							</p>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">8. プライバシーポリシーの変更</CardTitle>
+							<CardDescription>プライバシーポリシーの変更について</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<p className="text-sm text-gray-800">
+								当サービスは、必要に応じて、本プライバシーポリシーを変更することがあります。変更後のプライバシーポリシーは、本ページに掲載した時点で効力を生じるものとします。
+							</p>
 					</CardContent>
 				</Card>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">8. お問い合わせ窓口</CardTitle>
-						<CardDescription>個人情報に関するお問い合わせについて</CardDescription>
-					</CardHeader>
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">9. お問い合わせ窓口</CardTitle>
+							<CardDescription>個人情報に関するお問い合わせについて</CardDescription>
+						</CardHeader>
 					<CardContent>
 						<p className="text-sm text-gray-800">
 							本プライバシーポリシーに関するお問い合わせは、以下のメールアドレスまでご連絡ください。
@@ -158,9 +170,6 @@ export default function PrivacyPage() {
 		</main>
 	);
 }
-
-
-
 
 
 
