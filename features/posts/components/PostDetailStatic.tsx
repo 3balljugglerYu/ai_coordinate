@@ -5,7 +5,7 @@ import { PostDetailStatsContent } from "./PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
 import Image from "next/image";
 import Link from "next/link";
-import { User, MoreHorizontal, Edit, Trash2, Share2, Copy, Check } from "lucide-react";
+import { User, MoreHorizontal, Edit, Trash2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import { PostModal } from "./PostModal";
 import { getPostImageUrl } from "../lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
+import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 import type { Post } from "../types";
 
 // ImageFullscreenコンポーネントを動的インポート（SSR不要）
@@ -35,6 +36,8 @@ interface PostDetailStaticProps {
   initialViewCount: number;
   ownerId?: string | null;
   imageUrl?: string | null;
+  isHidden?: boolean;
+  onHidden?: () => void;
 }
 
 /**
@@ -51,6 +54,8 @@ export function PostDetailStatic({
   initialViewCount,
   ownerId,
   imageUrl,
+  isHidden = false,
+  onHidden,
 }: PostDetailStaticProps) {
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [isPromptCopied, setIsPromptCopied] = useState(false);
@@ -122,6 +127,16 @@ export function PostDetailStatic({
   }, [currentUserId, followUserId, isOwner]);
 
   const maskedPrompt = post.prompt ? "*".repeat(post.prompt.length) : "";
+
+  if (isHidden) {
+    return (
+      <div className="container mx-auto max-w-4xl px-4 py-8">
+        <p className="text-sm text-muted-foreground">
+          この投稿はあなたの表示設定により非表示になりました。
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white">
@@ -214,7 +229,7 @@ export function PostDetailStatic({
             )}
 
             {/* 3点リーダー（所有者の場合） */}
-            {isOwner && (
+            {isOwner ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -253,6 +268,15 @@ export function PostDetailStatic({
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : (
+              post.id && (
+                <PostModerationMenu
+                  postId={post.id}
+                  authorUserId={followUserId}
+                  currentUserId={currentUserId}
+                  onHidden={onHidden}
+                />
+              )
             )}
           </div>
 

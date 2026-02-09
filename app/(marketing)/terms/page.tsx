@@ -63,6 +63,8 @@ export default function TermsPage() {
 							<li>当サービスによって得られた情報を商業的に利用する行為</li>
 							<li>当サービスの運営を妨害するおそれのある行為</li>
 							<li>不正アクセスをし、またはこれを試みる行為</li>
+							<li>他のユーザーに対する嫌がらせ、誹謗中傷、差別的表現等の投稿、または権利侵害・法令違反のおそれのあるコンテンツの投稿</li>
+							<li>通報制度の濫用（虚偽の通報、嫌がらせ目的の通報等）</li>
 							<li>その他、当サービスが不適切と判断する行為</li>
 						</ul>
 					</CardContent>
@@ -154,6 +156,26 @@ export default function TermsPage() {
 							</p>
 						</CardContent>
 					</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">第9条の2（通報・ブロック及びコンテンツのモデレーション）</CardTitle>
+						<CardDescription>通報・ブロック機能と審査について</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<p className="text-sm text-gray-800 mb-3">
+							当サービスは、不適切なコンテンツの排除およびユーザー間のトラブル防止のため、通報・ブロック・コンテンツ審査の機能を提供しています。
+						</p>
+						<ul className="list-disc list-inside space-y-2 text-sm text-gray-800 mb-3">
+							<li><strong>通報</strong>：ユーザーは、他のユーザーの投稿が利用規約や法令に反する等と判断した場合、所定の方法で通報することができます。通報された投稿は、一定のしきい値に達した時点で審査待ちとなり、審査が完了するまで当サービス上で全ユーザーに非表示となる場合があります。</li>
+							<li><strong>ブロック</strong>：ユーザーは、他のユーザーをブロックすることができます。ブロックしたユーザーの投稿は、当該ユーザーの画面に表示されません。ブロック関係は、アカウント画面から解除できます。</li>
+							<li><strong>審査</strong>：当サービスは、通報に基づき審査を行い、審査の結果に応じて当該投稿の非公開・削除等の措置を講じることがあります。審査の記録は、運営上の必要に応じて保持します。</li>
+						</ul>
+						<p className="text-sm text-gray-800">
+							通報・ブロックの濫用（虚偽通報、嫌がらせ目的の利用等）は禁止事項とし、当サービスが不適切と判断した場合には利用制限等の対応を行うことがあります。
+						</p>
+					</CardContent>
+				</Card>
 
 					<Card>
 						<CardHeader>

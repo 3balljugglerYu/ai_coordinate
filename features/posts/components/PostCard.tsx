@@ -8,6 +8,7 @@ import { User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostThumbUrl } from "../lib/utils";
 import type { Post } from "../types";
+import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 
 interface PostCardProps {
   post: Post;
@@ -15,6 +16,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, currentUserId }: PostCardProps) {
+  const [isHidden, setIsHidden] = useState(false);
   // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
   const imageUrl = getPostThumbUrl(post);
 
@@ -28,6 +30,10 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     post.user?.avatar_url ?? null
   );
   const preloadLinkRef = useRef<HTMLLinkElement | null>(null);
+
+  if (isHidden) {
+    return null;
+  }
 
   // 画像のプリロード処理（onMouseEnter/onTouchStart）
   const handlePreload = () => {
@@ -125,6 +131,14 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
               initialLikeCount={post.like_count || 0}
               initialViewCount={post.view_count || 0}
               currentUserId={currentUserId}
+            />
+          )}
+          {post.id && (
+            <PostModerationMenu
+              postId={post.id}
+              authorUserId={post.user_id}
+              currentUserId={currentUserId}
+              onHidden={() => setIsHidden(true)}
             />
           )}
         </div>

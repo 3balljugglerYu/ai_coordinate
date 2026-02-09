@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
@@ -13,17 +13,23 @@ import { isValidSortType } from "../lib/utils";
 
 interface PostListProps {
   initialPosts?: Post[];
+  forceInitialLoading?: boolean;
 }
 
-export function PostList({ initialPosts = [] }: PostListProps) {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(initialPosts.length === 20);
-  const [offset, setOffset] = useState(initialPosts.length);
+export function PostList({
+  initialPosts = [],
+  forceInitialLoading = false,
+}: PostListProps) {
+  const [posts, setPosts] = useState<Post[]>(forceInitialLoading ? [] : initialPosts);
+  const [isLoading, setIsLoading] = useState(forceInitialLoading);
+  const [hasMore, setHasMore] = useState(forceInitialLoading ? true : initialPosts.length === 20);
+  const [offset, setOffset] = useState(forceInitialLoading ? 0 : initialPosts.length);
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentPath = pathname;
   const searchQuery = searchParams.get("q") || "";
+  const hasModerationRefresh = searchParams.get("mod_refresh") === "1";
   const isSearchPage = pathname === "/search";
   // 検索画面の場合はデフォルトでpopular、それ以外はnewest
   const defaultSortType: SortType = isSearchPage ? "popular" : "newest";
@@ -59,7 +65,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
   useEffect(() => {
     const sortParam = searchParams.get("sort");
     if (sortParam && isValidSortType(sortParam)) {
-      setPrevSortType((prev) => sortType); // 現在のタブを記録
+      setPrevSortType(sortType); // 現在のタブを記録
       setSortType(sortParam);
     } else {
       // sortパラメータがない場合はデフォルト値を使用
@@ -70,7 +76,7 @@ export function PostList({ initialPosts = [] }: PostListProps) {
 
   // ソートタイプ変更時の処理（タブの見た目を即反映）
   const handleSortChange = useCallback((newSortType: SortType) => {
-    setPrevSortType((prev) => sortType);
+    setPrevSortType(sortType);
     setSortType(newSortType);
   }, [sortType]);
 
@@ -139,6 +145,17 @@ export function PostList({ initialPosts = [] }: PostListProps) {
       loadMorePosts();
     }
   }, [inView, hasMore, isLoading, loadMorePosts]);
+
+  useEffect(() => {
+    if (!hasModerationRefresh || isLoading) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("mod_refresh");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [hasModerationRefresh, isLoading, pathname, router, searchParams]);
 
   // 期間別ソートの場合のメッセージ
   const getEmptyMessage = () => {
