@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { User, Edit, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,6 @@ import { ProfileEditModal } from "./ProfileEditModal";
 import { AvatarUpload } from "./AvatarUpload";
 import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
 import { FollowButton } from "@/features/users/components/FollowButton";
-import { DeactivateAccountDialog } from "@/features/auth/components/DeactivateAccountDialog";
 import type { UserProfile } from "../lib/server-api";
 
 interface ProfileHeaderProps {
@@ -33,7 +33,6 @@ export function ProfileHeader({
   onProfileUpdate,
 }: ProfileHeaderProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(profile);
 
   const displayName =
@@ -68,11 +67,8 @@ export function ProfileHeader({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={() => setIsDeactivateDialogOpen(true)}
-                >
-                  アカウント削除
+                <DropdownMenuItem asChild>
+                  <Link href="/my-page/account">アカウントについて</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -152,13 +148,6 @@ export function ProfileHeader({
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}
           onUpdate={handleProfileUpdate}
-        />
-      )}
-
-      {isOwnProfile && (
-        <DeactivateAccountDialog
-          open={isDeactivateDialogOpen}
-          onOpenChange={setIsDeactivateDialogOpen}
         />
       )}
     </>

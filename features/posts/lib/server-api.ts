@@ -58,6 +58,58 @@ async function getProfileMap(
   return profileMap;
 }
 
+async function getVisibilityExclusions(currentUserId?: string | null): Promise<{
+  blockedUserIds: string[];
+  reportedPostIds: string[];
+}> {
+  if (!currentUserId) {
+    return {
+      blockedUserIds: [],
+      reportedPostIds: [],
+    };
+  }
+
+  const supabase = await createClient();
+  const [{ data: blockRows, error: blockError }, { data: reportRows, error: reportError }] =
+    await Promise.all([
+      supabase
+        .from("user_blocks")
+        .select("blocker_id,blocked_id")
+        .or(`blocker_id.eq.${currentUserId},blocked_id.eq.${currentUserId}`),
+      supabase
+        .from("post_reports")
+        .select("post_id")
+        .eq("reporter_id", currentUserId),
+    ]);
+
+  if (blockError) {
+    console.error("Block relation fetch error:", blockError);
+  }
+  if (reportError) {
+    console.error("Reported posts fetch error:", reportError);
+  }
+
+  const blockedUserIds = new Set<string>();
+  (blockRows || []).forEach((row) => {
+    if (row.blocker_id === currentUserId && row.blocked_id) {
+      blockedUserIds.add(row.blocked_id);
+    } else if (row.blocked_id === currentUserId && row.blocker_id) {
+      blockedUserIds.add(row.blocker_id);
+    }
+  });
+
+  return {
+    blockedUserIds: [...blockedUserIds],
+    reportedPostIds: (reportRows || [])
+      .map((row) => row.post_id)
+      .filter((postId): postId is string => Boolean(postId)),
+  };
+}
+
+function toSqlInList(values: string[]): string {
+  return `(${values.map((value) => `"${value.replace(/"/g, "")}"`).join(",")})`;
+}
+
 /**
  * 投稿データにユーザー情報・いいね数・コメント数を付与するヘルパー関数
  * @param postsData 投稿データの配列
@@ -154,6 +206,8 @@ export const getPosts = cache(async (
   searchQuery?: string
 ): Promise<Post[]> => {
   const supabase = await createClient();
+  const currentUser = await getUser();
+  const currentUserId = currentUser?.id ?? null;
 
   // 検索クエリのバリデーションと正規化
   let normalizedSearchQuery: string | undefined = undefined;
@@ -168,12 +222,12 @@ export const getPosts = cache(async (
     }
   }
 
+  const { blockedUserIds, reportedPostIds } = await getVisibilityExclusions(currentUserId);
+
   // フォロータブの場合の処理
   if (sort === "following") {
-    const user = await getUser();
-    
     // 未認証ユーザーの場合は空配列を返す
-    if (!user) {
+    if (!currentUserId) {
       return [];
     }
 
@@ -181,7 +235,7 @@ export const getPosts = cache(async (
     const { data: follows, error: followsError } = await supabase
       .from("follows")
       .select("followee_id")
-      .eq("follower_id", user.id);
+      .eq("follower_id", currentUserId);
 
     if (followsError) {
       console.error("Follows fetch error:", followsError);
@@ -201,7 +255,15 @@ export const getPosts = cache(async (
       .from("generated_images")
       .select("*")
       .eq("is_posted", true)
+      .eq("moderation_status", "visible")
       .in("user_id", followedUserIds);
+
+    if (blockedUserIds.length > 0) {
+      followingQuery = followingQuery.not("user_id", "in", toSqlInList(blockedUserIds));
+    }
+    if (reportedPostIds.length > 0) {
+      followingQuery = followingQuery.not("id", "in", toSqlInList(reportedPostIds));
+    }
 
     // 検索クエリが指定されている場合、プロンプト文を検索
     if (normalizedSearchQuery) {
@@ -226,7 +288,15 @@ export const getPosts = cache(async (
   let postsQuery = supabase
     .from("generated_images")
     .select("*")
-    .eq("is_posted", true);
+    .eq("is_posted", true)
+    .eq("moderation_status", "visible");
+
+  if (blockedUserIds.length > 0) {
+    postsQuery = postsQuery.not("user_id", "in", toSqlInList(blockedUserIds));
+  }
+  if (reportedPostIds.length > 0) {
+    postsQuery = postsQuery.not("id", "in", toSqlInList(reportedPostIds));
+  }
 
   // 検索クエリが指定されている場合、プロンプト文を検索
   if (normalizedSearchQuery) {
@@ -392,6 +462,43 @@ export const getPost = cache(async (id: string, currentUserId?: string | null, s
   if (!data.is_posted) {
     if (!currentUserId || data.user_id !== currentUserId) {
       // 未投稿画像で、所有者でない場合は404
+      return null;
+    }
+  }
+
+  if (
+    data.is_posted &&
+    data.moderation_status &&
+    data.moderation_status !== "visible" &&
+    (!currentUserId || data.user_id !== currentUserId)
+  ) {
+    return null;
+  }
+
+  if (currentUserId && data.user_id) {
+    const [{ data: blockAsBlocker }, { data: blockAsBlocked }, { data: reportRow }] =
+      await Promise.all([
+        supabase
+          .from("user_blocks")
+          .select("id")
+          .eq("blocker_id", currentUserId)
+          .eq("blocked_id", data.user_id)
+          .maybeSingle(),
+        supabase
+          .from("user_blocks")
+          .select("id")
+          .eq("blocker_id", data.user_id)
+          .eq("blocked_id", currentUserId)
+          .maybeSingle(),
+        supabase
+          .from("post_reports")
+          .select("id")
+          .eq("reporter_id", currentUserId)
+          .eq("post_id", data.id)
+          .maybeSingle(),
+      ]);
+
+    if (blockAsBlocker || blockAsBlocked || reportRow) {
       return null;
     }
   }

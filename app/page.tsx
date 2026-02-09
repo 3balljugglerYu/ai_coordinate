@@ -22,12 +22,25 @@ export const metadata: Metadata = {
   },
 };
 
-async function PostListContent() {
-  const posts = await getPosts(20, 0, "newest");
-  return <PostList initialPosts={posts} />;
+async function PostListContent({
+  forceInitialLoading = false,
+}: {
+  forceInitialLoading?: boolean;
+}) {
+  const posts = forceInitialLoading ? [] : await getPosts(20, 0, "newest");
+  return <PostList initialPosts={posts} forceInitialLoading={forceInitialLoading} />;
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const refreshParam = params.mod_refresh;
+  const forceInitialLoading = Array.isArray(refreshParam)
+    ? refreshParam.includes("1")
+    : refreshParam === "1";
   const siteUrl = getSiteUrl() || "https://persta.ai";
   
   const organizationSchema = {
@@ -72,7 +85,7 @@ export default async function Home() {
         </div>
         <HomeBannerList />
         <Suspense fallback={<PostListSkeleton />}>
-          <PostListContent />
+          <PostListContent forceInitialLoading={forceInitialLoading} />
         </Suspense>
       </div>
     </>

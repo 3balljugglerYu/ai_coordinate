@@ -27,6 +27,7 @@ export interface Post extends GeneratedImageRecord {
   like_count?: number;
   comment_count?: number;
   view_count?: number;
+  moderation_status?: "visible" | "pending" | "removed";
 }
 
 /**

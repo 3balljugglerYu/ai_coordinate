@@ -29,6 +29,10 @@ export interface GeneratedImageRecord {
   // Phase 2-1で追加されたカラム（optional）
   storage_path_display?: string | null;
   storage_path_thumb?: string | null;
+  moderation_status?: "visible" | "pending" | "removed";
+  moderation_reason?: string | null;
+  moderation_updated_at?: string;
+  moderation_approved_at?: string | null;
 }
 
 /**
@@ -430,4 +434,3 @@ export async function getStockImageUsageCount(stockId: string): Promise<number> 
 
   return data || 0;
 }
-

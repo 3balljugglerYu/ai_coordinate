@@ -1,15 +1,10 @@
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getPost } from "@/features/posts/lib/server-api";
 import { getPostImageUrl, getImageAspectRatio } from "@/features/posts/lib/utils";
 import { isCrawler, isPrefetchRequest } from "@/lib/utils";
-import { PostDetailStatic } from "@/features/posts/components/PostDetailStatic";
-import { PostDetailStatsContent } from "@/features/posts/components/PostDetailStatsContent";
-import { PostDetailStatsSkeleton } from "@/features/posts/components/PostDetailStatsSkeleton";
-import { CommentSection } from "@/features/posts/components/CommentSection";
-import { CommentSectionSkeleton } from "@/features/posts/components/CommentSectionSkeleton";
+import { PostDetailContent } from "@/features/posts/components/PostDetailContent";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/env";
 import { DEFAULT_TITLE_TAGLINE } from "@/constants";
@@ -53,7 +48,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   let post;
   try {
     post = await getPost(id, null, true);
-  } catch (error) {
+  } catch {
     // エラーが発生した場合は404用のメタデータを返す
     return {
       title: "投稿が見つかりません | Persta.AI",
@@ -118,16 +113,6 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
 }
 
 
-async function CommentSectionContent({
-  postId,
-  currentUserId,
-}: {
-  postId: string;
-  currentUserId?: string | null;
-}) {
-  return <CommentSection postId={postId} currentUserId={currentUserId} />;
-}
-
 export default async function PostDetailPage({ params }: PostDetailPageProps) {
   const { id } = await params;
 
@@ -190,24 +175,16 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   }
 
   return (
-    <>
-      {/* 静的コンテンツ */}
-      <PostDetailStatic
-        post={post}
-        currentUserId={currentUserId}
-        imageAspectRatio={imageAspectRatio}
-        postId={post.id || ""}
-        initialLikeCount={post.like_count || 0}
-        initialCommentCount={post.comment_count || 0}
-        initialViewCount={post.view_count || 0}
-        ownerId={post.user_id}
-        imageUrl={imageUrl}
-      />
-
-      {/* 動的コンテンツ: コメントセクション */}
-      <Suspense fallback={<CommentSectionSkeleton />}>
-        <CommentSectionContent postId={post.id || ""} currentUserId={currentUserId} />
-      </Suspense>
-    </>
+    <PostDetailContent
+      post={post}
+      currentUserId={currentUserId}
+      imageAspectRatio={imageAspectRatio}
+      postId={post.id || ""}
+      initialLikeCount={post.like_count || 0}
+      initialCommentCount={post.comment_count || 0}
+      initialViewCount={post.view_count || 0}
+      ownerId={post.user_id}
+      imageUrl={imageUrl}
+    />
   );
 }
