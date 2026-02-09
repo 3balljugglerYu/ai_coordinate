@@ -99,72 +99,6 @@ async function calculatePendingMetrics(
   };
 }
 
-async function setPendingWithAdminClient(
-  context: PendingContext
-): Promise<{ ok: boolean; reason: string }> {
-  try {
-    const adminClient = createAdminClient();
-    const now = new Date().toISOString();
-    const metadata = {
-      weightedScore: context.weightedScore,
-      threshold: context.threshold,
-      recentCount: context.recentCount,
-      activeUsers: context.activeUsers,
-      baselineTime: context.baselineTime,
-    };
-
-    const { data: updatedRows, error: updatePostError } = await adminClient
-      .from("generated_images")
-      .update({
-        moderation_status: "pending",
-        moderation_reason: "report_threshold",
-        moderation_updated_at: now,
-      })
-      .eq("id", context.postId)
-      .eq("moderation_status", "visible")
-      .select("id");
-
-    if (updatePostError) {
-      console.error("[Moderation] Admin update failed:", {
-        context,
-        error: updatePostError,
-      });
-      return { ok: false, reason: "admin_update_error" };
-    }
-
-    if (!updatedRows || updatedRows.length === 0) {
-      return { ok: false, reason: "admin_no_rows_updated" };
-    }
-
-    const { error: auditError } = await adminClient
-      .from("moderation_audit_logs")
-      .insert({
-        post_id: context.postId,
-        actor_id: context.actorId,
-        action: "pending_auto",
-        reason: "report_threshold",
-        metadata,
-      });
-
-    if (auditError) {
-      console.error("[Moderation] Admin audit insert failed:", {
-        context,
-        error: auditError,
-      });
-      return { ok: false, reason: "admin_audit_error" };
-    }
-
-    return { ok: true, reason: "admin_success" };
-  } catch (error) {
-    console.error("[Moderation] Admin client path exception:", {
-      context,
-      error,
-      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    });
-    return { ok: false, reason: "admin_client_exception" };
-  }
-}
-
 async function setPendingWithRpc(
   supabase: Awaited<ReturnType<typeof createClient>>,
   context: PendingContext
@@ -179,12 +113,12 @@ async function setPendingWithRpc(
       recentCount: context.recentCount,
       activeUsers: context.activeUsers,
       baselineTime: context.baselineTime,
-      fallback: "rpc",
+      mode: "primary",
     },
   });
 
   if (error) {
-    console.error("[Moderation] RPC fallback failed:", {
+    console.error("[Moderation] RPC pending update failed:", {
       context,
       error,
     });
@@ -369,28 +303,21 @@ export async function POST(request: NextRequest) {
         baselineTime,
       };
 
-      const adminResult = await setPendingWithAdminClient(context);
-      let pendingApplied = adminResult.ok;
-
+      const rpcResult = await setPendingWithRpc(supabase, context);
+      let pendingApplied = rpcResult.ok;
       if (!pendingApplied) {
-        const rpcResult = await setPendingWithRpc(supabase, context);
-        pendingApplied = rpcResult.ok;
-
-        if (!pendingApplied) {
-          const alreadyPending = await isPostAlreadyPending(supabase, postId);
-          if (!alreadyPending) {
-            console.error("[Moderation] Pending update failed in both paths:", {
-              context,
-              adminResult,
-              rpcResult,
-            });
-            return NextResponse.json(
-              { error: "審査ステータスの更新に失敗しました" },
-              { status: 500 }
-            );
-          }
-          pendingApplied = true;
+        const alreadyPending = await isPostAlreadyPending(supabase, postId);
+        if (!alreadyPending) {
+          console.error("[Moderation] Pending update failed:", {
+            context,
+            rpcResult,
+          });
+          return NextResponse.json(
+            { error: "審査ステータスの更新に失敗しました" },
+            { status: 500 }
+          );
         }
+        pendingApplied = true;
       }
 
       postModerationStatus = pendingApplied ? "pending" : postModerationStatus;
