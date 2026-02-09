@@ -69,6 +69,10 @@ export async function POST(
 
     if (logError) {
       console.error("Moderation log error:", logError);
+      return NextResponse.json(
+        { error: "審査ログの記録に失敗しました" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true, moderation_status: nextStatus });

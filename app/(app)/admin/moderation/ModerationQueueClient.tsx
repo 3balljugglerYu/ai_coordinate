@@ -70,7 +70,7 @@ export function ModerationQueueClient() {
       setPosts((prev) => prev.filter((item) => item.id !== postId));
       toast({
         title: "反映しました",
-        description: action === "approve" ? "公開を再開しました" : "非公開を維持しました",
+        description: action === "approve" ? "問題なしと判断し、公開を再開しました" : "不適切と判断し、非公開にしました",
       });
     } catch (error) {
       toast({
@@ -123,7 +123,7 @@ export function ModerationQueueClient() {
                 disabled={processingId === post.id}
                 onClick={() => handleDecision(post.id, "approve")}
               >
-                承認
+                問題なし
               </Button>
               <Button
                 size="sm"
@@ -131,7 +131,7 @@ export function ModerationQueueClient() {
                 disabled={processingId === post.id}
                 onClick={() => handleDecision(post.id, "reject")}
               >
-                却下
+                不適切
               </Button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getPostThumbUrl } from "@/features/posts/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     const { data: posts, error } = await adminClient
       .from("generated_images")
       .select(
-        "id,user_id,image_url,caption,moderation_status,moderation_reason,posted_at,created_at"
+        "id,user_id,image_url,storage_path_thumb,storage_path,caption,moderation_status,moderation_reason,posted_at,created_at"
       )
       .eq("is_posted", true)
       .eq("moderation_status", "pending")
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       posts: (posts || []).map((post) => ({
         ...post,
+        image_url: getPostThumbUrl(post),
         report_count: reportMap[post.id]?.count || 0,
         weighted_report_score: reportMap[post.id]?.score || 0,
         latest_reported_at: reportMap[post.id]?.latest || null,

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getPost } from "@/features/posts/lib/server-api";
-import { getPostImageUrl, getImageAspectRatio } from "@/features/posts/lib/utils";
+import { getPostDisplayUrl, getImageAspectRatio } from "@/features/posts/lib/utils";
 import { isCrawler, isPrefetchRequest } from "@/lib/utils";
 import { PostDetailContent } from "@/features/posts/components/PostDetailContent";
 import { createClient } from "@/lib/supabase/server";
@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
 
   const siteUrl = getSiteUrl();
   const postUrl = siteUrl ? `${siteUrl}/posts/${id}` : "";
-  const imageUrl = getPostImageUrl(post);
+  const imageUrl = getPostDisplayUrl(post);
   
   const title = `Persta.AI | ${DEFAULT_TITLE_TAGLINE}`;
   const description = buildDescription(post.caption);
@@ -165,8 +165,8 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     notFound();
   }
 
-  // 画像URLとアスペクト比を取得
-  const imageUrl = getPostImageUrl(post);
+  // 画像URLとアスペクト比を取得（詳細表示用は getPostDisplayUrl）
+  const imageUrl = getPostDisplayUrl(post);
   // データベースからアスペクト比を取得（フォールバック: 存在しない場合は計算）
   let imageAspectRatio: "portrait" | "landscape" | null = post.aspect_ratio as "portrait" | "landscape" | null;
   if (!imageAspectRatio && imageUrl) {

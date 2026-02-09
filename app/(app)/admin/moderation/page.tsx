@@ -17,7 +17,7 @@ export default async function AdminModerationPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">投稿審査キュー</h1>
         <p className="text-muted-foreground">
-          通報しきい値に達した投稿を審査して、承認または却下してください。
+          通報しきい値に達した投稿を審査して、問題なしまたは不適切を選択してください。
         </p>
       </div>
 

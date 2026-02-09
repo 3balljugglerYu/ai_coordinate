@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getPostThumbUrl } from "@/features/posts/lib/utils";
 
 export async function GET() {
   try {
@@ -34,7 +35,9 @@ export async function GET() {
       string,
       {
         id: string;
-        image_url: string;
+        image_url: string | null;
+        storage_path_thumb?: string | null;
+        storage_path?: string | null;
         caption: string | null;
         is_posted: boolean;
         moderation_status: "visible" | "pending" | "removed" | null;
@@ -44,7 +47,7 @@ export async function GET() {
     if (postIds.length > 0) {
       const { data: posts, error: postsError } = await supabase
         .from("generated_images")
-        .select("id,image_url,caption,is_posted,moderation_status")
+        .select("id,image_url,storage_path_thumb,storage_path,caption,is_posted,moderation_status")
         .in("id", postIds);
 
       if (postsError) {
@@ -62,16 +65,20 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      items: (reports || []).map((row) => ({
-        postId: row.post_id,
-        categoryId: row.category_id,
-        subcategoryId: row.subcategory_id,
-        reportedAt: row.created_at,
-        imageUrl: postMap[row.post_id]?.image_url ?? null,
-        caption: postMap[row.post_id]?.caption ?? null,
-        isPosted: postMap[row.post_id]?.is_posted ?? false,
-        moderationStatus: postMap[row.post_id]?.moderation_status ?? null,
-      })),
+      items: (reports || []).map((row) => {
+        const post = postMap[row.post_id];
+        const imageUrl = post ? getPostThumbUrl(post) || null : null;
+        return {
+          postId: row.post_id,
+          categoryId: row.category_id,
+          subcategoryId: row.subcategory_id,
+          reportedAt: row.created_at,
+          imageUrl,
+          caption: post?.caption ?? null,
+          isPosted: post?.is_posted ?? false,
+          moderationStatus: post?.moderation_status ?? null,
+        };
+      }),
     });
   } catch (error) {
     console.error("Account reports API error:", error);
