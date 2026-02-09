@@ -33,46 +33,32 @@ export async function POST(
 
     const { action, reason } = payload.data;
     const nextStatus = action === "approve" ? "visible" : "removed";
-    const nextReason = action === "approve" ? null : reason || "admin_reject";
     const now = new Date().toISOString();
-    const approvedAt = action === "approve" ? now : null;
 
     const adminClient = createAdminClient();
 
-    const { error: updateError } = await adminClient
-      .from("generated_images")
-      .update({
-        moderation_status: nextStatus,
-        moderation_reason: nextReason,
-        moderation_updated_at: now,
-        moderation_approved_at: approvedAt,
-      })
-      .eq("id", postId);
+    const { data: decisionApplied, error: decisionError } = await adminClient.rpc(
+      "apply_admin_moderation_decision",
+      {
+        p_post_id: postId,
+        p_actor_id: adminUser.id,
+        p_action: action,
+        p_reason: reason || null,
+        p_decided_at: now,
+        p_metadata: { decided_at: now },
+      }
+    );
 
-    if (updateError) {
-      console.error("Moderation decision update error:", updateError);
+    if (decisionError) {
+      console.error("Moderation decision RPC error:", decisionError);
       return NextResponse.json(
-        { error: "Failed to update moderation status" },
+        { error: "審査判定の反映に失敗しました" },
         { status: 500 }
       );
     }
 
-    const { error: logError } = await adminClient
-      .from("moderation_audit_logs")
-      .insert({
-        post_id: postId,
-        actor_id: adminUser.id,
-        action,
-        reason: reason || null,
-        metadata: { decided_at: now },
-      });
-
-    if (logError) {
-      console.error("Moderation log error:", logError);
-      return NextResponse.json(
-        { error: "審査ログの記録に失敗しました" },
-        { status: 500 }
-      );
+    if (!decisionApplied) {
+      return NextResponse.json({ error: "投稿が見つかりません" }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, moderation_status: nextStatus });
