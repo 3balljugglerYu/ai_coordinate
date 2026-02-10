@@ -83,7 +83,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       )}
 
       <CardContent className="px-1 pt-0 pb-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {post.user?.id ? (
             <Link
               href={`/users/${encodeURIComponent(post.user.id)}`}
@@ -139,6 +139,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
               authorUserId={post.user_id}
               currentUserId={currentUserId}
               onHidden={() => setIsHidden(true)}
+              showShare
+              showBlock={false}
             />
           )}
         </div>

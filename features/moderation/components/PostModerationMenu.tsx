@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Flag, MoreHorizontal, ShieldBan } from "lucide-react";
+import { Flag, MoreHorizontal, Share2, ShieldBan } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { REPORT_TAXONOMY } from "@/constants/report-taxonomy";
 import { reportPostAPI, blockUserAPI, getBlockStatusAPI, unblockUserAPI } from "@/features/moderation/lib/api";
@@ -9,6 +9,8 @@ import type { ReportCategoryId, ReportSubcategoryId } from "@/constants/report-t
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { sharePost } from "@/features/posts/lib/share";
+import { DEFAULT_SHARE_TEXT } from "@/constants";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +45,8 @@ interface PostModerationMenuProps {
   currentUserId?: string | null;
   onHidden?: () => void;
   align?: "start" | "center" | "end";
+  showShare?: boolean;
+  showBlock?: boolean;
 }
 
 export function PostModerationMenu({
@@ -51,6 +55,8 @@ export function PostModerationMenu({
   currentUserId,
   onHidden,
   align = "end",
+  showShare = false,
+  showBlock = true,
 }: PostModerationMenuProps) {
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -69,8 +75,9 @@ export function PostModerationMenu({
   const redirectPath =
     searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
 
-  const canShowBlock = Boolean(authorUserId && currentUserId && authorUserId !== currentUserId);
+  const canShowBlock = showBlock && Boolean(authorUserId && currentUserId && authorUserId !== currentUserId);
   const canShowReport = !(authorUserId && currentUserId && authorUserId === currentUserId);
+  const canShowShare = showShare;
   const isPostDetailPage = pathname?.startsWith("/posts/") ?? false;
   const category = useMemo(
     () => REPORT_TAXONOMY.find((item) => item.id === categoryId) || REPORT_TAXONOMY[0],
@@ -173,21 +180,50 @@ export function PostModerationMenu({
     }
   };
 
+  const handleShare = async () => {
+    try {
+      const url = `${window.location.origin}/posts/${postId}`;
+      const result = await sharePost(url, DEFAULT_SHARE_TEXT);
+
+      if (result.method === "clipboard") {
+        toast({
+          title: "共有文をコピーしました",
+          description: "SNSに貼り付けて投稿できます",
+        });
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      toast({
+        title: "共有に失敗しました",
+        description: error instanceof Error ? error.message : "時間をおいて再試行してください",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <>
-      {(canShowReport || canShowBlock) && (
+      {(canShowShare || canShowReport || canShowBlock) && (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0"
+            className="h-6 w-6 shrink-0 p-0"
             aria-label="投稿メニュー"
           >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align={align}>
+          {canShowShare && (
+            <DropdownMenuItem onClick={handleShare}>
+              <Share2 className="mr-2 h-4 w-4" />
+              シェアする
+            </DropdownMenuItem>
+          )}
           {canShowReport && (
             <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
               <Flag className="mr-2 h-4 w-4" />
