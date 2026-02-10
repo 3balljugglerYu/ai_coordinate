@@ -2,8 +2,6 @@
  * Web Share APIを使用したシェア機能のユーティリティ関数
  */
 
-import { DEFAULT_SHARE_TEXT } from "@/constants";
-
 export type ShareMethod = "share" | "clipboard";
 
 export interface ShareResult {
@@ -13,30 +11,29 @@ export interface ShareResult {
 /**
  * 投稿をシェアする
  * @param url 投稿詳細ページの絶対URL
- * @param text シェアするテキスト（キャプションなど）
+ * @param text シェアするテキスト
  * @returns シェア方法を返す（"share" または "clipboard"）
  * @throws ユーザーがキャンセルした場合（AbortError）や、クリップボードAPIも失敗した場合
  */
 export async function sharePost(
   url: string,
-  text?: string
+  text: string
 ): Promise<ShareResult> {
-  const shareText = text || DEFAULT_SHARE_TEXT;
   const shareData: ShareData = {
     title: "Persta.AI",
-    text: shareText,
-    url: url,
+    text,
+    url,
   };
 
   // 1) Share Sheet（URL+textを優先。OGPが主軸なので、まずはリンク共有）
-  if ("share" in navigator) {
+  if (typeof navigator.share === "function") {
     try {
-      await (navigator as any).share(shareData);
+      await navigator.share(shareData);
       return { method: "share" };
-    } catch (e: any) {
+    } catch (error: unknown) {
       // ユーザーキャンセルは呼び出し側で処理
-      if (e?.name === "AbortError") {
-        throw e;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw error;
       }
       // その他のエラーはフォールバックへ続行
     }
@@ -45,10 +42,10 @@ export async function sharePost(
   // 2) フォールバック: クリップボードに text + "\n" + url をコピー
   if (navigator.clipboard && navigator.clipboard.writeText) {
     try {
-      const clipboardText = `${shareText}\n${url}`;
+      const clipboardText = `${text}\n${url}`;
       await navigator.clipboard.writeText(clipboardText);
       return { method: "clipboard" };
-    } catch (error) {
+    } catch {
       // クリップボードAPIも失敗した場合はエラーをスロー
       throw new Error("Web Share API and Clipboard API are not supported.");
     }
@@ -56,4 +53,3 @@ export async function sharePost(
     throw new Error("Web Share API and Clipboard API are not supported.");
   }
 }
-

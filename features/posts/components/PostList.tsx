@@ -207,8 +207,8 @@ export function PostList({
               1024: 2,
               640: 2,
             }}
-            className="flex -ml-4 w-auto"
-            columnClassName="pl-4 bg-clip-padding"
+            className="flex -ml-1 w-auto sm:-ml-4"
+            columnClassName="pl-1 bg-clip-padding sm:pl-4"
           >
             {posts.map((post) => (
               <div key={post.id} className="mb-4">

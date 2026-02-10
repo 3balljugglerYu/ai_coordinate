@@ -76,7 +76,7 @@ export default async function Home({
         }}
       />
       <StreakChecker />
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-6 md:pt-8">
+      <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
         <div className="mb-4">
           <h1 className="text-3xl font-bold">Persta | ペルスタ</h1>
           <p className="mt-2 text-muted-foreground">

@@ -134,7 +134,7 @@ export function PostCardLikeButton({
         size="sm"
         onClick={handleToggleLike}
         disabled={isLoading || isLoadingStatus}
-        className="flex items-center gap-1 h-6 !px-0 pl-1.5 py-0.5"
+        className="flex items-center gap-1 h-6 !px-0 py-0.5"
       >
         <Heart
           className={`h-4 w-4 transition-colors ${
