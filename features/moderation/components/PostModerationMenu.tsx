@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "@/lib/share-post";
 import { DEFAULT_SHARE_TEXT } from "@/constants";
+import { getPostDetailUrl } from "@/lib/url-utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -182,7 +183,7 @@ export function PostModerationMenu({
 
   const handleShare = async () => {
     try {
-      const url = `${window.location.origin}/posts/${postId}`;
+      const url = getPostDetailUrl(postId);
       const result = await sharePost(url, DEFAULT_SHARE_TEXT);
 
       if (result.method === "clipboard") {

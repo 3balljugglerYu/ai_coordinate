@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "@/lib/share-post";
 import { DEFAULT_SHARE_TEXT } from "@/constants";
+import { getPostDetailUrl } from "@/lib/url-utils";
 
 interface ShareButtonProps {
   postId: string;
@@ -35,7 +36,7 @@ export function ShareButton({
   };
 
   const getPostUrl = () => {
-    return `${window.location.origin}/posts/${postId}`;
+    return getPostDetailUrl(postId);
   };
 
   // URLのみをコピーする関数
