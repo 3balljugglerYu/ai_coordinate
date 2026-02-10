@@ -197,7 +197,7 @@ export function PostModerationMenu({
       }
       toast({
         title: "共有に失敗しました",
-        description: error instanceof Error ? error.message : "時間をおいて再試行してください",
+        description: "予期せぬエラーが発生しました。時間をおいてから再度お試しください",
         variant: "destructive",
       });
     }
