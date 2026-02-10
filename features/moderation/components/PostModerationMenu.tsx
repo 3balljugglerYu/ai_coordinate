@@ -9,7 +9,7 @@ import type { ReportCategoryId, ReportSubcategoryId } from "@/constants/report-t
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { sharePost } from "@/features/posts/lib/share";
+import { sharePost } from "@/lib/share-post";
 import { DEFAULT_SHARE_TEXT } from "@/constants";
 import {
   DropdownMenu,

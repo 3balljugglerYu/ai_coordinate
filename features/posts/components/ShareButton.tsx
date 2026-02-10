@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import { sharePost } from "../lib/share";
+import { sharePost } from "@/lib/share-post";
 import { DEFAULT_SHARE_TEXT } from "@/constants";
 
 interface ShareButtonProps {
@@ -25,8 +25,6 @@ interface ShareButtonProps {
  */
 export function ShareButton({
   postId,
-  caption,
-  imageUrl,
 }: ShareButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -83,8 +81,8 @@ export function ShareButton({
         url: url,
       };
 
-      if ("share" in navigator) {
-        await (navigator as any).share(shareData);
+      if (typeof navigator.share === "function") {
+        await navigator.share(shareData);
         // Share Sheetが開かれた場合はトーストを表示しない
       } else {
         throw new Error("Web Share APIがサポートされていません");
