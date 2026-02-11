@@ -52,23 +52,3 @@ export async function completeMockPercoinPurchase(options: { packageId: string }
 
   return response.json() as Promise<{ balance: number }>;
 }
-
-export async function checkStreakBonus() {
-  const response = await fetch("/api/streak/check", {
-    method: "GET",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    // 401エラー（認証エラー）の場合は、例外をthrowせずに空のレスポンスを返す
-    // 認証状態のチェックは呼び出し元（StreakChecker）で行うため、ここでは静かに失敗
-    if (response.status === 401) {
-      return { bonus_granted: 0, streak_days: null };
-    }
-
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.error || "連続ログインボーナスの確認に失敗しました");
-  }
-
-  return response.json() as Promise<{ bonus_granted: number; streak_days: number | null }>;
-}

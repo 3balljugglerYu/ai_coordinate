@@ -1,5 +1,4 @@
 import { requireAuth } from "@/lib/auth";
-import { StreakChecker } from "@/components/StreakChecker";
 
 export default async function DashboardPage() {
   // 認証が必要なページ
@@ -7,7 +6,6 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <StreakChecker />
       <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold">Dashboard</h1>
       <p className="text-muted-foreground mt-2">
@@ -17,4 +15,3 @@ export default async function DashboardPage() {
     </>
   );
 }
-

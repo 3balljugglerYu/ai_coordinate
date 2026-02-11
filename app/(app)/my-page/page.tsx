@@ -7,12 +7,10 @@ import { ProfileHeaderSkeleton } from "@/features/my-page/components/ProfileHead
 import { UserStatsSkeleton } from "@/features/my-page/components/UserStatsSkeleton";
 import { PercoinBalanceSkeleton } from "@/features/my-page/components/PercoinBalanceSkeleton";
 import { MyPageImageGallerySkeleton } from "@/features/my-page/components/MyPageImageGallerySkeleton";
-import { StreakChecker } from "@/components/StreakChecker";
 
 export default async function MyPagePage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <StreakChecker />
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* プロフィールヘッダー: 独立したSuspense境界 */}

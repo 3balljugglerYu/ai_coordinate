@@ -4,7 +4,6 @@ import { PostList } from "@/features/posts/components/PostList";
 import { getPosts } from "@/features/posts/lib/server-api";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import { getSiteUrl } from "@/lib/env";
-import { StreakChecker } from "@/components/StreakChecker";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 
 export const metadata: Metadata = {
@@ -75,7 +74,6 @@ export default async function Home({
           __html: JSON.stringify(websiteSchema),
         }}
       />
-      <StreakChecker />
       <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
         <div className="mb-4">
           <h1 className="text-3xl font-bold">Persta | ペルスタ</h1>

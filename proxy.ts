@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) =>
+        cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         );
         response = NextResponse.next({
@@ -85,7 +85,7 @@ export async function proxy(request: NextRequest) {
 
   // 認証が必要なページ（(app)ルートグループ）の保護
   // /dashboard、/api/generate など認証が必要なパスを保護
-  const protectedPaths = ["/dashboard"];
+  const protectedPaths = ["/dashboard", "/challenge"];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
