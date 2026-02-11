@@ -13,6 +13,48 @@ import type { Notification } from "../types";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 
+const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
+const BONUS_TOAST_HISTORY_LIMIT = 100;
+
+function getBonusToastStorageKey(userId: string) {
+  return `${BONUS_TOAST_HISTORY_STORAGE_KEY}:${userId}`;
+}
+
+function createBonusToastSignature(notification: Pick<Notification, "id">) {
+  return notification.id;
+}
+
+function readBonusToastHistory(userId: string): string[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const stored = localStorage.getItem(getBonusToastStorageKey(userId));
+    if (!stored) return [];
+
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((item): item is string => typeof item === "string")
+      .slice(-BONUS_TOAST_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function writeBonusToastHistory(userId: string, signatures: string[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(
+      getBonusToastStorageKey(userId),
+      JSON.stringify(signatures.slice(-BONUS_TOAST_HISTORY_LIMIT))
+    );
+  } catch (error) {
+    console.error("Failed to persist bonus toast history:", error);
+  }
+}
+
 /**
  * 通知機能のカスタムフック
  * 通知一覧、未読数、Realtime購読を管理
@@ -28,6 +70,7 @@ export function useNotifications() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const hasCheckedInitialBonusNotifications = useRef(false);
+  const shownBonusToastSignaturesRef = useRef<Set<string>>(new Set());
 
   // 初期化: ユーザーIDを取得
   useEffect(() => {
@@ -37,6 +80,44 @@ export function useNotifications() {
       hasCheckedInitialBonusNotifications.current = false;
     });
   }, []);
+
+  // ユーザーごとのトースト表示履歴を読み込む
+  useEffect(() => {
+    if (!currentUserId) {
+      shownBonusToastSignaturesRef.current = new Set();
+      return;
+    }
+
+    shownBonusToastSignaturesRef.current = new Set(
+      readBonusToastHistory(currentUserId)
+    );
+  }, [currentUserId]);
+
+  const hasShownBonusToast = useCallback(
+    (notification: Pick<Notification, "id">) => {
+      const signature = createBonusToastSignature(notification);
+      return shownBonusToastSignaturesRef.current.has(signature);
+    },
+    []
+  );
+
+  const markBonusToastAsShown = useCallback(
+    (notification: Pick<Notification, "id">) => {
+      if (!currentUserId) return;
+
+      const signature = createBonusToastSignature(notification);
+      if (shownBonusToastSignaturesRef.current.has(signature)) return;
+
+      const nextHistory = [
+        ...shownBonusToastSignaturesRef.current,
+        signature,
+      ].slice(-BONUS_TOAST_HISTORY_LIMIT);
+
+      shownBonusToastSignaturesRef.current = new Set(nextHistory);
+      writeBonusToastHistory(currentUserId, nextHistory);
+    },
+    [currentUserId]
+  );
 
   // 未読数を取得
   const fetchUnreadCount = useCallback(async () => {
@@ -109,19 +190,30 @@ export function useNotifications() {
       (n) => !n.is_read && n.type === "bonus"
     );
 
-    // 未読のボーナス通知があれば、最新の1件をToastで表示
-    if (unreadBonusNotifications.length > 0) {
-      const latestBonusNotification = unreadBonusNotifications[0];
+    // 未読のボーナス通知があれば、未表示の最新1件だけToastで表示
+    const latestBonusNotification = unreadBonusNotifications.find(
+      (n) => !hasShownBonusToast(n)
+    );
+
+    if (latestBonusNotification) {
       toast({
         title: latestBonusNotification.title,
         description: latestBonusNotification.body,
         variant: "default",
       });
+      markBonusToastAsShown(latestBonusNotification);
     }
 
     // チェック済みフラグを立てる
     hasCheckedInitialBonusNotifications.current = true;
-  }, [currentUserId, isLoading, notifications, toast]); // 通知取得が完了するまで待つ
+  }, [
+    currentUserId,
+    hasShownBonusToast,
+    isLoading,
+    markBonusToastAsShown,
+    notifications,
+    toast,
+  ]); // 通知取得が完了するまで待つ
 
   // Realtime購読
   useEffect(() => {
@@ -145,12 +237,16 @@ export function useNotifications() {
           setUnreadCount((prev) => prev + 1);
 
           // ボーナス通知の場合はToastを表示
-          if (newNotification.type === "bonus") {
+          if (
+            newNotification.type === "bonus" &&
+            !hasShownBonusToast(newNotification)
+          ) {
             toast({
               title: newNotification.title,
               description: newNotification.body,
               variant: "default",
             });
+            markBonusToastAsShown(newNotification);
           }
         }
       )
@@ -159,7 +255,7 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, toast]);
+  }, [currentUserId, hasShownBonusToast, markBonusToastAsShown, toast]);
 
   // 通知を既読化
   const markRead = useCallback(
@@ -252,4 +348,3 @@ export function useNotifications() {
     },
   };
 }
-

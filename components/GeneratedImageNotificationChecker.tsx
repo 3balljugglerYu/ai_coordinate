@@ -5,6 +5,56 @@ import { useToast } from "@/components/ui/use-toast";
 import { getCurrentUserId } from "@/features/generation/lib/generation-service";
 import { getGeneratedImages } from "@/features/generation/lib/database";
 
+const GENERATED_IMAGE_TOAST_HISTORY_STORAGE_KEY =
+  "notified-generated-image-ids:v2";
+const GENERATED_IMAGE_TOAST_HISTORY_LIMIT = 200;
+
+function getGeneratedImageToastStorageKey(userId: string): string {
+  return `${GENERATED_IMAGE_TOAST_HISTORY_STORAGE_KEY}:${userId}`;
+}
+
+function readGeneratedImageToastHistory(storageKey: string): string[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return [];
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((item): item is string => typeof item === "string" && item.length > 0)
+      .slice(-GENERATED_IMAGE_TOAST_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function writeGeneratedImageToastHistory(
+  storageKey: string,
+  ids: Iterable<string>
+): string[] {
+  if (typeof window === "undefined") return [];
+
+  const normalized = Array.from(new Set(ids))
+    .filter((id) => typeof id === "string" && id.length > 0)
+    .slice(-GENERATED_IMAGE_TOAST_HISTORY_LIMIT);
+
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(normalized));
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error(
+        "[GeneratedImageNotificationChecker] Failed to persist history:",
+        error
+      );
+    }
+  }
+
+  return normalized;
+}
+
 /**
  * 画像生成完了通知チェックコンポーネント
  * グローバルコンポーネントとして使用し、どの画面でも画像生成完了を通知します
@@ -14,44 +64,69 @@ export function GeneratedImageNotificationChecker() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // 初回マウント時は通知をスキップ（10秒後に初回チェックを開始）
-    let isFirstCheck = true;
+    let isChecking = false;
+    let currentStorageKey: string | null = null;
+    let notifiedIds = new Set<string>();
+    let hasBaseline = false;
+
+    const persistNotifiedIds = () => {
+      if (!currentStorageKey) return;
+      const normalized = writeGeneratedImageToastHistory(
+        currentStorageKey,
+        notifiedIds
+      );
+      notifiedIds = new Set(normalized);
+    };
+
+    const loadUserHistory = (userId: string) => {
+      const nextStorageKey = getGeneratedImageToastStorageKey(userId);
+      if (nextStorageKey === currentStorageKey) return;
+
+      currentStorageKey = nextStorageKey;
+      notifiedIds = new Set(readGeneratedImageToastHistory(nextStorageKey));
+      hasBaseline = notifiedIds.size > 0;
+    };
 
     const checkNewImages = async () => {
-      // 認証チェック（未認証の場合は静かに終了）
-      const userId = await getCurrentUserId();
-      if (!userId) {
+      if (isChecking) {
         return;
       }
+      isChecking = true;
 
+      // 認証チェック（未認証の場合は静かに終了）
       try {
-        const STORAGE_KEY = "notifiedGeneratedImageIds";
-
-        // 初回チェックは、既存画像への通知を防止するため、
-        // 最新の画像IDを通知済みとして登録する（ベースラインを確立）
-        if (isFirstCheck) {
-          isFirstCheck = false;
-          const initialImages = await getGeneratedImages(userId, 10, 0, "coordinate");
-          const initialImageIds = initialImages
-            .map((img) => img.id)
-            .filter((id): id is string => id !== null && id !== undefined);
-          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(initialImageIds));
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          currentStorageKey = null;
+          notifiedIds = new Set();
+          hasBaseline = false;
           return;
         }
 
-        // sessionStorageから通知済み画像IDを取得（ベースライン + 既に通知した画像ID）
-        const notifiedIds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
+        loadUserHistory(userId);
 
         // 最近作成された画像を取得（最大10件、coordinateタイプのみ）
         const recentImages = await getGeneratedImages(userId, 10, 0, "coordinate");
+        const recentImageIds = recentImages
+          .map((img) => img.id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0);
 
-        // 通知済みでない画像IDを抽出（時間フィルタなしで、ベースラインとの差分で判定）
-        const newImageIds = recentImages
-          .filter((img) => img.id && !notifiedIds.includes(img.id))
-          .map((img) => img.id!);
+        // 初回のみベースラインを確立して、既存画像への通知を防止
+        if (!hasBaseline) {
+          recentImageIds.forEach((id) => notifiedIds.add(id));
+          hasBaseline = true;
+          persistNotifiedIds();
+          return;
+        }
+
+        // 通知済みでない画像IDを抽出
+        const newImageIds = recentImageIds.filter((id) => !notifiedIds.has(id));
 
         // 新規画像があればトースト通知
         if (newImageIds.length > 0) {
+          newImageIds.forEach((id) => notifiedIds.add(id));
+          persistNotifiedIds();
+
           toast({
             title: "新しい画像が生成されました",
             description:
@@ -59,8 +134,6 @@ export function GeneratedImageNotificationChecker() {
                 ? "画像が1枚追加されました"
                 : `${newImageIds.length}枚の画像が追加されました`,
           });
-          // sessionStorageに追加
-          sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...notifiedIds, ...newImageIds]));
         }
       } catch (error) {
         // エラーが発生してもユーザー体験を損なわない（静かに失敗）
@@ -68,11 +141,16 @@ export function GeneratedImageNotificationChecker() {
         if (process.env.NODE_ENV === "development") {
           console.error("[GeneratedImageNotificationChecker] Error:", error);
         }
+      } finally {
+        isChecking = false;
       }
     };
 
-    // 10秒ごとにポーリング（初回実行も10秒後、isFirstCheckロジックでベースライン設定を実行）
-    const intervalId = setInterval(checkNewImages, 10000);
+    // 初回マウント時にベースラインを確立し、その後10秒ごとにポーリング
+    void checkNewImages();
+    const intervalId = setInterval(() => {
+      void checkNewImages();
+    }, 10000);
 
     // クリーンアップ関数（ポーリングの停止）
     return () => {
