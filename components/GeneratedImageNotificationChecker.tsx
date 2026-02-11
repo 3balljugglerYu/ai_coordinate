@@ -17,7 +17,7 @@ function readGeneratedImageToastHistory(storageKey: string): string[] {
   if (typeof window === "undefined") return [];
 
   try {
-    const raw = sessionStorage.getItem(storageKey);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [];
 
     const parsed: unknown = JSON.parse(raw);
@@ -42,7 +42,7 @@ function writeGeneratedImageToastHistory(
     .slice(-GENERATED_IMAGE_TOAST_HISTORY_LIMIT);
 
   try {
-    sessionStorage.setItem(storageKey, JSON.stringify(normalized));
+    localStorage.setItem(storageKey, JSON.stringify(normalized));
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
       console.error(
