@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import type { ReferralCheckReasonCode } from "@/features/referral/types";
+
+const REFERRAL_REASON_CODES = [
+  "granted",
+  "already_granted",
+  "window_expired",
+  "missing_code",
+  "invalid_code",
+  "transient_error",
+  "unauthorized",
+] as const;
+
+function isReferralCheckReasonCode(
+  value: unknown
+): value is ReferralCheckReasonCode {
+  return (
+    typeof value === "string" &&
+    (REFERRAL_REASON_CODES as readonly string[]).includes(value)
+  );
+}
 
 /**
  * 初回ログイン時の紹介特典チェックAPI
@@ -9,12 +29,14 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   try {
     const user = await getUser();
+    const referralCode = request.nextUrl.searchParams.get("ref");
 
     // 未認証の場合はエラーレスポンスを返す（リダイレクトではなく）
     if (!user) {
       return NextResponse.json(
         {
           bonus_granted: 0,
+          reason_code: "unauthorized" as ReferralCheckReasonCode,
           error: "認証が必要です",
         },
         { status: 401 }
@@ -23,9 +45,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
     const { data, error: rpcError } = await supabase.rpc(
-      "check_and_grant_referral_bonus_on_first_login",
+      "check_and_grant_referral_bonus_on_first_login_with_reason",
       {
         p_user_id: user.id,
+        p_referral_code: referralCode,
       }
     );
 
@@ -35,14 +58,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           bonus_granted: 0,
+          reason_code: "transient_error" as ReferralCheckReasonCode,
           error: "紹介特典の確認に失敗しました",
         },
         { status: 500 }
       );
     }
 
+    const result = Array.isArray(data) ? data[0] : null;
+    const bonusGranted =
+      typeof result?.bonus_granted === "number" ? result.bonus_granted : 0;
+    const reasonCode = isReferralCheckReasonCode(result?.reason_code)
+      ? result.reason_code
+      : ("transient_error" as ReferralCheckReasonCode);
+
     return NextResponse.json({
-      bonus_granted: typeof data === "number" ? data : 0,
+      bonus_granted: bonusGranted,
+      reason_code: reasonCode,
     });
   } catch (error) {
     // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
@@ -50,6 +82,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         bonus_granted: 0,
+        reason_code: "transient_error" as ReferralCheckReasonCode,
         error:
           error instanceof Error
             ? error.message
@@ -59,4 +92,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

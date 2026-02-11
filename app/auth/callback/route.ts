@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+const REFERRAL_METADATA_UPDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isWithinReferralMetadataUpdateWindow(
+  user: {
+    created_at?: string;
+  }
+) {
+  if (!user.created_at) return false;
+
+  const createdAtMs = Date.parse(user.created_at);
+  if (Number.isNaN(createdAtMs)) return false;
+
+  return Date.now() - createdAtMs <= REFERRAL_METADATA_UPDATE_WINDOW_MS;
+}
+
 /**
  * OAuth Callback Handler
  * 
@@ -17,7 +32,9 @@ export async function GET(request: Request) {
   const errorDescription = requestUrl.searchParams.get("error_description");
   // X OAuth識別用パラメータ（state 500文字制限回避のため）
   // 参考: https://github.com/supabase/auth/issues/2340
-  const isXOAuth = requestUrl.searchParams.get("p") === "x";
+  const oauthFlowType = requestUrl.searchParams.get("p");
+  const isXOAuth = oauthFlowType === "x";
+  const shouldUseOAuthCompletePage = isXOAuth || oauthFlowType === "oauth";
 
   // エラーハンドリング
   if (error) {
@@ -44,14 +61,12 @@ export async function GET(request: Request) {
     }
 
     // 紹介コードと紹介特典の処理
-    // 時間ベースの初回ログイン判定は不安定なため削除。
-    // 後続の処理（メタデータ更新、RPC呼び出し）はべき等性が保証されているため、毎回実行しても問題ない。
-    // これにより、メール/パスワード認証のフローとも一貫性が保たれる。
     if (sessionData.user) {
       // 1. 紹介コードをメタデータに保存（未設定の場合のみ）
       if (referralCode && !sessionData.user.user_metadata?.referral_code) {
-        // エラーはログに記録するが、認証フローはブロックしない
-        void (async () => {
+        // 既存アカウントに紹介コードが後付けされるのを防ぐため、
+        // アカウント作成から24時間以内の場合のみ保存する。
+        if (isWithinReferralMetadataUpdateWindow(sessionData.user)) {
           try {
             const { error: updateError } = await supabase.auth.updateUser({
               data: { referral_code: referralCode },
@@ -68,34 +83,32 @@ export async function GET(request: Request) {
               err
             );
           }
-        })();
+        }
       }
 
       // 2. 紹介特典をチェック（べき等性が保証されているため、複数回呼び出しても問題ない）
       // OAuthユーザーは通常 email_confirmed_at が設定されている
       if (sessionData.user.email_confirmed_at) {
-        // エラーはログに記録するが、認証フローはブロックしない
-        void (async () => {
-          try {
-            const { error: bonusError } = await supabase.rpc(
-              "check_and_grant_referral_bonus_on_first_login",
-              {
-                p_user_id: sessionData.user.id,
-              }
-            );
-            if (bonusError) {
-              console.error(
-                "Failed to check referral bonus on first login:",
-                bonusError
-              );
+        try {
+          const { error: bonusError } = await supabase.rpc(
+            "check_and_grant_referral_bonus_on_first_login_with_reason",
+            {
+              p_user_id: sessionData.user.id,
+              p_referral_code: referralCode,
             }
-          } catch (err) {
+          );
+          if (bonusError) {
             console.error(
               "Failed to check referral bonus on first login:",
-              err
+              bonusError
             );
           }
-        })();
+        } catch (err) {
+          console.error(
+            "Failed to check referral bonus on first login:",
+            err
+          );
+        }
       }
     }
 
@@ -106,8 +119,8 @@ export async function GET(request: Request) {
     const forwardedHost = request.headers.get("x-forwarded-host");
     const isLocalEnv = process.env.NODE_ENV === "development";
     
-    // X OAuthの場合は /auth/x-complete へリダイレクト（localStorageの値を処理するため）
-    const redirectPath = isXOAuth ? "/auth/x-complete" : next;
+    // OAuth completeページではlocalStorage経由の紹介コード処理を行う
+    const redirectPath = shouldUseOAuthCompletePage ? "/auth/x-complete" : next;
     
     if (isLocalEnv) {
       // 開発環境ではoriginをそのまま使用

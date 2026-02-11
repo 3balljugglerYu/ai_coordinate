@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 
 /**
- * X (Twitter) OAuth完了ページ
+ * OAuth完了ページ（X / Google / GitHub）
  * 
- * X OAuthのstate パラメータ500文字制限を回避するため、
- * リダイレクト先と紹介コードをlocalStorageから取得して処理します。
+ * OAuth callbackで保存されたリダイレクト先・紹介コードを
+ * localStorageから取得して処理します。
  * 
  * 参考: https://github.com/supabase/auth/issues/2340
  */
@@ -28,10 +29,29 @@ export default function XOAuthCompletePage() {
       // 紹介コードがある場合、APIを呼び出して処理
       if (referralCode) {
         try {
-          await fetch("/api/referral/check-first-login", {
-            method: "GET",
-            credentials: "include",
-          });
+          const result = await checkReferralBonusOnFirstLogin(referralCode);
+
+          if (result.reason_code === "transient_error") {
+            console.warn(
+              "[X OAuth] Referral check returned transient_error, retrying once"
+            );
+            const retryResult =
+              await checkReferralBonusOnFirstLogin(referralCode);
+            if (retryResult.reason_code === "transient_error") {
+              console.error(
+                "[X OAuth] Referral check failed after retry:",
+                retryResult
+              );
+            }
+          } else if (
+            result.reason_code !== "granted" &&
+            result.reason_code !== "already_granted"
+          ) {
+            console.info(
+              "[X OAuth] Referral check completed without grant:",
+              result
+            );
+          }
         } catch (err) {
           console.error("[X OAuth] Failed to process referral code:", err);
         }

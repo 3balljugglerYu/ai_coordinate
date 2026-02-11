@@ -28,8 +28,13 @@ export async function generateReferralCode(): Promise<GenerateReferralCodeRespon
  * 初回ログイン時の紹介特典をチェック
  * メールアドレス確認完了後の初回ログイン成功時に呼び出す
  */
-export async function checkReferralBonusOnFirstLogin(): Promise<CheckFirstLoginResponse> {
-  const response = await fetch("/api/referral/check-first-login", {
+export async function checkReferralBonusOnFirstLogin(
+  referralCode?: string
+): Promise<CheckFirstLoginResponse> {
+  const query = referralCode
+    ? `?${new URLSearchParams({ ref: referralCode }).toString()}`
+    : "";
+  const response = await fetch(`/api/referral/check-first-login${query}`, {
     method: "GET",
     credentials: "include",
   });
@@ -41,4 +46,3 @@ export async function checkReferralBonusOnFirstLogin(): Promise<CheckFirstLoginR
 
   return response.json() as Promise<CheckFirstLoginResponse>;
 }
-
