@@ -1,25 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 
 /**
- * X (Twitter) OAuth完了ページ
+ * OAuth完了ページ（X / Google / GitHub）
  * 
- * X OAuthのstate パラメータ500文字制限を回避するため、
- * リダイレクト先と紹介コードをlocalStorageから取得して処理します。
+ * OAuth callbackで保存されたリダイレクト先・紹介コードを
+ * localStorageから取得して処理します。
  * 
  * 参考: https://github.com/supabase/auth/issues/2340
  */
 export default function XOAuthCompletePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const processXOAuthCompletion = async () => {
       // localStorageから保存された値を取得
-      const redirectTo = localStorage.getItem("x_oauth_redirect");
-      const referralCode = localStorage.getItem("x_oauth_referral");
+      const storedRedirectTo = localStorage.getItem("x_oauth_redirect");
+      const storedReferralCode = localStorage.getItem("x_oauth_referral");
+      const redirectToFromQuery = searchParams.get("next");
+      const referralCodeFromQuery = searchParams.get("ref");
+      const redirectTo = storedRedirectTo || redirectToFromQuery;
+      const referralCode = storedReferralCode || referralCodeFromQuery;
 
       // 使用後は削除
       localStorage.removeItem("x_oauth_redirect");
@@ -28,23 +34,43 @@ export default function XOAuthCompletePage() {
       // 紹介コードがある場合、APIを呼び出して処理
       if (referralCode) {
         try {
-          await fetch("/api/referral/check-first-login", {
-            method: "GET",
-            credentials: "include",
-          });
+          const result = await checkReferralBonusOnFirstLogin(referralCode);
+
+          if (result.reason_code === "transient_error") {
+            console.warn(
+              "[X OAuth] Referral check returned transient_error, retrying once"
+            );
+            const retryResult =
+              await checkReferralBonusOnFirstLogin(referralCode);
+            if (retryResult.reason_code === "transient_error") {
+              console.error(
+                "[X OAuth] Referral check failed after retry:",
+                retryResult
+              );
+            }
+          } else if (
+            result.reason_code !== "granted" &&
+            result.reason_code !== "already_granted"
+          ) {
+            console.info(
+              "[X OAuth] Referral check completed without grant:",
+              result
+            );
+          }
         } catch (err) {
           console.error("[X OAuth] Failed to process referral code:", err);
         }
       }
 
       // リダイレクト先へ遷移
-      const destination = redirectTo || "/";
+      const destination =
+        redirectTo && redirectTo.startsWith("/") ? redirectTo : "/";
       router.replace(destination);
       router.refresh();
     };
 
     processXOAuthCompletion();
-  }, [router]);
+  }, [router, searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

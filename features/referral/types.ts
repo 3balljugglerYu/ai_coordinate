@@ -7,8 +7,17 @@ export interface GenerateReferralCodeResponse {
   error?: string;
 }
 
+export type ReferralCheckReasonCode =
+  | "granted"
+  | "already_granted"
+  | "window_expired"
+  | "missing_code"
+  | "invalid_code"
+  | "transient_error"
+  | "unauthorized";
+
 export interface CheckFirstLoginResponse {
   bonus_granted: number;
+  reason_code: ReferralCheckReasonCode;
   error?: string;
 }
-

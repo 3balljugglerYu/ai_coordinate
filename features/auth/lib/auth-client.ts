@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { getSiteUrlForClient } from "@/lib/env";
+import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 
 /**
  * クライアントサイド認証ヘルパー関数
@@ -179,10 +180,7 @@ export async function signIn(email: string, password: string) {
   // パフォーマンスが懸念される場合は、user_metadataにフラグを立てるなどの方法を検討してください。
   if (data.user && data.user.email_confirmed_at) {
     // エラーは静かに処理（ユーザー体験を損なわない）
-    await fetch("/api/referral/check-first-login", {
-      method: "GET",
-      credentials: "include",
-    }).catch((err) => {
+    await checkReferralBonusOnFirstLogin().catch((err) => {
       console.error("[Referral Bonus] Failed to check on first login:", err);
     });
   }
@@ -366,6 +364,13 @@ export async function signInWithOAuth(
 
   // サイトURLの取得（環境変数優先、開発環境はlocalhost）
   const siteUrl = getSiteUrlForClient();
+
+  // 過去フローの値が残っていると誤判定の原因になるため、
+  // OAuth開始時に毎回localStorageをクリアしてから必要値のみ保存する。
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("x_oauth_redirect");
+    localStorage.removeItem("x_oauth_referral");
+  }
   
   // X（Twitter）の場合、stateパラメータの500文字制限を回避するため
   // redirectToを最小化（紹介コードとnextはlocalStorageに保存）
@@ -399,8 +404,20 @@ export async function signInWithOAuth(
   }
 
   // Google/GitHubの場合は従来通り
+  // 紹介コード付きOAuthはフォールバック用にlocalStorageへ保存し、
+  // callback後に /auth/x-complete で確実に紹介チェックを実行する。
+  if (typeof window !== "undefined" && referralCode) {
+    if (redirectTo && redirectTo !== "/") {
+      localStorage.setItem("x_oauth_redirect", redirectTo);
+    }
+    localStorage.setItem("x_oauth_referral", referralCode);
+  }
+
   const callbackUrl = new URL(`${siteUrl}/auth/callback`);
   callbackUrl.searchParams.set("next", redirectTo || "/");
+  if (referralCode) {
+    callbackUrl.searchParams.set("p", "oauth");
+  }
   
   // 紹介コードが存在する場合、コールバックURLに含める
   if (referralCode) {
