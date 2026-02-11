@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 
@@ -15,12 +15,17 @@ import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
  */
 export default function XOAuthCompletePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const processXOAuthCompletion = async () => {
       // localStorageから保存された値を取得
-      const redirectTo = localStorage.getItem("x_oauth_redirect");
-      const referralCode = localStorage.getItem("x_oauth_referral");
+      const storedRedirectTo = localStorage.getItem("x_oauth_redirect");
+      const storedReferralCode = localStorage.getItem("x_oauth_referral");
+      const redirectToFromQuery = searchParams.get("next");
+      const referralCodeFromQuery = searchParams.get("ref");
+      const redirectTo = storedRedirectTo || redirectToFromQuery;
+      const referralCode = storedReferralCode || referralCodeFromQuery;
 
       // 使用後は削除
       localStorage.removeItem("x_oauth_redirect");
@@ -58,13 +63,14 @@ export default function XOAuthCompletePage() {
       }
 
       // リダイレクト先へ遷移
-      const destination = redirectTo || "/";
+      const destination =
+        redirectTo && redirectTo.startsWith("/") ? redirectTo : "/";
       router.replace(destination);
       router.refresh();
     };
 
     processXOAuthCompletion();
-  }, [router]);
+  }, [router, searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

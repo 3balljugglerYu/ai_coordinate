@@ -34,7 +34,8 @@ export async function GET(request: Request) {
   // 参考: https://github.com/supabase/auth/issues/2340
   const oauthFlowType = requestUrl.searchParams.get("p");
   const isXOAuth = oauthFlowType === "x";
-  const shouldUseOAuthCompletePage = isXOAuth || oauthFlowType === "oauth";
+  const shouldUseOAuthCompletePage =
+    isXOAuth || oauthFlowType === "oauth" || Boolean(referralCode);
 
   // エラーハンドリング
   if (error) {
@@ -86,30 +87,8 @@ export async function GET(request: Request) {
         }
       }
 
-      // 2. 紹介特典をチェック（べき等性が保証されているため、複数回呼び出しても問題ない）
-      // OAuthユーザーは通常 email_confirmed_at が設定されている
-      if (sessionData.user.email_confirmed_at) {
-        try {
-          const { error: bonusError } = await supabase.rpc(
-            "check_and_grant_referral_bonus_on_first_login_with_reason",
-            {
-              p_user_id: sessionData.user.id,
-              p_referral_code: referralCode,
-            }
-          );
-          if (bonusError) {
-            console.error(
-              "Failed to check referral bonus on first login:",
-              bonusError
-            );
-          }
-        } catch (err) {
-          console.error(
-            "Failed to check referral bonus on first login:",
-            err
-          );
-        }
-      }
+      // 2. 紹介特典チェックは /auth/x-complete 側で実行する
+      // callback内でRPCをawaitすると、リダイレクト応答が遅延するため。
     }
 
     // 新規ユーザーの場合、user_creditsテーブルが自動的に作成される（トリガーで実装済み）
@@ -119,8 +98,19 @@ export async function GET(request: Request) {
     const forwardedHost = request.headers.get("x-forwarded-host");
     const isLocalEnv = process.env.NODE_ENV === "development";
     
-    // OAuth completeページではlocalStorage経由の紹介コード処理を行う
-    const redirectPath = shouldUseOAuthCompletePage ? "/auth/x-complete" : next;
+    // OAuth completeページではlocalStorageまたはクエリ経由で紹介コード処理を行う
+    const oauthCompleteQuery = new URLSearchParams();
+    if (referralCode) {
+      oauthCompleteQuery.set("ref", referralCode);
+    }
+    if (next && next !== "/") {
+      oauthCompleteQuery.set("next", next);
+    }
+    const oauthCompleteSuffix =
+      oauthCompleteQuery.size > 0 ? `?${oauthCompleteQuery.toString()}` : "";
+    const redirectPath = shouldUseOAuthCompletePage
+      ? `/auth/x-complete${oauthCompleteSuffix}`
+      : next;
     
     if (isLocalEnv) {
       // 開発環境ではoriginをそのまま使用
