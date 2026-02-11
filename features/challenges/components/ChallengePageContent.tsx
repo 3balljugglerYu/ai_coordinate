@@ -129,9 +129,7 @@ export function ChallengePageContent() {
         setStreakDays(result.streak_days);
       }
       setIsCheckedInToday(result.checked_in_today);
-      if (result.checked_in_today) {
-        setLastStreakLoginAt(new Date().toISOString());
-      }
+      setLastStreakLoginAt(result.last_streak_login_at);
 
       if (result.bonus_granted > 0) {
         const streakDayForMessage = result.streak_days ?? streakDays;

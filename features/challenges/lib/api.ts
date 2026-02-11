@@ -10,6 +10,7 @@ export interface CheckInStreakBonusResponse {
   bonus_granted: number;
   streak_days: number | null;
   checked_in_today: boolean;
+  last_streak_login_at: string | null;
 }
 
 /**

@@ -13,6 +13,7 @@ const getJstDateString = (date: Date) =>
 type StreakStatus = {
   streak_days: number | null;
   checked_in_today: boolean;
+  last_streak_login_at: string | null;
 };
 
 async function getStreakStatus(userId: string): Promise<StreakStatus> {
@@ -28,6 +29,7 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
     return {
       streak_days: null,
       checked_in_today: false,
+      last_streak_login_at: null,
     };
   }
 
@@ -41,6 +43,7 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
   return {
     streak_days: streakDays,
     checked_in_today: checkedInToday,
+    last_streak_login_at: lastStreakLoginAt,
   };
 }
 
@@ -60,6 +63,7 @@ export async function GET() {
           bonus_granted: 0,
           streak_days: null,
           checked_in_today: false,
+          last_streak_login_at: null,
           error: "認証が必要です",
         },
         { status: 401 }
@@ -71,6 +75,7 @@ export async function GET() {
       bonus_granted: 0,
       streak_days: status.streak_days,
       checked_in_today: status.checked_in_today,
+      last_streak_login_at: status.last_streak_login_at,
     });
   } catch (error) {
     console.error("[Streak Bonus] GET Exception:", error);
@@ -79,6 +84,7 @@ export async function GET() {
         bonus_granted: 0,
         streak_days: null,
         checked_in_today: false,
+        last_streak_login_at: null,
         error:
           error instanceof Error
             ? error.message
@@ -100,6 +106,7 @@ export async function POST() {
           bonus_granted: 0,
           streak_days: null,
           checked_in_today: false,
+          last_streak_login_at: null,
           error: "認証が必要です",
         },
         { status: 401 }
@@ -122,6 +129,7 @@ export async function POST() {
           bonus_granted: 0,
           streak_days: null,
           checked_in_today: false,
+          last_streak_login_at: null,
           error: "特典の確認に失敗しました",
         },
         { status: 500 }
@@ -134,6 +142,7 @@ export async function POST() {
       bonus_granted: typeof data === "number" ? data : 0,
       streak_days: status.streak_days,
       checked_in_today: status.checked_in_today,
+      last_streak_login_at: status.last_streak_login_at,
     });
   } catch (error) {
     // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
@@ -143,6 +152,7 @@ export async function POST() {
         bonus_granted: 0,
         streak_days: null,
         checked_in_today: false,
+        last_streak_login_at: null,
         error:
           error instanceof Error
             ? error.message
