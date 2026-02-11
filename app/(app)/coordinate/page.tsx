@@ -2,11 +2,8 @@ import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
 import { GeneratedImageGalleryWrapper } from "@/features/generation/components/GeneratedImageGalleryWrapper";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
-import { StockImageListWrapper } from "@/features/generation/components/StockImageListWrapper";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
-import { StockImageListSkeleton } from "@/features/generation/components/StockImageListSkeleton";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
-import { StreakChecker } from "@/components/StreakChecker";
 
 async function GenerationFormWrapper() {
   // 認証チェック
@@ -18,7 +15,6 @@ async function GenerationFormWrapper() {
 export default async function CoordinatePage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <StreakChecker />
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトルと説明文 */}
@@ -50,4 +46,3 @@ export default async function CoordinatePage() {
     </div>
   );
 }
-

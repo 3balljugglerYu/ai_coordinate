@@ -1,13 +1,16 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ChallengePageContent } from "@/features/challenges/components/ChallengePageContent";
+import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "チャレンジ | Persta.AI",
   description: "ミッションを達成してペルコインを獲得しよう。デイリー投稿、連続ログイン、友達紹介などの特典情報。",
 };
 
-export default function ChallengePage() {
+export default async function ChallengePage() {
+  await requireAuth();
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="pt-6 md:pt-8 pb-24 px-4">
