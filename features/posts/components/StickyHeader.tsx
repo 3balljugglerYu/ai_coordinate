@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, User as UserIcon, LogOut, Bell } from "lucide-react";
+import { ArrowLeft, User, User as UserIcon, LogOut } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +20,6 @@ import {
 } from "@/features/auth/lib/auth-client";
 import { APP_NAME } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
-import { NotificationList } from "@/features/notifications/components/NotificationList";
-import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import { SearchBar } from "@/features/posts/components/SearchBar";
 
 interface StickyHeaderProps {
@@ -40,8 +38,6 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const searchParams = useSearchParams();
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const { unreadCount, markAllRead } = useNotifications();
   const headerRef = useRef<HTMLElement | null>(null);
 
   // トップレベルのページ
@@ -51,6 +47,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     "/challenge",
     "/my-page",
     "/my-page/credits",
+    "/notifications",
     "/login",
     "/signup",
     "/about",
@@ -204,49 +201,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     </div>
   );
 
-  // ヘッダー右側（通知 + ユーザーアイコン）の共通コンポーネント
+  // ヘッダー右側（ユーザーアイコン）の共通コンポーネント
   const HeaderRight = () => (
     <div className="flex items-center gap-2 flex-shrink-0">
       {!isLoading && (
         <>
-          {/* 通知バッジ（認証済みユーザーのみ） */}
-          {currentUser && (
-            <DropdownMenu
-              open={isNotificationOpen}
-              onOpenChange={(open) => {
-                setIsNotificationOpen(open);
-                // ドロップダウンが開くタイミングで既読にする
-                if (open) {
-                  markAllRead();
-                }
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="relative flex items-center justify-center p-2 h-auto"
-                  aria-label={`通知${unreadCount > 0 ? `（未読${unreadCount}件）` : ""}`}
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500" />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-80 max-h-[80vh] overflow-hidden flex flex-col p-0"
-              >
-                <div className="p-4 border-b">
-                  <h3 className="font-semibold">通知</h3>
-                </div>
-                <div className="overflow-y-auto flex-1 max-h-[60vh]">
-                  <NotificationList />
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
           {currentUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -2,29 +2,26 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut, Trophy /* , Coins */ } from "lucide-react";
-import { getCurrentUser, signOut, onAuthStateChange } from "@/features/auth/lib/auth-client";
+import { Home, Sparkles, User as UserIcon, Trophy, Bell /* , Coins */ } from "lucide-react";
+import { getCurrentUser, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import type { User } from "@supabase/supabase-js";
-import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 
 export function NavigationBar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  // 楽観的UI更新: クリックしたパスを一時的に保持
-  const [clickedPath, setClickedPath] = useState<string | null>(null);
   // トランジション状態: ナビゲーションを非ブロッキングにする
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   // プリフェッチ実行フラグ: 1回のみ実行するため
   const hasPrefetched = useRef(false);
+  const { unreadCount } = useUnreadNotificationCount();
 
   useEffect(() => {
     // 初回ロード時のユーザー取得
     getCurrentUser().then((user) => {
       setUser(user);
-      setIsLoading(false);
     });
 
     // 認証状態の変更を監視
@@ -43,40 +40,27 @@ export function NavigationBar() {
       // 認証が必要なページをプリフェッチ
       router.prefetch("/coordinate");
       router.prefetch("/challenge");
+      router.prefetch("/notifications");
       router.prefetch("/my-page");
       hasPrefetched.current = true;
     }
   }, [user, router]);
 
-  // pathnameが更新されたら、楽観的UI更新をクリア（遷移完了）
-  useEffect(() => {
-    if (clickedPath && pathname === clickedPath) {
-      setClickedPath(null);
-    }
-  }, [pathname, clickedPath]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.push("/");
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  };
-
   const handleNavigation = (path: string) => {
-    // 既にアクティブなパスへのタップは無視（連続タップの防止）
-    if (pathname === path && !clickedPath) {
+    if (pathname === path) {
       return;
     }
-
-    // 楽観的UI更新: 即座にアクティブ表示にする（最新のタップを優先）
-    setClickedPath(path);
 
     // startTransitionでナビゲーションを非ブロッキングにする
     startTransition(() => {
       // コーディネートとマイページ関連は認証必須
-      if ((path === "/coordinate" || path === "/challenge" || path.startsWith("/my-page")) && !user) {
+      if (
+        (path === "/coordinate" ||
+          path === "/challenge" ||
+          path === "/notifications" ||
+          path.startsWith("/my-page")) &&
+        !user
+      ) {
         router.push(`/login?redirect=/`);
         return;
       }
@@ -88,6 +72,7 @@ export function NavigationBar() {
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
     { path: "/challenge", label: "チャレンジ", icon: Trophy },
+    { path: "/notifications", label: "お知らせ", icon: Bell },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
     // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
@@ -99,8 +84,7 @@ export function NavigationBar() {
           {/* ナビゲーションアイテム */}
           <div className="flex flex-1 items-center justify-around">
             {navItems.map(({ path, label, icon: Icon }) => {
-              // 楽観的UI更新: pathnameまたはclickedPathのどちらかが一致すればアクティブ
-              const isActive = pathname === path || clickedPath === path;
+              const isActive = pathname === path;
               return (
                 <button
                   key={path}
@@ -122,12 +106,17 @@ export function NavigationBar() {
                     )}
                   />
                   {/* アイコン */}
-                  <Icon
-                    className={cn(
-                      "h-5 w-5 transition-all duration-200",
-                      isActive ? "scale-110" : "scale-100"
+                  <div className="relative">
+                    <Icon
+                      className={cn(
+                        "h-5 w-5 transition-all duration-200",
+                        isActive ? "scale-110" : "scale-100"
+                      )}
+                    />
+                    {path === "/notifications" && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}
-                  />
+                  </div>
                   {/* ラベル */}
                   <span className="transition-all duration-200">
                     {label}

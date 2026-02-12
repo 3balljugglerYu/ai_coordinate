@@ -322,6 +322,15 @@ export function useNotifications() {
         markRead([notification.id]);
       }
 
+      // 運営ボーナス通知はマイページへ遷移
+      if (
+        notification.type === "bonus" &&
+        notification.data?.bonus_type === "admin_bonus"
+      ) {
+        router.push("/my-page");
+        return;
+      }
+
       // 遷移
       if (notification.entity_type === "post") {
         router.push(`/posts/${notification.entity_id}`);
