@@ -143,8 +143,8 @@ export function useNotifications() {
           setIsLoadingMore(true);
         }
 
-        // 初期取得時は5件、追加取得時は10件
-        const limit = append ? 10 : 5;
+        // 初期取得・追加取得ともに20件
+        const limit = 20;
         const response = await getNotifications(limit, cursor);
         const newNotifications = response.notifications;
 
@@ -325,17 +325,33 @@ export function useNotifications() {
       // 運営ボーナス通知はマイページへ遷移
       if (
         notification.type === "bonus" &&
-        notification.data?.bonus_type === "admin_bonus"
+        notification.data?.bonus_type &&
+        [
+          "admin_bonus",
+          "streak",
+          "daily_post",
+          "signup_bonus",
+          "referral",
+        ].includes(notification.data.bonus_type)
       ) {
         router.push("/my-page");
         return;
       }
 
+      // フォロー通知はフォローしてくれたユーザーのプロフィールへ遷移
+      if (
+        notification.type === "follow" &&
+        notification.data?.follower_id
+      ) {
+        router.push(`/users/${notification.data.follower_id}?from=notifications`);
+        return;
+      }
+
       // 遷移
       if (notification.entity_type === "post") {
-        router.push(`/posts/${notification.entity_id}`);
+        router.push(`/posts/${notification.entity_id}?from=notifications`);
       } else if (notification.entity_type === "user") {
-        router.push(`/users/${notification.entity_id}`);
+        router.push(`/users/${notification.entity_id}?from=notifications`);
       }
     },
     [router, markRead]

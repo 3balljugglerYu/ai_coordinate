@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, type MouseEvent } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import { useNotifications } from "../hooks/useNotifications";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import type { Notification } from "../types";
  * 通知一覧の表示、クリックで遷移、既読化処理、無限スクロール対応
  */
 export function NotificationList() {
+  const router = useRouter();
   const {
     notifications,
     isLoading,
@@ -22,6 +24,7 @@ export function NotificationList() {
     loadMore,
     handleNotificationClick,
     markAllRead,
+    markRead,
   } = useNotifications();
 
   const { ref: inViewRef, inView } = useInView({
@@ -77,15 +80,39 @@ export function NotificationList() {
     }
   };
 
-  // 画像URLを取得（data.image_urlを優先、なければpost.image_url、それでもなければデフォルト）
+  // 画像URLを取得（post.image_urlを優先、なければdata.image_url）
   const getImageUrl = (notification: Notification): string | null => {
-    if (notification.data?.image_url) {
-      return notification.data.image_url;
+    // デイリー投稿特典はサムネイルを表示しない
+    if (
+      notification.type === "bonus" &&
+      notification.data?.bonus_type === "daily_post"
+    ) {
+      return null;
     }
+
     if (notification.post?.image_url) {
       return notification.post.image_url;
     }
+    if (notification.data?.image_url) {
+      return notification.data.image_url;
+    }
     return null;
+  };
+
+  // いいね通知の左側アイコンタップ時は、いいねしたユーザーのプロフィールへ遷移
+  const handleActorIconClick = (
+    event: MouseEvent<HTMLElement>,
+    notification: Notification
+  ) => {
+    if (!["like", "comment"].includes(notification.type)) return;
+
+    event.stopPropagation();
+
+    if (!notification.is_read) {
+      void markRead([notification.id]);
+    }
+
+    router.push(`/users/${notification.actor_id}?from=notifications`);
   };
 
   if (isLoading && notifications.length === 0) {
@@ -135,6 +162,9 @@ export function NotificationList() {
       <div className="flex flex-col divide-y">
         {notifications.map((notification) => {
           const imageUrl = getImageUrl(notification);
+          const isBonusNotification = notification.type === "bonus";
+          const isActorProfileLinkNotification =
+            notification.type === "like" || notification.type === "comment";
           const actorName =
             notification.actor?.nickname || "ユーザー";
 
@@ -149,16 +179,42 @@ export function NotificationList() {
             >
               {/* アクターのアバター */}
               <div className="flex-shrink-0">
-                {notification.actor?.avatar_url ? (
+                {isBonusNotification ? (
+                  <Image
+                    src="/icons/icon-192.png"
+                    alt="Persta.AI"
+                    width={36}
+                    height={36}
+                    className="rounded-md"
+                  />
+                ) : notification.actor?.avatar_url ? (
                   <Image
                     src={notification.actor.avatar_url}
                     alt={actorName}
                     width={40}
                     height={40}
-                    className="rounded-full"
+                    className={cn(
+                      "rounded-full",
+                      isActorProfileLinkNotification && "cursor-pointer"
+                    )}
+                    onClick={
+                      isActorProfileLinkNotification
+                        ? (event) => handleActorIconClick(event, notification)
+                        : undefined
+                    }
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center",
+                      isActorProfileLinkNotification && "cursor-pointer"
+                    )}
+                    onClick={
+                      isActorProfileLinkNotification
+                        ? (event) => handleActorIconClick(event, notification)
+                        : undefined
+                    }
+                  >
                     <User className="h-5 w-5 text-gray-400" />
                   </div>
                 )}
@@ -219,4 +275,3 @@ export function NotificationList() {
     </div>
   );
 }
-

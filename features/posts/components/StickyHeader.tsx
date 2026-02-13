@@ -64,7 +64,12 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // 遷移元を確認して戻る先を決定
   const fromParam = searchParams.get("from");
-  const backUrl = fromParam === "my-page" ? "/my-page" : "/";
+  const backUrl =
+    fromParam === "my-page"
+      ? "/my-page"
+      : fromParam === "notifications"
+        ? "/notifications"
+        : "/";
 
   useEffect(() => {
     const updateHeaderHeight = () => {
