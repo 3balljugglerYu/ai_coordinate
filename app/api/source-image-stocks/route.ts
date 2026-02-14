@@ -81,10 +81,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ファイル名を生成
+    // ファイル名を生成（MIMEタイプから拡張子を決定。file.nameは改ざんの可能性があるため使用しない）
+    const mimeToExt: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/jpg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+    };
+    const extension = mimeToExt[file.type] ?? "png";
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
-    const extension = file.name.split(".").pop() || "png";
     const fileName = `${user.id}/stocks/${timestamp}-${randomStr}.${extension}`;
 
     // Supabase Storageにアップロード（サーバー経由でHTML/JSONエラーを回避）
