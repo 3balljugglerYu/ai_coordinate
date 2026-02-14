@@ -45,42 +45,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // 制限数チェック
-    const { data: limitData, error: limitError } = await supabase.rpc(
-      "get_stock_image_limit"
-    );
-    if (limitError) {
-      console.error("RPC error:", limitError);
-      return NextResponse.json(
-        { error: "ストック画像制限数の取得に失敗しました" },
-        { status: 500 }
-      );
-    }
-    const limit = limitData ?? 3;
-
-    const { count, error: countError } = await supabase
-      .from("source_image_stocks")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id);
-
-    if (countError) {
-      console.error("Database query error:", countError);
-      return NextResponse.json(
-        { error: "ストック画像数の取得に失敗しました" },
-        { status: 500 }
-      );
-    }
-    const currentCount = count ?? 0;
-
-    if (currentCount >= limit) {
-      return NextResponse.json(
-        {
-          error: `ストック画像の上限（${limit}枚）に達しています。不要なストックを削除するか、プランをアップグレードしてください。`,
-        },
-        { status: 400 }
-      );
-    }
-
     // ファイル名を生成（MIMEタイプから拡張子を決定。file.nameは改ざんの可能性があるため使用しない）
     const mimeToExt: Record<string, string> = {
       "image/jpeg": "jpg",
@@ -116,28 +80,35 @@ export async function POST(request: NextRequest) {
       .from(STORAGE_BUCKET)
       .getPublicUrl(uploadData.path);
 
-    // データベースに保存
-    const { data: stock, error: insertError } = await supabase
-      .from("source_image_stocks")
-      .insert({
-        user_id: user.id,
-        image_url: publicUrl,
-        storage_path: uploadData.path,
-        name: file.name,
-      })
-      .select()
-      .single();
+    // アトミックに制限数チェック＋DB保存（レースコンディション防止）
+    const { data: stock, error: rpcError } = await supabase.rpc(
+      "insert_source_image_stock",
+      {
+        p_user_id: user.id,
+        p_image_url: publicUrl,
+        p_storage_path: uploadData.path,
+        p_name: file.name,
+      }
+    );
 
-    if (insertError) {
-      console.error("Database insert error:", insertError);
-      // アップロード済みファイルは残るが、DBに保存できなかった
+    if (rpcError) {
+      console.error("insert_source_image_stock RPC error:", rpcError);
+      // 上限超過は400、その他は500
+      const isLimitError =
+        rpcError.message?.includes("上限") ?? false;
       return NextResponse.json(
-        { error: `ストック画像の保存に失敗しました: ${insertError.message}` },
-        { status: 500 }
+        {
+          error:
+            rpcError.message ??
+            "ストック画像の保存に失敗しました",
+        },
+        { status: isLimitError ? 400 : 500 }
       );
     }
 
-    return NextResponse.json(stock);
+    // RPCが単一行を返す場合、PostgRESTは配列で返すことがある
+    const stockRecord = Array.isArray(stock) ? stock[0] : stock;
+    return NextResponse.json(stockRecord);
   } catch (error) {
     if (error instanceof Response) {
       return error;
