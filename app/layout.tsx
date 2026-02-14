@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { AppSidebar } from "@/components/AppSidebar";
 import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
+import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
 import { getSiteUrl } from "@/lib/env";
 import { Analytics } from "@vercel/analytics/react";
@@ -68,6 +69,9 @@ export default function RootLayout({
           </Suspense>
           <Suspense fallback={null}>
             <GeneratedImageNotificationChecker />
+          </Suspense>
+          <Suspense fallback={null}>
+            <BonusNotificationToastListener />
           </Suspense>
           <div className="main-content">
             {children}

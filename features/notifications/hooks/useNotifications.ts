@@ -106,6 +106,12 @@ export function useNotifications() {
     []
   );
 
+  const syncUnreadBadgeCount = useCallback(() => {
+    void refreshUnreadCount().catch((error) => {
+      console.error("Failed to sync unread badge count:", error);
+    });
+  }, [refreshUnreadCount]);
+
   const markBonusToastAsShown = useCallback(
     (notification: Pick<Notification, "id">) => {
       if (!currentUserId) return;
@@ -213,6 +219,7 @@ export function useNotifications() {
         variant: "default",
       });
       markBonusToastAsShown(latestBonusNotification);
+      syncUnreadBadgeCount();
     }
 
     // チェック済みフラグを立てる
@@ -224,6 +231,7 @@ export function useNotifications() {
     isLoading,
     markBonusToastAsShown,
     notifications,
+    syncUnreadBadgeCount,
     toast,
   ]); // 通知取得が完了するまで待つ
 
@@ -260,6 +268,7 @@ export function useNotifications() {
               variant: "default",
             });
             markBonusToastAsShown(newNotification);
+            syncUnreadBadgeCount();
           }
         }
       )
@@ -273,6 +282,7 @@ export function useNotifications() {
     hasShownBonusToast,
     isNotificationsPage,
     markBonusToastAsShown,
+    syncUnreadBadgeCount,
     toast,
   ]);
 

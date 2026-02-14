@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { postImageAPI } from "../lib/api";
 
 interface PostModalProps {
@@ -33,6 +34,7 @@ export function PostModal({
 }: PostModalProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshUnreadCount } = useUnreadNotificationCount();
   const [caption, setCaption] = useState(currentCaption || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +62,9 @@ export function PostModal({
           title: "特典獲得！",
           description: `今日の投稿で${response.bonus_granted}ペルコインを獲得しました！`,
           variant: "default",
+        });
+        await refreshUnreadCount().catch((error) => {
+          console.error("Failed to refresh unread notification count:", error);
         });
       }
 
@@ -139,4 +144,3 @@ export function PostModal({
     </Dialog>
   );
 }
-
