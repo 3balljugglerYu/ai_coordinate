@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   // 参考: https://github.com/supabase/auth/issues/2340
   const oauthFlowType = requestUrl.searchParams.get("p");
   const isXOAuth = oauthFlowType === "x";
-  const shouldUseOAuthCompletePage =
+  const shouldUseOAuthCompletePageByQuery =
     isXOAuth || oauthFlowType === "oauth" || Boolean(referralCode);
 
   // エラーハンドリング
@@ -108,6 +108,11 @@ export async function GET(request: Request) {
     }
     const oauthCompleteSuffix =
       oauthCompleteQuery.size > 0 ? `?${oauthCompleteQuery.toString()}` : "";
+    const hasReferralCodeInMetadata = Boolean(
+      sessionData.user?.user_metadata?.referral_code
+    );
+    const shouldUseOAuthCompletePage =
+      shouldUseOAuthCompletePageByQuery || hasReferralCodeInMetadata;
     const redirectPath = shouldUseOAuthCompletePage
       ? `/auth/x-complete${oauthCompleteSuffix}`
       : next;
