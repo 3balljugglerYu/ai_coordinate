@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   getNotifications,
@@ -12,6 +12,7 @@ import {
 import type { Notification } from "../types";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
+import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
 const BONUS_TOAST_HISTORY_LIMIT = 100;
@@ -60,8 +61,10 @@ function writeBonusToastHistory(userId: string, signatures: string[]) {
  * 通知一覧、未読数、Realtime購読を管理
  */
 export function useNotifications() {
+  const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshUnreadCount } = useUnreadNotificationCount();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +74,8 @@ export function useNotifications() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const hasCheckedInitialBonusNotifications = useRef(false);
   const shownBonusToastSignaturesRef = useRef<Set<string>>(new Set());
+  const hasAutoMarkedReadOnNotificationsPage = useRef(false);
+  const isNotificationsPage = pathname === "/notifications";
 
   // 初期化: ユーザーIDを取得
   useEffect(() => {
@@ -185,6 +190,12 @@ export function useNotifications() {
     )
       return;
 
+    // お知らせ画面では初期トーストを出さない
+    if (isNotificationsPage) {
+      hasCheckedInitialBonusNotifications.current = true;
+      return;
+    }
+
     // 未読のボーナス通知をチェック
     const unreadBonusNotifications = notifications.filter(
       (n) => !n.is_read && n.type === "bonus"
@@ -209,6 +220,7 @@ export function useNotifications() {
   }, [
     currentUserId,
     hasShownBonusToast,
+    isNotificationsPage,
     isLoading,
     markBonusToastAsShown,
     notifications,
@@ -238,6 +250,7 @@ export function useNotifications() {
 
           // ボーナス通知の場合はToastを表示
           if (
+            !isNotificationsPage &&
             newNotification.type === "bonus" &&
             !hasShownBonusToast(newNotification)
           ) {
@@ -255,7 +268,13 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, hasShownBonusToast, markBonusToastAsShown, toast]);
+  }, [
+    currentUserId,
+    hasShownBonusToast,
+    isNotificationsPage,
+    markBonusToastAsShown,
+    toast,
+  ]);
 
   // 通知を既読化
   const markRead = useCallback(
@@ -271,6 +290,7 @@ export function useNotifications() {
           )
         );
         setUnreadCount((prev) => Math.max(0, prev - ids.length));
+        await refreshUnreadCount();
       } catch (error) {
         console.error("Failed to mark notifications as read:", error);
         // エラー時は再取得
@@ -278,7 +298,7 @@ export function useNotifications() {
         fetchUnreadCount();
       }
     },
-    [fetchNotifications, fetchUnreadCount]
+    [fetchNotifications, fetchUnreadCount, refreshUnreadCount]
   );
 
   // 全件既読化
@@ -298,6 +318,7 @@ export function useNotifications() {
     try {
       await markAllNotificationsRead();
       // 成功時は楽観的更新で既に完了している
+      await refreshUnreadCount();
     } catch (error) {
       console.error("Failed to mark all notifications as read:", error);
       // エラー時は再取得してバッジを再表示
@@ -305,7 +326,22 @@ export function useNotifications() {
       fetchNotifications(null, false);
       throw error; // 呼び出し元にエラーを伝播
     }
-  }, [fetchNotifications, fetchUnreadCount]);
+  }, [fetchNotifications, fetchUnreadCount, refreshUnreadCount]);
+
+  // お知らせ画面に入ったタイミングで未読を自動既読化
+  useEffect(() => {
+    if (!isNotificationsPage) return;
+    if (isLoading) return;
+    if (hasAutoMarkedReadOnNotificationsPage.current) return;
+
+    const hasUnread = notifications.some((n) => !n.is_read);
+    if (!hasUnread) return;
+
+    hasAutoMarkedReadOnNotificationsPage.current = true;
+    void markAllRead().catch((error) => {
+      console.error("Failed to auto mark notifications as read:", error);
+    });
+  }, [isLoading, isNotificationsPage, markAllRead, notifications]);
 
   // もっと読み込む
   const loadMore = useCallback(() => {
