@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   getNotifications,
@@ -12,6 +12,7 @@ import {
 import type { Notification } from "../types";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
+import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
 const BONUS_TOAST_HISTORY_LIMIT = 100;
@@ -60,8 +61,10 @@ function writeBonusToastHistory(userId: string, signatures: string[]) {
  * 通知一覧、未読数、Realtime購読を管理
  */
 export function useNotifications() {
+  const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshUnreadCount } = useUnreadNotificationCount();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +74,8 @@ export function useNotifications() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const hasCheckedInitialBonusNotifications = useRef(false);
   const shownBonusToastSignaturesRef = useRef<Set<string>>(new Set());
+  const hasAutoMarkedReadOnNotificationsPage = useRef(false);
+  const isNotificationsPage = pathname === "/notifications";
 
   // 初期化: ユーザーIDを取得
   useEffect(() => {
@@ -100,6 +105,12 @@ export function useNotifications() {
     },
     []
   );
+
+  const syncUnreadBadgeCount = useCallback(() => {
+    void refreshUnreadCount().catch((error) => {
+      console.error("Failed to sync unread badge count:", error);
+    });
+  }, [refreshUnreadCount]);
 
   const markBonusToastAsShown = useCallback(
     (notification: Pick<Notification, "id">) => {
@@ -143,8 +154,8 @@ export function useNotifications() {
           setIsLoadingMore(true);
         }
 
-        // 初期取得時は5件、追加取得時は10件
-        const limit = append ? 10 : 5;
+        // 初期取得・追加取得ともに20件
+        const limit = 20;
         const response = await getNotifications(limit, cursor);
         const newNotifications = response.notifications;
 
@@ -185,6 +196,12 @@ export function useNotifications() {
     )
       return;
 
+    // お知らせ画面では初期トーストを出さない
+    if (isNotificationsPage) {
+      hasCheckedInitialBonusNotifications.current = true;
+      return;
+    }
+
     // 未読のボーナス通知をチェック
     const unreadBonusNotifications = notifications.filter(
       (n) => !n.is_read && n.type === "bonus"
@@ -202,6 +219,7 @@ export function useNotifications() {
         variant: "default",
       });
       markBonusToastAsShown(latestBonusNotification);
+      syncUnreadBadgeCount();
     }
 
     // チェック済みフラグを立てる
@@ -209,9 +227,11 @@ export function useNotifications() {
   }, [
     currentUserId,
     hasShownBonusToast,
+    isNotificationsPage,
     isLoading,
     markBonusToastAsShown,
     notifications,
+    syncUnreadBadgeCount,
     toast,
   ]); // 通知取得が完了するまで待つ
 
@@ -238,6 +258,7 @@ export function useNotifications() {
 
           // ボーナス通知の場合はToastを表示
           if (
+            !isNotificationsPage &&
             newNotification.type === "bonus" &&
             !hasShownBonusToast(newNotification)
           ) {
@@ -247,6 +268,7 @@ export function useNotifications() {
               variant: "default",
             });
             markBonusToastAsShown(newNotification);
+            syncUnreadBadgeCount();
           }
         }
       )
@@ -255,7 +277,14 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, hasShownBonusToast, markBonusToastAsShown, toast]);
+  }, [
+    currentUserId,
+    hasShownBonusToast,
+    isNotificationsPage,
+    markBonusToastAsShown,
+    syncUnreadBadgeCount,
+    toast,
+  ]);
 
   // 通知を既読化
   const markRead = useCallback(
@@ -271,6 +300,7 @@ export function useNotifications() {
           )
         );
         setUnreadCount((prev) => Math.max(0, prev - ids.length));
+        await refreshUnreadCount();
       } catch (error) {
         console.error("Failed to mark notifications as read:", error);
         // エラー時は再取得
@@ -278,7 +308,7 @@ export function useNotifications() {
         fetchUnreadCount();
       }
     },
-    [fetchNotifications, fetchUnreadCount]
+    [fetchNotifications, fetchUnreadCount, refreshUnreadCount]
   );
 
   // 全件既読化
@@ -298,6 +328,7 @@ export function useNotifications() {
     try {
       await markAllNotificationsRead();
       // 成功時は楽観的更新で既に完了している
+      await refreshUnreadCount();
     } catch (error) {
       console.error("Failed to mark all notifications as read:", error);
       // エラー時は再取得してバッジを再表示
@@ -305,7 +336,27 @@ export function useNotifications() {
       fetchNotifications(null, false);
       throw error; // 呼び出し元にエラーを伝播
     }
-  }, [fetchNotifications, fetchUnreadCount]);
+  }, [fetchNotifications, fetchUnreadCount, refreshUnreadCount]);
+
+  // お知らせ画面に入ったタイミングで未読を自動既読化
+  useEffect(() => {
+    if (!isNotificationsPage) return;
+    if (isLoading) return;
+    if (hasAutoMarkedReadOnNotificationsPage.current) return;
+    if (unreadCount <= 0) return;
+
+    const markAllReadOnPageEnter = async () => {
+      try {
+        await markAllRead();
+        hasAutoMarkedReadOnNotificationsPage.current = true;
+      } catch (error) {
+        hasAutoMarkedReadOnNotificationsPage.current = false;
+        console.error("Failed to auto mark notifications as read:", error);
+      }
+    };
+
+    void markAllReadOnPageEnter();
+  }, [isLoading, isNotificationsPage, markAllRead, unreadCount]);
 
   // もっと読み込む
   const loadMore = useCallback(() => {
@@ -322,11 +373,36 @@ export function useNotifications() {
         markRead([notification.id]);
       }
 
+      // 運営ボーナス通知はマイページへ遷移
+      if (
+        notification.type === "bonus" &&
+        notification.data?.bonus_type &&
+        [
+          "admin_bonus",
+          "streak",
+          "daily_post",
+          "signup_bonus",
+          "referral",
+        ].includes(notification.data.bonus_type)
+      ) {
+        router.push("/my-page");
+        return;
+      }
+
+      // フォロー通知はフォローしてくれたユーザーのプロフィールへ遷移
+      if (
+        notification.type === "follow" &&
+        notification.data?.follower_id
+      ) {
+        router.push(`/users/${notification.data.follower_id}?from=notifications`);
+        return;
+      }
+
       // 遷移
       if (notification.entity_type === "post") {
-        router.push(`/posts/${notification.entity_id}`);
+        router.push(`/posts/${notification.entity_id}?from=notifications`);
       } else if (notification.entity_type === "user") {
-        router.push(`/users/${notification.entity_id}`);
+        router.push(`/users/${notification.entity_id}?from=notifications`);
       }
     },
     [router, markRead]

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getPostThumbUrl } from "@/features/posts/lib/utils";
 
 /**
  * 通知一覧取得API
@@ -120,13 +121,17 @@ export async function GET(request: NextRequest) {
     if (postIds.length > 0) {
       const { data: posts, error: postsError } = await supabase
         .from("generated_images")
-        .select("id, image_url, caption")
+        .select("id, image_url, storage_path, storage_path_thumb, caption")
         .in("id", postIds);
 
       if (!postsError && posts) {
         for (const post of posts) {
           postMap[post.id] = {
-            image_url: post.image_url,
+            image_url: getPostThumbUrl({
+              storage_path_thumb: post.storage_path_thumb,
+              storage_path: post.storage_path,
+              image_url: post.image_url,
+            }) || null,
             caption: post.caption,
           };
         }
@@ -170,4 +175,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

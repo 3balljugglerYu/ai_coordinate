@@ -18,6 +18,11 @@ export default function XOAuthCompletePage() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    const wait = (ms: number) =>
+      new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+
     const processXOAuthCompletion = async () => {
       // localStorageから保存された値を取得
       const storedRedirectTo = localStorage.getItem("x_oauth_redirect");
@@ -25,41 +30,48 @@ export default function XOAuthCompletePage() {
       const redirectToFromQuery = searchParams.get("next");
       const referralCodeFromQuery = searchParams.get("ref");
       const redirectTo = storedRedirectTo || redirectToFromQuery;
-      const referralCode = storedReferralCode || referralCodeFromQuery;
+      const referralCodeRaw = storedReferralCode || referralCodeFromQuery;
+      const referralCode =
+        typeof referralCodeRaw === "string" && referralCodeRaw.trim().length > 0
+          ? referralCodeRaw
+          : undefined;
 
       // 使用後は削除
       localStorage.removeItem("x_oauth_redirect");
       localStorage.removeItem("x_oauth_referral");
 
-      // 紹介コードがある場合、APIを呼び出して処理
-      if (referralCode) {
-        try {
-          const result = await checkReferralBonusOnFirstLogin(referralCode);
+      // 紹介特典チェックを実行（紹介コードがなくても、metadata内コードを使って判定可能）
+      try {
+        const executeReferralCheck = () =>
+          checkReferralBonusOnFirstLogin(referralCode);
 
-          if (result.reason_code === "transient_error") {
-            console.warn(
-              "[X OAuth] Referral check returned transient_error, retrying once"
-            );
-            const retryResult =
-              await checkReferralBonusOnFirstLogin(referralCode);
-            if (retryResult.reason_code === "transient_error") {
-              console.error(
-                "[X OAuth] Referral check failed after retry:",
-                retryResult
-              );
-            }
-          } else if (
-            result.reason_code !== "granted" &&
-            result.reason_code !== "already_granted"
-          ) {
-            console.info(
-              "[X OAuth] Referral check completed without grant:",
-              result
-            );
-          }
-        } catch (err) {
-          console.error("[X OAuth] Failed to process referral code:", err);
+        let result = await executeReferralCheck();
+
+        // コールバック直後はセッション反映が遅れることがあるため1回だけ再試行
+        if (
+          result.reason_code === "transient_error" ||
+          result.reason_code === "unauthorized"
+        ) {
+          console.warn(
+            "[X OAuth] Referral check returned retryable reason, retrying once:",
+            result.reason_code
+          );
+          await wait(400);
+          result = await executeReferralCheck();
         }
+
+        if (
+          result.reason_code !== "granted" &&
+          result.reason_code !== "already_granted" &&
+          result.reason_code !== "missing_code"
+        ) {
+          console.info(
+            "[X OAuth] Referral check completed without grant:",
+            result
+          );
+        }
+      } catch (err) {
+        console.error("[X OAuth] Failed to process referral code:", err);
       }
 
       // リダイレクト先へ遷移

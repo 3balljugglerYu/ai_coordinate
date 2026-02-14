@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { AppSidebar } from "@/components/AppSidebar";
 import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
+import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
+import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
 import { getSiteUrl } from "@/lib/env";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -58,25 +60,30 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-16 lg:pb-0`}
         suppressHydrationWarning
       >
-        <Suspense fallback={<div className="h-16" />}>
-          <StickyHeader />
-        </Suspense>
-        <Suspense fallback={null}>
-          <AppSidebar />
-        </Suspense>
-        <Suspense fallback={null}>
-          <GeneratedImageNotificationChecker />
-        </Suspense>
-        <div className="main-content">
-          {children}
-          <Footer />
-        </div>
-        <Suspense fallback={<div className="h-16" />}>
-          <NavigationBar />
-        </Suspense>
-        <Toaster />
-        <Analytics />
-        <SpeedInsights />
+        <UnreadNotificationProvider>
+          <Suspense fallback={<div className="h-16" />}>
+            <StickyHeader />
+          </Suspense>
+          <Suspense fallback={null}>
+            <AppSidebar />
+          </Suspense>
+          <Suspense fallback={null}>
+            <GeneratedImageNotificationChecker />
+          </Suspense>
+          <Suspense fallback={null}>
+            <BonusNotificationToastListener />
+          </Suspense>
+          <div className="main-content">
+            {children}
+            <Footer />
+          </div>
+          <Suspense fallback={<div className="h-16" />}>
+            <NavigationBar />
+          </Suspense>
+          <Toaster />
+          <Analytics />
+          <SpeedInsights />
+        </UnreadNotificationProvider>
       </body>
     </html>
   );

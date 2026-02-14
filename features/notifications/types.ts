@@ -20,6 +20,9 @@ export interface Notification {
     comment_id?: string;
     comment_content?: string;
     follower_id?: string;
+    bonus_type?: "admin_bonus" | "daily_post" | "streak" | "referral" | "signup_bonus";
+    bonus_amount?: number;
+    reason?: string;
   };
   is_read: boolean;
   read_at: string | null;
@@ -43,4 +46,3 @@ export interface NotificationsResponse {
 export interface UnreadCountResponse {
   count: number;
 }
-

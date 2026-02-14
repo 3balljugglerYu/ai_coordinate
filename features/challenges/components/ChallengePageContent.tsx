@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { ChallengeCard } from "./ChallengeCard";
 import { ReferralCodeDisplay } from "@/features/referral/components/ReferralCodeDisplay";
 import {
@@ -53,6 +54,7 @@ function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
 
 export function ChallengePageContent() {
   const { toast } = useToast();
+  const { refreshUnreadCount } = useUnreadNotificationCount();
   const maxStreakBonus = Math.max(...STREAK_BONUS_SCHEDULE);
   const totalStreakBonus = STREAK_BONUS_SCHEDULE.reduce((a, b) => a + b, 0);
   const [streakDays, setStreakDays] = useState<number>(0);
@@ -143,6 +145,8 @@ export function ChallengePageContent() {
           description,
           variant: "default",
         });
+        // チェックイン成功時に未読バッジを即時更新
+        await refreshUnreadCount();
       }
     } catch (error) {
       console.error("Failed to check in streak bonus:", error);

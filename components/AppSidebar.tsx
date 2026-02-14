@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy /* , Coins */ } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell /* , Coins */ } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { APP_NAME } from "@/constants";
 import { getCurrentUser, onAuthStateChange, signOut } from "@/features/auth/lib/auth-client";
+import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 
 const SIDEBAR_OPEN_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
@@ -22,21 +29,22 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [isOpen, setIsOpen] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+    return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== "closed";
+  });
   const [, startTransition] = useTransition();
   const hasPrefetched = useRef(false);
+  const { unreadCount } = useUnreadNotificationCount();
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const sidebarActive = useMemo(() => shouldShowSidebar(pathname), [pathname]);
-
-  useEffect(() => {
-    // クライアントサイドでのみ実行される
-    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (saved === "closed") {
-      setIsOpen(false);
-    }
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     getCurrentUser().then((currentUser) => {
@@ -56,6 +64,7 @@ export function AppSidebar() {
     if (user && !hasPrefetched.current) {
       router.prefetch("/coordinate");
       router.prefetch("/challenge");
+      router.prefetch("/notifications");
       router.prefetch("/my-page");
       hasPrefetched.current = true;
     }
@@ -95,7 +104,13 @@ export function AppSidebar() {
     }
 
     startTransition(() => {
-      if ((path === "/coordinate" || path === "/challenge" || path.startsWith("/my-page")) && !user) {
+      if (
+        (path === "/coordinate" ||
+          path === "/challenge" ||
+          path === "/notifications" ||
+          path.startsWith("/my-page")) &&
+        !user
+      ) {
         router.push(`/login?redirect=/`);
         return;
       }
@@ -107,6 +122,7 @@ export function AppSidebar() {
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
     { path: "/challenge", label: "チャレンジ", icon: Trophy },
+    { path: "/notifications", label: "お知らせ", icon: Bell },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
     // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
@@ -161,12 +177,17 @@ export function AppSidebar() {
             >
               {/* アイコンエリア：常に72px幅で中央寄せ */}
               <div className="flex w-[72px] shrink-0 items-center justify-center">
-                <Icon
-                  className={cn(
-                    "h-5 w-5 transition-transform duration-200",
-                    isActive ? "scale-110" : "scale-100"
+                <div className="relative">
+                  <Icon
+                    className={cn(
+                      "h-5 w-5 transition-transform duration-200",
+                      isActive ? "scale-110" : "scale-100"
+                    )}
+                  />
+                  {path === "/notifications" && unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                   )}
-                />
+                </div>
               </div>
 
               {/* テキストエリア：isOpenの時のみ表示 */}
