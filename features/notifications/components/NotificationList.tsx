@@ -167,6 +167,12 @@ export function NotificationList() {
             notification.type === "like" || notification.type === "comment";
           const actorName =
             notification.actor?.nickname || "ユーザー";
+          const clickableClass =
+            isActorProfileLinkNotification ? "cursor-pointer" : undefined;
+          const avatarOnClick = isActorProfileLinkNotification
+            ? (event: MouseEvent<HTMLElement>) =>
+                handleActorIconClick(event, notification)
+            : undefined;
 
           return (
             <button
@@ -195,25 +201,17 @@ export function NotificationList() {
                     height={40}
                     className={cn(
                       "rounded-full",
-                      isActorProfileLinkNotification && "cursor-pointer"
+                      clickableClass
                     )}
-                    onClick={
-                      isActorProfileLinkNotification
-                        ? (event) => handleActorIconClick(event, notification)
-                        : undefined
-                    }
+                    onClick={avatarOnClick}
                   />
                 ) : (
                   <div
                     className={cn(
                       "w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center",
-                      isActorProfileLinkNotification && "cursor-pointer"
+                      clickableClass
                     )}
-                    onClick={
-                      isActorProfileLinkNotification
-                        ? (event) => handleActorIconClick(event, notification)
-                        : undefined
-                    }
+                    onClick={avatarOnClick}
                   >
                     <User className="h-5 w-5 text-gray-400" />
                   </div>
