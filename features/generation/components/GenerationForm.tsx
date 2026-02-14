@@ -162,7 +162,7 @@ export function GenerationForm({
               className="flex-1"
             >
               <Upload className="mr-2 h-4 w-4" />
-              ライプラリ
+              ライブラリ
             </Button>
             <Button
               type="button"
