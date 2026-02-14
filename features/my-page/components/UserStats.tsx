@@ -17,7 +17,12 @@ export function UserStats({ stats }: UserStatsProps) {
   const secondRowItems = [
     { label: "閲覧", value: formatCountEnUS(stats.viewCount) },
     { label: "投稿", value: formatCountEnUS(stats.postedCount) },
-    { label: "生成", value: formatCountEnUS(stats.generatedCount) },
+    {
+      label: "生成",
+      value: stats.generatedCountPublic
+        ? formatCountEnUS(stats.generatedCount)
+        : "—",
+    },
   ];
 
   return (

@@ -130,3 +130,29 @@ export async function postImageServer(
   return data;
 }
 
+/**
+ * サーバーサイドで投稿を取り消す（is_postedをfalseに戻す）
+ * 投稿一覧からは削除されるが、マイページには残る
+ */
+export async function unpostImageServer(id: string): Promise<GeneratedImageRecord> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .update({
+      is_posted: false,
+      caption: null,
+      posted_at: null,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Database update error:", error);
+    throw new Error(`投稿の取り消しに失敗しました: ${error.message}`);
+  }
+
+  return data;
+}
+

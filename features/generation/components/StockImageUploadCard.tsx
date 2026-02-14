@@ -8,12 +8,6 @@ import {
   validateImageFile,
   DEFAULT_IMAGE_CONFIG,
 } from "../lib/validation";
-import { uploadFileToStorage } from "../lib/storage";
-import {
-  saveSourceImageStock,
-  StockLimitExceededError,
-} from "../lib/database";
-import { getCurrentUserId } from "../lib/generation-service";
 import type { ImageUploadConfig, UploadedImage } from "../types";
 import NextImage from "next/image";
 
@@ -95,41 +89,36 @@ export function StockImageUploadCard({
     setError(null);
 
     try {
-      // ユーザーIDを取得
-      const userId = await getCurrentUserId();
-      if (!userId) {
+      const formData = new FormData();
+      formData.append("file", uploadedImage.file);
+
+      const res = await fetch("/api/source-image-stocks", {
+        method: "POST",
+        body: formData,
+      });
+
+      // 認証エラー時はリダイレクトでHTMLが返る可能性がある
+      const contentType = res.headers.get("content-type");
+      if (contentType?.includes("text/html")) {
         throw new Error("ログインが必要です");
       }
 
-      // ストレージにアップロード
-      const { path, url } = await uploadFileToStorage(
-        uploadedImage.file,
-        userId
-      );
+      const data = await res.json();
 
-      // データベースに保存
-      const stock = await saveSourceImageStock({
-        user_id: userId,
-        image_url: url,
-        storage_path: path,
-        name: uploadedImage.file.name,
-      });
+      if (!res.ok) {
+        throw new Error(data.error || "ストック画像のアップロードに失敗しました");
+      }
 
       // 成功時の処理
       if (uploadedImage.previewUrl) {
         URL.revokeObjectURL(uploadedImage.previewUrl);
       }
       setUploadedImage(null);
-      onUploadSuccess?.(stock.id);
+      onUploadSuccess?.(data.id);
       // GenerationFormのrefreshTriggerが更新され、制限数が再取得される
     } catch (err) {
-      let errorMessage = "ストック画像のアップロードに失敗しました";
-      
-      if (err instanceof StockLimitExceededError) {
-        errorMessage = err.message;
-      } else if (err instanceof Error) {
-        errorMessage = err.message;
-      }
+      const errorMessage =
+        err instanceof Error ? err.message : "ストック画像のアップロードに失敗しました";
 
       setError(errorMessage);
       onUploadError?.(errorMessage);
