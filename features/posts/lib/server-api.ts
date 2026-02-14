@@ -388,7 +388,7 @@ export const getPosts = cache(async (
   } else if (sort === "popular") {
     // popularソートの場合は、全期間のいいね数（like_count）でソート
     // いいね数でソート（降順）
-    postsWithCounts.sort((a, b) => {
+    const sortedPosts = postsWithCounts.toSorted((a, b) => {
       const aCount = a.like_count || 0;
       const bCount = b.like_count || 0;
       if (bCount !== aCount) {
@@ -401,7 +401,7 @@ export const getPosts = cache(async (
     });
     
     // ページネーション適用（サーバー側でソート後）
-    const paginatedPosts = postsWithCounts.slice(offset, offset + limit);
+    const paginatedPosts = sortedPosts.slice(offset, offset + limit);
     
     // range_like_countを除外して返す
     return paginatedPosts.map((post) => {
@@ -411,10 +411,10 @@ export const getPosts = cache(async (
   } else {
     // daily/week/monthの場合は、期間別いいね数でソート
     // いいね数0の投稿を除外
-    postsWithCounts = postsWithCounts.filter((post) => (post.range_like_count || 0) > 0);
+    const filteredPosts = postsWithCounts.filter((post) => (post.range_like_count || 0) > 0);
     
     // 期間別いいね数でソート（降順）
-    postsWithCounts.sort((a, b) => {
+    const sortedPosts = filteredPosts.toSorted((a, b) => {
       const aCount = a.range_like_count || 0;
       const bCount = b.range_like_count || 0;
       if (bCount !== aCount) {
@@ -427,7 +427,7 @@ export const getPosts = cache(async (
     });
     
     // ページネーション適用（サーバー側でソート後）
-    const paginatedPosts = postsWithCounts.slice(offset, offset + limit);
+    const paginatedPosts = sortedPosts.slice(offset, offset + limit);
     
     // range_like_countを除外して返す
     return paginatedPosts.map((post) => {

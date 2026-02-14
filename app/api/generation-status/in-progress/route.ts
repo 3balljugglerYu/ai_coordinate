@@ -72,11 +72,13 @@ export async function GET(request: NextRequest) {
     ];
 
     // 作成日時でソート（新しい順）
-    allJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const sortedJobs = allJobs.toSorted(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     // ジョブIDとステータスの配列を返却
     return NextResponse.json({
-      jobs: allJobs,
+      jobs: sortedJobs,
     });
   } catch (error) {
     console.error("In-progress jobs check error:", error);

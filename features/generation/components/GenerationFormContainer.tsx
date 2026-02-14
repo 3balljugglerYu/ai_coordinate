@@ -187,7 +187,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             messages.forEach((msg) => {
               messageCounts.set(msg, (messageCounts.get(msg) || 0) + 1);
             });
-            const sortedMessages = Array.from(messageCounts.entries()).sort(
+            const sortedMessages = Array.from(messageCounts.entries()).toSorted(
               (a, b) => b[1] - a[1]
             );
             const mostCommonMessage = sortedMessages[0][0];
@@ -433,7 +433,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             messages.forEach((msg) => {
               messageCounts.set(msg, (messageCounts.get(msg) || 0) + 1);
             });
-            const sortedMessages = Array.from(messageCounts.entries()).sort(
+            const sortedMessages = Array.from(messageCounts.entries()).toSorted(
               (a, b) => b[1] - a[1]
             );
             const mostCommonMessage = sortedMessages[0][0];
