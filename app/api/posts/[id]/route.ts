@@ -11,7 +11,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
 
     const { id } = await params;
 
@@ -22,7 +22,7 @@ export async function DELETE(
       );
     }
 
-    await unpostImageServer(id);
+    await unpostImageServer(id, user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

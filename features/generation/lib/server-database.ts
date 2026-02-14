@@ -133,8 +133,13 @@ export async function postImageServer(
 /**
  * サーバーサイドで投稿を取り消す（is_postedをfalseに戻す）
  * 投稿一覧からは削除されるが、マイページには残る
+ * @param id 画像ID
+ * @param userId 対象ユーザーID（IDOR対策: 本人の画像のみ更新可能）
  */
-export async function unpostImageServer(id: string): Promise<GeneratedImageRecord> {
+export async function unpostImageServer(
+  id: string,
+  userId: string
+): Promise<GeneratedImageRecord> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -145,6 +150,7 @@ export async function unpostImageServer(id: string): Promise<GeneratedImageRecor
       posted_at: null,
     })
     .eq("id", id)
+    .eq("user_id", userId)
     .select()
     .single();
 
