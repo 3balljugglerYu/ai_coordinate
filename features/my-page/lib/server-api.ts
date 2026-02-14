@@ -20,6 +20,8 @@ export interface UserProfile {
 
 export interface UserStats {
   generatedCount: number;
+  /** 他ユーザーの場合、生成数はRLSで非公開のため false */
+  generatedCountPublic: boolean;
   postedCount: number;
   likeCount: number; // Phase 4で実装予定、現時点は0
   viewCount: number; // Phase 6で実装予定、現時点は0
@@ -76,18 +78,31 @@ export const getUserProfileServer = cache(async (userId: string): Promise<UserPr
 export const getUserStatsServer = cache(async (userId: string): Promise<UserStats> => {
   const supabase = await createClient();
 
-  // 生成画像数の集計
-  const { count: generatedCount } = await supabase
-    .from("generated_images")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  // 投稿数の集計
+  // 投稿数の集計（RLS: 他ユーザーは is_posted=true のみ閲覧可能）
   const { count: postedCount } = await supabase
     .from("generated_images")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("is_posted", true);
+
+  // 生成画像数の集計
+  // 自分のプロフィール: 全件カウント可能（RLS: user_id = auth.uid()）
+  // 他ユーザー: RLS で is_posted=true のみ見えるため、生成数は投稿数と同じになる
+  // → 自分の場合のみ全件取得、他人の場合は投稿数で代用（生成数は非公開）
+  const { data: { user } } = await supabase.auth.getUser();
+  const isOwnProfile = user?.id === userId;
+
+  let generatedCount: number;
+  if (isOwnProfile) {
+    const { count } = await supabase
+      .from("generated_images")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    generatedCount = count ?? 0;
+  } else {
+    // 他ユーザー: 生成数はRLSで非公開（未投稿画像は参照不可）
+    generatedCount = 0; // UIでは generatedCountPublic=false のとき "-" を表示
+  }
 
   // いいね総数の集計（likesテーブルとgenerated_imagesテーブルをJOIN）
   // まず、ユーザーの投稿済み画像IDを取得
@@ -138,6 +153,7 @@ export const getUserStatsServer = cache(async (userId: string): Promise<UserStat
 
   return {
     generatedCount: generatedCount || 0,
+    generatedCountPublic: isOwnProfile,
     postedCount: postedCount || 0,
     likeCount: likeCount || 0,
     viewCount: viewCount,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { unpostImage } from "@/features/generation/lib/database";
+import { unpostImageServer } from "@/features/generation/lib/server-database";
 
 /**
  * 投稿取り消しAPI（投稿詳細画面から）
@@ -11,7 +11,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
 
     const { id } = await params;
 
@@ -22,7 +22,7 @@ export async function DELETE(
       );
     }
 
-    await unpostImage(id);
+    await unpostImageServer(id, user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

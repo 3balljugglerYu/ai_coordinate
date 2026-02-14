@@ -130,3 +130,35 @@ export async function postImageServer(
   return data;
 }
 
+/**
+ * サーバーサイドで投稿を取り消す（is_postedをfalseに戻す）
+ * 投稿一覧からは削除されるが、マイページには残る
+ * @param id 画像ID
+ * @param userId 対象ユーザーID（IDOR対策: 本人の画像のみ更新可能）
+ */
+export async function unpostImageServer(
+  id: string,
+  userId: string
+): Promise<GeneratedImageRecord> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .update({
+      is_posted: false,
+      caption: null,
+      posted_at: null,
+    })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Database update error:", error);
+    throw new Error(`投稿の取り消しに失敗しました: ${error.message}`);
+  }
+
+  return data;
+}
+

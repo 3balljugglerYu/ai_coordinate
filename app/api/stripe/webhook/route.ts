@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { env, isStripeTestMode } from "@/lib/env";
 import { getPercoinsFromPriceId, STRIPE_PRICE_ID_TO_PERCOINS } from "@/features/credits/lib/stripe-price-mapping";
 import { recordPercoinPurchase } from "@/features/credits/lib/percoin-service";
-import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Stripe webhookエンドポイント
@@ -149,8 +149,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // べき等性チェック: 既に処理済みのpayment_intent_idか確認
-      const supabase = await createServerSupabaseClient();
+      // べき等性チェック: 既に処理済みのpayment_intent_idか確認（service_role で RLS をバイパス）
+      const supabase = createAdminClient();
       const { data: existingTransaction } = await supabase
         .from("credit_transactions")
         .select("id")
