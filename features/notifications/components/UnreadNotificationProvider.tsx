@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +31,7 @@ export function UnreadNotificationProvider({
 }) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchUnreadCountForUser = useCallback(async (userId: string | null) => {
     if (!userId) {
@@ -44,6 +46,20 @@ export function UnreadNotificationProvider({
       console.error("Failed to fetch unread notification count:", error);
     }
   }, []);
+
+  const scheduleUnreadCountRefresh = useCallback(
+    (userId: string) => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+
+      // 複数イベント発火時の不要なAPI連打を抑制
+      refreshTimerRef.current = setTimeout(() => {
+        void fetchUnreadCountForUser(userId);
+      }, 200);
+    },
+    [fetchUnreadCountForUser]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -71,26 +87,43 @@ export function UnreadNotificationProvider({
     if (!currentUserId) return;
 
     const supabase = createClient();
+    const userId = currentUserId;
     const channel = supabase
-      .channel(`notifications:unread-count:${currentUserId}`)
+      .channel(`notifications:unread-count:${userId}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "notifications",
-          filter: `recipient_id=eq.${currentUserId}`,
+          filter: `recipient_id=eq.${userId}`,
         },
         () => {
-          void fetchUnreadCountForUser(currentUserId);
+          scheduleUnreadCountRefresh(userId);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `recipient_id=eq.${userId}`,
+        },
+        () => {
+          scheduleUnreadCountRefresh(userId);
         }
       )
       .subscribe();
 
     return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, fetchUnreadCountForUser]);
+  }, [currentUserId, scheduleUnreadCountRefresh]);
 
   const refreshUnreadCount = useCallback(async () => {
     await fetchUnreadCountForUser(currentUserId);

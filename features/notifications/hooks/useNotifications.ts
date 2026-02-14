@@ -343,15 +343,20 @@ export function useNotifications() {
     if (!isNotificationsPage) return;
     if (isLoading) return;
     if (hasAutoMarkedReadOnNotificationsPage.current) return;
+    if (unreadCount <= 0) return;
 
-    const hasUnread = notifications.some((n) => !n.is_read);
-    if (!hasUnread) return;
+    const markAllReadOnPageEnter = async () => {
+      try {
+        await markAllRead();
+        hasAutoMarkedReadOnNotificationsPage.current = true;
+      } catch (error) {
+        hasAutoMarkedReadOnNotificationsPage.current = false;
+        console.error("Failed to auto mark notifications as read:", error);
+      }
+    };
 
-    hasAutoMarkedReadOnNotificationsPage.current = true;
-    void markAllRead().catch((error) => {
-      console.error("Failed to auto mark notifications as read:", error);
-    });
-  }, [isLoading, isNotificationsPage, markAllRead, notifications]);
+    void markAllReadOnPageEnter();
+  }, [isLoading, isNotificationsPage, markAllRead, unreadCount]);
 
   // もっと読み込む
   const loadMore = useCallback(() => {
