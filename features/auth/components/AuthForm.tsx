@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
+import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -30,6 +31,17 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   const { toast } = useToast();
 
   const isSignUp = mode === "signup";
+
+  // リアルタイムバリデーション（サインアップ時のみ）
+  const passwordError =
+    isSignUp && password.length > 0 && password.length < 8
+      ? "パスワードは8文字以上で入力してください"
+      : null;
+  const confirmPasswordError =
+    isSignUp && confirmPassword.length > 0 && password !== confirmPassword
+      ? "パスワードが一致しません"
+      : null;
+  const passwordRequirementsNotMet = isSignUp && password.length > 0 && !isPasswordValid(password);
 
   // URLクエリパラメータから紹介コードを取得
   const referralCode = searchParams.get("ref");
@@ -55,6 +67,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
       if (password.length < 8) {
         throw new Error("パスワードは8文字以上で入力してください");
+      }
+
+      if (isSignUp && !isPasswordValid(password)) {
+        throw new Error(
+          "パスワードは英大文字・英小文字・数字・記号をそれぞれ1文字以上含めてください"
+        );
       }
 
       if (isSignUp && password !== confirmPassword) {
@@ -165,10 +183,15 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="pl-10 pr-10"
+              className={
+                passwordError || passwordRequirementsNotMet
+                  ? "pl-10 pr-10 border-destructive"
+                  : "pl-10 pr-10"
+              }
               disabled={isLoading}
               required
               minLength={8}
+              aria-invalid={!!passwordError || !!passwordRequirementsNotMet}
             />
             <button
               type="button"
@@ -185,9 +208,14 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             </button>
           </div>
           {isSignUp ? (
-            <p className="mt-1 text-xs text-gray-500">
-              8文字以上で入力してください
-            </p>
+            <>
+              {passwordError && (
+                <p className="mt-1 text-xs text-destructive" role="alert">
+                  {passwordError}
+                </p>
+              )}
+              <PasswordRequirements password={password} />
+            </>
           ) : (
             <p className="mt-1 text-xs text-gray-500">
               パスワードをお忘れの方は{" "}
@@ -214,10 +242,11 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10 pr-10"
+                className={confirmPasswordError ? "pl-10 pr-10 border-destructive" : "pl-10 pr-10"}
                 disabled={isLoading}
                 required
                 minLength={8}
+                aria-invalid={!!confirmPasswordError}
               />
               <button
                 type="button"
@@ -233,11 +262,25 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
                 )}
               </button>
             </div>
+            {confirmPasswordError && (
+              <p className="mt-1 text-xs text-destructive" role="alert">
+                {confirmPasswordError}
+              </p>
+            )}
           </div>
         )}
 
         {/* 送信ボタン */}
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={
+            isLoading ||
+            !!passwordError ||
+            !!confirmPasswordError ||
+            !!passwordRequirementsNotMet
+          }
+        >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isSignUp ? "アカウントを作成" : "ログイン"}
         </Button>
