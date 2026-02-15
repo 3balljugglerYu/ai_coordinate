@@ -48,6 +48,20 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (user) {
+    // 認証済みユーザーがログイン・サインアップ・パスワードリセットにアクセスしたら /my-page へリダイレクト
+    const authPages = ["/login", "/signup", "/reset-password"];
+    const isAuthPage = authPages.some((path) =>
+      request.nextUrl.pathname === path ||
+      request.nextUrl.pathname.startsWith(`${path}/`)
+    );
+
+    if (isAuthPage) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/my-page";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+
     const allowedWhileDeactivated = [
       "/account/reactivate",
       "/api/account/reactivate",

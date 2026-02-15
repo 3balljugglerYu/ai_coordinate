@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { User, Edit, Menu } from "lucide-react";
@@ -34,6 +34,11 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(profile);
+
+  // profile が変わったら state を同期（別アカウント切り替え時に古いユーザー情報が表示されるのを防ぐ）
+  useEffect(() => {
+    setCurrentProfile(profile);
+  }, [profile]);
 
   const displayName =
     currentProfile.nickname ||
