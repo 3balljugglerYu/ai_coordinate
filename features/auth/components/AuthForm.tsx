@@ -214,6 +214,13 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
                   {passwordError}
                 </p>
               )}
+              {password.length > 0 &&
+                passwordRequirementsNotMet &&
+                !passwordError && (
+                  <p className="mt-1 text-xs text-destructive" role="alert">
+                    パスワードの要件をすべて満たしてください。
+                  </p>
+                )}
               <PasswordRequirements password={password} />
             </>
           ) : (
