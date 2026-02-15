@@ -66,8 +66,12 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   const siteUrl = getSiteUrl();
   const postUrl = siteUrl ? `${siteUrl}/posts/${id}` : "";
   const imageUrl = getPostDisplayUrl(post);
-  
-  const title = `Persta.AI | ${DEFAULT_TITLE_TAGLINE}`;
+
+  // タイトルを投稿ごとに差別化（caption があれば使用、50-60文字を考慮して45文字まで）
+  const titleSource = buildSanitizedText(post.caption, "", 45);
+  const title = titleSource
+    ? `${titleSource} | Persta.AI`
+    : `Persta.AI | ${DEFAULT_TITLE_TAGLINE}`;
   const description = buildDescription(post.caption);
   const imageAlt = buildImageAlt(post.caption);
   // 画像URLが絶対URLであることを保証

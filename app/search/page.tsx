@@ -7,25 +7,48 @@ import { getSiteUrl } from "@/lib/env";
 import type { SortType } from "@/features/posts/types";
 import { isValidSortType } from "@/features/posts/lib/utils";
 
-export const metadata: Metadata = {
-  title: "検索 - Persta.AI",
-  description: "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう",
-  openGraph: {
-    title: "検索 - Persta.AI",
-    description: "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう",
-    url: getSiteUrl() ? `${getSiteUrl()}/search` : undefined,
-    siteName: "Persta.AI",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "検索 - Persta.AI",
-    description: "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう",
-  },
-};
+const DEFAULT_TITLE = "検索 - Persta.AI";
+const DEFAULT_DESCRIPTION =
+  "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう";
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string; sort?: string }>;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: SearchPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const searchQuery = params.q?.trim();
+
+  const title = searchQuery
+    ? `${searchQuery}の検索結果 - Persta.AI`
+    : DEFAULT_TITLE;
+  const description = searchQuery
+    ? `「${searchQuery}」のコーデ・ファッション・キャラクター画像を検索。Persta.AIでみんなの作品を見つけましょう。`
+    : DEFAULT_DESCRIPTION;
+
+  const siteUrl = getSiteUrl();
+  const searchUrl = siteUrl
+    ? `${siteUrl}/search${searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ""}`
+    : undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: searchUrl,
+      siteName: "Persta.AI",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
 }
 
 async function PostListContent({ searchQuery, sortType }: { searchQuery: string; sortType: string }) {

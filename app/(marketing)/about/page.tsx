@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Info, Sparkles, CreditCard, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
   title: "サービス紹介",
   description: "Persta.AI のサービス概要と提供内容",
-};
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

@@ -2,11 +2,17 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { EventImageGalleryWrapper } from "@/features/event/components/EventImageGalleryWrapper";
 import { EventImageGallerySkeleton } from "@/features/event/components/EventImageGallerySkeleton";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
   title: "着せ替えお試し用素材 | Persta.AI",
-  description: "こちらに掲載しているイラストは、Perstaで着せ替えを試すために、自由にダウンロードして利用できる素材ページです。お好きな画像をダウンロードして、ぜひ着せ替えをお試しください！",
-};
+  description:
+    "こちらに掲載しているイラストは、Perstaで着せ替えを試すために、自由にダウンロードして利用できる素材ページです。お好きな画像をダウンロードして、ぜひ着せ替えをお試しください！",
+  path: "/event/detail/01",
+  ogTitle: "着せ替えお試し用素材",
+  ogDescription:
+    "Perstaで着せ替えを試すためのフリー素材。イラストをダウンロードして着せ替えをお試しください。",
+});
 
 export default async function EventDetailPage() {
   return (

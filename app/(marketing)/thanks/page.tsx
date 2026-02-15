@@ -10,11 +10,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Crown, Star, Medal, Heart, Shield, Users } from "lucide-react";
 import { SUPPORTERS, type Supporter } from "@/constants/supporters";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
   title: "Special Thanks",
   description: "Persta.AIを支えてくださった皆様への感謝を込めて",
-};
+  path: "/thanks",
+});
 
 export default function ThanksPage() {
   // グループ分け

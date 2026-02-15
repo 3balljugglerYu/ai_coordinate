@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldQuestion, FileText, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
 	title: "「商取引に関する開示」(特定商取引法に基づく表記)",
 	description: "Persta.AI の特商法表記ページ",
-};
+	path: "/tokushoho",
+	ogTitle: "商取引に関する開示",
+});
 
 export default function TokushohoPage() {
 	return (

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { FileText, AlertCircle, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
 	title: "利用規約",
 	description: "Persta.AI の利用規約",
-};
+	path: "/terms",
+});
 
 export default function TermsPage() {
 	return (
