@@ -2,10 +2,23 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { EventImageGalleryWrapper } from "@/features/event/components/EventImageGalleryWrapper";
 import { EventImageGallerySkeleton } from "@/features/event/components/EventImageGallerySkeleton";
+import { getSiteUrl } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "着せ替えお試し用素材 | Persta.AI",
   description: "こちらに掲載しているイラストは、Perstaで着せ替えを試すために、自由にダウンロードして利用できる素材ページです。お好きな画像をダウンロードして、ぜひ着せ替えをお試しください！",
+  openGraph: {
+    title: "着せ替えお試し用素材 | Persta.AI",
+    description: "Perstaで着せ替えを試すためのフリー素材。イラストをダウンロードして着せ替えをお試しください。",
+    url: getSiteUrl() ? `${getSiteUrl()}/event/detail/01` : undefined,
+    siteName: "Persta.AI",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "着せ替えお試し用素材 | Persta.AI",
+    description: "Perstaで着せ替えを試すためのフリー素材。イラストをダウンロードして着せ替えをお試しください。",
+  },
 };
 
 export default async function EventDetailPage() {

@@ -2,10 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Info, Sparkles, CreditCard, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { getSiteUrl } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "サービス紹介",
   description: "Persta.AI のサービス概要と提供内容",
+  openGraph: {
+    title: "サービス紹介 | Persta.AI",
+    description: "Persta.AI のサービス概要と提供内容",
+    url: getSiteUrl() ? `${getSiteUrl()}/about` : undefined,
+    siteName: "Persta.AI",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "サービス紹介 | Persta.AI",
+    description: "Persta.AI のサービス概要と提供内容",
+  },
 };
 
 export default function AboutPage() {

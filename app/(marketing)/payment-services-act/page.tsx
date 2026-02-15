@@ -1,10 +1,23 @@
 import type { Metadata } from "next";
 import { CreditCard, Receipt, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { getSiteUrl } from "@/lib/env";
 
 export const metadata: Metadata = {
 	title: "資金決済法に基づく表示",
 	description: "Persta.AI の資金決済法に基づく表示",
+	openGraph: {
+		title: "資金決済法に基づく表示 | Persta.AI",
+		description: "Persta.AI の資金決済法に基づく表示",
+		url: getSiteUrl() ? `${getSiteUrl()}/payment-services-act` : undefined,
+		siteName: "Persta.AI",
+		type: "website",
+	},
+	twitter: {
+		card: "summary",
+		title: "資金決済法に基づく表示 | Persta.AI",
+		description: "Persta.AI の資金決済法に基づく表示",
+	},
 };
 
 export default function PaymentServicesActPage() {

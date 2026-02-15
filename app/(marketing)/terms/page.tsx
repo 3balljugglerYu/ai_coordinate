@@ -1,10 +1,23 @@
 import type { Metadata } from "next";
 import { FileText, AlertCircle, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { getSiteUrl } from "@/lib/env";
 
 export const metadata: Metadata = {
 	title: "利用規約",
 	description: "Persta.AI の利用規約",
+	openGraph: {
+		title: "利用規約 | Persta.AI",
+		description: "Persta.AI の利用規約",
+		url: getSiteUrl() ? `${getSiteUrl()}/terms` : undefined,
+		siteName: "Persta.AI",
+		type: "website",
+	},
+	twitter: {
+		card: "summary",
+		title: "利用規約 | Persta.AI",
+		description: "Persta.AI の利用規約",
+	},
 };
 
 export default function TermsPage() {

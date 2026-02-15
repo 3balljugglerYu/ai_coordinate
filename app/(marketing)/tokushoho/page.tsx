@@ -2,10 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldQuestion, FileText, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { getSiteUrl } from "@/lib/env";
 
 export const metadata: Metadata = {
 	title: "「商取引に関する開示」(特定商取引法に基づく表記)",
 	description: "Persta.AI の特商法表記ページ",
+	openGraph: {
+		title: "商取引に関する開示 | Persta.AI",
+		description: "Persta.AI の特商法表記ページ",
+		url: getSiteUrl() ? `${getSiteUrl()}/tokushoho` : undefined,
+		siteName: "Persta.AI",
+		type: "website",
+	},
+	twitter: {
+		card: "summary",
+		title: "商取引に関する開示 | Persta.AI",
+		description: "Persta.AI の特商法表記ページ",
+	},
 };
 
 export default function TokushohoPage() {

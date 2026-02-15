@@ -55,6 +55,7 @@ export async function generateMetadata({
   const metadata: Metadata = {
     title,
     description,
+    alternates: userUrl ? { canonical: userUrl } : undefined,
     openGraph: {
       title,
       description,
