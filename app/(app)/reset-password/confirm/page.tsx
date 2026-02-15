@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { updatePassword } from "@/features/auth/lib/auth-client";
+import {
+  PasswordRequirements,
+  isPasswordValid,
+} from "@/features/auth/components/PasswordRequirements";
 
 export default function ResetPasswordConfirmPage() {
   const router = useRouter();
@@ -20,6 +24,18 @@ export default function ResetPasswordConfirmPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // リアルタイムバリデーション
+  const passwordError =
+    password.length > 0 && password.length < 8
+      ? "パスワードは8文字以上で入力してください"
+      : null;
+  const confirmPasswordError =
+    confirmPassword.length > 0 && password !== confirmPassword
+      ? "パスワードが一致しません"
+      : null;
+  const passwordRequirementsNotMet =
+    password.length > 0 && !isPasswordValid(password);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -30,8 +46,15 @@ export default function ResetPasswordConfirmPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("パスワードは6文字以上で入力してください");
+    if (password.length < 8) {
+      setError("パスワードは8文字以上で入力してください");
+      return;
+    }
+
+    if (!isPasswordValid(password)) {
+      setError(
+        "パスワードは英大文字・英小文字・数字・記号をそれぞれ1文字以上含めてください"
+      );
       return;
     }
 
@@ -92,15 +115,20 @@ export default function ResetPasswordConfirmPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10 pr-10"
+                className={
+                  passwordError || passwordRequirementsNotMet
+                    ? "pl-10 pr-10 border-destructive"
+                    : "pl-10 pr-10"
+                }
                 disabled={isLoading}
                 required
-                minLength={6}
+                minLength={8}
+                aria-invalid={!!passwordError || !!passwordRequirementsNotMet}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
                 disabled={isLoading}
                 aria-label={showPassword ? "パスワードを非表示" : "パスワードを表示"}
               >
@@ -111,6 +139,19 @@ export default function ResetPasswordConfirmPage() {
                 )}
               </button>
             </div>
+            {passwordError && (
+              <p className="mt-1 text-xs text-destructive" role="alert">
+                {passwordError}
+              </p>
+            )}
+            {password.length > 0 &&
+              passwordRequirementsNotMet &&
+              !passwordError && (
+                <p className="mt-1 text-xs text-destructive" role="alert">
+                  パスワードの要件をすべて満たしてください。
+                </p>
+              )}
+            <PasswordRequirements password={password} />
           </div>
 
           <div>
@@ -123,15 +164,16 @@ export default function ResetPasswordConfirmPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10 pr-10"
+                className={confirmPasswordError ? "pl-10 pr-10 border-destructive" : "pl-10 pr-10"}
                 disabled={isLoading}
                 required
-                minLength={6}
+                minLength={8}
+                aria-invalid={!!confirmPasswordError}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
                 disabled={isLoading}
                 aria-label={showConfirmPassword ? "パスワードを非表示" : "パスワードを表示"}
               >
@@ -142,9 +184,23 @@ export default function ResetPasswordConfirmPage() {
                 )}
               </button>
             </div>
+            {confirmPasswordError && (
+              <p className="mt-1 text-xs text-destructive" role="alert">
+                {confirmPasswordError}
+              </p>
+            )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              isLoading ||
+              !!passwordError ||
+              !!confirmPasswordError ||
+              !!passwordRequirementsNotMet
+            }
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             パスワードを更新
           </Button>
