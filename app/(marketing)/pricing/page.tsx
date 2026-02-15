@@ -3,24 +3,13 @@ import Link from "next/link";
 import { Tag, CreditCard, Timer, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PERCOIN_PACKAGES, GENERATION_PERCOIN_COST } from "@/features/credits/percoin-packages";
-import { getSiteUrl } from "@/lib/env";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
   title: "料金",
   description: "Persta.AI の料金と支払い条件",
-  openGraph: {
-    title: "料金 | Persta.AI",
-    description: "Persta.AI の料金と支払い条件",
-    url: getSiteUrl() ? `${getSiteUrl()}/pricing` : undefined,
-    siteName: "Persta.AI",
-    type: "website",
-  },
-  twitter: {
-    card: "summary",
-    title: "料金 | Persta.AI",
-    description: "Persta.AI の料金と支払い条件",
-  },
-};
+  path: "/pricing",
+});
 
 export default function PricingPage() {
   return (

@@ -10,25 +10,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Crown, Star, Medal, Heart, Shield, Users } from "lucide-react";
 import { SUPPORTERS, type Supporter } from "@/constants/supporters";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-import { getSiteUrl } from "@/lib/env";
-
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
   title: "Special Thanks",
   description: "Persta.AIを支えてくださった皆様への感謝を込めて",
-  openGraph: {
-    title: "Special Thanks | Persta.AI",
-    description: "Persta.AIを支えてくださった皆様への感謝を込めて",
-    url: getSiteUrl() ? `${getSiteUrl()}/thanks` : undefined,
-    siteName: "Persta.AI",
-    type: "website",
-  },
-  twitter: {
-    card: "summary",
-    title: "Special Thanks | Persta.AI",
-    description: "Persta.AIを支えてくださった皆様への感謝を込めて",
-  },
-};
+  path: "/thanks",
+});
 
 export default function ThanksPage() {
   // グループ分け

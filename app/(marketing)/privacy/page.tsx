@@ -1,24 +1,13 @@
 import type { Metadata } from "next";
 import { Shield, Eye, Lock, Database } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getSiteUrl } from "@/lib/env";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMarketingPageMetadata({
 	title: "プライバシーポリシー",
 	description: "Persta.AI のプライバシーポリシー",
-	openGraph: {
-		title: "プライバシーポリシー | Persta.AI",
-		description: "Persta.AI のプライバシーポリシー",
-		url: getSiteUrl() ? `${getSiteUrl()}/privacy` : undefined,
-		siteName: "Persta.AI",
-		type: "website",
-	},
-	twitter: {
-		card: "summary",
-		title: "プライバシーポリシー | Persta.AI",
-		description: "Persta.AI のプライバシーポリシー",
-	},
-};
+	path: "/privacy",
+});
 
 export default function PrivacyPage() {
 	return (
