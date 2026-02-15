@@ -47,8 +47,16 @@ function translateAuthError(errorMessage: string): string {
     ) {
       return "新しいパスワードは現在のパスワードと異なるものを入力してください。";
     }
+    // 漏洩パスワード（HaveIBeenPwned等で検出）
+    if (
+      errorLower.includes("pwned") ||
+      errorLower.includes("known to be weak") ||
+      errorLower.includes("easy to guess")
+    ) {
+      return "セキュリティ上の理由により、このパスワードは設定できません。";
+    }
     if (errorLower.includes("too short") || errorLower.includes("minimum")) {
-      return "パスワードは6文字以上で入力してください。";
+      return "パスワードは8文字以上で入力してください。";
     }
     if (errorLower.includes("weak") || errorLower.includes("common")) {
       return "パスワードが弱すぎます。より複雑なパスワードを設定してください。";

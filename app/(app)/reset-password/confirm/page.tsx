@@ -30,8 +30,8 @@ export default function ResetPasswordConfirmPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("パスワードは6文字以上で入力してください");
+    if (password.length < 8) {
+      setError("パスワードは8文字以上で入力してください");
       return;
     }
 
@@ -95,12 +95,12 @@ export default function ResetPasswordConfirmPage() {
                 className="pl-10 pr-10"
                 disabled={isLoading}
                 required
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
                 disabled={isLoading}
                 aria-label={showPassword ? "パスワードを非表示" : "パスワードを表示"}
               >
@@ -111,6 +111,7 @@ export default function ResetPasswordConfirmPage() {
                 )}
               </button>
             </div>
+            <p className="mt-1 text-xs text-gray-500">8文字以上で入力してください</p>
           </div>
 
           <div>
@@ -126,12 +127,12 @@ export default function ResetPasswordConfirmPage() {
                 className="pl-10 pr-10"
                 disabled={isLoading}
                 required
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
                 disabled={isLoading}
                 aria-label={showConfirmPassword ? "パスワードを非表示" : "パスワードを表示"}
               >

@@ -53,8 +53,8 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         throw new Error("メールアドレスとパスワードを入力してください");
       }
 
-      if (password.length < 6) {
-        throw new Error("パスワードは6文字以上で入力してください");
+      if (password.length < 8) {
+        throw new Error("パスワードは8文字以上で入力してください");
       }
 
       if (isSignUp && password !== confirmPassword) {
@@ -168,12 +168,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
               className="pl-10 pr-10"
               disabled={isLoading}
               required
-              minLength={6}
+              minLength={8}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
               disabled={isLoading}
               aria-label={showPassword ? "パスワードを非表示" : "パスワードを表示"}
             >
@@ -186,7 +186,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
           </div>
           {isSignUp ? (
             <p className="mt-1 text-xs text-gray-500">
-              6文字以上で入力してください
+              8文字以上で入力してください
             </p>
           ) : (
             <p className="mt-1 text-xs text-gray-500">
@@ -217,12 +217,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
                 className="pl-10 pr-10"
                 disabled={isLoading}
                 required
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
                 disabled={isLoading}
                 aria-label={showConfirmPassword ? "パスワードを非表示" : "パスワードを表示"}
               >
