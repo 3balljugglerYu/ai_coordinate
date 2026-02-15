@@ -11,6 +11,7 @@ export async function ProfileHeaderWrapper() {
 
   return (
     <ProfileHeader
+      key={user.id}
       profile={profile}
       isOwnProfile={true}
       userId={user.id}
