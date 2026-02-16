@@ -19,13 +19,11 @@ export async function POST() {
       );
     }
 
-    // rpc と updateUser は互いに依存しないため並列実行
-    const [{ data: rpcResult, error: rpcError }, { error: updateError }] =
-      await Promise.all([
-        supabase.rpc("grant_tour_bonus", { p_user_id: user.id }),
-        supabase.auth.updateUser({ data: { tutorial_completed: true } }),
-      ]);
-
+    // rpc の成功後に updateUser を実行し、データ不整合を防止
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      "grant_tour_bonus",
+      { p_user_id: user.id }
+    );
     if (rpcError) {
       console.error("[Tutorial Complete] RPC error:", rpcError);
       return NextResponse.json(
@@ -38,9 +36,12 @@ export async function POST() {
     const amountGranted = typeof result?.amount_granted === "number" ? result.amount_granted : 0;
     const alreadyCompleted = result?.already_completed === true;
 
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { tutorial_completed: true },
+    });
     if (updateError) {
       console.error("[Tutorial Complete] Failed to update user metadata:", updateError);
-      // ペルコイン付与は成功している可能性があるので、エラーでも200を返す
+      // ペルコイン付与は成功済みのため、エラーでも200を返す
     }
 
     return NextResponse.json({
