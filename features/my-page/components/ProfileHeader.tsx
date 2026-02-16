@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { User, Edit, Menu } from "lucide-react";
+import { User, Edit, Menu, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -74,6 +74,12 @@ export function ProfileHeader({
               <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem asChild>
                   <Link href="/my-page/account">アカウントについて</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/my-page/contact" className="flex items-center">
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    お問い合わせ
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
