@@ -39,10 +39,11 @@ export function ContactForm({ defaultEmail = "" }: ContactFormProps) {
     e.preventDefault();
     if (isSubmitting) return;
 
+    const selectedOption = SUBJECT_OPTIONS.find((o) => o.value === subjectType);
     const subject =
       subjectType === "other"
         ? subjectDetail.trim() || "その他"
-        : (SUBJECT_OPTIONS.find((o) => o.value === subjectType)?.label ?? subjectDetail.trim()) || "お問い合わせ";
+        : selectedOption?.label || "お問い合わせ";
 
     if (!email.trim()) {
       toast({

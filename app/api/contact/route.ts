@@ -15,7 +15,8 @@ function escapeHtml(str: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 export async function POST(request: NextRequest) {
@@ -56,7 +57,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, subject, message } = parsed.data;
+    const { email, subject: rawSubject, message } = parsed.data;
+    // CRLFインジェクション対策: メールヘッダーに使用する件名から改行を除去
+    const subject = rawSubject.replace(/\r\n|\r|\n/g, " ").trim();
     const { data: profile } = profileResult;
 
     const formatDate = (d: string | null | undefined) =>
