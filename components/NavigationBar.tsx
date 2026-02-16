@@ -71,7 +71,7 @@ export function NavigationBar() {
   const navItems = [
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
-    { path: "/challenge", label: "チャレンジ", icon: Trophy },
+    { path: "/challenge", label: "ミッション", icon: Trophy },
     { path: "/notifications", label: "お知らせ", icon: Bell },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
     // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
@@ -88,6 +88,7 @@ export function NavigationBar() {
               return (
                 <button
                   key={path}
+                  data-tour={path === "/coordinate" ? "coordinate-nav-mobile" : undefined}
                   onClick={() => handleNavigation(path)}
                   className={cn(
                     "relative flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-all duration-200 ease-out",

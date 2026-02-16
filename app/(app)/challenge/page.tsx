@@ -4,7 +4,7 @@ import { ChallengePageContent } from "@/features/challenges/components/Challenge
 import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "チャレンジ | Persta.AI",
+  title: "ミッション | Persta.AI",
   description: "ミッションを達成してペルコインを獲得しよう。デイリー投稿、連続ログイン、友達紹介などの特典情報。",
 };
 
@@ -18,7 +18,7 @@ export default async function ChallengePage() {
           {/* タイトルと説明文 */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              チャレンジ
+              ミッション
             </h1>
             <p className="mt-2 text-sm text-gray-600">
               ミッションを達成してペルコインを獲得しよう

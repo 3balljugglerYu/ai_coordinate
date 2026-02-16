@@ -10,6 +10,7 @@ export type PercoinTransactionType =
   | "streak"
   | "referral"
   | "admin_bonus"
+  | "tour_bonus"
   | "forfeiture";
 
 export type PercoinTransactionMetadata = Record<string, unknown>;

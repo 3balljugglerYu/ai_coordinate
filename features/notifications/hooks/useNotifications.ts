@@ -383,6 +383,7 @@ export function useNotifications() {
           "daily_post",
           "signup_bonus",
           "referral",
+          "tour_bonus",
         ].includes(notification.data.bonus_type)
       ) {
         router.push("/my-page");

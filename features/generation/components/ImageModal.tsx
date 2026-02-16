@@ -12,6 +12,8 @@ interface ImageModalProps {
   onClose: () => void;
   onDownload?: (image: GeneratedImageData) => void;
   onPost?: (image: GeneratedImageData) => void;
+  /** チュートリアルStep11（PC）時に投稿・ダウンロードを無効化 */
+  disablePostAndDownload?: boolean;
 }
 
 
@@ -21,6 +23,7 @@ export function ImageModal({
   onClose,
   onDownload,
   onPost,
+  disablePostAndDownload = false,
 }: ImageModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -216,6 +219,7 @@ export function ImageModal({
               size="sm"
               variant="ghost"
               className="text-white hover:bg-white/20"
+              disabled={disablePostAndDownload}
               onClick={() => onPost(currentImage)}
             >
               <Plus className="h-5 w-5" />
@@ -226,6 +230,7 @@ export function ImageModal({
             size="sm"
             variant="ghost"
             className="text-white hover:bg-white/20"
+            disabled={disablePostAndDownload}
             onClick={() => {
               if (isMobile()) {
                 handleShareMobile();
@@ -240,7 +245,16 @@ export function ImageModal({
             size="sm"
             variant="ghost"
             className="text-white hover:bg-white/20"
-            onClick={onClose}
+            data-tour="tour-modal-close"
+            onClick={() => {
+              if (
+                typeof document !== "undefined" &&
+                document.body.hasAttribute("data-tour-in-progress")
+              ) {
+                document.dispatchEvent(new CustomEvent("tutorial:modal-closed"));
+              }
+              onClose();
+            }}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -250,6 +264,7 @@ export function ImageModal({
       {/* 画像 */}
       <div
         className="relative h-full w-full"
+        data-tour="tour-modal-content"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

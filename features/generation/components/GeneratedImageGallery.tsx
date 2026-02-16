@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Download, ZoomIn, Plus } from "lucide-react";
 import Masonry from "react-masonry-css";
 import Link from "next/link";
@@ -29,6 +29,26 @@ export function GeneratedImageGallery({
 }: GeneratedImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
+
+  // チュートリアルStep11（PC）時は投稿・ダウンロードボタンを無効化
+  const [disablePostAndDownload, setDisablePostAndDownload] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const isStep11 =
+        typeof document !== "undefined" &&
+        document.body.hasAttribute("data-tour-step-first-image");
+      const isPC = typeof window !== "undefined" && window.innerWidth >= 640;
+      setDisablePostAndDownload(Boolean(isStep11 && isPC));
+    };
+    check();
+    const handler = () => check();
+    window.addEventListener("resize", handler);
+    document.addEventListener("tutorial:step-11-changed", handler);
+    return () => {
+      window.removeEventListener("resize", handler);
+      document.removeEventListener("tutorial:step-11-changed", handler);
+    };
+  }, []);
 
   const handleDownload = async (image: GeneratedImageData) => {
     if (onDownload) {
@@ -117,7 +137,11 @@ export function GeneratedImageGallery({
           columnClassName="pl-4 bg-clip-padding"
         >
           {images.map((image, index) => (
-            <div key={image.id} className="mb-4">
+            <div
+              key={image.id}
+              className="mb-4"
+              {...(index === 0 ? { "data-tour": "tour-first-image" } : {})}
+            >
               <Card
                 className="group relative overflow-hidden p-0 sm:cursor-default cursor-pointer"
                 onClick={(e) => {
@@ -125,6 +149,18 @@ export function GeneratedImageGallery({
                   // PCではボタンが表示されるので、カードクリックは無効
                   if (typeof window !== 'undefined' && window.innerWidth < 640) {
                     setSelectedImageIndex(index);
+                    if (
+                      index === 0 &&
+                      document.body.hasAttribute("data-tour-step-first-image")
+                    ) {
+                      setTimeout(
+                        () =>
+                          document.dispatchEvent(
+                            new CustomEvent("tutorial:expand-image")
+                          ),
+                        150
+                      );
+                    }
                   }
                 }}
               >
@@ -169,6 +205,18 @@ export function GeneratedImageGallery({
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedImageIndex(index);
+                        if (
+                          index === 0 &&
+                          document.body.hasAttribute("data-tour-step-first-image")
+                        ) {
+                          setTimeout(
+                            () =>
+                              document.dispatchEvent(
+                                new CustomEvent("tutorial:expand-image")
+                              ),
+                            150
+                          );
+                        }
                       }}
                     >
                       <ZoomIn className="h-4 w-4" />
@@ -177,6 +225,7 @@ export function GeneratedImageGallery({
                       <Button
                         size="sm"
                         variant="secondary"
+                        disabled={disablePostAndDownload}
                         onClick={(e) => {
                           e.stopPropagation();
                           setPostModalImageId(image.id);
@@ -189,6 +238,7 @@ export function GeneratedImageGallery({
                     <Button
                       size="sm"
                       variant="secondary"
+                      disabled={disablePostAndDownload}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDownload(image);
@@ -214,6 +264,7 @@ export function GeneratedImageGallery({
             setPostModalImageId(image.id);
             setSelectedImageIndex(null);
           }}
+          disablePostAndDownload={disablePostAndDownload}
         />
       )}
 

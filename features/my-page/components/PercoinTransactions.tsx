@@ -30,6 +30,8 @@ function formatTransactionType(
         return metadata.reason;
       }
       return "運営者からのボーナス"; // フォールバック
+    case "tour_bonus":
+      return "チュートリアルボーナス";
     case "forfeiture":
       return "退会による放棄";
     default:

@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
+import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
 import { getSiteUrl } from "@/lib/env";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -79,6 +80,9 @@ export default function RootLayout({
           </div>
           <Suspense fallback={<div className="h-16" />}>
             <NavigationBar />
+          </Suspense>
+          <Suspense fallback={null}>
+            <TutorialTourProvider />
           </Suspense>
           <Toaster />
           <Analytics />
