@@ -64,12 +64,15 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // 遷移元を確認して戻る先を決定
   const fromParam = searchParams.get("from");
+  const isMyPageSubPath = pathname.startsWith("/my-page/") && pathname !== "/my-page";
   const backUrl =
     fromParam === "my-page"
       ? "/my-page"
       : fromParam === "notifications"
         ? "/notifications"
-        : "/";
+        : isMyPageSubPath
+          ? "/my-page"
+          : "/";
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -283,11 +286,14 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     }
   };
 
+  // モバイル版: マイページではヘッダーを非表示（ハンバーガーメニューでナビゲーション）
+  const isMyPage = pathname === "/my-page";
+  const headerClassName = isMyPage
+    ? "sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm hidden lg:flex"
+    : "sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm";
+
   return (
-    <header
-      ref={headerRef}
-      className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm"
-    >
+    <header ref={headerRef} className={headerClassName}>
       {/* モバイル版の検索ページ: 簡素化されたヘッダー（検索バーのみ） */}
       {isSearchPage && (
         <div className="w-full px-4 py-3 flex items-center justify-center md:hidden">

@@ -43,6 +43,11 @@ const envSchema = {
   ACCOUNT_PURGE_CRON_SECRET: process.env.ACCOUNT_PURGE_CRON_SECRET,
   ACCOUNT_FORFEITURE_HASH_SALT: process.env.ACCOUNT_FORFEITURE_HASH_SALT,
   CRON_SECRET: process.env.CRON_SECRET,
+
+  // Resend (お問い合わせメール送信)
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  CONTACT_EMAIL: process.env.CONTACT_EMAIL,
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
 } as const;
 
 /**
@@ -107,6 +112,9 @@ function getEnv() {
     ACCOUNT_FORFEITURE_HASH_SALT:
       envSchema.ACCOUNT_FORFEITURE_HASH_SALT || "",
     CRON_SECRET: envSchema.CRON_SECRET || "",
+    RESEND_API_KEY: envSchema.RESEND_API_KEY || "",
+    CONTACT_EMAIL: envSchema.CONTACT_EMAIL || "yuh.products@gmail.com",
+    RESEND_FROM_EMAIL: envSchema.RESEND_FROM_EMAIL || "",
   };
 }
 

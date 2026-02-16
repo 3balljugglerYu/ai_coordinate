@@ -9,12 +9,17 @@ import {
   useTransition,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell /* , Coins */ } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle /* , Coins */ } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getCurrentUser, onAuthStateChange, signOut } from "@/features/auth/lib/auth-client";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const SIDEBAR_OPEN_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
@@ -35,6 +40,7 @@ export function AppSidebar() {
     }
     return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== "closed";
   });
+  const [isOthersOpen, setIsOthersOpen] = useState(false);
   const [, startTransition] = useTransition();
   const hasPrefetched = useRef(false);
   const { unreadCount } = useUnreadNotificationCount();
@@ -66,6 +72,7 @@ export function AppSidebar() {
       router.prefetch("/challenge");
       router.prefetch("/notifications");
       router.prefetch("/my-page");
+      router.prefetch("/my-page/contact");
       hasPrefetched.current = true;
     }
   }, [user, router]);
@@ -208,6 +215,67 @@ export function AppSidebar() {
           );
         })}
       </div>
+
+      {/* その他メニュー（マイページの下、ログアウト寄り） */}
+      {user && (
+        <div className="border-t py-3">
+          {!isOpen ? (
+            /* サイドバー折りたたみ時は直接お問い合わせへ */
+            <button
+              onClick={() => handleNavigation("/my-page/contact")}
+              className={cn(
+                "group flex w-full items-center py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100",
+                pathname === "/my-page/contact" && "bg-primary/10 text-primary"
+              )}
+              aria-label="お問い合わせ"
+            >
+              <div className="flex w-[72px] shrink-0 items-center justify-center">
+                <MessageCircle className="h-5 w-5" />
+              </div>
+            </button>
+          ) : (
+            <Collapsible open={isOthersOpen} onOpenChange={setIsOthersOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  className={cn(
+                    "group flex w-full items-center py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100",
+                    isOthersOpen && "bg-gray-50"
+                  )}
+                  aria-expanded={isOthersOpen}
+                  aria-label="その他メニューを開く"
+                >
+                  <div className="flex w-[72px] shrink-0 items-center justify-center">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </div>
+                  <div
+                    className={cn(
+                      "overflow-hidden transition-all duration-200",
+                      isOpen ? "w-auto opacity-100" : "w-0 opacity-0"
+                    )}
+                  >
+                    <span className="whitespace-nowrap pr-4">その他</span>
+                  </div>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <button
+                  onClick={() => handleNavigation("/my-page/contact")}
+                  className={cn(
+                    "group flex w-full items-center py-2 pl-[72px] pr-4 text-sm font-medium transition-all duration-200 hover:bg-gray-100",
+                    pathname === "/my-page/contact"
+                      ? "bg-primary/10 text-primary"
+                      : "text-gray-600 hover:text-gray-900"
+                  )}
+                  aria-label="お問い合わせ"
+                >
+                  <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="whitespace-nowrap">お問い合わせ</span>
+                </button>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
+      )}
 
       <div className="border-t py-3">
         {user ? (
