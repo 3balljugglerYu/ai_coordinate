@@ -20,7 +20,7 @@ export interface Notification {
     comment_id?: string;
     comment_content?: string;
     follower_id?: string;
-    bonus_type?: "admin_bonus" | "daily_post" | "streak" | "referral" | "signup_bonus";
+    bonus_type?: "admin_bonus" | "daily_post" | "streak" | "referral" | "signup_bonus" | "tour_bonus";
     bonus_amount?: number;
     reason?: string;
   };

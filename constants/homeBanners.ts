@@ -25,6 +25,6 @@ export const homeBanners: HomeBanner[] = [
     id: "challenge",
     imageUrl: "/banners/event-02.png",
     linkUrl: "/challenge",
-    alt: "チャレンジ",
+    alt: "ミッション",
   },
 ];

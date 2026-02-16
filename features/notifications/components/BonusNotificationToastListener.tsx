@@ -15,6 +15,7 @@ const GLOBAL_BONUS_TOAST_TYPES = new Set([
   "signup_bonus",
   "referral",
   "admin_bonus",
+  "tour_bonus",
 ]);
 
 function getBonusToastStorageKey(userId: string) {

@@ -91,9 +91,12 @@ export function ReferralCodeDisplay() {
       <div className="space-y-6">
         {/* 紹介リンク */}
         <div>
-          <h3 className="text-lg font-semibold mb-2">紹介リンク</h3>
+          <label htmlFor="referral-link" className="text-lg font-semibold mb-2 block">
+            紹介リンク
+          </label>
           <div className="flex items-center gap-2">
             <input
+              id="referral-link"
               type="text"
               readOnly
               value={referralLink || ""}
@@ -104,6 +107,7 @@ export function ReferralCodeDisplay() {
               variant="outline"
               size="icon"
               disabled={!referralLink}
+              aria-label="紹介リンクをコピー"
             >
               {copied ? (
                 <Check className="h-4 w-4 text-green-600" />

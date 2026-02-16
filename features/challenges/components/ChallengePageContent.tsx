@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Masonry from "react-masonry-css";
 import {
   Users,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -28,6 +30,8 @@ import {
   checkInStreakBonus,
   getChallengeStatus,
 } from "@/features/challenges/lib/api";
+import { getCurrentUser } from "@/features/auth/lib/auth-client";
+import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { cn } from "@/lib/utils";
 
 const breakpointColumnsObj = {
@@ -53,6 +57,7 @@ function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
 }
 
 export function ChallengePageContent() {
+  const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const maxStreakBonus = Math.max(...STREAK_BONUS_SCHEDULE);
@@ -63,6 +68,15 @@ export function ChallengePageContent() {
   const [isCheckingIn, setIsCheckingIn] = useState<boolean>(false);
   const [isDailyBonusReceived, setIsDailyBonusReceived] = useState<boolean>(false);
   const [timeToReset, setTimeToReset] = useState<string>("");
+  const [tutorialCompleted, setTutorialCompleted] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const check = async () => {
+      const user = await getCurrentUser();
+      setTutorialCompleted(user?.user_metadata?.tutorial_completed === true);
+    };
+    void check();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -160,28 +174,60 @@ export function ChallengePageContent() {
     }
   };
 
+  const tutorialCard = (
+    <div className="mb-6">
+      <ChallengeCard
+        title="コーデ生成チュートリアル"
+        description="着せ替え生成の流れを体験！初めての方も安心のガイド付きです。"
+        icon={PlayCircle}
+        color="green"
+        className={cn(
+          "h-full",
+          tutorialCompleted && "opacity-75"
+        )}
+      >
+        <div className="mt-4">
+          {tutorialCompleted ? (
+            <div className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 border-green-200">
+              <div className="bg-green-100 p-2 rounded-full shrink-0">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <div className="font-bold text-green-800">完了済み</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  チュートリアルをクリアしました！
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              className="min-h-11 w-full"
+              onClick={() => {
+                if (typeof localStorage !== "undefined") {
+                  localStorage.removeItem(TUTORIAL_STORAGE_KEYS.DECLINED);
+                }
+                router.push("/");
+              }}
+            >
+              <PlayCircle className="mr-2 h-4 w-4" />
+              チュートリアルを開始
+            </Button>
+          )}
+        </div>
+      </ChallengeCard>
+    </div>
+  );
+
   return (
-    <div className="animate-in fade-in duration-500">
+    <div className="animate-in fade-in duration-500 motion-reduce:animate-none">
       <Masonry
         breakpointCols={breakpointColumnsObj}
         className="flex w-auto -ml-6"
         columnClassName="pl-6 bg-clip-padding"
       >
-        {/* 1. リファラル特典 */}
-        <div className="mb-6">
-          <ChallengeCard
-            title="友達紹介特典"
-            description="友達を招待してペルコインをゲット！紹介リンクまたはQRコードから友達が新規登録すると特典が付与されます。"
-            percoinAmount={REFERRAL_BONUS_AMOUNT}
-            icon={Users}
-            color="orange"
-            className="h-full"
-          >
-            <ReferralCodeDisplay />
-          </ChallengeCard>
-        </div>
-
-        {/* 2. ストリーク特典 */}
+        {tutorialCompleted === false && tutorialCard}
+        {/* 1. ストリーク特典 */}
         <div className="mb-6">
           <ChallengeCard
             title="連続ログインボーナス"
@@ -242,14 +288,14 @@ export function ChallengePageContent() {
                       )}
                     >
                       <span className={cn(
-                        "text-[10px] font-bold mb-1",
+                        "text-xs font-bold mb-1",
                         isCompleted ? "text-purple-200" : isNext ? "text-purple-600" : "text-gray-400"
                       )}>
                         Day {day}
                       </span>
 
                       {isCompleted ? (
-                        <Check className="w-5 h-5 animate-in zoom-in duration-300" strokeWidth={3} />
+                        <Check className="w-5 h-5 animate-in zoom-in duration-300 motion-reduce:animate-none" strokeWidth={3} />
                       ) : (
                         <div className="flex flex-col items-center">
                           {isBigBonus ? (
@@ -257,7 +303,7 @@ export function ChallengePageContent() {
                           ) : (
                             <div className={cn("w-3 h-3 rounded-full mb-1", isNext ? "bg-purple-200" : "bg-gray-200")} />
                           )}
-                          <span className={cn("text-[10px] font-bold leading-none", isNext ? "text-purple-700" : "")}>
+                          <span className={cn("text-xs font-bold leading-none", isNext ? "text-purple-700" : "")}>
                             +{amount}
                           </span>
                         </div>
@@ -265,7 +311,7 @@ export function ChallengePageContent() {
 
                       {isNext && (
                         <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                          <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
                         </span>
                       )}
@@ -282,7 +328,7 @@ export function ChallengePageContent() {
                     : "bg-yellow-50 border-yellow-200 text-yellow-600"
                 )}>
                   <span className={cn(
-                    "text-[10px] font-bold mb-1",
+                    "text-xs font-bold mb-1",
                     streakDays >= STREAK_BONUS_SCHEDULE.length ? "text-yellow-100" : "text-yellow-600/70"
                   )}>
                     GOAL
@@ -294,7 +340,7 @@ export function ChallengePageContent() {
 
                   {streakDays >= STREAK_BONUS_SCHEDULE.length && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-lg bg-yellow-400 opacity-20"></span>
+                      <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-lg bg-yellow-400 opacity-20"></span>
                     </div>
                   )}
                 </div>
@@ -303,7 +349,7 @@ export function ChallengePageContent() {
           </ChallengeCard>
         </div>
 
-        {/* 3. デイリー投稿特典 */}
+        {/* 2. デイリー投稿特典 */}
         <div className="mb-6">
           <ChallengeCard
             title="デイリー投稿ボーナス"
@@ -371,6 +417,21 @@ export function ChallengePageContent() {
             </div>
           </ChallengeCard>
         </div>
+
+        {/* 3. リファラル特典 */}
+        <div className="mb-6">
+          <ChallengeCard
+            title="友達紹介特典"
+            description="友達を招待してペルコインをゲット！紹介リンクまたはQRコードから友達が新規登録すると特典が付与されます。"
+            percoinAmount={REFERRAL_BONUS_AMOUNT}
+            icon={Users}
+            color="orange"
+            className="h-full"
+          >
+            <ReferralCodeDisplay />
+          </ChallengeCard>
+        </div>
+        {tutorialCompleted === true && tutorialCard}
       </Masonry>
     </div>
   );

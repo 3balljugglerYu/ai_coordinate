@@ -14,7 +14,7 @@ export interface CheckInStreakBonusResponse {
 }
 
 /**
- * チャレンジ関連のステータス（連続ログイン日数、最終デイリーボーナス日時）を取得
+ * ミッション関連のステータス（連続ログイン日数、最終デイリーボーナス日時）を取得
  */
 export async function getChallengeStatus(): Promise<ChallengeStatus> {
   const supabase = createClient();

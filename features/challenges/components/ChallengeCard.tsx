@@ -43,13 +43,13 @@ export function ChallengeCard({
   return (
     <Card
       className={cn(
-        "group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-2",
+        "group relative overflow-hidden transition-all duration-300 hover:shadow-lg border-2 motion-reduce:transition-none",
         className
       )}
     >
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className={cn("p-3 rounded-2xl transition-transform duration-300 group-hover:scale-110", iconColorStyles[color])}>
+          <div className={cn("p-3 rounded-2xl transition-transform duration-300 group-hover:scale-110 motion-reduce:scale-100 motion-reduce:transition-none", iconColorStyles[color])}>
             <Icon className="w-8 h-8" strokeWidth={1.5} />
           </div>
           {(percoinAmount || percoinText) && (
@@ -68,7 +68,7 @@ export function ChallengeCard({
         </p>
 
         {children && (
-          <div className="pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500 motion-reduce:animate-none">
             {children}
           </div>
         )}

@@ -121,7 +121,7 @@ export function AppSidebar() {
   const navItems = [
     { path: "/", label: "ホーム", icon: Home },
     { path: "/coordinate", label: "コーディネート", icon: Sparkles },
-    { path: "/challenge", label: "チャレンジ", icon: Trophy },
+    { path: "/challenge", label: "ミッション", icon: Trophy },
     { path: "/notifications", label: "お知らせ", icon: Bell },
     { path: "/my-page", label: "マイページ", icon: UserIcon },
     // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
@@ -165,6 +165,7 @@ export function AppSidebar() {
           return (
             <button
               key={path}
+              data-tour={path === "/coordinate" ? "coordinate-nav-desktop" : undefined}
               onClick={() => handleNavigation(path)}
               title={!isOpen ? label : undefined}
               className={cn(

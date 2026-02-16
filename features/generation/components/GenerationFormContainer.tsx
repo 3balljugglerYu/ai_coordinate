@@ -14,6 +14,7 @@ import {
 import { getPercoinCost } from "../lib/model-config";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
 interface GenerationFormContainerProps {}
 
@@ -216,6 +217,15 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           });
         }
 
+        // チュートリアル中: 生成完了をトリガーに案内表示へ進む
+        if (
+          typeof sessionStorage !== "undefined" &&
+          sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) === "true"
+        ) {
+          document.dispatchEvent(
+            new CustomEvent("tutorial:generation-complete", { bubbles: true })
+          );
+        }
         // すべての未完了ジョブが完了したので、生成状態を解除
         setIsGenerating(false);
 
@@ -477,6 +487,15 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       setError(errorMessage);
       showGenerationErrorToast(errorMessage);
     } finally {
+      // チュートリアル中: 生成完了をトリガーに案内表示へ進む
+      if (
+        typeof sessionStorage !== "undefined" &&
+        sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) === "true"
+      ) {
+        document.dispatchEvent(
+          new CustomEvent("tutorial:generation-complete", { bubbles: true })
+        );
+      }
       setIsGenerating(false);
       // ポーリングを停止
       pollingStopFunctionsRef.current.forEach((stop) => stop());
@@ -498,7 +517,10 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
       {/* 生成中表示 */}
       {isGenerating && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <div
+          className="rounded-lg border border-blue-200 bg-blue-50 p-4"
+          data-tour="tour-generating"
+        >
           <div className="flex items-center gap-3">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
             <div>

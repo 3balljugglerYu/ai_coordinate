@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ import { getCurrentUserId } from "../lib/generation-service";
 import { getPercoinCost } from "../lib/model-config";
 import type { UploadedImage, GeminiModel } from "../types";
 import { useRouter } from "next/navigation";
+import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
+import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
 interface GenerationFormProps {
   onSubmit: (data: {
@@ -48,6 +50,24 @@ export function GenerationForm({
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
+  const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
+
+  // チュートリアル中は入力フィールドを無効化（bodyのdata-tour-in-progressを監視）
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const checkTutorial = () => {
+      setIsTutorialInProgress(
+        document.body.getAttribute("data-tour-in-progress") === "true"
+      );
+    };
+    checkTutorial();
+    const observer = new MutationObserver(checkTutorial);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-tour-in-progress"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   // localStorageから選択されたストック画像IDを取得
   useEffect(() => {
@@ -73,6 +93,16 @@ export function GenerationForm({
     if (imageSourceType === "stock" && !selectedStockId) {
       alert("ストック画像を選択してください");
       return;
+    }
+
+    // チュートリアル中: コーデスタート押下でStep8へ進む
+    if (
+      typeof document !== "undefined" &&
+      sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) === "true"
+    ) {
+      document.dispatchEvent(
+        new CustomEvent("tutorial:advance-to-next", { bubbles: true })
+      );
     }
 
     // ストック画像の場合、画像ファイルを取得する必要がある
@@ -129,15 +159,81 @@ export function GenerationForm({
     void fetchStocks();
   }, []);
 
-  const handleImageUpload = (image: UploadedImage) => {
+  const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
-    // ローカルアップロード時はストック選択をクリア
     setSelectedStockId(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("selectedStockId");
     }
-  };
+  }, []);
 
+  // チュートリアルモード: プロンプトをセット（step4のonHighlightedで自動セット）
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ prompt: string }>).detail;
+      if (detail?.prompt) setPrompt(detail.prompt);
+    };
+    document.addEventListener("tutorial:set-prompt", handler);
+    return () => document.removeEventListener("tutorial:set-prompt", handler);
+  }, []);
+
+  // チュートリアルモード: 背景変更チェックをセット（step5のonHighlightedで自動セット）
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ checked: boolean }>).detail;
+      if (detail?.checked) setBackgroundChange(true);
+    };
+    document.addEventListener("tutorial:set-background-change", handler);
+    return () =>
+      document.removeEventListener("tutorial:set-background-change", handler);
+  }, []);
+
+  // チュートリアル中断時: フォームを初期状態にクリア（デモ画像・プロンプト・背景変更等をリセット）
+  useEffect(() => {
+    const handler = () => {
+      setUploadedImage(null);
+      setSelectedStockId(null);
+      setPrompt("");
+      setBackgroundChange(false);
+      setSelectedCount(1);
+      setSelectedModel("gemini-2.5-flash-image");
+      setImageSourceType("upload");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("selectedStockId");
+      }
+    };
+    document.addEventListener("tutorial:clear", handler);
+    return () => document.removeEventListener("tutorial:clear", handler);
+  }, []);
+
+  // チュートリアルモード: デモ画像を自動セット（ステップ表示時に onHighlighted で発火）
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        const res = await fetch(TUTORIAL_DEMO_IMAGE_PATH);
+        const blob = await res.blob();
+        const file = new File([blob], "tutorial-demo.jpg", {
+          type: blob.type || "image/jpeg",
+        });
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          handleImageUpload({
+            file,
+            previewUrl: objectUrl,
+            width: img.naturalWidth || 800,
+            height: img.naturalHeight || 800,
+          });
+          setImageSourceType("upload");
+        };
+        img.src = objectUrl;
+      } catch (err) {
+        console.error("[Tutorial] Failed to set demo image:", err);
+      }
+    };
+    document.addEventListener("tutorial:set-demo-image", handler);
+    return () => document.removeEventListener("tutorial:set-demo-image", handler);
+  }, [handleImageUpload]);
 
   return (
     <Card className="p-6">
@@ -182,10 +278,11 @@ export function GenerationForm({
 
         {/* 画像アップロード or ストック選択 */}
         {imageSourceType === "upload" ? (
-          <>
+          <div>
             <ImageUploader
               onImageUpload={handleImageUpload}
               onImageRemove={() => setUploadedImage(null)}
+              value={uploadedImage}
             />
             {uploadedImage && (
               <div className="mt-4">
@@ -197,7 +294,7 @@ export function GenerationForm({
                 />
               </div>
             )}
-          </>
+          </div>
         ) : (
           <div className="space-y-4">
             <div>
@@ -303,7 +400,7 @@ export function GenerationForm({
         )}
 
         {/* 着せ替え内容入力 */}
-        <div>
+        <div data-tour="tour-prompt-input">
           <Label htmlFor="prompt" className="text-base font-medium">
             着せ替え内容を入力
           </Label>
@@ -313,7 +410,7 @@ export function GenerationForm({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             className="mt-2 min-h-[100px]"
-            disabled={isGenerating}
+            disabled={isGenerating || isTutorialInProgress}
           />
           <p className="mt-1 text-xs text-gray-500">
             どんな服装に変更したいか具体的に記入してください
@@ -321,12 +418,12 @@ export function GenerationForm({
         </div>
 
         {/* 背景変更オプション */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2" data-tour="tour-background-change">
           <Checkbox
             id="background-change"
             checked={backgroundChange}
             onCheckedChange={(checked) => setBackgroundChange(checked === true)}
-            disabled={isGenerating}
+            disabled={isGenerating || isTutorialInProgress}
           />
           <Label
             htmlFor="background-change"
@@ -337,14 +434,14 @@ export function GenerationForm({
         </div>
 
         {/* モデル選択 */}
-        <div>
+        <div data-tour="tour-model-select">
           <Label className="text-base font-medium mb-3 block">
             生成モデルを選択
           </Label>
           <Select
             value={selectedModel}
             onValueChange={(value) => setSelectedModel(value as GeminiModel)}
-            disabled={isGenerating}
+            disabled={isGenerating || isTutorialInProgress}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -367,16 +464,27 @@ export function GenerationForm({
         </div>
 
         {/* 生成枚数選択 */}
-        <div>
-          <Label className="text-base font-medium">生成枚数を選択</Label>
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((count) => (
+        <div data-tour="tour-count-select">
+          <Label className="text-base font-medium mb-3 block">
+            生成枚数を選択
+          </Label>
+          <div className="mt-2 grid grid-cols-4 gap-2 items-end">
+            <Button
+              type="button"
+              variant={selectedCount === 1 ? "default" : "outline"}
+              onClick={() => setSelectedCount(1)}
+              disabled={isGenerating || isTutorialInProgress}
+              className="h-12"
+            >
+              1枚
+            </Button>
+            {[2, 3, 4].map((count) => (
               <Button
                 key={count}
                 type="button"
                 variant={selectedCount === count ? "default" : "outline"}
                 onClick={() => setSelectedCount(count)}
-                disabled={isGenerating}
+                disabled={isGenerating || isTutorialInProgress}
                 className="h-12"
               >
                 {count}枚
@@ -394,6 +502,7 @@ export function GenerationForm({
           size="lg"
           onClick={handleSubmit}
           disabled={isSubmitDisabled}
+          data-tour="tour-generate-btn"
         >
           {isGenerating ? (
             <>

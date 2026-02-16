@@ -104,6 +104,21 @@
     /* iOSのフォントサイズ自動調整を防ぐ */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* モバイル・タブレット: 下部ナビゲーションバー分の余白（チュートリアルStep1のハイライト位置補正） */
+    scroll-padding-bottom: 4rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      /* PC版ではナビバーがサイドバーになるためリセット */
+      scroll-padding-bottom: 0;
+    }
   }
   
   body {
@@ -167,5 +182,32 @@
   
   .nav-indicator-expand {
     animation: expandFromCenter 0.2s ease-out;
+  }
+
+  /* チュートリアル中: 画像アップロードのキャンセルボタンを非表示 */
+  body[data-tour-in-progress="true"] .tour-image-cancel-btn {
+    visibility: hidden;
+  }
+
+  /* Step1（コーディネート誘導）: モバイル・タブレットで下部ナビバーを考慮したハイライト位置 */
+  [data-tour="coordinate-nav-mobile"] {
+    scroll-margin-bottom: 4rem;
+  }
+
+  /* チュートリアル遷移中: ハイライト・ポップオーバーを非表示し、画面全体にグレーオーバーレイを表示 */
+  body[data-tour-transitioning] .driver-overlay,
+  body[data-tour-transitioning] .driver-active-element,
+  body[data-tour-transitioning] .driver-popover {
+    visibility: hidden !important;
+  }
+
+  /* 遷移中の画面全体オーバーレイ（driver.jsのoverlayColor/overlayOpacityに合わせる） */
+  body[data-tour-transitioning]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 999999999;
+    pointer-events: none;
   }
 }
