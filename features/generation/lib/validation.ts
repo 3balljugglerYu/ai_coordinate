@@ -6,8 +6,8 @@ import type { ImageUploadConfig, ImageValidationResult } from "../types";
 export const DEFAULT_IMAGE_CONFIG: ImageUploadConfig = {
   maxSizeMB: 10,
   allowedFormats: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
-  maxWidth: 4096,
-  maxHeight: 4096,
+  maxWidth: 5000,
+  maxHeight: 5000,
 };
 
 /**
