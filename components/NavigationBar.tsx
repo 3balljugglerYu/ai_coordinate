@@ -91,7 +91,7 @@ export function NavigationBar() {
                   data-tour={path === "/coordinate" ? "coordinate-nav-mobile" : undefined}
                   onClick={() => handleNavigation(path)}
                   className={cn(
-                    "relative flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-all duration-200 ease-out",
+                    "relative flex min-w-[60px] flex-col items-center gap-1 px-2 py-2 text-[10px] font-medium transition-all duration-200 ease-out",
                     "active:scale-80 active:opacity-80",
                     "md:flex-row md:gap-2 md:text-sm",
                     isActive
