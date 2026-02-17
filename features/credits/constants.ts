@@ -7,7 +7,8 @@ export const PERCOIN_INSUFFICIENT_ERROR_PREFIX = "ペルコイン残高が不足
 
 /**
  * エラーメッセージがペルコイン残高不足かどうかを判定
+ * null/undefined を受け取っても安全に false を返す
  */
-export function isPercoinInsufficientError(error: string): boolean {
-  return error.includes(PERCOIN_INSUFFICIENT_ERROR_PREFIX);
+export function isPercoinInsufficientError(error?: string | null): boolean {
+  return error?.includes(PERCOIN_INSUFFICIENT_ERROR_PREFIX) ?? false;
 }
