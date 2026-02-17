@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GenerationForm } from "./GenerationForm";
 import { getCurrentUserId } from "../lib/generation-service";
@@ -13,6 +14,8 @@ import {
 } from "../lib/async-api";
 import { getPercoinCost } from "../lib/model-config";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
+import { isPercoinInsufficientError } from "@/features/credits/constants";
+import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { useToast } from "@/components/ui/use-toast";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
@@ -509,14 +512,24 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       <GenerationForm onSubmit={handleGenerate} isGenerating={isGenerating} />
 
       {/* エラー表示 */}
-      {error && (
+      {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm text-red-900">{error}</p>
+          {isPercoinInsufficientError(error) ? (
+            <div className="mt-3 flex justify-center lg:justify-start">
+              <Link
+                href={getPercoinPurchaseUrl("coordinate")}
+                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                ペルコインを購入する
+              </Link>
+            </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       {/* 生成中表示 */}
-      {isGenerating && (
+      {isGenerating ? (
         <div
           className="rounded-lg border border-blue-200 bg-blue-50 p-4"
           data-tour="tour-generating"
@@ -533,7 +546,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -4,21 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, User as UserIcon, LogOut } from "lucide-react";
+import { ArrowLeft, User, User as UserIcon } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UserMenuItems } from "@/features/auth/components/UserMenuItems";
 import {
   getCurrentUser,
   signOut,
   onAuthStateChange,
 } from "@/features/auth/lib/auth-client";
-import { APP_NAME } from "@/constants";
+import { APP_NAME, ROUTES } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
 import { SearchBar } from "@/features/posts/components/SearchBar";
 
@@ -42,11 +42,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // トップレベルのページ
   const topLevelPaths = [
-    "/",
-    "/coordinate",
+    ROUTES.HOME,
+    ROUTES.COORDINATE,
     "/challenge",
-    "/my-page",
-    "/my-page/credits",
+    ROUTES.MY_PAGE,
+    ROUTES.MY_PAGE_CREDITS,
     "/notifications",
     "/login",
     "/signup",
@@ -67,12 +67,14 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const isMyPageSubPath = pathname.startsWith("/my-page/") && pathname !== "/my-page";
   const backUrl =
     fromParam === "my-page"
-      ? "/my-page"
+      ? ROUTES.MY_PAGE
       : fromParam === "notifications"
         ? "/notifications"
-        : isMyPageSubPath
-          ? "/my-page"
-          : "/";
+        : fromParam === "coordinate"
+          ? ROUTES.COORDINATE
+          : isMyPageSubPath
+            ? ROUTES.MY_PAGE
+            : ROUTES.HOME;
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -233,20 +235,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href="/my-page" className="cursor-pointer">
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    マイページ
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  className="text-destructive cursor-pointer"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  ログアウト
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-44">
+                <UserMenuItems includeMyPage onSignOut={handleSignOut} />
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
