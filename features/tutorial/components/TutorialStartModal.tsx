@@ -87,8 +87,9 @@ export function TutorialStartModal({
             </DialogHeader>
             <DialogFooter className="flex flex-col gap-2 sm:justify-end">
               <Button
+                variant="info"
                 onClick={onConfirm}
-                className="min-h-[44px] bg-[#2196F3] text-white hover:bg-[#1976D2]"
+                className="min-h-[44px]"
               >
                 はい
               </Button>
