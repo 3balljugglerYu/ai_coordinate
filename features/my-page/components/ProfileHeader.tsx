@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { User, Edit, Menu, MessageCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { User, Edit, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { signOut } from "@/features/auth/lib/auth-client";
+import { UserMenuItems } from "@/features/auth/components/UserMenuItems";
 import { ProfileEditModal } from "./ProfileEditModal";
 import { AvatarUpload } from "./AvatarUpload";
 import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
@@ -32,8 +33,18 @@ export function ProfileHeader({
   currentUserId,
   onProfileUpdate,
 }: ProfileHeaderProps) {
+  const router = useRouter();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(profile);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push("/");
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
 
   // profile が変わったら state を同期（別アカウント切り替え時に古いユーザー情報が表示されるのを防ぐ）
   useEffect(() => {
@@ -72,15 +83,7 @@ export function ProfileHeader({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem asChild>
-                  <Link href="/my-page/account">アカウントについて</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/my-page/contact" className="flex items-center">
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    お問い合わせ
-                  </Link>
-                </DropdownMenuItem>
+                <UserMenuItems onSignOut={handleSignOut} />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

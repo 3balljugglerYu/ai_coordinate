@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { CreditCard, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { ROUTES } from "@/constants";
 import { Card } from "@/components/ui/card";
 import { PercoinTransactions } from "./PercoinTransactions";
 import {
@@ -78,12 +78,18 @@ export function PercoinPageContent({
 
   return (
     <>
-      {/* ペルコイン残高カード */}
-      <Card className="mb-8 p-6">
-        <div className="flex items-center justify-between">
+      {/* ペルコイン残高カード（タップで購入画面へ遷移） */}
+      <Link href={ROUTES.MY_PAGE_CREDITS_PURCHASE}>
+        <Card className="mb-8 p-6 transition-opacity hover:opacity-90 cursor-pointer">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-              <CreditCard className="h-6 w-6 text-blue-600" />
+            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full">
+              <Image
+                src="/percoin.png"
+                alt="ペルコイン"
+                width={48}
+                height={48}
+                className="object-cover"
+              />
             </div>
             <div>
               <p className="text-sm text-gray-600">ペルコイン残高</p>
@@ -92,14 +98,8 @@ export function PercoinPageContent({
               </p>
             </div>
           </div>
-          <Link href="/my-page/credits/purchase">
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              購入
-            </Button>
-          </Link>
-        </div>
-      </Card>
+        </Card>
+      </Link>
 
       {/* ペルコイン購入セクション */}
       {/* 将来的に別ページ（/my-page/credits/purchase）に分離予定のためコメントアウト */}

@@ -4,6 +4,7 @@ import { GeneratedImageGalleryWrapper } from "@/features/generation/components/G
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
+import { CoordinatePercoinBalance } from "@/features/credits/components/CoordinatePercoinBalance";
 
 async function GenerationFormWrapper() {
   // 認証チェック
@@ -18,7 +19,7 @@ export default async function CoordinatePage() {
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトルと説明文 */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">
               コーディネート
             </h1>
@@ -26,6 +27,15 @@ export default async function CoordinatePage() {
               人物画像をアップロードして、着せ替えを楽しみましょう
             </p>
           </div>
+
+          {/* ペルコイン残高と購入リンク */}
+          <Suspense
+            fallback={
+              <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
+            }
+          >
+            <CoordinatePercoinBalance />
+          </Suspense>
 
           {/* GenerationForm: Suspenseの外に配置して即座に表示 */}
           <Suspense fallback={<GenerationFormSkeleton />}>
