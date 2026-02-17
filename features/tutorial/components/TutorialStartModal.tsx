@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -68,22 +69,36 @@ export function TutorialStartModal({
           </>
         ) : (
           <>
-            <DialogHeader>
+            <DialogHeader className="text-left">
               <DialogTitle>チュートリアルを開始しますか？</DialogTitle>
-              <DialogDescription>
+              <div className="relative my-4 w-full overflow-hidden rounded-lg">
+                <Image
+                  src="/tutorial_main_image.png"
+                  alt="チュートリアルの流れ"
+                  width={1040}
+                  height={669}
+                  className="h-auto w-full object-contain"
+                  priority
+                />
+              </div>
+              <DialogDescription className="mb-2">
                 着せ替え生成までの流れを、ご案内します！
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <DialogFooter className="flex flex-col gap-2 sm:justify-end">
+              <Button
+                variant="info"
+                onClick={onConfirm}
+                className="min-h-[44px]"
+              >
+                はい
+              </Button>
               <Button
                 variant="outline"
                 onClick={handleDeclineClick}
                 className="min-h-[44px]"
               >
                 いいえ
-              </Button>
-              <Button onClick={onConfirm} className="min-h-[44px]">
-                はい
               </Button>
             </DialogFooter>
           </>

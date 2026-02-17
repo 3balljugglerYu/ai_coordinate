@@ -15,7 +15,7 @@ function getJapanMonth(): number {
 /** 日本時間の現在月を基準にしたチュートリアル用プロンプトを生成 */
 export function getTutorialPrompt(): string {
   const month = getJapanMonth();
-  return `日本の${month}月の季節に合う素敵な服装にしてください。`;
+  return `${month}月の季節に合う素敵な服装にしてください。`;
 }
 
 export const TUTORIAL_BONUS_AMOUNT = 20;

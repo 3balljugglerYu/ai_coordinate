@@ -210,38 +210,11 @@ export function TutorialTourProvider() {
         return;
       }
 
-      const isMobileOrTablet =
-        typeof window !== "undefined" && window.innerWidth < 1024;
-      const baseSteps = [...TOUR_STEPS].map((step) => {
-        // ⑪生成結果: デバイス別の説明文を差し込む
-        if (step.popover?.description === "{{STEP11_DESCRIPTION}}") {
-          const description = isMobileOrTablet
-            ? "生成された画像がここに表示されます！<br>タップしてみてください！"
-            : "生成された画像がここに表示されます！<br>拡大アイコンをクリックしてみてください！";
-          return {
-            ...step,
-            popover: { ...step.popover, description },
-            onHighlighted: (element: Element | undefined) => {
-              document.body.setAttribute("data-tour-step-first-image", "true");
-              document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
-              if (element && element !== document.body) {
-                requestAnimationFrame(() => {
-                  element.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "nearest",
-                  });
-                });
-              }
-            },
-          };
-        }
-        return step;
-      });
+      const baseSteps = [...TOUR_STEPS];
       const lastIndex = baseSteps.length - 1;
 
-      // 生成開始（index 6）までは中断可能
-      const INTERRUPTIBLE_UNTIL_INDEX = 6;
+      // 生成開始（index 4）までは中断可能
+      const INTERRUPTIBLE_UNTIL_INDEX = 4;
 
       // ③画像アップロード説明のステップでデモ画像を自動セット
       // ④着せ替え内容入力のステップでプロンプトを自動セット（日本時間の現在月を基準）
@@ -336,6 +309,24 @@ export function TutorialTourProvider() {
             },
           };
         }
+        if (idx === 7) {
+          return {
+            ...mergedStep,
+            onHighlighted: (element: Element | undefined) => {
+              document.body.setAttribute("data-tour-step-first-image", "true");
+              document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
+              if (element && element !== document.body) {
+                requestAnimationFrame(() => {
+                  element.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                    inline: "nearest",
+                  });
+                });
+              }
+            },
+          };
+        }
         return mergedStep;
       });
 
@@ -409,7 +400,7 @@ export function TutorialTourProvider() {
         onHighlighted: (element) => {
           // Step11以外では投稿/ダウンロード無効化を解除
           const idx = driverRef.current?.getActiveIndex();
-          if (idx !== 9) {
+          if (idx !== 7) {
             document.body.removeAttribute("data-tour-step-first-image");
             document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
           }
@@ -491,38 +482,6 @@ export function TutorialTourProvider() {
     document.addEventListener("tutorial:generation-complete", handler);
     return () =>
       document.removeEventListener("tutorial:generation-complete", handler);
-  }, []);
-
-  // 拡大アイコン/カードタップでモーダルを開いたら「素晴らしいです！」へ進む
-  useEffect(() => {
-    const handler = () => {
-      const d = driverRef.current;
-      if (!d || d.isLastStep()) return;
-      const idx = d.getActiveIndex() ?? 0;
-      if (idx !== 9) return; // Step11（拡大してみる）のときのみ
-      setTimeout(() => {
-        const nextIndex = idx + 1;
-        runTransitionFlow(d, nextIndex, () => d.moveNext());
-      }, 150);
-    };
-    document.addEventListener("tutorial:expand-image", handler);
-    return () =>
-      document.removeEventListener("tutorial:expand-image", handler);
-  }, []);
-
-  // モーダルの閉じるボタンクリックで「ツアー完了」へ進む
-  useEffect(() => {
-    const handler = () => {
-      const d = driverRef.current;
-      if (!d || d.isLastStep()) return;
-      const idx = d.getActiveIndex() ?? 0;
-      if (idx !== 11) return; // Step13（閉じる誘導）のときのみ
-      const nextIndex = idx + 1;
-      runTransitionFlow(d, nextIndex, () => d.moveNext());
-    };
-    document.addEventListener("tutorial:modal-closed", handler);
-    return () =>
-      document.removeEventListener("tutorial:modal-closed", handler);
   }, []);
 
   // /coordinate に遷移したらツアー再開
