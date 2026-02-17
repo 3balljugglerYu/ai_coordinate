@@ -145,22 +145,19 @@ export function GeneratedImageGallery({
               <Card
                 className="group relative overflow-hidden p-0 sm:cursor-default cursor-pointer"
                 onClick={(e) => {
+                  // チュートリアルStep11中はクリック無効（モーダルを開かない）
+                  if (
+                    index === 0 &&
+                    document.body.hasAttribute("data-tour-step-first-image")
+                  ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
                   // モバイルのみ: カードタップで拡大モーダルを開く
                   // PCではボタンが表示されるので、カードクリックは無効
                   if (typeof window !== 'undefined' && window.innerWidth < 640) {
                     setSelectedImageIndex(index);
-                    if (
-                      index === 0 &&
-                      document.body.hasAttribute("data-tour-step-first-image")
-                    ) {
-                      setTimeout(
-                        () =>
-                          document.dispatchEvent(
-                            new CustomEvent("tutorial:expand-image")
-                          ),
-                        150
-                      );
-                    }
                   }
                 }}
               >
@@ -202,21 +199,21 @@ export function GeneratedImageGallery({
                     <Button
                       size="sm"
                       variant="secondary"
+                      disabled={
+                        index === 0 &&
+                        typeof document !== "undefined" &&
+                        document.body.hasAttribute("data-tour-step-first-image")
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedImageIndex(index);
+                        // チュートリアルStep11中はクリック無効
                         if (
                           index === 0 &&
                           document.body.hasAttribute("data-tour-step-first-image")
                         ) {
-                          setTimeout(
-                            () =>
-                              document.dispatchEvent(
-                                new CustomEvent("tutorial:expand-image")
-                              ),
-                            150
-                          );
+                          return;
                         }
+                        setSelectedImageIndex(index);
                       }}
                     >
                       <ZoomIn className="h-4 w-4" />
