@@ -1,4 +1,5 @@
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { SourceImageStock, GeneratedImageRecord } from "./database";
 
@@ -76,9 +77,10 @@ export const getGeneratedImagesServer = cache(async (
   userId: string,
   limit = 4,
   offset = 0,
-  generationType?: "coordinate" | "specified_coordinate" | "full_body" | "chibi"
+  generationType?: "coordinate" | "specified_coordinate" | "full_body" | "chibi",
+  supabaseOverride?: SupabaseClient
 ): Promise<GeneratedImageRecord[]> => {
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
 
   let query = supabase
     .from("generated_images")

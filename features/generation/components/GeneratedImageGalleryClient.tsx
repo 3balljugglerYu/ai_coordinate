@@ -6,6 +6,7 @@ import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import type { GeneratedImageData } from "../types";
 import { getCurrentUserId } from "../lib/generation-service";
 import { getGeneratedImages } from "../lib/database";
+import { useGenerationState } from "../context/GenerationStateContext";
 
 const PAGE_SIZE = 4;
 
@@ -17,6 +18,7 @@ interface GeneratedImageGalleryClientProps {
  * クライアントコンポーネント: 生成結果一覧の表示と無限スクロール
  */
 export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGalleryClientProps) {
+  const genState = useGenerationState();
   const [images, setImages] = useState<GeneratedImageData[]>(initialImages);
   const [offset, setOffset] = useState(initialImages.length);
   const [hasMore, setHasMore] = useState(initialImages.length === PAGE_SIZE);
@@ -30,43 +32,35 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
   // initialImagesが変更されたら状態を更新
   useEffect(() => {
+    // 既存画像のIDセットを作成（前回値から）
+    const existingIds = new Set(prevInitialImagesRef.current.map((img) => img.id));
+    const newImages = initialImages.filter((img) => !existingIds.has(img.id));
+
     // initialImagesを先頭にし、既存の画像をその後に連結
     setImages((prev) => {
-      // 既存画像のIDセットを作成
-      const existingIds = new Set(prev.map((img) => img.id));
-      
-      // initialImagesから新しい画像（まだ表示されていない画像）を抽出
-      const newImages = initialImages.filter((img) => !existingIds.has(img.id));
-      
-      // 新しい画像がある場合のみ更新
-      if (newImages.length > 0) {
-        // 既存画像から、initialImagesに含まれていない画像を抽出
-        // O(N*M)を避けるため、initialImagesのIDをSetに変換してO(1)ルックアップを使用
+      const prevExistingIds = new Set(prev.map((img) => img.id));
+      const prevNewImages = initialImages.filter((img) => !prevExistingIds.has(img.id));
+
+      if (prevNewImages.length > 0) {
         const initialImageIds = new Set(initialImages.map((img) => img.id));
         const existingImagesNotInInitial = prev.filter(
           (img) => !initialImageIds.has(img.id)
         );
-        // initialImagesを先頭に、既存画像をその後に連結
         return [...initialImages, ...existingImagesNotInInitial];
       }
-      
-      // 新しい画像がない場合は既存の状態を維持
       return prev;
     });
-    
-    // offsetは、既存画像の長さを考慮して調整
-    setOffset((prev) => {
-      // 新しい画像が追加されても、既に読み込んだ画像は保持するため、
-      // offsetは既存画像の長さとinitialImagesの長さの最大値にする
-      return Math.max(prev, initialImages.length);
-    });
-    
-    // hasMoreは、initialImagesの長さを基準に判定
+
+    setOffset((prev) => Math.max(prev, initialImages.length));
     setHasMore(initialImages.length === PAGE_SIZE);
-    
-    // 前回のinitialImagesを更新
     prevInitialImagesRef.current = initialImages;
-  }, [initialImages]);
+
+    // 生成中かつサーバーから新しい画像が届いたら isGenerating を解除
+    // → スケルトンから画像へシームレスに差し替わる（一瞬非表示になるのを防ぐ）
+    if (genState?.isGenerating && newImages.length > 0) {
+      genState.setIsGenerating(false);
+    }
+  }, [initialImages, genState]);
 
   // 無限スクロール: 最下部が表示されたら追加で取得
   useEffect(() => {
@@ -122,7 +116,12 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
   return (
     <>
-      <GeneratedImageGallery images={images} />
+      <GeneratedImageGallery
+        images={images}
+        isGenerating={genState?.isGenerating ?? false}
+        generatingCount={genState?.generatingCount ?? 0}
+        completedCount={genState?.completedCount ?? 0}
+      />
       {/* 無限スクロール用トリガー */}
       {hasMore && (
         <div ref={loadMoreRef} className="h-8 w-full" />

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    revalidateTag(`notifications-${user.id}`, "max");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Mark all read API error:", error);

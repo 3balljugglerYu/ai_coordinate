@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PostDetailStatic } from "./PostDetailStatic";
 import { CommentSection } from "./CommentSection";
 import { CommentSectionSkeleton } from "./CommentSectionSkeleton";
+import { incrementViewCountAPI } from "../lib/api";
 import type { Post } from "../types";
 
 interface PostDetailContentProps {
@@ -33,6 +34,15 @@ export function PostDetailContent({
   const [hiddenPostId, setHiddenPostId] = useState<string | null>(null);
   const router = useRouter();
   const isHidden = hiddenPostId === post.id;
+
+  // 閲覧数インクリメント（CachedPostDetailではサーバーでスキップするため、クライアントから呼び出し）
+  useEffect(() => {
+    if (postId) {
+      incrementViewCountAPI(postId).catch(() => {
+        // エラーは静かに無視
+      });
+    }
+  }, [postId]);
 
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {

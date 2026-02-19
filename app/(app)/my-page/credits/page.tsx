@@ -1,32 +1,15 @@
 import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
-import {
-  getPercoinBalanceServer,
-  getPercoinTransactionsServer,
-} from "@/features/my-page/lib/server-api";
-import { PercoinPageContent } from "@/features/my-page/components/PercoinPageContent";
+import { RefreshOnMount } from "@/components/RefreshOnMount";
+import { CachedPercoinPageContent } from "@/features/my-page/components/CachedPercoinPageContent";
 import { PercoinPageSkeleton } from "@/features/my-page/components/PercoinPageSkeleton";
 
-async function PercoinPageData() {
-  const user = await requireAuth();
-  const userId = user.id;
-
-  const [percoinBalance, transactions] = await Promise.all([
-    getPercoinBalanceServer(userId),
-    getPercoinTransactionsServer(userId),
-  ]);
-
-  return (
-    <PercoinPageContent
-      percoinBalance={percoinBalance}
-      transactions={transactions}
-    />
-  );
-}
-
 export default async function PercoinPage() {
+  const user = await requireAuth();
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <RefreshOnMount />
       <div className="pt-1 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトル */}
@@ -39,7 +22,7 @@ export default async function PercoinPage() {
 
           {/* 動的コンテンツ */}
           <Suspense fallback={<PercoinPageSkeleton />}>
-            <PercoinPageData />
+            <CachedPercoinPageContent userId={user.id} />
           </Suspense>
         </div>
       </div>

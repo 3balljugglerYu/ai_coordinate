@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -76,6 +77,8 @@ export async function POST(
       );
     }
 
+    revalidateTag(`user-profile-${userId}`, "max");
+    revalidateTag(`user-profile-${user.id}`, "max");
     return NextResponse.json({ success: true, isFollowing: true });
   } catch (error) {
     console.error("Follow API error:", error);
@@ -131,6 +134,8 @@ export async function DELETE(
       );
     }
 
+    revalidateTag(`user-profile-${userId}`, "max");
+    revalidateTag(`user-profile-${user.id}`, "max");
     return NextResponse.json({ success: true, isFollowing: false });
   } catch (error) {
     console.error("Unfollow API error:", error);

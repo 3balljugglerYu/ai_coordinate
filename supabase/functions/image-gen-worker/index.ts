@@ -904,36 +904,52 @@ Deno.serve(async (req: Request) => {
           // APIエンドポイントURLを構築
           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
 
-          // Gemini APIを呼び出し
-          const geminiResponse = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": geminiApiKey,
-            },
-            body: JSON.stringify(requestBody),
-          });
+          const maxAttempts = 2; // 初回 + 1回リトライ
+          let generatedImage: { mimeType: string; data: string } | null = null;
 
-          if (!geminiResponse.ok) {
-            const errorData = await geminiResponse.json();
-            throw new Error(errorData.error?.message || `Gemini API error: ${geminiResponse.status}`);
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            // Gemini APIを呼び出し
+            const geminiResponse = await fetch(apiUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": geminiApiKey,
+              },
+              body: JSON.stringify(requestBody),
+            });
+
+            if (!geminiResponse.ok) {
+              const errorData = await geminiResponse.json();
+              throw new Error(errorData.error?.message || `Gemini API error: ${geminiResponse.status}`);
+            }
+
+            const geminiData: GeminiResponse = await geminiResponse.json();
+
+            if (geminiData.error) {
+              throw new Error(geminiData.error.message || "Gemini API error");
+            }
+
+            // 画像データを抽出
+            const images = extractImagesFromGeminiResponse(geminiData);
+
+            if (images.length > 0) {
+              generatedImage = images[0];
+              break;
+            }
+
+            // 画像が返ってこなかった場合、リトライ可能なら再試行
+            if (attempt < maxAttempts) {
+              console.log(`[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`);
+            } else {
+              throw new Error("No images generated");
+            }
           }
 
-          const geminiData: GeminiResponse = await geminiResponse.json();
-
-          if (geminiData.error) {
-            throw new Error(geminiData.error.message || "Gemini API error");
-          }
-
-          // 画像データを抽出
-          const images = extractImagesFromGeminiResponse(geminiData);
-
-          if (images.length === 0) {
+          if (!generatedImage) {
             throw new Error("No images generated");
           }
 
           // 最初の画像を使用（複数生成の場合は1枚目を使用）
-          const generatedImage = images[0];
 
           // ===== フェーズ4-2: Supabase Storageへの画像保存 =====
           // Base64をUint8Arrayに変換

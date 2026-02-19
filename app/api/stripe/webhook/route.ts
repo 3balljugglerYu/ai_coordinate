@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import Stripe from "stripe";
 import { env, isStripeTestMode } from "@/lib/env";
 import { getPercoinsFromPriceId, STRIPE_PRICE_ID_TO_PERCOINS } from "@/features/credits/lib/stripe-price-mapping";
@@ -192,6 +193,9 @@ export async function POST(request: NextRequest) {
         throw purchaseError;
       }
 
+      revalidateTag(`my-page-${userId}`, "max");
+      revalidateTag(`my-page-credits-${userId}`, "max");
+      revalidateTag(`coordinate-${userId}`, "max");
       return NextResponse.json({
         received: true,
         handled: true,

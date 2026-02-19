@@ -1,11 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { PostList } from "@/features/posts/components/PostList";
-import { getPosts } from "@/features/posts/lib/server-api";
+import { CachedSearchPostList } from "@/features/posts/components/CachedSearchPostList";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import { getSiteUrl } from "@/lib/env";
-import type { SortType } from "@/features/posts/types";
-import { isValidSortType } from "@/features/posts/lib/utils";
+import { getUser } from "@/lib/auth";
 
 const DEFAULT_TITLE = "検索 - Persta.AI";
 const DEFAULT_DESCRIPTION =
@@ -51,18 +49,12 @@ export async function generateMetadata({
   };
 }
 
-async function PostListContent({ searchQuery, sortType }: { searchQuery: string; sortType: string }) {
-  // デフォルトはpopularソート
-  const sort: SortType = isValidSortType(sortType) ? sortType : "popular";
-  const posts = await getPosts(20, 0, sort, searchQuery);
-  return <PostList initialPosts={posts} />;
-}
-
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
-  const searchQuery = params.q?.trim() || undefined;
-  // デフォルトはpopularソート
+  const searchQuery = params.q?.trim() || "";
   const sortType = params.sort || "popular";
+  const user = await getUser();
+  const userId = user?.id ?? null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-8 pt-6 md:pt-8">
@@ -75,7 +67,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </div>
       ) : (
         <Suspense fallback={<PostListSkeleton />}>
-          <PostListContent searchQuery={searchQuery} sortType={sortType} />
+          <CachedSearchPostList
+            searchQuery={searchQuery.trim()}
+            sortType={sortType}
+            userId={userId}
+          />
         </Suspense>
       )}
     </div>

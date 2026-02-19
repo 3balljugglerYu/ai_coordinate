@@ -1,5 +1,7 @@
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getUser } from "@/lib/auth";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
@@ -25,9 +27,11 @@ export type LikeRange = "all" | "day" | "week" | "month";
 
 /**
  * プロフィール情報を一括取得するヘルパー関数
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 async function getProfileMap(
-  userIds: string[]
+  userIds: string[],
+  supabaseOverride?: SupabaseClient
 ): Promise<Record<string, { nickname: string | null; avatar_url: string | null }>> {
   const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> = {};
   
@@ -35,7 +39,7 @@ async function getProfileMap(
     return profileMap;
   }
 
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select("user_id,nickname,avatar_url")
@@ -58,7 +62,10 @@ async function getProfileMap(
   return profileMap;
 }
 
-async function getVisibilityExclusions(currentUserId?: string | null): Promise<{
+async function getVisibilityExclusions(
+  currentUserId?: string | null,
+  supabaseOverride?: SupabaseClient
+): Promise<{
   blockedUserIds: string[];
   reportedPostIds: string[];
 }> {
@@ -69,7 +76,7 @@ async function getVisibilityExclusions(currentUserId?: string | null): Promise<{
     };
   }
 
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
   const [{ data: blockRows, error: blockError }, { data: reportRows, error: reportError }] =
     await Promise.all([
       supabase
@@ -114,11 +121,12 @@ function toSqlInList(values: string[]): string {
  * 投稿データにユーザー情報・いいね数・コメント数を付与するヘルパー関数
  * @param postsData 投稿データの配列
  * @param rangeLikeCounts 期間別いいね数（オプショナル、daily/week/monthの場合のみ）
- * @returns エンリッチされた投稿データの配列
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 async function enrichPosts(
   postsData: GeneratedImageRecord[],
-  rangeLikeCounts?: Record<string, number>
+  rangeLikeCounts?: Record<string, number>,
+  supabaseOverride?: SupabaseClient
 ): Promise<Array<Post & { range_like_count?: number }>> {
   if (!postsData || postsData.length === 0) {
     return [];
@@ -139,12 +147,12 @@ async function enrichPosts(
   );
 
   // プロフィール情報を一括取得
-  const profileMap = await getProfileMap(userIds);
+  const profileMap = await getProfileMap(userIds, supabaseOverride);
 
   // いいね数・コメント数を一括取得（バッチ取得）
   const [likeCounts, commentCounts] = await Promise.all([
-    getLikeCountsBatch(postIds),
-    getCommentCountsBatch(postIds),
+    getLikeCountsBatch(postIds, supabaseOverride),
+    getCommentCountsBatch(postIds, supabaseOverride),
   ]);
 
   // 投稿データにユーザー情報・いいね数・コメント数を結合
@@ -198,16 +206,22 @@ async function getPostedImages(
  * 投稿一覧を取得（サーバーサイド）
  * SQL JOIN/サブクエリでいいね数・コメント数を一括取得（N+1問題を回避）
  * React.cache()でラップして、同一リクエスト内での重複取得を防止
+ * @param currentUserIdOverride - use cache 用。指定時は getUser() をスキップ
  */
 export const getPosts = cache(async (
   limit = 20,
   offset = 0,
   sort: SortType = "newest",
-  searchQuery?: string
+  searchQuery?: string,
+  currentUserIdOverride?: string | null
 ): Promise<Post[]> => {
-  const supabase = await createClient();
-  const currentUser = await getUser();
-  const currentUserId = currentUser?.id ?? null;
+  // use cache 内では cookies を使わないため createAdminClient を使用
+  const useCacheClient = currentUserIdOverride !== undefined;
+  const supabase = useCacheClient ? createAdminClient() : await createClient();
+  const currentUserId =
+    currentUserIdOverride !== undefined
+      ? currentUserIdOverride
+      : (await getUser())?.id ?? null;
 
   // 検索クエリのバリデーションと正規化
   let normalizedSearchQuery: string | undefined = undefined;
@@ -222,7 +236,11 @@ export const getPosts = cache(async (
     }
   }
 
-  const { blockedUserIds, reportedPostIds } = await getVisibilityExclusions(currentUserId);
+  const supabaseForHelpers = useCacheClient ? supabase : undefined;
+  const { blockedUserIds, reportedPostIds } = await getVisibilityExclusions(
+    currentUserId,
+    supabaseForHelpers
+  );
 
   // フォロータブの場合の処理
   if (sort === "following") {
@@ -281,7 +299,7 @@ export const getPosts = cache(async (
 
     // 投稿データにユーザー情報・いいね数・コメント数を付与
     // データベース側で既にページネーション済みなので、そのまま返す
-    return await enrichPosts(postsData);
+    return await enrichPosts(postsData, undefined, supabaseForHelpers);
   }
 
   // 投稿一覧を取得するクエリを構築
@@ -371,11 +389,19 @@ export const getPosts = cache(async (
     const postIds = postsData.map((post) => post.id);
     
     // バッチ処理で一括取得（N+1問題の解消）
-    rangeLikeCounts = await getLikeCountsByRangeBatch(postIds, likeRange);
+    rangeLikeCounts = await getLikeCountsByRangeBatch(
+      postIds,
+      likeRange,
+      supabaseForHelpers
+    );
   }
 
   // 投稿データにユーザー情報・いいね数・コメント数を付与
-  let postsWithCounts = await enrichPosts(postsData, rangeLikeCounts);
+  let postsWithCounts = await enrichPosts(
+    postsData,
+    rangeLikeCounts,
+    supabaseForHelpers
+  );
 
   // ソート条件に応じてソート
   if (sort === "newest") {
@@ -443,8 +469,14 @@ export const getPosts = cache(async (
  * いいね数・コメント数・閲覧数を取得し、閲覧数をインクリメント
  * React.cache()でラップして、同一リクエスト内での重複取得を防止
  */
-export const getPost = cache(async (id: string, currentUserId?: string | null, skipViewCount?: boolean): Promise<Post | null> => {
-  const supabase = await createClient();
+export const getPost = cache(async (
+  id: string,
+  currentUserId?: string | null,
+  skipViewCount?: boolean,
+  supabaseOverride?: SupabaseClient
+): Promise<Post | null> => {
+  const supabase = supabaseOverride ?? (await createClient());
+  const useCache = !!supabaseOverride;
 
   // まず画像を取得（is_postedの条件なし）
   const { data, error } = await supabase
@@ -521,10 +553,15 @@ export const getPost = cache(async (id: string, currentUserId?: string | null, s
   }
 
   // いいね数・コメント数を取得
-  const [likeCount, commentCount] = await Promise.all([
-    getLikeCount(id),
-    getCommentCount(id),
-  ]);
+  const [likeCount, commentCount] = useCache
+    ? await Promise.all([
+        getLikeCountsBatch([id], supabase).then((m) => m[id] ?? 0),
+        getCommentCountsBatch([id], supabase).then((m) => m[id] ?? 0),
+      ])
+    : await Promise.all([
+        getLikeCount(id),
+        getCommentCount(id),
+      ]);
 
   // アスペクト比が存在しない場合は計算して保存
   let aspectRatio: "portrait" | "landscape" | null = data.aspect_ratio as "portrait" | "landscape" | null;
@@ -539,8 +576,8 @@ export const getPost = cache(async (id: string, currentUserId?: string | null, s
         // アスペクト比を計算
         aspectRatio = await getImageAspectRatio(imageUrl);
         
-        // データベースに保存（競合対策: エラーハンドリングを実装）
-        if (aspectRatio) {
+        // データベースに保存（use cache 時はスキップ：書き込みを避ける）
+        if (aspectRatio && !useCache) {
           try {
             await supabase
               .from("generated_images")
@@ -559,11 +596,11 @@ export const getPost = cache(async (id: string, currentUserId?: string | null, s
   }
 
   // 閲覧数をインクリメント（重複カウント）
-  // skipViewCountがtrueの場合はカウントをスキップ
+  // skipViewCountがtrue、またはuse cache時はカウントをスキップ
   const currentViewCount = data.view_count || 0;
   let updatedViewCount = currentViewCount;
   
-  if (!skipViewCount) {
+  if (!skipViewCount && !useCache) {
     try {
       // オプティミスティック更新: 現在の閲覧数+1を使用（RPC関数の戻り値取得を待たない）
       await incrementViewCount(id);
@@ -617,8 +654,12 @@ export async function getLikeCount(imageId: string): Promise<number> {
 
 /**
  * いいね数を一括取得（バッチ、最大100件）
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
-export async function getLikeCountsBatch(imageIds: string[]): Promise<Record<string, number>> {
+export async function getLikeCountsBatch(
+  imageIds: string[],
+  supabaseOverride?: SupabaseClient
+): Promise<Record<string, number>> {
   if (imageIds.length === 0) {
     return {};
   }
@@ -627,7 +668,7 @@ export async function getLikeCountsBatch(imageIds: string[]): Promise<Record<str
     throw new Error("バッチサイズは100件までです");
   }
 
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
 
   const { data, error } = await supabase
     .from("likes")
@@ -759,19 +800,18 @@ export async function toggleLike(imageId: string, userId: string): Promise<boole
 /**
  * 複数の投稿IDに対して期間別いいね数を一括取得（バッチ処理）
  * N+1問題を解消するため、一度のクエリで複数投稿のいいね数を取得
- * @param imageIds 投稿IDの配列
- * @param range 集計期間（"day" | "week" | "month"）
- * @returns 投稿IDをキー、いいね数を値とするオブジェクト
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 export async function getLikeCountsByRangeBatch(
   imageIds: string[],
-  range: LikeRange
+  range: LikeRange,
+  supabaseOverride?: SupabaseClient
 ): Promise<Record<string, number>> {
   if (imageIds.length === 0) {
     return {};
   }
 
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
 
   let query = supabase
     .from("likes")
@@ -898,8 +938,12 @@ export async function getCommentCount(imageId: string): Promise<number> {
 
 /**
  * コメント数を一括取得（バッチ、最大100件）
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
-export async function getCommentCountsBatch(imageIds: string[]): Promise<Record<string, number>> {
+export async function getCommentCountsBatch(
+  imageIds: string[],
+  supabaseOverride?: SupabaseClient
+): Promise<Record<string, number>> {
   if (imageIds.length === 0) {
     return {};
   }
@@ -908,7 +952,7 @@ export async function getCommentCountsBatch(imageIds: string[]): Promise<Record<
     throw new Error("バッチサイズは100件までです");
   }
 
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
 
   const { data, error } = await supabase
     .from("comments")

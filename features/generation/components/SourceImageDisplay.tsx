@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Image as ImageIcon, Loader2, ExternalLink } from "lucide-react";
+import { Image as ImageIcon, ExternalLink } from "lucide-react";
+import { SourceImageDisplaySkeleton } from "./SourceImageDisplaySkeleton";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,8 +57,8 @@ export function SourceImageDisplay({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center py-8 ${className}`}>
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      <div className={className}>
+        <SourceImageDisplaySkeleton />
       </div>
     );
   }

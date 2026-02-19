@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
   deductPercoins,
@@ -50,6 +51,9 @@ export async function POST(request: NextRequest) {
       supabaseClient: supabase,
     });
 
+    revalidateTag(`my-page-${user.id}`, "max");
+    revalidateTag(`my-page-credits-${user.id}`, "max");
+    revalidateTag(`coordinate-${user.id}`, "max");
     return NextResponse.json({ balance: result.balance });
   } catch (error) {
     console.error("Percoin consumption error:", error);

@@ -1,21 +1,19 @@
 import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
-import { GeneratedImageGalleryWrapper } from "@/features/generation/components/GeneratedImageGalleryWrapper";
+import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
-import { CoordinatePercoinBalance } from "@/features/credits/components/CoordinatePercoinBalance";
-
-async function GenerationFormWrapper() {
-  // 認証チェック
-  await requireAuth();
-
-  return <GenerationFormContainer />;
-}
+import { CachedCoordinatePercoinBalance } from "@/features/credits/components/CachedCoordinatePercoinBalance";
+import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
+import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 
 export default async function CoordinatePage() {
+  const user = await requireAuth();
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <RefreshOnMount />
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトルと説明文 */}
@@ -34,23 +32,26 @@ export default async function CoordinatePage() {
               <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
             }
           >
-            <CoordinatePercoinBalance />
+            <CachedCoordinatePercoinBalance userId={user.id} />
           </Suspense>
 
-          {/* GenerationForm: Suspenseの外に配置して即座に表示 */}
-          <Suspense fallback={<GenerationFormSkeleton />}>
-            <GenerationFormWrapper />
-          </Suspense>
-
-          {/* 生成結果一覧: 独立したSuspense境界（ストック画像リストと並列実行） */}
-          <div className="mt-8">
-            <h2 className="mb-4 text-xl font-semibold text-gray-900">
-              生成結果一覧
-            </h2>
-            <Suspense fallback={<GeneratedImageGallerySkeleton />}>
-              <GeneratedImageGalleryWrapper />
+          {/* GenerationForm と 生成結果一覧を GenerationStateProvider でラップ（スケルトン表示のため） */}
+          <GenerationStateProvider>
+            {/* GenerationForm */}
+            <Suspense fallback={<GenerationFormSkeleton />}>
+              <GenerationFormContainer />
             </Suspense>
-          </div>
+
+            {/* 生成結果一覧 */}
+            <div className="mt-8">
+              <h2 className="mb-4 text-xl font-semibold text-gray-900">
+                生成結果一覧
+              </h2>
+              <Suspense fallback={<GeneratedImageGallerySkeleton />}>
+                <CachedGeneratedImageGallery userId={user.id} />
+              </Suspense>
+            </div>
+          </GenerationStateProvider>
         </div>
       </div>
     </div>

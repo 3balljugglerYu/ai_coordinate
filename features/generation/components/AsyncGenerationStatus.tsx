@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { getGenerationStatus, pollGenerationStatus, type AsyncGenerationStatus } from "../lib/async-api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AsyncGenerationStatusSkeleton } from "./AsyncGenerationStatusSkeleton";
 
 /**
  * 非同期画像生成の進捗表示コンポーネント
@@ -108,19 +109,7 @@ export function AsyncGenerationStatus({
   }, [jobId, pollingInterval, onComplete, onError]);
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>画像生成中</CardTitle>
-          <CardDescription>ステータスを確認しています...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="text-sm text-muted-foreground">読み込み中...</div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <AsyncGenerationStatusSkeleton />;
   }
 
   if (error) {

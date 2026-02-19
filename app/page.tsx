@@ -1,10 +1,10 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
-import { PostList } from "@/features/posts/components/PostList";
-import { getPosts } from "@/features/posts/lib/server-api";
-import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
+import { Suspense } from "react";
 import { getSiteUrl } from "@/lib/env";
+import { getUser } from "@/lib/auth";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
+import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
+import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 
 export const metadata: Metadata = {
   openGraph: {
@@ -21,25 +21,9 @@ export const metadata: Metadata = {
   },
 };
 
-async function PostListContent({
-  forceInitialLoading = false,
-}: {
-  forceInitialLoading?: boolean;
-}) {
-  const posts = forceInitialLoading ? [] : await getPosts(20, 0, "newest");
-  return <PostList initialPosts={posts} forceInitialLoading={forceInitialLoading} />;
-}
-
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
-  const refreshParam = params.mod_refresh;
-  const forceInitialLoading = Array.isArray(refreshParam)
-    ? refreshParam.includes("1")
-    : refreshParam === "1";
+export default async function Home() {
+  const user = await getUser();
+  const userId = user?.id ?? null;
   const siteUrl = getSiteUrl() || "https://persta.ai";
   
   const organizationSchema = {
@@ -83,7 +67,7 @@ export default async function Home({
         </div>
         <HomeBannerList />
         <Suspense fallback={<PostListSkeleton />}>
-          <PostListContent forceInitialLoading={forceInitialLoading} />
+          <CachedHomePostList userId={userId} />
         </Suspense>
       </div>
     </>

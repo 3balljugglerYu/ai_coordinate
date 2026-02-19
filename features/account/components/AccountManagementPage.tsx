@@ -19,6 +19,10 @@ import {
   withdrawReportAPI,
 } from "@/features/account/lib/api";
 import type { BlockedUserItem, ReportedContentItem } from "@/features/account/types";
+import {
+  BlockListSkeleton,
+  ReportedContentListSkeleton,
+} from "./AccountManagementSkeleton";
 
 export function AccountManagementPage() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserItem[]>([]);
@@ -109,7 +113,7 @@ export function AccountManagementPage() {
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
             {loading ? (
-              <p className="text-sm text-muted-foreground">読み込み中...</p>
+              <BlockListSkeleton />
             ) : blockedUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 ブロックしているユーザーはいません。
@@ -177,7 +181,7 @@ export function AccountManagementPage() {
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
             {loading ? (
-              <p className="text-sm text-muted-foreground">読み込み中...</p>
+              <ReportedContentListSkeleton />
             ) : reportedContents.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 通報済みのコンテンツはありません。

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag, revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { unpostImageServer } from "@/features/generation/lib/server-database";
 
@@ -23,6 +24,15 @@ export async function DELETE(
     }
 
     await unpostImageServer(id, user.id);
+
+    revalidateTag("home-posts", "max");
+    revalidateTag("home-posts-week", "max");
+    revalidateTag("search-posts", "max");
+    revalidateTag(`post-detail-${id}`, "max");
+    revalidateTag(`user-profile-${user.id}`, "max");
+    revalidateTag(`my-page-${user.id}`, "max");
+    revalidatePath("/");
+    revalidatePath(`/posts/${id}`);
 
     return NextResponse.json({ success: true });
   } catch (error) {

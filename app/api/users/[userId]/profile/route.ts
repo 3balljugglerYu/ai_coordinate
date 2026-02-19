@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
@@ -178,6 +179,8 @@ export async function PATCH(
       );
     }
 
+    revalidateTag(`user-profile-${userId}`, "max");
+    revalidateTag(`my-page-${userId}`, "max");
     return NextResponse.json(updatedProfile);
   } catch (error) {
     console.error("Profile PATCH API error:", error);

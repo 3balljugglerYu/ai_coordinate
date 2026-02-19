@@ -47,12 +47,23 @@ export function DeletePostDialog({
         await deleteMyImage(imageId);
       }
       onOpenChange(false);
-      
+
       // 遷移元を確認して戻る先を決定
       const fromParam = searchParams.get("from");
       const backUrl = fromParam === "my-page" ? "/my-page" : "/";
-      router.push(backUrl);
-      router.refresh();
+
+      if (backUrl === "/") {
+        // ホームへ遷移する場合、キャッシュ無効化後にフルリロードで確実に最新表示
+        try {
+          await fetch("/api/revalidate/home", { method: "POST" });
+        } catch {
+          // 無効化失敗時も遷移は実行
+        }
+        window.location.href = "/";
+      } else {
+        router.push(backUrl);
+        router.refresh();
+      }
     } catch (err) {
       console.error("Delete error:", err);
       setError(

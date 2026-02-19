@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -125,6 +126,12 @@ export async function POST(request: NextRequest) {
       .select("balance")
       .eq("user_id", user_id.trim())
       .single();
+
+    const targetUserId = user_id.trim();
+    revalidateTag(`my-page-${targetUserId}`, "max");
+    revalidateTag(`my-page-credits-${targetUserId}`, "max");
+    revalidateTag(`coordinate-${targetUserId}`, "max");
+    revalidateTag(`challenge-${targetUserId}`, "max");
 
     if (creditError || !creditData) {
       console.error("[Admin Bonus] Failed to fetch new balance:", creditError);
