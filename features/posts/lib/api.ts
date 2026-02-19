@@ -49,6 +49,19 @@ export async function updatePostCaption(
 }
 
 /**
+ * 閲覧数をインクリメント（コンテンツ詳細表示時にクライアントから呼び出し）
+ */
+export async function incrementViewCountAPI(postId: string): Promise<void> {
+  const response = await fetch(`/api/posts/${postId}/view`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    // エラー時は静かに失敗（閲覧数は表示の邪魔をしない）
+    console.warn("Failed to increment view count:", await response.text());
+  }
+}
+
+/**
  * 投稿を削除
  */
 export async function deletePost(id: string): Promise<void> {

@@ -214,7 +214,9 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   // ヘッダー右側（ユーザーアイコン）の共通コンポーネント
   const HeaderRight = () => (
     <div className="flex items-center gap-2 flex-shrink-0">
-      {!isLoading && (
+      {isLoading ? (
+        <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
+      ) : (
         <>
           {currentUser ? (
             <DropdownMenu>

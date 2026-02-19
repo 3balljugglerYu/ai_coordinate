@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +31,6 @@ export function PostModal({
   imageId,
   currentCaption,
 }: PostModalProps) {
-  const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const [caption, setCaption] = useState(currentCaption || "");
@@ -68,10 +66,15 @@ export function PostModal({
         });
       }
 
-      // 投稿完了後、投稿一覧画面に遷移
+      // 投稿完了後、キャッシュ無効化してからホームに遷移
+      // フルリロードで確実に最新の投稿一覧を表示（ルーターキャッシュをバイパス）
       onOpenChange(false);
-      router.push("/");
-      router.refresh();
+      try {
+        await fetch("/api/revalidate/home", { method: "POST" });
+      } catch {
+        // 無効化失敗時も遷移は実行
+      }
+      window.location.href = "/";
     } catch (err) {
       // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
       console.error("Post error:", err);

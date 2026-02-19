@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -138,6 +139,10 @@ export async function POST() {
 
     const status = await getStreakStatus(user.id);
 
+    revalidateTag(`challenge-${user.id}`, "max");
+    revalidateTag(`my-page-${user.id}`, "max");
+    revalidateTag(`my-page-credits-${user.id}`, "max");
+    revalidateTag(`coordinate-${user.id}`, "max");
     return NextResponse.json({
       bonus_granted: typeof data === "number" ? data : 0,
       streak_days: status.streak_days,

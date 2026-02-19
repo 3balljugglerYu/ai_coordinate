@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import { useInView } from "react-intersection-observer";
 import { CommentItem } from "./CommentItem";
+import { CommentLoadMoreSkeleton } from "./CommentLoadMoreSkeleton";
 import { getCommentsAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
 
@@ -194,10 +195,8 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
 
       {/* 無限スクロール用のトリガー要素 */}
       {hasMore && (
-        <div ref={inViewRef} className="py-4 text-center">
-          {isLoading && (
-            <div className="text-sm text-gray-500">読み込み中...</div>
-          )}
+        <div ref={inViewRef}>
+          {isLoading && <CommentLoadMoreSkeleton />}
         </div>
       )}
 

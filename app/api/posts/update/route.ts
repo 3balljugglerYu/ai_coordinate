@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,16 @@ export async function PUT(request: NextRequest) {
 
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
+
+    if (result.id) {
+      revalidateTag(`post-detail-${result.id}`, "max");
+    }
+    revalidateTag("home-posts", "max");
+    revalidateTag("home-posts-week", "max");
+    revalidateTag("search-posts", "max");
+    if (result.user_id) {
+      revalidateTag(`my-page-image-${result.user_id}-${result.id}`, "max");
+    }
 
     return NextResponse.json({
       id: result.id!,

@@ -448,6 +448,8 @@ export function TutorialTourProvider() {
       });
       if (res.ok) {
         await markTutorialCompleted();
+        // ペルコイン残高の即時反映
+        router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
         console.error("[Tutorial] Complete failed:", res.status, data);

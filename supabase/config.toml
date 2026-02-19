@@ -1,0 +1,4 @@
+# image-gen-worker は pg_cron と generate-async API から呼び出されるため、
+# Authorization ヘッダーなしでアクセス可能にする必要がある
+[functions.image-gen-worker]
+verify_jwt = false

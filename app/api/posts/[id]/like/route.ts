@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { toggleLike } from "@/features/posts/lib/server-api";
 
@@ -22,6 +23,7 @@ export async function POST(
 
     const isLiked = await toggleLike(id, user.id);
 
+    revalidateTag(`post-detail-${id}`, "max");
     return NextResponse.json({ isLiked });
   } catch (error) {
     console.error("Like API error:", error);

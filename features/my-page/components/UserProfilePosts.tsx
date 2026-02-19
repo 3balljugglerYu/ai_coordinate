@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { UserProfilePostsLoadMoreSkeleton } from "./UserProfilePostsLoadMoreSkeleton";
 
 interface UserProfilePostsProps {
   initialPosts: GeneratedImageRecord[];
@@ -124,11 +125,7 @@ export function UserProfilePosts({
       {/* 無限スクロール用のトリガー */}
       {hasMore && (
         <div ref={ref} className="py-4">
-          {isLoading && (
-            <div className="text-center text-sm text-gray-500">
-              読み込み中...
-            </div>
-          )}
+          {isLoading && <UserProfilePostsLoadMoreSkeleton />}
         </div>
       )}
     </>

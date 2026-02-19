@@ -11,6 +11,11 @@ import {
 } from "../lib/api";
 import type { Notification } from "../types";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
+
+export interface UseNotificationsInitialData {
+  notifications: Notification[];
+  nextCursor: string | null;
+}
 import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 
@@ -59,18 +64,24 @@ function writeBonusToastHistory(userId: string, signatures: string[]) {
 /**
  * 通知機能のカスタムフック
  * 通知一覧、未読数、Realtime購読を管理
+ * @param initialData - サーバーキャッシュから渡された初期データ（ある場合スキップして即時表示）
  */
-export function useNotifications() {
+export function useNotifications(initialData?: UseNotificationsInitialData | null) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const hasInitialData = !!initialData?.notifications;
+  const [notifications, setNotifications] = useState<Notification[]>(
+    initialData?.notifications ?? []
+  );
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialData?.nextCursor !== null);
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    initialData?.nextCursor ?? null
+  );
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const hasCheckedInitialBonusNotifications = useRef(false);
   const shownBonusToastSignaturesRef = useRef<Set<string>>(new Set());
@@ -177,13 +188,16 @@ export function useNotifications() {
     [currentUserId]
   );
 
-  // 初期読み込み
+  // 初期読み込み（initialData がある場合はスキップ）
   useEffect(() => {
-    if (currentUserId) {
-      fetchNotifications(null, false);
+    if (!currentUserId) return;
+    if (hasInitialData) {
       fetchUnreadCount();
+      return;
     }
-  }, [currentUserId, fetchNotifications, fetchUnreadCount]);
+    fetchNotifications(null, false);
+    fetchUnreadCount();
+  }, [currentUserId, hasInitialData, fetchNotifications, fetchUnreadCount]);
 
   // 初期読み込み時に未読のボーナス通知があればToastを表示
   useEffect(() => {

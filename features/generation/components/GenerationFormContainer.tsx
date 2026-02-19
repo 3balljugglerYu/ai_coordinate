@@ -18,6 +18,7 @@ import { isPercoinInsufficientError } from "@/features/credits/constants";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { useToast } from "@/components/ui/use-toast";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
+import { useGenerationState } from "../context/GenerationStateContext";
 
 interface GenerationFormContainerProps {}
 
@@ -29,11 +30,20 @@ interface GenerationFormContainerProps {}
 export function GenerationFormContainer({}: GenerationFormContainerProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatingCount, setGeneratingCount] = useState(0);
-  const [completedCount, setCompletedCount] = useState(0);
+  const ctx = useGenerationState();
+  const [localIsGenerating, setLocalIsGenerating] = useState(false);
+  const [localGeneratingCount, setLocalGeneratingCount] = useState(0);
+  const [localCompletedCount, setLocalCompletedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  const isGenerating = ctx ? ctx.isGenerating : localIsGenerating;
+  const generatingCount = ctx ? ctx.generatingCount : localGeneratingCount;
+  const completedCount = ctx ? ctx.completedCount : localCompletedCount;
+  const setIsGenerating = ctx ? ctx.setIsGenerating : setLocalIsGenerating;
+  const setGeneratingCount = ctx ? ctx.setGeneratingCount : setLocalGeneratingCount;
+  const setCompletedCount = ctx ? ctx.setCompletedCount : setLocalCompletedCount;
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingStopFunctionsRef = useRef<Set<() => void>>(new Set());
 
   // マウント時に未完了ジョブを確認してポーリングを再開
@@ -74,20 +84,25 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               currentStatus = await getGenerationStatus(job.id);
               // すでに完了している場合は、ポーリングを開始しない
               if (currentStatus.status === "succeeded" || currentStatus.status === "failed") {
-                if (currentStatus.status === "succeeded") {
-                  setCompletedCount((prev) => prev + 1);
-                } else {
-                  setCompletedCount((prev) => prev + 1);
-                  setError((prev) => {
-                    const errorMsg = currentStatus.errorMessage || "画像生成に失敗しました";
-                    return prev ? `${prev}; ${errorMsg}` : errorMsg;
-                  });
-                }
-                // リフレッシュ
+              if (currentStatus.status === "succeeded") {
+                setCompletedCount((prev) => prev + 1);
+              } else {
+                setCompletedCount((prev) => prev + 1);
+                setError((prev) => {
+                  const errorMsg = currentStatus.errorMessage || "画像生成に失敗しました";
+                  return prev ? `${prev}; ${errorMsg}` : errorMsg;
+                });
+              }
+                // キャッシュ無効化後にリフレッシュ
                 if (refreshTimeoutRef.current) {
                   clearTimeout(refreshTimeoutRef.current);
                 }
-                refreshTimeoutRef.current = setTimeout(() => {
+                refreshTimeoutRef.current = setTimeout(async () => {
+                  try {
+                    await fetch("/api/revalidate/coordinate", { method: "POST" });
+                  } catch {
+                    // 無効化失敗時もrefreshは実行
+                  }
                   router.refresh();
                 }, 500);
                 return currentStatus;
@@ -102,11 +117,18 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               interval: 2000, // 2秒ごとにポーリング
               timeout: 300000, // 5分でタイムアウト
               onStatusUpdate: (status: AsyncGenerationStatus) => {
-                // ステータスが更新されたら、生成結果一覧を更新
+                // ステータスが更新されたら、キャッシュ無効化後に生成結果一覧を更新
                 if (refreshTimeoutRef.current) {
                   clearTimeout(refreshTimeoutRef.current);
                 }
-                refreshTimeoutRef.current = setTimeout(() => {
+                refreshTimeoutRef.current = setTimeout(async () => {
+                  if (status.status === "succeeded" || status.status === "failed") {
+                    try {
+                      await fetch("/api/revalidate/coordinate", { method: "POST" });
+                    } catch {
+                      // 無効化失敗時もrefreshは実行
+                    }
+                  }
                   router.refresh();
                 }, 500);
               },
@@ -124,10 +146,14 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                   if (refreshTimeoutRef.current) {
                     clearTimeout(refreshTimeoutRef.current);
                   }
-                  refreshTimeoutRef.current = setTimeout(() => {
+                  refreshTimeoutRef.current = setTimeout(async () => {
+                    try {
+                      await fetch("/api/revalidate/coordinate", { method: "POST" });
+                    } catch {
+                      // 無効化失敗時もrefreshは実行
+                    }
                     router.refresh();
-                    // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
-                    window.dispatchEvent(new CustomEvent('generation-complete'));
+                    window.dispatchEvent(new CustomEvent("generation-complete"));
                   }, 500);
                 } else if (status.status === "failed") {
                   setCompletedCount((prev) => prev + 1);
@@ -263,13 +289,15 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
   // コンポーネントのアンマウント時にポーリングを停止
   useEffect(() => {
     return () => {
-      // すべてのポーリングを停止
       pollingStopFunctionsRef.current.forEach((stop) => stop());
       pollingStopFunctionsRef.current.clear();
-      // リフレッシュタイマーもクリア
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = null;
+      }
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
       }
     };
   }, []);
@@ -355,16 +383,20 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               setCompletedCount(completed);
             }
             
-            // 生成結果一覧を更新
+            // 生成結果一覧を更新（キャッシュ無効化後にrefresh）
             if (refreshTimeoutRef.current) {
               clearTimeout(refreshTimeoutRef.current);
             }
-            refreshTimeoutRef.current = setTimeout(() => {
-              router.refresh();
-              // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
+            refreshTimeoutRef.current = setTimeout(async () => {
               if (status.status === "succeeded" || status.status === "failed") {
-                window.dispatchEvent(new CustomEvent('generation-complete'));
+                // use cacheのキャッシュを無効化してからrefresh（生成画像が表示されるようにする）
+                try {
+                  await fetch("/api/revalidate/coordinate", { method: "POST" });
+                } catch {
+                  // 無効化失敗時もrefreshは実行
+                }
               }
+              router.refresh();
             }, 500);
           },
         });
@@ -477,18 +509,23 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         }
       }
 
-      // 最終的なリフレッシュ
+      // 最終的なリフレッシュ（キャッシュ無効化後にrefresh）
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = null;
       }
+      try {
+        await fetch("/api/revalidate/coordinate", { method: "POST" });
+      } catch {
+        // 無効化失敗時もrefreshは実行
+      }
       router.refresh();
-      // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
-      window.dispatchEvent(new CustomEvent('generation-complete'));
+      window.dispatchEvent(new CustomEvent("generation-complete"));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "画像の生成に失敗しました";
       setError(errorMessage);
       showGenerationErrorToast(errorMessage);
+      setIsGenerating(false);
     } finally {
       // チュートリアル中: 生成完了をトリガーに案内表示へ進む
       if (
@@ -499,7 +536,11 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           new CustomEvent("tutorial:generation-complete", { bubbles: true })
         );
       }
-      setIsGenerating(false);
+      // isGenerating は GeneratedImageGalleryClient が新画像を受信したタイミングで解除
+      // （スケルトン→画像のシームレスな差し替えのため）
+      // フォールバック: 3秒経っても解除されない場合に強制解除
+      const fallbackTimeout = setTimeout(() => setIsGenerating(false), 3000);
+      fallbackTimeoutRef.current = fallbackTimeout;
       // ポーリングを停止
       pollingStopFunctionsRef.current.forEach((stop) => stop());
       pollingStopFunctionsRef.current.clear();

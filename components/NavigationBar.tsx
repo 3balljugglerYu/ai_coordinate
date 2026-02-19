@@ -37,7 +37,6 @@ export function NavigationBar() {
   // 認証済みユーザーに対して主要ページをプリフェッチ
   useEffect(() => {
     if (user && !hasPrefetched.current) {
-      // 認証が必要なページをプリフェッチ
       router.prefetch("/coordinate");
       router.prefetch("/challenge");
       router.prefetch("/notifications");

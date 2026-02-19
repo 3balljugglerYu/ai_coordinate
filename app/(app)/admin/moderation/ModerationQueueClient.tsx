@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { ModerationQueueSkeleton } from "@/features/moderation/components/ModerationQueueSkeleton";
 import { useToast } from "@/components/ui/use-toast";
 import type { ModerationQueueItem } from "@/features/moderation/types";
 
@@ -84,7 +85,7 @@ export function ModerationQueueClient() {
   };
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">読み込み中...</p>;
+    return <ModerationQueueSkeleton />;
   }
 
   if (posts.length === 0) {

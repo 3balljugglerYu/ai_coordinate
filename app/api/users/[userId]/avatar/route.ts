@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
@@ -216,6 +217,8 @@ export async function POST(
       }
     }
 
+    revalidateTag(`user-profile-${userId}`, "max");
+    revalidateTag(`my-page-${userId}`, "max");
     return NextResponse.json({
       avatar_url: publicUrl,
       profile: updatedProfile,

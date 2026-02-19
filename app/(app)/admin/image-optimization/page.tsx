@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/card";
+import { WebPStatsCardSkeleton } from "./WebPStatsCardSkeleton";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -160,7 +161,7 @@ export default async function ImageOptimizationDashboard() {
       </div>
 
       <div className="space-y-6">
-        <Suspense fallback={<Card className="p-6"><div>読み込み中...</div></Card>}>
+        <Suspense fallback={<WebPStatsCardSkeleton />}>
           <WebPStatsCard />
         </Suspense>
         <VercelAnalyticsCard />

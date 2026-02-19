@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { getComments, createComment } from "@/features/posts/lib/server-api";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
@@ -100,6 +101,7 @@ export async function POST(
     // サニタイズ後の値をサーバーサイド関数に渡す
     const comment = await createComment(id, user.id, sanitized.value);
 
+    revalidateTag(`post-detail-${id}`, "max");
     return NextResponse.json({ comment });
   } catch (error) {
     console.error("Comment creation API error:", error);
