@@ -15,6 +15,159 @@ const MAX_MESSAGES = 20; // 1回の読み取りで取得する最大メッセー
 const STORAGE_BUCKET = "generated-images";
 const PROCESSING_STALE_TIMEOUT_SECONDS = 360; // processing状態がこの秒数を超えたら異常とみなす
 
+const INPUT_IMAGE_FETCH_MAX_ATTEMPTS = 3;
+const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+
+type InputImageData = {
+  base64: string;
+  mimeType: string;
+};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableFetchStatus(status: number): boolean {
+  return INPUT_IMAGE_FETCH_RETRYABLE_STATUS.has(status);
+}
+
+function parseStorageObjectFromUrl(inputImageUrl: string): { bucket: string; objectPath: string } | null {
+  try {
+    const url = new URL(inputImageUrl);
+    const markers = [
+      "/storage/v1/object/public/",
+      "/storage/v1/object/sign/",
+      "/storage/v1/object/authenticated/",
+    ];
+
+    for (const marker of markers) {
+      const markerIndex = url.pathname.indexOf(marker);
+      if (markerIndex === -1) continue;
+
+      const rest = url.pathname.slice(markerIndex + marker.length);
+      const [bucketRaw, ...pathParts] = rest.split("/");
+      if (!bucketRaw || pathParts.length === 0) return null;
+
+      return {
+        bucket: decodeURIComponent(bucketRaw),
+        objectPath: decodeURIComponent(pathParts.join("/")),
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promise<InputImageData> {
+  let lastStatus: number | null = null;
+  let lastStatusText = "";
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= INPUT_IMAGE_FETCH_MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(inputImageUrl);
+      if (response.ok) {
+        const imageBlob = await response.blob();
+        const mimeType = imageBlob.type || "image/png";
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        return {
+          base64: encodeBase64(new Uint8Array(arrayBuffer)),
+          mimeType,
+        };
+      }
+
+      lastStatus = response.status;
+      lastStatusText = response.statusText || "";
+      if (!isRetryableFetchStatus(response.status)) {
+        break;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < INPUT_IMAGE_FETCH_MAX_ATTEMPTS) {
+      const backoffMs = 200 * attempt;
+      await sleep(backoffMs);
+    }
+  }
+
+  if (lastStatus !== null) {
+    throw new Error(`URL download failed: ${lastStatus} ${lastStatusText}`.trim());
+  }
+  const lastErrorMessage = lastError instanceof Error ? lastError.message : String(lastError ?? "Unknown error");
+  throw new Error(`URL download failed: ${lastErrorMessage}`);
+}
+
+async function downloadInputImageViaStorageFallback(
+  supabase: ReturnType<typeof createClient>,
+  inputImageUrl: string
+): Promise<InputImageData> {
+  const location = parseStorageObjectFromUrl(inputImageUrl);
+  if (!location) {
+    throw new Error("Storage path could not be parsed from input_image_url");
+  }
+
+  const { data, error } = await supabase.storage
+    .from(location.bucket)
+    .download(location.objectPath);
+
+  if (error || !data) {
+    throw new Error(`Storage fallback download failed: ${error?.message ?? "Unknown error"}`);
+  }
+
+  const mimeType = data.type || "image/png";
+  const arrayBuffer = await data.arrayBuffer();
+  return {
+    base64: encodeBase64(new Uint8Array(arrayBuffer)),
+    mimeType,
+  };
+}
+
+async function downloadInputImageViaStockFallback(
+  supabase: ReturnType<typeof createClient>,
+  sourceImageStockId: string
+): Promise<InputImageData> {
+  const { data: stock, error: stockError } = await supabase
+    .from("source_image_stocks")
+    .select("id, storage_path, image_url")
+    .eq("id", sourceImageStockId)
+    .maybeSingle();
+
+  if (stockError) {
+    throw new Error(`Stock lookup failed: ${stockError.message}`);
+  }
+  if (!stock) {
+    throw new Error("Stock image not found");
+  }
+
+  let storagePathError = "";
+  if (stock.storage_path) {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .download(stock.storage_path);
+
+    if (!error && data) {
+      const mimeType = data.type || "image/png";
+      const arrayBuffer = await data.arrayBuffer();
+      return {
+        base64: encodeBase64(new Uint8Array(arrayBuffer)),
+        mimeType,
+      };
+    }
+    storagePathError = error?.message ?? "Unknown error";
+  }
+
+  if (stock.image_url) {
+    return await downloadInputImageViaStorageFallback(supabase, stock.image_url);
+  }
+
+  throw new Error(
+    `Stock fallback failed: no usable source (storage_path_error=${storagePathError || "none"})`
+  );
+}
+
 // 型定義
 type GenerationType = "coordinate" | "specified_coordinate" | "full_body" | "chibi";
 type GeminiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-1k" | "gemini-3-pro-image-2k" | "gemini-3-pro-image-4k";
@@ -822,42 +975,87 @@ Deno.serve(async (req: Request) => {
 
           // 元画像がある場合は追加
           if (job.input_image_url) {
-            let imageBase64: string | null = null;
-            let imageMimeType: string = "image/png";
+            let inputImageData: InputImageData;
 
             // Data URL形式かStorage URLかを判定
             if (job.input_image_url.startsWith("data:")) {
               // Data URL形式の場合
               const imageData = extractBase64FromDataUrl(job.input_image_url);
-              if (imageData) {
-                imageBase64 = imageData.base64;
-                imageMimeType = imageData.mimeType;
+              if (!imageData) {
+                throw new Error("Invalid input image data URL");
               }
+              inputImageData = {
+                base64: imageData.base64,
+                mimeType: imageData.mimeType,
+              };
             } else {
-              // Storage URLの場合、画像をダウンロードしてBase64に変換
+              // URL取得が失敗しても、同じ画像をstorage APIから取得して再利用する
               try {
-                const imageResponse = await fetch(job.input_image_url);
-                if (imageResponse.ok) {
-                  const imageBlob = await imageResponse.blob();
-                  imageMimeType = imageBlob.type || "image/png";
-                  const arrayBuffer = await imageBlob.arrayBuffer();
-                  imageBase64 = encodeBase64(new Uint8Array(arrayBuffer));
-                } else {
-                  console.error("Failed to download input image:", imageResponse.status, imageResponse.statusText);
+                inputImageData = await downloadInputImageFromUrlWithRetry(job.input_image_url);
+              } catch (urlError) {
+                const urlErrorMessage = urlError instanceof Error
+                  ? urlError.message
+                  : String(urlError);
+                console.warn("[Input Image] URL download failed", {
+                  jobId,
+                  inputImageUrl: job.input_image_url,
+                  sourceImageStockId: job.source_image_stock_id,
+                  error: urlErrorMessage,
+                });
+
+                try {
+                  inputImageData = await downloadInputImageViaStorageFallback(
+                    supabase,
+                    job.input_image_url
+                  );
+                  console.log("[Input Image] URL-derived storage fallback succeeded", {
+                    jobId,
+                    inputImageUrl: job.input_image_url,
+                  });
+                } catch (fallbackError) {
+                  const fallbackErrorMessage = fallbackError instanceof Error
+                    ? fallbackError.message
+                    : String(fallbackError);
+                  console.warn("[Input Image] URL-derived storage fallback failed", {
+                    jobId,
+                    inputImageUrl: job.input_image_url,
+                    sourceImageStockId: job.source_image_stock_id,
+                    error: fallbackErrorMessage,
+                  });
+
+                  if (job.source_image_stock_id) {
+                    try {
+                      inputImageData = await downloadInputImageViaStockFallback(
+                        supabase,
+                        job.source_image_stock_id
+                      );
+                      console.log("[Input Image] Stock fallback download succeeded", {
+                        jobId,
+                        sourceImageStockId: job.source_image_stock_id,
+                      });
+                    } catch (stockFallbackError) {
+                      const stockFallbackErrorMessage = stockFallbackError instanceof Error
+                        ? stockFallbackError.message
+                        : String(stockFallbackError);
+                      throw new Error(
+                        `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: ${stockFallbackErrorMessage}`
+                      );
+                    }
+                  } else {
+                    throw new Error(
+                      `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: skipped(no source_image_stock_id)`
+                    );
+                  }
                 }
-              } catch (error) {
-                console.error("Error downloading input image:", error);
               }
             }
 
-            if (imageBase64) {
-              parts.push({
-                inline_data: {
-                  mime_type: imageMimeType,
-                  data: imageBase64,
-                },
-              });
-            }
+            parts.push({
+              inline_data: {
+                mime_type: inputImageData.mimeType,
+                data: inputImageData.base64,
+              },
+            });
           }
 
           // プロンプトを構築

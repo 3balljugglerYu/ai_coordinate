@@ -73,7 +73,7 @@ export function TutorialStartModal({
               <DialogTitle>チュートリアルを開始しますか？</DialogTitle>
               <div className="relative my-4 w-full overflow-hidden rounded-lg">
                 <Image
-                  src="/tutorial_main_image.png"
+                  src="/tutorial_main_image.webp"
                   alt="チュートリアルの流れ"
                   width={1040}
                   height={669}
