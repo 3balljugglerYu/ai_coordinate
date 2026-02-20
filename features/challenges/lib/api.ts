@@ -15,14 +15,20 @@ export interface CheckInStreakBonusResponse {
 
 /**
  * ミッション関連のステータス（連続ログイン日数、最終デイリーボーナス日時）を取得
+ * 連続チェックインが途切れている場合は API 経由でリセットしてから取得する
  */
 export async function getChallengeStatus(): Promise<ChallengeStatus> {
   const supabase = createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return { streakDays: 0, lastStreakLoginAt: null, lastDailyPostBonusAt: null };
   }
+
+  // 継続条件外の場合は streak をリセット（GET で副作用としてプロファイル更新）
+  await fetch("/api/streak/check", { credentials: "include" });
 
   const { data, error } = await supabase
     .from("profiles")

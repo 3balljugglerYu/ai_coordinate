@@ -2,14 +2,10 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-
-const getJstDateString = (date: Date) =>
-  new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+import {
+  getJstDateString,
+  isStreakBroken,
+} from "@/features/challenges/lib/streak-utils";
 
 type StreakStatus = {
   streak_days: number | null;
@@ -34,12 +30,21 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
     };
   }
 
-  const streakDays = profile?.streak_days ?? null;
+  let streakDays = profile?.streak_days ?? null;
   const lastStreakLoginAt = profile?.last_streak_login_at ?? null;
   const checkedInToday =
     lastStreakLoginAt !== null &&
     getJstDateString(new Date(lastStreakLoginAt)) ===
       getJstDateString(new Date());
+
+  // 継続条件外（2日以上空いた）の場合は Day 1 相当にリセット
+  if (isStreakBroken(lastStreakLoginAt) && streakDays !== null && streakDays > 0) {
+    await supabase
+      .from("profiles")
+      .update({ streak_days: 0, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    streakDays = 0;
+  }
 
   return {
     streak_days: streakDays,
@@ -50,8 +55,8 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
 
 /**
  * ストリーク（連続ログイン）特典チェックインAPI
- * GETは状態取得のみ（副作用なし）
- * POSTでのみ特典付与を実行する
+ * GET: 状態取得。継続条件外の場合は streak_days を Day 1 相当にリセットする
+ * POST: 特典付与を実行する
  */
 export async function GET() {
   try {
