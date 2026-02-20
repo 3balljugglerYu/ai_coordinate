@@ -71,7 +71,6 @@ export function ChallengePageContent({
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const maxStreakBonus = Math.max(...STREAK_BONUS_SCHEDULE);
   const totalStreakBonus = STREAK_BONUS_SCHEDULE.reduce((a, b) => a + b, 0);
-  const hasInitialData = !!initialChallengeStatus;
   const [streakDays, setStreakDays] = useState<number>(
     initialChallengeStatus?.streakDays ?? 0
   );
@@ -104,9 +103,9 @@ export function ChallengePageContent({
     void check();
   }, [initialTutorialCompleted]);
 
+  // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、
+  // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、常に最新データを取得
   useEffect(() => {
-    if (hasInitialData) return;
-
     const fetchData = async () => {
       try {
         const status = await getChallengeStatus();
@@ -125,7 +124,7 @@ export function ChallengePageContent({
     };
 
     fetchData();
-  }, [hasInitialData]);
+  }, []);
 
   useEffect(() => {
     // カウントダウンタイマー（JST 0:00 = UTC 15:00 まで）
