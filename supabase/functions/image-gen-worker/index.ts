@@ -125,6 +125,49 @@ async function downloadInputImageViaStorageFallback(
   };
 }
 
+async function downloadInputImageViaStockFallback(
+  supabase: ReturnType<typeof createClient>,
+  sourceImageStockId: string
+): Promise<InputImageData> {
+  const { data: stock, error: stockError } = await supabase
+    .from("source_image_stocks")
+    .select("id, storage_path, image_url")
+    .eq("id", sourceImageStockId)
+    .maybeSingle();
+
+  if (stockError) {
+    throw new Error(`Stock lookup failed: ${stockError.message}`);
+  }
+  if (!stock) {
+    throw new Error("Stock image not found");
+  }
+
+  let storagePathError = "";
+  if (stock.storage_path) {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .download(stock.storage_path);
+
+    if (!error && data) {
+      const mimeType = data.type || "image/png";
+      const arrayBuffer = await data.arrayBuffer();
+      return {
+        base64: encodeBase64(new Uint8Array(arrayBuffer)),
+        mimeType,
+      };
+    }
+    storagePathError = error?.message ?? "Unknown error";
+  }
+
+  if (stock.image_url) {
+    return await downloadInputImageViaStorageFallback(supabase, stock.image_url);
+  }
+
+  throw new Error(
+    `Stock fallback failed: no usable source (storage_path_error=${storagePathError || "none"})`
+  );
+}
+
 // 型定義
 type GenerationType = "coordinate" | "specified_coordinate" | "full_body" | "chibi";
 type GeminiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-1k" | "gemini-3-pro-image-2k" | "gemini-3-pro-image-4k";
@@ -953,21 +996,56 @@ Deno.serve(async (req: Request) => {
                 const urlErrorMessage = urlError instanceof Error
                   ? urlError.message
                   : String(urlError);
-                console.warn("[Input Image] URL download failed, trying storage fallback:", urlErrorMessage);
+                console.warn("[Input Image] URL download failed", {
+                  jobId,
+                  inputImageUrl: job.input_image_url,
+                  sourceImageStockId: job.source_image_stock_id,
+                  error: urlErrorMessage,
+                });
 
                 try {
                   inputImageData = await downloadInputImageViaStorageFallback(
                     supabase,
                     job.input_image_url
                   );
-                  console.log("[Input Image] Storage fallback download succeeded");
+                  console.log("[Input Image] URL-derived storage fallback succeeded", {
+                    jobId,
+                    inputImageUrl: job.input_image_url,
+                  });
                 } catch (fallbackError) {
                   const fallbackErrorMessage = fallbackError instanceof Error
                     ? fallbackError.message
                     : String(fallbackError);
-                  throw new Error(
-                    `Failed to download input image. URL: ${urlErrorMessage}; fallback: ${fallbackErrorMessage}`
-                  );
+                  console.warn("[Input Image] URL-derived storage fallback failed", {
+                    jobId,
+                    inputImageUrl: job.input_image_url,
+                    sourceImageStockId: job.source_image_stock_id,
+                    error: fallbackErrorMessage,
+                  });
+
+                  if (job.source_image_stock_id) {
+                    try {
+                      inputImageData = await downloadInputImageViaStockFallback(
+                        supabase,
+                        job.source_image_stock_id
+                      );
+                      console.log("[Input Image] Stock fallback download succeeded", {
+                        jobId,
+                        sourceImageStockId: job.source_image_stock_id,
+                      });
+                    } catch (stockFallbackError) {
+                      const stockFallbackErrorMessage = stockFallbackError instanceof Error
+                        ? stockFallbackError.message
+                        : String(stockFallbackError);
+                      throw new Error(
+                        `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: ${stockFallbackErrorMessage}`
+                      );
+                    }
+                  } else {
+                    throw new Error(
+                      `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: skipped(no source_image_stock_id)`
+                    );
+                  }
                 }
               }
             }
