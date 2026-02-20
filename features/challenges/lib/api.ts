@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { isStreakBroken } from "./streak-utils";
 
 export interface ChallengeStatus {
   streakDays: number;
@@ -15,7 +16,7 @@ export interface CheckInStreakBonusResponse {
 
 /**
  * ミッション関連のステータス（連続ログイン日数、最終デイリーボーナス日時）を取得
- * 連続チェックインが途切れている場合は API 経由でリセットしてから取得する
+ * 連続チェックインが途切れている場合は表示用に streakDays: 0 を返す（getChallengeStatusServer と同様）
  */
 export async function getChallengeStatus(): Promise<ChallengeStatus> {
   const supabase = createClient();
@@ -26,9 +27,6 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
   if (!user) {
     return { streakDays: 0, lastStreakLoginAt: null, lastDailyPostBonusAt: null };
   }
-
-  // 継続条件外の場合は streak をリセット（GET で副作用としてプロファイル更新）
-  await fetch("/api/streak/check", { credentials: "include" });
 
   const { data, error } = await supabase
     .from("profiles")
@@ -41,9 +39,17 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
     return { streakDays: 0, lastStreakLoginAt: null, lastDailyPostBonusAt: null };
   }
 
+  let streakDays = data?.streak_days || 0;
+  const lastStreakLoginAt = data?.last_streak_login_at || null;
+
+  // 継続条件外（2日以上空いた）の場合は表示用に 0 を返す（DB は更新しない）
+  if (isStreakBroken(lastStreakLoginAt) && streakDays > 0) {
+    streakDays = 0;
+  }
+
   return {
-    streakDays: data?.streak_days || 0,
-    lastStreakLoginAt: data?.last_streak_login_at || null,
+    streakDays,
+    lastStreakLoginAt,
     lastDailyPostBonusAt: data?.last_daily_post_bonus_at || null,
   };
 }
