@@ -10,7 +10,7 @@ export interface ChallengeStatus {
 
 /**
  * ミッション関連のステータスを取得（サーバーサイド）
- * 連続チェックインが途切れている場合は streak_days を Day 1 相当（0）にリセットする
+ * 連続チェックインが途切れている場合は表示用に streakDays: 0 を返す（DB は更新しない）
  * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 export async function getChallengeStatusServer(
@@ -33,15 +33,9 @@ export async function getChallengeStatusServer(
   let streakDays = data?.streak_days || 0;
   const lastStreakLoginAt = data?.last_streak_login_at || null;
 
-  // 継続条件外（2日以上空いた）の場合は Day 1 相当にリセット
-  if (
-    isStreakBroken(lastStreakLoginAt) &&
-    streakDays > 0
-  ) {
-    await supabase
-      .from("profiles")
-      .update({ streak_days: 0, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
+  // 継続条件外（2日以上空いた）の場合は表示用に 0 を返す（DB は更新しない・副作用なし）
+  // 実際のリセットはチェックイン時（POST）の grant_streak_bonus で行う
+  if (isStreakBroken(lastStreakLoginAt) && streakDays > 0) {
     streakDays = 0;
   }
 

@@ -37,12 +37,9 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
     getJstDateString(new Date(lastStreakLoginAt)) ===
       getJstDateString(new Date());
 
-  // 継続条件外（2日以上空いた）の場合は Day 1 相当にリセット
+  // 継続条件外（2日以上空いた）の場合は表示用に 0 を返す（DB は更新しない・GET は副作用なし）
+  // 実際のリセットはチェックイン時（POST）の grant_streak_bonus で行う
   if (isStreakBroken(lastStreakLoginAt) && streakDays !== null && streakDays > 0) {
-    await supabase
-      .from("profiles")
-      .update({ streak_days: 0, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
     streakDays = 0;
   }
 
@@ -55,7 +52,7 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
 
 /**
  * ストリーク（連続ログイン）特典チェックインAPI
- * GET: 状態取得。継続条件外の場合は streak_days を Day 1 相当にリセットする
+ * GET: 状態取得のみ（副作用なし）。継続条件外の場合は表示用に streak_days: 0 を返す
  * POST: 特典付与を実行する
  */
 export async function GET() {
