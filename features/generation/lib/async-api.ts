@@ -10,6 +10,8 @@ const MAX_SOURCE_IMAGE_LONG_EDGE = 2048;
 const LARGE_FILE_THRESHOLD_BYTES = 2 * 1024 * 1024;
 const AGGRESSIVE_COMPRESSION_LONG_EDGE = 1024;
 const AGGRESSIVE_JPEG_QUALITY = 0.7;
+/** 拡張子除去用（js-hoist-regexp: ループ/関数内での再生成を避ける） */
+const BASE_NAME_REGEX = /\.[^.]+$/;
 
 function loadImageElement(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -94,7 +96,7 @@ async function normalizeSourceImage(file: File): Promise<File> {
   );
 
   const extension = outputType === "image/png" ? "png" : "jpg";
-  const baseName = file.name.replace(/\.[^.]+$/, "");
+  const baseName = file.name.replace(BASE_NAME_REGEX, "");
   return new File([outputBlob], `${baseName}.${extension}`, {
     type: outputType,
     lastModified: Date.now(),
