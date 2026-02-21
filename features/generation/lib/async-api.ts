@@ -6,6 +6,10 @@
 import type { GenerationRequest } from "../types";
 
 const MAX_SOURCE_IMAGE_LONG_EDGE = 2048;
+/** Vercel のリクエストボディ制限 4.5MB を考慮。Base64 で約 33% 増加するため、2MB 超は強圧縮 */
+const LARGE_FILE_THRESHOLD_BYTES = 2 * 1024 * 1024;
+const AGGRESSIVE_COMPRESSION_LONG_EDGE = 1024;
+const AGGRESSIVE_JPEG_QUALITY = 0.7;
 
 function loadImageElement(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -48,11 +52,20 @@ async function normalizeSourceImage(file: File): Promise<File> {
   const originalHeight = image.naturalHeight;
   const longEdge = Math.max(originalWidth, originalHeight);
 
-  if (longEdge <= MAX_SOURCE_IMAGE_LONG_EDGE) {
+  // ファイルサイズが大きい場合（Vercel 4.5MB 制限対策）は強圧縮を適用
+  const needsAggressiveCompression = file.size > LARGE_FILE_THRESHOLD_BYTES;
+  const maxLongEdge = needsAggressiveCompression
+    ? AGGRESSIVE_COMPRESSION_LONG_EDGE
+    : MAX_SOURCE_IMAGE_LONG_EDGE;
+  const jpegQuality = needsAggressiveCompression
+    ? AGGRESSIVE_JPEG_QUALITY
+    : 0.8;
+
+  if (longEdge <= maxLongEdge && !needsAggressiveCompression) {
     return file;
   }
 
-  const scale = MAX_SOURCE_IMAGE_LONG_EDGE / longEdge;
+  const scale = Math.min(1, maxLongEdge / longEdge);
   const targetWidth = Math.max(1, Math.round(originalWidth * scale));
   const targetHeight = Math.max(1, Math.round(originalHeight * scale));
   const canvas = document.createElement("canvas");
@@ -67,11 +80,17 @@ async function normalizeSourceImage(file: File): Promise<File> {
 
   context.drawImage(image, 0, 0, targetWidth, targetHeight);
 
-  const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  // 強圧縮時は JPEG に統一（PNG は可逆圧縮のためファイルサイズが大きくなりやすい）
+  const outputType =
+    needsAggressiveCompression || file.type === "image/jpeg" || file.type === "image/jpg"
+      ? "image/jpeg"
+      : file.type === "image/png"
+        ? "image/png"
+        : "image/jpeg";
   const outputBlob = await canvasToBlob(
     canvas,
     outputType,
-    outputType === "image/jpeg" ? 0.8 : undefined
+    outputType === "image/jpeg" ? jpegQuality : undefined
   );
 
   const extension = outputType === "image/png" ? "png" : "jpg";
