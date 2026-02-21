@@ -174,11 +174,11 @@ export function GeneratedImageGallery({
                   }
                 }}
               >
-                <div className="relative w-full overflow-hidden bg-gray-100 min-h-[200px]">
+                <div className="relative w-full overflow-hidden bg-gray-100">
                   {/* 画像ロード完了までスケルトン表示（ブロック要素で高さを確保し空白を防ぐ） */}
                   {!loadedImageIds.has(image.id) && (
                     <div
-                      className="aspect-square w-full min-h-[200px] animate-pulse bg-gray-200"
+                      className="aspect-square w-full animate-pulse bg-gray-200"
                       aria-hidden
                     />
                   )}
@@ -186,7 +186,7 @@ export function GeneratedImageGallery({
                   <img
                     src={image.url}
                     alt={`生成画像 ${index + 1}`}
-                    className={`object-contain transition-opacity duration-200 ${
+                    className={`block object-contain transition-opacity duration-200 ${
                       loadedImageIds.has(image.id)
                         ? "relative w-full h-auto opacity-100"
                         : "absolute inset-0 h-full w-full opacity-0"
@@ -320,4 +320,3 @@ export function GeneratedImageGallery({
     </div>
   );
 }
-
