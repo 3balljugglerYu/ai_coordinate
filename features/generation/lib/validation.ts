@@ -6,8 +6,6 @@ import type { ImageUploadConfig, ImageValidationResult } from "../types";
 export const DEFAULT_IMAGE_CONFIG: ImageUploadConfig = {
   maxSizeMB: 10,
   allowedFormats: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
-  maxWidth: 5000,
-  maxHeight: 5000,
 };
 
 /**
@@ -70,25 +68,10 @@ export async function validateImageFile(
     };
   }
 
-  // 画像の寸法チェック
+  // 画像の読み込み可否チェック（破損ファイルの検出）
   try {
-    const dimensions = await getImageDimensions(file);
+    await getImageDimensions(file);
 
-    if (config.maxWidth && dimensions.width > config.maxWidth) {
-      return {
-        isValid: false,
-        error: `画像の幅が大きすぎます。最大${config.maxWidth}pxまでです。`,
-      };
-    }
-
-    if (config.maxHeight && dimensions.height > config.maxHeight) {
-      return {
-        isValid: false,
-        error: `画像の高さが大きすぎます。最大${config.maxHeight}pxまでです。`,
-      };
-    }
-
-    // プレビューURL生成
     const previewUrl = URL.createObjectURL(file);
 
     return {
