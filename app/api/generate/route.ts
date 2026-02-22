@@ -31,8 +31,9 @@ export async function POST(request: NextRequest) {
       model: rawModel,
     } = validationResult.data;
 
-    // APIキーの取得（サーバー側専用を優先、フォールバックあり）
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY;
+    // APIキーの取得（サーバー側専用）
+    const apiKey =
+      process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
