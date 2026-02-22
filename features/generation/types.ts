@@ -2,6 +2,16 @@
  * 画像生成機能の型定義
  */
 
+import type { BackgroundMode } from "@/shared/generation/prompt-core";
+
+export {
+  BACKGROUND_MODES,
+  backgroundChangeToBackgroundMode,
+  backgroundModeToBackgroundChange,
+  resolveBackgroundMode,
+} from "@/shared/generation/prompt-core";
+export type { BackgroundMode };
+
 export type GenerationStatus = "pending" | "processing" | "completed" | "failed";
 
 export interface Generation {
@@ -16,8 +26,6 @@ export interface Generation {
 }
 
 export type GenerationType = 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi';
-export const BACKGROUND_MODES = ["ai_auto", "include_in_prompt", "keep"] as const;
-export type BackgroundMode = (typeof BACKGROUND_MODES)[number];
 
 // データベース保存用のモデル名型（サイズ情報を含む）
 export type GeminiModel = 
@@ -68,32 +76,6 @@ export function extractImageSize(model: GeminiModel): "1K" | "2K" | "4K" | null 
   if (model === 'gemini-3-pro-image-2k') return "2K";
   if (model === 'gemini-3-pro-image-4k') return "4K";
   return null; // gemini-2.5-flash-imageの場合
-}
-
-/**
- * 旧仕様のbackgroundChange(boolean)を新仕様のbackgroundModeに変換
- */
-export function backgroundChangeToBackgroundMode(
-  backgroundChange?: boolean | null
-): BackgroundMode {
-  return backgroundChange ? "ai_auto" : "keep";
-}
-
-/**
- * 新仕様のbackgroundModeを旧仕様のbackgroundChange(boolean)に変換
- */
-export function backgroundModeToBackgroundChange(backgroundMode: BackgroundMode): boolean {
-  return backgroundMode === "ai_auto";
-}
-
-/**
- * backgroundModeが未指定の場合はbackgroundChangeから推論
- */
-export function resolveBackgroundMode(
-  backgroundMode?: BackgroundMode | null,
-  backgroundChange?: boolean | null
-): BackgroundMode {
-  return backgroundMode ?? backgroundChangeToBackgroundMode(backgroundChange);
 }
 
 export interface GenerationRequest {
