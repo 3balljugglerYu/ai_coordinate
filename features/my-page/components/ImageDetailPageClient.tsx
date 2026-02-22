@@ -9,10 +9,28 @@ import { deleteMyImage } from "@/features/my-page/lib/api";
 import { PostModal } from "@/features/posts/components/PostModal";
 import { EditPostModal } from "@/features/posts/components/EditPostModal";
 import { DeletePostDialog } from "@/features/posts/components/DeletePostDialog";
+import type { BackgroundMode } from "@/features/generation/types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
 interface ImageDetailPageClientProps {
   image: GeneratedImageRecord;
+}
+
+const BACKGROUND_MODE_LABELS: Record<BackgroundMode, string> = {
+  ai_auto: "AIに依頼",
+  include_in_prompt: "上記の内容に含める",
+  keep: "背景は変更しない",
+};
+
+function resolveBackgroundMode(image: GeneratedImageRecord): BackgroundMode {
+  if (
+    image.background_mode === "ai_auto" ||
+    image.background_mode === "include_in_prompt" ||
+    image.background_mode === "keep"
+  ) {
+    return image.background_mode;
+  }
+  return image.background_change ? "ai_auto" : "keep";
 }
 
 export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
@@ -21,14 +39,8 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const backgroundMode =
-    image.background_mode ?? (image.background_change ? "ai_auto" : "keep");
-  const backgroundModeLabel =
-    backgroundMode === "ai_auto"
-      ? "AIに依頼"
-      : backgroundMode === "include_in_prompt"
-      ? "上記の内容に含める"
-      : "背景は変更しない";
+  const backgroundMode = resolveBackgroundMode(image);
+  const backgroundModeLabel = BACKGROUND_MODE_LABELS[backgroundMode];
 
   const handleDelete = () => {
     setDeleteDialogOpen(true);
