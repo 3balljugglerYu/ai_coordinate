@@ -55,7 +55,12 @@ export function PercoinPurchaseSection({
         throw new Error("不明なレスポンスです");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "購入処理に失敗しました");
+      const errorMessage = err instanceof Error ? err.message : "購入処理に失敗しました";
+      track("percoin_purchase_failed", {
+        packageId,
+        error: errorMessage.substring(0, 100),
+      });
+      setError(errorMessage);
     } finally {
       setProcessingId(null);
     }
