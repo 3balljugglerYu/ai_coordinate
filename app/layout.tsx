@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { NavigationBar } from "@/components/NavigationBar";
-import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/ui/toaster";
-import { StickyHeader } from "@/features/posts/components/StickyHeader";
-import { AppSidebar } from "@/components/AppSidebar";
-import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
-import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
+import { AppShell } from "@/components/AppShell";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
-import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
 import { getSiteUrl } from "@/lib/env";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -62,32 +56,13 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <UnreadNotificationProvider>
-          <Suspense fallback={<div className="h-16" />}>
-            <StickyHeader />
+          <Suspense fallback={<div className="min-h-screen">{children}</div>}>
+            <AppShell>{children}</AppShell>
           </Suspense>
-          <Suspense fallback={null}>
-            <AppSidebar />
-          </Suspense>
-          <Suspense fallback={null}>
-            <GeneratedImageNotificationChecker />
-          </Suspense>
-          <Suspense fallback={null}>
-            <BonusNotificationToastListener />
-          </Suspense>
-          <div className="main-content">
-            {children}
-            <Footer />
-          </div>
-          <Suspense fallback={<div className="h-16" />}>
-            <NavigationBar />
-          </Suspense>
-          <Suspense fallback={null}>
-            <TutorialTourProvider />
-          </Suspense>
-          <Toaster />
-          <Analytics />
-          <SpeedInsights />
         </UnreadNotificationProvider>
+        <Toaster />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

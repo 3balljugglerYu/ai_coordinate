@@ -138,7 +138,7 @@ export function BonusGrantForm() {
   const isReasonOverLimit = reason.length > MAX_REASON_LENGTH;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="max-w-xl space-y-6 px-1 sm:px-0">
       <div className="space-y-2">
         <Label htmlFor="user_id">
           ユーザーID <span className="text-destructive">*</span>
@@ -155,7 +155,7 @@ export function BonusGrantForm() {
         {errors.userId && (
           <p className="text-sm text-destructive">{errors.userId}</p>
         )}
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-600">
           UUID形式のユーザーIDを入力してください
         </p>
       </div>
@@ -181,7 +181,7 @@ export function BonusGrantForm() {
         {errors.amount && (
           <p className="text-sm text-destructive">{errors.amount}</p>
         )}
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-600">
           1以上の整数で入力してください
         </p>
       </div>
@@ -210,13 +210,13 @@ export function BonusGrantForm() {
                 ? "text-destructive"
                 : remainingChars < 50
                   ? "text-orange-600"
-                  : "text-muted-foreground"
+                  : "text-slate-600"
             }`}
           >
             {remainingChars}文字 / {MAX_REASON_LENGTH}文字
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-600">
           付与理由は取引履歴の表示名として使用されます（最大{MAX_REASON_LENGTH}文字）
         </p>
       </div>

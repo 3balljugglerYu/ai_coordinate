@@ -84,19 +84,30 @@ export function ModerationQueueClient() {
   };
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">読み込み中...</p>;
+    return (
+      <div className="py-8 text-center">
+        <p className="text-sm text-slate-600">読み込み中...</p>
+      </div>
+    );
   }
 
   if (posts.length === 0) {
-    return <p className="text-sm text-muted-foreground">審査待ちの投稿はありません。</p>;
+    return (
+      <div className="py-12 text-center">
+        <p className="text-sm text-slate-600">審査待ちの投稿はありません。</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {posts.map((post) => (
-        <div key={post.id} className="rounded-md border p-4">
-          <div className="flex items-start gap-4">
-            <div className="relative h-24 w-24 overflow-hidden rounded bg-gray-100">
+        <div
+          key={post.id}
+          className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-5 sm:p-6"
+        >
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-200/60">
               <Image
                 src={post.image_url}
                 alt={post.caption || "pending post"}
@@ -106,17 +117,19 @@ export function ModerationQueueClient() {
                 unoptimized
               />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{post.caption || "キャプションなし"}</p>
-              <p className="text-xs text-muted-foreground mt-1">
+            <div className="min-w-0 flex-1 space-y-3">
+              <p className="text-sm font-medium text-slate-900 line-clamp-2">
+                {post.caption || "キャプションなし"}
+              </p>
+              <p className="text-xs text-slate-600">
                 通報件数: {post.report_count} / 重み合計:{" "}
                 {post.weighted_report_score.toFixed(2)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-slate-500">
                 理由: {post.moderation_reason || "report_threshold"}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
               <Button
                 size="sm"
                 variant="outline"

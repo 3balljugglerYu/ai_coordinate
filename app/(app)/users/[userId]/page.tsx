@@ -108,20 +108,26 @@ async function UserProfileData({ userId }: { userId: string }) {
   );
 }
 
-export default async function UserProfilePageRoute({
+async function UserProfileContent({
   params,
 }: {
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
+  return <UserProfileData userId={userId} />;
+}
 
+export default async function UserProfilePageRoute({
+  params,
+}: {
+  params: Promise<{ userId: string }>;
+}) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-1 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
-          {/* 動的コンテンツ */}
           <Suspense fallback={<UserProfilePageSkeleton />}>
-            <UserProfileData userId={userId} />
+            <UserProfileContent params={params} />
           </Suspense>
         </div>
       </div>
