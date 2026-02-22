@@ -11,7 +11,7 @@ export async function GET(_request: NextRequest) {
     const user = await getUser();
 
     if (!user) {
-      return NextResponse.json({ count: 0 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const supabase = await createClient();
