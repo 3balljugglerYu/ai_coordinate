@@ -3,6 +3,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
+import {
+  buildPrompt as buildSharedPrompt,
+  backgroundModeToBackgroundChange,
+  resolveBackgroundMode,
+} from "../../../shared/generation/prompt-core.ts";
+import type {
+  GenerationType,
+} from "../../../shared/generation/prompt-core.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -169,7 +177,6 @@ async function downloadInputImageViaStockFallback(
 }
 
 // 型定義
-type GenerationType = "coordinate" | "specified_coordinate" | "full_body" | "chibi";
 type GeminiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-1k" | "gemini-3-pro-image-2k" | "gemini-3-pro-image-4k";
 type GeminiApiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-preview";
 
@@ -546,117 +553,6 @@ async function refundPercoinsFromGeneration(
     console.error("[Percoin Refund] Error refunding percoins:", error);
     throw error;
   }
-}
-
-/**
- * 背景変更の指示文を生成
- */
-function getBackgroundDirective(shouldChangeBackground: boolean): string {
-  return shouldChangeBackground
-    ? "Adapt the background to match the new outfit's mood, setting, and styling, ensuring character lighting remains coherent."
-    : "Keep the original background exactly as in the source image, editing only the outfit without altering the environment or lighting context.";
-}
-
-/**
- * プロンプトインジェクション対策: ユーザー入力をサニタイズ
- * - 制御文字の除去
- * - 複数の連続改行を統一（最大2つの連続改行まで許可）
- * - 禁止語句パターンの検出（基本的なインジェクション試行を防ぐ）
- */
-function sanitizeUserInput(input: string): string {
-  // トリム
-  let sanitized = input.trim();
-  
-  // 制御文字を除去（タブ、改行以外の制御文字）
-  // タブはスペースに変換、改行は後で処理
-  sanitized = sanitized.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-  
-  // 複数の連続改行を最大2つまでに制限（3つ以上は2つに統一）
-  sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
-  
-  // 禁止語句パターンの検出（基本的なプロンプトインジェクション試行）
-  // より多くのインジェクションパターンを検出
-  const injectionPatterns = [
-    /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /forget\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /override\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /disregard\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /system\s*:?\s*(prompt|instruction|command)/i,
-    /<\|(system|user|assistant)\|>/i,
-    // 追加パターン
-    /you\s+are\s+(now|a|an)\s+/i,
-    /act\s+as\s+(if\s+)?(you\s+are\s+)?/i,
-    /pretend\s+(to\s+be|that\s+you\s+are)/i,
-    /roleplay\s+as/i,
-    /simulate\s+(being|that)/i,
-    /\[(system|user|assistant|instruction|prompt)\]/i,
-    /\{system\}/i,
-    /\{user\}/i,
-    /\{assistant\}/i,
-    /#\s*(system|user|assistant|instruction|prompt)/i,
-    /\/\*\s*(system|user|assistant|instruction|prompt)/i,
-  ];
-  
-  // 禁止パターンが検出された場合はエラーをthrow（汎用的なエラーメッセージ）
-  for (const pattern of injectionPatterns) {
-    if (pattern.test(sanitized)) {
-      throw new Error("無効な入力です。入力内容を確認してください。");
-    }
-  }
-  
-  // 再度トリム（処理後の余分な空白を削除）
-  sanitized = sanitized.trim();
-  
-  return sanitized;
-}
-
-/**
- * プロンプトを構築（プロンプトインジェクション対策済み）
- */
-function buildPrompt(
-  generationType: GenerationType,
-  outfitDescription: string,
-  shouldChangeBackground: boolean
-): string {
-  // ユーザー入力をサニタイズ
-  const sanitizedDescription = sanitizeUserInput(outfitDescription);
-  
-  // サニタイズ後の入力が空の場合は、エラーとする
-  if (!sanitizedDescription || sanitizedDescription.length === 0) {
-    throw new Error("無効な入力です。入力内容を確認してください。");
-  }
-  
-  const backgroundDirective = getBackgroundDirective(shouldChangeBackground);
-
-  // coordinateタイプのみ実装（他のタイプは後で拡張）
-  if (generationType === "coordinate") {
-    if (backgroundDirective.includes("Keep the original background")) {
-      return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
-Do not change the camera angle or framing from the original image.
-Edit only the outfit.
-
-New Outfit:
-
-${sanitizedDescription}`;
-    } else {
-      return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
-Do not change the camera angle or framing from the original image.
-Adjust the background to match the new outfit’s style and color palette.
-
-New Outfit:
-
-${sanitizedDescription}`;
-    }
-  }
-
-  // デフォルト（coordinateと同じ）
-  return `Edit **only the outfit** of the person in the image.
-
-**New Outfit:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
 }
 
 /**
@@ -1117,9 +1013,18 @@ Deno.serve(async () => {
             });
           }
 
+          const backgroundMode = resolveBackgroundMode(
+            job.background_mode,
+            job.background_change
+          );
+
           // プロンプトを構築
           const fullPrompt = job.input_image_url
-            ? buildPrompt(job.generation_type as GenerationType, job.prompt_text, job.background_change)
+            ? buildSharedPrompt({
+                generationType: job.generation_type as GenerationType,
+                outfitDescription: job.prompt_text,
+                backgroundMode,
+              })
             : job.prompt_text;
 
           parts.push({
@@ -1269,7 +1174,8 @@ Deno.serve(async () => {
               image_url: publicUrl,
               storage_path: uploadData.path,
               prompt: job.prompt_text,
-              background_change: job.background_change,
+              background_mode: backgroundMode,
+              background_change: backgroundModeToBackgroundChange(backgroundMode),
               is_posted: false,
               generation_type: job.generation_type,
               model: dbModel,

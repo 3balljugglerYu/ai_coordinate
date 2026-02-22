@@ -1,5 +1,5 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
-import type { GeminiModel } from "../types";
+import type { BackgroundMode, GeminiModel } from "../types";
 
 /**
  * generated_imagesテーブルへのデータベース操作
@@ -11,7 +11,8 @@ export interface GeneratedImageRecord {
   image_url: string;
   storage_path: string;
   prompt: string;
-  background_change: boolean;
+  background_change: boolean | null;
+  background_mode?: BackgroundMode | null;
   is_posted: boolean;
   caption?: string | null;
   posted_at?: string | null;

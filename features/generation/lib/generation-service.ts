@@ -5,6 +5,10 @@ import { consumePercoins, fetchPercoinBalance } from "@/features/credits/lib/api
 import { getPercoinCost } from "./model-config";
 import { getImageAspectRatio } from "@/features/posts/lib/utils";
 import type { GenerationRequest, GeneratedImageData } from "../types";
+import {
+  backgroundModeToBackgroundChange,
+  resolveBackgroundMode,
+} from "../types";
 import type { GeneratedImageRecord } from "./database";
 
 /**
@@ -47,6 +51,11 @@ export async function generateAndSaveImages(
 ): Promise<GenerateAndSaveResult> {
   const { userId, onProgress, ...generationRequest } = options;
   const imageCount = generationRequest.count || 1;
+  const backgroundMode = resolveBackgroundMode(
+    generationRequest.backgroundMode,
+    generationRequest.backgroundChange
+  );
+  const backgroundChange = backgroundModeToBackgroundChange(backgroundMode);
 
   const shouldConsumePercoins =
     !!userId && isSupabaseConfigured() && imageCount > 0;
@@ -85,7 +94,8 @@ export async function generateAndSaveImages(
         prompt: generationRequest.prompt,
         sourceImage: generationRequest.sourceImage,
         sourceImageStockId: generationRequest.sourceImageStockId,
-        backgroundChange: generationRequest.backgroundChange,
+        backgroundMode,
+        backgroundChange,
         generationType: generationRequest.generationType,
         model: generationRequest.model,
       });
@@ -112,7 +122,8 @@ export async function generateAndSaveImages(
       prompt: generationRequest.prompt,
       sourceImage: generationRequest.sourceImage,
       sourceImageStockId: generationRequest.sourceImageStockId,
-      backgroundChange: generationRequest.backgroundChange,
+      backgroundMode,
+      backgroundChange,
       generationType: generationRequest.generationType,
       model: generationRequest.model,
     });
@@ -143,7 +154,8 @@ export async function generateAndSaveImages(
       image_url: url,
       storage_path: path,
       prompt: generationRequest.prompt,
-      background_change: generationRequest.backgroundChange || false,
+      background_mode: backgroundMode,
+      background_change: backgroundChange,
       is_posted: false,
       caption: null,
       posted_at: null,

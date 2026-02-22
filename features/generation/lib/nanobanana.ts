@@ -2,6 +2,9 @@
  * NanoBanana (Gemini 2.5 Flash Image) API クライアント
  */
 
+import { resolveBackgroundMode } from "../types";
+import type { BackgroundMode } from "../types";
+
 /**
  * 画像をBase64形式に変換
  */
@@ -23,6 +26,8 @@ export async function imageToBase64(file: File): Promise<string> {
 export interface GeminiGenerateRequest {
   prompt: string;
   sourceImage?: File;
+  backgroundMode?: BackgroundMode;
+  // 後方互換（1リリース維持）
   backgroundChange?: boolean;
   count?: number;
 }
@@ -66,14 +71,18 @@ export async function buildGeminiRequest(
 
   // プロンプトを構築
   let fullPrompt = request.prompt;
+  const backgroundMode = resolveBackgroundMode(
+    request.backgroundMode,
+    request.backgroundChange
+  );
   
   if (request.sourceImage) {
     // 画像がある場合は着せ替え用のプロンプトを追加
     fullPrompt = `この画像の人物の顔やスタイルはそのままに、${request.prompt}。`;
     
-    if (request.backgroundChange) {
+    if (backgroundMode === "ai_auto") {
       fullPrompt += "背景も新しいスタイルに合わせて変更してください。";
-    } else {
+    } else if (backgroundMode === "keep") {
       fullPrompt += "背景はできるだけそのままにしてください。";
     }
   }
@@ -189,4 +198,3 @@ export function base64ToBlob(base64: string, mimeType: string): Blob {
 export function base64ToDataUrl(base64: string, mimeType: string): string {
   return `data:${mimeType};base64,${base64}`;
 }
-

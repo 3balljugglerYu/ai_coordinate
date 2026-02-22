@@ -38,13 +38,13 @@ export const TOUR_STEPS: DriveStep[] = [
       align: "start",
     },
   },
-  // ⑤ 背景変更オプションの説明（自動でチェックを入れる。「次へ」で次へ進む）
+  // ⑤ 背景設定オプションの説明（自動で「AIに依頼」を選択）
   {
     element: '[data-tour="tour-background-change"]',
     popover: {
-      title: "背景の変更",
+      title: "背景設定",
       description:
-        "チェックを入れると、コーディネートに合わせて背景が生成されます！<br>今回はチェックを入れて進めてみましょう！",
+        "ここでは背景の扱いを選べます。<br>今回は「AIに依頼」を選択して進めてみましょう！",
       side: "right",
       align: "center",
     },

@@ -6,6 +6,7 @@ import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
+import { backgroundModeToBackgroundChange } from "@/features/generation/types";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId,
-      backgroundChange,
+      backgroundMode,
       generationType,
       model,
     } = validationResult.data;
@@ -200,7 +201,8 @@ export async function POST(request: NextRequest) {
       source_image_stock_id: stockId,
       generation_type: generationType || "coordinate",
       model: model || null,
-      background_change: backgroundChange || false,
+      background_mode: backgroundMode,
+      background_change: backgroundModeToBackgroundChange(backgroundMode),
       status: "queued",
       attempts: 0,
     };
