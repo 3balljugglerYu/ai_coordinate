@@ -251,6 +251,13 @@ function getPercoinCost(model: string | null): number {
 }
 
 /**
+ * 再試行不可のエラーか判定
+ */
+function isNonRetriableGenerationError(errorMessage: string): boolean {
+  return errorMessage === "No images generated";
+}
+
+/**
  * ペルコイン減算処理
  */
 async function deductPercoinsFromGeneration(
@@ -416,8 +423,26 @@ async function refundPercoinsFromGeneration(
       console.log(`[Percoin Refund] Refund already processed for job ${jobId}, skipping`);
       return;
     }
+
+    // 2. 元の消費履歴を確認（存在しない場合は返金しない）
+    const { data: consumptionTx, error: consumptionError } = await supabase
+      .from("credit_transactions")
+      .select("id, metadata")
+      .eq("user_id", userId)
+      .eq("transaction_type", "consumption")
+      .eq("metadata->>job_id", jobId)
+      .maybeSingle();
+
+    if (consumptionError) {
+      throw new Error(`消費履歴の確認に失敗しました: ${consumptionError.message}`);
+    }
+
+    if (!consumptionTx) {
+      console.warn(`[Percoin Refund] Consumption transaction not found for job ${jobId}, skipping refund`);
+      return;
+    }
     
-    // 2. アカウントを取得
+    // 3. アカウントを取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
     // 返金処理では、既にペルコイン減算が行われている前提なので、レコードは存在するはず
     const { data: account, error: accountError } = await supabase
@@ -463,20 +488,12 @@ async function refundPercoinsFromGeneration(
     
     console.log(`[Percoin Refund] Current balance: ${currentBalance}, amount to refund: ${percoinAmount}`);
     
-    // 3. 元の消費内訳を参照して返金先を決定（見つからなければ無償に返す）
-    const { data: consumptionTx } = await supabase
-      .from("credit_transactions")
-      .select("metadata")
-      .eq("user_id", userId)
-      .eq("transaction_type", "consumption")
-      .eq("metadata->>job_id", jobId)
-      .maybeSingle();
-
+    // 4. 元の消費内訳を参照して返金先を決定
     const metadata = (consumptionTx?.metadata as { from_promo?: number; from_paid?: number } | null) ?? null;
     const refundToPromo = Math.max(0, Math.min(percoinAmount, Number(metadata?.from_promo ?? percoinAmount)));
     const refundToPaid = Math.max(0, percoinAmount - refundToPromo);
 
-    // 4. 残高を増加
+    // 5. 残高を増加
     const newPromoBalance = currentPromoBalance + refundToPromo;
     const newPaidBalance = currentPaidBalance + refundToPaid;
     const newBalance = newPromoBalance + newPaidBalance;
@@ -495,7 +512,7 @@ async function refundPercoinsFromGeneration(
     
     console.log(`[Percoin Refund] Balance updated to: ${newBalance}`);
     
-    // 5. 取引履歴を記録（transaction_type: "refund"）
+    // 6. 取引履歴を記録（transaction_type: "refund"）
     // 注意: related_generation_idは外部キー制約でgenerated_images.idを参照しているため、
     // 返金時はNULLでINSERTする（画像生成が失敗したため、generated_images.idは存在しない）
     const { error: transactionError } = await supabase
@@ -515,6 +532,10 @@ async function refundPercoinsFromGeneration(
       });
     
     if (transactionError) {
+      if (transactionError.code === "23505") {
+        console.log(`[Percoin Refund] Duplicate refund blocked by unique index for job ${jobId}`);
+        return;
+      }
       // 取引履歴の保存に失敗しても、残高は既に更新されているため、ログに記録のみ
       console.error("[Percoin Refund] Failed to record credit transaction:", transactionError);
     } else {
@@ -681,7 +702,7 @@ function extractBase64FromDataUrl(dataUrl: string): { base64: string; mimeType: 
   };
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async () => {
   try {
     // 環境変数の取得
     // SUPABASE_URLは自動的に利用可能（Supabaseが提供）
@@ -860,18 +881,23 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          // processingが長時間継続しているジョブは失敗として確定
+          // processingが長時間継続しているジョブは、通常の失敗判定フローに合流
+          const newAttempts = (job.attempts || 0) + 1;
+          const shouldMarkAsFailed = newAttempts >= 3;
           const staleErrorMessage = "処理がタイムアウトしました。入力画像サイズを下げて再試行してください。";
-          const { error: staleUpdateError } = await supabase
+          const { data: staleUpdatedJob, error: staleUpdateError } = await supabase
             .from("image_jobs")
             .update({
-              status: "failed",
+              status: shouldMarkAsFailed ? "failed" : "queued",
               error_message: staleErrorMessage,
-              attempts: Math.max((job.attempts || 0) + 1, 3),
-              completed_at: new Date().toISOString(),
+              attempts: newAttempts,
+              started_at: shouldMarkAsFailed ? job.started_at : null,
+              completed_at: shouldMarkAsFailed ? new Date().toISOString() : null,
             })
             .eq("id", jobId)
-            .eq("status", "processing");
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
 
           if (staleUpdateError) {
             console.error("Failed to mark stale processing job as failed:", staleUpdateError);
@@ -879,7 +905,19 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          // 消費履歴が存在する場合のみ返金（未減算ジョブの過剰返金を防ぐ）
+          if (!staleUpdatedJob) {
+            console.log(`[Job Processing] Stale update skipped because job state changed: ${jobId}`);
+            skippedCount++;
+            continue;
+          }
+
+          if (!shouldMarkAsFailed) {
+            // 再試行可能なため、返金せずに次回ワーカー実行へ委譲
+            skippedCount++;
+            continue;
+          }
+
+          // 最終失敗確定時のみ返金（未減算ジョブの過剰返金も防ぐ）
           try {
             const { data: consumptionTx } = await supabase
               .from("credit_transactions")
@@ -897,10 +935,10 @@ Deno.serve(async (req: Request) => {
                 jobId,
                 percoinCost
               );
-              console.log(`[Job Processing] Refunded ${percoinCost} percoins for stale job ${jobId}`);
+              console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
             }
           } catch (refundError) {
-            console.error("[Job Processing] Failed to refund stale job:", refundError);
+            console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
           }
 
           // 失敗確定したためメッセージを削除
@@ -913,18 +951,26 @@ Deno.serve(async (req: Request) => {
         }
 
         // ステータスを'processing'に更新（排他制御）
-        const { error: updateError } = await supabase
+        const { data: processingJob, error: updateError } = await supabase
           .from("image_jobs")
           .update({
             status: "processing",
             started_at: new Date().toISOString(),
           })
           .eq("id", jobId)
-          .in("status", ["queued", "failed"]); // 既にprocessingの場合は更新しない
+          .in("status", ["queued", "failed"]) // 既にprocessingの場合は更新しない
+          .select("id")
+          .maybeSingle();
 
         if (updateError) {
           console.error("Failed to update job status:", updateError);
           // 更新に失敗した場合は、次のメッセージを処理（可視性タイムアウト後に再処理される）
+          continue;
+        }
+
+        if (!processingJob) {
+          // 既に他ワーカーが状態を変更済み
+          skippedCount++;
           continue;
         }
 
@@ -940,14 +986,27 @@ Deno.serve(async (req: Request) => {
         } catch (deductError) {
           // ペルコイン減算失敗時はジョブを失敗としてマーク
           console.error("[Job Processing] Failed to deduct percoins:", deductError);
-          await supabase
+          const { data: deductionFailedJob, error: deductionFailUpdateError } = await supabase
             .from("image_jobs")
             .update({
               status: "failed",
               error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
               completed_at: new Date().toISOString(),
             })
-            .eq("id", jobId);
+            .eq("id", jobId)
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
+
+          if (deductionFailUpdateError) {
+            console.error("Failed to update job status after deduction failure:", deductionFailUpdateError);
+            continue;
+          }
+
+          if (!deductionFailedJob) {
+            skippedCount++;
+            continue;
+          }
           
           // メッセージを削除
           await supabase.rpc("pgmq_delete", {
@@ -1226,18 +1285,28 @@ Deno.serve(async (req: Request) => {
 
           // ===== フェーズ4-4: 成功時の処理 =====
           // image_jobsテーブルを更新（成功時）
-          const { error: successUpdateError } = await supabase
+          const { data: succeededJob, error: successUpdateError } = await supabase
             .from("image_jobs")
             .update({
               status: "succeeded",
               result_image_url: publicUrl,
+              error_message: null,
               completed_at: new Date().toISOString(),
             })
-            .eq("id", jobId);
+            .eq("id", jobId)
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
 
           if (successUpdateError) {
             console.error("Failed to update job status to succeeded:", successUpdateError);
             throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
+          }
+
+          if (!succeededJob) {
+            console.warn(`[Job Success] Skipped succeeded update because status changed: ${jobId}`);
+            skippedCount++;
+            continue;
           }
 
           // credit_transactionsのrelated_generation_idを更新
@@ -1274,25 +1343,10 @@ Deno.serve(async (req: Request) => {
           console.error("[Job Processing] Generation error:", error);
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-          // 既にペルコインを減算している場合は返金
-          try {
-            const percoinCost = getPercoinCost(job.model);
-            await refundPercoinsFromGeneration(
-              supabase,
-              job.user_id,
-              jobId,
-              percoinCost
-            );
-            console.log(`[Job Processing] Refunded ${percoinCost} percoins for failed job ${jobId}`);
-          } catch (refundError) {
-            // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
-            console.error("[Job Processing] Failed to refund percoins after generation failure:", refundError);
-          }
-
           // 現在のジョブのattemptsを取得（更新前に取得する必要がある）
           const { data: currentJob, error: jobFetchError } = await supabase
             .from("image_jobs")
-            .select("attempts")
+            .select("attempts, started_at")
             .eq("id", jobId)
             .single();
 
@@ -1303,24 +1357,50 @@ Deno.serve(async (req: Request) => {
           }
 
           const newAttempts = (currentJob?.attempts || 0) + 1;
-          const isNonRetriable = errorMessage === "No images generated";
+          const isNonRetriable = isNonRetriableGenerationError(errorMessage);
           const shouldMarkAsFailed = isNonRetriable || newAttempts >= 3;
 
           // image_jobsテーブルを更新（失敗時）
-          const { error: failUpdateError } = await supabase
+          const { data: failUpdatedJob, error: failUpdateError } = await supabase
             .from("image_jobs")
             .update({
               status: shouldMarkAsFailed ? "failed" : "queued",
               error_message: errorMessage,
               attempts: newAttempts,
+              started_at: shouldMarkAsFailed ? currentJob?.started_at ?? job.started_at : null,
               completed_at: shouldMarkAsFailed ? new Date().toISOString() : null,
             })
-            .eq("id", jobId);
+            .eq("id", jobId)
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
 
           if (failUpdateError) {
             console.error("Failed to update job status to failed:", failUpdateError);
             // 更新に失敗した場合、メッセージは削除しない（可視性タイムアウト後に再処理される）
             continue;
+          }
+
+          if (!failUpdatedJob) {
+            skippedCount++;
+            continue;
+          }
+
+          // 最終失敗が確定した場合のみ返金
+          if (shouldMarkAsFailed) {
+            try {
+              const percoinCost = getPercoinCost(job.model);
+              await refundPercoinsFromGeneration(
+                supabase,
+                job.user_id,
+                jobId,
+                percoinCost
+              );
+              console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
+            } catch (refundError) {
+              // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
+              console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
+            }
           }
 
           // メッセージの削除/アーカイブ（即時失敗またはattempts >= 3の場合）
