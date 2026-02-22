@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Copy, Check } from "lucide-react";
+import { ReferralCodeSkeleton } from "./ReferralCodeSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -67,13 +68,7 @@ export function ReferralCodeDisplay() {
   };
 
   if (isLoading) {
-    return (
-      <Card className="p-6">
-        <div className="text-center text-muted-foreground">
-          紹介コードを読み込み中...
-        </div>
-      </Card>
-    );
+    return <ReferralCodeSkeleton />;
   }
 
   if (!referralCode) {

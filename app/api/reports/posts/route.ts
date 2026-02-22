@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { reportPostSchema } from "@/features/moderation/lib/schemas";
@@ -217,7 +218,7 @@ export async function POST(request: NextRequest) {
 
     const { data: post, error: postError } = await supabase
       .from("generated_images")
-      .select("id,is_posted,moderation_status,moderation_approved_at")
+      .select("id,user_id,is_posted,moderation_status,moderation_approved_at")
       .eq("id", postId)
       .maybeSingle();
 
@@ -321,6 +322,16 @@ export async function POST(request: NextRequest) {
       }
 
       postModerationStatus = pendingApplied ? "pending" : postModerationStatus;
+    }
+
+    revalidateTag("home-posts", "max");
+    revalidateTag("home-posts-week", "max");
+    revalidateTag("search-posts", "max");
+    if (post?.user_id) {
+      revalidateTag(`user-profile-${post.user_id}`, "max");
+    }
+    if (post?.id) {
+      revalidateTag(`post-detail-${post.id}`, "max");
     }
 
     return NextResponse.json({

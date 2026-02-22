@@ -5,17 +5,31 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import { useNotifications } from "../hooks/useNotifications";
+import { NotificationLoadMoreSkeleton } from "./NotificationLoadMoreSkeleton";
 import { Button } from "@/components/ui/button";
+import type { Notification } from "../types";
 import { cn } from "@/lib/utils";
 import { User, Heart, MessageCircle, UserPlus, Bell } from "lucide-react";
-import type { Notification } from "../types";
+
+interface NotificationListProps {
+  initialNotifications?: Notification[];
+  initialNextCursor?: string | null;
+}
 
 /**
  * 通知リストコンポーネント
  * 通知一覧の表示、クリックで遷移、既読化処理、無限スクロール対応
+ * initialNotifications/initialNextCursor が渡された場合は即時表示（サーバーキャッシュ用）
  */
-export function NotificationList() {
+export function NotificationList({
+  initialNotifications,
+  initialNextCursor,
+}: NotificationListProps = {}) {
   const router = useRouter();
+  const initialData =
+    initialNotifications !== undefined
+      ? { notifications: initialNotifications, nextCursor: initialNextCursor ?? null }
+      : undefined;
   const {
     notifications,
     isLoading,
@@ -25,7 +39,7 @@ export function NotificationList() {
     handleNotificationClick,
     markAllRead,
     markRead,
-  } = useNotifications();
+  } = useNotifications(initialData);
 
   const { ref: inViewRef, inView } = useInView({
     threshold: 0,
@@ -264,10 +278,8 @@ export function NotificationList() {
 
       {/* 無限スクロールトリガー */}
       {hasMore && (
-        <div ref={inViewRef} className="p-4 text-center">
-          {isLoadingMore && (
-            <p className="text-sm text-gray-500">読み込み中...</p>
-          )}
+        <div ref={inViewRef}>
+          {isLoadingMore && <NotificationLoadMoreSkeleton />}
         </div>
       )}
     </div>

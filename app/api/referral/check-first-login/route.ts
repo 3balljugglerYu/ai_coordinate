@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { ReferralCheckReasonCode } from "@/features/referral/types";
@@ -71,6 +72,13 @@ export async function GET(request: NextRequest) {
     const reasonCode = isReferralCheckReasonCode(result?.reason_code)
       ? result.reason_code
       : ("transient_error" as ReferralCheckReasonCode);
+
+    if (bonusGranted > 0) {
+      revalidateTag(`my-page-${user.id}`, "max");
+      revalidateTag(`my-page-credits-${user.id}`, "max");
+      revalidateTag(`coordinate-${user.id}`, "max");
+      revalidateTag(`challenge-${user.id}`, "max");
+    }
 
     return NextResponse.json({
       bonus_granted: bonusGranted,

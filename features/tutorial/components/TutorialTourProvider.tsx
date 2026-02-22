@@ -15,6 +15,7 @@ const prefersReducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const SCROLL_TRANSITION_MS = 450;
+const GENERATION_COMPLETE_TRANSITION_DELAY_MS = 2000;
 
 /** driver.js をチュートリアル開始時のみ遅延読み込み（bundle-dynamic-imports） */
 async function loadDriver() {
@@ -69,6 +70,8 @@ export function TutorialTourProvider() {
   const [showModal, setShowModal] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const driverRef = useRef<Driver | null>(null);
+  const generationCompleteDelayTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // チュートリアル開始判定（rerender-dependencies: プリミティブな依存のみ）
   const tutorialReset = searchParams.get("tutorial_reset");
@@ -210,38 +213,11 @@ export function TutorialTourProvider() {
         return;
       }
 
-      const isMobileOrTablet =
-        typeof window !== "undefined" && window.innerWidth < 1024;
-      const baseSteps = [...TOUR_STEPS].map((step) => {
-        // ⑪生成結果: デバイス別の説明文を差し込む
-        if (step.popover?.description === "{{STEP11_DESCRIPTION}}") {
-          const description = isMobileOrTablet
-            ? "生成された画像がここに表示されます！<br>タップしてみてください！"
-            : "生成された画像がここに表示されます！<br>拡大アイコンをクリックしてみてください！";
-          return {
-            ...step,
-            popover: { ...step.popover, description },
-            onHighlighted: (element: Element | undefined) => {
-              document.body.setAttribute("data-tour-step-first-image", "true");
-              document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
-              if (element && element !== document.body) {
-                requestAnimationFrame(() => {
-                  element.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "nearest",
-                  });
-                });
-              }
-            },
-          };
-        }
-        return step;
-      });
+      const baseSteps = [...TOUR_STEPS];
       const lastIndex = baseSteps.length - 1;
 
-      // 生成開始（index 6）までは中断可能
-      const INTERRUPTIBLE_UNTIL_INDEX = 6;
+      // 生成開始（index 4）までは中断可能
+      const INTERRUPTIBLE_UNTIL_INDEX = 4;
 
       // ③画像アップロード説明のステップでデモ画像を自動セット
       // ④着せ替え内容入力のステップでプロンプトを自動セット（日本時間の現在月を基準）
@@ -318,12 +294,30 @@ export function TutorialTourProvider() {
             ...mergedStep,
             onHighlighted: (element: Element | undefined) => {
               document.dispatchEvent(
-                new CustomEvent("tutorial:set-background-change", {
+                new CustomEvent("tutorial:set-background-mode", {
                   bubbles: true,
-                  detail: { checked: true },
+                  detail: { mode: "ai_auto" },
                 })
               );
-              // Step4: 背景変更オプションを画面中央付近にスクロール
+              // Step4: 背景設定オプションを画面中央付近にスクロール
+              if (element && element !== document.body) {
+                requestAnimationFrame(() => {
+                  element.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                    inline: "nearest",
+                  });
+                });
+              }
+            },
+          };
+        }
+        if (idx === 7) {
+          return {
+            ...mergedStep,
+            onHighlighted: (element: Element | undefined) => {
+              document.body.setAttribute("data-tour-step-first-image", "true");
+              document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
               if (element && element !== document.body) {
                 requestAnimationFrame(() => {
                   element.scrollIntoView({
@@ -409,7 +403,7 @@ export function TutorialTourProvider() {
         onHighlighted: (element) => {
           // Step11以外では投稿/ダウンロード無効化を解除
           const idx = driverRef.current?.getActiveIndex();
-          if (idx !== 9) {
+          if (idx !== 7) {
             document.body.removeAttribute("data-tour-step-first-image");
             document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
           }
@@ -457,6 +451,8 @@ export function TutorialTourProvider() {
       });
       if (res.ok) {
         await markTutorialCompleted();
+        // ペルコイン残高の即時反映
+        router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
         console.error("[Tutorial] Complete failed:", res.status, data);
@@ -483,46 +479,24 @@ export function TutorialTourProvider() {
   // 生成完了で「完了しました！それではみてみましょう！」へ進む
   useEffect(() => {
     const handler = () => {
-      const d = driverRef.current;
-      if (!d || d.isLastStep()) return;
-      const nextIndex = (d.getActiveIndex() ?? 0) + 1;
-      runTransitionFlow(d, nextIndex, () => d.moveNext());
+      // 同イベントの重複発火時は二重遷移を防ぐ
+      if (generationCompleteDelayTimerRef.current) return;
+      generationCompleteDelayTimerRef.current = setTimeout(() => {
+        generationCompleteDelayTimerRef.current = null;
+        const d = driverRef.current;
+        if (!d || d.isLastStep()) return;
+        const nextIndex = (d.getActiveIndex() ?? 0) + 1;
+        runTransitionFlow(d, nextIndex, () => d.moveNext());
+      }, GENERATION_COMPLETE_TRANSITION_DELAY_MS);
     };
     document.addEventListener("tutorial:generation-complete", handler);
-    return () =>
+    return () => {
       document.removeEventListener("tutorial:generation-complete", handler);
-  }, []);
-
-  // 拡大アイコン/カードタップでモーダルを開いたら「素晴らしいです！」へ進む
-  useEffect(() => {
-    const handler = () => {
-      const d = driverRef.current;
-      if (!d || d.isLastStep()) return;
-      const idx = d.getActiveIndex() ?? 0;
-      if (idx !== 9) return; // Step11（拡大してみる）のときのみ
-      setTimeout(() => {
-        const nextIndex = idx + 1;
-        runTransitionFlow(d, nextIndex, () => d.moveNext());
-      }, 150);
+      if (generationCompleteDelayTimerRef.current) {
+        clearTimeout(generationCompleteDelayTimerRef.current);
+        generationCompleteDelayTimerRef.current = null;
+      }
     };
-    document.addEventListener("tutorial:expand-image", handler);
-    return () =>
-      document.removeEventListener("tutorial:expand-image", handler);
-  }, []);
-
-  // モーダルの閉じるボタンクリックで「ツアー完了」へ進む
-  useEffect(() => {
-    const handler = () => {
-      const d = driverRef.current;
-      if (!d || d.isLastStep()) return;
-      const idx = d.getActiveIndex() ?? 0;
-      if (idx !== 11) return; // Step13（閉じる誘導）のときのみ
-      const nextIndex = idx + 1;
-      runTransitionFlow(d, nextIndex, () => d.moveNext());
-    };
-    document.addEventListener("tutorial:modal-closed", handler);
-    return () =>
-      document.removeEventListener("tutorial:modal-closed", handler);
   }, []);
 
   // /coordinate に遷移したらツアー再開

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Image as ImageIcon, Trash2, Loader2 } from "lucide-react";
+import { StockImageListSkeleton } from "./StockImageListSkeleton";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,8 +78,8 @@ export function StockImageList({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center py-12 ${className}`}>
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className={className}>
+        <StockImageListSkeleton showLabel={false} />
       </div>
     );
   }

@@ -3,6 +3,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
+import {
+  buildPrompt as buildSharedPrompt,
+  backgroundModeToBackgroundChange,
+  resolveBackgroundMode,
+} from "../../../shared/generation/prompt-core.ts";
+import type {
+  GenerationType,
+} from "../../../shared/generation/prompt-core.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -15,8 +23,160 @@ const MAX_MESSAGES = 20; // 1回の読み取りで取得する最大メッセー
 const STORAGE_BUCKET = "generated-images";
 const PROCESSING_STALE_TIMEOUT_SECONDS = 360; // processing状態がこの秒数を超えたら異常とみなす
 
+const INPUT_IMAGE_FETCH_MAX_ATTEMPTS = 3;
+const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+
+type InputImageData = {
+  base64: string;
+  mimeType: string;
+};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableFetchStatus(status: number): boolean {
+  return INPUT_IMAGE_FETCH_RETRYABLE_STATUS.has(status);
+}
+
+function parseStorageObjectFromUrl(inputImageUrl: string): { bucket: string; objectPath: string } | null {
+  try {
+    const url = new URL(inputImageUrl);
+    const markers = [
+      "/storage/v1/object/public/",
+      "/storage/v1/object/sign/",
+      "/storage/v1/object/authenticated/",
+    ];
+
+    for (const marker of markers) {
+      const markerIndex = url.pathname.indexOf(marker);
+      if (markerIndex === -1) continue;
+
+      const rest = url.pathname.slice(markerIndex + marker.length);
+      const [bucketRaw, ...pathParts] = rest.split("/");
+      if (!bucketRaw || pathParts.length === 0) return null;
+
+      return {
+        bucket: decodeURIComponent(bucketRaw),
+        objectPath: decodeURIComponent(pathParts.join("/")),
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promise<InputImageData> {
+  let lastStatus: number | null = null;
+  let lastStatusText = "";
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= INPUT_IMAGE_FETCH_MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(inputImageUrl);
+      if (response.ok) {
+        const imageBlob = await response.blob();
+        const mimeType = imageBlob.type || "image/png";
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        return {
+          base64: encodeBase64(new Uint8Array(arrayBuffer)),
+          mimeType,
+        };
+      }
+
+      lastStatus = response.status;
+      lastStatusText = response.statusText || "";
+      if (!isRetryableFetchStatus(response.status)) {
+        break;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < INPUT_IMAGE_FETCH_MAX_ATTEMPTS) {
+      const backoffMs = 200 * attempt;
+      await sleep(backoffMs);
+    }
+  }
+
+  if (lastStatus !== null) {
+    throw new Error(`URL download failed: ${lastStatus} ${lastStatusText}`.trim());
+  }
+  const lastErrorMessage = lastError instanceof Error ? lastError.message : String(lastError ?? "Unknown error");
+  throw new Error(`URL download failed: ${lastErrorMessage}`);
+}
+
+async function downloadInputImageViaStorageFallback(
+  supabase: ReturnType<typeof createClient>,
+  inputImageUrl: string
+): Promise<InputImageData> {
+  const location = parseStorageObjectFromUrl(inputImageUrl);
+  if (!location) {
+    throw new Error("Storage path could not be parsed from input_image_url");
+  }
+
+  const { data, error } = await supabase.storage
+    .from(location.bucket)
+    .download(location.objectPath);
+
+  if (error || !data) {
+    throw new Error(`Storage fallback download failed: ${error?.message ?? "Unknown error"}`);
+  }
+
+  const mimeType = data.type || "image/png";
+  const arrayBuffer = await data.arrayBuffer();
+  return {
+    base64: encodeBase64(new Uint8Array(arrayBuffer)),
+    mimeType,
+  };
+}
+
+async function downloadInputImageViaStockFallback(
+  supabase: ReturnType<typeof createClient>,
+  sourceImageStockId: string
+): Promise<InputImageData> {
+  const { data: stock, error: stockError } = await supabase
+    .from("source_image_stocks")
+    .select("id, storage_path, image_url")
+    .eq("id", sourceImageStockId)
+    .maybeSingle();
+
+  if (stockError) {
+    throw new Error(`Stock lookup failed: ${stockError.message}`);
+  }
+  if (!stock) {
+    throw new Error("Stock image not found");
+  }
+
+  let storagePathError = "";
+  if (stock.storage_path) {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .download(stock.storage_path);
+
+    if (!error && data) {
+      const mimeType = data.type || "image/png";
+      const arrayBuffer = await data.arrayBuffer();
+      return {
+        base64: encodeBase64(new Uint8Array(arrayBuffer)),
+        mimeType,
+      };
+    }
+    storagePathError = error?.message ?? "Unknown error";
+  }
+
+  if (stock.image_url) {
+    return await downloadInputImageViaStorageFallback(supabase, stock.image_url);
+  }
+
+  throw new Error(
+    `Stock fallback failed: no usable source (storage_path_error=${storagePathError || "none"})`
+  );
+}
+
 // 型定義
-type GenerationType = "coordinate" | "specified_coordinate" | "full_body" | "chibi";
 type GeminiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-1k" | "gemini-3-pro-image-2k" | "gemini-3-pro-image-4k";
 type GeminiApiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-preview";
 
@@ -95,6 +255,13 @@ function getPercoinCost(model: string | null): number {
     'gemini-3-pro-image-4k': 100,
   };
   return costs[normalized] ?? 20;
+}
+
+/**
+ * 再試行不可のエラーか判定
+ */
+function isNonRetriableGenerationError(errorMessage: string): boolean {
+  return errorMessage === "No images generated";
 }
 
 /**
@@ -263,8 +430,26 @@ async function refundPercoinsFromGeneration(
       console.log(`[Percoin Refund] Refund already processed for job ${jobId}, skipping`);
       return;
     }
+
+    // 2. 元の消費履歴を確認（存在しない場合は返金しない）
+    const { data: consumptionTx, error: consumptionError } = await supabase
+      .from("credit_transactions")
+      .select("id, metadata")
+      .eq("user_id", userId)
+      .eq("transaction_type", "consumption")
+      .eq("metadata->>job_id", jobId)
+      .maybeSingle();
+
+    if (consumptionError) {
+      throw new Error(`消費履歴の確認に失敗しました: ${consumptionError.message}`);
+    }
+
+    if (!consumptionTx) {
+      console.warn(`[Percoin Refund] Consumption transaction not found for job ${jobId}, skipping refund`);
+      return;
+    }
     
-    // 2. アカウントを取得
+    // 3. アカウントを取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
     // 返金処理では、既にペルコイン減算が行われている前提なので、レコードは存在するはず
     const { data: account, error: accountError } = await supabase
@@ -310,20 +495,12 @@ async function refundPercoinsFromGeneration(
     
     console.log(`[Percoin Refund] Current balance: ${currentBalance}, amount to refund: ${percoinAmount}`);
     
-    // 3. 元の消費内訳を参照して返金先を決定（見つからなければ無償に返す）
-    const { data: consumptionTx } = await supabase
-      .from("credit_transactions")
-      .select("metadata")
-      .eq("user_id", userId)
-      .eq("transaction_type", "consumption")
-      .eq("metadata->>job_id", jobId)
-      .maybeSingle();
-
+    // 4. 元の消費内訳を参照して返金先を決定
     const metadata = (consumptionTx?.metadata as { from_promo?: number; from_paid?: number } | null) ?? null;
     const refundToPromo = Math.max(0, Math.min(percoinAmount, Number(metadata?.from_promo ?? percoinAmount)));
     const refundToPaid = Math.max(0, percoinAmount - refundToPromo);
 
-    // 4. 残高を増加
+    // 5. 残高を増加
     const newPromoBalance = currentPromoBalance + refundToPromo;
     const newPaidBalance = currentPaidBalance + refundToPaid;
     const newBalance = newPromoBalance + newPaidBalance;
@@ -342,7 +519,7 @@ async function refundPercoinsFromGeneration(
     
     console.log(`[Percoin Refund] Balance updated to: ${newBalance}`);
     
-    // 5. 取引履歴を記録（transaction_type: "refund"）
+    // 6. 取引履歴を記録（transaction_type: "refund"）
     // 注意: related_generation_idは外部キー制約でgenerated_images.idを参照しているため、
     // 返金時はNULLでINSERTする（画像生成が失敗したため、generated_images.idは存在しない）
     const { error: transactionError } = await supabase
@@ -362,6 +539,10 @@ async function refundPercoinsFromGeneration(
       });
     
     if (transactionError) {
+      if (transactionError.code === "23505") {
+        console.log(`[Percoin Refund] Duplicate refund blocked by unique index for job ${jobId}`);
+        return;
+      }
       // 取引履歴の保存に失敗しても、残高は既に更新されているため、ログに記録のみ
       console.error("[Percoin Refund] Failed to record credit transaction:", transactionError);
     } else {
@@ -372,117 +553,6 @@ async function refundPercoinsFromGeneration(
     console.error("[Percoin Refund] Error refunding percoins:", error);
     throw error;
   }
-}
-
-/**
- * 背景変更の指示文を生成
- */
-function getBackgroundDirective(shouldChangeBackground: boolean): string {
-  return shouldChangeBackground
-    ? "Adapt the background to match the new outfit's mood, setting, and styling, ensuring character lighting remains coherent."
-    : "Keep the original background exactly as in the source image, editing only the outfit without altering the environment or lighting context.";
-}
-
-/**
- * プロンプトインジェクション対策: ユーザー入力をサニタイズ
- * - 制御文字の除去
- * - 複数の連続改行を統一（最大2つの連続改行まで許可）
- * - 禁止語句パターンの検出（基本的なインジェクション試行を防ぐ）
- */
-function sanitizeUserInput(input: string): string {
-  // トリム
-  let sanitized = input.trim();
-  
-  // 制御文字を除去（タブ、改行以外の制御文字）
-  // タブはスペースに変換、改行は後で処理
-  sanitized = sanitized.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-  
-  // 複数の連続改行を最大2つまでに制限（3つ以上は2つに統一）
-  sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
-  
-  // 禁止語句パターンの検出（基本的なプロンプトインジェクション試行）
-  // より多くのインジェクションパターンを検出
-  const injectionPatterns = [
-    /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /forget\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /override\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /disregard\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|commands?)/i,
-    /system\s*:?\s*(prompt|instruction|command)/i,
-    /<\|(system|user|assistant)\|>/i,
-    // 追加パターン
-    /you\s+are\s+(now|a|an)\s+/i,
-    /act\s+as\s+(if\s+)?(you\s+are\s+)?/i,
-    /pretend\s+(to\s+be|that\s+you\s+are)/i,
-    /roleplay\s+as/i,
-    /simulate\s+(being|that)/i,
-    /\[(system|user|assistant|instruction|prompt)\]/i,
-    /\{system\}/i,
-    /\{user\}/i,
-    /\{assistant\}/i,
-    /#\s*(system|user|assistant|instruction|prompt)/i,
-    /\/\*\s*(system|user|assistant|instruction|prompt)/i,
-  ];
-  
-  // 禁止パターンが検出された場合はエラーをthrow（汎用的なエラーメッセージ）
-  for (const pattern of injectionPatterns) {
-    if (pattern.test(sanitized)) {
-      throw new Error("無効な入力です。入力内容を確認してください。");
-    }
-  }
-  
-  // 再度トリム（処理後の余分な空白を削除）
-  sanitized = sanitized.trim();
-  
-  return sanitized;
-}
-
-/**
- * プロンプトを構築（プロンプトインジェクション対策済み）
- */
-function buildPrompt(
-  generationType: GenerationType,
-  outfitDescription: string,
-  shouldChangeBackground: boolean
-): string {
-  // ユーザー入力をサニタイズ
-  const sanitizedDescription = sanitizeUserInput(outfitDescription);
-  
-  // サニタイズ後の入力が空の場合は、エラーとする
-  if (!sanitizedDescription || sanitizedDescription.length === 0) {
-    throw new Error("無効な入力です。入力内容を確認してください。");
-  }
-  
-  const backgroundDirective = getBackgroundDirective(shouldChangeBackground);
-
-  // coordinateタイプのみ実装（他のタイプは後で拡張）
-  if (generationType === "coordinate") {
-    if (backgroundDirective.includes("Keep the original background")) {
-      return `Edit **only the outfit** of the person in the image.
-
-**New Outfit:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
-    } else {
-      return `Edit **only the outfit** of the person in the image, and **generate a new background that complements the new look**.
-
-**New Outfit:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Make sure the updated background still feels cohesive with the character and shares the same illustration style as the original.`;
-    }
-  }
-
-  // デフォルト（coordinateと同じ）
-  return `Edit **only the outfit** of the person in the image.
-
-**New Outfit:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
 }
 
 /**
@@ -528,7 +598,7 @@ function extractBase64FromDataUrl(dataUrl: string): { base64: string; mimeType: 
   };
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async () => {
   try {
     // 環境変数の取得
     // SUPABASE_URLは自動的に利用可能（Supabaseが提供）
@@ -707,18 +777,23 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          // processingが長時間継続しているジョブは失敗として確定
+          // processingが長時間継続しているジョブは、通常の失敗判定フローに合流
+          const newAttempts = (job.attempts || 0) + 1;
+          const shouldMarkAsFailed = newAttempts >= 3;
           const staleErrorMessage = "処理がタイムアウトしました。入力画像サイズを下げて再試行してください。";
-          const { error: staleUpdateError } = await supabase
+          const { data: staleUpdatedJob, error: staleUpdateError } = await supabase
             .from("image_jobs")
             .update({
-              status: "failed",
+              status: shouldMarkAsFailed ? "failed" : "queued",
               error_message: staleErrorMessage,
-              attempts: Math.max((job.attempts || 0) + 1, 3),
-              completed_at: new Date().toISOString(),
+              attempts: newAttempts,
+              started_at: shouldMarkAsFailed ? job.started_at : null,
+              completed_at: shouldMarkAsFailed ? new Date().toISOString() : null,
             })
             .eq("id", jobId)
-            .eq("status", "processing");
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
 
           if (staleUpdateError) {
             console.error("Failed to mark stale processing job as failed:", staleUpdateError);
@@ -726,7 +801,19 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          // 消費履歴が存在する場合のみ返金（未減算ジョブの過剰返金を防ぐ）
+          if (!staleUpdatedJob) {
+            console.log(`[Job Processing] Stale update skipped because job state changed: ${jobId}`);
+            skippedCount++;
+            continue;
+          }
+
+          if (!shouldMarkAsFailed) {
+            // 再試行可能なため、返金せずに次回ワーカー実行へ委譲
+            skippedCount++;
+            continue;
+          }
+
+          // 最終失敗確定時のみ返金（未減算ジョブの過剰返金も防ぐ）
           try {
             const { data: consumptionTx } = await supabase
               .from("credit_transactions")
@@ -744,10 +831,10 @@ Deno.serve(async (req: Request) => {
                 jobId,
                 percoinCost
               );
-              console.log(`[Job Processing] Refunded ${percoinCost} percoins for stale job ${jobId}`);
+              console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
             }
           } catch (refundError) {
-            console.error("[Job Processing] Failed to refund stale job:", refundError);
+            console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
           }
 
           // 失敗確定したためメッセージを削除
@@ -760,18 +847,26 @@ Deno.serve(async (req: Request) => {
         }
 
         // ステータスを'processing'に更新（排他制御）
-        const { error: updateError } = await supabase
+        const { data: processingJob, error: updateError } = await supabase
           .from("image_jobs")
           .update({
             status: "processing",
             started_at: new Date().toISOString(),
           })
           .eq("id", jobId)
-          .in("status", ["queued", "failed"]); // 既にprocessingの場合は更新しない
+          .in("status", ["queued", "failed"]) // 既にprocessingの場合は更新しない
+          .select("id")
+          .maybeSingle();
 
         if (updateError) {
           console.error("Failed to update job status:", updateError);
           // 更新に失敗した場合は、次のメッセージを処理（可視性タイムアウト後に再処理される）
+          continue;
+        }
+
+        if (!processingJob) {
+          // 既に他ワーカーが状態を変更済み
+          skippedCount++;
           continue;
         }
 
@@ -787,14 +882,27 @@ Deno.serve(async (req: Request) => {
         } catch (deductError) {
           // ペルコイン減算失敗時はジョブを失敗としてマーク
           console.error("[Job Processing] Failed to deduct percoins:", deductError);
-          await supabase
+          const { data: deductionFailedJob, error: deductionFailUpdateError } = await supabase
             .from("image_jobs")
             .update({
               status: "failed",
               error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
               completed_at: new Date().toISOString(),
             })
-            .eq("id", jobId);
+            .eq("id", jobId)
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
+
+          if (deductionFailUpdateError) {
+            console.error("Failed to update job status after deduction failure:", deductionFailUpdateError);
+            continue;
+          }
+
+          if (!deductionFailedJob) {
+            skippedCount++;
+            continue;
+          }
           
           // メッセージを削除
           await supabase.rpc("pgmq_delete", {
@@ -822,47 +930,101 @@ Deno.serve(async (req: Request) => {
 
           // 元画像がある場合は追加
           if (job.input_image_url) {
-            let imageBase64: string | null = null;
-            let imageMimeType: string = "image/png";
+            let inputImageData: InputImageData;
 
             // Data URL形式かStorage URLかを判定
             if (job.input_image_url.startsWith("data:")) {
               // Data URL形式の場合
               const imageData = extractBase64FromDataUrl(job.input_image_url);
-              if (imageData) {
-                imageBase64 = imageData.base64;
-                imageMimeType = imageData.mimeType;
+              if (!imageData) {
+                throw new Error("Invalid input image data URL");
               }
+              inputImageData = {
+                base64: imageData.base64,
+                mimeType: imageData.mimeType,
+              };
             } else {
-              // Storage URLの場合、画像をダウンロードしてBase64に変換
+              // URL取得が失敗しても、同じ画像をstorage APIから取得して再利用する
               try {
-                const imageResponse = await fetch(job.input_image_url);
-                if (imageResponse.ok) {
-                  const imageBlob = await imageResponse.blob();
-                  imageMimeType = imageBlob.type || "image/png";
-                  const arrayBuffer = await imageBlob.arrayBuffer();
-                  imageBase64 = encodeBase64(new Uint8Array(arrayBuffer));
-                } else {
-                  console.error("Failed to download input image:", imageResponse.status, imageResponse.statusText);
+                inputImageData = await downloadInputImageFromUrlWithRetry(job.input_image_url);
+              } catch (urlError) {
+                const urlErrorMessage = urlError instanceof Error
+                  ? urlError.message
+                  : String(urlError);
+                console.warn("[Input Image] URL download failed", {
+                  jobId,
+                  inputImageUrl: job.input_image_url,
+                  sourceImageStockId: job.source_image_stock_id,
+                  error: urlErrorMessage,
+                });
+
+                try {
+                  inputImageData = await downloadInputImageViaStorageFallback(
+                    supabase,
+                    job.input_image_url
+                  );
+                  console.log("[Input Image] URL-derived storage fallback succeeded", {
+                    jobId,
+                    inputImageUrl: job.input_image_url,
+                  });
+                } catch (fallbackError) {
+                  const fallbackErrorMessage = fallbackError instanceof Error
+                    ? fallbackError.message
+                    : String(fallbackError);
+                  console.warn("[Input Image] URL-derived storage fallback failed", {
+                    jobId,
+                    inputImageUrl: job.input_image_url,
+                    sourceImageStockId: job.source_image_stock_id,
+                    error: fallbackErrorMessage,
+                  });
+
+                  if (job.source_image_stock_id) {
+                    try {
+                      inputImageData = await downloadInputImageViaStockFallback(
+                        supabase,
+                        job.source_image_stock_id
+                      );
+                      console.log("[Input Image] Stock fallback download succeeded", {
+                        jobId,
+                        sourceImageStockId: job.source_image_stock_id,
+                      });
+                    } catch (stockFallbackError) {
+                      const stockFallbackErrorMessage = stockFallbackError instanceof Error
+                        ? stockFallbackError.message
+                        : String(stockFallbackError);
+                      throw new Error(
+                        `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: ${stockFallbackErrorMessage}`
+                      );
+                    }
+                  } else {
+                    throw new Error(
+                      `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: skipped(no source_image_stock_id)`
+                    );
+                  }
                 }
-              } catch (error) {
-                console.error("Error downloading input image:", error);
               }
             }
 
-            if (imageBase64) {
-              parts.push({
-                inline_data: {
-                  mime_type: imageMimeType,
-                  data: imageBase64,
-                },
-              });
-            }
+            parts.push({
+              inline_data: {
+                mime_type: inputImageData.mimeType,
+                data: inputImageData.base64,
+              },
+            });
           }
+
+          const backgroundMode = resolveBackgroundMode(
+            job.background_mode,
+            job.background_change
+          );
 
           // プロンプトを構築
           const fullPrompt = job.input_image_url
-            ? buildPrompt(job.generation_type as GenerationType, job.prompt_text, job.background_change)
+            ? buildSharedPrompt({
+                generationType: job.generation_type as GenerationType,
+                outfitDescription: job.prompt_text,
+                backgroundMode,
+              })
             : job.prompt_text;
 
           parts.push({
@@ -904,36 +1066,52 @@ Deno.serve(async (req: Request) => {
           // APIエンドポイントURLを構築
           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
 
-          // Gemini APIを呼び出し
-          const geminiResponse = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": geminiApiKey,
-            },
-            body: JSON.stringify(requestBody),
-          });
+          const maxAttempts = 2; // 初回 + 1回リトライ
+          let generatedImage: { mimeType: string; data: string } | null = null;
 
-          if (!geminiResponse.ok) {
-            const errorData = await geminiResponse.json();
-            throw new Error(errorData.error?.message || `Gemini API error: ${geminiResponse.status}`);
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            // Gemini APIを呼び出し
+            const geminiResponse = await fetch(apiUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": geminiApiKey,
+              },
+              body: JSON.stringify(requestBody),
+            });
+
+            if (!geminiResponse.ok) {
+              const errorData = await geminiResponse.json();
+              throw new Error(errorData.error?.message || `Gemini API error: ${geminiResponse.status}`);
+            }
+
+            const geminiData: GeminiResponse = await geminiResponse.json();
+
+            if (geminiData.error) {
+              throw new Error(geminiData.error.message || "Gemini API error");
+            }
+
+            // 画像データを抽出
+            const images = extractImagesFromGeminiResponse(geminiData);
+
+            if (images.length > 0) {
+              generatedImage = images[0];
+              break;
+            }
+
+            // 画像が返ってこなかった場合、リトライ可能なら再試行
+            if (attempt < maxAttempts) {
+              console.log(`[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`);
+            } else {
+              throw new Error("No images generated");
+            }
           }
 
-          const geminiData: GeminiResponse = await geminiResponse.json();
-
-          if (geminiData.error) {
-            throw new Error(geminiData.error.message || "Gemini API error");
-          }
-
-          // 画像データを抽出
-          const images = extractImagesFromGeminiResponse(geminiData);
-
-          if (images.length === 0) {
+          if (!generatedImage) {
             throw new Error("No images generated");
           }
 
           // 最初の画像を使用（複数生成の場合は1枚目を使用）
-          const generatedImage = images[0];
 
           // ===== フェーズ4-2: Supabase Storageへの画像保存 =====
           // Base64をUint8Arrayに変換
@@ -996,7 +1174,8 @@ Deno.serve(async (req: Request) => {
               image_url: publicUrl,
               storage_path: uploadData.path,
               prompt: job.prompt_text,
-              background_change: job.background_change,
+              background_mode: backgroundMode,
+              background_change: backgroundModeToBackgroundChange(backgroundMode),
               is_posted: false,
               generation_type: job.generation_type,
               model: dbModel,
@@ -1012,18 +1191,28 @@ Deno.serve(async (req: Request) => {
 
           // ===== フェーズ4-4: 成功時の処理 =====
           // image_jobsテーブルを更新（成功時）
-          const { error: successUpdateError } = await supabase
+          const { data: succeededJob, error: successUpdateError } = await supabase
             .from("image_jobs")
             .update({
               status: "succeeded",
               result_image_url: publicUrl,
+              error_message: null,
               completed_at: new Date().toISOString(),
             })
-            .eq("id", jobId);
+            .eq("id", jobId)
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
 
           if (successUpdateError) {
             console.error("Failed to update job status to succeeded:", successUpdateError);
             throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
+          }
+
+          if (!succeededJob) {
+            console.warn(`[Job Success] Skipped succeeded update because status changed: ${jobId}`);
+            skippedCount++;
+            continue;
           }
 
           // credit_transactionsのrelated_generation_idを更新
@@ -1060,25 +1249,10 @@ Deno.serve(async (req: Request) => {
           console.error("[Job Processing] Generation error:", error);
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-          // 既にペルコインを減算している場合は返金
-          try {
-            const percoinCost = getPercoinCost(job.model);
-            await refundPercoinsFromGeneration(
-              supabase,
-              job.user_id,
-              jobId,
-              percoinCost
-            );
-            console.log(`[Job Processing] Refunded ${percoinCost} percoins for failed job ${jobId}`);
-          } catch (refundError) {
-            // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
-            console.error("[Job Processing] Failed to refund percoins after generation failure:", refundError);
-          }
-
           // 現在のジョブのattemptsを取得（更新前に取得する必要がある）
           const { data: currentJob, error: jobFetchError } = await supabase
             .from("image_jobs")
-            .select("attempts")
+            .select("attempts, started_at")
             .eq("id", jobId)
             .single();
 
@@ -1089,24 +1263,50 @@ Deno.serve(async (req: Request) => {
           }
 
           const newAttempts = (currentJob?.attempts || 0) + 1;
-          const isNonRetriable = errorMessage === "No images generated";
+          const isNonRetriable = isNonRetriableGenerationError(errorMessage);
           const shouldMarkAsFailed = isNonRetriable || newAttempts >= 3;
 
           // image_jobsテーブルを更新（失敗時）
-          const { error: failUpdateError } = await supabase
+          const { data: failUpdatedJob, error: failUpdateError } = await supabase
             .from("image_jobs")
             .update({
               status: shouldMarkAsFailed ? "failed" : "queued",
               error_message: errorMessage,
               attempts: newAttempts,
+              started_at: shouldMarkAsFailed ? currentJob?.started_at ?? job.started_at : null,
               completed_at: shouldMarkAsFailed ? new Date().toISOString() : null,
             })
-            .eq("id", jobId);
+            .eq("id", jobId)
+            .eq("status", "processing")
+            .select("id")
+            .maybeSingle();
 
           if (failUpdateError) {
             console.error("Failed to update job status to failed:", failUpdateError);
             // 更新に失敗した場合、メッセージは削除しない（可視性タイムアウト後に再処理される）
             continue;
+          }
+
+          if (!failUpdatedJob) {
+            skippedCount++;
+            continue;
+          }
+
+          // 最終失敗が確定した場合のみ返金
+          if (shouldMarkAsFailed) {
+            try {
+              const percoinCost = getPercoinCost(job.model);
+              await refundPercoinsFromGeneration(
+                supabase,
+                job.user_id,
+                jobId,
+                percoinCost
+              );
+              console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
+            } catch (refundError) {
+              // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
+              console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
+            }
           }
 
           // メッセージの削除/アーカイブ（即時失敗またはattempts >= 3の場合）

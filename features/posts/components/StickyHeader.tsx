@@ -4,21 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, User as UserIcon, LogOut } from "lucide-react";
+import { ArrowLeft, User, User as UserIcon } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UserMenuItems } from "@/features/auth/components/UserMenuItems";
 import {
   getCurrentUser,
   signOut,
   onAuthStateChange,
 } from "@/features/auth/lib/auth-client";
-import { APP_NAME } from "@/constants";
+import { APP_NAME, ROUTES } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
 import { SearchBar } from "@/features/posts/components/SearchBar";
 
@@ -42,11 +42,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // トップレベルのページ
   const topLevelPaths = [
-    "/",
-    "/coordinate",
+    ROUTES.HOME,
+    ROUTES.COORDINATE,
     "/challenge",
-    "/my-page",
-    "/my-page/credits",
+    ROUTES.MY_PAGE,
+    ROUTES.MY_PAGE_CREDITS,
     "/notifications",
     "/login",
     "/signup",
@@ -64,12 +64,17 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // 遷移元を確認して戻る先を決定
   const fromParam = searchParams.get("from");
+  const isMyPageSubPath = pathname.startsWith("/my-page/") && pathname !== "/my-page";
   const backUrl =
     fromParam === "my-page"
-      ? "/my-page"
+      ? ROUTES.MY_PAGE
       : fromParam === "notifications"
         ? "/notifications"
-        : "/";
+        : fromParam === "coordinate"
+          ? ROUTES.COORDINATE
+          : isMyPageSubPath
+            ? ROUTES.MY_PAGE
+            : ROUTES.HOME;
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -209,7 +214,9 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   // ヘッダー右側（ユーザーアイコン）の共通コンポーネント
   const HeaderRight = () => (
     <div className="flex items-center gap-2 flex-shrink-0">
-      {!isLoading && (
+      {isLoading ? (
+        <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
+      ) : (
         <>
           {currentUser ? (
             <DropdownMenu>
@@ -230,20 +237,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href="/my-page" className="cursor-pointer">
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    マイページ
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  className="text-destructive cursor-pointer"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  ログアウト
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-44">
+                <UserMenuItems includeMyPage onSignOut={handleSignOut} />
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -283,11 +278,14 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     }
   };
 
+  // モバイル版: マイページではヘッダーを非表示（ハンバーガーメニューでナビゲーション）
+  const isMyPage = pathname === "/my-page";
+  const headerClassName = isMyPage
+    ? "sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm hidden lg:flex"
+    : "sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm";
+
   return (
-    <header
-      ref={headerRef}
-      className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm"
-    >
+    <header ref={headerRef} className={headerClassName}>
       {/* モバイル版の検索ページ: 簡素化されたヘッダー（検索バーのみ） */}
       {isSearchPage && (
         <div className="w-full px-4 py-3 flex items-center justify-center md:hidden">

@@ -26,6 +26,7 @@ import {
   DAILY_POST_BONUS_AMOUNT,
   STREAK_BONUS_SCHEDULE,
 } from "@/constants";
+import type { ChallengeStatus } from "@/features/challenges/lib/api";
 import {
   checkInStreakBonus,
   getChallengeStatus,
@@ -56,28 +57,54 @@ function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
   return formatJstDate(lastAt) === formatJstDate(now);
 }
 
-export function ChallengePageContent() {
+interface ChallengePageContentProps {
+  initialChallengeStatus?: ChallengeStatus | null;
+  initialTutorialCompleted?: boolean | null;
+}
+
+export function ChallengePageContent({
+  initialChallengeStatus,
+  initialTutorialCompleted,
+}: ChallengePageContentProps = {}) {
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const maxStreakBonus = Math.max(...STREAK_BONUS_SCHEDULE);
   const totalStreakBonus = STREAK_BONUS_SCHEDULE.reduce((a, b) => a + b, 0);
-  const [streakDays, setStreakDays] = useState<number>(0);
-  const [lastStreakLoginAt, setLastStreakLoginAt] = useState<string | null>(null);
-  const [isCheckedInToday, setIsCheckedInToday] = useState<boolean>(false);
+  const [streakDays, setStreakDays] = useState<number>(
+    initialChallengeStatus?.streakDays ?? 0
+  );
+  const [lastStreakLoginAt, setLastStreakLoginAt] = useState<string | null>(
+    initialChallengeStatus?.lastStreakLoginAt ?? null
+  );
+  const [isCheckedInToday, setIsCheckedInToday] = useState<boolean>(
+    initialChallengeStatus
+      ? isSameJstDate(initialChallengeStatus.lastStreakLoginAt)
+      : false
+  );
   const [isCheckingIn, setIsCheckingIn] = useState<boolean>(false);
-  const [isDailyBonusReceived, setIsDailyBonusReceived] = useState<boolean>(false);
+  const [isDailyBonusReceived, setIsDailyBonusReceived] = useState<boolean>(
+    initialChallengeStatus?.lastDailyPostBonusAt
+      ? isSameJstDate(initialChallengeStatus.lastDailyPostBonusAt)
+      : false
+  );
   const [timeToReset, setTimeToReset] = useState<string>("");
-  const [tutorialCompleted, setTutorialCompleted] = useState<boolean | null>(null);
+  const [tutorialCompleted, setTutorialCompleted] = useState<boolean | null>(
+    initialTutorialCompleted ?? null
+  );
 
   useEffect(() => {
+    if (typeof initialTutorialCompleted === "boolean") return;
+
     const check = async () => {
       const user = await getCurrentUser();
       setTutorialCompleted(user?.user_metadata?.tutorial_completed === true);
     };
     void check();
-  }, []);
+  }, [initialTutorialCompleted]);
 
+  // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、
+  // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、常に最新データを取得
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -86,7 +113,6 @@ export function ChallengePageContent() {
         setLastStreakLoginAt(status.lastStreakLoginAt);
         setIsCheckedInToday(isSameJstDate(status.lastStreakLoginAt));
 
-        // デイリーボーナス取得状況の判定（JST基準）
         if (status.lastDailyPostBonusAt) {
           setIsDailyBonusReceived(isSameJstDate(status.lastDailyPostBonusAt));
         } else {
@@ -161,6 +187,8 @@ export function ChallengePageContent() {
         });
         // チェックイン成功時に未読バッジを即時更新
         await refreshUnreadCount();
+        // ペルコイン残高の即時反映
+        router.refresh();
       }
     } catch (error) {
       console.error("Failed to check in streak bonus:", error);

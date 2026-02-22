@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { findPercoinPackage } from "@/features/credits/percoin-packages";
 import { recordMockPercoinPurchase } from "@/features/credits/lib/percoin-service";
@@ -37,6 +38,10 @@ export async function POST(request: NextRequest) {
       percoinPackage,
       supabaseClient: supabase,
     });
+
+    revalidateTag(`my-page-${user.id}`, "max");
+    revalidateTag(`my-page-credits-${user.id}`, "max");
+    revalidateTag(`coordinate-${user.id}`, "max");
 
     return NextResponse.json({
       success: true,

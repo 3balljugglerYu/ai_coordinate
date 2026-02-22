@@ -11,7 +11,7 @@ export const TOUR_STEPS: DriveStep[] = [
     element: '[data-tour="coordinate-nav"]',
     popover: {
       title: "コーディネート画面へ！",
-      description: "ここをタップしてしてください。",
+      description: "ここをタップしてください。",
       side: "top",
       align: "center",
     },
@@ -38,37 +38,15 @@ export const TOUR_STEPS: DriveStep[] = [
       align: "start",
     },
   },
-  // ⑤ 背景変更オプションの説明（自動でチェックを入れる。「次へ」で次へ進む）
+  // ⑤ 背景設定オプションの説明（自動で「AIに依頼」を選択）
   {
     element: '[data-tour="tour-background-change"]',
     popover: {
-      title: "背景の変更",
+      title: "背景設定",
       description:
-        "チェックを入れると、コーディネートに合わせて背景が生成されます！<br>今回はチェックを入れて進めてみましょう！",
+        "ここでは背景の扱いを選べます。<br>今回は「AIに依頼」を選択して進めてみましょう！",
       side: "right",
       align: "center",
-    },
-  },
-  // ⑥ 生成モデルの説明
-  {
-    element: '[data-tour="tour-model-select"]',
-    popover: {
-      title: "生成モデルの選択",
-      description:
-        "生成の精度や解像度に応じてモデルを選択できます。<br>今回はデフォルト設定のまま進めます。",
-      side: "bottom",
-      align: "start",
-    },
-  },
-  // ⑦ 生成枚数の説明
-  {
-    element: '[data-tour="tour-count-select"]',
-    popover: {
-      title: "生成枚数の設定",
-      description:
-        "1回の生成で作成する枚数を選択できます。今回は1枚で進めます。",
-      side: "bottom",
-      align: "start",
     },
   },
   // ⑧ 生成開始誘導（Next非表示: コーデスタートボタンを押すまで進めない）
@@ -83,7 +61,7 @@ export const TOUR_STEPS: DriveStep[] = [
       showButtons: ["previous"],
     },
   },
-  // ⑨ 生成待機案内（「生成中...」表示欄をハイライト、ボタン非表示）
+  // ⑨ 生成待機案内（「生成中...」表示欄をハイライト。ボタン非表示）
   {
     element: '[data-tour="tour-generating"]',
     popover: {
@@ -95,46 +73,26 @@ export const TOUR_STEPS: DriveStep[] = [
       showButtons: [],
     },
   },
-  // ⑩ 生成完了案内（生成完了時に自動表示）
+  // ⑩ 生成完了案内（生成完了時に自動表示。タイトルのみ）
   {
     popover: {
       title: "完了しました！",
-      description: "お待たせしました！それでは見てみましょう！",
+      description: "",
       side: "over",
-      align: "center",
-    },
-  },
-  // ⑪ 拡大してみる（description/showButtonsはTutorialTourProviderでデバイス別に上書き）
-  {
-    element: '[data-tour="tour-first-image"]',
-    popover: {
-      title: "拡大してみる！",
-      description: "{{STEP11_DESCRIPTION}}",
-      side: "top",
-      align: "center",
-      showButtons: [],
-    },
-  },
-  // ⑫ モーダル内：素晴らしいです！（拡大後に表示、次へのみ。画像の下に表示して画像を隠さない）
-  {
-    element: '[data-tour="tour-modal-content"]',
-    popover: {
-      title: "素晴らしいです！",
-      description: "素敵な着せ替えができましたね！",
-      side: "bottom",
       align: "center",
       showButtons: ["next"],
     },
   },
-  // ⑬ モーダル内：閉じるボタンをハイライト
+  // ⑪ 着せ替え完了（クリック不可。「次へ」で進む）
   {
-    element: '[data-tour="tour-modal-close"]',
+    element: '[data-tour="tour-first-image"]',
     popover: {
-      title: "拡大を終了",
-      description: "右側の閉じるボタンをクリックして、閉じてください。",
-      side: "left",
+      title: "着せ替え完了！",
+      description:
+        "投稿やダウンロードが可能です！ぜひ試してみてください！",
+      side: "top",
       align: "center",
-      showButtons: [],
+      showButtons: ["next"],
     },
   },
   // ⑭ ツアー完了

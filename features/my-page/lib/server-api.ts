@@ -1,4 +1,5 @@
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
@@ -37,9 +38,13 @@ export interface UserStats {
  * ユーザープロフィール情報を取得（サーバーサイド）
  * profilesテーブルから取得
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わず、email は返さない
  */
-export const getUserProfileServer = cache(async (userId: string): Promise<UserProfile> => {
-  const supabase = await createClient();
+export const getUserProfileServer = cache(async (
+  userId: string,
+  supabaseOverride?: SupabaseClient
+): Promise<UserProfile> => {
+  const supabase = supabaseOverride ?? (await createClient());
 
   // profilesテーブルからプロフィール情報を取得
   const { data: profile, error } = await supabase
@@ -55,6 +60,16 @@ export const getUserProfileServer = cache(async (userId: string): Promise<UserPr
       nickname: null,
       bio: null,
       avatar_url: null,
+    };
+  }
+
+  // supabaseOverride 指定時（他ユーザー閲覧キャッシュ）は email を返さない
+  if (supabaseOverride) {
+    return {
+      id: profile.id,
+      nickname: profile.nickname,
+      bio: profile.bio,
+      avatar_url: profile.avatar_url,
     };
   }
 
@@ -74,9 +89,15 @@ export const getUserProfileServer = cache(async (userId: string): Promise<UserPr
 /**
  * ユーザーの統計情報を取得（サーバーサイド）
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わず、generatedCount=0, generatedCountPublic=false
+ * @param options.isOwnProfile - supabaseOverride 指定時のみ有効。自分のプロフィールの場合は true（マイページ用）
  */
-export const getUserStatsServer = cache(async (userId: string): Promise<UserStats> => {
-  const supabase = await createClient();
+export const getUserStatsServer = cache(async (
+  userId: string,
+  supabaseOverride?: SupabaseClient,
+  options?: { isOwnProfile?: boolean }
+): Promise<UserStats> => {
+  const supabase = supabaseOverride ?? (await createClient());
 
   // 投稿数の集計（RLS: 他ユーザーは is_posted=true のみ閲覧可能）
   const { count: postedCount } = await supabase
@@ -89,8 +110,9 @@ export const getUserStatsServer = cache(async (userId: string): Promise<UserStat
   // 自分のプロフィール: 全件カウント可能（RLS: user_id = auth.uid()）
   // 他ユーザー: RLS で is_posted=true のみ見えるため、生成数は投稿数と同じになる
   // → 自分の場合のみ全件取得、他人の場合は投稿数で代用（生成数は非公開）
-  const { data: { user } } = await supabase.auth.getUser();
-  const isOwnProfile = user?.id === userId;
+  const isOwnProfile = supabaseOverride
+    ? (options?.isOwnProfile === true)
+    : (await supabase.auth.getUser()).data.user?.id === userId;
 
   let generatedCount: number;
   if (isOwnProfile) {
@@ -165,13 +187,15 @@ export const getUserStatsServer = cache(async (userId: string): Promise<UserStat
 /**
  * ユーザーの投稿済み画像一覧を取得（サーバーサイド）
  * 他ユーザーのプロフィール画面用（投稿済みのみ）
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 export async function getUserPostsServer(
   userId: string,
   limit = 20,
-  offset = 0
+  offset = 0,
+  supabaseOverride?: SupabaseClient
 ): Promise<GeneratedImageRecord[]> {
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
 
   const { data, error } = await supabase
     .from("generated_images")
@@ -198,10 +222,11 @@ export const getMyImagesServer = cache(async (
   userId: string,
   filter: "all" | "posted" | "unposted" = "all",
   limit = 50,
-  offset = 0
+  offset = 0,
+  supabaseOverride?: SupabaseClient
 ): Promise<GeneratedImageRecord[]> => {
   try {
-    const supabase = await createClient();
+    const supabase = supabaseOverride ?? (await createClient());
 
     let query = supabase
       .from("generated_images")
@@ -241,11 +266,40 @@ export const getMyImagesServer = cache(async (
 });
 
 /**
+ * 画像詳細を取得（サーバーサイド）
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
+ */
+export async function getImageDetailServer(
+  userId: string,
+  imageId: string,
+  supabaseOverride?: SupabaseClient
+): Promise<GeneratedImageRecord | null> {
+  const supabase = supabaseOverride ?? (await createClient());
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("*")
+    .eq("id", imageId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+/**
  * ユーザーのペルコイン残高を取得（サーバーサイド）
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
-export const getPercoinBalanceServer = cache(async (userId: string): Promise<number> => {
-  const supabase = await createClient();
+export const getPercoinBalanceServer = cache(async (
+  userId: string,
+  supabaseOverride?: SupabaseClient
+): Promise<number> => {
+  const supabase = supabaseOverride ?? (await createClient());
 
   const { data, error } = await supabase
     .from("user_credits")
@@ -264,12 +318,14 @@ export const getPercoinBalanceServer = cache(async (userId: string): Promise<num
 /**
  * ペルコイン取引履歴を取得（サーバーサイド）
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
+ * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 export const getPercoinTransactionsServer = cache(async (
   userId: string,
-  limit = 10
+  limit = 10,
+  supabaseOverride?: SupabaseClient
 ): Promise<PercoinTransaction[]> => {
-  const supabase = await createClient();
+  const supabase = supabaseOverride ?? (await createClient());
 
   const { data, error } = await supabase
     .from("credit_transactions")

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { ChallengePageContent } from "@/features/challenges/components/ChallengePageContent";
+import { CachedChallengePageContent } from "@/features/challenges/components/CachedChallengePageContent";
 import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -9,7 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ChallengePage() {
-  await requireAuth();
+  const user = await requireAuth();
+  const tutorialCompleted = user.user_metadata?.tutorial_completed === true;
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -26,7 +27,10 @@ export default async function ChallengePage() {
           </div>
 
           <Suspense fallback={<div className="h-screen animate-pulse bg-gray-100 rounded-lg" />}>
-            <ChallengePageContent />
+            <CachedChallengePageContent
+              userId={user.id}
+              tutorialCompleted={tutorialCompleted}
+            />
           </Suspense>
         </div>
       </div>

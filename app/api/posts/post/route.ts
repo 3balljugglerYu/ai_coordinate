@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag, revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
 import { createClient } from "@/lib/supabase/server";
@@ -66,6 +67,19 @@ export async function POST(request: NextRequest) {
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
     const bonus_granted = await grantDailyPostBonus(user.id, result.id!);
+
+    revalidateTag("home-posts", "max");
+    revalidateTag("home-posts-week", "max");
+    revalidateTag("search-posts", "max");
+    revalidateTag(`post-detail-${id}`, "max");
+    revalidateTag(`user-profile-${user.id}`, "max");
+    revalidateTag(`my-page-${user.id}`, "max");
+    revalidateTag(`my-page-credits-${user.id}`, "max");
+    revalidateTag(`coordinate-${user.id}`, "max");
+    revalidateTag(`challenge-${user.id}`, "max");
+    revalidateTag(`my-page-image-${user.id}-${id}`, "max");
+    revalidatePath("/");
+    revalidatePath(`/posts/${id}`);
 
     return NextResponse.json({
       id: result.id!,

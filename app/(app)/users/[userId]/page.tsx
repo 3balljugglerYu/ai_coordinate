@@ -7,8 +7,10 @@ import {
   getUserPostsServer,
 } from "@/features/my-page/lib/server-api";
 import { UserProfilePage } from "@/features/my-page/components/UserProfilePage";
+import { CachedUserProfileData } from "@/features/my-page/components/CachedUserProfileData";
 import { UserProfilePageSkeleton } from "@/features/my-page/components/UserProfilePageSkeleton";
 import { getSiteUrl } from "@/lib/env";
+import { getUser } from "@/lib/auth";
 
 export async function generateMetadata({
   params,
@@ -108,30 +110,30 @@ async function UserProfileData({ userId }: { userId: string }) {
   );
 }
 
-async function UserProfileContent({
-  params,
-}: {
-  params: Promise<{ userId: string }>;
-}) {
-  const { userId } = await params;
-  return <UserProfileData userId={userId} />;
-}
-
 export default async function UserProfilePageRoute({
   params,
 }: {
   params: Promise<{ userId: string }>;
 }) {
+  const { userId } = await params;
+  const user = await getUser();
+  const viewerUserId = user?.id ?? null;
+  const isOwnProfile = viewerUserId === userId;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-1 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
+          {/* 自分のプロフィール: キャッシュなし。他ユーザー: use cache でキャッシュ */}
           <Suspense fallback={<UserProfilePageSkeleton />}>
-            <UserProfileContent params={params} />
+            {isOwnProfile ? (
+              <UserProfileData userId={userId} />
+            ) : (
+              <CachedUserProfileData profileUserId={userId} />
+            )}
           </Suspense>
         </div>
       </div>
     </div>
   );
 }
-

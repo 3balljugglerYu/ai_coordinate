@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(
@@ -30,12 +31,18 @@ export async function POST(
 
     if (error) {
       if (error.code === "23505") {
+        revalidateTag("home-posts", "max");
+        revalidateTag("home-posts-week", "max");
+        revalidateTag("search-posts", "max");
         return NextResponse.json({ success: true, isBlocked: true });
       }
       console.error("Block insert error:", error);
       return NextResponse.json({ error: "Failed to block user" }, { status: 500 });
     }
 
+    revalidateTag("home-posts", "max");
+    revalidateTag("home-posts-week", "max");
+    revalidateTag("search-posts", "max");
     return NextResponse.json({ success: true, isBlocked: true });
   } catch (error) {
     console.error("Block API error:", error);
@@ -73,6 +80,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Failed to unblock user" }, { status: 500 });
     }
 
+    revalidateTag("home-posts", "max");
+    revalidateTag("home-posts-week", "max");
+    revalidateTag("search-posts", "max");
     return NextResponse.json({ success: true, isBlocked: false });
   } catch (error) {
     console.error("Unblock API error:", error);

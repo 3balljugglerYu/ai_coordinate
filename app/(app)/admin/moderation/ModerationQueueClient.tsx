@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { ModerationQueueSkeleton } from "@/features/moderation/components/ModerationQueueSkeleton";
 import { useToast } from "@/components/ui/use-toast";
 import type { ModerationQueueItem } from "@/features/moderation/types";
 
@@ -84,11 +85,7 @@ export function ModerationQueueClient() {
   };
 
   if (loading) {
-    return (
-      <div className="py-8 text-center">
-        <p className="text-sm text-slate-600">読み込み中...</p>
-      </div>
-    );
+    return <ModerationQueueSkeleton />;
   }
 
   if (posts.length === 0) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -44,6 +45,10 @@ export async function POST() {
       // ペルコイン付与は成功済みのため、エラーでも200を返す
     }
 
+    revalidateTag(`challenge-${user.id}`, "max");
+    revalidateTag(`my-page-${user.id}`, "max");
+    revalidateTag(`my-page-credits-${user.id}`, "max");
+    revalidateTag(`coordinate-${user.id}`, "max");
     return NextResponse.json({
       success: true,
       amount_granted: amountGranted,

@@ -1,10 +1,8 @@
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { getPost } from "@/features/posts/lib/server-api";
-import { getPostDisplayUrl, getImageAspectRatio } from "@/features/posts/lib/utils";
+import { getPostDisplayUrl } from "@/features/posts/lib/utils";
 import { isCrawler, isPrefetchRequest } from "@/lib/utils";
-import { PostDetailContent } from "@/features/posts/components/PostDetailContent";
+import { CachedPostDetail } from "@/features/posts/components/CachedPostDetail";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/env";
 import { DEFAULT_TITLE_TAGLINE } from "@/constants";
@@ -133,62 +131,8 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     console.error("Auth error:", error);
   }
 
-  // プリフェッチまたはクローラーかどうかを判定
-  let shouldSkipViewCount = false;
-  
-  try {
-    const headersList = await headers();
-    const userAgent = headersList.get('user-agent');
-    
-    const isPrefetch = isPrefetchRequest(headersList);
-    // isCrawlerはisPrefetchがfalseの場合のみ評価される
-    const isCrawlerReq = !isPrefetch && isCrawler(userAgent);
-    shouldSkipViewCount = isPrefetch || isCrawlerReq;
-    
-    // デバッグ用ログ（開発環境のみ）
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Request headers:', {
-        'next-router-prefetch': headersList.get('next-router-prefetch'),
-        'purpose': headersList.get('purpose'),
-        'user-agent': userAgent,
-        'isPrefetch': isPrefetch,
-        'isCrawler': isCrawlerReq,
-        'shouldSkipViewCount': shouldSkipViewCount,
-      });
-    }
-  } catch (error) {
-    // headers()の取得に失敗した場合は安全側に倒す（カウントしない）
-    console.warn('Failed to get headers, skipping view count:', error);
-    shouldSkipViewCount = true;
-  }
-
-  // 投稿詳細を取得（未投稿画像も所有者は閲覧可能）
-  const post = await getPost(id, currentUserId, shouldSkipViewCount);
-
-  if (!post) {
-    notFound();
-  }
-
-  // 画像URLとアスペクト比を取得（詳細表示用は getPostDisplayUrl）
-  const imageUrl = getPostDisplayUrl(post);
-  // データベースからアスペクト比を取得（フォールバック: 存在しない場合は計算）
-  let imageAspectRatio: "portrait" | "landscape" | null = post.aspect_ratio as "portrait" | "landscape" | null;
-  if (!imageAspectRatio && imageUrl) {
-    // フォールバック: データベースに値がない場合は計算（初回表示時など）
-    imageAspectRatio = await getImageAspectRatio(imageUrl);
-  }
-
+  // use cache でキャッシュして即時表示を優先（閲覧数はキャッシュ時スキップ）
   return (
-    <PostDetailContent
-      post={post}
-      currentUserId={currentUserId}
-      imageAspectRatio={imageAspectRatio}
-      postId={post.id || ""}
-      initialLikeCount={post.like_count || 0}
-      initialCommentCount={post.comment_count || 0}
-      initialViewCount={post.view_count || 0}
-      ownerId={post.user_id}
-      imageUrl={imageUrl}
-    />
+    <CachedPostDetail postId={id} currentUserId={currentUserId} />
   );
 }

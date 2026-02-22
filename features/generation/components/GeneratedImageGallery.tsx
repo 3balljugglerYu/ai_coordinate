@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Download, ZoomIn, Plus } from "lucide-react";
+import { Download, ZoomIn, Plus } from "lucide-react";
 import Masonry from "react-masonry-css";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ interface GeneratedImageGalleryProps {
   onDownload?: (image: GeneratedImageData) => void;
 }
 
+const FALLBACK_SHOW_DELAY_MS = 800;
 
 export function GeneratedImageGallery({
   images,
@@ -29,6 +30,23 @@ export function GeneratedImageGallery({
 }: GeneratedImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
+  const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
+
+  const handleImageLoad = (imageId: string) => {
+    setLoadedImageIds((prev) => new Set(prev).add(imageId));
+  };
+
+  // onLoad が発火しない場合のフォールバック（キャッシュ済み・ネットワーク遅延等）
+  useEffect(() => {
+    const timeouts = images.map((img) =>
+      setTimeout(() => {
+        setLoadedImageIds((prev) =>
+          prev.has(img.id) ? prev : new Set(prev).add(img.id)
+        );
+      }, FALLBACK_SHOW_DELAY_MS)
+    );
+    return () => timeouts.forEach(clearTimeout);
+  }, [images]);
 
   // チュートリアルStep11（PC）時は投稿・ダウンロードボタンを無効化
   const [disablePostAndDownload, setDisablePostAndDownload] = useState(false);
@@ -110,23 +128,8 @@ export function GeneratedImageGallery({
 
   return (
     <div className="space-y-4">
-      {isGenerating && (
-        <Card className="border-blue-200 bg-blue-50 p-4">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-            <div>
-              <p className="text-sm font-medium text-blue-900">
-                画像を生成中...
-              </p>
-              <p className="text-xs text-blue-700">
-                {completedCount} / {generatingCount} 枚完了
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {images.length > 0 && (
+      {/* 生成中表示は GenerationFormContainer で一元管理（重複を避ける） */}
+      {(images.length > 0 || (isGenerating && generatingCount > 0)) && (
         <Masonry
           breakpointCols={{
             default: 4,
@@ -136,6 +139,16 @@ export function GeneratedImageGallery({
           className="flex -ml-4 w-auto"
           columnClassName="pl-4 bg-clip-padding"
         >
+          {/* 生成中: 生成予定枚数分のスケルトンを表示（画像サイズは事前把握可能なため） */}
+          {isGenerating &&
+            generatingCount > 0 &&
+            Array.from({ length: generatingCount }).map((_, i) => (
+              <div key={`skeleton-${i}`} className="mb-4">
+                <div className="overflow-hidden rounded-lg border bg-gray-100">
+                  <div className="aspect-square w-full animate-pulse bg-gray-200" />
+                </div>
+              </div>
+            ))}
           {images.map((image, index) => (
             <div
               key={image.id}
@@ -145,31 +158,49 @@ export function GeneratedImageGallery({
               <Card
                 className="group relative overflow-hidden p-0 sm:cursor-default cursor-pointer"
                 onClick={(e) => {
+                  // チュートリアルStep11中はクリック無効（モーダルを開かない）
+                  if (
+                    index === 0 &&
+                    document.body.hasAttribute("data-tour-step-first-image")
+                  ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
                   // モバイルのみ: カードタップで拡大モーダルを開く
                   // PCではボタンが表示されるので、カードクリックは無効
                   if (typeof window !== 'undefined' && window.innerWidth < 640) {
                     setSelectedImageIndex(index);
-                    if (
-                      index === 0 &&
-                      document.body.hasAttribute("data-tour-step-first-image")
-                    ) {
-                      setTimeout(
-                        () =>
-                          document.dispatchEvent(
-                            new CustomEvent("tutorial:expand-image")
-                          ),
-                        150
-                      );
-                    }
                   }
                 }}
               >
                 <div className="relative w-full overflow-hidden bg-gray-100">
+                  {/* 画像ロード完了までスケルトン表示（ブロック要素で高さを確保し空白を防ぐ） */}
+                  {!loadedImageIds.has(image.id) && (
+                    <div
+                      className="aspect-square w-full animate-pulse bg-gray-200"
+                      aria-hidden
+                    />
+                  )}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.url}
                     alt={`生成画像 ${index + 1}`}
-                    className="w-full h-auto object-contain"
+                    className={`block object-contain transition-opacity duration-200 ${
+                      loadedImageIds.has(image.id)
+                        ? "relative w-full h-auto opacity-100"
+                        : "absolute inset-0 h-full w-full opacity-0"
+                    }`}
+                    onLoad={() => handleImageLoad(image.id)}
+                    ref={(el) => {
+                      if (
+                        el?.complete &&
+                        el.naturalHeight > 0 &&
+                        !loadedImageIds.has(image.id)
+                      ) {
+                        queueMicrotask(() => handleImageLoad(image.id));
+                      }
+                    }}
                   />
                   {image.is_posted && (
                     image.id ? (
@@ -202,21 +233,21 @@ export function GeneratedImageGallery({
                     <Button
                       size="sm"
                       variant="secondary"
+                      disabled={
+                        index === 0 &&
+                        typeof document !== "undefined" &&
+                        document.body.hasAttribute("data-tour-step-first-image")
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedImageIndex(index);
+                        // チュートリアルStep11中はクリック無効
                         if (
                           index === 0 &&
                           document.body.hasAttribute("data-tour-step-first-image")
                         ) {
-                          setTimeout(
-                            () =>
-                              document.dispatchEvent(
-                                new CustomEvent("tutorial:expand-image")
-                              ),
-                            150
-                          );
+                          return;
                         }
+                        setSelectedImageIndex(index);
                       }}
                     >
                       <ZoomIn className="h-4 w-4" />
@@ -289,4 +320,3 @@ export function GeneratedImageGallery({
     </div>
   );
 }
-

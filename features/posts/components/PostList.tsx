@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
+import { PostListSkeleton } from "./PostListSkeleton";
+import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -13,12 +15,18 @@ import { isValidSortType } from "../lib/utils";
 
 interface PostListProps {
   initialPosts?: Post[];
+  /** オススメタブ用のキャッシュ済みデータ（CachedHomePostList から渡す） */
+  initialPostsForWeek?: Post[];
   forceInitialLoading?: boolean;
+  /** 親がデータを提供している場合、初回の loadPosts をスキップ（キャッシュ表示の最適化用） */
+  skipInitialFetch?: boolean;
 }
 
 export function PostList({
   initialPosts = [],
+  initialPostsForWeek = [],
   forceInitialLoading = false,
+  skipInitialFetch = false,
 }: PostListProps) {
   const [posts, setPosts] = useState<Post[]>(forceInitialLoading ? [] : initialPosts);
   const [isLoading, setIsLoading] = useState(forceInitialLoading);
@@ -87,6 +95,11 @@ export function PostList({
       setIsLoading(false);
       return;
     }
+    // タブ切り替え時は即座にスケルトン表示（UX改善）
+    if (reset) {
+      setPosts([]);
+      setHasMore(true);
+    }
     setIsLoading(true);
     try {
       // 検索クエリが存在する場合、APIリクエストにqパラメータを追加
@@ -130,6 +143,24 @@ export function PostList({
     const shouldShowAuth = sortType === "following" && !currentUserId;
     setShowAuthPrompt(shouldShowAuth);
     if (!shouldShowAuth) {
+      // skipInitialFetch かつキャッシュデータがある場合、該当タブのときは初回フェッチをスキップ
+      // 他タブから戻ってきたときはキャッシュデータを復元する
+      if (skipInitialFetch && !searchQuery.trim()) {
+        if (sortType === defaultSortType && initialPosts.length > 0) {
+          setPosts(initialPosts);
+          setHasMore(initialPosts.length === 20);
+          setOffset(initialPosts.length);
+          setIsLoading(false);
+          return;
+        }
+        if (sortType === "week" && initialPostsForWeek.length > 0) {
+          setPosts(initialPostsForWeek);
+          setHasMore(initialPostsForWeek.length === 20);
+          setOffset(initialPostsForWeek.length);
+          setIsLoading(false);
+          return;
+        }
+      }
       // フォロータブかつログイン済み、または他タブの場合のみロード
       // 検索クエリ変更時もリセットして再取得
       loadPosts(0, true);
@@ -138,7 +169,7 @@ export function PostList({
       setPosts([]);
       setHasMore(false);
     }
-  }, [sortType, currentUserId, searchQuery, loadPosts]);
+  }, [sortType, currentUserId, searchQuery, loadPosts, skipInitialFetch, initialPosts.length, initialPostsForWeek.length, defaultSortType]);
 
   useEffect(() => {
     if (inView && hasMore && !isLoading) {
@@ -185,11 +216,9 @@ export function PostList({
         </div>
       )}
       {posts.length === 0 ? (
-        // ローディング中はインジケータのみ表示
+        // ローディング中はスケルトン表示
         isLoading ? (
-          <div className="py-12 text-center">
-            <div className="text-muted-foreground">読み込み中...</div>
-          </div>
+          <PostListSkeleton />
         ) : (
           // ローディング完了後、期間別ソート、フォロータブ、または検索結果が0件の場合はメッセージを表示
           // 「新着」タブで検索クエリがない場合は何も表示しない
@@ -219,10 +248,8 @@ export function PostList({
 
           {/* 無限スクロール用のトリガー要素 */}
           {hasMore && (
-            <div ref={ref} className="py-8 text-center">
-              {isLoading && (
-                <div className="text-muted-foreground">読み込み中...</div>
-              )}
+            <div ref={ref} className="py-4">
+              {isLoading && <PostListLoadMoreSkeleton />}
             </div>
           )}
 
