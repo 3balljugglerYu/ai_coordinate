@@ -631,21 +631,21 @@ function buildPrompt(
   // coordinateタイプのみ実装（他のタイプは後で拡張）
   if (generationType === "coordinate") {
     if (backgroundDirective.includes("Keep the original background")) {
-      return `Edit **only the outfit** of the person in the image.
+      return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
+Do not change the camera angle or framing from the original image.
+Edit only the outfit.
 
-**New Outfit:**
+New Outfit:
 
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
+${sanitizedDescription}`;
     } else {
-      return `Edit **only the outfit** of the person in the image, and **generate a new background that complements the new look**.
+      return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
+Do not change the camera angle or framing from the original image.
+Adjust the background to match the new outfit’s style and color palette.
 
-**New Outfit:**
+New Outfit:
 
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Make sure the updated background still feels cohesive with the character and shares the same illustration style as the original.`;
+${sanitizedDescription}`;
     }
   }
 
