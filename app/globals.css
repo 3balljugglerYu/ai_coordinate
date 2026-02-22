@@ -177,6 +177,11 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   
+  /* 管理画面表示時: 下部ナビゲーションバー用の余白を無効化 */
+  body.admin-active {
+    padding-bottom: 0;
+  }
+
   /* ナビゲーションバーのアクティブインジケーターアニメーション */
   /* 中央から左右に広がるアニメーション（フェードイン時） */
   @keyframes expandFromCenter {

@@ -137,4 +137,3 @@ export default async function UserProfilePageRoute({
     </div>
   );
 }
-

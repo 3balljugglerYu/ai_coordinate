@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { moderationDecisionSchema } from "@/features/moderation/lib/schemas";
+import { logAdminAction } from "@/lib/admin-audit";
 
 export async function POST(
   request: NextRequest,
@@ -60,6 +61,14 @@ export async function POST(
     if (!decisionApplied) {
       return NextResponse.json({ error: "投稿が見つかりません" }, { status: 404 });
     }
+
+    await logAdminAction({
+      adminUserId: adminUser.id,
+      actionType: action === "approve" ? "moderation_approve" : "moderation_reject",
+      targetType: "post",
+      targetId: postId,
+      metadata: { reason: reason ?? null },
+    });
 
     return NextResponse.json({ success: true, moderation_status: nextStatus });
   } catch (error) {

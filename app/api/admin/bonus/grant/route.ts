@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logAdminAction } from "@/lib/admin-audit";
 
 /**
  * 運営者からのボーナス付与API
@@ -135,7 +136,13 @@ export async function POST(request: NextRequest) {
 
     if (creditError || !creditData) {
       console.error("[Admin Bonus] Failed to fetch new balance:", creditError);
-      // 残高取得に失敗しても、RPC関数は成功しているので、付与されたペルコイン数とトランザクションIDだけ返す
+      await logAdminAction({
+        adminUserId: admin.id,
+        actionType: "bonus_grant",
+        targetType: "user",
+        targetId: user_id.trim(),
+        metadata: { amount: amount_granted, reason: reason.trim(), transaction_id },
+      });
       return NextResponse.json({
         success: true,
         amount_granted,
@@ -144,7 +151,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 成功レスポンス
+    await logAdminAction({
+      adminUserId: admin.id,
+      actionType: "bonus_grant",
+      targetType: "user",
+      targetId: user_id.trim(),
+      metadata: { amount: amount_granted, reason: reason.trim(), transaction_id },
+    });
+
     return NextResponse.json({
       success: true,
       new_balance: creditData.balance,
