@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-
-export const dynamic = "force-dynamic";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { AdminHeader } from "./AdminHeader";
