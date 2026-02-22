@@ -528,6 +528,9 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "画像の生成に失敗しました";
+      track("coordinate_generation_failed", {
+        error: errorMessage.substring(0, 100),
+      });
       setError(errorMessage);
       showGenerationErrorToast(errorMessage);
       setIsGenerating(false);
