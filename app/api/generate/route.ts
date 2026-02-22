@@ -21,7 +21,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { prompt, sourceImageBase64, sourceImageMimeType, backgroundChange, count, generationType, model: rawModel } = validationResult.data;
+    const {
+      prompt,
+      sourceImageBase64,
+      sourceImageMimeType,
+      backgroundMode,
+      count,
+      generationType,
+      model: rawModel,
+    } = validationResult.data;
 
     // APIキーの取得（サーバー側専用を優先、フォールバックあり）
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY;
@@ -64,7 +72,7 @@ export async function POST(request: NextRequest) {
       fullPrompt = buildPrompt({
         generationType: generationType || 'coordinate',
         outfitDescription: prompt,
-        shouldChangeBackground: backgroundChange || false,
+        backgroundMode,
       });
     } else {
       // 画像がない場合はユーザー入力のプロンプトをそのまま使用
@@ -189,4 +197,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

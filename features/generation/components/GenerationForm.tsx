@@ -5,9 +5,9 @@ import { Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "./ImageUploader";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageUploadCard } from "./StockImageUploadCard";
@@ -15,8 +15,7 @@ import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/generation-service";
 import { getPercoinCost } from "../lib/model-config";
-import type { UploadedImage, GeminiModel } from "../types";
-import { useRouter } from "next/navigation";
+import type { UploadedImage, GeminiModel, BackgroundMode } from "../types";
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
@@ -25,7 +24,7 @@ interface GenerationFormProps {
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
-    backgroundChange: boolean;
+    backgroundMode: BackgroundMode;
     count: number;
     model: GeminiModel;
   }) => void;
@@ -33,6 +32,29 @@ interface GenerationFormProps {
 }
 
 type ImageSourceType = "upload" | "stock";
+type BackgroundModeOption = {
+  value: BackgroundMode;
+  label: string;
+  description: string;
+};
+
+const BACKGROUND_MODE_OPTIONS: BackgroundModeOption[] = [
+  {
+    value: "ai_auto",
+    label: "AIに依頼",
+    description: "着せ替え内容に合わせて背景をAIが自動生成します",
+  },
+  {
+    value: "include_in_prompt",
+    label: "上記の内容に含める",
+    description: "衣装プロンプト内に背景指定を含めて生成します",
+  },
+  {
+    value: "keep",
+    label: "背景は変更しない",
+    description: "現在の背景を維持します",
+  },
+];
 
 export function GenerationForm({
   onSubmit,
@@ -42,10 +64,9 @@ export function GenerationForm({
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [backgroundChange, setBackgroundChange] = useState(false);
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
   const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-2.5-flash-image');
-  const router = useRouter();
   const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
@@ -112,7 +133,7 @@ export function GenerationForm({
       prompt: prompt.trim(),
       sourceImage: imageSourceType === "upload" ? uploadedImage?.file : undefined,
       sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
-      backgroundChange,
+      backgroundMode,
       count: selectedCount,
       model: selectedModel,
     });
@@ -177,24 +198,30 @@ export function GenerationForm({
     return () => document.removeEventListener("tutorial:set-prompt", handler);
   }, []);
 
-  // チュートリアルモード: 背景変更チェックをセット（step5のonHighlightedで自動セット）
+  // チュートリアルモード: 背景設定をセット（step5のonHighlightedで自動セット）
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ checked: boolean }>).detail;
-      if (detail?.checked) setBackgroundChange(true);
+      const detail = (e as CustomEvent<{ mode?: BackgroundMode }>).detail;
+      if (
+        detail?.mode === "ai_auto" ||
+        detail?.mode === "include_in_prompt" ||
+        detail?.mode === "keep"
+      ) {
+        setBackgroundMode(detail.mode);
+      }
     };
-    document.addEventListener("tutorial:set-background-change", handler);
+    document.addEventListener("tutorial:set-background-mode", handler);
     return () =>
-      document.removeEventListener("tutorial:set-background-change", handler);
+      document.removeEventListener("tutorial:set-background-mode", handler);
   }, []);
 
-  // チュートリアル中断時: フォームを初期状態にクリア（デモ画像・プロンプト・背景変更等をリセット）
+  // チュートリアル中断時: フォームを初期状態にクリア（デモ画像・プロンプト・背景設定等をリセット）
   useEffect(() => {
     const handler = () => {
       setUploadedImage(null);
       setSelectedStockId(null);
       setPrompt("");
-      setBackgroundChange(false);
+      setBackgroundMode("keep");
       setSelectedCount(1);
       setSelectedModel("gemini-2.5-flash-image");
       setImageSourceType("upload");
@@ -417,20 +444,34 @@ export function GenerationForm({
           </p>
         </div>
 
-        {/* 背景変更オプション */}
-        <div className="flex items-center space-x-2" data-tour="tour-background-change">
-          <Checkbox
-            id="background-change"
-            checked={backgroundChange}
-            onCheckedChange={(checked) => setBackgroundChange(checked === true)}
+        {/* 背景設定 */}
+        <div data-tour="tour-background-change">
+          <Label className="text-base font-medium">背景設定</Label>
+          <RadioGroup
+            value={backgroundMode}
+            onValueChange={(value) => setBackgroundMode(value as BackgroundMode)}
+            className="mt-2 space-y-3"
             disabled={isGenerating || isTutorialInProgress}
-          />
-          <Label
-            htmlFor="background-change"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            背景も変更
-          </Label>
+            {BACKGROUND_MODE_OPTIONS.map((option) => (
+              <div key={option.value} className="flex items-start space-x-2">
+                <RadioGroupItem
+                  id={`background-mode-${option.value}`}
+                  value={option.value}
+                  className="mt-0.5"
+                />
+                <div className="space-y-0.5">
+                  <Label
+                    htmlFor={`background-mode-${option.value}`}
+                    className="text-sm font-medium leading-none"
+                  >
+                    {option.label}
+                  </Label>
+                  <p className="text-xs text-gray-500">{option.description}</p>
+                </div>
+              </div>
+            ))}
+          </RadioGroup>
         </div>
 
         {/* モデル選択 */}

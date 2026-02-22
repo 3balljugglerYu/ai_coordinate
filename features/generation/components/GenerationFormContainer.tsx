@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useGenerationState } from "../context/GenerationStateContext";
 
-interface GenerationFormContainerProps {}
+type GenerationFormContainerProps = Record<string, never>;
 
 /**
  * クライアントコンポーネント: GenerationFormとその状態管理
@@ -306,7 +306,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
-    backgroundChange: boolean;
+    backgroundMode: import("../types").BackgroundMode;
     count: number;
     model: import("../types").GeminiModel;
     generationType?: import("../types").GenerationType;
@@ -357,7 +357,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             prompt: data.prompt,
             sourceImage: data.sourceImage,
             sourceImageStockId: data.sourceImageStockId,
-            backgroundChange: data.backgroundChange,
+            backgroundMode: data.backgroundMode,
             generationType: data.generationType || "coordinate",
             model: data.model,
           });

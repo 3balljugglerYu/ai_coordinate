@@ -170,6 +170,7 @@ async function downloadInputImageViaStockFallback(
 
 // 型定義
 type GenerationType = "coordinate" | "specified_coordinate" | "full_body" | "chibi";
+type BackgroundMode = "ai_auto" | "include_in_prompt" | "keep";
 type GeminiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-1k" | "gemini-3-pro-image-2k" | "gemini-3-pro-image-4k";
 type GeminiApiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-preview";
 
@@ -549,12 +550,36 @@ async function refundPercoinsFromGeneration(
 }
 
 /**
- * 背景変更の指示文を生成
+ * 旧仕様のbackground_change(boolean)を新仕様のbackground_modeに変換
  */
-function getBackgroundDirective(shouldChangeBackground: boolean): string {
-  return shouldChangeBackground
-    ? "Adapt the background to match the new outfit's mood, setting, and styling, ensuring character lighting remains coherent."
-    : "Keep the original background exactly as in the source image, editing only the outfit without altering the environment or lighting context.";
+function backgroundChangeToBackgroundMode(
+  backgroundChange?: boolean | null
+): BackgroundMode {
+  return backgroundChange ? "ai_auto" : "keep";
+}
+
+/**
+ * background_modeが未設定の場合はbackground_changeから推論
+ */
+function resolveBackgroundMode(
+  backgroundMode?: string | null,
+  backgroundChange?: boolean | null
+): BackgroundMode {
+  if (
+    backgroundMode === "ai_auto" ||
+    backgroundMode === "include_in_prompt" ||
+    backgroundMode === "keep"
+  ) {
+    return backgroundMode;
+  }
+  return backgroundChangeToBackgroundMode(backgroundChange);
+}
+
+/**
+ * 新仕様のbackground_modeを旧仕様のbackground_change(boolean)に変換
+ */
+function backgroundModeToBackgroundChange(backgroundMode: BackgroundMode): boolean {
+  return backgroundMode === "ai_auto";
 }
 
 /**
@@ -616,7 +641,7 @@ function sanitizeUserInput(input: string): string {
 function buildPrompt(
   generationType: GenerationType,
   outfitDescription: string,
-  shouldChangeBackground: boolean
+  backgroundMode: BackgroundMode
 ): string {
   // ユーザー入力をサニタイズ
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
@@ -625,12 +650,10 @@ function buildPrompt(
   if (!sanitizedDescription || sanitizedDescription.length === 0) {
     throw new Error("無効な入力です。入力内容を確認してください。");
   }
-  
-  const backgroundDirective = getBackgroundDirective(shouldChangeBackground);
 
   // coordinateタイプのみ実装（他のタイプは後で拡張）
   if (generationType === "coordinate") {
-    if (backgroundDirective.includes("Keep the original background")) {
+    if (backgroundMode === "keep") {
       return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
 Do not change the camera angle or framing from the original image.
 Edit only the outfit.
@@ -638,7 +661,9 @@ Edit only the outfit.
 New Outfit:
 
 ${sanitizedDescription}`;
-    } else {
+    }
+
+    if (backgroundMode === "ai_auto") {
       return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
 Do not change the camera angle or framing from the original image.
 Adjust the background to match the new outfit’s style and color palette.
@@ -647,16 +672,43 @@ New Outfit:
 
 ${sanitizedDescription}`;
     }
+
+    // include_in_prompt: 背景に関するシステム指示は追加しない
+    return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
+Do not change the camera angle or framing from the original image.
+
+New Outfit:
+
+${sanitizedDescription}`;
   }
 
-  // デフォルト（coordinateと同じ）
-  return `Edit **only the outfit** of the person in the image.
+  if (backgroundMode === "keep") {
+    return `Edit **only the outfit** of the person in the image.
 
 **New Outfit:**
 
 ${sanitizedDescription}
 
 Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
+  }
+
+  if (backgroundMode === "ai_auto") {
+    return `Edit **the outfit** of the person in the image and adapt the background to the new look.
+
+**New Outfit:**
+
+${sanitizedDescription}
+
+Keep everything else consistent: face, hair, pose, expression, lighting, and art style.`;
+  }
+
+  return `Edit **the outfit** of the person in the image.
+
+**New Outfit:**
+
+${sanitizedDescription}
+
+Keep everything else consistent: face, hair, pose, expression, lighting, and art style.`;
 }
 
 /**
@@ -1117,9 +1169,14 @@ Deno.serve(async () => {
             });
           }
 
+          const backgroundMode = resolveBackgroundMode(
+            job.background_mode,
+            job.background_change
+          );
+
           // プロンプトを構築
           const fullPrompt = job.input_image_url
-            ? buildPrompt(job.generation_type as GenerationType, job.prompt_text, job.background_change)
+            ? buildPrompt(job.generation_type as GenerationType, job.prompt_text, backgroundMode)
             : job.prompt_text;
 
           parts.push({
@@ -1269,7 +1326,8 @@ Deno.serve(async () => {
               image_url: publicUrl,
               storage_path: uploadData.path,
               prompt: job.prompt_text,
-              background_change: job.background_change,
+              background_mode: backgroundMode,
+              background_change: backgroundModeToBackgroundChange(backgroundMode),
               is_posted: false,
               generation_type: job.generation_type,
               model: dbModel,

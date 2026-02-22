@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { normalizeModelName } from "../types";
+import {
+  normalizeModelName,
+  backgroundModeToBackgroundChange,
+  resolveBackgroundMode,
+  BACKGROUND_MODES,
+} from "../types";
 
 /**
  * 画像生成機能のZodスキーマ
@@ -54,7 +59,8 @@ export const generationRequestSchema = z.object({
       }
     ),
   sourceImageStockId: z.string().uuid().optional(),
-  backgroundChange: z.boolean().optional().default(false),
+  backgroundMode: z.enum(BACKGROUND_MODES).optional(),
+  backgroundChange: z.boolean().optional(),
   count: z.number().int().min(1).max(4).optional().default(1),
   generationType: z
     .enum(['coordinate', 'specified_coordinate', 'full_body', 'chibi'])
@@ -74,6 +80,18 @@ export const generationRequestSchema = z.object({
     .optional()
     .default('gemini-2.5-flash-image')
     .transform(normalizeModelName), // データベース保存用に正規化
+}).transform((data) => {
+  const backgroundMode = resolveBackgroundMode(
+    data.backgroundMode,
+    data.backgroundChange
+  );
+
+  return {
+    ...data,
+    backgroundMode,
+    // サーバー内の後方互換用にboolean値も正規化して保持
+    backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
+  };
 });
 
 export type GenerationRequestInput = z.infer<typeof generationRequestSchema>;

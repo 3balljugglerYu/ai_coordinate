@@ -24,8 +24,10 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
-    backgroundChange: boolean;
+    backgroundMode: import("../types").BackgroundMode;
     count: number;
+    model: import("../types").GeminiModel;
+    generationType?: import("../types").GenerationType;
   }) => {
     setIsGenerating(true);
     setError(null);
@@ -41,8 +43,10 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
         prompt: data.prompt,
         sourceImage: data.sourceImage,
         sourceImageStockId: data.sourceImageStockId,
-        backgroundChange: data.backgroundChange,
+        backgroundMode: data.backgroundMode,
         count: data.count,
+        model: data.model,
+        generationType: data.generationType,
         userId,
         onProgress: () => {
           // 1枚生成・保存されるごとに進捗カウントを更新
@@ -102,4 +106,3 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
     </div>
   );
 }
-

@@ -4,6 +4,10 @@
  */
 
 import type { GenerationRequest } from "../types";
+import {
+  backgroundModeToBackgroundChange,
+  resolveBackgroundMode,
+} from "../types";
 
 const MAX_SOURCE_IMAGE_LONG_EDGE = 2048;
 /** Vercel のリクエストボディ制限 4.5MB を考慮。Base64 で約 33% 増加するため、2MB 超は強圧縮 */
@@ -127,6 +131,11 @@ export interface AsyncGenerationStatus {
 export async function generateImageAsync(
   request: Omit<GenerationRequest, "count">
 ): Promise<AsyncGenerationResponse> {
+  const backgroundMode = resolveBackgroundMode(
+    request.backgroundMode,
+    request.backgroundChange
+  );
+
   // 画像をBase64に変換（sourceImageがある場合のみ）
   // ストック画像IDの場合は、サーバー側で処理するためBase64に変換しない
   let sourceImageBase64: string | undefined;
@@ -150,7 +159,8 @@ export async function generateImageAsync(
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId: request.sourceImageStockId,
-      backgroundChange: request.backgroundChange || false,
+      backgroundMode,
+      backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
       generationType: request.generationType || "coordinate",
       model: request.model || "gemini-2.5-flash-image",
     }),

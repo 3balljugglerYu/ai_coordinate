@@ -1,6 +1,10 @@
 import { imageToBase64, extractImagesFromGeminiResponse, base64ToDataUrl } from "./nanobanana";
 import type { GenerationRequest, GeneratedImageData } from "../types";
 import type { GeminiResponse } from "./nanobanana";
+import {
+  backgroundModeToBackgroundChange,
+  resolveBackgroundMode,
+} from "../types";
 
 /**
  * 画像生成APIクライアント（クライアントサイド用）
@@ -36,6 +40,11 @@ async function urlToBase64(imageUrl: string): Promise<{ base64: string; mimeType
 export async function generateSingleImage(
   request: Omit<GenerationRequest, "count">
 ): Promise<GeneratedImageData> {
+  const backgroundMode = resolveBackgroundMode(
+    request.backgroundMode,
+    request.backgroundChange
+  );
+
   // 画像をBase64に変換
   let sourceImageBase64: string | undefined;
   let sourceImageMimeType: string | undefined;
@@ -64,7 +73,8 @@ export async function generateSingleImage(
       prompt: request.prompt,
       sourceImageBase64,
       sourceImageMimeType,
-      backgroundChange: request.backgroundChange || false,
+      backgroundMode,
+      backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
       count: 1, // 常に1枚
       generationType: request.generationType || 'coordinate',
       model: request.model || 'gemini-2.5-flash-image',
@@ -114,6 +124,7 @@ export async function generateImage(
       prompt: request.prompt,
       sourceImage: request.sourceImage,
       sourceImageStockId: request.sourceImageStockId,
+      backgroundMode: request.backgroundMode,
       backgroundChange: request.backgroundChange,
       generationType: request.generationType,
       model: request.model,
@@ -138,4 +149,3 @@ export function downloadImage(url: string, filename: string) {
   link.click();
   document.body.removeChild(link);
 }
-

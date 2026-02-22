@@ -3,12 +3,17 @@
  * 生成タイプとユーザー入力から最適化されたプロンプトを構築
  */
 
-import { getPromptConfig, getBackgroundDirective, type GenerationType, type PromptVariables } from './prompt-config';
+import type { BackgroundMode } from "../types";
+import {
+  getPromptConfig,
+  type GenerationType,
+  type PromptVariables,
+} from "./prompt-config";
 
 export interface BuildPromptOptions {
   generationType: GenerationType;
   outfitDescription: string; // ユーザー入力（日本語のまま）
-  shouldChangeBackground: boolean;
+  backgroundMode: BackgroundMode;
 }
 
 /**
@@ -56,7 +61,7 @@ export function sanitizeUserInput(input: string): string {
  * プロンプトを構築（プロンプトインジェクション対策済み）
  */
 export function buildPrompt(options: BuildPromptOptions): string {
-  const { generationType, outfitDescription, shouldChangeBackground } = options;
+  const { generationType, outfitDescription, backgroundMode } = options;
 
   // ユーザー入力をサニタイズ
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
@@ -69,13 +74,10 @@ export function buildPrompt(options: BuildPromptOptions): string {
   // 設定を取得
   const config = getPromptConfig(generationType);
 
-  // 背景変更の指示文を生成
-  const backgroundDirective = getBackgroundDirective(shouldChangeBackground);
-
   // プロンプト変数を準備（サニタイズ済みの説明文を使用）
   const promptVariables: PromptVariables = {
     outfitDescription: sanitizedDescription,
-    backgroundDirective,
+    backgroundMode,
   };
 
   // プロンプトテンプレートを実行
@@ -84,7 +86,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
     
     // デバッグ用: 最終プロンプトをログ出力
     console.log(`[Prompt Builder] Generation Type: ${generationType}`);
-    console.log(`[Prompt Builder] Background Change: ${shouldChangeBackground}`);
+    console.log(`[Prompt Builder] Background Mode: ${backgroundMode}`);
     console.log(`[Prompt Builder] Final Prompt:\n${prompt}`);
     
     return prompt;
@@ -94,4 +96,3 @@ export function buildPrompt(options: BuildPromptOptions): string {
     `API Error - Prompt template for '${generationType}' is not a function`
   );
 }
-

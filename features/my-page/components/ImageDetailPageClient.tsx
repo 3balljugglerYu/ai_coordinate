@@ -21,6 +21,14 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const backgroundMode =
+    image.background_mode ?? (image.background_change ? "ai_auto" : "keep");
+  const backgroundModeLabel =
+    backgroundMode === "ai_auto"
+      ? "AIに依頼"
+      : backgroundMode === "include_in_prompt"
+      ? "上記の内容に含める"
+      : "背景は変更しない";
 
   const handleDelete = () => {
     setDeleteDialogOpen(true);
@@ -126,9 +134,9 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-700">背景変更</p>
+              <p className="text-sm font-medium text-gray-700">背景設定</p>
               <p className="mt-1 text-sm text-gray-600">
-                {image.background_change ? "あり" : "なし"}
+                {backgroundModeLabel}
               </p>
             </div>
 

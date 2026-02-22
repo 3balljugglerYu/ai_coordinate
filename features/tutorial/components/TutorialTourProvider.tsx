@@ -294,12 +294,12 @@ export function TutorialTourProvider() {
             ...mergedStep,
             onHighlighted: (element: Element | undefined) => {
               document.dispatchEvent(
-                new CustomEvent("tutorial:set-background-change", {
+                new CustomEvent("tutorial:set-background-mode", {
                   bubbles: true,
-                  detail: { checked: true },
+                  detail: { mode: "ai_auto" },
                 })
               );
-              // Step4: 背景変更オプションを画面中央付近にスクロール
+              // Step4: 背景設定オプションを画面中央付近にスクロール
               if (element && element !== document.body) {
                 requestAnimationFrame(() => {
                   element.scrollIntoView({
