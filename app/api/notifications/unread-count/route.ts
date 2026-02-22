@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * 未読数取得API
+ * 未認証の場合は401を返す（redirectではなく）
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+
+    if (!user) {
+      return NextResponse.json({ count: 0 });
+    }
 
     const supabase = await createClient();
 

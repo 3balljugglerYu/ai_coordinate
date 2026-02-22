@@ -12,7 +12,7 @@ import { BonusNotificationToastListener } from "@/features/notifications/compone
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
 import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
 import { getSiteUrl } from "@/lib/env";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
