@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
 import { getSiteUrl } from "@/lib/env";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({

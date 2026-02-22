@@ -19,6 +19,7 @@ import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { useToast } from "@/components/ui/use-toast";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useGenerationState } from "../context/GenerationStateContext";
+import { track } from "@vercel/analytics/react";
 
 type GenerationFormContainerProps = Record<string, never>;
 
@@ -521,8 +522,15 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       }
       router.refresh();
       window.dispatchEvent(new CustomEvent("generation-complete"));
+      track("coordinate_generation_complete", {
+        count: jobIds.length,
+        succeeded: jobIds.length - failedJobs.length,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "画像の生成に失敗しました";
+      track("coordinate_generation_failed", {
+        error: errorMessage.substring(0, 100),
+      });
       setError(errorMessage);
       showGenerationErrorToast(errorMessage);
       setIsGenerating(false);

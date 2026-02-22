@@ -92,6 +92,10 @@ export async function getUnreadCount(): Promise<number> {
     },
   });
 
+  if (response.status === 401) {
+    return 0;
+  }
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "未読数の取得に失敗しました");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@vercel/analytics/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -46,14 +47,20 @@ export function PercoinPurchaseSection({
         const result = await completeMockPercoinPurchase({ packageId });
         onBalanceUpdate(result.balance);
         setSuccessMessage("ペルコインを付与しました（モックモード）");
+        track("percoin_purchase_complete", { packageId, mode: "mock" });
       } else if (data.checkoutUrl) {
-        // Stripe連携時はCheckoutにリダイレクト
+        track("percoin_purchase_started", { packageId, mode: "stripe" });
         window.location.href = data.checkoutUrl;
       } else {
         throw new Error("不明なレスポンスです");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "購入処理に失敗しました");
+      const errorMessage = err instanceof Error ? err.message : "購入処理に失敗しました";
+      track("percoin_purchase_failed", {
+        packageId,
+        error: errorMessage.substring(0, 100),
+      });
+      setError(errorMessage);
     } finally {
       setProcessingId(null);
     }
