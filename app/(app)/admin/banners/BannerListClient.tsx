@@ -4,6 +4,16 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -346,6 +356,7 @@ export function BannerListClient({ initialBanners }: BannerListClientProps) {
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
   const { toast } = useToast();
 
@@ -417,8 +428,14 @@ export function BannerListClient({ initialBanners }: BannerListClientProps) {
     setEditingBanner(banner);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("このバナーを削除しますか？")) return;
+  const handleDeleteClick = (id: string) => {
+    setDeleteConfirmId(id);
+  };
+
+  const handleDeleteConfirm = async () => {
+    const id = deleteConfirmId;
+    if (!id) return;
+    setDeleteConfirmId(null);
     setDeletingId(id);
     try {
       const res = await fetch(`/api/admin/banners/${id}`, { method: "DELETE" });
@@ -437,6 +454,10 @@ export function BannerListClient({ initialBanners }: BannerListClientProps) {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmId(null);
   };
 
   const handleFormSuccess = () => {
@@ -486,7 +507,7 @@ export function BannerListClient({ initialBanners }: BannerListClientProps) {
             <BannerListWithDnd
               banners={activeBanners}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onDelete={handleDeleteClick}
               deletingId={deletingId}
               sensors={sensors}
               onDragEnd={createHandleDragEnd(activeBanners, (newActive) =>
@@ -502,7 +523,7 @@ export function BannerListClient({ initialBanners }: BannerListClientProps) {
             <BannerListWithDnd
               banners={endedBanners}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onDelete={handleDeleteClick}
               deletingId={deletingId}
               sensors={sensors}
               onDragEnd={createHandleDragEnd(endedBanners, (newEnded) =>
@@ -540,6 +561,31 @@ export function BannerListClient({ initialBanners }: BannerListClientProps) {
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => !open && handleDeleteCancel()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>バナーを削除</AlertDialogTitle>
+            <AlertDialogDescription>
+              このバナーを削除しますか？この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>
+              キャンセル
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              削除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
