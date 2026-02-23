@@ -97,7 +97,7 @@ export function MaterialImageForm({
       toast({
         title: "エラー",
         description:
-          err instanceof Error ? err.message : "保存に失敗しました",
+          err instanceof Error ? err.message : "画像の保存に失敗しました",
         variant: "destructive",
       });
     } finally {

@@ -21,14 +21,27 @@ export async function uploadBannerImage(
   const supabase = createAdminClient();
 
   // バケットが存在しない場合は作成（初回のみ）
-  try {
-    await supabase.storage.createBucket(STORAGE_BUCKET, {
+  const { error: bucketError } = await supabase.storage.createBucket(
+    STORAGE_BUCKET,
+    {
       public: true,
       fileSizeLimit: 5 * 1024 * 1024, // 5MB
       allowedMimeTypes: ["image/webp", "image/jpeg", "image/png"],
-    });
-  } catch {
-    // バケットが既に存在する場合はエラーになるが無視
+    }
+  );
+  // バケットが既に存在する場合（409 Conflict）のみ無視、それ以外はスロー
+  if (bucketError) {
+    const statusCode =
+      "statusCode" in bucketError
+        ? String((bucketError as { statusCode?: string }).statusCode)
+        : "";
+    const msg = bucketError.message ?? "";
+    const isAlreadyExists =
+      statusCode === "409" || msg.toLowerCase().includes("already exists");
+    if (!isAlreadyExists) {
+      console.error("Banner bucket creation error:", bucketError);
+      throw new Error(`バケットの作成に失敗しました: ${msg}`);
+    }
   }
 
   // FileをBufferに変換
