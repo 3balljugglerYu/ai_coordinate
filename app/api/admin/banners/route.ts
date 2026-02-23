@@ -7,6 +7,7 @@ import { revalidateTag, revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadBannerImage } from "@/features/banners/lib/banner-storage";
+import { isValidLinkUrl } from "@/features/banners/lib/validation";
 import type { Banner, BannerInsert } from "@/features/banners/lib/schema";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -74,6 +75,16 @@ export async function POST(request: NextRequest) {
     if (!link_url || link_url.trim() === "") {
       return NextResponse.json(
         { error: "遷移先URLは必須です" },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidLinkUrl(link_url)) {
+      return NextResponse.json(
+        {
+          error:
+            "遷移先URLは / で始まる内部パスか、https:// で始まるURLのみ使用できます",
+        },
         { status: 400 }
       );
     }

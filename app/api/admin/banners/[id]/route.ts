@@ -10,6 +10,7 @@ import {
   uploadBannerImage,
   deleteBannerImage,
 } from "@/features/banners/lib/banner-storage";
+import { isValidLinkUrl } from "@/features/banners/lib/validation";
 import type { Banner, BannerUpdate } from "@/features/banners/lib/schema";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -46,7 +47,19 @@ export async function PATCH(
 
     const updateData: BannerUpdate = {};
 
-    if (link_url !== null) updateData.link_url = link_url.trim();
+    if (link_url !== null) {
+      const trimmed = link_url.trim();
+      if (!isValidLinkUrl(trimmed)) {
+        return NextResponse.json(
+          {
+            error:
+              "遷移先URLは / で始まる内部パスか、https:// で始まるURLのみ使用できます",
+          },
+          { status: 400 }
+        );
+      }
+      updateData.link_url = trimmed;
+    }
     if (alt !== null) updateData.alt = alt.trim();
     if (display_start_at !== null)
       updateData.display_start_at = display_start_at.trim() || null;
