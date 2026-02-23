@@ -1,0 +1,75 @@
+/**
+ * フリー素材画像の表示順一括更新API
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag, revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * POST: 画像表示順を一括更新
+ * Body: { "order": ["id1", "id2", "id3", ...] } - 新しい順序のID配列
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    await requireAdmin();
+  } catch (error) {
+    if (error instanceof NextResponse) return error;
+    throw error;
+  }
+
+  const { slug } = await params;
+
+  try {
+    const body = await request.json();
+    const order = body?.order as string[] | undefined;
+
+    if (!Array.isArray(order) || order.length === 0) {
+      return NextResponse.json(
+        { error: "order はIDの配列で指定してください" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createAdminClient();
+
+    // 各画像の display_order を更新（page_slug でスコープ）
+    const updates = order.map((id, index) =>
+      supabase
+        .from("materials_images")
+        .update({ display_order: index })
+        .eq("id", id)
+        .eq("page_slug", slug)
+    );
+
+    const results = await Promise.all(updates);
+
+    const hasError = results.some((r) => r.error);
+    if (hasError) {
+      const firstError = results.find((r) => r.error);
+      console.error("[Admin Materials Images] Reorder error:", firstError?.error);
+      return NextResponse.json(
+        { error: "表示順の更新に失敗しました" },
+        { status: 500 }
+      );
+    }
+
+    revalidateTag(`materials-images-${slug}`, "max");
+    revalidatePath("/free-materials");
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[Admin Materials Images] Reorder error:", error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : "表示順の更新に失敗しました",
+      },
+      { status: 500 }
+    );
+  }
+}

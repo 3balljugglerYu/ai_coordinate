@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  async redirects() {
+    return [
+      {
+        source: "/event/detail/01",
+        destination: "/free-materials",
+        permanent: true,
+      },
+    ];
+  },
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
