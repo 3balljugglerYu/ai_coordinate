@@ -13,6 +13,7 @@ import {
   Wallet,
   ChevronLeft,
   ChevronRight,
+  RectangleHorizontal,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const navItems = [
   { path: "/admin/moderation", label: "投稿審査", icon: ShieldCheck },
   { path: "/admin/bonus", label: "ボーナス付与", icon: Coins },
   { path: "/admin/credits-summary", label: "ペルコイン集計", icon: Wallet },
+  { path: "/admin/banners", label: "バナー管理", icon: RectangleHorizontal },
   { path: "/admin/image-optimization", label: "画像最適化", icon: ImageIcon },
   { path: "/admin/audit-log", label: "操作ログ", icon: FileText },
   { path: "/admin/reports", label: "通報一覧", icon: Flag },

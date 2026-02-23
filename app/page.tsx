@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
+import { getPublicBanners } from "@/features/banners/lib/get-banners";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
@@ -25,6 +26,7 @@ export default async function Home() {
   const user = await getUser();
   const userId = user?.id ?? null;
   const siteUrl = getSiteUrl() || "https://persta.ai";
+  const banners = await getPublicBanners();
   
   const organizationSchema = {
     "@context": "https://schema.org",
@@ -65,7 +67,7 @@ export default async function Home() {
             着てみたいも、なりたいも。AIスタイリングプラットフォーム
           </p>
         </div>
-        <HomeBannerList />
+        <HomeBannerList banners={banners} />
         <Suspense fallback={<PostListSkeleton />}>
           <CachedHomePostList userId={userId} />
         </Suspense>
