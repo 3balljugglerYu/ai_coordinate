@@ -7,7 +7,15 @@ import type { HomeBanner } from "@/constants/homeBanners";
 
 function isExternalUrl(url: string): boolean {
   const trimmed = url.trim();
-  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
+  return trimmed.startsWith("https://");
+}
+
+/** 安全なプロトコルのみ許可（javascript: 等の XSS を防止） */
+function getSafeLinkUrl(url: string): string {
+  const trimmed = url.trim();
+  if (trimmed.startsWith("https://")) return trimmed;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
+  return "#";
 }
 
 interface HomeBannerCardProps {
@@ -20,7 +28,7 @@ interface HomeBannerCardProps {
  * 外部URLの場合は <a> タグ（新規タブ）、内部URLは Next.js Link を使用
  */
 export function HomeBannerCard({ banner }: HomeBannerCardProps) {
-  const linkUrl = banner.linkUrl.trim();
+  const linkUrl = getSafeLinkUrl(banner.linkUrl);
   const card = (
     <Card className="overflow-hidden hover:scale-[1.02] transition-transform duration-200 p-0">
       <div className="relative w-full overflow-hidden bg-gray-100">
