@@ -36,7 +36,11 @@ export function isValidSupabaseStorageUrl(url: string): boolean {
     }
 
     // 許可されたバケット名のみを許可（セキュリティのため）
-    const allowedBuckets = ["generated-images"];
+    const allowedBuckets = [
+      "generated-images",
+      "materials_images", // フリー素材画像
+      "banners", // バナー画像
+    ];
     const bucketMatch = urlObj.pathname.match(/^\/storage\/v1\/object\/public\/([^/]+)\//);
     if (!bucketMatch || !allowedBuckets.includes(bucketMatch[1])) {
       return false;

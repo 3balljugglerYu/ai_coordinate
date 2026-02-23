@@ -10,15 +10,22 @@ import { convertGeneratedImageRecordsToEventImageData } from "../lib/utils";
 
 interface EventImageGalleryClientProps {
   initialImages: EventImageData[];
+  /** 管理画像など全件取得の場合は false にして無限スクロールを無効化 */
+  initialHasMore?: boolean;
 }
 
 /**
  * クライアントコンポーネント: イベント画像一覧の表示と無限スクロール
  */
-export function EventImageGalleryClient({ initialImages }: EventImageGalleryClientProps) {
+export function EventImageGalleryClient({
+  initialImages,
+  initialHasMore,
+}: EventImageGalleryClientProps) {
+  const computedHasMore =
+    initialHasMore ?? initialImages.length === EVENT_PAGE_SIZE;
   const [images, setImages] = useState<EventImageData[]>(initialImages);
   const [offset, setOffset] = useState(initialImages.length);
-  const [hasMore, setHasMore] = useState(initialImages.length === EVENT_PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(computedHasMore);
   const [isLoading, setIsLoading] = useState(false);
   const prevInitialImagesRef = useRef<EventImageData[]>(initialImages);
 
@@ -46,9 +53,11 @@ export function EventImageGalleryClient({ initialImages }: EventImageGalleryClie
     });
     
     setOffset((prev) => Math.max(prev, initialImages.length));
-    setHasMore(initialImages.length === EVENT_PAGE_SIZE);
+    setHasMore(
+      initialHasMore ?? initialImages.length === EVENT_PAGE_SIZE
+    );
     prevInitialImagesRef.current = initialImages;
-  }, [initialImages]);
+  }, [initialImages, initialHasMore]);
 
   // 無限スクロール: 最下部が表示されたら追加で取得
   useEffect(() => {

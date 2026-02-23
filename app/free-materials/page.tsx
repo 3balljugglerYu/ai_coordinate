@@ -8,13 +8,13 @@ export const metadata: Metadata = createMarketingPageMetadata({
   title: "着せ替えお試し用素材 | Persta.AI",
   description:
     "こちらに掲載しているイラストは、Perstaで着せ替えを試すために、自由にダウンロードして利用できる素材ページです。お好きな画像をダウンロードして、ぜひ着せ替えをお試しください！",
-  path: "/event/detail/01",
+  path: "/free-materials",
   ogTitle: "着せ替えお試し用素材",
   ogDescription:
     "Perstaで着せ替えを試すためのフリー素材。イラストをダウンロードして着せ替えをお試しください。",
 });
 
-export default async function EventDetailPage() {
+export default async function FreeMaterialsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-6 md:pt-8 pb-8 px-4">

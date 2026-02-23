@@ -1,21 +1,30 @@
 import { EventImageGalleryClient } from "./EventImageGalleryClient";
-import { getEventImagesServer } from "../lib/server-api";
-import { EVENT_PAGE_SIZE } from "../lib/constants";
-import { convertGeneratedImageRecordsToEventImageData } from "../lib/utils";
+import { getMaterialPageImages } from "@/features/materials-images/lib/get-material-images";
+import { convertMaterialPageImagesToEventImageData } from "../lib/utils";
 
 /**
- * サーバーコンポーネント: イベント画像一覧の初期データを取得
+ * サーバーコンポーネント: フリー素材画像一覧の初期データを取得
+ * 管理画面で設定した画像を表示（無限スクロールなし）
  */
 export async function EventImageGalleryWrapper() {
   try {
-    const records = await getEventImagesServer(EVENT_PAGE_SIZE, 0);
+    const materials = await getMaterialPageImages("free-materials");
+    const initialImages =
+      convertMaterialPageImagesToEventImageData(materials);
 
-    // GeneratedImageRecord -> EventImageData 変換
-    const initialImages = convertGeneratedImageRecordsToEventImageData(records);
-
-    return <EventImageGalleryClient initialImages={initialImages} />;
+    return (
+      <EventImageGalleryClient
+        initialImages={initialImages}
+        initialHasMore={false}
+      />
+    );
   } catch (error) {
     console.error("[EventImageGalleryWrapper] エラー:", error);
-    return <EventImageGalleryClient initialImages={[]} />;
+    return (
+      <EventImageGalleryClient
+        initialImages={[]}
+        initialHasMore={false}
+      />
+    );
   }
 }

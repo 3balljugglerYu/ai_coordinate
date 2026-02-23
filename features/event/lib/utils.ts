@@ -3,6 +3,7 @@
  */
 
 import type { EventImageData } from "../types";
+import type { MaterialPageImage } from "@/features/materials-images/lib/schema";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 
@@ -40,4 +41,18 @@ export function convertGeneratedImageRecordsToEventImageData(
   return records
     .map(convertGeneratedImageRecordToEventImageData)
     .filter((img): img is EventImageData => img !== null);
+}
+
+/**
+ * MaterialPageImageをEventImageDataに変換
+ * 管理画像は is_posted: true で固定
+ */
+export function convertMaterialPageImagesToEventImageData(
+  images: MaterialPageImage[]
+): EventImageData[] {
+  return images.map((img) => ({
+    id: img.id,
+    url: img.image_url,
+    is_posted: true,
+  }));
 }

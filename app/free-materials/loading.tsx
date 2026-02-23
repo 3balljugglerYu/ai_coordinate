@@ -1,9 +1,9 @@
 import { EventImageGallerySkeleton } from "@/features/event/components/EventImageGallerySkeleton";
 
 /**
- * イベント詳細画面用ローディング
+ * フリー素材画面用ローディング
  */
-export default function EventLoading() {
+export default function FreeMaterialsLoading() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-6 md:pt-8 pb-8 px-4">

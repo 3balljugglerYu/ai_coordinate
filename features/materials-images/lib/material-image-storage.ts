@@ -1,22 +1,24 @@
 /**
- * バナー画像のSupabase Storage保存機能
+ * フリー素材画像のSupabase Storage保存機能
  * サーバーサイド専用（createAdminClient使用）
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToWebP } from "@/features/generation/lib/webp-converter";
 
-const STORAGE_BUCKET = "banners";
+const STORAGE_BUCKET = "materials_images";
 
 /**
- * バナー画像をWebP形式に変換してSupabase Storageにアップロード
+ * フリー素材画像をWebP形式に変換してSupabase Storageにアップロード
  * @param file アップロードする画像ファイル
- * @param bannerId バナーID（ファイル名に使用）
+ * @param pageSlug ページ識別子（例: "free-materials"）
+ * @param fileId ファイル識別用ID（uuid推奨）
  * @returns 公開URLとストレージパス
  */
-export async function uploadBannerImage(
+export async function uploadMaterialImage(
   file: File,
-  bannerId: string
+  pageSlug: string,
+  fileId: string
 ): Promise<{ imageUrl: string; storagePath: string }> {
   const supabase = createAdminClient();
 
@@ -39,7 +41,7 @@ export async function uploadBannerImage(
     const isAlreadyExists =
       statusCode === "409" || msg.toLowerCase().includes("already exists");
     if (!isAlreadyExists) {
-      console.error("Banner bucket creation error:", bucketError);
+      console.error("Material image bucket creation error:", bucketError);
       throw new Error(`バケットの作成に失敗しました: ${msg}`);
     }
   }
@@ -48,13 +50,13 @@ export async function uploadBannerImage(
   const arrayBuffer = await file.arrayBuffer();
   const imageBuffer = Buffer.from(arrayBuffer);
 
-  // WebP変換（長辺1280px、quality 85、バナー用）
+  // WebP変換（長辺1280px、quality 85）
   const webpBuffer = await convertToWebP(imageBuffer, {
     maxWidth: 1280,
     quality: 85,
   });
 
-  const path = `${bannerId}.webp`;
+  const path = `${pageSlug}/${fileId}.webp`;
 
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)
@@ -64,8 +66,8 @@ export async function uploadBannerImage(
     });
 
   if (error) {
-    console.error("Banner storage upload error:", error);
-    throw new Error(`バナー画像のアップロードに失敗しました: ${error.message}`);
+    console.error("Material image storage upload error:", error);
+    throw new Error(`画像のアップロードに失敗しました: ${error.message}`);
   }
 
   const {
@@ -79,9 +81,9 @@ export async function uploadBannerImage(
 }
 
 /**
- * バナー画像をStorageから削除
+ * フリー素材画像をStorageから削除
  */
-export async function deleteBannerImage(storagePath: string): Promise<void> {
+export async function deleteMaterialImage(storagePath: string): Promise<void> {
   const supabase = createAdminClient();
 
   const { error } = await supabase.storage
@@ -89,7 +91,7 @@ export async function deleteBannerImage(storagePath: string): Promise<void> {
     .remove([storagePath]);
 
   if (error) {
-    console.error("Banner storage delete error:", error);
-    throw new Error(`バナー画像の削除に失敗しました: ${error.message}`);
+    console.error("Material image storage delete error:", error);
+    throw new Error(`画像の削除に失敗しました: ${error.message}`);
   }
 }
