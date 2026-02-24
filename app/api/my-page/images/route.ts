@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { getMyImagesServer } from "@/features/my-page/lib/server-api";
 
 /**
@@ -7,7 +7,10 @@ import { getMyImagesServer } from "@/features/my-page/lib/server-api";
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const filter = (searchParams.get("filter") || "all") as "all" | "posted" | "unposted";
     const limit = parseInt(searchParams.get("limit") || "20", 10);
