@@ -34,9 +34,10 @@ export function NavigationBar() {
     };
   }, []);
 
-  // 認証済みユーザーに対して主要ページをプリフェッチ
+  // 認証済みユーザーに対して主要ページをプリフェッチ（他画面から戻った際の即表示用）
   useEffect(() => {
     if (user && !hasPrefetched.current) {
+      router.prefetch("/");
       router.prefetch("/coordinate");
       router.prefetch("/challenge");
       router.prefetch("/notifications");
