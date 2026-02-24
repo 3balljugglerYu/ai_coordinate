@@ -34,7 +34,7 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
     getUserProfileServer(userId, supabase),
     getUserStatsServer(userId, supabase, { isOwnProfile: true }),
     getPercoinBalanceServer(userId, supabase),
-    getMyImagesServer(userId, "all", 50, 0, supabase),
+    getMyImagesServer(userId, "all", 20, 0, supabase),
   ]);
 
   return (
