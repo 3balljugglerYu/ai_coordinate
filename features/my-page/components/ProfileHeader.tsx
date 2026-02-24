@@ -41,6 +41,7 @@ export function ProfileHeader({
     try {
       await signOut();
       router.push("/");
+      router.refresh();
     } catch (error) {
       console.error("Sign out error:", error);
     }
