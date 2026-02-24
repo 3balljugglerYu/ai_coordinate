@@ -1,21 +1,25 @@
 "use client";
 
-import { useState } from "react";
 import Masonry from "react-masonry-css";
 import { Card } from "@/components/ui/card";
 import { MyImageCard } from "./MyImageCard";
+import { UserProfilePostsLoadMoreSkeleton } from "./UserProfilePostsLoadMoreSkeleton";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
 interface MyImageGalleryProps {
   images: GeneratedImageRecord[];
-  onDelete?: (imageId: string) => void;
   currentUserId?: string | null;
+  loadMoreRef?: React.Ref<HTMLDivElement | null>;
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
 }
 
 export function MyImageGallery({
   images,
-  onDelete,
   currentUserId,
+  loadMoreRef,
+  isLoadingMore = false,
+  hasMore = false,
 }: MyImageGalleryProps) {
   if (images.length === 0) {
     return (
@@ -31,21 +35,32 @@ export function MyImageGallery({
   }
 
   return (
-    <Masonry
-      breakpointCols={{
-        default: 3,
-        1024: 2,
-        640: 2,
-      }}
-      className="flex -ml-4 w-auto"
-      columnClassName="pl-4 bg-clip-padding"
-    >
-      {images.map((image) => (
-        <div key={image.id} className="mb-4">
-          <MyImageCard image={image} currentUserId={currentUserId} />
+    <>
+      <Masonry
+        breakpointCols={{
+          default: 3,
+          1024: 2,
+          640: 2,
+        }}
+        className="flex -ml-4 w-auto"
+        columnClassName="pl-4 bg-clip-padding"
+      >
+        {images.map((image) => (
+          <div
+            key={image.id}
+            className="mb-4 [content-visibility:auto] [contain-intrinsic-size:0_300px]"
+          >
+            <MyImageCard image={image} currentUserId={currentUserId} />
+          </div>
+        ))}
+      </Masonry>
+
+      {hasMore && (
+        <div ref={loadMoreRef} className="py-4">
+          {isLoadingMore && <UserProfilePostsLoadMoreSkeleton />}
         </div>
-      ))}
-    </Masonry>
+      )}
+    </>
   );
 }
 

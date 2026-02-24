@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth();
     const searchParams = request.nextUrl.searchParams;
     const filter = (searchParams.get("filter") || "all") as "all" | "posted" | "unposted";
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const limit = parseInt(searchParams.get("limit") || "20", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     const images = await getMyImagesServer(user.id, filter, limit, offset);

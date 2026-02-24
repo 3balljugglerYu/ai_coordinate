@@ -231,15 +231,17 @@ export const getMyImagesServer = cache(async (
     let query = supabase
       .from("generated_images")
       .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .eq("user_id", userId);
 
     if (filter === "posted") {
-      query = query.eq("is_posted", true);
+      query = query.eq("is_posted", true).order("posted_at", { ascending: false });
     } else if (filter === "unposted") {
-      query = query.eq("is_posted", false);
+      query = query.eq("is_posted", false).order("created_at", { ascending: false });
+    } else {
+      query = query.order("created_at", { ascending: false });
     }
+
+    query = query.range(offset, offset + limit - 1);
 
     const { data, error } = await query;
 
