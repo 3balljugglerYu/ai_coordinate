@@ -20,7 +20,7 @@ async function getCreditsSummary() {
 
   const { data: credits, error: creditsError } = await supabase
     .from("user_credits")
-    .select("user_id, balance, paid_balance, promo_balance");
+    .select("user_id, balance, paid_balance");
 
   if (creditsError) throw new Error("残高の取得に失敗しました");
 
@@ -96,7 +96,7 @@ async function getCreditsSummary() {
     nickname: profileMap[c.user_id] ?? null,
     balance: c.balance ?? 0,
     paid_balance: c.paid_balance ?? 0,
-    promo_balance: c.promo_balance ?? 0,
+    promo_balance: (c.balance ?? 0) - (c.paid_balance ?? 0),
     promo_granted: statsMap[c.user_id]?.promo_granted ?? 0,
     paid_purchased: statsMap[c.user_id]?.paid_purchased ?? 0,
     promo_consumed: statsMap[c.user_id]?.promo_consumed ?? 0,
@@ -112,7 +112,7 @@ async function getCreditsSummary() {
   const totals = {
     balance: sorted.reduce((s, i) => s + i.balance, 0),
     paid_balance: sorted.reduce((s, i) => s + i.paid_balance, 0),
-    promo_balance: sorted.reduce((s, i) => s + i.promo_balance, 0),
+    promo_balance: sorted.reduce((s, i) => s + (i.balance - i.paid_balance), 0),
     promo_granted: sorted.reduce((s, i) => s + i.promo_granted, 0),
     paid_purchased: sorted.reduce((s, i) => s + i.paid_purchased, 0),
     promo_consumed: sorted.reduce((s, i) => s + i.promo_consumed, 0),
