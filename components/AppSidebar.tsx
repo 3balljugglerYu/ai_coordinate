@@ -68,6 +68,7 @@ export function AppSidebar() {
 
   useEffect(() => {
     if (user && !hasPrefetched.current) {
+      router.prefetch("/");
       router.prefetch("/coordinate");
       router.prefetch("/challenge");
       router.prefetch("/notifications");
@@ -100,6 +101,7 @@ export function AppSidebar() {
     try {
       await signOut();
       router.push("/");
+      router.refresh();
     } catch (error) {
       console.error("Sign out error:", error);
     }
