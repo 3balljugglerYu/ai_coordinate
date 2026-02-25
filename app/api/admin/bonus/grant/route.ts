@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
 
 /**
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // RPC関数呼び出し
-    const supabase = await createClient();
+    // RPC関数呼び出し（service_role 使用: DB層の認可チェックで auth.uid() IS NULL を許可）
+    const supabase = createAdminClient();
     const { data: rpcResult, error: rpcError } = await supabase.rpc(
       "grant_admin_bonus",
       {
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     const { amount_granted, transaction_id } = rpcResult[0];
 
-    // 新しい残高を取得
+    // 新しい残高を取得（createAdminClient で RLS をバイパス）
     const { data: creditData, error: creditError } = await supabase
       .from("user_credits")
       .select("balance")

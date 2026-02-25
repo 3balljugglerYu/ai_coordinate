@@ -265,7 +265,7 @@ function isNonRetriableGenerationError(errorMessage: string): boolean {
 }
 
 /**
- * ペルコイン減算処理
+ * ペルコイン減算処理（deduct_free_percoins RPC 経由）
  */
 async function deductPercoinsFromGeneration(
   supabase: ReturnType<typeof createClient>,
@@ -276,131 +276,33 @@ async function deductPercoinsFromGeneration(
   try {
     console.log(`[Percoin Deduction] Starting deduction for user ${userId}, job ${generationId}, amount ${percoinAmount}`);
 
-    // 0. 既に減算済みかチェック（冪等性保証）
-    const { data: existingConsumption, error: checkConsumptionError } = await supabase
-      .from("credit_transactions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("transaction_type", "consumption")
-      .eq("metadata->>job_id", generationId)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("deduct_free_percoins", {
+      p_user_id: userId,
+      p_amount: percoinAmount,
+      p_metadata: {
+        reason: "image_generation",
+        source: "edge_function",
+        job_id: generationId,
+      },
+      p_related_generation_id: null,
+    });
 
-    if (checkConsumptionError) {
-      console.error("[Percoin Deduction] Failed to check existing consumption:", checkConsumptionError);
-      // チェック失敗時は処理を継続（減算漏れより二重減算回避を優先）
+    if (error) {
+      throw new Error(`ペルコイン減算に失敗しました: ${error.message}`);
     }
 
-    if (existingConsumption) {
-      console.log(`[Percoin Deduction] Consumption already recorded for job ${generationId}, skipping`);
-      return;
-    }
-    
-    // 1. アカウントを取得
-    // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
-    const { data: account, error: accountError } = await supabase
-      .from("user_credits")
-      .select("id, balance, paid_balance, promo_balance")
-      .eq("user_id", userId)
-      .single();
-    
-    let accountId: string;
-    let currentBalance: number;
-    let currentPaidBalance: number;
-    let currentPromoBalance: number;
-    
-    if (accountError) {
-      // レコードが存在しない場合（PGRST116）は新規作成
-      // それ以外のエラー（複数レコードなど）はデータ整合性の問題として扱う
-      if (accountError.code === 'PGRST116') {
-        // アカウントが存在しない場合は作成
-        const { data: created, error: insertError } = await supabase
-          .from("user_credits")
-          .insert({ user_id: userId, balance: 0, paid_balance: 0, promo_balance: 0 })
-          .select("id, balance, paid_balance, promo_balance")
-          .single();
-        
-        if (insertError || !created) {
-          throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
-        }
-        
-        accountId = created.id;
-        currentBalance = created.balance;
-        currentPaidBalance = created.paid_balance;
-        currentPromoBalance = created.promo_balance;
-      } else {
-        // 複数レコードが存在する場合など、データ整合性の問題
-        throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
-      }
-    } else {
-      accountId = account.id;
-      currentBalance = account.balance;
-      currentPaidBalance = account.paid_balance;
-      currentPromoBalance = account.promo_balance;
-    }
-    
-    console.log(`[Percoin Deduction] Current balance: ${currentBalance}, amount to deduct: ${percoinAmount}`);
-    
-    // 2. 残高チェックと消費内訳算出（無償 -> 有償）
-    const fromPromo = Math.min(currentPromoBalance, percoinAmount);
-    const fromPaid = percoinAmount - fromPromo;
-    if (fromPaid > currentPaidBalance) {
-      throw new Error(`ペルコイン残高が不足しています（現在: ${currentBalance}, 必要: ${percoinAmount}）`);
-    }
-    const newPromoBalance = currentPromoBalance - fromPromo;
-    const newPaidBalance = currentPaidBalance - fromPaid;
-    const newBalance = newPaidBalance + newPromoBalance;
-    
-    // 3. 残高を更新
-    const { error: updateError } = await supabase
-      .from("user_credits")
-      .update({
-        paid_balance: newPaidBalance,
-        promo_balance: newPromoBalance,
-        balance: newBalance,
-      })
-      .eq("id", accountId);
-    
-    if (updateError) {
-      throw new Error(`ペルコイン残高の更新に失敗しました: ${updateError.message}`);
-    }
-    
-    console.log(`[Percoin Deduction] Balance updated to: ${newBalance}`);
-    
-    // 4. 取引履歴を記録
-    // 注意: related_generation_idは外部キー制約でgenerated_images.idを参照しているため、
-    // 画像生成前はNULLでINSERTし、画像生成成功後にgenerated_images.idに更新する
-    const { error: transactionError } = await supabase
-      .from("credit_transactions")
-      .insert({
-        user_id: userId,
-        amount: -percoinAmount,
-        transaction_type: "consumption",
-        related_generation_id: null, // 画像生成前はNULL（外部キー制約のため）
-        metadata: { 
-          reason: "image_generation", 
-          source: "edge_function",
-          job_id: generationId, // ジョブIDをmetadataに保存（後で更新するため）
-          from_promo: fromPromo,
-          from_paid: fromPaid,
-        },
-      });
-    
-    if (transactionError) {
-      // 取引履歴の保存に失敗しても、残高は既に更新されているため、ログに記録のみ
-      console.error("[Percoin Deduction] Failed to record credit transaction:", transactionError);
-      throw new Error(`取引履歴の保存に失敗しました: ${transactionError.message}`);
-    } else {
-      console.log(`[Percoin Deduction] Transaction recorded successfully`);
-    }
+    const result = Array.isArray(data) ? data[0] : data;
+    console.log(
+      `[Percoin Deduction] Success. balance=${result?.balance ?? "?"}, from_promo=${result?.from_promo ?? "?"}, from_paid=${result?.from_paid ?? "?"}`
+    );
   } catch (error) {
-    // エラーをログに記録して再throw
     console.error("[Percoin Deduction] Error deducting percoins:", error);
     throw error;
   }
 }
 
 /**
- * ペルコイン返金処理（冪等性保証付き）
+ * ペルコイン返金処理（refund_percoins RPC 経由、冪等性保証付き）
  */
 async function refundPercoinsFromGeneration(
   supabase: ReturnType<typeof createClient>,
@@ -410,28 +312,8 @@ async function refundPercoinsFromGeneration(
 ): Promise<void> {
   try {
     console.log(`[Percoin Refund] Starting refund for user ${userId}, job ${jobId}, amount ${percoinAmount}`);
-    
-    // 1. 既に返金済みかチェック（冪等性保証）
-    const { data: existingRefund, error: checkError } = await supabase
-      .from("credit_transactions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("transaction_type", "refund")
-      .eq("metadata->>job_id", jobId) // metadata内のjob_idで検索
-      .maybeSingle();
-    
-    if (checkError) {
-      console.error("[Percoin Refund] Failed to check existing refund:", checkError);
-      // チェックエラーでも処理を続行（重複返金のリスクはあるが、返金自体は重要）
-    }
-    
-    if (existingRefund) {
-      // 既に返金済みの場合は何もしない
-      console.log(`[Percoin Refund] Refund already processed for job ${jobId}, skipping`);
-      return;
-    }
 
-    // 2. 元の消費履歴を確認（存在しない場合は返金しない）
+    // 元の消費履歴から from_promo / from_paid を取得（存在しない場合は返金しない）
     const { data: consumptionTx, error: consumptionError } = await supabase
       .from("credit_transactions")
       .select("id, metadata")
@@ -448,108 +330,29 @@ async function refundPercoinsFromGeneration(
       console.warn(`[Percoin Refund] Consumption transaction not found for job ${jobId}, skipping refund`);
       return;
     }
-    
-    // 3. アカウントを取得
-    // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
-    // 返金処理では、既にペルコイン減算が行われている前提なので、レコードは存在するはず
-    const { data: account, error: accountError } = await supabase
-      .from("user_credits")
-      .select("id, balance, paid_balance, promo_balance")
-      .eq("user_id", userId)
-      .single();
-    
-    let accountId: string;
-    let currentBalance: number;
-    let currentPaidBalance: number;
-    let currentPromoBalance: number;
-    
-    if (accountError) {
-      // レコードが存在しない場合（PGRST116）は新規作成（エッジケース対応）
-      // それ以外のエラー（複数レコードなど）はデータ整合性の問題として扱う
-      if (accountError.code === 'PGRST116') {
-        // アカウントが存在しない場合は作成（通常は存在するはず）
-        const { data: created, error: insertError } = await supabase
-          .from("user_credits")
-          .insert({ user_id: userId, balance: 0, paid_balance: 0, promo_balance: 0 })
-          .select("id, balance, paid_balance, promo_balance")
-          .single();
-        
-        if (insertError || !created) {
-          throw new Error(`ペルコインアカウントの初期化に失敗しました: ${insertError?.message}`);
-        }
-        
-        accountId = created.id;
-        currentBalance = created.balance;
-        currentPaidBalance = created.paid_balance;
-        currentPromoBalance = created.promo_balance;
-      } else {
-        // 複数レコードが存在する場合など、データ整合性の問題
-        throw new Error(`ペルコイン残高の取得に失敗しました: ${accountError.message}`);
-      }
-    } else {
-      accountId = account.id;
-      currentBalance = account.balance;
-      currentPaidBalance = account.paid_balance;
-      currentPromoBalance = account.promo_balance;
-    }
-    
-    console.log(`[Percoin Refund] Current balance: ${currentBalance}, amount to refund: ${percoinAmount}`);
-    
-    // 4. 元の消費内訳を参照して返金先を決定
-    const metadata = (consumptionTx?.metadata as { from_promo?: number; from_paid?: number } | null) ?? null;
-    const refundToPromo = Math.max(0, Math.min(percoinAmount, Number(metadata?.from_promo ?? percoinAmount)));
+
+    const metadata = (consumptionTx.metadata as { from_promo?: number; from_paid?: number } | null) ?? {};
+    const refundToPromo = Math.max(0, Math.min(percoinAmount, Number(metadata.from_promo ?? percoinAmount)));
     const refundToPaid = Math.max(0, percoinAmount - refundToPromo);
 
-    // 5. 残高を増加
-    const newPromoBalance = currentPromoBalance + refundToPromo;
-    const newPaidBalance = currentPaidBalance + refundToPaid;
-    const newBalance = newPromoBalance + newPaidBalance;
-    const { error: updateError } = await supabase
-      .from("user_credits")
-      .update({
-        paid_balance: newPaidBalance,
-        promo_balance: newPromoBalance,
-        balance: newBalance,
-      })
-      .eq("id", accountId);
-    
-    if (updateError) {
-      throw new Error(`ペルコイン残高の更新に失敗しました: ${updateError.message}`);
+    const { error } = await supabase.rpc("refund_percoins", {
+      p_user_id: userId,
+      p_amount: percoinAmount,
+      p_to_promo: refundToPromo,
+      p_to_paid: refundToPaid,
+      p_job_id: jobId,
+      p_metadata: {
+        reason: "image_generation_failed",
+        source: "edge_function",
+      },
+    });
+
+    if (error) {
+      throw new Error(`ペルコイン返金に失敗しました: ${error.message}`);
     }
-    
-    console.log(`[Percoin Refund] Balance updated to: ${newBalance}`);
-    
-    // 6. 取引履歴を記録（transaction_type: "refund"）
-    // 注意: related_generation_idは外部キー制約でgenerated_images.idを参照しているため、
-    // 返金時はNULLでINSERTする（画像生成が失敗したため、generated_images.idは存在しない）
-    const { error: transactionError } = await supabase
-      .from("credit_transactions")
-      .insert({
-        user_id: userId,
-        amount: percoinAmount,
-        transaction_type: "refund",
-        related_generation_id: null, // 画像生成失敗のためNULL
-        metadata: { 
-          reason: "image_generation_failed", 
-          source: "edge_function",
-          job_id: jobId, // ジョブIDをmetadataに保存
-          to_promo: refundToPromo,
-          to_paid: refundToPaid,
-        },
-      });
-    
-    if (transactionError) {
-      if (transactionError.code === "23505") {
-        console.log(`[Percoin Refund] Duplicate refund blocked by unique index for job ${jobId}`);
-        return;
-      }
-      // 取引履歴の保存に失敗しても、残高は既に更新されているため、ログに記録のみ
-      console.error("[Percoin Refund] Failed to record credit transaction:", transactionError);
-    } else {
-      console.log(`[Percoin Refund] Transaction recorded successfully`);
-    }
+
+    console.log(`[Percoin Refund] Success. to_promo=${refundToPromo}, to_paid=${refundToPaid}`);
   } catch (error) {
-    // エラーをログに記録して再throw
     console.error("[Percoin Refund] Error refunding percoins:", error);
     throw error;
   }

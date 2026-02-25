@@ -6,13 +6,13 @@ import { getAdminUserIds } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, User, ImageIcon, MessageCircle, CreditCard } from "lucide-react";
+import { ArrowLeft, User, ImageIcon, MessageCircle, CreditCard, Clock } from "lucide-react";
 import { UserDetailActions } from "./UserDetailActions";
 
 async function getUserDetail(userId: string) {
   const supabase = createAdminClient();
 
-  const [profileResult, creditsResult, generatedResult, postedResult, commentsResult, transactionsResult] =
+  const [profileResult, creditsResult, expiringBatchesResult, expiringCountResult, generatedResult, postedResult, commentsResult, transactionsResult] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -21,9 +21,11 @@ async function getUserDetail(userId: string) {
         .maybeSingle(),
       supabase
         .from("user_credits")
-        .select("balance, paid_balance, promo_balance")
+        .select("balance, paid_balance")
         .eq("user_id", userId)
         .maybeSingle(),
+      supabase.rpc("get_free_percoin_batches_expiring", { p_user_id: userId }),
+      supabase.rpc("get_expiring_this_month_count", { p_user_id: userId }),
       supabase
         .from("generated_images")
         .select(
@@ -62,6 +64,15 @@ async function getUserDetail(userId: string) {
 
   const profile = profileResult.data;
   const credits = creditsResult.data;
+  const expiringBatches = (expiringBatchesResult.data ?? []) as Array<{
+    id: string;
+    user_id: string;
+    remaining_amount: number;
+    expire_at: string;
+    source: string;
+  }>;
+  const expiringCountRow = Array.isArray(expiringCountResult.data) ? expiringCountResult.data[0] : expiringCountResult.data;
+  const expiringThisMonth = Number((expiringCountRow as { expiring_this_month?: number })?.expiring_this_month ?? 0);
   const generated = generatedResult.data || [];
   const posted = postedResult.data || [];
   const comments = commentsResult.data || [];
@@ -90,6 +101,8 @@ async function getUserDetail(userId: string) {
   return {
     profile,
     credits,
+    expiringBatches,
+    expiringThisMonth,
     generated: generated.map((img) => ({
       ...img,
       thumb_url: getPostThumbUrl(img),
@@ -147,7 +160,38 @@ export default async function AdminUserDetailPage({
     notFound();
   }
 
-  const { profile, credits, generated, posted, comments, transactions } = data;
+  const { profile, credits, expiringBatches, expiringThisMonth, generated, posted, comments, transactions } = data;
+
+  const sourceLabels: Record<string, string> = {
+    signup_bonus: "新規登録",
+    tour_bonus: "チュートリアル",
+    referral: "紹介",
+    daily_post: "デイリー投稿",
+    streak: "連続ログイン",
+    admin_bonus: "運営付与",
+    refund: "返金",
+  };
+
+  // 期限が近い無償コインを月別（JST）にグルーピング
+  const monthKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+  });
+  const monthLabelFormatter = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "long",
+  });
+  const monthGroups = expiringBatches.reduce<
+    Record<string, (typeof expiringBatches)[number][]>
+  >((acc, batch) => {
+    const key = monthKeyFormatter.format(new Date(batch.expire_at));
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(batch);
+    return acc;
+  }, {});
+  const sortedMonthKeys = Object.keys(monthGroups).sort();
 
   return (
     <div className="space-y-6">
@@ -204,8 +248,13 @@ export default async function AdminUserDetailPage({
                     有料残高: <strong className="text-emerald-700">{credits.paid_balance}</strong>
                   </span>
                   <span className="text-slate-600">
-                    無料残高: <strong className="text-violet-600">{credits.promo_balance}</strong>
+                    無料残高: <strong className="text-violet-600">{(credits.balance ?? 0) - (credits.paid_balance ?? 0)}</strong>
                   </span>
+                  {expiringThisMonth > 0 && (
+                    <span className="text-amber-600">
+                      今月末失効予定: <strong>{expiringThisMonth}</strong> ペルコイン
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -216,6 +265,60 @@ export default async function AdminUserDetailPage({
           />
         </div>
       </header>
+
+      {expiringBatches.length > 0 && (
+        <Card className="overflow-hidden border-amber-200/60 bg-amber-50/30">
+          <CardContent className="p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <Clock className="h-5 w-5 text-amber-600" />
+              期限が近い無償コイン
+              <span className="text-sm font-normal text-slate-500">
+                （{expiringBatches.length}件）
+              </span>
+            </h2>
+            <div className="space-y-4">
+              {sortedMonthKeys.map((monthKey) => {
+                const batches = monthGroups[monthKey];
+                const totalAmount = batches.reduce(
+                  (sum, b) => sum + b.remaining_amount,
+                  0
+                );
+                const sampleDate = new Date(batches[0].expire_at);
+                const monthLabel = monthLabelFormatter.format(sampleDate);
+                return (
+                  <div key={monthKey}>
+                    <h3 className="mb-2 text-sm font-medium text-amber-800">
+                      {monthLabel}（{batches.length}件）: {totalAmount} ペルコイン
+                    </h3>
+                    <ul className="space-y-2">
+                      {batches.map((b) => (
+                        <li
+                          key={b.id}
+                          className="flex items-center justify-between rounded-lg border border-amber-200/80 bg-white/80 px-3 py-2 text-sm"
+                        >
+                          <span className="text-slate-700">
+                            {sourceLabels[b.source] ?? b.source}:{" "}
+                            {b.remaining_amount} ペルコイン
+                          </span>
+                          <span className="text-slate-500">
+                            {new Date(b.expire_at).toLocaleDateString("ja-JP", {
+                              timeZone: "Asia/Tokyo",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}{" "}
+                            まで
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">

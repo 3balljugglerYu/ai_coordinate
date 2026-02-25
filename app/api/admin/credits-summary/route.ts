@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   const { data: credits, error: creditsError } = await supabase
     .from("user_credits")
-    .select("user_id, balance, paid_balance, promo_balance");
+    .select("user_id, balance, paid_balance");
 
   if (creditsError) {
     console.error("Credits fetch error:", creditsError);
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     nickname: profileMap[c.user_id] ?? null,
     balance: c.balance ?? 0,
     paid_balance: c.paid_balance ?? 0,
-    promo_balance: c.promo_balance ?? 0,
+    promo_balance: (c.balance ?? 0) - (c.paid_balance ?? 0),
     promo_granted: statsMap[c.user_id]?.promo_granted ?? 0,
     paid_purchased: statsMap[c.user_id]?.paid_purchased ?? 0,
     promo_consumed: statsMap[c.user_id]?.promo_consumed ?? 0,
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
   const totals = {
     balance: sorted.reduce((s, i) => s + i.balance, 0),
     paid_balance: sorted.reduce((s, i) => s + i.paid_balance, 0),
-    promo_balance: sorted.reduce((s, i) => s + i.promo_balance, 0),
+    promo_balance: sorted.reduce((s, i) => s + (i.balance - i.paid_balance), 0),
     promo_granted: sorted.reduce((s, i) => s + i.promo_granted, 0),
     paid_purchased: sorted.reduce((s, i) => s + i.paid_purchased, 0),
     promo_consumed: sorted.reduce((s, i) => s + i.promo_consumed, 0),
