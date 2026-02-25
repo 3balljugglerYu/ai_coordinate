@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { findPercoinPackage } from "@/features/credits/percoin-packages";
 import { recordMockPercoinPurchase } from "@/features/credits/lib/percoin-service";
 
@@ -33,10 +34,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // purchase_promo は service_role のみ許可のため createAdminClient を使用
     const result = await recordMockPercoinPurchase({
       userId: user.id,
       percoinPackage,
-      supabaseClient: supabase,
+      supabaseClient: createAdminClient(),
     });
 
     revalidateTag(`my-page-${user.id}`, "max");
