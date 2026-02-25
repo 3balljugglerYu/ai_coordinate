@@ -2,6 +2,7 @@
 
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 
@@ -81,7 +82,8 @@ export async function getExpirationNotificationTargets(): Promise<string[]> {
     throw new Error("Forbidden");
   }
 
-  const supabase = await createClient();
+  // service_role のみ実行可能のため createAdminClient を使用
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("get_expiration_notification_targets");
 
   if (error) {
