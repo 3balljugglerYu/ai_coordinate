@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { FreePercoinBatchExpiring } from "@/features/credits/lib/free-percoin-expiration";
 
 /**
  * 期限が近い無償コイン一覧と今月末失効予定数を取得
@@ -37,13 +38,15 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    const batches = (batchesResult.data ?? []).map((row: Record<string, unknown>) => ({
-      id: row.id,
-      user_id: row.user_id,
-      remaining_amount: row.remaining_amount,
-      expire_at: row.expire_at,
-      source: row.source,
-    }));
+    const batches: FreePercoinBatchExpiring[] = (batchesResult.data ?? []).map(
+      (row: Record<string, unknown>) => ({
+        id: String(row.id ?? ""),
+        user_id: String(row.user_id ?? ""),
+        remaining_amount: Number(row.remaining_amount ?? 0),
+        expire_at: String(row.expire_at ?? ""),
+        source: String(row.source ?? ""),
+      })
+    );
 
     const countRow = Array.isArray(countResult.data) ? countResult.data[0] : countResult.data;
     const expiring_this_month = Number(
