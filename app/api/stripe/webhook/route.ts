@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Stripe webhookエンドポイント
- * checkout.session.completedイベントを処理してクレジットを付与
+ * checkout.session.completedイベントを処理してペルコインを付与
  */
 export async function POST(request: NextRequest) {
   const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // クレジット付与（べき等性はデータベースレベルで保証される）
+      // ペルコイン付与（べき等性はデータベースレベルで保証される）
       const customerEmail =
         typeof session.customer === "string"
           ? null
