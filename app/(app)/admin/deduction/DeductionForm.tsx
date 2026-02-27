@@ -36,6 +36,7 @@ export function DeductionForm() {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [currentIdempotencyKey, setCurrentIdempotencyKey] = useState<string | null>(null);
   const [errors, setErrors] = useState<{
     userId?: string;
     amount?: string;
@@ -84,6 +85,12 @@ export function DeductionForm() {
       return;
     }
 
+    // 冪等キー: 初回は生成、再試行時は同じキーを再利用（二重減算防止）
+    const idempotencyKey = currentIdempotencyKey ?? crypto.randomUUID();
+    if (!currentIdempotencyKey) {
+      setCurrentIdempotencyKey(idempotencyKey);
+    }
+
     setIsSubmitting(true);
     setConfirmDialogOpen(false);
 
@@ -97,6 +104,7 @@ export function DeductionForm() {
           user_id: userId.trim(),
           amount: Number(amount),
           reason: reason.trim(),
+          idempotency_key: idempotencyKey,
         }),
       });
 
@@ -126,6 +134,7 @@ export function DeductionForm() {
         setUserId("");
         setAmount("");
         setReason("");
+        setCurrentIdempotencyKey(null);
       } else {
         throw new Error(data.error || "ペルコイン減算に失敗しました");
       }

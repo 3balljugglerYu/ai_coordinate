@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { user_id, amount, reason } = body;
+    const { user_id, amount, reason, idempotency_key } = body;
 
     if (!user_id || typeof user_id !== "string" || user_id.trim() === "") {
       return NextResponse.json(
@@ -65,7 +65,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const idempotencyKey = `manual-${admin.id}-${Date.now()}`;
+    if (
+      !idempotency_key ||
+      typeof idempotency_key !== "string" ||
+      idempotency_key.trim() === ""
+    ) {
+      return NextResponse.json(
+        { error: "idempotency_key is required and must be a non-empty string" },
+        { status: 400 }
+      );
+    }
+
+    const idempotencyKey = idempotency_key.trim();
     const supabase = createAdminClient();
 
     const { data: rpcResult, error: rpcError } = await supabase.rpc(
