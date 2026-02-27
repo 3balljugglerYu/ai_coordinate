@@ -30,6 +30,12 @@ function formatTransactionType(
         return metadata.reason;
       }
       return "運営者からのボーナス"; // フォールバック
+    case "admin_deduction":
+      // 減算理由があればそれを表示名として使用
+      if (metadata && typeof metadata.reason === "string" && metadata.reason.trim()) {
+        return metadata.reason;
+      }
+      return "運営による減算"; // フォールバック
     case "tour_bonus":
       return "チュートリアルボーナス";
     case "forfeiture":

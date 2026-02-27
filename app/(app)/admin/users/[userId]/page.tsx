@@ -132,10 +132,14 @@ function formatTransactionType(
     streak: "連続ログインボーナス",
     referral: "紹介ボーナス",
     admin_bonus: "運営者からのボーナス",
+    admin_deduction: "運営による減算",
     tour_bonus: "チュートリアルボーナス",
     forfeiture: "退会による放棄",
   };
   if (type === "admin_bonus" && metadata?.reason) {
+    return String(metadata.reason);
+  }
+  if (type === "admin_deduction" && metadata?.reason) {
     return String(metadata.reason);
   }
   return map[type] || type;
@@ -169,6 +173,7 @@ export default async function AdminUserDetailPage({
     daily_post: "デイリー投稿",
     streak: "連続ログイン",
     admin_bonus: "運営付与",
+    admin_deduction: "運営減算",
     refund: "返金",
   };
 
