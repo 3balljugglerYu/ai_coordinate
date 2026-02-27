@@ -4,6 +4,7 @@ export type AdminAuditAction =
   | "user_suspend"
   | "user_reactivate"
   | "bonus_grant"
+  | "deduction"
   | "moderation_approve"
   | "moderation_reject";
 
