@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CreditCard, Receipt, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { createMarketingPageMetadata } from "@/lib/metadata";
@@ -79,8 +80,13 @@ export default function PaymentServicesActPage() {
 						<CardDescription>ペルコインの有効期限について</CardDescription>
 					</CardHeader>
 					<CardContent>
+						<p className="text-sm text-gray-800 mb-2">
+							購入により取得したペルコイン（前払式支払手段）には、有効期限は設定しておりません。ただし、当サービスの終了、または法令に基づく場合を除き、無期限に使用可能です。
+						</p>
 						<p className="text-sm text-gray-800">
-							当サービスで発行するペルコインには、有効期限は設定しておりません。ただし、当サービスの終了、または法令に基づく場合を除き、ペルコインは無期限に使用可能です。
+							なお、新規登録・チュートリアル完了・紹介特典等により無料で付与されるペルコインには有効期限があり、付与月の翌月から起算して6ヶ月後の月末（日本時間）で失効します。詳細は
+							<Link href="/terms" className="text-primary underline underline-offset-2">利用規約</Link>
+							をご参照ください。
 						</p>
 					</CardContent>
 				</Card>
