@@ -91,7 +91,7 @@ export function PercoinDefaultsForm({
       const streakPayload = Array.from({ length: 14 }, (_, i) => i + 1).map(
         (day) => ({
           streak_day: day,
-          amount: streakValues[day] ?? 10,
+          amount: streakValues[day]!,
         })
       );
 
