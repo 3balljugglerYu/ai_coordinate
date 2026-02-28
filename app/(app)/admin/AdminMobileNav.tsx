@@ -13,6 +13,7 @@ import {
   Flag,
   Wallet,
   RectangleHorizontal,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ const navItems = [
   { path: "/admin/users", label: "ユーザー検索", icon: Search },
   { path: "/admin/moderation", label: "投稿審査", icon: ShieldCheck },
   { path: "/admin/bonus", label: "ボーナス", icon: Coins },
+  { path: "/admin/percoin-defaults", label: "デフォルト枚数", icon: Settings },
   { path: "/admin/deduction", label: "減算", icon: MinusCircle },
   { path: "/admin/banners", label: "バナー管理", icon: RectangleHorizontal },
   { path: "/admin/materials-images/free-materials", label: "フリー素材管理", icon: ImageIcon },
