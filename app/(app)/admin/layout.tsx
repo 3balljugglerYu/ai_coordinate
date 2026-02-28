@@ -7,13 +7,13 @@ import { AdminSidebar } from "./AdminSidebar";
 import { AdminMobileNav } from "./AdminMobileNav";
 import localFont from "next/font/local";
 
-const firaCode = localFont({
+const adminHeadingFont = localFont({
   src: "../../fonts/geist-mono-latin.woff2",
   variable: "--font-admin-heading",
   display: "swap",
 });
 
-const firaSans = localFont({
+const adminBodyFont = localFont({
   src: "../../fonts/geist-latin.woff2",
   variable: "--font-admin-body",
   display: "swap",
@@ -39,7 +39,7 @@ export default async function AdminLayout({
 
   return (
     <div
-      className={`${firaCode.variable} ${firaSans.variable} min-h-screen bg-[#FAF5FF]`}
+      className={`${adminHeadingFont.variable} ${adminBodyFont.variable} min-h-screen bg-[#FAF5FF]`}
       data-admin-layout
       style={
         {
