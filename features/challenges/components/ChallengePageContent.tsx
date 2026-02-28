@@ -21,11 +21,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { ChallengeCard } from "./ChallengeCard";
 import { ReferralCodeDisplay } from "@/features/referral/components/ReferralCodeDisplay";
-import {
-  REFERRAL_BONUS_AMOUNT,
-  DAILY_POST_BONUS_AMOUNT,
-  STREAK_BONUS_SCHEDULE,
-} from "@/constants";
 import type { ChallengeStatus } from "@/features/challenges/lib/api";
 import {
   checkInStreakBonus,
@@ -60,17 +55,23 @@ function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
 interface ChallengePageContentProps {
   initialChallengeStatus?: ChallengeStatus | null;
   initialTutorialCompleted?: boolean | null;
+  referralBonusAmount: number;
+  dailyPostBonusAmount: number;
+  streakBonusSchedule: readonly number[];
 }
 
 export function ChallengePageContent({
   initialChallengeStatus,
   initialTutorialCompleted,
-}: ChallengePageContentProps = {}) {
+  referralBonusAmount,
+  dailyPostBonusAmount,
+  streakBonusSchedule,
+}: ChallengePageContentProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
-  const maxStreakBonus = Math.max(...STREAK_BONUS_SCHEDULE);
-  const totalStreakBonus = STREAK_BONUS_SCHEDULE.reduce((a, b) => a + b, 0);
+  const maxStreakBonus = Math.max(...streakBonusSchedule);
+  const totalStreakBonus = streakBonusSchedule.reduce((a, b) => a + b, 0);
   const [streakDays, setStreakDays] = useState<number>(
     initialChallengeStatus?.streakDays ?? 0
   );
@@ -271,7 +272,7 @@ export function ChallengePageContent({
                   現在の連続記録: <span className="text-lg font-bold">{streakDays}</span> 日
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  あと {STREAK_BONUS_SCHEDULE.length - streakDays} 日でコンプリート
+                  あと {streakBonusSchedule.length - streakDays} 日でコンプリート
                 </span>
               </div>
 
@@ -297,7 +298,7 @@ export function ChallengePageContent({
 
               {/* 5列x3行のグリッド (ストリーク日数 + ゴール) */}
               <div className="grid grid-cols-5 gap-2">
-                {STREAK_BONUS_SCHEDULE.map((amount, index) => {
+                {streakBonusSchedule.map((amount, index) => {
                   const day = index + 1;
                   const isCompleted = day <= streakDays;
                   const isNext = day === streakDays + 1;
@@ -351,22 +352,22 @@ export function ChallengePageContent({
                 <div className={cn(
                   "relative flex flex-col items-center justify-center p-2 rounded-lg border transition-all duration-300 aspect-square",
                   // ストリーク日数達成済みならゴールも達成扱い
-                  streakDays >= STREAK_BONUS_SCHEDULE.length
+                  streakDays >= streakBonusSchedule.length
                     ? "bg-yellow-400 border-yellow-500 text-white shadow-md"
                     : "bg-yellow-50 border-yellow-200 text-yellow-600"
                 )}>
                   <span className={cn(
                     "text-xs font-bold mb-1",
-                    streakDays >= STREAK_BONUS_SCHEDULE.length ? "text-yellow-100" : "text-yellow-600/70"
+                    streakDays >= streakBonusSchedule.length ? "text-yellow-100" : "text-yellow-600/70"
                   )}>
                     GOAL
                   </span>
                   <Trophy className={cn(
                     "w-6 h-6 mb-1",
-                    streakDays >= STREAK_BONUS_SCHEDULE.length ? "text-white animate-bounce" : "text-yellow-500"
+                    streakDays >= streakBonusSchedule.length ? "text-white animate-bounce" : "text-yellow-500"
                   )} strokeWidth={2} />
 
-                  {streakDays >= STREAK_BONUS_SCHEDULE.length && (
+                  {streakDays >= streakBonusSchedule.length && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-lg bg-yellow-400 opacity-20"></span>
                     </div>
@@ -382,7 +383,7 @@ export function ChallengePageContent({
           <ChallengeCard
             title="デイリー投稿ボーナス"
             description="1日1回、生成した画像を投稿してペルコインをゲット！毎日の習慣にしてコインを貯めよう。"
-            percoinAmount={DAILY_POST_BONUS_AMOUNT}
+            percoinAmount={dailyPostBonusAmount}
             icon={CalendarCheck2}
             color="blue"
             className="h-full"
@@ -415,7 +416,7 @@ export function ChallengePageContent({
                     <div className="text-xs text-muted-foreground mt-0.5">
                       {isDailyBonusReceived
                         ? "明日も投稿してコインをゲットしよう！"
-                        : "画像を投稿して30コインをゲット！"}
+                        : `画像を投稿して${dailyPostBonusAmount}コインをゲット！`}
                     </div>
                   </div>
                 </div>
@@ -451,12 +452,12 @@ export function ChallengePageContent({
           <ChallengeCard
             title="友達紹介特典"
             description="友達を招待してペルコインをゲット！紹介リンクまたはQRコードから友達が新規登録すると特典が付与されます。"
-            percoinAmount={REFERRAL_BONUS_AMOUNT}
+            percoinAmount={referralBonusAmount}
             icon={Users}
             color="orange"
             className="h-full"
           >
-            <ReferralCodeDisplay />
+            <ReferralCodeDisplay referralBonusAmount={referralBonusAmount} />
           </ChallengeCard>
         </div>
         {tutorialCompleted === true && tutorialCard}

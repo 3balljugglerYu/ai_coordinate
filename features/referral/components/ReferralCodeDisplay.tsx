@@ -9,13 +9,15 @@ import { useToast } from "@/components/ui/use-toast";
 import { generateReferralCode } from "../lib/api";
 import { getSiteUrlForClient } from "@/lib/env";
 import { QRCodeSVG } from "qrcode.react";
-import { REFERRAL_BONUS_AMOUNT } from "@/constants";
-
 /**
  * 紹介コード表示コンポーネント
  * 紹介コード、紹介リンク、QRコードを表示します
  */
-export function ReferralCodeDisplay() {
+export function ReferralCodeDisplay({
+  referralBonusAmount,
+}: {
+  referralBonusAmount: number;
+}) {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -136,7 +138,7 @@ export function ReferralCodeDisplay() {
         {/* 説明 */}
         <div className="pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            紹介リンクまたはQRコードから新規登録すると、紹介者に{REFERRAL_BONUS_AMOUNT}ペルコインが付与されます。
+            紹介リンクまたはQRコードから新規登録すると、紹介者に{referralBonusAmount}ペルコインが付与されます。
           </p>
         </div>
       </div>

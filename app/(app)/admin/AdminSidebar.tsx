@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RectangleHorizontal,
+  Settings,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const navItems = [
   { path: "/admin/users", label: "ユーザー検索", icon: Search },
   { path: "/admin/moderation", label: "投稿審査", icon: ShieldCheck },
   { path: "/admin/bonus", label: "ボーナス付与", icon: Coins },
+  { path: "/admin/percoin-defaults", label: "デフォルト枚数", icon: Settings },
   { path: "/admin/deduction", label: "ペルコイン減算", icon: MinusCircle },
   { path: "/admin/credits-summary", label: "ペルコイン集計", icon: Wallet },
   { path: "/admin/banners", label: "バナー管理", icon: RectangleHorizontal },
