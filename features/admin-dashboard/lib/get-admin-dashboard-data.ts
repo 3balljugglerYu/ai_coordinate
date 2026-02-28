@@ -1,6 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { adminQuickActionItems } from "@/app/(app)/admin/admin-nav-items";
-import { getGa4DashboardData } from "@/features/analytics/lib/get-ga4-dashboard-data";
 import { PERCOIN_PACKAGES } from "@/features/credits/percoin-packages";
 import {
   enumerateJstDateKeys,
@@ -497,7 +496,6 @@ function buildAlerts(params: {
 export async function getAdminDashboardData(
   range: DashboardRange
 ): Promise<AdminDashboardData> {
-  const ga4Promise = getGa4DashboardData(range);
   const supabase = createAdminClient();
   const { currentStart, previousStart, now, currentStartIso, previousStartIso, nowIso } =
     getRangeBounds(range);
@@ -519,7 +517,6 @@ export async function getAdminDashboardData(
     expiringResult,
     reportsResult,
     activeVisiblePostsResult,
-    ga4,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -563,7 +560,6 @@ export async function getAdminDashboardData(
       .eq("moderation_status", "visible")
       .not("user_id", "is", null)
       .gte("posted_at", activeThresholdIso),
-    ga4Promise,
   ]);
 
   if (profilesResult.error) console.error("Dashboard profiles fetch error:", profilesResult.error);
@@ -747,7 +743,6 @@ export async function getAdminDashboardData(
     range,
     updatedAt: now.toISOString(),
     kpis,
-    ga4,
     trend,
     revenueTrend,
     opsSummary,

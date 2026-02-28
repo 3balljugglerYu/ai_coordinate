@@ -1,5 +1,6 @@
 import "server-only";
 
+import { LRUCache } from "lru-cache";
 import { getRangeBounds, toJstDateKey, type DashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
 import { env } from "@/lib/env";
 import { getGa4Client } from "./ga4-client";
@@ -11,6 +12,14 @@ import type {
 
 const PAGE_LIMIT = 8;
 const LANDING_PAGE_LIMIT = 8;
+const GA4_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Cache successful dashboard responses briefly to reduce repeated GA4 quota usage.
+const ga4DashboardCache = new LRUCache<string, Ga4DashboardData>({
+  max: 16,
+  ttl: GA4_CACHE_TTL_MS,
+});
+const ga4DashboardInFlight = new Map<string, Promise<Ga4DashboardData>>();
 
 type Ga4ApiError = {
   code?: number | string;
@@ -93,24 +102,18 @@ function getGa4ErrorMessage(error: unknown) {
   return "GA4 データの取得に失敗しました。認証情報、Property 権限、または外部通信設定を確認してください。";
 }
 
-export async function getGa4DashboardData(
+function getGa4CacheKey(range: DashboardRange) {
+  return [
+    env.GA4_PROPERTY_ID,
+    env.GA4_BIGQUERY_PROJECT_ID,
+    env.GA4_BIGQUERY_DATASET,
+    range,
+  ].join(":");
+}
+
+async function buildGa4DashboardData(
   range: DashboardRange
 ): Promise<Ga4DashboardData> {
-  if (
-    !env.GA4_PROPERTY_ID ||
-    !env.GA4_SERVICE_ACCOUNT_JSON_BASE64 ||
-    !env.NEXT_PUBLIC_GA4_MEASUREMENT_ID
-  ) {
-    return {
-      range,
-      status: "disabled",
-      statusMessage: "GA4 の Property ID または認証情報が未設定です。",
-      topPages: [],
-      topLandingPages: [],
-      transitionsPendingMessage: getTransitionsPendingMessage(),
-    };
-  }
-
   const { currentStart, now } = getRangeBounds(range);
   const dateRanges = [
     {
@@ -199,5 +202,52 @@ export async function getGa4DashboardData(
       topLandingPages: [],
       transitionsPendingMessage: getTransitionsPendingMessage(),
     };
+  }
+}
+
+export async function getGa4DashboardData(
+  range: DashboardRange
+): Promise<Ga4DashboardData> {
+  if (
+    !env.GA4_PROPERTY_ID ||
+    !env.GA4_SERVICE_ACCOUNT_JSON_BASE64 ||
+    !env.NEXT_PUBLIC_GA4_MEASUREMENT_ID
+  ) {
+    return {
+      range,
+      status: "disabled",
+      statusMessage: "GA4 の Property ID または認証情報が未設定です。",
+      topPages: [],
+      topLandingPages: [],
+      transitionsPendingMessage: getTransitionsPendingMessage(),
+    };
+  }
+
+  const cacheKey = getGa4CacheKey(range);
+  const cached = ga4DashboardCache.get(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const inFlight = ga4DashboardInFlight.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const request = buildGa4DashboardData(range).then((result) => {
+    if (result.status === "ready") {
+      ga4DashboardCache.set(cacheKey, result);
+    }
+
+    return result;
+  });
+
+  ga4DashboardInFlight.set(cacheKey, request);
+
+  try {
+    return await request;
+  } finally {
+    ga4DashboardInFlight.delete(cacheKey);
   }
 }

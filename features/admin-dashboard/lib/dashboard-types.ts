@@ -1,5 +1,3 @@
-import type { Ga4DashboardData } from "@/features/analytics/lib/ga4-types";
-
 export type DashboardDeltaDirection = "up" | "down" | "flat";
 
 export type DashboardKpiKey =
@@ -97,7 +95,6 @@ export interface AdminDashboardData {
   range: import("./dashboard-range").DashboardRange;
   updatedAt: string;
   kpis: AdminDashboardKpi[];
-  ga4: Ga4DashboardData;
   trend: DashboardTrendPoint[];
   revenueTrend: DashboardRevenueTrend;
   opsSummary: DashboardOpsSummary;

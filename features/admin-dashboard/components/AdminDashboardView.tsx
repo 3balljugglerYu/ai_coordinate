@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Coins,
   ShieldCheck,
@@ -10,7 +11,6 @@ import { AdminFunnelCard } from "./AdminFunnelCard";
 import { AdminKpiCard } from "./AdminKpiCard";
 import { AdminModelMixChartPanel } from "./AdminModelMixChartPanel";
 import { AdminOpsSummaryCard } from "./AdminOpsSummaryCard";
-import { AdminPageAnalyticsSection } from "./AdminPageAnalyticsSection";
 import { AdminPriorityAlertsCard } from "./AdminPriorityAlertsCard";
 import { AdminQuickActionsGrid } from "./AdminQuickActionsGrid";
 import { AdminRevenueChartPanel } from "./AdminRevenueChartPanel";
@@ -20,6 +20,7 @@ import type { AdminDashboardData } from "../lib/dashboard-types";
 
 interface AdminDashboardViewProps {
   data: AdminDashboardData;
+  children?: ReactNode;
 }
 
 const kpiIconMap = {
@@ -29,7 +30,10 @@ const kpiIconMap = {
   pendingModeration: { icon: ShieldCheck, tone: "amber" as const },
 };
 
-export function AdminDashboardView({ data }: AdminDashboardViewProps) {
+export function AdminDashboardView({
+  data,
+  children,
+}: AdminDashboardViewProps) {
   return (
     <div className="space-y-8">
       <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -111,7 +115,7 @@ export function AdminDashboardView({ data }: AdminDashboardViewProps) {
         </Card>
       </section>
 
-      <AdminPageAnalyticsSection ga4={data.ga4} />
+      {children}
 
       <section className="grid gap-4 xl:grid-cols-12">
         <div className="xl:col-span-6">

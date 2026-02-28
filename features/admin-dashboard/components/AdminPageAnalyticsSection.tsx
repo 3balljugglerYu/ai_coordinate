@@ -114,3 +114,45 @@ export function AdminPageAnalyticsSection({
     </section>
   );
 }
+
+export function AdminPageAnalyticsSectionSkeleton() {
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h2
+            className="text-lg font-semibold text-slate-900"
+            style={{
+              fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
+            }}
+          >
+            ページ分析
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            GA4 の page_view と landing page を表示します。
+          </p>
+        </div>
+        <div className="h-8 w-64 rounded-full bg-slate-100" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-12">
+        <Card className="border-violet-200/60 bg-white/95 shadow-sm xl:col-span-6">
+          <CardContent className="space-y-3 p-6">
+            <div className="h-6 w-40 rounded bg-slate-100" />
+            <div className="h-28 rounded-xl bg-slate-100" />
+            <div className="h-28 rounded-xl bg-slate-100" />
+          </CardContent>
+        </Card>
+        <Card className="border-violet-200/60 bg-white/95 shadow-sm xl:col-span-6">
+          <CardContent className="space-y-3 p-6">
+            <div className="h-6 w-44 rounded bg-slate-100" />
+            <div className="h-28 rounded-xl bg-slate-100" />
+            <div className="h-28 rounded-xl bg-slate-100" />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="h-16 rounded-xl border border-slate-200/80 bg-slate-50/70" />
+    </section>
+  );
+}

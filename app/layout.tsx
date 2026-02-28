@@ -6,9 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
 import { Ga4Script } from "@/features/analytics/components/Ga4Script";
+import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { getSiteUrl } from "@/lib/env";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = localFont({
   src: "./fonts/geist-latin.woff2",
@@ -65,8 +64,7 @@ export default function RootLayout({
         </UnreadNotificationProvider>
         <Toaster />
         <Ga4Script />
-        <Analytics />
-        <SpeedInsights />
+        <VercelAnalyticsScripts />
       </body>
     </html>
   );
