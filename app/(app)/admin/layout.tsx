@@ -5,18 +5,18 @@ import { getAdminUserIds } from "@/lib/env";
 import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminMobileNav } from "./AdminMobileNav";
-import { Fira_Code, Fira_Sans } from "next/font/google";
+import localFont from "next/font/local";
 
-const firaCode = Fira_Code({
+const adminHeadingFont = localFont({
+  src: "../../fonts/geist-mono-latin.woff2",
   variable: "--font-admin-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const firaSans = Fira_Sans({
+const adminBodyFont = localFont({
+  src: "../../fonts/geist-latin.woff2",
   variable: "--font-admin-body",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ export default async function AdminLayout({
 
   return (
     <div
-      className={`${firaCode.variable} ${firaSans.variable} min-h-screen bg-[#FAF5FF]`}
+      className={`${adminHeadingFont.variable} ${adminBodyFont.variable} min-h-screen bg-[#FAF5FF]`}
       data-admin-layout
       style={
         {
