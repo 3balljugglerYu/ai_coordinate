@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { FileText, AlertCircle, Shield } from "lucide-react";
+import { FileText, AlertCircle, Shield, Coins } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
@@ -110,6 +110,30 @@ export default function TermsPage() {
 					<CardContent>
 						<p className="text-sm text-gray-800">
 							当サービスは、ユーザーへの事前の告知をもって、本サービスの内容を変更、追加または廃止することがあり、ユーザーはこれに同意するものとします。
+						</p>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Coins className="h-4 w-4 text-gray-500" />
+							第6条の2（ペルコイン）
+						</CardTitle>
+						<CardDescription>ペルコインの取得と有効期限について</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<p className="text-sm text-gray-800 mb-3">
+							当サービスでは、ペルコインを購入により取得するほか、新規登録・チュートリアル完了・紹介特典・デイリー投稿・連続ログインなどの特典として無料で付与することがあります。
+						</p>
+						<p className="text-sm text-gray-800 mb-3">
+							購入により取得したペルコインには有効期限は設定しておりません。
+						</p>
+						<p className="text-sm text-gray-800 mb-3">
+							無料で付与したペルコインには有効期限があり、付与した月の翌月から起算して6ヶ月後の月末（日本時間）をもって失効します。失効した無料ペルコインの返還・再発行は行いません。
+						</p>
+						<p className="text-sm text-gray-800">
+							ペルコインの残高・有効期限等は、当サービス所定の画面でご確認いただけます。
 						</p>
 					</CardContent>
 				</Card>
