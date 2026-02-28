@@ -19,21 +19,24 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import {
+  adminNavItems,
+  type AdminNavIconKey,
+} from "./admin-nav-items";
 
-const navItems = [
-  { path: "/admin", label: "ダッシュボード", icon: LayoutDashboard },
-  { path: "/admin/users", label: "ユーザー検索", icon: Search },
-  { path: "/admin/moderation", label: "投稿審査", icon: ShieldCheck },
-  { path: "/admin/bonus", label: "ボーナス付与", icon: Coins },
-  { path: "/admin/percoin-defaults", label: "デフォルト枚数", icon: Settings },
-  { path: "/admin/deduction", label: "ペルコイン減算", icon: MinusCircle },
-  { path: "/admin/credits-summary", label: "ペルコイン集計", icon: Wallet },
-  { path: "/admin/banners", label: "バナー管理", icon: RectangleHorizontal },
-  { path: "/admin/materials-images/free-materials", label: "フリー素材管理", icon: ImageIcon },
-  { path: "/admin/image-optimization", label: "画像最適化", icon: ImageIcon },
-  { path: "/admin/audit-log", label: "操作ログ", icon: FileText },
-  { path: "/admin/reports", label: "通報一覧", icon: Flag },
-] as const;
+const iconMap: Record<AdminNavIconKey, typeof LayoutDashboard> = {
+  dashboard: LayoutDashboard,
+  search: Search,
+  "shield-check": ShieldCheck,
+  coins: Coins,
+  settings: Settings,
+  "minus-circle": MinusCircle,
+  wallet: Wallet,
+  "rectangle-horizontal": RectangleHorizontal,
+  image: ImageIcon,
+  "file-text": FileText,
+  flag: Flag,
+};
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -59,7 +62,8 @@ export function AdminSidebar() {
     >
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-3" role="list">
-          {navItems.map(({ path, label, icon: Icon }) => {
+          {adminNavItems.map(({ path, label, iconKey }) => {
+            const Icon = iconMap[iconKey];
             const isActive =
               path === "/admin"
                 ? pathname === "/admin"
