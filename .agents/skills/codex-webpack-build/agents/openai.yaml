@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Webpack Build"
+  short_description: "Use webpack for build verification in this repo"
+  default_prompt: "Run the repository build verification with npm run build -- --webpack and summarize the result."
