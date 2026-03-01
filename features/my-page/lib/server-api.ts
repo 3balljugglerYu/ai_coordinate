@@ -9,6 +9,8 @@ export interface PercoinTransaction {
   transaction_type: string;
   metadata: Record<string, unknown> | null;
   created_at: string;
+  /** 期間限定ペルコインの場合のみ */
+  expire_at?: string | null;
 }
 
 export interface UserProfile {
@@ -319,27 +321,110 @@ export const getPercoinBalanceServer = cache(async (
 
 /**
  * ペルコイン取引履歴を取得（サーバーサイド）
- * React Cacheでラップして、同一リクエスト内での重複取得を防止
+ * RPC get_percoin_transactions_with_expiry を使用
+ * @param filter - 'all' | 'regular' | 'period_limited' | 'usage'
  * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
+export const PERCOIN_TRANSACTIONS_PER_PAGE = 30;
+
 export const getPercoinTransactionsServer = cache(async (
   userId: string,
-  limit = 10,
-  supabaseOverride?: SupabaseClient
+  limit = PERCOIN_TRANSACTIONS_PER_PAGE,
+  supabaseOverride?: SupabaseClient,
+  filter: "all" | "regular" | "period_limited" | "usage" = "all",
+  offset = 0
 ): Promise<PercoinTransaction[]> => {
   const supabase = supabaseOverride ?? (await createClient());
 
-  const { data, error } = await supabase
-    .from("credit_transactions")
-    .select("id, amount, transaction_type, metadata, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const { data, error } = await supabase.rpc("get_percoin_transactions_with_expiry", {
+    p_user_id: userId,
+    p_filter: filter,
+    p_sort: "created_at",
+    p_limit: limit,
+    p_offset: offset,
+  });
 
   if (error) {
     console.error("Percoin transactions fetch error:", error);
     return [];
   }
 
-  return data || [];
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id ?? ""),
+    amount: Number(row.amount ?? 0),
+    transaction_type: String(row.transaction_type ?? ""),
+    metadata: (row.metadata as Record<string, unknown>) ?? null,
+    created_at: String(row.created_at ?? ""),
+    expire_at: row.expire_at != null ? String(row.expire_at) : null,
+  }));
+});
+
+/**
+ * ペルコイン残高の内訳を取得（サーバーサイド）
+ * total: 合計、regular: 購入分（無期限）、period_limited: 期間限定
+ * React Cacheでラップして、同一リクエスト内での重複取得を防止
+ */
+export interface PercoinBalanceBreakdown {
+  total: number;
+  regular: number;
+  period_limited: number;
+}
+
+export const getPercoinBalanceBreakdownServer = cache(async (
+  userId: string,
+  supabaseOverride?: SupabaseClient
+): Promise<PercoinBalanceBreakdown> => {
+  const supabase = supabaseOverride ?? (await createClient());
+
+  const { data, error } = await supabase
+    .rpc("get_percoin_balance_breakdown", { p_user_id: userId })
+    .single();
+
+  if (error || !data) {
+    console.error("get_percoin_balance_breakdown error:", error);
+    return { total: 0, regular: 0, period_limited: 0 };
+  }
+
+  const raw = data as { total?: number; regular?: number; period_limited?: number };
+  return {
+    total: Number(raw.total ?? 0),
+    regular: Number(raw.regular ?? 0),
+    period_limited: Number(raw.period_limited ?? 0),
+  };
+});
+
+export interface FreePercoinBatchExpiring {
+  id: string;
+  user_id: string;
+  remaining_amount: number;
+  expire_at: string;
+  source: string;
+}
+
+/**
+ * 期限が近い無償ペルコイン一覧を取得（マイページ用、userId指定）
+ * CachedPercoinPageContent で createAdminClient 利用時に p_user_id を渡す
+ */
+export const getFreePercoinBatchesExpiringServer = cache(async (
+  userId: string,
+  supabaseOverride?: SupabaseClient
+): Promise<FreePercoinBatchExpiring[]> => {
+  const supabase = supabaseOverride ?? (await createClient());
+
+  const { data, error } = await supabase.rpc("get_free_percoin_batches_expiring", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.error("get_free_percoin_batches_expiring error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id ?? ""),
+    user_id: String(row.user_id ?? ""),
+    remaining_amount: Number(row.remaining_amount ?? 0),
+    expire_at: String(row.expire_at ?? ""),
+    source: String(row.source ?? ""),
+  }));
 });

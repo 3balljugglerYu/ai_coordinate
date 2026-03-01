@@ -40,13 +40,12 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const headerRef = useRef<HTMLElement | null>(null);
 
-  // トップレベルのページ
+  // トップレベルのページ（戻るボタン非表示）
   const topLevelPaths = [
     ROUTES.HOME,
     ROUTES.COORDINATE,
     "/challenge",
     ROUTES.MY_PAGE,
-    ROUTES.MY_PAGE_CREDITS,
     "/notifications",
     "/login",
     "/signup",
