@@ -26,7 +26,7 @@ export async function CoordinatePercoinBalance() {
         />
       </div>
       <div>
-        <p className="text-xs text-gray-500">ペルコイン残高</p>
+        <p className="text-xs text-gray-500">保有ペルコイン</p>
         <p className="text-lg font-bold text-gray-900">
           {percoinBalance.toLocaleString()} ペルコイン
         </p>

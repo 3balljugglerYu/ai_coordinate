@@ -64,7 +64,7 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
                   />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-gray-600">ペルコイン残高</p>
+                  <p className="text-sm text-gray-600">保有ペルコイン</p>
                   <p className="text-xl font-bold text-gray-900">
                     {percoinBalance.toLocaleString()} ペルコイン
                   </p>

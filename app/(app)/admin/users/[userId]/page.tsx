@@ -125,8 +125,8 @@ function formatTransactionType(
 ) {
   const map: Record<string, string> = {
     purchase: "購入",
-    consumption: "消費",
-    refund: "返金",
+    consumption: "生成利用",
+    refund: "生成失敗返却",
     signup_bonus: "新規登録ボーナス",
     daily_post: "デイリー投稿ボーナス",
     streak: "連続ログインボーナス",
@@ -174,7 +174,7 @@ export default async function AdminUserDetailPage({
     streak: "連続ログイン",
     admin_bonus: "運営付与",
     admin_deduction: "運営減算",
-    refund: "返金",
+    refund: "生成失敗返却",
   };
 
   // 期限が近い無償コインを月別（JST）にグルーピング

@@ -1,7 +1,9 @@
 import { cacheLife, cacheTag } from "next/cache";
 import {
-  getPercoinBalanceServer,
+  getPercoinBalanceBreakdownServer,
   getPercoinTransactionsServer,
+  getFreePercoinBatchesExpiringServer,
+  PERCOIN_TRANSACTIONS_PER_PAGE,
 } from "../lib/server-api";
 import { PercoinPageContent } from "./PercoinPageContent";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,15 +23,17 @@ export async function CachedPercoinPageContent({
   cacheLife("minutes");
 
   const supabase = createAdminClient();
-  const [percoinBalance, transactions] = await Promise.all([
-    getPercoinBalanceServer(userId, supabase),
-    getPercoinTransactionsServer(userId, 10, supabase),
+  const [balanceBreakdown, transactions, expiringBatches] = await Promise.all([
+    getPercoinBalanceBreakdownServer(userId, supabase),
+    getPercoinTransactionsServer(userId, PERCOIN_TRANSACTIONS_PER_PAGE, supabase),
+    getFreePercoinBatchesExpiringServer(userId, supabase),
   ]);
 
   return (
     <PercoinPageContent
-      percoinBalance={percoinBalance}
+      balanceBreakdown={balanceBreakdown}
       transactions={transactions}
+      expiringBatches={expiringBatches}
     />
   );
 }
