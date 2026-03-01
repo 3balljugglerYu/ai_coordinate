@@ -36,17 +36,18 @@ export function PercoinPageContent({
   const [txTotalCount, setTxTotalCount] = useState<number | null>(null);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
+  // フィルタ変更時に refreshAll を再実行しないため、ref で最新値を参照
+  const txFilterRef = useRef(txFilter);
+  txFilterRef.current = txFilter;
+
   const refreshAll = useCallback(async () => {
+    const filter = txFilterRef.current;
     try {
       const [breakdown, percoinTransactions, batches, count] = await Promise.all([
         getPercoinBalanceBreakdown(),
-        getPercoinTransactions(
-          PERCOIN_TRANSACTIONS_PER_PAGE,
-          txFilter,
-          0
-        ),
+        getPercoinTransactions(PERCOIN_TRANSACTIONS_PER_PAGE, filter, 0),
         getFreePercoinBatchesExpiring(),
-        getPercoinTransactionsCount(txFilter),
+        getPercoinTransactionsCount(filter),
       ]);
       setBalanceBreakdown(breakdown);
       setTransactions(percoinTransactions);
@@ -56,7 +57,7 @@ export function PercoinPageContent({
     } catch (err) {
       console.error("Failed to refresh percoin info:", err);
     }
-  }, [txFilter]);
+  }, []);
 
   const refreshTransactions = useCallback(
     async (offset = 0) => {
