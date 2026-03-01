@@ -1,5 +1,6 @@
 import "server-only";
 
+import { LRUCache } from "lru-cache";
 import type { BigQuery } from "@google-cloud/bigquery";
 import { getRangeBounds, toJstDateKey, type DashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
 import { env } from "@/lib/env";
@@ -23,6 +24,13 @@ const TRACKED_PAGE_PATHS = [
 
 const DEFAULT_DISABLED_MESSAGE =
   "ページ遷移と導線離脱は BigQuery 設定後に追加します。";
+const GA4_PAGE_FLOW_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const ga4PageFlowCache = new LRUCache<string, Ga4PageFlowData>({
+  max: 16,
+  ttl: GA4_PAGE_FLOW_CACHE_TTL_MS,
+});
+const ga4PageFlowInFlight = new Map<string, Promise<Ga4PageFlowData>>();
 
 type BigQueryTransitionRow = {
   fromPage: string;
@@ -43,6 +51,15 @@ export interface Ga4PageFlowData {
   pageFlowStatusMessage: string | null;
   topTransitions: Ga4TopTransitionRow[];
   topDropoffPages: Ga4DropoffPageRow[];
+}
+
+function getPageFlowCacheKey(range: DashboardRange) {
+  return [
+    env.GA4_BIGQUERY_PROJECT_ID,
+    env.GA4_BIGQUERY_DATASET,
+    env.GA4_BIGQUERY_LOCATION,
+    range,
+  ].join(":");
 }
 
 function getPageFlowDisabledMessage() {
@@ -166,6 +183,29 @@ function buildBasePageviewsCtes(
     WITH raw_pageviews AS (
       ${rawPageviewQuery}
     ),
+    tracked_session_keys AS (
+      SELECT DISTINCT session_key
+      FROM (
+        SELECT
+          session_key,
+          CASE
+            WHEN extracted_path IS NULL OR extracted_path = '' THEN '/'
+            WHEN extracted_path != '/' THEN REGEXP_REPLACE(extracted_path, r'/$', '')
+            ELSE extracted_path
+          END AS tracked_path
+        FROM (
+          SELECT
+            session_key,
+            COALESCE(
+              REGEXP_EXTRACT(page_location, r'^https?://[^/]+(/[^?#]*)'),
+              REGEXP_EXTRACT(page_location, r'^(/[^?#]*)'),
+              '/'
+            ) AS extracted_path
+          FROM raw_pageviews
+        )
+      )
+      WHERE tracked_path IN UNNEST(@trackedPages)
+    ),
     normalized_pageviews AS (
       SELECT
         session_key,
@@ -203,6 +243,8 @@ function buildBasePageviewsCtes(
               '/'
             ) AS extracted_path
           FROM raw_pageviews
+          INNER JOIN tracked_session_keys
+            USING (session_key)
         )
       )
     ),
@@ -278,6 +320,38 @@ function buildDropoffQuery(
 }
 
 export async function getGa4PageFlowData(
+  range: DashboardRange
+): Promise<Ga4PageFlowData> {
+  const cacheKey = getPageFlowCacheKey(range);
+  const cached = ga4PageFlowCache.get(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const inFlight = ga4PageFlowInFlight.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const request = buildGa4PageFlowData(range).then((result) => {
+    if (result.pageFlowStatus !== "error") {
+      ga4PageFlowCache.set(cacheKey, result);
+    }
+
+    return result;
+  });
+
+  ga4PageFlowInFlight.set(cacheKey, request);
+
+  try {
+    return await request;
+  } finally {
+    ga4PageFlowInFlight.delete(cacheKey);
+  }
+}
+
+async function buildGa4PageFlowData(
   range: DashboardRange
 ): Promise<Ga4PageFlowData> {
   const disabledMessage = getPageFlowDisabledMessage();

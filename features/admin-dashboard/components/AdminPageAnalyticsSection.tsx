@@ -29,7 +29,9 @@ export function AdminPageAnalyticsSection({
             ページ分析
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            GA4 Data API の `page_view` / `landing page` と、BigQuery の導線データを表示します。
+            {ga4.range === "24h"
+              ? "直近24時間は BigQuery を基準に、ページ分析と導線データを表示します。"
+              : "GA4 Data API の `page_view` / `landing page` と、BigQuery の導線データを表示します。"}
           </p>
         </div>
 
@@ -105,22 +107,34 @@ export function AdminPageAnalyticsSection({
           <Activity className="h-4 w-4" aria-hidden />
         </div>
         <p className="leading-6">
-          <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
-            Top Pages
-          </code>{" "}
-          と{" "}
-          <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
-            Top Landing Pages
-          </code>{" "}
-          は GA4 Data API、{" "}
-          <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
-            主要ページ遷移
-          </code>{" "}
-          と{" "}
-          <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
-            導線離脱が多いページ
-          </code>{" "}
-          は GA4 BigQuery Export を基準にしています。
+          {ga4.range === "24h" ? (
+            <>
+              直近24時間のカードは、期間を厳密に揃えるためすべて{" "}
+              <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
+                GA4 BigQuery Export
+              </code>{" "}
+              を基準にしています。
+            </>
+          ) : (
+            <>
+              <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
+                Top Pages
+              </code>{" "}
+              と{" "}
+              <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
+                Top Landing Pages
+              </code>{" "}
+              は GA4 Data API、{" "}
+              <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
+                主要ページ遷移
+              </code>{" "}
+              と{" "}
+              <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">
+                導線離脱が多いページ
+              </code>{" "}
+              は GA4 BigQuery Export を基準にしています。
+            </>
+          )}
         </p>
       </div>
     </section>
