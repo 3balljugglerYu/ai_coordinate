@@ -15,11 +15,29 @@ export interface Ga4TopLandingPageRow {
   activeUsers: number;
 }
 
+export interface Ga4TopTransitionRow {
+  fromPage: string;
+  toPage: string;
+  transitionCount: number;
+  sharePct: number;
+}
+
+export interface Ga4DropoffPageRow {
+  page: string;
+  reachedSessions: number;
+  continuedSessions: number;
+  dropoffSessions: number;
+  dropoffRate: number;
+}
+
 export interface Ga4DashboardData {
   range: DashboardRange;
   status: Ga4DashboardStatus;
   statusMessage: string | null;
   topPages: Ga4TopPageRow[];
   topLandingPages: Ga4TopLandingPageRow[];
-  transitionsPendingMessage: string | null;
+  topTransitions: Ga4TopTransitionRow[];
+  topDropoffPages: Ga4DropoffPageRow[];
+  pageFlowStatus: Ga4DashboardStatus;
+  pageFlowStatusMessage: string | null;
 }

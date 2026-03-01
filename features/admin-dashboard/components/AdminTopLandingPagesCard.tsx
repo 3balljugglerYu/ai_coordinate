@@ -1,5 +1,11 @@
 import { DoorOpen } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { Ga4TopLandingPageRow } from "@/features/analytics/lib/ga4-types";
 
 interface AdminTopLandingPagesCardProps {
@@ -20,6 +26,9 @@ export function AdminTopLandingPagesCard({
         >
           Top Landing Pages
         </CardTitle>
+        <CardDescription className="text-sm leading-6 text-slate-600">
+          どの入口ページから流入しているかを見て、集客施策やランディングページの強さを確認します。
+        </CardDescription>
       </CardHeader>
       <CardContent
         className="space-y-3"
