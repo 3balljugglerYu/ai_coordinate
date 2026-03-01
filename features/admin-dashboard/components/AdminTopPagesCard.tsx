@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { BarChart3 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { Ga4TopPageRow } from "@/features/analytics/lib/ga4-types";
 
 interface AdminTopPagesCardProps {
@@ -19,6 +25,9 @@ export function AdminTopPagesCard({ rows }: AdminTopPagesCardProps) {
         >
           Top Pages
         </CardTitle>
+        <CardDescription className="text-sm leading-6 text-slate-600">
+          どのページが最も見られているかを確認し、注目を集めている導線やコンテンツを把握します。
+        </CardDescription>
       </CardHeader>
       <CardContent
         className="space-y-3"

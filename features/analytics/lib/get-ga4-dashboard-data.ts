@@ -4,6 +4,7 @@ import { LRUCache } from "lru-cache";
 import { getRangeBounds, toJstDateKey, type DashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
 import { env } from "@/lib/env";
 import { getGa4Client } from "./ga4-client";
+import { getGa4PageFlowData } from "./get-ga4-page-flow-data";
 import type {
   Ga4DashboardData,
   Ga4TopLandingPageRow,
@@ -50,14 +51,6 @@ function normalizePageTitle(value?: string | null) {
   }
 
   return value;
-}
-
-function getTransitionsPendingMessage() {
-  if (!env.GA4_BIGQUERY_PROJECT_ID || !env.GA4_BIGQUERY_DATASET) {
-    return "ページ遷移は BigQuery dataset 設定後に追加します。";
-  }
-
-  return null;
 }
 
 function getGa4ErrorMessage(error: unknown) {
@@ -107,6 +100,7 @@ function getGa4CacheKey(range: DashboardRange) {
     env.GA4_PROPERTY_ID,
     env.GA4_BIGQUERY_PROJECT_ID,
     env.GA4_BIGQUERY_DATASET,
+    env.GA4_BIGQUERY_LOCATION,
     range,
   ].join(":");
 }
@@ -122,11 +116,11 @@ async function buildGa4DashboardData(
     },
   ];
 
-  try {
+  const dataApiPromise = Promise.resolve().then(async () => {
     const client = getGa4Client();
     const property = `properties/${env.GA4_PROPERTY_ID}`;
 
-    const [pagesReportResult, landingPagesReportResult] = await Promise.all([
+    return Promise.all([
       client.runReport({
         property,
         dateRanges,
@@ -158,11 +152,24 @@ async function buildGa4DashboardData(
         returnPropertyQuota: true,
       }),
     ]);
+  });
 
+  const [reportsResult, pageFlowResult] = await Promise.allSettled([
+    dataApiPromise,
+    getGa4PageFlowData(range),
+  ]);
+
+  let status: Ga4DashboardData["status"] = "ready";
+  let statusMessage: string | null = null;
+  let topPages: Ga4TopPageRow[] = [];
+  let topLandingPages: Ga4TopLandingPageRow[] = [];
+
+  if (reportsResult.status === "fulfilled") {
+    const [pagesReportResult, landingPagesReportResult] = reportsResult.value;
     const pagesReport = pagesReportResult[0];
     const landingPagesReport = landingPagesReportResult[0];
 
-    const topPages: Ga4TopPageRow[] =
+    topPages =
       pagesReport.rows?.map((row) => ({
         path: normalizePagePath(row.dimensionValues?.[0]?.value),
         title: normalizePageTitle(row.dimensionValues?.[1]?.value),
@@ -170,23 +177,16 @@ async function buildGa4DashboardData(
         activeUsers: parseMetric(row.metricValues?.[1]?.value),
       })) ?? [];
 
-    const topLandingPages: Ga4TopLandingPageRow[] =
+    topLandingPages =
       landingPagesReport.rows?.map((row) => ({
         landingPage: normalizePagePath(row.dimensionValues?.[0]?.value),
         sessions: parseMetric(row.metricValues?.[0]?.value),
         activeUsers: parseMetric(row.metricValues?.[1]?.value),
       })) ?? [];
-
-    return {
-      range,
-      status: "ready",
-      statusMessage: null,
-      topPages,
-      topLandingPages,
-      transitionsPendingMessage: getTransitionsPendingMessage(),
-    };
-  } catch (error) {
+  } else {
+    const error = reportsResult.reason;
     const apiError = error as Ga4ApiError | undefined;
+
     console.error("GA4 dashboard fetch error:", {
       code: apiError?.code,
       message: apiError?.message,
@@ -194,32 +194,44 @@ async function buildGa4DashboardData(
       raw: error,
     });
 
-    return {
-      range,
-      status: "error",
-      statusMessage: getGa4ErrorMessage(error),
-      topPages: [],
-      topLandingPages: [],
-      transitionsPendingMessage: getTransitionsPendingMessage(),
-    };
+    status = "error";
+    statusMessage = getGa4ErrorMessage(error);
   }
+
+  const pageFlow =
+    pageFlowResult.status === "fulfilled"
+      ? pageFlowResult.value
+      : {
+          pageFlowStatus: "error" as const,
+          pageFlowStatusMessage:
+            "BigQuery からページ遷移と導線離脱を取得できませんでした。dataset 名、location、権限を確認してください。",
+          topTransitions: [],
+          topDropoffPages: [],
+        };
+
+  return {
+    range,
+    status,
+    statusMessage,
+    topPages,
+    topLandingPages,
+    ...pageFlow,
+  };
 }
 
 export async function getGa4DashboardData(
   range: DashboardRange
 ): Promise<Ga4DashboardData> {
-  if (
-    !env.GA4_PROPERTY_ID ||
-    !env.GA4_SERVICE_ACCOUNT_JSON_BASE64 ||
-    !env.NEXT_PUBLIC_GA4_MEASUREMENT_ID
-  ) {
+  if (!env.GA4_PROPERTY_ID || !env.GA4_SERVICE_ACCOUNT_JSON_BASE64) {
+    const pageFlow = await getGa4PageFlowData(range);
+
     return {
       range,
       status: "disabled",
       statusMessage: "GA4 の Property ID または認証情報が未設定です。",
       topPages: [],
       topLandingPages: [],
-      transitionsPendingMessage: getTransitionsPendingMessage(),
+      ...pageFlow,
     };
   }
 
@@ -236,7 +248,7 @@ export async function getGa4DashboardData(
   }
 
   const request = buildGa4DashboardData(range).then((result) => {
-    if (result.status === "ready") {
+    if (result.status === "ready" && result.pageFlowStatus !== "error") {
       ga4DashboardCache.set(cacheKey, result);
     }
 
