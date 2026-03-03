@@ -112,42 +112,52 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 最初のline_itemからPrice IDを取得
+      // ペルコイン数の取得: metadata.percoinAmount（price_data使用時）または Price ID マッピング
+      const metadataPercoinAmount = session.metadata?.percoinAmount;
+      const percoinsFromMetadata =
+        metadataPercoinAmount != null
+          ? parseInt(String(metadataPercoinAmount), 10)
+          : null;
+
       const priceId =
         typeof lineItems.data[0].price === "string"
           ? lineItems.data[0].price
           : lineItems.data[0].price?.id;
 
-      if (!priceId) {
-        console.error("Missing price ID in checkout session", {
+      let percoins: number;
+      if (percoinsFromMetadata != null && !Number.isNaN(percoinsFromMetadata)) {
+        percoins = percoinsFromMetadata;
+      } else if (!priceId) {
+        console.error("Missing price ID and metadata.percoinAmount in checkout session", {
           sessionId: session.id,
         });
         return NextResponse.json(
           { error: "Missing price ID" },
           { status: 400 }
         );
-      }
+      } else {
+        const percoinsFromPrice = getPercoinsFromPriceId(priceId);
+        if (percoinsFromPrice == null) {
+          const amountTotal = lineItems.data[0].amount_total || session.amount_total || 0;
+          const currency = session.currency || lineItems.data[0].price?.currency || "jpy";
 
-      // Price IDからペルコイン数を取得
-      const percoins = getPercoinsFromPriceId(priceId);
+          console.error(
+            `[Stripe Webhook] ❌ Unknown price ID: ${priceId}. This must be added to the price mapping or use metadata.percoinAmount.`,
+            {
+              sessionId: session.id,
+              priceId,
+              amountTotal,
+              currency,
+              availablePriceIds: Object.keys(STRIPE_PRICE_ID_TO_PERCOINS),
+            }
+          );
 
-      // Price IDが見つからない場合は、即座にエラーとして処理を中断
-      if (!percoins) {
-        const amountTotal = lineItems.data[0].amount_total || session.amount_total || 0;
-        const currency = session.currency || lineItems.data[0].price?.currency || 'jpy';
-        
-        console.error(`[Stripe Webhook] ❌ Unknown price ID: ${priceId}. This must be added to the price mapping.`, {
-          sessionId: session.id,
-          priceId,
-          amountTotal,
-          currency,
-          availablePriceIds: Object.keys(STRIPE_PRICE_ID_TO_PERCOINS),
-        });
-        
-        return NextResponse.json(
-          { error: `Unknown price ID: ${priceId}. Please add this to the mapping table.` },
-          { status: 400 }
-        );
+          return NextResponse.json(
+            { error: `Unknown price ID: ${priceId}. Please add this to the mapping table.` },
+            { status: 400 }
+          );
+        }
+        percoins = percoinsFromPrice;
       }
 
       // べき等性チェック: 既に処理済みのpayment_intent_idか確認（service_role で RLS をバイパス）
@@ -181,7 +191,7 @@ export async function POST(request: NextRequest) {
           percoinAmount: percoins,
           stripePaymentIntentId: paymentIntentId,
           metadata: {
-            priceId,
+            ...(priceId && { priceId }),
             checkoutSessionId: session.id,
             customerEmail,
             mode: isStripeTestMode() ? "test" : "live",
@@ -193,9 +203,13 @@ export async function POST(request: NextRequest) {
         throw purchaseError;
       }
 
-      revalidateTag(`my-page-${userId}`, "max");
-      revalidateTag(`my-page-credits-${userId}`, "max");
-      revalidateTag(`coordinate-${userId}`, "max");
+      try {
+        revalidateTag(`my-page-${userId}`, { expire: 0 });
+        revalidateTag(`my-page-credits-${userId}`, { expire: 0 });
+        revalidateTag(`coordinate-${userId}`, { expire: 0 });
+      } catch (revalidateErr) {
+        console.warn("[Stripe Webhook] revalidateTag failed (non-fatal):", revalidateErr);
+      }
       return NextResponse.json({
         received: true,
         handled: true,
@@ -204,9 +218,16 @@ export async function POST(request: NextRequest) {
         paymentIntentId,
       });
     } catch (error) {
-      console.error("Error processing checkout.session.completed:", error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error("[Stripe Webhook] Error processing checkout.session.completed:", {
+        message: err.message,
+        stack: err.stack,
+      });
       return NextResponse.json(
-        { error: "Internal server error" },
+        {
+          error: "Internal server error",
+          ...(process.env.NODE_ENV === "development" && { detail: err.message }),
+        },
         { status: 500 }
       );
     }

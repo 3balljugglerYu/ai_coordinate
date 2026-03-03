@@ -1,11 +1,50 @@
+import { isStripeTestMode } from "@/lib/env";
+
 export type PercoinPackage = {
   id: string;
   name: string;
   credits: number;
   priceYen: number;
-  stripePriceId?: string;
+  /** テスト環境のStripe Price ID */
+  stripePriceIdTest: string;
+  /** 本番環境のStripe Price ID */
+  stripePriceIdLive: string;
   description?: string;
+  /** アプリ内カード表示用画像（/percoin.png など、public からの相対パス） */
+  imageUrl?: string;
+  /** カード左上に表示するラベル（例: 一番人気、おすすめ） */
+  badgeLabel?: string;
 };
+
+/** バッジラベル「もっともお得！」（スタイル分岐に使用） */
+export const BADGE_LABEL_MOST_VALUABLE = "もっともお得！" as const;
+
+/** 現在の環境に応じたStripe Price IDを取得（Checkout Session作成用） */
+export function getStripePriceId(pkg: PercoinPackage): string {
+  return isStripeTestMode() ? pkg.stripePriceIdTest : pkg.stripePriceIdLive;
+}
+
+/**
+ * Stripe Checkout用の画像URLを取得（絶対URLが必要、Stripeサーバーからアクセス可能であること）
+ * localhost のURLはStripeが取得できないため空配列を返す
+ * @param imageUrl パッケージのimageUrl（/percoin.png など）
+ * @param baseUrl サイトのベースURL（NEXT_PUBLIC_SITE_URL）
+ */
+export function getStripeImageUrls(
+  imageUrl: string | undefined,
+  baseUrl: string
+): string[] {
+  if (!imageUrl) return [];
+  const absolute =
+    imageUrl.startsWith("http://") || imageUrl.startsWith("https://")
+      ? imageUrl
+      : `${baseUrl.replace(/\/$/, "")}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+  // localhost は Stripe サーバーから取得不可のため除外
+  if (absolute.includes("localhost") || absolute.includes("127.0.0.1")) {
+    return [];
+  }
+  return [absolute];
+}
 
 /**
  * ペルコインパッケージ（Stripe Pricing Table / stripe-price-mapping.ts と一致させる）
@@ -13,44 +52,57 @@ export type PercoinPackage = {
  */
 export const PERCOIN_PACKAGES: PercoinPackage[] = [
   {
-    id: "credit-100",
-    name: "100ペルコイン",
-    credits: 100,
+    id: "credit-110",
+    name: "110ペルコイン",
+    credits: 110,
     priceYen: 500,
-    stripePriceId: "price_1So3VWEtgRYjQynQFp1IBmUG", // テスト / price_1So0f9ImYtwDZrxbiT1nLlS7 本番
-    description: "お試しに最適な基本パッケージ",
+    stripePriceIdTest: "price_1So3VWEtgRYjQynQFp1IBmUG",
+    stripePriceIdLive: "price_1So0f9ImYtwDZrxbiT1nLlS7",
+    description: "お試しパック\nまず数枚だけ生成したい方へ\n\n生成枚数\n標準モデル：約5枚\n解像度1Kモデル：約2枚",
+    imageUrl: "/percoin/percoin1.webp",
+    badgeLabel: "まずはお試し！",
   },
   {
-    id: "credit-220",
-    name: "220ペルコイン",
-    credits: 220,
+    id: "credit-240",
+    name: "240ペルコイン",
+    credits: 240,
     priceYen: 1000,
-    stripePriceId: "price_1So3W8EtgRYjQynQKACSaUuf", // テスト / price_1So0o1ImYtwDZrxbw9P7P2cG 本番
-    description: "スタンダードパック",
+    stripePriceIdTest: "price_1So3W8EtgRYjQynQKACSaUuf",
+    stripePriceIdLive: "price_1So0o1ImYtwDZrxbw9P7P2cG",
+    description: "ライトパック\n気軽に遊びたい方へ\n\n生成枚数\n標準モデル：約12枚\n解像度1Kモデル：約4枚",
+    imageUrl: "/percoin/percoin2.webp",
   },
   {
-    id: "credit-760",
-    name: "760ペルコイン",
-    credits: 760,
+    id: "credit-960",
+    name: "960ペルコイン",
+    credits: 960,
     priceYen: 3000,
-    stripePriceId: "price_1So3WaEtgRYjQynQmDFItWJG", // テスト / price_1So0pGImYtwDZrxbDTih5U7n 本番
-    description: "まとめ買いでお得",
+    stripePriceIdTest: "price_1So3WaEtgRYjQynQmDFItWJG",
+    stripePriceIdLive: "price_1So0pGImYtwDZrxbDTih5U7n",
+    description: "ベーシックパック\nしっかり試したい方へ\n\n生成枚数\n標準モデル：約48枚\n解像度1Kモデル：約19枚",
+    imageUrl: "/percoin/percoin3.webp",
+    badgeLabel: "一番人気",
   },
   {
-    id: "credit-1600",
-    name: "1,600ペルコイン",
-    credits: 1600,
+    id: "credit-1900",
+    name: "1,900ペルコイン",
+    credits: 1900,
     priceYen: 5000,
-    stripePriceId: "price_1So3X8EtgRYjQynQ6FbbGnkD", // テスト / price_1So0rMImYtwDZrxb22AS2zY6 本番
-    description: "人気の大容量パック",
+    stripePriceIdTest: "price_1So3X8EtgRYjQynQ6FbbGnkD",
+    stripePriceIdLive: "price_1So0rMImYtwDZrxb22AS2zY6",
+    description: "お得パック\n迷ったらこれ・コスパ◎\n\n生成枚数\n標準モデル：約95枚\n解像度1Kモデル：約38枚",
+    imageUrl: "/percoin/percoin4.webp",
   },
   {
-    id: "credit-4700",
-    name: "4,700ペルコイン",
-    credits: 4700,
+    id: "credit-4800",
+    name: "4,800ペルコイン",
+    credits: 4800,
     priceYen: 10000,
-    stripePriceId: "price_1SoAzfEtgRYjQynQ8ZA8EgvZ", // テスト / price_1So11aImYtwDZrxbYeCcIt2b 本番
-    description: "ヘビーユーザー向け最大パック",
+    stripePriceIdTest: "price_1SoAzfEtgRYjQynQ8ZA8EgvZ",
+    stripePriceIdLive: "price_1So11aImYtwDZrxbYeCcIt2b",
+    description: "最大お得パック\n1コイン単価が最安\n\n生成枚数\n標準モデル：約240枚\n解像度1Kモデル：約96枚",
+    imageUrl: "/percoin/percoin5.webp",
+    badgeLabel: BADGE_LABEL_MOST_VALUABLE,
   },
 ];
 
