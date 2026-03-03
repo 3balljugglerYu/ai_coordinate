@@ -1,45 +1,16 @@
 import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
-import { StripePricingTable } from "@/features/credits/components/StripePricingTable";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CheckCircle2, XCircle, ShoppingCart } from "lucide-react";
-import { env } from "@/lib/env";
+import { PercoinPurchaseGrid } from "@/features/credits/components/PercoinPurchaseGrid";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 async function PurchasePageContent() {
-  const user = await requireAuth();
-
-  // サーバーサイドで環境変数を取得してクライアントコンポーネントに渡す
-  const publishableKey =
-    env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-    "";
-
-  const pricingTableId =
-    env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID ||
-    process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID ||
-    "prctbl_1So3YGEtgRYjQynQvtDbE755"; // テスト環境のデフォルト値
+  await requireAuth();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5 text-gray-500" />
-          ペルコインを購入
-        </CardTitle>
-        <CardDescription>
-          以下のプランからお選びいただけます。決済完了後、即座にペルコインが付与されます。
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="mt-6">
-          <StripePricingTable
-            userId={user.id}
-            publishableKey={publishableKey}
-            pricingTableId={pricingTableId}
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-8">
+      <PercoinPurchaseGrid />
+    </div>
   );
 }
 
@@ -53,25 +24,27 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
   const isCanceled = params.canceled === "true";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="pt-6 md:pt-8 pb-8 px-4">
-        <div className="mx-auto max-w-4xl">
-          {/* タイトル */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold md:text-3xl">ペルコイン購入</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              クレジットカードで安全にお支払いいただけます
+    <div className="min-h-screen bg-background">
+      <div className="pt-6 md:pt-10 pb-12 px-4">
+        <div className="mx-auto max-w-5xl">
+          {/* ヒーローセクション（SeaArt風） */}
+          <div className="mb-10 text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-4xl">
+              コーディネートを、<br />もっと自由に
+            </h1>
+            <p className="mt-3 text-base text-muted-foreground md:text-lg">
+              あなたにぴったりのプランを選んで、創作を続けよう
             </p>
           </div>
 
           {/* 成功メッセージ */}
           {isSuccess && (
-            <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+            <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/50">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-green-900">決済が完了しました</h3>
-                  <p className="mt-1 text-sm text-green-800">
+                  <h3 className="text-sm font-semibold text-green-900 dark:text-green-100">決済が完了しました</h3>
+                  <p className="mt-1 text-sm text-green-800 dark:text-green-200">
                     ペルコインが付与されました。残高を確認してください。
                   </p>
                 </div>
@@ -81,12 +54,12 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
 
           {/* キャンセルメッセージ */}
           {isCanceled && (
-            <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+            <div className="mb-6 rounded-xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950/50">
               <div className="flex items-start gap-3">
-                <XCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <XCircle className="h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-yellow-900">決済がキャンセルされました</h3>
-                  <p className="mt-1 text-sm text-yellow-800">
+                  <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">決済がキャンセルされました</h3>
+                  <p className="mt-1 text-sm text-yellow-800 dark:text-yellow-200">
                     決済は完了していません。再度お試しください。
                   </p>
                 </div>
@@ -94,11 +67,11 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
             </div>
           )}
 
-          {/* Pricing Table */}
+          {/* 購入カードグリッド */}
           <Suspense fallback={
-            <Card>
+            <Card className="border-border">
               <CardContent className="p-8">
-                <div className="h-96 bg-gray-100 rounded-lg animate-pulse" />
+                <div className="h-96 rounded-lg bg-muted animate-pulse" />
               </CardContent>
             </Card>
           }>

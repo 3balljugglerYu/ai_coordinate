@@ -35,7 +35,7 @@ export default function PricingPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-base font-semibold text-gray-900">{pkg.name}</p>
-                      <p className="text-sm text-gray-600">{pkg.description}</p>
+                      <p className="whitespace-pre-line text-sm text-gray-600">{pkg.description}</p>
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-gray-900">¥{pkg.priceYen.toLocaleString()}</div>
