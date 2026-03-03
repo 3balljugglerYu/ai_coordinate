@@ -16,6 +16,9 @@ export type PercoinPackage = {
   badgeLabel?: string;
 };
 
+/** バッジラベル「もっともお得！」（スタイル分岐に使用） */
+export const BADGE_LABEL_MOST_VALUABLE = "もっともお得！" as const;
+
 /** 現在の環境に応じたStripe Price IDを取得（Checkout Session作成用） */
 export function getStripePriceId(pkg: PercoinPackage): string {
   return isStripeTestMode() ? pkg.stripePriceIdTest : pkg.stripePriceIdLive;
@@ -99,7 +102,7 @@ export const PERCOIN_PACKAGES: PercoinPackage[] = [
     stripePriceIdLive: "price_1So11aImYtwDZrxbYeCcIt2b",
     description: "最大お得パック\n1コイン単価が最安\n\n生成枚数\n標準モデル：約240枚\n解像度1Kモデル：約96枚",
     imageUrl: "/percoin/percoin5.webp",
-    badgeLabel: "もっともお得！",
+    badgeLabel: BADGE_LABEL_MOST_VALUABLE,
   },
 ];
 

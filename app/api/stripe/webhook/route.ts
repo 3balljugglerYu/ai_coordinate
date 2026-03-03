@@ -203,9 +203,13 @@ export async function POST(request: NextRequest) {
         throw purchaseError;
       }
 
-      revalidateTag(`my-page-${userId}`, "max");
-      revalidateTag(`my-page-credits-${userId}`, "max");
-      revalidateTag(`coordinate-${userId}`, "max");
+      try {
+        revalidateTag(`my-page-${userId}`, { expire: 0 });
+        revalidateTag(`my-page-credits-${userId}`, { expire: 0 });
+        revalidateTag(`coordinate-${userId}`, { expire: 0 });
+      } catch (revalidateErr) {
+        console.warn("[Stripe Webhook] revalidateTag failed (non-fatal):", revalidateErr);
+      }
       return NextResponse.json({
         received: true,
         handled: true,
@@ -214,9 +218,16 @@ export async function POST(request: NextRequest) {
         paymentIntentId,
       });
     } catch (error) {
-      console.error("Error processing checkout.session.completed:", error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error("[Stripe Webhook] Error processing checkout.session.completed:", {
+        message: err.message,
+        stack: err.stack,
+      });
       return NextResponse.json(
-        { error: "Internal server error" },
+        {
+          error: "Internal server error",
+          ...(process.env.NODE_ENV === "development" && { detail: err.message }),
+        },
         { status: 500 }
       );
     }

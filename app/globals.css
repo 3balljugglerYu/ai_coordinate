@@ -33,6 +33,9 @@
     --chart-5: 27 87% 67%;
     --app-sidebar-width: 0px;
     --app-header-height: 64px;
+    /* ペルコイン購入ボタン用（Persta.AI ブランドカラー） */
+    --percoin-button: 214 70% 65%;
+    --percoin-button-hover: 214 70% 58%;
   }
 
   .dark {
@@ -63,6 +66,8 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --percoin-button: 214 70% 65%;
+    --percoin-button-hover: 214 70% 58%;
   }
 }
 
@@ -89,6 +94,8 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-percoin-button: hsl(var(--percoin-button));
+  --color-percoin-button-hover: hsl(var(--percoin-button-hover));
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 

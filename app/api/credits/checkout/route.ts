@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   findPercoinPackage,
   getStripeImageUrls,
 } from "@/features/credits/percoin-packages";
 import { env } from "@/lib/env";
+
+const checkoutBodySchema = z.object({
+  packageId: z.string().min(1, "packageId is required"),
+});
 
 /**
  * Stripeエラーを適切なHTTPレスポンスに変換
@@ -95,45 +100,48 @@ function handleStripeError(error: unknown): NextResponse {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null);
-    const packageId = body?.packageId as string | undefined;
-    const successUrl = body?.successUrl as string | undefined;
-    const cancelUrl = body?.cancelUrl as string | undefined;
+    const parsed = checkoutBodySchema.safeParse(body);
 
-    if (!packageId) {
-      return NextResponse.json(
-        { error: "packageId is required" },
-        { status: 400 }
-      );
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? "packageId is required";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
+    const { packageId } = parsed.data;
     const percoinPackage = findPercoinPackage(packageId);
     if (!percoinPackage) {
       return NextResponse.json(
-        { error: "Invalid percoin package" },
+        { error: "指定されたパッケージが見つかりません" },
         { status: 404 }
       );
     }
 
     const stripeSecretKey = env.STRIPE_SECRET_KEY;
+    const baseUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const successRedirect = `${baseUrl.replace(/\/$/, "")}/my-page`;
+    const cancelRedirect = `${baseUrl.replace(/\/$/, "")}/my-page/credits/purchase`;
 
     // Stripeが利用できない場合はモックモードで擬似的に成功させる
     if (!stripeSecretKey) {
-      const redirectUrl = successUrl || "/my-page/credits";
       return NextResponse.json({
         mode: "mock",
-        checkoutUrl: `${redirectUrl}?mockPurchase=1&packageId=${encodeURIComponent(
+        checkoutUrl: `${successRedirect}?mockPurchase=1&packageId=${encodeURIComponent(
           packageId
         )}`,
         package: percoinPackage,
       });
     }
 
-    // 認証チェック
-    const supabase = await createClient();
+    // 認証チェックとStripe初期化を並列実行（async-parallel）
+    const [authResult, stripe] = await Promise.all([
+      createClient().then((supabase) => supabase.auth.getUser()),
+      Promise.resolve(new Stripe(stripeSecretKey, { apiVersion: "2025-12-15.clover" })),
+    ]);
+
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = authResult;
 
     if (authError || !user) {
       return NextResponse.json(
@@ -141,16 +149,6 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    const baseUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const successRedirect =
-      successUrl || `${baseUrl}/my-page/credits/purchase?success=true`;
-    const cancelRedirect =
-      cancelUrl || `${baseUrl}/my-page/credits/purchase?canceled=true`;
-
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2025-12-15.clover",
-    });
 
     // price_data + product_data.images でStripe Checkout画面にも画像を表示
     const stripeImageUrls = getStripeImageUrls(
