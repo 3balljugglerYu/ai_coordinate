@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import {
   getUserProfileServer,
   getUserStatsServer,
-  getPercoinBalanceServer,
+  getPercoinBalanceBreakdownServer,
   getMyImagesServer,
 } from "../lib/server-api";
 import { ProfileHeader } from "./ProfileHeader";
@@ -30,10 +30,10 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
 
   const supabase = createAdminClient();
 
-  const [profile, stats, percoinBalance, images] = await Promise.all([
+  const [profile, stats, percoinBalanceBreakdown, images] = await Promise.all([
     getUserProfileServer(userId, supabase),
     getUserStatsServer(userId, supabase, { isOwnProfile: true }),
-    getPercoinBalanceServer(userId, supabase),
+    getPercoinBalanceBreakdownServer(userId, supabase),
     getMyImagesServer(userId, "all", 20, 0, supabase),
   ]);
 
@@ -66,7 +66,12 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
                 <div className="min-w-0">
                   <p className="text-sm text-gray-600">保有ペルコイン</p>
                   <p className="text-xl font-bold text-gray-900">
-                    {percoinBalance.toLocaleString()} ペルコイン
+                    {percoinBalanceBreakdown.total.toLocaleString()} ペルコイン
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    うち期間限定:{" "}
+                    {percoinBalanceBreakdown.period_limited.toLocaleString()}
+                    ペルコイン
                   </p>
                 </div>
               </div>
