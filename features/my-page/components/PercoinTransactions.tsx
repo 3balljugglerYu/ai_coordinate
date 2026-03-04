@@ -2,6 +2,10 @@
 
 import { Card } from "@/components/ui/card";
 import {
+  getAdminPercoinBalanceTypeLabel,
+  isAdminPercoinBalanceType,
+} from "@/features/credits/lib/admin-percoin-balance-type";
+import {
   type PercoinTransaction,
   type PercoinTransactionFilter,
   PERCOIN_TRANSACTIONS_PER_PAGE,
@@ -61,6 +65,32 @@ function formatTransactionType(
 function formatExpireAt(expireAt: string): string {
   const d = new Date(expireAt);
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日迄`;
+}
+
+function getBalanceTypeBadge(
+  transaction: PercoinTransaction
+): { label: string; className: string } | null {
+  const balanceType = transaction.metadata?.balance_type;
+
+  if (isAdminPercoinBalanceType(balanceType)) {
+    return {
+      label: getAdminPercoinBalanceTypeLabel(balanceType),
+      className:
+        balanceType === "period_limited"
+          ? "rounded bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-800"
+          : "rounded bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700",
+    };
+  }
+
+  if (transaction.expire_at && transaction.transaction_type !== "refund") {
+    return {
+      label: "期間限定",
+      className:
+        "rounded bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-800",
+    };
+  }
+
+  return null;
 }
 
 export function PercoinTransactions({
@@ -164,46 +194,50 @@ export function PercoinTransactions({
           </p>
         ) : (
           <ul className="space-y-3">
-            {transactions.map((tx) => (
-              <li key={tx.id} className="rounded border border-gray-200 p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-gray-900 break-words min-w-0 flex-1">
-                    {formatTransactionType(tx.transaction_type, tx.metadata)}
-                  </span>
-                  <span
-                    className={`text-sm font-semibold shrink-0 whitespace-nowrap ${
-                      tx.amount >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {tx.amount >= 0 ? "+" : ""}
-                    {tx.amount}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                  <span>{new Date(tx.created_at).toLocaleString("ja-JP")}</span>
-                  {tx.expire_at && tx.transaction_type !== "refund" && (
-                    <span>有効期限: {formatExpireAt(tx.expire_at)}</span>
-                  )}
-                  <div className="flex gap-2">
-                    {tx.expire_at && tx.transaction_type !== "refund" && (
-                      <span className="rounded bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-800">
-                        期間限定
-                      </span>
-                    )}
-                    {((tx.metadata as { mode?: string } | null)?.mode === "mock") && (
-                      <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600">
-                        モック
-                      </span>
-                    )}
-                    {((tx.metadata as { mode?: string } | null)?.mode === "test") && (
-                      <span className="rounded bg-yellow-100 px-2 py-1 text-[10px] font-medium text-yellow-700">
-                        テスト
-                      </span>
-                    )}
+            {transactions.map((tx) => {
+              const balanceTypeBadge = getBalanceTypeBadge(tx);
+
+              return (
+                <li key={tx.id} className="rounded border border-gray-200 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-gray-900 break-words min-w-0 flex-1">
+                      {formatTransactionType(tx.transaction_type, tx.metadata)}
+                    </span>
+                    <span
+                      className={`text-sm font-semibold shrink-0 whitespace-nowrap ${
+                        tx.amount >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      {tx.amount >= 0 ? "+" : ""}
+                      {tx.amount}
+                    </span>
                   </div>
-                </div>
-              </li>
-            ))}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                    <span>{new Date(tx.created_at).toLocaleString("ja-JP")}</span>
+                    {tx.expire_at && tx.transaction_type !== "refund" && (
+                      <span>有効期限: {formatExpireAt(tx.expire_at)}</span>
+                    )}
+                    <div className="flex gap-2">
+                      {balanceTypeBadge && (
+                        <span className={balanceTypeBadge.className}>
+                          {balanceTypeBadge.label}
+                        </span>
+                      )}
+                      {((tx.metadata as { mode?: string } | null)?.mode === "mock") && (
+                        <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600">
+                          モック
+                        </span>
+                      )}
+                      {((tx.metadata as { mode?: string } | null)?.mode === "test") && (
+                        <span className="rounded bg-yellow-100 px-2 py-1 text-[10px] font-medium text-yellow-700">
+                          テスト
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
 
