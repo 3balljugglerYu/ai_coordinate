@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -16,6 +17,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  ADMIN_PERCOIN_BALANCE_TYPES,
+  ADMIN_PERCOIN_BALANCE_TYPE_LABELS,
+  DEFAULT_ADMIN_PERCOIN_BALANCE_TYPE,
+  getAdminPercoinBalanceTypeLabel,
+  isAdminPercoinBalanceType,
+  type AdminPercoinBalanceType,
+} from "@/features/credits/lib/admin-percoin-balance-type";
 
 const MAX_REASON_LENGTH = 500;
 const UUID_PATTERN =
@@ -33,6 +42,9 @@ export function DeductionForm() {
   const { toast } = useToast();
   const [userId, setUserId] = useState("");
   const [amount, setAmount] = useState<number | "">("");
+  const [balanceType, setBalanceType] = useState<AdminPercoinBalanceType>(
+    DEFAULT_ADMIN_PERCOIN_BALANCE_TYPE
+  );
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -103,6 +115,7 @@ export function DeductionForm() {
         body: JSON.stringify({
           user_id: userId.trim(),
           amount: Number(amount),
+          balance_type: balanceType,
           reason: reason.trim(),
           idempotency_key: idempotencyKey,
         }),
@@ -133,6 +146,7 @@ export function DeductionForm() {
 
         setUserId("");
         setAmount("");
+        setBalanceType(DEFAULT_ADMIN_PERCOIN_BALANCE_TYPE);
         setReason("");
         setCurrentIdempotencyKey(null);
       } else {
@@ -158,126 +172,172 @@ export function DeductionForm() {
 
   return (
     <div className="max-w-xl space-y-6 px-1 sm:px-0">
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="user_id">
-          ユーザーID <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          id="user_id"
-          type="text"
-          placeholder="dfe54c3c-3764-4758-89eb-2bd445fdc4c6"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          disabled={isSubmitting}
-          aria-invalid={!!errors.userId}
-        />
-        {errors.userId && (
-          <p className="text-sm text-destructive">{errors.userId}</p>
-        )}
-        <p className="text-sm text-slate-600">
-          UUID形式のユーザーIDを入力してください
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="amount">
-          減算量（ペルコイン数） <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          id="amount"
-          type="number"
-          min="1"
-          step="1"
-          placeholder="100"
-          value={amount}
-          onChange={(e) => {
-            const value = e.target.value;
-            setAmount(value === "" ? "" : Number.parseInt(value, 10));
-          }}
-          disabled={isSubmitting}
-          aria-invalid={!!errors.amount}
-        />
-        {errors.amount && (
-          <p className="text-sm text-destructive">{errors.amount}</p>
-        )}
-        <p className="text-sm text-slate-600">
-          1以上の整数で入力してください。残高不足の場合は減算可能な分のみ減算されます。
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="reason">
-          減算理由 <span className="text-destructive">*</span>
-        </Label>
-        <Textarea
-          id="reason"
-          placeholder="例: Stripe手動返金 pi_xxx、誤付与の訂正"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          disabled={isSubmitting}
-          rows={4}
-          maxLength={MAX_REASON_LENGTH + 100}
-          aria-invalid={!!errors.reason || isReasonOverLimit}
-        />
-        <div className="flex items-center justify-between">
-          {errors.reason && (
-            <p className="text-sm text-destructive">{errors.reason}</p>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="user_id">
+            ユーザーID <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="user_id"
+            type="text"
+            placeholder="dfe54c3c-3764-4758-89eb-2bd445fdc4c6"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            disabled={isSubmitting}
+            aria-invalid={!!errors.userId}
+          />
+          {errors.userId && (
+            <p className="text-sm text-destructive">{errors.userId}</p>
           )}
-          <p
-            className={`text-sm ml-auto ${
-              isReasonOverLimit
-                ? "text-destructive"
-                : remainingChars < 50
-                  ? "text-orange-600"
-                  : "text-slate-600"
-            }`}
-          >
-            {remainingChars}文字 / {MAX_REASON_LENGTH}文字
+          <p className="text-sm text-slate-600">
+            UUID形式のユーザーIDを入力してください
           </p>
         </div>
-        <p className="text-sm text-slate-600">
-          減算理由は取引履歴の表示名として使用されます（最大{MAX_REASON_LENGTH}文字）
-        </p>
-      </div>
 
-      <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? "減算中..." : "減算を実行"}
-      </Button>
-    </form>
+        <div className="space-y-2">
+          <Label htmlFor="amount">
+            減算量（ペルコイン数） <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="amount"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="100"
+            value={amount}
+            onChange={(e) => {
+              const value = e.target.value;
+              setAmount(value === "" ? "" : Number.parseInt(value, 10));
+            }}
+            disabled={isSubmitting}
+            aria-invalid={!!errors.amount}
+          />
+          {errors.amount && (
+            <p className="text-sm text-destructive">{errors.amount}</p>
+          )}
+          <p className="text-sm text-slate-600">
+            1以上の整数で入力してください。選択した種別の残高が不足している場合はエラーになります。
+          </p>
+        </div>
 
-    <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>ペルコイン減算の確認</AlertDialogTitle>
-          <AlertDialogDescription asChild>
-            <div className="space-y-2 text-left">
-              <p>以下の内容で減算を実行します。問題がないか確認してください。</p>
-              <dl className="mt-3 space-y-1 rounded-md bg-muted/50 p-3 text-sm">
-                <div className="flex gap-2">
-                  <dt className="font-medium text-muted-foreground">ユーザーID:</dt>
-                  <dd className="break-all">{userId.trim()}</dd>
+        <div className="space-y-2">
+          <Label>
+            減算対象 <span className="text-destructive">*</span>
+          </Label>
+          <RadioGroup
+            value={balanceType}
+            onValueChange={(value) => {
+              if (isAdminPercoinBalanceType(value)) {
+                setBalanceType(value);
+              }
+            }}
+            className="gap-3"
+          >
+            {ADMIN_PERCOIN_BALANCE_TYPES.map((value) => (
+              <div
+                key={value}
+                className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3"
+              >
+                <RadioGroupItem
+                  value={value}
+                  id={`deduction-balance-type-${value}`}
+                  className="mt-0.5"
+                  disabled={isSubmitting}
+                />
+                <div className="space-y-1">
+                  <Label
+                    htmlFor={`deduction-balance-type-${value}`}
+                    className="cursor-pointer text-sm font-medium text-slate-900"
+                  >
+                    {ADMIN_PERCOIN_BALANCE_TYPE_LABELS[value]}
+                  </Label>
+                  <p className="text-sm text-slate-600">
+                    {value === "period_limited"
+                      ? "期間限定の保有コインからのみ減算します。不足時はエラーになります。"
+                      : "無期限の保有コインからのみ減算します。不足時はエラーになります。"}
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <dt className="font-medium text-muted-foreground">減算量:</dt>
-                  <dd>{amount}ペルコイン</dd>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <dt className="font-medium text-muted-foreground">減算理由:</dt>
-                  <dd className="whitespace-pre-wrap break-words">{reason.trim()}</dd>
-                </div>
-              </dl>
-            </div>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSubmitting}>キャンセル</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirmDeduction} disabled={isSubmitting}>
-            減算を実行
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="reason">
+            減算理由 <span className="text-destructive">*</span>
+          </Label>
+          <Textarea
+            id="reason"
+            placeholder="例: Stripe手動返金 pi_xxx、誤付与の訂正"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            disabled={isSubmitting}
+            rows={4}
+            maxLength={MAX_REASON_LENGTH + 100}
+            aria-invalid={!!errors.reason || isReasonOverLimit}
+          />
+          <div className="flex items-center justify-between">
+            {errors.reason && (
+              <p className="text-sm text-destructive">{errors.reason}</p>
+            )}
+            <p
+              className={`text-sm ml-auto ${
+                isReasonOverLimit
+                  ? "text-destructive"
+                  : remainingChars < 50
+                    ? "text-orange-600"
+                    : "text-slate-600"
+              }`}
+            >
+              {remainingChars}文字 / {MAX_REASON_LENGTH}文字
+            </p>
+          </div>
+          <p className="text-sm text-slate-600">
+            減算理由は取引履歴の表示名として使用されます（最大{MAX_REASON_LENGTH}文字）
+          </p>
+        </div>
+
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? "減算中..." : "減算を実行"}
+        </Button>
+      </form>
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ペルコイン減算の確認</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-left">
+                <p>以下の内容で減算を実行します。問題がないか確認してください。</p>
+                <dl className="mt-3 space-y-1 rounded-md bg-muted/50 p-3 text-sm">
+                  <div className="flex gap-2">
+                    <dt className="font-medium text-muted-foreground">ユーザーID:</dt>
+                    <dd className="break-all">{userId.trim()}</dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="font-medium text-muted-foreground">減算量:</dt>
+                    <dd>{amount}ペルコイン</dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="font-medium text-muted-foreground">減算対象:</dt>
+                    <dd>{getAdminPercoinBalanceTypeLabel(balanceType)}</dd>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <dt className="font-medium text-muted-foreground">減算理由:</dt>
+                    <dd className="whitespace-pre-wrap break-words">{reason.trim()}</dd>
+                  </div>
+                </dl>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeduction} disabled={isSubmitting}>
+              減算を実行
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

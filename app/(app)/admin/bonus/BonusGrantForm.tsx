@@ -6,7 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  ADMIN_PERCOIN_BALANCE_TYPES,
+  ADMIN_PERCOIN_BALANCE_TYPE_DESCRIPTIONS,
+  ADMIN_PERCOIN_BALANCE_TYPE_LABELS,
+  DEFAULT_ADMIN_PERCOIN_BALANCE_TYPE,
+  getAdminPercoinBalanceTypeLabel,
+  isAdminPercoinBalanceType,
+  type AdminPercoinBalanceType,
+} from "@/features/credits/lib/admin-percoin-balance-type";
 
 const MAX_REASON_LENGTH = 500;
 const UUID_PATTERN =
@@ -25,6 +35,9 @@ export function BonusGrantForm() {
   const { toast } = useToast();
   const [userId, setUserId] = useState("");
   const [amount, setAmount] = useState<number | "">("");
+  const [balanceType, setBalanceType] = useState<AdminPercoinBalanceType>(
+    DEFAULT_ADMIN_PERCOIN_BALANCE_TYPE
+  );
   const [reason, setReason] = useState("");
   const [sendNotification, setSendNotification] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +94,7 @@ export function BonusGrantForm() {
         body: JSON.stringify({
           user_id: userId.trim(),
           amount: Number(amount),
+          balance_type: balanceType,
           reason: reason.trim(),
           send_notification: sendNotification,
         }),
@@ -114,6 +128,7 @@ export function BonusGrantForm() {
         // フォームをリセット
         setUserId("");
         setAmount("");
+        setBalanceType(DEFAULT_ADMIN_PERCOIN_BALANCE_TYPE);
         setReason("");
         setSendNotification(true);
       } else {
@@ -183,6 +198,49 @@ export function BonusGrantForm() {
         )}
         <p className="text-sm text-slate-600">
           1以上の整数で入力してください
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>
+          付与種別 <span className="text-destructive">*</span>
+        </Label>
+        <RadioGroup
+          value={balanceType}
+          onValueChange={(value) => {
+            if (isAdminPercoinBalanceType(value)) {
+              setBalanceType(value);
+            }
+          }}
+          className="gap-3"
+        >
+          {ADMIN_PERCOIN_BALANCE_TYPES.map((value) => (
+            <div
+              key={value}
+              className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3"
+            >
+              <RadioGroupItem
+                value={value}
+                id={`bonus-balance-type-${value}`}
+                className="mt-0.5"
+                disabled={isSubmitting}
+              />
+              <div className="space-y-1">
+                <Label
+                  htmlFor={`bonus-balance-type-${value}`}
+                  className="cursor-pointer text-sm font-medium text-slate-900"
+                >
+                  {ADMIN_PERCOIN_BALANCE_TYPE_LABELS[value]}
+                </Label>
+                <p className="text-sm text-slate-600">
+                  {ADMIN_PERCOIN_BALANCE_TYPE_DESCRIPTIONS[value]}
+                </p>
+              </div>
+            </div>
+          ))}
+        </RadioGroup>
+        <p className="text-sm text-slate-600">
+          現在の選択: {getAdminPercoinBalanceTypeLabel(balanceType)}
         </p>
       </div>
 

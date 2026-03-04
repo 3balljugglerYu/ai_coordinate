@@ -5,6 +5,11 @@ import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
+import {
+  ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES,
+  getAdminPercoinBalanceTypeLabel,
+  isAdminPercoinBalanceType,
+} from "@/features/credits/lib/admin-percoin-balance-type";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, User, ImageIcon, MessageCircle, CreditCard, Clock } from "lucide-react";
 import { UserDetailActions } from "./UserDetailActions";
@@ -143,6 +148,25 @@ function formatTransactionType(
     return String(metadata.reason);
   }
   return map[type] || type;
+}
+
+function getTransactionBalanceTypeBadge(
+  type: string,
+  metadata?: Record<string, unknown> | null
+): { label: string; className: string } | null {
+  if (type !== "admin_bonus" && type !== "admin_deduction") {
+    return null;
+  }
+
+  const balanceType = metadata?.balance_type;
+  if (!isAdminPercoinBalanceType(balanceType)) {
+    return null;
+  }
+
+  return {
+    label: getAdminPercoinBalanceTypeLabel(balanceType),
+    className: ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES[balanceType],
+  };
 }
 
 export default async function AdminUserDetailPage({
@@ -469,29 +493,45 @@ export default async function AdminUserDetailPage({
               </p>
             ) : (
               <ul className="space-y-3">
-                {transactions.map((tx) => (
-                  <li
-                    key={tx.id}
-                    className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-medium text-slate-900">
-                        {formatTransactionType(tx.transaction_type, tx.metadata)}
-                      </span>
-                      <span
-                        className={`shrink-0 text-sm font-semibold ${
-                          tx.amount >= 0 ? "text-emerald-600" : "text-red-600"
-                        }`}
-                      >
-                        {tx.amount >= 0 ? "+" : ""}
-                        {tx.amount}ペルコイン
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {new Date(tx.created_at).toLocaleString("ja-JP")}
-                    </p>
-                  </li>
-                ))}
+                {transactions.map((tx) => {
+                  const balanceTypeBadge = getTransactionBalanceTypeBadge(
+                    tx.transaction_type,
+                    tx.metadata as Record<string, unknown> | null
+                  );
+
+                  return (
+                    <li
+                      key={tx.id}
+                      className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium text-slate-900">
+                            {formatTransactionType(tx.transaction_type, tx.metadata)}
+                          </span>
+                          {balanceTypeBadge && (
+                            <div className="mt-2">
+                              <span className={balanceTypeBadge.className}>
+                                {balanceTypeBadge.label}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 text-sm font-semibold ${
+                            tx.amount >= 0 ? "text-emerald-600" : "text-red-600"
+                          }`}
+                        >
+                          {tx.amount >= 0 ? "+" : ""}
+                          {tx.amount}ペルコイン
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {new Date(tx.created_at).toLocaleString("ja-JP")}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>

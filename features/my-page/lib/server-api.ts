@@ -361,7 +361,7 @@ export const getPercoinTransactionsServer = cache(async (
 
 /**
  * ペルコイン残高の内訳を取得（サーバーサイド）
- * total: 合計、regular: 購入分（無期限）、period_limited: 期間限定
+ * total: 合計、regular: 無期限（購入分 + 無期限の管理者付与）、period_limited: 期間限定
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
 export interface PercoinBalanceBreakdown {

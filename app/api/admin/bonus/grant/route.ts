@@ -1,8 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
+import {
+  ADMIN_PERCOIN_BALANCE_TYPES,
+  getAdminPercoinBalanceTypeLabel,
+} from "@/features/credits/lib/admin-percoin-balance-type";
+
+const grantAdminBonusSchema = z.object({
+  user_id: z
+    .string()
+    .trim()
+    .min(1, "ユーザーIDを入力してください")
+    .uuid("ユーザーIDはUUID形式で入力してください"),
+  amount: z
+    .number()
+    .int("付与ペルコイン数は1以上の整数で入力してください")
+    .min(1, "付与ペルコイン数は1以上の整数で入力してください"),
+  balance_type: z.enum(ADMIN_PERCOIN_BALANCE_TYPES),
+  reason: z
+    .string()
+    .trim()
+    .min(1, "付与理由を入力してください")
+    .max(500, "付与理由は500文字以内で入力してください"),
+  send_notification: z.boolean().default(true),
+});
+
+function getGrantValidationError(error: z.ZodError): string {
+  const firstIssue = error.issues[0];
+  if (firstIssue?.path[0] === "user_id") {
+    return firstIssue.message.includes("UUID")
+      ? "ユーザーIDはUUID形式で入力してください"
+      : "ユーザーIDを入力してください";
+  }
+  if (firstIssue?.path[0] === "amount") {
+    return "付与ペルコイン数は1以上の整数で入力してください";
+  }
+  if (firstIssue?.path[0] === "balance_type") {
+    return "付与種別を選択してください";
+  }
+  if (firstIssue?.path[0] === "reason") {
+    return firstIssue.message.includes("500")
+      ? "付与理由は500文字以内で入力してください"
+      : "付与理由を入力してください";
+  }
+  return firstIssue?.message ?? "入力内容が不正です";
+}
 
 /**
  * 運営者からのボーナス付与API
@@ -24,71 +69,28 @@ export async function POST(request: NextRequest) {
 
     // リクエストボディの解析
     const body = await request.json();
-    const { user_id, amount, reason, send_notification = true } = body;
-
-    // バリデーション: user_id
-    if (!user_id || typeof user_id !== "string" || user_id.trim() === "") {
+    const parsed = grantAdminBonusSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "user_id is required and must be a non-empty string" },
+        { error: getGrantValidationError(parsed.error) },
         { status: 400 }
       );
     }
 
-    // UUID形式のバリデーション
-    const uuidPattern =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidPattern.test(user_id.trim())) {
-      return NextResponse.json(
-        { error: "user_id must be a valid UUID format" },
-        { status: 400 }
-      );
-    }
-
-    // バリデーション: amount
-    if (
-      typeof amount !== "number" ||
-      !Number.isInteger(amount) ||
-      amount < 1
-    ) {
-      return NextResponse.json(
-        { error: "amount must be an integer greater than or equal to 1" },
-        { status: 400 }
-      );
-    }
-
-    // バリデーション: reason
-    if (!reason || typeof reason !== "string" || reason.trim() === "") {
-      return NextResponse.json(
-        { error: "reason is required and must be a non-empty string" },
-        { status: 400 }
-      );
-    }
-
-    if (reason.length > 500) {
-      return NextResponse.json(
-        { error: "reason must be 500 characters or less" },
-        { status: 400 }
-      );
-    }
-
-    // バリデーション: send_notification
-    if (typeof send_notification !== "boolean") {
-      return NextResponse.json(
-        { error: "send_notification must be a boolean" },
-        { status: 400 }
-      );
-    }
+    const { user_id, amount, balance_type, reason, send_notification } =
+      parsed.data;
 
     // RPC関数呼び出し（service_role 使用: DB層の認可チェックで auth.uid() IS NULL を許可）
     const supabase = createAdminClient();
     const { data: rpcResult, error: rpcError } = await supabase.rpc(
       "grant_admin_bonus",
       {
-        p_user_id: user_id.trim(),
+        p_user_id: user_id,
         p_amount: amount,
-        p_reason: reason.trim(),
+        p_reason: reason,
         p_admin_id: admin.id,
         p_send_notification: send_notification,
+        p_balance_type: balance_type,
       }
     );
 
@@ -120,15 +122,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { amount_granted, transaction_id } = rpcResult[0];
+    const balanceTypeLabel = getAdminPercoinBalanceTypeLabel(balance_type);
 
     // 新しい残高を取得（createAdminClient で RLS をバイパス）
     const { data: creditData, error: creditError } = await supabase
       .from("user_credits")
       .select("balance")
-      .eq("user_id", user_id.trim())
+      .eq("user_id", user_id)
       .single();
 
-    const targetUserId = user_id.trim();
+    const targetUserId = user_id;
     revalidateTag(`my-page-${targetUserId}`, "max");
     revalidateTag(`my-page-credits-${targetUserId}`, "max");
     revalidateTag(`coordinate-${targetUserId}`, "max");
@@ -140,14 +143,19 @@ export async function POST(request: NextRequest) {
         adminUserId: admin.id,
         actionType: "bonus_grant",
         targetType: "user",
-        targetId: user_id.trim(),
-        metadata: { amount: amount_granted, reason: reason.trim(), transaction_id },
+        targetId: user_id,
+        metadata: {
+          amount: amount_granted,
+          reason,
+          balance_type,
+          transaction_id,
+        },
       });
       return NextResponse.json({
         success: true,
         amount_granted,
         transaction_id,
-        message: "ボーナスが付与されました（残高の取得に失敗しました）",
+        message: `${balanceTypeLabel}で${amount_granted}ペルコインを付与しました（残高の取得に失敗しました）`,
       });
     }
 
@@ -155,8 +163,8 @@ export async function POST(request: NextRequest) {
       adminUserId: admin.id,
       actionType: "bonus_grant",
       targetType: "user",
-      targetId: user_id.trim(),
-      metadata: { amount: amount_granted, reason: reason.trim(), transaction_id },
+      targetId: user_id,
+      metadata: { amount: amount_granted, reason, balance_type, transaction_id },
     });
 
     return NextResponse.json({
@@ -164,6 +172,7 @@ export async function POST(request: NextRequest) {
       new_balance: creditData.balance,
       transaction_id,
       amount_granted,
+      message: `${balanceTypeLabel}で${amount_granted}ペルコインを付与しました。新しい残高: ${creditData.balance}ペルコイン`,
     });
   } catch (error) {
     console.error("[Admin Bonus] Exception:", error);
