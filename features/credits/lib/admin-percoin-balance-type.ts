@@ -25,6 +25,16 @@ export const ADMIN_PERCOIN_BALANCE_TYPE_DESCRIPTIONS: Record<
   unlimited: "失効しない管理者付与ペルコインとして扱われます。",
 };
 
+export const ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES: Record<
+  AdminPercoinBalanceType,
+  string
+> = {
+  period_limited:
+    "rounded bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-800",
+  unlimited:
+    "rounded bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700",
+};
+
 export function isAdminPercoinBalanceType(
   value: unknown
 ): value is AdminPercoinBalanceType {

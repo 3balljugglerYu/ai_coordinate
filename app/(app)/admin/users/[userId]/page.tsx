@@ -6,6 +6,7 @@ import { getAdminUserIds } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import {
+  ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES,
   getAdminPercoinBalanceTypeLabel,
   isAdminPercoinBalanceType,
 } from "@/features/credits/lib/admin-percoin-balance-type";
@@ -164,10 +165,7 @@ function getTransactionBalanceTypeBadge(
 
   return {
     label: getAdminPercoinBalanceTypeLabel(balanceType),
-    className:
-      balanceType === "period_limited"
-        ? "rounded bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-800"
-        : "rounded bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700",
+    className: ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES[balanceType],
   };
 }
 

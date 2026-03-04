@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import {
+  ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES,
   getAdminPercoinBalanceTypeLabel,
   isAdminPercoinBalanceType,
 } from "@/features/credits/lib/admin-percoin-balance-type";
@@ -75,18 +76,14 @@ function getBalanceTypeBadge(
   if (isAdminPercoinBalanceType(balanceType)) {
     return {
       label: getAdminPercoinBalanceTypeLabel(balanceType),
-      className:
-        balanceType === "period_limited"
-          ? "rounded bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-800"
-          : "rounded bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700",
+      className: ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES[balanceType],
     };
   }
 
   if (transaction.expire_at && transaction.transaction_type !== "refund") {
     return {
       label: "期間限定",
-      className:
-        "rounded bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-800",
+      className: ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES.period_limited,
     };
   }
 

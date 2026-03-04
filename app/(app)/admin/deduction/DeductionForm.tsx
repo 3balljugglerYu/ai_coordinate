@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  ADMIN_PERCOIN_BALANCE_TYPES,
   ADMIN_PERCOIN_BALANCE_TYPE_LABELS,
   DEFAULT_ADMIN_PERCOIN_BALANCE_TYPE,
   getAdminPercoinBalanceTypeLabel,
@@ -232,9 +233,7 @@ export function DeductionForm() {
             }}
             className="gap-3"
           >
-            {(Object.keys(
-              ADMIN_PERCOIN_BALANCE_TYPE_LABELS
-            ) as AdminPercoinBalanceType[]).map((value) => (
+            {ADMIN_PERCOIN_BALANCE_TYPES.map((value) => (
               <div
                 key={value}
                 className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3"
