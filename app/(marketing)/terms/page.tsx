@@ -132,6 +132,9 @@ export default function TermsPage() {
 						<p className="text-sm text-gray-800 mb-3">
 							無料で付与したペルコインには有効期限があり、付与した月の翌月から起算して6ヶ月後の月末（日本時間）をもって失効します。失効した無料ペルコインの返還・再発行は行いません。
 						</p>
+						<p className="text-sm text-gray-800 mb-3">
+							画像生成時に消費されるペルコインは、有効期限のある無料付与分（以下「期間限定ペルコイン」）から優先して充当されます。生成が失敗した場合は、当該生成で消費したペルコインを、消費時点の種別および有効期限を保持した状態で返還します。
+						</p>
 						<p className="text-sm text-gray-800">
 							ペルコインの残高・有効期限等は、当サービス所定の画面でご確認いただけます。
 						</p>
@@ -218,7 +221,5 @@ export default function TermsPage() {
 		</main>
 	);
 }
-
-
 
 
