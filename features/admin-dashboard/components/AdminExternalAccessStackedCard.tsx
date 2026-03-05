@@ -1,16 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import {
   Card,
   CardContent,
@@ -19,6 +8,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Ga4ExternalAccessRow } from "@/features/analytics/lib/ga4-types";
+import {
+  ScrollingStackedBarChart,
+  type StackedBarSeries,
+} from "./ScrollingStackedBarChart";
 
 interface AdminExternalAccessStackedCardProps {
   rows: Ga4ExternalAccessRow[];
@@ -28,27 +21,12 @@ type ChartRow = Ga4ExternalAccessRow & {
   dateLabel: string;
 };
 
-function buildYAxisTicks(maxValue: number) {
-  if (maxValue <= 0) {
-    return [0, 1];
-  }
-
-  const roughStep = Math.max(1, Math.ceil(maxValue / 4));
-  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
-  const normalized = roughStep / magnitude;
-
-  const niceFactor =
-    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
-  const step = Math.max(1, niceFactor * magnitude);
-  const niceMax = Math.ceil(maxValue / step) * step;
-
-  const ticks: number[] = [];
-  for (let value = 0; value <= niceMax; value += step) {
-    ticks.push(value);
-  }
-
-  return ticks.length > 1 ? ticks : [0, niceMax || 1];
-}
+const EXTERNAL_ACCESS_SERIES: StackedBarSeries<ChartRow>[] = [
+  { dataKey: "xSessions", name: "X", color: "#0EA5E9" },
+  { dataKey: "campfireSessions", name: "CAMPFIRE", color: "#F97316" },
+  { dataKey: "searchSessions", name: "検索", color: "#16A34A" },
+  { dataKey: "otherExternalSessions", name: "その他外部", color: "#64748B" },
+];
 
 function formatDateLabel(dateKey: string) {
   const [, month, day] = dateKey.split("-");
@@ -97,31 +75,6 @@ export function AdminExternalAccessStackedCard({
     ...row,
     dateLabel: formatDateLabel(row.dateKey),
   }));
-  const minChartWidth = Math.max(720, chartRows.length * 56);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  const maxValue = chartRows.reduce(
-    (max, row) => Math.max(max, Number(row.totalExternalSessions) || 0),
-    0
-  );
-  const yAxisTicks = buildYAxisTicks(maxValue);
-  const yAxisDomain: [number, number] = [
-    0,
-    yAxisTicks[yAxisTicks.length - 1] ?? 1,
-  ];
-
-  useEffect(() => {
-    const element = scrollRef.current;
-    if (!element) {
-      return;
-    }
-
-    const raf = requestAnimationFrame(() => {
-      element.scrollLeft = element.scrollWidth;
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [minChartWidth, chartRows.length]);
 
   return (
     <Card className="border-violet-200/60 bg-white/95 shadow-sm">
@@ -144,75 +97,14 @@ export function AdminExternalAccessStackedCard({
             外部流入アクセスのデータはまだありません。
           </div>
         ) : (
-          <div className="flex">
-            <div className="w-16 shrink-0">
-              <ResponsiveContainer width="100%" height={360}>
-                <BarChart data={chartRows} margin={{ top: 8, right: 0, left: 0, bottom: 8 }}>
-                  <XAxis dataKey="dateLabel" hide />
-                  <YAxis
-                    domain={yAxisDomain}
-                    ticks={yAxisTicks}
-                    tickLine={{ stroke: "#94A3B8" }}
-                    axisLine={{ stroke: "#94A3B8" }}
-                    tick={{ fill: "#475569", fontSize: 12 }}
-                    tickFormatter={(value: number) => value.toLocaleString("ja-JP")}
-                    width={56}
-                  />
-                  <Bar
-                    dataKey="totalExternalSessions"
-                    fill="transparent"
-                    stroke="transparent"
-                    isAnimationActive={false}
-                    legendType="none"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div
-              ref={scrollRef}
-              className="flex-1 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-violet-200 [&::-webkit-scrollbar-track]:bg-transparent"
-            >
-              <div style={{ minWidth: `${minChartWidth}px` }}>
-                <ResponsiveContainer width="100%" height={360}>
-                  <BarChart
-                    data={chartRows}
-                    margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
-                  >
-                    <CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3" vertical={false} />
-                    <XAxis
-                      dataKey="dateLabel"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fill: "#64748B", fontSize: 12 }}
-                      minTickGap={16}
-                    />
-                    <YAxis domain={yAxisDomain} ticks={yAxisTicks} hide />
-                    <Tooltip content={<ExternalAccessTooltip />} />
-                    <Legend />
-                    <Bar dataKey="xSessions" name="X" stackId="external" fill="#0EA5E9" />
-                    <Bar
-                      dataKey="campfireSessions"
-                      name="CAMPFIRE"
-                      stackId="external"
-                      fill="#F97316"
-                    />
-                    <Bar
-                      dataKey="searchSessions"
-                      name="検索"
-                      stackId="external"
-                      fill="#16A34A"
-                    />
-                    <Bar
-                      dataKey="otherExternalSessions"
-                      name="その他外部"
-                      stackId="external"
-                      fill="#64748B"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
+          <ScrollingStackedBarChart
+            data={chartRows}
+            xDataKey="dateLabel"
+            yAxisDataKey="totalExternalSessions"
+            barSeries={EXTERNAL_ACCESS_SERIES}
+            stackId="external"
+            tooltipContent={<ExternalAccessTooltip />}
+          />
         )}
       </CardContent>
     </Card>
