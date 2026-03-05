@@ -16,21 +16,45 @@ import { AdminTopPagesCard } from "./AdminTopPagesCard";
 import { AdminTopTransitionsCard } from "./AdminTopTransitionsCard";
 import { AdminTrendChartPanel } from "./AdminTrendChartPanel";
 
-interface AdminPageAnalyticsSectionProps {
+interface AdminPageAnalyticsGa4SectionProps {
   ga4: Ga4DashboardData;
+}
+
+interface AdminTrendAndFunnelSectionProps {
   trend: DashboardTrendPoint[];
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
 }
 
-export function AdminPageAnalyticsSection({
+interface AnalyticsUnavailableCardProps {
+  title: string;
+  message: string;
+}
+
+function AnalyticsUnavailableCard({
+  title,
+  message,
+}: AnalyticsUnavailableCardProps) {
+  return (
+    <Card className="border-violet-200/60 bg-white/95 shadow-sm">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+            <Info className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-slate-900">{title}</p>
+            <p className="text-sm leading-6 text-slate-600">{message}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function AdminPageAnalyticsAccessSection({
   ga4,
-  trend,
-  funnel,
-  modelMix,
-}: AdminPageAnalyticsSectionProps) {
-  const isDataApiReady = ga4.status === "ready";
-  const isPageFlowReady = ga4.pageFlowStatus === "ready";
+}: AdminPageAnalyticsGa4SectionProps) {
   const isEntryAccessReady = ga4.entryAccessStatus === "ready";
   const isExternalAccessReady = ga4.externalAccessStatus === "ready";
 
@@ -71,56 +95,46 @@ export function AdminPageAnalyticsSection({
       {isExternalAccessReady ? (
         <AdminExternalAccessStackedCard rows={ga4.externalAccessRows} />
       ) : (
-        <Card className="border-violet-200/60 bg-white/95 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                <Info className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-900">
-                  外部流入アクセスは現在利用できません
-                </p>
-                <p className="text-sm leading-6 text-slate-600">
-                  {ga4.externalAccessStatusMessage ??
-                    "BigQuery 設定または権限を確認してください。"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <AnalyticsUnavailableCard
+          title="外部流入アクセスは現在利用できません"
+          message={
+            ga4.externalAccessStatusMessage ??
+            "BigQuery 設定または権限を確認してください。"
+          }
+        />
       )}
 
       {isEntryAccessReady ? (
-        <AdminEntryAccessStackedCard rows={ga4.entryAccessRows} range={ga4.range} />
+        <AdminEntryAccessStackedCard
+          rows={ga4.entryAccessRows}
+          dateKeys={ga4.entryAccessDateKeys}
+        />
       ) : (
-        <Card className="border-violet-200/60 bg-white/95 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                <Info className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-900">
-                  入口ページ別アクセスは現在利用できません
-                </p>
-                <p className="text-sm leading-6 text-slate-600">
-                  {ga4.entryAccessStatusMessage ??
-                    "BigQuery 設定または権限を確認してください。"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <AnalyticsUnavailableCard
+          title="入口ページ別アクセスは現在利用できません"
+          message={
+            ga4.entryAccessStatusMessage ??
+            "BigQuery 設定または権限を確認してください。"
+          }
+        />
       )}
+    </section>
+  );
+}
 
+export function AdminTrendAndFunnelSection({
+  trend,
+  funnel,
+  modelMix,
+}: AdminTrendAndFunnelSectionProps) {
+  return (
+    <section className="space-y-4">
       <Card className="border-violet-200/60 bg-white/95 shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle
             className="text-lg text-slate-900"
             style={{
-              fontFamily:
-                "var(--font-admin-heading), ui-monospace, monospace",
+              fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
             }}
           >
             ユーザー・生成トレンド
@@ -140,8 +154,7 @@ export function AdminPageAnalyticsSection({
             <CardTitle
               className="text-lg text-slate-900"
               style={{
-                fontFamily:
-                  "var(--font-admin-heading), ui-monospace, monospace",
+                fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
               }}
             >
               モデル別構成
@@ -152,7 +165,18 @@ export function AdminPageAnalyticsSection({
           </CardContent>
         </Card>
       </section>
+    </section>
+  );
+}
 
+export function AdminPageAnalyticsDetailsSection({
+  ga4,
+}: AdminPageAnalyticsGa4SectionProps) {
+  const isDataApiReady = ga4.status === "ready";
+  const isPageFlowReady = ga4.pageFlowStatus === "ready";
+
+  return (
+    <section className="space-y-4">
       {isDataApiReady ? (
         <div className="grid gap-4 xl:grid-cols-12">
           <div className="xl:col-span-6">
@@ -175,9 +199,7 @@ export function AdminPageAnalyticsSection({
                     ? "GA4 の設定待ちです"
                     : "GA4 データの取得に失敗しました"}
                 </p>
-                <p className="text-sm leading-6 text-slate-600">
-                  {ga4.statusMessage}
-                </p>
+                <p className="text-sm leading-6 text-slate-600">{ga4.statusMessage}</p>
               </div>
             </div>
           </CardContent>
@@ -244,7 +266,7 @@ export function AdminPageAnalyticsSection({
   );
 }
 
-export function AdminPageAnalyticsSectionSkeleton() {
+export function AdminPageAnalyticsAccessSectionSkeleton() {
   return (
     <section className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -277,29 +299,13 @@ export function AdminPageAnalyticsSectionSkeleton() {
           <div className="h-[320px] rounded-xl bg-slate-100" />
         </CardContent>
       </Card>
+    </section>
+  );
+}
 
-      <Card className="border-violet-200/60 bg-white/95 shadow-sm">
-        <CardContent className="space-y-3 p-6">
-          <div className="h-6 w-56 rounded bg-slate-100" />
-          <div className="h-[320px] rounded-xl bg-slate-100" />
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="border-violet-200/60 bg-white/95 shadow-sm xl:col-span-6">
-          <CardContent className="space-y-3 p-6">
-            <div className="h-6 w-44 rounded bg-slate-100" />
-            <div className="h-52 rounded-xl bg-slate-100" />
-          </CardContent>
-        </Card>
-        <Card className="border-violet-200/60 bg-white/95 shadow-sm xl:col-span-6">
-          <CardContent className="space-y-3 p-6">
-            <div className="h-6 w-44 rounded bg-slate-100" />
-            <div className="h-52 rounded-xl bg-slate-100" />
-          </CardContent>
-        </Card>
-      </div>
-
+export function AdminPageAnalyticsDetailsSectionSkeleton() {
+  return (
+    <section className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-12">
         <Card className="border-violet-200/60 bg-white/95 shadow-sm xl:col-span-6">
           <CardContent className="space-y-3 p-6">

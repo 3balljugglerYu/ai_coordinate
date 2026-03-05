@@ -53,6 +53,7 @@ export async function getGa4DashboardData(
           entryAccessStatusMessage:
             "BigQuery から入口ページ別アクセスを取得できませんでした。dataset 名、location、権限を確認してください。",
           entryAccessRows: [],
+          entryAccessDateKeys: [],
         };
 
   const externalAccess =

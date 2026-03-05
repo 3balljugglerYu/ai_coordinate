@@ -18,16 +18,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  enumerateJstDateKeys,
-  getRangeBounds,
-  type DashboardRange,
-} from "@/features/admin-dashboard/lib/dashboard-range";
 import type { Ga4EntryAccessRow } from "@/features/analytics/lib/ga4-types";
 
 interface AdminEntryAccessStackedCardProps {
   rows: Ga4EntryAccessRow[];
-  range: DashboardRange;
+  dateKeys: string[];
 }
 
 const ENTRY_ACCESS_OTHER_BUCKET = "__other__";
@@ -89,7 +84,15 @@ function formatDateLabel(dateKey: string) {
   return `${Number(month)}/${Number(day)}`;
 }
 
-function buildEntryAccessChart(rows: Ga4EntryAccessRow[], range: DashboardRange) {
+function buildDateKeys(rows: Ga4EntryAccessRow[], dateKeys: string[]) {
+  if (dateKeys.length > 0) {
+    return dateKeys;
+  }
+
+  return Array.from(new Set(rows.map((row) => row.dateKey).filter(Boolean))).sort();
+}
+
+function buildEntryAccessChart(rows: Ga4EntryAccessRow[], dateKeys: string[]) {
   const totalsByLandingPage = new Map<string, number>();
   const sessionsByDate = new Map<string, Map<string, number>>();
 
@@ -158,10 +161,7 @@ function buildEntryAccessChart(rows: Ga4EntryAccessRow[], range: DashboardRange)
     labelsByDataKey[bar.dataKey] = bar.fullLabel;
   }
 
-  const bounds = getRangeBounds(range, new Date());
-  const dateKeys = enumerateJstDateKeys(bounds.currentStart, bounds.now);
-
-  const chartRows: ChartRow[] = dateKeys.map((dateKey) => {
+  const chartRows: ChartRow[] = buildDateKeys(rows, dateKeys).map((dateKey) => {
       const dateMap = sessionsByDate.get(dateKey) ?? new Map<string, number>();
       const row: ChartRow = {
         dateKey,
@@ -240,10 +240,10 @@ function EntryAccessTooltip({
 
 export function AdminEntryAccessStackedCard({
   rows,
-  range,
+  dateKeys,
 }: AdminEntryAccessStackedCardProps) {
   const { chartRows, barDefinitions, labelsByDataKey } =
-    buildEntryAccessChart(rows, range);
+    buildEntryAccessChart(rows, dateKeys);
   const minChartWidth = Math.max(720, chartRows.length * 56);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 

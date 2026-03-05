@@ -3,6 +3,7 @@ import "server-only";
 import { LRUCache } from "lru-cache";
 import type { BigQuery } from "@google-cloud/bigquery";
 import {
+  enumerateJstDateKeys,
   getRangeBounds,
   toJstDateKey,
   type DashboardRange,
@@ -31,6 +32,7 @@ export interface Ga4EntryAccessData {
   entryAccessStatus: Ga4DashboardStatus;
   entryAccessStatusMessage: string | null;
   entryAccessRows: Ga4EntryAccessRow[];
+  entryAccessDateKeys: string[];
 }
 
 function getDateSuffix(value: Date) {
@@ -173,6 +175,7 @@ function buildEntryAccessQuery(
           WHEN normalized_path != '/' THEN REGEXP_REPLACE(normalized_path, r'/$', '')
           ELSE normalized_path
         END AS page_path,
+        normalized_host AS page_host,
         page_referrer
       FROM (
         SELECT
@@ -186,6 +189,10 @@ function buildEntryAccessQuery(
             REGEXP_EXTRACT(page_location, r'^(/[^?#]*)'),
             '/'
           ) AS normalized_path,
+          COALESCE(
+            LOWER(REGEXP_EXTRACT(page_location, r'^(?:https?://)?([^/:?#]+)')),
+            ''
+          ) AS normalized_host,
           page_referrer
         FROM raw_pageviews
       )
@@ -208,6 +215,12 @@ function buildEntryAccessQuery(
           LIMIT 1
         )[SAFE_OFFSET(0)] AS landing_page,
         ARRAY_AGG(
+          NULLIF(page_host, '')
+          IGNORE NULLS
+          ORDER BY event_timestamp, batch_page_id, batch_ordering_id, batch_event_index
+          LIMIT 1
+        )[SAFE_OFFSET(0)] AS landing_host,
+        ARRAY_AGG(
           NULLIF(page_referrer, '')
           IGNORE NULLS
           ORDER BY event_timestamp, batch_page_id, batch_ordering_id, batch_event_index
@@ -220,6 +233,7 @@ function buildEntryAccessQuery(
       SELECT
         FORMAT_DATE('%Y-%m-%d', entry_date_jst) AS date_key,
         landing_page,
+        landing_host,
         first_referrer,
         COALESCE(
           LOWER(REGEXP_EXTRACT(first_referrer, r'^(?:https?://)?([^/:?#]+)')),
@@ -236,7 +250,10 @@ function buildEntryAccessQuery(
         AND date_key IS NOT NULL
         AND NOT REGEXP_CONTAINS(landing_page, r'^/admin(?:/|$)')
         AND NOT (
-          referrer_host = 'localhost'
+          landing_host = 'localhost'
+          OR landing_host = '127.0.0.1'
+          OR REGEXP_CONTAINS(landing_host, r'(^|\\.)localhost$')
+          OR referrer_host = 'localhost'
           OR referrer_host = '127.0.0.1'
           OR REGEXP_CONTAINS(referrer_host, r'(^|\\.)localhost$')
         )
@@ -271,16 +288,19 @@ function buildEntryAccessQuery(
 async function buildGa4EntryAccessData(
   range: DashboardRange
 ): Promise<Ga4EntryAccessData> {
+  const bounds = getRangeBounds(range);
+  const entryAccessDateKeys = enumerateJstDateKeys(bounds.currentStart, bounds.now);
+
   if (!hasBigQueryConfig()) {
     return {
       entryAccessStatus: "disabled",
       entryAccessStatusMessage:
         "入口ページ別アクセスを表示するには BigQuery 設定が必要です。",
       entryAccessRows: [],
+      entryAccessDateKeys,
     };
   }
 
-  const bounds = getRangeBounds(range);
   const projectId = env.GA4_BIGQUERY_PROJECT_ID;
   const datasetId = env.GA4_BIGQUERY_DATASET;
   const todayDateSuffix = getDateSuffix(new Date());
@@ -312,6 +332,7 @@ async function buildGa4EntryAccessData(
           sessions: parseMetric(row.sessions),
         })
       ),
+      entryAccessDateKeys,
     };
   } catch (error) {
     console.error("GA4 entry access fetch error:", {
@@ -323,6 +344,7 @@ async function buildGa4EntryAccessData(
       entryAccessStatus: "error",
       entryAccessStatusMessage: getEntryAccessErrorMessage(error),
       entryAccessRows: [],
+      entryAccessDateKeys,
     };
   }
 }

@@ -54,6 +54,7 @@ export interface Ga4DashboardData {
   entryAccessStatus: Ga4DashboardStatus;
   entryAccessStatusMessage: string | null;
   entryAccessRows: Ga4EntryAccessRow[];
+  entryAccessDateKeys: string[];
   externalAccessStatus: Ga4DashboardStatus;
   externalAccessStatusMessage: string | null;
   externalAccessRows: Ga4ExternalAccessRow[];

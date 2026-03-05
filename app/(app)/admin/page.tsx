@@ -1,6 +1,4 @@
-import { Suspense } from "react";
 import { AdminDashboardView } from "@/features/admin-dashboard/components/AdminDashboardView";
-import { AdminPageAnalyticsSectionSkeleton } from "@/features/admin-dashboard/components/AdminPageAnalyticsSection";
 import { AdminPageAnalyticsSectionServer } from "@/features/admin-dashboard/components/AdminPageAnalyticsSectionServer";
 import { getAdminDashboardData } from "@/features/admin-dashboard/lib/get-admin-dashboard-data";
 import { parseDashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
@@ -23,14 +21,12 @@ export default async function AdminDashboardPage({
 
   return (
     <AdminDashboardView data={data}>
-      <Suspense fallback={<AdminPageAnalyticsSectionSkeleton />}>
-        <AdminPageAnalyticsSectionServer
-          ga4Promise={ga4Promise}
-          trend={data.trend}
-          funnel={data.funnel}
-          modelMix={data.modelMix}
-        />
-      </Suspense>
+      <AdminPageAnalyticsSectionServer
+        ga4Promise={ga4Promise}
+        trend={data.trend}
+        funnel={data.funnel}
+        modelMix={data.modelMix}
+      />
     </AdminDashboardView>
   );
 }
