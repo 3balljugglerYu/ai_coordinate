@@ -73,6 +73,7 @@ export async function generateSingleImage(
       prompt: request.prompt,
       sourceImageBase64,
       sourceImageMimeType,
+      sourceImageType: request.sourceImageType || "illustration",
       backgroundMode,
       backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
       count: 1, // 常に1枚
@@ -124,6 +125,7 @@ export async function generateImage(
       prompt: request.prompt,
       sourceImage: request.sourceImage,
       sourceImageStockId: request.sourceImageStockId,
+      sourceImageType: request.sourceImageType,
       backgroundMode: request.backgroundMode,
       backgroundChange: request.backgroundChange,
       generationType: request.generationType,

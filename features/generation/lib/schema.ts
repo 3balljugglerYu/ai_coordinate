@@ -4,6 +4,7 @@ import {
   backgroundModeToBackgroundChange,
   resolveBackgroundMode,
   BACKGROUND_MODES,
+  SOURCE_IMAGE_TYPES,
 } from "../types";
 
 /**
@@ -59,6 +60,7 @@ export const generationRequestSchema = z.object({
       }
     ),
   sourceImageStockId: z.string().uuid().optional(),
+  sourceImageType: z.enum(SOURCE_IMAGE_TYPES).optional().default("illustration"),
   backgroundMode: z.enum(BACKGROUND_MODES).optional(),
   backgroundChange: z.boolean().optional(),
   count: z.number().int().min(1).max(4).optional().default(1),

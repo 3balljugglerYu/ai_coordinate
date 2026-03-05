@@ -5,7 +5,7 @@ import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import {
   validateImageFile,
   DEFAULT_IMAGE_CONFIG,
@@ -77,7 +77,7 @@ export function ImageUploader({
       };
       img.src = result.previewUrl!;
     },
-    [config, onImageUpload]
+    [config, onImageUpload, value]
   );
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,4 +209,3 @@ export function ImageUploader({
     </div>
   );
 }
-

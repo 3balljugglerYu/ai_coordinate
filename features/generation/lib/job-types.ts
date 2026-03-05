@@ -3,7 +3,12 @@
  * image_jobsテーブルに対応する型定義
  */
 
-import type { BackgroundMode, GenerationType, GeminiModel } from "../types";
+import type {
+  BackgroundMode,
+  GenerationType,
+  GeminiModel,
+  SourceImageType,
+} from "../types";
 
 /**
  * ジョブステータス
@@ -19,6 +24,7 @@ export interface ImageJob {
   prompt_text: string;
   input_image_url: string | null;
   source_image_stock_id: string | null;
+  source_image_type: SourceImageType;
   generation_type: GenerationType;
   model: GeminiModel | null;
   background_mode: BackgroundMode;

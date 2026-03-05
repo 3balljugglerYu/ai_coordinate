@@ -10,12 +10,14 @@ import {
 import type {
   BackgroundMode,
   GenerationType,
+  SourceImageType,
 } from "@/shared/generation/prompt-core";
 
 export interface BuildPromptOptions {
   generationType: GenerationType;
   outfitDescription: string; // ユーザー入力（日本語のまま）
   backgroundMode: BackgroundMode;
+  sourceImageType?: SourceImageType;
 }
 
 /**
@@ -37,6 +39,9 @@ export function buildPrompt(options: BuildPromptOptions): string {
   // デバッグ用: 最終プロンプトをログ出力
   console.log(`[Prompt Builder] Generation Type: ${options.generationType}`);
   console.log(`[Prompt Builder] Background Mode: ${options.backgroundMode}`);
+  console.log(
+    `[Prompt Builder] Source Image Type: ${options.sourceImageType ?? "illustration"}`
+  );
   console.log(`[Prompt Builder] Final Prompt:\n${prompt}`);
 
   return prompt;

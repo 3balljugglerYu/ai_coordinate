@@ -307,6 +307,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    sourceImageType?: import("../types").SourceImageType;
     backgroundMode: import("../types").BackgroundMode;
     count: number;
     model: import("../types").GeminiModel;
@@ -358,6 +359,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             prompt: data.prompt,
             sourceImage: data.sourceImage,
             sourceImageStockId: data.sourceImageStockId,
+            sourceImageType: data.sourceImageType,
             backgroundMode: data.backgroundMode,
             generationType: data.generationType || "coordinate",
             model: data.model,
