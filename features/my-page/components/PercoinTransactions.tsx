@@ -83,19 +83,19 @@ function getUsageBreakdownText(transaction: PercoinTransaction): string | null {
     return null;
   }
 
-  const periodLimited =
-    toPositiveInt(
-      metadata[
-        transaction.transaction_type === "consumption"
-          ? "from_period_limited"
-          : "to_period_limited"
-      ]
-    ) ||
-    toPositiveInt(
-      metadata[
-        transaction.transaction_type === "consumption" ? "from_promo" : "to_promo"
-      ]
-    );
+  const periodLimitedKey =
+    transaction.transaction_type === "consumption"
+      ? "from_period_limited"
+      : "to_period_limited";
+  const periodLimitedFallbackKey =
+    transaction.transaction_type === "consumption" ? "from_promo" : "to_promo";
+  const hasPeriodLimitedKey = Object.prototype.hasOwnProperty.call(
+    metadata,
+    periodLimitedKey
+  );
+  const periodLimited = hasPeriodLimitedKey
+    ? toPositiveInt(metadata[periodLimitedKey])
+    : toPositiveInt(metadata[periodLimitedFallbackKey]);
 
   const unlimitedBonus = toPositiveInt(
     metadata[
