@@ -1,26 +1,25 @@
 import "server-only";
 
-import { LRUCache } from "lru-cache";
-import type { BigQuery } from "@google-cloud/bigquery";
 import {
   enumerateJstDateKeys,
   getRangeBounds,
-  toJstDateKey,
   type DashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
 import { env } from "@/lib/env";
+import {
+  buildGa4RawPageviewSelect,
+  createGa4RangeCachedFetcher,
+  getGa4DateSuffix,
+  hasGa4BigQueryConfig,
+  hasGa4IntradayTable,
+  parseGa4Metric,
+} from "./ga4-bigquery-utils";
 import { getGa4BigQueryClient } from "./ga4-bigquery-client";
 import type { Ga4DashboardStatus, Ga4EntryAccessRow } from "./ga4-types";
 
 const ENTRY_ACCESS_TOP_LANDING_PAGE_LIMIT = 6;
 const ENTRY_ACCESS_OTHER_BUCKET = "__other__";
 const GA4_ENTRY_ACCESS_CACHE_TTL_MS = 5 * 60 * 1000;
-
-const ga4EntryAccessCache = new LRUCache<string, Ga4EntryAccessData>({
-  max: 16,
-  ttl: GA4_ENTRY_ACCESS_CACHE_TTL_MS,
-});
-const ga4EntryAccessInFlight = new Map<string, Promise<Ga4EntryAccessData>>();
 
 type BigQueryEntryAccessRow = {
   dateKey: string;
@@ -33,41 +32,6 @@ export interface Ga4EntryAccessData {
   entryAccessStatusMessage: string | null;
   entryAccessRows: Ga4EntryAccessRow[];
   entryAccessDateKeys: string[];
-}
-
-function getDateSuffix(value: Date) {
-  return toJstDateKey(value).replaceAll("-", "");
-}
-
-function parseMetric(value: number | string | null | undefined) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === "string") {
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : 0;
-  }
-
-  return 0;
-}
-
-function hasBigQueryConfig() {
-  return Boolean(
-    env.GA4_BIGQUERY_PROJECT_ID &&
-      env.GA4_BIGQUERY_DATASET &&
-      env.GA4_BIGQUERY_LOCATION &&
-      env.GA4_SERVICE_ACCOUNT_JSON_BASE64
-  );
-}
-
-function getEntryAccessCacheKey(range: DashboardRange) {
-  return [
-    env.GA4_BIGQUERY_PROJECT_ID,
-    env.GA4_BIGQUERY_DATASET,
-    env.GA4_BIGQUERY_LOCATION,
-    range,
-  ].join(":");
 }
 
 function getEntryAccessErrorMessage(error: unknown) {
@@ -100,52 +64,12 @@ function getEntryAccessErrorMessage(error: unknown) {
   return "BigQuery から入口ページ別アクセスを取得できませんでした。dataset 名、location、権限を確認してください。";
 }
 
-async function hasIntradayTable(
-  client: BigQuery,
-  datasetId: string,
-  suffix: string
-) {
-  const [exists] = await client
-    .dataset(datasetId)
-    .table(`events_intraday_${suffix}`)
-    .exists();
-
-  return exists;
-}
-
-function buildRawPageviewSelect(
-  tablePattern: string,
-  suffixPredicate: string
-) {
-  return `
-    SELECT
-      CONCAT(
-        user_pseudo_id,
-        '.',
-        CAST(
-          (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING
-        )
-      ) AS session_key,
-      event_timestamp,
-      batch_page_id,
-      batch_ordering_id,
-      batch_event_index,
-      (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location') AS page_location,
-      LOWER(COALESCE((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_referrer'), '')) AS page_referrer
-    FROM ${tablePattern}
-    WHERE event_name = 'page_view'
-      AND ${suffixPredicate}
-      AND TIMESTAMP_MICROS(event_timestamp) BETWEEN TIMESTAMP(@startTimestamp) AND TIMESTAMP(@endTimestamp)
-      AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') IS NOT NULL
-  `;
-}
-
 function buildEntryAccessQuery(
   projectId: string,
   datasetId: string,
   includeIntraday: boolean
 ) {
-  const dailySelect = buildRawPageviewSelect(
+  const dailySelect = buildGa4RawPageviewSelect(
     `\`${projectId}.${datasetId}.events_*\``,
     "_TABLE_SUFFIX BETWEEN @startDateSuffix AND @endDateSuffix AND _TABLE_SUFFIX NOT LIKE 'intraday_%'"
   );
@@ -153,7 +77,7 @@ function buildEntryAccessQuery(
   const rawPageviewQuery = includeIntraday
     ? `${dailySelect}
        UNION ALL
-       ${buildRawPageviewSelect(
+       ${buildGa4RawPageviewSelect(
          `\`${projectId}.${datasetId}.events_intraday_*\``,
          "_TABLE_SUFFIX = @todayDateSuffix"
        )}`
@@ -291,7 +215,7 @@ async function buildGa4EntryAccessData(
   const bounds = getRangeBounds(range);
   const entryAccessDateKeys = enumerateJstDateKeys(bounds.currentStart, bounds.now);
 
-  if (!hasBigQueryConfig()) {
+  if (!hasGa4BigQueryConfig()) {
     return {
       entryAccessStatus: "disabled",
       entryAccessStatusMessage:
@@ -303,16 +227,20 @@ async function buildGa4EntryAccessData(
 
   const projectId = env.GA4_BIGQUERY_PROJECT_ID;
   const datasetId = env.GA4_BIGQUERY_DATASET;
-  const todayDateSuffix = getDateSuffix(new Date());
+  const todayDateSuffix = getGa4DateSuffix(new Date());
 
   try {
     const client = getGa4BigQueryClient();
-    const includeIntraday = await hasIntradayTable(client, datasetId, todayDateSuffix);
+    const includeIntraday = await hasGa4IntradayTable(
+      client,
+      datasetId,
+      todayDateSuffix
+    );
     const params = {
       startTimestamp: bounds.currentStartIso,
       endTimestamp: bounds.nowIso,
-      startDateSuffix: getDateSuffix(bounds.currentStart),
-      endDateSuffix: getDateSuffix(bounds.now),
+      startDateSuffix: getGa4DateSuffix(bounds.currentStart),
+      endDateSuffix: getGa4DateSuffix(bounds.now),
       todayDateSuffix,
     };
 
@@ -329,7 +257,7 @@ async function buildGa4EntryAccessData(
         (row) => ({
           dateKey: row.dateKey,
           landingPage: row.landingPage,
-          sessions: parseMetric(row.sessions),
+          sessions: parseGa4Metric(row.sessions),
         })
       ),
       entryAccessDateKeys,
@@ -349,33 +277,8 @@ async function buildGa4EntryAccessData(
   }
 }
 
-export async function getGa4EntryAccessData(
-  range: DashboardRange
-): Promise<Ga4EntryAccessData> {
-  const cacheKey = getEntryAccessCacheKey(range);
-  const cached = ga4EntryAccessCache.get(cacheKey);
-
-  if (cached) {
-    return cached;
-  }
-
-  const inFlight = ga4EntryAccessInFlight.get(cacheKey);
-  if (inFlight) {
-    return inFlight;
-  }
-
-  const request = buildGa4EntryAccessData(range).then((result) => {
-    if (result.entryAccessStatus !== "error") {
-      ga4EntryAccessCache.set(cacheKey, result);
-    }
-    return result;
-  });
-
-  ga4EntryAccessInFlight.set(cacheKey, request);
-
-  try {
-    return await request;
-  } finally {
-    ga4EntryAccessInFlight.delete(cacheKey);
-  }
-}
+export const getGa4EntryAccessData = createGa4RangeCachedFetcher({
+  ttlMs: GA4_ENTRY_ACCESS_CACHE_TTL_MS,
+  buildData: buildGa4EntryAccessData,
+  isCacheable: (result) => result.entryAccessStatus !== "error",
+});

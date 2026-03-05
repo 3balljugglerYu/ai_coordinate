@@ -1,26 +1,22 @@
 import "server-only";
 
-import { LRUCache } from "lru-cache";
-import type { BigQuery } from "@google-cloud/bigquery";
 import {
   getRangeBounds,
-  toJstDateKey,
   type DashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
 import { env } from "@/lib/env";
+import {
+  buildGa4RawPageviewSelect,
+  createGa4RangeCachedFetcher,
+  getGa4DateSuffix,
+  hasGa4BigQueryConfig,
+  hasGa4IntradayTable,
+  parseGa4Metric,
+} from "./ga4-bigquery-utils";
 import { getGa4BigQueryClient } from "./ga4-bigquery-client";
 import type { Ga4DashboardStatus, Ga4ExternalAccessRow } from "./ga4-types";
 
 const GA4_EXTERNAL_ACCESS_CACHE_TTL_MS = 5 * 60 * 1000;
-
-const ga4ExternalAccessCache = new LRUCache<string, Ga4ExternalAccessData>({
-  max: 16,
-  ttl: GA4_EXTERNAL_ACCESS_CACHE_TTL_MS,
-});
-const ga4ExternalAccessInFlight = new Map<
-  string,
-  Promise<Ga4ExternalAccessData>
->();
 
 type BigQueryExternalAccessRow = {
   dateKey: string;
@@ -35,41 +31,6 @@ export interface Ga4ExternalAccessData {
   externalAccessStatus: Ga4DashboardStatus;
   externalAccessStatusMessage: string | null;
   externalAccessRows: Ga4ExternalAccessRow[];
-}
-
-function getDateSuffix(value: Date) {
-  return toJstDateKey(value).replaceAll("-", "");
-}
-
-function parseMetric(value: number | string | null | undefined) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === "string") {
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : 0;
-  }
-
-  return 0;
-}
-
-function hasBigQueryConfig() {
-  return Boolean(
-    env.GA4_BIGQUERY_PROJECT_ID &&
-      env.GA4_BIGQUERY_DATASET &&
-      env.GA4_BIGQUERY_LOCATION &&
-      env.GA4_SERVICE_ACCOUNT_JSON_BASE64
-  );
-}
-
-function getExternalAccessCacheKey(range: DashboardRange) {
-  return [
-    env.GA4_BIGQUERY_PROJECT_ID,
-    env.GA4_BIGQUERY_DATASET,
-    env.GA4_BIGQUERY_LOCATION,
-    range,
-  ].join(":");
 }
 
 function getExternalAccessErrorMessage(error: unknown) {
@@ -102,52 +63,12 @@ function getExternalAccessErrorMessage(error: unknown) {
   return "BigQuery から外部流入アクセスを取得できませんでした。dataset 名、location、権限を確認してください。";
 }
 
-async function hasIntradayTable(
-  client: BigQuery,
-  datasetId: string,
-  suffix: string
-) {
-  const [exists] = await client
-    .dataset(datasetId)
-    .table(`events_intraday_${suffix}`)
-    .exists();
-
-  return exists;
-}
-
-function buildRawPageviewSelect(
-  tablePattern: string,
-  suffixPredicate: string
-) {
-  return `
-    SELECT
-      CONCAT(
-        user_pseudo_id,
-        '.',
-        CAST(
-          (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING
-        )
-      ) AS session_key,
-      event_timestamp,
-      batch_page_id,
-      batch_ordering_id,
-      batch_event_index,
-      (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location') AS page_location,
-      LOWER(COALESCE((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_referrer'), '')) AS page_referrer
-    FROM ${tablePattern}
-    WHERE event_name = 'page_view'
-      AND ${suffixPredicate}
-      AND TIMESTAMP_MICROS(event_timestamp) BETWEEN TIMESTAMP(@startTimestamp) AND TIMESTAMP(@endTimestamp)
-      AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') IS NOT NULL
-  `;
-}
-
 function buildExternalAccessQuery(
   projectId: string,
   datasetId: string,
   includeIntraday: boolean
 ) {
-  const dailySelect = buildRawPageviewSelect(
+  const dailySelect = buildGa4RawPageviewSelect(
     `\`${projectId}.${datasetId}.events_*\``,
     "_TABLE_SUFFIX BETWEEN @startDateSuffix AND @endDateSuffix AND _TABLE_SUFFIX NOT LIKE 'intraday_%'"
   );
@@ -155,7 +76,7 @@ function buildExternalAccessQuery(
   const rawPageviewQuery = includeIntraday
     ? `${dailySelect}
        UNION ALL
-       ${buildRawPageviewSelect(
+       ${buildGa4RawPageviewSelect(
          `\`${projectId}.${datasetId}.events_intraday_*\``,
          "_TABLE_SUFFIX = @todayDateSuffix"
        )}`
@@ -310,7 +231,7 @@ function buildExternalAccessQuery(
 async function buildGa4ExternalAccessData(
   range: DashboardRange
 ): Promise<Ga4ExternalAccessData> {
-  if (!hasBigQueryConfig()) {
+  if (!hasGa4BigQueryConfig()) {
     return {
       externalAccessStatus: "disabled",
       externalAccessStatusMessage:
@@ -322,11 +243,11 @@ async function buildGa4ExternalAccessData(
   const bounds = getRangeBounds(range);
   const projectId = env.GA4_BIGQUERY_PROJECT_ID;
   const datasetId = env.GA4_BIGQUERY_DATASET;
-  const todayDateSuffix = getDateSuffix(new Date());
+  const todayDateSuffix = getGa4DateSuffix(new Date());
 
   try {
     const client = getGa4BigQueryClient();
-    const includeIntraday = await hasIntradayTable(
+    const includeIntraday = await hasGa4IntradayTable(
       client,
       datasetId,
       todayDateSuffix
@@ -335,8 +256,8 @@ async function buildGa4ExternalAccessData(
     const params = {
       startTimestamp: bounds.currentStartIso,
       endTimestamp: bounds.nowIso,
-      startDateSuffix: getDateSuffix(bounds.currentStart),
-      endDateSuffix: getDateSuffix(bounds.now),
+      startDateSuffix: getGa4DateSuffix(bounds.currentStart),
+      endDateSuffix: getGa4DateSuffix(bounds.now),
       todayDateSuffix,
     };
 
@@ -352,11 +273,11 @@ async function buildGa4ExternalAccessData(
       externalAccessRows: ((queryResult ?? []) as BigQueryExternalAccessRow[]).map(
         (row) => ({
           dateKey: row.dateKey,
-          xSessions: parseMetric(row.xSessions),
-          campfireSessions: parseMetric(row.campfireSessions),
-          searchSessions: parseMetric(row.searchSessions),
-          otherExternalSessions: parseMetric(row.otherExternalSessions),
-          totalExternalSessions: parseMetric(row.totalExternalSessions),
+          xSessions: parseGa4Metric(row.xSessions),
+          campfireSessions: parseGa4Metric(row.campfireSessions),
+          searchSessions: parseGa4Metric(row.searchSessions),
+          otherExternalSessions: parseGa4Metric(row.otherExternalSessions),
+          totalExternalSessions: parseGa4Metric(row.totalExternalSessions),
         })
       ),
     };
@@ -374,33 +295,8 @@ async function buildGa4ExternalAccessData(
   }
 }
 
-export async function getGa4ExternalAccessData(
-  range: DashboardRange
-): Promise<Ga4ExternalAccessData> {
-  const cacheKey = getExternalAccessCacheKey(range);
-  const cached = ga4ExternalAccessCache.get(cacheKey);
-
-  if (cached) {
-    return cached;
-  }
-
-  const inFlight = ga4ExternalAccessInFlight.get(cacheKey);
-  if (inFlight) {
-    return inFlight;
-  }
-
-  const request = buildGa4ExternalAccessData(range).then((result) => {
-    if (result.externalAccessStatus !== "error") {
-      ga4ExternalAccessCache.set(cacheKey, result);
-    }
-    return result;
-  });
-
-  ga4ExternalAccessInFlight.set(cacheKey, request);
-
-  try {
-    return await request;
-  } finally {
-    ga4ExternalAccessInFlight.delete(cacheKey);
-  }
-}
+export const getGa4ExternalAccessData = createGa4RangeCachedFetcher({
+  ttlMs: GA4_EXTERNAL_ACCESS_CACHE_TTL_MS,
+  buildData: buildGa4ExternalAccessData,
+  isCacheable: (result) => result.externalAccessStatus !== "error",
+});
