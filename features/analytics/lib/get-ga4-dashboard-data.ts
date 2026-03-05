@@ -1,6 +1,8 @@
 import "server-only";
 
 import type { DashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
+import { getGa4EntryAccessData } from "./get-ga4-entry-access-data";
+import { getGa4ExternalAccessData } from "./get-ga4-external-access-data";
 import { getGa4PageFlowData } from "./get-ga4-page-flow-data";
 import { getGa4PageSummaryData } from "./get-ga4-page-summary-data";
 import type { Ga4DashboardData } from "./ga4-types";
@@ -8,10 +10,18 @@ import type { Ga4DashboardData } from "./ga4-types";
 export async function getGa4DashboardData(
   range: DashboardRange
 ): Promise<Ga4DashboardData> {
-  const [pageSummaryResult, pageFlowResult] = await Promise.allSettled([
-    getGa4PageSummaryData(range),
-    getGa4PageFlowData(range),
-  ]);
+  const [
+    pageSummaryResult,
+    pageFlowResult,
+    entryAccessResult,
+    externalAccessResult,
+  ] =
+    await Promise.allSettled([
+      getGa4PageSummaryData(range),
+      getGa4PageFlowData(range),
+      getGa4EntryAccessData(range),
+      getGa4ExternalAccessData(range),
+    ]);
 
   const pageSummary =
     pageSummaryResult.status === "fulfilled"
@@ -35,9 +45,32 @@ export async function getGa4DashboardData(
           topDropoffPages: [],
         };
 
+  const entryAccess =
+    entryAccessResult.status === "fulfilled"
+      ? entryAccessResult.value
+      : {
+          entryAccessStatus: "error" as const,
+          entryAccessStatusMessage:
+            "BigQuery から入口ページ別アクセスを取得できませんでした。dataset 名、location、権限を確認してください。",
+          entryAccessRows: [],
+          entryAccessDateKeys: [],
+        };
+
+  const externalAccess =
+    externalAccessResult.status === "fulfilled"
+      ? externalAccessResult.value
+      : {
+          externalAccessStatus: "error" as const,
+          externalAccessStatusMessage:
+            "BigQuery から外部流入アクセスを取得できませんでした。dataset 名、location、権限を確認してください。",
+          externalAccessRows: [],
+        };
+
   return {
     range,
     ...pageSummary,
+    ...entryAccess,
+    ...externalAccess,
     ...pageFlow,
   };
 }

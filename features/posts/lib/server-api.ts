@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUser } from "@/lib/auth";
+import { getAdminUserIds } from "@/lib/env";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
 import type { Post, SortType } from "../types";
@@ -465,7 +466,7 @@ export const getPosts = cache(async (
 
 /**
  * 投稿詳細を取得（サーバーサイド）
- * 投稿済み画像は全ユーザーが閲覧可能、未投稿画像は所有者のみ閲覧可能
+ * 投稿済み画像は全ユーザーが閲覧可能、未投稿画像は所有者または管理者のみ閲覧可能
  * いいね数・コメント数・閲覧数を取得し、閲覧数をインクリメント
  * React.cache()でラップして、同一リクエスト内での重複取得を防止
  */
@@ -477,6 +478,7 @@ export const getPost = cache(async (
 ): Promise<Post | null> => {
   const supabase = supabaseOverride ?? (await createClient());
   const useCache = !!supabaseOverride;
+  const isAdminViewer = !!currentUserId && getAdminUserIds().includes(currentUserId);
 
   // まず画像を取得（is_postedの条件なし）
   const { data, error } = await supabase
@@ -489,25 +491,25 @@ export const getPost = cache(async (
     return null;
   }
 
+  const isPostOwner = !!currentUserId && data.user_id === currentUserId;
+
   // 投稿済みの場合は全ユーザーが閲覧可能
-  // 未投稿の場合は所有者のみ閲覧可能
-  if (!data.is_posted) {
-    if (!currentUserId || data.user_id !== currentUserId) {
-      // 未投稿画像で、所有者でない場合は404
-      return null;
-    }
+  // 未投稿の場合は所有者または管理者のみ閲覧可能
+  if (!data.is_posted && !isPostOwner && !isAdminViewer) {
+    return null;
   }
 
   if (
     data.is_posted &&
     data.moderation_status &&
     data.moderation_status !== "visible" &&
-    (!currentUserId || data.user_id !== currentUserId)
+    !isPostOwner &&
+    !isAdminViewer
   ) {
     return null;
   }
 
-  if (currentUserId && data.user_id) {
+  if (currentUserId && data.user_id && !isAdminViewer) {
     const [{ data: blockAsBlocker }, { data: blockAsBlocked }, { data: reportRow }] =
       await Promise.all([
         supabase
