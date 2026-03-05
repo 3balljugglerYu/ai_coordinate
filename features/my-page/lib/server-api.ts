@@ -361,12 +361,18 @@ export const getPercoinTransactionsServer = cache(async (
 
 /**
  * ペルコイン残高の内訳を取得（サーバーサイド）
- * total: 合計、regular: 無期限（購入分 + 無期限の管理者付与）、period_limited: 期間限定
+ * total: 合計
+ * regular: 無期限（購入分 + 無期限の管理者付与）
+ * paid: 購入分
+ * unlimited_bonus: 無期限の管理者付与
+ * period_limited: 期間限定
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
 export interface PercoinBalanceBreakdown {
   total: number;
   regular: number;
+  paid: number;
+  unlimited_bonus: number;
   period_limited: number;
 }
 
@@ -382,13 +388,21 @@ export const getPercoinBalanceBreakdownServer = cache(async (
 
   if (error || !data) {
     console.error("get_percoin_balance_breakdown error:", error);
-    return { total: 0, regular: 0, period_limited: 0 };
+    return { total: 0, regular: 0, paid: 0, unlimited_bonus: 0, period_limited: 0 };
   }
 
-  const raw = data as { total?: number; regular?: number; period_limited?: number };
+  const raw = data as {
+    total?: number;
+    regular?: number;
+    paid?: number;
+    unlimited_bonus?: number;
+    period_limited?: number;
+  };
   return {
     total: Number(raw.total ?? 0),
     regular: Number(raw.regular ?? 0),
+    paid: Number(raw.paid ?? 0),
+    unlimited_bonus: Number(raw.unlimited_bonus ?? 0),
     period_limited: Number(raw.period_limited ?? 0),
   };
 });

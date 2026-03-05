@@ -68,6 +68,61 @@ function formatExpireAt(expireAt: string): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日迄`;
 }
 
+function toPositiveInt(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.trunc(n));
+}
+
+function getUsageBreakdownText(transaction: PercoinTransaction): string | null {
+  const metadata = (transaction.metadata ?? {}) as Record<string, unknown>;
+  if (
+    transaction.transaction_type !== "consumption" &&
+    transaction.transaction_type !== "refund"
+  ) {
+    return null;
+  }
+
+  const periodLimited =
+    toPositiveInt(
+      metadata[
+        transaction.transaction_type === "consumption"
+          ? "from_period_limited"
+          : "to_period_limited"
+      ]
+    ) ||
+    toPositiveInt(
+      metadata[
+        transaction.transaction_type === "consumption" ? "from_promo" : "to_promo"
+      ]
+    );
+
+  const unlimitedBonus = toPositiveInt(
+    metadata[
+      transaction.transaction_type === "consumption"
+        ? "from_unlimited_bonus"
+        : "to_unlimited_bonus"
+    ]
+  );
+
+  const paid = toPositiveInt(
+    metadata[
+      transaction.transaction_type === "consumption" ? "from_paid" : "to_paid"
+    ]
+  );
+
+  if (periodLimited <= 0 && unlimitedBonus <= 0 && paid <= 0) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (periodLimited > 0) parts.push(`期間限定 ${periodLimited}`);
+  if (unlimitedBonus > 0) parts.push(`無期限付与 ${unlimitedBonus}`);
+  if (paid > 0) parts.push(`購入分 ${paid}`);
+
+  return parts.length > 0 ? `内訳: ${parts.join(" / ")}` : null;
+}
+
 function getBalanceTypeBadge(
   transaction: PercoinTransaction
 ): { label: string; className: string } | null {
@@ -193,6 +248,7 @@ export function PercoinTransactions({
           <ul className="space-y-3">
             {transactions.map((tx) => {
               const balanceTypeBadge = getBalanceTypeBadge(tx);
+              const usageBreakdown = getUsageBreakdownText(tx);
 
               return (
                 <li key={tx.id} className="rounded border border-gray-200 p-3">
@@ -213,6 +269,9 @@ export function PercoinTransactions({
                     <span>{new Date(tx.created_at).toLocaleString("ja-JP")}</span>
                     {tx.expire_at && tx.transaction_type !== "refund" && (
                       <span>有効期限: {formatExpireAt(tx.expire_at)}</span>
+                    )}
+                    {usageBreakdown && (
+                      <span className="font-medium text-gray-600">{usageBreakdown}</span>
                     )}
                     <div className="flex gap-2">
                       {balanceTypeBadge && (

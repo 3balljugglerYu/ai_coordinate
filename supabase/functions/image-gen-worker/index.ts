@@ -313,7 +313,9 @@ async function refundPercoinsFromGeneration(
   try {
     console.log(`[Percoin Refund] Starting refund for user ${userId}, job ${jobId}, amount ${percoinAmount}`);
 
-    // 元の消費履歴から from_promo / from_paid を取得（存在しない場合は返金しない）
+    // 互換性のため request値は引き続き算出するが、
+    // 実際の返金配分は DB 側 refund_percoins が allocation 明細を優先して決定する。
+    // （旧データのみ legacy fallback で request値を使用）
     const { data: consumptionTx, error: consumptionError } = await supabase
       .from("credit_transactions")
       .select("id, metadata")
@@ -351,7 +353,9 @@ async function refundPercoinsFromGeneration(
       throw new Error(`ペルコイン返金に失敗しました: ${error.message}`);
     }
 
-    console.log(`[Percoin Refund] Success. to_promo=${refundToPromo}, to_paid=${refundToPaid}`);
+    console.log(
+      `[Percoin Refund] Success. requested_to_promo=${refundToPromo}, requested_to_paid=${refundToPaid}`
+    );
   } catch (error) {
     console.error("[Percoin Refund] Error refunding percoins:", error);
     throw error;

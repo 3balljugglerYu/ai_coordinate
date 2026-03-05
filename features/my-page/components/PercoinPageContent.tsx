@@ -164,19 +164,33 @@ export function PercoinPageContent({
                 <p className="text-2xl font-bold text-gray-900">
                   {balanceBreakdown.total.toLocaleString()} ペルコイン
                 </p>
-                <div className="mt-3 space-y-1 text-sm text-gray-600">
-                  <div className="flex justify-between">
-                    <span>うち無期限</span>
-                    <span>{balanceBreakdown.regular.toLocaleString()}</span>
+                {(balanceBreakdown.paid > 0 ||
+                  balanceBreakdown.unlimited_bonus > 0 ||
+                  balanceBreakdown.period_limited > 0) && (
+                  <div className="mt-3 space-y-1 text-sm text-gray-600">
+                    {balanceBreakdown.paid > 0 && (
+                      <div className="flex justify-between">
+                        <span>うち購入分</span>
+                        <span>{balanceBreakdown.paid.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {balanceBreakdown.unlimited_bonus > 0 && (
+                      <div className="flex justify-between">
+                        <span>うち付与分（無期限）</span>
+                        <span>{balanceBreakdown.unlimited_bonus.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {balanceBreakdown.period_limited > 0 && (
+                      <PeriodLimitedBreakdown
+                        batches={expiringBatches}
+                        periodLimitedTotal={balanceBreakdown.period_limited}
+                        onToggle={setPeriodLimitedExpanded}
+                        isExpanded={periodLimitedExpanded}
+                        variant="row"
+                      />
+                    )}
                   </div>
-                  <PeriodLimitedBreakdown
-                    batches={expiringBatches}
-                    periodLimitedTotal={balanceBreakdown.period_limited}
-                    onToggle={setPeriodLimitedExpanded}
-                    isExpanded={periodLimitedExpanded}
-                    variant="row"
-                  />
-                </div>
+                )}
               </div>
             </div>
           </Card>

@@ -97,6 +97,8 @@ export async function getPercoinBalance(): Promise<number> {
 export interface PercoinBalanceBreakdown {
   total: number;
   regular: number;
+  paid: number;
+  unlimited_bonus: number;
   period_limited: number;
 }
 
@@ -116,7 +118,7 @@ export async function getPercoinBalanceBreakdown(): Promise<PercoinBalanceBreakd
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { total: 0, regular: 0, period_limited: 0 };
+    return { total: 0, regular: 0, paid: 0, unlimited_bonus: 0, period_limited: 0 };
   }
 
   const { data, error } = await supabase
@@ -125,13 +127,21 @@ export async function getPercoinBalanceBreakdown(): Promise<PercoinBalanceBreakd
 
   if (error) {
     console.error("get_percoin_balance_breakdown error:", error.message, error.code, error.details);
-    return { total: 0, regular: 0, period_limited: 0 };
+    return { total: 0, regular: 0, paid: 0, unlimited_bonus: 0, period_limited: 0 };
   }
 
-  const raw = data as { total?: number; regular?: number; period_limited?: number } | null;
+  const raw = data as {
+    total?: number;
+    regular?: number;
+    paid?: number;
+    unlimited_bonus?: number;
+    period_limited?: number;
+  } | null;
   return {
     total: Number(raw?.total ?? 0),
     regular: Number(raw?.regular ?? 0),
+    paid: Number(raw?.paid ?? 0),
+    unlimited_bonus: Number(raw?.unlimited_bonus ?? 0),
     period_limited: Number(raw?.period_limited ?? 0),
   };
 }
