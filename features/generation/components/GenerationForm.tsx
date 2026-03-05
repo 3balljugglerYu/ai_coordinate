@@ -535,6 +535,9 @@ export function GenerationForm({
           <p className="mt-2 text-xs text-gray-500">
             {selectedCount}枚の生成には {selectedCount * getPercoinCost(selectedModel)} ペルコインが必要です
           </p>
+          <p className="mt-1 text-xs text-gray-500">
+            画像生成では、期間限定ペルコインから優先して消費されます。生成に失敗した場合は、消費した種別と有効期限を保ったまま返金されます。
+          </p>
         </div>
 
         {/* 生成ボタン */}

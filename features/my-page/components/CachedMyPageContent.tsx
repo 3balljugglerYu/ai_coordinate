@@ -37,6 +37,12 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
     getMyImagesServer(userId, "all", 20, 0, supabase),
   ]);
 
+  const balanceDetails = [
+    { label: "購入分", value: percoinBalanceBreakdown.paid },
+    { label: "無期限付与", value: percoinBalanceBreakdown.unlimited_bonus },
+    { label: "期間限定", value: percoinBalanceBreakdown.period_limited },
+  ].filter((item) => item.value > 0);
+
   return (
     <>
       <ProfileHeader
@@ -68,11 +74,13 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
                   <p className="text-xl font-bold text-gray-900">
                     {percoinBalanceBreakdown.total.toLocaleString()} ペルコイン
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    うち期間限定:{" "}
-                    {percoinBalanceBreakdown.period_limited.toLocaleString()}
-                    ペルコイン
-                  </p>
+                  {balanceDetails.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {balanceDetails
+                        .map((item) => `${item.label}: ${item.value.toLocaleString()}`)
+                        .join(" / ")}
+                    </p>
+                  )}
                 </div>
               </div>
               <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-600">
