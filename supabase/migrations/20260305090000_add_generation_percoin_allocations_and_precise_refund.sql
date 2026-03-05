@@ -85,7 +85,6 @@ DECLARE
   v_is_image_generation_job BOOLEAN := FALSE;
   v_consumption_tx_id UUID;
   v_allocation_items JSONB := '[]'::jsonb;
-  v_item JSONB;
   r RECORD;
 BEGIN
   IF auth.uid() IS NOT NULL AND auth.uid() != p_user_id THEN
@@ -209,32 +208,28 @@ BEGIN
   RETURNING id INTO v_consumption_tx_id;
 
   IF v_is_image_generation_job THEN
-    FOR v_item IN
-      SELECT value FROM jsonb_array_elements(v_allocation_items)
-    LOOP
-      INSERT INTO public.generation_percoin_allocations (
-        job_id,
-        user_id,
-        consumption_transaction_id,
-        allocation_kind,
-        source_batch_id,
-        source_expire_at,
-        source_granted_at,
-        source_source,
-        amount
-      )
-      VALUES (
-        v_job_id_uuid,
-        p_user_id,
-        v_consumption_tx_id,
-        v_item->>'allocation_kind',
-        (v_item->>'source_batch_id')::UUID,
-        (v_item->>'source_expire_at')::TIMESTAMPTZ,
-        (v_item->>'source_granted_at')::TIMESTAMPTZ,
-        v_item->>'source_source',
-        (v_item->>'amount')::INTEGER
-      );
-    END LOOP;
+    INSERT INTO public.generation_percoin_allocations (
+      job_id,
+      user_id,
+      consumption_transaction_id,
+      allocation_kind,
+      source_batch_id,
+      source_expire_at,
+      source_granted_at,
+      source_source,
+      amount
+    )
+    SELECT
+      v_job_id_uuid,
+      p_user_id,
+      v_consumption_tx_id,
+      item->>'allocation_kind',
+      (item->>'source_batch_id')::UUID,
+      (item->>'source_expire_at')::TIMESTAMPTZ,
+      (item->>'source_granted_at')::TIMESTAMPTZ,
+      item->>'source_source',
+      (item->>'amount')::INTEGER
+    FROM jsonb_array_elements(v_allocation_items) AS item;
 
     IF v_from_paid > 0 THEN
       INSERT INTO public.generation_percoin_allocations (
@@ -522,36 +517,25 @@ BEGIN
   END IF;
 
   RETURN QUERY
+  WITH bonus_summary AS (
+    SELECT
+      SUM(fpb.remaining_amount) FILTER (WHERE fpb.expire_at IS NULL) AS unlimited,
+      SUM(fpb.remaining_amount) FILTER (
+        WHERE fpb.expire_at IS NOT NULL AND fpb.expire_at > now()
+      ) AS limited
+    FROM free_percoin_batches fpb
+    WHERE fpb.user_id = v_user_id
+      AND fpb.remaining_amount > 0
+  )
   SELECT
     COALESCE(uc.balance, 0)::INTEGER AS total,
-    (
-      COALESCE(uc.paid_balance, 0)
-      + COALESCE((
-        SELECT SUM(fpb.remaining_amount)
-        FROM free_percoin_batches fpb
-        WHERE fpb.user_id = v_user_id
-          AND fpb.remaining_amount > 0
-          AND fpb.expire_at IS NULL
-      ), 0)
-    )::INTEGER AS regular,
+    (COALESCE(uc.paid_balance, 0) + COALESCE(bs.unlimited, 0))::INTEGER AS regular,
     COALESCE(uc.paid_balance, 0)::INTEGER AS paid,
-    COALESCE((
-      SELECT SUM(fpb.remaining_amount)
-      FROM free_percoin_batches fpb
-      WHERE fpb.user_id = v_user_id
-        AND fpb.remaining_amount > 0
-        AND fpb.expire_at IS NULL
-    ), 0)::BIGINT AS unlimited_bonus,
-    COALESCE((
-      SELECT SUM(fpb.remaining_amount)
-      FROM free_percoin_batches fpb
-      WHERE fpb.user_id = v_user_id
-        AND fpb.remaining_amount > 0
-        AND fpb.expire_at IS NOT NULL
-        AND fpb.expire_at > now()
-    ), 0)::BIGINT AS period_limited
+    COALESCE(bs.unlimited, 0)::BIGINT AS unlimited_bonus,
+    COALESCE(bs.limited, 0)::BIGINT AS period_limited
   FROM (SELECT v_user_id AS user_id) target
-  LEFT JOIN user_credits uc ON uc.user_id = target.user_id;
+  LEFT JOIN user_credits uc ON uc.user_id = target.user_id
+  CROSS JOIN bonus_summary bs;
 END;
 $$;
 
