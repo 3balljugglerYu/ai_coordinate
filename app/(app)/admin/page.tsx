@@ -24,7 +24,12 @@ export default async function AdminDashboardPage({
   return (
     <AdminDashboardView data={data}>
       <Suspense fallback={<AdminPageAnalyticsSectionSkeleton />}>
-        <AdminPageAnalyticsSectionServer ga4Promise={ga4Promise} />
+        <AdminPageAnalyticsSectionServer
+          ga4Promise={ga4Promise}
+          trend={data.trend}
+          funnel={data.funnel}
+          modelMix={data.modelMix}
+        />
       </Suspense>
     </AdminDashboardView>
   );

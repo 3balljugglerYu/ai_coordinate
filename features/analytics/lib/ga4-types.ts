@@ -15,6 +15,21 @@ export interface Ga4TopLandingPageRow {
   activeUsers: number;
 }
 
+export interface Ga4EntryAccessRow {
+  dateKey: string;
+  landingPage: string;
+  sessions: number;
+}
+
+export interface Ga4ExternalAccessRow {
+  dateKey: string;
+  xSessions: number;
+  campfireSessions: number;
+  searchSessions: number;
+  otherExternalSessions: number;
+  totalExternalSessions: number;
+}
+
 export interface Ga4TopTransitionRow {
   fromPage: string;
   toPage: string;
@@ -36,6 +51,12 @@ export interface Ga4DashboardData {
   statusMessage: string | null;
   topPages: Ga4TopPageRow[];
   topLandingPages: Ga4TopLandingPageRow[];
+  entryAccessStatus: Ga4DashboardStatus;
+  entryAccessStatusMessage: string | null;
+  entryAccessRows: Ga4EntryAccessRow[];
+  externalAccessStatus: Ga4DashboardStatus;
+  externalAccessStatusMessage: string | null;
+  externalAccessRows: Ga4ExternalAccessRow[];
   topTransitions: Ga4TopTransitionRow[];
   topDropoffPages: Ga4DropoffPageRow[];
   pageFlowStatus: Ga4DashboardStatus;
