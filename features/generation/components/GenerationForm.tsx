@@ -148,7 +148,7 @@ export function GenerationForm({
       prompt: prompt.trim(),
       sourceImage: imageSourceType === "upload" ? uploadedImage?.file : undefined,
       sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
-      sourceImageType: imageSourceType === "upload" ? sourceImageType : "illustration",
+      sourceImageType,
       backgroundMode,
       count: selectedCount,
       model: selectedModel,
@@ -443,34 +443,32 @@ export function GenerationForm({
           </div>
         )}
 
-        {imageSourceType === "upload" && (
-          <div>
-            <Label className="text-base font-medium block">
-              アップロードした画像のタイプ
-            </Label>
-            <RadioGroup
-              value={sourceImageType}
-              onValueChange={(value) => setSourceImageType(value as SourceImageType)}
-              className="mt-2 flex items-center gap-6"
-              disabled={isGenerating || isTutorialInProgress}
-            >
-              {SOURCE_IMAGE_TYPE_OPTIONS.map((option) => (
-                <div key={option.value} className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    id={`source-image-type-${option.value}`}
-                    value={option.value}
-                  />
-                  <Label
-                    htmlFor={`source-image-type-${option.value}`}
-                    className="text-sm font-medium leading-none"
-                  >
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-        )}
+        <div>
+          <Label className="text-base font-medium block">
+            アップロードした画像のタイプ
+          </Label>
+          <RadioGroup
+            value={sourceImageType}
+            onValueChange={(value) => setSourceImageType(value as SourceImageType)}
+            className="mt-2 flex items-center gap-6"
+            disabled={isGenerating || isTutorialInProgress}
+          >
+            {SOURCE_IMAGE_TYPE_OPTIONS.map((option) => (
+              <div key={option.value} className="flex items-center space-x-2">
+                <RadioGroupItem
+                  id={`source-image-type-${option.value}`}
+                  value={option.value}
+                />
+                <Label
+                  htmlFor={`source-image-type-${option.value}`}
+                  className="text-sm font-medium leading-none"
+                >
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
 
         {/* 着せ替え内容入力 */}
         <div data-tour="tour-prompt-input">
