@@ -159,6 +159,7 @@ export async function generateImageAsync(
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId: request.sourceImageStockId,
+      sourceImageType: request.sourceImageType || "illustration",
       backgroundMode,
       backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
       generationType: request.generationType || "coordinate",

@@ -7,13 +7,8 @@ import {
   generateAndSaveImages,
   getCurrentUserId,
 } from "../lib/generation-service";
-import type { SourceImageStock } from "../lib/database";
 
-interface CoordinatePageContentProps {
-  initialStocks?: SourceImageStock[];
-}
-
-export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageContentProps) {
+export function CoordinatePageContent() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingCount, setGeneratingCount] = useState(0);
@@ -24,6 +19,7 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    sourceImageType?: import("../types").SourceImageType;
     backgroundMode: import("../types").BackgroundMode;
     count: number;
     model: import("../types").GeminiModel;
@@ -43,6 +39,7 @@ export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageCont
         prompt: data.prompt,
         sourceImage: data.sourceImage,
         sourceImageStockId: data.sourceImageStockId,
+        sourceImageType: data.sourceImageType,
         backgroundMode: data.backgroundMode,
         count: data.count,
         model: data.model,

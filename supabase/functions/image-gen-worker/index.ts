@@ -831,6 +831,8 @@ Deno.serve(async () => {
                 generationType: job.generation_type as GenerationType,
                 outfitDescription: job.prompt_text,
                 backgroundMode,
+                sourceImageType:
+                  job.source_image_type === "real" ? "real" : "illustration",
               })
             : job.prompt_text;
 

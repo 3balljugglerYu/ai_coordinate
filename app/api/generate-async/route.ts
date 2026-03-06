@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId,
+      sourceImageType,
       backgroundMode,
       generationType,
       model,
@@ -199,6 +200,7 @@ export async function POST(request: NextRequest) {
       prompt_text: prompt,
       input_image_url: inputImageUrl,
       source_image_stock_id: stockId,
+      source_image_type: sourceImageType,
       generation_type: generationType || "coordinate",
       model: model || null,
       background_mode: backgroundMode,
@@ -237,7 +239,6 @@ export async function POST(request: NextRequest) {
     // Authorizationヘッダーは不要です。Service Role Keyの漏洩リスクを避けるため、
     // 可能な限り削除を推奨します。
     const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
-    let edgeFunctionInvoked = false;
 
     if (supabaseUrl) {
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/image-gen-worker`;
@@ -258,7 +259,6 @@ export async function POST(request: NextRequest) {
             edgeFunctionUrl,
           });
         });
-        edgeFunctionInvoked = true;
       } catch (error) {
         console.error("Failed to initiate Edge Function call:", error);
       }

@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GenerationForm } from "./GenerationForm";
-import { getCurrentUserId } from "../lib/generation-service";
 import {
   generateImageAsync,
   pollGenerationStatus,
@@ -285,13 +284,14 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
     // マウント時に未完了ジョブを確認
     void checkInProgressJobs();
-  }, [router]);
+  }, [router, setCompletedCount, setGeneratingCount, setIsGenerating]);
 
   // コンポーネントのアンマウント時にポーリングを停止
   useEffect(() => {
+    const stopFunctions = pollingStopFunctionsRef.current;
     return () => {
-      pollingStopFunctionsRef.current.forEach((stop) => stop());
-      pollingStopFunctionsRef.current.clear();
+      stopFunctions.forEach((stop) => stop());
+      stopFunctions.clear();
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = null;
@@ -307,6 +307,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    sourceImageType?: import("../types").SourceImageType;
     backgroundMode: import("../types").BackgroundMode;
     count: number;
     model: import("../types").GeminiModel;
@@ -330,8 +331,6 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     pollingStopFunctionsRef.current.clear();
 
     try {
-      const userId = await getCurrentUserId();
-      
       // 全体の必要ペルコイン数を計算
       const percoinCost = getPercoinCost(data.model);
       const requiredPercoins = data.count * percoinCost;
@@ -358,6 +357,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             prompt: data.prompt,
             sourceImage: data.sourceImage,
             sourceImageStockId: data.sourceImageStockId,
+            sourceImageType: data.sourceImageType,
             backgroundMode: data.backgroundMode,
             generationType: data.generationType || "coordinate",
             model: data.model,
@@ -372,7 +372,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       // 各ジョブのステータスをポーリングで監視
       const completedJobIds = new Set<string>(); // 完了済みジョブIDを追跡
       
-      const pollPromises = jobIds.map((jobId, index) => {
+      const pollPromises = jobIds.map((jobId) => {
         const { promise, stop } = pollGenerationStatus(jobId, {
           interval: 2000, // 2秒ごとにポーリング
           timeout: 300000, // 5分でタイムアウト

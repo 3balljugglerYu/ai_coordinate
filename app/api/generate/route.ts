@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       prompt,
       sourceImageBase64,
       sourceImageMimeType,
+      sourceImageType,
       backgroundMode,
       count,
       generationType,
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
         generationType: generationType || 'coordinate',
         outfitDescription: prompt,
         backgroundMode,
+        sourceImageType,
       });
     } else {
       // 画像がない場合はユーザー入力のプロンプトをそのまま使用

@@ -15,7 +15,12 @@ import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/generation-service";
 import { getPercoinCost } from "../lib/model-config";
-import type { UploadedImage, GeminiModel, BackgroundMode } from "../types";
+import type {
+  UploadedImage,
+  GeminiModel,
+  BackgroundMode,
+  SourceImageType,
+} from "../types";
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
@@ -24,6 +29,7 @@ interface GenerationFormProps {
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    sourceImageType?: SourceImageType;
     backgroundMode: BackgroundMode;
     count: number;
     model: GeminiModel;
@@ -56,6 +62,14 @@ const BACKGROUND_MODE_OPTIONS: BackgroundModeOption[] = [
   },
 ];
 
+const SOURCE_IMAGE_TYPE_OPTIONS: Array<{
+  value: SourceImageType;
+  label: string;
+}> = [
+  { value: "illustration", label: "イラスト" },
+  { value: "real", label: "リアル" },
+];
+
 export function GenerationForm({
   onSubmit,
   isGenerating = false,
@@ -63,6 +77,7 @@ export function GenerationForm({
   const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
+  const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
   const [selectedCount, setSelectedCount] = useState(1);
@@ -133,6 +148,7 @@ export function GenerationForm({
       prompt: prompt.trim(),
       sourceImage: imageSourceType === "upload" ? uploadedImage?.file : undefined,
       sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
+      sourceImageType,
       backgroundMode,
       count: selectedCount,
       model: selectedModel,
@@ -220,6 +236,7 @@ export function GenerationForm({
     const handler = () => {
       setUploadedImage(null);
       setSelectedStockId(null);
+      setSourceImageType("illustration");
       setPrompt("");
       setBackgroundMode("keep");
       setSelectedCount(1);
@@ -305,7 +322,7 @@ export function GenerationForm({
 
         {/* 画像アップロード or ストック選択 */}
         {imageSourceType === "upload" ? (
-          <div>
+          <div className="space-y-4">
             <ImageUploader
               onImageUpload={handleImageUpload}
               onImageRemove={() => setUploadedImage(null)}
@@ -425,6 +442,33 @@ export function GenerationForm({
             </div>
           </div>
         )}
+
+        <div>
+          <Label className="text-base font-medium block">
+            アップロードした画像のタイプ
+          </Label>
+          <RadioGroup
+            value={sourceImageType}
+            onValueChange={(value) => setSourceImageType(value as SourceImageType)}
+            className="mt-2 flex items-center gap-6"
+            disabled={isGenerating || isTutorialInProgress}
+          >
+            {SOURCE_IMAGE_TYPE_OPTIONS.map((option) => (
+              <div key={option.value} className="flex items-center space-x-2">
+                <RadioGroupItem
+                  id={`source-image-type-${option.value}`}
+                  value={option.value}
+                />
+                <Label
+                  htmlFor={`source-image-type-${option.value}`}
+                  className="text-sm font-medium leading-none"
+                >
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
 
         {/* 着せ替え内容入力 */}
         <div data-tour="tour-prompt-input">

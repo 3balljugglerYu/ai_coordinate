@@ -9,6 +9,9 @@ export type GenerationType =
   | "full_body"
   | "chibi";
 
+export const SOURCE_IMAGE_TYPES = ["illustration", "real"] as const;
+export type SourceImageType = (typeof SOURCE_IMAGE_TYPES)[number];
+
 export const BACKGROUND_MODES = [
   "ai_auto",
   "include_in_prompt",
@@ -55,6 +58,7 @@ export interface BuildPromptOptions {
   generationType: GenerationType;
   outfitDescription: string; // ユーザー入力（日本語のまま）
   backgroundMode: BackgroundMode;
+  sourceImageType?: SourceImageType;
 }
 
 /**
@@ -88,7 +92,12 @@ export function sanitizeUserInput(input: string): string {
  * プロンプトを構築（プロンプトインジェクション対策済み）
  */
 export function buildPrompt(options: BuildPromptOptions): string {
-  const { generationType, outfitDescription, backgroundMode } = options;
+  const {
+    generationType,
+    outfitDescription,
+    backgroundMode,
+    sourceImageType = "illustration",
+  } = options;
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
 
   if (!sanitizedDescription || sanitizedDescription.length === 0) {
@@ -98,6 +107,39 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   if (generationType === "coordinate") {
+    if (sourceImageType === "real") {
+      if (backgroundMode === "keep") {
+        return `A photorealistic image based on the uploaded photo.
+Captured with an 85mm portrait lens.
+Do not change the camera angle or framing.
+Edit only the outfit.
+
+New Outfit:
+
+${sanitizedDescription}`;
+      }
+
+      if (backgroundMode === "ai_auto") {
+        return `A photorealistic image based on the uploaded photo.
+Captured with an 85mm portrait lens.
+Do not change the camera angle or framing.
+Adjust the background to match the new outfit’s style.
+
+New Outfit:
+
+${sanitizedDescription}`;
+      }
+
+      // include_in_prompt: 背景についてはシステム指示を追加せず、ユーザー記述に委ねる
+      return `A photorealistic image based on the uploaded photo.
+Captured with an 85mm portrait lens.
+Do not change the camera angle or framing.
+
+New Outfit:
+
+${sanitizedDescription}`;
+    }
+
     if (backgroundMode === "keep") {
       return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
 Do not change the camera angle or framing from the original image.

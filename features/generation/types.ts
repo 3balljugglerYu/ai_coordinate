@@ -2,15 +2,20 @@
  * 画像生成機能の型定義
  */
 
-import type { BackgroundMode } from "@/shared/generation/prompt-core";
+import type {
+  BackgroundMode,
+  SourceImageType,
+} from "@/shared/generation/prompt-core";
 
 export {
   BACKGROUND_MODES,
+  SOURCE_IMAGE_TYPES,
   backgroundChangeToBackgroundMode,
   backgroundModeToBackgroundChange,
   resolveBackgroundMode,
 } from "@/shared/generation/prompt-core";
 export type { BackgroundMode };
+export type { SourceImageType };
 
 export type GenerationStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -82,6 +87,7 @@ export interface GenerationRequest {
   prompt: string;
   sourceImage?: File;
   sourceImageStockId?: string;
+  sourceImageType?: SourceImageType;
   backgroundMode?: BackgroundMode;
   // 後方互換（1リリース維持）
   // TODO(next-release): backgroundChangeの読み書きを削除し、backgroundModeへ完全移行する
