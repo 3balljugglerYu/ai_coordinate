@@ -7,13 +7,8 @@ import {
   generateAndSaveImages,
   getCurrentUserId,
 } from "../lib/generation-service";
-import type { SourceImageStock } from "../lib/database";
 
-interface CoordinatePageContentProps {
-  initialStocks?: SourceImageStock[];
-}
-
-export function CoordinatePageContent({ initialStocks = [] }: CoordinatePageContentProps) {
+export function CoordinatePageContent() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingCount, setGeneratingCount] = useState(0);
