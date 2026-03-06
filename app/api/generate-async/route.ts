@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
       prompt_text: prompt,
       input_image_url: inputImageUrl,
       source_image_stock_id: stockId,
-      source_image_type: sourceImageType || "illustration",
+      source_image_type: sourceImageType,
       generation_type: generationType || "coordinate",
       model: model || null,
       background_mode: backgroundMode,
