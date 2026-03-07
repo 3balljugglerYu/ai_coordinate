@@ -166,6 +166,15 @@ Apply this format for:
 - PR title/body choice when multiple plausible options exist
 - cleanup conflict handling (if branch deletion prerequisites are not met)
 
+For commit message choice, always start with:
+
+```text
+コミットメッセージは下記のどれにしますか？
+1. <option A>（推奨）
+2. <option B>
+3. <option C>
+```
+
 ## How the agent should use this skill
 
 1. Gather context:
