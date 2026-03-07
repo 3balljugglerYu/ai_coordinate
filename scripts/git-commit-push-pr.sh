@@ -46,6 +46,7 @@ TARGET_BRANCH=""
 PR_TITLE=""
 PR_BODY=""
 PR_BODY_FILE=""
+GENERATED_PR_BODY_FILE=""
 DO_DRAFT=0
 NO_COMMIT=0
 NO_ADD=0
@@ -245,6 +246,102 @@ find_pr_template_file() {
   return 1
 }
 
+strip_commit_prefix() {
+  local input="$1"
+  printf '%s' "${input}" | sed -E 's/^[a-z]+(\([^)]+\))?:[[:space:]]*//'
+}
+
+collect_pr_changed_files() {
+  local files
+  files="$(git diff --name-only --diff-filter=ACMRT "${BASE_BRANCH}...${CURRENT_BRANCH}" 2>/dev/null || true)"
+  if [[ -n "${files}" ]]; then
+    printf '%s\n' "${files}" | sed '/^$/d'
+    return
+  fi
+
+  git show --name-only --pretty='' HEAD 2>/dev/null | sed '/^$/d'
+}
+
+build_pr_change_bullets() {
+  local files
+  files="$(collect_pr_changed_files)"
+  if [[ -z "${files}" ]]; then
+    printf '%s\n' "- 変更ファイルの取得に失敗しました。必要に応じて追記してください。"
+    return
+  fi
+
+  printf '%s\n' "${files}" | head -n 12 | while IFS= read -r file; do
+    printf -- '- `%s`\n' "${file}"
+  done
+}
+
+build_pr_test_method_bullets() {
+  local files test_files joined
+  files="$(collect_pr_changed_files)"
+  test_files="$(printf '%s\n' "${files}" | grep -E '^tests/.*\.test\.[a-z0-9]+$' || true)"
+  if [[ -n "${test_files}" ]]; then
+    joined="$(printf '%s\n' "${test_files}" | tr '\n' ' ' | sed -E 's/[[:space:]]+$//')"
+    printf -- '- 自動テスト: `npm test -- %s`\n' "${joined}"
+    return
+  fi
+
+  printf '%s\n' "- 自動テスト: 未実施（必要に応じて追記してください）"
+}
+
+build_device_checklist_from_template() {
+  local template_file="$1"
+  local section
+  section="$(
+    awk '
+      /^### 実機テスト$/ { flag=1; next }
+      /^### / { if (flag) exit }
+      flag { print }
+    ' "${template_file}" | sed -E '/^[[:space:]]*<!--.*-->[[:space:]]*$/d'
+  )"
+
+  if [[ -n "${section//[[:space:]]/}" ]]; then
+    printf '%s\n' "${section}"
+    return
+  fi
+
+  cat <<'EOF'
+- [ ] iOS Safari で主要導線を確認
+- [ ] Android Chrome で主要導線を確認
+- [ ] PC（Chrome）で主要導線を確認
+- [ ] レスポンシブ表示崩れがないことを確認
+- [ ] エラーメッセージやバリデーション表示を確認
+EOF
+}
+
+build_pr_body_from_template() {
+  local template_file="$1"
+  local output_file summary_source summary_text change_bullets test_bullets device_checklist
+
+  summary_source="${PR_TITLE:-$(git log -1 --pretty=%s 2>/dev/null || true)}"
+  summary_text="$(strip_commit_prefix "${summary_source}")"
+  summary_text="${summary_text:-${CURRENT_BRANCH}}"
+  change_bullets="$(build_pr_change_bullets)"
+  test_bullets="$(build_pr_test_method_bullets)"
+  device_checklist="$(build_device_checklist_from_template "${template_file}")"
+
+  output_file="$(mktemp)"
+  cat > "${output_file}" <<EOF
+### 概要
+${summary_text}
+
+### 変更内容
+${change_bullets}
+
+### 実機テスト
+${device_checklist}
+
+### テスト方法
+${test_bullets}
+EOF
+
+  printf '%s' "${output_file}"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -m|--message)
@@ -404,6 +501,9 @@ fi
 ASKPASS_FILE="$(mktemp)"
 cleanup() {
   rm -f "${ASKPASS_FILE}"
+  if [[ -n "${GENERATED_PR_BODY_FILE}" ]]; then
+    rm -f "${GENERATED_PR_BODY_FILE}"
+  fi
 }
 trap cleanup EXIT
 
@@ -443,12 +543,13 @@ fi
 if [[ -z "${PR_BODY}" && -z "${PR_BODY_FILE}" ]]; then
   TEMPLATE_FILE="$(find_pr_template_file || true)"
   if [[ -n "${TEMPLATE_FILE}" ]]; then
-    PR_BODY_FILE="${TEMPLATE_FILE}"
     if [[ -z "${PR_TITLE}" ]]; then
       PR_TITLE="$(git log -1 --pretty=%s 2>/dev/null || true)"
       PR_TITLE="${PR_TITLE:-${CURRENT_BRANCH}}"
     fi
-    echo "Using PR template: ${PR_BODY_FILE}"
+    GENERATED_PR_BODY_FILE="$(build_pr_body_from_template "${TEMPLATE_FILE}")"
+    PR_BODY_FILE="${GENERATED_PR_BODY_FILE}"
+    echo "Using PR template with auto-filled body: ${TEMPLATE_FILE}"
   fi
 fi
 
