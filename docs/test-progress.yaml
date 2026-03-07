@@ -1,0 +1,277 @@
+# Test Implementation Progress Tracker (Next.js)
+# Updated by /test-checklist and read by /test-flow.
+
+version: "2.0"
+last_updated: "2026-03-07"
+
+# Status values:
+# - pending
+# - char_test_created
+# - interface_created
+# - spec_extracted
+# - test_generated
+# - completed
+
+# Foundation tasks
+foundation:
+  jest_setup:
+    status: pending
+    file: package.json
+  rtl_setup:
+    status: pending
+    file: package.json
+  playwright_setup:
+    status: pending
+    file: package.json
+
+# Tier 1: Highest Priority (Score 90-100)
+tier1:
+  GenerateRoute:
+    status: pending
+    score: 100
+    file: app/api/generate/route.ts
+    prerequisites:
+      - nanobanana module mock
+      - authenticated request fixture
+    char_test: null
+    spec_file: docs/specs/api/generate_route_spec.yaml
+    test_file: tests/integration/api/generate-route.test.ts
+
+  GenerateAsyncRoute:
+    status: pending
+    score: 98
+    file: app/api/generate-async/route.ts
+    prerequisites:
+      - async job fixture
+      - polling response fixture
+    char_test: null
+    spec_file: docs/specs/api/generate_async_route_spec.yaml
+    test_file: tests/integration/api/generate-async-route.test.ts
+
+  PercoinService:
+    status: pending
+    score: 96
+    file: features/credits/lib/percoin-service.ts
+    prerequisites:
+      - stripe mock
+      - supabase mock
+    char_test: null
+    spec_file: docs/specs/credits/percoin_service_spec.yaml
+    test_file: tests/unit/lib/percoin-service.test.ts
+
+  GenerationService:
+    status: pending
+    score: 95
+    file: features/generation/lib/generation-service.ts
+    prerequisites:
+      - storage mock
+      - database mock
+    char_test: null
+    spec_file: docs/specs/generation/generation_service_spec.yaml
+    test_file: tests/unit/lib/generation-service.test.ts
+
+# Tier 2: High Priority (Score 75-89)
+tier2:
+  PostsRoute:
+    status: pending
+    score: 88
+    file: app/api/posts/route.ts
+    prerequisites:
+      - user/session fixture
+    char_test: null
+    spec_file: docs/specs/api/posts_route_spec.yaml
+    test_file: tests/integration/api/posts-route.test.ts
+
+  NotificationsRoute:
+    status: pending
+    score: 86
+    file: app/api/notifications/route.ts
+    prerequisites:
+      - notification fixture
+    char_test: null
+    spec_file: docs/specs/api/notifications_route_spec.yaml
+    test_file: tests/integration/api/notifications-route.test.ts
+
+  AuthForm:
+    status: pending
+    score: 84
+    file: features/auth/components/AuthForm.tsx
+    prerequisites:
+      - auth client mock
+    char_test: null
+    spec_file: docs/specs/auth/auth_form_spec.yaml
+    test_file: tests/unit/components/auth-form.test.tsx
+
+  GenerationForm:
+    status: pending
+    score: 82
+    file: features/generation/components/GenerationForm.tsx
+    prerequisites:
+      - upload API mock
+      - generate API mock
+    char_test: null
+    spec_file: docs/specs/generation/generation_form_spec.yaml
+    test_file: tests/unit/components/generation-form.test.tsx
+
+  PostDetail:
+    status: pending
+    score: 80
+    file: features/posts/components/PostDetail.tsx
+    prerequisites:
+      - comments/likes API mock
+    char_test: null
+    spec_file: docs/specs/posts/post_detail_spec.yaml
+    test_file: tests/unit/components/post-detail.test.tsx
+
+  GA4DashboardData:
+    status: pending
+    score: 78
+    file: features/analytics/lib/get-ga4-dashboard-data.ts
+    prerequisites:
+      - bigquery client mock
+    char_test: null
+    spec_file: docs/specs/analytics/ga4_dashboard_data_spec.yaml
+    test_file: tests/unit/lib/get-ga4-dashboard-data.test.ts
+
+# Tier 3: Medium Priority (Score 60-74)
+tier3:
+  ContactRoute:
+    status: pending
+    score: 72
+    file: app/api/contact/route.ts
+    char_test: null
+    spec_file: docs/specs/api/contact_route_spec.yaml
+    test_file: tests/integration/api/contact-route.test.ts
+
+  CreditsBalanceRoute:
+    status: pending
+    score: 70
+    file: app/api/credits/balance/route.ts
+    char_test: null
+    spec_file: docs/specs/api/credits_balance_route_spec.yaml
+    test_file: tests/integration/api/credits-balance-route.test.ts
+
+  BannerStorage:
+    status: pending
+    score: 68
+    file: features/banners/lib/banner-storage.ts
+    char_test: null
+    spec_file: docs/specs/banners/banner_storage_spec.yaml
+    test_file: tests/unit/lib/banner-storage.test.ts
+
+  NotificationBadge:
+    status: pending
+    score: 65
+    file: features/notifications/components/NotificationBadge.tsx
+    char_test: null
+    spec_file: docs/specs/notifications/notification_badge_spec.yaml
+    test_file: tests/unit/components/notification-badge.test.tsx
+
+  MyPageServerApi:
+    status: pending
+    score: 64
+    file: features/my-page/lib/server-api.ts
+    char_test: null
+    spec_file: docs/specs/my-page/my_page_server_api_spec.yaml
+    test_file: tests/unit/lib/my-page-server-api.test.ts
+
+  EventServerApi:
+    status: pending
+    score: 62
+    file: features/event/lib/server-api.ts
+    char_test: null
+    spec_file: docs/specs/event/event_server_api_spec.yaml
+    test_file: tests/unit/lib/event-server-api.test.ts
+
+  UrlUtils:
+    status: pending
+    score: 60
+    file: lib/url-utils.ts
+    char_test: null
+    spec_file: docs/specs/lib/url_utils_spec.yaml
+    test_file: tests/unit/lib/url-utils.test.ts
+
+# E2E Targets (Top 10)
+widgets:
+  CoordinatePage:
+    status: pending
+    priority: 1
+    file: app/(app)/coordinate/page.tsx
+    e2e_test: tests/e2e/coordinate.spec.ts
+
+  LoginPage:
+    status: pending
+    priority: 2
+    file: app/(app)/login/page.tsx
+    e2e_test: tests/e2e/login.spec.ts
+
+  SignupPage:
+    status: pending
+    priority: 3
+    file: app/(app)/signup/page.tsx
+    e2e_test: tests/e2e/signup.spec.ts
+
+  MyPage:
+    status: pending
+    priority: 4
+    file: app/(app)/my-page/page.tsx
+    e2e_test: tests/e2e/my-page.spec.ts
+
+  NotificationsPage:
+    status: pending
+    priority: 5
+    file: app/(app)/notifications/page.tsx
+    e2e_test: tests/e2e/notifications.spec.ts
+
+  DashboardPage:
+    status: pending
+    priority: 6
+    file: app/(app)/dashboard/page.tsx
+    e2e_test: tests/e2e/dashboard.spec.ts
+
+  AdminPage:
+    status: pending
+    priority: 7
+    file: app/(app)/admin/page.tsx
+    e2e_test: tests/e2e/admin.spec.ts
+
+  PostDetailPage:
+    status: pending
+    priority: 8
+    file: app/posts/[id]/page.tsx
+    e2e_test: tests/e2e/post-detail.spec.ts
+
+  SearchPage:
+    status: pending
+    priority: 9
+    file: app/search/page.tsx
+    e2e_test: tests/e2e/search.spec.ts
+
+  TopPage:
+    status: pending
+    priority: 10
+    file: app/page.tsx
+    e2e_test: tests/e2e/top.spec.ts
+
+# Summary Statistics
+summary:
+  tier1:
+    total: 4
+    completed: 0
+    percentage: 0
+  tier2:
+    total: 6
+    completed: 0
+    percentage: 0
+  tier3:
+    total: 7
+    completed: 0
+    percentage: 0
+  widgets:
+    total: 10
+    completed: 0
+    percentage: 0
+  overall:
+    total: 27
+    completed: 0
+    percentage: 0
