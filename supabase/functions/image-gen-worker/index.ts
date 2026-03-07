@@ -11,6 +11,10 @@ import {
 import type {
   GenerationType,
 } from "../../../shared/generation/prompt-core.ts";
+import {
+  MALFORMED_GEMINI_PARTS_ERROR,
+  isMalformedGeminiPartsErrorMessage,
+} from "../../../shared/generation/errors.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -261,7 +265,10 @@ function getPercoinCost(model: string | null): number {
  * 再試行不可のエラーか判定
  */
 function isNonRetriableGenerationError(errorMessage: string): boolean {
-  return errorMessage === "No images generated";
+  return (
+    errorMessage === "No images generated" ||
+    isMalformedGeminiPartsErrorMessage(errorMessage)
+  );
 }
 
 /**
@@ -372,8 +379,22 @@ function extractImagesFromGeminiResponse(response: GeminiResponse): Array<{ mime
     return images;
   }
 
-  for (const candidate of response.candidates) {
-    for (const part of candidate.content.parts) {
+  for (let candidateIndex = 0; candidateIndex < response.candidates.length; candidateIndex++) {
+    const candidate = response.candidates[candidateIndex];
+    const parts = candidate?.content?.parts;
+
+    if (!Array.isArray(parts)) {
+      console.error("[Gemini Response] Malformed candidate content:", {
+        candidateIndex,
+        finishReason: candidate?.finishReason ?? null,
+        hasContent: Boolean(candidate?.content),
+        contentKeys: candidate?.content ? Object.keys(candidate.content) : [],
+        partsType: parts === null ? "null" : typeof parts,
+      });
+      throw new Error(MALFORMED_GEMINI_PARTS_ERROR);
+    }
+
+    for (const part of parts) {
       if (part.inlineData) {
         images.push({
           mimeType: part.inlineData.mimeType,

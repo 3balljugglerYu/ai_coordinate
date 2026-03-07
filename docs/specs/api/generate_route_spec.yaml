@@ -1,0 +1,465 @@
+metadata:
+  class: GenerateRoute
+  source: app/api/generate/route.ts
+  version: "1.1"
+  created_at: "2026-03-07"
+
+dependencies:
+  repositories:
+    - None
+  services:
+    - generationRequestSchema (Zod request validation)
+    - buildPrompt (prompt-builder)
+    - normalizeModelName / toApiModelName / extractImageSize
+    - NanobananaClient (createNanobananaClient)
+  external:
+    - Google AI Studio GenerateContent API (via NanobananaClient)
+    - GEMINI_API_KEY / GOOGLE_AI_STUDIO_API_KEY environment variables
+
+state_properties: []
+
+specifications:
+  - id: GENRT-001
+    method: postGenerateRoute
+    type: event-driven
+    ears: |
+      When postGenerateRoute is invoked with a valid request body
+      and a configured API key,
+      the system shall call NanobananaClient.generateContent
+      and return HTTP 200 with the upstream payload and normalized model.
+    ears_ja: |
+      有効なリクエストボディとAPIキーでpostGenerateRouteが呼び出された場合、
+      システムはNanobananaClient.generateContentを呼び出し、
+      upstreamのペイロードに正規化済みmodelを付与してHTTP 200を返す。
+    preconditions:
+      - Request body conforms to generationRequestSchema
+      - Either GEMINI_API_KEY or GOOGLE_AI_STUDIO_API_KEY is configured
+      - Upstream response is successful and does not contain data.error
+    preconditions_ja:
+      - リクエストボディがgenerationRequestSchemaに適合している
+      - GEMINI_API_KEYまたはGOOGLE_AI_STUDIO_API_KEYのいずれかが設定されている
+      - upstreamレスポンスが成功し、data.errorを含まない
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Response includes normalized model value
+        - Response preserves upstream successful payload fields
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - レスポンスに正規化済みmodel値が含まれる
+        - upstreamの成功ペイロード項目が保持される
+      error:
+        - なし
+    edge_cases:
+      - description: When both GEMINI_API_KEY and GOOGLE_AI_STUDIO_API_KEY are configured
+        expected: GEMINI_API_KEY is selected because it is evaluated first
+      - description: When count is omitted or equals 1
+        expected: generationConfig.candidateCount is not included in upstream request body
+    edge_cases_ja:
+      - description: GEMINI_API_KEYとGOOGLE_AI_STUDIO_API_KEYの両方が設定されている場合
+        expected: 評価順序によりGEMINI_API_KEYが優先して使用される
+      - description: countが未指定または1の場合
+        expected: upstreamリクエストボディにgenerationConfig.candidateCountは含まれない
+    test_cases:
+      - postGenerateRoute_GivenValidRequestAndApiKey_ShouldReturn200WithNormalizedModel
+    test_cases_ja:
+      - postGenerateRoute_有効リクエストかつAPIキーありの場合_200と正規化modelを返す
+
+  - id: GENRT-002
+    method: postGenerateRoute
+    type: unwanted
+    ears: |
+      If request validation fails,
+      then the system shall return HTTP 400
+      with the first validation issue message.
+    ears_ja: |
+      リクエストバリデーションに失敗した場合、
+      システムは最初のバリデーションエラーメッセージを含むHTTP 400を返す。
+    preconditions:
+      - Request body does not conform to generationRequestSchema
+    preconditions_ja:
+      - リクエストボディがgenerationRequestSchemaに適合しない
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Response error field contains first issue message or fallback text
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - errorに最初のissueメッセージまたはフォールバック文言が入る
+    edge_cases:
+      - description: When multiple validation errors exist in one request
+        expected: Only the first validation issue message is returned
+      - description: When prompt is empty after validation
+        expected: The response remains HTTP 400 with validation error text
+    edge_cases_ja:
+      - description: 1つのリクエストに複数のバリデーションエラーがある場合
+        expected: 先頭のバリデーションissueメッセージのみ返される
+      - description: promptが空文字でバリデーションに失敗する場合
+        expected: 400とバリデーションエラー文言を返す
+    test_cases:
+      - postGenerateRoute_GivenInvalidSchema_ShouldReturn400WithFirstIssueMessage
+    test_cases_ja:
+      - postGenerateRoute_不正スキーマの場合_400と先頭バリデーションメッセージを返す
+
+  - id: GENRT-003
+    method: postGenerateRoute
+    type: unwanted
+    ears: |
+      If no API key is configured,
+      then the system shall return HTTP 500
+      and shall not call NanobananaClient.
+    ears_ja: |
+      APIキーが未設定の場合、
+      システムはHTTP 500を返し、
+      NanobananaClientを呼び出さない。
+    preconditions:
+      - Request body is valid
+      - GEMINI_API_KEY and GOOGLE_AI_STUDIO_API_KEY are both absent
+    preconditions_ja:
+      - リクエストボディは有効
+      - GEMINI_API_KEYとGOOGLE_AI_STUDIO_API_KEYがともに未設定
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message is API key is not configured
+        - Upstream client call is skipped
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - エラーメッセージがAPI key is not configuredになる
+        - upstreamクライアント呼び出しは実行されない
+    edge_cases:
+      - description: When request payload is otherwise valid but API key is missing
+        expected: The route exits before constructing an upstream client request
+      - description: When a NanobananaClient dependency is injected
+        expected: generateContent is still not called without API key
+    edge_cases_ja:
+      - description: リクエスト内容は有効だがAPIキーのみ欠落している場合
+        expected: upstreamクライアント要求を組み立てる前に終了する
+      - description: NanobananaClient依存を注入している場合
+        expected: APIキーが無い限りgenerateContentは呼ばれない
+    test_cases:
+      - postGenerateRoute_GivenMissingApiKey_ShouldReturn500WithoutCallingClient
+    test_cases_ja:
+      - postGenerateRoute_APIキー未設定の場合_クライアント未呼び出しで500を返す
+
+  - id: GENRT-004
+    method: postGenerateRoute
+    type: event-driven
+    ears: |
+      When source image data is provided,
+      the system shall include inline_data in request parts
+      and shall build prompt text via buildPrompt.
+    ears_ja: |
+      元画像データが提供された場合、
+      システムはリクエストpartsにinline_dataを含め、
+      buildPromptでプロンプトテキストを構築する。
+    preconditions:
+      - sourceImageBase64 and sourceImageMimeType are provided
+      - Request body is valid
+    preconditions_ja:
+      - sourceImageBase64とsourceImageMimeTypeが指定されている
+      - リクエストボディが有効
+    postconditions:
+      success:
+        - First request part contains inline_data
+        - Prompt text reflects generationType, backgroundMode, and sourceImageType
+      error:
+        - If buildPrompt throws, catch path returns HTTP 500
+    postconditions_ja:
+      success:
+        - 1つ目のリクエストpartにinline_dataが含まれる
+        - プロンプトテキストにgenerationType/backgroundMode/sourceImageTypeが反映される
+      error:
+        - buildPromptが例外を投げた場合はcatch経路でHTTP 500を返す
+    edge_cases:
+      - description: When sourceImageBase64 exists but sourceImageMimeType is absent
+        expected: inline_data is omitted but prompt still follows source-image branch
+      - description: When sourceImageType is omitted
+        expected: Prompt builder uses default source image type from validated input
+    edge_cases_ja:
+      - description: sourceImageBase64はあるがsourceImageMimeTypeが無い場合
+        expected: inline_dataは付与されないが、プロンプトは元画像あり分岐で構築される
+      - description: sourceImageTypeが未指定の場合
+        expected: バリデーション後のデフォルトsourceImageTypeでプロンプトが構築される
+    test_cases:
+      - postGenerateRoute_GivenSourceImage_ShouldIncludeInlineDataAndPromptTemplate
+    test_cases_ja:
+      - postGenerateRoute_元画像ありの場合_inline_dataとテンプレートプロンプトを送る
+
+  - id: GENRT-005
+    method: postGenerateRoute
+    type: state-driven
+    ears: |
+      While count is greater than 1,
+      the system shall set generationConfig.candidateCount
+      capped at 4.
+    ears_ja: |
+      countが1より大きい間、
+      システムはgenerationConfig.candidateCountを設定し、
+      最大4に丸める。
+    preconditions:
+      - Request body is valid
+      - count is greater than 1
+    preconditions_ja:
+      - リクエストボディが有効
+      - countが1より大きい
+    postconditions:
+      success:
+        - candidateCount equals min(count, 4)
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - candidateCountはmin(count, 4)になる
+      error:
+        - なし
+    edge_cases:
+      - description: When count equals 1
+        expected: candidateCount is not added because multi-candidate mode is disabled
+      - description: When count is invalid (for example 0 or 5)
+        expected: Validation fails before this rule and returns HTTP 400
+    edge_cases_ja:
+      - description: countが1の場合
+        expected: 複数候補モードが無効のためcandidateCountは追加されない
+      - description: countが不正値（例: 0または5）の場合
+        expected: この規則の前にバリデーションで失敗しHTTP 400になる
+    test_cases:
+      - postGenerateRoute_GivenCountGreaterThanOne_ShouldSetCandidateCountCappedAtFour
+    test_cases_ja:
+      - postGenerateRoute_countが2以上の場合_candidateCountを4上限で設定する
+
+  - id: GENRT-006
+    method: postGenerateRoute
+    type: state-driven
+    ears: |
+      While the normalized API model is gemini-3-pro-image-preview,
+      the system shall include generationConfig.imageConfig.imageSize
+      when image size can be extracted.
+    ears_ja: |
+      正規化後のAPIモデルがgemini-3-pro-image-previewの間、
+      システムは画像サイズを抽出できる場合に
+      generationConfig.imageConfig.imageSizeを含める。
+    preconditions:
+      - Request body is valid with gemini-3-pro-image-* model
+      - extractImageSize returns a non-null value
+    preconditions_ja:
+      - リクエストボディがgemini-3-pro-image-*モデルで有効
+      - extractImageSizeがnull以外を返す
+    postconditions:
+      success:
+        - Request body includes imageConfig.imageSize as 1K, 2K, or 4K
+        - Upstream model endpoint is gemini-3-pro-image-preview
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - リクエストボディに1K/2K/4KのimageConfig.imageSizeが含まれる
+        - upstreamモデルエンドポイントがgemini-3-pro-image-previewになる
+      error:
+        - なし
+    edge_cases:
+      - description: When model is gemini-2.5-flash-image
+        expected: imageConfig.imageSize is omitted and non-preview endpoint is used
+      - description: When deprecated model aliases are provided
+        expected: Model is normalized and imageSize follows normalized value
+    edge_cases_ja:
+      - description: modelがgemini-2.5-flash-imageの場合
+        expected: imageConfig.imageSizeは省略され、preview以外のエンドポイントが使われる
+      - description: 非推奨エイリアスモデル名が渡された場合
+        expected: モデル名が正規化され、その値に応じたimageSizeが適用される
+    test_cases:
+      - postGenerateRoute_GivenGemini3ProModel_ShouldAttachImageSizeAndPreviewEndpoint
+    test_cases_ja:
+      - postGenerateRoute_gemini3proモデルの場合_imageSizeとpreviewエンドポイントを使う
+
+  - id: GENRT-007
+    method: postGenerateRoute
+    type: unwanted
+    ears: |
+      If the upstream response is non-OK,
+      then the system shall map status-specific errors:
+      404 to model-not-found message,
+      403 or 503 to model-unavailable message,
+      and other statuses to upstream message fallback.
+    ears_ja: |
+      upstreamレスポンスが非OKの場合、
+      システムはステータス別エラーを返す:
+      404はモデル未検出メッセージ、
+      403/503はモデル利用不可メッセージ、
+      それ以外はupstreamメッセージまたはフォールバックを返す。
+    preconditions:
+      - Upstream response has ok = false
+    preconditions_ja:
+      - upstreamレスポンスのokがfalse
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status mirrors upstream status
+        - Error message follows mapping rules by status
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスはupstreamステータスを引き継ぐ
+        - エラーメッセージはステータス別マッピング規則に従う
+    edge_cases:
+      - description: When upstream error payload does not include error.message
+        expected: Generic fallback message is used for non-mapped statuses
+      - description: When upstream status is 503
+        expected: It is treated identically to 403 with model-unavailable message
+    edge_cases_ja:
+      - description: upstreamエラーペイロードにerror.messageが無い場合
+        expected: マッピング対象外ステータスでは汎用フォールバック文言を使う
+      - description: upstreamステータスが503の場合
+        expected: 403と同様にモデル利用不可メッセージとして扱う
+    test_cases:
+      - postGenerateRoute_GivenUpstream404_ShouldReturnModelNotFoundMessage
+      - postGenerateRoute_GivenUpstream403Or503_ShouldReturnModelUnavailableMessage
+      - postGenerateRoute_GivenUpstreamOtherError_ShouldReturnUpstreamMessage
+    test_cases_ja:
+      - postGenerateRoute_upstream404の場合_モデル未検出メッセージを返す
+      - postGenerateRoute_upstream403または503の場合_モデル利用不可メッセージを返す
+      - postGenerateRoute_upstreamその他エラーの場合_upstreamメッセージを返す
+
+  - id: GENRT-008
+    method: postGenerateRoute
+    type: unwanted
+    ears: |
+      If upstream success payload contains data.error,
+      then the system shall return the provided error message
+      with status data.error.code or 500.
+    ears_ja: |
+      upstream成功ペイロードにdata.errorが含まれる場合、
+      システムはdata.error.messageを返し、
+      ステータスはdata.error.codeまたは500を返す。
+    preconditions:
+      - Upstream response has ok = true
+      - Parsed response includes error object
+    preconditions_ja:
+      - upstreamレスポンスのokがtrue
+      - 解析後レスポンスにerrorオブジェクトが含まれる
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status equals data.error.code or 500
+        - Error message equals data.error.message or fallback
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスはdata.error.codeまたは500になる
+        - エラーメッセージはdata.error.messageまたはフォールバックになる
+    edge_cases:
+      - description: When data.error.code is missing
+        expected: HTTP status falls back to 500
+      - description: When data.error.message is empty
+        expected: Error message falls back to Failed to generate image
+    edge_cases_ja:
+      - description: data.error.codeが未設定の場合
+        expected: HTTPステータスは500にフォールバックする
+      - description: data.error.messageが空の場合
+        expected: エラーメッセージはFailed to generate imageにフォールバックする
+    test_cases:
+      - postGenerateRoute_GivenDataErrorInSuccessfulPayload_ShouldReturnErrorCodeAndMessage
+    test_cases_ja:
+      - postGenerateRoute_成功ペイロード内にdata.errorがある場合_エラーコードとメッセージを返す
+
+  - id: GENRT-009
+    method: postGenerateRoute
+    type: unwanted
+    ears: |
+      If an exception is thrown in the processing pipeline,
+      then the system shall return HTTP 500
+      with the exception message when available.
+    ears_ja: |
+      処理パイプラインで例外が発生した場合、
+      システムは可能な限り例外メッセージを含むHTTP 500を返す。
+    preconditions:
+      - Any unexpected exception occurs during request parsing, prompt building, client call, or response parsing
+    preconditions_ja:
+      - リクエスト解析、プロンプト構築、クライアント呼び出し、レスポンス解析のいずれかで予期しない例外が発生する
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message is exception.message when error is Error
+        - Error message is Internal server error for non-Error throws
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - Error型の例外時はexception.messageを返す
+        - Error型以外のthrow時はInternal server errorを返す
+    edge_cases:
+      - description: When request.json throws parsing error
+        expected: Catch path returns HTTP 500 with parser error message
+      - description: When a non-Error value is thrown
+        expected: Catch path returns HTTP 500 with Internal server error
+    edge_cases_ja:
+      - description: request.jsonがパース例外を投げる場合
+        expected: catch経路でパーサー例外メッセージ付きHTTP 500を返す
+      - description: Error型以外の値がthrowされる場合
+        expected: catch経路でInternal server error付きHTTP 500を返す
+    test_cases:
+      - postGenerateRoute_GivenRuntimeException_ShouldReturn500WithErrorMessage
+      - postGenerateRoute_GivenNonErrorThrow_ShouldReturn500WithInternalServerError
+    test_cases_ja:
+      - postGenerateRoute_実行時例外の場合_500と例外メッセージを返す
+      - postGenerateRoute_Error以外がthrowされた場合_500とInternalServerErrorを返す
+
+  - id: GENRT-010
+    method: POST
+    type: event-driven
+    ears: |
+      When POST is invoked for the route handler,
+      the system shall delegate processing to postGenerateRoute
+      with the same request object.
+    ears_ja: |
+      ルートハンドラのPOSTが呼び出された場合、
+      システムは同一のrequestオブジェクトで
+      postGenerateRouteに処理を委譲する。
+    preconditions:
+      - A NextRequest is provided to POST
+    preconditions_ja:
+      - POSTにNextRequestが渡される
+    postconditions:
+      success:
+        - Response is equivalent to postGenerateRoute(request)
+      error:
+        - Error handling follows postGenerateRoute behavior
+    postconditions_ja:
+      success:
+        - レスポンスはpostGenerateRoute(request)と等価になる
+      error:
+        - エラーハンドリングはpostGenerateRouteの挙動に従う
+    edge_cases:
+      - description: When postGenerateRoute returns an error response
+        expected: POST returns the same error response without additional transformation
+      - description: When dependencies are not explicitly injected
+        expected: POST uses default dependency creation path inside postGenerateRoute
+    edge_cases_ja:
+      - description: postGenerateRouteがエラーレスポンスを返す場合
+        expected: POSTは追加変換せず同じエラーレスポンスを返す
+      - description: 依存性が明示注入されていない場合
+        expected: POSTはpostGenerateRoute内のデフォルト依存生成経路を使う
+    test_cases:
+      - POST_GivenValidRequest_ShouldDelegateToPostGenerateRoute
+    test_cases_ja:
+      - POST_有効リクエストの場合_postGenerateRouteに委譲する

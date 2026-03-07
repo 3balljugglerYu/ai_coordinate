@@ -46,6 +46,12 @@ TARGET_BRANCH=""
 PR_TITLE=""
 PR_BODY=""
 PR_BODY_FILE=""
+GENERATED_PR_BODY_FILE=""
+TEST_RESULT_STATUS="not_run"
+TEST_RESULT_COMMAND=""
+TEST_RESULT_SUITES_LINE=""
+TEST_RESULT_TESTS_LINE=""
+TEST_RESULT_FAILED_ITEMS=""
 DO_DRAFT=0
 NO_COMMIT=0
 NO_ADD=0
@@ -245,6 +251,194 @@ find_pr_template_file() {
   return 1
 }
 
+strip_commit_prefix() {
+  local input="$1"
+  printf '%s' "${input}" | sed -E 's/^[a-z]+(\([^)]+\))?:[[:space:]]*//'
+}
+
+collect_pr_changed_files() {
+  local files
+  files="$(git diff --name-only --diff-filter=ACMRT "${BASE_BRANCH}...${CURRENT_BRANCH}" 2>/dev/null || true)"
+  if [[ -n "${files}" ]]; then
+    printf '%s\n' "${files}" | sed '/^$/d'
+    return
+  fi
+
+  git show --name-only --pretty='' HEAD 2>/dev/null | sed '/^$/d'
+}
+
+collect_changed_test_files() {
+  collect_pr_changed_files | grep -E '^tests/.*\.(test|spec)\.[A-Za-z0-9]+$' || true
+}
+
+join_lines_as_args() {
+  tr '\n' ' ' | sed -E 's/[[:space:]]+$//'
+}
+
+run_changed_tests_for_summary() {
+  local test_files joined test_cmd output
+  local fail_lines
+
+  test_files="$(collect_changed_test_files)"
+  if [[ -z "${test_files}" ]]; then
+    TEST_RESULT_STATUS="not_run"
+    TEST_RESULT_COMMAND=""
+    TEST_RESULT_SUITES_LINE=""
+    TEST_RESULT_TESTS_LINE=""
+    TEST_RESULT_FAILED_ITEMS=""
+    return
+  fi
+
+  joined="$(printf '%s\n' "${test_files}" | join_lines_as_args)"
+  TEST_RESULT_COMMAND="npm test -- ${joined}"
+
+  if ! command -v npm >/dev/null 2>&1; then
+    TEST_RESULT_STATUS="skipped"
+    TEST_RESULT_SUITES_LINE=""
+    TEST_RESULT_TESTS_LINE=""
+    TEST_RESULT_FAILED_ITEMS="npm コマンドが見つからないため未実行"
+    return
+  fi
+
+  test_cmd=(npm test --)
+  while IFS= read -r test_file; do
+    [[ -n "${test_file}" ]] && test_cmd+=("${test_file}")
+  done <<< "${test_files}"
+
+  if output="$("${test_cmd[@]}" 2>&1)"; then
+    TEST_RESULT_STATUS="passed"
+  else
+    TEST_RESULT_STATUS="failed"
+  fi
+
+  TEST_RESULT_SUITES_LINE="$(printf '%s\n' "${output}" | grep -E '^Test Suites:' | tail -n 1 || true)"
+  TEST_RESULT_TESTS_LINE="$(printf '%s\n' "${output}" | grep -E '^Tests:' | tail -n 1 || true)"
+  fail_lines="$(printf '%s\n' "${output}" | grep -E '^FAIL ' | head -n 5 || true)"
+
+  if [[ "${TEST_RESULT_STATUS}" == "failed" && -n "${fail_lines}" ]]; then
+    TEST_RESULT_FAILED_ITEMS="$(printf '%s' "${fail_lines}" | sed -E 's/^FAIL[[:space:]]+//')"
+  else
+    TEST_RESULT_FAILED_ITEMS=""
+  fi
+}
+
+build_pr_change_bullets() {
+  local files
+  files="$(collect_pr_changed_files)"
+  if [[ -z "${files}" ]]; then
+    printf '%s\n' "- 変更ファイルの取得に失敗しました。必要に応じて追記してください。"
+    return
+  fi
+
+  printf '%s\n' "${files}" | head -n 12 | while IFS= read -r file; do
+    printf -- '- `%s`\n' "${file}"
+  done
+}
+
+build_pr_test_method_bullets() {
+  if [[ -n "${TEST_RESULT_COMMAND}" ]]; then
+    printf -- '- 自動テスト: `%s`\n' "${TEST_RESULT_COMMAND}"
+    return
+  fi
+
+  printf '%s\n' "- 自動テスト: 実施なし（変更ファイルに tests/* は含まれていません）"
+}
+
+build_browser_test_checklist() {
+  local files
+  files="$(collect_pr_changed_files)"
+
+  if printf '%s\n' "${files}" | grep -Eq '^(app/api/generate/route\.ts|app/api/generation-status/route\.ts|supabase/functions/image-gen-worker/index\.ts|features/generation/)'; then
+    cat <<'EOF'
+- [ ] ブラウザで生成フォームに有効なプロンプトを入力して送信し、`queued/processing` の後に生成画像が表示されること
+- [ ] ブラウザで空のプロンプトを送信し、入力必須のバリデーションエラーメッセージが表示されること
+- [ ] 生成失敗ケースを再現し、`画像生成に失敗しました。しばらくしてから、もう一度お試しください。` が表示されること
+- [ ] PC（Chrome）/ iOS Safari / Android Chrome で上記導線を操作し、表示崩れがないこと
+EOF
+    return
+  fi
+
+  cat <<'EOF'
+- [ ] ブラウザで主要導線を操作し、対象機能が期待どおり完了すること
+- [ ] バリデーションエラー条件を操作し、ユーザー向けエラーメッセージが表示されること
+- [ ] PC（Chrome）/ iOS Safari / Android Chrome で表示崩れがないこと
+EOF
+}
+
+build_test_result_bullets() {
+  if [[ "${TEST_RESULT_STATUS}" == "passed" ]]; then
+    printf '%s\n' "- [x] 実行コマンド: \`${TEST_RESULT_COMMAND}\`"
+    if [[ -n "${TEST_RESULT_SUITES_LINE}" ]]; then
+      printf '%s\n' "- [x] ${TEST_RESULT_SUITES_LINE}"
+    fi
+    if [[ -n "${TEST_RESULT_TESTS_LINE}" ]]; then
+      printf '%s\n' "- [x] ${TEST_RESULT_TESTS_LINE}"
+    fi
+    printf '%s\n' "- [x] failed のテスト項目: なし"
+    return
+  fi
+
+  if [[ "${TEST_RESULT_STATUS}" == "failed" ]]; then
+    printf '%s\n' "- [x] 実行コマンド: \`${TEST_RESULT_COMMAND}\`"
+    if [[ -n "${TEST_RESULT_SUITES_LINE}" ]]; then
+      printf '%s\n' "- [ ] ${TEST_RESULT_SUITES_LINE}"
+    fi
+    if [[ -n "${TEST_RESULT_TESTS_LINE}" ]]; then
+      printf '%s\n' "- [ ] ${TEST_RESULT_TESTS_LINE}"
+    fi
+    if [[ -n "${TEST_RESULT_FAILED_ITEMS}" ]]; then
+      printf '%s\n' "- [ ] failed のテスト項目: ${TEST_RESULT_FAILED_ITEMS}"
+    else
+      printf '%s\n' "- [ ] failed のテスト項目: あり（詳細はCIログを参照）"
+    fi
+    return
+  fi
+
+  if [[ "${TEST_RESULT_STATUS}" == "skipped" ]]; then
+    printf '%s\n' "- [ ] 実行コマンド: ${TEST_RESULT_COMMAND}"
+    printf '%s\n' "- [ ] テストは未実行: ${TEST_RESULT_FAILED_ITEMS}"
+    printf '%s\n' "- [ ] failed のテスト項目: 判定不可"
+    return
+  fi
+
+  printf '%s\n' "- [ ] 自動テスト: 実施なし（変更ファイルに tests/* は含まれていません）"
+  printf '%s\n' "- [ ] failed のテスト項目: 実施なしのため判定不可"
+}
+
+build_pr_body_from_template() {
+  local template_file="$1"
+  local output_file summary_source summary_text change_bullets test_bullets device_checklist test_result_bullets
+
+  summary_source="${PR_TITLE:-$(git log -1 --pretty=%s 2>/dev/null || true)}"
+  summary_text="$(strip_commit_prefix "${summary_source}")"
+  summary_text="${summary_text:-${CURRENT_BRANCH}}"
+  run_changed_tests_for_summary
+  change_bullets="$(build_pr_change_bullets)"
+  test_bullets="$(build_pr_test_method_bullets)"
+  device_checklist="$(build_browser_test_checklist)"
+  test_result_bullets="$(build_test_result_bullets)"
+
+  output_file="$(mktemp)"
+  cat > "${output_file}" <<EOF
+### 概要
+${summary_text}
+
+### 変更内容
+${change_bullets}
+
+### 実機テスト
+${device_checklist}
+
+### テスト方法
+${test_bullets}
+
+### テスト結果
+${test_result_bullets}
+EOF
+
+  printf '%s' "${output_file}"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -m|--message)
@@ -404,6 +598,9 @@ fi
 ASKPASS_FILE="$(mktemp)"
 cleanup() {
   rm -f "${ASKPASS_FILE}"
+  if [[ -n "${GENERATED_PR_BODY_FILE}" ]]; then
+    rm -f "${GENERATED_PR_BODY_FILE}"
+  fi
 }
 trap cleanup EXIT
 
@@ -443,12 +640,13 @@ fi
 if [[ -z "${PR_BODY}" && -z "${PR_BODY_FILE}" ]]; then
   TEMPLATE_FILE="$(find_pr_template_file || true)"
   if [[ -n "${TEMPLATE_FILE}" ]]; then
-    PR_BODY_FILE="${TEMPLATE_FILE}"
     if [[ -z "${PR_TITLE}" ]]; then
       PR_TITLE="$(git log -1 --pretty=%s 2>/dev/null || true)"
       PR_TITLE="${PR_TITLE:-${CURRENT_BRANCH}}"
     fi
-    echo "Using PR template: ${PR_BODY_FILE}"
+    GENERATED_PR_BODY_FILE="$(build_pr_body_from_template "${TEMPLATE_FILE}")"
+    PR_BODY_FILE="${GENERATED_PR_BODY_FILE}"
+    echo "Using PR template with auto-filled body: ${TEMPLATE_FILE}"
   fi
 fi
 

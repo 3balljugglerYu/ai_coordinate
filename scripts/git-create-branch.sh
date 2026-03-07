@@ -25,11 +25,26 @@ DRY_RUN=0
 to_slug() {
   local input="$1"
   local slug
-  slug="$(printf '%s' "${input}" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g; s/[^a-z0-9]+/-/g; s/^-+|-+$//g; s/-+/-/g')"
+  slug="$(
+    printf '%s' "${input}" \
+      | sed -E 's/([[:lower:][:digit:]])([[:upper:]])/\1-\2/g' \
+      | tr '[:upper:]' '[:lower:]' \
+      | sed -E 's/^[[:space:]]+|[[:space:]]+$//g; s/[^a-z0-9]+/-/g; s/^-+|-+$//g; s/-+/-/g'
+  )"
   if [[ -z "${slug}" ]]; then
     slug="update"
   fi
   printf '%s' "${slug}"
+}
+
+is_ignored_path() {
+  local path="$1"
+  case "${path}" in
+    .serena/*|supabase/.temp/*)
+      return 0
+      ;;
+  esac
+  return 1
 }
 
 collect_changed_paths() {
@@ -42,8 +57,97 @@ collect_changed_paths() {
     fi
     path="${path#\"}"
     path="${path%\"}"
+    if is_ignored_path "${path}"; then
+      continue
+    fi
     printf '%s\n' "${path}"
   done | sed '/^$/d' | sort -u
+}
+
+path_change_score() {
+  local path="$1"
+  local score=0
+  local add del file
+
+  while IFS=$'\t' read -r add del file; do
+    [[ "${file}" == "${path}" ]] || continue
+    [[ "${add}" =~ ^[0-9]+$ ]] || add=0
+    [[ "${del}" =~ ^[0-9]+$ ]] || del=0
+    score=$((score + add + del))
+  done < <(
+    git diff --numstat -- "${path}"
+    git diff --cached --numstat -- "${path}"
+  )
+
+  if [[ "${score}" -eq 0 ]]; then
+    score=1
+  fi
+  printf '%s' "${score}"
+}
+
+pick_primary_path() {
+  local paths=("$@")
+  local primary_path="${paths[0]}"
+  local primary_score
+  local current_path current_score
+
+  primary_score="$(path_change_score "${primary_path}")"
+  for current_path in "${paths[@]:1}"; do
+    current_score="$(path_change_score "${current_path}")"
+    if (( current_score > primary_score )); then
+      primary_path="${current_path}"
+      primary_score="${current_score}"
+    fi
+  done
+
+  printf '%s' "${primary_path}"
+}
+
+topic_from_diff() {
+  local path="$1"
+  local diff_lines topic
+
+  diff_lines="$(
+    {
+      git diff -- "${path}"
+      git diff --cached -- "${path}"
+    } 2>/dev/null
+  )"
+
+  if [[ -z "${diff_lines}" ]]; then
+    printf ''
+    return
+  fi
+
+  topic="$(
+    printf '%s\n' "${diff_lines}" \
+      | grep -E '^\+\s*(export\s+)?(async\s+)?function\s+[A-Za-z_][A-Za-z0-9_]*' \
+      | head -n 1 \
+      | sed -E 's/^\+\s*//; s/^export\s+//; s/^async\s+//; s/^function\s+([A-Za-z_][A-Za-z0-9_]*).*/\1/'
+  )"
+  if [[ -z "${topic}" ]]; then
+    topic="$(
+      printf '%s\n' "${diff_lines}" \
+        | grep -E '^\+\s*(export\s+)?(const|let|var)\s+[A-Za-z_][A-Za-z0-9_]*' \
+        | head -n 1 \
+        | sed -E 's/^\+\s*//; s/^export\s+//; s/^(const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*).*/\2/'
+    )"
+  fi
+  if [[ -z "${topic}" ]]; then
+    topic="$(
+      printf '%s\n' "${diff_lines}" \
+        | grep -E '^\+\s*throw new Error\(".*"\)' \
+        | head -n 1 \
+        | sed -E 's/^.*Error\("([^"]+)".*$/\1/'
+    )"
+  fi
+
+  if [[ -z "${topic}" ]]; then
+    printf ''
+    return
+  fi
+
+  printf '%s' "$(to_slug "${topic}")"
 }
 
 classify_prefix() {
@@ -185,8 +289,27 @@ if [[ "${#CHANGED_PATHS[@]}" -eq 0 ]]; then
   REASON="No local changes found. Using fallback branch slug."
 else
   PREFIX="$(classify_prefix "${CHANGED_PATHS[@]}")"
-  SLUG="$(slug_from_path "${CHANGED_PATHS[0]}")"
-  REASON="Derived from changed path: ${CHANGED_PATHS[0]}"
+  PRIMARY_PATH="$(pick_primary_path "${CHANGED_PATHS[@]}")"
+  PATH_SLUG="$(slug_from_path "${PRIMARY_PATH}")"
+  TOPIC_SLUG="$(topic_from_diff "${PRIMARY_PATH}")"
+
+  if [[ -n "${TOPIC_SLUG}" && "${TOPIC_SLUG}" != "update" ]]; then
+    if [[ "${PATH_SLUG}" == "update" ]]; then
+      SLUG="${TOPIC_SLUG}"
+    elif [[ "${PATH_SLUG}" == *"${TOPIC_SLUG}"* ]]; then
+      SLUG="${PATH_SLUG}"
+    else
+      SLUG="$(to_slug "${PATH_SLUG}-${TOPIC_SLUG}")"
+      SLUG="${SLUG:0:50}"
+    fi
+  else
+    SLUG="${PATH_SLUG}"
+  fi
+
+  REASON="Derived from changed path/content: ${PRIMARY_PATH}"
+  if [[ -n "${TOPIC_SLUG}" ]]; then
+    REASON="${REASON} (topic=${TOPIC_SLUG})"
+  fi
 fi
 
 BASE_NAME="${PREFIX}/${SLUG}"

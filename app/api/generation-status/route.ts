@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { isMalformedGeminiPartsErrorMessage } from "@/shared/generation/errors";
+
+function normalizeUserFacingGenerationError(
+  status: string,
+  errorMessage: string | null
+): string | null {
+  if (status !== "failed" || !errorMessage) return errorMessage;
+
+  if (errorMessage === "No images generated") {
+    return "画像を生成できませんでした。";
+  }
+
+  if (isMalformedGeminiPartsErrorMessage(errorMessage)) {
+    return "画像生成に失敗しました。しばらくしてから、もう一度お試しください。";
+  }
+
+  return errorMessage;
+}
 
 /**
  * 画像生成ステータス取得API
@@ -51,10 +69,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const normalizedErrorMessage =
-      job.status === "failed" && job.error_message === "No images generated"
-        ? "画像を生成できませんでした。"
-        : job.error_message;
+    const normalizedErrorMessage = normalizeUserFacingGenerationError(
+      job.status,
+      job.error_message
+    );
 
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
