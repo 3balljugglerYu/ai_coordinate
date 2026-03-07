@@ -261,7 +261,11 @@ function getPercoinCost(model: string | null): number {
  * 再試行不可のエラーか判定
  */
 function isNonRetriableGenerationError(errorMessage: string): boolean {
-  return errorMessage === "No images generated";
+  const normalizedError = errorMessage.toLowerCase();
+  return (
+    errorMessage === "No images generated" ||
+    normalizedError.includes("candidate.content.parts is not iterable")
+  );
 }
 
 /**
@@ -372,8 +376,22 @@ function extractImagesFromGeminiResponse(response: GeminiResponse): Array<{ mime
     return images;
   }
 
-  for (const candidate of response.candidates) {
-    for (const part of candidate.content.parts) {
+  for (let candidateIndex = 0; candidateIndex < response.candidates.length; candidateIndex++) {
+    const candidate = response.candidates[candidateIndex];
+    const parts = candidate?.content?.parts;
+
+    if (!Array.isArray(parts)) {
+      console.error("[Gemini Response] Malformed candidate content:", {
+        candidateIndex,
+        finishReason: candidate?.finishReason ?? null,
+        hasContent: Boolean(candidate?.content),
+        contentKeys: candidate?.content ? Object.keys(candidate.content) : [],
+        partsType: parts === null ? "null" : typeof parts,
+      });
+      throw new Error("candidate.content.parts is not iterable");
+    }
+
+    for (const part of parts) {
       if (part.inlineData) {
         images.push({
           mimeType: part.inlineData.mimeType,

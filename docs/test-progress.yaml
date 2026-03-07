@@ -27,13 +27,13 @@ foundation:
 # Tier 1: Highest Priority (Score 90-100)
 tier1:
   GenerateRoute:
-    status: pending
+    status: completed
     score: 100
     file: app/api/generate/route.ts
     prerequisites:
       - nanobanana module mock
       - authenticated request fixture
-    char_test: null
+    char_test: tests/characterization/api/generate-route.char.test.ts
     spec_file: docs/specs/api/generate_route_spec.yaml
     test_file: tests/integration/api/generate-route.test.ts
 
@@ -257,8 +257,8 @@ widgets:
 summary:
   tier1:
     total: 4
-    completed: 0
-    percentage: 0
+    completed: 1
+    percentage: 25
   tier2:
     total: 6
     completed: 0
@@ -273,5 +273,5 @@ summary:
     percentage: 0
   overall:
     total: 27
-    completed: 0
-    percentage: 0
+    completed: 1
+    percentage: 3.7

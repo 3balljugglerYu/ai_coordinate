@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generationRequestSchema } from "@/features/generation/lib/schema";
 import { buildPrompt } from "@/features/generation/lib/prompt-builder";
-import { normalizeModelName, toApiModelName, extractImageSize, type GeminiApiModel } from "@/features/generation/types";
+import { normalizeModelName, toApiModelName, extractImageSize } from "@/features/generation/types";
 import type { GeminiResponse } from "@/features/generation/lib/nanobanana";
+import {
+  createNanobananaClient,
+  type GeminiGenerateContentRequestBody,
+  type NanobananaClient,
+} from "@/features/generation/lib/nanobanana-client";
+
+interface GenerateRouteDependencies {
+  nanobananaClient?: NanobananaClient;
+}
 
 /**
  * Nano Banana画像生成プロキシAPI
  * Google AI StudioのAPIキーをサーバーサイドで使用して画像生成を行う
  */
-export async function POST(request: NextRequest) {
+export async function postGenerateRoute(
+  request: NextRequest,
+  dependencies: GenerateRouteDependencies = {}
+) {
   try {
     const body = await request.json();
     
@@ -86,17 +98,7 @@ export async function POST(request: NextRequest) {
       text: fullPrompt,
     });
 
-    const requestBody: {
-      contents: Array<{
-        parts: typeof parts;
-      }>;
-      generationConfig?: {
-        candidateCount?: number;
-        imageConfig?: {
-          imageSize?: "1K" | "2K" | "4K";
-        };
-      };
-    } = {
+    const requestBody: GeminiGenerateContentRequestBody = {
       contents: [
         {
           parts,
@@ -125,21 +127,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // APIエンドポイントURLを構築
-    function buildApiUrl(apiModel: GeminiApiModel): string {
-      return `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
-    }
+    const nanobananaClient =
+      dependencies.nanobananaClient ?? createNanobananaClient();
 
-    const apiUrl = buildApiUrl(apiModel);
-
-    // Google AI Studio APIを呼び出し（ヘッダー方式でAPIキーを送信）
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey, // ヘッダー方式
-      },
-      body: JSON.stringify(requestBody),
+    const response = await nanobananaClient.generateContent({
+      apiKey,
+      model: apiModel,
+      body: requestBody,
     });
 
     if (!response.ok) {
@@ -199,4 +193,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export const generateRouteHandlers = {
+  postGenerateRoute,
+};
+
+export async function POST(request: NextRequest) {
+  return generateRouteHandlers.postGenerateRoute(request);
 }
