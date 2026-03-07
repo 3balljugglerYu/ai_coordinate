@@ -1,6 +1,6 @@
 ---
 name: git-commit-and-pr
-description: Execute commit/push/PR workflows and draft Conventional Commit + PR descriptions. Use when user says "PRを作成して", "create pr", "pull request", or asks for PR description drafting.
+description: Execute commit/push/PR workflows, post-merge branch cleanup, and draft Conventional Commit + PR descriptions. Use when user says "PRを作成して", "マージしました", "create pr", "pull request", or asks for PR description drafting.
 ---
 
 ## Purpose
@@ -9,12 +9,14 @@ This skill helps the agent:
 - Propose and refine Git commit messages that follow the Conventional Commits specification.
 - Draft pull request descriptions using the team’s PR template, including clear test plans.
 - Execute end-to-end flow when requested: auth check -> branch handling -> commit -> push -> PR creation.
+- Execute post-merge cleanup flow: switch to main -> pull -> verify remote branch deletion -> delete local branch.
 
 ## Trigger and mode
 
 When user says phrases such as:
 - 「PRを作成して」
 - 「PR作って」
+- 「マージしました」
 - "create pr"
 - "open a pull request"
 
@@ -23,6 +25,7 @@ Default to **execution mode** (not draft-only mode), unless the user explicitly 
 Modes:
 - Draft mode: only propose commit/PR text.
 - Execution mode: actually run git/gh commands and create the PR.
+- Post-merge cleanup mode: run safe branch cleanup after merge confirmation.
 
 ## Authentication and access checks (execution mode)
 
@@ -108,6 +111,25 @@ Required behavior:
 3. Create/switch to that branch.
 4. Continue commit/push/PR flow on the selected branch.
 
+## Post-merge cleanup mode
+
+When user says 「マージしました」 (or equivalent), run this exact flow:
+
+1. Remember current branch as source branch.
+2. Switch to `main`.
+3. Pull latest main with `git pull --ff-only origin main`.
+4. Only if pull succeeds, check whether `origin/<source-branch>` is deleted.
+5. If remote source branch still exists, stop immediately (do not delete local).
+6. If remote source branch is deleted, delete local source branch using `git branch -d`.
+
+For this repository, prefer:
+- `scripts/post-merge-cleanup.sh`
+
+Safety rules:
+- Never force delete branch (`-D` is forbidden unless user explicitly requests).
+- If working tree is dirty, stop and ask user how to proceed.
+- If currently on `main`, stop (no source branch to delete).
+
 ## Question format to user
 
 When user input is required, ask concise multiple-choice with recommendation first:
@@ -124,6 +146,7 @@ Apply this format for:
 - commit message choice
 - PR base branch choice (if ambiguous)
 - PR title/body choice when multiple plausible options exist
+- cleanup conflict handling (if branch deletion prerequisites are not met)
 
 ## How the agent should use this skill
 
@@ -151,8 +174,14 @@ Apply this format for:
    - Prefer `gh pr create --base ... --head ... --title ... --body ...`.
    - If PR already exists for head branch, share URL instead of duplicating.
 
-7. Always:
+7. Post-merge cleanup (when requested):
+   - Run the post-merge cleanup mode steps.
+   - Stop if remote branch is not deleted.
+   - Delete local branch only when remote deletion is confirmed.
+
+8. Always:
    - Keep commit message and PR description consistent.
    - Use exact API/resource names used in code.
    - Keep the text concise but reviewer-friendly.
    - Use `scripts/git-commit-push-pr.sh` when suitable for this repository.
+   - Use `scripts/post-merge-cleanup.sh` for merge-complete cleanup in this repository.
