@@ -195,7 +195,7 @@ export function PrReviewClient() {
                 )}
               </Button>
               <p className="text-xs text-slate-500">
-                実行にはサーバー環境変数 `GITHUB_TOKEN` と `GEMINI_API_KEY` が必要です。
+                実行には `GEMINI_API_KEY` が必要です。`GITHUB_TOKEN` はレート制限回避のため推奨です。
               </p>
             </div>
           </form>
