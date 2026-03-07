@@ -33,15 +33,8 @@ description: Execute commit -> push -> PR creation safely in this repository. Us
 
 4. コミット作成
 - 差分を要約
-- Conventional Commits で 2-3 候補を提示
-- 次の文面で選択を促す:
-
-```text
-コミットメッセージは下記のどれにしますか？
-1. <option A>（推奨）
-2. <option B>
-3. <option C>
-```
+- 差分に基づいて Conventional Commits 形式の推奨コミットメッセージを1件自動決定
+- 候補の複数提示は行わず、そのまま commit -> push -> PR作成まで進める
 
 5. 実行
 - 既定 add 範囲: staged only
