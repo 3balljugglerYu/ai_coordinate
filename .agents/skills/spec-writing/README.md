@@ -66,7 +66,7 @@ Step 5: サマリーレポートを出力
 ## ファイル構成
 
 ```
-.claude/skills/spec-writing/
+.agents/skills/spec-writing/
 ├── SKILL.md    # スキル定義（英語）
 └── README.md   # ドキュメント（日本語）
 ```
@@ -156,4 +156,4 @@ specifications:
 
 - docs/TEST_PLAN.md セクション 7.2 - 仕様ファイル形式
 - docs/TEST_PLAN.md セクション 7.1 - EARS要件タイプ
-- .claude/skills/spec-extracting/SKILL.md - 仕様抽出スキル
+- .agents/skills/spec-extracting/SKILL.md - 仕様抽出スキル

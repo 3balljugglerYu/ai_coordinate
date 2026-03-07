@@ -161,4 +161,4 @@ TEST_PLAN.md セクション 8.6 より:
 - `docs/TEST_PLAN.md` セクション 8.6: /spec-verify スキルの使用方法
 - `docs/TEST_PLAN.md` セクション 6: テスト記述規則
 - `docs/TEST_PLAN.md` セクション 6.4: トレーサビリティ
-- `.claude/skills/spec-extracting/`: 仕様抽出スキル
+- `.agents/skills/spec-extracting/`: 仕様抽出スキル

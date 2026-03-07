@@ -97,7 +97,7 @@ when(mockApi.someMethod()).thenThrow(HttpException(response));
 ## ファイル構成
 
 ```
-.claude/skills/test-fixing/
+.agents/skills/test-fixing/
 ├── SKILL.md    # スキル定義（英語）
 └── README.md   # ドキュメント（日本語）
 ```

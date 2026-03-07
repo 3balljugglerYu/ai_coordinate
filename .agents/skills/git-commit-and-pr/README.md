@@ -17,7 +17,7 @@
 - 追加確認が必要なときは、推奨案を先頭にした選択肢形式で質問します。
 
 ## 注意
-この README は概要です。最新の厳密な運用ルールは [SKILL.md](/Users/hide/ai_coordinate/.agents/skills/git-commit-and-pr/SKILL.md) を参照してください。
+この README は概要です。最新の厳密な運用ルールは [SKILL.md](./SKILL.md) を参照してください。
 
 ## SKILL.md の日本語訳
 

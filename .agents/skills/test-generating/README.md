@@ -162,7 +162,7 @@ void main() {
 ## ファイル構成
 
 ```
-.claude/skills/test-generating/
+.agents/skills/test-generating/
 ├── SKILL.md    # スキル定義（英語）
 └── README.md   # ドキュメント（日本語）
 ```

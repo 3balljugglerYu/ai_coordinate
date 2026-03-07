@@ -202,7 +202,7 @@ Follow the complete workflow and return a detailed review report."
 ## ファイル構成
 
 ```
-.claude/skills/test-reviewing/
+.agents/skills/test-reviewing/
 ├── SKILL.md    # スキル定義（英語）
 └── README.md   # ドキュメント（日本語）
 ```
@@ -211,5 +211,5 @@ Follow the complete workflow and return a detailed review report."
 
 - テスト計画: `docs/TEST_PLAN.md`
 - 仕様書: `docs/specs/{feature}/{class}_spec.yaml`
-- テスト修正スキル: `.claude/skills/test-fixing/SKILL.md`
-- 仕様検証スキル: `.claude/skills/spec-verifying/SKILL.md`
+- テスト修正スキル: `.agents/skills/test-fixing/SKILL.md`
+- 仕様検証スキル: `.agents/skills/spec-verifying/SKILL.md`
