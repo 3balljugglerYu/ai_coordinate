@@ -37,8 +37,8 @@ description: Execute commit -> push -> PR creation safely in this repository. Us
 - 候補の複数提示は行わず、そのまま commit -> push -> PR作成まで進める
 
 5. 実行
-- 既定 add 範囲: staged only
-- 全変更を含める明示指示時のみ `--add-all`
+- 既定 add 範囲: unstaged を含めて自動で `git add -A`
+- staged 済みのみで実行したい場合だけ `--staged-only` を使う
 - `scripts/git-commit-push-pr.sh` を優先利用
 
 6. PR作成

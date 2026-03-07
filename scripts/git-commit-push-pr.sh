@@ -20,10 +20,11 @@ Options:
   --body <text>           PR body text
   --body-file <path>      PR body file path
   --draft                 Create PR as draft
-  --add-all               Run git add -A before commit (default: staged files only)
+  --add-all               Run git add -A before commit (default behavior)
+  --staged-only           Commit only already staged files
   --yes                   Skip interactive commit confirmation
   --no-commit             Skip git add/commit and only push + create PR
-  --no-add                Deprecated alias. Same as default staged-only mode
+  --no-add                Deprecated alias of --staged-only
   -h, --help              Show this help
 
 Required local auth file (project-only):
@@ -43,7 +44,7 @@ PR_BODY=""
 PR_BODY_FILE=""
 DO_DRAFT=0
 NO_COMMIT=0
-NO_ADD=1
+NO_ADD=0
 AUTO_CONFIRM=0
 EXPECTED_REPO_DEFAULT="3balljugglerYu/ai_coordinate"
 EXPECTED_REPO="${EXPECTED_REPO:-${EXPECTED_REPO_DEFAULT}}"
@@ -247,6 +248,10 @@ while [[ $# -gt 0 ]]; do
       NO_ADD=0
       shift
       ;;
+    --staged-only)
+      NO_ADD=1
+      shift
+      ;;
     --yes)
       AUTO_CONFIRM=1
       shift
@@ -256,6 +261,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --no-add)
+      # Backward compatibility alias.
       NO_ADD=1
       shift
       ;;

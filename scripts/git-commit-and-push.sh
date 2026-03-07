@@ -10,20 +10,21 @@ Usage:
 Options:
   -m, --message <msg>     Commit message (required)
   --branch <name>         Working branch to use on protected branch
-  --add-all               Run git add -A before commit (default: staged files only)
+  --add-all               Run git add -A before commit (default behavior)
+  --staged-only           Commit only already staged files
   --yes                   Skip interactive commit confirmation
   -h, --help              Show this help
 
 Rules:
   - Protected branches: main, master
-  - Default add behavior: staged files only
+  - Default add behavior: auto-stage all changes (git add -A)
   - Uses git branch -d style safety (no force operations)
 EOF
 }
 
 COMMIT_MESSAGE=""
 TARGET_BRANCH=""
-NO_ADD=1
+NO_ADD=0
 AUTO_CONFIRM=0
 
 to_slug() {
@@ -180,6 +181,10 @@ while [[ $# -gt 0 ]]; do
       NO_ADD=0
       shift
       ;;
+    --staged-only)
+      NO_ADD=1
+      shift
+      ;;
     --yes)
       AUTO_CONFIRM=1
       shift
@@ -233,4 +238,3 @@ git commit -m "${COMMIT_MESSAGE}"
 echo "Pushing ${CURRENT_BRANCH} to origin..."
 git push origin "${CURRENT_BRANCH}"
 echo "Done."
-
