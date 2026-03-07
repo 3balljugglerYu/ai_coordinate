@@ -129,11 +129,11 @@ npx playwright install
 
 このリポジトリでは、Codex への明示コマンドとして以下を使用します。
 
-- `repo:push`: `add -> commit -> push` を実行
-- `repo:create-pr`: `commit -> push -> PR作成` を実行
-- `repo:merge`: マージ後の後処理を実行
+- `/git-push`: `add -> commit -> push` を実行
+- `/git-create-pr`: `commit -> push -> PR作成` を実行
+- `/git-sync-main`: マージ後の後処理を実行
 
-`repo:merge` の実行内容:
+`/git-sync-main` の実行内容:
 
 1. 実行時点のブランチ（移動元）を記録
 2. `main` に移動
@@ -144,7 +144,7 @@ npx playwright install
 安全ルール:
 
 - `main` / `master` への直接 push は行わない
-- `repo:merge` では、リモートブランチが未削除ならその時点で終了する
+- `/git-sync-main` では、リモートブランチが未削除ならその時点で終了する
 - 強制削除（`git branch -D`）は行わない
 
 ## 環境変数
