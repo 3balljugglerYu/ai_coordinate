@@ -194,6 +194,25 @@ confirm_commit_scope() {
   esac
 }
 
+load_auth_value() {
+  local key="$1"
+  local raw
+  raw="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "${AUTH_FILE}" | tail -n1 || true)"
+  if [[ -z "${raw}" ]]; then
+    return 1
+  fi
+
+  raw="${raw#*=}"
+  raw="$(printf '%s' "${raw}" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+
+  # Strip optional surrounding double quotes.
+  if [[ "${raw}" == \"*\" && "${raw}" == *\" && "${#raw}" -ge 2 ]]; then
+    raw="${raw:1:${#raw}-2}"
+  fi
+
+  printf '%s' "${raw}"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -m|--message)
@@ -266,10 +285,15 @@ EOF
   exit 1
 fi
 
-# shellcheck source=/dev/null
-source "${AUTH_FILE}"
-
-if [[ -z "${GITHUB_USERNAME:-}" || -z "${GH_TOKEN:-}" ]]; then
+if ! GITHUB_USERNAME="$(load_auth_value "GITHUB_USERNAME")"; then
+  echo "GITHUB_USERNAME is required in ${AUTH_FILE}" >&2
+  exit 1
+fi
+if ! GH_TOKEN="$(load_auth_value "GH_TOKEN")"; then
+  echo "GH_TOKEN is required in ${AUTH_FILE}" >&2
+  exit 1
+fi
+if [[ -z "${GITHUB_USERNAME}" || -z "${GH_TOKEN}" ]]; then
   echo "GITHUB_USERNAME and GH_TOKEN are required in ${AUTH_FILE}" >&2
   exit 1
 fi
@@ -357,7 +381,11 @@ EOF
 chmod 700 "${ASKPASS_FILE}"
 
 echo "Pushing ${CURRENT_BRANCH} to origin..."
-GIT_ASKPASS="${ASKPASS_FILE}" GIT_TERMINAL_PROMPT=0 git push origin "${CURRENT_BRANCH}"
+GITHUB_USERNAME="${GITHUB_USERNAME}" \
+GH_TOKEN="${GH_TOKEN}" \
+GIT_ASKPASS="${ASKPASS_FILE}" \
+GIT_TERMINAL_PROMPT=0 \
+git push origin "${CURRENT_BRANCH}"
 
 PR_LIST_ARGS=(pr list --head "${CURRENT_BRANCH}" --state open --json url --jq '.[0].url')
 if [[ "${REPO_SLUG}" == */* ]]; then

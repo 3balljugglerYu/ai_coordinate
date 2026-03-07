@@ -226,12 +226,29 @@ After completing your review, request a parallel review from Codex CLI to valida
 
 ### 8.1 Invoke Codex Review
 
-Run Codex CLI to perform the same review:
+Run Codex review using a **structured request**, not shell string interpolation.
 
-```bash
-codex exec "Use the /test-reviewing skill to review {ClassName} tests.
-Follow the complete workflow and return a detailed review report.
-Focus on: test execution results, London School compliance, mock configuration, and any issues found."
+Do not run commands like `codex exec "... {ClassName} ..."` where placeholders are directly embedded in a shell string.
+Instead:
+
+1. Validate dynamic inputs first (for example, class name with an allowlist such as `^[A-Za-z0-9_./-]+$`).
+2. Build a structured request object with separate fields.
+3. Invoke Codex via tool/subagent interface that accepts arguments as fields (not a single concatenated command string).
+
+Example structured request:
+
+```json
+{
+  "skill": "/test-reviewing",
+  "class_name": "<validated_class_name>",
+  "focus": [
+    "test execution results",
+    "London School compliance",
+    "mock configuration",
+    "issues found"
+  ],
+  "output": "detailed review report"
+}
 ```
 
 ### 8.2 Analyze Codex Response
@@ -256,14 +273,22 @@ If there are disagreements:
 
 Example dialogue:
 
-```bash
-codex exec "You reported {Codex's finding} but I found {Your finding}.
-My reasoning: {explanation}.
-Please review and either:
-1. Explain why your assessment is correct, or
-2. Acknowledge the correction.
-Let's reach consensus on this point."
+```json
+{
+  "type": "consensus_followup",
+  "codex_finding": "<summary_from_codex>",
+  "reviewer_finding": "<summary_from_reviewer>",
+  "reasoning": "<concise_reasoning>",
+  "requested_action": [
+    "explain_codex_reasoning",
+    "or_acknowledge_correction"
+  ]
+}
 ```
+
+Security note:
+- Never interpolate `{Codex's finding}`, `{Your finding}`, or other dynamic text directly into shell commands.
+- If CLI execution is unavoidable, pass data via safe argument lists or a prebuilt data file and sanitize inputs before use.
 
 ### 8.4 Document Consensus
 
