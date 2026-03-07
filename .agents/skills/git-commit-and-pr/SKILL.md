@@ -1,6 +1,6 @@
 ---
 name: git-commit-and-pr
-description: Execute commit/push and PR workflows, post-merge branch cleanup, and draft Conventional Commit + PR descriptions. Use when user says "プッシュして", "PRを作成して", "マージしました", "create pr", "pull request", or asks for PR description drafting.
+description: Execute commit/push and PR workflows, post-merge branch cleanup, and draft Conventional Commit + PR descriptions. Use when user invokes repo:push, repo:create-pr, repo:merge or says equivalent natural language ("プッシュして", "PRを作成して", "マージしました", "create pr", "pull request").
 ---
 
 ## Purpose
@@ -15,6 +15,9 @@ This skill helps the agent:
 ## Trigger and mode
 
 When user says phrases such as:
+- `repo:push`
+- `repo:create-pr`
+- `repo:merge`
 - 「プッシュして」
 - 「PRを作成して」
 - 「PR作って」
@@ -26,9 +29,9 @@ Default to **execution mode** (not draft-only mode), unless the user explicitly 
 
 Modes:
 - Draft mode: only propose commit/PR text.
-- Push mode: run add/commit/push flow without creating PR.
-- Execution mode: actually run git/gh commands and create the PR.
-- Post-merge cleanup mode: run safe branch cleanup after merge confirmation.
+- Push mode (`repo:push`): run add/commit/push flow without creating PR.
+- Execution mode (`repo:create-pr`): actually run git/gh commands and create the PR.
+- Post-merge cleanup mode (`repo:merge`): run safe branch cleanup after merge confirmation.
 
 ## Authentication and access checks (execution mode)
 
