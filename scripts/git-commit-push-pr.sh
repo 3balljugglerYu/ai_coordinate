@@ -27,6 +27,10 @@ Options:
   --no-add                Deprecated alias of --staged-only
   -h, --help              Show this help
 
+Default PR body behavior:
+  - If --body / --body-file is not provided, use existing PR template file when found.
+  - If template is not found, fallback to gh --fill.
+
 Required local auth file (project-only):
   .local/github-auth.env
 
@@ -212,6 +216,33 @@ load_auth_value() {
   fi
 
   printf '%s' "${raw}"
+}
+
+find_pr_template_file() {
+  local candidate
+  local direct_candidates=(
+    ".github/pull_request_template.md"
+    ".github/PULL_REQUEST_TEMPLATE.md"
+    ".github/pull_request_template.txt"
+    ".github/PULL_REQUEST_TEMPLATE.txt"
+  )
+
+  for candidate in "${direct_candidates[@]}"; do
+    if [[ -f "${REPO_ROOT}/${candidate}" ]]; then
+      printf '%s' "${REPO_ROOT}/${candidate}"
+      return 0
+    fi
+  done
+
+  if [[ -d "${REPO_ROOT}/.github/PULL_REQUEST_TEMPLATE" ]]; then
+    candidate="$(find "${REPO_ROOT}/.github/PULL_REQUEST_TEMPLATE" -type f \( -name '*.md' -o -name '*.txt' \) | sort | head -n1 || true)"
+    if [[ -n "${candidate}" ]]; then
+      printf '%s' "${candidate}"
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -408,6 +439,19 @@ PR_CREATE_ARGS=(pr create --base "${BASE_BRANCH}" --head "${CURRENT_BRANCH}")
 if [[ "${REPO_SLUG}" == */* ]]; then
   PR_CREATE_ARGS+=(--repo "${REPO_SLUG}")
 fi
+
+if [[ -z "${PR_BODY}" && -z "${PR_BODY_FILE}" ]]; then
+  TEMPLATE_FILE="$(find_pr_template_file || true)"
+  if [[ -n "${TEMPLATE_FILE}" ]]; then
+    PR_BODY_FILE="${TEMPLATE_FILE}"
+    if [[ -z "${PR_TITLE}" ]]; then
+      PR_TITLE="$(git log -1 --pretty=%s 2>/dev/null || true)"
+      PR_TITLE="${PR_TITLE:-${CURRENT_BRANCH}}"
+    fi
+    echo "Using PR template: ${PR_BODY_FILE}"
+  fi
+fi
+
 if [[ "${DO_DRAFT}" -eq 1 ]]; then
   PR_CREATE_ARGS+=(--draft)
 fi

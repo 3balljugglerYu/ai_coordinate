@@ -129,9 +129,16 @@ npx playwright install
 
 このリポジトリでは、Codex への明示コマンドとして以下を使用します。
 
+- `/git-create-branch`: `main` 上の変更内容から適切なブランチを作成して切替
 - `/git-push`: `add -> commit -> push` を実行
 - `/git-create-pr`: `commit -> push -> PR作成` を実行
 - `/git-sync-main`: マージ後の後処理を実行
+
+`/git-create-branch` の実行内容:
+
+1. 現在ブランチを確認
+2. `main` 以外なら終了（何もしない）
+3. `main` なら変更内容をもとにブランチ名を生成して作成・切替
 
 `/git-sync-main` の実行内容:
 
