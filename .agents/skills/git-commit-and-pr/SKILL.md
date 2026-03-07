@@ -1,6 +1,6 @@
 ---
 name: git-commit-and-pr
-description: Execute commit/push/PR workflows, post-merge branch cleanup, and draft Conventional Commit + PR descriptions. Use when user says "PRを作成して", "マージしました", "create pr", "pull request", or asks for PR description drafting.
+description: Execute commit/push and PR workflows, post-merge branch cleanup, and draft Conventional Commit + PR descriptions. Use when user says "プッシュして", "PRを作成して", "マージしました", "create pr", "pull request", or asks for PR description drafting.
 ---
 
 ## Purpose
@@ -8,12 +8,14 @@ description: Execute commit/push/PR workflows, post-merge branch cleanup, and dr
 This skill helps the agent:
 - Propose and refine Git commit messages that follow the Conventional Commits specification.
 - Draft pull request descriptions using the team’s PR template, including clear test plans.
+- Execute commit->push flow when requested.
 - Execute end-to-end flow when requested: auth check -> branch handling -> commit -> push -> PR creation.
 - Execute post-merge cleanup flow: switch to main -> pull -> verify remote branch deletion -> delete local branch.
 
 ## Trigger and mode
 
 When user says phrases such as:
+- 「プッシュして」
 - 「PRを作成して」
 - 「PR作って」
 - 「マージしました」
@@ -24,6 +26,7 @@ Default to **execution mode** (not draft-only mode), unless the user explicitly 
 
 Modes:
 - Draft mode: only propose commit/PR text.
+- Push mode: run add/commit/push flow without creating PR.
 - Execution mode: actually run git/gh commands and create the PR.
 - Post-merge cleanup mode: run safe branch cleanup after merge confirmation.
 
@@ -111,6 +114,18 @@ Required behavior:
 3. Create/switch to that branch.
 4. Continue commit/push/PR flow on the selected branch.
 
+## Push mode defaults (project decision)
+
+For 「プッシュして」 in this project, defaults are:
+
+1. Add behavior: `staged only` (recommended by user)
+   - Do not auto-run `git add -A` unless user explicitly asks.
+2. Protected branch behavior: stop on `main`/`master` and request branch selection
+   - Never commit directly on `main` or `master`.
+
+For this repository, prefer:
+- `scripts/git-commit-and-push.sh`
+
 ## Post-merge cleanup mode
 
 When user says 「マージしました」 (or equivalent), run this exact flow:
@@ -170,18 +185,26 @@ Apply this format for:
    - Include Jira ticket(s) if provided.
    - Include concrete test steps.
 
-6. Create PR:
+6. Push-only flow (when user says 「プッシュして」):
+   - Check branch safety (stop on main/master and ask branch choice).
+   - Summarize staged/uncommitted changes.
+   - Propose 2-3 Conventional Commit messages and let user choose.
+   - By default, commit staged files only.
+   - Commit and push current branch to `origin`.
+
+7. Create PR:
    - Prefer `gh pr create --base ... --head ... --title ... --body ...`.
    - If PR already exists for head branch, share URL instead of duplicating.
 
-7. Post-merge cleanup (when requested):
+8. Post-merge cleanup (when requested):
    - Run the post-merge cleanup mode steps.
    - Stop if remote branch is not deleted.
    - Delete local branch only when remote deletion is confirmed.
 
-8. Always:
+9. Always:
    - Keep commit message and PR description consistent.
    - Use exact API/resource names used in code.
    - Keep the text concise but reviewer-friendly.
+   - Use `scripts/git-commit-and-push.sh` for push-only mode in this repository.
    - Use `scripts/git-commit-push-pr.sh` when suitable for this repository.
    - Use `scripts/post-merge-cleanup.sh` for merge-complete cleanup in this repository.
