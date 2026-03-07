@@ -11,6 +11,10 @@ import {
 import type {
   GenerationType,
 } from "../../../shared/generation/prompt-core.ts";
+import {
+  MALFORMED_GEMINI_PARTS_ERROR,
+  isMalformedGeminiPartsErrorMessage,
+} from "../../../shared/generation/errors.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -261,10 +265,9 @@ function getPercoinCost(model: string | null): number {
  * 再試行不可のエラーか判定
  */
 function isNonRetriableGenerationError(errorMessage: string): boolean {
-  const normalizedError = errorMessage.toLowerCase();
   return (
     errorMessage === "No images generated" ||
-    normalizedError.includes("candidate.content.parts is not iterable")
+    isMalformedGeminiPartsErrorMessage(errorMessage)
   );
 }
 
@@ -388,7 +391,7 @@ function extractImagesFromGeminiResponse(response: GeminiResponse): Array<{ mime
         contentKeys: candidate?.content ? Object.keys(candidate.content) : [],
         partsType: parts === null ? "null" : typeof parts,
       });
-      throw new Error("candidate.content.parts is not iterable");
+      throw new Error(MALFORMED_GEMINI_PARTS_ERROR);
     }
 
     for (const part of parts) {

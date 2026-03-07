@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { isMalformedGeminiPartsErrorMessage } from "@/shared/generation/errors";
 
 function normalizeUserFacingGenerationError(
   status: string,
@@ -12,7 +13,7 @@ function normalizeUserFacingGenerationError(
     return "画像を生成できませんでした。";
   }
 
-  if (errorMessage.toLowerCase().includes("candidate.content.parts is not iterable")) {
+  if (isMalformedGeminiPartsErrorMessage(errorMessage)) {
     return "画像生成に失敗しました。しばらくしてから、もう一度お試しください。";
   }
 
