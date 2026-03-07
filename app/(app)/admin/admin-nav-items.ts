@@ -98,6 +98,13 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "flag",
     quickAction: true,
   },
+  {
+    path: "/admin/pr-review",
+    label: "PRレビュー",
+    description: "GitHub PR差分をレビュー",
+    iconKey: "file-text",
+    quickAction: true,
+  },
 ];
 
 export const adminQuickActionItems = adminNavItems.filter(
