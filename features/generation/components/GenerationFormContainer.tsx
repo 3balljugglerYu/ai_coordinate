@@ -317,7 +317,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       toast({
         variant: "destructive",
         title: "画像を生成できませんでした",
-        description: message,
+        description: <span className="whitespace-pre-line">{message}</span>,
       });
     };
 
@@ -563,7 +563,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       {/* エラー表示 */}
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-900">{error}</p>
+          <p className="whitespace-pre-line text-sm text-red-900">{error}</p>
           {isPercoinInsufficientError(error) ? (
             <div className="mt-3 flex justify-center lg:justify-start">
               <Link
