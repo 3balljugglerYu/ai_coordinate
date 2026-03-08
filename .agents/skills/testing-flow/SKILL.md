@@ -19,7 +19,7 @@ Usage patterns:
 /test-flow
 
 # Work on a specific target
-/test-flow GenerateRoute
+/test-flow GenerateAsyncRoute
 
 # Check overall progress
 /test-flow --status
@@ -104,7 +104,7 @@ Output format:
 ### Current State
 | Component | Status | Location |
 |---|---|---|
-| Source File | Found | app/api/generate/route.ts |
+| Source File | Found | app/api/generate-async/route.ts |
 | Dependencies | 1 boundary needed | NanobananaClient |
 | Baseline Test | Not created | - |
 | Spec File | Not created | - |
@@ -117,11 +117,11 @@ Output format:
 
 ### Next Action
 
-**Run `/char-test GenerateRoute`**
+**Run `/char-test GenerateAsyncRoute`**
 
 Reason: Before extracting SDK boundary, capture current behavior to prevent accidental behavior drift.
 
-After completing this step, run `/test-flow GenerateRoute` again.
+After completing this step, run `/test-flow GenerateAsyncRoute` again.
 ```
 
 ## Status Flag (--status)
@@ -140,11 +140,11 @@ Expected summary format:
 ### Summary
 | Tier | Total | Completed | In Progress | Pending | Progress |
 |---|---|---|---|---|---|
-| Tier 1 | 4 | 0 | 0 | 4 | 0% |
+| Tier 1 | 2 | 0 | 0 | 2 | 0% |
 | Tier 2 | 6 | 0 | 0 | 6 | 0% |
 | Tier 3 | 7 | 0 | 0 | 7 | 0% |
 | Widgets | 10 | 0 | 0 | 10 | 0% |
-| **Total** | **27** | **0** | **0** | **27** | **0%** |
+| **Total** | **25** | **0** | **0** | **25** | **0%** |
 ```
 
 ## Workflow Diagram (from TEST_PLAN.md Section 5.1)

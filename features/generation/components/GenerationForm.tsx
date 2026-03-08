@@ -13,7 +13,7 @@ import { StockImageListClient } from "./StockImageListClient";
 import { StockImageUploadCard } from "./StockImageUploadCard";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
-import { getCurrentUserId } from "../lib/generation-service";
+import { getCurrentUserId } from "../lib/current-user";
 import { getPercoinCost } from "../lib/model-config";
 import type {
   UploadedImage,

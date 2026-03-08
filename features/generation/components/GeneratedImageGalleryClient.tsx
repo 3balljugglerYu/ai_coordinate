@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useInView } from "react-intersection-observer";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import type { GeneratedImageData } from "../types";
-import { getCurrentUserId } from "../lib/generation-service";
+import { getCurrentUserId } from "../lib/current-user";
 import { getGeneratedImages } from "../lib/database";
 import { useGenerationState } from "../context/GenerationStateContext";
 
