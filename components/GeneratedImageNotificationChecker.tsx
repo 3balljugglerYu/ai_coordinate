@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { getCurrentUserId } from "@/features/generation/lib/generation-service";
+import { getCurrentUserId } from "@/features/generation/lib/current-user";
 import { getGeneratedImages } from "@/features/generation/lib/database";
 
 const GENERATED_IMAGE_TOAST_HISTORY_STORAGE_KEY =

@@ -18,6 +18,7 @@ import type { AsyncGenerationJobRepository } from "@/features/generation/lib/asy
 import { convertHeicBase64ToJpeg } from "@/features/generation/lib/heic-converter";
 
 type JsonRecord = Record<string, unknown>;
+const VALID_SOURCE_IMAGE_STOCK_ID = "11111111-1111-4111-8111-111111111111";
 
 function createRequest(body: unknown): NextRequest {
   return new Request("http://localhost/api/generate-async", {
@@ -60,7 +61,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
     invokeImageWorkerFn = jest.fn();
 
     jobRepository.findSourceImageStock.mockResolvedValue({
-      data: { id: "stock-001", image_url: "https://cdn.example.com/stock.png" },
+      data: {
+        id: VALID_SOURCE_IMAGE_STOCK_ID,
+        image_url: "https://cdn.example.com/stock.png",
+      },
       error: null,
     });
     jobRepository.uploadSourceImage.mockResolvedValue({
@@ -109,7 +113,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // ============================================================
       // Arrange
       // ============================================================
-      const request = createRequest({ prompt: "linen jacket" });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act
@@ -134,8 +141,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(jobRepository.createImageJob).toHaveBeenCalledWith({
         user_id: "user-123",
         prompt_text: "linen jacket",
-        input_image_url: null,
-        source_image_stock_id: null,
+        input_image_url: "https://cdn.example.com/stock.png",
+        source_image_stock_id: VALID_SOURCE_IMAGE_STOCK_ID,
         source_image_type: "illustration",
         generation_type: "coordinate",
         model: "gemini-2.5-flash-image",
@@ -202,6 +209,32 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body.error).toBe("着せ替え内容を入力してください");
       expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
     });
+
+    test("postGenerateAsyncRoute_元画像未指定の場合_400を返す", async () => {
+      // ============================================================
+      // Arrange
+      // ============================================================
+      const request = createRequest({ prompt: "linen jacket" });
+
+      // ============================================================
+      // Act
+      // ============================================================
+      const response = await postGenerateAsyncRoute(request, {
+        getUserFn,
+        jobRepository,
+      });
+      const body = await readJson(response);
+
+      // ============================================================
+      // Assert
+      // ============================================================
+      expect(response.status).toBe(400);
+      expect(body.error).toBe(
+        "人物画像をアップロードまたはストック画像を選択してください"
+      );
+      expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
   });
 
   describe("GASYNC-004 postGenerateAsyncRoute", () => {
@@ -209,7 +242,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // ============================================================
       // Arrange
       // ============================================================
-      const sourceImageStockId = "11111111-1111-4111-8111-111111111111";
+      const sourceImageStockId = VALID_SOURCE_IMAGE_STOCK_ID;
       jobRepository.findSourceImageStock.mockResolvedValueOnce({
         data: {
           id: sourceImageStockId,
@@ -455,7 +488,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         data: null,
         error: { message: "credit lookup failed" },
       });
-      const request = createRequest({ prompt: "linen jacket" });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act
@@ -484,7 +520,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         data: { balance: 5 },
         error: null,
       });
-      const request = createRequest({ prompt: "linen jacket" });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act
@@ -515,7 +554,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         data: null,
         error: { message: "insert failed" },
       });
-      const request = createRequest({ prompt: "linen jacket" });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act
@@ -547,7 +589,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       jobRepository.sendImageJobQueueMessage.mockResolvedValueOnce({
         error: { message: "queue down" },
       });
-      const request = createRequest({ prompt: "linen jacket" });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act
@@ -581,7 +626,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // ============================================================
       // Arrange
       // ============================================================
-      const request = createRequest({ prompt: "linen jacket" });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act
@@ -615,7 +663,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         throw new Error("worker unavailable");
       }) as unknown as typeof fetch;
       global.fetch = fetchMock;
-      const request = createRequest({ prompt: "linen jacket" });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act

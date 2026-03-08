@@ -348,7 +348,7 @@ build_browser_test_checklist() {
   local files
   files="$(collect_pr_changed_files)"
 
-  if printf '%s\n' "${files}" | grep -Eq '^(app/api/generate/route\.ts|app/api/generation-status/route\.ts|supabase/functions/image-gen-worker/index\.ts|features/generation/)'; then
+  if printf '%s\n' "${files}" | grep -Eq '^(app/api/generate-async/route\.ts|app/api/generation-status/route\.ts|supabase/functions/image-gen-worker/index\.ts|features/generation/)'; then
     cat <<'EOF'
 - [ ] ブラウザで生成フォームに有効なプロンプトを入力して送信し、`queued/processing` の後に生成画像が表示されること
 - [ ] ブラウザで空のプロンプトを送信し、入力必須のバリデーションエラーメッセージが表示されること

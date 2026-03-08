@@ -82,6 +82,25 @@ export const generationRequestSchema = z.object({
     .optional()
     .default('gemini-2.5-flash-image')
     .transform(normalizeModelName), // データベース保存用に正規化
+}).superRefine((data, ctx) => {
+  const hasSourceImageStockId =
+    typeof data.sourceImageStockId === "string" &&
+    data.sourceImageStockId.length > 0;
+  const hasSourceImageBase64 =
+    typeof data.sourceImageBase64 === "string" &&
+    data.sourceImageBase64.trim().length > 0;
+  const hasSourceImageMimeType =
+    typeof data.sourceImageMimeType === "string" &&
+    data.sourceImageMimeType.trim().length > 0;
+
+  // フロント仕様と合わせて、元画像（アップロード or ストック）を必須化
+  if (!hasSourceImageStockId && !(hasSourceImageBase64 && hasSourceImageMimeType)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["sourceImageBase64"],
+      message: "人物画像をアップロードまたはストック画像を選択してください",
+    });
+  }
 }).transform((data) => {
   const backgroundMode = resolveBackgroundMode(
     data.backgroundMode,

@@ -63,12 +63,12 @@ specifications:
       - description: When supabaseUrl is empty
         expected: Worker invocation is skipped and main success response remains HTTP 200
       - description: When no source image fields are provided
-        expected: Job is created with input_image_url set to null
+        expected: Validation fails with HTTP 400 and an image-required message
     edge_cases_ja:
       - description: supabaseUrlが空の場合
         expected: Worker呼び出しはスキップされ、メインの成功レスポンスはHTTP 200のまま
       - description: 元画像関連フィールドが未指定の場合
-        expected: input_image_urlがnullのままジョブが作成される
+        expected: 画像必須のバリデーションによりHTTP 400を返す
     test_cases:
       - postGenerateAsyncRoute_GivenValidRequestAndSufficientCredits_ShouldReturn200WithJobIdAndStatus
     test_cases_ja:

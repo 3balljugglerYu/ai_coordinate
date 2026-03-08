@@ -108,10 +108,8 @@ Next.js公式ガイドの前提に合わせ、以下を採用する。
 
 | # | 対象 | ファイル | スコア | 前提条件 |
 |---|---|---|---|---|
-| 1 | GenerateRoute | `app/api/generate/route.ts` | 100 | Nanobanana mock / 認証境界の固定 |
-| 2 | GenerateAsyncRoute | `app/api/generate-async/route.ts` | 98 | job status fixture整備 |
-| 3 | PercoinService | `features/credits/lib/percoin-service.ts` | 96 | Stripe/Supabaseの境界分離 |
-| 4 | GenerationService | `features/generation/lib/generation-service.ts` | 95 | storage/database mock |
+| 1 | GenerateAsyncRoute | `app/api/generate-async/route.ts` | 98 | job status fixture整備 |
+| 2 | PercoinService | `features/credits/lib/percoin-service.ts` | 96 | Stripe/Supabaseの境界分離 |
 
 ### 3.3 Tier 2: 高優先（スコア 75-89）
 
@@ -281,7 +279,7 @@ Step 9: 進捗更新（/test-checklist complete）
 ```yaml
 id: GEN-API-001
 feature: generate
-component: GenerateRoute
+component: GenerateAsyncRoute
 requirements:
   - when: "有効な認証済みユーザーが生成APIを呼び出したとき"
     shall: "APIは200を返し、job_idを含むJSONを返す"
@@ -317,7 +315,7 @@ requirements:
 /test-flow
 
 # 特定対象
-/test-flow GenerateRoute
+/test-flow GenerateAsyncRoute
 
 # 進捗サマリー
 /test-flow --status
@@ -326,7 +324,7 @@ requirements:
 ### 8.3 /char-test の使い方
 
 ```bash
-/char-test GenerateRoute
+/char-test GenerateAsyncRoute
 ```
 
 ### 8.4 /interface-create の使い方
@@ -338,19 +336,19 @@ requirements:
 ### 8.5 /spec-extract の使い方
 
 ```bash
-/spec-extract GenerateRoute
+/spec-extract GenerateAsyncRoute
 ```
 
 ### 8.6 /spec-verify の使い方
 
 ```bash
-/spec-verify GenerateRoute
+/spec-verify GenerateAsyncRoute
 ```
 
 ### 8.7 /test-reviewing の使い方
 
 ```bash
-/test-reviewing GenerateRoute
+/test-reviewing GenerateAsyncRoute
 ```
 
 ### 8.8 /test-fixing の使い方
@@ -402,4 +400,3 @@ requirements:
 ### 付録B: 進捗管理データ
 
 - `docs/test-progress.yaml`
-

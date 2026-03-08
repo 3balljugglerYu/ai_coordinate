@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 
 # Status values:
 # - pending
@@ -26,17 +26,6 @@ foundation:
 
 # Tier 1: Highest Priority (Score 90-100)
 tier1:
-  GenerateRoute:
-    status: completed
-    score: 100
-    file: app/api/generate/route.ts
-    prerequisites:
-      - nanobanana module mock
-      - authenticated request fixture
-    char_test: tests/characterization/api/generate-route.char.test.ts
-    spec_file: docs/specs/api/generate_route_spec.yaml
-    test_file: tests/integration/api/generate-route.test.ts
-
   GenerateAsyncRoute:
     status: test_generated
     score: 98
@@ -58,17 +47,6 @@ tier1:
     char_test: null
     spec_file: docs/specs/credits/percoin_service_spec.yaml
     test_file: tests/unit/lib/percoin-service.test.ts
-
-  GenerationService:
-    status: pending
-    score: 95
-    file: features/generation/lib/generation-service.ts
-    prerequisites:
-      - storage mock
-      - database mock
-    char_test: null
-    spec_file: docs/specs/generation/generation_service_spec.yaml
-    test_file: tests/unit/lib/generation-service.test.ts
 
 # Tier 2: High Priority (Score 75-89)
 tier2:

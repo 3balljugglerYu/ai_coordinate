@@ -20,6 +20,7 @@ import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type JsonRecord = Record<string, unknown>;
+const SAMPLE_SOURCE_IMAGE_BASE64 = Buffer.from("image-bytes").toString("base64");
 
 type QueryResult<T> = {
   data: T | null;
@@ -203,7 +204,13 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     });
     createAdminClientMock.mockReturnValue(supabase.client as any);
 
-    const response = await POST(createRequest({ prompt: "linen jacket" }));
+    const response = await POST(
+      createRequest({
+        prompt: "linen jacket",
+        sourceImageBase64: SAMPLE_SOURCE_IMAGE_BASE64,
+        sourceImageMimeType: "image/png",
+      })
+    );
     const body = await readJson(response);
 
     expect({
@@ -229,7 +236,13 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     });
     createAdminClientMock.mockReturnValue(supabase.client as any);
 
-    const response = await POST(createRequest({ prompt: "linen jacket" }));
+    const response = await POST(
+      createRequest({
+        prompt: "linen jacket",
+        sourceImageBase64: SAMPLE_SOURCE_IMAGE_BASE64,
+        sourceImageMimeType: "image/png",
+      })
+    );
     const body = await readJson(response);
 
     expect({
