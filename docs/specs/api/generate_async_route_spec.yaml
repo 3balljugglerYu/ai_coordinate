@@ -153,8 +153,10 @@ specifications:
         expected: prompt用の検証メッセージ付きでHTTP 400を返す
     test_cases:
       - postGenerateAsyncRoute_GivenInvalidSchema_ShouldReturn400WithFirstIssueMessage
+      - postGenerateAsyncRoute_GivenMissingSourceImage_ShouldReturn400
     test_cases_ja:
       - postGenerateAsyncRoute_不正スキーマの場合_400と先頭バリデーションメッセージを返す
+      - postGenerateAsyncRoute_元画像未指定の場合_400を返す
 
   - id: GASYNC-004
     method: postGenerateAsyncRoute
