@@ -166,7 +166,9 @@ export function AsyncGenerationStatus({
           </div>
         )}
         {status.status === "failed" && status.errorMessage && (
-          <div className="text-sm text-destructive">{status.errorMessage}</div>
+          <div className="whitespace-pre-line text-sm text-destructive">
+            {status.errorMessage}
+          </div>
         )}
         {status.status === "processing" && (
           <div className="flex items-center justify-center py-8">

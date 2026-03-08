@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { isMalformedGeminiPartsErrorMessage } from "@/shared/generation/errors";
+import {
+  isMalformedGeminiPartsErrorMessage,
+  isSafetyPolicyBlockedErrorMessage,
+} from "@/shared/generation/errors";
+
+const SAFETY_BLOCKED_USER_MESSAGE =
+  "安全性ポリシーにより生成できませんでした。\n内容を変更して再試行してください。";
 
 function normalizeUserFacingGenerationError(
   status: string,
@@ -11,6 +17,10 @@ function normalizeUserFacingGenerationError(
 
   if (errorMessage === "No images generated") {
     return "画像を生成できませんでした。";
+  }
+
+  if (isSafetyPolicyBlockedErrorMessage(errorMessage)) {
+    return SAFETY_BLOCKED_USER_MESSAGE;
   }
 
   if (isMalformedGeminiPartsErrorMessage(errorMessage)) {

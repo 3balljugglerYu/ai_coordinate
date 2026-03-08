@@ -5,9 +5,16 @@
 
 export const MALFORMED_GEMINI_PARTS_ERROR =
   "candidate.content.parts is not iterable";
+export const SAFETY_POLICY_BLOCKED_ERROR = "safety_policy_blocked";
 
 export function isMalformedGeminiPartsErrorMessage(
   errorMessage: string
 ): boolean {
   return errorMessage.toLowerCase().includes(MALFORMED_GEMINI_PARTS_ERROR);
+}
+
+export function isSafetyPolicyBlockedErrorMessage(
+  errorMessage: string
+): boolean {
+  return errorMessage.toLowerCase().includes(SAFETY_POLICY_BLOCKED_ERROR);
 }

@@ -14,6 +14,8 @@ import type {
 import {
   MALFORMED_GEMINI_PARTS_ERROR,
   isMalformedGeminiPartsErrorMessage,
+  SAFETY_POLICY_BLOCKED_ERROR,
+  isSafetyPolicyBlockedErrorMessage,
 } from "../../../shared/generation/errors.ts";
 
 /**
@@ -200,7 +202,18 @@ interface GeminiResponse {
       }>;
     };
     finishReason?: string;
+    safetyRatings?: Array<{
+      category?: string;
+      probability?: string;
+    }>;
   }>;
+  promptFeedback?: {
+    blockReason?: string;
+    safetyRatings?: Array<{
+      category?: string;
+      probability?: string;
+    }>;
+  };
   error?: {
     code: number;
     message: string;
@@ -267,7 +280,39 @@ function getPercoinCost(model: string | null): number {
 function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
     errorMessage === "No images generated" ||
-    isMalformedGeminiPartsErrorMessage(errorMessage)
+    isMalformedGeminiPartsErrorMessage(errorMessage) ||
+    isSafetyPolicyBlockedErrorMessage(errorMessage)
+  );
+}
+
+function isSafetyBlockReason(blockReason: string | undefined): boolean {
+  if (!blockReason) return false;
+  const normalized = blockReason.toUpperCase();
+  return (
+    normalized === "SAFETY" ||
+    normalized === "IMAGE_SAFETY" ||
+    normalized === "PROHIBITED_CONTENT" ||
+    normalized === "BLOCKLIST"
+  );
+}
+
+function isSafetyFinishReason(finishReason: string | undefined): boolean {
+  if (!finishReason) return false;
+  const normalized = finishReason.toUpperCase();
+  return normalized === "SAFETY" || normalized === "IMAGE_SAFETY";
+}
+
+function isGeminiSafetyBlocked(response: GeminiResponse): boolean {
+  if (isSafetyBlockReason(response.promptFeedback?.blockReason)) {
+    return true;
+  }
+
+  if (!response.candidates || response.candidates.length === 0) {
+    return false;
+  }
+
+  return response.candidates.some((candidate) =>
+    isSafetyFinishReason(candidate?.finishReason)
   );
 }
 
@@ -866,6 +911,14 @@ Deno.serve(async () => {
             contents: Array<{
               parts: typeof parts;
             }>;
+            safetySettings: Array<{
+              category:
+                | "HARM_CATEGORY_HARASSMENT"
+                | "HARM_CATEGORY_HATE_SPEECH"
+                | "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                | "HARM_CATEGORY_DANGEROUS_CONTENT";
+              threshold: "BLOCK_ONLY_HIGH";
+            }>;
             generationConfig?: {
               candidateCount?: number;
               imageConfig?: {
@@ -877,6 +930,12 @@ Deno.serve(async () => {
               {
                 parts,
               },
+            ],
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
             ],
           };
 
@@ -919,6 +978,10 @@ Deno.serve(async () => {
 
             if (geminiData.error) {
               throw new Error(geminiData.error.message || "Gemini API error");
+            }
+
+            if (isGeminiSafetyBlocked(geminiData)) {
+              throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
             }
 
             // 画像データを抽出
