@@ -38,13 +38,13 @@ tier1:
     test_file: tests/integration/api/generate-route.test.ts
 
   GenerateAsyncRoute:
-    status: pending
+    status: test_generated
     score: 98
     file: app/api/generate-async/route.ts
     prerequisites:
       - async job fixture
       - polling response fixture
-    char_test: null
+    char_test: tests/characterization/api/generate-async-route.char.test.ts
     spec_file: docs/specs/api/generate_async_route_spec.yaml
     test_file: tests/integration/api/generate-async-route.test.ts
 

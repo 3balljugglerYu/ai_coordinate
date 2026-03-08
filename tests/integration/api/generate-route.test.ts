@@ -1,11 +1,11 @@
 /** @jest-environment node */
 
 import type { NextRequest } from "next/server";
+import { POST } from "@/app/api/generate/route";
 import {
-  POST,
   generateRouteHandlers,
   postGenerateRoute,
-} from "@/app/api/generate/route";
+} from "@/app/api/generate/handler";
 import type { NanobananaClient } from "@/features/generation/lib/nanobanana-client";
 
 type JsonRecord = Record<string, unknown>;

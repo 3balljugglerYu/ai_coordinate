@@ -1,0 +1,653 @@
+metadata:
+  class: GenerateAsyncRoute
+  source: app/api/generate-async/route.ts
+  version: "1.1"
+  created_at: "2026-03-07"
+
+dependencies:
+  repositories:
+    - AsyncGenerationJobRepository (createAsyncGenerationJobRepository)
+  services:
+    - getUser (auth helper)
+    - generationRequestSchema / getSafeExtensionFromMimeType
+    - convertHeicBase64ToJpeg / isHeicImage
+    - getPercoinCost
+    - backgroundModeToBackgroundChange
+    - invokeImageWorkerFn (defaultInvokeImageWorker)
+  external:
+    - Supabase Storage/Database/Queue via AsyncGenerationJobRepository implementation
+    - Supabase Edge Function image-gen-worker endpoint via HTTP fetch
+    - NEXT_PUBLIC_SUPABASE_URL environment variable
+
+state_properties: []
+
+specifications:
+  - id: GASYNC-001
+    method: postGenerateAsyncRoute
+    type: event-driven
+    ears: |
+      When postGenerateAsyncRoute is invoked with an authenticated user,
+      a valid request body, sufficient credits, successful job creation,
+      and successful queue delivery,
+      the system shall return HTTP 200 with jobId and status.
+    ears_ja: |
+      認証済みユーザー・有効なリクエスト・十分な残高・
+      ジョブ作成成功・キュー送信成功の条件で
+      postGenerateAsyncRouteが呼び出された場合、
+      システムはjobIdとstatusを含むHTTP 200を返す。
+    preconditions:
+      - getUser returns an authenticated user
+      - Request body conforms to generationRequestSchema
+      - User credit balance is greater than or equal to model percoin cost
+      - Job repository createImageJob returns created job data
+      - Job repository sendImageJobQueueMessage returns no error
+    preconditions_ja:
+      - getUserが認証済みユーザーを返す
+      - リクエストボディがgenerationRequestSchemaに適合している
+      - ユーザー残高がモデルの必要ペルコイン以上である
+      - createImageJobが作成済みジョブデータを返す
+      - sendImageJobQueueMessageがエラーなしで完了する
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Response body includes jobId and status from created job
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - レスポンスに作成済みジョブ由来のjobIdとstatusが含まれる
+      error:
+        - なし
+    edge_cases:
+      - description: When supabaseUrl is empty
+        expected: Worker invocation is skipped and main success response remains HTTP 200
+      - description: When no source image fields are provided
+        expected: Job is created with input_image_url set to null
+    edge_cases_ja:
+      - description: supabaseUrlが空の場合
+        expected: Worker呼び出しはスキップされ、メインの成功レスポンスはHTTP 200のまま
+      - description: 元画像関連フィールドが未指定の場合
+        expected: input_image_urlがnullのままジョブが作成される
+    test_cases:
+      - postGenerateAsyncRoute_GivenValidRequestAndSufficientCredits_ShouldReturn200WithJobIdAndStatus
+    test_cases_ja:
+      - postGenerateAsyncRoute_有効リクエストかつ残高十分の場合_200でjobIdとstatusを返す
+
+  - id: GASYNC-002
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If no authenticated user is available,
+      then the system shall return HTTP 401
+      with an authentication-required error message.
+    ears_ja: |
+      認証済みユーザーが取得できない場合、
+      システムは認証必須エラーメッセージを含むHTTP 401を返す。
+    preconditions:
+      - getUser returns null
+    preconditions_ja:
+      - getUserがnullを返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 401
+        - Error message indicates authentication is required
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが401になる
+        - 認証が必要である旨のエラーメッセージを返す
+    edge_cases:
+      - description: When request body is otherwise valid
+        expected: Route exits with 401 before parsing request.json
+      - description: When a jobRepository dependency is injected
+        expected: Repository methods are not called for unauthenticated access
+    edge_cases_ja:
+      - description: リクエストボディ自体は有効な場合
+        expected: request.jsonの解析前に401で終了する
+      - description: jobRepository依存が注入されている場合
+        expected: 未認証アクセスではrepositoryメソッドは呼ばれない
+    test_cases:
+      - postGenerateAsyncRoute_GivenUnauthenticatedUser_ShouldReturn401
+    test_cases_ja:
+      - postGenerateAsyncRoute_未認証ユーザーの場合_401を返す
+
+  - id: GASYNC-003
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If request validation fails,
+      then the system shall return HTTP 400
+      with the first validation issue message.
+    ears_ja: |
+      リクエストバリデーションに失敗した場合、
+      システムは最初のバリデーションissueメッセージを含むHTTP 400を返す。
+    preconditions:
+      - Request body does not conform to generationRequestSchema
+    preconditions_ja:
+      - リクエストボディがgenerationRequestSchemaに適合しない
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Error message equals first validation issue message or fallback text
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - errorは先頭のバリデーションissueまたはフォールバック文言になる
+    edge_cases:
+      - description: When multiple validation issues are present
+        expected: Only the first issue message is returned
+      - description: When prompt is empty string
+        expected: Validation path returns HTTP 400 with prompt-specific message
+    edge_cases_ja:
+      - description: 複数のバリデーション違反が同時に存在する場合
+        expected: 先頭のissueメッセージのみ返される
+      - description: promptが空文字の場合
+        expected: prompt用の検証メッセージ付きでHTTP 400を返す
+    test_cases:
+      - postGenerateAsyncRoute_GivenInvalidSchema_ShouldReturn400WithFirstIssueMessage
+    test_cases_ja:
+      - postGenerateAsyncRoute_不正スキーマの場合_400と先頭バリデーションメッセージを返す
+
+  - id: GASYNC-004
+    method: postGenerateAsyncRoute
+    type: state-driven
+    ears: |
+      While sourceImageStockId is provided,
+      the system shall resolve source image stock for the same user
+      and use its image_url and id as job input source values.
+    ears_ja: |
+      sourceImageStockIdが指定されている間、
+      システムは同一ユーザーのストック画像を解決し、
+      image_urlとidをジョブ入力値として使用する。
+    preconditions:
+      - sourceImageStockId is provided in a valid request
+      - User is authenticated
+    preconditions_ja:
+      - 有効なリクエストにsourceImageStockIdが含まれる
+      - ユーザーが認証済みである
+    postconditions:
+      success:
+        - input_image_url is set from stock.image_url
+        - source_image_stock_id is set from stock.id
+      error:
+        - Returns HTTP 404 when stock is not found
+        - Returns HTTP 500 when stock lookup throws unexpected error
+    postconditions_ja:
+      success:
+        - input_image_urlにstock.image_urlが設定される
+        - source_image_stock_idにstock.idが設定される
+      error:
+        - ストック画像が見つからない場合はHTTP 404を返す
+        - ストック画像取得で想定外例外が発生した場合はHTTP 500を返す
+    edge_cases:
+      - description: When stock id belongs to a different user
+        expected: Route returns HTTP 404 due to user-scoped lookup
+      - description: When both sourceImageStockId and sourceImageBase64 are provided
+        expected: sourceImageStockId branch is prioritized over base64 upload branch
+    edge_cases_ja:
+      - description: ストックIDが別ユーザーに紐づく場合
+        expected: ユーザー単位検索によりHTTP 404を返す
+      - description: sourceImageStockIdとsourceImageBase64が同時指定された場合
+        expected: sourceImageStockId分岐が優先され、base64アップロード分岐には入らない
+    test_cases:
+      - postGenerateAsyncRoute_GivenSourceImageStockId_ShouldUseStockImageUrlAndId
+      - postGenerateAsyncRoute_GivenMissingSourceImageStock_ShouldReturn404
+      - postGenerateAsyncRoute_GivenStockLookupException_ShouldReturn500
+    test_cases_ja:
+      - postGenerateAsyncRoute_sourceImageStockId指定の場合_ストック画像URLとIDを使用する
+      - postGenerateAsyncRoute_ストック画像未検出の場合_404を返す
+      - postGenerateAsyncRoute_ストック画像取得例外の場合_500を返す
+
+  - id: GASYNC-005
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If source image payload size exceeds the configured maximum,
+      then the system shall return HTTP 400
+      and shall not proceed to storage upload.
+    ears_ja: |
+      元画像ペイロードサイズが設定上限を超える場合、
+      システムはHTTP 400を返し、
+      Storageアップロード処理へ進まない。
+    preconditions:
+      - sourceImageBase64 and sourceImageMimeType are provided
+      - Estimated decoded bytes is greater than MAX_SOURCE_IMAGE_BYTES
+    preconditions_ja:
+      - sourceImageBase64とsourceImageMimeTypeが指定されている
+      - 推定デコードサイズがMAX_SOURCE_IMAGE_BYTESを超える
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Error message requests user to retry with <=10MB image
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - 10MB以下で再試行を促すエラーメッセージを返す
+    edge_cases:
+      - description: When estimated bytes equals MAX_SOURCE_IMAGE_BYTES exactly
+        expected: Request is not rejected by size guard and processing continues
+      - description: When sourceImageBase64 includes data URL prefix
+        expected: Prefix is removed before size estimation
+    edge_cases_ja:
+      - description: 推定サイズがMAX_SOURCE_IMAGE_BYTESとちょうど同値の場合
+        expected: サイズガードでは拒否されず処理を継続する
+      - description: sourceImageBase64にdata URLプレフィックスがある場合
+        expected: サイズ推定前にプレフィックスが除去される
+    test_cases:
+      - postGenerateAsyncRoute_GivenOversizedSourceImage_ShouldReturn400AndSkipUpload
+    test_cases_ja:
+      - postGenerateAsyncRoute_元画像サイズ超過の場合_400を返してアップロードしない
+
+  - id: GASYNC-006
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If HEIC/HEIF conversion fails for source image input,
+      then the system shall return HTTP 400
+      with HEIC conversion failure message.
+    ears_ja: |
+      元画像入力でHEIC/HEIF変換に失敗した場合、
+      システムはHEIC変換失敗メッセージを含むHTTP 400を返す。
+    preconditions:
+      - sourceImageMimeType is HEIC or HEIF
+      - convertHeicBase64ToJpeg throws an error
+    preconditions_ja:
+      - sourceImageMimeTypeがHEICまたはHEIFである
+      - convertHeicBase64ToJpegが例外を投げる
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Error message indicates HEIC conversion failed
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - HEIC変換失敗を示すエラーメッセージを返す
+    edge_cases:
+      - description: When HEIC conversion succeeds
+        expected: Converted mimeType and jpg extension are used for upload
+      - description: When mime type is not HEIC/HEIF
+        expected: Conversion branch is skipped and safe extension path is used
+    edge_cases_ja:
+      - description: HEIC変換が成功する場合
+        expected: 変換後のmimeTypeとjpg拡張子でアップロード処理へ進む
+      - description: MIMEタイプがHEIC/HEIF以外の場合
+        expected: 変換分岐はスキップされ、安全拡張子分岐が使われる
+    test_cases:
+      - postGenerateAsyncRoute_GivenHeicConversionFailure_ShouldReturn400
+    test_cases_ja:
+      - postGenerateAsyncRoute_HEIC変換失敗の場合_400を返す
+
+  - id: GASYNC-007
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If source image upload or image processing fails,
+      then the system shall return HTTP 500
+      and shall stop job creation processing.
+    ears_ja: |
+      元画像アップロードまたは画像処理に失敗した場合、
+      システムはHTTP 500を返し、
+      ジョブ作成処理を中断する。
+    preconditions:
+      - sourceImageBase64 and sourceImageMimeType are provided
+      - Upload operation returns an error or processing throws
+    preconditions_ja:
+      - sourceImageBase64とsourceImageMimeTypeが指定されている
+      - アップロードがエラーを返す、または処理中に例外が発生する
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message indicates source image upload/processing failure
+        - createImageJob is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - 元画像アップロードまたは処理失敗のエラーメッセージを返す
+        - createImageJobは呼び出されない
+    edge_cases:
+      - description: When uploadSourceImage returns explicit error
+        expected: Route returns upload-failure HTTP 500 message
+      - description: When getSourceImagePublicUrl throws
+        expected: Catch block returns processing-error HTTP 500 message
+    edge_cases_ja:
+      - description: uploadSourceImageが明示的エラーを返す場合
+        expected: アップロード失敗文言のHTTP 500を返す
+      - description: getSourceImagePublicUrlが例外を投げる場合
+        expected: 処理中エラー文言のHTTP 500をcatch経路で返す
+    test_cases:
+      - postGenerateAsyncRoute_GivenSourceImageUploadError_ShouldReturn500WithoutCreatingJob
+      - postGenerateAsyncRoute_GivenSourceImageProcessingException_ShouldReturn500WithoutCreatingJob
+    test_cases_ja:
+      - postGenerateAsyncRoute_元画像アップロード失敗の場合_500でジョブ作成しない
+      - postGenerateAsyncRoute_元画像処理例外の場合_500でジョブ作成しない
+
+  - id: GASYNC-008
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If credit lookup fails,
+      then the system shall return HTTP 500
+      with credit retrieval failure message.
+    ears_ja: |
+      残高取得に失敗した場合、
+      システムは残高取得失敗メッセージを含むHTTP 500を返す。
+    preconditions:
+      - Request body is valid
+      - getUserCreditBalance returns an error
+    preconditions_ja:
+      - リクエストボディが有効である
+      - getUserCreditBalanceがエラーを返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message indicates credit retrieval failed
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - ペルコイン残高取得失敗メッセージを返す
+    edge_cases:
+      - description: When user_credits record is missing
+        expected: Repository reports error and route returns HTTP 500
+      - description: When credit lookup throws unexpected exception
+        expected: Global catch path returns HTTP 500 based on thrown message
+    edge_cases_ja:
+      - description: user_creditsレコードが存在しない場合
+        expected: repositoryエラーとして扱われ、HTTP 500を返す
+      - description: 残高取得処理が想定外例外を投げる場合
+        expected: グローバルcatchで例外メッセージベースのHTTP 500を返す
+    test_cases:
+      - postGenerateAsyncRoute_GivenCreditLookupError_ShouldReturn500
+    test_cases_ja:
+      - postGenerateAsyncRoute_残高取得失敗の場合_500を返す
+
+  - id: GASYNC-009
+    method: postGenerateAsyncRoute
+    type: state-driven
+    ears: |
+      While current credit balance is below required percoin cost,
+      the system shall return HTTP 400
+      with required and current balance details.
+    ears_ja: |
+      現在残高が必要ペルコインを下回っている間、
+      システムは必要量と現在残高を含むHTTP 400を返す。
+    preconditions:
+      - Request body is valid
+      - getUserCreditBalance returns current balance below getPercoinCost(model)
+    preconditions_ja:
+      - リクエストボディが有効である
+      - getUserCreditBalanceの残高がgetPercoinCost(model)より小さい
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Error message includes required percoin and current balance values
+        - createImageJob is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - 必要ペルコイン数と現在残高を含むエラーメッセージを返す
+        - createImageJobは呼び出されない
+    edge_cases:
+      - description: When current balance equals required cost
+        expected: Insufficient-credit branch is not taken
+      - description: When model is omitted in request
+        expected: Default model cost is used for balance comparison
+    edge_cases_ja:
+      - description: 現在残高が必要コストと等しい場合
+        expected: 残高不足分岐には入らない
+      - description: リクエストでmodelが省略された場合
+        expected: デフォルトモデルのコストで残高比較される
+    test_cases:
+      - postGenerateAsyncRoute_GivenInsufficientCredits_ShouldReturn400WithBalanceMessage
+    test_cases_ja:
+      - postGenerateAsyncRoute_残高不足の場合_必要量付きメッセージで400を返す
+
+  - id: GASYNC-010
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If image job creation fails after validation and credit checks,
+      then the system shall return HTTP 500
+      with job creation failure message.
+    ears_ja: |
+      バリデーションと残高チェック後にジョブ作成が失敗した場合、
+      システムはジョブ作成失敗メッセージを含むHTTP 500を返す。
+    preconditions:
+      - Request body is valid
+      - Credit check passes
+      - createImageJob returns an error
+    preconditions_ja:
+      - リクエストボディが有効である
+      - 残高チェックを通過している
+      - createImageJobがエラーを返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message indicates job creation failed
+        - Queue send is not attempted
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - ジョブ作成失敗メッセージを返す
+        - キュー送信処理は実行されない
+    edge_cases:
+      - description: When source image setup succeeded before insert failure
+        expected: Route still returns job-creation HTTP 500 error
+      - description: When createImageJob throws instead of returning error
+        expected: Global catch path returns HTTP 500 from thrown message
+    edge_cases_ja:
+      - description: 挿入失敗前に元画像準備が成功している場合
+        expected: 最終的にジョブ作成失敗としてHTTP 500を返す
+      - description: createImageJobがエラー返却ではなく例外を投げる場合
+        expected: グローバルcatch経路で例外メッセージ付きHTTP 500を返す
+    test_cases:
+      - postGenerateAsyncRoute_GivenJobCreationError_ShouldReturn500WithoutQueueSend
+    test_cases_ja:
+      - postGenerateAsyncRoute_ジョブ作成失敗の場合_500でキュー送信しない
+
+  - id: GASYNC-011
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If queue message delivery fails after job creation,
+      then the system shall return HTTP 202
+      with jobId, status, and delay warning.
+    ears_ja: |
+      ジョブ作成後にキューメッセージ送信が失敗した場合、
+      システムはjobId・status・遅延警告を含むHTTP 202を返す。
+    preconditions:
+      - createImageJob succeeds
+      - sendImageJobQueueMessage returns an error
+    preconditions_ja:
+      - createImageJobが成功する
+      - sendImageJobQueueMessageがエラーを返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 202
+        - Response includes jobId and status from created job
+        - Response includes warning that processing may be delayed
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが202になる
+        - レスポンスに作成済みjob由来のjobIdとstatusが含まれる
+        - 処理開始遅延のwarning文言が含まれる
+    edge_cases:
+      - description: When queue send fails after worker invocation
+        expected: Response remains HTTP 202 with warning and existing job identifiers
+      - description: When queueError object contains different details
+        expected: Warning message remains fixed user-facing text
+    edge_cases_ja:
+      - description: Worker呼び出し後にキュー送信が失敗する場合
+        expected: 既存job識別子とwarningを含むHTTP 202を返し続ける
+      - description: queueErrorオブジェクト詳細が異なる場合
+        expected: ユーザー向けwarning文言は固定で維持される
+    test_cases:
+      - postGenerateAsyncRoute_GivenQueueSendError_ShouldReturn202WithWarning
+    test_cases_ja:
+      - postGenerateAsyncRoute_キュー送信失敗の場合_warning付き202を返す
+
+  - id: GASYNC-012
+    method: postGenerateAsyncRoute
+    type: optional
+    ears: |
+      Where a Supabase URL is configured,
+      the system shall invoke the image worker endpoint asynchronously
+      without blocking or mutating the main route response.
+    ears_ja: |
+      Supabase URLが設定されている場合、
+      システムは画像ワーカーエンドポイントを非同期に呼び出し、
+      メインのルートレスポンスをブロックまたは変更しない。
+    preconditions:
+      - supabaseUrl dependency or NEXT_PUBLIC_SUPABASE_URL is non-empty
+      - invokeImageWorkerFn is available
+    preconditions_ja:
+      - supabaseUrl依存またはNEXT_PUBLIC_SUPABASE_URLが空でない
+      - invokeImageWorkerFnが利用可能である
+    postconditions:
+      success:
+        - invokeImageWorkerFn is called with /functions/v1/image-gen-worker URL
+        - Route response status/body remains determined by main job processing path
+      error:
+        - Worker invocation errors are logged and do not change route response
+    postconditions_ja:
+      success:
+        - /functions/v1/image-gen-worker URLでinvokeImageWorkerFnが呼ばれる
+        - ルートの最終レスポンスはメインのジョブ処理結果で決定される
+      error:
+        - ワーカー呼び出しエラーはログ化され、ルートレスポンスには影響しない
+    edge_cases:
+      - description: When supabaseUrl is not configured
+        expected: invokeImageWorkerFn is not called
+      - description: When invokeImageWorkerFn throws
+        expected: Error is isolated and main route response logic is preserved
+    edge_cases_ja:
+      - description: supabaseUrlが未設定の場合
+        expected: invokeImageWorkerFnは呼び出されない
+      - description: invokeImageWorkerFnが例外を投げる場合
+        expected: エラーは分離され、メインレスポンス判定ロジックは維持される
+    test_cases:
+      - postGenerateAsyncRoute_GivenSupabaseUrl_ShouldInvokeWorkerWithoutBlockingResponse
+      - postGenerateAsyncRoute_GivenWorkerInvocationFailure_ShouldKeepMainResponseUnchanged
+    test_cases_ja:
+      - postGenerateAsyncRoute_SupabaseUrlありの場合_レスポンスをブロックせずWorkerを呼び出す
+      - postGenerateAsyncRoute_Worker呼び出し失敗の場合_メインレスポンスを維持する
+
+  - id: GASYNC-013
+    method: postGenerateAsyncRoute
+    type: unwanted
+    ears: |
+      If an unexpected exception is thrown in the request pipeline,
+      then the system shall return HTTP 500
+      with exception.message when available.
+    ears_ja: |
+      リクエスト処理パイプラインで予期しない例外が発生した場合、
+      システムは可能な限り例外メッセージを含むHTTP 500を返す。
+    preconditions:
+      - Any unexpected exception occurs during request parsing, validation, repository calls, or response composition
+    preconditions_ja:
+      - リクエスト解析、バリデーション、repository呼び出し、レスポンス組み立てのいずれかで予期しない例外が発生する
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message is exception.message when thrown value is Error
+        - Error message is Internal server error for non-Error throws
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - Error型例外ではexception.messageを返す
+        - Error型以外のthrowではInternal server errorを返す
+    edge_cases:
+      - description: When request.json throws parsing error
+        expected: Catch path returns HTTP 500 with parsing error message
+      - description: When non-Error value is thrown
+        expected: Catch path returns HTTP 500 with Internal server error
+    edge_cases_ja:
+      - description: request.jsonがパース例外を投げる場合
+        expected: catch経路でパース例外メッセージ付きHTTP 500を返す
+      - description: Error型以外の値がthrowされる場合
+        expected: catch経路でInternal server error付きHTTP 500を返す
+    test_cases:
+      - postGenerateAsyncRoute_GivenRuntimeException_ShouldReturn500WithErrorMessage
+      - postGenerateAsyncRoute_GivenNonErrorThrow_ShouldReturn500WithInternalServerError
+    test_cases_ja:
+      - postGenerateAsyncRoute_実行時例外の場合_500と例外メッセージを返す
+      - postGenerateAsyncRoute_Error以外がthrowされた場合_500とInternalServerErrorを返す
+
+  - id: GASYNC-014
+    method: POST
+    type: event-driven
+    ears: |
+      When POST is invoked for the route handler,
+      the system shall delegate the same request object
+      to generateAsyncRouteHandlers.postGenerateAsyncRoute.
+    ears_ja: |
+      ルートハンドラのPOSTが呼び出された場合、
+      システムは同一requestオブジェクトを
+      generateAsyncRouteHandlers.postGenerateAsyncRouteへ委譲する。
+    preconditions:
+      - A NextRequest is provided to POST
+    preconditions_ja:
+      - POSTにNextRequestが渡される
+    postconditions:
+      success:
+        - Response equals generateAsyncRouteHandlers.postGenerateAsyncRoute(request)
+      error:
+        - Error behavior follows postGenerateAsyncRoute
+    postconditions_ja:
+      success:
+        - レスポンスはgenerateAsyncRouteHandlers.postGenerateAsyncRoute(request)と等価になる
+      error:
+        - エラー時の挙動はpostGenerateAsyncRouteに従う
+    edge_cases:
+      - description: When postGenerateAsyncRoute returns an error response
+        expected: POST returns the same error response without transformation
+      - description: When request object includes body stream
+        expected: The same request instance is delegated once to handler
+    edge_cases_ja:
+      - description: postGenerateAsyncRouteがエラーレスポンスを返す場合
+        expected: POSTは変換せず同一エラーレスポンスを返す
+      - description: requestがbodyストリームを含む場合
+        expected: 同一requestインスタンスが1回だけハンドラへ委譲される
+    test_cases:
+      - POST_GivenRequest_ShouldDelegateToPostGenerateAsyncRoute
+    test_cases_ja:
+      - POST_リクエスト受領時_postGenerateAsyncRouteへ委譲する
