@@ -17,11 +17,6 @@ export const ROUTES = {
   COORDINATE: "/coordinate",
 } as const;
 
-export const API_ENDPOINTS = {
-  GENERATE: "/api/generate",
-  GENERATION_STATUS: "/api/generation-status",
-} as const;
-
 // コメントの最大文字数
 export const COMMENT_MAX_LENGTH = 200;
 
@@ -33,4 +28,3 @@ export const DEFAULT_TITLE_TAGLINE = "着てみたいも、なりたいも。";
 
 // OGP用のシェア説明文
 export const DEFAULT_SHARE_DESCRIPTION = "#PerstaAI で、イメージ通りに作れました！";
-
