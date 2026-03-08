@@ -47,8 +47,8 @@ Read individual rule files for detailed explanations and SQL examples:
 
 ```
 references/query-missing-indexes.md
-references/schema-partial-indexes.md
-references/_sections.md
+references/query-partial-indexes.md
+references/security-rls-performance.md
 ```
 
 Each rule file contains:

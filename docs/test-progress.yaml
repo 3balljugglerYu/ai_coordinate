@@ -27,7 +27,7 @@ foundation:
 # Tier 1: Highest Priority (Score 90-100)
 tier1:
   GenerateAsyncRoute:
-    status: test_generated
+    status: completed
     score: 98
     file: app/api/generate-async/route.ts
     prerequisites:
@@ -234,9 +234,9 @@ widgets:
 # Summary Statistics
 summary:
   tier1:
-    total: 4
+    total: 2
     completed: 1
-    percentage: 25
+    percentage: 50
   tier2:
     total: 6
     completed: 0
@@ -250,6 +250,6 @@ summary:
     completed: 0
     percentage: 0
   overall:
-    total: 27
+    total: 25
     completed: 1
-    percentage: 3.7
+    percentage: 4
