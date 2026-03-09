@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         destination: "/free-materials",
         permanent: true,
       },
+      {
+        source: "/thanks",
+        destination: "/thanks-sample",
+        permanent: true,
+      },
     ];
   },
   experimental: {
