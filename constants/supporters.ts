@@ -1,4 +1,4 @@
-export type SupporterTier = 'platinum' | 'gold' | 'silver' | 'core-supporter' | 'supporter' | 'friend-supporter';
+export type SupporterTier = 'platinum' | 'gold' | 'silver' | 'bronze' | 'core-supporter' | 'supporter' | 'friend-supporter';
 
 export interface Supporter {
   id: string;
@@ -115,6 +115,18 @@ export const SUPPORTERS: Supporter[] = [
   { id: 's-8', name: 'Silver User 8', tier: 'silver', amount: 50000, date: '2025-01-09' },
   { id: 's-9', name: 'Silver User 9', tier: 'silver', amount: 50000, date: '2025-01-09' },
   { id: 's-10', name: 'Silver User 10', tier: 'silver', amount: 50000, date: '2025-01-09' },
+
+  // Bronze (20,000円)
+  { id: 'b-1', name: 'Bronze Supporter 1', tier: 'bronze', amount: 20000, date: '2025-01-09' },
+  { id: 'b-2', name: 'Bronze Supporter 2', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-3', name: 'Bronze Supporter 3', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-4', name: 'Bronze Supporter 4', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-5', name: 'Bronze Supporter 5', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-6', name: 'Bronze Supporter 6', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-7', name: 'Bronze Supporter 7', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-8', name: 'Bronze Supporter 8', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-9', name: 'Bronze Supporter 9', tier: 'bronze', amount: 20000, date: '2025-01-10' },
+  { id: 'b-10', name: 'Bronze Supporter 10', tier: 'bronze', amount: 20000, date: '2025-01-10' },
 
   // Core Supporter (10,000円)
   { id: 'cs-1', name: 'Core Supporter 1', tier: 'core-supporter', amount: 10000, date: '2025-01-10' },

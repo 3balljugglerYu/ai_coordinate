@@ -8,14 +8,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Crown, Star, Medal, Heart, Shield, Users } from "lucide-react";
+import { ChevronDown, Crown, Star, Medal, Award, Shield, Users } from "lucide-react";
 import { SUPPORTERS, type Supporter } from "@/constants/supporters";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = createMarketingPageMetadata({
   title: "Special Thanks",
   description: "Persta.AIを支えてくださった皆様への感謝を込めて",
-  path: "/thanks",
+  path: "/thanks-sample",
 });
 
 export default function ThanksPage() {
@@ -23,16 +23,15 @@ export default function ThanksPage() {
   const platinumSupporters = SUPPORTERS.filter((s) => s.tier === "platinum");
   const goldSupporters = SUPPORTERS.filter((s) => s.tier === "gold");
   const silverSupporters = SUPPORTERS.filter((s) => s.tier === "silver");
+  const bronzeSupporters = SUPPORTERS.filter((s) => s.tier === "bronze");
   
   // Supporter Sub-tiers
   const coreSupporters = SUPPORTERS.filter((s) => s.tier === "core-supporter");
   const standardSupporters = SUPPORTERS.filter((s) => s.tier === "supporter");
-  const friendSupporters = SUPPORTERS.filter((s) => s.tier === "friend-supporter");
 
   const hasAnySupporters = 
     coreSupporters.length > 0 || 
-    standardSupporters.length > 0 || 
-    friendSupporters.length > 0;
+    standardSupporters.length > 0;
 
   return (
     <main className="mx-auto w-full max-w-screen-md px-4 py-8 md:py-12">
@@ -148,6 +147,29 @@ export default function ThanksPage() {
           </section>
         )}
 
+        {/* Bronze Supporters */}
+        {bronzeSupporters.length > 0 && (
+          <section className="space-y-6">
+            <div className="flex items-center justify-center gap-2 text-xl font-bold text-slate-800 md:text-2xl">
+              <Award className="h-6 w-6 fill-[#CD7F32]/40 text-[#A1622B]" />
+              <h2>Bronze Supporters</h2>
+            </div>
+
+            <Card className="relative overflow-hidden border border-[#8C6239] bg-[linear-gradient(135deg,#F8E5D2_0%,#D7A979_35%,#B87333_65%,#8C6239_100%)] shadow-sm">
+              <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,45%,#FFE9D2,55%,transparent)] bg-[length:220%_100%] animate-shine opacity-45 mix-blend-overlay pointer-events-none" />
+              <CardContent className="relative z-10 p-6">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  {bronzeSupporters.map((supporter) => (
+                    <div key={supporter.id} className="flex items-baseline gap-2">
+                      <span className="text-base font-medium text-amber-950/90">{supporter.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {/* Supporters Section */}
         {hasAnySupporters && (
           <section className="space-y-8">
@@ -177,7 +199,7 @@ export default function ThanksPage() {
             {/* Standard Supporters (5,000円) - Visible & Normal */}
             {standardSupporters.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-500">
+                <div className="flex items-center justify-center gap-2 text-base font-semibold text-black">
                   <Users className="h-4 w-4 text-emerald-400" />
                   <span>Supporters</span>
                 </div>
@@ -185,7 +207,7 @@ export default function ThanksPage() {
                   <CardContent className="p-6">
                     <div className="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-4">
                       {standardSupporters.map((supporter) => (
-                        <div key={supporter.id} className="text-sm text-slate-600">
+                        <div key={supporter.id} className="text-sm font-medium text-black">
                           {supporter.name}
                         </div>
                       ))}
@@ -195,26 +217,6 @@ export default function ThanksPage() {
               </div>
             )}
 
-            {/* Friend Supporters (1,000円) - Visible & Small */}
-            {friendSupporters.length > 0 && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
-                  <Heart className="h-3 w-3 text-pink-300" />
-                  <span>Friend Supporters</span>
-                </div>
-                <Card>
-                  <CardContent className="p-2">
-                    <div className="grid grid-cols-4 gap-2 text-center md:grid-cols-5 lg:grid-cols-5 text-xs text-slate-600">
-                      {friendSupporters.map((supporter) => (
-                        <div key={supporter.id} className="truncate px-1">
-                          {supporter.name}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
           </section>
         )}
       </div>
