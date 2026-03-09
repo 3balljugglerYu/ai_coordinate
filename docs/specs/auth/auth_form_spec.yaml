@@ -1,0 +1,563 @@
+metadata:
+  class: AuthForm
+  source: features/auth/components/AuthForm.tsx
+  version: "1.1"
+  created_at: "2026-03-09"
+
+dependencies:
+  repositories: []
+  services:
+    - signUp / signIn / signInWithOAuth (features/auth/lib/auth-client.ts)
+    - useRouter (next/navigation)
+    - useSearchParams (next/navigation)
+    - useToast (components/ui/use-toast)
+    - isPasswordValid / PasswordRequirements (features/auth/components/PasswordRequirements.tsx)
+  external:
+    - None (external Auth/OAuth providers are accessed through auth-client boundary)
+
+state_properties:
+  - name: email
+    type: string
+    default: ""
+  - name: password
+    type: string
+    default: ""
+  - name: confirmPassword
+    type: string
+    default: ""
+  - name: isLoading
+    type: boolean
+    default: false
+  - name: error
+    type: string | null
+    default: null
+  - name: showPassword
+    type: boolean
+    default: false
+  - name: showConfirmPassword
+    type: boolean
+    default: false
+
+specifications:
+  - id: AUTH-001
+    method: handleSubmit
+    type: event-driven
+    ears: |
+      When handleSubmit is invoked in signup mode with valid input
+      and signUp resolves successfully,
+      the system shall show a generic confirmation toast
+      and navigate to /login.
+    ears_ja: |
+      signupモードで有効な入力値によりhandleSubmitが呼び出され、
+      signUpが成功した場合、
+      システムは汎用の確認トーストを表示し、
+      /loginへ遷移する。
+    preconditions:
+      - mode is signup
+      - email and password are provided
+      - password length is at least 8
+      - password satisfies isPasswordValid
+      - password matches confirmPassword
+      - signUp resolves
+    preconditions_ja:
+      - modeがsignupである
+      - emailとpasswordが入力されている
+      - passwordが8文字以上である
+      - passwordがisPasswordValidの要件を満たす
+      - passwordとconfirmPasswordが一致する
+      - signUpが成功する
+    postconditions:
+      success:
+        - error is cleared
+        - signUp is called with email, password, and referralCode (or undefined)
+        - confirmation toast is shown
+        - router.push is called with /login
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - errorがクリアされる
+        - signUpがemail、password、referralCode（またはundefined）で呼ばれる
+        - 確認トーストが表示される
+        - router.push("/login") が呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When the ref query parameter is absent
+        expected: signUp receives undefined for referralCode
+      - description: When auth-client resolves signup for an already-registered email
+        expected: UI still shows the same generic confirmation toast and navigates to /login
+    edge_cases_ja:
+      - description: refクエリパラメータが存在しない場合
+        expected: signUpのreferralCodeにはundefinedが渡される
+      - description: 既存メールでもauth-clientがsignup成功として解決する場合
+        expected: 同じ確認トーストを表示し、/loginへ遷移する
+    test_cases:
+      - handleSubmit_GivenValidSignupInput_ShouldShowConfirmationToastAndNavigateLogin
+      - handleSubmit_GivenSignupWithReferralCode_ShouldPassReferralCodeToSignUp
+      - handleSubmit_GivenEnumerationSafeSignupResolution_ShouldKeepGenericSuccessResponse
+    test_cases_ja:
+      - handleSubmit_有効な新規登録入力の場合_確認トースト表示後にloginへ遷移する
+      - handleSubmit_ref付き新規登録の場合_signUpへ紹介コードを渡す
+      - handleSubmit_列挙対策でsignup成功解決される場合_汎用成功応答を維持する
+
+  - id: AUTH-002
+    method: handleSubmit
+    type: unwanted
+    ears: |
+      If email or password is missing,
+      or password length is less than 8,
+      then the system shall set a validation error
+      and shall not call signUp or signIn.
+    ears_ja: |
+      emailまたはpasswordが未入力、
+      もしくはpasswordが8文字未満の場合、
+      システムはバリデーションエラーを設定し、
+      signUpとsignInを呼び出さない。
+    preconditions:
+      - handleSubmit is invoked
+      - email is empty, or password is empty, or password length is less than 8
+    preconditions_ja:
+      - handleSubmitが呼び出される
+      - emailが空、またはpasswordが空、またはpasswordが8文字未満である
+    postconditions:
+      success:
+        - None
+      error:
+        - error is set with the corresponding validation message
+        - isLoading becomes false
+        - signUp and signIn are not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 対応するバリデーションメッセージがerrorに設定される
+        - isLoadingがfalseになる
+        - signUpとsignInは呼び出されない
+    edge_cases:
+      - description: When both email and password are empty
+        expected: Missing credentials message is shown first
+    edge_cases_ja:
+      - description: emailとpasswordが両方空の場合
+        expected: 資格情報未入力メッセージが優先して表示される
+    test_cases:
+      - handleSubmit_GivenMissingCredentials_ShouldSetValidationErrorAndSkipAuthCalls
+      - handleSubmit_GivenTooShortPassword_ShouldSetMinLengthErrorAndSkipAuthCalls
+    test_cases_ja:
+      - handleSubmit_認証情報未入力の場合_バリデーションエラーを表示して認証呼び出しを行わない
+      - handleSubmit_パスワード8文字未満の場合_最小文字数エラーを表示して認証呼び出しを行わない
+
+  - id: AUTH-003
+    method: handleSubmit
+    type: state-driven
+    ears: |
+      While mode is signup,
+      the system shall enforce password complexity and confirmation match
+      before calling signUp.
+    ears_ja: |
+      modeがsignupの間、
+      システムはsignUp呼び出し前に
+      パスワード複雑性と確認一致を必須とする。
+    preconditions:
+      - mode is signup
+      - email and password are provided
+      - password length is at least 8
+    preconditions_ja:
+      - modeがsignupである
+      - emailとpasswordが入力されている
+      - passwordが8文字以上である
+    postconditions:
+      success:
+        - signUp is called only when complexity and confirmation are valid
+      error:
+        - error is set when complexity is invalid
+        - error is set when password and confirmPassword do not match
+        - isLoading becomes false
+    postconditions_ja:
+      success:
+        - 複雑性と確認一致が満たされた場合のみsignUpが呼ばれる
+      error:
+        - 複雑性不一致時にerrorが設定される
+        - password不一致時にerrorが設定される
+        - isLoadingがfalseになる
+    edge_cases:
+      - description: When password meets length requirement but fails complexity
+        expected: Complexity requirement message is shown
+    edge_cases_ja:
+      - description: 文字数要件は満たすが複雑性を満たさない場合
+        expected: 複雑性要件メッセージが表示される
+    test_cases:
+      - handleSubmit_GivenSignupPasswordWithoutRequiredComplexity_ShouldSetComplexityError
+      - handleSubmit_GivenSignupPasswordMismatch_ShouldSetMismatchError
+    test_cases_ja:
+      - handleSubmit_signupで複雑性不足のパスワードの場合_複雑性エラーを設定する
+      - handleSubmit_signupで確認パスワード不一致の場合_不一致エラーを設定する
+
+  - id: AUTH-004
+    method: handleSubmit
+    type: event-driven
+    ears: |
+      When handleSubmit is invoked in signin mode with valid input,
+      signIn succeeds, and onSuccess is provided,
+      the system shall wait approximately one second,
+      stop loading, and invoke onSuccess.
+    ears_ja: |
+      signinモードで有効入力によりhandleSubmitが呼ばれ、
+      signInが成功し、onSuccessが渡されている場合、
+      システムは約1秒待機後にローディングを解除し、
+      onSuccessを呼び出す。
+    preconditions:
+      - mode is signin
+      - email and password are valid
+      - signIn resolves
+      - onSuccess callback is provided
+    preconditions_ja:
+      - modeがsigninである
+      - emailとpasswordが有効である
+      - signInが成功する
+      - onSuccessコールバックが渡されている
+    postconditions:
+      success:
+        - signIn is called with email and password
+        - onSuccess is called after delay
+        - isLoading becomes false before callback completion path ends
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - signInがemailとpasswordで呼ばれる
+        - 遅延後にonSuccessが呼ばれる
+        - コールバック経路ではisLoadingがfalseになる
+      error:
+        - なし
+    edge_cases:
+      - description: When redirectTo is provided together with onSuccess
+        expected: onSuccess branch is prioritized and router push is skipped
+    edge_cases_ja:
+      - description: onSuccessとredirectToが同時に指定された場合
+        expected: onSuccess分岐が優先され、router.pushは行われない
+    test_cases:
+      - handleSubmit_GivenValidSigninAndOnSuccess_ShouldCallOnSuccessAfterDelay
+    test_cases_ja:
+      - handleSubmit_有効signinかつonSuccessありの場合_遅延後にonSuccessを呼ぶ
+
+  - id: AUTH-005
+    method: handleSubmit
+    type: event-driven
+    ears: |
+      When handleSubmit is invoked in signin mode with valid input,
+      signIn succeeds, and onSuccess is not provided,
+      the system shall navigate to redirectTo or "/"
+      and refresh the route.
+    ears_ja: |
+      signinモードで有効入力によりhandleSubmitが呼ばれ、
+      signInが成功し、onSuccessが未指定の場合、
+      システムはredirectToまたは"/"へ遷移し、
+      ルートをrefreshする。
+    preconditions:
+      - mode is signin
+      - email and password are valid
+      - signIn resolves
+      - onSuccess callback is not provided
+    preconditions_ja:
+      - modeがsigninである
+      - emailとpasswordが有効である
+      - signInが成功する
+      - onSuccessコールバックが未指定である
+    postconditions:
+      success:
+        - after approximately one second delay, signin completion branch executes
+        - router.push is called with redirectTo or "/"
+        - router.refresh is called
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 約1秒の待機後にsignin完了後の分岐が実行される
+        - redirectToまたは"/"でrouter.pushが呼ばれる
+        - router.refreshが呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When redirectTo is undefined
+        expected: Root path / is used as fallback target
+    edge_cases_ja:
+      - description: redirectToが未指定の場合
+        expected: フォールバック先としてルートパス / が使われる
+    test_cases:
+      - handleSubmit_GivenValidSigninWithoutOnSuccess_ShouldNavigateAndRefresh
+      - handleSubmit_GivenValidSigninWithoutRedirectTo_ShouldNavigateToRoot
+    test_cases_ja:
+      - handleSubmit_有効signinでonSuccessなしの場合_遷移してrefreshする
+      - handleSubmit_有効signinでredirectTo未指定の場合_rootへ遷移する
+
+  - id: AUTH-006
+    method: handleSubmit
+    type: unwanted
+    ears: |
+      If signUp or signIn throws an error during handleSubmit,
+      then the system shall set a user-visible error message
+      and stop loading.
+    ears_ja: |
+      handleSubmit中にsignUpまたはsignInが例外を投げた場合、
+      システムはユーザー向けエラーメッセージを設定し、
+      ローディングを停止する。
+    preconditions:
+      - handleSubmit is invoked after passing local validation
+      - signUp or signIn rejects with an error
+    preconditions_ja:
+      - ローカルバリデーション通過後にhandleSubmitが呼び出される
+      - signUpまたはsignInがエラーで失敗する
+    postconditions:
+      success:
+        - None
+      error:
+        - error is set to thrown error message or fallback text
+        - isLoading becomes false
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 例外メッセージまたはフォールバック文言がerrorに設定される
+        - isLoadingがfalseになる
+    edge_cases:
+      - description: When thrown value is not an Error instance
+        expected: Fallback text "エラーが発生しました" is set
+    edge_cases_ja:
+      - description: throwされた値がErrorインスタンスではない場合
+        expected: フォールバック文言「エラーが発生しました」が設定される
+    test_cases:
+      - handleSubmit_GivenAuthClientError_ShouldSetErrorAndStopLoading
+      - handleSubmit_GivenNonErrorThrow_ShouldSetFallbackErrorAndStopLoading
+    test_cases_ja:
+      - handleSubmit_認証クライアントエラーの場合_errorを設定してローディング停止する
+      - handleSubmit_Error以外がthrowされた場合_フォールバックエラーを設定してローディング停止する
+
+  - id: AUTH-007
+    method: handleOAuthSignIn
+    type: event-driven
+    ears: |
+      When handleOAuthSignIn is invoked with a provider
+      and signInWithOAuth resolves,
+      the system shall delegate OAuth sign-in with redirect target and referral code
+      while keeping the user in loading state for provider redirect.
+    ears_ja: |
+      handleOAuthSignInがprovider付きで呼び出され、
+      signInWithOAuthが成功した場合、
+      システムはredirect先と紹介コードを使ってOAuth認証を委譲し、
+      プロバイダー遷移のためローディング状態を維持する。
+    preconditions:
+      - provider is selected
+      - signInWithOAuth resolves
+    preconditions_ja:
+      - providerが選択されている
+      - signInWithOAuthが成功する
+    postconditions:
+      success:
+        - error is cleared
+        - isLoading becomes true
+        - signInWithOAuth is called with provider, redirect target, and referral code (or undefined)
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - errorがクリアされる
+        - isLoadingがtrueになる
+        - provider・redirect先・紹介コード（またはundefined）でsignInWithOAuthが呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When redirectTo is not provided
+        expected: Root path / is passed as OAuth redirect target
+    edge_cases_ja:
+      - description: redirectToが未指定の場合
+        expected: OAuthのredirect先としてルートパス / が渡される
+    test_cases:
+      - handleOAuthSignIn_GivenGoogleProvider_ShouldCallOAuthWithResolvedRedirectAndReferral
+    test_cases_ja:
+      - handleOAuthSignIn_Google選択時_解決済みredirectと紹介コードでOAuthを呼ぶ
+
+  - id: AUTH-008
+    method: handleOAuthSignIn
+    type: unwanted
+    ears: |
+      If signInWithOAuth throws,
+      then the system shall set an OAuth error message
+      and stop loading.
+    ears_ja: |
+      signInWithOAuthが例外を投げた場合、
+      システムはOAuthエラーメッセージを設定し、
+      ローディングを停止する。
+    preconditions:
+      - handleOAuthSignIn is invoked
+      - signInWithOAuth rejects
+    preconditions_ja:
+      - handleOAuthSignInが呼び出される
+      - signInWithOAuthが失敗する
+    postconditions:
+      success:
+        - None
+      error:
+        - error is set to thrown error message or OAuth fallback text
+        - isLoading becomes false
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 例外メッセージまたはOAuth失敗フォールバックがerrorに設定される
+        - isLoadingがfalseになる
+    edge_cases:
+      - description: When thrown value is not an Error instance
+        expected: Fallback text "OAuth認証に失敗しました" is set
+    edge_cases_ja:
+      - description: throwされた値がErrorインスタンスではない場合
+        expected: フォールバック文言「OAuth認証に失敗しました」が設定される
+    test_cases:
+      - handleOAuthSignIn_GivenOAuthError_ShouldSetErrorAndStopLoading
+      - handleOAuthSignIn_GivenNonErrorThrow_ShouldSetOAuthFallbackError
+    test_cases_ja:
+      - handleOAuthSignIn_OAuthエラー時_errorを設定してローディング停止する
+      - handleOAuthSignIn_Error以外がthrowされた場合_OAuthフォールバックエラーを設定する
+
+  - id: AUTH-009
+    method: modeResetEffect
+    type: event-driven
+    ears: |
+      When AuthForm is mounted or mode changes,
+      the system shall reset loading state and clear error state.
+    ears_ja: |
+      AuthFormの初回マウント時またはmodeが変化した場合、
+      システムはローディング状態をリセットし、
+      エラー状態をクリアする。
+    preconditions:
+      - Component is mounted, or mode prop changes between signin and signup
+    preconditions_ja:
+      - コンポーネントが初回マウントされる、またはmodeプロパティがsigninとsignupの間で変化する
+    postconditions:
+      success:
+        - isLoading becomes false
+        - error becomes null
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - isLoadingがfalseになる
+        - errorがnullになる
+      error:
+        - なし
+    edge_cases:
+      - description: When mounted with default state values
+        expected: Reset effect is idempotent and visible state remains unchanged
+      - description: When mode changes while loading overlay is visible
+        expected: Overlay is hidden after state reset
+    edge_cases_ja:
+      - description: デフォルトstateのまま初回マウントされる場合
+        expected: リセット処理はべき等で、表示状態は実質的に変化しない
+      - description: ローディングオーバーレイ表示中にmodeが変化した場合
+        expected: 状態リセット後にオーバーレイが非表示になる
+    test_cases:
+      - modeResetEffect_GivenInitialMount_ShouldKeepCleanState
+      - modeResetEffect_GivenModeChange_ShouldResetLoadingAndError
+    test_cases_ja:
+      - modeResetEffect_初回マウント時_クリーンな状態を維持する
+      - modeResetEffect_mode変更時_ローディングとエラーをリセットする
+
+  - id: AUTH-010
+    method: renderAuthForm
+    type: state-driven
+    ears: |
+      While rendering AuthForm,
+      the system shall present mode-specific inputs and guidance,
+      and shall disable submission when loading or signup validation errors exist.
+    ears_ja: |
+      AuthFormの描画中、
+      システムはmodeに応じた入力UIと案内を表示し、
+      ローディング中またはsignup検証エラー時には送信を無効化する。
+    preconditions:
+      - AuthForm is rendered with mode signin or signup
+    preconditions_ja:
+      - AuthFormがsigninまたはsignupモードで描画される
+    postconditions:
+      success:
+        - Signup mode shows confirmPassword input and PasswordRequirements
+        - Signin mode shows reset-password helper link instead of signup-only fields
+        - Submit button is disabled when isLoading or validation errors are present
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - signupモードではconfirmPassword入力とPasswordRequirementsを表示する
+        - signinモードではsignup専用項目の代わりにパスワード再設定リンクを表示する
+        - isLoadingまたは検証エラー時は送信ボタンが無効化される
+      error:
+        - なし
+    edge_cases:
+      - description: When isLoading is true
+        expected: Submit and OAuth buttons are disabled and loading overlay is shown
+      - description: When password requirements are unmet in signup mode
+        expected: Requirement warning is shown and submit is disabled
+    edge_cases_ja:
+      - description: isLoadingがtrueの場合
+        expected: 送信ボタンとOAuthボタンが無効化され、ローディングオーバーレイが表示される
+      - description: signupモードでパスワード要件未達の場合
+        expected: 要件警告が表示され、送信が無効化される
+    test_cases:
+      - renderAuthForm_GivenSignupMode_ShouldRenderSignupSpecificFields
+      - renderAuthForm_GivenSigninMode_ShouldRenderResetPasswordGuidance
+      - renderAuthForm_GivenLoadingOrValidationError_ShouldDisableSubmit
+      - renderAuthForm_GivenLoadingState_ShouldDisableOAuthActionsAndShowOverlay
+    test_cases_ja:
+      - renderAuthForm_signupモードの場合_signup専用項目を描画する
+      - renderAuthForm_signinモードの場合_パスワード再設定案内を描画する
+      - renderAuthForm_ローディングまたは検証エラー時_送信を無効化する
+      - renderAuthForm_ローディング状態の場合_OAuth操作を無効化してオーバーレイを表示する
+
+  - id: AUTH-011
+    method: togglePasswordVisibility
+    type: event-driven
+    ears: |
+      When the password visibility toggle button is clicked,
+      the system shall invert the corresponding visibility state
+      and switch the related input type between password and text.
+    ears_ja: |
+      パスワード表示切替ボタンがクリックされた場合、
+      システムは対応する可視状態を反転し、
+      関連入力のtypeをpasswordとtextで切り替える。
+    preconditions:
+      - AuthForm is rendered
+      - Target toggle button is enabled
+    preconditions_ja:
+      - AuthFormが描画されている
+      - 対象の切替ボタンが有効である
+    postconditions:
+      success:
+        - showPassword toggles for the password field toggle button
+        - showConfirmPassword toggles for the confirm password field toggle button in signup mode
+        - aria-label switches to match the next expected action
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - パスワード欄の切替ボタンではshowPasswordが反転する
+        - signupモードの確認パスワード切替ボタンではshowConfirmPasswordが反転する
+        - aria-labelが次の操作内容に応じて切り替わる
+      error:
+        - なし
+    edge_cases:
+      - description: When isLoading is true
+        expected: Toggle button is disabled and visibility state does not change
+      - description: When mode is signin
+        expected: Confirm password toggle is not rendered
+    edge_cases_ja:
+      - description: isLoadingがtrueの場合
+        expected: 切替ボタンは無効で、可視状態は変化しない
+      - description: modeがsigninの場合
+        expected: 確認パスワードの切替ボタンは描画されない
+    test_cases:
+      - togglePasswordVisibility_GivenPasswordToggleClick_ShouldSwitchPasswordInputType
+      - togglePasswordVisibility_GivenSignupConfirmToggleClick_ShouldSwitchConfirmPasswordInputType
+      - togglePasswordVisibility_GivenLoadingState_ShouldNotChangeVisibilityState
+    test_cases_ja:
+      - togglePasswordVisibility_パスワード切替クリック時_password入力typeを切り替える
+      - togglePasswordVisibility_signupで確認パスワード切替クリック時_confirm入力typeを切り替える
+      - togglePasswordVisibility_ローディング時_可視状態を変更しない

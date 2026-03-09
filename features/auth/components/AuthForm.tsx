@@ -86,7 +86,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         setError(null);
         toast({
           title: "確認メールを送信しました。",
-          description: "新規登録を受け付けました。メールをご確認ください。",
+          description: (
+            <>
+              <span className="block">新規登録を受け付けました。メールをご確認ください。</span>
+              <span className="block">届かない場合は、迷惑メールフォルダもあわせてご確認ください。</span>
+            </>
+          ),
         });
         router.push("/login");
       } else {
