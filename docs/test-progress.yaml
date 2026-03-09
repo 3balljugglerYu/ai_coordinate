@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-08"
+last_updated: "2026-03-09"
 
 # Status values:
 # - pending
@@ -71,7 +71,7 @@ tier2:
     test_file: tests/integration/api/notifications-route.test.ts
 
   AuthForm:
-    status: pending
+    status: completed
     score: 84
     file: features/auth/components/AuthForm.tsx
     prerequisites:
@@ -239,8 +239,8 @@ summary:
     percentage: 50
   tier2:
     total: 6
-    completed: 0
-    percentage: 0
+    completed: 1
+    percentage: 17
   tier3:
     total: 7
     completed: 0
@@ -251,5 +251,5 @@ summary:
     percentage: 0
   overall:
     total: 25
-    completed: 1
-    percentage: 4
+    completed: 2
+    percentage: 8

@@ -12,6 +12,27 @@ import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 /**
  * Supabaseのエラーメッセージを日本語に変換
  */
+function isAlreadyRegisteredSignUpError(error: {
+  message?: string | null;
+  code?: string | null;
+}): boolean {
+  const message = (error.message ?? "").toLowerCase();
+  const code = (error.code ?? "").toLowerCase();
+
+  // Supabaseの設定によっては既存メールに対して明示エラーが返るため、
+  // その場合も同一レスポンスに寄せてアカウント列挙を防ぐ。
+  return (
+    code === "user_already_exists" ||
+    message.includes("user already registered") ||
+    message.includes("already been registered") ||
+    (message.includes("email") &&
+      (message.includes("already in use") ||
+        message.includes("already exists") ||
+        message.includes("already taken") ||
+        message.includes("already registered")))
+  );
+}
+
 function translateAuthError(errorMessage: string): string {
   const errorLower = errorMessage.toLowerCase();
 
@@ -128,6 +149,11 @@ export async function signUp(
   });
 
   if (error) {
+    if (isAlreadyRegisteredSignUpError(error)) {
+      console.info("Sign up attempted with an existing email. Returning generic success response.");
+      return data;
+    }
+
     // より詳細なエラー情報を提供
     console.error("Sign up error:", {
       message: error.message,
