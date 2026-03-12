@@ -629,17 +629,15 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
 
         {turns.length === 0 && (
           <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="mt-4">
               <Button
                 type="button"
                 onClick={() => runGeneration("initial")}
                 disabled={!baseImage || !characterImage || isGenerating || isConverting}
               >
-                {isConverting ? "画像変換中..." : isGenerating ? "生成中..." : "まず生成"}
+                {isConverting ? "画像変換中..." : isGenerating ? "生成中..." : "fashion show !!"}
               </Button>
-              <p className="text-xs text-slate-500">
-                画像形式: PNG / JPG / WebP。BaseとCharacterは元画像を送信し、再生成参照画像は必要時のみWebP圧縮（品質0.95→0.8）します。
-              </p>
+              <p className="mt-2 text-xs text-slate-500">画像形式: PNG / JPG / WebP</p>
             </div>
           </section>
         )}
