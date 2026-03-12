@@ -8,7 +8,7 @@
       "command": "/opt/homebrew/bin/npx",
       "args": [
         "-y",
-        "@supabase/mcp-server-supabase@latest",
+        "@supabase/mcp-server-supabase@0.7.0",
         "--access-token",
         "<YOUR_SUPABASE_ACCESS_TOKEN>",
         "--project-ref",

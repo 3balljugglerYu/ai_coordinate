@@ -17,7 +17,6 @@ import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTou
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
-  const isI2iPoc = pathname?.startsWith("/i2i/");
 
   useEffect(() => {
     if (isAdmin) {
@@ -28,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.body.classList.remove("admin-active");
   }, [isAdmin]);
 
-  if (isAdmin || isI2iPoc) {
+  if (isAdmin) {
     return <>{children}</>;
   }
 

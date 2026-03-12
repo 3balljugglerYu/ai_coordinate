@@ -8,16 +8,16 @@ import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
  * Next.js 16では middleware.ts の代わりに proxy.ts を使用
  */
 export async function proxy(request: NextRequest) {
+  const basicAuthResponse = enforceI2iPocBasicAuth(request);
+  if (basicAuthResponse) {
+    return basicAuthResponse;
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
-
-  const i2iBasicAuthResponse = enforceI2iPocBasicAuth(request);
-  if (i2iBasicAuthResponse) {
-    return i2iBasicAuthResponse;
-  }
 
   // 環境変数が設定されていない場合は、認証チェックをスキップ
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

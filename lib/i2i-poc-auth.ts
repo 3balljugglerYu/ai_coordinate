@@ -32,7 +32,11 @@ export function getI2iPocConfig(): I2iPocConfig | null {
   const basicUser = normalize(process.env.I2I_BASIC_AUTH_USER);
   const basicPassword = normalize(process.env.I2I_BASIC_AUTH_PASSWORD);
 
-  if (slug.length < MIN_SLUG_LENGTH || !basicUser || !basicPassword) {
+  if (
+    slug.length < MIN_SLUG_LENGTH ||
+    basicUser.length === 0 ||
+    basicPassword.length === 0
+  ) {
     return null;
   }
 
@@ -45,14 +49,6 @@ export function getI2iPocConfig(): I2iPocConfig | null {
 
 export function isI2iPocPath(pathname: string): boolean {
   return pathname === "/i2i" || pathname.startsWith("/i2i/");
-}
-
-export function isExpectedI2iSlug(slug: string): boolean {
-  const config = getI2iPocConfig();
-  if (!config) {
-    return false;
-  }
-  return slug === config.slug;
 }
 
 export function hasValidI2iBasicAuth(

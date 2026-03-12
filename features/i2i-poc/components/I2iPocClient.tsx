@@ -317,6 +317,8 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
     setTurns([]);
     setBaseFeedback("");
     setCharacterFeedback("");
+    setBaseFeedbackSuggestions(BASE_FEEDBACK_SUGGESTIONS);
+    setCharacterFeedbackSuggestions(CHARACTER_FEEDBACK_SUGGESTIONS);
   }
 
   async function handleFileChange(
@@ -495,7 +497,7 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
         <section
           className={`relative ml-auto mt-6 rounded-xl border border-slate-200 shadow-sm transition-[width,padding] duration-200 ${
             turns.length > 0
-              ? "sticky top-3 z-20 bg-white/95 backdrop-blur"
+              ? "sticky top-[calc(var(--app-header-height,64px)+0.5rem)] z-20 bg-white/95 backdrop-blur"
               : "bg-white"
           } ${isReferenceCardCollapsed ? "w-[50%] p-2" : "w-full p-4"}`}
         >

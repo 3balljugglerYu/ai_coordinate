@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  createI2iBasicAuthChallengeResponse,
-  getI2iPocConfig,
-  hasValidI2iBasicAuth,
-} from "@/lib/i2i-poc-auth";
+import { createClient } from "@/lib/supabase/server";
+import { getI2iPocConfig } from "@/lib/i2i-poc-auth";
 import {
   extractImagesFromGeminiResponse,
   type GeminiResponse,
@@ -188,8 +185,13 @@ export async function POST(request: Request, context: GenerateRouteContext) {
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    if (!hasValidI2iBasicAuth(request.headers, config)) {
-      return createI2iBasicAuthChallengeResponse();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY?.trim();

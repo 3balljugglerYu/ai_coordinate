@@ -24,7 +24,7 @@ if [ -z "$UVX" ]; then
   exit 1
 fi
 
-exec "$UVX" --from "git+https://github.com/oraios/serena" serena start-mcp-server \
+exec "$UVX" --from "git+https://github.com/oraios/serena@b3a6045f7e3f52024f8330f1e79aeb13c34417b0" serena start-mcp-server \
   --context ide \
   --project "$ROOT" \
   --open-web-dashboard false \
