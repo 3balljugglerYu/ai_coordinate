@@ -27,4 +27,5 @@ fi
 exec "$UVX" --from "git+https://github.com/oraios/serena" serena start-mcp-server \
   --context ide \
   --project "$ROOT" \
+  --open-web-dashboard false \
   "$@"
