@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
 
 /**
  * プロキシ（ミドルウェア）
@@ -12,6 +13,11 @@ export async function proxy(request: NextRequest) {
       headers: request.headers,
     },
   });
+
+  const i2iBasicAuthResponse = enforceI2iPocBasicAuth(request);
+  if (i2iBasicAuthResponse) {
+    return i2iBasicAuthResponse;
+  }
 
   // 環境変数が設定されていない場合は、認証チェックをスキップ
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

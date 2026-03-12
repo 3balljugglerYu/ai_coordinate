@@ -40,6 +40,7 @@ yarn-error.log*
 # MCP configuration (may contain API keys)
 .mcp.json
 .cursor/
+.agents/mcp.json
 
 # vercel
 .vercel
