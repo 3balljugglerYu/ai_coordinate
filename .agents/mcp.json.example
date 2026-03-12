@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "bash",
+      "args": ["./scripts/serena-mcp.sh"]
+    },
+    "supabase": {
+      "command": "/opt/homebrew/bin/npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@0.7.0",
+        "--access-token",
+        "<YOUR_SUPABASE_ACCESS_TOKEN>",
+        "--project-ref",
+        "<YOUR_PROJECT_REF>"
+      ]
+    },
+    "Vercel": {
+      "url": "https://mcp.vercel.com",
+      "headers": {}
+    },
+    "Stripe": {
+      "url": "https://mcp.stripe.com/",
+      "headers": {}
+    },
+    "Context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "<YOUR_CONTEXT7_API_KEY>"
+      }
+    }
+  }
+}

@@ -121,8 +121,8 @@ export async function buildGeminiRequest(
  */
 export interface GeminiResponse {
   candidates?: Array<{
-    content: {
-      parts: Array<{
+    content?: {
+      parts?: Array<{
         text?: string;
         // スネークケース形式（APIドキュメント）
         inline_data?: {
@@ -158,7 +158,12 @@ export function extractImagesFromGeminiResponse(
   }
 
   for (const candidate of response.candidates) {
-    for (const part of candidate.content.parts) {
+    const parts = candidate.content?.parts;
+    if (!parts || parts.length === 0) {
+      continue;
+    }
+
+    for (const part of parts) {
       // キャメルケース形式（実際のレスポンス）
       if (part.inlineData) {
         images.push({

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
 
 /**
  * プロキシ（ミドルウェア）
@@ -7,6 +8,11 @@ import { NextResponse, type NextRequest } from "next/server";
  * Next.js 16では middleware.ts の代わりに proxy.ts を使用
  */
 export async function proxy(request: NextRequest) {
+  const basicAuthResponse = enforceI2iPocBasicAuth(request);
+  if (basicAuthResponse) {
+    return basicAuthResponse;
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,

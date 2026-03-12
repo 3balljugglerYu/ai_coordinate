@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    // proxy.ts / middleware 経由時のリクエストボディ上限（デフォルト 10MB）
+    // 再生成時は base + character + result の3画像になるため引き上げる
+    proxyClientMaxBodySize: "25mb",
     // ページ遷移時の Client-Side Router Cache を有効化
     // 一度訪れたページに戻る際、キャッシュを再利用してローディングを軽減
     staleTimes: {
