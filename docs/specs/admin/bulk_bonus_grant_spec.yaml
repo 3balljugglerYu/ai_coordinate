@@ -1,0 +1,365 @@
+metadata:
+  class: BulkBonusGrant
+  source: app/api/admin/bonus/bulk-lookup/route.ts, app/api/admin/bonus/grant-batch/route.ts
+  version: "1.0"
+  created_at: "2026-03-10"
+
+dependencies:
+  repositories: []
+  services:
+    - requireAdmin (lib/auth)
+    - createAdminClient (lib/supabase/admin)
+    - logAdminAction (lib/admin-audit)
+    - revalidateTag (next/cache)
+  external:
+    - Supabase RPC get_user_ids_by_emails
+    - Supabase RPC grant_admin_bonus
+    - Supabase user_credits table
+
+state_properties: []
+
+specifications:
+  # --- bulk-lookup API ---
+  - id: BBG-001
+    method: bulkLookup
+    type: event-driven
+    ears: |
+      When bulkLookup is invoked with an authenticated admin
+      and a valid emails array (1-300 items),
+      the system shall return users (email, user_id, balance) and not_found
+      by calling get_user_ids_by_emails RPC.
+    ears_ja: |
+      認証済み管理者かつ有効なemails配列（1〜300件）で
+      bulkLookupが呼び出された場合、
+      システムはget_user_ids_by_emails RPCを呼び出し、
+      users（email, user_id, balance）とnot_foundを返す。
+    preconditions:
+      - requireAdmin returns an admin user
+      - Request body has emails array with 1-300 non-empty strings
+    preconditions_ja:
+      - requireAdminが管理者ユーザーを返す
+      - リクエストボディに1〜300件の非空文字列のemails配列がある
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Response includes users array (email, user_id, balance for each found user)
+        - Response includes not_found array (emails not in auth.users)
+        - Duplicate emails in input are deduplicated before RPC call
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - レスポンスにusers配列（登録済みユーザーのemail, user_id, balance）が含まれる
+        - レスポンスにnot_found配列（auth.usersに存在しないメール）が含まれる
+        - 入力の重複メールはRPC呼び出し前に重複除去される
+      error:
+        - なし
+    edge_cases:
+      - description: When all emails are registered
+        expected: not_found is empty
+      - description: When no emails are registered
+        expected: users is empty, not_found contains all emails
+    edge_cases_ja:
+      - description: 全メールが登録済みの場合
+        expected: not_foundは空
+      - description: 登録済みメールが1件もない場合
+        expected: usersは空、not_foundに全メールが含まれる
+    test_cases:
+      - bulkLookup_GivenValidEmails_ShouldReturnUsersAndNotFound
+    test_cases_ja:
+      - bulkLookup_有効なメール配列の場合_usersとnot_foundを返す
+
+  - id: BBG-002
+    method: bulkLookup
+    type: unwanted
+    ears: |
+      If no authenticated admin is available,
+      then the system shall return HTTP 401.
+    ears_ja: |
+      認証済み管理者が取得できない場合、
+      システムはHTTP 401を返す。
+    preconditions:
+      - requireAdmin throws or returns 401
+    preconditions_ja:
+      - requireAdminが例外を投げるか401を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 401
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが401になる
+    edge_cases: []
+    edge_cases_ja: []
+    test_cases:
+      - bulkLookup_GivenUnauthenticatedAdmin_ShouldReturn401
+    test_cases_ja:
+      - bulkLookup_未認証管理者の場合_401を返す
+
+  - id: BBG-003
+    method: bulkLookup
+    type: unwanted
+    ears: |
+      If request validation fails (empty emails, >300 emails, invalid format),
+      then the system shall return HTTP 400 with validation message.
+    ears_ja: |
+      リクエストバリデーションに失敗した場合
+      （emails空、300件超、不正フォーマット）、
+      システムはバリデーションメッセージを含むHTTP 400を返す。
+    preconditions:
+      - Request body does not conform to bulkLookupSchema
+    preconditions_ja:
+      - リクエストボディがbulkLookupSchemaに適合しない
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Error message indicates validation failure
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - バリデーション失敗を示すエラーメッセージを返す
+    edge_cases:
+      - description: When emails array is empty
+        expected: Returns "メールアドレスを1件以上入力してください"
+      - description: When emails exceed 300
+        expected: Returns "メールアドレスは300件以内で入力してください"
+    edge_cases_ja:
+      - description: emails配列が空の場合
+        expected: 「メールアドレスを1件以上入力してください」を返す
+      - description: emailsが300件を超える場合
+        expected: 「メールアドレスは300件以内で入力してください」を返す
+    test_cases:
+      - bulkLookup_GivenEmptyEmails_ShouldReturn400
+      - bulkLookup_GivenExcessEmails_ShouldReturn400
+    test_cases_ja:
+      - bulkLookup_emails空の場合_400を返す
+      - bulkLookup_emails超過の場合_400を返す
+
+  - id: BBG-004
+    method: bulkLookup
+    type: unwanted
+    ears: |
+      If get_user_ids_by_emails RPC fails,
+      then the system shall return HTTP 500
+      with "登録確認に失敗しました" message.
+    ears_ja: |
+      get_user_ids_by_emails RPCが失敗した場合、
+      システムは「登録確認に失敗しました」を含むHTTP 500を返す。
+    preconditions:
+      - RPC get_user_ids_by_emails returns an error
+    preconditions_ja:
+      - RPC get_user_ids_by_emailsがエラーを返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message is "登録確認に失敗しました"
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - エラーメッセージは「登録確認に失敗しました」
+    edge_cases: []
+    edge_cases_ja: []
+    test_cases:
+      - bulkLookup_GivenRpcError_ShouldReturn500
+    test_cases_ja:
+      - bulkLookup_RPCエラーの場合_500を返す
+
+  # --- grant-batch API ---
+  - id: BBG-005
+    method: grantBatch
+    type: event-driven
+    ears: |
+      When grantBatch is invoked with an authenticated admin,
+      valid grants (email, amount), balance_type, reason, and send_notification,
+      the system shall call grant_admin_bonus for each registered user
+      and return results (success/skipped/error) with summary.
+    ears_ja: |
+      認証済み管理者かつ有効なgrants（email, amount）、
+      balance_type、reason、send_notificationで
+      grantBatchが呼び出された場合、
+      システムは登録済みユーザーごとにgrant_admin_bonusを呼び出し、
+      結果（success/skipped/error）とサマリを返す。
+    preconditions:
+      - requireAdmin returns an admin user
+      - Request body conforms to grantBatchSchema (grants 1-300, balance_type, reason)
+    preconditions_ja:
+      - requireAdminが管理者ユーザーを返す
+      - リクエストボディがgrantBatchSchemaに適合（grants 1〜300件、balance_type、reason）
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Response includes success: true, results array, summary (total, success, skipped, error)
+        - For registered users: grant_admin_bonus is called, result status is "success"
+        - For unregistered emails: result status is "skipped" with error "登録なし"
+        - logAdminAction is called with bonus_bulk_grant
+        - revalidateTag is called for affected user_ids
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - レスポンスにsuccess: true、results配列、summary（total, success, skipped, error）が含まれる
+        - 登録済みユーザー: grant_admin_bonusが呼ばれ、結果statusは"success"
+        - 未登録メール: 結果statusは"skipped"、errorは「登録なし」
+        - logAdminActionがbonus_bulk_grantで呼ばれる
+        - 対象user_idに対してrevalidateTagが呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When same email appears multiple times in grants
+        expected: First amount is used (emailToGrant deduplication)
+    edge_cases_ja:
+      - description: grants内で同一メールが複数回出現する場合
+        expected: 最初のamountが使用される（emailToGrantで重複除去）
+    test_cases:
+      - grantBatch_GivenValidGrants_ShouldReturnResultsAndSummary
+    test_cases_ja:
+      - grantBatch_有効なgrantsの場合_結果とサマリを返す
+
+  - id: BBG-006
+    method: grantBatch
+    type: unwanted
+    ears: |
+      If no authenticated admin is available,
+      then the system shall return HTTP 401.
+    ears_ja: |
+      認証済み管理者が取得できない場合、
+      システムはHTTP 401を返す。
+    preconditions:
+      - requireAdmin throws or returns 401
+    preconditions_ja:
+      - requireAdminが例外を投げるか401を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 401
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが401になる
+    edge_cases: []
+    edge_cases_ja: []
+    test_cases:
+      - grantBatch_GivenUnauthenticatedAdmin_ShouldReturn401
+    test_cases_ja:
+      - grantBatch_未認証管理者の場合_401を返す
+
+  - id: BBG-007
+    method: grantBatch
+    type: unwanted
+    ears: |
+      If request validation fails (invalid grants, missing balance_type/reason),
+      then the system shall return HTTP 400 with validation message.
+    ears_ja: |
+      リクエストバリデーションに失敗した場合
+      （不正grants、balance_type/reason欠落）、
+      システムはバリデーションメッセージを含むHTTP 400を返す。
+    preconditions:
+      - Request body does not conform to grantBatchSchema
+    preconditions_ja:
+      - リクエストボディがgrantBatchSchemaに適合しない
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Error message indicates validation failure
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - バリデーション失敗を示すエラーメッセージを返す
+    edge_cases:
+      - description: When amount is 0 or negative
+        expected: Returns "付与ペルコイン数は1以上の整数で入力してください"
+    edge_cases_ja:
+      - description: amountが0または負の場合
+        expected: 「付与ペルコイン数は1以上の整数で入力してください」を返す
+    test_cases:
+      - grantBatch_GivenInvalidSchema_ShouldReturn400
+    test_cases_ja:
+      - grantBatch_不正スキーマの場合_400を返す
+
+  - id: BBG-008
+    method: grantBatch
+    type: unwanted
+    ears: |
+      If get_user_ids_by_emails lookup fails,
+      then the system shall return HTTP 500
+      with "ユーザー検索に失敗しました" message.
+    ears_ja: |
+      ユーザー検索（get_user_ids_by_emails）が失敗した場合、
+      システムは「ユーザー検索に失敗しました」を含むHTTP 500を返す。
+    preconditions:
+      - Lookup RPC returns an error
+    preconditions_ja:
+      - 検索RPCがエラーを返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 500
+        - Error message is "ユーザー検索に失敗しました"
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが500になる
+        - エラーメッセージは「ユーザー検索に失敗しました」
+    edge_cases: []
+    edge_cases_ja: []
+    test_cases:
+      - grantBatch_GivenLookupError_ShouldReturn500
+    test_cases_ja:
+      - grantBatch_検索エラーの場合_500を返す
+
+  - id: BBG-009
+    method: grantBatch
+    type: unwanted
+    ears: |
+      If grant_admin_bonus RPC fails for a user,
+      then the system shall record status "error" for that user
+      and continue processing remaining users.
+    ears_ja: |
+      特定ユーザーでgrant_admin_bonus RPCが失敗した場合、
+      システムはそのユーザーをstatus "error"で記録し、
+      残りのユーザー処理を継続する。
+    preconditions:
+      - grant_admin_bonus RPC returns an error for one or more users
+    preconditions_ja:
+      - grant_admin_bonus RPCが1件以上のユーザーでエラーを返す
+    postconditions:
+      success:
+        - Response includes results with status "error" for failed users
+        - Other users are still processed
+        - Summary includes error count
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 失敗ユーザーはresultsでstatus "error"として含まれる
+        - 他ユーザーは処理継続される
+        - summaryにerror件数が含まれる
+      error:
+        - なし
+    edge_cases: []
+    edge_cases_ja: []
+    test_cases:
+      - grantBatch_GivenGrantRpcError_ShouldRecordErrorAndContinue
+    test_cases_ja:
+      - grantBatch_付与RPCエラーの場合_エラー記録して継続する

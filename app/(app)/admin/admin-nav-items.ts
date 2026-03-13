@@ -41,10 +41,10 @@ export const adminNavItems: AdminNavItem[] = [
     quickAction: true,
   },
   {
-    path: "/admin/bonus",
-    label: "ボーナス付与",
-    description: "ペルコインを手動で付与",
-    iconKey: "coins",
+    path: "/admin/reports",
+    label: "通報一覧",
+    description: "投稿への通報状況を確認",
+    iconKey: "flag",
     quickAction: true,
   },
   {
@@ -52,6 +52,19 @@ export const adminNavItems: AdminNavItem[] = [
     label: "デフォルト枚数",
     description: "ボーナス既定値を設定",
     iconKey: "settings",
+  },
+  {
+    path: "/admin/bonus",
+    label: "ボーナス付与",
+    description: "ペルコインを手動で付与",
+    iconKey: "coins",
+    quickAction: true,
+  },
+  {
+    path: "/admin/bonus/bulk",
+    label: "ボーナス一括付与",
+    description: "CSVでペルコインを一括付与",
+    iconKey: "coins",
   },
   {
     path: "/admin/deduction",
@@ -90,13 +103,6 @@ export const adminNavItems: AdminNavItem[] = [
     label: "操作ログ",
     description: "管理操作の履歴を確認",
     iconKey: "file-text",
-  },
-  {
-    path: "/admin/reports",
-    label: "通報一覧",
-    description: "投稿への通報状況を確認",
-    iconKey: "flag",
-    quickAction: true,
   },
 ];
 
