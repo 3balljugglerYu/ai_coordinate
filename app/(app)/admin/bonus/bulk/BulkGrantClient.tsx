@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +20,22 @@ import {
 
 const MAX_REASON_LENGTH = 500;
 const MAX_ROWS = 300;
+
+const CSV_FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
+function escapeCsvCell(value: string | number): string {
+  const str = String(value);
+  const needsQuote =
+    str.includes(",") ||
+    str.includes('"') ||
+    str.includes("\n") ||
+    str.includes("\r");
+  let escaped = str.replace(/"/g, '""');
+  if (CSV_FORMULA_TRIGGER.test(str)) {
+    escaped = "'" + escaped;
+  }
+  return needsQuote ? `"${escaped}"` : escaped;
+}
 
 function formatJapanTime(date: Date): string {
   return (
@@ -71,22 +87,39 @@ function buildResultCsv(results: GrantResult[], grantedAt: Date): string {
     "email,status,balance_before,amount_granted,balance_after,error,granted_at";
   const lines = results.map((r) => {
     if (r.status === "success") {
-      return `${r.email},success,${r.balance_before},${r.amount_granted},${r.balance_after},,${grantedAtStr}`;
+      return [
+        escapeCsvCell(r.email),
+        "success",
+        escapeCsvCell(r.balance_before),
+        escapeCsvCell(r.amount_granted),
+        escapeCsvCell(r.balance_after),
+        "",
+        escapeCsvCell(grantedAtStr),
+      ].join(",");
     }
-    return `${r.email},${r.status},,,,${r.error},${grantedAtStr}`;
+    return [
+      escapeCsvCell(r.email),
+      r.status,
+      "",
+      "",
+      "",
+      escapeCsvCell(r.error),
+      escapeCsvCell(grantedAtStr),
+    ].join(",");
   });
   return [header, ...lines].join("\n");
 }
 
-function buildNotFoundCsv(
-  rows: BulkRow[],
-  lookupAt: Date
-): string {
+function buildNotFoundCsv(rows: BulkRow[], lookupAt: Date): string {
   const notFoundRows = rows.filter((r) => r.status === "not_found");
   const lookupAtStr = formatJapanTime(lookupAt);
   const header = "email,amount,lookup_at";
-  const lines = notFoundRows.map(
-    (r) => `${r.email},${r.amount},${lookupAtStr}`
+  const lines = notFoundRows.map((r) =>
+    [
+      escapeCsvCell(r.email),
+      escapeCsvCell(r.amount),
+      escapeCsvCell(lookupAtStr),
+    ].join(",")
   );
   return [header, ...lines].join("\n");
 }
@@ -286,7 +319,7 @@ export function BulkGrantClient() {
   const isReasonOverLimit = reason.length > MAX_REASON_LENGTH;
   const canGrant = rows.some((r) => r.status === "found");
 
-  const duplicateEmails = (() => {
+  const duplicateEmails = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of rows) {
       counts.set(r.email, (counts.get(r.email) ?? 0) + 1);
@@ -294,7 +327,7 @@ export function BulkGrantClient() {
     return new Set(
       [...counts.entries()].filter(([, c]) => c > 1).map(([e]) => e)
     );
-  })();
+  }, [rows]);
 
   return (
     <div className="space-y-6">

@@ -169,14 +169,21 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const { data: creditData } = await supabase
+        const { data: creditData, error: creditError } = await supabase
           .from("user_credits")
           .select("balance")
           .eq("user_id", user_id)
           .single();
 
-        const balanceAfter = (creditData as { balance: number } | null)
-          ?.balance ?? balanceBefore + amount;
+        if (creditError) {
+          throw new Error(
+            `付与後の残高取得に失敗しました (user: ${user_id}): ${creditError.message}`
+          );
+        }
+
+        const balanceAfter =
+          (creditData as { balance: number } | null)?.balance ??
+          balanceBefore + amount;
 
         if (!processedUserIds.has(user_id)) {
           processedUserIds.add(user_id);

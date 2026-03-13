@@ -19,54 +19,59 @@ const bulkLookupSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
-  } catch (error) {
-    if (error instanceof NextResponse) return error;
-    throw error;
-  }
+    const body = await request.json();
+    const parsed = bulkLookupSchema.safeParse(body);
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      const message =
+        firstIssue?.path[0] === "emails"
+          ? firstIssue.message
+          : "入力内容が不正です";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
 
-  const body = await request.json();
-  const parsed = bulkLookupSchema.safeParse(body);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const message =
-      firstIssue?.path[0] === "emails"
-        ? firstIssue.message
-        : "入力内容が不正です";
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+    const { emails } = parsed.data;
+    const uniqueEmails = [...new Set(emails)];
 
-  const { emails } = parsed.data;
-  const uniqueEmails = [...new Set(emails)];
+    const supabase = createAdminClient();
+    const { data: rows, error } = await supabase.rpc("get_user_ids_by_emails", {
+      p_emails: uniqueEmails,
+    });
 
-  const supabase = createAdminClient();
-  const { data: rows, error } = await supabase.rpc("get_user_ids_by_emails", {
-    p_emails: uniqueEmails,
-  });
+    if (error) {
+      console.error("[Admin Bonus Bulk Lookup] RPC error:", error);
+      return NextResponse.json(
+        { error: "登録確認に失敗しました" },
+        { status: 500 }
+      );
+    }
 
-  if (error) {
-    console.error("[Admin Bonus Bulk Lookup] RPC error:", error);
+    const foundEmails = new Set<string>();
+    const users = (rows ?? []).map(
+      (r: { email: string; user_id: string; balance: number }) => {
+        foundEmails.add(r.email);
+        return {
+          email: r.email,
+          user_id: r.user_id,
+          balance: r.balance,
+        };
+      }
+    );
+
+    const notFound = uniqueEmails.filter((e) => !foundEmails.has(e));
+
+    return NextResponse.json({
+      users,
+      not_found: notFound,
+    });
+  } catch (error: unknown) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
+    console.error("[Admin Bonus Bulk Lookup] Exception:", error);
     return NextResponse.json(
-      { error: "登録確認に失敗しました" },
+      { error: "予期せぬエラーが発生しました" },
       { status: 500 }
     );
   }
-
-  const foundEmails = new Set<string>();
-  const users = (rows ?? []).map(
-    (r: { email: string; user_id: string; balance: number }) => {
-      foundEmails.add(r.email);
-      return {
-        email: r.email,
-        user_id: r.user_id,
-        balance: r.balance,
-      };
-    }
-  );
-
-  const notFound = uniqueEmails.filter((e) => !foundEmails.has(e));
-
-  return NextResponse.json({
-    users,
-    not_found: notFound,
-  });
 }
