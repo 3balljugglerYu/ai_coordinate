@@ -46,10 +46,18 @@ export function AdminMobileNav() {
       <div className="flex gap-2 overflow-x-auto py-2 -mx-1 scroll-smooth">
         {adminNavItems.map(({ path, label, iconKey }) => {
           const Icon = iconMap[iconKey];
-          const isActive =
+          const matches =
             path === "/admin"
               ? pathname === "/admin"
-              : pathname.startsWith(path);
+              : pathname === path || pathname.startsWith(path + "/");
+          const hasLongerMatch = adminNavItems.some(
+            (other) =>
+              other.path !== path &&
+              other.path.startsWith(path) &&
+              (pathname === other.path ||
+                pathname.startsWith(other.path + "/"))
+          );
+          const isActive = matches && !hasLongerMatch;
           return (
             <Link
               key={path}
