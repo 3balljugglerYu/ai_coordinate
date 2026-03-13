@@ -1,6 +1,21 @@
 {
   "version": 1,
   "skills": {
+    "api-docs-generator": {
+      "source": "patricio0312rev/skills",
+      "sourceType": "github",
+      "computedHash": "fc7cc4cb5cbd4fbb21bd2452cbf8333268d2dc4cba0d8de3db3043c52e6eb156"
+    },
+    "api-documentation-writer": {
+      "source": "onewave-ai/claude-skills",
+      "sourceType": "github",
+      "computedHash": "20380b16d44111772a84d24dee3435d7e0eaa9d74a480c77cef3a044b902a31c"
+    },
+    "openapi-to-application-code": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "d98883f9f1f65b658c09af4a7d51eb31847e3302d4ebcc32b32cc8e4dcbe59c2"
+    },
     "stripe-integration": {
       "source": "wshobson/agents",
       "sourceType": "github",

@@ -81,6 +81,20 @@ Playwright を初めて使う環境では、先にブラウザをインストー
 npx playwright install
 ```
 
+## API ドキュメント
+
+ローカル開発用の API ドキュメントを用意しています。
+
+- 開発者向け説明: [`docs/API.md`](./docs/API.md)
+- OpenAPI 仕様: [`docs/openapi.yaml`](./docs/openapi.yaml)
+- ブラウザ閲覧: `http://localhost:3000/api-docs`
+
+注意:
+
+- `/api-docs` と `/openapi.yaml` は `npm run dev` 実行中の localhost アクセス専用です。
+- 本番・Preview・`npm run start` では参照できません。
+- [`docs/openapi.yaml`](./docs/openapi.yaml) は draft のため、一部 schema は今後厳密化予定です。
+
 ## スクリプト
 
 - `npm run dev`: 開発サーバー起動
