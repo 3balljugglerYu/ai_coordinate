@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "20380b16d44111772a84d24dee3435d7e0eaa9d74a480c77cef3a044b902a31c"
     },
+    "architecture-documentation": {
+      "source": "melodic-software/claude-code-plugins",
+      "sourceType": "github",
+      "computedHash": "e5430e77f00e7b18825a197880298e736287c646c73933696cb5a03f5a5234a5"
+    },
     "openapi-to-application-code": {
       "source": "github/awesome-copilot",
       "sourceType": "github",

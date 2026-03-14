@@ -1,0 +1,21 @@
+---
+alwaysApply: false
+---
+
+# 画面遷移
+
+このファイルは Cursor 向けの参照 adapter です。  
+正本は `../../docs/product/screen-flow.md` を参照してください。
+
+## 読み方
+
+- 画面遷移の正本: `../../docs/product/screen-flow.md`
+- プロダクト要件: `./requirements.mdc`
+- 実装計画と現状: `./implementation-roadmap.mdc`
+- データと Supabase 構成: `../../docs/architecture/data.md`
+
+## 使い分け
+
+- 主要画面と導線を確認したい時は `docs/product/screen-flow.md`
+- ユーザー価値や機能要求を確認したい時は `docs/product/requirements.md`
+- 実装上の route や back navigation の詳細は現行コードも参照する

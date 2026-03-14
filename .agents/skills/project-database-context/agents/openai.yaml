@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Database Context"
+  short_description: "Use the repo's Supabase and data-flow guide"
+  default_prompt: "Use the repository database context to understand the relevant Supabase tables, RLS, RPCs, and implementation flow before making changes."

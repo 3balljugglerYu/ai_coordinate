@@ -1,15 +1,28 @@
 # .agents
 
-AI エージェント関連の設定を集約するディレクトリです。
+AI エージェント関連の設定を集約するディレクトリです。ここは `mcp.json` と agent-discoverable な `skills/` の置き場であり、人間向けの正本ドキュメント置き場ではありません。
 
 ## ディレクトリ構成
 
 ```
 .agents/
 ├── mcp.json      # MCP サーバー設定（複数 AI で共有）
-├── skills/       # スキル定義
+├── skills/       # エージェント向けスキル定義
 └── README.md     # このファイル
 ```
+
+## ドキュメント配置の方針
+
+- 正本の設計資料や onboarding ドキュメントは `docs/` に置きます。
+- Cursor 固有のルールや adapter は `.cursor/rules/` に置きます。
+- 他の agent に読ませたい導線は `.agents/skills/` に置きます。
+- `.agents/rules/` はこのリポジトリの標準構成ではありません。特定ツールが要求しない限り作りません。
+
+DB / Supabase の共通入口は以下です。
+
+- 正本 docs: `docs/architecture/data.md`
+- 詳細スキーマ台帳: `.cursor/rules/database-design.mdc`
+- agent 用 skill: `.agents/skills/project-database-context/SKILL.md`
 
 ## MCP 設定
 

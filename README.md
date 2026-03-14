@@ -97,6 +97,30 @@ npx playwright install
 - 本番・Preview・`npm run start` では参照できません。
 - [`docs/openapi.yaml`](./docs/openapi.yaml) は draft のため、一部 schema は今後厳密化予定です。
 
+## Architecture Docs
+
+- Language selector: [`docs/architecture/data.md`](./docs/architecture/data.md)
+- English: [`docs/architecture/data.en.md`](./docs/architecture/data.en.md)
+- 日本語: [`docs/architecture/data.ja.md`](./docs/architecture/data.ja.md)
+- Exact schema reference: [`.cursor/rules/database-design.mdc`](./.cursor/rules/database-design.mdc)
+- API reference: [`docs/API.md`](./docs/API.md)
+
+## Development Docs
+
+- Project conventions: English [`docs/development/project-conventions.md`](./docs/development/project-conventions.md) / 日本語 [`docs/development/project-conventions.ja.md`](./docs/development/project-conventions.ja.md)
+- Cursor adapter: [`.cursor/rules/project-rule.mdc`](./.cursor/rules/project-rule.mdc)
+
+## Product Docs
+
+- Requirements: 日本語 [`docs/product/requirements.md`](./docs/product/requirements.md) / English [`docs/product/requirements.en.md`](./docs/product/requirements.en.md)
+- User stories: 日本語 [`docs/product/user-stories.md`](./docs/product/user-stories.md) / English [`docs/product/user-stories.en.md`](./docs/product/user-stories.en.md)
+- Screen flow: 日本語 [`docs/product/screen-flow.md`](./docs/product/screen-flow.md) / English [`docs/product/screen-flow.en.md`](./docs/product/screen-flow.en.md)
+- Implementation roadmap: 日本語のみ [`docs/planning/implementation-roadmap.md`](./docs/planning/implementation-roadmap.md)
+
+## Business Docs
+
+- Monetization: [`docs/business/monetization.md`](./docs/business/monetization.md)
+
 ## スクリプト
 
 - `npm run dev`: 開発サーバー起動

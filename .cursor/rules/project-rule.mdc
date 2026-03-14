@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# プロジェクトルール
+
+このファイルは Cursor 向けの常時適用 adapter です。  
+詳細な正本は `../../docs/development/project-conventions.md` を参照してください。
+
+## 常時適用の要点
+
+- 本リポジトリの人間向け正本ドキュメントは `docs/` 配下に置く
+- 設計資料は `docs/architecture/`、一般的な開発規約は `docs/development/` を参照する
+- Cursor 固有のルールは `.cursor/rules/` に残す
+- `@/*` はプロジェクトルートを指す
+- 機能固有の実装は `features/`、横断的な共有コードは `lib/` と `components/` に置く
+- React Server Components を優先し、必要な場合だけ client component にする
+- Supabase のアクセスモードを明示する
+  - 通常のユーザーフローは `createClient()`
+  - 特権処理は `createAdminClient()`
+  - 複数テーブルの業務処理は SQL RPC / trigger を優先する
+- モバイルファーストで実装する
+- 機密情報はコードに書かず、`.env.local` と Vercel 環境変数で管理する
+
+## 参照先
+
+- 一般的な開発規約: `../../docs/development/project-conventions.md`
+- プロダクト要件: `./requirements.mdc`
+- データと Supabase 構成: `../../docs/architecture/data.md`
+- 正確な DB スキーマ台帳: `./database-design.mdc`
+- 実装進行の優先度: `./implementation-roadmap.mdc`
+- 収益化とペルコイン仕様: `./monetization.mdc`
