@@ -1,0 +1,21 @@
+---
+alwaysApply: false
+---
+
+# ユーザーストーリー
+
+このファイルは Cursor 向けの参照 adapter です。  
+正本は `../../docs/product/user-stories.md` を参照してください。
+
+## 読み方
+
+- 主要なユーザー体験の正本: `../../docs/product/user-stories.md`
+- 詳細要件: `../../docs/product/requirements.md`
+- 画面遷移: `../../docs/product/screen-flow.md`
+- データと実装: `../../docs/architecture/data.md`
+
+## 使い分け
+
+- ユーザーが何を達成したいかを理解したい時は `docs/product/user-stories.md`
+- 画面や route の移動を確認したい時は `docs/product/screen-flow.md`
+- 厳密な仕様や制約を確認したい時は `docs/product/requirements.md`

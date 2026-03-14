@@ -1,0 +1,20 @@
+---
+alwaysApply: false
+---
+
+# 要件定義書
+
+このファイルは Cursor 向けの参照 adapter です。  
+正本は `../../docs/product/requirements.md` を参照してください。
+
+## 読み方
+
+- プロダクト要件の正本: `../../docs/product/requirements.md`
+- 開発規約: `../../docs/development/project-conventions.md`
+- データと Supabase 構成: `../../docs/architecture/data.md`
+- 正確な DB スキーマ台帳: `./database-design.mdc`
+
+## 使い分け
+
+- ユーザー価値、機能要件、画面要求を確認したい時は `docs/product/requirements.md`
+- 実装の現在地や優先度を見たい時は `../../docs/planning/implementation-roadmap.md`

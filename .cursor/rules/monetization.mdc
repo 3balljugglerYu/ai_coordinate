@@ -1,0 +1,20 @@
+---
+alwaysApply: false
+---
+
+# マネタイズ戦略
+
+このファイルは Cursor 向けの参照 adapter です。  
+正本は `../../docs/business/monetization.md` を参照してください。
+
+## 読み方
+
+- 収益化と価格設計の正本: `../../docs/business/monetization.md`
+- プロダクト要件: `./requirements.mdc`
+- 実装計画: `./implementation-roadmap.mdc`
+- データと Supabase 構成: `../../docs/architecture/data.md`
+
+## 使い分け
+
+- 価格、原価、特典方針を確認したい時は `docs/business/monetization.md`
+- 実際の package 定義や bonus 既定値はコードと migration も確認する

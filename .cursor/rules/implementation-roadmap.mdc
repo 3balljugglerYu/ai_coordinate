@@ -1,0 +1,19 @@
+---
+alwaysApply: false
+---
+
+# 実装優先度・ロードマップ
+
+このファイルは Cursor 向けの参照 adapter です。  
+正本は `../../docs/planning/implementation-roadmap.md` を参照してください。
+
+## 読み方
+
+- 実装計画と完了状況の正本: `../../docs/planning/implementation-roadmap.md`
+- 機能要求の正本: `../../docs/product/requirements.md`
+- 開発規約: `../../docs/development/project-conventions.md`
+
+## 使い分け
+
+- 何を作るかは `docs/product/requirements.md`
+- 何を先に進めるか、どこまで終わっているかは `docs/planning/implementation-roadmap.md`

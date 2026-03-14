@@ -1,0 +1,365 @@
+---
+alwaysApply: false
+---
+
+# データベース設計（現行実装ベース）
+
+## 新規開発者向けの入口
+- まず `../../docs/architecture/data.md` を読み、アプリ実装から見た Supabase / Storage / Edge Function / RPC の関係を掴んでください。
+- その後にこのファイルを読むと、テーブル定義・RLS・インデックスの詳細を追いやすくなります。
+- API の入出力は `../../docs/API.md` を参照してください。
+- このファイルは Cursor 向けのスキーマ台帳です。他 agent 向けの共通入口は `../../.agents/skills/project-database-context/SKILL.md` にあります。
+
+## 取得元と前提
+- 更新日: 2026-03-14
+- 対象: Supabase `public` スキーマ
+- 取得元: Supabase MCP（`list_tables` / `execute_sql`）
+- 本ドキュメントは「現行の実テーブル定義」を記載します（将来追加想定は記載しない）。
+- 2026-03-14 時点で `public` の BASE TABLE は 26 件、`public` 関数は 51 件です。
+
+## `public` テーブル一覧（26）
+- `admin_audit_log`
+- `admin_users`
+- `banners`
+- `comments`
+- `credit_forfeiture_ledger`
+- `credit_transactions`
+- `follows`
+- `free_percoin_batches`
+- `free_percoin_expiration_log`
+- `generated_images`
+- `generation_percoin_allocations`
+- `image_jobs`
+- `likes`
+- `materials_images`
+- `moderation_audit_logs`
+- `notification_preferences`
+- `notifications`
+- `percoin_bonus_defaults`
+- `percoin_streak_defaults`
+- `post_reports`
+- `profiles`
+- `push_subscriptions`
+- `referrals`
+- `source_image_stocks`
+- `user_blocks`
+- `user_credits`
+
+## 旧版からの主な差分
+- `credit_packages` は現行 `public` には存在しません。
+- `notifications` は将来追加ではなく、現行テーブルとして存在します。
+- ペルコイン管理は `user_credits` 単体ではなく、`free_percoin_batches` / `generation_percoin_allocations` を含む構成です。
+- `user_credits` には `paid_balance` が追加されています（`promo_balance` カラムはありません）。
+- `image_jobs`、`source_image_stocks`、`referrals`、`follows`、`user_blocks`、`post_reports`、`moderation_audit_logs`、`admin_*` 系などが現行テーブルとして存在します。
+- `image_jobs` には `source_image_type` が存在します。
+- `free_percoin_batches.source` には `streak` / `refund` が含まれます。
+- `generated_images.prompt` の全文検索向け trigram index、通知・紹介・監査向けの運用インデックスが追加されています。
+- `public` 関数には、業務 RPC に加えて通知削除・updated_at 更新・紹介コード生成・異常検知などの helper / trigger 関数が存在します。
+
+## テーブル定義
+
+### ペルコイン・課金
+
+#### `user_credits`
+- 主キー: `id`
+- 主要カラム: `user_id`, `balance`, `paid_balance`, `created_at`, `updated_at`
+- 制約: `user_id` UNIQUE
+- RLS: 本人の `SELECT` のみ許可
+
+#### `credit_transactions`
+- 主キー: `id`
+- 主要カラム: `user_id`, `amount`, `transaction_type`, `stripe_payment_intent_id`, `related_generation_id`, `metadata`, `created_at`
+- 外部キー: `user_id -> auth.users.id`, `related_generation_id -> generated_images.id`
+- 備考: `transaction_type` は `purchase/consumption/refund/signup_bonus/daily_post/streak/referral/admin_bonus/forfeiture/tour_bonus/admin_deduction`
+- RLS: 本人の `SELECT` のみ許可
+
+#### `free_percoin_batches`
+- 主キー: `id`
+- 主要カラム: `user_id`, `amount`, `remaining_amount`, `granted_at`, `expire_at`, `source`, `credit_transaction_id`, `created_at`, `updated_at`
+- 外部キー: `user_id -> auth.users.id`, `credit_transaction_id -> credit_transactions.id`
+- 備考: `source` は `signup_bonus/tour_bonus/referral/daily_post/streak/admin_bonus/refund`
+- RLS: `authenticated` ロールで本人 `SELECT` のみ許可
+
+#### `free_percoin_expiration_log`
+- 主キー: `id`
+- 主要カラム: `batch_id`, `user_id`, `amount_expired`, `original_amount`, `granted_at`, `expire_at`, `source`, `reason`, `processed_at`
+- 制約: `batch_id` UNIQUE
+- 外部キー: `user_id -> auth.users.id`
+- RLS: `authenticated` ロールで本人 `SELECT` のみ許可
+
+#### `generation_percoin_allocations`
+- 主キー: `id`
+- 主要カラム: `job_id`, `user_id`, `consumption_transaction_id`, `refund_transaction_id`, `allocation_kind`, `source_batch_id`, `source_expire_at`, `source_granted_at`, `source_source`, `amount`, `restored_at`, `created_at`
+- 外部キー: `job_id -> image_jobs.id`, `user_id -> auth.users.id`, `consumption_transaction_id/refund_transaction_id -> credit_transactions.id`
+- 備考: `allocation_kind` は `period_limited/unlimited_bonus/paid`
+- RLS: 有効だが、公開ポリシーは未定義（通常クライアントからは直接アクセス不可）
+
+#### `percoin_bonus_defaults`
+- 主キー: `source`
+- 主要カラム: `source`, `amount`, `updated_at`
+- 備考: `source` は `signup_bonus/tour_bonus/referral/daily_post`
+- RLS: 有効だが、公開ポリシーは未定義
+
+#### `percoin_streak_defaults`
+- 主キー: `streak_day`
+- 主要カラム: `streak_day`, `amount`, `updated_at`
+- RLS: 有効だが、公開ポリシーは未定義
+
+#### `credit_forfeiture_ledger`
+- 主キー: `id`
+- 主要カラム: `user_id`, `email_hash`, `forfeited_paid`, `forfeited_promo`, `forfeited_total`, `deletion_requested_at`, `deleted_at`, `retention_until`, `metadata`, `created_at`
+- 制約: `user_id` UNIQUE
+- 備考: `forfeited_total` は生成列（`forfeited_paid + forfeited_promo`）
+- RLS: `anon/authenticated` からの直接アクセスを禁止
+
+### 画像生成・投稿
+
+#### `image_jobs`
+- 主キー: `id`
+- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `model`, `background_change`, `status`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
+- 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
+- 備考: `status` は `queued/processing/succeeded/failed`、`source_image_type` は `illustration/real`
+- RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
+
+#### `generated_images`
+- 主キー: `id`
+- 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `background_change`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `aspect_ratio`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
+- 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
+- 備考: `moderation_status` は `visible/pending/removed`
+- RLS: 投稿済みかつ `visible` の画像は公開、それ以外は本人のみ。`INSERT/UPDATE/DELETE` は本人のみ
+
+#### `source_image_stocks`
+- 主キー: `id`
+- 主要カラム: `user_id`, `image_url`, `storage_path`, `name`, `last_used_at`, `usage_count`, `created_at`, `updated_at`, `deleted_at`
+- 外部キー: `user_id -> auth.users.id`
+- 制約: `(user_id, name)` の部分UNIQUE（`name IS NOT NULL`）
+- RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
+
+### ソーシャル
+
+#### `likes`
+- 主キー: `id`
+- 主要カラム: `user_id`, `image_id`, `created_at`
+- 外部キー: `user_id -> auth.users.id`, `image_id -> generated_images.id`
+- 制約: `(user_id, image_id)` UNIQUE
+- RLS: 公開 `SELECT`、本人 `INSERT/DELETE`
+
+#### `comments`
+- 主キー: `id`
+- 主要カラム: `user_id`, `image_id`, `content`, `created_at`, `updated_at`, `deleted_at`
+- 外部キー: `user_id -> auth.users.id`, `image_id -> generated_images.id`
+- RLS: `deleted_at IS NULL` は公開 `SELECT`、自分の削除済みコメントは本人も `SELECT` 可。`INSERT/UPDATE/DELETE` は本人のみ
+
+#### `follows`
+- 主キー: `id`
+- 主要カラム: `follower_id`, `followee_id`, `created_at`
+- 外部キー: `follower_id -> auth.users.id`, `followee_id -> auth.users.id`
+- 制約: `(follower_id, followee_id)` UNIQUE
+- RLS: 関係者のみ `SELECT`、`INSERT/DELETE` は `follower_id = auth.uid()`
+
+#### `referrals`
+- 主キー: `id`
+- 主要カラム: `referrer_id`, `referred_id`, `referral_code`, `created_at`
+- 外部キー: `referrer_id -> auth.users.id`, `referred_id -> auth.users.id`
+- 制約: `referred_id` UNIQUE
+- RLS: 当事者のみ `SELECT`、`INSERT` は `referred_id = auth.uid()`
+
+#### `post_reports`
+- 主キー: `id`
+- 主要カラム: `post_id`, `reporter_id`, `category_id`, `subcategory_id`, `details`, `weight`, `created_at`
+- 外部キー: `post_id -> generated_images.id`, `reporter_id -> auth.users.id`
+- 制約: `(reporter_id, post_id)` UNIQUE
+- RLS: 本人レポートのみ `SELECT/INSERT/DELETE`
+
+#### `user_blocks`
+- 主キー: `id`
+- 主要カラム: `blocker_id`, `blocked_id`, `created_at`
+- 外部キー: `blocker_id -> auth.users.id`, `blocked_id -> auth.users.id`
+- 制約: `(blocker_id, blocked_id)` UNIQUE
+- RLS: 関係者のみ `SELECT`、`INSERT/DELETE` は `blocker_id = auth.uid()`
+
+### 通知
+
+#### `notifications`
+- 主キー: `id`
+- 主要カラム: `recipient_id`, `actor_id`, `type`, `entity_type`, `entity_id`, `title`, `body`, `data`, `is_read`, `read_at`, `pushed_at`, `push_status`, `created_at`, `comment_id`
+- 外部キー: `recipient_id -> auth.users.id`, `actor_id -> auth.users.id`, `comment_id -> comments.id`
+- 備考: `type` は `like/comment/follow/bonus`、`push_status` は `pending/sent/failed`
+- RLS:
+  - `SELECT`: 受信者本人のみ
+  - `INSERT`: 直接INSERTは禁止（`with_check false`）
+  - `UPDATE`: 受信者本人または `service_role`
+  - `DELETE`: 受信者本人のみ
+
+#### `notification_preferences`
+- 主キー: `user_id`
+- 主要カラム: `user_id`, `like_enabled`, `comment_enabled`, `follow_enabled`, `push_enabled`, `created_at`, `updated_at`
+- 外部キー: `user_id -> auth.users.id`
+- RLS: 本人のみ `ALL`
+
+#### `push_subscriptions`
+- 主キー: `id`
+- 主要カラム: `user_id`, `device_id`, `platform`, `token`, `last_seen_at`, `created_at`
+- 外部キー: `user_id -> auth.users.id`
+- 制約: `(user_id, device_id)` UNIQUE
+- RLS: 本人のみ `ALL`
+
+### ユーザープロフィール
+
+#### `profiles`
+- 主キー: `id`
+- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
+- 外部キー: `id -> auth.users.id`, `user_id -> auth.users.id`
+- 制約: `user_id` UNIQUE、`referral_code` UNIQUE
+- RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ
+
+### 管理・モデレーション・運用
+
+#### `moderation_audit_logs`
+- 主キー: `id`
+- 主要カラム: `post_id`, `actor_id`, `action`, `reason`, `metadata`, `created_at`
+- 外部キー: `post_id -> generated_images.id`, `actor_id -> auth.users.id`
+- RLS: `authenticated` ロールに `SELECT/INSERT` を許可
+
+#### `admin_users`
+- 主キー: `user_id`
+- 主要カラム: `user_id`, `created_at`, `created_by`
+- 外部キー: `user_id -> auth.users.id`, `created_by -> auth.users.id`
+- RLS: 公開アクセス禁止（`ALL false`）
+
+#### `admin_audit_log`
+- 主キー: `id`
+- 主要カラム: `admin_user_id`, `action_type`, `target_type`, `target_id`, `metadata`, `created_at`
+- 外部キー: `admin_user_id -> auth.users.id`
+- RLS: 公開アクセス禁止（`ALL false`）
+
+### コンテンツ管理
+
+#### `banners`
+- 主キー: `id`
+- 主要カラム: `image_url`, `storage_path`, `link_url`, `alt`, `display_start_at`, `display_end_at`, `display_order`, `status`, `tags`, `created_at`, `updated_at`
+- RLS: 公開 `SELECT` のみ
+
+#### `materials_images`
+- 主キー: `id`
+- 主要カラム: `page_slug`, `image_url`, `storage_path`, `alt`, `display_order`, `created_at`, `updated_at`
+- RLS: 公開 `SELECT` のみ
+
+## 主要インデックス（現行・抜粋）
+
+### ペルコイン・課金
+- `idx_credit_transactions_user_created` (`user_id, created_at DESC`)
+- `idx_credit_transactions_created_at`
+- `idx_credit_transactions_type`
+- `idx_credit_transactions_stripe_payment_intent_id`（`stripe_payment_intent_id` 一意）
+- `idx_credit_transactions_one_consumption_per_job`（`consumption` の `metadata->>'job_id'` 一意）
+- `idx_credit_transactions_one_refund_per_job`（`refund` の `metadata->>'job_id'` 一意）
+- `idx_credit_transactions_one_tour_bonus_per_user`（`tour_bonus` のユーザー一意）
+- `idx_credit_transactions_admin_deduction_idempotency`（`admin_deduction` の冪等キー一意）
+- `idx_credit_transactions_user_type_created`（ボーナス/返金系の履歴参照用）
+- `idx_credit_transactions_user_admin_balance_type_created`（管理付与/減算の残高種別参照用）
+- `idx_fpb_user_remaining_period_limited_expire`（期間限定残高の消費順用）
+- `idx_fpb_user_remaining_unlimited`（無期限残高の探索用）
+- `idx_fpb_user_remaining`, `idx_fpb_user_remaining_cover`
+- `idx_fpb_expire`, `idx_fpb_user_expire`
+- `idx_gpa_unique_source_batch_per_consumption`（同一消費Tx + 同一batch を一意）
+- `idx_gpa_unique_paid_per_consumption`（同一消費Tx + `paid` を一意）
+- `idx_gpa_job_id`, `idx_gpa_consumption_tx_id`, `idx_gpa_refund_tx_id`, `idx_gpa_unrestored`
+- `idx_credit_forfeiture_ledger_deleted_at`, `idx_credit_forfeiture_ledger_retention_until`
+
+### 画像・投稿
+- `idx_generated_images_is_posted`
+- `idx_generated_images_moderation_status_posted`
+- `idx_generated_images_posted_at`
+- `idx_generated_images_user_id`
+- `idx_generated_images_created_at`
+- `idx_generated_images_generation_type`
+- `idx_generated_images_aspect_ratio`
+- `idx_generated_images_source_stock_id`
+- `idx_generated_images_moderation_approved_at`
+- `idx_generated_images_prompt_trgm`（`prompt` の trigram 検索用）
+- `idx_image_jobs_user_id_status`
+- `idx_image_jobs_created_at`
+- `idx_image_jobs_user_id`
+- `idx_image_jobs_status`
+- `idx_image_jobs_source_image_stock_id`
+- `idx_comments_image_id`, `idx_comments_image_id_created_at`, `idx_comments_user_id`
+- `idx_likes_image_id`, `idx_likes_image_id_created_at`, `idx_likes_user_id`
+
+### ソーシャル・通知
+- `likes_user_id_image_id_key`
+- `idx_comments_image_id_created_at`
+- `follows_follower_id_followee_id_key`
+- `user_blocks_blocker_id_blocked_id_key`
+- `idx_notifications_recipient_created`
+- `idx_notifications_recipient_unread`
+- `idx_notifications_actor_id`
+- `idx_notifications_comment_id`
+- `notifications_unique_like_follow_idx`
+- `notifications_unique_comment_idx`
+- `idx_follows_followee_id`, `idx_follows_follower_id`
+- `idx_referrals_created_at`, `idx_referrals_referral_code`, `idx_referrals_referred_id`, `idx_referrals_referrer_id`
+- `idx_post_reports_post_id_created_at`, `idx_post_reports_reporter_id_created_at`
+- `idx_user_blocks_blocked_id_created_at`, `idx_user_blocks_blocker_id_created_at`
+- `idx_profiles_deletion_scheduled_at`
+- `idx_banners_public_list`
+- `idx_materials_images_page_display`
+- `idx_moderation_audit_logs_actor_id_created_at`, `idx_moderation_audit_logs_post_id_created_at`
+- `idx_admin_audit_log_action_type`, `idx_admin_audit_log_admin_user_id`, `idx_admin_audit_log_created_at`, `idx_admin_audit_log_target`
+
+## 外部キー関係（主要）
+- 多くのテーブルが `auth.users.id` を参照（`profiles`, `user_credits`, `credit_transactions`, `free_percoin_batches`, `notifications` など）
+- 投稿系の参照:
+  - `likes.image_id`, `comments.image_id`, `post_reports.post_id`, `moderation_audit_logs.post_id`, `credit_transactions.related_generation_id` -> `generated_images.id`
+- 画像生成ジョブ・消費内訳:
+  - `generation_percoin_allocations.job_id` -> `image_jobs.id`
+  - `generation_percoin_allocations.consumption_transaction_id/refund_transaction_id` -> `credit_transactions.id`
+  - `free_percoin_batches.credit_transaction_id` -> `credit_transactions.id`
+
+## `public` 関数（現行）
+
+### 業務ロジック RPC
+- ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `deduct_percoins_admin`, `expire_free_percoin_batches`
+- ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
+- 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
+- 通知: `create_notification`
+- 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
+- モデレーション: `mark_post_pending_by_report`, `apply_admin_moderation_decision`
+- 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`
+
+### trigger / helper / 運用関数
+- 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`
+- 更新日時: `update_updated_at_column`, `update_banners_updated_at`, `update_materials_images_updated_at`, `update_notification_preferences_updated_at`
+- アカウント初期化: `handle_new_user`
+- 監視・診断: `detect_generation_billing_anomalies`, `monitor_generation_billing_anomalies`
+- 拡張由来: `pgmq_send`, `pgmq_read`, `pgmq_delete`
+
+## 更新運用
+- このファイルを更新する際は、以下を実行して実データを再取得してから更新すること。
+
+```sql
+-- テーブル定義
+select table_name, column_name, data_type
+from information_schema.columns
+where table_schema = 'public'
+order by table_name, ordinal_position;
+
+-- RLS
+select tablename, policyname, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+order by tablename, policyname;
+
+-- インデックス
+select tablename, indexname, indexdef
+from pg_indexes
+where schemaname = 'public'
+order by tablename, indexname;
+
+-- 関数
+select proname
+from pg_proc p
+join pg_namespace n on p.pronamespace = n.oid
+where n.nspname = 'public'
+order by proname;
+```
