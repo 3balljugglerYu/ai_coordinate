@@ -1,0 +1,2484 @@
+openapi: 3.1.0
+info:
+  title: Persta.AI Application API
+  version: "0.1.0-draft"
+  summary: Draft OpenAPI spec derived from docs/API.md and current Next.js Route Handlers.
+  description: |
+    This is a draft OpenAPI specification for the internal application APIs used by Persta.AI.
+    It was generated from `docs/API.md` and the current implementation under `app/api/**/route.ts`
+    on 2026-03-13.
+
+    Important notes:
+    - This API surface is primarily used by the first-party web app, not as a stable public API.
+    - Session-authenticated operations usually depend on Supabase browser cookies.
+    - Several endpoints are intentionally documented as operational or webhook entry points.
+    - Some response bodies remain approximate and should be refined against runtime payloads.
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: "{siteUrl}/api"
+    description: Deployment URL placeholder
+    variables:
+      siteUrl:
+        default: https://your-site.example.com
+tags:
+  - name: posts
+    description: Post browsing, interaction, and comment APIs
+  - name: users
+    description: Profile, follow, block, and avatar APIs
+  - name: credits
+    description: Credit balance and checkout flows
+  - name: generate-async
+    description: Async image generation job creation
+  - name: generation-status
+    description: Job status polling APIs
+  - name: account
+    description: Current account state and self-service operations
+  - name: notifications
+    description: Notification list and read-state operations
+  - name: admin
+    description: Admin-only and operational APIs
+  - name: referral
+    description: Referral and first-login bonus flows
+  - name: reports
+    description: Reporting and moderation metrics
+  - name: revalidate
+    description: Cache invalidation endpoints
+  - name: source-image-stocks
+    description: Source image stock management
+  - name: streak
+    description: Daily streak status and check-in
+  - name: stripe
+    description: Stripe webhook endpoints
+  - name: webhook
+    description: External webhook entry points
+  - name: banners
+    description: Public banner APIs
+  - name: comments
+    description: Direct comment editing APIs
+  - name: contact
+    description: Contact form submission
+  - name: hello
+    description: Simple health-check style endpoint
+  - name: my-page
+    description: My-page specific APIs
+  - name: internal
+    description: Internal operational APIs
+  - name: tutorial
+    description: Tutorial completion flow
+  - name: generate-webp
+    description: WebP conversion endpoint
+paths:
+  /posts:
+    get:
+      tags: [posts]
+      summary: List posts.
+      description: |
+        Returns a paginated list of posts for the feed.
+        The current implementation supports optional keyword search and multiple sort modes.
+      operationId: getPosts
+      x-access-level: public
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Posts retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostsListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /generate-async:
+    post:
+      tags: [generate-async]
+      summary: Create an async image generation job.
+      description: |
+        Validates the request, checks the caller's balance, creates a record in `image_jobs`,
+        and attempts to enqueue work for the background image worker.
+      operationId: postGenerateAsync
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateAsyncRequest"
+      responses:
+        "200":
+          description: Job created and queue dispatch accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateAsyncQueuedResponse"
+        "202":
+          description: Job created, but queue delivery may be delayed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateAsyncAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /generation-status:
+    get:
+      tags: [generation-status]
+      summary: Get generation job status.
+      description: Returns the state of a single async generation job owned by the current user.
+      operationId: getGenerationStatus
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/jobId"
+      responses:
+        "200":
+          description: Job status retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationStatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /credits/checkout:
+    post:
+      tags: [credits]
+      summary: Create a Stripe Checkout session for a credit package.
+      description: |
+        Returns either a live Stripe Checkout URL or a mock checkout URL when Stripe is not configured.
+      operationId: postCreditsCheckout
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+      responses:
+        "200":
+          description: Checkout URL created.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CheckoutStripeResponse"
+                  - $ref: "#/components/schemas/CheckoutMockResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: Stripe rate limit error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          description: Stripe connectivity or upstream availability issue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/bonus/grant-batch:
+    post:
+      tags: [admin]
+      summary: Grant credits to multiple users in a single admin request.
+      operationId: postAdminBonusGrantBatch
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GrantBatchRequest"
+      responses:
+        "200":
+          description: Batch processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GrantBatchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /internal/account-purge:
+    get:
+      tags: [internal]
+      summary: Purge deletion-eligible accounts.
+      description: |
+        Protected operational endpoint used by scheduled jobs to delete due accounts and related assets.
+      operationId: getInternalAccountPurge
+      x-access-level: bearer secret
+      security:
+        - BearerSecret: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of deletion candidates to process.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        "200":
+          description: Purge run completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountPurgeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags: [internal]
+      summary: Purge deletion-eligible accounts.
+      operationId: postInternalAccountPurge
+      x-access-level: bearer secret
+      security:
+        - BearerSecret: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountPurgeRequest"
+      responses:
+        "200":
+          description: Purge run completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountPurgeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/profile:
+    get:
+      tags: [users]
+      summary: Get a user profile.
+      operationId: getUserProfile
+      x-access-level: public
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Profile retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags: [users]
+      summary: Update the current user's profile.
+      operationId: patchUserProfile
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfilePatchRequest"
+      responses:
+        "200":
+          description: Profile updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/{id}/comments:
+    get:
+      tags: [posts]
+      summary: List comments for a post.
+      operationId: getPostComments
+      x-access-level: public
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Comments retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentsListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags: [posts]
+      summary: Create a comment on a post.
+      operationId: postPostComment
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentCreateRequest"
+      responses:
+        "200":
+          description: Comment created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comment]
+                properties:
+                  comment:
+                    $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /streak/check:
+    get:
+      tags: [streak]
+      summary: Get current streak status.
+      operationId: getStreakStatus
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Streak status retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreakResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags: [streak]
+      summary: Execute a streak check-in.
+      operationId: postStreakCheckin
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Streak check-in completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreakResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /stripe/webhook:
+    post:
+      tags: [stripe]
+      summary: Handle Stripe webhooks.
+      description: |
+        Validates the `stripe-signature` header and currently processes `checkout.session.completed`
+        to credit the corresponding user account.
+      operationId: postStripeWebhook
+      x-access-level: webhook
+      security:
+        - StripeSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Webhook accepted or event ignored successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeWebhookResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /account/blocks/{blockedUserId}:
+    delete:
+      tags: [account]
+      summary: Unblock a blocked user.
+      operationId: delete_account_blocks_blockedUserId
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/blockedUserId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /account/blocks:
+    get:
+      tags: [account]
+      summary: List users blocked by the current user.
+      operationId: get_account_blocks
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /account/deactivate:
+    post:
+      tags: [account]
+      summary: Deactivate the current user account.
+      operationId: post_account_deactivate
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /account/reactivate:
+    post:
+      tags: [account]
+      summary: Reactivate the current user account.
+      operationId: post_account_reactivate
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /account/reports/{postId}:
+    delete:
+      tags: [account]
+      summary: Cancel a report created by the current user.
+      operationId: delete_account_reports_postId
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/postId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /account/reports:
+    get:
+      tags: [account]
+      summary: List posts reported by the current user.
+      operationId: get_account_reports
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/audit-log:
+    get:
+      tags: [admin]
+      summary: List admin audit logs.
+      operationId: get_admin_audit_log
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/banners/{id}:
+    patch:
+      tags: [admin]
+      summary: バナー管理API（更新・削除）
+      operationId: patch_admin_banners_id
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [admin]
+      summary: バナー管理API（更新・削除）
+      operationId: delete_admin_banners_id
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/banners/reorder:
+    post:
+      tags: [admin]
+      summary: バナー表示順の一括更新API
+      operationId: post_admin_banners_reorder
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/banners:
+    get:
+      tags: [admin]
+      summary: バナー管理API（一覧・作成）
+      operationId: get_admin_banners
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags: [admin]
+      summary: バナー管理API（一覧・作成）
+      operationId: post_admin_banners
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/bonus/bulk-lookup:
+    post:
+      tags: [admin]
+      summary: メールアドレス配列から user_id と残高を一括取得
+      operationId: post_admin_bonus_bulk_lookup
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/bonus/grant:
+    post:
+      tags: [admin]
+      summary: 運営者からのボーナス付与API
+      operationId: post_admin_bonus_grant
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/credits-summary:
+    get:
+      tags: [admin]
+      summary: Get credit summary metrics for admin UI.
+      operationId: get_admin_credits_summary
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/deduction:
+    post:
+      tags: [admin]
+      summary: ペルコイン減算API
+      operationId: post_admin_deduction
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/generate-webp:
+    post:
+      tags: [admin]
+      summary: 既存資産のWebP生成バッチ処理API
+      operationId: post_admin_generate_webp
+      x-access-level: operational
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [admin]
+      summary: 既存資産のWebP生成バッチ処理API
+      operationId: get_admin_generate_webp
+      x-access-level: operational
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/generate-webp-by-id:
+    post:
+      tags: [admin]
+      summary: 特定の画像IDを指定してWebP生成を実行するAPI
+      operationId: post_admin_generate_webp_by_id
+      x-access-level: operational
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/materials-images/{slug}/{id}:
+    patch:
+      tags: [admin]
+      summary: フリー素材画像管理API（更新・削除）
+      operationId: patch_admin_materials_images_slug_id
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [admin]
+      summary: フリー素材画像管理API（更新・削除）
+      operationId: delete_admin_materials_images_slug_id
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/materials-images/{slug}/reorder:
+    post:
+      tags: [admin]
+      summary: フリー素材画像の表示順一括更新API
+      operationId: post_admin_materials_images_slug_reorder
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/materials-images/{slug}:
+    get:
+      tags: [admin]
+      summary: フリー素材画像管理API（一覧・作成）
+      operationId: get_admin_materials_images_slug
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags: [admin]
+      summary: フリー素材画像管理API（一覧・作成）
+      operationId: post_admin_materials_images_slug
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/moderation/posts/{postId}/decision:
+    post:
+      tags: [admin]
+      summary: Submit a moderation decision for a post.
+      operationId: post_admin_moderation_posts_postId_decision
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/postId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/moderation/posts:
+    get:
+      tags: [admin]
+      summary: List moderation queue items.
+      operationId: get_admin_moderation_posts
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/percoin-defaults:
+    get:
+      tags: [admin]
+      summary: デフォルト枚数を取得（管理者用）
+      operationId: get_admin_percoin_defaults
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags: [admin]
+      summary: デフォルト枚数を取得（管理者用）
+      operationId: patch_admin_percoin_defaults
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/reports/aggregated:
+    get:
+      tags: [admin]
+      summary: Get aggregated report metrics.
+      operationId: get_admin_reports_aggregated
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/reports:
+    get:
+      tags: [admin]
+      summary: List reports for moderation.
+      operationId: get_admin_reports
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/test-auth:
+    get:
+      tags: [admin]
+      summary: 管理者権限チェックのテスト用APIエンドポイント
+      operationId: get_admin_test_auth
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/users/{userId}/reactivate:
+    post:
+      tags: [admin]
+      summary: Reactivate a suspended user.
+      operationId: post_admin_users_userId_reactivate
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/users/{userId}:
+    get:
+      tags: [admin]
+      summary: Get admin view of a single user.
+      operationId: get_admin_users_userId
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/users/{userId}/suspend:
+    post:
+      tags: [admin]
+      summary: Suspend a user.
+      operationId: post_admin_users_userId_suspend
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/users:
+    get:
+      tags: [admin]
+      summary: List users for the admin UI.
+      operationId: get_admin_users
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/users/search:
+    get:
+      tags: [admin]
+      summary: Search users for the admin UI.
+      operationId: get_admin_users_search
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /banners:
+    get:
+      tags: [banners]
+      summary: 公開バナー一覧API（ホーム表示用）
+      operationId: get_banners
+      x-access-level: public
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /comments/{id}:
+    put:
+      tags: [comments]
+      summary: コメント編集・削除API
+      operationId: put_comments_id
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [comments]
+      summary: コメント編集・削除API
+      operationId: delete_comments_id
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /contact:
+    post:
+      tags: [contact]
+      summary: Send a contact form email.
+      operationId: post_contact
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /credits/balance:
+    get:
+      tags: [credits]
+      summary: Get the current user credit balance.
+      operationId: get_credits_balance
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /credits/consume:
+    post:
+      tags: [credits]
+      summary: Consume credits for a generation-related action.
+      operationId: post_credits_consume
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /credits/free-percoin-expiring:
+    get:
+      tags: [credits]
+      summary: 期限が近い無償コイン一覧と今月末失効予定数を取得
+      operationId: get_credits_free_percoin_expiring
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /credits/mock-complete:
+    post:
+      tags: [credits]
+      summary: Mark a mock purchase flow as completed.
+      operationId: post_credits_mock_complete
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /generate-webp:
+    post:
+      tags: [generate-webp]
+      summary: WebP生成API Route
+      operationId: post_generate_webp
+      x-access-level: public
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /generation-status/in-progress:
+    get:
+      tags: [generation-status]
+      summary: 未完了画像生成ジョブ取得API
+      operationId: get_generation_status_in_progress
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /hello:
+    get:
+      tags: [hello]
+      summary: Simple health-check style endpoint.
+      operationId: get_hello
+      x-access-level: public
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /my-page/images:
+    get:
+      tags: [my-page]
+      summary: マイページ画像一覧取得API
+      operationId: get_my_page_images
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /notifications/mark-all-read:
+    post:
+      tags: [notifications]
+      summary: 全件既読API
+      operationId: post_notifications_mark_all_read
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /notifications/mark-read:
+    post:
+      tags: [notifications]
+      summary: 通知既読API
+      operationId: post_notifications_mark_read
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /notifications:
+    get:
+      tags: [notifications]
+      summary: 通知一覧取得API
+      operationId: get_notifications
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /notifications/unread-count:
+    get:
+      tags: [notifications]
+      summary: 未読数取得API
+      operationId: get_notifications_unread_count
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/{id}/like:
+    post:
+      tags: [posts]
+      summary: いいねの追加・削除API（トグル）
+      operationId: post_posts_id_like
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/{id}/like-status:
+    get:
+      tags: [posts]
+      summary: いいね状態取得API
+      operationId: get_posts_id_like_status
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/{id}:
+    delete:
+      tags: [posts]
+      summary: 投稿取り消しAPI（投稿詳細画面から）
+      operationId: delete_posts_id
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/{id}/view:
+    post:
+      tags: [posts]
+      summary: 閲覧数をインクリメントするAPI
+      operationId: post_posts_id_view
+      x-access-level: public
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/comments/batch:
+    post:
+      tags: [posts]
+      summary: コメント数の一括取得API（バッチ、特殊用途向け）
+      operationId: post_posts_comments_batch
+      x-access-level: public
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/likes/batch:
+    post:
+      tags: [posts]
+      summary: いいね数の一括取得API（バッチ、特殊用途向け）
+      operationId: post_posts_likes_batch
+      x-access-level: public
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/post:
+    post:
+      tags: [posts]
+      summary: デイリー投稿特典を付与するヘルパー関数
+      operationId: post_posts_post
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /posts/update:
+    put:
+      tags: [posts]
+      summary: キャプション更新API
+      operationId: put_posts_update
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /referral/check-first-login:
+    get:
+      tags: [referral]
+      summary: 初回ログイン時の紹介特典チェックAPI
+      operationId: get_referral_check_first_login
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /referral/generate:
+    get:
+      tags: [referral]
+      summary: 紹介コード生成API
+      operationId: get_referral_generate
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reports/posts:
+    post:
+      tags: [reports]
+      summary: 当該投稿の「審査待ち」判定用メトリクスを計算する。
+      operationId: post_reports_posts
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /revalidate/coordinate:
+    post:
+      tags: [revalidate]
+      summary: コーディネート画面のキャッシュを無効化するAPI
+      operationId: post_revalidate_coordinate
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /revalidate/home:
+    post:
+      tags: [revalidate]
+      summary: ホーム画面のキャッシュを無効化するAPI
+      operationId: post_revalidate_home
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /source-image-stocks/{id}:
+    delete:
+      tags: [source-image-stocks]
+      summary: ストック画像削除API（DELETE）
+      operationId: delete_source_image_stocks_id
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /source-image-stocks:
+    post:
+      tags: [source-image-stocks]
+      summary: ストック画像アップロードAPI（POST）
+      operationId: post_source_image_stocks
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tutorial/complete:
+    post:
+      tags: [tutorial]
+      summary: チュートリアル完了API
+      operationId: post_tutorial_complete
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/avatar:
+    post:
+      tags: [users]
+      summary: プロフィール画像アップロードAPI（POST）
+      operationId: post_users_userId_avatar
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/block:
+    post:
+      tags: [users]
+      summary: Block or unblock a user.
+      operationId: post_users_userId_block
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [users]
+      summary: Block or unblock a user.
+      operationId: delete_users_userId_block
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/block-status:
+    get:
+      tags: [users]
+      summary: Get block status for a target user.
+      operationId: get_users_userId_block_status
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/follow:
+    post:
+      tags: [users]
+      summary: フォロー/フォロー解除API
+      operationId: post_users_userId_follow
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [users]
+      summary: フォロー/フォロー解除API
+      operationId: delete_users_userId_follow
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/follow-status:
+    get:
+      tags: [users]
+      summary: フォロー状態取得API
+      operationId: get_users_userId_follow_status
+      x-access-level: user session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/posts:
+    get:
+      tags: [users]
+      summary: ユーザーの投稿一覧取得API（GET）
+      operationId: get_users_userId_posts
+      x-access-level: public
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /webhook/nanobanana:
+    post:
+      tags: [webhook]
+      summary: Nano Banana Webhook受け口
+      operationId: post_webhook_nanobanana
+      x-access-level: webhook
+      security: []
+      responses:
+        "200":
+          description: Successful response.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  securitySchemes:
+    SupabaseSessionCookie:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+      description: |
+        Draft placeholder for Supabase SSR/browser session cookies.
+        Actual cookie names may vary by project and runtime configuration.
+    BearerSecret:
+      type: http
+      scheme: bearer
+      description: Bearer secret used by internal scheduled jobs.
+    StripeSignature:
+      type: apiKey
+      in: header
+      name: stripe-signature
+      description: Stripe webhook signature header.
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      description: Generic resource identifier.
+      schema:
+        type: string
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: Supabase user identifier.
+      schema:
+        type: string
+        format: uuid
+    blockedUserId:
+      name: blockedUserId
+      in: path
+      required: true
+      description: User identifier for the blocked user.
+      schema:
+        type: string
+        format: uuid
+    postId:
+      name: postId
+      in: path
+      required: true
+      description: Post identifier.
+      schema:
+        type: string
+    slug:
+      name: slug
+      in: path
+      required: true
+      description: Slug used to identify a materials image collection.
+      schema:
+        type: string
+    limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    offset:
+      name: offset
+      in: query
+      required: false
+      description: Zero-based pagination offset.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    sort:
+      name: sort
+      in: query
+      required: false
+      description: Feed sort mode.
+      schema:
+        type: string
+        enum: [newest, following, daily, week, month, popular]
+        default: newest
+    q:
+      name: q
+      in: query
+      required: false
+      description: Free-text search query.
+      schema:
+        type: string
+    jobId:
+      name: id
+      in: query
+      required: true
+      description: Async generation job identifier.
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Request validation or parameter error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is required or the provided credentials are invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: The authenticated caller is not allowed to perform this action.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Unexpected server-side failure.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+      additionalProperties: true
+      examples:
+        generic:
+          value:
+            error: Invalid request
+    PostSummary:
+      type: object
+      description: Minimal placeholder schema for feed items. Refine against runtime payloads.
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        caption:
+          type: string
+        image_url:
+          type:
+            - string
+            - "null"
+      additionalProperties: true
+    PostsListResponse:
+      type: object
+      required: [posts, hasMore]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostSummary"
+        hasMore:
+          type: boolean
+    GenerateAsyncRequest:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        sourceImageBase64:
+          type: string
+          description: Base64-encoded source image. Required when `sourceImageStockId` is not supplied.
+        sourceImageMimeType:
+          type: string
+          enum:
+            - image/png
+            - image/jpeg
+            - image/jpg
+            - image/webp
+            - image/gif
+            - image/heic
+            - image/heif
+        sourceImageStockId:
+          type: string
+          format: uuid
+        sourceImageType:
+          type: string
+          default: illustration
+        backgroundMode:
+          type: string
+          description: Background mode enum from the generation feature.
+        count:
+          type: integer
+          minimum: 1
+          maximum: 4
+          default: 1
+        generationType:
+          type: string
+          enum: [coordinate, specified_coordinate, full_body, chibi]
+          default: coordinate
+        model:
+          type: string
+          enum:
+            - gemini-2.5-flash-image
+            - gemini-3-pro-image-1k
+            - gemini-3-pro-image-2k
+            - gemini-3-pro-image-4k
+            - gemini-2.5-flash-image-preview
+            - gemini-3-pro-image-preview
+            - gemini-3-pro-image
+          default: gemini-2.5-flash-image
+      additionalProperties: false
+    GenerateAsyncQueuedResponse:
+      type: object
+      required: [jobId, status]
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          example: queued
+    GenerateAsyncAcceptedResponse:
+      allOf:
+        - $ref: "#/components/schemas/GenerateAsyncQueuedResponse"
+        - type: object
+          properties:
+            warning:
+              type: string
+    GenerationStatusResponse:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        resultImageUrl:
+          type:
+            - string
+            - "null"
+          format: uri
+        errorMessage:
+          type:
+            - string
+            - "null"
+    CheckoutRequest:
+      type: object
+      required: [packageId]
+      properties:
+        packageId:
+          type: string
+    CheckoutPackage:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        credits:
+          type: integer
+        priceYen:
+          type: integer
+        description:
+          type:
+            - string
+            - "null"
+      additionalProperties: true
+    CheckoutStripeResponse:
+      type: object
+      required: [mode, checkoutUrl, package]
+      properties:
+        mode:
+          type: string
+          const: stripe
+        checkoutUrl:
+          type: string
+          format: uri
+        package:
+          $ref: "#/components/schemas/CheckoutPackage"
+    CheckoutMockResponse:
+      type: object
+      required: [mode, checkoutUrl, package]
+      properties:
+        mode:
+          type: string
+          const: mock
+        checkoutUrl:
+          type: string
+        package:
+          $ref: "#/components/schemas/CheckoutPackage"
+    GrantItem:
+      type: object
+      required: [email, amount]
+      properties:
+        email:
+          type: string
+          format: email
+        amount:
+          type: integer
+          minimum: 1
+    GrantBatchRequest:
+      type: object
+      required: [grants, balance_type, reason]
+      properties:
+        grants:
+          type: array
+          minItems: 1
+          maxItems: 300
+          items:
+            $ref: "#/components/schemas/GrantItem"
+        balance_type:
+          type: string
+          description: Admin credit balance type enum. Refine from `ADMIN_PERCOIN_BALANCE_TYPES`.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        send_notification:
+          type: boolean
+          default: true
+    GrantBatchSuccessResult:
+      type: object
+      required: [email, status, user_id, balance_before, amount_granted, balance_after]
+      properties:
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          const: success
+        user_id:
+          type: string
+        balance_before:
+          type: integer
+        amount_granted:
+          type: integer
+        balance_after:
+          type: integer
+    GrantBatchSkippedResult:
+      type: object
+      required: [email, status, error]
+      properties:
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          const: skipped
+        error:
+          type: string
+    GrantBatchErrorResult:
+      type: object
+      required: [email, status, error]
+      properties:
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          const: error
+        error:
+          type: string
+    GrantBatchResult:
+      oneOf:
+        - $ref: "#/components/schemas/GrantBatchSuccessResult"
+        - $ref: "#/components/schemas/GrantBatchSkippedResult"
+        - $ref: "#/components/schemas/GrantBatchErrorResult"
+    GrantBatchSummary:
+      type: object
+      required: [total, success, skipped, error]
+      properties:
+        total:
+          type: integer
+        success:
+          type: integer
+        skipped:
+          type: integer
+        error:
+          type: integer
+    GrantBatchResponse:
+      type: object
+      required: [success, results, summary, message]
+      properties:
+        success:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrantBatchResult"
+        summary:
+          $ref: "#/components/schemas/GrantBatchSummary"
+        message:
+          type: string
+    AccountPurgeRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+    AccountPurgeFailure:
+      type: object
+      required: [user_id, reason]
+      properties:
+        user_id:
+          type: string
+        reason:
+          type: string
+    AccountPurgeResponse:
+      type: object
+      required:
+        - success
+        - processed_count
+        - deleted_count
+        - failed_count
+        - avatar_path_parse_failed_count
+        - failures
+      properties:
+        success:
+          type: boolean
+        processed_count:
+          type: integer
+        deleted_count:
+          type: integer
+        failed_count:
+          type: integer
+        avatar_path_parse_failed_count:
+          type: integer
+        failures:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountPurgeFailure"
+    UserProfile:
+      type: object
+      required: [id, user_id]
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        nickname:
+          type:
+            - string
+            - "null"
+        bio:
+          type:
+            - string
+            - "null"
+        avatar_url:
+          type:
+            - string
+            - "null"
+          format: uri
+        created_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+    UserProfilePatchRequest:
+      type: object
+      properties:
+        nickname:
+          type:
+            - string
+            - "null"
+          maxLength: 20
+        bio:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+      additionalProperties: false
+    Comment:
+      type: object
+      description: Placeholder schema for comment payloads returned by the posts module.
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        user_id:
+          type: string
+        created_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+      additionalProperties: true
+    CommentsListResponse:
+      type: object
+      required: [comments]
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+    CommentCreateRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+    StreakResponse:
+      type: object
+      required: [bonus_granted, checked_in_today]
+      properties:
+        bonus_granted:
+          type: integer
+        streak_days:
+          type:
+            - integer
+            - "null"
+        checked_in_today:
+          type: boolean
+        last_streak_login_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        error:
+          type:
+            - string
+            - "null"
+    StripeWebhookResponse:
+      type: object
+      properties:
+        received:
+          type: boolean
+        handled:
+          type: boolean
+        idempotent:
+          type: boolean
+        message:
+          type:
+            - string
+            - "null"
+        eventType:
+          type:
+            - string
+            - "null"
+        userId:
+          type:
+            - string
+            - "null"
+        percoins:
+          type:
+            - integer
+            - "null"
+        paymentIntentId:
+          type:
+            - string
+            - "null"
+      additionalProperties: true
