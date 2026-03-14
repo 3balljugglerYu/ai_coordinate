@@ -2,7 +2,7 @@
 
 最終更新: 2026-03-13  
 ソース: `app/api/**/*.ts`
-閲覧用ビューア: `/api-docs`（`npm run dev` 実行中の localhost / 127.0.0.1 / ::1 からのアクセス時のみ）
+閲覧用ビューア: `/api-docs`（`npm run dev` 実行中かつ `API_DOCS_BASIC_AUTH_USER` / `API_DOCS_BASIC_AUTH_PASSWORD` 設定時のみ）
 
 ## Overview
 

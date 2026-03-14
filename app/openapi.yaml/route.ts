@@ -1,10 +1,15 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { isLocalRequest } from "@/lib/local-request";
+import { createApiDocsBasicAuthChallengeResponse, getApiDocsAuthConfig, hasValidApiDocsBasicAuth } from "@/lib/api-docs-auth";
 
 export async function GET(request: Request) {
-  if (!isLocalRequest(request.headers)) {
+  const config = getApiDocsAuthConfig();
+  if (!config) {
     return new Response("Not Found", { status: 404 });
+  }
+
+  if (!hasValidApiDocsBasicAuth(request.headers, config)) {
+    return createApiDocsBasicAuthChallengeResponse();
   }
 
   const specPath = path.join(process.cwd(), "docs", "openapi.yaml");

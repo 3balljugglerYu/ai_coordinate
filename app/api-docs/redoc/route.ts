@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { isLocalRequest } from "@/lib/local-request";
+import { createApiDocsBasicAuthChallengeResponse, getApiDocsAuthConfig, hasValidApiDocsBasicAuth } from "@/lib/api-docs-auth";
 
 const REDOC_BUNDLE_PATH = path.join(
   process.cwd(),
@@ -14,8 +14,13 @@ const REDOC_LOGO_URL = "https://cdn.redoc.ly/redoc/logo-mini.svg";
 const LOCAL_LOGO_URL = "/icon.png";
 
 export async function GET(request: Request) {
-  if (!isLocalRequest(request.headers)) {
+  const config = getApiDocsAuthConfig();
+  if (!config) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
+  }
+
+  if (!hasValidApiDocsBasicAuth(request.headers, config)) {
+    return createApiDocsBasicAuthChallengeResponse();
   }
 
   const bundle = (await readFile(REDOC_BUNDLE_PATH, "utf8")).replaceAll(

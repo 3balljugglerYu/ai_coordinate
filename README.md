@@ -91,7 +91,9 @@ npx playwright install
 
 注意:
 
-- `/api-docs` と `/openapi.yaml` は `npm run dev` 実行中の localhost アクセス専用です。
+- `/api-docs` と `/openapi.yaml` は `npm run dev` 実行中のみ有効です。
+- 利用するには `.env.local` に `API_DOCS_BASIC_AUTH_USER` と `API_DOCS_BASIC_AUTH_PASSWORD` を設定してください。
+- 設定済みの場合、アクセス時に Basic 認証が求められます。未設定時は `404` を返します。
 - 本番・Preview・`npm run start` では参照できません。
 - [`docs/openapi.yaml`](./docs/openapi.yaml) は draft のため、一部 schema は今後厳密化予定です。
 

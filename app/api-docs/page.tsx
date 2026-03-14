@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { isLocalRequest } from "@/lib/local-request";
+import { isAuthorizedApiDocsRequest } from "@/lib/api-docs-auth";
 import { ApiDocsClient } from "./ApiDocsClient";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function ApiDocsPage() {
   const headerStore = await headers();
 
-  if (!isLocalRequest(headerStore)) {
+  if (!isAuthorizedApiDocsRequest(headerStore)) {
     notFound();
   }
 
