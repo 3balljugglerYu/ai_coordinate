@@ -144,11 +144,25 @@ Before finalizing documentation, verify:
 
 ## Repository Location
 
-Generated documentation should be placed in:
+In this repository, shared human-facing architecture documentation lives under
+`docs/architecture/`. Use repo-relative paths without a leading slash.
+
+Current canonical files:
 
 ```text
-/architecture/
-  /viewpoints/
+docs/
+  architecture/
+    data.md
+    data.en.md
+    data.ja.md
+```
+
+Additional architecture documents, if introduced, should be added alongside the
+existing files under `docs/architecture/`, for example:
+
+```text
+docs/
+  architecture/
     context.md
     containers.md
     components/
@@ -164,6 +178,9 @@ Generated documentation should be placed in:
 
 ## Version History
 
+- **v1.0.1** (2026-03-14): Align repository location guidance with current repo structure
+  - Canonical architecture docs now reference `docs/architecture/`
+  - Repository examples use repo-relative paths without a leading slash
 - **v1.0.0** (2025-12-05): Initial release
   - Document generation workflow for C4 diagrams
   - Six document types (context, container, component, deployment, data, executive summary)
@@ -174,5 +191,5 @@ Generated documentation should be placed in:
 
 ## Last Updated
 
-**Date:** 2025-12-05
-**Model:** claude-opus-4-5-20251101
+**Date:** 2026-03-14
+**Model:** GPT-5 Codex
