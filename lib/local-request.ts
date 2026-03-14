@@ -21,9 +21,7 @@ export function isLocalRequest(headers: Pick<Headers, "get">): boolean {
     return false;
   }
 
-  const forwardedHost = extractHostName(headers.get("x-forwarded-host"));
   const host = extractHostName(headers.get("host"));
-  const candidate = forwardedHost ?? host;
 
-  return candidate !== null && LOCAL_HOSTS.has(candidate);
+  return host !== null && LOCAL_HOSTS.has(host);
 }

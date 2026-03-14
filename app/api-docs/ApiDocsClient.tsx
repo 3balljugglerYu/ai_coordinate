@@ -14,8 +14,7 @@ declare global {
   }
 }
 
-const REDOC_SCRIPT_SRC =
-  "https://cdn.redoc.ly/redoc/v2.5.0/bundles/redoc.standalone.js";
+const REDOC_SCRIPT_SRC = "/api-docs/redoc";
 const REDOC_SCRIPT_SELECTOR = 'script[data-redoc-bundle="true"]';
 const REDOC_LOAD_TIMEOUT_MS = 10_000;
 
@@ -217,7 +216,7 @@ export function ApiDocsClient() {
               </p>
             ) : (
               <p className="mt-2 text-sm text-slate-600">
-                ReDoc の読み込みに失敗しました。ネットワーク接続と CDN へのアクセス可否を確認してください。
+                ReDoc の読み込みに失敗しました。ローカルの開発サーバーを再起動してから再読み込みしてください。
               </p>
             )}
           </div>
