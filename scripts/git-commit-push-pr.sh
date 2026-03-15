@@ -3,6 +3,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./git-common.sh
+source "${SCRIPT_DIR}/git-common.sh"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 AUTH_FILE="${REPO_ROOT}/.local/github-auth.env"
 
@@ -291,19 +293,6 @@ collect_pr_diff_for_path() {
   printf '%s' "${diff_output}"
 }
 
-normalize_pr_context_token() {
-  local token="$1"
-  case "${token}" in
-    posts) printf 'post' ;;
-    users) printf 'user' ;;
-    images) printf 'image' ;;
-    comments) printf 'comment' ;;
-    notifications) printf 'notification' ;;
-    tests) printf 'test' ;;
-    *) printf '%s' "${token}" ;;
-  esac
-}
-
 pick_primary_pr_path() {
   local files=()
   local candidate best
@@ -331,51 +320,12 @@ pick_primary_pr_path() {
 }
 
 context_from_pr_path() {
-  local path="$1"
-  local stripped raw normalized token
-  local tokens=()
-
-  stripped="$(printf '%s' "${path}" | sed -E 's#^\./##; s#^\.agents/skills/##; s#^docs/##; s#^tests/##; s#^app/##; s#^features/##; s#^components/##; s#^lib/##; s#^scripts/##; s#\.[A-Za-z0-9]+$##')"
-
-  IFS='/' read -r -a raw_tokens <<< "${stripped}"
-  for raw in "${raw_tokens[@]}"; do
-    [[ "${raw}" =~ ^\[.*\]$ ]] && continue
-
-    normalized="$(
-      printf '%s' "${raw}" \
-        | tr '[:upper:]' '[:lower:]' \
-        | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g; s/-+/-/g'
-    )"
-
-    [[ -z "${normalized}" ]] && continue
-
-    case "${normalized}" in
-      page|layout|route|loading|index|component|components|lib|utils|util|hooks|hook|client|server|types|shared|readme|id|slug|marketing|app)
-        continue
-        ;;
-    esac
-
-    token="$(normalize_pr_context_token "${normalized}")"
-    tokens+=("${token}")
-    if [[ "${#tokens[@]}" -ge 2 ]]; then
-      break
-    fi
-  done
-
-  if [[ "${#tokens[@]}" -eq 0 ]]; then
-    printf ''
-    return
-  fi
-
-  (
-    IFS='-'
-    printf '%s' "${tokens[*]}"
-  )
+  git_context_from_path "$1" marketing app
 }
 
 diff_topic_from_path() {
   local path="$1"
-  local diff_lines diff_lower
+  local diff_lines
 
   diff_lines="$(collect_pr_diff_for_path "${path}")"
 
@@ -384,25 +334,10 @@ diff_topic_from_path() {
     return
   fi
 
-  diff_lower="$(printf '%s\n' "${diff_lines}" | tr '[:upper:]' '[:lower:]')"
-
-  if printf '%s\n' "${diff_lower}" | grep -Eq 'og:image|ogimage|opengraph|twitter:image|summary_large_image'; then
-    if printf '%s\n' "${diff_lower}" | grep -Eq '\bwidth\b' \
-      && printf '%s\n' "${diff_lower}" | grep -Eq '\bheight\b'; then
-      printf '%s' 'og-image-aspect-ratio'
-      return
-    fi
-    printf '%s' 'og-image-metadata'
-    return
-  fi
-
-  if printf '%s\n' "${diff_lower}" | grep -Eq 'canonical'; then
-    printf '%s' 'canonical-metadata'
-    return
-  fi
-
-  if printf '%s\n' "${diff_lower}" | grep -Eq 'aspect_ratio|aspectratio|naturalheight|naturalwidth'; then
-    printf '%s' 'image-aspect-ratio'
+  local topic
+  topic="$(git_infer_topic_from_diff_text "${diff_lines}")"
+  if [[ -n "${topic}" ]]; then
+    printf '%s' "${topic}"
     return
   fi
 

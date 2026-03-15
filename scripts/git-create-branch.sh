@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./git-common.sh
+source "${SCRIPT_DIR}/git-common.sh"
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -35,33 +39,6 @@ to_slug() {
     slug="update"
   fi
   printf '%s' "${slug}"
-}
-
-normalize_context_token() {
-  local token="$1"
-  case "${token}" in
-    posts)
-      printf 'post'
-      return
-      ;;
-    users)
-      printf 'user'
-      return
-      ;;
-    images)
-      printf 'image'
-      return
-      ;;
-    comments)
-      printf 'comment'
-      return
-      ;;
-    notifications)
-      printf 'notification'
-      return
-      ;;
-  esac
-  printf '%s' "${token}"
 }
 
 is_ignored_path() {
@@ -131,51 +108,12 @@ pick_primary_path() {
 }
 
 context_from_path() {
-  local path="$1"
-  local stripped raw token normalized
-  local context_tokens=()
-
-  stripped="$(printf '%s' "${path}" | sed -E 's#^\./##; s#^\.agents/skills/##; s#^docs/##; s#^tests/##; s#^app/##; s#^features/##; s#^components/##; s#^lib/##; s#^scripts/##; s#\.[A-Za-z0-9]+$##')"
-
-  IFS='/' read -r -a raw_tokens <<< "${stripped}"
-  for raw in "${raw_tokens[@]}"; do
-    [[ "${raw}" =~ ^\[.*\]$ ]] && continue
-
-    normalized="$(
-      printf '%s' "${raw}" \
-        | tr '[:upper:]' '[:lower:]' \
-        | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g; s/-+/-/g'
-    )"
-
-    [[ -z "${normalized}" ]] && continue
-
-    case "${normalized}" in
-      page|layout|route|loading|index|component|components|lib|utils|util|hooks|hook|client|server|types|shared|readme|id|slug)
-        continue
-        ;;
-    esac
-
-    token="$(normalize_context_token "${normalized}")"
-    context_tokens+=("${token}")
-    if [[ "${#context_tokens[@]}" -ge 2 ]]; then
-      break
-    fi
-  done
-
-  if [[ "${#context_tokens[@]}" -eq 0 ]]; then
-    printf ''
-    return
-  fi
-
-  (
-    IFS='-'
-    printf '%s' "${context_tokens[*]}"
-  )
+  git_context_from_path "$1"
 }
 
 topic_from_diff() {
   local path="$1"
-  local diff_lines topic diff_lower
+  local diff_lines topic
 
   diff_lines="$(
     {
@@ -213,22 +151,7 @@ topic_from_diff() {
   fi
 
   if [[ -z "${topic}" ]]; then
-    diff_lower="$(printf '%s\n' "${diff_lines}" | tr '[:upper:]' '[:lower:]')"
-
-    if printf '%s\n' "${diff_lower}" | grep -Eq 'og:image|ogimage|opengraph|twitter:image|summary_large_image'; then
-      if printf '%s\n' "${diff_lower}" | grep -Eq '\bwidth\b' \
-        && printf '%s\n' "${diff_lower}" | grep -Eq '\bheight\b'; then
-        topic="og-image-aspect-ratio"
-      else
-        topic="og-image-metadata"
-      fi
-    elif printf '%s\n' "${diff_lower}" | grep -Eq 'aspect_ratio|aspectratio'; then
-      topic="aspect-ratio"
-    elif printf '%s\n' "${diff_lower}" | grep -Eq 'canonical'; then
-      topic="canonical-metadata"
-    elif printf '%s\n' "${diff_lower}" | grep -Eq 'summary_large_image|twitter:image'; then
-      topic="share-card-image"
-    fi
+    topic="$(git_infer_topic_from_diff_text "${diff_lines}")"
   fi
 
   if [[ -z "${topic}" ]]; then
