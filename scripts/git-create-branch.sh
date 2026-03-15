@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./git-common.sh
+source "${SCRIPT_DIR}/git-common.sh"
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -103,6 +107,10 @@ pick_primary_path() {
   printf '%s' "${primary_path}"
 }
 
+context_from_path() {
+  git_context_from_path "$1"
+}
+
 topic_from_diff() {
   local path="$1"
   local diff_lines topic
@@ -140,6 +148,10 @@ topic_from_diff() {
         | head -n 1 \
         | sed -E 's/^.*Error\("([^"]+)".*$/\1/'
     )"
+  fi
+
+  if [[ -z "${topic}" ]]; then
+    topic="$(git_infer_topic_from_diff_text "${diff_lines}")"
   fi
 
   if [[ -z "${topic}" ]]; then
@@ -291,10 +303,18 @@ else
   PREFIX="$(classify_prefix "${CHANGED_PATHS[@]}")"
   PRIMARY_PATH="$(pick_primary_path "${CHANGED_PATHS[@]}")"
   PATH_SLUG="$(slug_from_path "${PRIMARY_PATH}")"
+  CONTEXT_SLUG="$(context_from_path "${PRIMARY_PATH}")"
   TOPIC_SLUG="$(topic_from_diff "${PRIMARY_PATH}")"
 
   if [[ -n "${TOPIC_SLUG}" && "${TOPIC_SLUG}" != "update" ]]; then
-    if [[ "${PATH_SLUG}" == "update" ]]; then
+    if [[ -n "${CONTEXT_SLUG}" && "${CONTEXT_SLUG}" != "update" ]]; then
+      if [[ "${TOPIC_SLUG}" == *"${CONTEXT_SLUG}"* ]]; then
+        SLUG="${TOPIC_SLUG}"
+      else
+        SLUG="$(to_slug "${CONTEXT_SLUG}-${TOPIC_SLUG}")"
+        SLUG="${SLUG:0:50}"
+      fi
+    elif [[ "${PATH_SLUG}" == "update" ]]; then
       SLUG="${TOPIC_SLUG}"
     elif [[ "${PATH_SLUG}" == *"${TOPIC_SLUG}"* ]]; then
       SLUG="${PATH_SLUG}"
@@ -307,6 +327,9 @@ else
   fi
 
   REASON="Derived from changed path/content: ${PRIMARY_PATH}"
+  if [[ -n "${CONTEXT_SLUG}" ]]; then
+    REASON="${REASON} (context=${CONTEXT_SLUG})"
+  fi
   if [[ -n "${TOPIC_SLUG}" ]]; then
     REASON="${REASON} (topic=${TOPIC_SLUG})"
   fi
