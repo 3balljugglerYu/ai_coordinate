@@ -37,6 +37,33 @@ to_slug() {
   printf '%s' "${slug}"
 }
 
+normalize_context_token() {
+  local token="$1"
+  case "${token}" in
+    posts)
+      printf 'post'
+      return
+      ;;
+    users)
+      printf 'user'
+      return
+      ;;
+    images)
+      printf 'image'
+      return
+      ;;
+    comments)
+      printf 'comment'
+      return
+      ;;
+    notifications)
+      printf 'notification'
+      return
+      ;;
+  esac
+  printf '%s' "${token}"
+}
+
 is_ignored_path() {
   local path="$1"
   case "${path}" in
@@ -103,9 +130,52 @@ pick_primary_path() {
   printf '%s' "${primary_path}"
 }
 
+context_from_path() {
+  local path="$1"
+  local stripped raw token normalized
+  local context_tokens=()
+
+  stripped="$(printf '%s' "${path}" | sed -E 's#^\./##; s#^\.agents/skills/##; s#^docs/##; s#^tests/##; s#^app/##; s#^features/##; s#^components/##; s#^lib/##; s#^scripts/##; s#\.[A-Za-z0-9]+$##')"
+
+  IFS='/' read -r -a raw_tokens <<< "${stripped}"
+  for raw in "${raw_tokens[@]}"; do
+    [[ "${raw}" =~ ^\[.*\]$ ]] && continue
+
+    normalized="$(
+      printf '%s' "${raw}" \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g; s/-+/-/g'
+    )"
+
+    [[ -z "${normalized}" ]] && continue
+
+    case "${normalized}" in
+      page|layout|route|loading|index|component|components|lib|utils|util|hooks|hook|client|server|types|shared|readme|id|slug)
+        continue
+        ;;
+    esac
+
+    token="$(normalize_context_token "${normalized}")"
+    context_tokens+=("${token}")
+    if [[ "${#context_tokens[@]}" -ge 2 ]]; then
+      break
+    fi
+  done
+
+  if [[ "${#context_tokens[@]}" -eq 0 ]]; then
+    printf ''
+    return
+  fi
+
+  (
+    IFS='-'
+    printf '%s' "${context_tokens[*]}"
+  )
+}
+
 topic_from_diff() {
   local path="$1"
-  local diff_lines topic
+  local diff_lines topic diff_lower
 
   diff_lines="$(
     {
@@ -140,6 +210,25 @@ topic_from_diff() {
         | head -n 1 \
         | sed -E 's/^.*Error\("([^"]+)".*$/\1/'
     )"
+  fi
+
+  if [[ -z "${topic}" ]]; then
+    diff_lower="$(printf '%s\n' "${diff_lines}" | tr '[:upper:]' '[:lower:]')"
+
+    if printf '%s\n' "${diff_lower}" | grep -Eq 'og:image|ogimage|opengraph|twitter:image|summary_large_image'; then
+      if printf '%s\n' "${diff_lower}" | grep -Eq '\bwidth\b' \
+        && printf '%s\n' "${diff_lower}" | grep -Eq '\bheight\b'; then
+        topic="og-image-aspect-ratio"
+      else
+        topic="og-image-metadata"
+      fi
+    elif printf '%s\n' "${diff_lower}" | grep -Eq 'aspect_ratio|aspectratio'; then
+      topic="aspect-ratio"
+    elif printf '%s\n' "${diff_lower}" | grep -Eq 'canonical'; then
+      topic="canonical-metadata"
+    elif printf '%s\n' "${diff_lower}" | grep -Eq 'summary_large_image|twitter:image'; then
+      topic="share-card-image"
+    fi
   fi
 
   if [[ -z "${topic}" ]]; then
@@ -291,10 +380,18 @@ else
   PREFIX="$(classify_prefix "${CHANGED_PATHS[@]}")"
   PRIMARY_PATH="$(pick_primary_path "${CHANGED_PATHS[@]}")"
   PATH_SLUG="$(slug_from_path "${PRIMARY_PATH}")"
+  CONTEXT_SLUG="$(context_from_path "${PRIMARY_PATH}")"
   TOPIC_SLUG="$(topic_from_diff "${PRIMARY_PATH}")"
 
   if [[ -n "${TOPIC_SLUG}" && "${TOPIC_SLUG}" != "update" ]]; then
-    if [[ "${PATH_SLUG}" == "update" ]]; then
+    if [[ -n "${CONTEXT_SLUG}" && "${CONTEXT_SLUG}" != "update" ]]; then
+      if [[ "${TOPIC_SLUG}" == *"${CONTEXT_SLUG}"* ]]; then
+        SLUG="${TOPIC_SLUG}"
+      else
+        SLUG="$(to_slug "${CONTEXT_SLUG}-${TOPIC_SLUG}")"
+        SLUG="${SLUG:0:50}"
+      fi
+    elif [[ "${PATH_SLUG}" == "update" ]]; then
       SLUG="${TOPIC_SLUG}"
     elif [[ "${PATH_SLUG}" == *"${TOPIC_SLUG}"* ]]; then
       SLUG="${PATH_SLUG}"
@@ -307,6 +404,9 @@ else
   fi
 
   REASON="Derived from changed path/content: ${PRIMARY_PATH}"
+  if [[ -n "${CONTEXT_SLUG}" ]]; then
+    REASON="${REASON} (context=${CONTEXT_SLUG})"
+  fi
   if [[ -n "${TOPIC_SLUG}" ]]; then
     REASON="${REASON} (topic=${TOPIC_SLUG})"
   fi

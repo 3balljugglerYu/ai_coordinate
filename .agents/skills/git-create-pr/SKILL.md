@@ -44,6 +44,7 @@ description: Execute commit -> push -> PR creation safely in this repository. Us
 6. PR作成
 - 同一 head の open PR があれば URL を返して再作成しない
 - PR本文指定がない場合は、リポジトリ内の既存 PR テンプレートを優先して利用する
+- テンプレート利用時も、差分の主要ファイルと変更トピックから `概要` と `変更内容` を意味のある文面で自動補完する
 - テンプレートが見つからない場合のみ `gh pr create --fill` にフォールバックする
 - 未作成なら PR を作成し URL を返す
 

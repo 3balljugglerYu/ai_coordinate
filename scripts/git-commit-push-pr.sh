@@ -271,6 +271,325 @@ collect_changed_test_files() {
   collect_pr_changed_files | grep -E '^tests/.*\.(test|spec)\.[A-Za-z0-9]+$' || true
 }
 
+collect_pr_diff_for_path() {
+  local path="$1"
+  local diff_output=""
+
+  if [[ -n "${BASE_BRANCH:-}" && -n "${CURRENT_BRANCH:-}" ]]; then
+    diff_output="$(git diff "${BASE_BRANCH}...${CURRENT_BRANCH}" -- "${path}" 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${diff_output}" ]]; then
+    diff_output="$(
+      {
+        git diff -- "${path}"
+        git diff --cached -- "${path}"
+      } 2>/dev/null
+    )"
+  fi
+
+  printf '%s' "${diff_output}"
+}
+
+normalize_pr_context_token() {
+  local token="$1"
+  case "${token}" in
+    posts) printf 'post' ;;
+    users) printf 'user' ;;
+    images) printf 'image' ;;
+    comments) printf 'comment' ;;
+    notifications) printf 'notification' ;;
+    tests) printf 'test' ;;
+    *) printf '%s' "${token}" ;;
+  esac
+}
+
+pick_primary_pr_path() {
+  local files=()
+  local candidate best
+
+  while IFS= read -r candidate; do
+    [[ -n "${candidate}" ]] && files+=("${candidate}")
+  done < <(collect_pr_changed_files)
+
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    printf ''
+    return
+  fi
+
+  best="${files[0]}"
+  for candidate in "${files[@]}"; do
+    case "${candidate}" in
+      app/*|features/*|components/*|lib/*)
+        best="${candidate}"
+        break
+        ;;
+    esac
+  done
+
+  printf '%s' "${best}"
+}
+
+context_from_pr_path() {
+  local path="$1"
+  local stripped raw normalized token
+  local tokens=()
+
+  stripped="$(printf '%s' "${path}" | sed -E 's#^\./##; s#^\.agents/skills/##; s#^docs/##; s#^tests/##; s#^app/##; s#^features/##; s#^components/##; s#^lib/##; s#^scripts/##; s#\.[A-Za-z0-9]+$##')"
+
+  IFS='/' read -r -a raw_tokens <<< "${stripped}"
+  for raw in "${raw_tokens[@]}"; do
+    [[ "${raw}" =~ ^\[.*\]$ ]] && continue
+
+    normalized="$(
+      printf '%s' "${raw}" \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g; s/-+/-/g'
+    )"
+
+    [[ -z "${normalized}" ]] && continue
+
+    case "${normalized}" in
+      page|layout|route|loading|index|component|components|lib|utils|util|hooks|hook|client|server|types|shared|readme|id|slug|marketing|app)
+        continue
+        ;;
+    esac
+
+    token="$(normalize_pr_context_token "${normalized}")"
+    tokens+=("${token}")
+    if [[ "${#tokens[@]}" -ge 2 ]]; then
+      break
+    fi
+  done
+
+  if [[ "${#tokens[@]}" -eq 0 ]]; then
+    printf ''
+    return
+  fi
+
+  (
+    IFS='-'
+    printf '%s' "${tokens[*]}"
+  )
+}
+
+diff_topic_from_path() {
+  local path="$1"
+  local diff_lines diff_lower
+
+  diff_lines="$(collect_pr_diff_for_path "${path}")"
+
+  if [[ -z "${diff_lines}" ]]; then
+    printf ''
+    return
+  fi
+
+  diff_lower="$(printf '%s\n' "${diff_lines}" | tr '[:upper:]' '[:lower:]')"
+
+  if printf '%s\n' "${diff_lower}" | grep -Eq 'og:image|ogimage|opengraph|twitter:image|summary_large_image'; then
+    if printf '%s\n' "${diff_lower}" | grep -Eq '\bwidth\b' \
+      && printf '%s\n' "${diff_lower}" | grep -Eq '\bheight\b'; then
+      printf '%s' 'og-image-aspect-ratio'
+      return
+    fi
+    printf '%s' 'og-image-metadata'
+    return
+  fi
+
+  if printf '%s\n' "${diff_lower}" | grep -Eq 'canonical'; then
+    printf '%s' 'canonical-metadata'
+    return
+  fi
+
+  if printf '%s\n' "${diff_lower}" | grep -Eq 'aspect_ratio|aspectratio|naturalheight|naturalwidth'; then
+    printf '%s' 'image-aspect-ratio'
+    return
+  fi
+
+  case "${path}" in
+    *.md|*.mdx)
+      printf '%s' 'docs'
+      return
+      ;;
+    tests/*|*.test.*|*.spec.*)
+      printf '%s' 'tests'
+      return
+      ;;
+    app/api/*)
+      printf '%s' 'api'
+      return
+      ;;
+  esac
+
+  printf ''
+}
+
+collect_changed_symbols_for_path() {
+  local path="$1"
+
+  collect_pr_diff_for_path "${path}" \
+    | grep -E '^[ +-][[:space:]]*(export[[:space:]]+)?(async[[:space:]]+)?function[[:space:]]+[A-Za-z_][A-Za-z0-9_]*|^[ +-][[:space:]]*(export[[:space:]]+)?(const|let|var)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*|^[ +-][[:space:]]*class[[:space:]]+[A-Za-z_][A-Za-z0-9_]*|^[ +-][[:space:]]*interface[[:space:]]+[A-Za-z_][A-Za-z0-9_]*|^[ +-][[:space:]]*type[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' \
+    | sed -E 's/^[ +-][[:space:]]*//; s/^export[[:space:]]+//; s/^async[[:space:]]+//' \
+    | sed -E 's/^function[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*/\1/; s/^(const|let|var)[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*/\2/; s/^class[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*/\1/; s/^interface[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*/\1/; s/^type[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*/\1/' \
+    | sort -u \
+    | head -n 3
+}
+
+build_primary_change_summary() {
+  local primary_path context_slug topic_slug symbol target
+
+  primary_path="$(pick_primary_pr_path)"
+  if [[ -z "${primary_path}" ]]; then
+    printf ''
+    return
+  fi
+
+  context_slug="$(context_from_pr_path "${primary_path}")"
+  topic_slug="$(diff_topic_from_path "${primary_path}")"
+  symbol="$(collect_changed_symbols_for_path "${primary_path}" | head -n 1 || true)"
+  target="\`${primary_path}\`"
+
+  if [[ -n "${symbol}" ]]; then
+    target="${target} の \`${symbol}\`"
+  fi
+
+  case "${topic_slug}" in
+    og-image-aspect-ratio)
+      printf '%s' "${target} で OG画像メタデータから固定サイズ指定を外し、共有カードで実画像と不整合なアスペクト比が出ないよう調整"
+      return
+      ;;
+    og-image-metadata)
+      printf '%s' "${target} で OG画像メタデータの生成ロジックを調整"
+      return
+      ;;
+    canonical-metadata)
+      printf '%s' "${target} で canonical メタデータの生成を調整"
+      return
+      ;;
+    image-aspect-ratio)
+      printf '%s' "${target} で 画像アスペクト比の扱いを調整"
+      return
+      ;;
+    docs)
+      printf '%s' "\`${primary_path}\` を更新"
+      return
+      ;;
+    tests)
+      printf '%s' "\`${primary_path}\` のテストケースを追加・更新"
+      return
+      ;;
+    api)
+      printf '%s' "${target} で API 実装を更新"
+      return
+      ;;
+  esac
+
+  case "${context_slug}" in
+    post)
+      printf '%s' "${target} で投稿関連の実装を更新"
+      ;;
+    user)
+      printf '%s' "${target} でユーザー関連の実装を更新"
+      ;;
+    test)
+      printf '%s' "\`${primary_path}\` のテストを更新"
+      ;;
+    *)
+      printf '%s' "${target} を更新"
+      ;;
+  esac
+}
+
+build_inferred_pr_title() {
+  local primary_path context_slug topic_slug
+
+  primary_path="$(pick_primary_pr_path)"
+  if [[ -z "${primary_path}" ]]; then
+    printf ''
+    return
+  fi
+
+  context_slug="$(context_from_pr_path "${primary_path}")"
+  topic_slug="$(diff_topic_from_path "${primary_path}")"
+
+  case "${topic_slug}" in
+    og-image-aspect-ratio)
+      case "${context_slug}" in
+        post) printf '%s' '投稿のOG画像メタデータを実画像に合わせて調整' ;;
+        *) printf '%s' 'OG画像メタデータのアスペクト比指定を調整' ;;
+      esac
+      return
+      ;;
+    og-image-metadata)
+      case "${context_slug}" in
+        post) printf '%s' '投稿のOG画像メタデータ生成を調整' ;;
+        *) printf '%s' 'OG画像メタデータの生成を調整' ;;
+      esac
+      return
+      ;;
+    canonical-metadata)
+      printf '%s' 'canonical メタデータの生成を調整'
+      return
+      ;;
+    image-aspect-ratio)
+      printf '%s' '画像アスペクト比の扱いを調整'
+      return
+      ;;
+    docs)
+      printf '%s' 'ドキュメントを更新'
+      return
+      ;;
+    tests)
+      printf '%s' 'テストを追加・更新'
+      return
+      ;;
+    api)
+      printf '%s' 'API 実装を更新'
+      return
+      ;;
+  esac
+
+  case "${context_slug}" in
+    post) printf '%s' '投稿関連の実装を更新' ;;
+    user) printf '%s' 'ユーザー関連の実装を更新' ;;
+    test) printf '%s' 'テストを更新' ;;
+    *) printf '%s' '実装を更新' ;;
+  esac
+}
+
+is_generic_summary_text() {
+  local input="$1"
+  local slug
+
+  slug="$(to_slug "$(strip_commit_prefix "${input}")")"
+  case "${slug}" in
+    ""|update|updates|fix|fixes|refactor|refactors|chore|chores|docs|tests|changes|misc|wip|minor-fix|minor-fixes)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+default_pr_title() {
+  local candidate inferred
+
+  candidate="$(git log -1 --pretty=%s 2>/dev/null || true)"
+  inferred="$(build_inferred_pr_title)"
+
+  if [[ -n "${candidate}" ]] && ! is_generic_summary_text "${candidate}"; then
+    printf '%s' "${candidate}"
+    return
+  fi
+
+  if [[ -n "${inferred}" ]]; then
+    printf '%s' "${inferred}"
+    return
+  fi
+
+  printf '%s' "${candidate:-${CURRENT_BRANCH}}"
+}
+
 join_lines_as_args() {
   tr '\n' ' ' | sed -E 's/[[:space:]]+$//'
 }
@@ -323,10 +642,21 @@ run_changed_tests_for_summary() {
 }
 
 build_pr_change_bullets() {
-  local files
+  local files semantic_summary file_count
   files="$(collect_pr_changed_files)"
+  semantic_summary="$(build_primary_change_summary)"
+
+  if [[ -n "${semantic_summary}" ]]; then
+    printf '%s\n' "- ${semantic_summary}"
+  fi
+
   if [[ -z "${files}" ]]; then
     printf '%s\n' "- 変更ファイルの取得に失敗しました。必要に応じて追記してください。"
+    return
+  fi
+
+  file_count="$(printf '%s\n' "${files}" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [[ "${file_count}" -le 1 && -n "${semantic_summary}" ]]; then
     return
   fi
 
@@ -407,10 +737,16 @@ build_test_result_bullets() {
 
 build_pr_body_from_template() {
   local template_file="$1"
-  local output_file summary_source summary_text change_bullets test_bullets device_checklist test_result_bullets
+  local output_file summary_source summary_text semantic_summary change_bullets test_bullets device_checklist test_result_bullets
 
   summary_source="${PR_TITLE:-$(git log -1 --pretty=%s 2>/dev/null || true)}"
   summary_text="$(strip_commit_prefix "${summary_source}")"
+  semantic_summary="$(build_primary_change_summary)"
+  if [[ -n "${semantic_summary}" ]]; then
+    if [[ -z "${summary_text}" ]] || is_generic_summary_text "${summary_text}"; then
+      summary_text="${semantic_summary}"
+    fi
+  fi
   summary_text="${summary_text:-${CURRENT_BRANCH}}"
   run_changed_tests_for_summary
   change_bullets="$(build_pr_change_bullets)"
@@ -641,8 +977,7 @@ if [[ -z "${PR_BODY}" && -z "${PR_BODY_FILE}" ]]; then
   TEMPLATE_FILE="$(find_pr_template_file || true)"
   if [[ -n "${TEMPLATE_FILE}" ]]; then
     if [[ -z "${PR_TITLE}" ]]; then
-      PR_TITLE="$(git log -1 --pretty=%s 2>/dev/null || true)"
-      PR_TITLE="${PR_TITLE:-${CURRENT_BRANCH}}"
+      PR_TITLE="$(default_pr_title)"
     fi
     GENERATED_PR_BODY_FILE="$(build_pr_body_from_template "${TEMPLATE_FILE}")"
     PR_BODY_FILE="${GENERATED_PR_BODY_FILE}"
