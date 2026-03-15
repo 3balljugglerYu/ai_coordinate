@@ -1,32 +1,44 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import { EventImageGalleryWrapper } from "@/features/event/components/EventImageGalleryWrapper";
 import { EventImageGallerySkeleton } from "@/features/event/components/EventImageGallerySkeleton";
 import { createMarketingPageMetadata } from "@/lib/metadata";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { getFreeMaterialsCopy } from "@/i18n/page-copy";
 
-export const metadata: Metadata = createMarketingPageMetadata({
-  title: "着せ替えお試し用素材 | Persta.AI",
-  description:
-    "こちらに掲載しているイラストは、Perstaで着せ替えを試すために、自由にダウンロードして利用できる素材ページです。お好きな画像をダウンロードして、ぜひ着せ替えをお試しください！",
-  path: "/free-materials",
-  ogTitle: "着せ替えお試し用素材",
-  ogDescription:
-    "Perstaで着せ替えを試すためのフリー素材。イラストをダウンロードして着せ替えをお試しください。",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const copy = getFreeMaterialsCopy(locale);
+
+  return createMarketingPageMetadata({
+    title: copy.title,
+    description: copy.description,
+    path: "/free-materials",
+    locale,
+    ogTitle: copy.ogTitle,
+    ogDescription: copy.ogDescription,
+  });
+}
 
 export default async function FreeMaterialsPage() {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const copy = getFreeMaterialsCopy(locale);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              着せ替えフリー素材
+              {copy.heading}
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              Perstaで着せ替えを試せるイラスト素材です。画像はダウンロードしてご利用ください。
+              {copy.body}
               <br />
-              ※モバイル端末では画像を長押しすると保存できます。
+              {copy.mobileHint}
             </p>
           </div>
 

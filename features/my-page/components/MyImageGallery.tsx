@@ -1,6 +1,7 @@
 "use client";
 
 import Masonry from "react-masonry-css";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { MyImageCard } from "./MyImageCard";
 import { UserProfilePostsLoadMoreSkeleton } from "./UserProfilePostsLoadMoreSkeleton";
@@ -21,14 +22,15 @@ export function MyImageGallery({
   isLoadingMore = false,
   hasMore = false,
 }: MyImageGalleryProps) {
+  const t = useTranslations("myPage");
   if (images.length === 0) {
     return (
       <Card className="border-dashed p-12">
         <p className="text-center text-sm text-gray-500">
-          まだ画像を生成していません
+          {t("emptyImagesTitle")}
         </p>
         <p className="mt-2 text-center text-xs text-gray-400">
-          「コーディネート」タブから画像を生成してみましょう
+          {t("emptyImagesDescription")}
         </p>
       </Card>
     );
@@ -63,4 +65,3 @@ export function MyImageGallery({
     </>
   );
 }
-

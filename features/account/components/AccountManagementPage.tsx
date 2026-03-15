@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
+import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,6 +26,8 @@ import {
 } from "./AccountManagementSkeleton";
 
 export function AccountManagementPage() {
+  const locale = useLocale();
+  const t = useTranslations("accountManagement");
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserItem[]>([]);
   const [reportedContents, setReportedContents] = useState<ReportedContentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,8 +48,8 @@ export function AccountManagementPage() {
       setReportedContents(reports);
     } catch (error) {
       toast({
-        title: "読み込みに失敗しました",
-        description: error instanceof Error ? error.message : "時間をおいて再試行してください",
+        title: t("loadFailedTitle"),
+        description: error instanceof Error ? error.message : t("retryLater"),
         variant: "destructive",
       });
     } finally {
@@ -63,11 +66,11 @@ export function AccountManagementPage() {
     try {
       await unblockUserFromAccountAPI(userId);
       setBlockedUsers((prev) => prev.filter((item) => item.userId !== userId));
-      toast({ title: "ブロックを解除しました" });
+      toast({ title: t("unblockSuccess") });
     } catch (error) {
       toast({
-        title: "ブロック解除に失敗しました",
-        description: error instanceof Error ? error.message : "時間をおいて再試行してください",
+        title: t("unblockFailedTitle"),
+        description: error instanceof Error ? error.message : t("retryLater"),
         variant: "destructive",
       });
     } finally {
@@ -80,11 +83,11 @@ export function AccountManagementPage() {
     try {
       await withdrawReportAPI(postId);
       setReportedContents((prev) => prev.filter((item) => item.postId !== postId));
-      toast({ title: "通報を解除しました" });
+      toast({ title: t("withdrawReportSuccess") });
     } catch (error) {
       toast({
-        title: "通報解除に失敗しました",
-        description: error instanceof Error ? error.message : "時間をおいて再試行してください",
+        title: t("withdrawReportFailedTitle"),
+        description: error instanceof Error ? error.message : t("retryLater"),
         variant: "destructive",
       });
     } finally {
@@ -99,9 +102,9 @@ export function AccountManagementPage() {
           <CollapsibleTrigger className="w-full text-left">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">ブロックユーザー一覧</h2>
+                <h2 className="text-lg font-semibold">{t("blockedUsersTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  ブロック中のユーザーを確認し、解除できます。
+                  {t("blockedUsersDescription")}
                 </p>
               </div>
               <ChevronDown
@@ -116,7 +119,7 @@ export function AccountManagementPage() {
               <BlockListSkeleton />
             ) : blockedUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                ブロックしているユーザーはいません。
+                {t("noBlockedUsers")}
               </p>
             ) : (
               <div className="space-y-3">
@@ -130,7 +133,7 @@ export function AccountManagementPage() {
                         {item.avatarUrl ? (
                           <Image
                             src={item.avatarUrl}
-                            alt={item.nickname || "ユーザー"}
+                            alt={item.nickname || t("userFallback")}
                             fill
                             className="object-cover"
                             sizes="36px"
@@ -139,10 +142,13 @@ export function AccountManagementPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
-                          {item.nickname || "ユーザー"}
+                          {item.nickname || t("userFallback")}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(item.blockedAt).toLocaleString("ja-JP")}
+                          {new Intl.DateTimeFormat(
+                            locale === "ja" ? "ja-JP" : "en-US",
+                            { dateStyle: "medium", timeStyle: "short" }
+                          ).format(new Date(item.blockedAt))}
                         </p>
                       </div>
                     </div>
@@ -152,7 +158,7 @@ export function AccountManagementPage() {
                       disabled={processingKey === `unblock:${item.userId}`}
                       onClick={() => void handleUnblock(item.userId)}
                     >
-                      解除
+                      {t("unblock")}
                     </Button>
                   </div>
                 ))}
@@ -167,9 +173,9 @@ export function AccountManagementPage() {
           <CollapsibleTrigger className="w-full text-left">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">通報済みコンテンツ一覧</h2>
+                <h2 className="text-lg font-semibold">{t("reportedContentsTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  通報したコンテンツを確認し、通報解除できます。
+                  {t("reportedContentsDescription")}
                 </p>
               </div>
               <ChevronDown
@@ -184,7 +190,7 @@ export function AccountManagementPage() {
               <ReportedContentListSkeleton />
             ) : reportedContents.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                通報済みのコンテンツはありません。
+                {t("noReportedContents")}
               </p>
             ) : (
               <div className="space-y-3">
@@ -198,7 +204,7 @@ export function AccountManagementPage() {
                         {item.imageUrl ? (
                           <Image
                             src={item.imageUrl}
-                            alt="通報済み投稿"
+                            alt={t("reportedPostAlt")}
                             fill
                             className="object-cover"
                             sizes="56px"
@@ -208,7 +214,12 @@ export function AccountManagementPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">
-                          通報日時: {new Date(item.reportedAt).toLocaleString("ja-JP")}
+                          {t("reportedAt", {
+                            date: new Intl.DateTimeFormat(
+                              locale === "ja" ? "ja-JP" : "en-US",
+                              { dateStyle: "medium", timeStyle: "short" }
+                            ).format(new Date(item.reportedAt)),
+                          })}
                         </p>
                       </div>
                     </div>
@@ -218,7 +229,7 @@ export function AccountManagementPage() {
                       disabled={processingKey === `report:${item.postId}`}
                       onClick={() => void handleWithdrawReport(item.postId)}
                     >
-                      通報解除
+                      {t("withdrawReport")}
                     </Button>
                   </div>
                 ))}
@@ -230,13 +241,13 @@ export function AccountManagementPage() {
 
       <Card className="p-5 border-red-200">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-red-700">アカウント削除</h2>
+          <h2 className="text-lg font-semibold text-red-700">{t("deleteAccountTitle")}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            退会後はアカウントが凍結され、30日後に完全削除されます。
+            {t("deleteAccountDescription")}
           </p>
         </div>
         <Button variant="destructive" onClick={() => setIsDeactivateDialogOpen(true)}>
-          アカウント削除を申請
+          {t("requestDeletion")}
         </Button>
       </Card>
 

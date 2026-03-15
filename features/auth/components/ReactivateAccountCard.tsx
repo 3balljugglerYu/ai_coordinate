@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { reactivateAccount, signOut } from "@/features/auth/lib/auth-client";
@@ -14,10 +15,14 @@ export function ReactivateAccountCard({
   deletionScheduledAt,
 }: ReactivateAccountCardProps) {
   const router = useRouter();
+  const locale = useLocale();
+  const t = useTranslations("auth");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formattedDeletionDate = deletionScheduledAt
-    ? new Date(deletionScheduledAt).toLocaleDateString("ja-JP")
+    ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US").format(
+        new Date(deletionScheduledAt)
+      )
     : null;
 
   const handleReactivate = async () => {
@@ -28,7 +33,7 @@ export function ReactivateAccountCard({
       router.push("/my-page");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "アカウント復帰に失敗しました");
+      setError(err instanceof Error ? err.message : t("reactivateErrorGeneric"));
     } finally {
       setIsSubmitting(false);
     }
@@ -42,13 +47,13 @@ export function ReactivateAccountCard({
 
   return (
     <Card className="mx-auto w-full max-w-lg p-6">
-      <h1 className="text-xl font-bold text-gray-900">アカウントは退会処理中です</h1>
+      <h1 className="text-xl font-bold text-gray-900">{t("reactivateTitle")}</h1>
       <p className="mt-3 text-sm text-gray-600">
-        現在アカウントは凍結状態です。30日以内であれば利用を再開できます。再開しない場合は期限後に完全削除されます。
+        {t("reactivateDescription")}
       </p>
       {formattedDeletionDate && (
         <p className="mt-2 text-sm font-medium text-red-700">
-          削除予定日時: {formattedDeletionDate}
+          {t("reactivateScheduledDeletion", { date: formattedDeletionDate })}
         </p>
       )}
 
@@ -60,10 +65,10 @@ export function ReactivateAccountCard({
 
       <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={handleSignOut} disabled={isSubmitting}>
-          ログアウト
+          {t("reactivateLogout")}
         </Button>
         <Button type="button" onClick={handleReactivate} disabled={isSubmitting}>
-          {isSubmitting ? "処理中..." : "利用を再開する"}
+          {isSubmitting ? t("reactivateSubmitting") : t("reactivateSubmit")}
         </Button>
       </div>
     </Card>

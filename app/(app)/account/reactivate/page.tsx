@@ -1,8 +1,10 @@
 import { requireAuth } from "@/lib/auth";
 import { ReactivateAccountCard } from "@/features/auth/components/ReactivateAccountCard";
 import { createClient } from "@/lib/supabase/server";
+import { connection } from "next/server";
 
 export default async function AccountReactivatePage() {
+  await connection();
   const user = await requireAuth();
   const supabase = await createClient();
 

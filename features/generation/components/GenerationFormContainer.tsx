@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GenerationForm } from "./GenerationForm";
@@ -28,6 +29,8 @@ type GenerationFormContainerProps = Record<string, never>;
  * 非同期画像生成APIを使用
  */
 export function GenerationFormContainer({}: GenerationFormContainerProps) {
+  const t = useTranslations("coordinate");
+  const creditsT = useTranslations("credits");
   const router = useRouter();
   const { toast } = useToast();
   const ctx = useGenerationState();
@@ -89,7 +92,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               } else {
                 setCompletedCount((prev) => prev + 1);
                 setError((prev) => {
-                  const errorMsg = currentStatus.errorMessage || "画像生成に失敗しました";
+                  const errorMsg =
+                    currentStatus.errorMessage || t("generationFailedGeneric");
                   return prev ? `${prev}; ${errorMsg}` : errorMsg;
                 });
               }
@@ -158,7 +162,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 } else if (status.status === "failed") {
                   setCompletedCount((prev) => prev + 1);
                   setError((prev) => {
-                    const errorMsg = status.errorMessage || "画像生成に失敗しました";
+                    const errorMsg =
+                      status.errorMessage || t("generationFailedGeneric");
                     return prev ? `${prev}; ${errorMsg}` : errorMsg;
                   });
                   // 失敗時もイベントを発火（返金処理が実行される可能性があるため）
@@ -177,7 +182,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 // その他のエラーのみ表示
                 setCompletedCount((prev) => prev + 1);
                 setError((prev) => {
-                  const msg = errorMsg || "画像生成に失敗しました";
+                  const msg = errorMsg || t("generationFailedGeneric");
                   return prev ? `${prev}; ${msg}` : msg;
                 });
                 throw err;
@@ -200,7 +205,11 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         if (failedJobs.length > 0 && failedJobs.length < inProgressJobs.length) {
           // 一部のジョブが失敗した場合
           const errorMessages = failedJobs
-            .map((result) => result.status === "rejected" ? result.reason?.message || "不明なエラー" : null)
+            .map((result) =>
+              result.status === "rejected"
+                ? result.reason?.message || t("generationFailedGeneric")
+                : null
+            )
             .filter((msg): msg is string => msg !== null);
           
           // ユニークなエラーメッセージを取得
@@ -232,14 +241,23 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               const msg = mostCommonMessage.length > 80 
                 ? `${mostCommonMessage.substring(0, 80)}...` 
                 : mostCommonMessage;
-              return `${msg}（他 ${messages.length - 1}種類のエラー）`;
+              return `${msg} (${t("additionalErrorKinds", {
+                count: messages.length - 1,
+              })})`;
             }
           };
           
           const errorSummary = formatErrorSummary(uniqueErrorMessages);
           const baseMsg = errorSummary
-            ? `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）: ${errorSummary}`
-            : `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）`;
+            ? t("partialGenerationFailedWithSummary", {
+                failed: failedJobs.length,
+                total: inProgressJobs.length,
+                summary: errorSummary,
+              })
+            : t("partialGenerationFailed", {
+                failed: failedJobs.length,
+                total: inProgressJobs.length,
+              });
           
           setError((prev) => {
             return prev ? `${prev}; ${baseMsg}` : baseMsg;
@@ -316,7 +334,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     const showGenerationErrorToast = (message: string) => {
       toast({
         variant: "destructive",
-        title: "画像を生成できませんでした",
+        title: t("generationFailedTitle"),
         description: <span className="whitespace-pre-line">{message}</span>,
       });
     };
@@ -341,7 +359,10 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       // 残高チェック
       if (balance < requiredPercoins) {
         setError(
-          `ペルコイン残高が不足しています。生成には${requiredPercoins}ペルコイン必要ですが、現在の残高は${balance}ペルコインです。`
+          t("insufficientBalance", {
+            requiredPercoins,
+            balance,
+          })
         );
         setIsGenerating(false);
         return;
@@ -452,12 +473,17 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       
       if (failedJobs.length > 0) {
         const errorMessages = failedJobs
-          .map((result) => result.status === "rejected" ? result.reason?.message || "不明なエラー" : null)
+          .map((result) =>
+            result.status === "rejected"
+              ? result.reason?.message || t("generationFailedGeneric")
+              : null
+          )
           .filter((msg): msg is string => msg !== null);
         
         if (failedJobs.length === jobIds.length) {
           // すべてのジョブが失敗した場合は、簡潔な1つの文言のみ表示
-          const firstErrorMessage = errorMessages[0] || "画像生成に失敗しました";
+          const firstErrorMessage =
+            errorMessages[0] || t("generationFailedGeneric");
           throw new Error(firstErrorMessage);
         } else {
           // 一部のジョブが失敗した場合
@@ -496,14 +522,23 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               const msg = mostCommonMessage.length > 80 
                 ? `${mostCommonMessage.substring(0, 80)}...` 
                 : mostCommonMessage;
-              return `${msg}（他 ${messages.length - 1}種類のエラー）`;
+              return `${msg} (${t("additionalErrorKinds", {
+                count: messages.length - 1,
+              })})`;
             }
           };
           
           const errorSummary = formatErrorSummary(uniqueErrorMessages);
           const errorText = errorSummary
-            ? `一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）: ${errorSummary}`
-            : `一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）`;
+            ? t("partialGenerationFailedWithSummary", {
+                failed: failedJobs.length,
+                total: jobIds.length,
+                summary: errorSummary,
+              })
+            : t("partialGenerationFailed", {
+                failed: failedJobs.length,
+                total: jobIds.length,
+              });
           
           setError(errorText);
           showGenerationErrorToast(errorText);
@@ -527,7 +562,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         succeeded: jobIds.length - failedJobs.length,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "画像の生成に失敗しました";
+      const errorMessage =
+        err instanceof Error ? err.message : t("generationFailedGeneric");
       track("coordinate_generation_failed", {
         error: errorMessage.substring(0, 100),
       });
@@ -570,7 +606,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 href={getPercoinPurchaseUrl("coordinate")}
                 className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                ペルコインを購入する
+                {creditsT("purchaseAction")}
               </Link>
             </div>
           ) : null}
@@ -587,10 +623,13 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
             <div>
               <p className="text-sm font-medium text-blue-900">
-                画像を生成中...
+                {t("generatingStatusTitle")}
               </p>
               <p className="text-xs text-blue-700">
-                {completedCount} / {generatingCount} 枚完了
+                {t("generatingStatusProgress", {
+                  completed: completedCount,
+                  total: generatingCount,
+                })}
               </p>
             </div>
           </div>

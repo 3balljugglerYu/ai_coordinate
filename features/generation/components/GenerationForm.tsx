@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -74,6 +75,7 @@ export function GenerationForm({
   onSubmit,
   isGenerating = false,
 }: GenerationFormProps) {
+  const t = useTranslations("coordinate");
   const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export function GenerationForm({
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
   const [selectedCount, setSelectedCount] = useState(1);
-  const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-2.5-flash-image');
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>("gemini-2.5-flash-image");
   const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
@@ -117,17 +119,17 @@ export function GenerationForm({
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
-      alert("着せ替え内容を入力してください");
+      alert(t("missingPrompt"));
       return;
     }
 
     if (imageSourceType === "upload" && !uploadedImage) {
-      alert("人物画像をアップロードしてください");
+      alert(t("missingUploadedImage"));
       return;
     }
 
     if (imageSourceType === "stock" && !selectedStockId) {
-      alert("ストック画像を選択してください");
+      alert(t("missingStockImage"));
       return;
     }
 
@@ -285,7 +287,7 @@ export function GenerationForm({
         {/* 画像ソース選択タブ */}
         <div>
           <Label className="text-base font-medium mb-3 block">
-            元画像の選択方法
+            {t("imageSourceLabel")}
           </Label>
           <div className="flex gap-2">
             <Button
@@ -302,7 +304,7 @@ export function GenerationForm({
               className="flex-1"
             >
               <Upload className="mr-2 h-4 w-4" />
-              ライブラリ
+              {t("libraryTab")}
             </Button>
             <Button
               type="button"
@@ -315,7 +317,7 @@ export function GenerationForm({
               className="flex-1"
             >
               <Folder className="mr-2 h-4 w-4" />
-              ストック
+              {t("stockTab")}
             </Button>
           </div>
         </div>
@@ -343,7 +345,7 @@ export function GenerationForm({
           <div className="space-y-4">
             <div>
               <Label className="text-base font-medium mb-3 block">
-                ストック画像
+                {t("stockImagesLabel")}
               </Label>
               {isLoadingStocks ? (
                 <div className="flex gap-3 overflow-x-auto pb-2">
@@ -445,7 +447,7 @@ export function GenerationForm({
 
         <div>
           <Label className="text-base font-medium block">
-            アップロードした画像のタイプ
+            {t("sourceImageTypeLabel")}
           </Label>
           <RadioGroup
             value={sourceImageType}
@@ -463,7 +465,9 @@ export function GenerationForm({
                   htmlFor={`source-image-type-${option.value}`}
                   className="text-sm font-medium leading-none"
                 >
-                  {option.label}
+                  {option.value === "illustration"
+                    ? t("sourceImageTypeIllustration")
+                    : t("sourceImageTypeReal")}
                 </Label>
               </div>
             ))}
@@ -473,24 +477,24 @@ export function GenerationForm({
         {/* 着せ替え内容入力 */}
         <div data-tour="tour-prompt-input">
           <Label htmlFor="prompt" className="text-base font-medium">
-            着せ替え内容を入力
+            {t("promptLabel")}
           </Label>
           <Textarea
             id="prompt"
-            placeholder="例: 夏らしい白いワンピースを着せてください"
+            placeholder={t("promptPlaceholder")}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             className="mt-2 min-h-[100px]"
             disabled={isGenerating || isTutorialInProgress}
           />
           <p className="mt-1 text-xs text-gray-500">
-            どんな服装に変更したいか具体的に記入してください
+            {t("promptHint")}
           </p>
         </div>
 
         {/* 背景設定 */}
         <div data-tour="tour-background-change">
-          <Label className="text-base font-medium">背景設定</Label>
+          <Label className="text-base font-medium">{t("backgroundLabel")}</Label>
           <RadioGroup
             value={backgroundMode}
             onValueChange={(value) => setBackgroundMode(value as BackgroundMode)}
@@ -509,9 +513,19 @@ export function GenerationForm({
                     htmlFor={`background-mode-${option.value}`}
                     className="text-sm font-medium leading-none"
                   >
-                    {option.label}
+                    {option.value === "ai_auto"
+                      ? t("backgroundAiAutoLabel")
+                      : option.value === "include_in_prompt"
+                        ? t("backgroundIncludeInPromptLabel")
+                        : t("backgroundKeepLabel")}
                   </Label>
-                  <p className="text-xs text-gray-500">{option.description}</p>
+                  <p className="text-xs text-gray-500">
+                    {option.value === "ai_auto"
+                      ? t("backgroundAiAutoDescription")
+                      : option.value === "include_in_prompt"
+                        ? t("backgroundIncludeInPromptDescription")
+                        : t("backgroundKeepDescription")}
+                  </p>
                 </div>
               </div>
             ))}
@@ -521,7 +535,7 @@ export function GenerationForm({
         {/* モデル選択 */}
         <div data-tour="tour-model-select">
           <Label className="text-base font-medium mb-3 block">
-            生成モデルを選択
+            {t("modelLabel")}
           </Label>
           <Select
             value={selectedModel}
@@ -533,16 +547,16 @@ export function GenerationForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="gemini-2.5-flash-image">
-                標準モデル（20ペルコイン/枚）
+                {t("modelStandard")}
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-1k">
-                高精度モデル_1K（50ペルコイン/枚）
+                {t("model1k")}
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-2k">
-                高精度モデル_2K（80ペルコイン/枚）
+                {t("model2k")}
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-4k">
-                高精度モデル_4K（100ペルコイン/枚）
+                {t("model4k")}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -551,7 +565,7 @@ export function GenerationForm({
         {/* 生成枚数選択 */}
         <div data-tour="tour-count-select">
           <Label className="text-base font-medium mb-3 block">
-            生成枚数を選択
+            {t("countLabel")}
           </Label>
           <div className="mt-2 grid grid-cols-4 gap-2 items-end">
             <Button
@@ -561,7 +575,7 @@ export function GenerationForm({
               disabled={isGenerating || isTutorialInProgress}
               className="h-12"
             >
-              1枚
+              {t("countSingle")}
             </Button>
             {[2, 3, 4].map((count) => (
               <Button
@@ -572,12 +586,15 @@ export function GenerationForm({
                 disabled={isGenerating || isTutorialInProgress}
                 className="h-12"
               >
-                {count}枚
+                {t("countMultiple", { count })}
               </Button>
             ))}
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            {selectedCount}枚の生成には {selectedCount * getPercoinCost(selectedModel)} ペルコインが必要です
+            {t("countCostDescription", {
+              count: selectedCount,
+              amount: selectedCount * getPercoinCost(selectedModel),
+            })}
           </p>
         </div>
 
@@ -592,12 +609,12 @@ export function GenerationForm({
           {isGenerating ? (
             <>
               <Sparkles className="mr-2 h-5 w-5 animate-pulse" />
-              生成中...
+              {t("generatingButtonLoading")}
             </>
           ) : (
             <>
               <Sparkles className="mr-2 h-5 w-5" />
-              コーデスタート
+              {t("generatingButton")}
             </>
           )}
         </Button>

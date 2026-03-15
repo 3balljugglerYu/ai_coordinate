@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { CachedMyPageContent } from "@/features/my-page/components/CachedMyPageContent";
@@ -8,6 +9,10 @@ import { PercoinBalanceSkeleton } from "@/features/my-page/components/PercoinBal
 import { MyPageImageGallerySkeleton } from "@/features/my-page/components/MyPageImageGallerySkeleton";
 
 export default async function MyPagePage() {
+  const [myPageT, creditsT] = await Promise.all([
+    getTranslations("myPage"),
+    getTranslations("credits"),
+  ]);
   const user = await requireAuth();
 
   return (
@@ -23,14 +28,26 @@ export default async function MyPagePage() {
                 <PercoinBalanceSkeleton />
                 <div className="mt-8">
                   <h2 className="mb-4 text-xl font-semibold text-gray-900">
-                    生成画像一覧
+                    {myPageT("generatedImagesTitle")}
                   </h2>
                   <MyPageImageGallerySkeleton />
                 </div>
               </>
             }
           >
-            <CachedMyPageContent userId={user.id} />
+            <CachedMyPageContent
+              userId={user.id}
+              copy={{
+                balanceLabel: myPageT("balanceLabel"),
+                balancePaid: myPageT("balancePaid"),
+                balanceUnlimitedBonus: myPageT("balanceUnlimitedBonus"),
+                balancePeriodLimited: myPageT("balancePeriodLimited"),
+                percoinUnit: creditsT("percoinUnit"),
+                buy: myPageT("buy"),
+                transactionHistoryLink: myPageT("transactionHistoryLink"),
+                generatedImagesTitle: myPageT("generatedImagesTitle"),
+              }}
+            />
           </Suspense>
         </div>
       </div>

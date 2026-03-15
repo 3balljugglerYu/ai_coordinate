@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Copy, Check } from "lucide-react";
 import { ReferralCodeSkeleton } from "./ReferralCodeSkeleton";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ export function ReferralCodeDisplay({
 }: {
   referralBonusAmount: number;
 }) {
+  const t = useTranslations("referral");
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -56,14 +58,14 @@ export function ReferralCodeDisplay({
       await navigator.clipboard.writeText(referralLink);
       setCopied(true);
       toast({
-        title: "コピーしました",
-        description: "紹介リンクをクリップボードにコピーしました",
+        title: t("copySuccessTitle"),
+        description: t("copySuccessDescription"),
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       toast({
-        title: "コピーに失敗しました",
-        description: "手動でリンクをコピーしてください",
+        title: t("copyFailedTitle"),
+        description: t("copyFailedDescription"),
         variant: "destructive",
       });
     }
@@ -77,7 +79,7 @@ export function ReferralCodeDisplay({
     return (
       <Card className="p-6">
         <div className="text-center text-muted-foreground">
-          紹介コードの取得に失敗しました
+          {t("loadFailed")}
         </div>
       </Card>
     );
@@ -89,7 +91,7 @@ export function ReferralCodeDisplay({
         {/* 紹介リンク */}
         <div>
           <label htmlFor="referral-link" className="text-lg font-semibold mb-2 block">
-            紹介リンク
+            {t("linkLabel")}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -104,7 +106,7 @@ export function ReferralCodeDisplay({
               variant="outline"
               size="icon"
               disabled={!referralLink}
-              aria-label="紹介リンクをコピー"
+              aria-label={t("copyLinkAria")}
             >
               {copied ? (
                 <Check className="h-4 w-4 text-green-600" />
@@ -118,7 +120,7 @@ export function ReferralCodeDisplay({
         {/* QRコード */}
         {referralLink && (
           <div>
-            <h3 className="text-lg font-semibold mb-2">QRコード</h3>
+            <h3 className="text-lg font-semibold mb-2">{t("qrTitle")}</h3>
             <div className="flex flex-col items-center gap-4">
               <div className="p-4 bg-white rounded-lg">
                 <QRCodeSVG
@@ -129,7 +131,7 @@ export function ReferralCodeDisplay({
                 />
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                QRコードを読み取って新規登録
+                {t("qrDescription")}
               </p>
             </div>
           </div>
@@ -138,11 +140,10 @@ export function ReferralCodeDisplay({
         {/* 説明 */}
         <div className="pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            紹介リンクまたはQRコードから新規登録すると、紹介者に{referralBonusAmount}ペルコインが付与されます。
+            {t("rewardDescription", { amount: referralBonusAmount })}
           </p>
         </div>
       </div>
     </Card>
   );
 }
-

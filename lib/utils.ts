@@ -113,7 +113,10 @@ export function validateProfileText(
   value: string,
   maxLength: number,
   fieldName: string,
-  allowEmpty: boolean = true
+  allowEmpty: boolean = true,
+  messages?: {
+    invalidCharacters?: string;
+  }
 ): {
   valid: boolean;
   error?: string;
@@ -130,7 +133,7 @@ export function validateProfileText(
   if (/[<>]/.test(value)) {
     return {
       valid: false,
-      error: "< と > は使用できません",
+      error: messages?.invalidCharacters || "< と > は使用できません",
     };
   }
   
@@ -325,4 +328,3 @@ export function isPrefetchRequest(headers: Headers): boolean {
   
   return false;
 }
-

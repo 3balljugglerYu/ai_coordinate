@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { PercoinTransactions } from "./PercoinTransactions";
@@ -27,6 +28,7 @@ export function PercoinPageContent({
   transactions: initialTransactions,
   expiringBatches: initialExpiringBatches,
 }: PercoinPageContentProps) {
+  const t = useTranslations("credits");
   const [balanceBreakdown, setBalanceBreakdown] = useState(initialBreakdown);
   const [transactions, setTransactions] = useState(initialTransactions);
   const [expiringBatches, setExpiringBatches] = useState(initialExpiringBatches);
@@ -153,16 +155,16 @@ export function PercoinPageContent({
               <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full">
                 <Image
                   src="/percoin.png"
-                  alt="ペルコイン"
+                  alt={t("percoinUnit")}
                   width={48}
                   height={48}
                   className="object-cover"
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600">保有ペルコイン</p>
+                <p className="text-sm text-gray-600">{t("balanceLabel")}</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {balanceBreakdown.total.toLocaleString()} ペルコイン
+                  {balanceBreakdown.total.toLocaleString()} {t("percoinUnit")}
                 </p>
                 {(balanceBreakdown.paid > 0 ||
                   balanceBreakdown.unlimited_bonus > 0 ||
@@ -170,13 +172,13 @@ export function PercoinPageContent({
                   <div className="mt-3 space-y-1 text-sm text-gray-600">
                     {balanceBreakdown.paid > 0 && (
                       <div className="flex justify-between">
-                        <span>うち購入分</span>
+                        <span>{t("balancePaid")}</span>
                         <span>{balanceBreakdown.paid.toLocaleString()}</span>
                       </div>
                     )}
                     {balanceBreakdown.unlimited_bonus > 0 && (
                       <div className="flex justify-between">
-                        <span>うち付与分（無期限）</span>
+                        <span>{t("balanceUnlimitedBonus")}</span>
                         <span>{balanceBreakdown.unlimited_bonus.toLocaleString()}</span>
                       </div>
                     )}

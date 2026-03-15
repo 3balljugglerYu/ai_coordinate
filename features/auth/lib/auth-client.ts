@@ -4,10 +4,91 @@ import { createClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { getSiteUrlForClient } from "@/lib/env";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
+import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from "@/i18n/config";
 
 /**
  * クライアントサイド認証ヘルパー関数
  */
+
+const authErrorCopy = {
+  ja: {
+    invalidCredentials: "メールアドレスまたはパスワードが間違っています。",
+    sessionMissing:
+      "認証セッションが見つかりません。パスワード再設定リンクの有効期限が切れている可能性があります。もう一度パスワードリセットメールを送信してください。",
+    linkExpired:
+      "リンクの有効期限が切れています。パスワード再設定メールを再度送信してください。",
+    invalidLink:
+      "無効なリンクです。パスワード再設定メールを再度送信してください。",
+    passwordMustDiffer:
+      "新しいパスワードは現在のパスワードと異なるものを入力してください。",
+    passwordBlocked:
+      "セキュリティ上の理由により、このパスワードは設定できません。",
+    passwordTooShort: "パスワードは8文字以上で入力してください。",
+    passwordWeak:
+      "パスワードが弱すぎます。より複雑なパスワードを設定してください。",
+    emailNotConfirmed:
+      "メールアドレスが確認されていません。確認メールをチェックしてください。",
+    emailNotConfirmedDetailed:
+      "メールアドレスが確認されていません。確認メールをチェックしてください。メールが届いていない場合は、再送信を試してください。",
+    networkError:
+      "ネットワークエラーが発生しました。インターネット接続を確認してください。",
+    securityRetrySeconds:
+      "セキュリティ上の理由により、{seconds}秒後に再度お試しください。",
+    securityRetryGeneric:
+      "セキュリティ上の理由により、しばらく時間をおいてから再度お試しください。",
+    tooManyRequests:
+      "リクエストが多すぎます。しばらく時間をおいてから再度お試しください。",
+    signUpFailed: "サインアップに失敗しました",
+    signInFailed: "ログインに失敗しました",
+    deactivateFailed: "アカウント削除の申請に失敗しました",
+    reactivateFailed: "アカウントの復帰に失敗しました",
+  },
+  en: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+} as const satisfies Record<Locale, Record<string, string>>;
+
+function resolveClientLocale(): Locale {
+  if (typeof document === "undefined") {
+    return DEFAULT_LOCALE;
+  }
+
+  const localeValue = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${LOCALE_COOKIE}=`))
+    ?.split("=")[1];
+
+  return isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+}
 
 /**
  * Supabaseのエラーメッセージを日本語に変換
@@ -33,8 +114,9 @@ function isAlreadyRegisteredSignUpError(error: {
   );
 }
 
-function translateAuthError(errorMessage: string): string {
+function translateAuthError(errorMessage: string, locale: Locale = resolveClientLocale()): string {
   const errorLower = errorMessage.toLowerCase();
+  const copy = authErrorCopy[locale];
 
   // ログイン認証エラー
   if (
@@ -43,20 +125,20 @@ function translateAuthError(errorMessage: string): string {
     errorLower.includes("email or password") ||
     (errorLower.includes("invalid") && errorLower.includes("password"))
   ) {
-    return "メールアドレスまたはパスワードが間違っています。";
+    return copy.invalidCredentials;
   }
 
   // パスワードリセット関連のエラー
   if (errorLower.includes("auth session missing") || errorLower.includes("session missing")) {
-    return "認証セッションが見つかりません。パスワード再設定リンクの有効期限が切れている可能性があります。もう一度パスワードリセットメールを送信してください。";
+    return copy.sessionMissing;
   }
 
   if (errorLower.includes("token has expired") || errorLower.includes("expired")) {
-    return "リンクの有効期限が切れています。パスワード再設定メールを再度送信してください。";
+    return copy.linkExpired;
   }
 
   if (errorLower.includes("invalid token")) {
-    return "無効なリンクです。パスワード再設定メールを再度送信してください。";
+    return copy.invalidLink;
   }
 
   if (errorLower.includes("password")) {
@@ -66,7 +148,7 @@ function translateAuthError(errorMessage: string): string {
       errorLower.includes("should be different") ||
       (errorLower.includes("different") && errorLower.includes("old password"))
     ) {
-      return "新しいパスワードは現在のパスワードと異なるものを入力してください。";
+      return copy.passwordMustDiffer;
     }
     // 漏洩パスワード（HaveIBeenPwned等で検出）
     if (
@@ -74,24 +156,24 @@ function translateAuthError(errorMessage: string): string {
       errorLower.includes("known to be weak") ||
       errorLower.includes("easy to guess")
     ) {
-      return "セキュリティ上の理由により、このパスワードは設定できません。";
+      return copy.passwordBlocked;
     }
     if (errorLower.includes("too short") || errorLower.includes("minimum")) {
-      return "パスワードは8文字以上で入力してください。";
+      return copy.passwordTooShort;
     }
     if (errorLower.includes("weak") || errorLower.includes("common")) {
-      return "パスワードが弱すぎます。より複雑なパスワードを設定してください。";
+      return copy.passwordWeak;
     }
   }
 
   // メール確認関連
   if (errorLower.includes("email not confirmed") || errorLower.includes("not confirmed")) {
-    return "メールアドレスが確認されていません。確認メールをチェックしてください。";
+    return copy.emailNotConfirmed;
   }
 
   // その他の一般的なエラー
   if (errorLower.includes("network") || errorLower.includes("fetch")) {
-    return "ネットワークエラーが発生しました。インターネット接続を確認してください。";
+    return copy.networkError;
   }
 
   // レート制限エラー（詳細なメッセージ）
@@ -104,13 +186,13 @@ function translateAuthError(errorMessage: string): string {
     const secondsMatch = errorMessage.match(/(\d+)\s*seconds?/i);
     if (secondsMatch) {
       const seconds = secondsMatch[1];
-      return `セキュリティ上の理由により、${seconds}秒後に再度お試しください。`;
+      return copy.securityRetrySeconds.replace("{seconds}", seconds);
     }
-    return "セキュリティ上の理由により、しばらく時間をおいてから再度お試しください。";
+    return copy.securityRetryGeneric;
   }
 
   if (errorLower.includes("rate limit") || errorLower.includes("too many")) {
-    return "リクエストが多すぎます。しばらく時間をおいてから再度お試しください。";
+    return copy.tooManyRequests;
   }
 
   // デフォルト: 元のエラーメッセージを返す
@@ -127,6 +209,7 @@ export async function signUp(
   referralCode?: string
 ) {
   const supabase = createClient();
+  const locale = resolveClientLocale();
 
   const signUpOptions: {
     emailRedirectTo: string;
@@ -161,7 +244,10 @@ export async function signUp(
       name: error.name,
     });
     // エラーメッセージを日本語に変換
-    const translatedMessage = translateAuthError(error.message || "サインアップに失敗しました");
+    const translatedMessage = translateAuthError(
+      error.message || authErrorCopy[locale].signUpFailed,
+      locale
+    );
     throw new Error(translatedMessage);
   }
 
@@ -182,6 +268,7 @@ export async function signUp(
  */
 export async function signIn(email: string, password: string) {
   const supabase = createClient();
+  const locale = resolveClientLocale();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -198,13 +285,14 @@ export async function signIn(email: string, password: string) {
 
     // メール確認が必要な場合の特別なエラーメッセージ
     if (error.message.includes("Email not confirmed") || error.status === 401) {
-      throw new Error(
-        "メールアドレスが確認されていません。確認メールをチェックしてください。メールが届いていない場合は、再送信を試してください。"
-      );
+      throw new Error(authErrorCopy[locale].emailNotConfirmedDetailed);
     }
 
     // エラーメッセージを日本語に変換
-    const translatedMessage = translateAuthError(error.message || "ログインに失敗しました");
+    const translatedMessage = translateAuthError(
+      error.message || authErrorCopy[locale].signInFailed,
+      locale
+    );
     throw new Error(translatedMessage);
   }
 
@@ -236,6 +324,7 @@ export async function resetPasswordForEmail(
   redirectTo?: string
 ) {
   const supabase = createClient();
+  const locale = resolveClientLocale();
 
   const siteUrl = getSiteUrlForClient();
   const redirectUrl =
@@ -247,7 +336,7 @@ export async function resetPasswordForEmail(
 
   if (error) {
     // エラーメッセージを日本語に変換
-    const translatedMessage = translateAuthError(error.message);
+    const translatedMessage = translateAuthError(error.message, locale);
     throw new Error(translatedMessage);
   }
 
@@ -262,6 +351,7 @@ export async function resetPasswordForEmail(
  */
 export async function updatePassword(newPassword: string) {
   const supabase = createClient();
+  const locale = resolveClientLocale();
 
   const { data, error } = await supabase.auth.updateUser({
     password: newPassword,
@@ -269,7 +359,7 @@ export async function updatePassword(newPassword: string) {
 
   if (error) {
     // エラーメッセージを日本語に変換
-    const translatedMessage = translateAuthError(error.message);
+    const translatedMessage = translateAuthError(error.message, locale);
     throw new Error(translatedMessage);
   }
 
@@ -281,12 +371,13 @@ export async function updatePassword(newPassword: string) {
  */
 export async function signOut() {
   const supabase = createClient();
+  const locale = resolveClientLocale();
 
   const { error } = await supabase.auth.signOut();
 
   if (error) {
     // エラーメッセージを日本語に変換
-    const translatedMessage = translateAuthError(error.message);
+    const translatedMessage = translateAuthError(error.message, locale);
     throw new Error(translatedMessage);
   }
 }
@@ -301,6 +392,7 @@ export async function deactivateAccount(params: DeactivateAccountParams): Promis
   status: string;
   scheduled_for: string | null;
 }> {
+  const locale = resolveClientLocale();
   const response = await fetch("/api/account/deactivate", {
     method: "POST",
     headers: {
@@ -312,7 +404,7 @@ export async function deactivateAccount(params: DeactivateAccountParams): Promis
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(payload?.error || "アカウント削除の申請に失敗しました");
+    throw new Error(payload?.error || authErrorCopy[locale].deactivateFailed);
   }
 
   return payload;
@@ -322,6 +414,7 @@ export async function reactivateAccount(): Promise<{
   success: true;
   status: string;
 }> {
+  const locale = resolveClientLocale();
   const response = await fetch("/api/account/reactivate", {
     method: "POST",
     credentials: "include",
@@ -329,7 +422,7 @@ export async function reactivateAccount(): Promise<{
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(payload?.error || "アカウントの復帰に失敗しました");
+    throw new Error(payload?.error || authErrorCopy[locale].reactivateFailed);
   }
 
   return payload;
@@ -395,6 +488,7 @@ export async function signInWithOAuth(
   referralCode?: string
 ) {
   const supabase = createClient();
+  const locale = resolveClientLocale();
 
   // サイトURLの取得（環境変数優先、開発環境はlocalhost）
   const siteUrl = getSiteUrlForClient();
@@ -430,7 +524,7 @@ export async function signInWithOAuth(
     });
 
     if (error) {
-      const translatedMessage = translateAuthError(error.message);
+      const translatedMessage = translateAuthError(error.message, locale);
       throw new Error(translatedMessage);
     }
 
@@ -467,7 +561,7 @@ export async function signInWithOAuth(
 
   if (error) {
     // エラーメッセージを日本語に変換
-    const translatedMessage = translateAuthError(error.message);
+    const translatedMessage = translateAuthError(error.message, locale);
     throw new Error(translatedMessage);
   }
 

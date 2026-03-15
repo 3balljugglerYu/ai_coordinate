@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { getPercoinBalanceServer } from "@/features/my-page/lib/server-api";
 import { getPercoinPurchaseUrl } from "../lib/urls";
@@ -8,6 +9,7 @@ import { getPercoinPurchaseUrl } from "../lib/urls";
  * コーディネートページ用: ペルコイン残高のコンパクト表示（タップで購入画面へ遷移）
  */
 export async function CoordinatePercoinBalance() {
+  const t = await getTranslations("credits");
   const user = await requireAuth();
   const percoinBalance = await getPercoinBalanceServer(user.id);
 
@@ -19,16 +21,16 @@ export async function CoordinatePercoinBalance() {
       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
         <Image
           src="/percoin.png"
-          alt="ペルコイン"
+          alt={t("percoinUnit")}
           width={40}
           height={40}
           className="object-cover"
         />
       </div>
       <div>
-        <p className="text-xs text-gray-500">保有ペルコイン</p>
+        <p className="text-xs text-gray-500">{t("balanceLabel")}</p>
         <p className="text-lg font-bold text-gray-900">
-          {percoinBalance.toLocaleString()} ペルコイン
+          {percoinBalance.toLocaleString()} {t("percoinUnit")}
         </p>
       </div>
     </Link>

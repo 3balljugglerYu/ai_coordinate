@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { User as UserIcon, UserCircle, MessageCircle, Coins, LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import { ROUTES } from "@/constants";
 
 interface UserMenuItemsProps {
@@ -23,6 +25,7 @@ export function UserMenuItems({
   includeMyPage = false,
   onSignOut,
 }: UserMenuItemsProps) {
+  const navT = useTranslations("nav");
   const linkClassName = "flex items-center cursor-pointer";
 
   return (
@@ -31,26 +34,27 @@ export function UserMenuItems({
         <DropdownMenuItem asChild>
           <Link href={ROUTES.MY_PAGE} className={linkClassName}>
             <UserIcon className="mr-2 h-4 w-4" />
-            マイページ
+            {navT("myPage")}
           </Link>
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuItem asChild>
         <Link href={ROUTES.MY_PAGE_ACCOUNT} className={linkClassName}>
           <UserCircle className="mr-2 h-4 w-4" />
-          アカウント
+          {navT("account")}
         </Link>
       </DropdownMenuItem>
+      <LanguageSettingsMenu variant="dropdown" />
       <DropdownMenuItem asChild>
         <Link href={ROUTES.MY_PAGE_CONTACT} className={linkClassName}>
           <MessageCircle className="mr-2 h-4 w-4" />
-          お問い合わせ
+          {navT("contact")}
         </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
         <Link href={ROUTES.MY_PAGE_CREDITS_PURCHASE} className={linkClassName}>
           <Coins className="mr-2 h-4 w-4" />
-          ペルコイン購入
+          {navT("creditsPurchase")}
         </Link>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
@@ -59,7 +63,7 @@ export function UserMenuItems({
         className="text-destructive cursor-pointer"
       >
         <LogOut className="mr-2 h-4 w-4" />
-        ログアウト
+        {navT("logout")}
       </DropdownMenuItem>
     </>
   );

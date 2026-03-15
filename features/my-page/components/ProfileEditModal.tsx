@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ export function ProfileEditModal({
   onOpenChange,
   onUpdate,
 }: ProfileEditModalProps) {
+  const t = useTranslations("profileEdit");
   const [nickname, setNickname] = useState(profile.nickname || "");
   const [bio, setBio] = useState(profile.bio || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,18 +59,25 @@ export function ProfileEditModal({
     return validateProfileText(
       nicknameSanitized.value,
       MAX_NICKNAME_LENGTH,
-      "ニックネーム",
-      false // 空文字を許可しない
+      t("nicknameLabel"),
+      false,
+      {
+        invalidCharacters: t("invalidCharacters"),
+      }
     );
-  }, [nicknameSanitized.value]);
+  }, [nicknameSanitized.value, t]);
 
   const bioValidation = useMemo(() => {
     return validateProfileText(
       bioSanitized.value,
       MAX_BIO_LENGTH,
-      "自己紹介"
+      t("bioLabel"),
+      true,
+      {
+        invalidCharacters: t("invalidCharacters"),
+      }
     );
-  }, [bioSanitized.value]);
+  }, [bioSanitized.value, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +87,9 @@ export function ProfileEditModal({
     try {
       // バリデーション確認
       if (!nicknameValidation.valid || !bioValidation.valid) {
-        setError(nicknameValidation.error || bioValidation.error || "入力内容を確認してください");
+        setError(
+          nicknameValidation.error || bioValidation.error || t("requiredInput")
+        );
         setIsSubmitting(false);
         return;
       }
@@ -97,14 +108,14 @@ export function ProfileEditModal({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "プロフィールの更新に失敗しました");
+        throw new Error(data.error || t("updateFailed"));
       }
 
       const updatedProfile = await response.json();
       onUpdate(updatedProfile);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "プロフィールの更新に失敗しました");
+      setError(err instanceof Error ? err.message : t("updateFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -127,9 +138,9 @@ export function ProfileEditModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>プロフィールを編集</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            ニックネームと自己紹介を編集できます。
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -138,7 +149,7 @@ export function ProfileEditModal({
             {/* ニックネーム */}
             <div className="space-y-2">
               <Label htmlFor="nickname">
-                ニックネーム
+                {t("nicknameLabel")}
                 <span className="text-gray-500 ml-1">
                   ({nicknameLength}/{MAX_NICKNAME_LENGTH})
                 </span>
@@ -148,7 +159,7 @@ export function ProfileEditModal({
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 maxLength={MAX_NICKNAME_LENGTH}
-                placeholder="ニックネームを入力"
+                placeholder={t("nicknamePlaceholder")}
                 aria-invalid={!isNicknameValid}
               />
               {nicknameError && (
@@ -161,7 +172,7 @@ export function ProfileEditModal({
             {/* 自己紹介 */}
             <div className="space-y-2">
               <Label htmlFor="bio">
-                自己紹介
+                {t("bioLabel")}
                 <span className="text-gray-500 ml-1">
                   ({bioLength}/{MAX_BIO_LENGTH})
                 </span>
@@ -171,7 +182,7 @@ export function ProfileEditModal({
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 maxLength={MAX_BIO_LENGTH}
-                placeholder="自己紹介を入力"
+                placeholder={t("bioPlaceholder")}
                 rows={4}
                 aria-invalid={!isBioValid}
               />
@@ -197,7 +208,7 @@ export function ProfileEditModal({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              キャンセル
+              {t("cancel")}
             </Button>
             <Button
               type="submit"
@@ -208,7 +219,7 @@ export function ProfileEditModal({
                 !isBioValid
               }
             >
-              {isSubmitting ? "保存中..." : "保存"}
+              {isSubmitting ? t("saving") : t("save")}
             </Button>
           </DialogFooter>
         </form>

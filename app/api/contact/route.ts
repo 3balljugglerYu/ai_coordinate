@@ -3,12 +3,63 @@ import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { z } from "zod";
+import { LOCALE_COOKIE, resolveRequestLocale, type Locale } from "@/i18n/config";
 
 const contactSchema = z.object({
-  email: z.string().email("有効なメールアドレスを入力してください"),
-  subject: z.string().min(1, "件名を入力してください").max(200),
-  message: z.string().min(1, "お問い合わせ内容を入力してください").max(5000),
+  email: z.string().email(),
+  subject: z.string().min(1).max(200),
+  message: z.string().min(1).max(5000),
 });
+
+type ContactErrorCode =
+  | "CONTACT_AUTH_REQUIRED"
+  | "CONTACT_INVALID_INPUT"
+  | "CONTACT_EMAIL_NOT_CONFIGURED"
+  | "CONTACT_SEND_FAILED"
+  | "CONTACT_UNKNOWN_ERROR";
+
+const contactRouteCopy = {
+  ja: {
+    authRequired: "ログインが必要です",
+    invalidEmail: "有効なメールアドレスを入力してください",
+    invalidSubject: "件名を入力してください",
+    invalidMessage: "お問い合わせ内容を入力してください",
+    invalidInput: "入力内容に誤りがあります",
+    emailNotConfigured: "メール送信の設定が完了していません",
+    sendFailed:
+      "メールの送信に失敗しました。しばらく経ってからお試しください。",
+    unknownError:
+      "エラーが発生しました。しばらく経ってからお試しください。",
+  },
+  en: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+} as const satisfies Record<Locale, Record<string, string>>;
+
+function getRouteLocale(request: NextRequest): Locale {
+  return resolveRequestLocale({
+    pathname: request.nextUrl.pathname,
+    cookieLocale: request.cookies.get(LOCALE_COOKIE)?.value,
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+}
+
+function jsonError(
+  message: string,
+  errorCode: ContactErrorCode,
+  status: number
+) {
+  return NextResponse.json({ error: message, errorCode }, { status });
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -20,6 +71,9 @@ function escapeHtml(str: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const locale = getRouteLocale(request);
+  const copy = contactRouteCopy[locale];
+
   try {
     const supabase = await createClient();
     const authPromise = supabase.auth.getUser();
@@ -30,10 +84,7 @@ export async function POST(request: NextRequest) {
     } = await authPromise;
 
     if (!user) {
-      return NextResponse.json(
-        { error: "ログインが必要です" },
-        { status: 401 }
-      );
+      return jsonError(copy.authRequired, "CONTACT_AUTH_REQUIRED", 401);
     }
 
     // body と profile 取得を並列化（1.4 Promise.all）
@@ -49,12 +100,18 @@ export async function POST(request: NextRequest) {
     const parsed = contactSchema.safeParse(body);
 
     if (!parsed.success) {
-      const errors = parsed.error.flatten().fieldErrors;
-      const firstError = Object.values(errors)[0]?.[0];
-      return NextResponse.json(
-        { error: firstError ?? "入力内容に誤りがあります" },
-        { status: 400 }
-      );
+      const firstIssue = parsed.error.issues[0];
+      const firstField = firstIssue?.path[0];
+      const message =
+        firstField === "email"
+          ? copy.invalidEmail
+          : firstField === "subject"
+            ? copy.invalidSubject
+            : firstField === "message"
+              ? copy.invalidMessage
+              : copy.invalidInput;
+
+      return jsonError(message, "CONTACT_INVALID_INPUT", 400);
     }
 
     const { email, subject: rawSubject, message } = parsed.data;
@@ -63,7 +120,12 @@ export async function POST(request: NextRequest) {
     const { data: profile } = profileResult;
 
     const formatDate = (d: string | null | undefined) =>
-      d ? new Date(d).toLocaleString("ja-JP") : "—";
+      d
+        ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }).format(new Date(d))
+        : "—";
 
     const userInfo = {
       userId: user.id,
@@ -75,10 +137,7 @@ export async function POST(request: NextRequest) {
     const resendApiKey = env.RESEND_API_KEY;
     if (!resendApiKey) {
       console.error("RESEND_API_KEY is not configured");
-      return NextResponse.json(
-        { error: "メール送信の設定が完了していません" },
-        { status: 500 }
-      );
+      return jsonError(copy.emailNotConfigured, "CONTACT_EMAIL_NOT_CONFIGURED", 500);
     }
 
     const resend = new Resend(resendApiKey);
@@ -111,18 +170,12 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Resend error:", error);
-      return NextResponse.json(
-        { error: "メールの送信に失敗しました。しばらく経ってからお試しください。" },
-        { status: 500 }
-      );
+      return jsonError(copy.sendFailed, "CONTACT_SEND_FAILED", 500);
     }
 
     return NextResponse.json({ success: true, id: data?.id });
   } catch (err) {
     console.error("Contact API error:", err);
-    return NextResponse.json(
-      { error: "エラーが発生しました。しばらく経ってからお試しください。" },
-      { status: 500 }
-    );
+    return jsonError(copy.unknownError, "CONTACT_UNKNOWN_ERROR", 500);
   }
 }

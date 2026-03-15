@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
@@ -9,6 +10,7 @@ import { CachedGeneratedImageGallery } from "@/features/generation/components/Ca
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 
 export default async function CoordinatePage() {
+  const t = await getTranslations("coordinate");
   const user = await requireAuth();
 
   return (
@@ -19,10 +21,10 @@ export default async function CoordinatePage() {
           {/* 静的コンテンツ: タイトルと説明文 */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">
-              コーディネート
+              {t("pageTitle")}
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              人物画像をアップロードして、着せ替えを楽しみましょう
+              {t("pageDescription")}
             </p>
           </div>
 
@@ -45,7 +47,7 @@ export default async function CoordinatePage() {
             {/* 生成結果一覧 */}
             <div className="mt-8">
               <h2 className="mb-4 text-xl font-semibold text-gray-900">
-                生成結果一覧
+                {t("resultsTitle")}
               </h2>
               <Suspense fallback={<GeneratedImageGallerySkeleton />}>
                 <CachedGeneratedImageGallery userId={user.id} />

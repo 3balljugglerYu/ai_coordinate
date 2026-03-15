@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Masonry from "react-masonry-css";
 import {
@@ -67,6 +68,7 @@ export function ChallengePageContent({
   dailyPostBonusAmount,
   streakBonusSchedule,
 }: ChallengePageContentProps) {
+  const t = useTranslations("challenge");
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
@@ -178,11 +180,16 @@ export function ChallengePageContent({
         const streakDayForMessage = result.streak_days ?? streakDays;
         const description =
           streakDayForMessage > 0
-            ? `${streakDayForMessage}日連続ログインで${result.bonus_granted}ペルコインを獲得しました！`
-            : `ログインボーナスとして${result.bonus_granted}ペルコインを獲得しました！`;
+            ? t("checkInSuccessWithStreak", {
+                days: streakDayForMessage,
+                bonus: result.bonus_granted,
+              })
+            : t("checkInSuccessWithoutStreak", {
+                bonus: result.bonus_granted,
+              });
 
         toast({
-          title: "連続ログイン特典ボーナス！",
+          title: t("checkInSuccessTitle"),
           description,
           variant: "default",
         });
@@ -194,8 +201,8 @@ export function ChallengePageContent({
     } catch (error) {
       console.error("Failed to check in streak bonus:", error);
       toast({
-        title: "チェックインに失敗しました",
-        description: "時間をおいて再度お試しください。",
+        title: t("checkInFailedTitle"),
+        description: t("checkInFailedDescription"),
         variant: "destructive",
       });
     } finally {
@@ -206,8 +213,8 @@ export function ChallengePageContent({
   const tutorialCard = (
     <div className="mb-6">
       <ChallengeCard
-        title="コーデ生成チュートリアル"
-        description="着せ替え生成の流れを体験！初めての方も安心のガイド付きです。"
+        title={t("tutorialTitle")}
+        description={t("tutorialDescription")}
         icon={PlayCircle}
         color="green"
         className={cn(
@@ -222,9 +229,9 @@ export function ChallengePageContent({
                 <CheckCircle2 className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <div className="font-bold text-green-800">完了済み</div>
+                <div className="font-bold text-green-800">{t("tutorialCompletedTitle")}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  チュートリアルをクリアしました！
+                  {t("tutorialCompletedDescription")}
                 </div>
               </div>
             </div>
@@ -240,7 +247,7 @@ export function ChallengePageContent({
               }}
             >
               <PlayCircle className="mr-2 h-4 w-4" />
-              チュートリアルを開始
+              {t("tutorialStart")}
             </Button>
           )}
         </div>
@@ -259,9 +266,9 @@ export function ChallengePageContent({
         {/* 1. ストリーク特典 */}
         <div className="mb-6">
           <ChallengeCard
-            title="連続ログインボーナス"
-            description={`毎日チェックインしてボーナスをゲット！2週間継続すると合計${totalStreakBonus}ペルコインが獲得できます。`}
-            percoinText={`最大 +${maxStreakBonus}`}
+            title={t("streakTitle")}
+            description={t("streakDescription", { totalBonus: totalStreakBonus })}
+            percoinText={t("streakRewardText", { amount: maxStreakBonus })}
             icon={Flame}
             color="purple"
             className="h-full"
@@ -269,10 +276,12 @@ export function ChallengePageContent({
             <div className="mt-4">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium text-purple-900 bg-purple-50 px-3 py-1 rounded-full">
-                  現在の連続記録: <span className="text-lg font-bold">{streakDays}</span> 日
+                  {t("streakCurrent", { days: streakDays })}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  あと {streakBonusSchedule.length - streakDays} 日でコンプリート
+                  {t("streakRemaining", {
+                    days: Math.max(streakBonusSchedule.length - streakDays, 0),
+                  })}
                 </span>
               </div>
 
@@ -285,14 +294,14 @@ export function ChallengePageContent({
                 >
                   {isCheckingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isCheckedInToday
-                    ? "チェックイン済み"
+                    ? t("checkedIn")
                     : isCheckingIn
-                      ? "チェックイン中..."
-                      : "チェックイン"}
+                      ? t("checkingIn")
+                      : t("checkIn")}
                 </Button>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
-                  <span>日本時間（JST）で毎日0時にリセット</span>
+                  <span>{t("resetAtJst")}</span>
                 </div>
               </div>
 
@@ -381,8 +390,8 @@ export function ChallengePageContent({
         {/* 2. デイリー投稿特典 */}
         <div className="mb-6">
           <ChallengeCard
-            title="デイリー投稿ボーナス"
-            description="1日1回、生成した画像を投稿してペルコインをゲット！毎日の習慣にしてコインを貯めよう。"
+            title={t("dailyTitle")}
+            description={t("dailyDescription")}
             percoinAmount={dailyPostBonusAmount}
             icon={CalendarCheck2}
             color="blue"
@@ -411,19 +420,23 @@ export function ChallengePageContent({
                       "font-bold",
                       isDailyBonusReceived ? "text-green-800" : "text-gray-700"
                     )}>
-                      {isDailyBonusReceived ? "今日のボーナス獲得済み" : "まだ投稿していません"}
+                      {isDailyBonusReceived
+                        ? t("dailyReceivedTitle")
+                        : t("dailyPendingTitle")}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       {isDailyBonusReceived
-                        ? "明日も投稿してコインをゲットしよう！"
-                        : `画像を投稿して${dailyPostBonusAmount}コインをゲット！`}
+                        ? t("dailyReceivedDescription")
+                        : t("dailyPendingDescription", {
+                            amount: dailyPostBonusAmount,
+                          })}
                     </div>
                   </div>
                 </div>
 
                 {isDailyBonusReceived && (
                   <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">リセットまで</div>
+                    <div className="text-xs text-muted-foreground mb-1">{t("resetIn")}</div>
                     <div className="flex items-center justify-end gap-1.5 font-mono text-lg font-bold text-green-700">
                       <Clock className="w-4 h-4" />
                       {timeToReset}
@@ -435,13 +448,13 @@ export function ChallengePageContent({
               {!isDailyBonusReceived && (
                 <div className="flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
                   <Clock className="w-3.5 h-3.5" />
-                  <span>リセットまで {timeToReset}</span>
+                  <span>{t("resetIn")} {timeToReset}</span>
                 </div>
               )}
 
               <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                <span className="font-bold shrink-0">Tips:</span>
-                <span>日本時間（JST）で毎日0時にリセットされます</span>
+                <span className="font-bold shrink-0">{t("tipsLabel")}</span>
+                <span>{t("dailyResetDescription")}</span>
               </div>
             </div>
           </ChallengeCard>
@@ -450,8 +463,8 @@ export function ChallengePageContent({
         {/* 3. リファラル特典 */}
         <div className="mb-6">
           <ChallengeCard
-            title="友達紹介特典"
-            description="友達を招待してペルコインをゲット！紹介リンクまたはQRコードから友達が新規登録すると特典が付与されます。"
+            title={t("referralTitle")}
+            description={t("referralDescription")}
             percoinAmount={referralBonusAmount}
             icon={Users}
             color="orange"

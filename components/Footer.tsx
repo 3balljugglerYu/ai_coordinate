@@ -1,12 +1,20 @@
+"use client";
+
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 
 export function Footer() {
+	const localeValue = useLocale();
+	const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+	const t = useTranslations("footer");
+
 	const links = [
-		{ href: "/about", label: "サービス紹介" },
+		{ href: localizePublicPath("/about", locale), label: t("about") },
 		// { href: "/pricing", label: "料金" },
-		{ href: "/terms", label: "利用規約" },
-		{ href: "/privacy", label: "プライバシーポリシー" },
-		{ href: "/tokushoho", label: "商取引に関する開示" },
+		{ href: localizePublicPath("/terms", locale), label: t("terms") },
+		{ href: localizePublicPath("/privacy", locale), label: t("privacy") },
+		{ href: localizePublicPath("/tokushoho", locale), label: t("disclosure") },
 		// { href: "/payment-services-act", label: "資金決済法に基づく表示" },
 	];
 

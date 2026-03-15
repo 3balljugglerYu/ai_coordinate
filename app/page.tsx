@@ -1,28 +1,40 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { getLocale } from "next-intl/server";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
 import { getPublicBanners } from "@/features/banners/lib/get-banners";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { getHomeCopy } from "@/i18n/page-copy";
 
-export const metadata: Metadata = {
-  openGraph: {
-    title: "Persta.AI (ペルスタ)",
-    description: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
-    url: getSiteUrl() || undefined,
-    siteName: "Persta.AI",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Persta.AI (ペルスタ)",
-    description: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const copy = getHomeCopy(locale);
+
+  return {
+    openGraph: {
+      title: copy.metadataTitle,
+      description: copy.metadataDescription,
+      url: getSiteUrl() || undefined,
+      siteName: "Persta.AI",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: copy.metadataTitle,
+      description: copy.metadataDescription,
+    },
+  };
+}
 
 export default async function Home() {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const copy = getHomeCopy(locale);
   const user = await getUser();
   const userId = user?.id ?? null;
   const siteUrl = getSiteUrl() || "https://persta.ai";
@@ -43,7 +55,7 @@ export default async function Home() {
     "name": "Persta.AI",
     "alternateName": ["Persta", "ペルスタ"],
     "url": siteUrl,
-    "description": "Persta（ペルスタ）は、AIでファッション・キャラクターなどのビジュアル表現を自由にスタイリングできるプラットフォームです。",
+    "description": copy.organizationDescription,
   };
 
   return (
@@ -62,9 +74,9 @@ export default async function Home() {
       />
       <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
         <div className="mb-4">
-          <h1 className="text-3xl font-bold">Persta | ペルスタ</h1>
+          <h1 className="text-3xl font-bold">{copy.heading}</h1>
           <p className="mt-2 text-muted-foreground">
-            着てみたいも、なりたいも。AIスタイリングプラットフォーム
+            {copy.subtitle}
           </p>
         </div>
         <HomeBannerList banners={banners} />

@@ -1,15 +1,16 @@
 "use client";
 
 import { Check, Circle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const PASSWORD_REQUIREMENTS = [
-  { key: "length", label: "8文字以上", test: (p: string) => p.length >= 8 },
-  { key: "uppercase", label: "英大文字を含む", test: (p: string) => /[A-Z]/.test(p) },
-  { key: "lowercase", label: "英小文字を含む", test: (p: string) => /[a-z]/.test(p) },
-  { key: "number", label: "数字を含む", test: (p: string) => /\d/.test(p) },
+  { key: "length", labelKey: "passwordRequirementLength", test: (p: string) => p.length >= 8 },
+  { key: "uppercase", labelKey: "passwordRequirementUppercase", test: (p: string) => /[A-Z]/.test(p) },
+  { key: "lowercase", labelKey: "passwordRequirementLowercase", test: (p: string) => /[a-z]/.test(p) },
+  { key: "number", labelKey: "passwordRequirementNumber", test: (p: string) => /\d/.test(p) },
   {
     key: "symbol",
-    label: "記号を含む",
+    labelKey: "passwordRequirementSymbol",
     test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"|<>?,./`~]/.test(p),
   },
 ] as const;
@@ -25,11 +26,13 @@ interface PasswordRequirementsProps {
 }
 
 export function PasswordRequirements({ password, className }: PasswordRequirementsProps) {
+  const t = useTranslations("auth");
+
   if (!password) return null;
 
   return (
     <ul className={`mt-2 space-y-1.5 text-xs ${className ?? ""}`} role="list">
-      {PASSWORD_REQUIREMENTS.map(({ key, label, test }) => {
+      {PASSWORD_REQUIREMENTS.map(({ key, labelKey, test }) => {
         const met = test(password);
         return (
           <li key={key} className="flex items-center gap-2">
@@ -38,7 +41,7 @@ export function PasswordRequirements({ password, className }: PasswordRequiremen
             ) : (
               <Circle className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
             )}
-            <span className={met ? "text-green-700" : "text-gray-500"}>{label}</span>
+            <span className={met ? "text-green-700" : "text-gray-500"}>{t(labelKey)}</span>
           </li>
         );
       })}

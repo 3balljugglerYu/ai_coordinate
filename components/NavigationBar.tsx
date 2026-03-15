@@ -2,21 +2,33 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { Home, Sparkles, User as UserIcon, Trophy, Bell /* , Coins */ } from "lucide-react";
 import { getCurrentUser, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+  stripLocalePrefix,
+} from "@/i18n/config";
 
 export function NavigationBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const localeValue = useLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const navT = useTranslations("nav");
   const [user, setUser] = useState<User | null>(null);
   // トランジション状態: ナビゲーションを非ブロッキングにする
   const [, startTransition] = useTransition();
   // プリフェッチ実行フラグ: 1回のみ実行するため
   const hasPrefetched = useRef(false);
   const { unreadCount } = useUnreadNotificationCount();
+  const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
+  const localizedHomePath = localizePublicPath("/", locale);
 
   useEffect(() => {
     // 初回ロード時のユーザー取得
@@ -37,17 +49,19 @@ export function NavigationBar() {
   // 認証済みユーザーに対して主要ページをプリフェッチ（他画面から戻った際の即表示用）
   useEffect(() => {
     if (user && !hasPrefetched.current) {
-      router.prefetch("/");
+      router.prefetch(localizedHomePath);
       router.prefetch("/coordinate");
       router.prefetch("/challenge");
       router.prefetch("/notifications");
       router.prefetch("/my-page");
       hasPrefetched.current = true;
     }
-  }, [user, router]);
+  }, [localizedHomePath, user, router]);
 
   const handleNavigation = (path: string) => {
-    if (pathname === path) {
+    const normalizedTargetPath = stripLocalePrefix(path).pathname;
+
+    if (normalizedPathname === normalizedTargetPath) {
       return;
     }
 
@@ -55,10 +69,10 @@ export function NavigationBar() {
     startTransition(() => {
       // コーディネートとマイページ関連は認証必須
       if (
-        (path === "/coordinate" ||
-          path === "/challenge" ||
-          path === "/notifications" ||
-          path.startsWith("/my-page")) &&
+        (normalizedTargetPath === "/coordinate" ||
+          normalizedTargetPath === "/challenge" ||
+          normalizedTargetPath === "/notifications" ||
+          normalizedTargetPath.startsWith("/my-page")) &&
         !user
       ) {
         router.push(`/login?redirect=/`);
@@ -69,11 +83,11 @@ export function NavigationBar() {
   };
 
   const navItems = [
-    { path: "/", label: "ホーム", icon: Home },
-    { path: "/coordinate", label: "コーディネート", icon: Sparkles },
-    { path: "/challenge", label: "ミッション", icon: Trophy },
-    { path: "/notifications", label: "お知らせ", icon: Bell },
-    { path: "/my-page", label: "マイページ", icon: UserIcon },
+    { path: localizedHomePath, label: navT("home"), icon: Home },
+    { path: "/coordinate", label: navT("coordinate"), icon: Sparkles },
+    { path: "/challenge", label: navT("challenge"), icon: Trophy },
+    { path: "/notifications", label: navT("notifications"), icon: Bell },
+    { path: "/my-page", label: navT("myPage"), icon: UserIcon },
     // { path: "/my-page/credits", label: "ペルコイン", icon: Coins },
   ];
 
@@ -84,7 +98,8 @@ export function NavigationBar() {
           {/* ナビゲーションアイテム */}
           <div className="flex flex-1 items-center justify-around">
             {navItems.map(({ path, label, icon: Icon }) => {
-              const isActive = pathname === path;
+              const isActive =
+                normalizedPathname === stripLocalePrefix(path).pathname;
               return (
                 <button
                   key={path}

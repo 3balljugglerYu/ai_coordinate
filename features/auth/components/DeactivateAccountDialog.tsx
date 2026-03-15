@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,8 @@ export function DeactivateAccountDialog({
 }: DeactivateAccountDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const locale = useLocale();
+  const t = useTranslations("auth");
 
   const [confirmText, setConfirmText] = useState("");
   const [password, setPassword] = useState("");
@@ -74,11 +77,11 @@ export function DeactivateAccountDialog({
       setError(null);
 
       if (!isValidConfirmText) {
-        throw new Error("確認テキストに DELETE と入力してください");
+        throw new Error(t("deactivateErrorConfirmText"));
       }
 
       if (isEmailAuthUser && !password) {
-        throw new Error("本人確認のためパスワードを入力してください");
+        throw new Error(t("deactivateErrorPasswordRequired"));
       }
 
       setIsSubmitting(true);
@@ -89,12 +92,14 @@ export function DeactivateAccountDialog({
       });
 
       const scheduleText = result.scheduled_for
-        ? new Date(result.scheduled_for).toLocaleDateString("ja-JP")
-        : "30日後";
+        ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US").format(
+            new Date(result.scheduled_for)
+          )
+        : t("deactivateFallbackDate");
 
       toast({
-        title: "退会を受け付けました",
-        description: `${scheduleText} にアカウントを削除予定です。`,
+        title: t("deactivateToastTitle"),
+        description: t("deactivateToastDescription", { date: scheduleText }),
       });
 
       await signOut();
@@ -102,7 +107,7 @@ export function DeactivateAccountDialog({
       router.push("/login?message=deactivated");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "退会処理に失敗しました");
+      setError(err instanceof Error ? err.message : t("deactivateErrorGeneric"));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,15 +117,13 @@ export function DeactivateAccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-red-600">アカウントを削除する</DialogTitle>
-          <DialogDescription>
-            退会後はアカウントが凍結され、30日後に完全削除されます。30日以内は復帰できます。
-          </DialogDescription>
+          <DialogTitle className="text-red-600">{t("deactivateTitle")}</DialogTitle>
+          <DialogDescription>{t("deactivateDescription")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="deactivate-confirm-text">確認のため DELETE と入力</Label>
+            <Label htmlFor="deactivate-confirm-text">{t("deactivateConfirmLabel")}</Label>
             <Input
               id="deactivate-confirm-text"
               value={confirmText}
@@ -133,13 +136,13 @@ export function DeactivateAccountDialog({
 
           {isEmailAuthUser && (
             <div className="space-y-2">
-              <Label htmlFor="deactivate-password">パスワード</Label>
+              <Label htmlFor="deactivate-password">{t("deactivatePasswordLabel")}</Label>
               <Input
                 id="deactivate-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="現在のパスワード"
+                placeholder={t("deactivatePasswordPlaceholder")}
                 autoComplete="current-password"
                 disabled={isSubmitting}
               />
@@ -160,7 +163,7 @@ export function DeactivateAccountDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            キャンセル
+            {t("deactivateCancel")}
           </Button>
           <Button
             type="button"
@@ -168,7 +171,7 @@ export function DeactivateAccountDialog({
             onClick={handleDeactivate}
             disabled={isSubmitting || !isValidConfirmText || (isEmailAuthUser && !password)}
           >
-            {isSubmitting ? "処理中..." : "削除を申請する"}
+            {isSubmitting ? t("deactivateSubmitting") : t("deactivateSubmit")}
           </Button>
         </DialogFooter>
       </DialogContent>

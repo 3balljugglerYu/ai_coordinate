@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,6 +30,7 @@ export function ImageUploader({
   config = DEFAULT_IMAGE_CONFIG,
   className,
 }: ImageUploaderProps) {
+  const t = useTranslations("coordinate");
   const [internalImage, setInternalImage] = useState<UploadedImage | null>(null);
   const uploadedImage = value !== undefined ? value : internalImage;
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export function ImageUploader({
       const result = await validateImageFile(file, config);
 
       if (!result.isValid) {
-        setError(result.error || "画像の検証に失敗しました");
+        setError(result.error || t("generationFailedGeneric"));
         return;
       }
 
@@ -113,7 +115,7 @@ export function ImageUploader({
     if (file && file.type.startsWith("image/")) {
       handleFileChange(file);
     } else {
-      setError("画像ファイルをドロップしてください");
+      setError(t("dropImageFile"));
     }
   };
 
@@ -140,7 +142,7 @@ export function ImageUploader({
       {/* ラベル + 画像カードをハイライト。キャンセルボタンはチュートリアル中のみ pointer-events: none で無効化 */}
       <div data-tour="tour-image-upload">
         <Label htmlFor="image-upload" className="text-base font-medium block">
-          人物画像をアップロード
+          {t("uploadSourceLabel")}
         </Label>
 
         {error && (
@@ -167,7 +169,7 @@ export function ImageUploader({
             <div className="relative h-[210px] sm:h-[240px] flex flex-col items-center justify-center p-4">
               <Upload className="mb-2 h-8 w-8 text-gray-400" />
               <p className="text-xs font-medium text-center text-gray-700">
-                画像を追加
+                {t("addImage")}
               </p>
             </div>
             <input
@@ -184,7 +186,7 @@ export function ImageUploader({
             <div className="relative w-full h-full overflow-hidden bg-gray-100">
               <NextImage
                 src={uploadedImage.previewUrl}
-                alt="アップロードされた画像"
+                alt={t("uploadedImageAlt")}
                 width={800}
                 height={800}
                 className="w-full h-full object-contain"

@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { AuditLogClient } from "./AuditLogClient";
 
 export default async function AdminAuditLogPage() {
+  await connection();
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

@@ -1,15 +1,17 @@
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { CachedNotificationList } from "@/features/notifications/components/CachedNotificationList";
 
 export default async function NotificationsPage() {
+  const t = await getTranslations("notifications");
   const user = await requireAuth();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-2xl">
-          <h1 className="mb-4 text-xl font-semibold text-gray-900">お知らせ</h1>
+          <h1 className="mb-4 text-xl font-semibold text-gray-900">{t("pageTitle")}</h1>
           <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
             <Suspense
               fallback={

@@ -2,10 +2,17 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, X, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+  stripLocalePrefix,
+} from "@/i18n/config";
 
 // デスクトップ判定（mdブレークポイント: 768px）
 const DESKTOP_BREAKPOINT = 768;
@@ -14,10 +21,17 @@ export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const localeValue = useLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const commonT = useTranslations("common");
+  const searchBarT = useTranslations("searchBar");
   const [searchQuery, setSearchQuery] = useState("");
   const [isDesktop, setIsDesktop] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isSearchPage = pathname === "/search";
+  const currentPathname = pathname ?? "/";
+  const normalizedPathname = stripLocalePrefix(currentPathname).pathname;
+  const localizedSearchPath = localizePublicPath("/search", locale);
+  const isSearchPage = normalizedPathname === "/search";
 
   // デスクトップ判定（クライアントサイドでのみ実行）
   useEffect(() => {
@@ -59,10 +73,10 @@ export function SearchBar() {
   const updateCurrentPageQuery = useCallback((query: string) => {
     const params = buildSearchParams(query);
     const newUrl = params.toString()
-      ? `${pathname}?${params.toString()}`
-      : pathname;
+      ? `${currentPathname}?${params.toString()}`
+      : currentPathname;
     router.replace(newUrl, { scroll: false });
-  }, [buildSearchParams, pathname, router]);
+  }, [buildSearchParams, currentPathname, router]);
 
   // 検索実行処理
   const handleSearch = useCallback(() => {
@@ -71,8 +85,8 @@ export function SearchBar() {
     // PC版の場合は検索画面に遷移
     if (isDesktop && !isSearchPage) {
       const newUrl = params.toString() 
-        ? `/search?${params.toString()}`
-        : "/search";
+        ? `${localizedSearchPath}?${params.toString()}`
+        : localizedSearchPath;
       router.push(newUrl);
     } else {
       // モバイル版、または既に検索画面にいる場合は現在の画面で検索結果を更新
@@ -107,11 +121,11 @@ export function SearchBar() {
         params.set("q", searchQuery.trim());
       }
       const newUrl = params.toString() 
-        ? `/search?${params.toString()}`
-        : "/search";
+        ? `${localizedSearchPath}?${params.toString()}`
+        : localizedSearchPath;
       router.push(newUrl);
     }
-  }, [router, searchQuery, isSearchPage, isDesktop]);
+  }, [localizedSearchPath, router, searchQuery, isSearchPage, isDesktop]);
 
   // 検索画面での自動フォーカス
   useEffect(() => {
@@ -134,7 +148,7 @@ export function SearchBar() {
             size="icon"
             onClick={() => router.back()}
             className="shrink-0 h-7 w-7 md:hidden"
-            aria-label="戻る"
+            aria-label={commonT("back")}
           >
             <ArrowLeft className="h-3 w-3" />
           </Button>
@@ -144,7 +158,7 @@ export function SearchBar() {
           <Input
             ref={inputRef}
             type="text"
-            placeholder="プロンプト検索"
+            placeholder={searchBarT("placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -159,7 +173,7 @@ export function SearchBar() {
               type="button"
               onClick={handleClear}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="検索をクリア"
+              aria-label={searchBarT("clear")}
             >
               <X className="h-3 w-3" />
             </button>
@@ -175,7 +189,7 @@ export function SearchBar() {
             "shrink-0 h-7 px-2 text-sm py-1 bg-gray-100 hover:bg-gray-200",
             !isSearchPage && "hidden md:flex"
           )}
-          aria-label="検索"
+          aria-label={searchBarT("submit")}
         >
           <Search className="h-3 w-3" />
         </Button>

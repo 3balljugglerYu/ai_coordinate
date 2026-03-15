@@ -1,21 +1,27 @@
 "use client";
 
 import { useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { FreePercoinBatchExpiring } from "../lib/api";
 
-function formatExpireLabel(expireAt: string): string {
+function formatExpireLabel(expireAt: string, locale: string): string {
   const d = new Date(expireAt);
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日迄`;
+  return new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(d);
 }
 
 /** 有効期限日ごとに残高を合算（有効期限が近い順） */
 function groupByExpireDate(
-  batches: FreePercoinBatchExpiring[]
+  batches: FreePercoinBatchExpiring[],
+  locale: string
 ): Map<string, number> {
   const map = new Map<string, number>();
   for (const b of batches) {
-    const key = formatExpireLabel(b.expire_at);
+    const key = formatExpireLabel(b.expire_at, locale);
     map.set(key, (map.get(key) ?? 0) + b.remaining_amount);
   }
   return map;
@@ -37,7 +43,9 @@ export function PeriodLimitedBreakdown({
   isExpanded,
   variant,
 }: PeriodLimitedBreakdownProps) {
-  const grouped = groupByExpireDate(batches);
+  const t = useTranslations("credits");
+  const locale = useLocale();
+  const grouped = groupByExpireDate(batches, locale);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -64,14 +72,18 @@ export function PeriodLimitedBreakdown({
         role="button"
         tabIndex={0}
         aria-expanded={isExpanded}
-        aria-label={isExpanded ? "期間限定の内訳を閉じる" : "期間限定の内訳を開く"}
+        aria-label={
+          isExpanded
+            ? t("periodLimitedBreakdownClose")
+            : t("periodLimitedBreakdownOpen")
+        }
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         className={`flex min-h-[44px] cursor-pointer items-center justify-between rounded py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
           periodLimitedTotal > 0 ? "" : "pointer-events-none opacity-70"
         }`}
       >
-        <span>うち期間限定</span>
+        <span>{t("balancePeriodLimited")}</span>
         <span className="flex items-center gap-1">
           <span>{periodLimitedTotal.toLocaleString()}</span>
           {periodLimitedTotal > 0 &&
@@ -89,7 +101,7 @@ export function PeriodLimitedBreakdown({
   return (
     <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
       <p className="mb-3 text-xs font-medium text-gray-500">
-        期間限定ペルコインの内訳（有効期限が近い順）
+        {t("periodLimitedBreakdownTitle")}
       </p>
       <div className="space-y-4">
         {Array.from(grouped.entries()).map(([expireLabel, totalAmount]) => (
