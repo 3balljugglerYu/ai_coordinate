@@ -22,6 +22,7 @@ export interface Notification {
     follower_id?: string;
     bonus_type?: "admin_bonus" | "daily_post" | "streak" | "referral" | "signup_bonus" | "tour_bonus";
     bonus_amount?: number;
+    streak_days?: number;
     reason?: string;
   };
   is_read: boolean;

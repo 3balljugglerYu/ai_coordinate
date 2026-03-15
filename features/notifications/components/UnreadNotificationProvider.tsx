@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import {
   getCurrentUser,
@@ -29,6 +30,7 @@ export function UnreadNotificationProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations("notifications");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,12 +42,14 @@ export function UnreadNotificationProvider({
     }
 
     try {
-      const count = await getUnreadCount();
+      const count = await getUnreadCount({
+        unreadCountFailed: t("fetchUnreadFailed"),
+      });
       setUnreadCount(count);
     } catch (error) {
       console.error("Failed to fetch unread notification count:", error);
     }
-  }, []);
+  }, [t]);
 
   const scheduleUnreadCountRefresh = useCallback(
     (userId: string) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { X, ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GeneratedImageData } from "../types";
@@ -25,6 +26,7 @@ export function ImageModal({
   onPost,
   disablePostAndDownload = false,
 }: ImageModalProps) {
+  const t = useTranslations("coordinate");
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -97,11 +99,13 @@ export function ImageModal({
       
       // 認証エラーのハンドリング（401/403）
       if (response.status === 401 || response.status === 403) {
-        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
+        throw new Error(t("imageAccessDenied"));
       }
       
       if (!response.ok) {
-        throw new Error(`画像の取得に失敗しました: ${response.statusText}`);
+        throw new Error(
+          t("imageFetchFailed", { statusText: response.statusText })
+        );
       }
       
       // Blobに変換（MIMEタイプを保持）
@@ -136,7 +140,9 @@ export function ImageModal({
       }, 100);
     } catch (error) {
       console.error("ダウンロードエラー:", error);
-      alert(error instanceof Error ? error.message : "画像のダウンロードに失敗しました");
+      alert(
+        error instanceof Error ? error.message : t("imageDownloadFailed")
+      );
     }
   };
 
@@ -147,11 +153,13 @@ export function ImageModal({
       
       // 認証エラーのハンドリング（401/403）
       if (res.status === 401 || res.status === 403) {
-        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
+        throw new Error(t("imageAccessDenied"));
       }
       
       if (!res.ok) {
-        throw new Error(`画像の取得に失敗しました: ${res.statusText}`);
+        throw new Error(
+          t("imageFetchFailed", { statusText: res.statusText })
+        );
       }
       
       // Blobに変換
@@ -223,7 +231,7 @@ export function ImageModal({
               onClick={() => onPost(currentImage)}
             >
               <Plus className="h-5 w-5" />
-              <span className="ml-1">投稿</span>
+              <span className="ml-1">{t("postAction")}</span>
             </Button>
           )}
           <Button
@@ -272,7 +280,7 @@ export function ImageModal({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={currentImage.url}
-          alt={`生成画像 ${currentIndex + 1}`}
+          alt={t("generatedImageAltIndexed", { index: currentIndex + 1 })}
           className="h-full w-full object-contain p-4"
         />
       </div>
@@ -311,7 +319,7 @@ export function ImageModal({
                   : "bg-white/50 hover:bg-white/75"
               }`}
               onClick={() => setCurrentIndex(index)}
-              aria-label={`画像 ${index + 1} に移動`}
+              aria-label={t("goToImage", { index: index + 1 })}
             />
           ))}
         </div>

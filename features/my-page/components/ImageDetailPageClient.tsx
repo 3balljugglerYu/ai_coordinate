@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, Share2, Loader2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,6 @@ interface ImageDetailPageClientProps {
   image: GeneratedImageRecord;
 }
 
-const BACKGROUND_MODE_LABELS: Record<BackgroundMode, string> = {
-  ai_auto: "AIに依頼",
-  include_in_prompt: "上記の内容に含める",
-  keep: "背景は変更しない",
-};
-
 function resolveBackgroundMode(image: GeneratedImageRecord): BackgroundMode {
   if (
     image.background_mode === "ai_auto" ||
@@ -34,13 +29,22 @@ function resolveBackgroundMode(image: GeneratedImageRecord): BackgroundMode {
 }
 
 export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
+  const commonT = useTranslations("common");
+  const myPageT = useTranslations("myPage");
+  const coordinateT = useTranslations("coordinate");
+  const locale = useLocale();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const backgroundMode = resolveBackgroundMode(image);
-  const backgroundModeLabel = BACKGROUND_MODE_LABELS[backgroundMode];
+  const backgroundModeLabel =
+    backgroundMode === "ai_auto"
+      ? coordinateT("backgroundAiAutoLabel")
+      : backgroundMode === "include_in_prompt"
+        ? coordinateT("backgroundIncludeInPromptLabel")
+        : coordinateT("backgroundKeepLabel");
 
   const handleDelete = () => {
     setDeleteDialogOpen(true);
@@ -61,19 +65,19 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
         <div className="mb-6 flex items-center justify-between">
           <Button variant="ghost" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            戻る
+            {commonT("back")}
           </Button>
 
           <div className="flex gap-2">
             {!image.is_posted ? (
               <Button onClick={handlePost}>
                 <Share2 className="mr-2 h-4 w-4" />
-                投稿
+                {myPageT("detailPostAction")}
               </Button>
             ) : (
               <Button variant="outline" onClick={handleEdit}>
                 <Edit className="mr-2 h-4 w-4" />
-                編集
+                {myPageT("detailEditAction")}
               </Button>
             )}
             <Button
@@ -86,7 +90,7 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              削除
+              {myPageT("detailDeleteAction")}
             </Button>
           </div>
         </div>
@@ -115,11 +119,15 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
         {image.is_posted && (
           <Card className="mb-4 border-blue-200 bg-blue-50 p-4">
             <p className="text-sm font-medium text-blue-900">
-              この画像は投稿済みです
+              {myPageT("detailPostedTitle")}
             </p>
             {image.posted_at && (
               <p className="mt-1 text-xs text-blue-700">
-                投稿日時: {new Date(image.posted_at).toLocaleString("ja-JP")}
+                {myPageT("detailPostedAt", {
+                  date: new Date(image.posted_at).toLocaleString(
+                    locale === "ja" ? "ja-JP" : "en-US"
+                  ),
+                })}
               </p>
             )}
           </Card>
@@ -137,16 +145,22 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
 
         {/* 詳細情報 */}
         <Card className="p-6">
-          <h2 className="mb-4 text-xl font-semibold text-gray-900">画像情報</h2>
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
+            {myPageT("detailInfoTitle")}
+          </h2>
 
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-medium text-gray-700">プロンプト</p>
+              <p className="text-sm font-medium text-gray-700">
+                {myPageT("detailPromptLabel")}
+              </p>
               <p className="mt-1 text-sm text-gray-600">{image.prompt}</p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-700">背景設定</p>
+              <p className="text-sm font-medium text-gray-700">
+                {myPageT("detailBackgroundLabel")}
+              </p>
               <p className="mt-1 text-sm text-gray-600">
                 {backgroundModeLabel}
               </p>
@@ -154,16 +168,22 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
 
             {image.caption && (
               <div>
-                <p className="text-sm font-medium text-gray-700">キャプション</p>
+                <p className="text-sm font-medium text-gray-700">
+                  {myPageT("detailCaptionLabel")}
+                </p>
                 <p className="mt-1 text-sm text-gray-600">{image.caption}</p>
               </div>
             )}
 
             <div>
-              <p className="text-sm font-medium text-gray-700">生成日時</p>
+              <p className="text-sm font-medium text-gray-700">
+                {myPageT("detailCreatedAtLabel")}
+              </p>
               <p className="mt-1 text-sm text-gray-600">
                 {image.created_at
-                  ? new Date(image.created_at).toLocaleString("ja-JP")
+                  ? new Date(image.created_at).toLocaleString(
+                      locale === "ja" ? "ja-JP" : "en-US"
+                    )
                   : "-"}
               </p>
             </div>

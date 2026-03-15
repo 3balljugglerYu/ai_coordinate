@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, type MouseEvent } from "react";
+import { useEffect, useMemo, type MouseEvent } from "react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import { useNotifications } from "../hooks/useNotifications";
+import {
+  formatNotificationContent,
+  type NotificationTranslationKey,
+} from "../lib/presentation";
 import { NotificationLoadMoreSkeleton } from "./NotificationLoadMoreSkeleton";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "../types";
@@ -28,6 +32,12 @@ export function NotificationList({
 }: NotificationListProps = {}) {
   const t = useTranslations("notifications");
   const locale = useLocale();
+  const translateNotification = useMemo(
+    () =>
+      (key: NotificationTranslationKey, values?: Record<string, string | number>) =>
+        values ? t(key as never, values as never) : t(key as never),
+    [t]
+  );
   const router = useRouter();
   const initialData =
     initialNotifications !== undefined
@@ -184,6 +194,11 @@ export function NotificationList({
             notification.type === "like" || notification.type === "comment";
           const actorName =
             notification.actor?.nickname || t("userFallback");
+          const content = formatNotificationContent(
+            notification,
+            actorName,
+            translateNotification
+          );
           const clickableClass =
             isActorProfileLinkNotification ? "cursor-pointer" : undefined;
           const avatarOnClick = isActorProfileLinkNotification
@@ -240,11 +255,11 @@ export function NotificationList({
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900 line-clamp-2">
-                      {notification.title}
+                      {content.title}
                     </p>
-                    {notification.body && (
+                    {content.body && (
                       <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                        {notification.body}
+                        {content.body}
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">

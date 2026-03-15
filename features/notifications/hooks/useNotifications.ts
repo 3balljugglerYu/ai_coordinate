@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -11,6 +12,10 @@ import {
 } from "../lib/api";
 import type { Notification } from "../types";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
+import {
+  formatNotificationContent,
+  type NotificationTranslationKey,
+} from "../lib/presentation";
 
 export interface UseNotificationsInitialData {
   notifications: Notification[];
@@ -67,6 +72,7 @@ function writeBonusToastHistory(userId: string, signatures: string[]) {
  * @param initialData - サーバーキャッシュから渡された初期データ（ある場合スキップして即時表示）
  */
 export function useNotifications(initialData?: UseNotificationsInitialData | null) {
+  const t = useTranslations("notifications");
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -123,6 +129,12 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
     });
   }, [refreshUnreadCount]);
 
+  const translateNotification = useCallback(
+    (key: NotificationTranslationKey, values?: Record<string, string | number>) =>
+      values ? t(key as never, values as never) : t(key as never),
+    [t]
+  );
+
   const markBonusToastAsShown = useCallback(
     (notification: Pick<Notification, "id">) => {
       if (!currentUserId) return;
@@ -146,12 +158,14 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
     if (!currentUserId) return;
 
     try {
-      const count = await getUnreadCount();
+      const count = await getUnreadCount({
+        unreadCountFailed: t("fetchUnreadFailed"),
+      });
       setUnreadCount(count);
     } catch (error) {
       console.error("Failed to fetch unread count:", error);
     }
-  }, [currentUserId]);
+  }, [currentUserId, t]);
 
   // 通知一覧を取得
   const fetchNotifications = useCallback(
@@ -167,7 +181,9 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
 
         // 初期取得・追加取得ともに20件
         const limit = 20;
-        const response = await getNotifications(limit, cursor);
+        const response = await getNotifications(limit, cursor, {
+          fetchFailed: t("fetchFailed"),
+        });
         const newNotifications = response.notifications;
 
         if (append) {
@@ -185,7 +201,7 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
         setIsLoadingMore(false);
       }
     },
-    [currentUserId]
+    [currentUserId, t]
   );
 
   // 初期読み込み（initialData がある場合はスキップ）
@@ -227,9 +243,14 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
     );
 
     if (latestBonusNotification) {
+      const content = formatNotificationContent(
+        latestBonusNotification,
+        latestBonusNotification.actor?.nickname || t("userFallback"),
+        translateNotification
+      );
       toast({
-        title: latestBonusNotification.title,
-        description: latestBonusNotification.body,
+        title: content.title,
+        description: content.body,
         variant: "default",
       });
       markBonusToastAsShown(latestBonusNotification);
@@ -247,6 +268,8 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
     notifications,
     syncUnreadBadgeCount,
     toast,
+    t,
+    translateNotification,
   ]); // 通知取得が完了するまで待つ
 
   // Realtime購読
@@ -276,9 +299,14 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
             newNotification.type === "bonus" &&
             !hasShownBonusToast(newNotification)
           ) {
+            const content = formatNotificationContent(
+              newNotification,
+              t("userFallback"),
+              translateNotification
+            );
             toast({
-              title: newNotification.title,
-              description: newNotification.body,
+              title: content.title,
+              description: content.body,
               variant: "default",
             });
             markBonusToastAsShown(newNotification);
@@ -298,13 +326,17 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
     markBonusToastAsShown,
     syncUnreadBadgeCount,
     toast,
+    t,
+    translateNotification,
   ]);
 
   // 通知を既読化
   const markRead = useCallback(
     async (ids: string[]) => {
       try {
-        await markNotificationsRead(ids);
+        await markNotificationsRead(ids, {
+          markReadFailed: t("markReadFailed"),
+        });
         // 楽観的更新
         setNotifications((prev) =>
           prev.map((n) =>
@@ -322,7 +354,7 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
         fetchUnreadCount();
       }
     },
-    [fetchNotifications, fetchUnreadCount, refreshUnreadCount]
+    [fetchNotifications, fetchUnreadCount, refreshUnreadCount, t]
   );
 
   // 全件既読化
@@ -340,7 +372,9 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
 
     // 2. バックグラウンドでDB更新
     try {
-      await markAllNotificationsRead();
+      await markAllNotificationsRead({
+        markAllReadFailed: t("markAllReadFailed"),
+      });
       // 成功時は楽観的更新で既に完了している
       await refreshUnreadCount();
     } catch (error) {
@@ -350,7 +384,7 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
       fetchNotifications(null, false);
       throw error; // 呼び出し元にエラーを伝播
     }
-  }, [fetchNotifications, fetchUnreadCount, refreshUnreadCount]);
+  }, [fetchNotifications, fetchUnreadCount, refreshUnreadCount, t]);
 
   // お知らせ画面に入ったタイミングで未読を自動既読化
   useEffect(() => {

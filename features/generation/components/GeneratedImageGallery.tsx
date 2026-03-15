@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Download, ZoomIn, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Masonry from "react-masonry-css";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -28,6 +29,7 @@ export function GeneratedImageGallery({
   completedCount = 0,
   onDownload,
 }: GeneratedImageGalleryProps) {
+  const t = useTranslations("coordinate");
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
@@ -77,23 +79,26 @@ export function GeneratedImageGallery({
     try {
       // 画像をfetchで取得
       const response = await fetch(image.url);
-      
+
       // 認証エラーのハンドリング（401/403）
       if (response.status === 401 || response.status === 403) {
-        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
+        throw new Error(t("imageAccessDenied"));
       }
-      
+
       if (!response.ok) {
-        throw new Error(`画像の取得に失敗しました: ${response.statusText}`);
+        throw new Error(
+          t("imageFetchFailed", { statusText: response.statusText })
+        );
       }
-      
+
       // Blobに変換（MIMEタイプを保持）
       const blob = await response.blob();
-      
+
       // MIMEタイプの取得順序: blob.type を優先、次にContent-Typeヘッダー、最後にデフォルト
       // blob.typeはBlobオブジェクトが持つMIMEタイプで、より信頼性が高い
-      const mimeType = blob.type || response.headers.get('content-type') || 'image/png';
-      
+      const mimeType =
+        blob.type || response.headers.get("content-type") || "image/png";
+
       // ファイル名を決定（共通ロジックを使用）
       const downloadFileName = determineFileName(
         response,
@@ -101,10 +106,10 @@ export function GeneratedImageGallery({
         image.id,
         mimeType
       );
-      
+
       // ObjectURLを作成
       const objectUrl = URL.createObjectURL(blob);
-      
+
       // ダウンロードリンクを作成
       const link = document.createElement("a");
       link.href = objectUrl;
@@ -112,7 +117,7 @@ export function GeneratedImageGallery({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // メモリリークを防ぐためにObjectURLを解放
       // requestAnimationFrameを使用して、ブラウザの描画サイクル後に確実に解放
       requestAnimationFrame(() => {
@@ -122,7 +127,7 @@ export function GeneratedImageGallery({
       });
     } catch (error) {
       console.error("ダウンロードエラー:", error);
-      alert(error instanceof Error ? error.message : "画像のダウンロードに失敗しました");
+      alert(error instanceof Error ? error.message : t("imageDownloadFailed"));
     }
   };
 
@@ -169,7 +174,7 @@ export function GeneratedImageGallery({
                   }
                   // モバイルのみ: カードタップで拡大モーダルを開く
                   // PCではボタンが表示されるので、カードクリックは無効
-                  if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                  if (typeof window !== "undefined" && window.innerWidth < 640) {
                     setSelectedImageIndex(index);
                   }
                 }}
@@ -185,7 +190,7 @@ export function GeneratedImageGallery({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.url}
-                    alt={`生成画像 ${index + 1}`}
+                    alt={t("generatedImageAltIndexed", { index: index + 1 })}
                     className={`block object-contain transition-opacity duration-200 ${
                       loadedImageIds.has(image.id)
                         ? "relative w-full h-auto opacity-100"
@@ -210,12 +215,12 @@ export function GeneratedImageGallery({
                         className="absolute top-1 right-1 z-10"
                       >
                         <div className="rounded bg-primary px-1.5 py-0.5 text-xs text-white">
-                          投稿済み
+                          {t("postedBadge")}
                         </div>
                       </Link>
                     ) : (
                       <div className="absolute top-1 right-1 z-10 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
-                        投稿済み
+                        {t("postedBadge")}
                       </div>
                     )
                   )}
@@ -233,6 +238,7 @@ export function GeneratedImageGallery({
                     <Button
                       size="sm"
                       variant="secondary"
+                      aria-label={t("previewAction")}
                       disabled={
                         index === 0 &&
                         typeof document !== "undefined" &&
@@ -256,6 +262,7 @@ export function GeneratedImageGallery({
                       <Button
                         size="sm"
                         variant="secondary"
+                        aria-label={t("postAction")}
                         disabled={disablePostAndDownload}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -263,12 +270,13 @@ export function GeneratedImageGallery({
                         }}
                       >
                         <Plus className="h-4 w-4" />
-                        <span className="ml-1">投稿</span>
+                        <span className="ml-1">{t("postAction")}</span>
                       </Button>
                     )}
                     <Button
                       size="sm"
                       variant="secondary"
+                      aria-label={t("downloadAction")}
                       disabled={disablePostAndDownload}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -313,7 +321,7 @@ export function GeneratedImageGallery({
       {!isGenerating && images.length === 0 && (
         <Card className="border-dashed p-12">
           <p className="text-center text-sm text-gray-500">
-            生成された画像がここに表示されます
+            {t("generatedGalleryEmpty")}
           </p>
         </Card>
       )}

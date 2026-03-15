@@ -49,13 +49,21 @@ function getImageDimensions(file: File): Promise<{ width: number; height: number
  */
 export async function validateImageFile(
   file: File,
-  config: ImageUploadConfig = DEFAULT_IMAGE_CONFIG
+  config: ImageUploadConfig = DEFAULT_IMAGE_CONFIG,
+  messages?: {
+    imageLoadFailed?: string;
+    invalidFileFormat?: (formats: string) => string;
+    fileTooLarge?: (maxSizeMB: number, currentSizeMB: string) => string;
+    imageValidationFailed?: string;
+  }
 ): Promise<ImageValidationResult> {
   // ファイル形式のチェック
   if (!isAllowedFormat(file, config.allowedFormats)) {
     return {
       isValid: false,
-      error: `許可されていないファイル形式です。対応形式: ${config.allowedFormats.join(", ")}`,
+      error:
+        messages?.invalidFileFormat?.(config.allowedFormats.join(", ")) ??
+        `許可されていないファイル形式です。対応形式: ${config.allowedFormats.join(", ")}`,
     };
   }
 
@@ -64,7 +72,9 @@ export async function validateImageFile(
   if (sizeMB > config.maxSizeMB) {
     return {
       isValid: false,
-      error: `ファイルサイズが大きすぎます。最大${config.maxSizeMB}MBまでです。（現在: ${sizeMB.toFixed(2)}MB）`,
+      error:
+        messages?.fileTooLarge?.(config.maxSizeMB, sizeMB.toFixed(2)) ??
+        `ファイルサイズが大きすぎます。最大${config.maxSizeMB}MBまでです。（現在: ${sizeMB.toFixed(2)}MB）`,
     };
   }
 
@@ -80,9 +90,15 @@ export async function validateImageFile(
       previewUrl,
     };
   } catch (error) {
+    const errorMessage =
+      error instanceof Error && error.message === "画像の読み込みに失敗しました"
+        ? messages?.imageLoadFailed || error.message
+        : error instanceof Error
+          ? error.message
+          : messages?.imageValidationFailed || "画像の検証に失敗しました";
     return {
       isValid: false,
-      error: error instanceof Error ? error.message : "画像の検証に失敗しました",
+      error: errorMessage,
     };
   }
 }

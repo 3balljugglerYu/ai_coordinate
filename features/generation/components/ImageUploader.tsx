@@ -50,7 +50,13 @@ export function ImageUploader({
     async (file: File) => {
       setError(null);
 
-      const result = await validateImageFile(file, config);
+      const result = await validateImageFile(file, config, {
+        imageLoadFailed: t("imageLoadFailed"),
+        invalidFileFormat: (formats) => t("invalidFileFormat", { formats }),
+        fileTooLarge: (maxSizeMB, currentSizeMB) =>
+          t("fileTooLarge", { maxSizeMB, currentSizeMB }),
+        imageValidationFailed: t("imageValidationFailed"),
+      });
 
       if (!result.isValid) {
         setError(result.error || t("generationFailedGeneric"));
