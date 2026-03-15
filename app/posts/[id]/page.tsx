@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getPost } from "@/features/posts/lib/server-api";
-import { getPostDisplayUrl } from "@/features/posts/lib/utils";
+import { getImageDimensions, getPostDisplayUrl } from "@/features/posts/lib/utils";
 import { CachedPostDetail } from "@/features/posts/components/CachedPostDetail";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/env";
@@ -77,6 +77,7 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
     : siteUrl && imageUrl
     ? `${siteUrl}${imageUrl}`
     : imageUrl;
+  const imageDimensions = ogImage ? await getImageDimensions(ogImage) : null;
 
   const metadata: Metadata = {
     metadataBase: siteUrl ? new URL(siteUrl) : undefined,
@@ -93,6 +94,10 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
         images: [
           {
             url: ogImage,
+            ...(imageDimensions && {
+              width: imageDimensions.width,
+              height: imageDimensions.height,
+            }),
             alt: imageAlt,
           },
         ],
