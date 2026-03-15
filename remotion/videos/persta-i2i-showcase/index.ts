@@ -6,4 +6,8 @@ export {
   PerstaIntroVideo,
 } from "./Composition";
 export type {PerstaIntroVideoProps} from "./types";
-export {perstaI2IShowcaseDefaults} from "./defaults";
+export {
+  perstaI2IShowcaseDefaults,
+  perstaI2IShowcaseDefaultsEn,
+  perstaI2IShowcaseDefaultsJa,
+} from "./defaults";

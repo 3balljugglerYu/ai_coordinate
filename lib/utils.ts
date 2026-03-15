@@ -116,6 +116,8 @@ export function validateProfileText(
   allowEmpty: boolean = true,
   messages?: {
     invalidCharacters?: string;
+    required?: string;
+    maxLength?: string;
   }
 ): {
   valid: boolean;
@@ -125,7 +127,7 @@ export function validateProfileText(
   if (!allowEmpty && value.length === 0) {
     return {
       valid: false,
-      error: `${fieldName}を入力してください`,
+      error: messages?.required || `${fieldName}を入力してください`,
     };
   }
   
@@ -141,7 +143,8 @@ export function validateProfileText(
   if (value.length > maxLength) {
     return {
       valid: false,
-      error: `${fieldName}は${maxLength}文字以内で入力してください`,
+      error:
+        messages?.maxLength || `${fieldName}は${maxLength}文字以内で入力してください`,
     };
   }
   

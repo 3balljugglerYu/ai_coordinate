@@ -93,12 +93,14 @@ export function DeletePostDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isPosted ? "投稿を取り消す" : "画像を削除"}
+            {isPosted
+              ? postsT("deleteDialogUnpostTitle")
+              : postsT("deleteDialogDeleteTitle")}
           </DialogTitle>
           <DialogDescription>
             {isPosted
-              ? "この投稿を投稿一覧から取り消しますか？画像はマイページに残ります。完全に削除する場合は、マイページから削除してください。"
-              : "この画像を完全に削除しますか？この操作は取り消せません。"}
+              ? postsT("deleteDialogUnpostDescription")
+              : postsT("deleteDialogDeleteDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -106,7 +108,7 @@ export function DeletePostDialog({
           <div className="mt-4">
             <img
               src={imageUrl}
-              alt="削除対象の画像"
+              alt={postsT("deleteDialogImageAlt")}
               className="max-h-48 w-full rounded object-cover"
             />
           </div>
@@ -125,7 +127,7 @@ export function DeletePostDialog({
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
           >
-            キャンセル
+            {postsT("cancel")}
           </Button>
           <Button
             type="button"
@@ -135,11 +137,11 @@ export function DeletePostDialog({
           >
             {isDeleting
               ? isPosted
-                ? "取り消し中..."
-                : "削除中..."
+                ? postsT("deleteDialogUnposting")
+                : postsT("deleteDialogDeleting")
               : isPosted
-              ? "取り消す"
-              : "削除"}
+                ? postsT("unpost")
+                : postsT("delete")}
           </Button>
         </DialogFooter>
       </DialogContent>

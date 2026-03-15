@@ -4,12 +4,24 @@ import {fadeIn, float, riseIn} from "../helpers";
 import {SceneBackground, ShowcaseCard, Tag} from "../shared";
 
 export const BaseScene = ({
+  eyebrow,
   message,
   body,
+  cardLabel,
+  cardCaption,
+  backgroundTagLabel,
+  outfitTagLabel,
+  poseTagLabel,
   baseImageUrl,
 }: {
+  eyebrow: string;
   message: string;
   body: string;
+  cardLabel: string;
+  cardCaption: string;
+  backgroundTagLabel: string;
+  outfitTagLabel: string;
+  poseTagLabel: string;
   baseImageUrl: string;
 }) => {
   const frame = useCurrentFrame();
@@ -42,7 +54,7 @@ export const BaseScene = ({
             marginBottom: 18,
           }}
         >
-          Scene 1 / Base
+          {eyebrow}
         </div>
         <div
           style={{
@@ -69,8 +81,8 @@ export const BaseScene = ({
 
       <ShowcaseCard
         src={baseImageUrl}
-        label="Base image"
-        caption="背景・服装・ポーズを固定して開始"
+        label={cardLabel}
+        caption={cardCaption}
         style={{
           right: 84,
           top: 150 + float(frame, 28, 8, 8),
@@ -82,7 +94,7 @@ export const BaseScene = ({
       />
 
       <Tag
-        label="Background locked"
+        label={backgroundTagLabel}
         accent={palette.cyan}
         style={{
           left: 86,
@@ -91,7 +103,7 @@ export const BaseScene = ({
         }}
       />
       <Tag
-        label="Outfit locked"
+        label={outfitTagLabel}
         accent={palette.mint}
         style={{
           left: 298,
@@ -100,7 +112,7 @@ export const BaseScene = ({
         }}
       />
       <Tag
-        label="Pose locked"
+        label={poseTagLabel}
         accent={palette.gold}
         style={{
           left: 490,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Share2, Copy } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "@/lib/share-post";
-import { DEFAULT_SHARE_TEXT } from "@/constants";
 import { getPostDetailUrl } from "@/lib/url-utils";
 
 interface ShareButtonProps {
@@ -29,6 +29,7 @@ export function ShareButton({
 }: ShareButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const t = useTranslations("posts");
 
   const isMobile = () => {
     if (typeof navigator === "undefined") return false;
@@ -51,16 +52,17 @@ export function ShareButton({
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(url);
         toast({
-          title: "URLをコピーしました",
-          description: "クリップボードにコピーしました",
+          title: t("shareCopyTitle"),
+          description: t("shareCopyDescription"),
         });
       } else {
-        throw new Error("クリップボードAPIがサポートされていません");
+        throw new Error(t("shareClipboardUnsupported"));
       }
     } catch (error) {
       toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "URLのコピーに失敗しました",
+        title: t("errorTitle"),
+        description:
+          error instanceof Error ? error.message : t("shareFailed"),
         variant: "destructive",
       });
     } finally {
@@ -78,7 +80,7 @@ export function ShareButton({
       const url = getPostUrl();
       const shareData: ShareData = {
         title: "Persta.AI",
-        text: DEFAULT_SHARE_TEXT,
+        text: t("shareDefaultText"),
         url: url,
       };
 
@@ -86,7 +88,7 @@ export function ShareButton({
         await navigator.share(shareData);
         // Share Sheetが開かれた場合はトーストを表示しない
       } else {
-        throw new Error("Web Share APIがサポートされていません");
+        throw new Error(t("shareWebApiUnsupported"));
       }
     } catch (error) {
       // ユーザーキャンセルは無視（トーストを表示しない）
@@ -96,8 +98,9 @@ export function ShareButton({
 
       // その他のエラーのみトースト表示
       toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "共有に失敗しました",
+        title: t("errorTitle"),
+        description:
+          error instanceof Error ? error.message : t("shareFailed"),
         variant: "destructive",
       });
     } finally {
@@ -114,7 +117,7 @@ export function ShareButton({
     try {
       // 投稿詳細ページの絶対URLを生成
       const url = getPostUrl();
-      const text = DEFAULT_SHARE_TEXT;
+      const text = t("shareDefaultText");
 
       // シェアを実行
       const result = await sharePost(url, text);
@@ -122,8 +125,8 @@ export function ShareButton({
       // sharePostが「何をしたか」を返す想定
       if (result.method === "clipboard") {
         toast({
-          title: "共有文をコピーしました",
-          description: "SNSに貼り付けて投稿できます",
+          title: t("shareCopiedTitle"),
+          description: t("shareCopiedDescription"),
         });
       }
       // result.method === "share" の場合はトーストを表示しない（共有画面が開かれるため）
@@ -135,8 +138,9 @@ export function ShareButton({
 
       // その他のエラーのみトースト表示
       toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "共有に失敗しました",
+        title: t("errorTitle"),
+        description:
+          error instanceof Error ? error.message : t("shareFailed"),
         variant: "destructive",
       });
     } finally {
@@ -173,11 +177,11 @@ export function ShareButton({
       <DropdownMenuContent align="start">
         <DropdownMenuItem onClick={handleCopyLink}>
           <Copy className="mr-2 h-4 w-4" />
-          リンクをコピー
+          {t("shareCopyLink")}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleShareViaWebAPI}>
           <Share2 className="mr-2 h-4 w-4" />
-          その他の方法で共有
+          {t("shareMoreOptions")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

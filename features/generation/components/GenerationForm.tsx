@@ -45,37 +45,35 @@ type BackgroundModeOption = {
   description: string;
 };
 
-const BACKGROUND_MODE_OPTIONS: BackgroundModeOption[] = [
-  {
-    value: "ai_auto",
-    label: "AIに依頼",
-    description: "着せ替え内容に合わせて背景をAIが自動生成します",
-  },
-  {
-    value: "include_in_prompt",
-    label: "上記の内容に含める",
-    description: "衣装プロンプト内に背景指定を含めて生成します",
-  },
-  {
-    value: "keep",
-    label: "背景は変更しない",
-    description: "現在の背景を維持します",
-  },
-];
-
-const SOURCE_IMAGE_TYPE_OPTIONS: Array<{
-  value: SourceImageType;
-  label: string;
-}> = [
-  { value: "illustration", label: "イラスト" },
-  { value: "real", label: "リアル" },
-];
-
 export function GenerationForm({
   onSubmit,
   isGenerating = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
+  const backgroundModeOptions: BackgroundModeOption[] = [
+    {
+      value: "ai_auto",
+      label: t("backgroundAiAutoLabel"),
+      description: t("backgroundAiAutoDescription"),
+    },
+    {
+      value: "include_in_prompt",
+      label: t("backgroundIncludeInPromptLabel"),
+      description: t("backgroundIncludeInPromptDescription"),
+    },
+    {
+      value: "keep",
+      label: t("backgroundKeepLabel"),
+      description: t("backgroundKeepDescription"),
+    },
+  ];
+  const sourceImageTypeOptions: Array<{
+    value: SourceImageType;
+    label: string;
+  }> = [
+    { value: "illustration", label: t("sourceImageTypeIllustration") },
+    { value: "real", label: t("sourceImageTypeReal") },
+  ];
   const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
@@ -455,7 +453,7 @@ export function GenerationForm({
             className="mt-2 flex items-center gap-6"
             disabled={isGenerating || isTutorialInProgress}
           >
-            {SOURCE_IMAGE_TYPE_OPTIONS.map((option) => (
+            {sourceImageTypeOptions.map((option) => (
               <div key={option.value} className="flex items-center space-x-2">
                 <RadioGroupItem
                   id={`source-image-type-${option.value}`}
@@ -465,9 +463,7 @@ export function GenerationForm({
                   htmlFor={`source-image-type-${option.value}`}
                   className="text-sm font-medium leading-none"
                 >
-                  {option.value === "illustration"
-                    ? t("sourceImageTypeIllustration")
-                    : t("sourceImageTypeReal")}
+                  {option.label}
                 </Label>
               </div>
             ))}
@@ -501,7 +497,7 @@ export function GenerationForm({
             className="mt-2 space-y-3"
             disabled={isGenerating || isTutorialInProgress}
           >
-            {BACKGROUND_MODE_OPTIONS.map((option) => (
+            {backgroundModeOptions.map((option) => (
               <div key={option.value} className="flex items-start space-x-2">
                 <RadioGroupItem
                   id={`background-mode-${option.value}`}
@@ -513,18 +509,10 @@ export function GenerationForm({
                     htmlFor={`background-mode-${option.value}`}
                     className="text-sm font-medium leading-none"
                   >
-                    {option.value === "ai_auto"
-                      ? t("backgroundAiAutoLabel")
-                      : option.value === "include_in_prompt"
-                        ? t("backgroundIncludeInPromptLabel")
-                        : t("backgroundKeepLabel")}
+                    {option.label}
                   </Label>
                   <p className="text-xs text-gray-500">
-                    {option.value === "ai_auto"
-                      ? t("backgroundAiAutoDescription")
-                      : option.value === "include_in_prompt"
-                        ? t("backgroundIncludeInPromptDescription")
-                        : t("backgroundKeepDescription")}
+                    {option.description}
                   </p>
                 </div>
               </div>

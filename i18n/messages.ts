@@ -17,21 +17,25 @@ export type ClientMessageNamespace = keyof AppMessages;
 
 const clientNamespaces = [
   "accountManagement",
+  "avatarUpload",
   "auth",
   "challenge",
   "common",
   "coordinate",
   "contact",
   "credits",
+  "moderation",
   "nav",
   "footer",
   "follow",
+  "i2iPoc",
   "myPage",
   "notifications",
   "profileEdit",
   "referral",
   "searchBar",
   "posts",
+  "tutorial",
 ] as const satisfies readonly ClientMessageNamespace[];
 
 type NamespaceSelection<TMessages, TNamespaces extends readonly (keyof TMessages)[]> = {

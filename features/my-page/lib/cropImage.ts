@@ -1,5 +1,12 @@
 import { Area } from "react-easy-crop";
 
+interface CropImageMessages {
+  contextUnavailable?: string;
+  imageCreateFailed?: string;
+  heifUnsupported?: string;
+  imageCorrupted?: string;
+}
+
 /**
  * トリミング後の画像を生成するユーティリティ関数（円形対応）
  * react-easy-cropのcroppedAreaPixelsを使用
@@ -7,14 +14,17 @@ import { Area } from "react-easy-crop";
 export async function getCroppedImg(
   imageSrc: string,
   pixelCrop: Area,
-  isHeifFormat?: boolean
+  isHeifFormat?: boolean,
+  messages?: CropImageMessages
 ): Promise<Blob> {
-  const image = await createImage(imageSrc, isHeifFormat);
+  const image = await createImage(imageSrc, isHeifFormat, messages);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
   if (!ctx) {
-    throw new Error("Canvasコンテキストを取得できませんでした");
+    throw new Error(
+      messages?.contextUnavailable || "Canvasコンテキストを取得できませんでした"
+    );
   }
 
   // キャンバスサイズをトリミングサイズに設定
@@ -51,7 +61,11 @@ export async function getCroppedImg(
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            reject(new Error("画像の生成に失敗しました"));
+            reject(
+              new Error(
+                messages?.imageCreateFailed || "画像の生成に失敗しました"
+              )
+            );
             return;
           }
           resolve(blob);
@@ -62,7 +76,11 @@ export async function getCroppedImg(
   });
 }
 
-function createImage(url: string, isHeifFormat?: boolean): Promise<HTMLImageElement> {
+function createImage(
+  url: string,
+  isHeifFormat?: boolean,
+  messages?: CropImageMessages
+): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -70,12 +88,21 @@ function createImage(url: string, isHeifFormat?: boolean): Promise<HTMLImageElem
     image.addEventListener("error", (error) => {
       // HEIF形式の場合のみ、HEIF形式に関するエラーメッセージを表示
       if (isHeifFormat) {
-        reject(new Error("画像の読み込みに失敗しました。HEIF形式のファイルは、お使いのブラウザではサポートされていない可能性があります。JPEGまたはPNG形式のファイルをご利用ください。"));
+        reject(
+          new Error(
+            messages?.heifUnsupported ||
+              "画像の読み込みに失敗しました。HEIF形式のファイルは、お使いのブラウザではサポートされていない可能性があります。JPEGまたはPNG形式のファイルをご利用ください。"
+          )
+        );
       } else {
-        reject(new Error("画像の読み込みに失敗しました。ファイルが破損しているか、サポートされていない形式の可能性があります。"));
+        reject(
+          new Error(
+            messages?.imageCorrupted ||
+              "画像の読み込みに失敗しました。ファイルが破損しているか、サポートされていない形式の可能性があります。"
+          )
+        );
       }
     });
     image.src = url;
   });
 }
-

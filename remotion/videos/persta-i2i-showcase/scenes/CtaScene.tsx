@@ -8,6 +8,7 @@ export const CtaScene = ({
   ctaTitle,
   ctaBody,
   ctaButtonLabel,
+  previewLabel,
   mainImageUrl,
   resultImageUrl,
 }: {
@@ -15,6 +16,7 @@ export const CtaScene = ({
   ctaTitle: string;
   ctaBody: string;
   ctaButtonLabel: string;
+  previewLabel: string;
   mainImageUrl: string;
   resultImageUrl: string;
 }) => {
@@ -58,7 +60,7 @@ export const CtaScene = ({
 
       <ShowcaseCard
         src={resultImageUrl}
-        label="Preview"
+        label={previewLabel}
         style={{
           left: 92,
           top: 210 + float(frame, 28, 6, 0),

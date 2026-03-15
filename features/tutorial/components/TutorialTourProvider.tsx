@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { Driver, DriveStep } from "driver.js";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import { createClient } from "@/lib/supabase/client";
 import { TutorialStartModal } from "./TutorialStartModal";
-import { TOUR_STEPS } from "../lib/tour-steps";
-import { getTutorialPrompt } from "../lib/constants";
+import { getTourSteps } from "../lib/tour-steps";
+import { getJapanMonth } from "../lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "../types";
+import { stripLocalePrefix } from "@/i18n/config";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
@@ -67,6 +69,7 @@ export function TutorialTourProvider() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("tutorial");
   const [showModal, setShowModal] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const driverRef = useRef<Driver | null>(null);
@@ -81,7 +84,8 @@ export function TutorialTourProvider() {
     const checkAndShowModal = async () => {
       try {
         // ホーム画面以外ではモーダルを非表示
-        if (pathname !== "/") {
+        const normalizedPath = pathname ? stripLocalePrefix(pathname).pathname : "/";
+        if (normalizedPath !== "/") {
           setShowModal(false);
           setIsChecking(false);
           return;
@@ -145,9 +149,29 @@ export function TutorialTourProvider() {
       sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.CURRENT_STEP, "0");
     }
 
+    const tourSteps = getTourSteps({
+      coordinateTitle: t("stepCoordinateTitle"),
+      coordinateDescription: t("stepCoordinateDescription"),
+      uploadTitle: t("stepUploadTitle"),
+      uploadDescription: t("stepUploadDescription"),
+      promptTitle: t("stepPromptTitle"),
+      promptDescription: t("stepPromptDescription"),
+      backgroundTitle: t("stepBackgroundTitle"),
+      backgroundDescription: t("stepBackgroundDescription"),
+      generateTitle: t("stepGenerateTitle"),
+      generateDescription: t("stepGenerateDescription"),
+      generatingTitle: t("stepGeneratingTitle"),
+      generatingDescription: t("stepGeneratingDescription"),
+      completedTitle: t("stepCompletedTitle"),
+      firstImageTitle: t("stepFirstImageTitle"),
+      firstImageDescription: t("stepFirstImageDescription"),
+      finishedTitle: t("stepFinishedTitle"),
+      finishedDescription: t("stepFinishedDescription"),
+    });
+
     const driver = await loadDriver();
 
-    const steps = [...TOUR_STEPS];
+    const steps = [...tourSteps];
     // Step1: モバイルは下部ナビ、PCはサイドバーのコーディネートをハイライト
     const isMobileOrTablet =
       typeof window !== "undefined" && window.innerWidth < 1024;
@@ -180,8 +204,8 @@ export function TutorialTourProvider() {
       showProgress: true,
       animate: !prefersReducedMotion(),
       allowClose: false,
-      prevBtnText: "戻る",
-      nextBtnText: "次へ",
+      prevBtnText: t("prevButton"),
+      nextBtnText: t("nextButton"),
       steps,
       onDestroyed: () => {
         driverRef.current = null;
@@ -200,6 +224,25 @@ export function TutorialTourProvider() {
     if (inProgress !== "true") return;
 
     const driver = await loadDriver();
+    const tourSteps = getTourSteps({
+      coordinateTitle: t("stepCoordinateTitle"),
+      coordinateDescription: t("stepCoordinateDescription"),
+      uploadTitle: t("stepUploadTitle"),
+      uploadDescription: t("stepUploadDescription"),
+      promptTitle: t("stepPromptTitle"),
+      promptDescription: t("stepPromptDescription"),
+      backgroundTitle: t("stepBackgroundTitle"),
+      backgroundDescription: t("stepBackgroundDescription"),
+      generateTitle: t("stepGenerateTitle"),
+      generateDescription: t("stepGenerateDescription"),
+      generatingTitle: t("stepGeneratingTitle"),
+      generatingDescription: t("stepGeneratingDescription"),
+      completedTitle: t("stepCompletedTitle"),
+      firstImageTitle: t("stepFirstImageTitle"),
+      firstImageDescription: t("stepFirstImageDescription"),
+      finishedTitle: t("stepFinishedTitle"),
+      finishedDescription: t("stepFinishedDescription"),
+    });
 
     // DOM の準備を待つ
     const startFromStep = () => {
@@ -213,7 +256,7 @@ export function TutorialTourProvider() {
         return;
       }
 
-      const baseSteps = [...TOUR_STEPS];
+      const baseSteps = [...tourSteps];
       const lastIndex = baseSteps.length - 1;
 
       // 生成開始（index 4）までは中断可能
@@ -273,7 +316,9 @@ export function TutorialTourProvider() {
               document.dispatchEvent(
                 new CustomEvent("tutorial:set-prompt", {
                   bubbles: true,
-                  detail: { prompt: getTutorialPrompt() },
+                  detail: {
+                    prompt: t("promptTemplate", { month: getJapanMonth() }),
+                  },
                 })
               );
               // Step3: 着せ替え内容入力欄を画面中央付近にスクロール（カスタムonHighlightedのためここで実行）
@@ -377,9 +422,9 @@ export function TutorialTourProvider() {
         showProgress: true,
         animate: !prefersReducedMotion(),
         allowClose: true,
-        prevBtnText: "戻る",
-        nextBtnText: "次へ",
-        doneBtnText: "完了",
+        prevBtnText: t("prevButton"),
+        nextBtnText: t("nextButton"),
+        doneBtnText: t("doneButton"),
         steps: stepsWithCallbacks,
         onDestroyStarted: (_el, _step, opts) => {
           const idx = opts.driver.getActiveIndex() ?? 0;
@@ -501,12 +546,13 @@ export function TutorialTourProvider() {
 
   // /coordinate に遷移したらツアー再開
   useEffect(() => {
-    if (pathname !== "/coordinate") return;
+    const normalizedPath = pathname ? stripLocalePrefix(pathname).pathname : "/";
+    if (normalizedPath !== "/coordinate") return;
     if (isChecking) return;
 
     const timer = setTimeout(() => void startTourFromCoordinate(), 300);
     return () => clearTimeout(timer);
-  }, [pathname, isChecking]);
+  }, [isChecking, pathname, t]);
 
   if (isChecking) return null;
 

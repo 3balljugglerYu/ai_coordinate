@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { followRouteCopy } from "@/features/users/lib/follow-route-copy";
 
 /**
  * フォロー/フォロー解除API
@@ -10,20 +12,27 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = followRouteCopy[getRouteLocale(request)];
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: copy.authRequired, errorCode: "FOLLOW_AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
     const { userId } = await params;
 
     if (!userId) {
       return NextResponse.json(
-        { error: "User ID is required" },
+        { error: copy.userIdRequired, errorCode: "FOLLOW_USER_ID_REQUIRED" },
         { status: 400 }
       );
     }
 
     if (user.id === userId) {
       return NextResponse.json(
-        { error: "Cannot follow yourself" },
+        { error: copy.cannotFollowSelf, errorCode: "FOLLOW_CANNOT_FOLLOW_SELF" },
         { status: 400 }
       );
     }
@@ -42,10 +51,8 @@ export async function POST(
       console.error("Database query error:", checkError);
       return NextResponse.json(
         {
-          error:
-            checkError instanceof Error
-              ? checkError.message
-              : "フォロー状態の確認に失敗しました",
+          error: copy.followStatusCheckFailed,
+          errorCode: "FOLLOW_STATUS_CHECK_FAILED",
         },
         { status: 500 }
       );
@@ -53,7 +60,7 @@ export async function POST(
 
     if (existingFollow) {
       return NextResponse.json(
-        { error: "Already following this user" },
+        { error: copy.alreadyFollowing, errorCode: "FOLLOW_ALREADY_EXISTS" },
         { status: 400 }
       );
     }
@@ -68,10 +75,8 @@ export async function POST(
       console.error("Database query error:", insertError);
       return NextResponse.json(
         {
-          error:
-            insertError instanceof Error
-              ? insertError.message
-              : "フォローの追加に失敗しました",
+          error: copy.followInsertFailed,
+          errorCode: "FOLLOW_INSERT_FAILED",
         },
         { status: 500 }
       );
@@ -84,10 +89,8 @@ export async function POST(
     console.error("Follow API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "フォローの処理に失敗しました",
+        error: copy.followFailed,
+        errorCode: "FOLLOW_FAILED",
       },
       { status: 500 }
     );
@@ -101,13 +104,20 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = followRouteCopy[getRouteLocale(request)];
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: copy.authRequired, errorCode: "FOLLOW_AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
     const { userId } = await params;
 
     if (!userId) {
       return NextResponse.json(
-        { error: "User ID is required" },
+        { error: copy.userIdRequired, errorCode: "FOLLOW_USER_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -125,10 +135,8 @@ export async function DELETE(
       console.error("Database query error:", deleteError);
       return NextResponse.json(
         {
-          error:
-            deleteError instanceof Error
-              ? deleteError.message
-              : "フォロー解除に失敗しました",
+          error: copy.unfollowFailed,
+          errorCode: "UNFOLLOW_DELETE_FAILED",
         },
         { status: 500 }
       );
@@ -141,13 +149,10 @@ export async function DELETE(
     console.error("Unfollow API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "フォロー解除の処理に失敗しました",
+        error: copy.unfollowFailed,
+        errorCode: "UNFOLLOW_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

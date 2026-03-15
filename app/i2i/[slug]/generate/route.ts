@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getI2iPocConfig } from "@/lib/i2i-poc-auth";
+import type { Locale } from "@/i18n/config";
+import { getRouteLocale } from "@/lib/api/route-locale";
 import {
   extractImagesFromGeminiResponse,
   type GeminiResponse,
@@ -40,8 +42,55 @@ interface GeminiErrorPayload {
   };
 }
 
-const SAFETY_BLOCKED_MESSAGE =
-  "安全性でブロックされました。画像または指示を調整して再試行してください。";
+const i2iRouteCopy = {
+  ja: {
+    missingImages: "Base画像とCharacter画像は必須です。",
+    totalImageTooLarge:
+      "画像合計サイズが20MBを超えています。画像を圧縮して再実行してください。",
+    requestTimedOut: "画像生成がタイムアウトしました。もう一度お試しください。",
+    safetyBlocked:
+      "安全性でブロックされました。画像または指示を調整して再試行してください。",
+    noImageGenerated:
+      "画像が生成されませんでした{finishReasonText}。別の指示で再試行してください。",
+    generationFailed:
+      "画像生成に失敗しました。別の指示で再試行してください。",
+    internalError:
+      "サーバー内部でエラーが発生しました。しばらく時間をおいて再試行してください。",
+    supportedFormatsOnly: (label: string) =>
+      `${label}は PNG / JPG / WebP のみ対応しています。`,
+    imageTooLarge: (label: string) => `${label}は10MB以下にしてください。`,
+  },
+  en: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+} as const satisfies Record<
+  Locale,
+  {
+    missingImages: string;
+    totalImageTooLarge: string;
+    requestTimedOut: string;
+    safetyBlocked: string;
+    noImageGenerated: string;
+    generationFailed: string;
+    internalError: string;
+    supportedFormatsOnly: (label: string) => string;
+    imageTooLarge: (label: string) => string;
+  }
+>;
 
 function getFinishReasons(payload: GeminiResponse | null): string[] {
   if (!payload?.candidates || payload.candidates.length === 0) {
@@ -101,13 +150,17 @@ function getFile(entry: FormDataEntryValue | null): File | null {
   return entry;
 }
 
-function validateImageFile(file: File, label: string): string | null {
+function validateImageFile(
+  file: File,
+  label: string,
+  copy: (typeof i2iRouteCopy)[Locale]
+): string | null {
   const normalizedType = file.type.toLowerCase().trim();
   if (!ALLOWED_IMAGE_MIME_TYPE_SET.has(normalizedType)) {
-    return `${label}は PNG / JPG / WebP のみ対応しています。`;
+    return copy.supportedFormatsOnly(label);
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    return `${label}は10MB以下にしてください。`;
+    return copy.imageTooLarge(label);
   }
   return null;
 }
@@ -176,7 +229,18 @@ function buildPrompt(
   return lines.join("\n");
 }
 
-export async function POST(request: Request, context: GenerateRouteContext) {
+function jsonError(message: string, errorCode: string, status: number) {
+  return NextResponse.json({ error: message, errorCode }, { status });
+}
+
+export async function POST(request: NextRequest, context: GenerateRouteContext) {
+  const locale = getRouteLocale(request);
+  const copy = i2iRouteCopy[locale];
+  const baseImageLabel = locale === "ja" ? "Base画像" : "Base image";
+  const characterImageLabel =
+    locale === "ja" ? "Character画像" : "Character image";
+  const resultImageLabel =
+    locale === "ja" ? "生成結果画像" : "Generated result image";
   try {
     const { slug } = await context.params;
     const config = getI2iPocConfig();
@@ -209,38 +273,49 @@ export async function POST(request: Request, context: GenerateRouteContext) {
     const resultImage = getFile(formData.get("resultImage"));
 
     if (!baseImage || !characterImage) {
-      return NextResponse.json(
-        { error: "Base画像とCharacter画像は必須です。" },
-        { status: 400 }
+      return jsonError(copy.missingImages, "I2I_POC_MISSING_IMAGES", 400);
+    }
+
+    const baseImageError = validateImageFile(baseImage, baseImageLabel, copy);
+    if (baseImageError) {
+      return jsonError(baseImageError, "I2I_POC_INVALID_BASE_IMAGE", 400);
+    }
+
+      const characterImageError = validateImageFile(
+        characterImage,
+        characterImageLabel,
+        copy
+      );
+    if (characterImageError) {
+      return jsonError(
+        characterImageError,
+        "I2I_POC_INVALID_CHARACTER_IMAGE",
+        400
       );
     }
 
-    const baseImageError = validateImageFile(baseImage, "Base画像");
-    if (baseImageError) {
-      return NextResponse.json({ error: baseImageError }, { status: 400 });
-    }
-
-    const characterImageError = validateImageFile(characterImage, "Character画像");
-    if (characterImageError) {
-      return NextResponse.json({ error: characterImageError }, { status: 400 });
-    }
-
     if (resultImage) {
-      const resultImageError = validateImageFile(resultImage, "生成結果画像");
+      const resultImageError = validateImageFile(
+        resultImage,
+        resultImageLabel,
+        copy
+      );
       if (resultImageError) {
-        return NextResponse.json({ error: resultImageError }, { status: 400 });
+        return jsonError(
+          resultImageError,
+          "I2I_POC_INVALID_RESULT_IMAGE",
+          400
+        );
       }
     }
 
     const totalImageSize =
       baseImage.size + characterImage.size + (resultImage?.size ?? 0);
     if (totalImageSize > MAX_TOTAL_IMAGE_BYTES) {
-      return NextResponse.json(
-        {
-          error:
-            "画像合計サイズが20MBを超えています。画像を圧縮して再実行してください。",
-        },
-        { status: 400 }
+      return jsonError(
+        copy.totalImageTooLarge,
+        "I2I_POC_TOTAL_IMAGE_TOO_LARGE",
+        400
       );
     }
 
@@ -296,9 +371,10 @@ export async function POST(request: Request, context: GenerateRouteContext) {
         );
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          return NextResponse.json(
-            { error: "Gemini API request timed out. Please retry." },
-            { status: 504 }
+          return jsonError(
+            copy.requestTimedOut,
+            "I2I_POC_TIMEOUT",
+            504
           );
         }
         throw error;
@@ -325,7 +401,11 @@ export async function POST(request: Request, context: GenerateRouteContext) {
           isSafetyBlockedResponse(geminiPayload) ||
           /safety|blocked|block_reason|policy|prohibited/i.test(apiErrorMessage)
         ) {
-          return NextResponse.json({ error: SAFETY_BLOCKED_MESSAGE }, { status: 400 });
+          return jsonError(
+            copy.safetyBlocked,
+            "I2I_POC_SAFETY_BLOCKED",
+            400
+          );
         }
 
         return NextResponse.json(
@@ -335,7 +415,7 @@ export async function POST(request: Request, context: GenerateRouteContext) {
       }
 
       if (isSafetyBlockedResponse(geminiPayload)) {
-        return NextResponse.json({ error: SAFETY_BLOCKED_MESSAGE }, { status: 400 });
+        return jsonError(copy.safetyBlocked, "I2I_POC_SAFETY_BLOCKED", 400);
       }
 
       const images = extractImagesFromGeminiResponse(
@@ -372,24 +452,19 @@ export async function POST(request: Request, context: GenerateRouteContext) {
 
       return NextResponse.json(
         {
-          error: `画像が生成されませんでした${finishReasonText}。別の指示で再試行してください。`,
+          error: copy.noImageGenerated.replace(
+            "{finishReasonText}",
+            finishReasonText
+          ),
+          errorCode: "I2I_POC_NO_IMAGE_GENERATED",
         },
         { status: 502 }
       );
     }
 
-    return NextResponse.json(
-      { error: "画像生成に失敗しました。別の指示で再試行してください。" },
-      { status: 502 }
-    );
+    return jsonError(copy.generationFailed, "I2I_POC_GENERATION_FAILED", 502);
   } catch (error) {
     console.error("I2I generate route error", error);
-    return NextResponse.json(
-      {
-        error:
-          "サーバー内部でエラーが発生しました。しばらく時間をおいて再試行してください。",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.internalError, "I2I_POC_INTERNAL_ERROR", 500);
   }
 }

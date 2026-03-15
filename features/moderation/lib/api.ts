@@ -4,8 +4,26 @@ import type {
   ReportPostResponse,
 } from "@/features/moderation/types";
 
+interface ModerationApiMessages {
+  reportFailed?: string;
+  blockFailed?: string;
+  unblockFailed?: string;
+  blockStatusFailed?: string;
+}
+
+async function readErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: string }
+    | null;
+  return payload?.error || fallback;
+}
+
 export async function reportPostAPI(
-  request: ReportPostRequest
+  request: ReportPostRequest,
+  messages?: ModerationApiMessages
 ): Promise<ReportPostResponse> {
   const response = await fetch("/api/reports/posts", {
     method: "POST",
@@ -14,37 +32,50 @@ export async function reportPostAPI(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "通報に失敗しました");
+    throw new Error(
+      await readErrorMessage(response, messages?.reportFailed || "通報に失敗しました")
+    );
   }
 
   return response.json();
 }
 
-export async function blockUserAPI(userId: string): Promise<void> {
+export async function blockUserAPI(
+  userId: string,
+  messages?: ModerationApiMessages
+): Promise<void> {
   const response = await fetch(`/api/users/${encodeURIComponent(userId)}/block`, {
     method: "POST",
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "ブロックに失敗しました");
+    throw new Error(
+      await readErrorMessage(response, messages?.blockFailed || "ブロックに失敗しました")
+    );
   }
 }
 
-export async function unblockUserAPI(userId: string): Promise<void> {
+export async function unblockUserAPI(
+  userId: string,
+  messages?: ModerationApiMessages
+): Promise<void> {
   const response = await fetch(`/api/users/${encodeURIComponent(userId)}/block`, {
     method: "DELETE",
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "ブロック解除に失敗しました");
+    throw new Error(
+      await readErrorMessage(
+        response,
+        messages?.unblockFailed || "ブロック解除に失敗しました"
+      )
+    );
   }
 }
 
 export async function getBlockStatusAPI(
-  userId: string
+  userId: string,
+  messages?: ModerationApiMessages
 ): Promise<BlockStatusResponse> {
   const response = await fetch(
     `/api/users/${encodeURIComponent(userId)}/block-status`
@@ -54,8 +85,12 @@ export async function getBlockStatusAPI(
     if (response.status === 401) {
       return { isBlocked: false, isBlockedBy: false };
     }
-    const error = await response.json();
-    throw new Error(error.error || "ブロック状態の取得に失敗しました");
+    throw new Error(
+      await readErrorMessage(
+        response,
+        messages?.blockStatusFailed || "ブロック状態の取得に失敗しました"
+      )
+    );
   }
 
   return response.json();

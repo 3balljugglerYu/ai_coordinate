@@ -44,7 +44,7 @@ export function PostModal({
     setError(null);
 
     if (caption.length > MAX_CAPTION_LENGTH) {
-      setError(`キャプションは${MAX_CAPTION_LENGTH}文字以内で入力してください`);
+      setError(t("captionTooLong", { max: MAX_CAPTION_LENGTH }));
       return;
     }
 
@@ -61,8 +61,10 @@ export function PostModal({
       // デイリー投稿特典が付与された場合、Toast通知を表示
       if (response.bonus_granted && response.bonus_granted > 0) {
         toast({
-          title: "特典獲得！",
-          description: `今日の投稿で${response.bonus_granted}ペルコインを獲得しました！`,
+          title: t("dailyBonusTitle"),
+          description: t("dailyBonusDescription", {
+            amount: response.bonus_granted,
+          }),
           variant: "default",
         });
         await refreshUnreadCount().catch((error) => {
@@ -100,21 +102,20 @@ export function PostModal({
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>画像を投稿</DialogTitle>
+            <DialogTitle>{t("postModalTitle")}</DialogTitle>
             <DialogDescription>
-              キャプションを入力して投稿します（任意、最大{MAX_CAPTION_LENGTH}
-              文字）
+              {t("postModalDescription", { max: MAX_CAPTION_LENGTH })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
             <div className="space-y-2">
-              <Label htmlFor="caption">キャプション</Label>
+              <Label htmlFor="caption">{t("captionLabel")}</Label>
               <Textarea
                 id="caption"
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                placeholder="画像の説明を入力してください（任意）"
+                placeholder={t("captionPlaceholder")}
                 rows={4}
                 maxLength={MAX_CAPTION_LENGTH}
                 className={isOverLimit ? "border-destructive" : ""}
@@ -124,7 +125,7 @@ export function PostModal({
                 <span
                   className={isOverLimit ? "text-destructive" : "text-muted-foreground"}
                 >
-                  {remainingChars}文字残り
+                  {t("charactersRemaining", { count: remainingChars })}
                 </span>
                 {error && (
                   <span className="text-destructive text-right">{error}</span>
@@ -140,10 +141,10 @@ export function PostModal({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              キャンセル
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={isSubmitting || isOverLimit}>
-              {isSubmitting ? "投稿中..." : "投稿する"}
+              {isSubmitting ? t("postSubmitting") : t("postSubmit")}
             </Button>
           </DialogFooter>
         </form>

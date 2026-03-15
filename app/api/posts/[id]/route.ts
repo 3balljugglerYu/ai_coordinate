@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { unpostImageServer } from "@/features/generation/lib/server-database";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
 /**
  * 投稿取り消しAPI（投稿詳細画面から）
@@ -11,14 +13,21 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const copy = postsRouteCopy[getRouteLocale(request)];
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: copy.authRequired, errorCode: "POSTS_AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
 
     const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
-        { error: "Image ID is required" },
+        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -39,13 +48,10 @@ export async function DELETE(
     console.error("Unpost API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "投稿の取り消しに失敗しました",
+        error: copy.deleteFailed,
+        errorCode: "POSTS_DELETE_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

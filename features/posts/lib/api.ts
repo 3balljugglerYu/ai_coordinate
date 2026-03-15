@@ -9,6 +9,11 @@ interface PostsApiMessages {
   commentsFetchFailed?: string;
   commentCountFetchFailed?: string;
   commentCountBatchFetchFailed?: string;
+  commentCreateFailed?: string;
+  commentUpdateFailed?: string;
+  commentDeleteFailed?: string;
+  likeCountFetchFailed?: string;
+  likeCountBatchFetchFailed?: string;
 }
 
 /**
@@ -116,12 +121,17 @@ export async function toggleLikeAPI(
 /**
  * いいね数を取得（単一）
  */
-export async function getLikeCountAPI(imageId: string): Promise<number> {
+export async function getLikeCountAPI(
+  imageId: string,
+  messages?: PostsApiMessages
+): Promise<number> {
   const response = await fetch(`/api/posts/${imageId}/like`);
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "いいね数の取得に失敗しました");
+    throw new Error(
+      error.error || messages?.likeCountFetchFailed || "いいね数の取得に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -131,7 +141,10 @@ export async function getLikeCountAPI(imageId: string): Promise<number> {
 /**
  * いいね数を一括取得（バッチ、特殊用途向け）
  */
-export async function getLikeCountsBatchAPI(imageIds: string[]): Promise<Record<string, number>> {
+export async function getLikeCountsBatchAPI(
+  imageIds: string[],
+  messages?: PostsApiMessages
+): Promise<Record<string, number>> {
   const response = await fetch("/api/posts/likes/batch", {
     method: "POST",
     headers: {
@@ -142,7 +155,11 @@ export async function getLikeCountsBatchAPI(imageIds: string[]): Promise<Record<
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "いいね数の一括取得に失敗しました");
+    throw new Error(
+      error.error ||
+        messages?.likeCountBatchFetchFailed ||
+        "いいね数の一括取得に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -266,7 +283,8 @@ export async function getCommentCountsBatchAPI(
  */
 export async function createCommentAPI(
   imageId: string,
-  content: string
+  content: string,
+  messages?: PostsApiMessages
 ): Promise<{
   id: string;
   user_id: string;
@@ -288,7 +306,11 @@ export async function createCommentAPI(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "コメントの投稿に失敗しました");
+    throw new Error(
+      error.error ||
+        messages?.commentCreateFailed ||
+        "コメントの投稿に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -300,7 +322,8 @@ export async function createCommentAPI(
  */
 export async function updateCommentAPI(
   commentId: string,
-  content: string
+  content: string,
+  messages?: PostsApiMessages
 ): Promise<{
   id: string;
   user_id: string;
@@ -320,7 +343,11 @@ export async function updateCommentAPI(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "コメントの編集に失敗しました");
+    throw new Error(
+      error.error ||
+        messages?.commentUpdateFailed ||
+        "コメントの編集に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -330,13 +357,20 @@ export async function updateCommentAPI(
 /**
  * コメントを削除
  */
-export async function deleteCommentAPI(commentId: string): Promise<void> {
+export async function deleteCommentAPI(
+  commentId: string,
+  messages?: PostsApiMessages
+): Promise<void> {
   const response = await fetch(`/api/comments/${commentId}`, {
     method: "DELETE",
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "コメントの削除に失敗しました");
+    throw new Error(
+      error.error ||
+        messages?.commentDeleteFailed ||
+        "コメントの削除に失敗しました"
+    );
   }
 }

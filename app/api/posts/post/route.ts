@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
 import { createClient } from "@/lib/supabase/server";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
 /**
  * デイリー投稿特典を付与するヘルパー関数
@@ -47,15 +49,22 @@ async function grantDailyPostBonus(
  * 投稿API
  */
 export async function POST(request: NextRequest) {
+  const copy = postsRouteCopy[getRouteLocale(request)];
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: copy.authRequired, errorCode: "POSTS_AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
 
     const body = await request.json();
     const { id, caption } = body;
 
     if (!id) {
       return NextResponse.json(
-        { error: "Image ID is required" },
+        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -93,13 +102,10 @@ export async function POST(request: NextRequest) {
     console.error("Post API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "投稿に失敗しました",
+        error: copy.postFailed,
+        errorCode: "POSTS_POST_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

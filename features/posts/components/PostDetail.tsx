@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { User, Heart, Copy, Check, MoreHorizontal, Edit, Trash2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,7 @@ interface PostDetailProps {
  * 投稿詳細画面のメインコンポーネント
  */
 export function PostDetail({ post, currentUserId }: PostDetailProps) {
+  const t = useTranslations("posts");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<"portrait" | "landscape" | null>(null);
   const [isPromptCopied, setIsPromptCopied] = useState(false);
@@ -74,7 +76,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   const displayName =
     post.user?.email?.split("@")[0] ||
     post.user?.id?.slice(0, 8) ||
-    "匿名ユーザー";
+    t("anonymousUser");
 
   const followUserId = post.user?.id || post.user_id;
   const isOwner = currentUserId === post.user_id;
@@ -84,8 +86,8 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   const handleCopyPrompt = async () => {
     if (!canViewPrompt || !post.prompt) {
       toast({
-        title: "フォローが必要です",
-        description: "『フォロー』することでコピーできるようになります。",
+        title: t("followRequiredTitle"),
+        description: t("followRequiredDescription"),
       });
       return;
     }
@@ -94,15 +96,15 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
         await navigator.clipboard.writeText(post.prompt);
         setIsPromptCopied(true);
         toast({
-          title: "コピーしました",
-          description: "プロンプトをクリップボードにコピーしました",
+          title: t("copySuccessTitle"),
+          description: t("copySuccessDescription"),
         });
         setTimeout(() => setIsPromptCopied(false), 2000);
       } catch (error) {
         console.error("Failed to copy:", error);
         toast({
-          title: "コピーに失敗しました",
-          description: "もう一度お試しください",
+          title: t("copyFailureTitle"),
+          description: t("copyFailureDescription"),
           variant: "destructive",
         });
       }
@@ -151,7 +153,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
             {imageUrl ? (
               <Image
                 src={imageUrl}
-                alt={post.caption || "投稿画像"}
+                alt={post.caption || t("noImage")}
                 width={1200}
                 height={1200}
                 className={`w-full h-auto object-contain cursor-pointer ${
@@ -162,7 +164,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
               />
             ) : (
               <div className="flex h-full items-center justify-center text-gray-400">
-                画像がありません
+                {t("noImage")}
               </div>
             )}
           </div>
@@ -220,7 +222,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
                     <>
                       <DropdownMenuItem onClick={() => setPostModalOpen(true)}>
                         <Share2 className="mr-2 h-4 w-4" />
-                        投稿する
+                        {t("postSubmit")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setDeleteDialogOpen(true)}
@@ -234,14 +236,14 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
                     <>
                       <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
                         <Edit className="mr-2 h-4 w-4" />
-                        編集
+                        {t("edit")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setDeleteDialogOpen(true)}
                         className="text-destructive"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        投稿を取り消す
+                        {t("unpost")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -278,7 +280,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
         {post.prompt && (
           <div className="border-t border-gray-200 bg-white px-4 py-3">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-sm font-bold text-gray-700">プロンプト</span>
+              <span className="text-sm font-bold text-gray-700">{t("prompt")}</span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -289,12 +291,12 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
                   {isPromptCopied ? (
                     <>
                       <Check className="mr-1 h-3 w-3" />
-                      コピー済み
+                      {t("copied")}
                     </>
                   ) : (
                     <>
                       <Copy className="mr-1 h-3 w-3" />
-                      コピー
+                      {t("copy")}
                     </>
                   )}
                 </Button>
@@ -334,7 +336,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
       {imageUrl && (
         <ImageFullscreen
           imageUrl={imageUrl}
-          alt={post.caption || "投稿画像"}
+          alt={post.caption || t("noImage")}
           isOpen={isFullscreenOpen}
           onClose={() => setIsFullscreenOpen(false)}
         />

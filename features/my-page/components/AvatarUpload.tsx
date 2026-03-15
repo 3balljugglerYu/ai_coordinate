@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { User, Camera, X, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +33,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
   const [isHeifFormat, setIsHeifFormat] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewBlobUrlRef = useRef<string | null>(null);
+  const t = useTranslations("avatarUpload");
 
   // Blob URLのクリーンアップ
   useEffect(() => {
@@ -64,7 +66,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
 
     // ファイルタイプの検証
     if (!file.type.startsWith("image/")) {
-      setError("画像ファイルのみ選択可能です");
+      setError(t("imageOnly"));
       return;
     }
 
@@ -80,7 +82,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
     // ファイルサイズの検証（10MB制限）
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     if (file.size > MAX_FILE_SIZE) {
-      setError("ファイルサイズは10MB以下にしてください");
+      setError(t("fileTooLarge"));
       return;
     }
 
@@ -97,9 +99,9 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
     reader.onerror = () => {
       // HEIF形式をサポートしていないブラウザの場合、エラーが発生する可能性がある
       if (detectedIsHeifFormat) {
-        setError("HEIF形式のファイルは、お使いのブラウザではサポートされていません。JPEGまたはPNG形式のファイルをご利用ください。");
+        setError(t("heifUnsupported"));
       } else {
-        setError("画像の読み込みに失敗しました");
+        setError(t("imageLoadFailed"));
       }
     };
     reader.readAsDataURL(file);
@@ -124,7 +126,13 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
       const croppedImageBlob = await getCroppedImg(
         imageSrc,
         croppedAreaPixels,
-        isHeifFormat
+        isHeifFormat,
+        {
+          contextUnavailable: t("imageLoadFailed"),
+          imageCreateFailed: t("imageCreateFailed"),
+          heifUnsupported: t("heifUnsupported"),
+          imageCorrupted: t("imageCorrupted"),
+        }
       );
 
       // BlobをFileに変換
@@ -152,7 +160,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "画像のアップロードに失敗しました");
+        throw new Error(data.error || t("uploadFailed"));
       }
 
       const { avatar_url } = await response.json();
@@ -181,7 +189,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
         fileInputRef.current.value = "";
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "画像のアップロードに失敗しました");
+      setError(err instanceof Error ? err.message : t("uploadFailed"));
     } finally {
       setIsUploading(false);
     }
@@ -220,7 +228,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
           {displayAvatar ? (
             <Image
               src={displayAvatar}
-              alt="プロフィール画像"
+              alt={t("profileImageAlt")}
               width={96}
               height={96}
               className="rounded-full object-cover"
@@ -254,7 +262,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
           className="!max-w-full !w-full !h-full !max-h-screen !p-0 !bg-black/95 !border-none !rounded-none !translate-x-0 !translate-y-0 !top-0 !left-0" 
           showCloseButton={false}
         >
-          <DialogTitle className="sr-only">プロフィール画像</DialogTitle>
+          <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
           
           {isCropMode && imageSrc ? (
             // トリミングモード
@@ -281,7 +289,9 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
               {/* ズームコントロール */}
               <div className="px-4 py-2 bg-black/50 border-t border-gray-700">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-white min-w-[3rem]">ズーム</span>
+                  <span className="text-sm text-white min-w-[3rem]">
+                    {t("zoomLabel")}
+                  </span>
                   <input
                     type="range"
                     value={zoom}
@@ -306,7 +316,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                     className="flex-1 bg-transparent text-white border-gray-600 hover:bg-gray-800"
                   >
                     <X className="h-4 w-4 mr-2" />
-                    キャンセル
+                    {t("cancel")}
                   </Button>
                   <Button
                     type="button"
@@ -315,11 +325,11 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                     className="flex-1 bg-white text-black hover:bg-gray-200"
                   >
                     {isUploading ? (
-                      "アップロード中..."
+                      t("uploading")
                     ) : (
                       <>
                         <Check className="h-4 w-4 mr-2" />
-                        完了
+                        {t("done")}
                       </>
                     )}
                   </Button>
@@ -336,6 +346,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                   size="icon"
                   className="absolute right-4 top-4 z-10 rounded-full bg-black/50 text-white hover:bg-black/70"
                   onClick={handleClose}
+                  aria-label={t("close")}
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -345,7 +356,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                   {displayAvatar ? (
                     <Image
                       src={displayAvatar}
-                      alt="プロフィール画像"
+                      alt={t("profileImageAlt")}
                       width={400}
                       height={400}
                       className="rounded-full object-cover max-w-[80vw] max-h-[80dvh] aspect-square"
@@ -373,6 +384,7 @@ export function AvatarUpload({ profile, onAvatarUpdate }: AvatarUploadProps) {
                     className="h-14 w-14 rounded-full bg-white/90 hover:bg-white shadow-lg"
                     onClick={handleCameraClick}
                     disabled={isUploading}
+                    aria-label={t("changePhoto")}
                   >
                     <Camera className="h-7 w-7 text-gray-900" />
                   </Button>

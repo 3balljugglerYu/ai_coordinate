@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { followRouteCopy } from "@/features/users/lib/follow-route-copy";
 
 /**
  * フォロー状態取得API
@@ -9,13 +11,20 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = followRouteCopy[getRouteLocale(request)];
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: copy.authRequired, errorCode: "FOLLOW_AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
     const { userId } = await params;
 
     if (!userId) {
       return NextResponse.json(
-        { error: "User ID is required" },
+        { error: copy.userIdRequired, errorCode: "FOLLOW_USER_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -34,10 +43,8 @@ export async function GET(
       console.error("Database query error:", error);
       return NextResponse.json(
         {
-          error:
-            error instanceof Error
-              ? error.message
-              : "フォロー状態の取得に失敗しました",
+          error: copy.fetchStatusFailed,
+          errorCode: "FOLLOW_STATUS_FETCH_FAILED",
         },
         { status: 500 }
       );
@@ -50,13 +57,10 @@ export async function GET(
     console.error("Follow status API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "フォロー状態の取得に失敗しました",
+        error: copy.fetchStatusFailed,
+        errorCode: "FOLLOW_STATUS_FETCH_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

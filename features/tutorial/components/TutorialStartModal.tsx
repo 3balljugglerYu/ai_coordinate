@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ export function TutorialStartModal({
   onDecline,
 }: TutorialStartModalProps) {
   const [showDeclinedMessage, setShowDeclinedMessage] = useState(false);
+  const t = useTranslations("tutorial");
 
   useEffect(() => {
     if (!open) setShowDeclinedMessage(false);
@@ -53,28 +55,28 @@ export function TutorialStartModal({
           <>
             <DialogHeader>
               <DialogTitle>
-                「ミッション」から
+                {t("startDeclinedTitleLine1")}
                 <br />
-                いつでも始められます！
+                {t("startDeclinedTitleLine2")}
               </DialogTitle>
               <DialogDescription>
-                お時間のある時に、ぜひチャレンジしてみてください。
+                {t("startDeclinedDescription")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="sm:justify-end">
               <Button onClick={handleCloseDeclined} className="min-h-[44px]">
-                閉じる
+                {t("close")}
               </Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader className="text-left">
-              <DialogTitle>チュートリアルを開始しますか？</DialogTitle>
+              <DialogTitle>{t("startTitle")}</DialogTitle>
               <div className="relative my-4 w-full overflow-hidden rounded-lg">
                 <Image
                   src="/tutorial_main_image.webp"
-                  alt="チュートリアルの流れ"
+                  alt={t("startImageAlt")}
                   width={1040}
                   height={669}
                   className="h-auto w-full object-contain"
@@ -82,7 +84,7 @@ export function TutorialStartModal({
                 />
               </div>
               <DialogDescription className="mb-2">
-                着せ替え生成までの流れを、ご案内します！
+                {t("startDescription")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex flex-col gap-2 sm:justify-end">
@@ -91,14 +93,14 @@ export function TutorialStartModal({
                 onClick={onConfirm}
                 className="min-h-[44px]"
               >
-                はい
+                {t("startConfirm")}
               </Button>
               <Button
                 variant="outline"
                 onClick={handleDeclineClick}
                 className="min-h-[44px]"
               >
-                いいえ
+                {t("startDecline")}
               </Button>
             </DialogFooter>
           </>

@@ -6,6 +6,7 @@ import {
   PERSTA_INTRO_VIDEO_WIDTH,
   PerstaIntroVideo,
   perstaI2IShowcaseDefaults,
+  perstaI2IShowcaseDefaultsEn,
 } from "./videos/persta-i2i-showcase";
 
 export const RemotionRoot = () => {
@@ -19,6 +20,15 @@ export const RemotionRoot = () => {
         width={PERSTA_INTRO_VIDEO_WIDTH}
         height={PERSTA_INTRO_VIDEO_HEIGHT}
         defaultProps={perstaI2IShowcaseDefaults}
+      />
+      <Composition
+        id="PerstaIntroVideoEn"
+        component={PerstaIntroVideo}
+        durationInFrames={PERSTA_INTRO_VIDEO_DURATION_IN_FRAMES}
+        fps={PERSTA_INTRO_VIDEO_FPS}
+        width={PERSTA_INTRO_VIDEO_WIDTH}
+        height={PERSTA_INTRO_VIDEO_HEIGHT}
+        defaultProps={perstaI2IShowcaseDefaultsEn}
       />
     </Folder>
   );

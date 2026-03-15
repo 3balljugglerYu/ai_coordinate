@@ -1,109 +1,110 @@
-/**
- * チュートリアルツアーのステップ定義（Driver.js用）
- * ①はTutorialStartModalで別扱い。②〜⑩がDriver.jsのステップ
- */
-
 import type { DriveStep } from "driver.js";
 
-export const TOUR_STEPS: DriveStep[] = [
-  // ② コーディネート画面への誘導
-  {
-    element: '[data-tour="coordinate-nav"]',
-    popover: {
-      title: "コーディネート画面へ！",
-      description: "ここをタップしてください。",
-      side: "top",
-      align: "center",
+export interface TutorialTourCopy {
+  coordinateTitle: string;
+  coordinateDescription: string;
+  uploadTitle: string;
+  uploadDescription: string;
+  promptTitle: string;
+  promptDescription: string;
+  backgroundTitle: string;
+  backgroundDescription: string;
+  generateTitle: string;
+  generateDescription: string;
+  generatingTitle: string;
+  generatingDescription: string;
+  completedTitle: string;
+  firstImageTitle: string;
+  firstImageDescription: string;
+  finishedTitle: string;
+  finishedDescription: string;
+}
+
+export function getTourSteps(copy: TutorialTourCopy): DriveStep[] {
+  return [
+    {
+      element: '[data-tour="coordinate-nav"]',
+      popover: {
+        title: copy.coordinateTitle,
+        description: copy.coordinateDescription,
+        side: "top",
+        align: "center",
+      },
     },
-  },
-  // ③ 画像アップロード説明
-  {
-    element: '[data-tour="tour-image-upload"]',
-    popover: {
-      title: "画像をアップロード！",
-      description:
-        "ここで着せ替えたい人物画像をアップロードします。<br>今回は体験用の画像をセットしました！",
-      side: "bottom",
-      align: "start",
+    {
+      element: '[data-tour="tour-image-upload"]',
+      popover: {
+        title: copy.uploadTitle,
+        description: copy.uploadDescription,
+        side: "bottom",
+        align: "start",
+      },
     },
-  },
-  // ④ 着せ替え内容入力の説明
-  {
-    element: '[data-tour="tour-prompt-input"]',
-    popover: {
-      title: "着せ替え内容を入力！",
-      description:
-        "どんなコーデにしたいか入力します。今回は、この内容で進めます！",
-      side: "top",
-      align: "start",
+    {
+      element: '[data-tour="tour-prompt-input"]',
+      popover: {
+        title: copy.promptTitle,
+        description: copy.promptDescription,
+        side: "top",
+        align: "start",
+      },
     },
-  },
-  // ⑤ 背景設定オプションの説明（自動で「AIに依頼」を選択）
-  {
-    element: '[data-tour="tour-background-change"]',
-    popover: {
-      title: "背景設定",
-      description:
-        "ここでは背景の扱いを選べます。<br>今回は「AIに依頼」を選択して進めてみましょう！",
-      side: "right",
-      align: "center",
+    {
+      element: '[data-tour="tour-background-change"]',
+      popover: {
+        title: copy.backgroundTitle,
+        description: copy.backgroundDescription,
+        side: "right",
+        align: "center",
+      },
     },
-  },
-  // ⑧ 生成開始誘導（Next非表示: コーデスタートボタンを押すまで進めない）
-  {
-    element: '[data-tour="tour-generate-btn"]',
-    popover: {
-      title: "生成開始！",
-      description:
-        "「コーデスタート」ボタンを選択して、開始しましょう！<br>※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",
-      side: "top",
-      align: "center",
-      showButtons: ["previous"],
+    {
+      element: '[data-tour="tour-generate-btn"]',
+      popover: {
+        title: copy.generateTitle,
+        description: copy.generateDescription,
+        side: "top",
+        align: "center",
+        showButtons: ["previous"],
+      },
     },
-  },
-  // ⑨ 生成待機案内（「生成中...」表示欄をハイライト。ボタン非表示）
-  {
-    element: '[data-tour="tour-generating"]',
-    popover: {
-      title: "生成しています！",
-      description:
-        "生成完了まで約20秒ほどかかります。しばらくお待ちください！",
-      side: "bottom",
-      align: "start",
-      showButtons: [],
+    {
+      element: '[data-tour="tour-generating"]',
+      popover: {
+        title: copy.generatingTitle,
+        description: copy.generatingDescription,
+        side: "bottom",
+        align: "start",
+        showButtons: [],
+      },
     },
-  },
-  // ⑩ 生成完了案内（生成完了時に自動表示。タイトルのみ）
-  {
-    popover: {
-      title: "完了しました！",
-      description: "",
-      side: "over",
-      align: "center",
-      showButtons: ["next"],
+    {
+      popover: {
+        title: copy.completedTitle,
+        description: "",
+        side: "over",
+        align: "center",
+        showButtons: ["next"],
+      },
     },
-  },
-  // ⑪ 着せ替え完了（クリック不可。「次へ」で進む）
-  {
-    element: '[data-tour="tour-first-image"]',
-    popover: {
-      title: "着せ替え完了！",
-      description:
-        "投稿やダウンロードが可能です！ぜひ試してみてください！",
-      side: "top",
-      align: "center",
-      showButtons: ["next"],
+    {
+      element: '[data-tour="tour-first-image"]',
+      popover: {
+        title: copy.firstImageTitle,
+        description: copy.firstImageDescription,
+        side: "top",
+        align: "center",
+        showButtons: ["next"],
+      },
     },
-  },
-  // ⑭ ツアー完了
-  {
-    popover: {
-      title: "ツアー完了！",
-      description:
-        "お疲れ様でした！引き続き、着せ替えをお楽しみください！<br>※「完了」をクリックするとコインが付与されます。",
-      side: "over",
-      align: "center",
-      showButtons: ["next"],
+    {
+      popover: {
+        title: copy.finishedTitle,
+        description: copy.finishedDescription,
+        side: "over",
+        align: "center",
+        showButtons: ["next"],
+      },
     },
-  },
-];
+  ];
+}
