@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { getPost } from "@/features/posts/lib/server-api";
 import { getPostDisplayUrl } from "@/features/posts/lib/utils";
-import { isCrawler, isPrefetchRequest } from "@/lib/utils";
 import { CachedPostDetail } from "@/features/posts/components/CachedPostDetail";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/env";
@@ -94,8 +93,6 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
         images: [
           {
             url: ogImage,
-            width: 1200,
-            height: 630,
             alt: imageAlt,
           },
         ],
