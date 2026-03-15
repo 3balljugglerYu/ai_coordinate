@@ -41,8 +41,12 @@ export function AccountManagementPage() {
     setLoading(true);
     try {
       const [blocks, reports] = await Promise.all([
-        getBlockedUsersAPI(),
-        getReportedContentsAPI(),
+        getBlockedUsersAPI({
+          blockedUsersFetchFailed: t("blockedUsersFetchFailed"),
+        }),
+        getReportedContentsAPI({
+          reportedContentsFetchFailed: t("reportedContentsFetchFailed"),
+        }),
       ]);
       setBlockedUsers(blocks);
       setReportedContents(reports);
@@ -55,7 +59,7 @@ export function AccountManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [t, toast]);
 
   useEffect(() => {
     void loadAll();
@@ -64,7 +68,9 @@ export function AccountManagementPage() {
   const handleUnblock = async (userId: string) => {
     setProcessingKey(`unblock:${userId}`);
     try {
-      await unblockUserFromAccountAPI(userId);
+      await unblockUserFromAccountAPI(userId, {
+        unblockFailed: t("unblockFailed"),
+      });
       setBlockedUsers((prev) => prev.filter((item) => item.userId !== userId));
       toast({ title: t("unblockSuccess") });
     } catch (error) {
@@ -81,7 +87,9 @@ export function AccountManagementPage() {
   const handleWithdrawReport = async (postId: string) => {
     setProcessingKey(`report:${postId}`);
     try {
-      await withdrawReportAPI(postId);
+      await withdrawReportAPI(postId, {
+        withdrawReportFailed: t("withdrawReportFailed"),
+      });
       setReportedContents((prev) => prev.filter((item) => item.postId !== postId));
       toast({ title: t("withdrawReportSuccess") });
     } catch (error) {

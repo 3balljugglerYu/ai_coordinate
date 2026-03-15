@@ -30,7 +30,9 @@ export function ReferralCodeDisplay({
     const fetchReferralCode = async () => {
       try {
         setIsLoading(true);
-        const data = await generateReferralCode();
+        const data = await generateReferralCode({
+          generateCodeFailed: t("loadFailed"),
+        });
         if (data.referral_code) {
           setReferralCode(data.referral_code);
         }
@@ -42,8 +44,8 @@ export function ReferralCodeDisplay({
       }
     };
 
-    fetchReferralCode();
-  }, []);
+    void fetchReferralCode();
+  }, [t]);
 
   // 紹介リンクを生成
   const referralLink = referralCode

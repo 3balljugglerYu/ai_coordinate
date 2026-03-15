@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
@@ -29,6 +30,8 @@ export function DeletePostDialog({
   imageUrl,
   isPosted = true,
 }: DeletePostDialogProps) {
+  const postsT = useTranslations("posts");
+  const myPageT = useTranslations("myPage");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,10 +44,17 @@ export function DeletePostDialog({
     try {
       if (isPosted) {
         // 投稿済みの場合は投稿を取り消す
-        await deletePost(imageId);
+        await deletePost(imageId, {
+          deleteFailed: postsT("deleteFailed"),
+        });
       } else {
         // 未投稿の場合は完全削除
-        await deleteMyImage(imageId);
+        await deleteMyImage(imageId, {
+          loginRequired: myPageT("loginRequired"),
+          imageNotFound: myPageT("imageNotFound"),
+          deleteImageForbidden: myPageT("deleteImageForbidden"),
+          deleteImageFailed: myPageT("deleteImageFailed"),
+        });
       }
       onOpenChange(false);
 
@@ -70,8 +80,8 @@ export function DeletePostDialog({
         err instanceof Error
           ? err.message
           : isPosted
-          ? "投稿の取り消しに失敗しました。もう一度お試しください。"
-          : "削除に失敗しました。もう一度お試しください。"
+          ? postsT("deleteFailedRetry")
+          : myPageT("deleteImageFailed")
       );
     } finally {
       setIsDeleting(false);
@@ -136,4 +146,3 @@ export function DeletePostDialog({
     </Dialog>
   );
 }
-

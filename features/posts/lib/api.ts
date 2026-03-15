@@ -1,5 +1,16 @@
 import type { PostImageRequest, PostImageResponse } from "../types";
 
+interface PostsApiMessages {
+  postFailed?: string;
+  updateFailed?: string;
+  deleteFailed?: string;
+  likeToggleFailed?: string;
+  likeStatusFetchFailed?: string;
+  commentsFetchFailed?: string;
+  commentCountFetchFailed?: string;
+  commentCountBatchFetchFailed?: string;
+}
+
 /**
  * 投稿機能のクライアントサイドAPI関数
  */
@@ -8,7 +19,8 @@ import type { PostImageRequest, PostImageResponse } from "../types";
  * 画像を投稿
  */
 export async function postImageAPI(
-  request: PostImageRequest
+  request: PostImageRequest,
+  messages?: PostsApiMessages
 ): Promise<PostImageResponse> {
   const response = await fetch("/api/posts/post", {
     method: "POST",
@@ -19,8 +31,8 @@ export async function postImageAPI(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "投稿に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error || messages?.postFailed || "投稿に失敗しました");
   }
 
   return response.json();
@@ -30,7 +42,8 @@ export async function postImageAPI(
  * キャプションを更新
  */
 export async function updatePostCaption(
-  request: PostImageRequest
+  request: PostImageRequest,
+  messages?: PostsApiMessages
 ): Promise<PostImageResponse> {
   const response = await fetch("/api/posts/update", {
     method: "PUT",
@@ -41,8 +54,8 @@ export async function updatePostCaption(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "更新に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error || messages?.updateFailed || "更新に失敗しました");
   }
 
   return response.json();
@@ -64,28 +77,36 @@ export async function incrementViewCountAPI(postId: string): Promise<void> {
 /**
  * 投稿を削除
  */
-export async function deletePost(id: string): Promise<void> {
+export async function deletePost(
+  id: string,
+  messages?: PostsApiMessages
+): Promise<void> {
   const response = await fetch(`/api/posts/${id}`, {
     method: "DELETE",
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "削除に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error || messages?.deleteFailed || "削除に失敗しました");
   }
 }
 
 /**
  * いいねの追加・削除（トグル）
  */
-export async function toggleLikeAPI(imageId: string): Promise<boolean> {
+export async function toggleLikeAPI(
+  imageId: string,
+  messages?: PostsApiMessages
+): Promise<boolean> {
   const response = await fetch(`/api/posts/${imageId}/like`, {
     method: "POST",
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "いいねの処理に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.error || messages?.likeToggleFailed || "いいねの処理に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -131,7 +152,10 @@ export async function getLikeCountsBatchAPI(imageIds: string[]): Promise<Record<
 /**
  * いいね状態を取得
  */
-export async function getUserLikeStatusAPI(imageId: string): Promise<boolean> {
+export async function getUserLikeStatusAPI(
+  imageId: string,
+  messages?: PostsApiMessages
+): Promise<boolean> {
   const response = await fetch(`/api/posts/${imageId}/like-status`);
 
   if (!response.ok) {
@@ -139,8 +163,12 @@ export async function getUserLikeStatusAPI(imageId: string): Promise<boolean> {
     if (response.status === 401) {
       return false;
     }
-    const error = await response.json();
-    throw new Error(error.error || "いいね状態の取得に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.error ||
+        messages?.likeStatusFetchFailed ||
+        "いいね状態の取得に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -153,7 +181,8 @@ export async function getUserLikeStatusAPI(imageId: string): Promise<boolean> {
 export async function getCommentsAPI(
   imageId: string,
   limit: number,
-  offset: number
+  offset: number,
+  messages?: PostsApiMessages
 ): Promise<Array<{
   id: string;
   user_id: string;
@@ -170,8 +199,10 @@ export async function getCommentsAPI(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "コメントの取得に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.error || messages?.commentsFetchFailed || "コメントの取得に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -181,12 +212,19 @@ export async function getCommentsAPI(
 /**
  * コメント数を取得（単一）
  */
-export async function getCommentCountAPI(imageId: string): Promise<number> {
+export async function getCommentCountAPI(
+  imageId: string,
+  messages?: PostsApiMessages
+): Promise<number> {
   const response = await fetch(`/api/posts/${imageId}/comments?limit=1&offset=0`);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "コメント数の取得に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.error ||
+        messages?.commentCountFetchFailed ||
+        "コメント数の取得に失敗しました"
+    );
   }
 
   // 実際にはコメント数を直接取得するAPIが必要だが、現時点ではコメント一覧から推測
@@ -199,7 +237,8 @@ export async function getCommentCountAPI(imageId: string): Promise<number> {
  * コメント数を一括取得（バッチ、特殊用途向け）
  */
 export async function getCommentCountsBatchAPI(
-  imageIds: string[]
+  imageIds: string[],
+  messages?: PostsApiMessages
 ): Promise<Record<string, number>> {
   const response = await fetch("/api/posts/comments/batch", {
     method: "POST",
@@ -210,8 +249,12 @@ export async function getCommentCountsBatchAPI(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "コメント数の一括取得に失敗しました");
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.error ||
+        messages?.commentCountBatchFetchFailed ||
+        "コメント数の一括取得に失敗しました"
+    );
   }
 
   const data = await response.json();

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { track } from "@vercel/analytics/react";
+import { useLocale, useTranslations } from "next-intl";
 import { PERCOIN_PACKAGES } from "@/features/credits/percoin-packages";
 import { completeMockPercoinPurchase } from "@/features/credits/lib/api";
 import { PercoinPurchaseCard } from "./PercoinPurchaseCard";
@@ -11,6 +12,8 @@ import { PercoinPurchaseCard } from "./PercoinPurchaseCard";
  * Stripe Pricing Tableの4商品制限を回避し、5つすべてのパッケージを表示
  */
 export function PercoinPurchaseGrid() {
+  const t = useTranslations("credits");
+  const locale = useLocale();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -29,26 +32,33 @@ export function PercoinPurchaseGrid() {
         body: JSON.stringify({ packageId }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.error || "Checkoutの作成に失敗しました");
+        throw new Error(data?.error || t("checkoutCreateFailed"));
       }
 
       if (data.mode === "mock") {
-        const result = await completeMockPercoinPurchase({ packageId });
+        const result = await completeMockPercoinPurchase(
+          { packageId },
+          { mockPurchaseFailed: t("mockPurchaseFailed") }
+        );
         setSuccessMessage(
-          `ペルコインを付与しました（モックモード）。残高: ${result.balance}`
+          t("mockPurchaseSuccessWithBalance", {
+            balance: new Intl.NumberFormat(
+              locale === "ja" ? "ja-JP" : "en-US"
+            ).format(result.balance),
+          })
         );
         track("percoin_purchase_complete", { packageId, mode: "mock" });
       } else if (data.checkoutUrl) {
         track("percoin_purchase_started", { packageId, mode: "stripe" });
         window.location.href = data.checkoutUrl;
       } else {
-        throw new Error("不明なレスポンスです");
+        throw new Error(t("unknownPurchaseResponse"));
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "購入処理に失敗しました";
+        err instanceof Error ? err.message : t("purchaseProcessFailed");
       track("percoin_purchase_failed", {
         packageId,
         error: errorMessage.substring(0, 100),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -30,6 +31,7 @@ export function EditPostModal({
   imageId,
   currentCaption,
 }: EditPostModalProps) {
+  const t = useTranslations("posts");
   const router = useRouter();
   const [caption, setCaption] = useState(currentCaption || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +59,8 @@ export function EditPostModal({
       await updatePostCaption({
         id: imageId,
         caption: caption.trim() || undefined,
+      }, {
+        updateFailed: t("updateFailed"),
       });
 
       onOpenChange(false);
@@ -66,7 +70,7 @@ export function EditPostModal({
       setError(
         err instanceof Error
           ? err.message
-          : "更新に失敗しました。もう一度お試しください。"
+          : t("updateFailedRetry")
       );
     } finally {
       setIsSubmitting(false);
@@ -131,4 +135,3 @@ export function EditPostModal({
     </Dialog>
   );
 }
-

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import { MyImageGallery } from "./MyImageGallery";
 import { ImageTabs, type ImageFilter } from "./ImageTabs";
@@ -29,6 +30,7 @@ export function MyPageImageGalleryClient({
   initialImages,
   currentUserId,
 }: MyPageImageGalleryClientProps) {
+  const t = useTranslations("myPage");
   const [filter, setFilter] = useState<ImageFilter>("all");
 
   // 「すべて」タブ: initialImages + 追加読み込み分
@@ -76,7 +78,10 @@ export function MyPageImageGalleryClient({
         `/api/my-page/images?filter=${filterParam}&limit=${IMAGES_PER_PAGE}&offset=${offset}`
       );
       if (!response.ok) {
-        throw new Error("画像の取得に失敗しました");
+        const error = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(error?.error || t("imageFetchFailed"));
       }
       const data = await response.json();
       return {
@@ -84,7 +89,7 @@ export function MyPageImageGalleryClient({
         hasMore: data.hasMore ?? false,
       };
     },
-    []
+    [t]
   );
 
   const loadMoreAll = useCallback(async () => {

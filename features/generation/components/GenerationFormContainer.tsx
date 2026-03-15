@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,13 +48,26 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingStopFunctionsRef = useRef<Set<() => void>>(new Set());
+  const asyncApiMessages = useMemo(
+    () => ({
+      imageLoadFailed: t("imageLoadFailed"),
+      imageConvertFailed: t("imageConvertFailed"),
+      imageContextUnavailable: t("imageContextUnavailable"),
+      submitJobFailed: t("submitJobFailed"),
+      fetchStatusFailed: t("fetchStatusFailed"),
+      fetchJobsFailed: t("fetchJobsFailed"),
+      pollingStopped: t("inProgressStopped"),
+      pollingTimeout: t("pollingTimeout"),
+    }),
+    [t]
+  );
 
   // マウント時に未完了ジョブを確認してポーリングを再開
   useEffect(() => {
     const checkInProgressJobs = async () => {
       try {
         // 最近完了したジョブも含めて取得（直近5分以内）
-        const jobs = await getInProgressJobs(true);
+        const jobs = await getInProgressJobs(true, asyncApiMessages);
         
         // 未完了ジョブのみをフィルタリング
         const inProgressJobs = jobs.filter((job) => 
@@ -84,7 +97,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             // まず現在のステータスを確認
             let currentStatus: AsyncGenerationStatus;
             try {
-              currentStatus = await getGenerationStatus(job.id);
+              currentStatus = await getGenerationStatus(job.id, asyncApiMessages);
               // すでに完了している場合は、ポーリングを開始しない
               if (currentStatus.status === "succeeded" || currentStatus.status === "failed") {
               if (currentStatus.status === "succeeded") {
@@ -120,6 +133,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             const { promise, stop } = pollGenerationStatus(job.id, {
               interval: 2000, // 2秒ごとにポーリング
               timeout: 300000, // 5分でタイムアウト
+              messages: asyncApiMessages,
               onStatusUpdate: (status: AsyncGenerationStatus) => {
                 // ステータスが更新されたら、キャッシュ無効化後に生成結果一覧を更新
                 if (refreshTimeoutRef.current) {
@@ -174,7 +188,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               .catch((err) => {
                 // ポーリング停止によるエラーは無視（ユーザー操作による中断は正常）
                 const errorMsg = err instanceof Error ? err.message : "";
-                if (errorMsg === "ポーリングが停止されました") {
+                if (errorMsg === asyncApiMessages.pollingStopped) {
                   // ポーリング停止は正常な動作なので、エラーとして扱わない
                   setCompletedCount((prev) => prev + 1);
                   return { id: job.id, status: "queued" as const, resultImageUrl: null, errorMessage: null };
@@ -197,7 +211,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           if (result.status === "rejected") {
             const errorMsg = result.reason?.message || "";
             // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
-            return errorMsg !== "ポーリングが停止されました";
+            return errorMsg !== asyncApiMessages.pollingStopped;
           }
           return false;
         });
@@ -302,7 +316,14 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
     // マウント時に未完了ジョブを確認
     void checkInProgressJobs();
-  }, [router, setCompletedCount, setGeneratingCount, setIsGenerating]);
+  }, [
+    asyncApiMessages,
+    router,
+    setCompletedCount,
+    setGeneratingCount,
+    setIsGenerating,
+    t,
+  ]);
 
   // コンポーネントのアンマウント時にポーリングを停止
   useEffect(() => {
@@ -354,7 +375,9 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       const requiredPercoins = data.count * percoinCost;
       
       // ペルコイン残高を取得
-      const { balance } = await fetchPercoinBalance();
+      const { balance } = await fetchPercoinBalance({
+        fetchBalanceFailed: creditsT("fetchBalanceFailed"),
+      });
       
       // 残高チェック
       if (balance < requiredPercoins) {
@@ -382,7 +405,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             backgroundMode: data.backgroundMode,
             generationType: data.generationType || "coordinate",
             model: data.model,
-          });
+          }, asyncApiMessages);
 
           jobIds.push(response.jobId);
         } catch (err) {
@@ -397,6 +420,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         const { promise, stop } = pollGenerationStatus(jobId, {
           interval: 2000, // 2秒ごとにポーリング
           timeout: 300000, // 5分でタイムアウト
+          messages: asyncApiMessages,
           onStatusUpdate: (status: AsyncGenerationStatus) => {
             // 完了状態（succeeded/failed）の場合は、completedカウントを更新
             if ((status.status === "succeeded" || status.status === "failed") && !completedJobIds.has(jobId)) {
@@ -431,14 +455,14 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             // onStatusUpdateで完了カウントは既に更新されているので、
             // ここではエラー処理のみ行う
             if (status.status === "failed") {
-              throw new Error(status.errorMessage || "画像生成に失敗しました");
+              throw new Error(status.errorMessage || t("generationFailedGeneric"));
             }
             return status;
           })
           .catch((err) => {
             // ポーリング停止によるエラーは無視（正常な動作）
             const errorMsg = err instanceof Error ? err.message : "";
-            if (errorMsg === "ポーリングが停止されました") {
+            if (errorMsg === asyncApiMessages.pollingStopped) {
               // 完了カウントが更新されていない場合のみ更新
               if (!completedJobIds.has(jobId)) {
                 completedJobIds.add(jobId);
@@ -466,7 +490,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         if (result.status === "rejected") {
           const errorMsg = result.reason?.message || "";
           // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
-          return errorMsg !== "ポーリングが停止されました";
+          return errorMsg !== asyncApiMessages.pollingStopped;
         }
         return false;
       });

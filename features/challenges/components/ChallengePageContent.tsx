@@ -168,7 +168,9 @@ export function ChallengePageContent({
 
     setIsCheckingIn(true);
     try {
-      const result = await checkInStreakBonus();
+      const result = await checkInStreakBonus({
+        checkInFailed: t("checkInFailedDescription"),
+      });
 
       if (result.streak_days !== null) {
         setStreakDays(result.streak_days);

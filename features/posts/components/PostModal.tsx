@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ export function PostModal({
   imageId,
   currentCaption,
 }: PostModalProps) {
+  const t = useTranslations("posts");
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const [caption, setCaption] = useState(currentCaption || "");
@@ -52,6 +54,8 @@ export function PostModal({
       const response = await postImageAPI({
         id: imageId,
         caption: caption.trim() || undefined,
+      }, {
+        postFailed: t("postFailed"),
       });
 
       // デイリー投稿特典が付与された場合、Toast通知を表示
@@ -81,7 +85,7 @@ export function PostModal({
       setError(
         err instanceof Error
           ? err.message
-          : "投稿に失敗しました。もう一度お試しください。"
+          : t("postFailedRetry")
       );
     } finally {
       setIsSubmitting(false);
