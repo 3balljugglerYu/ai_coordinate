@@ -89,19 +89,147 @@ export function getPostOriginalUrl(post: {
   return getPostImageUrl(post);
 }
 
+export interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
+function getPngDimensions(buffer: Buffer): ImageDimensions | null {
+  if (
+    buffer.length >= 24 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    const width = buffer.readUInt32BE(16);
+    const height = buffer.readUInt32BE(20);
+    if (width > 0 && height > 0) {
+      return { width, height };
+    }
+  }
+
+  return null;
+}
+
+function getJpegDimensions(buffer: Buffer): ImageDimensions | null {
+  if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) {
+    return null;
+  }
+
+  let offset = 2;
+  while (offset + 8 <= buffer.length) {
+    if (buffer[offset] !== 0xff) {
+      offset++;
+      continue;
+    }
+
+    while (offset < buffer.length && buffer[offset] === 0xff) {
+      offset++;
+    }
+
+    if (offset >= buffer.length) {
+      break;
+    }
+
+    const marker = buffer[offset];
+    if (marker === 0xd9 || marker === 0xda) {
+      break;
+    }
+
+    if (offset + 2 >= buffer.length) {
+      break;
+    }
+
+    const segmentLength = buffer.readUInt16BE(offset + 1);
+    if (segmentLength < 2 || offset + 1 + segmentLength > buffer.length) {
+      break;
+    }
+
+    const isSofMarker =
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf);
+
+    if (isSofMarker && offset + 7 < buffer.length) {
+      const height = buffer.readUInt16BE(offset + 4);
+      const width = buffer.readUInt16BE(offset + 6);
+      if (width > 0 && height > 0) {
+        return { width, height };
+      }
+      break;
+    }
+
+    offset += segmentLength + 1;
+  }
+
+  return null;
+}
+
+function getWebPDimensions(buffer: Buffer): ImageDimensions | null {
+  if (
+    buffer.length < 30 ||
+    buffer.toString("ascii", 0, 4) !== "RIFF" ||
+    buffer.toString("ascii", 8, 12) !== "WEBP"
+  ) {
+    return null;
+  }
+
+  const chunkType = buffer.toString("ascii", 12, 16);
+  if (chunkType === "VP8X" && buffer.length >= 30) {
+    const width = 1 + buffer.readUIntLE(24, 3);
+    const height = 1 + buffer.readUIntLE(27, 3);
+    if (width > 0 && height > 0) {
+      return { width, height };
+    }
+  }
+
+  if (chunkType === "VP8 " && buffer.length >= 30) {
+    const hasStartCode =
+      buffer[23] === 0x9d && buffer[24] === 0x01 && buffer[25] === 0x2a;
+    if (hasStartCode) {
+      const width = buffer.readUInt16LE(26) & 0x3fff;
+      const height = buffer.readUInt16LE(28) & 0x3fff;
+      if (width > 0 && height > 0) {
+        return { width, height };
+      }
+    }
+  }
+
+  if (chunkType === "VP8L" && buffer.length >= 25 && buffer[20] === 0x2f) {
+    const b0 = buffer[21];
+    const b1 = buffer[22];
+    const b2 = buffer[23];
+    const b3 = buffer[24];
+    const width = 1 + (b0 | ((b1 & 0x3f) << 8));
+    const height = 1 + (((b1 & 0xc0) >> 6) | (b2 << 2) | ((b3 & 0x0f) << 10));
+    if (width > 0 && height > 0) {
+      return { width, height };
+    }
+  }
+
+  return null;
+}
+
+function readImageDimensionsFromBuffer(buffer: Buffer): ImageDimensions | null {
+  return (
+    getPngDimensions(buffer) ??
+    getJpegDimensions(buffer) ??
+    getWebPDimensions(buffer)
+  );
+}
+
 /**
- * 画像のアスペクト比をサーバー側で計算
- * 画像のメタデータを読み込んで判定（簡易版）
- * @param imageUrl 画像のURL
- * @returns "portrait" | "landscape" | null
+ * 画像の寸法をサーバー側で取得する
+ * 対応形式: PNG / JPEG / WebP
  */
-export async function getImageAspectRatio(imageUrl: string): Promise<"portrait" | "landscape" | null> {
+export async function getImageDimensions(imageUrl: string): Promise<ImageDimensions | null> {
   try {
-    // 画像のメタデータを取得するために、画像を読み込む
     const response = await fetch(imageUrl, {
       method: "GET",
       headers: {
-        Range: "bytes=0-16384", // 最初の16KBのみ取得（メタデータに十分）
+        Range: "bytes=0-65535",
       },
     });
 
@@ -111,38 +239,29 @@ export async function getImageAspectRatio(imageUrl: string): Promise<"portrait" 
 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-
-    // PNG形式の場合
-    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
-      if (buffer.length >= 24) {
-        const width = buffer.readUInt32BE(16);
-        const height = buffer.readUInt32BE(20);
-        if (width > 0 && height > 0) {
-          return height > width ? "portrait" : "landscape";
-        }
-      }
-    }
-
-    // JPEG形式の場合
-    if (buffer[0] === 0xff && buffer[1] === 0xd8) {
-      let offset = 2;
-      while (offset < buffer.length - 8) {
-        if (buffer[offset] === 0xff && buffer[offset + 1] === 0xc0) {
-          const height = buffer.readUInt16BE(offset + 5);
-          const width = buffer.readUInt16BE(offset + 7);
-          if (width > 0 && height > 0) {
-            return height > width ? "portrait" : "landscape";
-          }
-          break;
-        }
-        offset++;
-      }
-    }
-
+    return readImageDimensionsFromBuffer(buffer);
+  } catch (error) {
+    console.error("Failed to get image dimensions:", error);
     return null;
+  }
+}
+
+/**
+ * 画像のアスペクト比をサーバー側で計算
+ * 画像の寸法を読み込んで判定
+ * @param imageUrl 画像のURL
+ * @returns "portrait" | "landscape" | null
+ */
+export async function getImageAspectRatio(imageUrl: string): Promise<"portrait" | "landscape" | null> {
+  try {
+    const dimensions = await getImageDimensions(imageUrl);
+    if (!dimensions) {
+      return null;
+    }
+
+    return dimensions.height > dimensions.width ? "portrait" : "landscape";
   } catch (error) {
     console.error("Failed to get image aspect ratio:", error);
     return null;
   }
 }
-
