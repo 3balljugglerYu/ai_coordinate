@@ -1,0 +1,20 @@
+export type PerstaIntroVideoProps = {
+  featureBadge: string;
+  title: string;
+  introHeadline: string;
+  introBody: string;
+  baseSceneMessage: string;
+  baseSceneBody: string;
+  swapSceneMessage: string;
+  lockedMessage: string;
+  resultSceneMessage: string;
+  resultSceneBody: string;
+  betaBadge: string;
+  ctaTitle: string;
+  ctaBody: string;
+  ctaButtonLabel: string;
+  mainImageSrc: string;
+  baseImageSrc: string;
+  characterImageSrc: string;
+  resultImageSrc: string;
+};
