@@ -40,17 +40,47 @@ describe("Revalidate my page route", () => {
     } as never);
   });
 
-  test("POST_imageId付きの場合_一覧と詳細のキャッシュを即時失効する", async () => {
-    const response = await POST(createRequest({ imageId: "image-1" }));
+  function expectOnlyListInvalidated() {
+    expect(mockRevalidateTag).toHaveBeenCalledWith("my-page-user-1", {
+      expire: 0,
+    });
+    expect(mockRevalidateTag).toHaveBeenCalledTimes(1);
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/my-page");
+    expect(mockRevalidatePath).toHaveBeenCalledTimes(1);
+  }
+
+  test("POST_UUIDのimageId付きの場合_一覧と詳細のキャッシュを即時失効する", async () => {
+    const response = await POST(
+      createRequest({ imageId: "11111111-1111-1111-1111-111111111111" })
+    );
 
     expect(response.status).toBe(200);
     expect(mockRevalidateTag).toHaveBeenCalledWith("my-page-user-1", {
       expire: 0,
     });
-    expect(mockRevalidateTag).toHaveBeenCalledWith("my-page-image-user-1-image-1", {
-      expire: 0,
-    });
+    expect(mockRevalidateTag).toHaveBeenCalledWith(
+      "my-page-image-user-1-11111111-1111-1111-1111-111111111111",
+      {
+        expire: 0,
+      }
+    );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/my-page");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/my-page/image-1");
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      "/my-page/11111111-1111-1111-1111-111111111111"
+    );
+  });
+
+  test("POST_bodyなしの場合_一覧キャッシュのみ即時失効する", async () => {
+    const response = await POST(createRequest());
+
+    expect(response.status).toBe(200);
+    expectOnlyListInvalidated();
+  });
+
+  test("POST_UUID以外のimageIdの場合_一覧キャッシュのみ即時失効する", async () => {
+    const response = await POST(createRequest({ imageId: "account" }));
+
+    expect(response.status).toBe(200);
+    expectOnlyListInvalidated();
   });
 });
