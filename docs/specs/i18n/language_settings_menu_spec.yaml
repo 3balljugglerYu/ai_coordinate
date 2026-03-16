@@ -1,0 +1,235 @@
+metadata:
+  class: LanguageSettingsMenu
+  source: components/LanguageSettingsMenu.tsx
+  version: "1.0"
+  created_at: "2026-03-16"
+
+dependencies:
+  repositories: []
+  services:
+    - useLocale / useTranslations (next-intl)
+    - useRouter / usePathname / useSearchParams (next/navigation)
+    - i18n config helpers (i18n/config.ts)
+    - Dropdown menu primitives (components/ui/dropdown-menu)
+    - Button (components/ui/button)
+  external:
+    - Browser document.cookie
+    - Browser window.location.assign
+
+state_properties:
+  - name: variant
+    type: '"dropdown" | "sidebar"'
+    default: none
+  - name: locale
+    type: Locale
+    default: DEFAULT_LOCALE when useLocale() returns an unsupported value
+  - name: onSelect
+    type: (() => void) | undefined
+    default: undefined
+
+specifications:
+  - id: LSM-001
+    method: render
+    type: event-driven
+    ears: |
+      When LanguageSettingsMenu is rendered with variant set to dropdown,
+      the system shall render a dropdown submenu trigger
+      with the locale label and the currently selected locale shortcut,
+      and shall render radio items for Japanese and English.
+    ears_ja: |
+      LanguageSettingsMenuがvariant=dropdownで描画された場合、
+      システムは言語設定ラベルと現在のlocaleショートカットを持つ
+      ドロップダウンサブメニュートリガーを描画し、
+      日本語とEnglishのradio itemを表示しなければならない。
+    preconditions:
+      - The component is rendered with variant equal to dropdown
+      - common translations are available
+    preconditions_ja:
+      - componentがvariant=dropdownで描画される
+      - common翻訳が利用可能である
+    postconditions:
+      success:
+        - The trigger displays the translated locale label
+        - The shortcut displays the current locale label
+        - Radio items for ja and en are rendered
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - トリガーに翻訳済みの言語設定ラベルが表示される
+        - shortcutに現在localeの表示名が出る
+        - ja と en のradio itemが描画される
+      error:
+        - なし
+    test_cases:
+      - render_GivenDropdownVariant_ShouldShowLocaleLabelShortcutAndRadioItems
+      - render_GivenDropdownVariantWithUnsupportedLocale_ShouldFallbackShortcutToDefaultLocale
+    test_cases_ja:
+      - render_dropdown指定の場合_言語設定ラベルとshortcutとradio項目を表示する
+      - render_dropdown指定で未対応localeの場合_DEFAULT_LOCALEのshortcutにフォールバックする
+
+  - id: LSM-002
+    method: render
+    type: state-driven
+    ears: |
+      While LanguageSettingsMenu is rendered with variant set to sidebar,
+      the system shall render two locale buttons,
+      and shall mark only the active locale button with the active visual variant.
+    ears_ja: |
+      LanguageSettingsMenuがvariant=sidebarで描画されている間、
+      システムは2つのlocaleボタンを描画し、
+      現在のlocaleに対応するボタンだけをactive表示にしなければならない。
+    preconditions:
+      - The component is rendered with variant equal to sidebar
+      - common translations are available
+    preconditions_ja:
+      - componentがvariant=sidebarで描画される
+      - common翻訳が利用可能である
+    postconditions:
+      success:
+        - A header with the locale label is rendered
+        - Exactly two buttons for ja and en are rendered
+        - Only the current locale button uses the active variant
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 言語設定ラベル付きのヘッダーが描画される
+        - ja と en の2つのボタンが描画される
+        - 現在localeのボタンだけがactive variantになる
+      error:
+        - なし
+    test_cases:
+      - render_GivenSidebarVariant_ShouldShowTwoLocaleButtonsAndHeader
+      - render_GivenSidebarVariantWithCurrentLocale_ShouldHighlightOnlyActiveButton
+    test_cases_ja:
+      - render_sidebar指定の場合_ヘッダーと2つのlocaleボタンを表示する
+      - render_sidebar指定で現在localeがある場合_activeボタンだけを強調する
+
+  - id: LSM-003
+    method: handleLocaleChange
+    type: unwanted
+    ears: |
+      If handleLocaleChange receives an unsupported locale
+      or the same locale as the current selection,
+      then the system shall not update the locale cookie,
+      shall not call onSelect,
+      and shall not trigger navigation or refresh.
+    ears_ja: |
+      handleLocaleChangeが未対応locale、
+      または現在と同じlocaleを受け取った場合、
+      システムはlocale cookieを更新せず、
+      onSelectを呼ばず、
+      遷移やrefreshも実行しない。
+    preconditions:
+      - handleLocaleChange is invoked
+      - nextLocaleValue is unsupported or equals the current locale
+    preconditions_ja:
+      - handleLocaleChangeが呼び出される
+      - nextLocaleValueが未対応値、または現在localeと同じである
+    postconditions:
+      success:
+        - None
+      error:
+        - document.cookie is unchanged
+        - onSelect is not called
+        - window.location.assign is not called
+        - router.refresh is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - document.cookieは変更されない
+        - onSelectは呼ばれない
+        - window.location.assignは呼ばれない
+        - router.refreshは呼ばれない
+    test_cases:
+      - handleLocaleChange_GivenUnsupportedLocale_ShouldDoNothing
+      - handleLocaleChange_GivenSameLocale_ShouldDoNothing
+    test_cases_ja:
+      - handleLocaleChange_未対応localeの場合_何もしない
+      - handleLocaleChange_同じlocaleの場合_何もしない
+
+  - id: LSM-004
+    method: handleLocaleChange
+    type: event-driven
+    ears: |
+      When handleLocaleChange receives a different supported locale
+      while the current normalized pathname is public,
+      the system shall update the locale cookie,
+      call onSelect when provided,
+      and navigate to the localized public URL while preserving search and hash.
+    ears_ja: |
+      handleLocaleChangeが異なるサポート対象localeを受け取り、
+      現在の正規化pathnameが公開パスである場合、
+      システムはlocale cookieを更新し、
+      onSelectがあれば呼び出し、
+      searchとhashを保持したままlocale付き公開URLへ遷移しなければならない。
+    preconditions:
+      - handleLocaleChange receives a supported locale different from the current locale
+      - The normalized current pathname is a public path
+    preconditions_ja:
+      - handleLocaleChangeが現在と異なるサポート対象localeを受け取る
+      - 正規化後の現在pathnameが公開パスである
+    postconditions:
+      success:
+        - document.cookie is updated with NEXT_LOCALE and max-age
+        - onSelect is called once when provided
+        - window.location.assign is called with the localized public URL including search and hash
+      error:
+        - router.refresh is not called
+    postconditions_ja:
+      success:
+        - document.cookieがNEXT_LOCALEとmax-age付きで更新される
+        - onSelectがあれば1回呼ばれる
+        - searchとhashを含むlocale付き公開URLでwindow.location.assignが呼ばれる
+      error:
+        - router.refreshは呼ばれない
+    test_cases:
+      - handleLocaleChange_GivenPublicPathAndDifferentLocale_ShouldUpdateCookieAndNavigateWithSearchAndHash
+      - handleLocaleChange_GivenPublicPathWithoutOnSelect_ShouldNavigateWithoutCallingCallback
+    test_cases_ja:
+      - handleLocaleChange_公開パスで異なるlocaleの場合_cookie更新後searchとhash付きで遷移する
+      - handleLocaleChange_公開パスでonSelectなしの場合_callbackなしで遷移する
+
+  - id: LSM-005
+    method: handleLocaleChange
+    type: event-driven
+    ears: |
+      When handleLocaleChange receives a different supported locale
+      while the current normalized pathname is not public,
+      the system shall update the locale cookie,
+      call onSelect when provided,
+      and refresh the current route without changing the URL.
+    ears_ja: |
+      handleLocaleChangeが異なるサポート対象localeを受け取り、
+      現在の正規化pathnameが公開パスでない場合、
+      システムはlocale cookieを更新し、
+      onSelectがあれば呼び出し、
+      URLを変更せずに現在ルートをrefreshしなければならない。
+    preconditions:
+      - handleLocaleChange receives a supported locale different from the current locale
+      - The normalized current pathname is not a public path
+    preconditions_ja:
+      - handleLocaleChangeが現在と異なるサポート対象localeを受け取る
+      - 正規化後の現在pathnameが公開パスでない
+    postconditions:
+      success:
+        - document.cookie is updated with NEXT_LOCALE and max-age
+        - onSelect is called once when provided
+        - router.refresh is called once
+      error:
+        - window.location.assign is not called
+    postconditions_ja:
+      success:
+        - document.cookieがNEXT_LOCALEとmax-age付きで更新される
+        - onSelectがあれば1回呼ばれる
+        - router.refreshが1回呼ばれる
+      error:
+        - window.location.assignは呼ばれない
+    test_cases:
+      - handleLocaleChange_GivenInternalPathAndDifferentLocale_ShouldUpdateCookieAndRefresh
+      - handleLocaleChange_GivenInternalPathWithoutOnSelect_ShouldRefreshWithoutCallingCallback
+    test_cases_ja:
+      - handleLocaleChange_内部パスで異なるlocaleの場合_cookie更新後refreshする
+      - handleLocaleChange_内部パスでonSelectなしの場合_callbackなしでrefreshする
