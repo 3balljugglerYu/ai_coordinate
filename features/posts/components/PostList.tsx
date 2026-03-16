@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
@@ -28,6 +29,7 @@ export function PostList({
   forceInitialLoading = false,
   skipInitialFetch = false,
 }: PostListProps) {
+  const postsT = useTranslations("posts");
   const [posts, setPosts] = useState<Post[]>(forceInitialLoading ? [] : initialPosts);
   const [isLoading, setIsLoading] = useState(forceInitialLoading);
   const [hasMore, setHasMore] = useState(forceInitialLoading ? true : initialPosts.length === 20);
@@ -38,7 +40,7 @@ export function PostList({
   const currentPath = pathname;
   const searchQuery = searchParams.get("q") || "";
   const hasModerationRefresh = searchParams.get("mod_refresh") === "1";
-  const isSearchPage = pathname === "/search";
+  const isSearchPage = pathname === "/search" || pathname?.endsWith("/search");
   // 検索画面の場合はデフォルトでpopular、それ以外はnewest
   const defaultSortType: SortType = isSearchPage ? "popular" : "newest";
   const [sortType, setSortType] = useState<SortType>(defaultSortType);
@@ -192,19 +194,19 @@ export function PostList({
   const getEmptyMessage = () => {
     // 検索クエリが存在する場合は専用メッセージを表示
     if (searchQuery.trim()) {
-      return `"${searchQuery.trim()}"に一致する投稿が見つかりませんでした`;
+      return postsT("noMatch", { query: searchQuery.trim() });
     }
     
     if (sortType === "following") {
-      return "フォローしているユーザーの投稿がありません";
+      return postsT("noFollowingPosts");
     } else if (sortType === "daily") {
-      return "準備中...";
+      return postsT("preparing");
     } else if (sortType === "week") {
-      return "準備中...";
+      return postsT("preparing");
     } else if (sortType === "month") {
-      return "準備中...";
+      return postsT("preparing");
     }
-    return "まだ投稿がありません。最初の投稿をしてみましょう！";
+    return postsT("emptyState");
   };
 
   return (
@@ -256,7 +258,7 @@ export function PostList({
           {/* 全て読み込み完了時のメッセージ */}
           {!hasMore && posts.length > 0 && (
             <div className="py-8 text-center text-muted-foreground">
-              全ての投稿を表示しました
+              {postsT("allShown")}
             </div>
           )}
         </>

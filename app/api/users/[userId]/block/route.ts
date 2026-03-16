@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getModerationRouteCopy } from "@/features/moderation/lib/route-copy";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = getModerationRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -13,15 +18,15 @@ export async function POST(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError(copy.authRequired, "BLOCK_AUTH_REQUIRED", 401);
     }
 
     const { userId } = await params;
     if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+      return jsonError(copy.userIdRequired, "BLOCK_USER_ID_REQUIRED", 400);
     }
     if (userId === user.id) {
-      return NextResponse.json({ error: "Cannot block yourself" }, { status: 400 });
+      return jsonError(copy.cannotBlockSelf, "BLOCK_SELF_FORBIDDEN", 400);
     }
 
     const { error } = await supabase.from("user_blocks").insert({
@@ -37,7 +42,7 @@ export async function POST(
         return NextResponse.json({ success: true, isBlocked: true });
       }
       console.error("Block insert error:", error);
-      return NextResponse.json({ error: "Failed to block user" }, { status: 500 });
+      return jsonError(copy.blockFailed, "BLOCK_CREATE_FAILED", 500);
     }
 
     revalidateTag("home-posts", "max");
@@ -46,7 +51,7 @@ export async function POST(
     return NextResponse.json({ success: true, isBlocked: true });
   } catch (error) {
     console.error("Block API error:", error);
-    return NextResponse.json({ error: "ブロックに失敗しました" }, { status: 500 });
+    return jsonError(copy.blockFailed, "BLOCK_CREATE_FAILED", 500);
   }
 }
 
@@ -54,6 +59,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = getModerationRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -61,12 +68,12 @@ export async function DELETE(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError(copy.authRequired, "BLOCK_AUTH_REQUIRED", 401);
     }
 
     const { userId } = await params;
     if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+      return jsonError(copy.userIdRequired, "BLOCK_USER_ID_REQUIRED", 400);
     }
 
     const { error } = await supabase
@@ -77,7 +84,7 @@ export async function DELETE(
 
     if (error) {
       console.error("Block delete error:", error);
-      return NextResponse.json({ error: "Failed to unblock user" }, { status: 500 });
+      return jsonError(copy.unblockFailed, "BLOCK_DELETE_FAILED", 500);
     }
 
     revalidateTag("home-posts", "max");
@@ -86,6 +93,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, isBlocked: false });
   } catch (error) {
     console.error("Unblock API error:", error);
-    return NextResponse.json({ error: "ブロック解除に失敗しました" }, { status: 500 });
+    return jsonError(copy.unblockFailed, "BLOCK_DELETE_FAILED", 500);
   }
 }

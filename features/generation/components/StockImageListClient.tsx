@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Trash2, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function StockImageListClient({
   renderUploadCard,
   onRefreshTrigger,
 }: StockImageListClientProps) {
+  const t = useTranslations("coordinate");
   const [stocks, setStocks] = useState<SourceImageStock[]>(initialStocks);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const router = useRouter();
@@ -36,7 +38,7 @@ export function StockImageListClient({
   }, [initialStocks]);
 
   const handleDelete = async (stock: SourceImageStock) => {
-    if (!confirm("このストック画像を削除しますか？")) {
+    if (!confirm(t("stockDeleteConfirm"))) {
       return;
     }
 
@@ -52,7 +54,7 @@ export function StockImageListClient({
       router.refresh();
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "ストック画像の削除に失敗しました";
+        err instanceof Error ? err.message : t("stockDeleteFailed");
       alert(errorMessage);
       console.error("Failed to delete stock image:", err);
     } finally {
@@ -95,7 +97,7 @@ export function StockImageListClient({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={stock.image_url}
-                  alt={stock.name || "ストック画像"}
+                  alt={stock.name || t("stockImageAlt")}
                   className="h-auto max-h-[200px] w-auto max-w-[200px] object-contain block"
                 />
                 {isDeleting && (
@@ -119,7 +121,7 @@ export function StockImageListClient({
                 )}
                 {stock.usage_count > 0 && (
                   <div className="absolute bottom-2 right-2 text-gray-600 text-xs">
-                    {stock.usage_count}回使用
+                    {t("stockUsageCount", { count: stock.usage_count })}
                   </div>
                 )}
               </div>

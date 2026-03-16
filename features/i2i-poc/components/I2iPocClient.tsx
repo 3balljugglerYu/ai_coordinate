@@ -3,6 +3,7 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Maximize2, Minimize2 } from "lucide-react";
 import Image from "next/image";
+import { useLocale, useTranslations } from "next-intl";
 import {
   useEffect,
   useMemo,
@@ -24,12 +25,6 @@ const WEBP_QUALITY_STEPS = [0.95, 0.9, 0.85, 0.8] as const;
 const WEBP_MIME_TYPE = "image/webp";
 const MAX_TURNS = 10;
 const FILE_EXTENSION_REGEX = /\.[^.]+$/;
-const BASE_FEEDBACK_SUGGESTIONS = [
-  "+ 服が変わった為、シーン保持の服になるように修正してください。",
-] as const;
-const CHARACTER_FEEDBACK_SUGGESTIONS = [
-  "体型が変わった為、キャラ保持の体型になるように修正してください。",
-] as const;
 
 interface I2iPocClientProps {
   slug: string;
@@ -90,18 +85,26 @@ function bytesToMbText(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
-function validateImageType(file: File, label: string): string | null {
+function validateImageType(
+  file: File,
+  label: string,
+  unsupportedFormatMessage: (label: string) => string
+): string | null {
   const normalizedType = file.type.toLowerCase().trim();
   if (!ALLOWED_IMAGE_MIME_TYPE_SET.has(normalizedType)) {
-    return `${label}は PNG / JPG / WebP のみ対応しています。`;
+    return unsupportedFormatMessage(label);
   }
 
   return null;
 }
 
-function validateImageSize(file: File, label: string): string | null {
+function validateImageSize(
+  file: File,
+  label: string,
+  fileTooLargeMessage: (label: string, currentSize: string) => string
+): string | null {
   if (file.size > MAX_IMAGE_BYTES) {
-    return `${label}は10MB以下にしてください（現在: ${bytesToMbText(file.size)}）。`;
+    return fileTooLargeMessage(label, bytesToMbText(file.size));
   }
 
   return null;
@@ -131,7 +134,10 @@ async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   return response.blob();
 }
 
-function loadImageElement(file: File): Promise<HTMLImageElement> {
+function loadImageElement(
+  file: File,
+  imageLoadFailedMessage: string
+): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new window.Image();
     const objectUrl = URL.createObjectURL(file);
@@ -143,7 +149,7 @@ function loadImageElement(file: File): Promise<HTMLImageElement> {
 
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error("画像の読み込みに失敗しました。"));
+      reject(new Error(imageLoadFailedMessage));
     };
 
     image.src = objectUrl;
@@ -153,13 +159,14 @@ function loadImageElement(file: File): Promise<HTMLImageElement> {
 function canvasToBlob(
   canvas: HTMLCanvasElement,
   mimeType: string,
+  imageConvertFailedMessage: string,
   quality?: number
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          reject(new Error("画像変換に失敗しました。"));
+          reject(new Error(imageConvertFailedMessage));
           return;
         }
         resolve(blob);
@@ -172,21 +179,31 @@ function canvasToBlob(
 
 async function convertImageToWebpFile(
   file: File,
+  messages: {
+    imageLoadFailed: string;
+    imageConvertFailed: string;
+    canvasUnavailable: string;
+  },
   quality = WEBP_QUALITY
 ): Promise<File> {
-  const image = await loadImageElement(file);
+  const image = await loadImageElement(file, messages.imageLoadFailed);
   const canvas = document.createElement("canvas");
   canvas.width = image.naturalWidth;
   canvas.height = image.naturalHeight;
 
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("画像処理コンテキストの取得に失敗しました。");
+    throw new Error(messages.canvasUnavailable);
   }
 
   context.drawImage(image, 0, 0);
 
-  const webpBlob = await canvasToBlob(canvas, WEBP_MIME_TYPE, quality);
+  const webpBlob = await canvasToBlob(
+    canvas,
+    WEBP_MIME_TYPE,
+    messages.imageConvertFailed,
+    quality
+  );
   const baseName = file.name.replace(FILE_EXTENSION_REGEX, "") || "image";
   return new File([webpBlob], `${baseName}.webp`, {
     type: WEBP_MIME_TYPE,
@@ -216,7 +233,14 @@ function revokeTurnImages(turnsToRevoke: GenerationTurn[]) {
 
 async function buildResultImageForRefine(
   sourceBlob: Blob,
-  maxAllowedBytes: number
+  maxAllowedBytes: number,
+  messages: {
+    imageLoadFailed: string;
+    imageConvertFailed: string;
+    canvasUnavailable: string;
+    resultTooLargeToRefine: string;
+    resultCompressFailed: (size: string) => string;
+  }
 ): Promise<File> {
   const sourceMimeType = sourceBlob.type || "image/png";
   const sourceFile = new File(
@@ -230,9 +254,7 @@ async function buildResultImageForRefine(
 
   const normalizedMaxBytes = Math.min(maxAllowedBytes, MAX_IMAGE_BYTES);
   if (normalizedMaxBytes <= 0) {
-    throw new Error(
-      "Base画像とCharacter画像の合計サイズが大きすぎるため、再生成できません。"
-    );
+    throw new Error(messages.resultTooLargeToRefine);
   }
 
   if (sourceFile.size <= normalizedMaxBytes) {
@@ -240,21 +262,17 @@ async function buildResultImageForRefine(
   }
 
   for (const quality of WEBP_QUALITY_STEPS) {
-    const candidate = await convertImageToWebpFile(sourceFile, quality);
+    const candidate = await convertImageToWebpFile(sourceFile, messages, quality);
     if (candidate.size <= normalizedMaxBytes) {
       return candidate;
     }
   }
 
-  throw new Error(
-    `生成結果画像を圧縮しても ${bytesToMbText(
-      normalizedMaxBytes
-    )} 以下にできませんでした。`
-  );
+  throw new Error(messages.resultCompressFailed(bytesToMbText(normalizedMaxBytes)));
 }
 
-function formatTimeLabel(isoTime: string): string {
-  return new Date(isoTime).toLocaleTimeString("ja-JP", {
+function formatTimeLabel(isoTime: string, locale: string): string {
+  return new Date(isoTime).toLocaleTimeString(locale === "ja" ? "ja-JP" : "en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -274,17 +292,27 @@ function appendSuggestion(existingText: string, suggestion: string): string {
 }
 
 export function I2iPocClient({ slug }: I2iPocClientProps) {
+  const t = useTranslations("i2iPoc");
+  const locale = useLocale();
   const baseInputRef = useRef<HTMLInputElement | null>(null);
   const characterInputRef = useRef<HTMLInputElement | null>(null);
+  const initialBaseFeedbackSuggestions = useMemo(
+    () => [t("baseSuggestion")] as const,
+    [t]
+  );
+  const initialCharacterFeedbackSuggestions = useMemo(
+    () => [t("characterSuggestion")] as const,
+    [t]
+  );
   const [baseImage, setBaseImage] = useState<File | null>(null);
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [baseFeedback, setBaseFeedback] = useState("");
   const [characterFeedback, setCharacterFeedback] = useState("");
   const [baseFeedbackSuggestions, setBaseFeedbackSuggestions] = useState<
     readonly string[]
-  >(BASE_FEEDBACK_SUGGESTIONS);
+  >(initialBaseFeedbackSuggestions);
   const [characterFeedbackSuggestions, setCharacterFeedbackSuggestions] =
-    useState<readonly string[]>(CHARACTER_FEEDBACK_SUGGESTIONS);
+    useState<readonly string[]>(initialCharacterFeedbackSuggestions);
   const [turns, setTurns] = useState<GenerationTurn[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
@@ -307,18 +335,27 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
   }, [turns]);
 
   useEffect(() => {
+    setBaseFeedbackSuggestions(initialBaseFeedbackSuggestions);
+    setCharacterFeedbackSuggestions(initialCharacterFeedbackSuggestions);
+  }, [initialBaseFeedbackSuggestions, initialCharacterFeedbackSuggestions]);
+
+  useEffect(() => {
     return () => {
       revokeTurnImages(turnsRef.current);
     };
   }, []);
+
+  const baseImageLabel = t("baseImageLabel");
+  const characterImageLabel = t("characterImageLabel");
+  const resultImageLabel = t("resultImageLabel");
 
   function resetConversationState() {
     revokeTurnImages(turns);
     setTurns([]);
     setBaseFeedback("");
     setCharacterFeedback("");
-    setBaseFeedbackSuggestions(BASE_FEEDBACK_SUGGESTIONS);
-    setCharacterFeedbackSuggestions(CHARACTER_FEEDBACK_SUGGESTIONS);
+    setBaseFeedbackSuggestions(initialBaseFeedbackSuggestions);
+    setCharacterFeedbackSuggestions(initialCharacterFeedbackSuggestions);
   }
 
   async function handleFileChange(
@@ -331,8 +368,10 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
       return;
     }
 
-    const label = type === "base" ? "Base画像" : "Character画像";
-    const typeError = validateImageType(file, label);
+    const label = type === "base" ? baseImageLabel : characterImageLabel;
+    const typeError = validateImageType(file, label, (imageLabel) =>
+      t("unsupportedFormat", { label: imageLabel })
+    );
     if (typeError) {
       setErrorMessage(typeError);
       input.value = "";
@@ -340,7 +379,9 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
     }
 
     setErrorMessage(null);
-    const sizeError = validateImageSize(file, label);
+    const sizeError = validateImageSize(file, label, (imageLabel, size) =>
+      t("imageTooLarge", { label: imageLabel, size })
+    );
     if (sizeError) {
       setErrorMessage(sizeError);
       input.value = "";
@@ -364,17 +405,17 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
     }
 
     if (!baseImage || !characterImage) {
-      setErrorMessage("Base画像とCharacter画像を両方アップロードしてください。");
+      setErrorMessage(t("missingImages"));
       return;
     }
 
     if (mode === "refine") {
       if (!latestTurn) {
-        setErrorMessage("先に初回生成を実行してください。");
+        setErrorMessage(t("initialGenerationRequired"));
         return;
       }
       if (!baseFeedback.trim() && !characterFeedback.trim()) {
-        setErrorMessage("不足点をどちらか1つ以上入力してください。");
+        setErrorMessage(t("missingRefineFeedback"));
         return;
       }
     }
@@ -398,11 +439,21 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
             MAX_TOTAL_IMAGE_BYTES - baseImage.size - characterImage.size;
           const previousResultFile = await buildResultImageForRefine(
             latestTurn.imageBlob,
-            remainingBytesForResult
+            remainingBytesForResult,
+            {
+              imageLoadFailed: t("imageLoadFailed"),
+              imageConvertFailed: t("imageConvertFailed"),
+              canvasUnavailable: t("canvasUnavailable"),
+              resultTooLargeToRefine: t("resultTooLargeToRefine"),
+              resultCompressFailed: (size) =>
+                t("resultCompressFailed", { size }),
+            }
           );
           const resultImageSizeError = validateImageSize(
             previousResultFile,
-            "生成結果画像"
+            resultImageLabel,
+            (imageLabel, size) =>
+              t("imageTooLarge", { label: imageLabel, size })
           );
           if (resultImageSizeError) {
             throw new Error(resultImageSizeError);
@@ -432,7 +483,7 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
           "error" in payload &&
           typeof payload.error === "string"
             ? payload.error
-            : "画像生成に失敗しました。";
+            : t("generationFailed");
         throw new Error(apiError);
       }
 
@@ -442,7 +493,7 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
         !("imageDataUrl" in payload) ||
         typeof payload.imageDataUrl !== "string"
       ) {
-        throw new Error("画像レスポンスの解析に失敗しました。");
+        throw new Error(t("responseParseFailed"));
       }
 
       const generatedImageBlob = await dataUrlToBlob(payload.imageDataUrl);
@@ -473,7 +524,7 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
       const message =
         error instanceof Error
           ? error.message
-          : "不明なエラーが発生しました。";
+          : t("unknownError");
       setErrorMessage(message);
     } finally {
       generationRequestLockRef.current = false;
@@ -485,14 +536,14 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-3xl px-4 py-8 md:py-10">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          AI fashion show
+          {t("title")}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          1枚目の背景・服装・ポーズをそのままに、
+          {t("descriptionLine1")}
           <br />
-          2枚目のキャラクターに差し替えて生成します。
+          {t("descriptionLine2")}
           <br />
-          あなたのキャラクターで、ファッションショーのようなシーンを楽しめます。
+          {t("descriptionLine3")}
         </p>
         <section
           className={`relative ml-auto mt-6 rounded-xl border border-slate-200 shadow-sm transition-[width,padding] duration-200 ${
@@ -509,10 +560,14 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
             }`}
             aria-label={
               isReferenceCardCollapsed
-                ? "参照カードを元サイズに戻す"
-                : "参照カードを縮小する"
+                ? t("expandReferenceCardAria")
+                : t("collapseReferenceCardAria")
             }
-            title={isReferenceCardCollapsed ? "戻す" : "縮小"}
+            title={
+              isReferenceCardCollapsed
+                ? t("expandReferenceCardTitle")
+                : t("collapseReferenceCardTitle")
+            }
           >
             {isReferenceCardCollapsed ? (
               <Maximize2 size={12} aria-hidden="true" />
@@ -536,11 +591,11 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                     isReferenceCardCollapsed ? "text-xs leading-none" : "text-sm"
                   }`}
                 >
-                  シーン保持
+                  {t("baseReferenceTitle")}
                 </p>
                 <LabelInfoTooltip
-                  content="背景・服装・ポーズを保持します。"
-                  ariaLabel="シーン保持の説明を表示"
+                  content={t("baseReferenceTooltip")}
+                  ariaLabel={t("baseReferenceTooltipAria")}
                 />
               </div>
               <input
@@ -557,19 +612,19 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                 onClick={() => baseInputRef.current?.click()}
                 disabled={isConverting || isGenerating}
                 className="relative block aspect-square w-full overflow-hidden rounded-md border border-slate-200 bg-slate-100 text-left transition hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-                aria-label="Base画像を選択"
+                aria-label={t("baseImageSelectAria")}
               >
                 {basePreviewUrl ? (
                   <Image
                     src={basePreviewUrl}
-                    alt="Base画像プレビュー"
+                    alt={t("baseImagePreviewAlt")}
                     fill
                     unoptimized
                     className="object-contain"
                   />
                 ) : !isReferenceCardCollapsed ? (
                   <div className="flex h-full items-center justify-center text-xs text-slate-500">
-                    タップして画像を選択
+                    {t("tapToSelect")}
                   </div>
                 ) : null}
               </button>
@@ -586,11 +641,11 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                     isReferenceCardCollapsed ? "text-xs leading-none" : "text-sm"
                   }`}
                 >
-                  キャラ保持
+                  {t("characterReferenceTitle")}
                 </p>
                 <LabelInfoTooltip
-                  content="顔・髪型・体型など、キャラクターの特徴を保持します。"
-                  ariaLabel="キャラ保持の説明を表示"
+                  content={t("characterReferenceTooltip")}
+                  ariaLabel={t("characterReferenceTooltipAria")}
                 />
               </div>
               <input
@@ -607,19 +662,19 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                 onClick={() => characterInputRef.current?.click()}
                 disabled={isConverting || isGenerating}
                 className="relative block aspect-square w-full overflow-hidden rounded-md border border-slate-200 bg-slate-100 text-left transition hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-                aria-label="Character画像を選択"
+                aria-label={t("characterImageSelectAria")}
               >
                 {characterPreviewUrl ? (
                   <Image
                     src={characterPreviewUrl}
-                    alt="Character画像プレビュー"
+                    alt={t("characterImagePreviewAlt")}
                     fill
                     unoptimized
                     className="object-contain"
                   />
                 ) : !isReferenceCardCollapsed ? (
                   <div className="flex h-full items-center justify-center text-xs text-slate-500">
-                    タップして画像を選択
+                    {t("tapToSelect")}
                   </div>
                 ) : null}
               </button>
@@ -635,9 +690,13 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                 onClick={() => runGeneration("initial")}
                 disabled={!baseImage || !characterImage || isGenerating || isConverting}
               >
-                {isConverting ? "画像変換中..." : isGenerating ? "生成中..." : "fashion show !!"}
+                {isConverting
+                  ? t("converting")
+                  : isGenerating
+                    ? t("generating")
+                    : t("generateButton")}
               </Button>
-              <p className="mt-2 text-xs text-slate-500">画像形式: PNG / JPG / WebP</p>
+              <p className="mt-2 text-xs text-slate-500">{t("supportedFormats")}</p>
             </div>
           </section>
         )}
@@ -650,7 +709,9 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
 
         {turns.length > 0 && (
           <section className="mt-6 space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">生成履歴</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t("historyTitle")}
+            </h2>
             <div className="space-y-3">
               {turns
                 .map((turn, index) => ({ turn, turnNumber: index + 1 }))
@@ -661,16 +722,16 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-slate-900">
-                        Turn {turnNumber}
+                        {t("turnLabel", { turn: turnNumber })}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {formatTimeLabel(turn.createdAt)}
+                        {formatTimeLabel(turn.createdAt, locale)}
                       </p>
                     </div>
                     <div className="relative mt-3 aspect-square w-full max-w-[460px] overflow-hidden rounded-md border border-slate-200 bg-slate-100">
                       <Image
                         src={turn.imageUrl}
-                        alt={`生成結果 Turn ${turnNumber}`}
+                        alt={t("generatedResultAlt", { turn: turnNumber })}
                         fill
                         unoptimized
                         className="object-contain"
@@ -678,9 +739,15 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                     </div>
                     {turnNumber >= 2 && (turn.baseFeedback || turn.characterFeedback) && (
                       <div className="mt-2 space-y-1 rounded-md bg-slate-50 p-2 text-xs text-slate-700">
-                        <p>Base再現不足: {turn.baseFeedback || "（未入力）"}</p>
                         <p>
-                          Character再現不足: {turn.characterFeedback || "（未入力）"}
+                          {t("baseFeedbackSummary", {
+                            text: turn.baseFeedback || t("feedbackEmpty"),
+                          })}
+                        </p>
+                        <p>
+                          {t("characterFeedbackSummary", {
+                            text: turn.characterFeedback || t("feedbackEmpty"),
+                          })}
                         </p>
                       </div>
                     )}
@@ -690,11 +757,11 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
             {latestTurn && (
               <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="text-sm font-semibold text-slate-900">
-                  不足点を入力して再生成
+                  {t("refineTitle")}
                 </p>
                 <div className="mt-3 space-y-2">
                   <p className="text-xs font-medium text-slate-700">
-                    Base再現不足（背景/衣装/ポーズ）
+                    {t("baseFeedbackTitle")}
                   </p>
                   {baseFeedbackSuggestions.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -721,12 +788,12 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                   <Textarea
                     value={baseFeedback}
                     onChange={(event) => setBaseFeedback(event.target.value)}
-                    placeholder="例: 背景の看板文字が消えている。ポーズの腕の角度を元画像に近づける。"
+                    placeholder={t("baseFeedbackPlaceholder")}
                   />
                 </div>
                 <div className="mt-3 space-y-2">
                   <p className="text-xs font-medium text-slate-700">
-                    Character再現不足（顔/髪/体型/雰囲気）
+                    {t("characterFeedbackTitle")}
                   </p>
                   {characterFeedbackSuggestions.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -753,7 +820,7 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                   <Textarea
                     value={characterFeedback}
                     onChange={(event) => setCharacterFeedback(event.target.value)}
-                    placeholder="例: 参照画像より肩幅が狭い。体型を細めにしつつ、顔の印象と髪型を参照画像に近づける。"
+                    placeholder={t("characterFeedbackPlaceholder")}
                   />
                 </div>
                 <div className="mt-4">
@@ -763,10 +830,10 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
                     disabled={isGenerating || isConverting}
                   >
                     {isConverting
-                      ? "画像変換中..."
+                      ? t("converting")
                       : isGenerating
-                      ? "再生成中..."
-                      : "この内容で再生成"}
+                        ? t("refineGenerating")
+                        : t("refineSubmit")}
                   </Button>
                 </div>
               </article>

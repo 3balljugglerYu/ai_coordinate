@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { UserStats } from "../lib/server-api";
 import { formatCountEnUS } from "@/lib/utils";
 
@@ -8,17 +9,18 @@ interface UserStatsProps {
 }
 
 export function UserStats({ stats }: UserStatsProps) {
+  const t = useTranslations("myPage");
   const firstRowItems = [
-    { label: "フォロー", value: formatCountEnUS(stats.followingCount) },
-    { label: "フォロワー", value: formatCountEnUS(stats.followerCount) },
-    { label: "いいね", value: formatCountEnUS(stats.likeCount) },
+    { label: t("statsFollowing"), value: formatCountEnUS(stats.followingCount) },
+    { label: t("statsFollowers"), value: formatCountEnUS(stats.followerCount) },
+    { label: t("statsLikes"), value: formatCountEnUS(stats.likeCount) },
   ];
 
   const secondRowItems = [
-    { label: "閲覧", value: formatCountEnUS(stats.viewCount) },
-    { label: "投稿", value: formatCountEnUS(stats.postedCount) },
+    { label: t("statsViews"), value: formatCountEnUS(stats.viewCount) },
+    { label: t("statsPosts"), value: formatCountEnUS(stats.postedCount) },
     {
-      label: "生成",
+      label: t("statsGenerated"),
       value: stats.generatedCountPublic
         ? formatCountEnUS(stats.generatedCount)
         : "—",
@@ -48,4 +50,3 @@ export function UserStats({ stats }: UserStatsProps) {
     </div>
   );
 }
-

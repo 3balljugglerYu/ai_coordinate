@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createCommentAPI } from "../lib/api";
@@ -24,6 +25,7 @@ export function CommentInput({
   onCommentAdded,
   currentUserId,
 }: CommentInputProps) {
+  const t = useTranslations("posts");
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -83,14 +85,19 @@ export function CommentInput({
     const validation = validateProfileText(
       sanitized.value,
       COMMENT_MAX_LENGTH,
-      "コメント",
-      false // 空文字を許可しない
+      "comment",
+      false,
+      {
+        required: t("commentRequired"),
+        invalidCharacters: t("commentInvalidCharacters"),
+        maxLength: t("commentTooLong", { max: COMMENT_MAX_LENGTH }),
+      }
     );
 
     if (!validation.valid) {
       toast({
-        title: "エラー",
-        description: validation.error || "入力内容を確認してください",
+        title: t("errorTitle"),
+        description: validation.error || t("commentCreateFailed"),
         variant: "destructive",
       });
       return;
@@ -99,16 +106,18 @@ export function CommentInput({
     setIsLoading(true);
     try {
       // サニタイズ後の値をAPIに送信
-      await createCommentAPI(imageId, sanitized.value);
+      await createCommentAPI(imageId, sanitized.value, {
+        commentCreateFailed: t("commentCreateFailed"),
+      });
       setContent("");
       onCommentAdded();
     } catch (error) {
       toast({
-        title: "エラー",
+        title: t("errorTitle"),
         description:
           error instanceof Error
             ? error.message
-            : "コメントの投稿に失敗しました",
+            : t("commentCreateFailed"),
         variant: "destructive",
       });
     } finally {
@@ -125,14 +134,14 @@ export function CommentInput({
         <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="コメントを入力..."
+          placeholder={t("commentPlaceholder")}
           rows={1}
-        className="resize-none !min-h-[2.5rem] py-2"
-        disabled={isLoading}
-        readOnly={!currentUserId}
-        onFocus={handleInteraction}
-        onClick={handleInteraction}
-      />
+          className="resize-none !min-h-[2.5rem] py-2"
+          disabled={isLoading}
+          readOnly={!currentUserId}
+          onFocus={handleInteraction}
+          onClick={handleInteraction}
+        />
         <div className="flex items-center justify-between">
           <span
             className={`text-xs ${
@@ -144,8 +153,10 @@ export function CommentInput({
             }`}
           >
             {isOverLimit
-              ? `${content.length - COMMENT_MAX_LENGTH}文字超過`
-              : `${remainingChars}文字`}
+              ? t("commentOverLimit", {
+                  count: content.length - COMMENT_MAX_LENGTH,
+                })
+              : t("commentRemaining", { count: remainingChars })}
           </span>
           <Button
             type="submit"
@@ -156,7 +167,7 @@ export function CommentInput({
               content.trim().length > COMMENT_MAX_LENGTH
             }
           >
-            {isLoading ? "投稿中..." : "投稿"}
+            {isLoading ? t("commentSubmitting") : t("commentSubmit")}
           </Button>
         </div>
       </form>

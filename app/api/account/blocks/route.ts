@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const copy = getAccountRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -9,7 +14,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      return jsonError(copy.authRequired, "ACCOUNT_AUTH_REQUIRED", 401);
     }
 
     const { data: blocks, error: blocksError } = await supabase
@@ -20,9 +25,10 @@ export async function GET() {
 
     if (blocksError) {
       console.error("Blocks fetch error:", blocksError);
-      return NextResponse.json(
-        { error: "ブロックユーザー一覧の取得に失敗しました" },
-        { status: 500 }
+      return jsonError(
+        copy.blockedUsersFetchFailed,
+        "ACCOUNT_BLOCKS_FETCH_FAILED",
+        500
       );
     }
 
@@ -39,9 +45,10 @@ export async function GET() {
 
       if (profilesError) {
         console.error("Blocked user profiles fetch error:", profilesError);
-        return NextResponse.json(
-          { error: "ブロックユーザー情報の取得に失敗しました" },
-          { status: 500 }
+        return jsonError(
+          copy.blockedUserProfilesFetchFailed,
+          "ACCOUNT_BLOCKED_PROFILES_FETCH_FAILED",
+          500
         );
       }
 
@@ -64,9 +71,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Account blocks API error:", error);
-    return NextResponse.json(
-      { error: "ブロックユーザー一覧の取得に失敗しました" },
-      { status: 500 }
-    );
+    return jsonError(copy.blockedUsersFetchFailed, "ACCOUNT_BLOCKS_FETCH_FAILED", 500);
   }
 }

@@ -41,6 +41,7 @@ export const PerstaIntroVideo = ({
   ctaTitle,
   ctaBody,
   ctaButtonLabel,
+  labels,
   mainImageSrc,
   baseImageSrc,
   characterImageSrc,
@@ -60,6 +61,8 @@ export const PerstaIntroVideo = ({
             title={title}
             introHeadline={introHeadline}
             introBody={introBody}
+            baseTagLabel={labels.introBaseTag}
+            swapTagLabel={labels.introSwapTag}
             mainImageUrl={mainImageUrl}
           />
         </TransitionSeries.Sequence>
@@ -70,8 +73,14 @@ export const PerstaIntroVideo = ({
 
         <TransitionSeries.Sequence durationInFrames={BASE_DURATION_IN_FRAMES}>
           <BaseScene
+            eyebrow={labels.baseSceneEyebrow}
             message={baseSceneMessage}
             body={baseSceneBody}
+            cardLabel={labels.baseSceneCardLabel}
+            cardCaption={labels.baseSceneCardCaption}
+            backgroundTagLabel={labels.baseSceneBackgroundTag}
+            outfitTagLabel={labels.baseSceneOutfitTag}
+            poseTagLabel={labels.baseScenePoseTag}
             baseImageUrl={baseImageUrl}
           />
         </TransitionSeries.Sequence>
@@ -85,8 +94,15 @@ export const PerstaIntroVideo = ({
 
         <TransitionSeries.Sequence durationInFrames={SWAP_DURATION_IN_FRAMES}>
           <SwapScene
+            eyebrow={labels.swapSceneEyebrow}
             message={swapSceneMessage}
             lockedMessage={lockedMessage}
+            baseLabel={labels.swapSceneBaseLabel}
+            baseCaption={labels.swapSceneBaseCaption}
+            characterLabel={labels.swapSceneCharacterLabel}
+            characterCaption={labels.swapSceneCharacterCaption}
+            resultLabel={labels.swapSceneResultLabel}
+            resultCaption={labels.swapSceneResultCaption}
             baseImageUrl={baseImageUrl}
             characterImageUrl={characterImageUrl}
             resultImageUrl={resultImageUrl}
@@ -102,8 +118,13 @@ export const PerstaIntroVideo = ({
 
         <TransitionSeries.Sequence durationInFrames={RESULT_DURATION_IN_FRAMES}>
           <ResultScene
+            eyebrow={labels.resultSceneEyebrow}
             message={resultSceneMessage}
             body={resultSceneBody}
+            resultLabel={labels.resultSceneResultLabel}
+            resultCaption={labels.resultSceneResultCaption}
+            baseLabel={labels.resultSceneBaseLabel}
+            characterLabel={labels.resultSceneCharacterLabel}
             baseImageUrl={baseImageUrl}
             characterImageUrl={characterImageUrl}
             resultImageUrl={resultImageUrl}
@@ -120,6 +141,7 @@ export const PerstaIntroVideo = ({
             ctaTitle={ctaTitle}
             ctaBody={ctaBody}
             ctaButtonLabel={ctaButtonLabel}
+            previewLabel={labels.ctaScenePreviewLabel}
             mainImageUrl={mainImageUrl}
             resultImageUrl={resultImageUrl}
           />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useLocale, useTranslations } from "next-intl";
 import { User, MoreVertical, Edit, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +53,8 @@ export function CommentItem({
   onCommentUpdated,
   onCommentDeleted,
 }: CommentItemProps) {
+  const t = useTranslations("posts");
+  const locale = useLocale();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,14 +82,19 @@ export function CommentItem({
     const validation = validateProfileText(
       sanitized.value,
       COMMENT_MAX_LENGTH,
-      "コメント",
-      false // 空文字を許可しない
+      "comment",
+      false,
+      {
+        required: t("commentRequired"),
+        invalidCharacters: t("commentInvalidCharacters"),
+        maxLength: t("commentTooLong", { max: COMMENT_MAX_LENGTH }),
+      }
     );
 
     if (!validation.valid) {
       toast({
-        title: "エラー",
-        description: validation.error || "入力内容を確認してください",
+        title: t("errorTitle"),
+        description: validation.error || t("commentCreateFailed"),
         variant: "destructive",
       });
       return;
@@ -95,16 +103,18 @@ export function CommentItem({
     setIsLoading(true);
     try {
       // サニタイズ後の値をAPIに送信
-      await updateCommentAPI(comment.id, sanitized.value);
+      await updateCommentAPI(comment.id, sanitized.value, {
+        commentUpdateFailed: t("commentUpdateFailed"),
+      });
       setIsEditing(false);
       onCommentUpdated();
     } catch (error) {
       toast({
-        title: "エラー",
+        title: t("errorTitle"),
         description:
           error instanceof Error
             ? error.message
-            : "コメントの編集に失敗しました",
+            : t("commentUpdateFailed"),
         variant: "destructive",
       });
     } finally {
@@ -115,16 +125,18 @@ export function CommentItem({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteCommentAPI(comment.id);
+      await deleteCommentAPI(comment.id, {
+        commentDeleteFailed: t("commentDeleteFailed"),
+      });
       setDeleteDialogOpen(false);
       onCommentDeleted();
     } catch (error) {
       toast({
-        title: "エラー",
+        title: t("errorTitle"),
         description:
           error instanceof Error
             ? error.message
-            : "コメントの削除に失敗しました",
+            : t("commentDeleteFailed"),
         variant: "destructive",
       });
     } finally {
@@ -163,12 +175,15 @@ export function CommentItem({
               {displayName}
             </span>
             <span className="text-xs text-gray-500">
-              {new Date(comment.created_at).toLocaleDateString("ja-JP", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {new Intl.DateTimeFormat(
+                locale === "ja" ? "ja-JP" : "en-US",
+                {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
+              ).format(new Date(comment.created_at))}
             </span>
           </div>
 
@@ -189,7 +204,7 @@ export function CommentItem({
                     remainingChars < 20 ? "text-red-500" : "text-gray-500"
                   }`}
                 >
-                  {remainingChars}文字
+                  {t("commentRemaining", { count: remainingChars })}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -230,14 +245,14 @@ export function CommentItem({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleEdit}>
                 <Edit className="mr-2 h-4 w-4" />
-                編集
+                {t("edit")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setDeleteDialogOpen(true)}
                 className="text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                削除
+                {t("delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -248,19 +263,21 @@ export function CommentItem({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>コメントを削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>{t("commentDeleteDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は取り消せません。コメントが完全に削除されます。
+              {t("commentDeleteDialogDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "削除中..." : "削除"}
+              {isDeleting ? t("commentDeleteDialogDeleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -268,4 +285,3 @@ export function CommentItem({
     </>
   );
 }
-

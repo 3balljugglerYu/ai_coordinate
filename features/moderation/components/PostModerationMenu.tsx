@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Flag, MoreHorizontal, Share2, ShieldBan } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { REPORT_TAXONOMY } from "@/constants/report-taxonomy";
 import { reportPostAPI, blockUserAPI, getBlockStatusAPI, unblockUserAPI } from "@/features/moderation/lib/api";
 import type { ReportCategoryId, ReportSubcategoryId } from "@/constants/report-taxonomy";
@@ -10,8 +11,8 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { sharePost } from "@/lib/share-post";
-import { DEFAULT_SHARE_TEXT } from "@/constants";
 import { getPostDetailUrl } from "@/lib/url-utils";
+import { localizePublicPath, stripLocalePrefix, type Locale } from "@/i18n/config";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,38 @@ interface PostModerationMenuProps {
   showBlock?: boolean;
 }
 
+const categoryLabelKeyMap = {
+  rights: "categoryRights",
+  sexual: "categorySexual",
+  violence: "categoryViolence",
+  harassment: "categoryHarassment",
+  danger: "categoryDanger",
+  spam_fraud: "categorySpamFraud",
+  other: "categoryOther",
+} as const;
+
+const subcategoryLabelKeyMap = {
+  copyright: "subcategoryCopyright",
+  trademark: "subcategoryTrademark",
+  publicity: "subcategoryPublicity",
+  adult_sexual: "subcategoryAdultSexual",
+  minor_sexual: "subcategoryMinorSexual",
+  sexual_exploitation: "subcategorySexualExploitation",
+  gore: "subcategoryGore",
+  cruelty: "subcategoryCruelty",
+  animal_abuse: "subcategoryAnimalAbuse",
+  hate: "subcategoryHate",
+  threat: "subcategoryThreat",
+  bullying: "subcategoryBullying",
+  self_harm: "subcategorySelfHarm",
+  illegal_goods: "subcategoryIllegalGoods",
+  crime: "subcategoryCrime",
+  fraud: "subcategoryFraud",
+  spam: "subcategorySpam",
+  scam_link: "subcategoryScamLink",
+  other: "subcategoryOther",
+} as const;
+
 export function PostModerationMenu({
   postId,
   authorUserId,
@@ -71,6 +104,9 @@ export function PostModerationMenu({
   const [isBlocked, setIsBlocked] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const locale = useLocale() as Locale;
+  const moderationT = useTranslations("moderation");
+  const postsT = useTranslations("posts");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const redirectPath =
@@ -79,24 +115,35 @@ export function PostModerationMenu({
   const canShowBlock = showBlock && Boolean(authorUserId && currentUserId && authorUserId !== currentUserId);
   const canShowReport = !(authorUserId && currentUserId && authorUserId === currentUserId);
   const canShowShare = showShare;
-  const isPostDetailPage = pathname?.startsWith("/posts/") ?? false;
+  const isPostDetailPage = pathname
+    ? stripLocalePrefix(pathname).pathname.startsWith("/posts/")
+    : false;
   const category = useMemo(
     () => REPORT_TAXONOMY.find((item) => item.id === categoryId) || REPORT_TAXONOMY[0],
     [categoryId]
+  );
+  const moderationApiMessages = useMemo(
+    () => ({
+      reportFailed: moderationT("apiReportFailed"),
+      blockFailed: moderationT("apiBlockFailed"),
+      unblockFailed: moderationT("apiUnblockFailed"),
+      blockStatusFailed: moderationT("apiBlockStatusFailed"),
+    }),
+    [moderationT]
   );
 
   useEffect(() => {
     if (!canShowBlock || !authorUserId) {
       return;
     }
-    getBlockStatusAPI(authorUserId)
+    getBlockStatusAPI(authorUserId, moderationApiMessages)
       .then((status) => {
         setIsBlocked(status.isBlocked);
       })
       .catch(() => {
         setIsBlocked(false);
       });
-  }, [authorUserId, canShowBlock]);
+  }, [authorUserId, canShowBlock, moderationApiMessages]);
 
   const requireLogin = () => {
     if (!currentUserId) {
@@ -118,21 +165,22 @@ export function PostModerationMenu({
         categoryId,
         subcategoryId,
         details: details.trim() || undefined,
-      });
+      }, moderationApiMessages);
       toast({
-        title: "通報を受け付けました",
-        description: "内容を確認し、必要に応じて対応します。",
+        title: moderationT("reportSuccessTitle"),
+        description: moderationT("reportSuccessDescription"),
       });
       setIsReportDialogOpen(false);
       onHidden?.();
       if (isPostDetailPage) {
-        router.replace("/?mod_refresh=1");
+        router.replace(`${localizePublicPath("/", locale)}?mod_refresh=1`);
         router.refresh();
       }
     } catch (error) {
       toast({
-        title: "通報できませんでした",
-        description: error instanceof Error ? error.message : "時間をおいて再試行してください",
+        title: moderationT("reportFailedTitle"),
+        description:
+          error instanceof Error ? error.message : moderationT("retryLater"),
         variant: "destructive",
       });
     } finally {
@@ -151,29 +199,32 @@ export function PostModerationMenu({
     setIsSubmitting(true);
     try {
       if (isBlocked) {
-        await unblockUserAPI(authorUserId);
+        await unblockUserAPI(authorUserId, moderationApiMessages);
         setIsBlocked(false);
         toast({
-          title: "ブロックを解除しました",
+          title: moderationT("unblockSuccessTitle"),
         });
       } else {
-        await blockUserAPI(authorUserId);
+        await blockUserAPI(authorUserId, moderationApiMessages);
         setIsBlocked(true);
         toast({
-          title: "ユーザーをブロックしました",
-          description: "このユーザーの投稿は表示されません。",
+          title: moderationT("blockSuccessTitle"),
+          description: moderationT("blockSuccessDescription"),
         });
         onHidden?.();
         if (isPostDetailPage) {
-          router.replace("/?mod_refresh=1");
+          router.replace(`${localizePublicPath("/", locale)}?mod_refresh=1`);
           router.refresh();
         }
       }
       setIsBlockDialogOpen(false);
     } catch (error) {
       toast({
-        title: isBlocked ? "解除できませんでした" : "ブロックできませんでした",
-        description: error instanceof Error ? error.message : "時間をおいて再試行してください",
+        title: isBlocked
+          ? moderationT("unblockFailedTitle")
+          : moderationT("blockFailedTitle"),
+        description:
+          error instanceof Error ? error.message : moderationT("retryLater"),
         variant: "destructive",
       });
     } finally {
@@ -184,12 +235,12 @@ export function PostModerationMenu({
   const handleShare = async () => {
     try {
       const url = getPostDetailUrl(postId);
-      const result = await sharePost(url, DEFAULT_SHARE_TEXT);
+      const result = await sharePost(url, postsT("shareDefaultText"));
 
       if (result.method === "clipboard") {
         toast({
-          title: "共有文をコピーしました",
-          description: "SNSに貼り付けて投稿できます",
+          title: postsT("shareCopiedTitle"),
+          description: postsT("shareCopiedDescription"),
         });
       }
     } catch (error) {
@@ -197,12 +248,17 @@ export function PostModerationMenu({
         return;
       }
       toast({
-        title: "共有に失敗しました",
-        description: "予期せぬエラーが発生しました。時間をおいてから再度お試しください",
+        title: postsT("errorTitle"),
+        description: postsT("shareFailed"),
         variant: "destructive",
       });
     }
   };
+
+  const getCategoryLabel = (id: ReportCategoryId) =>
+    moderationT(categoryLabelKeyMap[id]);
+  const getSubcategoryLabel = (id: ReportSubcategoryId) =>
+    moderationT(subcategoryLabelKeyMap[id]);
 
   return (
     <>
@@ -213,7 +269,7 @@ export function PostModerationMenu({
             variant="ghost"
             size="icon"
             className="h-6 w-6 shrink-0 p-0"
-            aria-label="投稿メニュー"
+            aria-label={moderationT("menuAria")}
           >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -222,19 +278,21 @@ export function PostModerationMenu({
           {canShowShare && (
             <DropdownMenuItem onClick={handleShare}>
               <Share2 className="mr-2 h-4 w-4" />
-              シェアする
+              {moderationT("shareAction")}
             </DropdownMenuItem>
           )}
           {canShowReport && (
             <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
               <Flag className="mr-2 h-4 w-4" />
-              通報する
+              {moderationT("reportAction")}
             </DropdownMenuItem>
           )}
           {canShowBlock && (
             <DropdownMenuItem onClick={() => setIsBlockDialogOpen(true)}>
               <ShieldBan className="mr-2 h-4 w-4" />
-              {isBlocked ? "ブロック解除" : "ユーザーをブロック"}
+              {isBlocked
+                ? moderationT("unblockAction")
+                : moderationT("blockAction")}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -244,14 +302,14 @@ export function PostModerationMenu({
       <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>投稿を通報</DialogTitle>
+            <DialogTitle>{moderationT("reportDialogTitle")}</DialogTitle>
             <DialogDescription>
-              適切なカテゴリを選択してください。送信後、あなたの画面ではこの投稿を非表示にします。
+              {moderationT("reportDialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label>カテゴリ</Label>
+              <Label>{moderationT("categoryLabel")}</Label>
               <Select
                 value={categoryId}
                 onValueChange={(value) => {
@@ -264,51 +322,53 @@ export function PostModerationMenu({
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="カテゴリを選択" />
+                  <SelectValue placeholder={moderationT("categoryPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {REPORT_TAXONOMY.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
-                      {item.label}
+                      {getCategoryLabel(item.id)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>サブカテゴリ</Label>
+              <Label>{moderationT("subcategoryLabel")}</Label>
               <Select
                 value={subcategoryId}
                 onValueChange={(value) => setSubcategoryId(value as ReportSubcategoryId)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="サブカテゴリを選択" />
+                  <SelectValue
+                    placeholder={moderationT("subcategoryPlaceholder")}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {category.subcategories.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
-                      {item.label}
+                      {getSubcategoryLabel(item.id)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>補足（任意）</Label>
+              <Label>{moderationT("detailsLabel")}</Label>
               <Textarea
                 value={details}
                 onChange={(event) => setDetails(event.target.value)}
                 maxLength={300}
-                placeholder="補足があれば入力してください"
+                placeholder={moderationT("detailsPlaceholder")}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsReportDialogOpen(false)}>
-              キャンセル
+              {moderationT("cancel")}
             </Button>
             <Button onClick={handleReport} disabled={isSubmitting}>
-              送信
+              {moderationT("submit")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -318,18 +378,22 @@ export function PostModerationMenu({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isBlocked ? "ブロックを解除しますか？" : "このユーザーをブロックしますか？"}
+              {isBlocked
+                ? moderationT("unblockConfirmTitle")
+                : moderationT("blockConfirmTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isBlocked
-                ? "解除後、このユーザーの投稿が再び表示されるようになります。"
-                : "ブロック後、このユーザーの投稿はホームから非表示になります。"}
+                ? moderationT("unblockConfirmDescription")
+                : moderationT("blockConfirmDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel>{moderationT("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleBlockToggle} disabled={isSubmitting}>
-              {isBlocked ? "解除する" : "ブロックする"}
+              {isBlocked
+                ? moderationT("unblockConfirmAction")
+                : moderationT("blockConfirmAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

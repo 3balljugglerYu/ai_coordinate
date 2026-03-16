@@ -1,22 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
-import { createClient } from "@/lib/supabase/server";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
 /**
  * キャプション更新API
  */
 export async function PUT(request: NextRequest) {
+  const copy = postsRouteCopy[getRouteLocale(request)];
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: copy.authRequired, errorCode: "POSTS_AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
 
     const body = await request.json();
     const { id, caption } = body;
 
     if (!id) {
       return NextResponse.json(
-        { error: "Image ID is required" },
+        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -47,13 +55,10 @@ export async function PUT(request: NextRequest) {
     console.error("Update API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "更新に失敗しました",
+        error: copy.updateFailed,
+        errorCode: "POSTS_UPDATE_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

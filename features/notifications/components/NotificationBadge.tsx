@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "../hooks/useNotifications";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ export function NotificationBadge({
   onClick,
   className,
 }: NotificationBadgeProps) {
+  const t = useTranslations("notifications");
   const { unreadCount, markAllRead } = useNotifications();
 
   const handleClick = async () => {
@@ -43,7 +45,11 @@ export function NotificationBadge({
         "relative flex items-center justify-center p-2 h-auto",
         className
       )}
-      aria-label={`通知${unreadCount > 0 ? `（未読${unreadCount}件）` : ""}`}
+      aria-label={
+        unreadCount > 0
+          ? t("badgeAriaWithCount", { count: unreadCount })
+          : t("badgeAria")
+      }
     >
       <Bell className="h-5 w-5" />
       {unreadCount > 0 && (
@@ -52,4 +58,3 @@ export function NotificationBadge({
     </Button>
   );
 }
-

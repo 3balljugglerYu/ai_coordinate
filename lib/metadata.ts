@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/env";
+import { localizePublicPath, locales, type Locale } from "@/i18n/config";
 
 /**
  * マーケティングページ用のメタデータを生成するヘルパー
@@ -9,24 +10,37 @@ export function createMarketingPageMetadata({
   title,
   description,
   path,
+  locale,
   ogTitle,
   ogDescription,
 }: {
   title: string;
   description: string;
   path: string;
+  locale?: Locale;
   /** OG/Twitter 用タイトル（省略時は title を使用、tokushoho などページタイトルと異なる場合に指定） */
   ogTitle?: string;
   /** OG/Twitter 用説明（省略時は description を使用） */
   ogDescription?: string;
 }): Metadata {
   const siteUrl = getSiteUrl();
-  const url = siteUrl ? `${siteUrl}${path}` : undefined;
+  const canonicalPath = locale ? localizePublicPath(path, locale) : path;
+  const url = siteUrl ? `${siteUrl}${canonicalPath}` : undefined;
   const fullTitle = `${ogTitle ?? title} | Persta.AI`;
+  const alternates =
+    siteUrl && locale
+      ? {
+          canonical: url,
+          languages: Object.fromEntries(
+            locales.map((entry) => [entry, `${siteUrl}${localizePublicPath(path, entry)}`])
+          ),
+        }
+      : undefined;
 
   return {
     title,
     description,
+    alternates,
     openGraph: {
       title: fullTitle,
       description: ogDescription ?? description,

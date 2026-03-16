@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useTranslations } from "next-intl";
 import { PostDetailStatsContent } from "./PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
 import Image from "next/image";
@@ -57,6 +58,7 @@ export function PostDetailStatic({
   isHidden = false,
   onHidden,
 }: PostDetailStaticProps) {
+  const postsT = useTranslations("posts");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [isPromptCopied, setIsPromptCopied] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -70,7 +72,7 @@ export function PostDetailStatic({
     post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
     post.user?.id?.slice(0, 8) ||
-    "匿名ユーザー";
+    postsT("anonymousUser");
   const isOwner = currentUserId === post.user_id;
   const followUserId = post.user?.id || post.user_id;
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
@@ -79,8 +81,8 @@ export function PostDetailStatic({
   const handleCopyPrompt = async () => {
     if (!canViewPrompt || !post.prompt) {
       toast({
-        title: "フォローが必要です",
-        description: "『フォロー』することでコピーできるようになります。",
+        title: postsT("followRequiredTitle"),
+        description: postsT("followRequiredDescription"),
       });
       return;
     }
@@ -89,15 +91,15 @@ export function PostDetailStatic({
         await navigator.clipboard.writeText(post.prompt);
         setIsPromptCopied(true);
         toast({
-          title: "コピーしました",
-          description: "プロンプトをクリップボードにコピーしました",
+          title: postsT("copySuccessTitle"),
+          description: postsT("copySuccessDescription"),
         });
         setTimeout(() => setIsPromptCopied(false), 2000);
       } catch (error) {
         console.error("Failed to copy:", error);
         toast({
-          title: "コピーに失敗しました",
-          description: "もう一度お試しください",
+          title: postsT("copyFailureTitle"),
+          description: postsT("copyFailureDescription"),
           variant: "destructive",
         });
       }
@@ -132,7 +134,7 @@ export function PostDetailStatic({
     return (
       <div className="container mx-auto max-w-4xl px-4 py-8">
         <p className="text-sm text-muted-foreground">
-          この投稿はあなたの表示設定により非表示になりました。
+          {postsT("hiddenMessage")}
         </p>
       </div>
     );
@@ -156,7 +158,7 @@ export function PostDetailStatic({
             {displayImageUrl ? (
               <Image
                 src={displayImageUrl}
-                alt={post.caption || "投稿画像"}
+                alt={post.caption || postsT("noImage")}
                 width={1200}
                 height={1200}
                 className={`w-full h-auto object-contain ${
@@ -169,7 +171,7 @@ export function PostDetailStatic({
               />
             ) : (
               <div className="flex h-full items-center justify-center text-gray-400">
-                画像がありません
+                {postsT("noImage")}
               </div>
             )}
           </div>
@@ -248,21 +250,21 @@ export function PostDetailStatic({
                         className="text-destructive"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        削除
+                        {postsT("delete")}
                       </DropdownMenuItem>
                     </>
                   ) : (
                     <>
                       <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
                         <Edit className="mr-2 h-4 w-4" />
-                        編集
+                        {postsT("edit")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setDeleteDialogOpen(true)}
                         className="text-destructive"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        投稿を取り消す
+                        {postsT("unpost")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -311,7 +313,7 @@ export function PostDetailStatic({
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-sm font-bold text-gray-700">
-                プロンプト
+                {postsT("prompt")}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -323,12 +325,12 @@ export function PostDetailStatic({
                   {isPromptCopied ? (
                     <>
                       <Check className="mr-1 h-3 w-3" />
-                      コピー済み
+                      {postsT("copied")}
                     </>
                   ) : (
                     <>
                       <Copy className="mr-1 h-3 w-3" />
-                      コピー
+                      {postsT("copy")}
                     </>
                   )}
                 </Button>
@@ -344,7 +346,7 @@ export function PostDetailStatic({
         <Suspense fallback={null}>
           <ImageFullscreen
             imageUrl={displayImageUrl}
-            alt={post.caption || "投稿画像"}
+            alt={post.caption || postsT("noImage")}
             isOpen={isFullscreenOpen}
             onClose={() => setIsFullscreenOpen(false)}
           />

@@ -1,11 +1,27 @@
 import type { MetadataRoute } from "next";
+import { cookies, headers } from "next/headers";
+import {
+  LOCALE_COOKIE,
+  localizePublicPath,
+  resolveRequestLocale,
+} from "@/i18n/config";
+import { getHomeCopy } from "@/i18n/page-copy";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+  const locale = resolveRequestLocale({
+    pathname: "/",
+    cookieLocale: cookieStore.get(LOCALE_COOKIE)?.value,
+    acceptLanguage: headerStore.get("accept-language"),
+  });
+  const copy = getHomeCopy(locale);
+
   return {
     name: "Persta.AI",
     short_name: "Persta.AI",
-    description: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
-    start_url: "/",
+    description: copy.metadataDescription,
+    start_url: localizePublicPath("/", locale),
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#ffffff",
@@ -23,4 +39,3 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
   };
 }
-

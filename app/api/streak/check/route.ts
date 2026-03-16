@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -6,6 +6,8 @@ import {
   getJstDateString,
   isStreakBroken,
 } from "@/features/challenges/lib/streak-utils";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getStreakRouteCopy } from "@/features/challenges/lib/streak-route-copy";
 
 type StreakStatus = {
   streak_days: number | null;
@@ -55,7 +57,9 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
  * GET: 状態取得のみ（副作用なし）。継続条件外の場合は表示用に streak_days: 0 を返す
  * POST: 特典付与を実行する
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const copy = getStreakRouteCopy(getRouteLocale(request));
+
   try {
     const user = await getUser();
 
@@ -67,7 +71,8 @@ export async function GET() {
           streak_days: null,
           checked_in_today: false,
           last_streak_login_at: null,
-          error: "認証が必要です",
+          error: copy.authRequired,
+          errorCode: "STREAK_AUTH_REQUIRED",
         },
         { status: 401 }
       );
@@ -88,17 +93,17 @@ export async function GET() {
         streak_days: null,
         checked_in_today: false,
         last_streak_login_at: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "特典ステータスの取得に失敗しました",
+        error: copy.streakStatusFailed,
+        errorCode: "STREAK_STATUS_FETCH_FAILED",
       },
       { status: 500 }
     );
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const copy = getStreakRouteCopy(getRouteLocale(request));
+
   try {
     const user = await getUser();
 
@@ -110,7 +115,8 @@ export async function POST() {
           streak_days: null,
           checked_in_today: false,
           last_streak_login_at: null,
-          error: "認証が必要です",
+          error: copy.authRequired,
+          errorCode: "STREAK_AUTH_REQUIRED",
         },
         { status: 401 }
       );
@@ -133,7 +139,8 @@ export async function POST() {
           streak_days: null,
           checked_in_today: false,
           last_streak_login_at: null,
-          error: "特典の確認に失敗しました",
+          error: copy.streakBonusFailed,
+          errorCode: "STREAK_BONUS_CHECK_FAILED",
         },
         { status: 500 }
       );
@@ -160,10 +167,8 @@ export async function POST() {
         streak_days: null,
         checked_in_today: false,
         last_streak_login_at: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "特典の確認に失敗しました",
+        error: copy.streakBonusFailed,
+        errorCode: "STREAK_BONUS_CHECK_FAILED",
       },
       { status: 500 }
     );

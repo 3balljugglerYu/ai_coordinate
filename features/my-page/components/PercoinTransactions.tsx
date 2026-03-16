@@ -1,9 +1,9 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import {
   ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES,
-  getAdminPercoinBalanceTypeLabel,
   isAdminPercoinBalanceType,
 } from "@/features/credits/lib/admin-percoin-balance-type";
 import {
@@ -27,45 +27,61 @@ interface PercoinTransactionsProps {
 
 function formatTransactionType(
   type: string,
-  metadata?: Record<string, unknown> | null
+  metadata: Record<string, unknown> | null | undefined,
+  labels: {
+    purchase: string;
+    consumption: string;
+    refund: string;
+    signupBonus: string;
+    dailyPost: string;
+    streak: string;
+    referral: string;
+    adminBonusDefault: string;
+    adminDeductionDefault: string;
+    tourBonus: string;
+    forfeiture: string;
+  }
 ) {
   switch (type) {
     case "purchase":
-      return "購入";
+      return labels.purchase;
     case "consumption":
-      return "生成利用";
+      return labels.consumption;
     case "refund":
-      return "生成失敗返却";
+      return labels.refund;
     case "signup_bonus":
-      return "新規登録ボーナス";
+      return labels.signupBonus;
     case "daily_post":
-      return "デイリー投稿ボーナス";
+      return labels.dailyPost;
     case "streak":
-      return "連続ログインボーナス";
+      return labels.streak;
     case "referral":
-      return "紹介ボーナス";
+      return labels.referral;
     case "admin_bonus":
       if (metadata && typeof metadata.reason === "string" && metadata.reason.trim()) {
         return metadata.reason;
       }
-      return "運営者からのボーナス";
+      return labels.adminBonusDefault;
     case "admin_deduction":
       if (metadata && typeof metadata.reason === "string" && metadata.reason.trim()) {
         return metadata.reason;
       }
-      return "運営による減算";
+      return labels.adminDeductionDefault;
     case "tour_bonus":
-      return "チュートリアルボーナス";
+      return labels.tourBonus;
     case "forfeiture":
-      return "退会による放棄";
+      return labels.forfeiture;
     default:
       return type;
   }
 }
 
-function formatExpireAt(expireAt: string): string {
-  const d = new Date(expireAt);
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日迄`;
+function formatExpireAt(expireAt: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(expireAt));
 }
 
 function toPositiveInt(value: unknown): number {
@@ -74,7 +90,15 @@ function toPositiveInt(value: unknown): number {
   return Math.max(0, Math.trunc(n));
 }
 
-function getUsageBreakdownText(transaction: PercoinTransaction): string | null {
+function getUsageBreakdownText(
+  transaction: PercoinTransaction,
+  labels: {
+    periodLimited: string;
+    unlimitedBonus: string;
+    paid: string;
+    prefix: (details: string) => string;
+  }
+): string | null {
   const metadata = (transaction.metadata ?? {}) as Record<string, unknown>;
   if (
     transaction.transaction_type !== "consumption" &&
@@ -116,28 +140,41 @@ function getUsageBreakdownText(transaction: PercoinTransaction): string | null {
   }
 
   const parts: string[] = [];
-  if (periodLimited > 0) parts.push(`期間限定 ${periodLimited}`);
-  if (unlimitedBonus > 0) parts.push(`無期限付与 ${unlimitedBonus}`);
-  if (paid > 0) parts.push(`購入分 ${paid}`);
+  if (periodLimited > 0) {
+    parts.push(labels.periodLimited.replace("{amount}", String(periodLimited)));
+  }
+  if (unlimitedBonus > 0) {
+    parts.push(labels.unlimitedBonus.replace("{amount}", String(unlimitedBonus)));
+  }
+  if (paid > 0) {
+    parts.push(labels.paid.replace("{amount}", String(paid)));
+  }
 
-  return parts.length > 0 ? `内訳: ${parts.join(" / ")}` : null;
+  return parts.length > 0 ? labels.prefix(parts.join(" / ")) : null;
 }
 
 function getBalanceTypeBadge(
-  transaction: PercoinTransaction
+  transaction: PercoinTransaction,
+  labels: {
+    periodLimited: string;
+    unlimited: string;
+  }
 ): { label: string; className: string } | null {
   const balanceType = transaction.metadata?.balance_type;
 
   if (isAdminPercoinBalanceType(balanceType)) {
     return {
-      label: getAdminPercoinBalanceTypeLabel(balanceType),
+      label:
+        balanceType === "period_limited"
+          ? labels.periodLimited
+          : labels.unlimited,
       className: ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES[balanceType],
     };
   }
 
   if (transaction.expire_at && transaction.transaction_type !== "refund") {
     return {
-      label: "期間限定",
+      label: labels.periodLimited,
       className: ADMIN_PERCOIN_BALANCE_TYPE_BADGE_CLASSES.period_limited,
     };
   }
@@ -156,6 +193,8 @@ export function PercoinTransactions({
   onNextPage,
   scrollTargetId = "percoin-transactions",
 }: PercoinTransactionsProps) {
+  const t = useTranslations("credits");
+  const locale = useLocale();
   const scrollToTitle = () => {
     const el = document.getElementById(scrollTargetId);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -171,10 +210,29 @@ export function PercoinTransactions({
     scrollToTitle();
   };
   const emptyMessageByFilter: Record<PercoinTransactionFilter, string> = {
-    all: "まだ取引履歴がありません。画像を生成すると履歴が表示されます。",
-    regular: "取引履歴がありません。",
-    period_limited: "期間限定の取引履歴がありません。",
-    usage: "利用履歴がありません。",
+    all: t("emptyAll"),
+    regular: t("emptyRegular"),
+    period_limited: t("emptyPeriodLimited"),
+    usage: t("emptyUsage"),
+  };
+  const transactionTypeLabels = {
+    purchase: t("transactionTypePurchase"),
+    consumption: t("transactionTypeConsumption"),
+    refund: t("transactionTypeRefund"),
+    signupBonus: t("transactionTypeSignupBonus"),
+    dailyPost: t("transactionTypeDailyPost"),
+    streak: t("transactionTypeStreak"),
+    referral: t("transactionTypeReferral"),
+    adminBonusDefault: t("transactionTypeAdminBonusDefault"),
+    adminDeductionDefault: t("transactionTypeAdminDeductionDefault"),
+    tourBonus: t("transactionTypeTourBonus"),
+    forfeiture: t("transactionTypeForfeiture"),
+  };
+  const usageBreakdownLabels = {
+    periodLimited: t("breakdownPeriodLimited"),
+    unlimitedBonus: t("breakdownUnlimitedBonus"),
+    paid: t("breakdownPaid"),
+    prefix: (details: string) => t("breakdownPrefix", { details }),
   };
   const currentPage = Math.floor(offset / PERCOIN_TRANSACTIONS_PER_PAGE) + 1;
   const totalPages =
@@ -203,14 +261,14 @@ export function PercoinTransactions({
   return (
     <Card className="p-6">
       <div id={scrollTargetId} className="mb-4 scroll-mt-4">
-        <h2 className="text-xl font-semibold text-gray-900">取引履歴</h2>
-        <p className="mt-0.5 text-xs text-gray-500">単位: ペルコイン</p>
+        <h2 className="text-xl font-semibold text-gray-900">{t("transactionHistoryTitle")}</h2>
+        <p className="mt-0.5 text-xs text-gray-500">{t("transactionHistoryUnit")}</p>
       </div>
 
       {/* タブ（1行・等幅でスクロール不要、touch-target 44px 維持） */}
       <div
         role="tablist"
-        aria-label="取引履歴のフィルタ"
+        aria-label={t("transactionFilterLabel")}
         className="mb-4 flex gap-1 sm:gap-2"
       >
         {(["all", "regular", "period_limited", "usage"] as const).map((f) => (
@@ -228,10 +286,10 @@ export function PercoinTransactions({
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            {f === "all" && "すべて"}
-            {f === "regular" && "無期限"}
-            {f === "period_limited" && "期間限定"}
-            {f === "usage" && "利用履歴"}
+            {f === "all" && t("filterAll")}
+            {f === "regular" && t("filterRegular")}
+            {f === "period_limited" && t("filterPeriodLimited")}
+            {f === "usage" && t("filterUsage")}
           </button>
         ))}
       </div>
@@ -239,7 +297,7 @@ export function PercoinTransactions({
       {/* 取引一覧 */}
       <div id="percoin-transactions-list" role="tabpanel" aria-labelledby={`tab-${filter}`}>
         {isLoading ? (
-          <p className="py-8 text-center text-sm text-gray-500">読み込み中...</p>
+          <p className="py-8 text-center text-sm text-gray-500">{t("loading")}</p>
         ) : transactions.length === 0 ? (
           <p className="text-sm text-gray-500">
             {emptyMessageByFilter[filter]}
@@ -247,14 +305,21 @@ export function PercoinTransactions({
         ) : (
           <ul className="space-y-3">
             {transactions.map((tx) => {
-              const balanceTypeBadge = getBalanceTypeBadge(tx);
-              const usageBreakdown = getUsageBreakdownText(tx);
+              const balanceTypeBadge = getBalanceTypeBadge(tx, {
+                periodLimited: t("badgePeriodLimited"),
+                unlimited: t("badgeUnlimited"),
+              });
+              const usageBreakdown = getUsageBreakdownText(tx, usageBreakdownLabels);
 
               return (
                 <li key={tx.id} className="rounded border border-gray-200 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-sm font-medium text-gray-900 break-words min-w-0 flex-1">
-                      {formatTransactionType(tx.transaction_type, tx.metadata)}
+                      {formatTransactionType(
+                        tx.transaction_type,
+                        tx.metadata,
+                        transactionTypeLabels
+                      )}
                     </span>
                     <span
                       className={`text-sm font-semibold shrink-0 whitespace-nowrap ${
@@ -266,9 +331,17 @@ export function PercoinTransactions({
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                    <span>{new Date(tx.created_at).toLocaleString("ja-JP")}</span>
+                    <span>
+                      {new Date(tx.created_at).toLocaleString(
+                        locale === "ja" ? "ja-JP" : "en-US"
+                      )}
+                    </span>
                     {tx.expire_at && tx.transaction_type !== "refund" && (
-                      <span>有効期限: {formatExpireAt(tx.expire_at)}</span>
+                      <span>
+                        {t("expireAt", {
+                          date: formatExpireAt(tx.expire_at, locale),
+                        })}
+                      </span>
                     )}
                     {usageBreakdown && (
                       <span className="font-medium text-gray-600">{usageBreakdown}</span>
@@ -281,12 +354,12 @@ export function PercoinTransactions({
                       )}
                       {((tx.metadata as { mode?: string } | null)?.mode === "mock") && (
                         <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600">
-                          モック
+                          {t("badgeMock")}
                         </span>
                       )}
                       {((tx.metadata as { mode?: string } | null)?.mode === "test") && (
                         <span className="rounded bg-yellow-100 px-2 py-1 text-[10px] font-medium text-yellow-700">
-                          テスト
+                          {t("badgeTest")}
                         </span>
                       )}
                     </div>
@@ -301,7 +374,7 @@ export function PercoinTransactions({
         {totalPages > 1 && (
           <nav
             className="mt-6 flex flex-wrap items-center justify-center gap-2 border-t border-gray-200 pt-4"
-            aria-label="取引履歴のページネーション"
+            aria-label={t("paginationLabel")}
           >
             {pageNumbers.map((page) => (
               <button
@@ -314,7 +387,7 @@ export function PercoinTransactions({
                     ? "border-gray-400 bg-gray-200 text-gray-800"
                     : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
-                aria-label={`${page}ページへ`}
+                aria-label={t("goToPage", { page })}
                 aria-current={page === currentPage ? "page" : undefined}
               >
                 {page}
@@ -325,9 +398,9 @@ export function PercoinTransactions({
               onClick={handleNextPage}
               disabled={!hasNextPage || isLoading}
               className="min-h-[40px] rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              aria-label="次のページへ"
+              aria-label={t("nextPage")}
             >
-              NEXT
+              {t("next")}
             </button>
           </nav>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 
@@ -21,6 +22,7 @@ export function CollapsibleText({
   className = "",
   textClassName = "text-gray-700",
 }: CollapsibleTextProps) {
+  const postsT = useTranslations("posts");
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const textRef = useRef<HTMLParagraphElement>(null);
@@ -65,12 +67,12 @@ export function CollapsibleText({
         >
           {isExpanded ? (
             <>
-              折りたたむ
+              {postsT("collapse")}
               <ChevronDown className="ml-1 h-3 w-3 rotate-180" />
             </>
           ) : (
             <>
-              もっと見る
+              {postsT("readMore")}
               <ChevronDown className="ml-1 h-3 w-3" />
             </>
           )}
@@ -79,4 +81,3 @@ export function CollapsibleText({
     </div>
   );
 }
-

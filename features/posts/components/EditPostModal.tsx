@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -30,6 +31,7 @@ export function EditPostModal({
   imageId,
   currentCaption,
 }: EditPostModalProps) {
+  const t = useTranslations("posts");
   const router = useRouter();
   const [caption, setCaption] = useState(currentCaption || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,7 +49,7 @@ export function EditPostModal({
     setError(null);
 
     if (caption.length > MAX_CAPTION_LENGTH) {
-      setError(`キャプションは${MAX_CAPTION_LENGTH}文字以内で入力してください`);
+      setError(t("captionTooLong", { max: MAX_CAPTION_LENGTH }));
       return;
     }
 
@@ -57,6 +59,8 @@ export function EditPostModal({
       await updatePostCaption({
         id: imageId,
         caption: caption.trim() || undefined,
+      }, {
+        updateFailed: t("updateFailed"),
       });
 
       onOpenChange(false);
@@ -66,7 +70,7 @@ export function EditPostModal({
       setError(
         err instanceof Error
           ? err.message
-          : "更新に失敗しました。もう一度お試しください。"
+          : t("updateFailedRetry")
       );
     } finally {
       setIsSubmitting(false);
@@ -81,20 +85,20 @@ export function EditPostModal({
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>キャプションを編集</DialogTitle>
+            <DialogTitle>{t("editModalTitle")}</DialogTitle>
             <DialogDescription>
-              キャプションを編集します（最大{MAX_CAPTION_LENGTH}文字）
+              {t("editModalDescription", { max: MAX_CAPTION_LENGTH })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
             <div className="space-y-2">
-              <Label htmlFor="caption">キャプション</Label>
+              <Label htmlFor="caption">{t("captionLabel")}</Label>
               <Textarea
                 id="caption"
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                placeholder="画像の説明を入力してください（任意）"
+                placeholder={t("captionPlaceholder")}
                 rows={4}
                 maxLength={MAX_CAPTION_LENGTH}
                 className={isOverLimit ? "border-destructive" : ""}
@@ -104,7 +108,7 @@ export function EditPostModal({
                 <span
                   className={isOverLimit ? "text-destructive" : "text-muted-foreground"}
                 >
-                  {remainingChars}文字残り
+                  {t("charactersRemaining", { count: remainingChars })}
                 </span>
                 {error && (
                   <span className="text-destructive text-right">{error}</span>
@@ -120,10 +124,10 @@ export function EditPostModal({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              キャンセル
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={isSubmitting || isOverLimit}>
-              {isSubmitting ? "更新中..." : "更新する"}
+              {isSubmitting ? t("updateSubmitting") : t("updateSubmit")}
             </Button>
           </DialogFooter>
         </form>
@@ -131,4 +135,3 @@ export function EditPostModal({
     </Dialog>
   );
 }
-

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import { useInView } from "react-intersection-observer";
+import { useTranslations } from "next-intl";
 import { CommentItem } from "./CommentItem";
 import { CommentLoadMoreSkeleton } from "./CommentLoadMoreSkeleton";
 import { getCommentsAPI } from "../lib/api";
@@ -44,6 +45,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
     },
     ref
   ) {
+  const t = useTranslations("posts");
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -60,7 +62,10 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
         const newComments = await getCommentsAPI(
           imageId,
           COMMENTS_PER_PAGE,
-          newOffset
+          newOffset,
+          {
+            commentsFetchFailed: t("commentsFetchFailed"),
+          }
         );
 
         if (reset) {
@@ -78,7 +83,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
         setIsLoading(false);
       }
     },
-    [imageId]
+    [imageId, t]
   );
 
   // 親コンポーネントから呼び出せるrefresh関数を公開
@@ -175,8 +180,8 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
 
   if (comments.length === 0 && !isLoading) {
     return (
-      <div className="py-8 text-center text-sm text-gray-500">
-        まだコメントがありません
+        <div className="py-8 text-center text-sm text-gray-500">
+        {t("noComments")}
       </div>
     );
   }
@@ -203,11 +208,10 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
       {/* 全て読み込み完了時のメッセージ */}
       {!hasMore && comments.length > 0 && (
         <div className="py-4 text-center text-sm text-gray-500">
-          全てのコメントを表示しました
+          {t("allCommentsShown")}
         </div>
       )}
     </div>
   );
   }
 );
-

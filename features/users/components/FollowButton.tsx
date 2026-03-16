@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -23,6 +24,7 @@ export function FollowButton({
   currentUserId: propCurrentUserId,
   onFollowChange,
 }: FollowButtonProps) {
+  const t = useTranslations("follow");
   const [currentUserId, setCurrentUserId] = useState<string | null>(propCurrentUserId || null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +52,7 @@ export function FollowButton({
     fetch(`/api/users/${userId}/follow-status`)
       .then((res) => {
         if (!res.ok) {
-          throw new Error("フォロー状態の取得に失敗しました");
+          throw new Error(t("fetchStatusFailed"));
         }
         return res.json();
       })
@@ -63,7 +65,7 @@ export function FollowButton({
         console.error("Failed to get follow status:", error);
         setIsLoadingStatus(false);
       });
-  }, [userId, currentUserId]);
+  }, [userId, currentUserId, onFollowChange, t]);
 
   const toggleFollow = async () => {
     if (isLoading) return;
@@ -83,7 +85,7 @@ export function FollowButton({
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.error || "フォロー解除に失敗しました");
+          throw new Error(error.error || t("unfollowFailed"));
         }
 
         onFollowChange?.(false);
@@ -95,7 +97,7 @@ export function FollowButton({
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.error || "フォローに失敗しました");
+          throw new Error(error.error || t("followFailed"));
         }
 
         onFollowChange?.(true);
@@ -105,11 +107,11 @@ export function FollowButton({
       setIsFollowing(previousIsFollowing);
       onFollowChange?.(previousIsFollowing);
       toast({
-        title: "エラー",
+        title: t("errorTitle"),
         description:
           error instanceof Error
             ? error.message
-            : "フォローの処理に失敗しました",
+            : t("genericFailed"),
         variant: "destructive",
       });
     } finally {
@@ -130,8 +132,8 @@ export function FollowButton({
     // フォロー解除時はトーストのアクションのみで実行
     if (isFollowing) {
       const confirmToast = toast({
-        title: "フォロー解除の確認",
-        description: "本当にフォローを解除しますか？",
+        title: t("confirmUnfollowTitle"),
+        description: t("confirmUnfollowDescription"),
         action: (
           <Button
             variant="destructive"
@@ -141,7 +143,7 @@ export function FollowButton({
               confirmToast.dismiss();
             }}
           >
-            解除する
+            {t("confirmUnfollowAction")}
           </Button>
         ),
       });
@@ -160,7 +162,7 @@ export function FollowButton({
     return (
       <Button variant="default" size="sm" disabled className="flex items-center gap-2">
         <UserPlus className="h-4 w-4" />
-        <span>フォロー</span>
+        <span>{t("follow")}</span>
       </Button>
     );
   }
@@ -177,12 +179,12 @@ export function FollowButton({
         {isFollowing ? (
           <>
             <UserMinus className="h-4 w-4" />
-            <span>フォロー解除</span>
+            <span>{t("unfollow")}</span>
           </>
         ) : (
           <>
             <UserPlus className="h-4 w-4" />
-            <span>フォロー</span>
+            <span>{t("follow")}</span>
           </>
         )}
       </Button>

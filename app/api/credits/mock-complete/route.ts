@@ -4,8 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findPercoinPackage } from "@/features/credits/percoin-packages";
 import { recordMockPercoinPurchase } from "@/features/credits/lib/percoin-service";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 
 export async function POST(request: NextRequest) {
+  const copy = getCreditsRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -13,25 +18,19 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError(copy.authRequired, "CREDITS_AUTH_REQUIRED", 401);
     }
 
     const body = await request.json().catch(() => null);
     const packageId = body?.packageId as string | undefined;
 
     if (!packageId) {
-      return NextResponse.json(
-        { error: "packageId is required" },
-        { status: 400 }
-      );
+      return jsonError(copy.packageIdRequired, "CREDITS_PACKAGE_ID_REQUIRED", 400);
     }
 
     const percoinPackage = findPercoinPackage(packageId);
     if (!percoinPackage) {
-      return NextResponse.json(
-        { error: "Invalid percoin package" },
-        { status: 404 }
-      );
+      return jsonError(copy.invalidPackage, "CREDITS_PACKAGE_NOT_FOUND", 404);
     }
 
     // purchase_promo は service_role のみ許可のため createAdminClient を使用
@@ -52,9 +51,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Mock purchase completion error:", error);
-    return NextResponse.json(
-      { error: "Failed to complete mock purchase" },
-      { status: 500 }
-    );
+    return jsonError(copy.mockPurchaseFailed, "CREDITS_MOCK_PURCHASE_FAILED", 500);
   }
 }

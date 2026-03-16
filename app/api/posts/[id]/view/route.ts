@@ -3,6 +3,8 @@ import { incrementViewCount } from "@/features/posts/lib/server-api";
 import { getPost } from "@/features/posts/lib/server-api";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
 /**
  * 閲覧数をインクリメントするAPI
@@ -12,6 +14,7 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const copy = postsRouteCopy[getRouteLocale(_request)];
   try {
     const user = await getUser();
     const currentUserId = user?.id ?? null;
@@ -22,7 +25,7 @@ export async function POST(
 
     if (!id) {
       return NextResponse.json(
-        { error: "Image ID is required" },
+        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -48,10 +51,8 @@ export async function POST(
     console.error("View count API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "閲覧数の更新に失敗しました",
+        error: copy.viewCountUpdateFailed,
+        errorCode: "POSTS_VIEW_COUNT_UPDATE_FAILED",
       },
       { status: 500 }
     );

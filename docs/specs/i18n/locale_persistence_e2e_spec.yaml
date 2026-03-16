@@ -1,0 +1,163 @@
+metadata:
+  class: LocalePersistenceE2E
+  source: app/(app)/my-page/page.tsx
+  version: "1.0"
+  created_at: "2026-03-16"
+
+dependencies:
+  repositories: []
+  services:
+    - LocaleProxyRoute
+    - I18nConfig helpers
+    - Auth page copy
+    - Server-side requireAuth redirect
+  external:
+    - Browser locale cookie persistence
+    - Next.js routing and redirect handling
+
+state_properties: []
+
+specifications:
+  - id: LPE-001
+    method: persist
+    type: state-driven
+    ears: |
+      While the browser already holds an English locale cookie,
+      the system shall use that cookie to localize subsequent bare public requests
+      even when the browser's preferred language conflicts with the cookie value.
+    ears_ja: |
+      ブラウザが既に英語のlocale cookieを保持している間、
+      システムはブラウザの優先言語がcookie値と競合していても、
+      そのcookieを使って後続のlocaleなし公開リクエストをlocalizeしなければならない。
+    preconditions:
+      - The browser has previously visited an English localized public page
+      - The NEXT_LOCALE cookie value is en
+      - A later bare public request is made under a conflicting browser locale such as Japanese
+    preconditions_ja:
+      - ブラウザが以前に英語のlocale付き公開ページへ訪問している
+      - NEXT_LOCALE cookieの値が en である
+      - 後続のlocaleなし公開リクエストが日本語など競合するブラウザlocale下で行われる
+    postconditions:
+      success:
+        - Redirects the bare public request to the English localized URL
+        - Preserves the original query string on the redirect URL
+      error:
+        - Does not switch the user back to Japanese due to Accept-Language alone
+    postconditions_ja:
+      success:
+        - localeなし公開リクエストを英語のlocale付きURLへリダイレクトする
+        - redirect先URLで元のquery stringを保持する
+      error:
+        - Accept-Languageだけを理由に日本語へ戻さない
+    test_cases:
+      - persist_GivenPersistedEnglishLocaleCookie_ShouldKeepEnglishOnBarePublicRoute
+    test_cases_ja:
+      - persist_英語localeCookieが保持されている場合_localeなし公開ルートでも英語を維持する
+
+  - id: LPE-002
+    method: persist
+    type: state-driven
+    ears: |
+      While the browser already holds a Japanese locale cookie,
+      the system shall use that cookie to localize subsequent bare public requests
+      even when the browser's preferred language conflicts with the cookie value.
+    ears_ja: |
+      ブラウザが既に日本語のlocale cookieを保持している間、
+      システムはブラウザの優先言語がcookie値と競合していても、
+      そのcookieを使って後続のlocaleなし公開リクエストをlocalizeしなければならない。
+    preconditions:
+      - The browser has previously visited a Japanese localized public page
+      - The NEXT_LOCALE cookie value is ja
+      - A later bare public request is made under a conflicting browser locale such as English
+    preconditions_ja:
+      - ブラウザが以前に日本語のlocale付き公開ページへ訪問している
+      - NEXT_LOCALE cookieの値が ja である
+      - 後続のlocaleなし公開リクエストが英語など競合するブラウザlocale下で行われる
+    postconditions:
+      success:
+        - Redirects the bare public request to the Japanese localized URL
+        - Preserves the original query string on the redirect URL
+      error:
+        - Does not switch the user back to English due to Accept-Language alone
+    postconditions_ja:
+      success:
+        - localeなし公開リクエストを日本語のlocale付きURLへリダイレクトする
+        - redirect先URLで元のquery stringを保持する
+      error:
+        - Accept-Languageだけを理由に英語へ戻さない
+    test_cases:
+      - persist_GivenPersistedJapaneseLocaleCookie_ShouldKeepJapaneseOnBarePublicRoute
+    test_cases_ja:
+      - persist_日本語localeCookieが保持されている場合_localeなし公開ルートでも日本語を維持する
+
+  - id: LPE-003
+    method: persist
+    type: state-driven
+    ears: |
+      While the browser already holds an English locale cookie,
+      the system shall render locale-less authentication pages in English
+      when an unauthenticated internal route redirects the browser to /login.
+    ears_ja: |
+      ブラウザが既に英語のlocale cookieを保持している間、
+      未認証の内部ルートがブラウザを /login へリダイレクトした場合、
+      システムはlocaleなし認証ページを英語で描画しなければならない。
+    preconditions:
+      - The browser has previously visited an English localized public page
+      - The NEXT_LOCALE cookie value is en
+      - The browser navigates to an internal route that requires authentication
+    preconditions_ja:
+      - ブラウザが以前に英語のlocale付き公開ページへ訪問している
+      - NEXT_LOCALE cookieの値が en である
+      - ブラウザが認証を必要とする内部ルートへ遷移する
+    postconditions:
+      success:
+        - Redirects the browser to /login without adding a locale prefix
+        - Renders the English login heading and description
+      error:
+        - Does not fall back to Japanese on the login screen
+    postconditions_ja:
+      success:
+        - locale prefixを付けずにブラウザを /login へリダイレクトする
+        - 英語のログイン見出しと説明文を描画する
+      error:
+        - ログイン画面で日本語へフォールバックしない
+    test_cases:
+      - persist_GivenPersistedEnglishLocaleCookie_ShouldRenderEnglishLoginAfterInternalRedirect
+    test_cases_ja:
+      - persist_英語localeCookieが保持されている場合_内部リダイレクト後も英語ログインを描画する
+
+  - id: LPE-004
+    method: persist
+    type: state-driven
+    ears: |
+      While the browser already holds a Japanese locale cookie,
+      the system shall render locale-less authentication pages in Japanese
+      when an unauthenticated internal route redirects the browser to /login.
+    ears_ja: |
+      ブラウザが既に日本語のlocale cookieを保持している間、
+      未認証の内部ルートがブラウザを /login へリダイレクトした場合、
+      システムはlocaleなし認証ページを日本語で描画しなければならない。
+    preconditions:
+      - The browser has previously visited a Japanese localized public page
+      - The NEXT_LOCALE cookie value is ja
+      - The browser navigates to an internal route that requires authentication
+    preconditions_ja:
+      - ブラウザが以前に日本語のlocale付き公開ページへ訪問している
+      - NEXT_LOCALE cookieの値が ja である
+      - ブラウザが認証を必要とする内部ルートへ遷移する
+    postconditions:
+      success:
+        - Redirects the browser to /login without adding a locale prefix
+        - Renders the Japanese login heading and description
+      error:
+        - Does not fall back to English on the login screen
+    postconditions_ja:
+      success:
+        - locale prefixを付けずにブラウザを /login へリダイレクトする
+        - 日本語のログイン見出しと説明文を描画する
+      error:
+        - ログイン画面で英語へフォールバックしない
+    test_cases:
+      - persist_GivenPersistedJapaneseLocaleCookie_ShouldRenderJapaneseLoginAfterInternalRedirect
+    test_cases_ja:
+      - persist_日本語localeCookieが保持されている場合_内部リダイレクト後も日本語ログインを描画する

@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
@@ -16,6 +17,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, currentUserId }: PostCardProps) {
+  const t = useTranslations("posts");
   const [isHidden, setIsHidden] = useState(false);
   // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
   const imageUrl = getPostThumbUrl(post);
@@ -25,7 +27,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
     post.user?.id?.slice(0, 8) ||
-    "匿名ユーザー";
+    t("anonymousUser");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     post.user?.avatar_url ?? null
   );
@@ -52,7 +54,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       {imageUrl ? (
         <Image
           src={imageUrl}
-          alt={post.caption || "投稿画像"}
+          alt={post.caption || t("noImage")}
           width={800}
           height={800}
           className="w-full h-auto object-contain transition-transform hover:scale-105"
@@ -61,7 +63,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
         />
       ) : (
         <div className="flex aspect-square items-center justify-center text-gray-400">
-          画像がありません
+          {t("noImage")}
         </div>
       )}
     </div>

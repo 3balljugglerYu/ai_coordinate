@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getNotificationsRouteCopy } from "@/features/notifications/lib/route-copy";
 
 /**
  * 通知一覧取得API
  */
 export async function GET(request: NextRequest) {
+  const copy = getNotificationsRouteCopy(getRouteLocale(request));
+
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return jsonError(copy.authRequired, "NOTIFICATIONS_AUTH_REQUIRED", 401);
+    }
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const cursor = searchParams.get("cursor");
 
     if (limit < 1 || limit > 100) {
-      return NextResponse.json(
-        { error: "Limit must be between 1 and 100" },
-        { status: 400 }
-      );
+      return jsonError(copy.invalidLimit, "NOTIFICATIONS_INVALID_LIMIT", 400);
     }
 
     const supabase = await createClient();
@@ -54,15 +59,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Database query error:", error);
-      return NextResponse.json(
-        {
-          error:
-            error instanceof Error
-              ? error.message
-              : "通知の取得に失敗しました",
-        },
-        { status: 500 }
-      );
+      return jsonError(copy.fetchFailed, "NOTIFICATIONS_FETCH_FAILED", 500);
     }
 
     if (!data || data.length === 0) {
@@ -164,14 +161,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Notifications API error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "通知の取得に失敗しました",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.fetchFailed, "NOTIFICATIONS_FETCH_FAILED", 500);
   }
 }

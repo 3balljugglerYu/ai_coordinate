@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { getComments, createComment } from "@/features/posts/lib/server-api";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
 /**
  * コメント一覧取得・コメント投稿API
@@ -12,6 +14,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const copy = postsRouteCopy[getRouteLocale(request)];
   try {
     const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
@@ -20,21 +23,21 @@ export async function GET(
 
     if (!id) {
       return NextResponse.json(
-        { error: "Image ID is required" },
+        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
         { status: 400 }
       );
     }
 
     if (limit < 1 || limit > 100) {
       return NextResponse.json(
-        { error: "Limit must be between 1 and 100" },
+        { error: copy.invalidLimit, errorCode: "POSTS_INVALID_LIMIT" },
         { status: 400 }
       );
     }
 
     if (offset < 0) {
       return NextResponse.json(
-        { error: "Offset must be non-negative" },
+        { error: copy.invalidOffset, errorCode: "POSTS_INVALID_OFFSET" },
         { status: 400 }
       );
     }
@@ -46,10 +49,8 @@ export async function GET(
     console.error("Comments API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "コメントの取得に失敗しました",
+        error: copy.commentsFetchFailed,
+        errorCode: "POSTS_COMMENTS_FETCH_FAILED",
       },
       { status: 500 }
     );
@@ -60,22 +61,29 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const copy = postsRouteCopy[getRouteLocale(request)];
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: copy.authRequired, errorCode: "POSTS_AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
     const body = await request.json();
     const { content } = body;
 
     if (!id) {
       return NextResponse.json(
-        { error: "Image ID is required" },
+        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
         { status: 400 }
       );
     }
 
     if (!content || typeof content !== "string") {
       return NextResponse.json(
-        { error: "Content is required" },
+        { error: copy.contentRequired, errorCode: "POSTS_COMMENT_CONTENT_REQUIRED" },
         { status: 400 }
       );
     }
@@ -88,12 +96,20 @@ export async function POST(
       sanitized.value,
       COMMENT_MAX_LENGTH,
       "コメント",
-      false // 空文字を許可しない
+      false,
+      {
+        required: copy.commentRequired,
+        invalidCharacters: copy.commentInvalidCharacters,
+        maxLength: copy.commentTooLong(COMMENT_MAX_LENGTH),
+      }
     );
 
     if (!validation.valid) {
       return NextResponse.json(
-        { error: validation.error },
+        {
+          error: validation.error || copy.commentCreateFailed,
+          errorCode: "POSTS_COMMENT_INVALID_INPUT",
+        },
         { status: 400 }
       );
     }
@@ -107,13 +123,10 @@ export async function POST(
     console.error("Comment creation API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "コメントの投稿に失敗しました",
+        error: copy.commentCreateFailed,
+        errorCode: "POSTS_COMMENT_CREATE_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

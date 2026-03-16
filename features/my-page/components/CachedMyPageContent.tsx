@@ -17,13 +17,26 @@ import { ROUTES } from "@/constants";
 
 interface CachedMyPageContentProps {
   userId: string;
+  copy: {
+    balanceLabel: string;
+    balancePaid: string;
+    balanceUnlimitedBonus: string;
+    balancePeriodLimited: string;
+    percoinUnit: string;
+    buy: string;
+    transactionHistoryLink: string;
+    generatedImagesTitle: string;
+  };
 }
 
 /**
  * マイページ用（use cache でサーバーキャッシュ）
  * userId を引数で受け取り、cookies を use cache 内で使わない
  */
-export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) {
+export async function CachedMyPageContent({
+  userId,
+  copy,
+}: CachedMyPageContentProps) {
   "use cache";
   cacheTag(`my-page-${userId}`);
   cacheLife("minutes");
@@ -38,9 +51,9 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
   ]);
 
   const balanceDetails = [
-    { label: "購入分", value: percoinBalanceBreakdown.paid },
-    { label: "無期限付与", value: percoinBalanceBreakdown.unlimited_bonus },
-    { label: "期間限定", value: percoinBalanceBreakdown.period_limited },
+    { label: copy.balancePaid, value: percoinBalanceBreakdown.paid },
+    { label: copy.balanceUnlimitedBonus, value: percoinBalanceBreakdown.unlimited_bonus },
+    { label: copy.balancePeriodLimited, value: percoinBalanceBreakdown.period_limited },
   ].filter((item) => item.value > 0);
 
   return (
@@ -63,16 +76,16 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full">
                   <Image
                     src="/percoin.png"
-                    alt="ペルコイン"
+                    alt={copy.percoinUnit}
                     width={48}
                     height={48}
                     className="object-cover"
                   />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-gray-600">保有ペルコイン</p>
+                  <p className="text-sm text-gray-600">{copy.balanceLabel}</p>
                   <p className="text-xl font-bold text-gray-900">
-                    {percoinBalanceBreakdown.total.toLocaleString()} ペルコイン
+                    {percoinBalanceBreakdown.total.toLocaleString()} {copy.percoinUnit}
                   </p>
                   {balanceDetails.length > 0 && (
                     <p className="mt-1 text-xs text-gray-500">
@@ -85,7 +98,7 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
               </div>
               <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-600">
                 <Plus className="h-4 w-4" />
-                購入
+                {copy.buy}
               </span>
             </div>
           </Card>
@@ -95,14 +108,14 @@ export async function CachedMyPageContent({ userId }: CachedMyPageContentProps) 
             href={ROUTES.MY_PAGE_CREDITS}
             className="text-sm font-medium text-gray-600 hover:text-gray-900"
           >
-            取引履歴
+            {copy.transactionHistoryLink}
           </Link>
         </div>
       </div>
 
       <div className="mt-8">
         <h2 className="mb-4 text-xl font-semibold text-gray-900">
-          生成画像一覧
+          {copy.generatedImagesTitle}
         </h2>
         <MyPageImageGalleryClient
           initialImages={images}

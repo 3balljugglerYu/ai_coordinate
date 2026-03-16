@@ -1,0 +1,340 @@
+metadata:
+  class: I18nConfig
+  source: i18n/config.ts
+  version: "1.0"
+  created_at: "2026-03-16"
+
+dependencies:
+  repositories: []
+  services: []
+  external:
+    - None
+
+state_properties: []
+
+specifications:
+  - id: I18N-001
+    method: isLocale
+    type: event-driven
+    ears: |
+      When isLocale is invoked with a string value,
+      the system shall return true only for supported locale identifiers
+      and shall return false for undefined, null, or unsupported values.
+    ears_ja: |
+      isLocaleが文字列値で呼び出された場合、
+      システムはサポート対象のlocale識別子に対してのみtrueを返し、
+      undefined、null、未対応値に対してはfalseを返す。
+    preconditions:
+      - The caller provides a candidate locale value
+    preconditions_ja:
+      - 呼び出し元がlocale候補値を渡す
+    postconditions:
+      success:
+        - Returns true for "ja" and "en"
+      error:
+        - Returns false for values outside the supported locale set
+    postconditions_ja:
+      success:
+        - ja と en に対してtrueを返す
+      error:
+        - サポート対象外の値に対してfalseを返す
+    test_cases:
+      - isLocale_GivenSupportedLocale_ShouldReturnTrue
+      - isLocale_GivenUnsupportedOrNullishValue_ShouldReturnFalse
+    test_cases_ja:
+      - isLocale_サポート対象のlocaleの場合_trueを返す
+      - isLocale_未対応またはnullishの値の場合_falseを返す
+
+  - id: I18N-002
+    method: getLocaleLabel
+    type: event-driven
+    ears: |
+      When getLocaleLabel is invoked with a supported locale,
+      the system shall return the locale selector label
+      that corresponds to that locale.
+    ears_ja: |
+      getLocaleLabelがサポート対象のlocaleで呼び出された場合、
+      システムはそのlocaleに対応する
+      言語選択ラベルを返す。
+    preconditions:
+      - The provided locale is supported
+    preconditions_ja:
+      - 渡されるlocaleがサポート対象である
+    postconditions:
+      success:
+        - Returns "日本語" for ja
+        - Returns "English" for en
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ja に対して "日本語" を返す
+        - en に対して "English" を返す
+      error:
+        - なし
+    test_cases:
+      - getLocaleLabel_GivenJa_ShouldReturnJapaneseLabel
+      - getLocaleLabel_GivenEn_ShouldReturnEnglishLabel
+    test_cases_ja:
+      - getLocaleLabel_jaの場合_日本語ラベルを返す
+      - getLocaleLabel_enの場合_英語ラベルを返す
+
+  - id: I18N-003
+    method: getLocaleCookieMaxAge
+    type: ubiquitous
+    ears: |
+      The system shall expose the locale cookie lifetime
+      as a stable max-age value of one year in seconds.
+    ears_ja: |
+      システムはlocale cookieの有効期間を、
+      秒単位の1年固定値として提供しなければならない。
+    preconditions:
+      - None
+    preconditions_ja:
+      - なし
+    postconditions:
+      success:
+        - Returns 31536000
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 31536000 を返す
+      error:
+        - なし
+    test_cases:
+      - getLocaleCookieMaxAge_WhenCalled_ShouldReturnOneYearInSeconds
+    test_cases_ja:
+      - getLocaleCookieMaxAge_呼び出された場合_1年相当の秒数を返す
+
+  - id: I18N-004
+    method: stripLocalePrefix
+    type: event-driven
+    ears: |
+      When stripLocalePrefix is invoked with a pathname,
+      the system shall remove a leading supported locale segment,
+      preserve unsupported paths unchanged,
+      and normalize the resulting pathname.
+    ears_ja: |
+      stripLocalePrefixがpathnameで呼び出された場合、
+      システムは先頭のサポート対象localeセグメントを除去し、
+      未対応パスはそのまま維持し、
+      返却するpathnameを正規化する。
+    preconditions:
+      - The caller provides a pathname string
+    preconditions_ja:
+      - 呼び出し元がpathname文字列を渡す
+    postconditions:
+      success:
+        - Returns the detected locale when the first segment is ja or en
+        - Returns the stripped pathname with duplicate slashes collapsed
+        - Returns "/" when stripping leaves an empty path
+      error:
+        - Returns the original pathname when no supported locale prefix exists
+    postconditions_ja:
+      success:
+        - 先頭セグメントが ja または en の場合は検出したlocaleを返す
+        - locale除去後のpathnameは重複スラッシュを畳んで返す
+        - 除去後に空パスになる場合は "/" を返す
+      error:
+        - サポート対象locale prefixがない場合は元のpathnameを返す
+    test_cases:
+      - stripLocalePrefix_GivenLocalizedPath_ShouldReturnLocaleAndNormalizedPath
+      - stripLocalePrefix_GivenNonLocalizedPath_ShouldReturnOriginalPath
+      - stripLocalePrefix_GivenLocaleRoot_ShouldReturnRootPath
+    test_cases_ja:
+      - stripLocalePrefix_locale付きパスの場合_localeと正規化済みパスを返す
+      - stripLocalePrefix_localeなしパスの場合_元のパスを返す
+      - stripLocalePrefix_localeルートの場合_ルートパスを返す
+
+  - id: I18N-005
+    method: isPublicPath
+    type: event-driven
+    ears: |
+      When isPublicPath is invoked with a pathname,
+      the system shall return true only for pathname patterns
+      that are configured as public i18n routes.
+    ears_ja: |
+      isPublicPathがpathnameで呼び出された場合、
+      システムはi18n対象の公開ルートとして設定された
+      パターンに対してのみtrueを返す。
+    preconditions:
+      - The caller provides a pathname string
+    preconditions_ja:
+      - 呼び出し元がpathname文字列を渡す
+    postconditions:
+      success:
+        - Returns true for configured public paths including dynamic post and i2i detail paths
+      error:
+        - Returns false for non-public internal paths
+    postconditions_ja:
+      success:
+        - 投稿詳細やi2i詳細を含む設定済み公開パスに対してtrueを返す
+      error:
+        - 非公開の内部パスに対してfalseを返す
+    test_cases:
+      - isPublicPath_GivenConfiguredPublicPath_ShouldReturnTrue
+      - isPublicPath_GivenInternalPath_ShouldReturnFalse
+    test_cases_ja:
+      - isPublicPath_設定済み公開パスの場合_trueを返す
+      - isPublicPath_内部パスの場合_falseを返す
+
+  - id: I18N-006
+    method: localizePublicPath
+    type: event-driven
+    ears: |
+      When localizePublicPath is invoked with a pathname and locale,
+      the system shall prefix localized public paths with the requested locale,
+      shall strip any existing locale prefix before evaluation,
+      and shall leave non-public paths unprefixed.
+    ears_ja: |
+      localizePublicPathがpathnameとlocaleで呼び出された場合、
+      システムは公開パスに要求されたlocale prefixを付与し、
+      判定前に既存のlocale prefixを除去し、
+      非公開パスにはprefixを付与しない。
+    preconditions:
+      - The caller provides a pathname and a supported locale
+    preconditions_ja:
+      - 呼び出し元がpathnameとサポート対象localeを渡す
+    postconditions:
+      success:
+        - Returns "/{locale}" when the normalized path is "/"
+        - Returns "/{locale}{pathname}" for localized public paths
+      error:
+        - Returns the unprefixed original path for non-public paths
+    postconditions_ja:
+      success:
+        - 正規化後パスが "/" の場合は "/{locale}" を返す
+        - 公開パスの場合は "/{locale}{pathname}" を返す
+      error:
+        - 非公開パスの場合はprefixを除いた元のパスを返す
+    test_cases:
+      - localizePublicPath_GivenRootPublicPath_ShouldReturnLocaleRoot
+      - localizePublicPath_GivenLocalizedOrUnlocalizedPublicPath_ShouldReturnLocalizedPath
+      - localizePublicPath_GivenNonPublicPath_ShouldReturnUnprefixedPath
+    test_cases_ja:
+      - localizePublicPath_ルート公開パスの場合_localeルートを返す
+      - localizePublicPath_locale有無にかかわらず公開パスの場合_locale付きパスを返す
+      - localizePublicPath_非公開パスの場合_prefixなしパスを返す
+
+  - id: I18N-007
+    method: appendSearchAndHash
+    type: event-driven
+    ears: |
+      When appendSearchAndHash is invoked with pathname, search, and hash values,
+      the system shall normalize missing prefix characters
+      and append only the provided search and hash segments.
+    ears_ja: |
+      appendSearchAndHashがpathname、search、hashで呼び出された場合、
+      システムは不足しているprefix文字を正規化し、
+      渡されたsearchとhashのみを末尾に付加する。
+    preconditions:
+      - The caller provides a pathname
+    preconditions_ja:
+      - 呼び出し元がpathnameを渡す
+    postconditions:
+      success:
+        - Adds "?" to search when needed
+        - Adds "#" to hash when needed
+        - Omits absent search or hash segments
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 必要に応じてsearchに "?" を付加する
+        - 必要に応じてhashに "#" を付加する
+        - 未指定のsearchまたはhashは付加しない
+      error:
+        - なし
+    test_cases:
+      - appendSearchAndHash_GivenSearchAndHashWithoutPrefixes_ShouldNormalizeAndAppend
+      - appendSearchAndHash_GivenMissingSearchOrHash_ShouldAppendOnlyProvidedSegments
+    test_cases_ja:
+      - appendSearchAndHash_prefixなしsearchとhashの場合_正規化して付加する
+      - appendSearchAndHash_searchまたはhashが欠けている場合_渡されたものだけ付加する
+
+  - id: I18N-008
+    method: resolveLocaleFromAcceptLanguage
+    type: event-driven
+    ears: |
+      When resolveLocaleFromAcceptLanguage is invoked with an Accept-Language header,
+      the system shall parse language tags and quality values,
+      and shall resolve to ja if any parsed candidate is ja or starts with ja-;
+      otherwise it shall resolve to en.
+    ears_ja: |
+      resolveLocaleFromAcceptLanguageがAccept-Languageヘッダーで呼び出された場合、
+      システムは言語タグとquality値を解析し、
+      解析後の候補にjaまたはja-で始まる値が1つでもあればjaを返し、
+      それ以外はenを返す。
+    preconditions:
+      - The caller may provide a null, empty, or populated Accept-Language header
+    preconditions_ja:
+      - 呼び出し元はnull、空、または値入りのAccept-Languageヘッダーを渡しうる
+    postconditions:
+      success:
+        - Returns DEFAULT_LOCALE when the header is absent
+        - Returns ja when any parsed candidate is ja or ja-*
+        - Returns en when no parsed candidate is in the ja family
+      error:
+        - Non-numeric quality values are treated as default quality 1
+    postconditions_ja:
+      success:
+        - ヘッダーがない場合はDEFAULT_LOCALEを返す
+        - 解析候補に ja または ja-* があればjaを返す
+        - ja系候補が1つもなければenを返す
+      error:
+        - 数値でないquality値は既定値1として扱う
+    test_cases:
+      - resolveLocaleFromAcceptLanguage_GivenMissingHeader_ShouldReturnDefaultLocale
+      - resolveLocaleFromAcceptLanguage_GivenJaFamilyCandidate_ShouldReturnJa
+      - resolveLocaleFromAcceptLanguage_GivenNonJaCandidatesOnly_ShouldReturnEn
+      - resolveLocaleFromAcceptLanguage_GivenInvalidQualityValue_ShouldFallbackToDefaultQuality
+    test_cases_ja:
+      - resolveLocaleFromAcceptLanguage_ヘッダー未指定の場合_DEFAULT_LOCALEを返す
+      - resolveLocaleFromAcceptLanguage_ja系候補がある場合_jaを返す
+      - resolveLocaleFromAcceptLanguage_ja系以外のみの場合_enを返す
+      - resolveLocaleFromAcceptLanguage_quality値が不正な場合_既定qualityで扱う
+
+  - id: I18N-009
+    method: resolveRequestLocale
+    type: event-driven
+    ears: |
+      When resolveRequestLocale is invoked with pathname, cookieLocale, and acceptLanguage,
+      the system shall resolve locale in the order of pathname locale prefix,
+      then valid locale cookie,
+      then Accept-Language derived locale.
+    ears_ja: |
+      resolveRequestLocaleがpathname、cookieLocale、acceptLanguageで呼び出された場合、
+      システムはpathnameのlocale prefix、
+      次に有効なlocale cookie、
+      最後にAccept-Languageから導出したlocaleの順で解決する。
+    preconditions:
+      - The caller provides a pathname
+      - cookieLocale and acceptLanguage may be omitted
+    preconditions_ja:
+      - 呼び出し元がpathnameを渡す
+      - cookieLocaleとacceptLanguageは省略されうる
+    postconditions:
+      success:
+        - Returns the locale prefix when pathname starts with a supported locale segment
+        - Returns cookieLocale when pathname has no locale prefix and cookieLocale is valid
+        - Returns the Accept-Language derived locale when neither pathname nor cookie provides a locale
+      error:
+        - Ignores invalid cookieLocale values and falls back to Accept-Language resolution
+    postconditions_ja:
+      success:
+        - pathnameがサポート対象localeセグメントで始まる場合はそのlocaleを返す
+        - pathnameにlocale prefixがなくcookieLocaleが有効な場合はcookieLocaleを返す
+        - pathnameとcookieのどちらにもlocaleがない場合はAccept-Language由来のlocaleを返す
+      error:
+        - 無効なcookieLocaleは無視してAccept-Language解決へフォールバックする
+    test_cases:
+      - resolveRequestLocale_GivenPathnameLocale_ShouldPrioritizePathnameLocaleOverCookie
+      - resolveRequestLocale_GivenValidCookieWithoutPathnameLocale_ShouldReturnCookieLocale
+      - resolveRequestLocale_GivenInvalidCookieWithoutPathnameLocale_ShouldFallbackToAcceptLanguage
+      - resolveRequestLocale_GivenNoInputs_ShouldReturnDefaultLocaleFromAcceptLanguageResolver
+    test_cases_ja:
+      - resolveRequestLocale_pathnameにlocaleがある場合_cookieよりpathnameを優先する
+      - resolveRequestLocale_pathnameにlocaleがなく有効cookieがある場合_cookieを返す
+      - resolveRequestLocale_pathnameにlocaleがなくcookieが無効な場合_AcceptLanguageへフォールバックする
+      - resolveRequestLocale_入力不足の場合_AcceptLanguage解決経由でDEFAULT_LOCALEを返す

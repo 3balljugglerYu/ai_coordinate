@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getModerationRouteCopy } from "@/features/moderation/lib/route-copy";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = getModerationRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -12,12 +17,12 @@ export async function GET(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError(copy.authRequired, "BLOCK_AUTH_REQUIRED", 401);
     }
 
     const { userId } = await params;
     if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+      return jsonError(copy.userIdRequired, "BLOCK_USER_ID_REQUIRED", 400);
     }
 
     const [{ data: blockData, error: blockError }, { data: blockedByData, error: blockedByError }] =
@@ -38,7 +43,7 @@ export async function GET(
 
     if (blockError || blockedByError) {
       console.error("Block status error:", blockError || blockedByError);
-      return NextResponse.json({ error: "Failed to get block status" }, { status: 500 });
+      return jsonError(copy.blockStatusFailed, "BLOCK_STATUS_FETCH_FAILED", 500);
     }
 
     return NextResponse.json({
@@ -47,9 +52,6 @@ export async function GET(
     });
   } catch (error) {
     console.error("Block status API error:", error);
-    return NextResponse.json(
-      { error: "ブロック状態の取得に失敗しました" },
-      { status: 500 }
-    );
+    return jsonError(copy.blockStatusFailed, "BLOCK_STATUS_FETCH_FAILED", 500);
   }
 }

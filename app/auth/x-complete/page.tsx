@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
@@ -13,7 +13,18 @@ import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
  * 
  * 参考: https://github.com/supabase/auth/issues/2340
  */
-export default function XOAuthCompletePage() {
+function OAuthCompletionFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">ログイン処理中...</p>
+      </div>
+    </div>
+  );
+}
+
+function XOAuthCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -85,11 +96,14 @@ export default function XOAuthCompletePage() {
   }, [router, searchParams]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">ログイン処理中...</p>
-      </div>
-    </div>
+    <OAuthCompletionFallback />
+  );
+}
+
+export default function XOAuthCompletePage() {
+  return (
+    <Suspense fallback={<OAuthCompletionFallback />}>
+      <XOAuthCompleteContent />
+    </Suspense>
   );
 }

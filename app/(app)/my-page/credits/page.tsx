@@ -1,10 +1,12 @@
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { CachedPercoinPageContent } from "@/features/my-page/components/CachedPercoinPageContent";
 import { PercoinPageSkeleton } from "@/features/my-page/components/PercoinPageSkeleton";
 
 export default async function PercoinPage() {
+  const creditsT = await getTranslations("credits");
   const user = await requireAuth();
 
   return (
@@ -14,9 +16,9 @@ export default async function PercoinPage() {
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトル */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">ペルコイン管理</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{creditsT("managementTitle")}</h1>
             <p className="mt-2 text-sm text-gray-600">
-              残高と取引履歴を確認できます
+              {creditsT("managementDescription")}
             </p>
           </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 import { getCurrentUserId } from "@/features/generation/lib/current-user";
 import { getGeneratedImages } from "@/features/generation/lib/database";
@@ -150,6 +151,7 @@ if (typeof window !== "undefined") {
  */
 export function GeneratedImageNotificationChecker() {
   const { toast } = useToast();
+  const t = useTranslations("notifications");
 
   useEffect(() => {
     let isChecking = false;
@@ -220,11 +222,11 @@ export function GeneratedImageNotificationChecker() {
           addToSessionShownIds(userId, newImageIds, sessionShownIds);
 
           toast({
-            title: "新しい画像が生成されました",
+            title: t("generatedImageReadyTitle"),
             description:
               newImageIds.length === 1
-                ? "画像が1枚追加されました"
-                : `${newImageIds.length}枚の画像が追加されました`,
+                ? t("generatedImageReadySingle")
+                : t("generatedImageReadyMultiple", { count: newImageIds.length }),
           });
         }
       } catch (error) {
@@ -248,7 +250,7 @@ export function GeneratedImageNotificationChecker() {
     return () => {
       clearInterval(intervalId);
     };
-  }, [toast]);
+  }, [t, toast]);
 
   // このコンポーネントはUIを表示しない
   return null;

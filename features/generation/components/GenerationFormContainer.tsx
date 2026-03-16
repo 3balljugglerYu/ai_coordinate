@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GenerationForm } from "./GenerationForm";
@@ -28,6 +29,8 @@ type GenerationFormContainerProps = Record<string, never>;
  * 非同期画像生成APIを使用
  */
 export function GenerationFormContainer({}: GenerationFormContainerProps) {
+  const t = useTranslations("coordinate");
+  const creditsT = useTranslations("credits");
   const router = useRouter();
   const { toast } = useToast();
   const ctx = useGenerationState();
@@ -45,13 +48,26 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingStopFunctionsRef = useRef<Set<() => void>>(new Set());
+  const asyncApiMessages = useMemo(
+    () => ({
+      imageLoadFailed: t("imageLoadFailed"),
+      imageConvertFailed: t("imageConvertFailed"),
+      imageContextUnavailable: t("imageContextUnavailable"),
+      submitJobFailed: t("submitJobFailed"),
+      fetchStatusFailed: t("fetchStatusFailed"),
+      fetchJobsFailed: t("fetchJobsFailed"),
+      pollingStopped: t("inProgressStopped"),
+      pollingTimeout: t("pollingTimeout"),
+    }),
+    [t]
+  );
 
   // マウント時に未完了ジョブを確認してポーリングを再開
   useEffect(() => {
     const checkInProgressJobs = async () => {
       try {
         // 最近完了したジョブも含めて取得（直近5分以内）
-        const jobs = await getInProgressJobs(true);
+        const jobs = await getInProgressJobs(true, asyncApiMessages);
         
         // 未完了ジョブのみをフィルタリング
         const inProgressJobs = jobs.filter((job) => 
@@ -81,7 +97,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             // まず現在のステータスを確認
             let currentStatus: AsyncGenerationStatus;
             try {
-              currentStatus = await getGenerationStatus(job.id);
+              currentStatus = await getGenerationStatus(job.id, asyncApiMessages);
               // すでに完了している場合は、ポーリングを開始しない
               if (currentStatus.status === "succeeded" || currentStatus.status === "failed") {
               if (currentStatus.status === "succeeded") {
@@ -89,7 +105,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               } else {
                 setCompletedCount((prev) => prev + 1);
                 setError((prev) => {
-                  const errorMsg = currentStatus.errorMessage || "画像生成に失敗しました";
+                  const errorMsg =
+                    currentStatus.errorMessage || t("generationFailedGeneric");
                   return prev ? `${prev}; ${errorMsg}` : errorMsg;
                 });
               }
@@ -116,6 +133,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             const { promise, stop } = pollGenerationStatus(job.id, {
               interval: 2000, // 2秒ごとにポーリング
               timeout: 300000, // 5分でタイムアウト
+              messages: asyncApiMessages,
               onStatusUpdate: (status: AsyncGenerationStatus) => {
                 // ステータスが更新されたら、キャッシュ無効化後に生成結果一覧を更新
                 if (refreshTimeoutRef.current) {
@@ -158,7 +176,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 } else if (status.status === "failed") {
                   setCompletedCount((prev) => prev + 1);
                   setError((prev) => {
-                    const errorMsg = status.errorMessage || "画像生成に失敗しました";
+                    const errorMsg =
+                      status.errorMessage || t("generationFailedGeneric");
                     return prev ? `${prev}; ${errorMsg}` : errorMsg;
                   });
                   // 失敗時もイベントを発火（返金処理が実行される可能性があるため）
@@ -169,7 +188,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               .catch((err) => {
                 // ポーリング停止によるエラーは無視（ユーザー操作による中断は正常）
                 const errorMsg = err instanceof Error ? err.message : "";
-                if (errorMsg === "ポーリングが停止されました") {
+                if (errorMsg === asyncApiMessages.pollingStopped) {
                   // ポーリング停止は正常な動作なので、エラーとして扱わない
                   setCompletedCount((prev) => prev + 1);
                   return { id: job.id, status: "queued" as const, resultImageUrl: null, errorMessage: null };
@@ -177,7 +196,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 // その他のエラーのみ表示
                 setCompletedCount((prev) => prev + 1);
                 setError((prev) => {
-                  const msg = errorMsg || "画像生成に失敗しました";
+                  const msg = errorMsg || t("generationFailedGeneric");
                   return prev ? `${prev}; ${msg}` : msg;
                 });
                 throw err;
@@ -192,7 +211,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           if (result.status === "rejected") {
             const errorMsg = result.reason?.message || "";
             // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
-            return errorMsg !== "ポーリングが停止されました";
+            return errorMsg !== asyncApiMessages.pollingStopped;
           }
           return false;
         });
@@ -200,7 +219,11 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         if (failedJobs.length > 0 && failedJobs.length < inProgressJobs.length) {
           // 一部のジョブが失敗した場合
           const errorMessages = failedJobs
-            .map((result) => result.status === "rejected" ? result.reason?.message || "不明なエラー" : null)
+            .map((result) =>
+              result.status === "rejected"
+                ? result.reason?.message || t("generationFailedGeneric")
+                : null
+            )
             .filter((msg): msg is string => msg !== null);
           
           // ユニークなエラーメッセージを取得
@@ -232,14 +255,23 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               const msg = mostCommonMessage.length > 80 
                 ? `${mostCommonMessage.substring(0, 80)}...` 
                 : mostCommonMessage;
-              return `${msg}（他 ${messages.length - 1}種類のエラー）`;
+              return `${msg} (${t("additionalErrorKinds", {
+                count: messages.length - 1,
+              })})`;
             }
           };
           
           const errorSummary = formatErrorSummary(uniqueErrorMessages);
           const baseMsg = errorSummary
-            ? `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）: ${errorSummary}`
-            : `一部の画像生成に失敗しました（${failedJobs.length}/${inProgressJobs.length}件）`;
+            ? t("partialGenerationFailedWithSummary", {
+                failed: failedJobs.length,
+                total: inProgressJobs.length,
+                summary: errorSummary,
+              })
+            : t("partialGenerationFailed", {
+                failed: failedJobs.length,
+                total: inProgressJobs.length,
+              });
           
           setError((prev) => {
             return prev ? `${prev}; ${baseMsg}` : baseMsg;
@@ -284,7 +316,14 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
     // マウント時に未完了ジョブを確認
     void checkInProgressJobs();
-  }, [router, setCompletedCount, setGeneratingCount, setIsGenerating]);
+  }, [
+    asyncApiMessages,
+    router,
+    setCompletedCount,
+    setGeneratingCount,
+    setIsGenerating,
+    t,
+  ]);
 
   // コンポーネントのアンマウント時にポーリングを停止
   useEffect(() => {
@@ -316,7 +355,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     const showGenerationErrorToast = (message: string) => {
       toast({
         variant: "destructive",
-        title: "画像を生成できませんでした",
+        title: t("generationFailedTitle"),
         description: <span className="whitespace-pre-line">{message}</span>,
       });
     };
@@ -336,12 +375,17 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       const requiredPercoins = data.count * percoinCost;
       
       // ペルコイン残高を取得
-      const { balance } = await fetchPercoinBalance();
+      const { balance } = await fetchPercoinBalance({
+        fetchBalanceFailed: creditsT("fetchBalanceFailed"),
+      });
       
       // 残高チェック
       if (balance < requiredPercoins) {
         setError(
-          `ペルコイン残高が不足しています。生成には${requiredPercoins}ペルコイン必要ですが、現在の残高は${balance}ペルコインです。`
+          t("insufficientBalance", {
+            requiredPercoins,
+            balance,
+          })
         );
         setIsGenerating(false);
         return;
@@ -361,7 +405,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             backgroundMode: data.backgroundMode,
             generationType: data.generationType || "coordinate",
             model: data.model,
-          });
+          }, asyncApiMessages);
 
           jobIds.push(response.jobId);
         } catch (err) {
@@ -376,6 +420,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         const { promise, stop } = pollGenerationStatus(jobId, {
           interval: 2000, // 2秒ごとにポーリング
           timeout: 300000, // 5分でタイムアウト
+          messages: asyncApiMessages,
           onStatusUpdate: (status: AsyncGenerationStatus) => {
             // 完了状態（succeeded/failed）の場合は、completedカウントを更新
             if ((status.status === "succeeded" || status.status === "failed") && !completedJobIds.has(jobId)) {
@@ -410,14 +455,14 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             // onStatusUpdateで完了カウントは既に更新されているので、
             // ここではエラー処理のみ行う
             if (status.status === "failed") {
-              throw new Error(status.errorMessage || "画像生成に失敗しました");
+              throw new Error(status.errorMessage || t("generationFailedGeneric"));
             }
             return status;
           })
           .catch((err) => {
             // ポーリング停止によるエラーは無視（正常な動作）
             const errorMsg = err instanceof Error ? err.message : "";
-            if (errorMsg === "ポーリングが停止されました") {
+            if (errorMsg === asyncApiMessages.pollingStopped) {
               // 完了カウントが更新されていない場合のみ更新
               if (!completedJobIds.has(jobId)) {
                 completedJobIds.add(jobId);
@@ -445,19 +490,24 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         if (result.status === "rejected") {
           const errorMsg = result.reason?.message || "";
           // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
-          return errorMsg !== "ポーリングが停止されました";
+          return errorMsg !== asyncApiMessages.pollingStopped;
         }
         return false;
       });
       
       if (failedJobs.length > 0) {
         const errorMessages = failedJobs
-          .map((result) => result.status === "rejected" ? result.reason?.message || "不明なエラー" : null)
+          .map((result) =>
+            result.status === "rejected"
+              ? result.reason?.message || t("generationFailedGeneric")
+              : null
+          )
           .filter((msg): msg is string => msg !== null);
         
         if (failedJobs.length === jobIds.length) {
           // すべてのジョブが失敗した場合は、簡潔な1つの文言のみ表示
-          const firstErrorMessage = errorMessages[0] || "画像生成に失敗しました";
+          const firstErrorMessage =
+            errorMessages[0] || t("generationFailedGeneric");
           throw new Error(firstErrorMessage);
         } else {
           // 一部のジョブが失敗した場合
@@ -496,14 +546,23 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               const msg = mostCommonMessage.length > 80 
                 ? `${mostCommonMessage.substring(0, 80)}...` 
                 : mostCommonMessage;
-              return `${msg}（他 ${messages.length - 1}種類のエラー）`;
+              return `${msg} (${t("additionalErrorKinds", {
+                count: messages.length - 1,
+              })})`;
             }
           };
           
           const errorSummary = formatErrorSummary(uniqueErrorMessages);
           const errorText = errorSummary
-            ? `一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）: ${errorSummary}`
-            : `一部の画像生成に失敗しました（${failedJobs.length}/${jobIds.length}件）`;
+            ? t("partialGenerationFailedWithSummary", {
+                failed: failedJobs.length,
+                total: jobIds.length,
+                summary: errorSummary,
+              })
+            : t("partialGenerationFailed", {
+                failed: failedJobs.length,
+                total: jobIds.length,
+              });
           
           setError(errorText);
           showGenerationErrorToast(errorText);
@@ -527,7 +586,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         succeeded: jobIds.length - failedJobs.length,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "画像の生成に失敗しました";
+      const errorMessage =
+        err instanceof Error ? err.message : t("generationFailedGeneric");
       track("coordinate_generation_failed", {
         error: errorMessage.substring(0, 100),
       });
@@ -570,7 +630,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 href={getPercoinPurchaseUrl("coordinate")}
                 className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                ペルコインを購入する
+                {creditsT("purchaseAction")}
               </Link>
             </div>
           ) : null}
@@ -587,10 +647,13 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
             <div>
               <p className="text-sm font-medium text-blue-900">
-                画像を生成中...
+                {t("generatingStatusTitle")}
               </p>
               <p className="text-xs text-blue-700">
-                {completedCount} / {generatingCount} 枚完了
+                {t("generatingStatusProgress", {
+                  completed: completedCount,
+                  total: generatingCount,
+                })}
               </p>
             </div>
           </div>

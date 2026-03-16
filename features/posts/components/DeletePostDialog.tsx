@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
@@ -29,6 +30,8 @@ export function DeletePostDialog({
   imageUrl,
   isPosted = true,
 }: DeletePostDialogProps) {
+  const postsT = useTranslations("posts");
+  const myPageT = useTranslations("myPage");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,10 +44,17 @@ export function DeletePostDialog({
     try {
       if (isPosted) {
         // 投稿済みの場合は投稿を取り消す
-        await deletePost(imageId);
+        await deletePost(imageId, {
+          deleteFailed: postsT("deleteFailed"),
+        });
       } else {
         // 未投稿の場合は完全削除
-        await deleteMyImage(imageId);
+        await deleteMyImage(imageId, {
+          loginRequired: myPageT("loginRequired"),
+          imageNotFound: myPageT("imageNotFound"),
+          deleteImageForbidden: myPageT("deleteImageForbidden"),
+          deleteImageFailed: myPageT("deleteImageFailed"),
+        });
       }
       onOpenChange(false);
 
@@ -70,8 +80,8 @@ export function DeletePostDialog({
         err instanceof Error
           ? err.message
           : isPosted
-          ? "投稿の取り消しに失敗しました。もう一度お試しください。"
-          : "削除に失敗しました。もう一度お試しください。"
+          ? postsT("deleteFailedRetry")
+          : myPageT("deleteImageFailed")
       );
     } finally {
       setIsDeleting(false);
@@ -83,12 +93,14 @@ export function DeletePostDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isPosted ? "投稿を取り消す" : "画像を削除"}
+            {isPosted
+              ? postsT("deleteDialogUnpostTitle")
+              : postsT("deleteDialogDeleteTitle")}
           </DialogTitle>
           <DialogDescription>
             {isPosted
-              ? "この投稿を投稿一覧から取り消しますか？画像はマイページに残ります。完全に削除する場合は、マイページから削除してください。"
-              : "この画像を完全に削除しますか？この操作は取り消せません。"}
+              ? postsT("deleteDialogUnpostDescription")
+              : postsT("deleteDialogDeleteDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -96,7 +108,7 @@ export function DeletePostDialog({
           <div className="mt-4">
             <img
               src={imageUrl}
-              alt="削除対象の画像"
+              alt={postsT("deleteDialogImageAlt")}
               className="max-h-48 w-full rounded object-cover"
             />
           </div>
@@ -115,7 +127,7 @@ export function DeletePostDialog({
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
           >
-            キャンセル
+            {postsT("cancel")}
           </Button>
           <Button
             type="button"
@@ -125,15 +137,14 @@ export function DeletePostDialog({
           >
             {isDeleting
               ? isPosted
-                ? "取り消し中..."
-                : "削除中..."
+                ? postsT("deleteDialogUnposting")
+                : postsT("deleteDialogDeleting")
               : isPosted
-              ? "取り消す"
-              : "削除"}
+                ? postsT("unpost")
+                : postsT("delete")}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

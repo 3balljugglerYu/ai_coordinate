@@ -14,6 +14,10 @@ export interface CheckInStreakBonusResponse {
   last_streak_login_at: string | null;
 }
 
+interface ChallengeApiMessages {
+  checkInFailed?: string;
+}
+
 /**
  * ミッション関連のステータス（連続ログイン日数、最終デイリーボーナス日時）を取得
  * 連続チェックインが途切れている場合は表示用に streakDays: 0 を返す（getChallengeStatusServer と同様）
@@ -65,7 +69,9 @@ export async function getStreakDays(): Promise<number> {
 /**
  * 連続ログインボーナスをチェックインで取得
  */
-export async function checkInStreakBonus(): Promise<CheckInStreakBonusResponse> {
+export async function checkInStreakBonus(
+  messages?: ChallengeApiMessages
+): Promise<CheckInStreakBonusResponse> {
   const response = await fetch("/api/streak/check", {
     method: "POST",
     credentials: "include",
@@ -73,7 +79,7 @@ export async function checkInStreakBonus(): Promise<CheckInStreakBonusResponse> 
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.error || "チェックインに失敗しました");
+    throw new Error(error?.error || messages?.checkInFailed || "チェックインに失敗しました");
   }
 
   return response.json() as Promise<CheckInStreakBonusResponse>;

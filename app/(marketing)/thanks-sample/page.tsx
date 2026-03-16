@@ -1,24 +1,50 @@
 import type { Metadata } from "next";
-import { Badge } from "@/components/ui/badge";
+import { getLocale } from "next-intl/server";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, Crown, Star, Medal, Award, Shield, Users } from "lucide-react";
-import { SUPPORTERS, type Supporter } from "@/constants/supporters";
+import { Crown, Star, Medal, Award, Shield, Users } from "lucide-react";
+import { SUPPORTERS } from "@/constants/supporters";
 import { createMarketingPageMetadata } from "@/lib/metadata";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 
-export const metadata: Metadata = createMarketingPageMetadata({
-  title: "Special Thanks",
-  description: "Persta.AIを支えてくださった皆様への感謝を込めて",
-  path: "/thanks-sample",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
 
-export default function ThanksPage() {
+  return createMarketingPageMetadata({
+    title: "Special Thanks",
+    description:
+      locale === "ja"
+        ? "Persta.AIを支えてくださった皆様への感謝を込めて"
+        : "A page dedicated to everyone who supported Persta.AI",
+    path: "/thanks-sample",
+    locale,
+  });
+}
+
+export default async function ThanksPage() {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const copy =
+    locale === "ja"
+      ? {
+          sampleLabel: "（サンプル）",
+          description:
+            "このページに掲載されている皆さまは、Persta.AIを初期から信じ、支えてくださった大切なサポーターです。ご支援への感謝として、お名前をSpecial Thanksページに掲載します。",
+          coreSupporters: "Core Supporters",
+          supporters: "Supporters",
+          footer:
+            "このページは、Persta.AIを初期から支えてくださった皆さまの記録として、今後も公開し続けます。",
+        }
+      : {
+          sampleLabel: "(Sample)",
+          description:
+            "Everyone listed on this page is an important supporter who believed in Persta.AI and backed it from the beginning. As a thank-you for that support, their names are featured on this Special Thanks page.",
+          coreSupporters: "Core Supporters",
+          supporters: "Supporters",
+          footer:
+            "This page will remain public as a record of the people who supported Persta.AI from its earliest days.",
+        };
   // グループ分け
   const platinumSupporters = SUPPORTERS.filter((s) => s.tier === "platinum");
   const goldSupporters = SUPPORTERS.filter((s) => s.tier === "gold");
@@ -40,11 +66,11 @@ export default function ThanksPage() {
         <h1 className="text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
           Special Thanks
           <br />
-          <span className="text-sm text-muted-foreground">（サンプル）</span>
+          <span className="text-sm text-muted-foreground">{copy.sampleLabel}</span>
         </h1>
         <div className="mt-6 flex justify-center">
           <p className="max-w-2xl text-base font-medium leading-relaxed text-muted-foreground md:text-lg">
-            このページに掲載されている皆さまは、Persta.AIを初期から信じ、支えてくださった大切なサポーターです。ご支援への感謝として、お名前をSpecial Thanksページに掲載します。
+            {copy.description}
           </p>
         </div>
       </div>
@@ -178,7 +204,7 @@ export default function ThanksPage() {
               <div className="space-y-6">
                 <div className="flex items-center justify-center gap-2 text-xl font-bold text-slate-800 md:text-2xl">
                   <Shield className="h-6 w-6 text-indigo-500" />
-                  <h2>Core Supporters</h2>
+                  <h2>{copy.coreSupporters}</h2>
                 </div>
                 <Card className="border-indigo-50 bg-indigo-50/20">
                   <CardContent className="p-6">
@@ -201,7 +227,7 @@ export default function ThanksPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-center gap-2 text-base font-semibold text-black">
                   <Users className="h-4 w-4 text-emerald-400" />
-                  <span>Supporters</span>
+                  <span>{copy.supporters}</span>
                 </div>
                 <Card>
                   <CardContent className="p-6">
@@ -226,7 +252,7 @@ export default function ThanksPage() {
       {/* Footer Statement */}
       <div className="text-center">
         <p className="text-sm font-medium text-muted-foreground">
-          このページは、Persta.AIを初期から支えてくださった皆さまの記録として、今後も公開し続けます。
+          {copy.footer}
         </p>
       </div>
     </main>

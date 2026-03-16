@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { LikeButton } from "./LikeButton";
 import { ShareButton } from "./ShareButton";
@@ -37,6 +38,7 @@ export function PostActions({
   imageUrl,
   onPostClick,
 }: PostActionsProps) {
+  const t = useTranslations("posts");
   const isOwner = currentUserId && ownerId ? currentUserId === ownerId : false;
 
   return (
@@ -74,7 +76,7 @@ export function PostActions({
           className="ml-auto"
         >
           <Plus className="h-4 w-4" />
-          <span className="ml-1">投稿</span>
+          <span className="ml-1">{t("postAction")}</span>
         </Button>
       )}
     </div>

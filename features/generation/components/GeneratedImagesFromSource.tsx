@@ -1,6 +1,7 @@
- "use client";
+"use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -28,6 +29,7 @@ export function GeneratedImagesFromSource({
   onImageClick,
   className,
 }: GeneratedImagesFromSourceProps) {
+  const t = useTranslations("coordinate");
   const [images, setImages] = useState<GeneratedImageRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export function GeneratedImagesFromSource({
         setVisibleCount(Math.min(PAGE_SIZE, data.length));
       } catch (err) {
         const errorMessage =
-          err instanceof Error ? err.message : "生成画像の取得に失敗しました";
+          err instanceof Error ? err.message : t("generationFailedGeneric");
         setError(errorMessage);
         console.error("Failed to load generated images:", err);
       } finally {
@@ -114,18 +116,18 @@ export function GeneratedImagesFromSource({
 
   if (images.length === 0) {
     return (
-      <div className={`flex flex-col items-center justify-center py-8 text-gray-500 ${className}`}>
-        <ImageIcon className="mb-2 h-8 w-8 text-gray-300" />
-        <p className="text-sm">この元画像から生成された画像はありません</p>
-      </div>
-    );
+        <div className={`flex flex-col items-center justify-center py-8 text-gray-500 ${className}`}>
+          <ImageIcon className="mb-2 h-8 w-8 text-gray-300" />
+        <p className="text-sm">{t("generatedFromSourceEmpty")}</p>
+        </div>
+      );
   }
 
   return (
     <div className={className}>
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-700">
-          この元画像から生成された画像 ({images.length}件)
+          {t("generatedFromSourceTitle", { count: images.length })}
         </h3>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
@@ -152,7 +154,7 @@ export function GeneratedImagesFromSource({
               <div className="relative w-full overflow-hidden bg-gray-100">
                 <Image
                   src={image.image_url}
-                  alt={image.prompt || "生成画像"}
+                  alt={image.prompt || t("generatedImageAlt")}
                   width={800}
                   height={800}
                   className="w-full h-auto object-contain"
@@ -160,7 +162,7 @@ export function GeneratedImagesFromSource({
                 />
                 {image.is_posted && (
                   <div className="absolute top-1 right-1 z-10 rounded bg-primary px-1.5 py-0.5 text-xs text-white">
-                    投稿済み
+                    {t("postedBadge")}
                   </div>
                 )}
               </div>
@@ -183,4 +185,3 @@ export function GeneratedImagesFromSource({
     </div>
   );
 }
-

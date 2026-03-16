@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +26,7 @@ export function LikeButton({
   initialLikeCount,
   currentUserId,
 }: LikeButtonProps) {
+  const t = useTranslations("posts");
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +42,9 @@ export function LikeButton({
       return;
     }
 
-    getUserLikeStatusAPI(imageId)
+    getUserLikeStatusAPI(imageId, {
+      likeStatusFetchFailed: t("likeStatusFetchFailed"),
+    })
       .then((status) => {
         setIsLiked(status);
         setIsLoadingStatus(false);
@@ -49,7 +53,7 @@ export function LikeButton({
         console.error("Failed to get like status:", error);
         setIsLoadingStatus(false);
       });
-  }, [imageId, currentUserId]);
+  }, [currentUserId, imageId, t]);
 
   // リアルタイム更新の購読
   useEffect(() => {
@@ -104,7 +108,9 @@ export function LikeButton({
     setIsLoading(true);
 
     try {
-      const newIsLiked = await toggleLikeAPI(imageId);
+      const newIsLiked = await toggleLikeAPI(imageId, {
+        likeToggleFailed: t("likeToggleFailed"),
+      });
       setIsLiked(newIsLiked);
       
       // カウントを再取得（オプティミスティックUIのロールバック用）
@@ -114,8 +120,9 @@ export function LikeButton({
       setIsLiked(previousIsLiked);
       setLikeCount(previousLikeCount);
       toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "いいねの処理に失敗しました",
+        title: t("errorTitle"),
+        description:
+          error instanceof Error ? error.message : t("likeToggleFailed"),
         variant: "destructive",
       });
     } finally {

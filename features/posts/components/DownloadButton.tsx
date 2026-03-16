@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -19,6 +20,7 @@ export function DownloadButton({
   postId,
   imageUrl,
 }: DownloadButtonProps) {
+  const t = useTranslations("posts");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -32,8 +34,8 @@ export function DownloadButton({
 
     if (!imageUrl) {
       toast({
-        title: "エラー",
-        description: "ダウンロードできる画像がありません",
+        title: t("errorTitle"),
+        description: t("downloadNoImage"),
         variant: "destructive",
       });
       return;
@@ -46,11 +48,13 @@ export function DownloadButton({
       
       // 認証エラーのハンドリング（401/403）
       if (response.status === 401 || response.status === 403) {
-        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
+        throw new Error(t("downloadUnauthorized"));
       }
       
       if (!response.ok) {
-        throw new Error(`画像の取得に失敗しました: ${response.statusText}`);
+        throw new Error(
+          t("downloadFetchFailed", { statusText: response.statusText })
+        );
       }
       
       // Blobに変換（MIMEタイプを保持）
@@ -84,14 +88,15 @@ export function DownloadButton({
       }, 100);
       
       toast({
-        title: "ダウンロードしました",
-        description: "画像を保存しました",
+        title: t("downloadSuccessTitle"),
+        description: t("downloadSuccessDescription"),
       });
     } catch (error) {
-      console.error("ダウンロードエラー:", error);
+      console.error("Download error:", error);
       toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "画像のダウンロードに失敗しました",
+        title: t("errorTitle"),
+        description:
+          error instanceof Error ? error.message : t("downloadFailed"),
         variant: "destructive",
       });
     } finally {
@@ -104,8 +109,8 @@ export function DownloadButton({
 
     if (!imageUrl) {
       toast({
-        title: "エラー",
-        description: "ダウンロードできる画像がありません",
+        title: t("errorTitle"),
+        description: t("downloadNoImage"),
         variant: "destructive",
       });
       return;
@@ -118,11 +123,13 @@ export function DownloadButton({
       
       // 認証エラーのハンドリング（401/403）
       if (res.status === 401 || res.status === 403) {
-        throw new Error('画像へのアクセス権限がありません。認証が必要な可能性があります。');
+        throw new Error(t("downloadUnauthorized"));
       }
       
       if (!res.ok) {
-        throw new Error(`画像の取得に失敗しました: ${res.statusText}`);
+        throw new Error(
+          t("downloadFetchFailed", { statusText: res.statusText })
+        );
       }
       
       // Blobに変換
@@ -173,7 +180,7 @@ export function DownloadButton({
         setIsLoading(false);
         return;
       }
-      console.error("Share Sheet失敗:", error);
+      console.error("Share Sheet error:", error);
       // エラー時もダウンロードにフォールバック
       try {
         await handleDownload();
@@ -201,6 +208,7 @@ export function DownloadButton({
       }}
       disabled={isLoading}
       className="flex items-center gap-1.5 px-2 py-1 h-auto"
+      aria-label={t("downloadAriaLabel")}
     >
       <Download className="h-5 w-5 text-gray-600" />
     </Button>

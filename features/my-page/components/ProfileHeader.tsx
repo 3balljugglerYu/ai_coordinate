@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { User, Edit, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +18,11 @@ import { AvatarUpload } from "./AvatarUpload";
 import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import type { UserProfile } from "../lib/server-api";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+} from "@/i18n/config";
 
 interface ProfileHeaderProps {
   profile: UserProfile;
@@ -34,13 +40,17 @@ export function ProfileHeader({
   onProfileUpdate,
 }: ProfileHeaderProps) {
   const router = useRouter();
+  const localeValue = useLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const navT = useTranslations("nav");
+  const postsT = useTranslations("posts");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(profile);
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.push("/");
+      router.push(localizePublicPath("/", locale));
       router.refresh();
     } catch (error) {
       console.error("Sign out error:", error);
@@ -55,7 +65,7 @@ export function ProfileHeader({
   const displayName =
     currentProfile.nickname ||
     currentProfile.email?.split("@")[0] ||
-    "ユーザー";
+    postsT("anonymousUser");
 
   const handleProfileUpdate = (updatedProfile: UserProfile) => {
     setCurrentProfile(updatedProfile);
@@ -78,7 +88,7 @@ export function ProfileHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="メニューを開く"
+                  aria-label={navT("openUserMenu")}
                 >
                   <Menu className="h-5 w-5" />
                 </Button>

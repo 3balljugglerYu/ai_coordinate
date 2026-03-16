@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Plus } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Card } from "@/components/ui/card";
 import { ROUTES } from "@/constants";
 import { requireAuth } from "@/lib/auth";
@@ -10,8 +11,12 @@ import { getPercoinBalanceServer } from "../lib/server-api";
  * サーバーコンポーネント: ペルコイン残高のデータ取得と表示
  */
 export async function PercoinBalanceWrapper() {
+  const locale = await getLocale();
+  const creditsT = await getTranslations("credits");
+  const myPageT = await getTranslations("myPage");
   const user = await requireAuth();
   const percoinBalance = await getPercoinBalanceServer(user.id);
+  const formatter = new Intl.NumberFormat(locale === "ja" ? "ja-JP" : "en-US");
 
   return (
     <div className="mb-6">
@@ -22,22 +27,22 @@ export async function PercoinBalanceWrapper() {
               <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full">
                 <Image
                   src="/percoin.png"
-                  alt="ペルコイン"
+                  alt={creditsT("percoinUnit")}
                   width={48}
                   height={48}
                   className="object-cover"
                 />
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-gray-600">保有ペルコイン</p>
+                <p className="text-sm text-gray-600">{creditsT("balanceLabel")}</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {percoinBalance.toLocaleString()} ペルコイン
+                  {formatter.format(percoinBalance)} {creditsT("percoinUnit")}
                 </p>
               </div>
             </div>
             <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-600">
               <Plus className="h-4 w-4" />
-              購入
+              {myPageT("buy")}
             </span>
           </div>
         </Card>
@@ -47,7 +52,7 @@ export async function PercoinBalanceWrapper() {
           href={ROUTES.MY_PAGE_CREDITS}
           className="text-sm font-medium text-gray-600 hover:text-gray-900"
         >
-          取引履歴
+          {myPageT("transactionHistoryLink")}
         </Link>
       </div>
     </div>

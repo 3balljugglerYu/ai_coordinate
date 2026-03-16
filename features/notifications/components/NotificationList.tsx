@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, type MouseEvent } from "react";
+import { useEffect, useMemo, type MouseEvent } from "react";
 import Image from "next/image";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import { useNotifications } from "../hooks/useNotifications";
+import {
+  formatNotificationContent,
+  type NotificationTranslationKey,
+} from "../lib/presentation";
 import { NotificationLoadMoreSkeleton } from "./NotificationLoadMoreSkeleton";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "../types";
@@ -25,6 +30,14 @@ export function NotificationList({
   initialNotifications,
   initialNextCursor,
 }: NotificationListProps = {}) {
+  const t = useTranslations("notifications");
+  const locale = useLocale();
+  const translateNotification = useMemo(
+    () =>
+      (key: NotificationTranslationKey, values?: Record<string, string | number>) =>
+        values ? t(key as never, values as never) : t(key as never),
+    [t]
+  );
   const router = useRouter();
   const initialData =
     initialNotifications !== undefined
@@ -63,15 +76,15 @@ export function NotificationList({
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) {
-      return "たった今";
+      return t("justNow");
     } else if (diffMins < 60) {
-      return `${diffMins}分前`;
+      return t("minutesAgo", { count: diffMins });
     } else if (diffHours < 24) {
-      return `${diffHours}時間前`;
+      return t("hoursAgo", { count: diffHours });
     } else if (diffDays < 7) {
-      return `${diffDays}日前`;
+      return t("daysAgo", { count: diffDays });
     } else {
-      return date.toLocaleDateString("ja-JP", {
+      return date.toLocaleDateString(locale === "ja" ? "ja-JP" : "en-US", {
         month: "short",
         day: "numeric",
       });
@@ -151,7 +164,7 @@ export function NotificationList({
   if (notifications.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
-        <p className="text-gray-500 text-sm">通知はありません</p>
+        <p className="text-gray-500 text-sm">{t("empty")}</p>
       </div>
     );
   }
@@ -167,7 +180,7 @@ export function NotificationList({
             onClick={markAllRead}
             className="text-xs"
           >
-            すべて既読にする
+            {t("markAllRead")}
           </Button>
         </div>
       )}
@@ -180,7 +193,12 @@ export function NotificationList({
           const isActorProfileLinkNotification =
             notification.type === "like" || notification.type === "comment";
           const actorName =
-            notification.actor?.nickname || "ユーザー";
+            notification.actor?.nickname || t("userFallback");
+          const content = formatNotificationContent(
+            notification,
+            actorName,
+            translateNotification
+          );
           const clickableClass =
             isActorProfileLinkNotification ? "cursor-pointer" : undefined;
           const avatarOnClick = isActorProfileLinkNotification
@@ -237,11 +255,11 @@ export function NotificationList({
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900 line-clamp-2">
-                      {notification.title}
+                      {content.title}
                     </p>
-                    {notification.body && (
+                    {content.body && (
                       <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                        {notification.body}
+                        {content.body}
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
@@ -258,7 +276,7 @@ export function NotificationList({
                   <div className="mt-2">
                     <Image
                       src={imageUrl}
-                      alt="投稿画像"
+                      alt={t("postImageAlt")}
                       width={60}
                       height={60}
                       className="rounded object-cover"

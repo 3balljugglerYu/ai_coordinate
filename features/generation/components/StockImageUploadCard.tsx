@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Upload, X, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export function StockImageUploadCard({
   stockLimit: propStockLimit = null,
   currentCount: propCurrentCount = null,
 }: StockImageUploadCardProps) {
+  const t = useTranslations("coordinate");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -51,10 +53,16 @@ export function StockImageUploadCard({
     async (file: File) => {
       setError(null);
 
-      const result = await validateImageFile(file, config);
+      const result = await validateImageFile(file, config, {
+        imageLoadFailed: t("imageLoadFailed"),
+        invalidFileFormat: (formats) => t("invalidFileFormat", { formats }),
+        fileTooLarge: (maxSizeMB, currentSizeMB) =>
+          t("fileTooLarge", { maxSizeMB, currentSizeMB }),
+        imageValidationFailed: t("imageValidationFailed"),
+      });
 
       if (!result.isValid) {
-        const errorMsg = result.error || "画像の検証に失敗しました";
+        const errorMsg = result.error || t("generationFailedGeneric");
         setError(errorMsg);
         onUploadError?.(errorMsg);
         return;
@@ -100,13 +108,13 @@ export function StockImageUploadCard({
       // 認証エラー時はリダイレクトでHTMLが返る可能性がある
       const contentType = res.headers.get("content-type");
       if (contentType?.includes("text/html")) {
-        throw new Error("ログインが必要です");
+        throw new Error(t("loginRequired"));
       }
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "ストック画像のアップロードに失敗しました");
+        throw new Error(data.error || t("stockUploadFailed"));
       }
 
       // 成功時の処理
@@ -118,7 +126,7 @@ export function StockImageUploadCard({
       // GenerationFormのrefreshTriggerが更新され、制限数が再取得される
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "ストック画像のアップロードに失敗しました";
+        err instanceof Error ? err.message : t("stockUploadFailed");
 
       setError(errorMessage);
       onUploadError?.(errorMessage);
@@ -160,7 +168,7 @@ export function StockImageUploadCard({
     if (file && file.type.startsWith("image/")) {
       handleFileChange(file);
     } else {
-      const errorMsg = "画像ファイルをドロップしてください";
+      const errorMsg = t("dropImageFile");
       setError(errorMsg);
       onUploadError?.(errorMsg);
     }
@@ -192,7 +200,7 @@ export function StockImageUploadCard({
         <div className="relative flex items-center justify-center bg-gray-100 w-full max-w-[200px] max-h-[200px] aspect-square mx-auto overflow-hidden">
           <NextImage
             src={uploadedImage.previewUrl}
-            alt="アップロードされた画像"
+            alt={t("uploadedImageAlt")}
             width={800}
             height={800}
             className="h-full w-full object-contain"
@@ -231,12 +239,12 @@ export function StockImageUploadCard({
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                保存中...
+                {t("saving")}
               </>
             ) : (
               <>
                 <Upload className="mr-2 h-3 w-3" />
-                保存
+                {t("save")}
               </>
             )}
           </Button>
@@ -270,7 +278,7 @@ export function StockImageUploadCard({
       <div className="relative aspect-square flex flex-col items-center justify-center p-4">
         <Upload className={`mb-2 h-8 w-8 ${isLimitReached ? "text-gray-300" : "text-gray-400"}`} />
         <p className={`text-xs font-medium text-center ${isLimitReached ? "text-gray-400" : "text-gray-700"}`}>
-          {isLimitReached ? "上限に達しています" : "画像を追加"}
+          {isLimitReached ? t("limitReached") : t("addImage")}
         </p>
       </div>
       <input

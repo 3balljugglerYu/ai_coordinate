@@ -1,14 +1,20 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { CachedChallengePageContent } from "@/features/challenges/components/CachedChallengePageContent";
 import { requireAuth } from "@/lib/auth";
 
-export const metadata: Metadata = {
-  title: "ミッション | Persta.AI",
-  description: "ミッションを達成してペルコインを獲得しよう。デイリー投稿、連続ログイン、友達紹介などの特典情報。",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("challenge");
+
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export default async function ChallengePage() {
+  const t = await getTranslations("challenge");
   const user = await requireAuth();
   const tutorialCompleted = user.user_metadata?.tutorial_completed === true;
 
@@ -19,10 +25,10 @@ export default async function ChallengePage() {
           {/* タイトルと説明文 */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              ミッション
+              {t("pageTitle")}
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              ミッションを達成してペルコインを獲得しよう
+              {t("pageDescription")}
             </p>
           </div>
 

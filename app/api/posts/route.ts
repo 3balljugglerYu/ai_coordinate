@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPosts } from "@/features/posts/lib/server-api";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
 /**
  * 投稿一覧取得API
  */
 export async function GET(request: NextRequest) {
+  const copy = postsRouteCopy[getRouteLocale(request)];
   try {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "20", 10);
@@ -13,14 +16,14 @@ export async function GET(request: NextRequest) {
 
     if (limit < 1 || limit > 100) {
       return NextResponse.json(
-        { error: "Limit must be between 1 and 100" },
+        { error: copy.invalidLimit, errorCode: "POSTS_INVALID_LIMIT" },
         { status: 400 }
       );
     }
 
     if (offset < 0) {
       return NextResponse.json(
-        { error: "Offset must be non-negative" },
+        { error: copy.invalidOffset, errorCode: "POSTS_INVALID_OFFSET" },
         { status: 400 }
       );
     }
@@ -42,13 +45,10 @@ export async function GET(request: NextRequest) {
     console.error("Posts API error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "投稿の取得に失敗しました",
+        error: copy.postsFetchFailed,
+        errorCode: "POSTS_FETCH_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

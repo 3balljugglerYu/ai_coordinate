@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { SortType } from "../types";
 
@@ -10,10 +11,11 @@ interface SortTabsProps {
 }
 
 export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
+  const postsT = useTranslations("posts");
   const tabs: { value: SortType; label: string; disabled?: boolean }[] = [
-    { value: "newest", label: "新着" },
-    { value: "week", label: "オススメ" },
-    { value: "following", label: "フォロー" },
+    { value: "newest", label: postsT("newest") },
+    { value: "week", label: postsT("recommended") },
+    { value: "following", label: postsT("following") },
     // { value: "daily", label: "Daily" },
     // { value: "month", label: "Monthly" },
     // { value: "popular", label: "いいね" }, // 検索画面でのみ使用

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,10 +12,11 @@ interface ImageTabsProps {
 }
 
 export function ImageTabs({ value, onChange }: ImageTabsProps) {
+  const t = useTranslations("myPage");
   const tabs: { value: ImageFilter; label: string }[] = [
-    { value: "all", label: "すべて" },
-    { value: "posted", label: "投稿済み" },
-    { value: "unposted", label: "未投稿" },
+    { value: "all", label: t("imageTabAll") },
+    { value: "posted", label: t("imageTabPosted") },
+    { value: "unposted", label: t("imageTabUnposted") },
   ];
 
   return (
@@ -37,4 +38,3 @@ export function ImageTabs({ value, onChange }: ImageTabsProps) {
     </div>
   );
 }
-

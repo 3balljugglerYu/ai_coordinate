@@ -14,12 +14,16 @@ export const IntroScene = ({
   title,
   introHeadline,
   introBody,
+  baseTagLabel,
+  swapTagLabel,
   mainImageUrl,
 }: {
   featureBadge: string;
   title: string;
   introHeadline: string;
   introBody: string;
+  baseTagLabel: string;
+  swapTagLabel: string;
   mainImageUrl: string;
 }) => {
   const frame = useCurrentFrame();
@@ -132,7 +136,7 @@ export const IntroScene = ({
       />
 
       <Tag
-        label="1枚目をベースに"
+        label={baseTagLabel}
         accent={palette.cyan}
         style={{
           left: 96,
@@ -140,7 +144,7 @@ export const IntroScene = ({
         }}
       />
       <Tag
-        label="2枚目のキャラへ差し替え"
+        label={swapTagLabel}
         accent={palette.gold}
         style={{
           left: 296,

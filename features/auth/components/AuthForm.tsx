@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,17 +31,18 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
+  const t = useTranslations("auth");
 
   const isSignUp = mode === "signup";
 
   // リアルタイムバリデーション（サインアップ時のみ）
   const passwordError =
     isSignUp && password.length > 0 && password.length < 8
-      ? "パスワードは8文字以上で入力してください"
+      ? t("validationPasswordTooShort")
       : null;
   const confirmPasswordError =
     isSignUp && confirmPassword.length > 0 && password !== confirmPassword
-      ? "パスワードが一致しません"
+      ? t("validationPasswordMismatch")
       : null;
   const passwordRequirementsNotMet = isSignUp && password.length > 0 && !isPasswordValid(password);
 
@@ -62,21 +65,19 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
       // バリデーション
       if (!email || !password) {
-        throw new Error("メールアドレスとパスワードを入力してください");
+        throw new Error(t("validationMissingCredentials"));
       }
 
       if (password.length < 8) {
-        throw new Error("パスワードは8文字以上で入力してください");
+        throw new Error(t("validationPasswordTooShort"));
       }
 
       if (isSignUp && !isPasswordValid(password)) {
-        throw new Error(
-          "パスワードは英大文字・英小文字・数字・記号をそれぞれ1文字以上含めてください"
-        );
+        throw new Error(t("validationPasswordRequirements"));
       }
 
       if (isSignUp && password !== confirmPassword) {
-        throw new Error("パスワードが一致しません");
+        throw new Error(t("validationPasswordMismatch"));
       }
 
       // 認証処理
@@ -85,11 +86,11 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         // サインアップ成功
         setError(null);
         toast({
-          title: "確認メールを送信しました。",
+          title: t("signupSuccessTitle"),
           description: (
             <>
-              <span className="block">新規登録を受け付けました。メールをご確認ください。</span>
-              <span className="block">届かない場合は、迷惑メールフォルダもあわせてご確認ください。</span>
+              <span className="block">{t("signupSuccessLine1")}</span>
+              <span className="block">{t("signupSuccessLine2")}</span>
             </>
           ),
         });
@@ -109,7 +110,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
+      setError(err instanceof Error ? err.message : t("genericError"));
       setIsLoading(false);
     }
   };
@@ -122,7 +123,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
       await signInWithOAuth(provider, redirectTarget, referralCode || undefined);
       // OAuthプロバイダーのページにリダイレクトされる
     } catch (err) {
-      setError(err instanceof Error ? err.message : "OAuth認証に失敗しました");
+      setError(err instanceof Error ? err.message : t("oauthError"));
       setIsLoading(false);
     }
   };
@@ -135,7 +136,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm font-medium text-gray-700">
-              {isSignUp ? "アカウントを作成中..." : "ログイン中..."}
+              {isSignUp ? t("loadingSignup") : t("loadingSignin")}
             </p>
           </div>
         </div>
@@ -143,12 +144,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
       <div className="mb-6 text-center">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-          {isSignUp ? "新規登録" : "ログイン"}
+          {isSignUp ? t("signupTitle") : t("signinTitle")}
         </h2>
         <p className="mt-2 text-sm text-gray-600">
           {isSignUp
-            ? "アカウントを作成して、AI着せ替えを始めましょう"
-            : "アカウントにログインしてください"}
+            ? t("signupDescription")
+            : t("signinDescription")}
         </p>
       </div>
 
@@ -161,7 +162,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* メールアドレス */}
         <div>
-          <Label htmlFor="email">メールアドレス</Label>
+          <Label htmlFor="email">{t("emailLabel")}</Label>
           <div className="relative mt-1">
             <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <Input
@@ -179,7 +180,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
         {/* パスワード */}
         <div>
-          <Label htmlFor="password">パスワード</Label>
+          <Label htmlFor="password">{t("passwordLabel")}</Label>
           <div className="relative mt-1">
             <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <Input
@@ -203,7 +204,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
               disabled={isLoading}
-              aria-label={showPassword ? "パスワードを非表示" : "パスワードを表示"}
+              aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             >
               {showPassword ? (
                 <EyeOff className="h-5 w-5" />
@@ -223,21 +224,21 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
                 passwordRequirementsNotMet &&
                 !passwordError && (
                   <p className="mt-1 text-xs text-destructive" role="alert">
-                    パスワードの要件をすべて満たしてください。
+                    {t("passwordRequirementsHint")}
                   </p>
                 )}
               <PasswordRequirements password={password} />
             </>
           ) : (
             <p className="mt-1 text-xs text-gray-500">
-              パスワードをお忘れの方は{" "}
-              <a
+              {t("forgotPasswordPrefix")}{" "}
+              <Link
                 href="/reset-password"
                 className="font-medium text-primary hover:underline"
               >
-                こちら
-              </a>
-              から再設定できます
+                {t("forgotPasswordLink")}
+              </Link>
+              {t("forgotPasswordSuffix") ? ` ${t("forgotPasswordSuffix")}` : null}
             </p>
           )}
         </div>
@@ -245,7 +246,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         {/* パスワード確認（サインアップのみ） */}
         {isSignUp && (
           <div>
-            <Label htmlFor="confirmPassword">パスワード（確認）</Label>
+            <Label htmlFor="confirmPassword">{t("confirmPasswordLabel")}</Label>
             <div className="relative mt-1">
               <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
@@ -265,7 +266,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-0 inset-y-0 flex items-center justify-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded cursor-pointer"
                 disabled={isLoading}
-                aria-label={showConfirmPassword ? "パスワードを非表示" : "パスワードを表示"}
+                aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")}
               >
                 {showConfirmPassword ? (
                   <EyeOff className="h-5 w-5" />
@@ -294,7 +295,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
           }
         >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isSignUp ? "アカウントを作成" : "ログイン"}
+          {isSignUp ? t("submitSignup") : t("submitSignin")}
         </Button>
       </form>
 
@@ -305,7 +306,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             <div className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-gray-500">または</span>
+            <span className="bg-white px-2 text-gray-500">{t("orContinueWith")}</span>
           </div>
         </div>
 
@@ -336,7 +337,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Googleで続ける
+            {t("continueWithGoogle")}
           </Button>
 
           {/* X (Twitter) - 一時的に非表示 */}
@@ -351,7 +352,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
-            X (Twitter)で続ける
+            {t("continueWithX")}
           </Button>
           */}
 
@@ -367,7 +368,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
             </svg>
-            GitHubで続ける
+            {t("continueWithGithub")}
           </Button>
           */}
         </div>
@@ -377,17 +378,17 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
       <div className="mt-6 text-center text-sm">
         {isSignUp ? (
           <p className="text-gray-600">
-            すでにアカウントをお持ちですか？{" "}
-            <a href="/login" className="font-medium text-primary hover:underline">
-              ログイン
-            </a>
+            {t("haveAccount")}{" "}
+            <Link href="/login" className="font-medium text-primary hover:underline">
+              {t("submitSignin")}
+            </Link>
           </p>
         ) : (
           <p className="text-gray-600">
-            アカウントをお持ちでない方は{" "}
-            <a href="/signup" className="font-medium text-primary hover:underline">
-              新規登録
-            </a>
+            {t("noAccount")}{" "}
+            <Link href="/signup" className="font-medium text-primary hover:underline">
+              {t("signupTitle")}
+            </Link>
           </p>
         )}
       </div>

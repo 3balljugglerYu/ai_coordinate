@@ -4,9 +4,15 @@ import { cacheLife, cacheTag } from "next/cache";
 import { getPercoinBalanceServer } from "@/features/my-page/lib/server-api";
 import { getPercoinPurchaseUrl } from "../lib/urls";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Locale } from "@/i18n/config";
 
 interface CachedCoordinatePercoinBalanceProps {
   userId: string;
+  locale: Locale;
+  copy: {
+    balanceLabel: string;
+    percoinUnit: string;
+  };
 }
 
 /**
@@ -14,13 +20,16 @@ interface CachedCoordinatePercoinBalanceProps {
  */
 export async function CachedCoordinatePercoinBalance({
   userId,
+  locale,
+  copy,
 }: CachedCoordinatePercoinBalanceProps) {
   "use cache";
-  cacheTag(`coordinate-${userId}`);
+  cacheTag(`coordinate-${userId}-${locale}`);
   cacheLife("minutes");
 
   const supabase = createAdminClient();
   const percoinBalance = await getPercoinBalanceServer(userId, supabase);
+  const formatter = new Intl.NumberFormat(locale === "ja" ? "ja-JP" : "en-US");
 
   return (
     <Link
@@ -30,16 +39,16 @@ export async function CachedCoordinatePercoinBalance({
       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
         <Image
           src="/percoin.png"
-          alt="ペルコイン"
+          alt={copy.percoinUnit}
           width={40}
           height={40}
           className="object-cover"
         />
       </div>
       <div>
-        <p className="text-xs text-gray-500">保有ペルコイン</p>
+        <p className="text-xs text-gray-500">{copy.balanceLabel}</p>
         <p className="text-lg font-bold text-gray-900">
-          {percoinBalance.toLocaleString()} ペルコイン
+          {formatter.format(percoinBalance)} {copy.percoinUnit}
         </p>
       </div>
     </Link>

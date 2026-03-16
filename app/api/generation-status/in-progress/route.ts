@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 
 /**
  * 未完了画像生成ジョブ取得API
@@ -8,14 +11,13 @@ import { createClient } from "@/lib/supabase/server";
  * オプションで最近完了したジョブ（直近5分以内のsucceeded/failed）も取得
  */
 export async function GET(request: NextRequest) {
+  const copy = getGenerationRouteCopy(getRouteLocale(request));
+
   try {
     // 認証チェック
     const user = await getUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      );
+      return jsonError(copy.authRequired, "GENERATION_AUTH_REQUIRED", 401);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -33,10 +35,7 @@ export async function GET(request: NextRequest) {
 
     if (inProgressError) {
       console.error("Failed to fetch in-progress jobs:", inProgressError);
-      return NextResponse.json(
-        { error: "未完了ジョブの取得に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.inProgressFetchFailed, "GENERATION_IN_PROGRESS_FETCH_FAILED", 500);
     }
 
     // 最近完了したジョブも取得（直近5分以内、最大10件）
@@ -82,9 +81,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("In-progress jobs check error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(copy.inProgressFetchFailed, "GENERATION_IN_PROGRESS_FETCH_FAILED", 500);
   }
 }

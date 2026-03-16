@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
@@ -26,6 +27,7 @@ export function ChallengeCard({
   children,
   className,
 }: ChallengeCardProps) {
+  const creditsT = useTranslations("credits");
   const colorStyles = {
     blue: "bg-blue-50 text-blue-600 border-blue-200",
     purple: "bg-purple-50 text-purple-600 border-purple-200",
@@ -54,7 +56,9 @@ export function ChallengeCard({
           </div>
           {(percoinAmount || percoinText) && (
             <div className={cn("px-4 py-1.5 rounded-full text-sm font-bold border", colorStyles[color])}>
-              {percoinAmount ? `+${percoinAmount} ペルコイン` : percoinText}
+              {percoinAmount
+                ? `+${percoinAmount} ${creditsT("percoinUnit")}`
+                : percoinText}
             </div>
           )}
         </div>

@@ -4,14 +4,24 @@ import {float, scaleIn} from "../helpers";
 import {SceneBackground, ShowcaseCard} from "../shared";
 
 export const ResultScene = ({
+  eyebrow,
   message,
   body,
+  resultLabel,
+  resultCaption,
+  baseLabel,
+  characterLabel,
   baseImageUrl,
   characterImageUrl,
   resultImageUrl,
 }: {
+  eyebrow: string;
   message: string;
   body: string;
+  resultLabel: string;
+  resultCaption: string;
+  baseLabel: string;
+  characterLabel: string;
   baseImageUrl: string;
   characterImageUrl: string;
   resultImageUrl: string;
@@ -29,8 +39,8 @@ export const ResultScene = ({
     <SceneBackground accentA={palette.gold} accentB={palette.rose} accentC={palette.cyan}>
       <ShowcaseCard
         src={resultImageUrl}
-        label="Result"
-        caption="完成結果を大きく表示"
+        label={resultLabel}
+        caption={resultCaption}
         style={{
           left: 84,
           top: 140 + float(frame, 28, 6, 8),
@@ -60,7 +70,7 @@ export const ResultScene = ({
             marginBottom: 14,
           }}
         >
-          AI fashion show
+          {eyebrow}
         </div>
         <div
           style={{
@@ -87,7 +97,7 @@ export const ResultScene = ({
 
       <ShowcaseCard
         src={baseImageUrl}
-        label="Base"
+        label={baseLabel}
         style={{
           right: 420,
           bottom: 128 + float(frame, 24, 4, 0),
@@ -99,7 +109,7 @@ export const ResultScene = ({
       />
       <ShowcaseCard
         src={characterImageUrl}
-        label="My character"
+        label={characterLabel}
         style={{
           right: 92,
           bottom: 128 + float(frame, 24, 4, 10),

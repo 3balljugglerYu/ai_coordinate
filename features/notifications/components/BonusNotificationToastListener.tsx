@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentUser, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 import { getNotifications } from "@/features/notifications/lib/api";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import {
+  formatNotificationContent,
+  type NotificationTranslationKey,
+} from "@/features/notifications/lib/presentation";
 import type { Notification } from "@/features/notifications/types";
 
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
@@ -68,6 +73,7 @@ function isGlobalBonusToastTarget(notification: Notification): boolean {
 
 export function BonusNotificationToastListener() {
   const pathname = usePathname();
+  const t = useTranslations("notifications");
   const { toast } = useToast();
   const { unreadCount, refreshUnreadCount } = useUnreadNotificationCount();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -137,6 +143,12 @@ export function BonusNotificationToastListener() {
     });
   }, [refreshUnreadCount]);
 
+  const translateNotification = useCallback(
+    (key: NotificationTranslationKey, values?: Record<string, string | number>) =>
+      values ? t(key as never, values as never) : t(key as never),
+    [t]
+  );
+
   useEffect(() => {
     if (!currentUserId) return;
     if (unreadCount <= 0) return;
@@ -158,7 +170,9 @@ export function BonusNotificationToastListener() {
 
     const checkInitialUnreadBonusNotifications = async (): Promise<void> => {
       try {
-        const response = await getNotifications(20, null);
+        const response = await getNotifications(20, null, {
+          fetchFailed: t("fetchFailed"),
+        });
         if (cancelled) return;
 
         const unreadGlobalBonusNotifications = response.notifications.filter(
@@ -183,9 +197,14 @@ export function BonusNotificationToastListener() {
         }
 
         const latestNotification = unreadGlobalBonusNotifications[0];
+        const content = formatNotificationContent(
+          latestNotification,
+          latestNotification.actor?.nickname || t("userFallback"),
+          translateNotification
+        );
         toast({
-          title: latestNotification.title,
-          description: latestNotification.body,
+          title: content.title,
+          description: content.body,
           variant: "default",
         });
         markBonusToastAsShown(latestNotification);
@@ -216,6 +235,8 @@ export function BonusNotificationToastListener() {
     unreadCount,
     syncUnreadBadgeCount,
     toast,
+    t,
+    translateNotification,
   ]);
 
   useEffect(() => {
@@ -238,9 +259,14 @@ export function BonusNotificationToastListener() {
           if (hasShownBonusToast(newNotification)) return;
 
           if (pathname !== "/notifications") {
+            const content = formatNotificationContent(
+              newNotification,
+              t("userFallback"),
+              translateNotification
+            );
             toast({
-              title: newNotification.title,
-              description: newNotification.body,
+              title: content.title,
+              description: content.body,
               variant: "default",
             });
             syncUnreadBadgeCount();
@@ -261,6 +287,8 @@ export function BonusNotificationToastListener() {
     pathname,
     syncUnreadBadgeCount,
     toast,
+    t,
+    translateNotification,
   ]);
 
   return null;

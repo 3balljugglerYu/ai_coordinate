@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, User, User as UserIcon } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import { UserMenuItems } from "@/features/auth/components/UserMenuItems";
 import {
   getCurrentUser,
@@ -21,6 +23,12 @@ import {
 import { APP_NAME, ROUTES } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
 import { SearchBar } from "@/features/posts/components/SearchBar";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+  stripLocalePrefix,
+} from "@/i18n/config";
 
 interface StickyHeaderProps {
   children?: React.ReactNode;
@@ -36,13 +44,18 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const localeValue = useLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const commonT = useTranslations("common");
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const headerRef = useRef<HTMLElement | null>(null);
+  const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
+  const localizedHomePath = localizePublicPath("/", locale);
 
   // トップレベルのページ（戻るボタン非表示）
   const topLevelPaths = [
-    ROUTES.HOME,
+    "/",
     ROUTES.COORDINATE,
     "/challenge",
     ROUTES.MY_PAGE,
@@ -59,11 +72,13 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const shouldShowBackButton =
     showBackButton !== undefined
       ? showBackButton
-      : !topLevelPaths.includes(pathname);
+      : !topLevelPaths.includes(normalizedPathname);
 
   // 遷移元を確認して戻る先を決定
   const fromParam = searchParams.get("from");
-  const isMyPageSubPath = pathname.startsWith("/my-page/") && pathname !== "/my-page";
+  const isMyPageSubPath =
+    normalizedPathname.startsWith("/my-page/") &&
+    normalizedPathname !== "/my-page";
   const backUrl =
     fromParam === "my-page"
       ? ROUTES.MY_PAGE
@@ -73,7 +88,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
           ? ROUTES.COORDINATE
           : isMyPageSubPath
             ? ROUTES.MY_PAGE
-            : ROUTES.HOME;
+            : localizedHomePath;
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -176,14 +191,14 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
       await signOut();
       // 状態を即座に更新
       setCurrentUser(null);
-      router.push("/");
+      router.push(localizedHomePath);
       router.refresh();
     } catch (error) {
       console.error("Sign out error:", error);
     }
   };
 
-  const isSearchPage = pathname === "/search";
+  const isSearchPage = normalizedPathname === "/search";
 
   // ヘッダー左側（戻るボタン + ロゴ）の共通コンポーネント
   const HeaderLeft = () => (
@@ -196,12 +211,12 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
         </Link>
       )}
       <Link
-        href="/"
+        href={localizedHomePath}
         className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700 whitespace-nowrap"
       >
         <Image
           src="/icons/icon-192.png"
-          alt="Persta.AI ロゴ"
+          alt={commonT("logoAlt")}
           width={24}
           height={24}
           className="rounded-md"
@@ -214,41 +229,42 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   // ヘッダー右側（ユーザーアイコン）の共通コンポーネント
   const HeaderRight = () => (
     <div className="flex items-center gap-2 flex-shrink-0">
+      <LanguageSettingsMenu variant="header" />
       {isLoading ? (
         <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
+      ) : currentUser ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+              {currentUser.avatar_url ? (
+                <Image
+                  src={currentUser.avatar_url}
+                  alt={commonT("userAlt")}
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                  <User className="h-4 w-4 text-gray-500" />
+                </div>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <UserMenuItems
+              includeMyPage
+              includeLanguageSettings={false}
+              onSignOut={handleSignOut}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
-        <>
-          {currentUser ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                  {currentUser.avatar_url ? (
-                    <Image
-                      src={currentUser.avatar_url}
-                      alt="ユーザー"
-                      width={32}
-                      height={32}
-                      className="rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
-                      <User className="h-4 w-4 text-gray-500" />
-                    </div>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <UserMenuItems includeMyPage onSignOut={handleSignOut} />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link href="/login">
-              <Button variant="outline" size="sm" className="text-xs">
-                ログイン
-              </Button>
-            </Link>
-          )}
-        </>
+        <Link href="/login">
+          <Button variant="outline" size="sm" className="text-xs">
+            {commonT("login")}
+          </Button>
+        </Link>
       )}
       {children}
     </div>

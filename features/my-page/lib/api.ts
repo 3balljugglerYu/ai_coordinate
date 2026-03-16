@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/client";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 
+interface MyPageApiMessages {
+  loginRequired?: string;
+  imageFetchFailed?: string;
+  imageNotFound?: string;
+  deleteImageForbidden?: string;
+  deleteImageFailed?: string;
+}
+
 /**
  * マイページ用のAPI関数
  */
@@ -10,7 +18,8 @@ import type { GeneratedImageRecord } from "@/features/generation/lib/database";
  */
 export async function getMyImages(
   limit = 50,
-  offset = 0
+  offset = 0,
+  messages?: MyPageApiMessages
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createClient();
 
@@ -19,7 +28,7 @@ export async function getMyImages(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("ログインが必要です");
+    throw new Error(messages?.loginRequired || "ログインが必要です");
   }
 
   const { data, error } = await supabase
@@ -31,7 +40,9 @@ export async function getMyImages(
 
   if (error) {
     console.error("Database query error:", error);
-    throw new Error(`画像の取得に失敗しました: ${error.message}`);
+    throw new Error(
+      `${messages?.imageFetchFailed || "画像の取得に失敗しました"}: ${error.message}`
+    );
   }
 
   return data || [];
@@ -40,7 +51,10 @@ export async function getMyImages(
 /**
  * 画像の詳細を取得
  */
-export async function getImageDetail(imageId: string): Promise<GeneratedImageRecord> {
+export async function getImageDetail(
+  imageId: string,
+  messages?: MyPageApiMessages
+): Promise<GeneratedImageRecord> {
   const supabase = createClient();
 
   const {
@@ -48,7 +62,7 @@ export async function getImageDetail(imageId: string): Promise<GeneratedImageRec
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("ログインが必要です");
+    throw new Error(messages?.loginRequired || "ログインが必要です");
   }
 
   const { data, error } = await supabase
@@ -60,7 +74,9 @@ export async function getImageDetail(imageId: string): Promise<GeneratedImageRec
 
   if (error) {
     console.error("Database query error:", error);
-    throw new Error(`画像の取得に失敗しました: ${error.message}`);
+    throw new Error(
+      `${messages?.imageFetchFailed || "画像の取得に失敗しました"}: ${error.message}`
+    );
   }
 
   return data;
@@ -256,7 +272,10 @@ export async function getPercoinTransactionsCount(
 /**
  * 画像を削除
  */
-export async function deleteMyImage(imageId: string): Promise<void> {
+export async function deleteMyImage(
+  imageId: string,
+  messages?: MyPageApiMessages
+): Promise<void> {
   const supabase = createClient();
 
   const {
@@ -264,7 +283,7 @@ export async function deleteMyImage(imageId: string): Promise<void> {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("ログインが必要です");
+    throw new Error(messages?.loginRequired || "ログインが必要です");
   }
 
   // 画像情報を取得してStorageパスを確認
@@ -275,11 +294,13 @@ export async function deleteMyImage(imageId: string): Promise<void> {
     .single();
 
   if (fetchError || !image) {
-    throw new Error("画像が見つかりません");
+    throw new Error(messages?.imageNotFound || "画像が見つかりません");
   }
 
   if (image.user_id !== user.id) {
-    throw new Error("この画像を削除する権限がありません");
+    throw new Error(
+      messages?.deleteImageForbidden || "この画像を削除する権限がありません"
+    );
   }
 
   // Storageから削除
@@ -299,6 +320,8 @@ export async function deleteMyImage(imageId: string): Promise<void> {
     .eq("user_id", user.id);
 
   if (deleteError) {
-    throw new Error(`画像の削除に失敗しました: ${deleteError.message}`);
+    throw new Error(
+      `${messages?.deleteImageFailed || "画像の削除に失敗しました"}: ${deleteError.message}`
+    );
   }
 }

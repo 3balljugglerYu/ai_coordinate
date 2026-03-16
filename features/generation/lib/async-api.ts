@@ -17,7 +17,21 @@ const AGGRESSIVE_JPEG_QUALITY = 0.7;
 /** 拡張子除去用（js-hoist-regexp: ループ/関数内での再生成を避ける） */
 const BASE_NAME_REGEX = /\.[^.]+$/;
 
-function loadImageElement(file: File): Promise<HTMLImageElement> {
+interface AsyncGenerationApiMessages {
+  imageLoadFailed?: string;
+  imageConvertFailed?: string;
+  imageContextUnavailable?: string;
+  submitJobFailed?: string;
+  fetchStatusFailed?: string;
+  fetchJobsFailed?: string;
+  pollingStopped?: string;
+  pollingTimeout?: string;
+}
+
+function loadImageElement(
+  file: File,
+  messages?: AsyncGenerationApiMessages
+): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -29,7 +43,7 @@ function loadImageElement(file: File): Promise<HTMLImageElement> {
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("画像の読み込みに失敗しました"));
+      reject(new Error(messages?.imageLoadFailed || "画像の読み込みに失敗しました"));
     };
 
     img.src = url;
@@ -39,12 +53,13 @@ function loadImageElement(file: File): Promise<HTMLImageElement> {
 function canvasToBlob(
   canvas: HTMLCanvasElement,
   mimeType: string,
-  quality?: number
+  quality?: number,
+  messages?: AsyncGenerationApiMessages
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        reject(new Error("画像の変換に失敗しました"));
+        reject(new Error(messages?.imageConvertFailed || "画像の変換に失敗しました"));
         return;
       }
       resolve(blob);
@@ -52,8 +67,11 @@ function canvasToBlob(
   });
 }
 
-async function normalizeSourceImage(file: File): Promise<File> {
-  const image = await loadImageElement(file);
+async function normalizeSourceImage(
+  file: File,
+  messages?: AsyncGenerationApiMessages
+): Promise<File> {
+  const image = await loadImageElement(file, messages);
   const originalWidth = image.naturalWidth;
   const originalHeight = image.naturalHeight;
   const longEdge = Math.max(originalWidth, originalHeight);
@@ -81,7 +99,9 @@ async function normalizeSourceImage(file: File): Promise<File> {
 
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("画像処理コンテキストの取得に失敗しました");
+    throw new Error(
+      messages?.imageContextUnavailable || "画像処理コンテキストの取得に失敗しました"
+    );
   }
 
   context.drawImage(image, 0, 0, targetWidth, targetHeight);
@@ -96,7 +116,8 @@ async function normalizeSourceImage(file: File): Promise<File> {
   const outputBlob = await canvasToBlob(
     canvas,
     outputType,
-    outputType === "image/jpeg" ? jpegQuality : undefined
+    outputType === "image/jpeg" ? jpegQuality : undefined,
+    messages
   );
 
   const extension = outputType === "image/png" ? "png" : "jpg";
@@ -129,7 +150,8 @@ export interface AsyncGenerationStatus {
  * 非同期画像生成ジョブを投入
  */
 export async function generateImageAsync(
-  request: Omit<GenerationRequest, "count">
+  request: Omit<GenerationRequest, "count">,
+  messages?: AsyncGenerationApiMessages
 ): Promise<AsyncGenerationResponse> {
   const backgroundMode = resolveBackgroundMode(
     request.backgroundMode,
@@ -143,7 +165,10 @@ export async function generateImageAsync(
 
   if (request.sourceImage) {
     const { imageToBase64 } = await import("./nanobanana");
-    const normalizedSourceImage = await normalizeSourceImage(request.sourceImage);
+    const normalizedSourceImage = await normalizeSourceImage(
+      request.sourceImage,
+      messages
+    );
     sourceImageBase64 = await imageToBase64(normalizedSourceImage);
     sourceImageMimeType = normalizedSourceImage.type;
   }
@@ -168,8 +193,12 @@ export async function generateImageAsync(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "画像生成ジョブの投入に失敗しました");
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(
+      error?.error || messages?.submitJobFailed || "画像生成ジョブの投入に失敗しました"
+    );
   }
 
   const data: AsyncGenerationResponse = await response.json();
@@ -180,13 +209,18 @@ export async function generateImageAsync(
  * 非同期画像生成ステータスを取得
  */
 export async function getGenerationStatus(
-  jobId: string
+  jobId: string,
+  messages?: AsyncGenerationApiMessages
 ): Promise<AsyncGenerationStatus> {
   const response = await fetch(`/api/generation-status?id=${encodeURIComponent(jobId)}`);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "ステータスの取得に失敗しました");
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(
+      error?.error || messages?.fetchStatusFailed || "ステータスの取得に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -212,7 +246,10 @@ export interface JobStatus {
  * @param includeRecent 最近完了したジョブ（直近5分以内）も含めるかどうか
  * @returns ジョブの一覧（未完了と最近完了したジョブ）
  */
-export async function getInProgressJobs(includeRecent: boolean = false): Promise<JobStatus[]> {
+export async function getInProgressJobs(
+  includeRecent: boolean = false,
+  messages?: AsyncGenerationApiMessages
+): Promise<JobStatus[]> {
   const url = includeRecent
     ? "/api/generation-status/in-progress?includeRecent=true"
     : "/api/generation-status/in-progress";
@@ -220,8 +257,12 @@ export async function getInProgressJobs(includeRecent: boolean = false): Promise
   const response = await fetch(url);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "ジョブの取得に失敗しました");
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(
+      error?.error || messages?.fetchJobsFailed || "ジョブの取得に失敗しました"
+    );
   }
 
   const data = await response.json();
@@ -246,9 +287,10 @@ export function pollGenerationStatus(
     interval?: number; // ポーリング間隔（ミリ秒、デフォルト: 2000）
     timeout?: number; // タイムアウト（ミリ秒、デフォルト: 300000 = 5分）
     onStatusUpdate?: (status: AsyncGenerationStatus) => void; // ステータス更新時のコールバック
+    messages?: AsyncGenerationApiMessages;
   } = {}
 ): PollGenerationStatusResult {
-  const { interval = 2000, timeout = 300000, onStatusUpdate } = options;
+  const { interval = 2000, timeout = 300000, onStatusUpdate, messages } = options;
   const startTime = Date.now();
   let timeoutId: NodeJS.Timeout | null = null;
   let isStopped = false;
@@ -265,22 +307,22 @@ export function pollGenerationStatus(
     const poll = async () => {
       // 停止された場合は処理を中断
       if (isStopped) {
-        reject(new Error("ポーリングが停止されました"));
+        reject(new Error(messages?.pollingStopped || "ポーリングが停止されました"));
         return;
       }
 
       try {
         // タイムアウトチェック
         if (Date.now() - startTime > timeout) {
-          reject(new Error("ポーリングがタイムアウトしました"));
+          reject(new Error(messages?.pollingTimeout || "ポーリングがタイムアウトしました"));
           return;
         }
 
-        const status = await getGenerationStatus(jobId);
+        const status = await getGenerationStatus(jobId, messages);
         
         // 停止された場合は処理を中断
         if (isStopped) {
-          reject(new Error("ポーリングが停止されました"));
+          reject(new Error(messages?.pollingStopped || "ポーリングが停止されました"));
           return;
         }
 

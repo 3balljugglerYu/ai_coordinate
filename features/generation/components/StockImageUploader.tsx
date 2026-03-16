@@ -2,9 +2,9 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   validateImageFile,
@@ -37,6 +37,7 @@ export function StockImageUploader({
   const [isUploading, setIsUploading] = useState(false);
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
+  const t = useTranslations("coordinate");
 
   // ストック画像制限数を取得
   useEffect(() => {
@@ -66,10 +67,16 @@ export function StockImageUploader({
     async (file: File) => {
       setError(null);
 
-      const result = await validateImageFile(file, config);
+      const result = await validateImageFile(file, config, {
+        imageLoadFailed: t("imageLoadFailed"),
+        invalidFileFormat: (formats) => t("invalidFileFormat", { formats }),
+        fileTooLarge: (maxSizeMB, currentSizeMB) =>
+          t("fileTooLarge", { maxSizeMB, currentSizeMB }),
+        imageValidationFailed: t("imageValidationFailed"),
+      });
 
       if (!result.isValid) {
-        const errorMsg = result.error || "画像の検証に失敗しました";
+        const errorMsg = result.error || t("imageValidationFailed");
         setError(errorMsg);
         onUploadError?.(errorMsg);
         return;
@@ -94,7 +101,7 @@ export function StockImageUploader({
       };
       img.src = result.previewUrl!;
     },
-    [config, onUploadError]
+    [config, onUploadError, t]
   );
 
   const handleUpload = useCallback(async () => {
@@ -115,13 +122,13 @@ export function StockImageUploader({
       // 認証エラー時はリダイレクトでHTMLが返る可能性がある
       const contentType = res.headers.get("content-type");
       if (contentType?.includes("text/html")) {
-        throw new Error("ログインが必要です");
+        throw new Error(t("loginRequired"));
       }
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "ストック画像のアップロードに失敗しました");
+        throw new Error(data.error || t("stockUploadFailed"));
       }
 
       // 成功時の処理
@@ -130,14 +137,14 @@ export function StockImageUploader({
       onUploadSuccess?.(data.id);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "ストック画像のアップロードに失敗しました";
+        err instanceof Error ? err.message : t("stockUploadFailed");
 
       setError(errorMessage);
       onUploadError?.(errorMessage);
     } finally {
       setIsUploading(false);
     }
-  }, [uploadedImage, onUploadSuccess, onUploadError]);
+  }, [onUploadError, onUploadSuccess, t, uploadedImage]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -172,7 +179,7 @@ export function StockImageUploader({
     if (file && file.type.startsWith("image/")) {
       handleFileChange(file);
     } else {
-      const errorMsg = "画像ファイルをドロップしてください";
+      const errorMsg = t("dropImageFile");
       setError(errorMsg);
       onUploadError?.(errorMsg);
     }
@@ -193,7 +200,7 @@ export function StockImageUploader({
       {(stockLimit !== null && currentCount !== null) && (
         <div className="flex items-center justify-end mb-2">
           <span className="text-xs text-gray-500">
-            {currentCount} / {stockLimit} 枚
+            {t("stockCountStatus", { current: currentCount, limit: stockLimit })}
           </span>
         </div>
       )}
@@ -201,7 +208,7 @@ export function StockImageUploader({
       {isLimitReached && (
         <Alert variant="destructive" className="mt-2 mb-3">
           <AlertDescription>
-            ストック画像の上限に達しています。不要なストックを削除するか、プランをアップグレードしてください。
+            {t("stockLimitReachedDescription")}
           </AlertDescription>
         </Alert>
       )}
@@ -233,16 +240,18 @@ export function StockImageUploader({
             <Upload className={`mb-4 h-12 w-12 ${isLimitReached ? "text-gray-300" : "text-gray-400"}`} />
             <p className={`mb-2 text-sm font-medium ${isLimitReached ? "text-gray-400" : "text-gray-700"}`}>
               {isLimitReached
-                ? "ストック画像の上限に達しています"
-                : "クリックまたはドラッグ&ドロップで画像をアップロード"}
+                ? t("stockLimitReachedPrompt")
+                : t("stockUploadPrompt")}
             </p>
             {!isLimitReached && (
               <>
                 <p className="text-xs text-gray-500">
-                  対応形式: {getReadableFileFormat(config.allowedFormats)}
+                  {t("stockSupportedFormats", {
+                    formats: getReadableFileFormat(config.allowedFormats),
+                  })}
                 </p>
                 <p className="text-xs text-gray-500">
-                  最大サイズ: {config.maxSizeMB}MB
+                  {t("stockMaxSize", { size: config.maxSizeMB })}
                 </p>
               </>
             )}
@@ -261,7 +270,7 @@ export function StockImageUploader({
           <div className="relative flex items-center justify-center bg-gray-100 w-full max-w-[200px] max-h-[200px] aspect-square mx-auto overflow-hidden">
             <NextImage
               src={uploadedImage.previewUrl}
-              alt="アップロードされた画像"
+              alt={t("uploadedImageAlt")}
               width={uploadedImage.width}
               height={uploadedImage.height}
               className="h-full w-full object-contain"
@@ -295,12 +304,12 @@ export function StockImageUploader({
               {isUploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  アップロード中...
+                  {t("stockUploading")}
                 </>
               ) : (
                 <>
                   <Upload className="mr-2 h-4 w-4" />
-                  ストックに保存
+                  {t("stockSaveAction")}
                 </>
               )}
             </Button>

@@ -5,8 +5,13 @@ import {
   deductPercoins,
   InsufficientPercoinBalanceError,
 } from "@/features/credits/lib/percoin-service";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 
 export async function POST(request: NextRequest) {
+  const copy = getCreditsRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -14,7 +19,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError(copy.authRequired, "CREDITS_AUTH_REQUIRED", 401);
     }
 
     const body = await request.json().catch(() => null);
@@ -22,10 +27,7 @@ export async function POST(request: NextRequest) {
     const percoins = Number(body?.credits);
 
     if (!generationId || Number.isNaN(percoins) || percoins <= 0) {
-      return NextResponse.json(
-        { error: "generationId and positive percoins are required" },
-        { status: 400 }
-      );
+      return jsonError(copy.invalidConsumeRequest, "CREDITS_INVALID_CONSUME_REQUEST", 400);
     }
 
     // 生成した画像が本人のものか確認
@@ -36,11 +38,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (imageError || !imageRecord) {
-      return NextResponse.json({ error: "Image not found" }, { status: 404 });
+      return jsonError(copy.imageNotFound, "CREDITS_IMAGE_NOT_FOUND", 404);
     }
 
     if (imageRecord.user_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return jsonError(copy.forbidden, "CREDITS_FORBIDDEN", 403);
     }
 
     const result = await deductPercoins({
@@ -58,12 +60,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Percoin consumption error:", error);
     if (error instanceof InsufficientPercoinBalanceError) {
-      return NextResponse.json(
-        { error: "ペルコイン残高が不足しています" },
-        { status: 409 }
-      );
+      return jsonError(copy.insufficientBalance, "CREDITS_INSUFFICIENT_BALANCE", 409);
     }
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(copy.consumeFailed, "CREDITS_CONSUME_FAILED", 500);
   }
 }

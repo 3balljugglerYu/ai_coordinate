@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { track } from "@vercel/analytics/react";
+import { useLocale, useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { PERCOIN_PACKAGES } from "@/features/credits/percoin-packages";
 import { completeMockPercoinPurchase } from "@/features/credits/lib/api";
@@ -14,6 +15,8 @@ interface PercoinPurchaseSectionProps {
 export function PercoinPurchaseSection({
   onBalanceUpdate,
 }: PercoinPurchaseSectionProps) {
+  const t = useTranslations("credits");
+  const locale = useLocale();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -32,24 +35,34 @@ export function PercoinPurchaseSection({
         body: JSON.stringify({ packageId }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.error || "Checkoutの作成に失敗しました");
+        throw new Error(data?.error || t("checkoutCreateFailed"));
       }
 
       if (data.mode === "mock") {
-        const result = await completeMockPercoinPurchase({ packageId });
+        const result = await completeMockPercoinPurchase(
+          { packageId },
+          { mockPurchaseFailed: t("mockPurchaseFailed") }
+        );
         onBalanceUpdate(result.balance);
-        setSuccessMessage("ペルコインを付与しました（モックモード）");
+        setSuccessMessage(
+          t("mockPurchaseSuccessWithBalance", {
+            balance: new Intl.NumberFormat(
+              locale === "ja" ? "ja-JP" : "en-US"
+            ).format(result.balance),
+          })
+        );
         track("percoin_purchase_complete", { packageId, mode: "mock" });
       } else if (data.checkoutUrl) {
         track("percoin_purchase_started", { packageId, mode: "stripe" });
         window.location.href = data.checkoutUrl;
       } else {
-        throw new Error("不明なレスポンスです");
+        throw new Error(t("unknownPurchaseResponse"));
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "購入処理に失敗しました";
+      const errorMessage =
+        err instanceof Error ? err.message : t("purchaseProcessFailed");
       track("percoin_purchase_failed", {
         packageId,
         error: errorMessage.substring(0, 100),
@@ -63,9 +76,11 @@ export function PercoinPurchaseSection({
   return (
     <Card className="border-border bg-card p-6">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-foreground">ペルコイン購入</h2>
+        <h2 className="text-xl font-semibold text-foreground">
+          {t("purchaseSectionTitle")}
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Stripe承認完了まではモック決済でペルコインを付与します。承認後は同じUIでStripe Checkoutに切り替わります。
+          {t("purchaseSectionDescription")}
         </p>
       </div>
 

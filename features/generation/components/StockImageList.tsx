@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Image as ImageIcon, Trash2, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { StockImageListSkeleton } from "./StockImageListSkeleton";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export function StockImageList({
   className,
   renderUploadCard,
 }: StockImageListProps) {
+  const t = useTranslations("coordinate");
   const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function StockImageList({
       setStocks(data);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "ストック画像の取得に失敗しました";
+        err instanceof Error ? err.message : t("stockFetchFailed");
       setError(errorMessage);
       console.error("Failed to load stock images:", err);
     } finally {
@@ -49,11 +51,11 @@ export function StockImageList({
   };
 
   useEffect(() => {
-    loadStocks();
+    void loadStocks();
   }, []);
 
   const handleDelete = async (stock: SourceImageStock) => {
-    if (!confirm("このストック画像を削除しますか？")) {
+    if (!confirm(t("stockDeleteConfirm"))) {
       return;
     }
 
@@ -64,7 +66,7 @@ export function StockImageList({
       onDelete?.(stock.id);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "ストック画像の削除に失敗しました";
+        err instanceof Error ? err.message : t("stockDeleteFailed");
       alert(errorMessage);
       console.error("Failed to delete stock image:", err);
     } finally {
@@ -96,8 +98,8 @@ export function StockImageList({
     return (
       <div className={`flex flex-col items-center justify-center py-12 text-gray-500 ${className}`}>
         <ImageIcon className="mb-4 h-12 w-12 text-gray-300" />
-        <p className="text-sm">ストック画像がありません</p>
-        <p className="mt-1 text-xs">画像をアップロードしてストックに保存できます</p>
+        <p className="text-sm">{t("stockListEmptyTitle")}</p>
+        <p className="mt-1 text-xs">{t("stockListEmptyDescription")}</p>
       </div>
     );
   }
@@ -132,7 +134,7 @@ export function StockImageList({
               <div className="relative flex items-center justify-center overflow-hidden bg-gray-100 max-w-[200px] max-h-[200px]">
                 <Image
                   src={stock.image_url}
-                  alt={stock.name || "ストック画像"}
+                  alt={stock.name || t("stockImageAlt")}
                   width={800}
                   height={800}
                   className="h-auto max-h-[200px] w-auto max-w-[200px] object-contain"
@@ -148,6 +150,7 @@ export function StockImageList({
                     type="button"
                     variant="secondary"
                     size="icon"
+                    aria-label={t("deleteStockAction")}
                     className="absolute top-2 right-2 bg-gray-400/80 hover:bg-gray-500/80 text-white opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -159,7 +162,7 @@ export function StockImageList({
                 )}
                 {stock.usage_count > 0 && (
                   <div className="absolute bottom-2 right-2 text-gray-600 text-xs">
-                    {stock.usage_count}回使用
+                    {t("stockUsageCount", { count: stock.usage_count })}
                   </div>
                 )}
               </div>

@@ -4,6 +4,13 @@ import type {
   UnreadCountResponse,
 } from "../types";
 
+interface NotificationApiMessages {
+  fetchFailed?: string;
+  markReadFailed?: string;
+  markAllReadFailed?: string;
+  unreadCountFailed?: string;
+}
+
 /**
  * 通知機能のクライアントサイドAPI関数
  */
@@ -13,7 +20,8 @@ import type {
  */
 export async function getNotifications(
   limit: number = 20,
-  cursor: string | null = null
+  cursor: string | null = null,
+  messages?: NotificationApiMessages
 ): Promise<NotificationsResponse> {
   const params = new URLSearchParams({
     limit: limit.toString(),
@@ -31,8 +39,10 @@ export async function getNotifications(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "通知の取得に失敗しました");
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(error?.error || messages?.fetchFailed || "通知の取得に失敗しました");
   }
 
   return response.json();
@@ -42,7 +52,8 @@ export async function getNotifications(
  * 通知を既読化
  */
 export async function markNotificationsRead(
-  ids: string[]
+  ids: string[],
+  messages?: NotificationApiMessages
 ): Promise<{ success: boolean }> {
   const response = await fetch("/api/notifications/mark-read", {
     method: "POST",
@@ -53,8 +64,12 @@ export async function markNotificationsRead(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "通知の既読化に失敗しました");
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(
+      error?.error || messages?.markReadFailed || "通知の既読化に失敗しました"
+    );
   }
 
   return response.json();
@@ -63,7 +78,9 @@ export async function markNotificationsRead(
 /**
  * 全通知を既読化
  */
-export async function markAllNotificationsRead(): Promise<{
+export async function markAllNotificationsRead(
+  messages?: NotificationApiMessages
+): Promise<{
   success: boolean;
 }> {
   const response = await fetch("/api/notifications/mark-all-read", {
@@ -74,8 +91,12 @@ export async function markAllNotificationsRead(): Promise<{
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "全件既読化に失敗しました");
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(
+      error?.error || messages?.markAllReadFailed || "全件既読化に失敗しました"
+    );
   }
 
   return response.json();
@@ -84,7 +105,9 @@ export async function markAllNotificationsRead(): Promise<{
 /**
  * 未読数を取得
  */
-export async function getUnreadCount(): Promise<number> {
+export async function getUnreadCount(
+  messages?: NotificationApiMessages
+): Promise<number> {
   const response = await fetch("/api/notifications/unread-count", {
     method: "GET",
     headers: {
@@ -97,11 +120,16 @@ export async function getUnreadCount(): Promise<number> {
   }
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "未読数の取得に失敗しました");
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(
+      error?.error ||
+        messages?.unreadCountFailed ||
+        "未読数の取得に失敗しました"
+    );
   }
 
   const data: UnreadCountResponse = await response.json();
   return data.count;
 }
-

@@ -1,13 +1,12 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import { CachedSearchPostList } from "@/features/posts/components/CachedSearchPostList";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
-
-const DEFAULT_TITLE = "検索 - Persta.AI";
-const DEFAULT_DESCRIPTION =
-  "プロンプトを検索して、好きなファッションやキャラクターを見つけましょう";
+import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
+import { getSearchCopy } from "@/i18n/page-copy";
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string; sort?: string }>;
@@ -16,19 +15,24 @@ interface SearchPageProps {
 export async function generateMetadata({
   searchParams,
 }: SearchPageProps): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const copy = getSearchCopy(locale);
   const params = await searchParams;
   const searchQuery = params.q?.trim();
 
   const title = searchQuery
-    ? `${searchQuery}の検索結果 - Persta.AI`
-    : DEFAULT_TITLE;
+    ? copy.resultTitle.replace("{query}", searchQuery)
+    : copy.defaultTitle;
   const description = searchQuery
-    ? `「${searchQuery}」のコーデ・ファッション・キャラクター画像を検索。Persta.AIでみんなの作品を見つけましょう。`
-    : DEFAULT_DESCRIPTION;
+    ? copy.resultDescription.replace("{query}", searchQuery)
+    : copy.defaultDescription;
 
   const siteUrl = getSiteUrl();
   const searchUrl = siteUrl
-    ? `${siteUrl}/search${searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ""}`
+    ? `${siteUrl}${localizePublicPath("/search", locale)}${
+        searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ""
+      }`
     : undefined;
 
   return {
@@ -50,6 +54,9 @@ export async function generateMetadata({
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const copy = getSearchCopy(locale);
   const params = await searchParams;
   const searchQuery = params.q?.trim() || "";
   const sortType = params.sort || "popular";
@@ -62,7 +69,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       {!searchQuery || !searchQuery.trim() ? (
         <div className="py-12 text-center">
           <p className="text-muted-foreground">
-            検索キーワードを入力してください
+            {copy.emptyQuery}
           </p>
         </div>
       ) : (
@@ -77,4 +84,3 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     </div>
   );
 }
-

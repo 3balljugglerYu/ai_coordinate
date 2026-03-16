@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
+  const copy = getAccountRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -12,12 +17,12 @@ export async function DELETE(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      return jsonError(copy.authRequired, "ACCOUNT_AUTH_REQUIRED", 401);
     }
 
     const { postId } = await params;
     if (!postId) {
-      return NextResponse.json({ error: "投稿IDが必要です" }, { status: 400 });
+      return jsonError(copy.postIdRequired, "ACCOUNT_REPORT_POST_ID_REQUIRED", 400);
     }
 
     const { error } = await supabase
@@ -28,12 +33,12 @@ export async function DELETE(
 
     if (error) {
       console.error("Withdraw report error:", error);
-      return NextResponse.json({ error: "通報解除に失敗しました" }, { status: 500 });
+      return jsonError(copy.withdrawReportFailed, "ACCOUNT_REPORT_WITHDRAW_FAILED", 500);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Withdraw report API error:", error);
-    return NextResponse.json({ error: "通報解除に失敗しました" }, { status: 500 });
+    return jsonError(copy.withdrawReportFailed, "ACCOUNT_REPORT_WITHDRAW_FAILED", 500);
   }
 }

@@ -2,6 +2,16 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { enforceApiDocsBasicAuth } from "@/lib/api-docs-auth";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
+import {
+  getLocaleCookieMaxAge,
+  isPublicPath,
+  localizePublicPath,
+  LOCALE_COOKIE,
+  LOCALE_HEADER,
+  resolveRequestLocale,
+  stripLocalePrefix,
+  type Locale,
+} from "@/i18n/config";
 
 /**
  * プロキシ（ミドルウェア）
@@ -19,11 +29,26 @@ export async function proxy(request: NextRequest) {
     return basicAuthResponse;
   }
 
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  const pathname = request.nextUrl.pathname;
+  const resolvedLocale = resolveRequestLocale({
+    pathname,
+    cookieLocale: request.cookies.get(LOCALE_COOKIE)?.value,
+    acceptLanguage: request.headers.get("accept-language"),
   });
+  const { pathname: unprefixedPathname, locale: pathnameLocale } =
+    stripLocalePrefix(pathname);
+  const isPublicRoute = isPublicPath(unprefixedPathname);
+
+  if (isPublicRoute && !pathnameLocale) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = localizePublicPath(unprefixedPathname, resolvedLocale);
+
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    applyLocaleCookie(redirectResponse, resolvedLocale);
+    return redirectResponse;
+  }
+
+  let response = createNextResponse(request, resolvedLocale);
 
   // 環境変数が設定されていない場合は、認証チェックをスキップ
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -44,9 +69,7 @@ export async function proxy(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         );
-        response = NextResponse.next({
-          request,
-        });
+        response = createNextResponse(request, resolvedLocale);
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options)
         );
@@ -71,7 +94,9 @@ export async function proxy(request: NextRequest) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/my-page";
       redirectUrl.search = "";
-      return NextResponse.redirect(redirectUrl);
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      applyLocaleCookie(redirectResponse, resolvedLocale);
+      return redirectResponse;
     }
 
     const allowedWhileDeactivated = [
@@ -104,7 +129,9 @@ export async function proxy(request: NextRequest) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/account/reactivate";
         redirectUrl.search = "";
-        return NextResponse.redirect(redirectUrl);
+        const redirectResponse = NextResponse.redirect(redirectUrl);
+        applyLocaleCookie(redirectResponse, resolvedLocale);
+        return redirectResponse;
       }
     }
   }
@@ -121,11 +148,35 @@ export async function proxy(request: NextRequest) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
       redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);
-      return NextResponse.redirect(redirectUrl);
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      applyLocaleCookie(redirectResponse, resolvedLocale);
+      return redirectResponse;
     }
   }
 
   return response;
+}
+
+function createNextResponse(request: NextRequest, locale: Locale) {
+  const headers = new Headers(request.headers);
+  headers.set(LOCALE_HEADER, locale);
+
+  const response = NextResponse.next({
+    request: {
+      headers,
+    },
+  });
+
+  applyLocaleCookie(response, locale);
+  return response;
+}
+
+function applyLocaleCookie(response: NextResponse, locale: Locale) {
+  response.cookies.set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: getLocaleCookieMaxAge(),
+    sameSite: "lax",
+  });
 }
 
 export const config = {

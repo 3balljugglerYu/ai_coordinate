@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { PercoinPurchaseGrid } from "@/features/credits/components/PercoinPurchaseGrid";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,7 @@ interface PurchasePageProps {
 }
 
 export default async function PurchasePage({ searchParams }: PurchasePageProps) {
+  const creditsT = await getTranslations("credits");
   const params = await searchParams;
   const isSuccess = params.success === "true";
   const isCanceled = params.canceled === "true";
@@ -30,10 +32,12 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
           {/* ヒーローセクション（SeaArt風） */}
           <div className="mb-10 text-center">
             <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-4xl">
-              コーディネートを、<br />もっと自由に
+              {creditsT("purchaseHeroLine1")}
+              <br />
+              {creditsT("purchaseHeroLine2")}
             </h1>
             <p className="mt-3 text-base text-muted-foreground md:text-lg">
-              あなたにぴったりのプランを選んで、創作を続けよう
+              {creditsT("purchaseDescription")}
             </p>
           </div>
 
@@ -43,9 +47,11 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-green-900 dark:text-green-100">決済が完了しました</h3>
+                  <h3 className="text-sm font-semibold text-green-900 dark:text-green-100">
+                    {creditsT("purchaseSuccessTitle")}
+                  </h3>
                   <p className="mt-1 text-sm text-green-800 dark:text-green-200">
-                    ペルコインが付与されました。残高を確認してください。
+                    {creditsT("purchaseSuccessDescription")}
                   </p>
                 </div>
               </div>
@@ -58,9 +64,11 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
               <div className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">決済がキャンセルされました</h3>
+                  <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
+                    {creditsT("purchaseCanceledTitle")}
+                  </h3>
                   <p className="mt-1 text-sm text-yellow-800 dark:text-yellow-200">
-                    決済は完了していません。再度お試しください。
+                    {creditsT("purchaseCanceledDescription")}
                   </p>
                 </div>
               </div>

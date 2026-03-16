@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getUserRouteCopy } from "@/features/users/lib/route-copy";
 
 /**
  * プロフィール画像アップロードAPI（POST）
@@ -13,50 +16,40 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = getUserRouteCopy(getRouteLocale(request));
+
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return jsonError(copy.authRequired, "USER_AUTH_REQUIRED", 401);
+    }
     const { userId } = await params;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
+      return jsonError(copy.userIdRequired, "USER_ID_REQUIRED", 400);
     }
 
     // 本人のみアップロード可能
     if (user.id !== userId) {
-      return NextResponse.json(
-        { error: "権限がありません" },
-        { status: 403 }
-      );
+      return jsonError(copy.forbidden, "USER_FORBIDDEN", 403);
     }
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "ファイルが選択されていません" },
-        { status: 400 }
-      );
+      return jsonError(copy.fileRequired, "USER_AVATAR_FILE_REQUIRED", 400);
     }
 
     // ファイルタイプの検証
     if (!file.type.startsWith("image/")) {
-      return NextResponse.json(
-        { error: "画像ファイルのみアップロード可能です" },
-        { status: 400 }
-      );
+      return jsonError(copy.imageOnly, "USER_AVATAR_INVALID_FILE_TYPE", 400);
     }
 
     // ファイルサイズの検証（10MB制限）
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "ファイルサイズは10MB以下にしてください" },
-        { status: 400 }
-      );
+      return jsonError(copy.fileTooLarge, "USER_AVATAR_FILE_TOO_LARGE", 400);
     }
 
     const supabase = await createClient();
@@ -104,14 +97,7 @@ export async function POST(
 
     if (uploadError) {
       console.error("Avatar upload error:", uploadError);
-      return NextResponse.json(
-        {
-          error:
-            uploadError.message ||
-            "画像のアップロードに失敗しました",
-        },
-        { status: 500 }
-      );
+      return jsonError(copy.avatarUploadFailed, "USER_AVATAR_UPLOAD_FAILED", 500);
     }
 
     // 公開URLを取得
@@ -131,10 +117,7 @@ export async function POST(
       console.error("Profile update error:", updateError);
       // アップロードは成功したが、プロフィール更新に失敗した場合は、アップロードしたファイルを削除
       await supabase.storage.from(AVATAR_BUCKET).remove([filePath]);
-      return NextResponse.json(
-        { error: "プロフィールの更新に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.profileUpdateFailed, "USER_PROFILE_UPDATE_FAILED", 500);
     }
 
     // 古い画像を削除（新しい画像のアップロードと更新が成功した場合のみ）
@@ -225,15 +208,6 @@ export async function POST(
     });
   } catch (error) {
     console.error("Avatar upload API error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "画像のアップロードに失敗しました",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.avatarUploadFailed, "USER_AVATAR_UPLOAD_FAILED", 500);
   }
 }
-

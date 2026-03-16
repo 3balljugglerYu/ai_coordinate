@@ -10,6 +10,9 @@ import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
 } from "@/features/generation/lib/async-generation-job-repository";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -51,6 +54,8 @@ export async function postGenerateAsyncRoute(
   request: NextRequest,
   dependencies: GenerateAsyncRouteDependencies = {}
 ) {
+  const copy = getGenerationRouteCopy(getRouteLocale(request));
+
   try {
     const getUserFn = dependencies.getUserFn ?? getUser;
     const invokeImageWorkerFn =
@@ -59,10 +64,7 @@ export async function postGenerateAsyncRoute(
     // 認証チェック
     const user = await getUserFn();
     if (!user) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      );
+      return jsonError(copy.authRequired, "GENERATION_AUTH_REQUIRED", 401);
     }
 
     // リクエストボディの解析
@@ -71,10 +73,7 @@ export async function postGenerateAsyncRoute(
     // バリデーション
     const validationResult = generationRequestSchema.safeParse(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        { error: validationResult.error.issues[0]?.message || "Invalid request" },
-        { status: 400 }
-      );
+      return jsonError(copy.invalidRequest, "GENERATION_INVALID_REQUEST", 400);
     }
 
     const {
@@ -103,20 +102,14 @@ export async function postGenerateAsyncRoute(
 
         if (stockError || !stock) {
           console.error("Failed to fetch source image stock:", stockError);
-          return NextResponse.json(
-            { error: "ストック画像が見つかりません" },
-            { status: 404 }
-          );
+          return jsonError(copy.sourceStockNotFound, "GENERATION_SOURCE_STOCK_NOT_FOUND", 404);
         }
 
         inputImageUrl = stock.image_url;
         stockId = stock.id;
       } catch (error) {
         console.error("Error fetching source image stock:", error);
-        return NextResponse.json(
-          { error: "ストック画像の取得に失敗しました" },
-          { status: 500 }
-        );
+        return jsonError(copy.sourceStockFetchFailed, "GENERATION_SOURCE_STOCK_FETCH_FAILED", 500);
       }
     } else if (sourceImageBase64 && sourceImageMimeType) {
       // sourceImageBase64がある場合、一時的にStorageにアップロードしてURLを取得
@@ -129,10 +122,7 @@ export async function postGenerateAsyncRoute(
         // 過大な入力画像を早期に拒否（base64長からデコード後バイト数を推定）
         const estimatedBytes = Math.floor((base64Data.length * 3) / 4);
         if (estimatedBytes > MAX_SOURCE_IMAGE_BYTES) {
-          return NextResponse.json(
-            { error: "画像サイズが大きすぎます。10MB以下の画像に圧縮して再試行してください。" },
-            { status: 400 }
-          );
+          return jsonError(copy.sourceImageTooLarge, "GENERATION_SOURCE_IMAGE_TOO_LARGE", 400);
         }
 
         // HEIC/HEIF形式の場合はJPEGに変換
@@ -144,10 +134,7 @@ export async function postGenerateAsyncRoute(
             extension = "jpg";
           } catch (conversionError) {
             console.error("Failed to convert HEIC image:", conversionError);
-            return NextResponse.json(
-              { error: "HEIC画像の変換に失敗しました" },
-              { status: 400 }
-            );
+            return jsonError(copy.heicConversionFailed, "GENERATION_HEIC_CONVERSION_FAILED", 400);
           }
         } else {
           // HEIC/HEIF以外の場合は、安全に拡張子を取得
@@ -171,22 +158,14 @@ export async function postGenerateAsyncRoute(
 
         if (uploadError || !uploadData) {
           console.error("Failed to upload source image:", uploadError);
-          // アップロード失敗時は即座にエラーを返す（ユーザーへのフィードバックを早める）
-          return NextResponse.json(
-            { error: "元画像のアップロードに失敗しました。もう一度お試しください。" },
-            { status: 500 }
-          );
+          return jsonError(copy.sourceUploadFailed, "GENERATION_SOURCE_UPLOAD_FAILED", 500);
         }
 
         // 公開URLを取得
         inputImageUrl = jobRepository.getSourceImagePublicUrl(uploadData.path);
       } catch (error) {
         console.error("Error uploading source image:", error);
-        // エラーが発生した場合は即座にエラーを返す
-        return NextResponse.json(
-          { error: "元画像の処理中にエラーが発生しました。もう一度お試しください。" },
-          { status: 500 }
-        );
+        return jsonError(copy.sourceProcessFailed, "GENERATION_SOURCE_PROCESS_FAILED", 500);
       }
     }
 
@@ -200,23 +179,17 @@ export async function postGenerateAsyncRoute(
 
     if (creditError || !creditData) {
       console.error("Failed to fetch user credits:", creditError);
-      // レコードが存在しない場合は、データ不整合の可能性があるためエラーを返す
-      // （新規ユーザーの場合はEdge Functionでレコードを作成する）
-      return NextResponse.json(
-        { error: "ペルコイン残高の取得に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.balanceFetchFailed, "GENERATION_BALANCE_FETCH_FAILED", 500);
     }
 
     const currentBalance = creditData.balance;
 
     // 残高チェック
     if (currentBalance < percoinCost) {
-      return NextResponse.json(
-        {
-          error: `ペルコイン残高が不足しています。生成には${percoinCost}ペルコイン必要ですが、現在の残高は${currentBalance}ペルコインです。`,
-        },
-        { status: 400 }
+      return jsonError(
+        copy.insufficientBalance(percoinCost, currentBalance),
+        "GENERATION_INSUFFICIENT_BALANCE",
+        400
       );
     }
 
@@ -240,10 +213,7 @@ export async function postGenerateAsyncRoute(
 
     if (insertError || !job) {
       console.error("Failed to create image job:", insertError);
-      return NextResponse.json(
-        { error: "ジョブの作成に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.jobCreateFailed, "GENERATION_JOB_CREATE_FAILED", 500);
     }
 
     // Supabase Queueにメッセージ送信
@@ -274,7 +244,7 @@ export async function postGenerateAsyncRoute(
           jobId: job.id,
           status: job.status,
           warning: queueError
-            ? "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。"
+            ? copy.queueDelayedWarning
             : undefined,
         },
         { status: 202 }
@@ -288,10 +258,7 @@ export async function postGenerateAsyncRoute(
     });
   } catch (error) {
     console.error("Generate async error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(copy.generateAsyncFailed, "GENERATION_ASYNC_FAILED", 500);
   }
 }
 

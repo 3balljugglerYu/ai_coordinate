@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { I2iPocClient } from "@/features/i2i-poc/components/I2iPocClient";
 import { requireAuth } from "@/lib/auth";
 import { getI2iPocConfig } from "@/lib/i2i-poc-auth";
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
 };
 
 export default async function I2iPocPage({ params }: I2iPocPageProps) {
+  await connection();
   await requireAuth();
   const { slug } = await params;
   const config = getI2iPocConfig();

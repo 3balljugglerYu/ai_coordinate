@@ -4,14 +4,28 @@ import {float} from "../helpers";
 import {BrandBadge, SceneBackground, ShowcaseCard} from "../shared";
 
 export const SwapScene = ({
+  eyebrow,
   message,
   lockedMessage,
+  baseLabel,
+  baseCaption,
+  characterLabel,
+  characterCaption,
+  resultLabel,
+  resultCaption,
   baseImageUrl,
   characterImageUrl,
   resultImageUrl,
 }: {
+  eyebrow: string;
   message: string;
   lockedMessage: string;
+  baseLabel: string;
+  baseCaption: string;
+  characterLabel: string;
+  characterCaption: string;
+  resultLabel: string;
+  resultCaption: string;
   baseImageUrl: string;
   characterImageUrl: string;
   resultImageUrl: string;
@@ -63,10 +77,10 @@ export const SwapScene = ({
               textTransform: "uppercase",
               color: palette.rose,
               marginBottom: 16,
-            }}
-          >
-            Scene 2 / Swap
-          </div>
+          }}
+        >
+          {eyebrow}
+        </div>
           <div
             style={{
               fontSize: 72,
@@ -101,8 +115,8 @@ export const SwapScene = ({
 
       <ShowcaseCard
         src={baseImageUrl}
-        label="Base scene"
-        caption="背景・服装・ポーズはこのまま"
+        label={baseLabel}
+        caption={baseCaption}
         style={{
           left: 84,
           top: 332 + float(frame, 22, 6, 0),
@@ -115,8 +129,8 @@ export const SwapScene = ({
 
       <ShowcaseCard
         src={characterImageUrl}
-        label="My character"
-        caption="差し替え元のキャラクター"
+        label={characterLabel}
+        caption={characterCaption}
         style={{
           left: 730,
           top: 332 + float(frame, 22, 6, 10),
@@ -129,8 +143,8 @@ export const SwapScene = ({
 
       <ShowcaseCard
         src={resultImageUrl}
-        label="Generated result"
-        caption="生成結果"
+        label={resultLabel}
+        caption={resultCaption}
         style={{
           right: 84,
           top: 300 + float(frame, 22, 6, 20),

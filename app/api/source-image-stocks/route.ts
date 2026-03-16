@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getSourceImageRouteCopy } from "@/features/generation/lib/source-image-route-copy";
 
 const STORAGE_BUCKET = "generated-images";
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -12,35 +15,33 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
  * クライアント直接アップロード時の「Unexpected token '<'」エラーを回避
  */
 export async function POST(request: NextRequest) {
+  const copy = getSourceImageRouteCopy(getRouteLocale(request));
+
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return jsonError(copy.authRequired, "SOURCE_IMAGE_AUTH_REQUIRED", 401);
+    }
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "ファイルが選択されていません" },
-        { status: 400 }
-      );
+      return jsonError(copy.fileRequired, "SOURCE_IMAGE_FILE_REQUIRED", 400);
     }
 
     // ファイルタイプの検証
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        {
-          error: `許可されていないファイル形式です。対応形式: ${ALLOWED_MIME_TYPES.join(", ")}`,
-        },
-        { status: 400 }
+      return jsonError(
+        copy.unsupportedFormat(ALLOWED_MIME_TYPES.join(", ")),
+        "SOURCE_IMAGE_UNSUPPORTED_FORMAT",
+        400
       );
     }
 
     // ファイルサイズの検証
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "ファイルサイズは10MB以下にしてください" },
-        { status: 400 }
-      );
+      return jsonError(copy.fileTooLarge, "SOURCE_IMAGE_FILE_TOO_LARGE", 400);
     }
 
     const supabase = await createClient();
@@ -67,13 +68,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("Storage upload error:", uploadError);
-      return NextResponse.json(
-        {
-          error:
-            uploadError.message || "画像のアップロードに失敗しました",
-        },
-        { status: 500 }
-      );
+      return jsonError(copy.uploadFailed, "SOURCE_IMAGE_UPLOAD_FAILED", 500);
     }
 
     const { data: { publicUrl } } = supabase.storage
@@ -93,16 +88,12 @@ export async function POST(request: NextRequest) {
 
     if (rpcError) {
       console.error("insert_source_image_stock RPC error:", rpcError);
-      // 上限超過は400、その他は500
       const isLimitError =
         rpcError.message?.includes("上限") ?? false;
-      return NextResponse.json(
-        {
-          error:
-            rpcError.message ??
-            "ストック画像の保存に失敗しました",
-        },
-        { status: isLimitError ? 400 : 500 }
+      return jsonError(
+        isLimitError ? copy.stockLimitReached : copy.saveFailed,
+        isLimitError ? "SOURCE_IMAGE_LIMIT_REACHED" : "SOURCE_IMAGE_SAVE_FAILED",
+        isLimitError ? 400 : 500
       );
     }
 
@@ -114,9 +105,6 @@ export async function POST(request: NextRequest) {
       return error;
     }
     console.error("Stock image upload API error:", error);
-    return NextResponse.json(
-      { error: "ストック画像のアップロードに失敗しました" },
-      { status: 500 }
-    );
+    return jsonError(copy.uploadFailed, "SOURCE_IMAGE_UPLOAD_FAILED", 500);
   }
 }

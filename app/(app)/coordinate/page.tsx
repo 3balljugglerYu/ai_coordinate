@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
@@ -7,8 +8,12 @@ import { GeneratedImageGallerySkeleton } from "@/features/generation/components/
 import { CachedCoordinatePercoinBalance } from "@/features/credits/components/CachedCoordinatePercoinBalance";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
+import type { Locale } from "@/i18n/config";
 
 export default async function CoordinatePage() {
+  const t = await getTranslations("coordinate");
+  const creditsT = await getTranslations("credits");
+  const locale = (await getLocale()) as Locale;
   const user = await requireAuth();
 
   return (
@@ -19,10 +24,10 @@ export default async function CoordinatePage() {
           {/* 静的コンテンツ: タイトルと説明文 */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">
-              コーディネート
+              {t("pageTitle")}
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              人物画像をアップロードして、着せ替えを楽しみましょう
+              {t("pageDescription")}
             </p>
           </div>
 
@@ -32,7 +37,14 @@ export default async function CoordinatePage() {
               <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
             }
           >
-            <CachedCoordinatePercoinBalance userId={user.id} />
+            <CachedCoordinatePercoinBalance
+              userId={user.id}
+              locale={locale}
+              copy={{
+                balanceLabel: creditsT("balanceLabel"),
+                percoinUnit: creditsT("percoinUnit"),
+              }}
+            />
           </Suspense>
 
           {/* GenerationForm と 生成結果一覧を GenerationStateProvider でラップ（スケルトン表示のため） */}
@@ -45,7 +57,7 @@ export default async function CoordinatePage() {
             {/* 生成結果一覧 */}
             <div className="mt-8">
               <h2 className="mb-4 text-xl font-semibold text-gray-900">
-                生成結果一覧
+                {t("resultsTitle")}
               </h2>
               <Suspense fallback={<GeneratedImageGallerySkeleton />}>
                 <CachedGeneratedImageGallery userId={user.id} />

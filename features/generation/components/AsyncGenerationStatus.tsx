@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { getGenerationStatus, pollGenerationStatus, type AsyncGenerationStatus } from "../lib/async-api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AsyncGenerationStatusSkeleton } from "./AsyncGenerationStatusSkeleton";
@@ -22,10 +23,19 @@ export function AsyncGenerationStatus({
   onError,
   pollingInterval = 2000,
 }: AsyncGenerationStatusProps) {
+  const t = useTranslations("coordinate");
   const [status, setStatus] = useState<AsyncGenerationStatus | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const stopPollingRef = useRef<(() => void) | null>(null);
+  const asyncApiMessages = useMemo(
+    () => ({
+      fetchStatusFailed: t("fetchStatusFailed"),
+      pollingStopped: t("inProgressStopped"),
+      pollingTimeout: t("pollingTimeout"),
+    }),
+    [t]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -33,7 +43,7 @@ export function AsyncGenerationStatus({
     const startPolling = async () => {
       try {
         // 初回ステータス取得
-        const initialStatus = await getGenerationStatus(jobId);
+        const initialStatus = await getGenerationStatus(jobId, asyncApiMessages);
         if (!isMounted) return;
         
         setStatus(initialStatus);
@@ -52,6 +62,7 @@ export function AsyncGenerationStatus({
         const { promise, stop } = pollGenerationStatus(jobId, {
           interval: pollingInterval,
           timeout: 300000, // 5分でタイムアウト
+          messages: asyncApiMessages,
           onStatusUpdate: (status) => {
             if (!isMounted) return;
             setStatus(status);
@@ -74,11 +85,12 @@ export function AsyncGenerationStatus({
             if (!isMounted) return;
             // ポーリング停止によるエラーは無視（正常な動作）
             const errorMsg = err instanceof Error ? err.message : "";
-            if (errorMsg === "ポーリングが停止されました") {
+            if (errorMsg === asyncApiMessages.pollingStopped) {
               return;
             }
             // その他のエラーのみ表示
-            const error = err instanceof Error ? err : new Error("ステータスの取得に失敗しました");
+            const error =
+              err instanceof Error ? err : new Error(t("fetchStatusFailed"));
             setError(error);
             setIsLoading(false);
             if (onError) {
@@ -87,7 +99,8 @@ export function AsyncGenerationStatus({
           });
       } catch (err) {
         if (!isMounted) return;
-        const error = err instanceof Error ? err : new Error("ステータスの取得に失敗しました");
+        const error =
+          err instanceof Error ? err : new Error(t("fetchStatusFailed"));
         setError(error);
         setIsLoading(false);
         if (onError) {
@@ -106,7 +119,7 @@ export function AsyncGenerationStatus({
         stopPollingRef.current = null;
       }
     };
-  }, [jobId, pollingInterval, onComplete, onError]);
+  }, [asyncApiMessages, jobId, onComplete, onError, pollingInterval, t]);
 
   if (isLoading) {
     return <AsyncGenerationStatusSkeleton />;
@@ -116,8 +129,8 @@ export function AsyncGenerationStatus({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>エラー</CardTitle>
-          <CardDescription>ステータスの取得に失敗しました</CardDescription>
+          <CardTitle>{t("statusCardErrorTitle")}</CardTitle>
+          <CardDescription>{t("statusCardErrorDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-sm text-destructive">{error.message}</div>
@@ -133,22 +146,22 @@ export function AsyncGenerationStatus({
   const getStatusText = () => {
     switch (status.status) {
       case "queued":
-        return "キュー待ち中";
+        return t("statusQueued");
       case "processing":
-        return "生成処理中";
+        return t("statusProcessing");
       case "succeeded":
-        return "完了";
+        return t("statusSucceeded");
       case "failed":
-        return "失敗";
+        return t("statusFailed");
       default:
-        return "不明";
+        return t("statusUnknown");
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>画像生成ステータス</CardTitle>
+        <CardTitle>{t("statusCardTitle")}</CardTitle>
         <CardDescription>{getStatusText()}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -157,7 +170,7 @@ export function AsyncGenerationStatus({
             <div className="relative aspect-square w-full max-w-md mx-auto">
               <Image
                 src={status.resultImageUrl}
-                alt="生成された画像"
+                alt={t("generatedResultAlt")}
                 fill
                 className="object-contain"
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -172,12 +185,16 @@ export function AsyncGenerationStatus({
         )}
         {status.status === "processing" && (
           <div className="flex items-center justify-center py-8">
-            <div className="text-sm text-muted-foreground">生成処理中...</div>
+            <div className="text-sm text-muted-foreground">
+              {t("statusProcessing")}...
+            </div>
           </div>
         )}
         {status.status === "queued" && (
           <div className="flex items-center justify-center py-8">
-            <div className="text-sm text-muted-foreground">キュー待ち中...</div>
+            <div className="text-sm text-muted-foreground">
+              {t("statusQueued")}...
+            </div>
           </div>
         )}
       </CardContent>

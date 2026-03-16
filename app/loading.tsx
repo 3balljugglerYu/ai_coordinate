@@ -9,9 +9,9 @@ export default function Loading() {
   return (
     <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
       <div className="mb-4">
-        <h1 className="text-3xl font-bold">Persta | ペルスタ</h1>
+        <h1 className="text-3xl font-bold">Persta.AI</h1>
         <p className="mt-2 text-muted-foreground">
-          着てみたいも、なりたいも。AIスタイリングプラットフォーム
+          An AI styling platform for the looks and characters you want to create.
         </p>
       </div>
       <HomeBannerSkeleton />
@@ -19,4 +19,3 @@ export default function Loading() {
     </div>
   );
 }
-
