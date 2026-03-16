@@ -1,0 +1,159 @@
+metadata:
+  class: TranslationMessages
+  source: i18n/messages.ts
+  version: "1.0"
+  created_at: "2026-03-16"
+
+dependencies:
+  repositories: []
+  services:
+    - cache (react)
+    - jaMessages catalog (messages/ja.ts)
+    - enMessages catalog (messages/en.ts)
+  external:
+    - None
+
+state_properties: []
+
+specifications:
+  - id: TMSG-001
+    method: getAllMessages
+    type: event-driven
+    ears: |
+      When getAllMessages is invoked with a supported locale,
+      the system shall resolve the complete message catalog
+      for that locale.
+    ears_ja: |
+      getAllMessagesがサポート対象localeで呼び出された場合、
+      システムはそのlocaleに対応する
+      完全なメッセージカタログを返す。
+    preconditions:
+      - The provided locale is ja or en
+    preconditions_ja:
+      - 渡されるlocaleがjaまたはenである
+    postconditions:
+      success:
+        - Returns the full jaMessages catalog for ja
+        - Returns the full enMessages catalog for en
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ja の場合は完全な jaMessages カタログを返す
+        - en の場合は完全な enMessages カタログを返す
+      error:
+        - なし
+    test_cases:
+      - getAllMessages_GivenJaLocale_ShouldReturnJapaneseCatalog
+      - getAllMessages_GivenEnLocale_ShouldReturnEnglishCatalog
+    test_cases_ja:
+      - getAllMessages_jaロケールの場合_日本語カタログを返す
+      - getAllMessages_enロケールの場合_英語カタログを返す
+
+  - id: TMSG-002
+    method: getAllMessages
+    type: ubiquitous
+    ears: |
+      The system shall keep the namespace and nested translation key structure
+      aligned across all supported locales
+      when complete message catalogs are resolved.
+    ears_ja: |
+      システムは完全なメッセージカタログを解決する際、
+      すべてのサポート対象locale間で
+      namespaceとネストされた翻訳キー構造を一致させなければならない。
+    preconditions:
+      - Complete message catalogs exist for ja and en
+    preconditions_ja:
+      - ja と en の完全なメッセージカタログが存在する
+    postconditions:
+      success:
+        - The top-level namespace set matches between ja and en catalogs
+        - The nested translation key paths match between ja and en catalogs
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ja と en のカタログでトップレベルnamespace集合が一致する
+        - ja と en のカタログでネストされた翻訳キーパスが一致する
+      error:
+        - なし
+    test_cases:
+      - getAllMessages_GivenBothLocales_ShouldExposeSameTopLevelNamespaces
+      - getAllMessages_GivenBothLocales_ShouldExposeSameNestedTranslationKeyPaths
+    test_cases_ja:
+      - getAllMessages_両localeの場合_同じトップレベルnamespaceを持つ
+      - getAllMessages_両localeの場合_同じネスト翻訳キーパスを持つ
+
+  - id: TMSG-003
+    method: getClientMessages
+    type: event-driven
+    ears: |
+      When getClientMessages is invoked with a supported locale,
+      the system shall resolve the locale-specific message catalog
+      limited to namespaces declared as client-safe.
+    ears_ja: |
+      getClientMessagesがサポート対象localeで呼び出された場合、
+      システムはclient向けに許可されたnamespaceのみに限定した
+      locale別メッセージカタログを返す。
+    preconditions:
+      - The provided locale is ja or en
+      - Client-safe namespaces are declared in the module
+    preconditions_ja:
+      - 渡されるlocaleがjaまたはenである
+      - client向けnamespaceがモジュール内で定義されている
+    postconditions:
+      success:
+        - Returns client-safe messages for ja when locale is ja
+        - Returns client-safe messages for en when locale is en
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - localeがjaの場合はja向けclient用メッセージを返す
+        - localeがenの場合はen向けclient用メッセージを返す
+      error:
+        - なし
+    test_cases:
+      - getClientMessages_GivenJaLocale_ShouldReturnJapaneseClientCatalog
+      - getClientMessages_GivenEnLocale_ShouldReturnEnglishClientCatalog
+    test_cases_ja:
+      - getClientMessages_jaロケールの場合_日本語clientカタログを返す
+      - getClientMessages_enロケールの場合_英語clientカタログを返す
+
+  - id: TMSG-004
+    method: getClientMessages
+    type: state-driven
+    ears: |
+      While client-safe namespaces are defined,
+      the system shall return only those namespaces
+      and shall preserve the same nested translation key structure
+      as the corresponding subset of the full locale catalog.
+    ears_ja: |
+      client向けnamespaceが定義されている間、
+      システムはそれらのnamespaceのみを返し、
+      完全なlocaleカタログの対応subsetと同じ
+      ネスト翻訳キー構造を維持する。
+    preconditions:
+      - Client-safe namespaces are declared in the module
+      - Full locale catalogs exist for ja and en
+    preconditions_ja:
+      - client向けnamespaceがモジュール内で定義されている
+      - ja と en の完全なlocaleカタログが存在する
+    postconditions:
+      success:
+        - The returned top-level keys match the declared client namespace list
+        - Each returned namespace matches the corresponding subset of the full locale catalog
+      error:
+        - No additional top-level namespace is included
+    postconditions_ja:
+      success:
+        - 返されるトップレベルキーが定義済みclient namespace一覧と一致する
+        - 各namespaceが完全なlocaleカタログの対応subsetと一致する
+      error:
+        - 追加のトップレベルnamespaceは含まれない
+    test_cases:
+      - getClientMessages_GivenLocale_ShouldReturnOnlyDeclaredClientNamespaces
+      - getClientMessages_GivenLocale_ShouldMatchFullCatalogSubsetForEachNamespace
+    test_cases_ja:
+      - getClientMessages_locale指定時_定義済みclient namespaceのみを返す
+      - getClientMessages_locale指定時_各namespaceが完全カタログsubsetと一致する

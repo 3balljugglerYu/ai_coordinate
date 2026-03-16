@@ -69,7 +69,7 @@ tier2:
     test_file: tests/integration/api/posts-route.test.ts
 
   TranslationMessages:
-    status: pending
+    status: completed
     score: 87
     file: i18n/messages.ts
     char_test: null
@@ -291,8 +291,8 @@ summary:
     percentage: 50
   tier2:
     total: 10
-    completed: 2
-    percentage: 20
+    completed: 3
+    percentage: 30
   tier3:
     total: 8
     completed: 0
@@ -303,5 +303,5 @@ summary:
     percentage: 0
   overall:
     total: 32
-    completed: 3
-    percentage: 9
+    completed: 4
+    percentage: 12
