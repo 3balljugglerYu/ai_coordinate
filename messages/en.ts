@@ -714,16 +714,16 @@ export const enMessages = {
     stepCoordinateDescription: "Tap here to open the coordinate screen.",
     stepUploadTitle: "Upload an image",
     stepUploadDescription:
-      "Upload the character image you want to restyle here.<br>We've already prepared a demo image for this walkthrough.",
+      "Upload the character image you want to restyle here. We've already prepared a demo image for this walkthrough.",
     stepPromptTitle: "Enter the styling prompt",
     stepPromptDescription:
       "Describe the kind of outfit you want. We'll use this example for the tutorial.",
     stepBackgroundTitle: "Background settings",
     stepBackgroundDescription:
-      "Choose how to handle the background here.<br>For this tutorial, let's continue with “Let AI decide.”",
+      "Choose how to handle the background here. For this tutorial, let's continue with “Let AI decide.”",
     stepGenerateTitle: "Start generating",
     stepGenerateDescription:
-      "Select “Start styling” to begin.<br>Your Percoins will be restored after the tutorial, so feel free to continue.",
+      "Select “Start styling” to begin. Your Percoins will be restored after the tutorial, so feel free to continue.",
     stepGeneratingTitle: "Generating...",
     stepGeneratingDescription:
       "This usually takes around 20 seconds. Please wait a moment.",
@@ -733,7 +733,7 @@ export const enMessages = {
       "You can now post or download the result. Give it a try.",
     stepFinishedTitle: "Tour complete",
     stepFinishedDescription:
-      "Nice work. Enjoy creating more outfit swaps from here.<br>Click “Done” to receive your Percoin reward.",
+      "Nice work. Enjoy creating more outfit swaps from here. Click “Done” to receive your Percoin reward.",
   },
   i2iPoc: {
     title: "AI fashion show",

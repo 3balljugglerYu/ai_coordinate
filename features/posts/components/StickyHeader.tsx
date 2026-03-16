@@ -13,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import { UserMenuItems } from "@/features/auth/components/UserMenuItems";
 import {
   getCurrentUser,
@@ -233,28 +234,35 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
       ) : (
         <>
           {currentUser ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                  {currentUser.avatar_url ? (
-                    <Image
-                      src={currentUser.avatar_url}
-                      alt={commonT("userAlt")}
-                      width={32}
-                      height={32}
-                      className="rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
-                      <User className="h-4 w-4 text-gray-500" />
-                    </div>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <UserMenuItems includeMyPage onSignOut={handleSignOut} />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <LanguageSettingsMenu variant="header" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                    {currentUser.avatar_url ? (
+                      <Image
+                        src={currentUser.avatar_url}
+                        alt={commonT("userAlt")}
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                        <User className="h-4 w-4 text-gray-500" />
+                      </div>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <UserMenuItems
+                    includeMyPage
+                    includeLanguageSettings={false}
+                    onSignOut={handleSignOut}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <Link href="/login">
               <Button variant="outline" size="sm" className="text-xs">

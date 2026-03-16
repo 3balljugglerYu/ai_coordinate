@@ -37,6 +37,26 @@ jest.mock("@/components/ui/dropdown-menu", () => {
   });
 
   return {
+    DropdownMenu: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="menu-root">{children}</div>
+    ),
+    DropdownMenuTrigger: ({
+      children,
+      asChild,
+    }: {
+      children: React.ReactNode;
+      asChild?: boolean;
+    }) =>
+      asChild ? (
+        <>{children}</>
+      ) : (
+        <button type="button" data-testid="menu-trigger">
+          {children}
+        </button>
+      ),
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="menu-content">{children}</div>
+    ),
     DropdownMenuSub: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="dropdown-sub">{children}</div>
     ),
@@ -193,27 +213,49 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
   });
 
   describe("LSM-002 render", () => {
-    test("render_sidebar指定の場合_ヘッダーと2つのlocaleボタンを表示する", () => {
+    test("render_sidebar指定の場合_現在localeのトリガー行を表示する", () => {
       renderMenu({ variant: "sidebar" });
 
-      expect(screen.getByText("言語設定")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "日本語" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "言語設定" })).toBeInTheDocument();
+      expect(screen.getByText("日本語")).toBeInTheDocument();
+      expect(screen.queryByRole("menu", { name: "言語設定" })).not.toBeInTheDocument();
     });
 
-    test("render_sidebar指定で現在localeがある場合_activeボタンだけを強調する", () => {
+    test("render_sidebar指定でトリガー選択時_フライアウトと選択中localeを表示する", () => {
       currentLocale = "en";
 
       renderMenu({ variant: "sidebar" });
+      fireEvent.click(screen.getByRole("button", { name: "言語設定" }));
 
-      expect(screen.getByRole("button", { name: "English" })).toHaveAttribute(
-        "data-variant",
-        "default"
+      expect(screen.getByRole("menu", { name: "言語設定" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "日本語" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "English" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "言語設定" })).toHaveTextContent(
+        "English"
       );
-      expect(screen.getByRole("button", { name: "日本語" })).toHaveAttribute(
-        "data-variant",
-        "outline"
+    });
+  });
+
+  describe("LSM-006 render", () => {
+    test("render_header指定の場合_独立したトリガーとradio項目を表示する", () => {
+      renderMenu({ variant: "header" });
+
+      expect(screen.getByRole("button", { name: "言語設定" })).toBeInTheDocument();
+      expect(screen.getByTestId("menu-content")).toBeInTheDocument();
+      expect(screen.getByTestId("radio-ja")).toHaveTextContent("日本語");
+      expect(screen.getByTestId("radio-en")).toHaveTextContent("English");
+    });
+
+    test("render_header指定で未対応localeの場合_DEFAULT_LOCALEにフォールバックする", () => {
+      currentLocale = "fr";
+
+      renderMenu({ variant: "header" });
+
+      expect(screen.getByRole("button", { name: "言語設定" })).toHaveAttribute(
+        "title",
+        "English"
       );
+      expect(screen.getByTestId("radio-en")).toHaveAttribute("data-active", "true");
     });
   });
 
@@ -237,6 +279,7 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
       const onSelect = jest.fn();
       renderMenu({ variant: "sidebar", onSelect });
 
+      fireEvent.click(screen.getByRole("button", { name: "言語設定" }));
       fireEvent.click(screen.getByRole("button", { name: "日本語" }));
 
       await waitFor(() => {
@@ -272,6 +315,7 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
       currentPathname = "/ja/posts/example-post";
 
       renderMenu({ variant: "sidebar" });
+      fireEvent.click(screen.getByRole("button", { name: "言語設定" }));
       fireEvent.click(screen.getByRole("button", { name: "English" }));
 
       await waitFor(() => {
@@ -304,6 +348,7 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
       currentPathname = "/dashboard";
 
       renderMenu({ variant: "sidebar" });
+      fireEvent.click(screen.getByRole("button", { name: "言語設定" }));
       fireEvent.click(screen.getByRole("button", { name: "English" }));
 
       await waitFor(() => {

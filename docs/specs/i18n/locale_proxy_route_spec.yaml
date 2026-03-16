@@ -1,0 +1,384 @@
+metadata:
+  class: LocaleProxyRoute
+  source: proxy.ts
+  version: "1.0"
+  created_at: "2026-03-16"
+
+dependencies:
+  repositories: []
+  services:
+    - enforceApiDocsBasicAuth
+    - enforceI2iPocBasicAuth
+    - I18nConfig helpers
+  external:
+    - "@supabase/ssr createServerClient"
+    - "next/server NextRequest and NextResponse"
+
+state_properties: []
+
+specifications:
+  - id: LPR-001
+    method: proxy
+    type: unwanted
+    ears: |
+      If API Docs Basic Auth rejects the request,
+      then the proxy shall return that rejection response immediately
+      and shall not perform locale or authentication processing.
+    ears_ja: |
+      API Docs Basic Authがリクエストを拒否した場合、
+      proxyはその拒否レスポンスを即座に返し、
+      locale処理および認証処理を行ってはならない。
+    preconditions:
+      - The request is evaluated by proxy
+      - enforceApiDocsBasicAuth returns a response object
+    preconditions_ja:
+      - リクエストがproxyで評価される
+      - enforceApiDocsBasicAuthがレスポンスを返す
+    postconditions:
+      success:
+        - Returns the response produced by enforceApiDocsBasicAuth
+      error:
+        - Does not call locale redirect logic
+        - Does not create a Supabase server client
+    postconditions_ja:
+      success:
+        - enforceApiDocsBasicAuthが返したレスポンスを返す
+      error:
+        - locale redirectロジックを呼び出さない
+        - Supabase server clientを生成しない
+    test_cases:
+      - proxy_GivenApiDocsBasicAuthRejection_ShouldShortCircuitBeforeLocaleHandling
+    test_cases_ja:
+      - proxy_APIドキュメントBasicAuthで拒否された場合_locale処理前に短絡終了する
+
+  - id: LPR-002
+    method: proxy
+    type: unwanted
+    ears: |
+      If i2i POC Basic Auth rejects the request,
+      then the proxy shall return that rejection response immediately
+      and shall not perform locale or authentication processing.
+    ears_ja: |
+      i2i POC Basic Authがリクエストを拒否した場合、
+      proxyはその拒否レスポンスを即座に返し、
+      locale処理および認証処理を行ってはならない。
+    preconditions:
+      - The request is evaluated by proxy
+      - enforceApiDocsBasicAuth returns null
+      - enforceI2iPocBasicAuth returns a response object
+    preconditions_ja:
+      - リクエストがproxyで評価される
+      - enforceApiDocsBasicAuthがnullを返す
+      - enforceI2iPocBasicAuthがレスポンスを返す
+    postconditions:
+      success:
+        - Returns the response produced by enforceI2iPocBasicAuth
+      error:
+        - Does not call locale redirect logic
+        - Does not create a Supabase server client
+    postconditions_ja:
+      success:
+        - enforceI2iPocBasicAuthが返したレスポンスを返す
+      error:
+        - locale redirectロジックを呼び出さない
+        - Supabase server clientを生成しない
+    test_cases:
+      - proxy_GivenI2iPocBasicAuthRejection_ShouldShortCircuitBeforeLocaleHandling
+    test_cases_ja:
+      - proxy_i2iPOCBasicAuthで拒否された場合_locale処理前に短絡終了する
+
+  - id: LPR-003
+    method: proxy
+    type: event-driven
+    ears: |
+      When the request targets a public pathname without a locale prefix,
+      the proxy shall resolve the request locale,
+      redirect to the localized public pathname,
+      and persist the resolved locale in the locale cookie.
+    ears_ja: |
+      リクエストがlocale prefixのない公開pathnameを対象とする場合、
+      proxyはリクエストlocaleを解決し、
+      locale付きの公開pathnameへリダイレクトし、
+      解決したlocaleをlocale cookieへ保存する。
+    preconditions:
+      - The request pathname is configured as a public route after locale stripping
+      - The request pathname does not already include a supported locale prefix
+    preconditions_ja:
+      - locale除去後のリクエストpathnameが公開ルートとして設定されている
+      - リクエストpathnameにサポート対象locale prefixが含まれていない
+    postconditions:
+      success:
+        - Returns a redirect response to the localized public pathname
+        - Preserves the original query string on the redirect URL
+        - Sets the locale cookie to the resolved locale
+      error:
+        - Does not create a Supabase server client before redirecting
+    postconditions_ja:
+      success:
+        - locale付き公開pathnameへのredirectレスポンスを返す
+        - redirect先URLに元のquery stringを保持する
+        - 解決したlocaleでlocale cookieを設定する
+      error:
+        - redirect前にSupabase server clientを生成しない
+    test_cases:
+      - proxy_GivenBarePublicPathWithCookieLocale_ShouldRedirectToLocalizedPath
+      - proxy_GivenBarePublicPathWithoutCookie_ShouldRedirectUsingAcceptLanguageLocale
+    test_cases_ja:
+      - proxy_cookieLocale付きの公開パスの場合_locale付きパスへリダイレクトする
+      - proxy_cookieなしの公開パスの場合_AcceptLanguage解決localeでリダイレクトする
+
+  - id: LPR-004
+    method: proxy
+    type: optional
+    ears: |
+      Where Supabase environment variables are unavailable,
+      the proxy shall skip authentication checks
+      and shall return a pass-through response with the locale header and locale cookie applied.
+    ears_ja: |
+      Supabase環境変数が利用できない場合、
+      proxyは認証チェックをスキップし、
+      locale headerとlocale cookieを付与した通過レスポンスを返す。
+    preconditions:
+      - The request has not been redirected by earlier locale or basic auth checks
+      - NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing
+    preconditions_ja:
+      - リクエストが先行するlocaleまたはbasic authチェックでredirectされていない
+      - NEXT_PUBLIC_SUPABASE_URLまたはNEXT_PUBLIC_SUPABASE_ANON_KEYが欠けている
+    postconditions:
+      success:
+        - Returns NextResponse.next
+        - Forwards the resolved locale in the locale header
+        - Sets the locale cookie to the resolved locale
+      error:
+        - Does not create a Supabase server client
+    postconditions_ja:
+      success:
+        - NextResponse.nextを返す
+        - 解決したlocaleをlocale headerに転送する
+        - 解決したlocaleでlocale cookieを設定する
+      error:
+        - Supabase server clientを生成しない
+    test_cases:
+      - proxy_GivenMissingSupabaseEnv_ShouldPassThroughWithLocaleMetadata
+    test_cases_ja:
+      - proxy_Supabase環境変数が欠けている場合_locale情報付きで通過させる
+
+  - id: LPR-005
+    method: proxy
+    type: event-driven
+    ears: |
+      When an authenticated user requests an authentication page,
+      the proxy shall redirect the user to /my-page
+      and shall clear the existing search string from the redirect URL.
+    ears_ja: |
+      認証済みユーザーが認証ページを要求した場合、
+      proxyはユーザーを /my-page へリダイレクトし、
+      redirect URLのsearch stringをクリアしなければならない。
+    preconditions:
+      - Supabase authentication resolves a user
+      - The request pathname is /login, /signup, /reset-password, or their child path
+    preconditions_ja:
+      - Supabase認証でuserが解決される
+      - リクエストpathnameが /login、/signup、/reset-password またはその配下である
+    postconditions:
+      success:
+        - Returns a redirect response to /my-page
+        - Clears the search string on the redirect URL
+        - Sets the locale cookie to the resolved locale
+      error:
+        - Does not continue to deactivation or protected-path checks
+    postconditions_ja:
+      success:
+        - /my-page へのredirectレスポンスを返す
+        - redirect URLのsearch stringをクリアする
+        - 解決したlocaleでlocale cookieを設定する
+      error:
+        - 退会状態チェックや保護パスチェックを続行しない
+    test_cases:
+      - proxy_GivenAuthenticatedUserOnAuthPage_ShouldRedirectToMyPage
+    test_cases_ja:
+      - proxy_認証済みユーザーが認証ページにいる場合_myPageへリダイレクトする
+
+  - id: LPR-006
+    method: proxy
+    type: unwanted
+    ears: |
+      If an authenticated user is deactivated and requests an API pathname
+      outside the allowed deactivated-path list,
+      then the proxy shall return a 403 JSON response that denies access.
+    ears_ja: |
+      認証済みユーザーが停止状態であり、
+      許可済み停止中パス一覧の外にあるAPI pathnameを要求した場合、
+      proxyはアクセス拒否の403 JSONレスポンスを返さなければならない。
+    preconditions:
+      - Supabase authentication resolves a user
+      - The request pathname starts with /api
+      - The request pathname is not in the allowedWhileDeactivated list
+      - The user's profile has a non-null deactivated_at
+    preconditions_ja:
+      - Supabase認証でuserが解決される
+      - リクエストpathnameが /api で始まる
+      - リクエストpathnameがallowedWhileDeactivated一覧に含まれない
+      - ユーザーprofileのdeactivated_atがnullではない
+    postconditions:
+      success:
+        - Returns a JSON response with HTTP 403
+        - Includes an access-denied error payload
+      error:
+        - Does not redirect to another pathname
+    postconditions_ja:
+      success:
+        - HTTP 403 のJSONレスポンスを返す
+        - アクセス拒否のerror payloadを含む
+      error:
+        - 他のpathnameへリダイレクトしない
+    test_cases:
+      - proxy_GivenDeactivatedUserOnApiPath_ShouldReturnForbiddenJson
+    test_cases_ja:
+      - proxy_停止状態ユーザーがAPIパスを要求した場合_403のJSONを返す
+
+  - id: LPR-007
+    method: proxy
+    type: state-driven
+    ears: |
+      While an authenticated user is deactivated,
+      the proxy shall redirect non-API requests outside the allowed deactivated-path list
+      to /account/reactivate.
+    ears_ja: |
+      認証済みユーザーが停止状態の間、
+      proxyは許可済み停止中パス一覧の外にある非APIリクエストを
+      /account/reactivate へリダイレクトしなければならない。
+    preconditions:
+      - Supabase authentication resolves a user
+      - The request pathname does not start with /api
+      - The request pathname is not in the allowedWhileDeactivated list
+      - The user's profile has a non-null deactivated_at
+    preconditions_ja:
+      - Supabase認証でuserが解決される
+      - リクエストpathnameが /api で始まらない
+      - リクエストpathnameがallowedWhileDeactivated一覧に含まれない
+      - ユーザーprofileのdeactivated_atがnullではない
+    postconditions:
+      success:
+        - Returns a redirect response to /account/reactivate
+        - Clears the search string on the redirect URL
+        - Sets the locale cookie to the resolved locale
+      error:
+        - Does not return a pass-through response
+    postconditions_ja:
+      success:
+        - /account/reactivate へのredirectレスポンスを返す
+        - redirect URLのsearch stringをクリアする
+        - 解決したlocaleでlocale cookieを設定する
+      error:
+        - 通過レスポンスを返さない
+    test_cases:
+      - proxy_GivenDeactivatedUserOnNonApiPath_ShouldRedirectToReactivate
+    test_cases_ja:
+      - proxy_停止状態ユーザーが非APIパスを要求した場合_再開ページへリダイレクトする
+
+  - id: LPR-008
+    method: proxy
+    type: event-driven
+    ears: |
+      When an unauthenticated request targets a protected pathname,
+      the proxy shall redirect the request to /login
+      and shall preserve the original pathname in the redirect query parameter.
+    ears_ja: |
+      未認証リクエストが保護されたpathnameを対象とする場合、
+      proxyはリクエストを /login へリダイレクトし、
+      元のpathnameをredirect query parameterとして保持しなければならない。
+    preconditions:
+      - The request pathname matches the protected path list
+      - Supabase authentication does not resolve a user
+    preconditions_ja:
+      - リクエストpathnameが保護パス一覧に一致する
+      - Supabase認証でuserが解決されない
+    postconditions:
+      success:
+        - Returns a redirect response to /login
+        - Includes the original pathname in the redirect query parameter
+        - Sets the locale cookie to the resolved locale
+      error:
+        - Does not return a pass-through response
+    postconditions_ja:
+      success:
+        - /login へのredirectレスポンスを返す
+        - redirect query parameterに元のpathnameを含める
+        - 解決したlocaleでlocale cookieを設定する
+      error:
+        - 通過レスポンスを返さない
+    test_cases:
+      - proxy_GivenUnauthenticatedProtectedPath_ShouldRedirectToLoginWithRedirectParam
+    test_cases_ja:
+      - proxy_未認証で保護パスの場合_redirect付きログインへリダイレクトする
+
+  - id: LPR-009
+    method: createNextResponse
+    type: ubiquitous
+    ears: |
+      The system shall create pass-through responses
+      that forward the resolved locale in the locale header
+      and persist the resolved locale in the locale cookie.
+    ears_ja: |
+      システムは通過レスポンスを生成する際、
+      解決したlocaleをlocale headerへ転送し、
+      解決したlocaleをlocale cookieへ保存しなければならない。
+    preconditions:
+      - A request and supported locale are provided
+    preconditions_ja:
+      - requestとサポート対象localeが渡される
+    postconditions:
+      success:
+        - Returns NextResponse.next
+        - Sets the locale header on forwarded request headers
+        - Applies the locale cookie
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - NextResponse.nextを返す
+        - 転送先request headersへlocale headerを設定する
+        - locale cookieを適用する
+      error:
+        - なし
+    test_cases:
+      - createNextResponse_GivenRequestAndLocale_ShouldForwardLocaleHeaderAndCookie
+    test_cases_ja:
+      - createNextResponse_requestとlocaleが与えられた場合_localeHeaderとcookieを付与する
+
+  - id: LPR-010
+    method: applyLocaleCookie
+    type: ubiquitous
+    ears: |
+      The system shall persist the locale cookie
+      with the configured name, root path, one-year max age,
+      and lax same-site policy.
+    ears_ja: |
+      システムはlocale cookieを、
+      設定済みの名前、ルートパス、1年のmax age、
+      およびlaxのsame-siteポリシーで保存しなければならない。
+    preconditions:
+      - A response object and supported locale are provided
+    preconditions_ja:
+      - response objectとサポート対象localeが渡される
+    postconditions:
+      success:
+        - Sets the cookie name to LOCALE_COOKIE
+        - Sets the cookie path to /
+        - Sets maxAge to the configured locale cookie lifetime
+        - Sets sameSite to lax
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - cookie名をLOCALE_COOKIEに設定する
+        - cookie pathを / に設定する
+        - maxAgeを設定済みlocale cookie寿命に設定する
+        - sameSiteを lax に設定する
+      error:
+        - なし
+    test_cases:
+      - applyLocaleCookie_GivenResponseAndLocale_ShouldPersistCookieWithStandardOptions
+    test_cases_ja:
+      - applyLocaleCookie_responseとlocaleが与えられた場合_標準オプションでcookieを保存する

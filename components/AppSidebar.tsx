@@ -256,46 +256,48 @@ export function AppSidebar() {
               </div>
             </button>
           ) : (
-            <Collapsible open={isOthersOpen} onOpenChange={setIsOthersOpen}>
-              <CollapsibleTrigger asChild>
-                <button
-                  className={cn(
-                    "group flex w-full items-center py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100",
-                    isOthersOpen && "bg-gray-50"
-                  )}
-                  aria-expanded={isOthersOpen}
-                  aria-label={navT("openOthers")}
-                >
-                  <div className="flex w-[72px] shrink-0 items-center justify-center">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </div>
-                  <div
+            <>
+              <LanguageSettingsMenu variant="sidebar" />
+              <Collapsible open={isOthersOpen} onOpenChange={setIsOthersOpen}>
+                <CollapsibleTrigger asChild>
+                  <button
                     className={cn(
-                      "overflow-hidden transition-all duration-200",
-                      isOpen ? "w-auto opacity-100" : "w-0 opacity-0"
+                      "group flex w-full items-center py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100",
+                      isOthersOpen && "bg-gray-50"
                     )}
+                    aria-expanded={isOthersOpen}
+                    aria-label={navT("openOthers")}
                   >
-                    <span className="whitespace-nowrap pr-4">{navT("others")}</span>
-                  </div>
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <button
-                  onClick={() => handleNavigation("/my-page/contact")}
-                  className={cn(
-                    "group flex w-full items-center py-2 pl-[72px] pr-4 text-sm font-medium transition-all duration-200 hover:bg-gray-100",
-                    normalizedPathname === "/my-page/contact"
-                      ? "bg-primary/10 text-primary"
-                      : "text-gray-600 hover:text-gray-900"
-                  )}
-                  aria-label={navT("contact")}
-                >
-                  <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
-                  <span className="whitespace-nowrap">{navT("contact")}</span>
-                </button>
-                <LanguageSettingsMenu variant="sidebar" />
-              </CollapsibleContent>
-            </Collapsible>
+                    <div className="flex w-[72px] shrink-0 items-center justify-center">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </div>
+                    <div
+                      className={cn(
+                        "overflow-hidden transition-all duration-200",
+                        isOpen ? "w-auto opacity-100" : "w-0 opacity-0"
+                      )}
+                    >
+                      <span className="whitespace-nowrap pr-4">{navT("others")}</span>
+                    </div>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <button
+                    onClick={() => handleNavigation("/my-page/contact")}
+                    className={cn(
+                      "group flex w-full items-center py-2 pl-[72px] pr-4 text-sm font-medium transition-all duration-200 hover:bg-gray-100",
+                      normalizedPathname === "/my-page/contact"
+                        ? "bg-primary/10 text-primary"
+                        : "text-gray-600 hover:text-gray-900"
+                    )}
+                    aria-label={navT("contact")}
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="whitespace-nowrap">{navT("contact")}</span>
+                  </button>
+                </CollapsibleContent>
+              </Collapsible>
+            </>
           )}
         </div>
       )}

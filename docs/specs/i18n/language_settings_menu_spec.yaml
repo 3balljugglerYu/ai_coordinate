@@ -18,7 +18,7 @@ dependencies:
 
 state_properties:
   - name: variant
-    type: '"dropdown" | "sidebar"'
+    type: '"dropdown" | "sidebar" | "header"'
     default: none
   - name: locale
     type: Locale
@@ -73,12 +73,17 @@ specifications:
     type: state-driven
     ears: |
       While LanguageSettingsMenu is rendered with variant set to sidebar,
-      the system shall render two locale buttons,
-      and shall mark only the active locale button with the active visual variant.
+      the system shall render a main menu row that displays the current locale,
+      and when the row is selected,
+      it shall render a flyout panel on the right side
+      with Japanese and English options,
+      marking only the active locale option as selected.
     ears_ja: |
       LanguageSettingsMenuがvariant=sidebarで描画されている間、
-      システムは2つのlocaleボタンを描画し、
-      現在のlocaleに対応するボタンだけをactive表示にしなければならない。
+      システムは現在のlocaleを表示するメインメニュー行を描画し、
+      その行が選択された場合、
+      右側に日本語とEnglishの選択肢を持つフライアウトパネルを表示し、
+      現在のlocaleだけを選択状態で示さなければならない。
     preconditions:
       - The component is rendered with variant equal to sidebar
       - common translations are available
@@ -87,24 +92,68 @@ specifications:
       - common翻訳が利用可能である
     postconditions:
       success:
-        - A header with the locale label is rendered
-        - Exactly two buttons for ja and en are rendered
-        - Only the current locale button uses the active variant
+        - A main menu trigger row is rendered with the current locale label
+        - Selecting the trigger reveals a right-side flyout panel
+        - The flyout renders exactly two locale options for ja and en
+        - Only the active locale option is marked as selected
       error:
         - None
     postconditions_ja:
       success:
-        - 言語設定ラベル付きのヘッダーが描画される
-        - ja と en の2つのボタンが描画される
-        - 現在localeのボタンだけがactive variantになる
+        - 現在localeラベルを持つメインメニュートリガー行が描画される
+        - トリガー選択で右側フライアウトパネルが表示される
+        - フライアウトに ja と en の2つのlocale選択肢が描画される
+        - 現在localeの選択肢だけが選択状態になる
       error:
         - なし
     test_cases:
-      - render_GivenSidebarVariant_ShouldShowTwoLocaleButtonsAndHeader
-      - render_GivenSidebarVariantWithCurrentLocale_ShouldHighlightOnlyActiveButton
+      - render_GivenSidebarVariant_ShouldShowCurrentLocaleTriggerRow
+      - render_GivenSidebarVariantTriggerSelection_ShouldShowFlyoutWithLocalesAndSelectedOption
     test_cases_ja:
-      - render_sidebar指定の場合_ヘッダーと2つのlocaleボタンを表示する
-      - render_sidebar指定で現在localeがある場合_activeボタンだけを強調する
+      - render_sidebar指定の場合_現在localeのトリガー行を表示する
+      - render_sidebar指定でトリガー選択時_フライアウトと選択中localeを表示する
+
+  - id: LSM-006
+    method: render
+    type: event-driven
+    ears: |
+      When LanguageSettingsMenu is rendered with variant set to header,
+      the system shall render a standalone header trigger button
+      with the locale settings accessible name,
+      and shall render radio items for Japanese and English
+      in a top-level dropdown menu.
+    ears_ja: |
+      LanguageSettingsMenuがvariant=headerで描画された場合、
+      システムは言語設定のアクセシブル名を持つ
+      独立したヘッダートリガーボタンを描画し、
+      トップレベルのドロップダウンメニューに
+      日本語とEnglishのradio itemを表示しなければならない。
+    preconditions:
+      - The component is rendered with variant equal to header
+      - common translations are available
+    preconditions_ja:
+      - componentがvariant=headerで描画される
+      - common翻訳が利用可能である
+    postconditions:
+      success:
+        - A standalone trigger button is rendered for header usage
+        - The trigger uses the translated locale label as its accessible name
+        - Radio items for ja and en are rendered in a top-level dropdown content
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - header用の独立したトリガーボタンが描画される
+        - トリガーは翻訳済みの言語設定ラベルをアクセシブル名として使う
+        - ja と en のradio itemがトップレベル dropdown content に描画される
+      error:
+        - なし
+    test_cases:
+      - render_GivenHeaderVariant_ShouldShowStandaloneTriggerAndRadioItems
+      - render_GivenHeaderVariantWithUnsupportedLocale_ShouldFallbackToDefaultLocale
+    test_cases_ja:
+      - render_header指定の場合_独立したトリガーとradio項目を表示する
+      - render_header指定で未対応localeの場合_DEFAULT_LOCALEにフォールバックする
 
   - id: LSM-003
     method: handleLocaleChange

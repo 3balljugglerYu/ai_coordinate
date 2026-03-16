@@ -73,8 +73,10 @@ export function TutorialTourProvider() {
   const [showModal, setShowModal] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const driverRef = useRef<Driver | null>(null);
+  const coordinateTourStartedRef = useRef(false);
   const generationCompleteDelayTimerRef =
     useRef<ReturnType<typeof setTimeout> | null>(null);
+  const normalizedPath = pathname ? stripLocalePrefix(pathname).pathname : "/";
 
   // チュートリアル開始判定（rerender-dependencies: プリミティブな依存のみ）
   const tutorialReset = searchParams.get("tutorial_reset");
@@ -84,7 +86,6 @@ export function TutorialTourProvider() {
     const checkAndShowModal = async () => {
       try {
         // ホーム画面以外ではモーダルを非表示
-        const normalizedPath = pathname ? stripLocalePrefix(pathname).pathname : "/";
         if (normalizedPath !== "/") {
           setShowModal(false);
           setIsChecking(false);
@@ -125,7 +126,7 @@ export function TutorialTourProvider() {
     return () => {
       mounted = false;
     };
-  }, [pathname, tutorialReset]);
+  }, [normalizedPath, tutorialReset]);
 
   const markTutorialCompleted = async () => {
     const supabase = createClient();
@@ -546,13 +547,37 @@ export function TutorialTourProvider() {
 
   // /coordinate に遷移したらツアー再開
   useEffect(() => {
-    const normalizedPath = pathname ? stripLocalePrefix(pathname).pathname : "/";
-    if (normalizedPath !== "/coordinate") return;
+    if (normalizedPath !== "/coordinate") {
+      coordinateTourStartedRef.current = false;
+      return;
+    }
     if (isChecking) return;
+    if (coordinateTourStartedRef.current) return;
 
-    const timer = setTimeout(() => void startTourFromCoordinate(), 300);
-    return () => clearTimeout(timer);
-  }, [isChecking, pathname, t]);
+    coordinateTourStartedRef.current = true;
+    let cancelled = false;
+
+    if (driverRef.current) {
+      driverRef.current.destroy();
+    }
+
+    const resumeTourWhenReady = () => {
+      if (cancelled) return;
+
+      if (driverRef.current) {
+        window.setTimeout(resumeTourWhenReady, 100);
+        return;
+      }
+
+      void startTourFromCoordinate();
+    };
+
+    const timer = window.setTimeout(resumeTourWhenReady, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isChecking, normalizedPath]);
 
   if (isChecking) return null;
 

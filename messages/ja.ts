@@ -689,16 +689,16 @@ export const jaMessages = {
     stepCoordinateDescription: "ここをタップしてください。",
     stepUploadTitle: "画像をアップロード！",
     stepUploadDescription:
-      "ここで着せ替えたい人物画像をアップロードします。<br>今回は体験用の画像をセットしました！",
+      "ここで着せ替えたい人物画像をアップロードします。今回は体験用の画像をセットしました！",
     stepPromptTitle: "着せ替え内容を入力！",
     stepPromptDescription:
       "どんなコーデにしたいか入力します。今回は、この内容で進めます！",
     stepBackgroundTitle: "背景設定",
     stepBackgroundDescription:
-      "ここでは背景の扱いを選べます。<br>今回は「AIに依頼」を選択して進めてみましょう！",
+      "ここでは背景の扱いを選べます。今回は「AIに依頼」を選択して進めてみましょう！",
     stepGenerateTitle: "生成開始！",
     stepGenerateDescription:
-      "「コーデスタート」ボタンを選択して、開始しましょう！<br>※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",
+      "「コーデスタート」ボタンを選択して、開始しましょう！ ※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",
     stepGeneratingTitle: "生成しています！",
     stepGeneratingDescription:
       "生成完了まで約20秒ほどかかります。しばらくお待ちください！",
@@ -708,7 +708,7 @@ export const jaMessages = {
       "投稿やダウンロードが可能です！ぜひ試してみてください！",
     stepFinishedTitle: "ツアー完了！",
     stepFinishedDescription:
-      "お疲れ様でした！引き続き、着せ替えをお楽しみください！<br>※「完了」をクリックするとコインが付与されます。",
+      "お疲れ様でした！引き続き、着せ替えをお楽しみください！ ※「完了」をクリックするとコインが付与されます。",
   },
   i2iPoc: {
     title: "AI fashion show",

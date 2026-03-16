@@ -13,6 +13,8 @@ import { ROUTES } from "@/constants";
 interface UserMenuItemsProps {
   /** マイページへのリンクを表示する（ヘッダー用） */
   includeMyPage?: boolean;
+  /** 言語設定を含める */
+  includeLanguageSettings?: boolean;
   /** ログアウト時のコールバック */
   onSignOut: () => void;
 }
@@ -23,6 +25,7 @@ interface UserMenuItemsProps {
  */
 export function UserMenuItems({
   includeMyPage = false,
+  includeLanguageSettings = true,
   onSignOut,
 }: UserMenuItemsProps) {
   const navT = useTranslations("nav");
@@ -44,7 +47,9 @@ export function UserMenuItems({
           {navT("account")}
         </Link>
       </DropdownMenuItem>
-      <LanguageSettingsMenu variant="dropdown" />
+      {includeLanguageSettings ? (
+        <LanguageSettingsMenu variant="dropdown" />
+      ) : null}
       <DropdownMenuItem asChild>
         <Link href={ROUTES.MY_PAGE_CONTACT} className={linkClassName}>
           <MessageCircle className="mr-2 h-4 w-4" />
