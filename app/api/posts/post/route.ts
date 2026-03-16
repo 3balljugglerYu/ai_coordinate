@@ -80,13 +80,14 @@ export async function POST(request: NextRequest) {
     revalidateTag("home-posts", "max");
     revalidateTag("home-posts-week", "max");
     revalidateTag("search-posts", "max");
-    revalidateTag(`post-detail-${id}`, "max");
+    // 投稿直後の詳細画面は stale を返さないように即時失効する
+    revalidateTag(`post-detail-${id}`, { expire: 0 });
     revalidateTag(`user-profile-${user.id}`, "max");
     revalidateTag(`my-page-${user.id}`, "max");
     revalidateTag(`my-page-credits-${user.id}`, "max");
     revalidateTag(`coordinate-${user.id}`, "max");
     revalidateTag(`challenge-${user.id}`, "max");
-    revalidateTag(`my-page-image-${user.id}-${id}`, "max");
+    revalidateTag(`my-page-image-${user.id}-${id}`, { expire: 0 });
     revalidatePath("/");
     revalidatePath(`/posts/${id}`);
 

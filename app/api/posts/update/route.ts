@@ -36,13 +36,16 @@ export async function PUT(request: NextRequest) {
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
 
     if (result.id) {
-      revalidateTag(`post-detail-${result.id}`, "max");
+      // 詳細画面はキャプション更新直後に stale を返さないようにする
+      revalidateTag(`post-detail-${result.id}`, { expire: 0 });
     }
     revalidateTag("home-posts", "max");
     revalidateTag("home-posts-week", "max");
     revalidateTag("search-posts", "max");
     if (result.user_id) {
-      revalidateTag(`my-page-image-${result.user_id}-${result.id}`, "max");
+      revalidateTag(`my-page-image-${result.user_id}-${result.id}`, {
+        expire: 0,
+      });
     }
 
     return NextResponse.json({
