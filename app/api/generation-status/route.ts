@@ -5,26 +5,27 @@ import {
   isMalformedGeminiPartsErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
 } from "@/shared/generation/errors";
-
-const SAFETY_BLOCKED_USER_MESSAGE =
-  "安全性ポリシーにより生成できませんでした。\n内容を変更して再試行してください。";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 
 function normalizeUserFacingGenerationError(
   status: string,
-  errorMessage: string | null
+  errorMessage: string | null,
+  copy: ReturnType<typeof getGenerationRouteCopy>
 ): string | null {
   if (status !== "failed" || !errorMessage) return errorMessage;
 
   if (errorMessage === "No images generated") {
-    return "画像を生成できませんでした。";
+    return copy.noImagesGenerated;
   }
 
   if (isSafetyPolicyBlockedErrorMessage(errorMessage)) {
-    return SAFETY_BLOCKED_USER_MESSAGE;
+    return copy.safetyBlocked;
   }
 
   if (isMalformedGeminiPartsErrorMessage(errorMessage)) {
-    return "画像生成に失敗しました。しばらくしてから、もう一度お試しください。";
+    return copy.genericGenerationFailed;
   }
 
   return errorMessage;
@@ -35,24 +36,20 @@ function normalizeUserFacingGenerationError(
  * image_jobsテーブルから生成ステータスを取得
  */
 export async function GET(request: NextRequest) {
+  const copy = getGenerationRouteCopy(getRouteLocale(request));
+
   try {
     // 認証チェック
     const user = await getUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      );
+      return jsonError(copy.authRequired, "GENERATION_AUTH_REQUIRED", 401);
     }
 
     const searchParams = request.nextUrl.searchParams;
     const jobId = searchParams.get("id");
 
     if (!jobId) {
-      return NextResponse.json(
-        { error: "Job ID is required" },
-        { status: 400 }
-      );
+      return jsonError(copy.jobIdRequired, "GENERATION_JOB_ID_REQUIRED", 400);
     }
 
     // image_jobsテーブルから該当ジョブを取得
@@ -68,20 +65,18 @@ export async function GET(request: NextRequest) {
       if (error.code === "PGRST116") {
         // レコードが見つからない場合
         return NextResponse.json(
-          { error: "ジョブが見つかりません" },
+          { error: copy.jobNotFound, errorCode: "GENERATION_JOB_NOT_FOUND" },
           { status: 404 }
         );
       }
       console.error("Failed to fetch job status:", error);
-      return NextResponse.json(
-        { error: "ステータスの取得に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.statusFetchFailed, "GENERATION_STATUS_FETCH_FAILED", 500);
     }
 
     const normalizedErrorMessage = normalizeUserFacingGenerationError(
       job.status,
-      job.error_message
+      job.error_message,
+      copy
     );
 
     // ステータス、結果画像URL、エラーメッセージを返却
@@ -93,9 +88,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Status check error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(copy.statusFetchFailed, "GENERATION_STATUS_FETCH_FAILED", 500);
   }
 }

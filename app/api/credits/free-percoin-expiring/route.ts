@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { FreePercoinBatchExpiring } from "@/features/credits/lib/free-percoin-expiration";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 
 /**
  * 期限が近い無償コイン一覧と今月末失効予定数を取得
  * 認証必須
  */
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  const copy = getCreditsRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -14,7 +19,7 @@ export async function GET(_request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError(copy.authRequired, "CREDITS_AUTH_REQUIRED", 401);
     }
 
     const [batchesResult, countResult] = await Promise.all([
@@ -24,17 +29,19 @@ export async function GET(_request: NextRequest) {
 
     if (batchesResult.error) {
       console.error("get_free_percoin_batches_expiring error:", batchesResult.error);
-      return NextResponse.json(
-        { error: "Failed to retrieve expiring batches" },
-        { status: 500 }
+      return jsonError(
+        copy.expiringBatchesFetchFailed,
+        "CREDITS_EXPIRING_BATCHES_FETCH_FAILED",
+        500
       );
     }
 
     if (countResult.error) {
       console.error("get_expiring_this_month_count error:", countResult.error);
-      return NextResponse.json(
-        { error: "Failed to retrieve expiring count" },
-        { status: 500 }
+      return jsonError(
+        copy.expiringCountFetchFailed,
+        "CREDITS_EXPIRING_COUNT_FETCH_FAILED",
+        500
       );
     }
 
@@ -59,9 +66,10 @@ export async function GET(_request: NextRequest) {
     });
   } catch (error) {
     console.error("Free percoin expiring route error:", error);
-    return NextResponse.json(
-      { error: "Unexpected error" },
-      { status: 500 }
+    return jsonError(
+      copy.expiringBatchesFetchFailed,
+      "CREDITS_EXPIRING_BATCHES_FETCH_FAILED",
+      500
     );
   }
 }

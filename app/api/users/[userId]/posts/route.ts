@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserPostsServer } from "@/features/my-page/lib/server-api";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getUserRouteCopy } from "@/features/users/lib/route-copy";
 
 /**
  * ユーザーの投稿一覧取得API（GET）
@@ -9,14 +12,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = getUserRouteCopy(getRouteLocale(request));
+
   try {
     const { userId } = await params;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
+      return jsonError(copy.userIdRequired, "USER_ID_REQUIRED", 400);
     }
 
     const { searchParams } = new URL(request.url);
@@ -28,15 +30,6 @@ export async function GET(
     return NextResponse.json(posts);
   } catch (error) {
     console.error("User posts API error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "投稿の取得に失敗しました",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.postsFetchFailed, "USER_POSTS_FETCH_FAILED", 500);
   }
 }
-

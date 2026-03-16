@@ -1,23 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getTutorialRouteCopy } from "@/features/tutorial/lib/route-copy";
 
 /**
  * チュートリアル完了API
  * grant_tour_bonus RPC を呼び出して20ペルコインを付与し、
  * user_metadata.tutorial_completed を true に更新する
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const copy = getTutorialRouteCopy(getRouteLocale(request));
+
   try {
     // 独立した操作を並列実行（async-api-routes）
     const [user, supabase] = await Promise.all([getUser(), createClient()]);
 
     if (!user) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      );
+      return jsonError(copy.authRequired, "TUTORIAL_AUTH_REQUIRED", 401);
     }
 
     // rpc の成功後に updateUser を実行し、データ不整合を防止
@@ -27,10 +29,7 @@ export async function POST() {
     );
     if (rpcError) {
       console.error("[Tutorial Complete] RPC error:", rpcError);
-      return NextResponse.json(
-        { error: rpcError.message || "チュートリアル完了の処理に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.tutorialCompleteFailed, "TUTORIAL_COMPLETE_FAILED", 500);
     }
 
     const result = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
@@ -56,14 +55,6 @@ export async function POST() {
     });
   } catch (error) {
     console.error("[Tutorial Complete] Exception:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "チュートリアル完了の処理に失敗しました",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.tutorialCompleteFailed, "TUTORIAL_COMPLETE_FAILED", 500);
   }
 }

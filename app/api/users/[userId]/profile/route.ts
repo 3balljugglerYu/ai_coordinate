@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getUserRouteCopy } from "@/features/users/lib/route-copy";
 
 const MAX_NICKNAME_LENGTH = 20;
 const MAX_BIO_LENGTH = 200;
@@ -15,14 +18,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = getUserRouteCopy(getRouteLocale(request));
+
   try {
     const { userId } = await params;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
+      return jsonError(copy.userIdRequired, "USER_ID_REQUIRED", 400);
     }
 
     const supabase = await createClient();
@@ -35,24 +37,13 @@ export async function GET(
       .single();
 
     if (error || !profile) {
-      return NextResponse.json(
-        { error: "プロフィールが見つかりません" },
-        { status: 404 }
-      );
+      return jsonError(copy.profileNotFound, "USER_PROFILE_NOT_FOUND", 404);
     }
 
     return NextResponse.json(profile);
   } catch (error) {
     console.error("Profile GET API error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "プロフィールの取得に失敗しました",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.profileFetchFailed, "USER_PROFILE_FETCH_FAILED", 500);
   }
 }
 
@@ -64,23 +55,22 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const copy = getUserRouteCopy(getRouteLocale(request));
+
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return jsonError(copy.authRequired, "USER_AUTH_REQUIRED", 401);
+    }
     const { userId } = await params;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
+      return jsonError(copy.userIdRequired, "USER_ID_REQUIRED", 400);
     }
 
     // 本人のみ更新可能
     if (user.id !== userId) {
-      return NextResponse.json(
-        { error: "権限がありません" },
-        { status: 403 }
-      );
+      return jsonError(copy.forbidden, "USER_FORBIDDEN", 403);
     }
 
     const body = await request.json();
@@ -113,9 +103,10 @@ export async function PATCH(
         // null以外の文字列ではない型（数値など）の場合
         return {
           success: false,
-          response: NextResponse.json(
-            { error: `${fieldName}は文字列である必要があります` },
-            { status: 400 }
+          response: jsonError(
+            fieldName === "nickname" ? copy.nicknameMustBeString : copy.bioMustBeString,
+            "USER_PROFILE_INVALID_FIELD_TYPE",
+            400
           ),
         };
       }
@@ -129,14 +120,23 @@ export async function PATCH(
         maxLength,
         fieldName,
         allowEmpty
+        ,
+        {
+          invalidCharacters: copy.invalidCharacters,
+          required:
+            fieldName === "nickname" ? copy.nicknameRequired : undefined,
+          maxLength:
+            fieldName === "nickname" ? copy.nicknameTooLong : copy.bioTooLong,
+        }
       );
 
       if (!validation.valid) {
         return {
           success: false,
-          response: NextResponse.json(
-            { error: validation.error },
-            { status: 400 }
+          response: jsonError(
+            validation.error || copy.profileUpdateFailed,
+            "USER_PROFILE_INVALID_INPUT",
+            400
           ),
         };
       }
@@ -150,7 +150,7 @@ export async function PATCH(
       const result = processProfileField(
         nickname,
         MAX_NICKNAME_LENGTH,
-        "ニックネーム",
+        "nickname",
         false // 空文字を許可しない
       );
       if (!result.success) return result.response;
@@ -159,7 +159,7 @@ export async function PATCH(
 
     // 自己紹介の処理
     if (bio !== undefined) {
-      const result = processProfileField(bio, MAX_BIO_LENGTH, "自己紹介");
+      const result = processProfileField(bio, MAX_BIO_LENGTH, "bio");
       if (!result.success) return result.response;
       updateData.bio = result.data;
     }
@@ -173,10 +173,7 @@ export async function PATCH(
 
     if (error) {
       console.error("Profile update error:", error);
-      return NextResponse.json(
-        { error: "プロフィールの更新に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.profileUpdateFailed, "USER_PROFILE_UPDATE_FAILED", 500);
     }
 
     revalidateTag(`user-profile-${userId}`, "max");
@@ -184,15 +181,6 @@ export async function PATCH(
     return NextResponse.json(updatedProfile);
   } catch (error) {
     console.error("Profile PATCH API error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "プロフィールの更新に失敗しました",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.profileUpdateFailed, "USER_PROFILE_UPDATE_FAILED", 500);
   }
 }
-

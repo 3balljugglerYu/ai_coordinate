@@ -1,10 +1,18 @@
-import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const copy = getAccountRouteCopy(getRouteLocale(request));
+
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return jsonError(copy.authRequired, "ACCOUNT_AUTH_REQUIRED", 401);
+    }
     const supabase = await createClient();
 
     const { data, error } = await supabase.rpc("cancel_account_deletion", {
@@ -13,10 +21,7 @@ export async function POST() {
 
     if (error) {
       console.error("cancel_account_deletion error:", error);
-      return NextResponse.json(
-        { error: "アカウント復帰に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.reactivateFailed, "ACCOUNT_REACTIVATE_FAILED", 500);
     }
 
     const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
@@ -27,9 +32,6 @@ export async function POST() {
     });
   } catch (error) {
     console.error("Account reactivate route error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
-      { status: 500 }
-    );
+    return jsonError(copy.reactivateFailed, "ACCOUNT_REACTIVATE_FAILED", 500);
   }
 }

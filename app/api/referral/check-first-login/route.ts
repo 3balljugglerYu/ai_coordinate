@@ -3,6 +3,8 @@ import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { ReferralCheckReasonCode } from "@/features/referral/types";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getReferralRouteCopy } from "@/features/referral/lib/route-copy";
 
 const REFERRAL_REASON_CODES = [
   "granted",
@@ -28,6 +30,8 @@ function isReferralCheckReasonCode(
  * メールアドレス確認完了後の初回ログイン成功時に呼び出される
  */
 export async function GET(request: NextRequest) {
+  const copy = getReferralRouteCopy(getRouteLocale(request));
+
   try {
     const user = await getUser();
     const referralCode = request.nextUrl.searchParams.get("ref");
@@ -38,7 +42,8 @@ export async function GET(request: NextRequest) {
         {
           bonus_granted: 0,
           reason_code: "unauthorized" as ReferralCheckReasonCode,
-          error: "認証が必要です",
+          error: copy.authRequired,
+          errorCode: "REFERRAL_AUTH_REQUIRED",
         },
         { status: 401 }
       );
@@ -60,7 +65,8 @@ export async function GET(request: NextRequest) {
         {
           bonus_granted: 0,
           reason_code: "transient_error" as ReferralCheckReasonCode,
-          error: "紹介特典の確認に失敗しました",
+          error: copy.referralCheckFailed,
+          errorCode: "REFERRAL_CHECK_FAILED",
         },
         { status: 500 }
       );
@@ -91,10 +97,8 @@ export async function GET(request: NextRequest) {
       {
         bonus_granted: 0,
         reason_code: "transient_error" as ReferralCheckReasonCode,
-        error:
-          error instanceof Error
-            ? error.message
-            : "紹介特典の確認に失敗しました",
+        error: copy.referralCheckFailed,
+        errorCode: "REFERRAL_CHECK_FAILED",
       },
       { status: 500 }
     );

@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const copy = getAccountRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -10,7 +15,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      return jsonError(copy.authRequired, "ACCOUNT_AUTH_REQUIRED", 401);
     }
 
     const { data: reports, error: reportsError } = await supabase
@@ -21,9 +26,10 @@ export async function GET() {
 
     if (reportsError) {
       console.error("Account reports fetch error:", reportsError);
-      return NextResponse.json(
-        { error: "通報済みコンテンツ一覧の取得に失敗しました" },
-        { status: 500 }
+      return jsonError(
+        copy.reportedContentsFetchFailed,
+        "ACCOUNT_REPORTS_FETCH_FAILED",
+        500
       );
     }
 
@@ -52,9 +58,10 @@ export async function GET() {
 
       if (postsError) {
         console.error("Reported posts fetch error:", postsError);
-        return NextResponse.json(
-          { error: "通報対象投稿の取得に失敗しました" },
-          { status: 500 }
+        return jsonError(
+          copy.reportedPostsFetchFailed,
+          "ACCOUNT_REPORTED_POSTS_FETCH_FAILED",
+          500
         );
       }
 
@@ -82,9 +89,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Account reports API error:", error);
-    return NextResponse.json(
-      { error: "通報済みコンテンツ一覧の取得に失敗しました" },
-      { status: 500 }
-    );
+    return jsonError(copy.reportedContentsFetchFailed, "ACCOUNT_REPORTS_FETCH_FAILED", 500);
   }
 }

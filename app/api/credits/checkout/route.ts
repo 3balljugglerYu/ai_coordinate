@@ -7,25 +7,25 @@ import {
   getStripeImageUrls,
 } from "@/features/credits/percoin-packages";
 import { env } from "@/lib/env";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 
 const checkoutBodySchema = z.object({
   packageId: z.string().min(1, "packageId is required"),
 });
 
-/**
- * Stripeエラーを適切なHTTPレスポンスに変換
- */
-function handleStripeError(error: unknown): NextResponse {
+function handleStripeError(
+  error: unknown,
+  copy: ReturnType<typeof getCreditsRouteCopy>
+): NextResponse {
   if (!(error instanceof Stripe.errors.StripeError)) {
     console.error("Checkout creation error (non-Stripe):", error);
-    return NextResponse.json(
-      { error: "決済の準備中にエラーが発生しました。しばらく時間をおいて再度お試しください。" },
-      { status: 500 }
-    );
+    return jsonError(copy.checkoutPrepareFailed, "CREDITS_CHECKOUT_PREPARE_FAILED", 500);
   }
 
   const stripeError = error as Stripe.errors.StripeError;
-  const message = stripeError.message ?? "不明なエラーが発生しました";
+  const message = stripeError.message ?? copy.checkoutPrepareFailed;
   const requestId = stripeError.requestId;
 
   // ログには詳細を記録（requestIdはStripeサポートで有用）
@@ -40,56 +40,44 @@ function handleStripeError(error: unknown): NextResponse {
 
   // エラー種別に応じたHTTPステータスとレスポンス
   if (error instanceof Stripe.errors.StripeInvalidRequestError) {
-    // 無効なパラメータ（Price ID不正、必須項目欠落など）
-    return NextResponse.json(
-      { error: `リクエストの内容に問題があります。${message}` },
-      { status: 400 }
+    return jsonError(
+      `${copy.checkoutInvalidRequest} ${message}`.trim(),
+      "CREDITS_CHECKOUT_INVALID_REQUEST",
+      400
     );
   }
 
   if (error instanceof Stripe.errors.StripeAuthenticationError) {
-    // APIキー不正（設定ミス）
-    return NextResponse.json(
-      { error: "決済の設定に問題があります。管理者にお問い合わせください。" },
-      { status: 500 }
-    );
+    return jsonError(copy.checkoutConfigError, "CREDITS_CHECKOUT_CONFIG_ERROR", 500);
   }
 
   if (error instanceof Stripe.errors.StripeRateLimitError) {
-    return NextResponse.json(
-      { error: "リクエストが多すぎます。しばらく時間をおいて再度お試しください。" },
-      { status: 429 }
-    );
+    return jsonError(copy.checkoutRateLimited, "CREDITS_CHECKOUT_RATE_LIMITED", 429);
   }
 
   if (
     error instanceof Stripe.errors.StripeAPIError ||
     error instanceof Stripe.errors.StripeConnectionError
   ) {
-    return NextResponse.json(
-      { error: "決済サービスに接続できません。しばらく時間をおいて再度お試しください。" },
-      { status: 503 }
+    return jsonError(
+      copy.checkoutServiceUnavailable,
+      "CREDITS_CHECKOUT_SERVICE_UNAVAILABLE",
+      503
     );
   }
 
   if (error instanceof Stripe.errors.StripePermissionError) {
-    return NextResponse.json(
-      { error: "この操作は許可されていません。" },
-      { status: 403 }
-    );
+    return jsonError(copy.checkoutPermissionDenied, "CREDITS_CHECKOUT_PERMISSION_DENIED", 403);
   }
 
   if (error instanceof Stripe.errors.StripeIdempotencyError) {
-    return NextResponse.json(
-      { error: "同じリクエストが重複しています。ページを更新して再度お試しください。" },
-      { status: 409 }
-    );
+    return jsonError(copy.checkoutDuplicateRequest, "CREDITS_CHECKOUT_DUPLICATE_REQUEST", 409);
   }
 
-  // その他のStripeエラー
-  return NextResponse.json(
-    { error: message },
-    { status: (stripeError.statusCode ?? 500) >= 500 ? 503 : 400 }
+  return jsonError(
+    message || copy.checkoutPrepareFailed,
+    "CREDITS_CHECKOUT_STRIPE_ERROR",
+    (stripeError.statusCode ?? 500) >= 500 ? 503 : 400
   );
 }
 
@@ -98,22 +86,20 @@ function handleStripeError(error: unknown): NextResponse {
  * 自前UI + Checkout Session API で5つすべてのパッケージを表示可能
  */
 export async function POST(request: NextRequest) {
+  const copy = getCreditsRouteCopy(getRouteLocale(request));
+
   try {
     const body = await request.json().catch(() => null);
     const parsed = checkoutBodySchema.safeParse(body);
 
     if (!parsed.success) {
-      const message = parsed.error.issues[0]?.message ?? "packageId is required";
-      return NextResponse.json({ error: message }, { status: 400 });
+      return jsonError(copy.packageIdRequired, "CREDITS_PACKAGE_ID_REQUIRED", 400);
     }
 
     const { packageId } = parsed.data;
     const percoinPackage = findPercoinPackage(packageId);
     if (!percoinPackage) {
-      return NextResponse.json(
-        { error: "指定されたパッケージが見つかりません" },
-        { status: 404 }
-      );
+      return jsonError(copy.invalidPackage, "CREDITS_PACKAGE_NOT_FOUND", 404);
     }
 
     const stripeSecretKey = env.STRIPE_SECRET_KEY;
@@ -144,10 +130,7 @@ export async function POST(request: NextRequest) {
     } = authResult;
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "ログインが必要です" },
-        { status: 401 }
-      );
+      return jsonError(copy.checkoutLoginRequired, "CREDITS_AUTH_REQUIRED", 401);
     }
 
     // price_data + product_data.images でStripe Checkout画面にも画像を表示
@@ -182,10 +165,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!session.url) {
-      return NextResponse.json(
-        { error: "Checkout URLの作成に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.checkoutUrlFailed, "CREDITS_CHECKOUT_URL_FAILED", 500);
     }
 
     return NextResponse.json({
@@ -195,14 +175,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof Stripe.errors.StripeError) {
-      return handleStripeError(error);
+      return handleStripeError(error, copy);
     }
     console.error("Checkout creation error (non-Stripe):", error);
-    return NextResponse.json(
-      {
-        error: "決済の準備中にエラーが発生しました。しばらく時間をおいて再度お試しください。",
-      },
-      { status: 500 }
-    );
+    return jsonError(copy.checkoutPrepareFailed, "CREDITS_CHECKOUT_PREPARE_FAILED", 500);
   }
 }

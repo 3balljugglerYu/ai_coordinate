@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getReferralRouteCopy } from "@/features/referral/lib/route-copy";
 
 /**
  * 紹介コード生成API
  * 認証済みユーザーの紹介コードを生成または取得します
  */
 export async function GET(request: NextRequest) {
+  const copy = getReferralRouteCopy(getRouteLocale(request));
+
   try {
     const user = await getUser();
 
@@ -15,7 +20,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           referral_code: null,
-          error: "認証が必要です",
+          error: copy.authRequired,
+          errorCode: "REFERRAL_AUTH_REQUIRED",
         },
         { status: 401 }
       );
@@ -35,7 +41,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           referral_code: null,
-          error: "紹介コードの生成に失敗しました",
+          error: copy.referralGenerateFailed,
+          errorCode: "REFERRAL_GENERATE_FAILED",
         },
         { status: 500 }
       );
@@ -50,13 +57,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         referral_code: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "紹介コードの生成に失敗しました",
+        error: copy.referralGenerateFailed,
+        errorCode: "REFERRAL_GENERATE_FAILED",
       },
       { status: 500 }
     );
   }
 }
-

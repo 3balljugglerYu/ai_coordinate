@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  const copy = getCreditsRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -9,7 +14,7 @@ export async function GET(_request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError(copy.authRequired, "CREDITS_AUTH_REQUIRED", 401);
     }
 
     const { data, error } = await supabase
@@ -20,18 +25,12 @@ export async function GET(_request: NextRequest) {
 
     if (error) {
       console.error("Failed to retrieve percoin balance:", error);
-      return NextResponse.json(
-        { error: "Failed to retrieve percoin balance" },
-        { status: 500 }
-      );
+      return jsonError(copy.balanceFetchFailed, "CREDITS_BALANCE_FETCH_FAILED", 500);
     }
 
     return NextResponse.json({ balance: data?.balance ?? 0 });
   } catch (error) {
     console.error("Percoin balance route error:", error);
-    return NextResponse.json(
-      { error: "Unexpected error" },
-      { status: 500 }
-    );
+    return jsonError(copy.balanceFetchFailed, "CREDITS_BALANCE_FETCH_FAILED", 500);
   }
 }

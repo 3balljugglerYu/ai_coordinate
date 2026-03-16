@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadWebPVariants, updateWebPStoragePaths } from "@/features/generation/lib/webp-storage";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 
 /**
  * WebP生成API Route
  * 画像をWebP形式に変換してSupabase Storageにアップロード
  */
 export async function POST(request: NextRequest) {
+  const copy = getGenerationRouteCopy(getRouteLocale(request));
+
   try {
     const body = await request.json();
     const { imageUrl, imageId, storagePath } = body;
 
     if (!imageUrl || !imageId || !storagePath) {
-      return NextResponse.json(
-        { error: "imageUrl, imageId, storagePath are required" },
-        { status: 400 }
-      );
+      return jsonError(copy.webpMissingParams, "GENERATION_WEBP_PARAMS_REQUIRED", 400);
     }
 
     // WebP変換・アップロード（リトライ機能付き）
@@ -35,9 +37,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("WebP generation error:", error);
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : "WebP生成に失敗しました",
-        success: false 
+      {
+        error: copy.webpFailed,
+        errorCode: "GENERATION_WEBP_FAILED",
+        success: false
       },
       { status: 500 }
     );

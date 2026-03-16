@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
 
 const deactivateRequestSchema = z.object({
   confirmText: z.string(),
@@ -9,25 +12,24 @@ const deactivateRequestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const copy = getAccountRouteCopy(getRouteLocale(request));
+
   try {
-    const user = await requireAuth();
+    const user = await getUser();
+    if (!user) {
+      return jsonError(copy.authRequired, "ACCOUNT_AUTH_REQUIRED", 401);
+    }
     const rawBody = await request.json().catch(() => null);
     const parsed = deactivateRequestSchema.safeParse(rawBody);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "無効なリクエストです" },
-        { status: 400 }
-      );
+      return jsonError(copy.invalidDeactivateRequest, "ACCOUNT_DEACTIVATE_INVALID_REQUEST", 400);
     }
 
     const { confirmText, password } = parsed.data;
 
     if (confirmText !== "DELETE") {
-      return NextResponse.json(
-        { error: "確認テキストに DELETE を入力してください" },
-        { status: 400 }
-      );
+      return jsonError(copy.deactivateConfirmRequired, "ACCOUNT_DEACTIVATE_CONFIRM_REQUIRED", 400);
     }
 
     const supabase = await createClient();
@@ -38,10 +40,7 @@ export async function POST(request: NextRequest) {
 
     if (isEmailAuthUser) {
       if (!password || !user.email) {
-        return NextResponse.json(
-          { error: "本人確認のためパスワードが必要です" },
-          { status: 400 }
-        );
+        return jsonError(copy.deactivatePasswordRequired, "ACCOUNT_DEACTIVATE_PASSWORD_REQUIRED", 400);
       }
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -50,10 +49,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (signInError) {
-        return NextResponse.json(
-          { error: "パスワードが正しくありません" },
-          { status: 401 }
-        );
+        return jsonError(copy.deactivatePasswordInvalid, "ACCOUNT_DEACTIVATE_PASSWORD_INVALID", 401);
       }
     }
 
@@ -65,10 +61,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("request_account_deletion error:", error);
-      return NextResponse.json(
-        { error: "退会申請に失敗しました" },
-        { status: 500 }
-      );
+      return jsonError(copy.deactivateFailed, "ACCOUNT_DEACTIVATE_FAILED", 500);
     }
 
     const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
@@ -80,9 +73,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Account deactivate route error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
-      { status: 500 }
-    );
+    return jsonError(copy.deactivateFailed, "ACCOUNT_DEACTIVATE_FAILED", 500);
   }
 }

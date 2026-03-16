@@ -3,6 +3,9 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { reportPostSchema } from "@/features/moderation/lib/schemas";
+import { jsonError } from "@/lib/api/json-error";
+import { getRouteLocale } from "@/lib/api/route-locale";
+import { getModerationRouteCopy } from "@/features/moderation/lib/route-copy";
 
 const REPORT_LIMIT_PER_10_MINUTES = 10;
 const REPORT_LIMIT_PER_24_HOURS = 50;
@@ -152,6 +155,8 @@ async function isPostAlreadyPending(
 }
 
 export async function POST(request: NextRequest) {
+  const copy = getModerationRouteCopy(getRouteLocale(request));
+
   try {
     const supabase = await createClient();
     const {
@@ -159,15 +164,12 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      return jsonError(copy.authRequired, "REPORT_AUTH_REQUIRED", 401);
     }
 
     const payload = reportPostSchema.safeParse(await request.json());
     if (!payload.success) {
-      return NextResponse.json(
-        { error: payload.error.issues[0]?.message || "不正なリクエストです" },
-        { status: 400 }
-      );
+      return jsonError(copy.invalidRequest, "REPORT_INVALID_REQUEST", 400);
     }
 
     const { postId, categoryId, subcategoryId, details } = payload.data;
@@ -193,13 +195,13 @@ export async function POST(request: NextRequest) {
 
     if (reportCountIn10MinutesError || reportCountIn24HoursError) {
       console.error("Rate limit count error:", reportCountIn10MinutesError || reportCountIn24HoursError);
-      return NextResponse.json({ error: "通報制限の確認に失敗しました" }, { status: 500 });
+      return jsonError(copy.rateLimitCheckFailed, "REPORT_RATE_LIMIT_CHECK_FAILED", 500);
     }
 
     if ((reportCountIn10Minutes || 0) >= REPORT_LIMIT_PER_10_MINUTES) {
       return NextResponse.json(
         {
-          error: "短時間での通報回数が上限に達しました。しばらくしてから再試行してください。",
+          error: copy.rateLimitShort,
           errorCode: "REPORT_RATE_LIMIT_SHORT",
         },
         { status: 429 }
@@ -209,7 +211,7 @@ export async function POST(request: NextRequest) {
     if ((reportCountIn24Hours || 0) >= REPORT_LIMIT_PER_24_HOURS) {
       return NextResponse.json(
         {
-          error: "1日の通報回数が上限に達しました。翌日に再試行してください。",
+          error: copy.rateLimitDaily,
           errorCode: "REPORT_RATE_LIMIT_DAILY",
         },
         { status: 429 }
@@ -224,11 +226,11 @@ export async function POST(request: NextRequest) {
 
     if (postError) {
       console.error("Post fetch error:", postError);
-      return NextResponse.json({ error: "投稿情報の取得に失敗しました" }, { status: 500 });
+      return jsonError(copy.postFetchFailed, "REPORT_POST_FETCH_FAILED", 500);
     }
 
     if (!post || !post.is_posted) {
-      return NextResponse.json({ error: "投稿が見つかりません" }, { status: 404 });
+      return jsonError(copy.postNotFound, "REPORT_POST_NOT_FOUND", 404);
     }
 
     const { count: postedCount, error: postedCountError } = await supabase
@@ -239,7 +241,7 @@ export async function POST(request: NextRequest) {
 
     if (postedCountError) {
       console.error("Posted count error:", postedCountError);
-      return NextResponse.json({ error: "通報評価の計算に失敗しました" }, { status: 500 });
+      return jsonError(copy.reportScoreFailed, "REPORT_SCORE_CALCULATION_FAILED", 500);
     }
 
     const weight = calculateReporterWeight(user.created_at, postedCount || 0);
@@ -260,13 +262,10 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       const isDuplicate = insertError.code === "23505";
       if (isDuplicate) {
-        return NextResponse.json(
-          { error: "この投稿は既に通報済みです" },
-          { status: 400 }
-        );
+        return jsonError(copy.reportAlreadyExists, "REPORT_ALREADY_EXISTS", 400);
       }
       console.error("Report insert error:", insertError);
-      return NextResponse.json({ error: "通報の登録に失敗しました" }, { status: 500 });
+      return jsonError(copy.reportCreateFailed, "REPORT_CREATE_FAILED", 500);
     }
 
     const baselineTime = post.moderation_approved_at || "1970-01-01T00:00:00.000Z";
@@ -288,7 +287,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (aggregateError) {
       console.error("Pending metrics calculation error:", aggregateError);
-      return NextResponse.json({ error: "通報集計の取得に失敗しました" }, { status: 500 });
+      return jsonError(copy.reportAggregationFailed, "REPORT_AGGREGATION_FAILED", 500);
     }
 
     const { weightedScore, threshold, recentCount, activeUsers, shouldSetPending } = metrics;
@@ -313,10 +312,7 @@ export async function POST(request: NextRequest) {
             context,
             rpcResult,
           });
-          return NextResponse.json(
-            { error: "審査ステータスの更新に失敗しました" },
-            { status: 500 }
-          );
+          return jsonError(copy.pendingUpdateFailed, "REPORT_PENDING_UPDATE_FAILED", 500);
         }
         pendingApplied = true;
       }
@@ -341,6 +337,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Report post API error:", error);
-    return NextResponse.json({ error: "通報に失敗しました" }, { status: 500 });
+    return jsonError(copy.reportFailed, "REPORT_FAILED", 500);
   }
 }
