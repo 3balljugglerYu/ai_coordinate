@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-09"
+last_updated: "2026-03-16"
 
 # Status values:
 # - pending
@@ -50,6 +50,14 @@ tier1:
 
 # Tier 2: High Priority (Score 75-89)
 tier2:
+  I18nConfig:
+    status: completed
+    score: 89
+    file: i18n/config.ts
+    char_test: null
+    spec_file: docs/specs/i18n/i18n_config_spec.yaml
+    test_file: tests/unit/lib/i18n-config.test.ts
+
   PostsRoute:
     status: pending
     score: 88
@@ -59,6 +67,14 @@ tier2:
     char_test: null
     spec_file: docs/specs/api/posts_route_spec.yaml
     test_file: tests/integration/api/posts-route.test.ts
+
+  TranslationMessages:
+    status: pending
+    score: 87
+    file: i18n/messages.ts
+    char_test: null
+    spec_file: docs/specs/i18n/translation_messages_spec.yaml
+    test_file: tests/unit/lib/translation-messages.test.ts
 
   NotificationsRoute:
     status: pending
@@ -70,6 +86,14 @@ tier2:
     spec_file: docs/specs/api/notifications_route_spec.yaml
     test_file: tests/integration/api/notifications-route.test.ts
 
+  LanguageSettingsMenu:
+    status: pending
+    score: 85
+    file: components/LanguageSettingsMenu.tsx
+    char_test: null
+    spec_file: docs/specs/i18n/language_settings_menu_spec.yaml
+    test_file: tests/unit/components/language-settings-menu.test.tsx
+
   AuthForm:
     status: completed
     score: 84
@@ -79,6 +103,14 @@ tier2:
     char_test: null
     spec_file: docs/specs/auth/auth_form_spec.yaml
     test_file: tests/unit/components/auth-form.test.tsx
+
+  LocaleProxyRoute:
+    status: pending
+    score: 83
+    file: proxy.ts
+    char_test: null
+    spec_file: docs/specs/i18n/locale_proxy_route_spec.yaml
+    test_file: tests/integration/proxy/locale-proxy-route.test.ts
 
   GenerationForm:
     status: pending
@@ -137,6 +169,14 @@ tier3:
     spec_file: docs/specs/banners/banner_storage_spec.yaml
     test_file: tests/unit/lib/banner-storage.test.ts
 
+  RemotionLocaleCompositions:
+    status: pending
+    score: 66
+    file: remotion/Root.tsx
+    char_test: null
+    spec_file: docs/specs/remotion/remotion_locale_compositions_spec.yaml
+    test_file: tests/integration/remotion/remotion-locale-compositions.test.ts
+
   NotificationBadge:
     status: pending
     score: 65
@@ -169,7 +209,7 @@ tier3:
     spec_file: docs/specs/lib/url_utils_spec.yaml
     test_file: tests/unit/lib/url-utils.test.ts
 
-# E2E Targets (Top 10)
+# E2E Targets
 widgets:
   CoordinatePage:
     status: pending
@@ -231,6 +271,18 @@ widgets:
     file: app/page.tsx
     e2e_test: tests/e2e/top.spec.ts
 
+  LocaleBootstrapE2E:
+    status: pending
+    priority: 11
+    file: app/page.tsx
+    e2e_test: tests/e2e/locale-bootstrap.spec.ts
+
+  LocalePersistenceE2E:
+    status: pending
+    priority: 12
+    file: app/(app)/my-page/page.tsx
+    e2e_test: tests/e2e/locale-persistence.spec.ts
+
 # Summary Statistics
 summary:
   tier1:
@@ -238,18 +290,18 @@ summary:
     completed: 1
     percentage: 50
   tier2:
-    total: 6
-    completed: 1
-    percentage: 17
+    total: 10
+    completed: 2
+    percentage: 20
   tier3:
-    total: 7
+    total: 8
     completed: 0
     percentage: 0
   widgets:
-    total: 10
+    total: 12
     completed: 0
     percentage: 0
   overall:
-    total: 25
-    completed: 2
-    percentage: 8
+    total: 32
+    completed: 3
+    percentage: 9
