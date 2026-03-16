@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,6 @@ export function DeletePostDialog({
 }: DeletePostDialogProps) {
   const postsT = useTranslations("posts");
   const myPageT = useTranslations("myPage");
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,8 +77,18 @@ export function DeletePostDialog({
         }
         window.location.href = "/";
       } else {
-        router.push(backUrl);
-        router.refresh();
+        try {
+          await fetch("/api/revalidate/my-page", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ imageId }),
+          });
+        } catch {
+          // 無効化失敗時も遷移は実行
+        }
+        window.location.href = backUrl;
       }
     } catch (err) {
       console.error("Delete error:", err);

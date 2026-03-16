@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { DeletePostDialog } from "@/features/posts/components/DeletePostDialog";
 import { deletePost } from "@/features/posts/lib/api";
 import { deleteMyImage } from "@/features/my-page/lib/api";
@@ -12,7 +12,6 @@ jest.mock("next-intl", () => ({
 }));
 
 jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
   useSearchParams: jest.fn(),
 }));
 
@@ -46,7 +45,6 @@ jest.mock("@/components/ui/dialog", () => ({
 const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
-const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
 const useSearchParamsMock = useSearchParams as jest.MockedFunction<
   typeof useSearchParams
 >;
@@ -90,8 +88,6 @@ const myPageTranslator = ((key: keyof typeof myPageTranslations) => {
 describe("DeletePostDialog", () => {
   const originalLocation = window.location;
   let fetchMock: jest.Mock;
-  let pushMock: jest.Mock;
-  let refreshMock: jest.Mock;
   let fromParam: string | null;
 
   beforeAll(() => {
@@ -109,8 +105,6 @@ describe("DeletePostDialog", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fetchMock = jest.fn().mockResolvedValue({ ok: true });
-    pushMock = jest.fn();
-    refreshMock = jest.fn();
     fromParam = null;
 
     global.fetch = fetchMock as unknown as typeof fetch;
@@ -125,10 +119,6 @@ describe("DeletePostDialog", () => {
       }
       throw new Error(`Unexpected namespace: ${namespace}`);
     });
-    useRouterMock.mockReturnValue({
-      push: pushMock,
-      refresh: refreshMock,
-    } as unknown as ReturnType<typeof useRouter>);
     useSearchParamsMock.mockImplementation(
       () =>
         ({
@@ -184,8 +174,46 @@ describe("DeletePostDialog", () => {
     });
 
     expect(persistPendingHomePostRefreshMock).not.toHaveBeenCalled();
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(pushMock).toHaveBeenCalledWith("/my-page");
-    expect(refreshMock).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/my-page", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ imageId: "post-2" }),
+    });
+    expect(window.location.href).toBe("/my-page");
+  });
+
+  test("未投稿画像を削除してマイページへ戻る場合_再検証後に遷移する", async () => {
+    fromParam = "my-page";
+
+    render(
+      <DeletePostDialog
+        open
+        onOpenChange={jest.fn()}
+        imageId="image-3"
+        isPosted={false}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "削除" }));
+
+    await waitFor(() => {
+      expect(deleteMyImageMock).toHaveBeenCalledWith("image-3", {
+        loginRequired: "ログインが必要です",
+        imageNotFound: "画像が見つかりません",
+        deleteImageForbidden: "削除権限がありません",
+        deleteImageFailed: "画像の削除に失敗しました",
+      });
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/my-page", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ imageId: "image-3" }),
+    });
+    expect(window.location.href).toBe("/my-page");
   });
 });
