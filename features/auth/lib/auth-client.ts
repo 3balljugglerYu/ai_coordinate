@@ -4,7 +4,13 @@ import { createClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { getSiteUrlForClient } from "@/lib/env";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
-import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from "@/i18n/config";
+import {
+  DEFAULT_LOCALE,
+  getLocaleCookieMaxAge,
+  isLocale,
+  LOCALE_COOKIE,
+  type Locale,
+} from "@/i18n/config";
 
 /**
  * クライアントサイド認証ヘルパー関数
@@ -379,6 +385,10 @@ export async function signOut() {
     // エラーメッセージを日本語に変換
     const translatedMessage = translateAuthError(error.message, locale);
     throw new Error(translatedMessage);
+  }
+
+  if (typeof document !== "undefined") {
+    document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${getLocaleCookieMaxAge()}; samesite=lax`;
   }
 }
 

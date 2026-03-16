@@ -229,48 +229,42 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   // ヘッダー右側（ユーザーアイコン）の共通コンポーネント
   const HeaderRight = () => (
     <div className="flex items-center gap-2 flex-shrink-0">
+      <LanguageSettingsMenu variant="header" />
       {isLoading ? (
         <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
+      ) : currentUser ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+              {currentUser.avatar_url ? (
+                <Image
+                  src={currentUser.avatar_url}
+                  alt={commonT("userAlt")}
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                  <User className="h-4 w-4 text-gray-500" />
+                </div>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <UserMenuItems
+              includeMyPage
+              includeLanguageSettings={false}
+              onSignOut={handleSignOut}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
-        <>
-          {currentUser ? (
-            <>
-              <LanguageSettingsMenu variant="header" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    {currentUser.avatar_url ? (
-                      <Image
-                        src={currentUser.avatar_url}
-                        alt={commonT("userAlt")}
-                        width={32}
-                        height={32}
-                        className="rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
-                        <User className="h-4 w-4 text-gray-500" />
-                      </div>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <UserMenuItems
-                    includeMyPage
-                    includeLanguageSettings={false}
-                    onSignOut={handleSignOut}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <Link href="/login">
-              <Button variant="outline" size="sm" className="text-xs">
-                {commonT("login")}
-              </Button>
-            </Link>
-          )}
-        </>
+        <Link href="/login">
+          <Button variant="outline" size="sm" className="text-xs">
+            {commonT("login")}
+          </Button>
+        </Link>
       )}
       {children}
     </div>

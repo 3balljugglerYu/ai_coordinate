@@ -98,6 +98,9 @@ test.describe("LocalePersistenceE2E from EARS specs", () => {
       // ============================================================
       await expect(page).toHaveURL(/\/login$/);
       await expect(
+        page.getByRole("button", { name: "Language settings" })
+      ).toBeVisible();
+      await expect(
         page.getByRole("heading", { level: 2, name: "Log in" })
       ).toBeVisible();
       await expect(page.getByText("Log in to your account")).toBeVisible();
@@ -132,6 +135,9 @@ test.describe("LocalePersistenceE2E from EARS specs", () => {
       // Assert
       // ============================================================
       await expect(page).toHaveURL(/\/login$/);
+      await expect(
+        page.getByRole("button", { name: "言語設定" })
+      ).toBeVisible();
       await expect(
         page.getByRole("heading", { level: 2, name: "ログイン" })
       ).toBeVisible();

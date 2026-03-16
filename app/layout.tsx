@@ -73,7 +73,7 @@ export default async function RootLayout({
 })();`,
           }}
         />
-        <Suspense fallback={<div className="min-h-screen">{children}</div>}>
+        <Suspense fallback={<div className="min-h-screen" />}>
           <LocaleShell>{children}</LocaleShell>
         </Suspense>
       </body>

@@ -237,27 +237,11 @@ export function AppSidebar() {
         })}
       </div>
 
-      {/* その他メニュー（マイページの下、ログアウト寄り） */}
-      {user && (
-        <div className="border-t py-3">
-          {!isOpen ? (
-            /* サイドバー折りたたみ時は直接お問い合わせへ */
-            <button
-              onClick={() => handleNavigation("/my-page/contact")}
-              className={cn(
-                "group flex w-full items-center py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100",
-                normalizedPathname === "/my-page/contact" &&
-                  "bg-primary/10 text-primary"
-              )}
-              aria-label={navT("contact")}
-            >
-              <div className="flex w-[72px] shrink-0 items-center justify-center">
-                <MessageCircle className="h-5 w-5" />
-              </div>
-            </button>
-          ) : (
-            <>
-              <LanguageSettingsMenu variant="sidebar" />
+      <div className="border-t py-3">
+        {isOpen ? (
+          <>
+            <LanguageSettingsMenu variant="sidebar" />
+            {user ? (
               <Collapsible open={isOthersOpen} onOpenChange={setIsOthersOpen}>
                 <CollapsibleTrigger asChild>
                   <button
@@ -297,10 +281,25 @@ export function AppSidebar() {
                   </button>
                 </CollapsibleContent>
               </Collapsible>
-            </>
-          )}
-        </div>
-      )}
+            ) : null}
+          </>
+        ) : user ? (
+          /* サイドバー折りたたみ時は直接お問い合わせへ */
+          <button
+            onClick={() => handleNavigation("/my-page/contact")}
+            className={cn(
+              "group flex w-full items-center py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100",
+              normalizedPathname === "/my-page/contact" &&
+                "bg-primary/10 text-primary"
+            )}
+            aria-label={navT("contact")}
+          >
+            <div className="flex w-[72px] shrink-0 items-center justify-center">
+              <MessageCircle className="h-5 w-5" />
+            </div>
+          </button>
+        ) : null}
+      </div>
 
       <div className="border-t py-3">
         {user ? (
