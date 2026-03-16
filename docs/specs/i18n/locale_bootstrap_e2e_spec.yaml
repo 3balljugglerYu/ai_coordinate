@@ -1,0 +1,167 @@
+metadata:
+  class: LocaleBootstrapE2E
+  source: app/page.tsx
+  version: "1.0"
+  created_at: "2026-03-16"
+
+dependencies:
+  repositories: []
+  services:
+    - LocaleProxyRoute
+    - I18nConfig helpers
+    - Home page copy
+    - next-intl request locale resolution
+  external:
+    - Browser Accept-Language negotiation
+    - Next.js routing and redirect handling
+
+state_properties: []
+
+specifications:
+  - id: LBE-001
+    method: bootstrap
+    type: event-driven
+    ears: |
+      When a first-visit browser requests the bare public home URL,
+      the system shall resolve the locale from the request context,
+      redirect to the localized home URL,
+      and persist the resolved locale in the locale cookie.
+    ears_ja: |
+      初回訪問のブラウザがlocale prefixのない公開ホームURLを要求した場合、
+      システムはリクエスト文脈からlocaleを解決し、
+      locale付きホームURLへリダイレクトし、
+      解決したlocaleをlocale cookieへ保存しなければならない。
+    preconditions:
+      - The browser requests /
+      - No locale prefix is present in the URL
+      - No locale cookie is already established for the scenario
+    preconditions_ja:
+      - ブラウザが / を要求する
+      - URLにlocale prefixが存在しない
+      - シナリオ上locale cookieが事前に確立されていない
+    postconditions:
+      success:
+        - Redirects to /ja or /en based on locale resolution
+        - Persists the resolved locale in the locale cookie
+      error:
+        - Does not remain on the bare public home URL
+    postconditions_ja:
+      success:
+        - locale解決結果に応じて /ja または /en へリダイレクトする
+        - 解決したlocaleをlocale cookieへ保存する
+      error:
+        - locale prefixのない公開ホームURLには留まらない
+    test_cases:
+      - bootstrap_GivenBareRootOnFirstVisit_ShouldRedirectToLocalizedHomeAndPersistCookie
+    test_cases_ja:
+      - bootstrap_初回訪問でルートにアクセスした場合_locale付きホームへリダイレクトしてcookieを保存する
+
+  - id: LBE-002
+    method: bootstrap
+    type: event-driven
+    ears: |
+      When a first-visit browser with a non-Japanese preferred language requests the bare home URL,
+      the system shall bootstrap the English home experience
+      and shall render the English home heading and subtitle on the first localized page.
+    ears_ja: |
+      日本語以外を優先言語とする初回訪問ブラウザがlocale prefixのないホームURLを要求した場合、
+      システムは英語ホーム体験をbootstrapし、
+      最初のlocale付きページで英語のホーム見出しとサブタイトルを描画しなければならない。
+    preconditions:
+      - The browser requests /
+      - No locale cookie is established
+      - The Accept-Language header prefers a non-Japanese locale such as en, fr, de, es, or it
+    preconditions_ja:
+      - ブラウザが / を要求する
+      - locale cookieが確立されていない
+      - Accept-Language headerが en、fr、de、es、it など日本語以外を優先している
+    postconditions:
+      success:
+        - Redirects to /en
+        - Renders the English home heading
+        - Renders the English home subtitle
+      error:
+        - Does not render the Japanese home heading on the first localized response
+    postconditions_ja:
+      success:
+        - /en へリダイレクトする
+        - 英語のホーム見出しを描画する
+        - 英語のホームサブタイトルを描画する
+      error:
+        - 最初のlocale付きレスポンスで日本語ホーム見出しを描画しない
+    test_cases:
+      - bootstrap_GivenEuropeanOrEnglishBrowser_ShouldRenderEnglishHomeOnFirstVisit
+    test_cases_ja:
+      - bootstrap_欧州系または英語ブラウザの場合_初回訪問で英語ホームを描画する
+
+  - id: LBE-003
+    method: bootstrap
+    type: event-driven
+    ears: |
+      When a first-visit browser with Japanese preferred language requests the bare home URL,
+      the system shall bootstrap the Japanese home experience
+      and shall render the Japanese home heading and subtitle on the first localized page.
+    ears_ja: |
+      日本語を優先言語とする初回訪問ブラウザがlocale prefixのないホームURLを要求した場合、
+      システムは日本語ホーム体験をbootstrapし、
+      最初のlocale付きページで日本語のホーム見出しとサブタイトルを描画しなければならない。
+    preconditions:
+      - The browser requests /
+      - No locale cookie is established
+      - The Accept-Language header prefers ja or ja-* tags
+    preconditions_ja:
+      - ブラウザが / を要求する
+      - locale cookieが確立されていない
+      - Accept-Language headerが ja または ja-* を優先している
+    postconditions:
+      success:
+        - Redirects to /ja
+        - Renders the Japanese home heading
+        - Renders the Japanese home subtitle
+      error:
+        - Does not render the English home heading on the first localized response
+    postconditions_ja:
+      success:
+        - /ja へリダイレクトする
+        - 日本語のホーム見出しを描画する
+        - 日本語のホームサブタイトルを描画する
+      error:
+        - 最初のlocale付きレスポンスで英語ホーム見出しを描画しない
+    test_cases:
+      - bootstrap_GivenJapaneseBrowser_ShouldRenderJapaneseHomeOnFirstVisit
+    test_cases_ja:
+      - bootstrap_日本語ブラウザの場合_初回訪問で日本語ホームを描画する
+
+  - id: LBE-004
+    method: bootstrap
+    type: event-driven
+    ears: |
+      When a first-visit browser requests a bare public marketing URL,
+      the system shall redirect to the corresponding localized public URL
+      and shall preserve the original query string.
+    ears_ja: |
+      初回訪問ブラウザがlocale prefixのない公開マーケティングURLを要求した場合、
+      システムは対応するlocale付き公開URLへリダイレクトし、
+      元のquery stringを保持しなければならない。
+    preconditions:
+      - The browser requests a configured bare public marketing URL such as /about or /search
+      - No locale prefix is present in the URL
+    preconditions_ja:
+      - ブラウザが /about や /search など設定済みのlocaleなし公開マーケティングURLを要求する
+      - URLにlocale prefixが存在しない
+    postconditions:
+      success:
+        - Redirects to the locale-prefixed public URL for the same route
+        - Preserves the original query string
+      error:
+        - Does not redirect to an unrelated route
+    postconditions_ja:
+      success:
+        - 同じルートに対応するlocale付き公開URLへリダイレクトする
+        - 元のquery stringを保持する
+      error:
+        - 無関係なルートへリダイレクトしない
+    test_cases:
+      - bootstrap_GivenBarePublicMarketingUrl_ShouldRedirectToLocalizedEquivalentWithQueryPreserved
+    test_cases_ja:
+      - bootstrap_localeなし公開マーケティングURLの場合_queryを保持してlocale付き同等URLへリダイレクトする

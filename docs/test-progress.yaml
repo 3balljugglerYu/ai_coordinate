@@ -272,7 +272,7 @@ widgets:
     e2e_test: tests/e2e/top.spec.ts
 
   LocaleBootstrapE2E:
-    status: pending
+    status: test_generated
     priority: 11
     file: app/page.tsx
     e2e_test: tests/e2e/locale-bootstrap.spec.ts
