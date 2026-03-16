@@ -105,7 +105,7 @@ tier2:
     test_file: tests/unit/components/auth-form.test.tsx
 
   LocaleProxyRoute:
-    status: test_generated
+    status: completed
     score: 83
     file: proxy.ts
     char_test: tests/characterization/proxy/locale-proxy-route.char.test.ts
@@ -272,13 +272,13 @@ widgets:
     e2e_test: tests/e2e/top.spec.ts
 
   LocaleBootstrapE2E:
-    status: test_generated
+    status: completed
     priority: 11
     file: app/page.tsx
     e2e_test: tests/e2e/locale-bootstrap.spec.ts
 
   LocalePersistenceE2E:
-    status: pending
+    status: completed
     priority: 12
     file: app/(app)/my-page/page.tsx
     e2e_test: tests/e2e/locale-persistence.spec.ts
@@ -291,17 +291,17 @@ summary:
     percentage: 50
   tier2:
     total: 10
-    completed: 4
-    percentage: 40
+    completed: 5
+    percentage: 50
   tier3:
     total: 8
     completed: 0
     percentage: 0
   widgets:
     total: 12
-    completed: 0
-    percentage: 0
+    completed: 2
+    percentage: 17
   overall:
     total: 32
-    completed: 5
-    percentage: 15
+    completed: 8
+    percentage: 25
