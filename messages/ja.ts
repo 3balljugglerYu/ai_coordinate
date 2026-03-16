@@ -69,6 +69,7 @@ export const jaMessages = {
     commentsFetchFailed: "コメントの取得に失敗しました",
     noComments: "まだコメントがありません",
     allCommentsShown: "全てのコメントを表示しました",
+    postSuccess: "投稿しました",
     postFailed: "投稿に失敗しました",
     postFailedRetry: "投稿に失敗しました。もう一度お試しください。",
     updateFailed: "更新に失敗しました",

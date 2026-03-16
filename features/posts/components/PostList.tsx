@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
@@ -11,8 +11,13 @@ import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
+import { useToast } from "@/components/ui/use-toast";
 import type { Post, SortType } from "../types";
 import { isValidSortType } from "../lib/utils";
+import {
+  consumePendingHomePostRefresh,
+  type PendingHomePostRefresh,
+} from "../lib/home-post-refresh";
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -30,6 +35,7 @@ export function PostList({
   skipInitialFetch = false,
 }: PostListProps) {
   const postsT = useTranslations("posts");
+  const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>(forceInitialLoading ? [] : initialPosts);
   const [isLoading, setIsLoading] = useState(forceInitialLoading);
   const [hasMore, setHasMore] = useState(forceInitialLoading ? true : initialPosts.length === 20);
@@ -39,6 +45,7 @@ export function PostList({
   const searchParams = useSearchParams();
   const currentPath = pathname;
   const searchQuery = searchParams.get("q") || "";
+  const normalizedSearchQuery = searchQuery.trim();
   const hasModerationRefresh = searchParams.get("mod_refresh") === "1";
   const isSearchPage = pathname === "/search" || pathname?.endsWith("/search");
   // 検索画面の場合はデフォルトでpopular、それ以外はnewest
@@ -47,10 +54,39 @@ export function PostList({
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [loadedSortType, setLoadedSortType] = useState<SortType | null>(
+    forceInitialLoading ? null : defaultSortType
+  );
+  const [loadedSearchQuery, setLoadedSearchQuery] = useState(
+    forceInitialLoading ? null : ""
+  );
+  const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
+  const [pendingHomePostRefresh, setPendingHomePostRefresh] =
+    useState<PendingHomePostRefresh | null>(null);
+  const didTriggerPostedRefreshRef = useRef(false);
+  const hasFreshNewestPostsRef = useRef(false);
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "200px",
   });
+
+  useEffect(() => {
+    const pending = consumePendingHomePostRefresh();
+    if (!pending) {
+      return;
+    }
+
+    setPendingHomePostRefresh(pending);
+    if (pending.action === "posted") {
+      toast({
+        title: postsT("postSuccess"),
+        description:
+          pending.bonusGranted && pending.bonusGranted > 0
+            ? postsT("dailyBonusDescription", { amount: pending.bonusGranted })
+            : undefined,
+      });
+    }
+  }, [postsT, toast]);
 
   // 現在のユーザーIDを取得
   useEffect(() => {
@@ -104,37 +140,73 @@ export function PostList({
     }
     setIsLoading(true);
     try {
+      const shouldBypassClientCache =
+        reset &&
+        sortType === defaultSortType &&
+        !normalizedSearchQuery &&
+        pendingHomePostRefresh !== null;
+
       // 検索クエリが存在する場合、APIリクエストにqパラメータを追加
       const params = new URLSearchParams({
         limit: "20",
         offset: newOffset.toString(),
         sort: sortType,
       });
-      if (searchQuery.trim()) {
-        params.set("q", searchQuery.trim());
+      if (normalizedSearchQuery) {
+        params.set("q", normalizedSearchQuery);
       }
       
-      const response = await fetch(`/api/posts?${params.toString()}`);
+      const response = await fetch(`/api/posts?${params.toString()}`, {
+        cache: shouldBypassClientCache ? "no-store" : "default",
+      });
       const data = await response.json();
 
       if (response.ok) {
+        const nextPosts = data.posts as Post[];
+
         if (reset) {
-          setPosts(data.posts);
-          setOffset(data.posts.length);
+          setPosts(nextPosts);
+          setOffset(nextPosts.length);
+          setLoadedSortType(sortType);
+          setLoadedSearchQuery(normalizedSearchQuery);
         } else {
-          setPosts((prev) => [...prev, ...data.posts]);
-          setOffset((prev) => prev + data.posts.length);
+          setPosts((prev) => [...prev, ...nextPosts]);
+          setOffset((prev) => prev + nextPosts.length);
         }
         setHasMore(data.hasMore);
+
+        if (shouldBypassClientCache) {
+          hasFreshNewestPostsRef.current = true;
+          if (
+            pendingHomePostRefresh?.action === "posted" &&
+            nextPosts.some((post) => post.id === pendingHomePostRefresh.postId)
+          ) {
+            setHighlightPostId(pendingHomePostRefresh?.postId ?? null);
+          }
+        }
       } else {
         console.error("Failed to load posts:", data.error);
       }
     } catch (error) {
       console.error("Error loading posts:", error);
     } finally {
+      if (
+        reset &&
+        sortType === defaultSortType &&
+        !normalizedSearchQuery &&
+        pendingHomePostRefresh !== null
+      ) {
+        setPendingHomePostRefresh(null);
+      }
       setIsLoading(false);
     }
-  }, [sortType, currentUserId, searchQuery]);
+  }, [
+    sortType,
+    currentUserId,
+    normalizedSearchQuery,
+    defaultSortType,
+    pendingHomePostRefresh,
+  ]);
 
   const loadMorePosts = useCallback(() => {
     loadPosts(offset, false);
@@ -143,15 +215,39 @@ export function PostList({
   // sortType / currentUserId / searchQuery に応じたモーダル表示とデータロード
   useEffect(() => {
     const shouldShowAuth = sortType === "following" && !currentUserId;
+    const shouldForceNewestRefresh =
+      pendingHomePostRefresh !== null &&
+      sortType === defaultSortType &&
+      !normalizedSearchQuery &&
+      !didTriggerPostedRefreshRef.current;
+    const shouldReuseFreshNewestPosts =
+      sortType === defaultSortType &&
+      loadedSortType === defaultSortType &&
+      loadedSearchQuery === "" &&
+      !normalizedSearchQuery &&
+      hasFreshNewestPostsRef.current;
+
     setShowAuthPrompt(shouldShowAuth);
     if (!shouldShowAuth) {
+      if (shouldReuseFreshNewestPosts) {
+        setIsLoading(false);
+        return;
+      }
+
       // skipInitialFetch かつキャッシュデータがある場合、該当タブのときは初回フェッチをスキップ
       // 他タブから戻ってきたときはキャッシュデータを復元する
-      if (skipInitialFetch && !searchQuery.trim()) {
-        if (sortType === defaultSortType && initialPosts.length > 0) {
+      if (skipInitialFetch && !normalizedSearchQuery) {
+        if (
+          !shouldForceNewestRefresh &&
+          sortType === defaultSortType &&
+          initialPosts.length > 0 &&
+          !hasFreshNewestPostsRef.current
+        ) {
           setPosts(initialPosts);
           setHasMore(initialPosts.length === 20);
           setOffset(initialPosts.length);
+          setLoadedSortType(defaultSortType);
+          setLoadedSearchQuery("");
           setIsLoading(false);
           return;
         }
@@ -159,10 +255,17 @@ export function PostList({
           setPosts(initialPostsForWeek);
           setHasMore(initialPostsForWeek.length === 20);
           setOffset(initialPostsForWeek.length);
+          setLoadedSortType("week");
+          setLoadedSearchQuery("");
           setIsLoading(false);
           return;
         }
       }
+
+      if (shouldForceNewestRefresh) {
+        didTriggerPostedRefreshRef.current = true;
+      }
+
       // フォロータブかつログイン済み、または他タブの場合のみロード
       // 検索クエリ変更時もリセットして再取得
       loadPosts(0, true);
@@ -170,8 +273,36 @@ export function PostList({
       // 未ログインのフォロータブはリストをクリア
       setPosts([]);
       setHasMore(false);
+      setLoadedSortType(null);
+      setLoadedSearchQuery(null);
     }
-  }, [sortType, currentUserId, searchQuery, loadPosts, skipInitialFetch, initialPosts.length, initialPostsForWeek.length, defaultSortType]);
+  }, [
+    sortType,
+    currentUserId,
+    normalizedSearchQuery,
+    loadPosts,
+    skipInitialFetch,
+    initialPosts,
+    initialPostsForWeek,
+    defaultSortType,
+    pendingHomePostRefresh,
+    loadedSortType,
+    loadedSearchQuery,
+  ]);
+
+  useEffect(() => {
+    if (!highlightPostId) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHighlightPostId(null);
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [highlightPostId]);
 
   useEffect(() => {
     if (inView && hasMore && !isLoading) {
@@ -193,8 +324,8 @@ export function PostList({
   // 期間別ソートの場合のメッセージ
   const getEmptyMessage = () => {
     // 検索クエリが存在する場合は専用メッセージを表示
-    if (searchQuery.trim()) {
-      return postsT("noMatch", { query: searchQuery.trim() });
+    if (normalizedSearchQuery) {
+      return postsT("noMatch", { query: normalizedSearchQuery });
     }
     
     if (sortType === "following") {
@@ -224,7 +355,7 @@ export function PostList({
         ) : (
           // ローディング完了後、期間別ソート、フォロータブ、または検索結果が0件の場合はメッセージを表示
           // 「新着」タブで検索クエリがない場合は何も表示しない
-          (sortType !== "newest" || searchQuery.trim()) && (
+          (sortType !== "newest" || normalizedSearchQuery) && (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">{getEmptyMessage()}</p>
             </div>
@@ -243,7 +374,11 @@ export function PostList({
           >
             {posts.map((post) => (
               <div key={post.id} className="mb-4">
-        <PostCard post={post} currentUserId={currentUserId} />
+        <PostCard
+          post={post}
+          currentUserId={currentUserId}
+          isHighlighted={post.id === highlightPostId}
+        />
       </div>
     ))}
   </Masonry>

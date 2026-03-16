@@ -75,6 +75,7 @@ export const enMessages = {
     commentsFetchFailed: "Failed to fetch the comments.",
     noComments: "No comments yet.",
     allCommentsShown: "All comments are shown.",
+    postSuccess: "Your post is live.",
     postFailed: "Failed to publish the post.",
     postFailedRetry: "Failed to publish the post. Please try again.",
     updateFailed: "Failed to update the post.",

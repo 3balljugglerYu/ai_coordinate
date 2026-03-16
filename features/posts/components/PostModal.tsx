@@ -13,9 +13,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { postImageAPI } from "../lib/api";
+import { persistPendingHomePostRefresh } from "../lib/home-post-refresh";
 
 interface PostModalProps {
   open: boolean;
@@ -33,7 +33,6 @@ export function PostModal({
   currentCaption,
 }: PostModalProps) {
   const t = useTranslations("posts");
-  const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const [caption, setCaption] = useState(currentCaption || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,22 +57,21 @@ export function PostModal({
         postFailed: t("postFailed"),
       });
 
-      // デイリー投稿特典が付与された場合、Toast通知を表示
+      persistPendingHomePostRefresh({
+        action: "posted",
+        postId: response.id,
+        bonusGranted: response.bonus_granted,
+      });
+
+      // デイリー投稿特典が付与された場合、通知バッジだけは即時更新する
       if (response.bonus_granted && response.bonus_granted > 0) {
-        toast({
-          title: t("dailyBonusTitle"),
-          description: t("dailyBonusDescription", {
-            amount: response.bonus_granted,
-          }),
-          variant: "default",
-        });
         await refreshUnreadCount().catch((error) => {
           console.error("Failed to refresh unread notification count:", error);
         });
       }
 
       // 投稿完了後、キャッシュ無効化してからホームに遷移
-      // フルリロードで確実に最新の投稿一覧を表示（ルーターキャッシュをバイパス）
+      // ホーム側で一度だけ fresh fetch して新着一覧を同期する
       onOpenChange(false);
       try {
         await fetch("/api/revalidate/home", { method: "POST" });

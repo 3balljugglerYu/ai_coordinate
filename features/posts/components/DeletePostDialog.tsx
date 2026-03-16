@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { deletePost } from "../lib/api";
 import { deleteMyImage } from "@/features/my-page/lib/api";
+import { persistPendingHomePostRefresh } from "../lib/home-post-refresh";
 
 interface DeletePostDialogProps {
   open: boolean;
@@ -64,6 +65,12 @@ export function DeletePostDialog({
 
       if (backUrl === "/") {
         // ホームへ遷移する場合、キャッシュ無効化後にフルリロードで確実に最新表示
+        if (isPosted) {
+          persistPendingHomePostRefresh({
+            action: "unposted",
+            postId: imageId,
+          });
+        }
         try {
           await fetch("/api/revalidate/home", { method: "POST" });
         } catch {

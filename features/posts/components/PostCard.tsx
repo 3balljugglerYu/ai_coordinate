@@ -10,13 +10,19 @@ import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostThumbUrl } from "../lib/utils";
 import type { Post } from "../types";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
+import { cn } from "@/lib/utils";
 
 interface PostCardProps {
   post: Post;
   currentUserId?: string | null;
+  isHighlighted?: boolean;
 }
 
-export function PostCard({ post, currentUserId }: PostCardProps) {
+export function PostCard({
+  post,
+  currentUserId,
+  isHighlighted = false,
+}: PostCardProps) {
   const t = useTranslations("posts");
   const [isHidden, setIsHidden] = useState(false);
   // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
@@ -70,7 +76,13 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
   );
 
   return (
-    <Card className="overflow-hidden pt-0 pb-0 gap-1">
+    <Card
+      className={cn(
+        "overflow-hidden pt-0 pb-0 gap-1 transition-[box-shadow,background-color,border-color] duration-700",
+        isHighlighted &&
+          "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-300/70 shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]"
+      )}
+    >
       {post.id ? (
         <Link 
           href={`/posts/${encodeURIComponent(post.id)}`}
