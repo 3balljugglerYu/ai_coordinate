@@ -1,0 +1,240 @@
+metadata:
+  class: EnsureWebPVariants
+  source: features/generation/lib/webp-storage.ts
+  version: "1.0"
+  created_at: "2026-03-20"
+
+dependencies:
+  repositories: []
+  services:
+    - createAdminClient
+    - uploadWebPVariants
+    - updateWebPStoragePaths
+    - revalidateTag
+  external:
+    - Supabase generated_images table via admin client
+    - Supabase Storage via uploadWebPVariants
+    - Next.js cache tag revalidation
+
+state_properties: []
+
+specifications:
+  - id: WEBP-001
+    method: ensureWebPVariants
+    type: state-driven
+    ears: |
+      While both WebP variant paths already exist for the target image,
+      the system shall skip variant generation
+      and shall return an already-exists skip result.
+    ears_ja: |
+      対象画像にWebP variantのパスが両方存在している間、
+      システムはvariant生成をスキップし、
+      already-exists の skip 結果を返す。
+    preconditions:
+      - generated_images record exists for the requested image id
+      - storage_path_thumb and storage_path_display are both populated
+    preconditions_ja:
+      - 要求された画像IDに対応するgenerated_imagesレコードが存在する
+      - storage_path_thumb と storage_path_display が両方設定済みである
+    postconditions:
+      success:
+        - Returns status skipped with reason already-exists
+        - Does not call uploadWebPVariants
+        - Does not update storage_path columns
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - status skipped と reason already-exists を返す
+        - uploadWebPVariants を呼ばない
+        - storage_path列を更新しない
+      error:
+        - なし
+    test_cases:
+      - ensureWebPVariants_WhileBothVariantsExist_ShouldSkipWithoutMutations
+    test_cases_ja:
+      - ensureWebPVariants_thumbdisplay両方が存在する場合_更新せずskipする
+
+  - id: WEBP-002
+    method: ensureWebPVariants
+    type: event-driven
+    ears: |
+      When ensureWebPVariants is invoked for a posted image
+      that has a source image and is missing WebP variants,
+      the system shall create both variants, persist both paths,
+      and revalidate posted-image cache tags.
+    ears_ja: |
+      元画像が存在しWebP variantが欠損している投稿済み画像に対して
+      ensureWebPVariants が呼び出された場合、
+      システムは両方のvariantを生成し、両方のパスを保存し、
+      投稿済み画像向けのcache tagを再検証する。
+    preconditions:
+      - generated_images record exists for the requested image id
+      - image_url and storage_path are populated
+      - is_posted is true
+      - At least one WebP variant path is missing
+    preconditions_ja:
+      - 要求された画像IDに対応するgenerated_imagesレコードが存在する
+      - image_url と storage_path が設定されている
+      - is_posted が true である
+      - 少なくとも1つのWebP variantパスが欠損している
+    postconditions:
+      success:
+        - Returns status created with thumbPath and displayPath
+        - Persists thumb and display storage paths
+        - Revalidates owner, home, search, and post-detail tags
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - status created と thumbPath / displayPath を返す
+        - thumb と display のstorage pathを保存する
+        - owner系、home系、search系、post-detail系のtagを再検証する
+      error:
+        - なし
+    test_cases:
+      - ensureWebPVariants_GivenPostedImageWithMissingVariants_ShouldCreateAndRevalidatePostedTags
+    test_cases_ja:
+      - ensureWebPVariants_投稿済み画像でvariant欠損の場合_生成して投稿系tagを再検証する
+
+  - id: WEBP-003
+    method: ensureWebPVariants
+    type: state-driven
+    ears: |
+      While the target image is not posted,
+      the system shall create missing variants
+      and shall not revalidate home or public post-detail cache tags.
+    ears_ja: |
+      対象画像が未投稿である間、
+      システムは欠損variantを生成し、
+      home系または公開post-detail系のcache tagは再検証しない。
+    preconditions:
+      - generated_images record exists for the requested image id
+      - image_url and storage_path are populated
+      - is_posted is false
+      - At least one WebP variant path is missing
+    preconditions_ja:
+      - 要求された画像IDに対応するgenerated_imagesレコードが存在する
+      - image_url と storage_path が設定されている
+      - is_posted が false である
+      - 少なくとも1つのWebP variantパスが欠損している
+    postconditions:
+      success:
+        - Creates both variants and updates storage paths
+        - Revalidates only owner-scoped tags
+        - Does not revalidate home-posts, home-posts-week, search-posts, or post-detail tags
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 両方のvariantを生成してstorage pathを更新する
+        - ownerスコープのtagのみ再検証する
+        - home-posts、home-posts-week、search-posts、post-detail tag は再検証しない
+      error:
+        - なし
+    test_cases:
+      - ensureWebPVariants_WhileImageIsUnposted_ShouldRevalidateOnlyOwnerScopedTags
+    test_cases_ja:
+      - ensureWebPVariants_未投稿画像の場合_owner系tagのみ再検証する
+
+  - id: WEBP-004
+    method: ensureWebPVariants
+    type: state-driven
+    ears: |
+      While only one WebP variant path is missing,
+      the system shall regenerate the variant set
+      and shall persist both thumb and display paths together.
+    ears_ja: |
+      片方のWebP variantパスだけが欠損している間、
+      システムはvariant一式を再生成し、
+      thumb と display の両パスをまとめて保存する。
+    preconditions:
+      - generated_images record exists for the requested image id
+      - image_url and storage_path are populated
+      - Exactly one of storage_path_thumb or storage_path_display is null
+    preconditions_ja:
+      - 要求された画像IDに対応するgenerated_imagesレコードが存在する
+      - image_url と storage_path が設定されている
+      - storage_path_thumb または storage_path_display のどちらか一方だけが null である
+    postconditions:
+      success:
+        - Returns status created
+        - Updates both thumb and display paths from the regeneration result
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - status created を返す
+        - 再生成結果のthumbとdisplay両パスで更新する
+      error:
+        - なし
+    test_cases:
+      - ensureWebPVariants_GivenSingleMissingVariant_ShouldRegenerateAndPersistBothPaths
+    test_cases_ja:
+      - ensureWebPVariants_片方のvariantだけ欠損している場合_再生成して両パスを保存する
+
+  - id: WEBP-005
+    method: ensureWebPVariants
+    type: unwanted
+    ears: |
+      If the target image is missing source image_url or storage_path,
+      then the system shall skip WebP generation
+      and shall return a missing-source result.
+    ears_ja: |
+      対象画像の image_url または storage_path が欠損している場合、
+      システムはWebP生成をスキップし、
+      missing-source 結果を返す。
+    preconditions:
+      - generated_images record exists for the requested image id
+      - image_url is null or storage_path is null
+    preconditions_ja:
+      - 要求された画像IDに対応するgenerated_imagesレコードが存在する
+      - image_url が null または storage_path が null である
+    postconditions:
+      success:
+        - Returns status skipped with reason missing-source
+        - Does not call upload or update dependencies
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - status skipped と reason missing-source を返す
+        - upload や update の依存を呼ばない
+      error:
+        - なし
+    test_cases:
+      - ensureWebPVariants_GivenMissingSourceData_ShouldSkip
+    test_cases_ja:
+      - ensureWebPVariants_元画像情報が欠損している場合_skipする
+
+  - id: WEBP-006
+    method: ensureWebPVariants
+    type: unwanted
+    ears: |
+      If no generated_images record exists for the requested image id,
+      then the system shall skip WebP generation
+      and shall return an image-not-found result.
+    ears_ja: |
+      要求された画像IDに対応する generated_images レコードが存在しない場合、
+      システムはWebP生成をスキップし、
+      image-not-found 結果を返す。
+    preconditions:
+      - generated_images record lookup returns no row
+    preconditions_ja:
+      - generated_images レコード検索がヒットしない
+    postconditions:
+      success:
+        - Returns status skipped with reason image-not-found
+        - Does not call upload or update dependencies
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - status skipped と reason image-not-found を返す
+        - upload や update の依存を呼ばない
+      error:
+        - なし
+    test_cases:
+      - ensureWebPVariants_GivenUnknownImageId_ShouldSkip
+    test_cases_ja:
+      - ensureWebPVariants_画像が存在しない場合_skipする

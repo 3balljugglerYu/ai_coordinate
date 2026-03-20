@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
+import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
@@ -45,6 +46,16 @@ export async function PUT(request: NextRequest) {
     if (result.user_id) {
       revalidateTag(`my-page-image-${result.user_id}-${result.id}`, {
         expire: 0,
+      });
+    }
+
+    if (result.id) {
+      after(async () => {
+        try {
+          await ensureWebPVariants(result.id!);
+        } catch (error) {
+          console.error("Update route WebP safety net error:", error);
+        }
       });
     }
 

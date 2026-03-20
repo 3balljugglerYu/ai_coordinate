@@ -3,10 +3,65 @@
  * サーバーサイド専用
  */
 
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { GeneratedImageRecord } from "./database";
 import { generateThumbnailWebP, generateDisplayWebP } from "./webp-converter";
 
 const STORAGE_BUCKET = "generated-images";
+
+type GeneratedImageWebPRecord = {
+  id: string;
+  user_id: GeneratedImageRecord["user_id"];
+  image_url: GeneratedImageRecord["image_url"] | null;
+  storage_path: GeneratedImageRecord["storage_path"] | null;
+  storage_path_thumb: GeneratedImageRecord["storage_path_thumb"] | null;
+  storage_path_display: GeneratedImageRecord["storage_path_display"] | null;
+  is_posted: GeneratedImageRecord["is_posted"];
+};
+
+export type EnsureWebPVariantsResult =
+  | {
+      status: "created";
+      thumbPath: string;
+      displayPath: string;
+    }
+  | {
+      status: "skipped";
+      reason: "already-exists" | "image-not-found" | "missing-source";
+    };
+
+type EnsureWebPVariantsDependencies = {
+  supabase?: ReturnType<typeof createAdminClient>;
+  revalidateTagFn?: typeof revalidateTag;
+  uploadVariants?: typeof uploadWebPVariants;
+  updateStoragePaths?: typeof updateWebPStoragePaths;
+  image?: GeneratedImageWebPRecord | null;
+};
+
+function revalidateGeneratedImageTags(
+  image: GeneratedImageWebPRecord,
+  revalidateTagFn: typeof revalidateTag
+) {
+  if (image.user_id) {
+    revalidateTagFn(`my-page-${image.user_id}`, "max");
+    revalidateTagFn(`coordinate-${image.user_id}`, "max");
+    revalidateTagFn(`my-page-image-${image.user_id}-${image.id}`, {
+      expire: 0,
+    });
+
+    if (image.is_posted) {
+      revalidateTagFn(`user-profile-${image.user_id}`, "max");
+    }
+  }
+
+  if (image.is_posted) {
+    revalidateTagFn("home-posts", "max");
+    revalidateTagFn("home-posts-week", "max");
+    revalidateTagFn("search-posts", "max");
+    revalidateTagFn(`post-detail-${image.id}`, { expire: 0 });
+  }
+}
 
 /**
  * 画像をWebP形式に変換してSupabase Storageにアップロード（リトライ機能付き）
@@ -120,4 +175,72 @@ export async function updateWebPStoragePaths(
     console.error("WebPストレージパスの更新に失敗しました:", error);
     throw new Error(`WebPストレージパスの更新に失敗しました: ${error.message}`);
   }
+}
+
+/**
+ * 画像IDからWebP variantsの存在を保証する。
+ * 既に両方存在する場合や元画像情報が欠損している場合は no-op とする。
+ */
+export async function ensureWebPVariants(
+  imageId: string,
+  deps: EnsureWebPVariantsDependencies = {}
+): Promise<EnsureWebPVariantsResult> {
+  const revalidateTagFn = deps.revalidateTagFn ?? revalidateTag;
+  const uploadVariants = deps.uploadVariants ?? uploadWebPVariants;
+  const updateStoragePaths = deps.updateStoragePaths ?? updateWebPStoragePaths;
+  let image = deps.image;
+
+  if (image === undefined) {
+    const supabase = deps.supabase ?? createAdminClient();
+    const { data, error } = await supabase
+      .from("generated_images")
+      .select(
+        "id,user_id,image_url,storage_path,storage_path_thumb,storage_path_display,is_posted"
+      )
+      .eq("id", imageId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("WebP生成対象画像の取得に失敗しました:", error);
+      throw new Error(`WebP生成対象画像の取得に失敗しました: ${error.message}`);
+    }
+
+    image = (data ?? null) as GeneratedImageWebPRecord | null;
+  }
+
+  if (!image) {
+    return {
+      status: "skipped",
+      reason: "image-not-found",
+    };
+  }
+
+  if (image.storage_path_thumb && image.storage_path_display) {
+    return {
+      status: "skipped",
+      reason: "already-exists",
+    };
+  }
+
+  if (!image.image_url || !image.storage_path) {
+    return {
+      status: "skipped",
+      reason: "missing-source",
+    };
+  }
+
+  const { thumbPath, displayPath } = await uploadVariants(
+    image.image_url,
+    image.storage_path,
+    3
+  );
+
+  await updateStoragePaths(image.id, thumbPath, displayPath);
+  revalidateGeneratedImageTags(image, revalidateTagFn);
+
+  return {
+    status: "created",
+    thumbPath,
+    displayPath,
+  };
 }

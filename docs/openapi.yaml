@@ -293,6 +293,35 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
+  /internal/generated-images/ensure-webp:
+    post:
+      tags: [internal]
+      summary: 指定画像の WebP variants 生成を非同期でキックする
+      operationId: postInternalGeneratedImagesEnsureWebp
+      x-access-level: bearer secret
+      security:
+        - BearerSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - imageId
+              properties:
+                imageId:
+                  type: string
+      responses:
+        "202":
+          description: Accepted for asynchronous processing.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
   /users/{userId}/profile:
     get:
       tags: [users]
@@ -786,26 +815,67 @@ paths:
       tags: [admin]
       summary: 既存資産のWebP生成バッチ処理API
       operationId: post_admin_generate_webp
-      x-access-level: operational
-      security: []
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - name: scope
+          in: query
+          description: `posted` は公開済みのみ、`all` は全件を対象にする。
+          schema:
+            type: string
+            enum: [posted, all]
+            default: posted
+        - name: limit
+          in: query
+          description: 1回あたりの処理件数。
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: 処理開始位置。
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         "200":
           description: Successful response.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
     get:
       tags: [admin]
       summary: 既存資産のWebP生成バッチ処理API
       operationId: get_admin_generate_webp
-      x-access-level: operational
-      security: []
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      parameters:
+        - name: scope
+          in: query
+          description: `posted` は公開済みのみ、`all` は全件を対象にする。
+          schema:
+            type: string
+            enum: [posted, all]
+            default: posted
       responses:
         "200":
           description: Successful response.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
@@ -814,13 +884,31 @@ paths:
       tags: [admin]
       summary: 特定の画像IDを指定してWebP生成を実行するAPI
       operationId: post_admin_generate_webp_by_id
-      x-access-level: operational
-      security: []
+      x-access-level: admin session
+      security:
+        - SupabaseSessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - imageId
+              properties:
+                imageId:
+                  type: string
       responses:
         "200":
           description: Successful response.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Image not found.
         "500":
           $ref: "#/components/responses/InternalServerError"
 

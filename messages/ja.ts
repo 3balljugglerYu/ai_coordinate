@@ -40,6 +40,7 @@ export const jaMessages = {
   posts: {
     anonymousUser: "匿名ユーザー",
     noImage: "画像がありません",
+    postImageAlt: "投稿画像",
     hiddenMessage: "この投稿はあなたの表示設定により非表示になりました。",
     prompt: "プロンプト",
     copy: "コピー",

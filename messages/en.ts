@@ -46,6 +46,7 @@ export const enMessages = {
   posts: {
     anonymousUser: "Anonymous user",
     noImage: "No image available",
+    postImageAlt: "Post image",
     hiddenMessage: "This post is hidden based on your display settings.",
     prompt: "Prompt",
     copy: "Copy",

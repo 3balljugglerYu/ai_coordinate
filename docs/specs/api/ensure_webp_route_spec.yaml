@@ -1,0 +1,126 @@
+metadata:
+  class: EnsureWebPRoute
+  source: app/api/internal/generated-images/ensure-webp/route.ts
+  version: "1.0"
+  created_at: "2026-03-20"
+
+dependencies:
+  repositories: []
+  services:
+    - ensureWebPVariants
+    - env.CRON_SECRET
+    - next/server after
+    - node:crypto timingSafeEqual
+  external:
+    - Bearer token authorization header
+
+state_properties: []
+
+specifications:
+  - id: EWEBP-001
+    method: postEnsureWebPRoute
+    type: unwanted
+    ears: |
+      If the bearer token does not match the configured CRON secret,
+      then the system shall return HTTP 401
+      and shall not invoke the WebP helper.
+    ears_ja: |
+      Bearer token が設定済みの CRON secret と一致しない場合、
+      システムは HTTP 401 を返し、
+      WebP helper を呼び出さない。
+    preconditions:
+      - env.CRON_SECRET is configured
+      - Authorization header is missing or contains a non-matching token
+    preconditions_ja:
+      - env.CRON_SECRET が設定されている
+      - Authorization header が存在しない、または不一致トークンを含む
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 401
+        - ensureWebPVariants is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが401になる
+        - ensureWebPVariants を呼ばない
+    test_cases:
+      - postEnsureWebPRoute_GivenInvalidBearerToken_ShouldReturn401
+    test_cases_ja:
+      - postEnsureWebPRoute_不正BearerTokenの場合_401を返す
+
+  - id: EWEBP-002
+    method: postEnsureWebPRoute
+    type: unwanted
+    ears: |
+      If imageId is missing from the request body,
+      then the system shall return HTTP 400
+      and shall not schedule WebP generation.
+    ears_ja: |
+      リクエストボディに imageId が存在しない場合、
+      システムは HTTP 400 を返し、
+      WebP生成をスケジュールしない。
+    preconditions:
+      - Authorization token matches env.CRON_SECRET
+      - Request body does not contain a non-empty imageId string
+    preconditions_ja:
+      - Authorization token が env.CRON_SECRET と一致する
+      - リクエストボディに空でない imageId 文字列が含まれない
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Response body contains imageId is required
+        - after callback is not scheduled
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - レスポンスに imageId is required が含まれる
+        - after コールバックを登録しない
+    test_cases:
+      - postEnsureWebPRoute_GivenMissingImageId_ShouldReturn400
+    test_cases_ja:
+      - postEnsureWebPRoute_imageId未指定の場合_400を返す
+
+  - id: EWEBP-003
+    method: postEnsureWebPRoute
+    type: event-driven
+    ears: |
+      When a valid bearer token and imageId are provided,
+      the system shall return HTTP 202
+      and shall schedule ensureWebPVariants via after.
+    ears_ja: |
+      有効な Bearer token と imageId が渡された場合、
+      システムは HTTP 202 を返し、
+      after 経由で ensureWebPVariants をスケジュールする。
+    preconditions:
+      - env.CRON_SECRET is configured
+      - Authorization token matches env.CRON_SECRET
+      - Request body contains a non-empty imageId string
+    preconditions_ja:
+      - env.CRON_SECRET が設定されている
+      - Authorization token が env.CRON_SECRET と一致する
+      - リクエストボディに空でない imageId 文字列が含まれる
+    postconditions:
+      success:
+        - HTTP status is 202
+        - Response body contains accepted true
+        - ensureWebPVariants is invoked asynchronously with the imageId
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが202になる
+        - レスポンスに accepted true が含まれる
+        - ensureWebPVariants が imageId を使って非同期に呼び出される
+      error:
+        - なし
+    test_cases:
+      - postEnsureWebPRoute_GivenValidBearerAndImageId_ShouldReturn202AndScheduleHelper
+    test_cases_ja:
+      - postEnsureWebPRoute_有効BearerとimageIdの場合_202を返してhelperをスケジュールする

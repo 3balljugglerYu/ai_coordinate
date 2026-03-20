@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-16"
+last_updated: "2026-03-20"
 
 # Status values:
 # - pending
@@ -23,6 +23,38 @@ foundation:
   playwright_setup:
     status: pending
     file: package.json
+
+# Feature-specific workflow runs tracked outside the canonical tier roadmap
+feature_work:
+  EnsureWebPVariants:
+    status: completed
+    file: features/generation/lib/webp-storage.ts
+    spec_file: docs/specs/generation/ensure_webp_variants_spec.yaml
+    test_file: tests/unit/lib/webp-storage.test.ts
+
+  EnsureWebPRoute:
+    status: completed
+    file: app/api/internal/generated-images/ensure-webp/route.ts
+    spec_file: docs/specs/api/ensure_webp_route_spec.yaml
+    test_file: tests/integration/api/ensure-webp-route.test.ts
+
+  AdminGenerateWebPRoute:
+    status: completed
+    file: app/api/admin/generate-webp/route.ts
+    spec_file: docs/specs/api/admin_generate_webp_route_spec.yaml
+    test_file: tests/integration/api/admin-generate-webp-route.test.ts
+
+  AdminGenerateWebPByIdRoute:
+    status: completed
+    file: app/api/admin/generate-webp-by-id/route.ts
+    spec_file: docs/specs/api/admin_generate_webp_by_id_route_spec.yaml
+    test_file: tests/integration/api/admin-generate-webp-by-id-route.test.ts
+
+  PostsCacheInvalidationRoutes:
+    status: completed
+    file: app/api/posts/post/route.ts
+    spec_file: docs/specs/api/posts_cache_invalidation_routes_spec.yaml
+    test_file: tests/integration/api/posts-cache-invalidation-route.test.ts
 
 # Tier 1: Highest Priority (Score 90-100)
 tier1:

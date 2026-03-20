@@ -158,7 +158,7 @@ export function PostDetailStatic({
             {displayImageUrl ? (
               <Image
                 src={displayImageUrl}
-                alt={post.caption || postsT("noImage")}
+                alt={post.caption || postsT("postImageAlt")}
                 width={1200}
                 height={1200}
                 className={`w-full h-auto object-contain ${
@@ -346,7 +346,7 @@ export function PostDetailStatic({
         <Suspense fallback={null}>
           <ImageFullscreen
             imageUrl={displayImageUrl}
-            alt={post.caption || postsT("noImage")}
+            alt={post.caption || postsT("postImageAlt")}
             isOpen={isFullscreenOpen}
             onClose={() => setIsFullscreenOpen(false)}
           />

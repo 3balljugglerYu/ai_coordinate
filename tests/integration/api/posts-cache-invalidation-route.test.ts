@@ -1,6 +1,7 @@
 /** @jest-environment node */
 
 import type { NextRequest } from "next/server";
+import { after } from "next/server";
 import { POST as postRoute } from "@/app/api/posts/post/route";
 import { PUT as updateRoute } from "@/app/api/posts/update/route";
 import { DELETE as deleteRoute } from "@/app/api/posts/[id]/route";
@@ -10,21 +11,34 @@ import {
   postImageServer,
   unpostImageServer,
 } from "@/features/generation/lib/server-database";
+import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { createClient } from "@/lib/supabase/server";
 import { getRouteLocale } from "@/lib/api/route-locale";
 
 jest.mock("next/cache");
+jest.mock("next/server", () => {
+  const actual = jest.requireActual("next/server");
+  return {
+    ...actual,
+    after: jest.fn(),
+  };
+});
 jest.mock("@/lib/auth");
 jest.mock("@/features/generation/lib/server-database");
+jest.mock("@/features/generation/lib/webp-storage");
 jest.mock("@/lib/supabase/server");
 jest.mock("@/lib/api/route-locale");
 
+const mockAfter = after as jest.MockedFunction<typeof after>;
 const mockRevalidateTag = revalidateTag as jest.MockedFunction<typeof revalidateTag>;
 const mockRevalidatePath = revalidatePath as jest.MockedFunction<typeof revalidatePath>;
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockPostImageServer = postImageServer as jest.MockedFunction<typeof postImageServer>;
 const mockUnpostImageServer =
   unpostImageServer as jest.MockedFunction<typeof unpostImageServer>;
+const mockEnsureWebPVariants = ensureWebPVariants as jest.MockedFunction<
+  typeof ensureWebPVariants
+>;
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetRouteLocale = getRouteLocale as jest.MockedFunction<
   typeof getRouteLocale
@@ -52,6 +66,11 @@ describe("Posts cache invalidation routes", () => {
 
     mockRevalidateTag.mockImplementation(() => {});
     mockRevalidatePath.mockImplementation(() => {});
+    mockAfter.mockImplementation((task) => {
+      if (typeof task === "function") {
+        void task();
+      }
+    });
     mockGetRouteLocale.mockReturnValue("ja");
     mockGetUser.mockResolvedValue({
       id: "user-1",
@@ -60,9 +79,15 @@ describe("Posts cache invalidation routes", () => {
     mockCreateClient.mockResolvedValue({
       rpc: jest.fn().mockResolvedValue({ data: 50, error: null }),
     } as never);
+    mockEnsureWebPVariants.mockResolvedValue({
+      status: "created",
+      thumbPath: "user-1/post-1_thumb.webp",
+      displayPath: "user-1/post-1_display.webp",
+    });
   });
 
   test("POST /api/posts/post_詳細系タグを即時失効し一覧系はmaxのまま再検証する", async () => {
+    // Spec: PCIR-001
     mockPostImageServer.mockResolvedValue({
       id: "post-1",
       user_id: "user-1",
@@ -98,9 +123,12 @@ describe("Posts cache invalidation routes", () => {
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/posts/post-1");
+    expect(mockAfter).toHaveBeenCalledTimes(1);
+    expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-1");
   });
 
   test("PUT /api/posts/update_詳細系タグを即時失効する", async () => {
+    // Spec: PCIR-002
     mockPostImageServer.mockResolvedValue({
       id: "post-2",
       user_id: "user-1",
@@ -128,9 +156,12 @@ describe("Posts cache invalidation routes", () => {
     expect(mockRevalidateTag).toHaveBeenCalledWith("my-page-image-user-1-post-2", {
       expire: 0,
     });
+    expect(mockAfter).toHaveBeenCalledTimes(1);
+    expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-2");
   });
 
   test("DELETE /api/posts/[id]_詳細系とマイページ画像タグを即時失効する", async () => {
+    // Spec: PCIR-003
     mockUnpostImageServer.mockResolvedValue({
       id: "post-3",
       user_id: "user-1",
