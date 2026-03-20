@@ -60,7 +60,7 @@ export function PostCard({
       {imageUrl ? (
         <Image
           src={imageUrl}
-          alt={post.caption || t("noImage")}
+          alt={post.caption || t("postImageAlt")}
           width={800}
           height={800}
           className="w-full h-auto object-contain transition-transform hover:scale-105"

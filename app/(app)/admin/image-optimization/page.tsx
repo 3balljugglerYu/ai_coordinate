@@ -1,8 +1,9 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/card";
 import { WebPStatsCardSkeleton } from "./WebPStatsCardSkeleton";
-import { requireAuth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 /**
  * 画像最適化監視ダッシュボード
@@ -136,10 +137,10 @@ function BatchProcessingCard() {
         <div className="space-y-2">
           <h3 className="font-semibold">API エンドポイント:</h3>
           <code className="block p-2 bg-muted rounded text-sm">
-            POST /api/admin/generate-webp?limit=10&offset=0
+            POST /api/admin/generate-webp?scope=posted&amp;limit=10&amp;offset=0
           </code>
           <code className="block p-2 bg-muted rounded text-sm">
-            GET /api/admin/generate-webp (処理対象数を取得)
+            GET /api/admin/generate-webp?scope=posted (処理対象数を取得)
           </code>
         </div>
         <div className="pt-4 border-t">
@@ -160,8 +161,12 @@ function BatchProcessingCard() {
  * 画像最適化監視ダッシュボードページ
  */
 export default async function ImageOptimizationDashboard() {
-  // 認証が必要なページ
-  await requireAuth();
+  try {
+    await requireAdmin();
+  } catch {
+    redirect("/");
+  }
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8">

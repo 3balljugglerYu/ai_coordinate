@@ -153,7 +153,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
             {imageUrl ? (
               <Image
                 src={imageUrl}
-                alt={post.caption || t("noImage")}
+                alt={post.caption || t("postImageAlt")}
                 width={1200}
                 height={1200}
                 className={`w-full h-auto object-contain cursor-pointer ${
@@ -336,7 +336,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
       {imageUrl && (
         <ImageFullscreen
           imageUrl={imageUrl}
-          alt={post.caption || t("noImage")}
+          alt={post.caption || t("postImageAlt")}
           isOpen={isFullscreenOpen}
           onClose={() => setIsFullscreenOpen(false)}
         />

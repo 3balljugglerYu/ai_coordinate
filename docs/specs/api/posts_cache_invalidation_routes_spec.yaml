@@ -1,0 +1,143 @@
+metadata:
+  class: PostsCacheInvalidationRoutes
+  source: app/api/posts/post/route.ts; app/api/posts/update/route.ts; app/api/posts/[id]/route.ts
+  version: "1.0"
+  created_at: "2026-03-20"
+
+dependencies:
+  repositories:
+    - postImageServer
+    - unpostImageServer
+  services:
+    - getUser
+    - ensureWebPVariants
+    - revalidateTag
+    - revalidatePath
+    - getRouteLocale
+  external:
+    - Supabase RPC grant_daily_post_bonus via createClient (POST route only)
+
+state_properties: []
+
+specifications:
+  - id: PCIR-001
+    method: postPostsRoute
+    type: event-driven
+    ears: |
+      When a user posts an image successfully through the post route,
+      the system shall revalidate home and detail cache tags,
+      shall expire the per-image tag immediately,
+      and shall schedule ensureWebPVariants as a safety net.
+    ears_ja: |
+      ユーザーが post route で画像投稿に成功した場合、
+      システムは home と detail のcache tagを再検証し、
+      画像単位tagを即時失効させ、
+      safety net として ensureWebPVariants をスケジュールする。
+    preconditions:
+      - getUser returns an authenticated user
+      - postImageServer returns a posted image id and user id
+    preconditions_ja:
+      - getUser が認証済みユーザーを返す
+      - postImageServer が投稿済み画像の id と user id を返す
+    postconditions:
+      success:
+        - HTTP status is 200
+        - home-posts, home-posts-week, and search-posts are revalidated with max
+        - post-detail and my-page-image tags are revalidated with expire 0
+        - root and post detail paths are revalidated
+        - ensureWebPVariants is scheduled via after with the posted image id
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - home-posts、home-posts-week、search-posts が max で再検証される
+        - post-detail と my-page-image tag が expire 0 で再検証される
+        - ルートパスと投稿詳細パスが再検証される
+        - ensureWebPVariants が投稿画像IDで after 経由スケジュールされる
+      error:
+        - なし
+    test_cases:
+      - postPostsRoute_GivenSuccessfulPost_ShouldInvalidateCachesAndScheduleWebP
+    test_cases_ja:
+      - postPostsRoute_投稿成功の場合_cache無効化とWebP安全網を実行する
+
+  - id: PCIR-002
+    method: putPostsUpdateRoute
+    type: event-driven
+    ears: |
+      When a user updates a posted image successfully through the update route,
+      the system shall revalidate home and detail cache tags,
+      shall expire the per-image tag immediately,
+      and shall schedule ensureWebPVariants as a safety net.
+    ears_ja: |
+      ユーザーが update route で投稿画像更新に成功した場合、
+      システムは home と detail のcache tagを再検証し、
+      画像単位tagを即時失効させ、
+      safety net として ensureWebPVariants をスケジュールする。
+    preconditions:
+      - getUser returns an authenticated user
+      - postImageServer returns an updated image id and user id
+    preconditions_ja:
+      - getUser が認証済みユーザーを返す
+      - postImageServer が更新済み画像の id と user id を返す
+    postconditions:
+      success:
+        - HTTP status is 200
+        - home-posts, home-posts-week, and search-posts are revalidated with max
+        - post-detail and my-page-image tags are revalidated with expire 0
+        - ensureWebPVariants is scheduled via after with the updated image id
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - home-posts、home-posts-week、search-posts が max で再検証される
+        - post-detail と my-page-image tag が expire 0 で再検証される
+        - ensureWebPVariants が更新画像IDで after 経由スケジュールされる
+      error:
+        - なし
+    test_cases:
+      - putPostsUpdateRoute_GivenSuccessfulUpdate_ShouldInvalidateCachesAndScheduleWebP
+    test_cases_ja:
+      - putPostsUpdateRoute_更新成功の場合_cache無効化とWebP安全網を実行する
+
+  - id: PCIR-003
+    method: deletePostsRoute
+    type: event-driven
+    ears: |
+      When a user unposts an image successfully through the delete route,
+      the system shall revalidate list caches,
+      shall expire detail and per-image tags immediately,
+      and shall revalidate the root and detail paths.
+    ears_ja: |
+      ユーザーが delete route で画像の投稿を取り消すことに成功した場合、
+      システムは一覧cacheを再検証し、
+      detail と画像単位tagを即時失効させ、
+      ルートと詳細パスを再検証する。
+    preconditions:
+      - getUser returns an authenticated user
+      - unpostImageServer returns the unposted image id and user id
+    preconditions_ja:
+      - getUser が認証済みユーザーを返す
+      - unpostImageServer が投稿取り消し済み画像の id と user id を返す
+    postconditions:
+      success:
+        - HTTP status is 200
+        - home-posts, home-posts-week, and search-posts are revalidated with max
+        - post-detail and my-page-image tags are revalidated with expire 0
+        - root and post detail paths are revalidated
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - home-posts、home-posts-week、search-posts が max で再検証される
+        - post-detail と my-page-image tag が expire 0 で再検証される
+        - ルートパスと投稿詳細パスが再検証される
+      error:
+        - なし
+    test_cases:
+      - deletePostsRoute_GivenSuccessfulUnpost_ShouldInvalidateCaches
+    test_cases_ja:
+      - deletePostsRoute_投稿取り消し成功の場合_cacheを無効化する

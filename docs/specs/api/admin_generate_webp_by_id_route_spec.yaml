@@ -1,0 +1,215 @@
+metadata:
+  class: AdminGenerateWebPByIdRoute
+  source: app/api/admin/generate-webp-by-id/route.ts
+  version: "1.0"
+  created_at: "2026-03-20"
+
+dependencies:
+  repositories: []
+  services:
+    - requireAdmin
+    - ensureWebPVariants
+  external:
+    - None
+
+state_properties: []
+
+specifications:
+  - id: AGWPI-001
+    method: postAdminGenerateWebPByIdRoute
+    type: unwanted
+    ears: |
+      If the caller is not an admin,
+      then the system shall return the admin authorization error response
+      and shall not invoke the WebP helper.
+    ears_ja: |
+      呼び出し元が管理者でない場合、
+      システムは管理者認可エラーレスポンスを返し、
+      WebP helper を呼び出さない。
+    preconditions:
+      - requireAdmin rejects with a NextResponse
+    preconditions_ja:
+      - requireAdmin が NextResponse で reject する
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is the authorization error status
+        - ensureWebPVariants is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが認可エラーの値になる
+        - ensureWebPVariants を呼ばない
+    test_cases:
+      - postAdminGenerateWebPByIdRoute_GivenNonAdmin_ShouldReturn403
+    test_cases_ja:
+      - postAdminGenerateWebPByIdRoute_非管理者の場合_403を返す
+
+  - id: AGWPI-002
+    method: postAdminGenerateWebPByIdRoute
+    type: unwanted
+    ears: |
+      If imageId is missing from the request body,
+      then the system shall return HTTP 400
+      and shall not invoke the WebP helper.
+    ears_ja: |
+      リクエストボディに imageId が存在しない場合、
+      システムは HTTP 400 を返し、
+      WebP helper を呼び出さない。
+    preconditions:
+      - requireAdmin succeeds
+      - Request body does not contain imageId
+    preconditions_ja:
+      - requireAdmin が成功する
+      - リクエストボディに imageId が存在しない
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Response body contains imageId is required
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - レスポンスに imageId is required が含まれる
+    test_cases:
+      - postAdminGenerateWebPByIdRoute_GivenMissingImageId_ShouldReturn400
+    test_cases_ja:
+      - postAdminGenerateWebPByIdRoute_imageId未指定の場合_400を返す
+
+  - id: AGWPI-003
+    method: postAdminGenerateWebPByIdRoute
+    type: unwanted
+    ears: |
+      If ensureWebPVariants reports image-not-found,
+      then the system shall return HTTP 404
+      with the not-found message.
+    ears_ja: |
+      ensureWebPVariants が image-not-found を返した場合、
+      システムは not-found メッセージ付きの HTTP 404 を返す。
+    preconditions:
+      - requireAdmin succeeds
+      - ensureWebPVariants returns skipped image-not-found
+    preconditions_ja:
+      - requireAdmin が成功する
+      - ensureWebPVariants が skipped image-not-found を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 404
+        - Response body contains the image not found error
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが404になる
+        - レスポンスに画像未検出エラーが含まれる
+    test_cases:
+      - postAdminGenerateWebPByIdRoute_GivenUnknownImageId_ShouldReturn404
+    test_cases_ja:
+      - postAdminGenerateWebPByIdRoute_画像未検出の場合_404を返す
+
+  - id: AGWPI-004
+    method: postAdminGenerateWebPByIdRoute
+    type: unwanted
+    ears: |
+      If ensureWebPVariants reports missing-source,
+      then the system shall return HTTP 400
+      with the missing source error message.
+    ears_ja: |
+      ensureWebPVariants が missing-source を返した場合、
+      システムは元画像欠損エラーメッセージ付きの HTTP 400 を返す。
+    preconditions:
+      - requireAdmin succeeds
+      - ensureWebPVariants returns skipped missing-source
+    preconditions_ja:
+      - requireAdmin が成功する
+      - ensureWebPVariants が skipped missing-source を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is 400
+        - Response body contains the missing source error
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが400になる
+        - レスポンスに元画像欠損エラーが含まれる
+    test_cases:
+      - postAdminGenerateWebPByIdRoute_GivenMissingSourceData_ShouldReturn400
+    test_cases_ja:
+      - postAdminGenerateWebPByIdRoute_元画像情報欠損の場合_400を返す
+
+  - id: AGWPI-005
+    method: postAdminGenerateWebPByIdRoute
+    type: state-driven
+    ears: |
+      While WebP variants already exist for the requested image,
+      the system shall return a successful skipped response
+      without exposing storage paths.
+    ears_ja: |
+      要求画像のWebP variantが既に存在している間、
+      システムはstorage pathを返さずに
+      skipped を含む成功レスポンスを返す。
+    preconditions:
+      - requireAdmin succeeds
+      - ensureWebPVariants returns skipped already-exists
+    preconditions_ja:
+      - requireAdmin が成功する
+      - ensureWebPVariants が skipped already-exists を返す
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Response body contains success true, skipped true, and the already-generated message
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - レスポンスに success true、skipped true、既生成メッセージが含まれる
+      error:
+        - なし
+    test_cases:
+      - postAdminGenerateWebPByIdRoute_GivenExistingVariants_ShouldReturnSkippedSuccess
+    test_cases_ja:
+      - postAdminGenerateWebPByIdRoute_既にvariantがある場合_skipped成功を返す
+
+  - id: AGWPI-006
+    method: postAdminGenerateWebPByIdRoute
+    type: event-driven
+    ears: |
+      When ensureWebPVariants creates new variants for the requested image,
+      the system shall return HTTP 200
+      with imageId, thumbPath, and displayPath.
+    ears_ja: |
+      ensureWebPVariants が要求画像の新しいvariantを生成した場合、
+      システムは imageId、thumbPath、displayPath を含む HTTP 200 を返す。
+    preconditions:
+      - requireAdmin succeeds
+      - ensureWebPVariants returns created with thumbPath and displayPath
+    preconditions_ja:
+      - requireAdmin が成功する
+      - ensureWebPVariants が thumbPath と displayPath を含む created を返す
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Response body contains success true, imageId, thumbPath, and displayPath
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - レスポンスに success true、imageId、thumbPath、displayPath が含まれる
+      error:
+        - なし
+    test_cases:
+      - postAdminGenerateWebPByIdRoute_GivenCreatedVariants_ShouldReturnPaths
+    test_cases_ja:
+      - postAdminGenerateWebPByIdRoute_variant生成成功の場合_パスを返す

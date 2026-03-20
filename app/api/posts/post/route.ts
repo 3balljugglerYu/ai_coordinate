@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
+import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { createClient } from "@/lib/supabase/server";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
@@ -90,6 +91,16 @@ export async function POST(request: NextRequest) {
     revalidateTag(`my-page-image-${user.id}-${id}`, { expire: 0 });
     revalidatePath("/");
     revalidatePath(`/posts/${id}`);
+
+    if (result.id) {
+      after(async () => {
+        try {
+          await ensureWebPVariants(result.id!);
+        } catch (error) {
+          console.error("Post route WebP safety net error:", error);
+        }
+      });
+    }
 
     return NextResponse.json({
       id: result.id!,

@@ -1,0 +1,153 @@
+metadata:
+  class: AdminGenerateWebPRoute
+  source: app/api/admin/generate-webp/route.ts
+  version: "1.0"
+  created_at: "2026-03-20"
+
+dependencies:
+  repositories: []
+  services:
+    - requireAdmin
+    - createAdminClient
+    - ensureWebPVariants
+  external:
+    - Supabase generated_images table via admin client
+
+state_properties: []
+
+specifications:
+  - id: AGWP-001
+    method: postAdminGenerateWebPRoute
+    type: unwanted
+    ears: |
+      If the caller is not an admin,
+      then the system shall return the admin authorization error response
+      and shall not process any images.
+    ears_ja: |
+      呼び出し元が管理者でない場合、
+      システムは管理者認可エラーレスポンスを返し、
+      画像処理を行わない。
+    preconditions:
+      - requireAdmin rejects with a NextResponse
+    preconditions_ja:
+      - requireAdmin が NextResponse で reject する
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is the authorization error status
+        - No image processing occurs
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが認可エラーの値になる
+        - 画像処理を行わない
+    test_cases:
+      - postAdminGenerateWebPRoute_GivenNonAdmin_ShouldReturn403
+    test_cases_ja:
+      - postAdminGenerateWebPRoute_非管理者の場合_403を返す
+
+  - id: AGWP-002
+    method: postAdminGenerateWebPRoute
+    type: event-driven
+    ears: |
+      When an admin invokes the batch route without an explicit scope,
+      the system shall default to posted scope,
+      query posted images with missing variants,
+      and aggregate success and skipped counts from helper results.
+    ears_ja: |
+      管理者が scope を明示せずにバッチ route を呼び出した場合、
+      システムは posted scope を既定値とし、
+      variant 欠損の投稿済み画像を検索し、
+      helper 結果から success と skipped 件数を集計する。
+    preconditions:
+      - requireAdmin succeeds
+      - The generated_images query returns posted images with missing variants
+    preconditions_ja:
+      - requireAdmin が成功する
+      - generated_images クエリが variant 欠損の投稿済み画像を返す
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Query filters is_posted true and orders by posted_at then created_at descending
+        - Response scope is posted
+        - Response results reflect helper success and skipped counts
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - クエリで is_posted true に絞り、posted_at と created_at の降順で並べる
+        - レスポンスの scope が posted になる
+        - レスポンス results に helper の success / skipped 件数が反映される
+      error:
+        - なし
+    test_cases:
+      - postAdminGenerateWebPRoute_GivenDefaultScope_ShouldProcessPostedImages
+    test_cases_ja:
+      - postAdminGenerateWebPRoute_scope未指定の場合_posted画像を処理する
+
+  - id: AGWP-003
+    method: getAdminGenerateWebPRoute
+    type: event-driven
+    ears: |
+      When an admin requests the count with scope=all,
+      the system shall return the count of all images missing variants
+      without applying an is_posted filter.
+    ears_ja: |
+      管理者が scope=all で件数取得を要求した場合、
+      システムは is_posted フィルタを適用せず、
+      variant 欠損画像の全件数を返す。
+    preconditions:
+      - requireAdmin succeeds
+      - The generated_images head query returns a count
+    preconditions_ja:
+      - requireAdmin が成功する
+      - generated_images の head クエリが count を返す
+    postconditions:
+      success:
+        - HTTP status is 200
+        - Query does not filter by is_posted
+        - Response body includes count and scope all
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTPステータスが200になる
+        - クエリで is_posted フィルタを適用しない
+        - レスポンスに count と scope all が含まれる
+      error:
+        - なし
+    test_cases:
+      - getAdminGenerateWebPRoute_GivenScopeAll_ShouldReturnGlobalCount
+    test_cases_ja:
+      - getAdminGenerateWebPRoute_scopeallの場合_全件countを返す
+
+  - id: AGWP-004
+    method: getAdminGenerateWebPRoute
+    type: unwanted
+    ears: |
+      If the caller is not an admin for the count endpoint,
+      then the system shall return the admin authorization error response.
+    ears_ja: |
+      件数取得エンドポイントの呼び出し元が管理者でない場合、
+      システムは管理者認可エラーレスポンスを返す。
+    preconditions:
+      - requireAdmin rejects with a NextResponse
+    preconditions_ja:
+      - requireAdmin が NextResponse で reject する
+    postconditions:
+      success:
+        - None
+      error:
+        - HTTP status is the authorization error status
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - HTTPステータスが認可エラーの値になる
+    test_cases:
+      - getAdminGenerateWebPRoute_GivenNonAdmin_ShouldReturn403
+    test_cases_ja:
+      - getAdminGenerateWebPRoute_非管理者の場合_403を返す

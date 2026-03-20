@@ -41,6 +41,48 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function notifyEnsureWebPVariants(
+  siteUrl: string,
+  cronSecret: string,
+  imageId: string
+) {
+  try {
+    const endpoint = new URL(
+      "/api/internal/generated-images/ensure-webp",
+      siteUrl
+    ).toString();
+
+    void fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cronSecret}`,
+      },
+      body: JSON.stringify({ imageId }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.error("[Job Success] Failed to notify WebP generation", {
+            imageId,
+            status: response.status,
+            statusText: response.statusText,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("[Job Success] Failed to notify WebP generation", {
+          imageId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+  } catch (error) {
+    console.error("[Job Success] Failed to notify WebP generation", {
+      imageId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 function isRetryableFetchStatus(status: number): boolean {
   return INPUT_IMAGE_FETCH_RETRYABLE_STATUS.has(status);
 }
@@ -1128,6 +1170,16 @@ Deno.serve(async () => {
           } catch (updateTransactionError) {
             console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
             // エラーはログに記録するが、処理は継続
+          }
+
+          const siteUrl = Deno.env.get("SITE_URL");
+          const cronSecret = Deno.env.get("CRON_SECRET");
+          if (siteUrl && cronSecret) {
+            notifyEnsureWebPVariants(siteUrl, cronSecret, imageRecord.id);
+          } else {
+            console.warn(
+              "[Job Success] Skipped WebP notification because SITE_URL or CRON_SECRET is not configured"
+            );
           }
 
           // メッセージを削除（成功時）
