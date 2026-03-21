@@ -12,7 +12,6 @@ export interface StylePreset {
   id: StylePresetId;
   name: string;
   imagePublicPath: string;
-  imageMimeType: string;
   imageWidth: number;
   imageHeight: number;
   imageFilePath: string;
@@ -35,7 +34,6 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
     id: "fluffy_pajamas_code",
     name: "FLUFFY PAJAMAS CODE",
     imagePublicPath: "/style/fluffy_pajamas_code/fluffy_pajamas_code.webp",
-    imageMimeType: "image/webp",
     imageWidth: 912,
     imageHeight: 1173,
     imageFilePath: path.join(
@@ -51,7 +49,6 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
     id: "gothic_witch",
     name: "GOTHIC WITCH",
     imagePublicPath: "/style/gothic_witch/gothic_witch.webp",
-    imageMimeType: "image/webp",
     imageWidth: 1344,
     imageHeight: 1792,
     imageFilePath: path.join(
@@ -67,7 +64,6 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
     id: "kimono",
     name: "KIMONO",
     imagePublicPath: "/style/kimono/kimono.webp",
-    imageMimeType: "image/webp",
     imageWidth: 864,
     imageHeight: 1184,
     imageFilePath: path.join(publicRoot, "style/kimono/kimono.webp"),
@@ -77,7 +73,6 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
     id: "paris_code",
     name: "PARIS CODE",
     imagePublicPath: "/style/paris_code/paris_code.webp",
-    imageMimeType: "image/webp",
     imageWidth: 912,
     imageHeight: 1173,
     imageFilePath: path.join(publicRoot, "style/paris_code/paris_code.webp"),
@@ -88,7 +83,6 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
     name: "SPRING SMART CASUAL",
     imagePublicPath:
       "/style/spring_smart_casual/spring_smart_casual.webp",
-    imageMimeType: "image/webp",
     imageWidth: 576,
     imageHeight: 768,
     imageFilePath: path.join(

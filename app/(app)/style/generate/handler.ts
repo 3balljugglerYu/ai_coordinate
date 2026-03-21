@@ -182,6 +182,19 @@ async function recordStyleRateLimitedEvent(params: {
   }
 }
 
+async function recordAuthenticatedGenerateAttempt(params: {
+  recordStyleUsageEventFn: typeof recordStyleUsageEvent;
+  userId: string;
+  styleId: string;
+}) {
+  await params.recordStyleUsageEventFn({
+    userId: params.userId,
+    authState: "authenticated",
+    eventType: "generate_attempt",
+    styleId: params.styleId,
+  });
+}
+
 export async function postStyleGenerateRoute(
   request: NextRequest,
   dependencies: StyleGenerateRouteDependencies = {}
@@ -330,6 +343,26 @@ export async function postStyleGenerateRoute(
         },
         { status: 429 }
       );
+    }
+
+    if (user?.id) {
+      try {
+        await recordAuthenticatedGenerateAttempt({
+          recordStyleUsageEventFn,
+          userId: user.id,
+          styleId: preset.id,
+        });
+      } catch (error) {
+        console.error(
+          "Style generate route: failed to record authenticated generate attempt",
+          error
+        );
+        return jsonError(
+          copy.internalError,
+          "STYLE_GENERATE_ATTEMPT_RECORD_FAILED",
+          500
+        );
+      }
     }
 
     const parts: GeminiContentPart[] = [

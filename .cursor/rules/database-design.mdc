@@ -239,7 +239,7 @@ alwaysApply: false
 - 主キー: `id`
 - 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `created_at`
 - 外部キー: `user_id -> auth.users.id`（guest イベントでは `NULL`）
-- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate/download/rate_limited`
+- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited`
 - RLS: 公開アクセス禁止（`ALL false`）
 
 #### `style_guest_generate_attempts`
@@ -321,7 +321,7 @@ alwaysApply: false
 - `idx_materials_images_page_display`
 - `idx_moderation_audit_logs_actor_id_created_at`, `idx_moderation_audit_logs_post_id_created_at`
 - `idx_admin_audit_log_action_type`, `idx_admin_audit_log_admin_user_id`, `idx_admin_audit_log_created_at`, `idx_admin_audit_log_target`
-- `idx_style_usage_events_created_at`, `idx_style_usage_events_event_type_created_at`, `idx_style_usage_events_user_id_created_at`, `idx_style_usage_events_auth_state_created_at`
+- `idx_style_usage_events_created_at`, `idx_style_usage_events_event_type_created_at`, `idx_style_usage_events_user_id_created_at`, `idx_style_usage_events_auth_state_created_at`, `idx_style_usage_events_user_auth_event_created_at`
 - `idx_style_guest_generate_attempts_ip_created_at`
 
 ## 外部キー関係（主要）

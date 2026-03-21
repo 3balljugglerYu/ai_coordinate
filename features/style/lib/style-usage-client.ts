@@ -1,9 +1,9 @@
 "use client";
 
-import type { StyleUsageEventType } from "@/features/style/lib/style-usage-events";
+import type { StylePublicUsageEventType } from "@/features/style/lib/style-usage-events";
 
 interface StyleUsageClientPayload {
-  eventType: StyleUsageEventType;
+  eventType: StylePublicUsageEventType;
   styleId?: string | null;
 }
 

@@ -386,7 +386,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `admin_users` | DB 側の管理者権限ソース |
 | `admin_audit_log` | 管理操作監査 |
 | `moderation_audit_logs` | 運用監査。参照はできても管理フロー経由で扱うべき |
-| `style_usage_events` | One-Tap Style の利用ログ。authenticated / guest を区別して service role 経由で記録し、Admin 集計では訪問・生成・ダウンロード・上限到達を集計する |
+| `style_usage_events` | One-Tap Style の利用ログ。authenticated / guest を区別して service role 経由で記録し、Admin 集計では訪問・生成成功・ダウンロード・上限超過リクエストを集計する。authenticated の日次制限は `generate_attempt` で消費する |
 | `style_guest_generate_attempts` | guest の `/style/generate` を IP hash ベースで `1分2回 / 1日3回` に制限する内部テーブル |
 
 ## 変更ガイド: 何を変える時にどこから読むか

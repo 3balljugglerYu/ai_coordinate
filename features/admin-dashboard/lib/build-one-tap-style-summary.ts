@@ -163,7 +163,7 @@ export function buildOneTapStyleSummary(params: {
       }),
       createMetric({
         key: "rateLimited",
-        label: "上限到達数",
+        label: "上限超過リクエスト数",
         currentCount: rateLimitedCurrent,
         previousCount: rateLimitedPrevious,
       }),

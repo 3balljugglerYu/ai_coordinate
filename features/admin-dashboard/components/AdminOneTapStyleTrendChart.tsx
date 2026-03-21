@@ -112,7 +112,7 @@ export default function AdminOneTapStyleTrendChart({
           <Line
             type="monotone"
             dataKey="rateLimited"
-            name="上限到達数"
+            name="上限超過リクエスト数"
             stroke="#E11D48"
             strokeWidth={2.5}
             dot={false}

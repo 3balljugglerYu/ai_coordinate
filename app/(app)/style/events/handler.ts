@@ -6,12 +6,11 @@ import { getRouteLocale } from "@/lib/api/route-locale";
 import {
   recordStyleUsageEvent,
   type StyleUsageAuthState,
-  type StyleUsageEventType,
+  type StylePublicUsageEventType,
 } from "@/features/style/lib/style-usage-events";
 
-const STYLE_USAGE_EVENT_TYPES = new Set<StyleUsageEventType>([
+const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
   "visit",
-  "generate",
   "download",
 ]);
 
@@ -24,13 +23,15 @@ function jsonError(message: string, errorCode: string, status: number) {
   return NextResponse.json({ error: message, errorCode }, { status });
 }
 
-function parseStyleUsageEventType(value: unknown): StyleUsageEventType | null {
+function parseStyleUsageEventType(
+  value: unknown
+): StylePublicUsageEventType | null {
   if (typeof value !== "string") {
     return null;
   }
 
-  return STYLE_USAGE_EVENT_TYPES.has(value as StyleUsageEventType)
-    ? (value as StyleUsageEventType)
+  return STYLE_USAGE_EVENT_TYPES.has(value as StylePublicUsageEventType)
+    ? (value as StylePublicUsageEventType)
     : null;
 }
 

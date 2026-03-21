@@ -4,9 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type StyleUsageEventType =
   | "visit"
+  | "generate_attempt"
   | "generate"
   | "download"
   | "rate_limited";
+export type StylePublicUsageEventType = "visit" | "download";
 export type StyleUsageAuthState = "authenticated" | "guest";
 
 export interface RecordStyleUsageEventInput {

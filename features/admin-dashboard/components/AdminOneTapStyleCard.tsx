@@ -100,7 +100,7 @@ export function AdminOneTapStyleCard({
           One-Tap Style
         </CardTitle>
         <CardDescription className="text-sm leading-6 text-slate-600">
-          対象期間の One-Tap Style 利用状況です。訪問、生成、ダウンロード、上限到達を前期間比較で確認できます。
+          対象期間の One-Tap Style 利用状況です。訪問、生成成功、ダウンロード、上限超過リクエストを前期間比較で確認できます。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

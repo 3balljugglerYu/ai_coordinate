@@ -123,6 +123,7 @@ describe("StyleGenerateRoute integration tests", () => {
       mimeType: "image/png",
     });
     expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
       userId: null,
       authState: "guest",
@@ -259,7 +260,13 @@ SECOND LINE`,
         imageSize: "512",
       },
     });
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(1, {
+      userId: "user-123",
+      authState: "authenticated",
+      eventType: "generate_attempt",
+      styleId: "paris_code",
+    });
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(2, {
       userId: "user-123",
       authState: "authenticated",
       eventType: "generate",
@@ -440,6 +447,13 @@ SECOND LINE`,
 
     expect(response.status).toBe(504);
     expect(body.error).toBe("画像生成がタイムアウトしました。もう一度お試しください。");
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: "user-123",
+      authState: "authenticated",
+      eventType: "generate_attempt",
+      styleId: "paris_code",
+    });
   });
 
   test("postStyleGenerateRoute_safetyBlock時_400を返す", async () => {
@@ -510,6 +524,7 @@ SECOND LINE`,
       geminiApiKey: "test-api-key",
       getUserFn,
       readPromptFileFn,
+      recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
     const body = await readJson(response);
@@ -518,5 +533,12 @@ SECOND LINE`,
     expect(body.error).toBe(
       "画像が生成されませんでした（finishReason: STOP）。別の画像や入力で再試行してください。"
     );
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: "user-123",
+      authState: "authenticated",
+      eventType: "generate_attempt",
+      styleId: "paris_code",
+    });
   });
 });

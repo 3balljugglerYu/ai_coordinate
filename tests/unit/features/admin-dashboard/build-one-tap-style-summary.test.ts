@@ -92,7 +92,7 @@ describe("buildOneTapStyleSummary", () => {
       },
       {
         key: "rateLimited",
-        label: "上限到達数",
+        label: "上限超過リクエスト数",
         currentCount: 1,
         previousCount: 1,
         deltaPct: 0,

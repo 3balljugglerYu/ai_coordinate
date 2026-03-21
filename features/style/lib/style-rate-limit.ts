@@ -83,7 +83,7 @@ function extractClientIp(request: NextRequest): string | null {
   return null;
 }
 
-async function getAuthenticatedDailyGenerateCount(
+async function getAuthenticatedDailyGenerateAttemptCount(
   userId: string,
   dailyWindowIso: string
 ): Promise<number> {
@@ -93,7 +93,7 @@ async function getAuthenticatedDailyGenerateCount(
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("auth_state", "authenticated")
-    .eq("event_type", "generate")
+    .eq("event_type", "generate_attempt")
     .gte("created_at", dailyWindowIso);
 
   if (error) {
@@ -143,7 +143,7 @@ export async function getStyleGenerateRateLimitStatus({
   const dailyWindowIso = new Date(now.getTime() - ONE_DAY_MS).toISOString();
 
   if (userId) {
-    const authenticatedDailyCount = await getAuthenticatedDailyGenerateCount(
+    const authenticatedDailyCount = await getAuthenticatedDailyGenerateAttemptCount(
       userId,
       dailyWindowIso
     );
@@ -192,7 +192,7 @@ export async function checkAndConsumeStyleGenerateRateLimit({
   const dailyWindowIso = new Date(now.getTime() - ONE_DAY_MS).toISOString();
 
   if (userId) {
-    const authenticatedDailyCount = await getAuthenticatedDailyGenerateCount(
+    const authenticatedDailyCount = await getAuthenticatedDailyGenerateAttemptCount(
       userId,
       dailyWindowIso
     );

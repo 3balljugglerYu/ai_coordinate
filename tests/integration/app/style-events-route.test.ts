@@ -75,6 +75,21 @@ describe("StyleEventsRoute integration tests", () => {
     expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
 
+  test("postStyleEventsRoute_generateイベントはpublic routeで受け付けない", async () => {
+    const response = await postStyleEventsRoute(
+      createRequest({ eventType: "generate", styleId: "paris_code" }),
+      {
+        getUserFn,
+        recordStyleUsageEventFn,
+      }
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("無効な利用イベントです。");
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
   test("postStyleEventsRoute_不正styleIdの場合_400を返す", async () => {
     const response = await postStyleEventsRoute(
       createRequest({ eventType: "download", styleId: "unknown-style" }),
