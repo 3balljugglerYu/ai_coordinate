@@ -59,6 +59,39 @@ export interface DashboardFunnelStep {
   rateFromPrevious: number | null;
 }
 
+export type DashboardOneTapStyleMetricKey =
+  | "visits"
+  | "generations"
+  | "downloads"
+  | "rateLimited";
+
+export interface DashboardOneTapStyleMetric {
+  key: DashboardOneTapStyleMetricKey;
+  label: string;
+  currentCount: number;
+  previousCount: number;
+  deltaPct: number | null;
+  deltaDirection: DashboardDeltaDirection;
+}
+
+export interface DashboardOneTapStyleSummary {
+  metrics: DashboardOneTapStyleMetric[];
+}
+
+export interface DashboardOneTapStyleTrendPoint {
+  bucket: string;
+  label: string;
+  visits: number;
+  generations: number;
+  downloads: number;
+  rateLimited: number;
+}
+
+export interface DashboardOneTapStyleAnalytics {
+  summary: DashboardOneTapStyleSummary;
+  trend: DashboardOneTapStyleTrendPoint[];
+}
+
 export interface DashboardOpsSummary {
   failedJobs: number;
   averageOrderValueYen: number | null;
@@ -96,6 +129,7 @@ export interface AdminDashboardData {
   updatedAt: string;
   kpis: AdminDashboardKpi[];
   trend: DashboardTrendPoint[];
+  oneTapStyle: DashboardOneTapStyleAnalytics;
   revenueTrend: DashboardRevenueTrend;
   opsSummary: DashboardOpsSummary;
   funnel: DashboardFunnelStep[];

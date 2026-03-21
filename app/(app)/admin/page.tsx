@@ -24,6 +24,7 @@ export default async function AdminDashboardPage({
       <AdminPageAnalyticsSectionServer
         ga4Promise={ga4Promise}
         trend={data.trend}
+        oneTapStyle={data.oneTapStyle}
         funnel={data.funnel}
         modelMix={data.modelMix}
       />

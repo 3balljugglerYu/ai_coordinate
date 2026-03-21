@@ -21,6 +21,14 @@ interface ImageUploaderProps {
   value?: UploadedImage | null;
   config?: ImageUploadConfig;
   className?: string;
+  label?: string;
+  addImageLabel?: string;
+  compact?: boolean;
+  disabled?: boolean;
+  square?: boolean;
+  aspectRatio?: number;
+  previewObjectFit?: "contain" | "cover";
+  filledPreviewMode?: "fixed" | "natural";
 }
 
 export function ImageUploader({
@@ -29,6 +37,14 @@ export function ImageUploader({
   value,
   config = DEFAULT_IMAGE_CONFIG,
   className,
+  label,
+  addImageLabel,
+  compact = false,
+  disabled = false,
+  square = false,
+  aspectRatio,
+  previewObjectFit = "contain",
+  filledPreviewMode = "fixed",
 }: ImageUploaderProps) {
   const t = useTranslations("coordinate");
   const [internalImage, setInternalImage] = useState<UploadedImage | null>(null);
@@ -89,6 +105,9 @@ export function ImageUploader({
   );
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) {
+      return;
+    }
     const file = event.target.files?.[0];
     if (file) {
       handleFileChange(file);
@@ -98,12 +117,18 @@ export function ImageUploader({
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (disabled) {
+      return;
+    }
     setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (disabled) {
+      return;
+    }
     setIsDragging(false);
   };
 
@@ -115,6 +140,9 @@ export function ImageUploader({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (disabled) {
+      return;
+    }
     setIsDragging(false);
 
     const file = e.dataTransfer.files?.[0];
@@ -126,6 +154,9 @@ export function ImageUploader({
   };
 
   const handleRemove = () => {
+    if (disabled) {
+      return;
+    }
     if (uploadedImage?.previewUrl) {
       URL.revokeObjectURL(uploadedImage.previewUrl);
     }
@@ -138,17 +169,54 @@ export function ImageUploader({
   };
 
   const handleCardClick = () => {
+    if (disabled) {
+      return;
+    }
     if (!uploadedImage && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
+  const labelClassName = compact
+    ? "text-xs font-medium leading-none block"
+    : "text-base font-medium block";
+  const cardSpacingClassName = compact ? "mt-1" : "mt-3";
+  const cardSizeClassName =
+    compact || square || aspectRatio ? "" : "h-[210px] sm:h-[240px]";
+  const emptyCardClassName = `${cardSpacingClassName} relative overflow-hidden w-full ${cardSizeClassName} border-2 border-dashed transition-colors p-0 ${
+    isDragging
+      ? "border-primary bg-primary/5"
+      : "border-gray-300 hover:border-gray-400"
+  } ${disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`;
+  const filledCardClassName = `relative ${cardSpacingClassName} w-full ${cardSizeClassName} overflow-hidden p-0`;
+  const cardInnerClassName =
+    compact || square || aspectRatio
+      ? "relative flex aspect-square flex-col items-center justify-center p-2"
+      : "relative flex h-[210px] flex-col items-center justify-center p-4 sm:h-[240px]";
+  const uploadIconClassName = compact
+    ? "mb-1 h-5 w-5 text-gray-400"
+    : "mb-2 h-8 w-8 text-gray-400";
+  const addImageTextClassName = compact
+    ? "text-[10px] font-medium leading-tight text-center text-gray-700"
+    : "text-xs font-medium text-center text-gray-700";
+  const removeButtonClassName = compact
+    ? "absolute top-1 right-1 tour-image-cancel-btn"
+    : "absolute top-2 right-2 tour-image-cancel-btn";
+  const aspectRatioStyle = aspectRatio ? { aspectRatio: String(aspectRatio) } : undefined;
+  const cardInnerStyle =
+    compact || square
+      ? undefined
+      : aspectRatioStyle;
+  const aspectRatioDataValue = aspectRatio ? String(aspectRatio) : undefined;
+  const filledCardStyle =
+    filledPreviewMode === "natural" ? undefined : aspectRatioStyle;
+
   return (
-    <div className={className}>
+    <div className={className} data-aspect-ratio={aspectRatioDataValue}>
       {/* ラベル + 画像カードをハイライト。キャンセルボタンはチュートリアル中のみ pointer-events: none で無効化 */}
       <div data-tour="tour-image-upload">
-        <Label htmlFor="image-upload" className="text-base font-medium block">
-          {t("uploadSourceLabel")}
+        <Label htmlFor="image-upload" className={labelClassName}>
+          {label ?? t("uploadSourceLabel")}
         </Label>
 
         {error && (
@@ -161,21 +229,18 @@ export function ImageUploader({
 
         {!uploadedImage ? (
           <Card
-            className={`mt-3 relative overflow-hidden w-full h-[210px] sm:h-[240px] border-2 border-dashed transition-colors p-0 ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-gray-300 hover:border-gray-400"
-            } cursor-pointer`}
+            className={emptyCardClassName}
+            style={aspectRatioStyle}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onClick={handleCardClick}
           >
-            <div className="relative h-[210px] sm:h-[240px] flex flex-col items-center justify-center p-4">
-              <Upload className="mb-2 h-8 w-8 text-gray-400" />
-              <p className="text-xs font-medium text-center text-gray-700">
-                {t("addImage")}
+            <div className={cardInnerClassName} style={cardInnerStyle}>
+              <Upload className={uploadIconClassName} />
+              <p className={addImageTextClassName}>
+                {addImageLabel ?? t("addImage")}
               </p>
             </div>
             <input
@@ -184,25 +249,37 @@ export function ImageUploader({
               type="file"
               accept={config.allowedFormats.join(",")}
               onChange={handleInputChange}
+              disabled={disabled}
               className="hidden"
             />
           </Card>
         ) : (
-          <Card className="relative mt-3 w-full h-[210px] sm:h-[240px] overflow-hidden p-0">
-            <div className="relative w-full h-full overflow-hidden bg-gray-100">
+          <Card className={filledCardClassName} style={filledCardStyle}>
+            <div
+              className={`relative w-full overflow-hidden bg-gray-100 ${
+                filledPreviewMode === "natural" ? "" : "h-full"
+              }`}
+            >
               <NextImage
                 src={uploadedImage.previewUrl}
                 alt={t("uploadedImageAlt")}
-                width={800}
-                height={800}
-                className="w-full h-full object-contain"
+                width={uploadedImage.width || 800}
+                height={uploadedImage.height || 800}
+                className={
+                  filledPreviewMode === "natural"
+                    ? "block h-auto w-full"
+                    : `w-full h-full ${
+                        previewObjectFit === "cover" ? "object-cover" : "object-contain"
+                      }`
+                }
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
               />
               <Button
                 type="button"
                 variant="destructive"
                 size="icon"
-                className="absolute top-2 right-2 tour-image-cancel-btn"
+                className={removeButtonClassName}
+                disabled={disabled}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRemove();

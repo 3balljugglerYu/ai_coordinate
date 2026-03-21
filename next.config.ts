@@ -32,6 +32,11 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    localPatterns: [
+      {
+        pathname: "/**",
+      },
+    ],
     remotePatterns: [
       {
         protocol: "https",

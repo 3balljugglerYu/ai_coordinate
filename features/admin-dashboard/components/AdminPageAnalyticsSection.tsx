@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
   DashboardFunnelStep,
   DashboardModelMixItem,
+  DashboardOneTapStyleAnalytics,
   DashboardTrendPoint,
 } from "@/features/admin-dashboard/lib/dashboard-types";
 import type { Ga4DashboardData } from "@/features/analytics/lib/ga4-types";
@@ -14,6 +15,7 @@ import { AdminModelMixChartPanel } from "./AdminModelMixChartPanel";
 import { AdminTopLandingPagesCard } from "./AdminTopLandingPagesCard";
 import { AdminTopPagesCard } from "./AdminTopPagesCard";
 import { AdminTopTransitionsCard } from "./AdminTopTransitionsCard";
+import { AdminOneTapStyleCard } from "./AdminOneTapStyleCard";
 import { AdminTrendChartPanel } from "./AdminTrendChartPanel";
 
 interface AdminPageAnalyticsGa4SectionProps {
@@ -22,6 +24,7 @@ interface AdminPageAnalyticsGa4SectionProps {
 
 interface AdminTrendAndFunnelSectionProps {
   trend: DashboardTrendPoint[];
+  oneTapStyle: DashboardOneTapStyleAnalytics;
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
 }
@@ -124,6 +127,7 @@ export function AdminPageAnalyticsAccessSection({
 
 export function AdminTrendAndFunnelSection({
   trend,
+  oneTapStyle,
   funnel,
   modelMix,
 }: AdminTrendAndFunnelSectionProps) {
@@ -144,6 +148,8 @@ export function AdminTrendAndFunnelSection({
           <AdminTrendChartPanel data={trend} />
         </CardContent>
       </Card>
+
+      <AdminOneTapStyleCard analytics={oneTapStyle} />
 
       <section className="grid gap-4 xl:grid-cols-12">
         <div className="xl:col-span-6">

@@ -3,6 +3,7 @@ import type { Ga4DashboardData } from "@/features/analytics/lib/ga4-types";
 import type {
   DashboardFunnelStep,
   DashboardModelMixItem,
+  DashboardOneTapStyleAnalytics,
   DashboardTrendPoint,
 } from "../lib/dashboard-types";
 import {
@@ -16,6 +17,7 @@ import {
 interface AdminPageAnalyticsSectionServerProps {
   ga4Promise: Promise<Ga4DashboardData>;
   trend: DashboardTrendPoint[];
+  oneTapStyle: DashboardOneTapStyleAnalytics;
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
 }
@@ -41,6 +43,7 @@ async function AdminPageAnalyticsDetailsSectionLoader({
 export function AdminPageAnalyticsSectionServer({
   ga4Promise,
   trend,
+  oneTapStyle,
   funnel,
   modelMix,
 }: AdminPageAnalyticsSectionServerProps) {
@@ -51,6 +54,7 @@ export function AdminPageAnalyticsSectionServer({
       </Suspense>
       <AdminTrendAndFunnelSection
         trend={trend}
+        oneTapStyle={oneTapStyle}
         funnel={funnel}
         modelMix={modelMix}
       />

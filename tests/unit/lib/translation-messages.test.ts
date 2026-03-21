@@ -21,6 +21,7 @@ const expectedClientNamespaces = [
   "profileEdit",
   "referral",
   "searchBar",
+  "style",
   "posts",
   "tutorial",
 ] as const;
