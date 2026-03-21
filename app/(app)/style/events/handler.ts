@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStylePresetById } from "@/features/style/lib/presets";
 import { getAllMessages } from "@/i18n/messages";
+import { jsonError } from "@/lib/api/json-error";
 import { getUser } from "@/lib/auth";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import {
@@ -17,10 +18,6 @@ const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
 interface StyleEventsRouteDependencies {
   getUserFn?: typeof getUser;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
-}
-
-function jsonError(message: string, errorCode: string, status: number) {
-  return NextResponse.json({ error: message, errorCode }, { status });
 }
 
 function parseStyleUsageEventType(

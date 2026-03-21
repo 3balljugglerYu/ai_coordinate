@@ -338,6 +338,7 @@ alwaysApply: false
 ### 業務ロジック RPC
 - ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `deduct_percoins_admin`, `expire_free_percoin_batches`
 - ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
+- One-Tap Style: `consume_style_authenticated_generate_attempt`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`

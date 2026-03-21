@@ -4,6 +4,7 @@ import {
   type StyleGenerateRateLimitStatus,
 } from "@/features/style/lib/style-rate-limit";
 import { getAllMessages } from "@/i18n/messages";
+import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
 
@@ -13,10 +14,6 @@ interface StyleRateLimitStatusRouteDependencies {
     request: NextRequest;
     userId: string | null;
   }) => Promise<StyleGenerateRateLimitStatus>;
-}
-
-function jsonError(message: string, errorCode: string, status: number) {
-  return NextResponse.json({ error: message, errorCode }, { status });
 }
 
 export async function getStyleRateLimitStatusRoute(

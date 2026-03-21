@@ -389,7 +389,7 @@ Use this section to decide whether a new feature should use session access, serv
 | `admin_users` | Admin authorization source |
 | `admin_audit_log` | Admin audit trail |
 | `moderation_audit_logs` | Operational audit; readable by authenticated users but managed by moderation flow |
-| `style_usage_events` | One-Tap Style usage log recorded via service role with authenticated / guest state; admin aggregation counts visits, successful generations, downloads, and rate-limit blocked requests. Authenticated daily limits consume `generate_attempt` events |
+| `style_usage_events` | One-Tap Style usage log recorded via service role with authenticated / guest state; admin aggregation counts visits, successful generations, downloads, and rate-limit blocked requests. Authenticated daily limits consume `generate_attempt` through the atomic RPC `consume_style_authenticated_generate_attempt()` |
 | `style_guest_generate_attempts` | Internal table used to enforce guest `/style/generate` limits with an IP hash (`2/min`, `3/day`) |
 
 ## Change guide: where to edit what

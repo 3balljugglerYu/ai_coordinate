@@ -16,6 +16,7 @@ import {
   type StyleGenerateRateLimitResult,
 } from "@/features/style/lib/style-rate-limit";
 import { getAllMessages } from "@/i18n/messages";
+import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
@@ -49,6 +50,7 @@ interface StyleGenerateRouteDependencies {
   checkAndConsumeRateLimitFn?: (params: {
     request: NextRequest;
     userId: string | null;
+    styleId: string;
   }) => Promise<StyleGenerateRateLimitResult>;
 }
 
@@ -61,10 +63,6 @@ interface GeminiErrorPayload {
 type GeminiContentPart =
   | { text: string }
   | { inline_data: { mime_type: string; data: string } };
-
-function jsonError(message: string, errorCode: string, status: number) {
-  return NextResponse.json({ error: message, errorCode }, { status });
-}
 
 function getFile(entry: FormDataEntryValue | null): File | null {
   if (!(entry instanceof File)) {
@@ -182,19 +180,6 @@ async function recordStyleRateLimitedEvent(params: {
   }
 }
 
-async function recordAuthenticatedGenerateAttempt(params: {
-  recordStyleUsageEventFn: typeof recordStyleUsageEvent;
-  userId: string;
-  styleId: string;
-}) {
-  await params.recordStyleUsageEventFn({
-    userId: params.userId,
-    authState: "authenticated",
-    eventType: "generate_attempt",
-    styleId: params.styleId,
-  });
-}
-
 export async function postStyleGenerateRoute(
   request: NextRequest,
   dependencies: StyleGenerateRouteDependencies = {}
@@ -281,6 +266,7 @@ export async function postStyleGenerateRoute(
       rateLimitResult = await checkAndConsumeRateLimitFn({
         request,
         userId: user?.id ?? null,
+        styleId: preset.id,
       });
     } catch (error) {
       console.error(
@@ -343,26 +329,6 @@ export async function postStyleGenerateRoute(
         },
         { status: 429 }
       );
-    }
-
-    if (user?.id) {
-      try {
-        await recordAuthenticatedGenerateAttempt({
-          recordStyleUsageEventFn,
-          userId: user.id,
-          styleId: preset.id,
-        });
-      } catch (error) {
-        console.error(
-          "Style generate route: failed to record authenticated generate attempt",
-          error
-        );
-        return jsonError(
-          copy.internalError,
-          "STYLE_GENERATE_ATTEMPT_RECORD_FAILED",
-          500
-        );
-      }
     }
 
     const parts: GeminiContentPart[] = [

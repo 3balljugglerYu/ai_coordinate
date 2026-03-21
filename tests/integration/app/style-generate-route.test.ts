@@ -67,7 +67,7 @@ describe("StyleGenerateRoute integration tests", () => {
   let recordStyleUsageEventFn: jest.Mock<Promise<void>, [unknown]>;
   let checkAndConsumeRateLimitFn: jest.Mock<
     Promise<StyleGenerateRateLimitResult>,
-    [{ request: NextRequest; userId: string | null }]
+    [{ request: NextRequest; userId: string | null; styleId: string }]
   >;
   let consoleErrorSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
@@ -84,7 +84,7 @@ describe("StyleGenerateRoute integration tests", () => {
     checkAndConsumeRateLimitFn = jest
       .fn<
         Promise<StyleGenerateRateLimitResult>,
-        [{ request: NextRequest; userId: string | null }]
+        [{ request: NextRequest; userId: string | null; styleId: string }]
       >()
       .mockResolvedValue({ allowed: true });
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {
@@ -123,6 +123,11 @@ describe("StyleGenerateRoute integration tests", () => {
       mimeType: "image/png",
     });
     expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(checkAndConsumeRateLimitFn).toHaveBeenCalledWith({
+      request: expect.any(NextRequest),
+      userId: null,
+      styleId: "paris_code",
+    });
     expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
       userId: null,
@@ -260,13 +265,13 @@ SECOND LINE`,
         imageSize: "512",
       },
     });
-    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(1, {
+    expect(checkAndConsumeRateLimitFn).toHaveBeenCalledWith({
+      request: expect.any(NextRequest),
       userId: "user-123",
-      authState: "authenticated",
-      eventType: "generate_attempt",
       styleId: "paris_code",
     });
-    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(2, {
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
       userId: "user-123",
       authState: "authenticated",
       eventType: "generate",
@@ -447,13 +452,7 @@ SECOND LINE`,
 
     expect(response.status).toBe(504);
     expect(body.error).toBe("画像生成がタイムアウトしました。もう一度お試しください。");
-    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
-      userId: "user-123",
-      authState: "authenticated",
-      eventType: "generate_attempt",
-      styleId: "paris_code",
-    });
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
 
   test("postStyleGenerateRoute_safetyBlock時_400を返す", async () => {
@@ -533,12 +532,6 @@ SECOND LINE`,
     expect(body.error).toBe(
       "画像が生成されませんでした（finishReason: STOP）。別の画像や入力で再試行してください。"
     );
-    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
-      userId: "user-123",
-      authState: "authenticated",
-      eventType: "generate_attempt",
-      styleId: "paris_code",
-    });
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
 });

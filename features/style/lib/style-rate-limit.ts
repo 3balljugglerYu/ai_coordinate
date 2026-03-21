@@ -30,6 +30,7 @@ export interface StyleGenerateRateLimitStatus {
 interface CheckAndConsumeStyleGenerateRateLimitParams {
   request: NextRequest;
   userId: string | null;
+  styleId: string;
   now?: Date;
 }
 
@@ -101,6 +102,29 @@ async function getAuthenticatedDailyGenerateAttemptCount(
   }
 
   return count ?? 0;
+}
+
+async function consumeAuthenticatedGenerateAttempt(params: {
+  userId: string;
+  styleId: string;
+  now: Date;
+}): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc(
+    "consume_style_authenticated_generate_attempt",
+    {
+      p_user_id: params.userId,
+      p_style_id: params.styleId,
+      p_daily_limit: AUTHENTICATED_DAILY_LIMIT,
+      p_now: params.now.toISOString(),
+    }
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return data === true;
 }
 
 async function getGuestGenerateAttemptCounts(
@@ -187,23 +211,24 @@ export async function getStyleGenerateRateLimitStatus({
 export async function checkAndConsumeStyleGenerateRateLimit({
   request,
   userId,
+  styleId,
   now = new Date(),
 }: CheckAndConsumeStyleGenerateRateLimitParams): Promise<StyleGenerateRateLimitResult> {
-  const dailyWindowIso = new Date(now.getTime() - ONE_DAY_MS).toISOString();
-
   if (userId) {
-    const authenticatedDailyCount = await getAuthenticatedDailyGenerateAttemptCount(
+    const didConsumeAttempt = await consumeAuthenticatedGenerateAttempt({
       userId,
-      dailyWindowIso
-    );
+      styleId,
+      now,
+    });
 
-    if (authenticatedDailyCount >= AUTHENTICATED_DAILY_LIMIT) {
+    if (!didConsumeAttempt) {
       return { allowed: false, reason: "authenticated_daily" };
     }
 
     return { allowed: true };
   }
 
+  const dailyWindowIso = new Date(now.getTime() - ONE_DAY_MS).toISOString();
   const clientIp = extractClientIp(request);
   if (!clientIp) {
     console.warn("Style guest rate limit: client IP header was unavailable");
