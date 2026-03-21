@@ -736,6 +736,125 @@ export const enMessages = {
     stepFinishedDescription:
       "Nice work. Enjoy creating more outfit swaps from here. Click “Done” to receive your Percoin reward.",
   },
+  style: {
+    pageTitle: "One-Tap Style",
+    pageDescription:
+      "No prompt needed. Pick a style and transform your look in one tap.",
+    sectionTitle: "Choose a Style",
+    sectionDescription: "Select the style you want to try on.",
+    characterSectionTitle: "Choose My Character",
+    characterSectionDescription:
+      "Upload the character image you want to restyle.",
+    styleLabel: "Style",
+    uploadLabel: "My Character",
+    addImageAction: "Add image",
+    styleImageAlt: "Selected style image",
+    styleCardAlt: "{name} style card",
+    uploadImageLabel: "Uploaded image",
+    authRequired: "Authentication is required.",
+    sourceImageTypeLabel: "Upload image type",
+    sourceImageTypeIllustration: "Illustration",
+    sourceImageTypeReal: "Photo",
+    sourceImageTypeHint:
+      "If you are using a real photo, select “Photo.”",
+    expandReferenceCardAria: "Restore the reference card to full size",
+    collapseReferenceCardAria: "Collapse the reference card",
+    expandReferenceCardTitle: "Restore",
+    collapseReferenceCardTitle: "Collapse",
+    modelLabel: "Generation model",
+    modelFixedOption: "Nano Banana 2 / 0.5K",
+    generateHint: "Generation usually takes around 20 to 30 seconds.",
+    generateRetryHint:
+      "If the result does not come out well, try again. If it still fails, please let us know.",
+    usageLimitHint:
+      "Guest users can use this up to 3 times per day, and signed-in users up to 6 times per day.",
+    generateButton: "Start Styling",
+    generatingButton: "Generating...",
+    // Status card heading
+    generationStatusTitle: "Styling in progress",
+    // Helper copy shown below the progress bar
+    generationStatusHint: "Checking out the new look.",
+    generationStatusSlowHint:
+      "It looks like the outfit change is taking a little longer than usual. Please stay with us.",
+    // Rotating flavor text shown above the progress bar
+    generationStatusMessage1: "Admiring this lovely outfit...",
+    generationStatusMessage2: "Carefully fitting the selected style...",
+    generationStatusMessage3: "Adjusting it to the perfect size...",
+    generationStatusMessage4: "Fine-tuning the overall balance...",
+    generationStatusMessage5: "Doing one last mirror check!",
+    generationStatusMessage6: "The outfit change is almost complete...",
+    generationStatusMessage7: "Checking how well it suits you...",
+    generationStatusMessage8: "Polishing the finer details...",
+    generationStatusMessage9:
+      "Adjusting the silhouette so it looks just right...",
+    generationStatusMessage10: "This is going to turn out beautifully...",
+    generationStatusMessage11: "Carefully reviewing the final look...",
+    generationStatusMessage12:
+      "It looked a little too big, so we are switching to a smaller size...",
+    // Heading, body, and helper copy shown after generation completes
+    generationStatusCompleteTitle: "Styling is complete.",
+    generationStatusCompleteMessage: "The reveal is coming up in a moment!",
+    generationStatusCompleteHint: "",
+    resultsTitle: "Results",
+    resultImageAlt: "Generated result",
+    resultPlaceholder: "Your generated image will appear here.",
+    resultSaveHint:
+      "Use the download button to save any image you want to keep.",
+    downloadAction: "Download",
+    downloadAriaLabel: "Download generated result",
+    downloadSuccessTitle: "Downloaded",
+    downloadSuccessDescription: "The image was saved.",
+    downloadFailed: "Failed to download the image. Please try again.",
+    resultResetConfirmTitle: "This will clear the current result",
+    resultResetConfirmDescription:
+      "Changing the style, your character image, or the upload image type will remove the generated result. Do you want to continue?",
+    resultResetConfirmCancel: "Keep result",
+    resultResetConfirmAction: "Continue",
+    resultReplaceConfirmTitle: "This will replace the current result",
+    resultReplaceConfirmDescription:
+      "Running Start Styling again will replace the generated result with a new image. Do you want to continue?",
+    resultReplaceConfirmAction: "Generate again",
+    invalidStylePreset: "The selected style is invalid.",
+    invalidUsageEvent: "The usage event is invalid.",
+    guestRateLimitCheckFailed:
+      "We could not verify the usage limit. Please try again in a little while.",
+    guestRateLimitShort:
+      "Servers are busy right now. Please try again in a moment.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
+    authenticatedRateLimitDaily:
+      "You have reached today's generation limit. Please try again tomorrow.",
+    guestRateLimitSignupHint:
+      "Create an account to keep going right away.",
+    guestRateLimitSignupAction: "Sign up to continue",
+    remainingDailyNotice: "You have {count} generations left for today.",
+    rateLimitDialogTitle: "Traffic is high right now",
+    rateLimitDialogClose: "Close",
+    missingStyle: "Select a style.",
+    missingUploadImage: "Select an upload image.",
+    supportedFormatsOnly: "{label} supports only PNG / JPG / WebP.",
+    imageTooLarge: "{label} must be 10MB or smaller.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the image or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with a different image or input.",
+    generationFailed:
+      "Failed to generate the image. Try again with a different image or input.",
+    shareCopyAction: "Share Site",
+    shareCopyAriaLabel: "Copy this page URL",
+    shareCopyTitle: "Link copied",
+    shareCopyDescription: "The page URL was copied to your clipboard.",
+    shareCopyFailed: "Failed to copy the URL. Please try again.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    unknownError: "An unknown error occurred.",
+    stylePromptReadFailed: "Failed to read the style prompt.",
+    styleImageReadFailed: "Failed to read the style image.",
+    noCreditsFlow: "This screen does not check or consume Percoins.",
+  },
   i2iPoc: {
     title: "AI fashion show",
     descriptionLine1:

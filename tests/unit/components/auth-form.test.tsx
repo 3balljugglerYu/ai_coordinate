@@ -4,6 +4,21 @@ import { AuthForm } from "@/features/auth/components/AuthForm";
 import { signIn, signInWithOAuth, signUp } from "@/features/auth/lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 
+jest.mock("next-intl", () => {
+  const { jaMessages } = require("@/messages/ja");
+
+  return {
+    useTranslations: (namespace?: string) => {
+      const table =
+        namespace && namespace in jaMessages
+          ? (jaMessages as Record<string, Record<string, string>>)[namespace]
+          : {};
+
+      return (key: string) => table[key] ?? key;
+    },
+  };
+});
+
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
   useSearchParams: jest.fn(),
@@ -166,6 +181,22 @@ describe("AuthForm unit tests from EARS specs", () => {
         );
       });
       expect(pushMock).toHaveBeenCalledWith("/login");
+    });
+
+    test("handleSubmit_next付き新規登録の場合_loginへnext付きで遷移する", async () => {
+      useSearchParamsMock.mockReturnValue({
+        get: (key: string) => (key === "next" ? "/style" : null),
+      } as unknown as ReturnType<typeof useSearchParams>);
+
+      const { container } = render(<AuthForm mode="signup" />);
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(validEmail, validPassword, undefined);
+      });
+      expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
     });
 
     test("handleSubmit_列挙対策でsignup成功解決される場合_汎用成功応答を維持する", async () => {

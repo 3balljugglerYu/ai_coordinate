@@ -13,6 +13,10 @@ import {
   getPurchaseMode,
   resolvePurchasePackage,
 } from "./purchase-value";
+import {
+  buildOneTapStyleAnalytics,
+  type StyleUsageEventRow,
+} from "./build-one-tap-style-summary";
 import type {
   AdminDashboardData,
   AdminDashboardKpi,
@@ -510,6 +514,7 @@ export async function getAdminDashboardData(
   const [
     profilesResult,
     generatedResult,
+    styleUsageEventsResult,
     pendingResult,
     transactionsResult,
     jobsResult,
@@ -526,6 +531,11 @@ export async function getAdminDashboardData(
     supabase
       .from("generated_images")
       .select("user_id, created_at, is_posted, moderation_status, model")
+      .gte("created_at", previousStartIso)
+      .lte("created_at", nowIso),
+    supabase
+      .from("style_usage_events")
+      .select("user_id, auth_state, event_type, style_id, created_at")
       .gte("created_at", previousStartIso)
       .lte("created_at", nowIso),
     supabase
@@ -564,6 +574,12 @@ export async function getAdminDashboardData(
 
   if (profilesResult.error) console.error("Dashboard profiles fetch error:", profilesResult.error);
   if (generatedResult.error) console.error("Dashboard generated fetch error:", generatedResult.error);
+  if (styleUsageEventsResult.error) {
+    console.error(
+      "Dashboard style usage events fetch error:",
+      styleUsageEventsResult.error
+    );
+  }
   if (pendingResult.error) console.error("Dashboard pending fetch error:", pendingResult.error);
   if (transactionsResult.error) console.error("Dashboard transactions fetch error:", transactionsResult.error);
   if (jobsResult.error) console.error("Dashboard jobs fetch error:", jobsResult.error);
@@ -574,6 +590,7 @@ export async function getAdminDashboardData(
 
   const profiles = (profilesResult.data ?? []) as ProfileRow[];
   const generatedImages = (generatedResult.data ?? []) as GeneratedImageRow[];
+  const styleUsageEvents = (styleUsageEventsResult.data ?? []) as StyleUsageEventRow[];
   const transactions = (transactionsResult.data ?? []) as CreditTransactionRow[];
   const jobs = (jobsResult.data ?? []) as ImageJobRow[];
   const balances = (balancesResult.data ?? []) as CreditBalanceRow[];
@@ -679,6 +696,12 @@ export async function getAdminDashboardData(
     currentStart,
     now,
   });
+  const oneTapStyle = buildOneTapStyleAnalytics({
+    events: styleUsageEvents,
+    currentStart,
+    previousStart,
+    now,
+  });
   const revenueTrend = buildRevenueTrend({
     livePurchases: currentLivePurchases,
     currentStart,
@@ -744,6 +767,7 @@ export async function getAdminDashboardData(
     updatedAt: now.toISOString(),
     kpis,
     trend,
+    oneTapStyle,
     revenueTrend,
     opsSummary,
     funnel,

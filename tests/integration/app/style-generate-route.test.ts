@@ -1,0 +1,522 @@
+/** @jest-environment node */
+
+import { NextRequest } from "next/server";
+import { postStyleGenerateRoute } from "@/app/(app)/style/generate/handler";
+import type { StyleGenerateRateLimitResult } from "@/features/style/lib/style-rate-limit";
+
+type JsonRecord = Record<string, unknown>;
+
+function createRequest(formData: FormData): NextRequest {
+  return new NextRequest("http://localhost/style/generate", {
+    method: "POST",
+    headers: {
+      "accept-language": "ja",
+    },
+    body: formData,
+  });
+}
+
+async function readJson(response: Response): Promise<JsonRecord> {
+  return (await response.json()) as JsonRecord;
+}
+
+function createUploadImage(
+  options: { type?: string; size?: number; name?: string } = {}
+): File {
+  const {
+    type = "image/png",
+    size = 16,
+    name = "upload-image.png",
+  } = options;
+
+  return new File([new Uint8Array(size)], name, { type });
+}
+
+function createSuccessResponse() {
+  return new Response(
+    JSON.stringify({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: "image/png",
+                  data: "generated-image-base64",
+                },
+              },
+            ],
+          },
+          finishReason: "STOP",
+        },
+      ],
+    }),
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
+describe("StyleGenerateRoute integration tests", () => {
+  let fetchFn: jest.MockedFunction<typeof fetch>;
+  let getUserFn: jest.Mock;
+  let readPromptFileFn: jest.Mock<Promise<string>, [string]>;
+  let recordStyleUsageEventFn: jest.Mock<Promise<void>, [unknown]>;
+  let checkAndConsumeRateLimitFn: jest.Mock<
+    Promise<StyleGenerateRateLimitResult>,
+    [{ request: NextRequest; userId: string | null }]
+  >;
+  let consoleErrorSpy: jest.SpyInstance;
+  let consoleWarnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    fetchFn = jest.fn().mockResolvedValue(createSuccessResponse()) as jest.MockedFunction<
+      typeof fetch
+    >;
+    getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
+    readPromptFileFn = jest
+      .fn<Promise<string>, [string]>()
+      .mockResolvedValue("RAW PROMPT\nSECOND LINE");
+    recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
+    checkAndConsumeRateLimitFn = jest
+      .fn<
+        Promise<StyleGenerateRateLimitResult>,
+        [{ request: NextRequest; userId: string | null }]
+      >()
+      .mockResolvedValue({ allowed: true });
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {
+      // keep test output deterministic
+    });
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {
+      // keep test output deterministic
+    });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    jest.restoreAllMocks();
+  });
+
+  test("postStyleGenerateRoute_未認証の場合_guestとして生成できる", async () => {
+    getUserFn.mockResolvedValueOnce(null);
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,generated-image-base64",
+      mimeType: "image/png",
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: null,
+      authState: "guest",
+      eventType: "generate",
+      styleId: "paris_code",
+    });
+  });
+
+  test("postStyleGenerateRoute_不正styleIdの場合_400を返す", async () => {
+    const formData = new FormData();
+    formData.set("styleId", "unknown-style");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("無効なスタイルです。");
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_uploadImage未指定の場合_400を返す", async () => {
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("アップロード画像を選択してください。");
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_不正uploadImage形式の場合_400を返す", async () => {
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set(
+      "uploadImage",
+      createUploadImage({ type: "image/gif", name: "upload-image.gif" })
+    );
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe(
+      "アップロード画像は PNG / JPG / WebP のみ対応しています。"
+    );
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_成功時_rawPromptと固定Gemini設定で画像を返す", async () => {
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("sourceImageType", "illustration");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,generated-image-base64",
+      mimeType: "image/png",
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    const [url, init] = fetchFn.mock.calls[0];
+    const requestBody = JSON.parse(String(init?.body)) as {
+      contents: Array<{ parts: Array<Record<string, unknown>> }>;
+      generationConfig: {
+        candidateCount: number;
+        responseModalities: string[];
+        imageConfig: { imageSize: string };
+      };
+    };
+
+    expect(String(url)).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent"
+    );
+    expect(requestBody.contents[0].parts[0]).toEqual({
+      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
+
+1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
+
+2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
+
+3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
+
+Maintain the exact artistic style, brushwork, and original composition.
+
+RAW PROMPT
+SECOND LINE`,
+    });
+    expect(requestBody.contents[0].parts).toHaveLength(2);
+    expect(requestBody.contents[0].parts[1]).toEqual({
+      inline_data: {
+        mime_type: "image/png",
+        data: Buffer.alloc(16).toString("base64"),
+      },
+    });
+    expect(requestBody.generationConfig).toEqual({
+      candidateCount: 1,
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        imageSize: "512",
+      },
+    });
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: "user-123",
+      authState: "authenticated",
+      eventType: "generate",
+      styleId: "paris_code",
+    });
+  });
+
+  test("postStyleGenerateRoute_guest短時間制限時_429とsignup導線を返す", async () => {
+    getUserFn.mockResolvedValueOnce(null);
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: false,
+      reason: "guest_short",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(429);
+    expect(body).toEqual({
+      error: "サーバーが混み合っています。時間をおいて再度お試しください。",
+      errorCode: "STYLE_RATE_LIMIT_SHORT",
+      showRateLimitDialog: true,
+    });
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: null,
+      authState: "guest",
+      eventType: "rate_limited",
+      styleId: "paris_code",
+    });
+  });
+
+  test("postStyleGenerateRoute_guest日次制限時_429とsignup導線を返す", async () => {
+    getUserFn.mockResolvedValueOnce(null);
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: false,
+      reason: "guest_daily",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(429);
+    expect(body).toEqual({
+      error:
+        "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
+      errorCode: "STYLE_RATE_LIMIT_DAILY",
+      signupCta: true,
+      signupPath: "/signup?next=%2Fstyle",
+    });
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: null,
+      authState: "guest",
+      eventType: "rate_limited",
+      styleId: "paris_code",
+    });
+  });
+
+  test("postStyleGenerateRoute_認証済み日次制限時_429を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: false,
+      reason: "authenticated_daily",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(429);
+    expect(body).toEqual({
+      error:
+        "本日の生成回数が上限に達しました。明日以降に再度お試しください。",
+      errorCode: "STYLE_RATE_LIMIT_AUTHENTICATED_DAILY",
+    });
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: "user-123",
+      authState: "authenticated",
+      eventType: "rate_limited",
+      styleId: "paris_code",
+    });
+  });
+
+  test("postStyleGenerateRoute_real選択時_前置きpromptをphotorealistic向けに切り替える", async () => {
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("sourceImageType", "real");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,generated-image-base64",
+      mimeType: "image/png",
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const requestBody = JSON.parse(String(init?.body)) as {
+      contents: Array<{ parts: Array<Record<string, unknown>> }>;
+    };
+
+    expect(requestBody.contents[0].parts[0]).toEqual({
+      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
+
+1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
+
+2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
+
+3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
+
+Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.
+
+RAW PROMPT
+SECOND LINE`,
+    });
+  });
+
+  test("postStyleGenerateRoute_timeout時_504を返す", async () => {
+    fetchFn.mockRejectedValueOnce(
+      Object.assign(new Error("aborted"), { name: "AbortError" })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(504);
+    expect(body.error).toBe("画像生成がタイムアウトしました。もう一度お試しください。");
+  });
+
+  test("postStyleGenerateRoute_safetyBlock時_400を返す", async () => {
+    fetchFn.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "blocked for safety policy",
+          },
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe(
+      "安全性でブロックされました。画像または指示を調整して再試行してください。"
+    );
+  });
+
+  test("postStyleGenerateRoute_noImageResponse時_502を返す", async () => {
+    fetchFn.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: "no image generated" }],
+              },
+              finishReason: "STOP",
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", "paris_code");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      readPromptFileFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(502);
+    expect(body.error).toBe(
+      "画像が生成されませんでした（finishReason: STOP）。別の画像や入力で再試行してください。"
+    );
+  });
+});

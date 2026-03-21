@@ -15,9 +15,9 @@ alwaysApply: false
 - 対象: Supabase `public` スキーマ
 - 取得元: Supabase MCP（`list_tables` / `execute_sql`）
 - 本ドキュメントは「現行の実テーブル定義」を記載します（将来追加想定は記載しない）。
-- 2026-03-14 時点で `public` の BASE TABLE は 26 件、`public` 関数は 51 件です。
+- 2026-03-20 時点で `public` の BASE TABLE は 27 件、`public` 関数は 51 件です。
 
-## `public` テーブル一覧（26）
+## `public` テーブル一覧（27）
 - `admin_audit_log`
 - `admin_users`
 - `banners`
@@ -42,6 +42,8 @@ alwaysApply: false
 - `push_subscriptions`
 - `referrals`
 - `source_image_stocks`
+- `style_usage_events`
+- `style_guest_generate_attempts`
 - `user_blocks`
 - `user_credits`
 
@@ -233,6 +235,19 @@ alwaysApply: false
 - 外部キー: `admin_user_id -> auth.users.id`
 - RLS: 公開アクセス禁止（`ALL false`）
 
+#### `style_usage_events`
+- 主キー: `id`
+- 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `created_at`
+- 外部キー: `user_id -> auth.users.id`（guest イベントでは `NULL`）
+- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate/download/rate_limited`
+- RLS: 公開アクセス禁止（`ALL false`）
+
+#### `style_guest_generate_attempts`
+- 主キー: `id`
+- 主要カラム: `client_ip_hash`, `created_at`
+- 備考: guest の `/style/generate` を IP hash ベースで `1分2回 / 1日3回` に制限するための内部テーブル
+- RLS: 公開アクセス禁止（`ALL false`）
+
 ### コンテンツ管理
 
 #### `banners`
@@ -306,6 +321,8 @@ alwaysApply: false
 - `idx_materials_images_page_display`
 - `idx_moderation_audit_logs_actor_id_created_at`, `idx_moderation_audit_logs_post_id_created_at`
 - `idx_admin_audit_log_action_type`, `idx_admin_audit_log_admin_user_id`, `idx_admin_audit_log_created_at`, `idx_admin_audit_log_target`
+- `idx_style_usage_events_created_at`, `idx_style_usage_events_event_type_created_at`, `idx_style_usage_events_user_id_created_at`, `idx_style_usage_events_auth_state_created_at`
+- `idx_style_guest_generate_attempts_ip_created_at`
 
 ## 外部キー関係（主要）
 - 多くのテーブルが `auth.users.id` を参照（`profiles`, `user_credits`, `credit_transactions`, `free_percoin_batches`, `notifications` など）

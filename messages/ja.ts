@@ -711,6 +711,122 @@ export const jaMessages = {
     stepFinishedDescription:
       "お疲れ様でした！引き続き、着せ替えをお楽しみください！ ※「完了」をクリックするとコインが付与されます。",
   },
+  style: {
+    pageTitle: "One-Tap Style",
+    pageDescription:
+      "プロンプト不要！好きなスタイルを選択するだけで、そのスタイルに変身！！",
+    sectionTitle: "スタイル選択",
+    sectionDescription: "着せ替えたいスタイルを選択してください。",
+    characterSectionTitle: "マイキャラ選択",
+    characterSectionDescription:
+      "着せ替えたいキャラクターをアップロードしてください。",
+    styleLabel: "Style",
+    uploadLabel: "My Character",
+    addImageAction: "画像を追加",
+    styleImageAlt: "選択中のスタイル画像",
+    styleCardAlt: "{name} のスタイルカード",
+    uploadImageLabel: "アップロード画像",
+    authRequired: "認証が必要です。",
+    sourceImageTypeLabel: "アップロード画像のタイプ",
+    sourceImageTypeIllustration: "イラスト",
+    sourceImageTypeReal: "リアル",
+    sourceImageTypeHint:
+      "実写の画像を使う場合は「リアル」を選択してください。",
+    expandReferenceCardAria: "参照カードを元サイズに戻す",
+    collapseReferenceCardAria: "参照カードを縮小する",
+    expandReferenceCardTitle: "戻す",
+    collapseReferenceCardTitle: "縮小",
+    modelLabel: "生成モデル",
+    modelFixedOption: "Nano Banana 2 / 0.5K",
+    generateHint: "生成には20〜30秒ほどかかります。",
+    generateRetryHint:
+      "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
+    usageLimitHint:
+      "未ログインユーザーは1日3回、ログインユーザーは1日6回まで利用できます。",
+    generateButton: "Start Styling",
+    generatingButton: "生成中...",
+    // ステータスカードの見出し
+    generationStatusTitle: "スタイリング中です",
+    // バーの下に表示する案内文
+    generationStatusHint: "新しいコーデを確認中です。",
+    generationStatusSlowHint:
+      "いつもより少しお着替えに時間がかかっているようです。このままお待ちください。",
+    // バーの上でランダムに切り替わる演出文言
+    generationStatusMessage1: "素敵なコーデに見惚れています...",
+    generationStatusMessage2: "選んだスタイルを丁寧に合わせています...",
+    generationStatusMessage3: "ぴったりのサイズに調整しています...",
+    generationStatusMessage4: "バランスを整えています...",
+    generationStatusMessage5: "鏡の前で最終チェック中です！",
+    generationStatusMessage6: "着替えがもうすぐ完了します...",
+    generationStatusMessage7: "似合っているか確認してます...",
+    generationStatusMessage8: "細かいディテールを整えています...",
+    generationStatusMessage9: "シルエットがきれいに見えるように調整しています...",
+    generationStatusMessage10: "素敵に仕上がりそうな予感...",
+    generationStatusMessage11: "仕上がりを丁寧に確認しています...",
+    generationStatusMessage12: "サイズが大きかったみたいです。小さいサイズに変更中...",
+    // 生成完了後に表示する見出し・本文・案内文
+    generationStatusCompleteTitle: "スタイリングが完了しました",
+    generationStatusCompleteMessage: "まもなくお披露目です！",
+    generationStatusCompleteHint: "",
+    resultsTitle: "生成結果",
+    resultImageAlt: "生成結果",
+    resultPlaceholder: "生成した画像がここに表示されます",
+    resultSaveHint:
+      "必要な画像はダウンロードボタンから保存してください。",
+    downloadAction: "ダウンロード",
+    downloadAriaLabel: "生成結果をダウンロード",
+    downloadSuccessTitle: "ダウンロードしました",
+    downloadSuccessDescription: "画像を保存しました。",
+    downloadFailed: "画像のダウンロードに失敗しました。もう一度お試しください。",
+    resultResetConfirmTitle: "変更すると生成した画像は削除されます",
+    resultResetConfirmDescription:
+      "生成された画像が必要な場合は、必ずダウンロードをしてください。\n生成した画像を削除しても大丈夫ですか？",
+    resultResetConfirmCancel: "戻る",
+    resultResetConfirmAction: "削除する",
+    resultReplaceConfirmTitle: "現在の生成結果を上書きします",
+    resultReplaceConfirmDescription:
+      "Start Styling を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
+    resultReplaceConfirmAction: "再生成する",
+    invalidStylePreset: "無効なスタイルです。",
+    invalidUsageEvent: "無効な利用イベントです。",
+    guestRateLimitCheckFailed: "利用回数の確認に失敗しました。少し時間をおいて再試行してください。",
+    guestRateLimitShort:
+      "サーバーが混み合っています。時間をおいて再度お試しください。",
+    guestRateLimitDaily:
+      "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
+    authenticatedRateLimitDaily:
+      "本日の生成回数が上限に達しました。明日以降に再度お試しください。",
+    guestRateLimitSignupHint:
+      "新規登録すると、このまま続きをお試しいただけます。",
+    guestRateLimitSignupAction: "新規登録して続ける",
+    remainingDailyNotice: "本日の残り生成回数は{count}回です。",
+    rateLimitDialogTitle: "ただいまアクセスが集中しています",
+    rateLimitDialogClose: "閉じる",
+    missingStyle: "スタイルを選択してください。",
+    missingUploadImage: "アップロード画像を選択してください。",
+    supportedFormatsOnly: "{label}は PNG / JPG / WebP のみ対応しています。",
+    imageTooLarge: "{label}は10MB以下にしてください。",
+    totalImageTooLarge:
+      "画像合計サイズが20MBを超えています。画像を圧縮して再実行してください。",
+    requestTimedOut: "画像生成がタイムアウトしました。もう一度お試しください。",
+    safetyBlocked:
+      "安全性でブロックされました。画像または指示を調整して再試行してください。",
+    noImageGenerated:
+      "画像が生成されませんでした{finishReasonText}。別の画像や入力で再試行してください。",
+    generationFailed:
+      "画像生成に失敗しました。別の画像や入力で再試行してください。",
+    shareCopyAction: "サイトをシェア",
+    shareCopyAriaLabel: "このページのURLをコピー",
+    shareCopyTitle: "URLをコピーしました",
+    shareCopyDescription: "シェア用URLをクリップボードにコピーしました。",
+    shareCopyFailed: "URLのコピーに失敗しました。もう一度お試しください。",
+    internalError:
+      "サーバー内部でエラーが発生しました。しばらく時間をおいて再試行してください。",
+    unknownError: "不明なエラーが発生しました。",
+    stylePromptReadFailed: "スタイルプロンプトの読み込みに失敗しました。",
+    styleImageReadFailed: "スタイル画像の読み込みに失敗しました。",
+    noCreditsFlow: "この画面ではペルコイン確認や消費は行いません。",
+  },
   i2iPoc: {
     title: "AI fashion show",
     descriptionLine1: "1枚目の背景・服装・ポーズをそのままに、",

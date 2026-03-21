@@ -49,6 +49,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   // URLクエリパラメータから紹介コードを取得
   const referralCode = searchParams.get("ref");
 
+  const resolveRedirectTarget = () =>
+    redirectTo ??
+    searchParams.get("redirect") ??
+    searchParams.get("next") ??
+    "/";
+
   // コンポーネントマウント時またはmode変更時にローディング状態をリセット
   useEffect(() => {
     setIsLoading(false);
@@ -61,7 +67,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     setIsLoading(true);
 
     try {
-      const redirectTarget = redirectTo ?? "/";
+      const redirectTarget = resolveRedirectTarget();
 
       // バリデーション
       if (!email || !password) {
@@ -94,7 +100,11 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             </>
           ),
         });
-        router.push("/login");
+        router.push(
+          redirectTarget === "/"
+            ? "/login"
+            : `/login?${new URLSearchParams({ next: redirectTarget }).toString()}`
+        );
       } else {
         await signIn(email, password);
         // サインイン成功
@@ -119,7 +129,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     try {
       setError(null);
       setIsLoading(true);
-      const redirectTarget = redirectTo ?? "/";
+      const redirectTarget = resolveRedirectTarget();
       await signInWithOAuth(provider, redirectTarget, referralCode || undefined);
       // OAuthプロバイダーのページにリダイレクトされる
     } catch (err) {
