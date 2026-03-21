@@ -73,7 +73,11 @@ export async function postGenerateAsyncRoute(
     // バリデーション
     const validationResult = generationRequestSchema.safeParse(body);
     if (!validationResult.success) {
-      return jsonError(copy.invalidRequest, "GENERATION_INVALID_REQUEST", 400);
+      return jsonError(
+        validationResult.error.issues[0]?.message ?? copy.invalidRequest,
+        "GENERATION_INVALID_REQUEST",
+        400
+      );
     }
 
     const {

@@ -6,6 +6,7 @@ import {
   BACKGROUND_MODES,
   SOURCE_IMAGE_TYPES,
 } from "../types";
+import { GENERATION_PROMPT_MAX_LENGTH } from "./prompt-validation";
 
 /**
  * 画像生成機能のZodスキーマ
@@ -48,7 +49,10 @@ export const generationRequestSchema = z.object({
   prompt: z
     .string()
     .min(1, "着せ替え内容を入力してください")
-    .max(1000, "プロンプトが長すぎます"),
+    .max(
+      GENERATION_PROMPT_MAX_LENGTH,
+      `着せ替え内容は${GENERATION_PROMPT_MAX_LENGTH}文字以内で入力してください`
+    ),
   sourceImageBase64: z.string().optional(),
   sourceImageMimeType: z
     .string()

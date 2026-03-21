@@ -16,18 +16,27 @@ import {
 } from "@/app/api/generate-async/handler";
 import type { AsyncGenerationJobRepository } from "@/features/generation/lib/async-generation-job-repository";
 import { convertHeicBase64ToJpeg } from "@/features/generation/lib/heic-converter";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
 type JsonRecord = Record<string, unknown>;
 const VALID_SOURCE_IMAGE_STOCK_ID = "11111111-1111-4111-8111-111111111111";
 
 function createRequest(body: unknown): NextRequest {
-  return new Request("http://localhost/api/generate-async", {
+  const request = new Request("http://localhost/api/generate-async", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "accept-language": "ja",
     },
     body: JSON.stringify(body),
-  }) as unknown as NextRequest;
+  });
+
+  return Object.assign(request, {
+    nextUrl: new URL(request.url),
+    cookies: {
+      get: () => undefined,
+    },
+  }) as NextRequest;
 }
 
 async function readJson(response: Response): Promise<JsonRecord> {
@@ -231,6 +240,26 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(response.status).toBe(400);
       expect(body.error).toBe(
         "人物画像をアップロードまたはストック画像を選択してください"
+      );
+      expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("postGenerateAsyncRoute_プロンプトが上限超過の場合_400と詳細メッセージを返す", async () => {
+      const request = createRequest({
+        prompt: "a".repeat(GENERATION_PROMPT_MAX_LENGTH + 1),
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
+
+      const response = await postGenerateAsyncRoute(request, {
+        getUserFn,
+        jobRepository,
+      });
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.error).toBe(
+        `着せ替え内容は${GENERATION_PROMPT_MAX_LENGTH}文字以内で入力してください`
       );
       expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
       expect(jobRepository.createImageJob).not.toHaveBeenCalled();

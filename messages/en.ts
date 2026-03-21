@@ -532,7 +532,10 @@ export const enMessages = {
     sourceImageTypeReal: "Photoreal",
     promptLabel: "Describe the outfit",
     promptPlaceholder: "Example: Dress them in a breezy white summer dress.",
-    promptHint: "Describe the outfit you want as specifically as possible.",
+    promptHint:
+      "Describe the outfit you want as specifically as possible in up to {max} characters.",
+    promptCharacterCount: "{current}/{max} characters",
+    promptTooLong: "Enter an outfit description within {max} characters.",
     backgroundLabel: "Background",
     backgroundAiAutoLabel: "Let AI decide",
     backgroundAiAutoDescription:

@@ -16,6 +16,10 @@ import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/current-user";
 import { getPercoinCost } from "../lib/model-config";
+import {
+  GENERATION_PROMPT_MAX_LENGTH,
+  isGenerationPromptTooLong,
+} from "../lib/prompt-validation";
 import type {
   UploadedImage,
   GeminiModel,
@@ -87,6 +91,8 @@ export function GenerationForm({
   const [currentCount, setCurrentCount] = useState<number | null>(null);
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
+  const promptLength = prompt.length;
+  const isPromptTooLong = isGenerationPromptTooLong(prompt);
 
   // チュートリアル中は入力フィールドを無効化（bodyのdata-tour-in-progressを監視）
   useEffect(() => {
@@ -116,8 +122,15 @@ export function GenerationForm({
   }, []);
 
   const handleSubmit = async () => {
-    if (!prompt.trim()) {
+    const trimmedPrompt = prompt.trim();
+
+    if (!trimmedPrompt) {
       alert(t("missingPrompt"));
+      return;
+    }
+
+    if (isPromptTooLong) {
+      alert(t("promptTooLong", { max: GENERATION_PROMPT_MAX_LENGTH }));
       return;
     }
 
@@ -145,7 +158,7 @@ export function GenerationForm({
     // ただし、生成APIではBase64が必要なので、URLから画像を取得する必要がある
     // 現時点では、ストック画像IDを渡して、サーバー側で処理する方針とする
     onSubmit({
-      prompt: prompt.trim(),
+      prompt: trimmedPrompt,
       sourceImage: imageSourceType === "upload" ? uploadedImage?.file : undefined,
       sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
       sourceImageType,
@@ -156,7 +169,8 @@ export function GenerationForm({
   };
 
   const hasSourceImage = imageSourceType === "upload" ? !!uploadedImage : !!selectedStockId;
-  const isSubmitDisabled = !prompt.trim() || !hasSourceImage || isGenerating;
+  const isSubmitDisabled =
+    !prompt.trim() || !hasSourceImage || isGenerating || isPromptTooLong;
 
   // localStorageの変更を監視
   useEffect(() => {
@@ -481,10 +495,26 @@ export function GenerationForm({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             className="mt-2 min-h-[100px]"
+            maxLength={GENERATION_PROMPT_MAX_LENGTH}
+            aria-invalid={isPromptTooLong}
             disabled={isGenerating || isTutorialInProgress}
           />
-          <p className="mt-1 text-xs text-gray-500">
-            {t("promptHint")}
+          <p className="mt-1 flex items-center justify-between gap-3 text-xs text-gray-500">
+            <span>
+              {t("promptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
+            </span>
+            <span
+              className={
+                promptLength >= GENERATION_PROMPT_MAX_LENGTH
+                  ? "font-medium tabular-nums text-amber-600"
+                  : "tabular-nums"
+              }
+            >
+              {t("promptCharacterCount", {
+                current: promptLength,
+                max: GENERATION_PROMPT_MAX_LENGTH,
+              })}
+            </span>
           </p>
         </div>
 
