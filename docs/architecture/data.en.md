@@ -128,7 +128,7 @@ This matches Supabase/Postgres best practices used in this repo:
 | Signup and account bootstrap | `profiles`, `user_credits`, `credit_transactions`, `free_percoin_batches`, `notifications` | `handle_new_user`, `generate_referral_code` | `auth.users` trigger, `/api/referral/generate` |
 | Wallet and purchase | `user_credits`, `credit_transactions`, `free_percoin_batches`, `generation_percoin_allocations` | `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `get_percoin_balance_breakdown` | `/api/credits/checkout`, `/api/stripe/webhook`, cached my-page screens |
 | Async image generation | `image_jobs`, `generated_images`, `source_image_stocks`, `credit_transactions` | `deduct_free_percoins`, `refund_percoins`, `insert_source_image_stock`, `pgmq_send/read/delete` | `/api/generate-async`, `/api/generation-status`, Edge Function worker |
-| One-Tap Style usage analytics | `style_usage_events`, `style_guest_generate_attempts` | - | `/style/events`, `/style/generate`, `/admin` |
+| One-Tap Style | `style_presets`, `style_usage_events`, `style_guest_generate_attempts` | `consume_style_authenticated_generate_attempt`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets` | `/style`, `/style/events`, `/style/generate`, `/admin/style-presets`, `/admin` |
 | Posting and social | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
 | Bonuses and growth | `percoin_bonus_defaults`, `percoin_streak_defaults`, `referrals`, `notifications`, `free_percoin_batches` | `grant_tour_bonus`, `grant_streak_bonus`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `grant_referral_bonus` | `/api/tutorial/complete`, `/api/streak/check`, `/api/referral/check-first-login` |
 | Moderation and admin | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
@@ -344,6 +344,7 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | Maintain notification preference timestamp |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | Maintain banner timestamp |
 | `materials_images` `BEFORE UPDATE` | `update_materials_images_updated_at()` | Maintain materials image timestamp |
+| `style_presets` `BEFORE UPDATE` | `update_updated_at_column()` | Maintain One-Tap Style preset timestamp |
 
 ## RLS summary by development intent
 
@@ -377,6 +378,7 @@ Use this section to decide whether a new feature should use session access, serv
 | --- | --- |
 | `banners` | Public select only |
 | `materials_images` | Public select only |
+| `style_presets` | Public select for `published` rows only |
 
 ### Service-role or RPC oriented tables
 
@@ -391,6 +393,7 @@ Use this section to decide whether a new feature should use session access, serv
 | `moderation_audit_logs` | Operational audit; readable by authenticated users but managed by moderation flow |
 | `style_usage_events` | One-Tap Style usage log recorded via service role with authenticated / guest state; admin aggregation counts visits, successful generations, downloads, and rate-limit blocked requests. Authenticated daily limits consume `generate_attempt` through the atomic RPC `consume_style_authenticated_generate_attempt()` |
 | `style_guest_generate_attempts` | Internal table used to enforce guest `/style/generate` limits with an IP hash (`2/min`, `3/day`) |
+| `style_presets` | One-Tap Style managed presets. Admin routes perform create/update/delete/reorder atomically through service-role RPCs, while public `/style` reads only `published` rows |
 
 ## Change guide: where to edit what
 

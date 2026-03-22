@@ -1,0 +1,65 @@
+metadata:
+  class: StylePresetRepository
+  source: features/style-presets/lib/style-preset-repository.ts
+  version: "1.0"
+  created_at: "2026-03-22"
+
+dependencies:
+  repositories: []
+  services:
+    - createAdminClient
+  external:
+    - Supabase style_presets table
+
+state_properties: []
+
+specifications:
+  - id: SPR-001
+    method: createStylePreset
+    type: event-driven
+    ears: |
+      When createStylePreset is invoked with a title and prompt,
+      the system shall normalize the values,
+      generate a unique slug,
+      and persist the preset row.
+    ears_ja: |
+      createStylePreset が title と prompt 付きで呼び出された場合、
+      システムは値を正規化し、
+      一意な slug を生成し、
+      プリセット行を永続化する。
+    test_cases:
+      - createStylePreset_タイトル重複時_連番slugで保存する
+    test_cases_ja:
+      - createStylePreset_タイトル重複時_連番slugで保存する
+
+  - id: SPR-002
+    method: listPublishedStylePresets
+    type: state-driven
+    ears: |
+      While published presets exist,
+      the system shall return only published presets
+      ordered by sort_order ascending.
+    ears_ja: |
+      公開済みプリセットが存在する間、
+      システムは published のみを
+      sort_order 昇順で返す。
+    test_cases:
+      - listPublishedStylePresets_公開データのみを公開用summaryへ変換する
+    test_cases_ja:
+      - listPublishedStylePresets_公開データのみを公開用summaryへ変換する
+
+  - id: SPR-003
+    method: reorderStylePresets
+    type: event-driven
+    ears: |
+      When reorderStylePresets is invoked with an ordered id list,
+      the system shall update each preset sort_order
+      to match the list order.
+    ears_ja: |
+      reorderStylePresets が順序付き id 配列で呼び出された場合、
+      システムは各プリセットの sort_order を
+      配列順に更新する。
+    test_cases:
+      - reorderStylePresets_ID配列順にsortOrderを保存する
+    test_cases_ja:
+      - reorderStylePresets_ID配列順にsortOrderを保存する

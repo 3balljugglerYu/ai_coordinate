@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStylePresetById } from "@/features/style/lib/presets";
 import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getUser } from "@/lib/auth";
@@ -9,6 +8,7 @@ import {
   type StyleUsageAuthState,
   type StylePublicUsageEventType,
 } from "@/features/style/lib/style-usage-events";
+import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
 
 const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
   "visit",
@@ -17,6 +17,9 @@ const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
 
 interface StyleEventsRouteDependencies {
   getUserFn?: typeof getUser;
+  getPublishedStylePresetByIdFn?: (
+    styleId: string
+  ) => Promise<{ id: string } | null>;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
 }
 
@@ -41,6 +44,9 @@ export async function postStyleEventsRoute(
 
   try {
     const getUserFn = dependencies.getUserFn ?? getUser;
+    const getPublishedStylePresetByIdFn =
+      dependencies.getPublishedStylePresetByIdFn ??
+      getPublishedStylePresetById;
     const recordStyleUsageEventFn =
       dependencies.recordStyleUsageEventFn ?? recordStyleUsageEvent;
 
@@ -60,7 +66,7 @@ export async function postStyleEventsRoute(
         ? payload.styleId.trim()
         : null;
 
-    if (styleId && !getStylePresetById(styleId)) {
+    if (styleId && !(await getPublishedStylePresetByIdFn(styleId))) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
 

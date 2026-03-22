@@ -1,0 +1,100 @@
+metadata:
+  class: AdminStylePresetsRoutes
+  source: app/api/admin/style-presets/route.ts
+  version: "1.0"
+  created_at: "2026-03-22"
+
+dependencies:
+  repositories:
+    - style preset repository
+  services:
+    - requireAdmin
+    - uploadStylePresetImage
+    - deleteStylePresetImage
+    - revalidateStylePresets
+  external:
+    - Supabase style_presets table
+    - Supabase Storage style_presets bucket
+
+state_properties: []
+
+specifications:
+  - id: ASPR-001
+    method: GET
+    type: unwanted
+    ears: |
+      If the caller is not an admin,
+      then the system shall return the admin authorization error response.
+    ears_ja: |
+      呼び出し元が管理者でない場合、
+      システムは管理者認可エラーレスポンスを返す。
+    test_cases:
+      - getAdminStylePresets_非管理者は403を返す
+    test_cases_ja:
+      - getAdminStylePresets_非管理者は403を返す
+
+  - id: ASPR-002
+    method: POST
+    type: event-driven
+    ears: |
+      When an admin submits a valid new preset with an image,
+      the system shall upload the thumbnail,
+      persist the preset,
+      and revalidate style preset caches.
+    ears_ja: |
+      管理者が画像付きの有効な新規プリセットを送信した場合、
+      システムはサムネイルをアップロードし、
+      プリセットを保存し、
+      style preset キャッシュを再検証する。
+    test_cases:
+      - postAdminStylePresets_正常入力で新規作成できる
+    test_cases_ja:
+      - postAdminStylePresets_正常入力で新規作成できる
+
+  - id: ASPR-003
+    method: PATCH
+    type: event-driven
+    ears: |
+      When an admin updates a preset with a replacement image,
+      the system shall persist the updated preset
+      and delete the previous managed image after the update succeeds.
+    ears_ja: |
+      管理者が差し替え画像付きでプリセットを更新した場合、
+      システムは更新後プリセットを保存し、
+      更新成功後に旧管理画像を削除する。
+    test_cases:
+      - patchAdminStylePreset_画像差し替え時に旧画像を削除する
+    test_cases_ja:
+      - patchAdminStylePreset_画像差し替え時に旧画像を削除する
+
+  - id: ASPR-004
+    method: DELETE
+    type: event-driven
+    ears: |
+      When an admin deletes a preset,
+      the system shall remove the preset
+      and attempt to delete the managed image.
+    ears_ja: |
+      管理者がプリセットを削除した場合、
+      システムはプリセットを削除し、
+      管理画像の削除も試行する。
+    test_cases:
+      - deleteAdminStylePreset_対象を削除して再検証する
+    test_cases_ja:
+      - deleteAdminStylePreset_対象を削除して再検証する
+
+  - id: ASPR-005
+    method: POST reorder
+    type: unwanted
+    ears: |
+      If the reorder payload does not contain a valid UUID order list,
+      then the system shall reject the request with 400.
+    ears_ja: |
+      並び替え payload に有効な UUID 配列が含まれない場合、
+      システムは 400 で拒否する。
+    test_cases:
+      - postAdminStylePresetsReorder_不正payloadは400を返す
+      - postAdminStylePresetsReorder_正常payloadで順序保存する
+    test_cases_ja:
+      - postAdminStylePresetsReorder_不正payloadは400を返す
+      - postAdminStylePresetsReorder_正常payloadで順序保存する

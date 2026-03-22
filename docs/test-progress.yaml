@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-20"
+last_updated: "2026-03-22"
 
 # Status values:
 # - pending
@@ -26,6 +26,36 @@ foundation:
 
 # Feature-specific workflow runs tracked outside the canonical tier roadmap
 feature_work:
+  StylePresetRepository:
+    status: completed
+    file: features/style-presets/lib/style-preset-repository.ts
+    spec_file: docs/specs/style/style_preset_repository_spec.yaml
+    test_file: tests/unit/lib/style-preset-repository.test.ts
+
+  AdminStylePresetsRoutes:
+    status: completed
+    file: app/api/admin/style-presets/route.ts
+    spec_file: docs/specs/style/style_presets_admin_routes_spec.yaml
+    test_file: tests/integration/api/admin-style-presets-routes.test.ts
+
+  StylePublicPresets:
+    status: completed
+    file: features/style-presets/lib/get-public-style-presets.ts
+    spec_file: docs/specs/style/style_public_presets_spec.yaml
+    test_file: tests/unit/lib/get-public-style-presets.test.ts
+
+  StyleGenerateRoute:
+    status: completed
+    file: app/(app)/style/generate/handler.ts
+    spec_file: docs/specs/style/style_generate_route_spec.yaml
+    test_file: tests/integration/app/style-generate-route.test.ts
+
+  StyleEventsRoute:
+    status: completed
+    file: app/(app)/style/events/handler.ts
+    spec_file: docs/specs/style/style_events_route_spec.yaml
+    test_file: tests/integration/app/style-events-route.test.ts
+
   EnsureWebPVariants:
     status: completed
     file: features/generation/lib/webp-storage.ts

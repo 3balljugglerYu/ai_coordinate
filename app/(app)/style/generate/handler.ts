@@ -1,4 +1,3 @@
-import { readFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import {
   extractImagesFromGeminiResponse,
@@ -8,9 +7,9 @@ import {
   ALLOWED_IMAGE_MIME_TYPE_SET,
   MAX_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
+import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
 import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
-import { getStylePresetById } from "@/features/style/lib/presets";
 import {
   checkAndConsumeStyleGenerateRateLimit,
   type StyleGenerateRateLimitResult,
@@ -45,7 +44,9 @@ interface StyleGenerateRouteDependencies {
   fetchFn?: FetchFn;
   geminiApiKey?: string;
   getUserFn?: typeof getUser;
-  readPromptFileFn?: (filePath: string) => Promise<string>;
+  getPublishedStylePresetForGenerationFn?: (
+    styleId: string
+  ) => Promise<{ id: string; prompt: string } | null>;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
   checkAndConsumeRateLimitFn?: (params: {
     request: NextRequest;
@@ -190,9 +191,9 @@ export async function postStyleGenerateRoute(
   try {
     const getUserFn = dependencies.getUserFn ?? getUser;
     const fetchFn = dependencies.fetchFn ?? fetch;
-    const readPromptFileFn =
-      dependencies.readPromptFileFn ??
-      ((filePath: string) => readFile(filePath, "utf8"));
+    const getPublishedStylePresetForGenerationFn =
+      dependencies.getPublishedStylePresetForGenerationFn ??
+      getPublishedStylePresetForGeneration;
     const recordStyleUsageEventFn =
       dependencies.recordStyleUsageEventFn ?? recordStyleUsageEvent;
     const checkAndConsumeRateLimitFn =
@@ -222,7 +223,7 @@ export async function postStyleGenerateRoute(
       return jsonError(copy.missingStyle, "STYLE_MISSING_STYLE", 400);
     }
 
-    const preset = getStylePresetById(styleId);
+    const preset = await getPublishedStylePresetForGenerationFn(styleId);
     if (!preset) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
@@ -249,24 +250,14 @@ export async function postStyleGenerateRoute(
       );
     }
 
-    let promptText: string;
-    try {
-      promptText = await readPromptFileFn(preset.promptFilePath);
-    } catch (error) {
-      console.error("Style generate route: failed to read prompt", error);
-      return jsonError(
-        copy.stylePromptReadFailed,
-        "STYLE_PROMPT_READ_FAILED",
-        500
-      );
-    }
+    const promptText = preset.prompt;
 
     let rateLimitResult: StyleGenerateRateLimitResult;
     try {
       rateLimitResult = await checkAndConsumeRateLimitFn({
         request,
         userId: user?.id ?? null,
-        styleId: preset.id,
+        styleId,
       });
     } catch (error) {
       console.error(
@@ -286,7 +277,7 @@ export async function postStyleGenerateRoute(
           recordStyleUsageEventFn,
           userId: user?.id ?? null,
           authState,
-          styleId: preset.id,
+          styleId,
         });
         return NextResponse.json(
           {
@@ -303,7 +294,7 @@ export async function postStyleGenerateRoute(
           recordStyleUsageEventFn,
           userId: user?.id ?? null,
           authState,
-          styleId: preset.id,
+          styleId,
         });
         return NextResponse.json(
           {
@@ -320,7 +311,7 @@ export async function postStyleGenerateRoute(
         recordStyleUsageEventFn,
         userId: user?.id ?? null,
         authState,
-        styleId: preset.id,
+        styleId,
       });
       return NextResponse.json(
         {
@@ -417,7 +408,7 @@ export async function postStyleGenerateRoute(
             userId: user?.id ?? null,
             authState,
             eventType: "generate",
-            styleId: preset.id,
+            styleId,
           });
         } catch (error) {
           console.error("Style generate route: failed to record usage event", error);

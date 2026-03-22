@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { postStyleEventsRoute } from "@/app/(app)/style/events/handler";
 
 type JsonRecord = Record<string, unknown>;
+const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
 
 function createRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/style/events", {
@@ -22,11 +23,17 @@ async function readJson(response: Response): Promise<JsonRecord> {
 
 describe("StyleEventsRoute integration tests", () => {
   let getUserFn: jest.Mock;
+  let getPublishedStylePresetByIdFn: jest.Mock;
   let recordStyleUsageEventFn: jest.Mock<Promise<void>, [unknown]>;
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
+    getPublishedStylePresetByIdFn = jest
+      .fn()
+      .mockImplementation(async (styleId: string) =>
+        styleId === STYLE_ID ? { id: STYLE_ID } : null
+      );
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {
       // keep test output deterministic
@@ -42,9 +49,10 @@ describe("StyleEventsRoute integration tests", () => {
     getUserFn.mockResolvedValueOnce(null);
 
     const response = await postStyleEventsRoute(
-      createRequest({ eventType: "visit", styleId: "paris_code" }),
+      createRequest({ eventType: "visit", styleId: STYLE_ID }),
       {
         getUserFn,
+        getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
     );
@@ -56,15 +64,16 @@ describe("StyleEventsRoute integration tests", () => {
       userId: null,
       authState: "guest",
       eventType: "visit",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
   });
 
   test("postStyleEventsRoute_不正eventTypeの場合_400を返す", async () => {
     const response = await postStyleEventsRoute(
-      createRequest({ eventType: "invalid-event", styleId: "paris_code" }),
+      createRequest({ eventType: "invalid-event", styleId: STYLE_ID }),
       {
         getUserFn,
+        getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
     );
@@ -77,9 +86,10 @@ describe("StyleEventsRoute integration tests", () => {
 
   test("postStyleEventsRoute_generateイベントはpublic routeで受け付けない", async () => {
     const response = await postStyleEventsRoute(
-      createRequest({ eventType: "generate", styleId: "paris_code" }),
+      createRequest({ eventType: "generate", styleId: STYLE_ID }),
       {
         getUserFn,
+        getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
     );
@@ -95,6 +105,7 @@ describe("StyleEventsRoute integration tests", () => {
       createRequest({ eventType: "download", styleId: "unknown-style" }),
       {
         getUserFn,
+        getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
     );
@@ -107,9 +118,10 @@ describe("StyleEventsRoute integration tests", () => {
 
   test("postStyleEventsRoute_正常系の場合_200を返してイベントを記録する", async () => {
     const response = await postStyleEventsRoute(
-      createRequest({ eventType: "download", styleId: "paris_code" }),
+      createRequest({ eventType: "download", styleId: STYLE_ID }),
       {
         getUserFn,
+        getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
     );
@@ -121,7 +133,7 @@ describe("StyleEventsRoute integration tests", () => {
       userId: "user-123",
       authState: "authenticated",
       eventType: "download",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
   });
 });
