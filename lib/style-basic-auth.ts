@@ -43,7 +43,7 @@ export function enforceStyleBasicAuth(
 
   const config = getStyleBasicAuthConfig();
   if (!config) {
-    return null;
+    return new NextResponse("Not Found", { status: 404 });
   }
 
   if (!hasValidBasicAuth(request.headers, config)) {

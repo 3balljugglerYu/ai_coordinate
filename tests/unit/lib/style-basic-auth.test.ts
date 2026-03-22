@@ -54,6 +54,15 @@ describe("style-basic-auth", () => {
     expect(response?.headers.get("www-authenticate")).toContain("Basic realm=");
   });
 
+  test("enforceStyleBasicAuth_資格情報未設定なら404を返す", () => {
+    process.env.SHARED_BASIC_AUTH_USER = "";
+    process.env.SHARED_BASIC_AUTH_PASSWORD = "";
+
+    const response = enforceStyleBasicAuth(createRequest("/style"));
+
+    expect(response?.status).toBe(404);
+  });
+
   test("enforceStyleBasicAuth_正しいBasic認証なら通過する", () => {
     const encoded = Buffer.from("persta_poc_user:very-secret").toString(
       "base64"

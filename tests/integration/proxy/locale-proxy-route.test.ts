@@ -309,7 +309,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
     });
   });
 
-  describe("LPR-005 proxy", () => {
+  describe("LPR-006 proxy", () => {
     test("proxy_認証済みユーザーが認証ページにいる場合_myPageへリダイレクトする", async () => {
       // ============================================================
       // Arrange
@@ -340,7 +340,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
     });
   });
 
-  describe("LPR-006 proxy", () => {
+  describe("LPR-007 proxy", () => {
     test("proxy_停止状態ユーザーがAPIパスを要求した場合_403のJSONを返す", async () => {
       // ============================================================
       // Arrange
@@ -372,7 +372,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
     });
   });
 
-  describe("LPR-007 proxy", () => {
+  describe("LPR-008 proxy", () => {
     test("proxy_停止状態ユーザーが非APIパスを要求した場合_再開ページへリダイレクトする", async () => {
       // ============================================================
       // Arrange
@@ -404,7 +404,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
     });
   });
 
-  describe("LPR-008 proxy", () => {
+  describe("LPR-009 proxy", () => {
     test("proxy_未認証で保護パスの場合_redirect付きログインへリダイレクトする", async () => {
       // ============================================================
       // Arrange
@@ -435,7 +435,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
     });
   });
 
-  describe("LPR-009 createNextResponse", () => {
+  describe("LPR-010 createNextResponse", () => {
     test("createNextResponse_requestとlocaleが与えられた場合_localeHeaderとcookieを付与する", async () => {
       // ============================================================
       // Arrange
@@ -468,7 +468,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
     });
   });
 
-  describe("LPR-010 applyLocaleCookie", () => {
+  describe("LPR-011 applyLocaleCookie", () => {
     test("applyLocaleCookie_responseとlocaleが与えられた場合_標準オプションでcookieを保存する", async () => {
       // ============================================================
       // Arrange
