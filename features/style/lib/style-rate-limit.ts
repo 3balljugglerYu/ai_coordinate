@@ -9,8 +9,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const GUEST_SHORT_LIMIT = 2;
 const GUEST_DAILY_LIMIT = 3;
 const AUTHENTICATED_DAILY_LIMIT = 6;
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const ONE_MINUTE_MS = 60 * 1000;
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export type StyleGenerateRateLimitReason =
   | "guest_short"
@@ -82,6 +82,12 @@ function extractClientIp(request: NextRequest): string | null {
   }
 
   return null;
+}
+
+function getJstStartOfDay(now: Date): Date {
+  const jstNow = new Date(now.getTime() + JST_OFFSET_MS);
+  jstNow.setUTCHours(0, 0, 0, 0);
+  return new Date(jstNow.getTime() - JST_OFFSET_MS);
 }
 
 async function getAuthenticatedDailyGenerateAttemptCount(
@@ -164,7 +170,7 @@ export async function getStyleGenerateRateLimitStatus({
   userId,
   now = new Date(),
 }: GetStyleGenerateRateLimitStatusParams): Promise<StyleGenerateRateLimitStatus> {
-  const dailyWindowIso = new Date(now.getTime() - ONE_DAY_MS).toISOString();
+  const dailyWindowIso = getJstStartOfDay(now).toISOString();
 
   if (userId) {
     const authenticatedDailyCount = await getAuthenticatedDailyGenerateAttemptCount(
@@ -228,7 +234,7 @@ export async function checkAndConsumeStyleGenerateRateLimit({
     return { allowed: true };
   }
 
-  const dailyWindowIso = new Date(now.getTime() - ONE_DAY_MS).toISOString();
+  const dailyWindowIso = getJstStartOfDay(now).toISOString();
   const clientIp = extractClientIp(request);
   if (!clientIp) {
     console.warn("Style guest rate limit: client IP header was unavailable");
