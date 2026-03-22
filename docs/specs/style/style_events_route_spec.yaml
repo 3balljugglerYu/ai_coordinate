@@ -1,0 +1,62 @@
+metadata:
+  class: StyleEventsRoute
+  source: app/(app)/style/events/handler.ts
+  version: "1.0"
+  created_at: "2026-03-22"
+
+dependencies:
+  repositories:
+    - published style preset repository
+  services:
+    - recordStyleUsageEvent
+    - getUser
+  external: []
+
+state_properties: []
+
+specifications:
+  - id: SER-001
+    method: postStyleEventsRoute
+    type: unwanted
+    ears: |
+      If eventType is outside the public usage event allowlist,
+      then the system shall reject the request with 400.
+    ears_ja: |
+      eventType が public 利用イベント許可一覧に含まれない場合、
+      システムは 400 で拒否する。
+    test_cases:
+      - postStyleEventsRoute_generateイベントはpublic routeで受け付けない
+    test_cases_ja:
+      - postStyleEventsRoute_generateイベントはpublic routeで受け付けない
+
+  - id: SER-002
+    method: postStyleEventsRoute
+    type: unwanted
+    ears: |
+      If styleId does not resolve to a published preset,
+      then the system shall reject the request with 400
+      and shall not record usage.
+    ears_ja: |
+      styleId が公開プリセットに解決されない場合、
+      システムは 400 で拒否し、
+      利用記録を残してはならない。
+    test_cases:
+      - postStyleEventsRoute_不正styleIdの場合_400を返す
+    test_cases_ja:
+      - postStyleEventsRoute_不正styleIdの場合_400を返す
+
+  - id: SER-003
+    method: postStyleEventsRoute
+    type: event-driven
+    ears: |
+      When a valid public usage event is submitted,
+      the system shall resolve auth state
+      and record the event.
+    ears_ja: |
+      有効な public 利用イベントが送信された場合、
+      システムは認証状態を解決し、
+      イベントを記録する。
+    test_cases:
+      - postStyleEventsRoute_正常系の場合_200を返してイベントを記録する
+    test_cases_ja:
+      - postStyleEventsRoute_正常系の場合_200を返してイベントを記録する

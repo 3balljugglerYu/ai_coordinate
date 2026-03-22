@@ -137,7 +137,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | 新規登録と初期化 | `profiles`, `user_credits`, `credit_transactions`, `free_percoin_batches`, `notifications` | `handle_new_user`, `generate_referral_code` | `auth.users` trigger, `/api/referral/generate` |
 | ウォレットと購入 | `user_credits`, `credit_transactions`, `free_percoin_batches`, `generation_percoin_allocations` | `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `get_percoin_balance_breakdown` | `/api/credits/checkout`, `/api/stripe/webhook`, マイページ系 cached view |
 | 非同期画像生成 | `image_jobs`, `generated_images`, `source_image_stocks`, `credit_transactions` | `deduct_free_percoins`, `refund_percoins`, `insert_source_image_stock`, `pgmq_send/read/delete` | `/api/generate-async`, `/api/generation-status`, Edge Function worker |
-| One-Tap Style 利用計測 | `style_usage_events`, `style_guest_generate_attempts` | - | `/style/events`, `/style/generate`, `/admin` |
+| One-Tap Style | `style_presets`, `style_usage_events`, `style_guest_generate_attempts` | `consume_style_authenticated_generate_attempt`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets` | `/style`, `/style/events`, `/style/generate`, `/admin/style-presets`, `/admin` |
 | 投稿とソーシャル | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
 | 特典とグロース | `percoin_bonus_defaults`, `percoin_streak_defaults`, `referrals`, `notifications`, `free_percoin_batches` | `grant_tour_bonus`, `grant_streak_bonus`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `grant_referral_bonus` | `/api/tutorial/complete`, `/api/streak/check`, `/api/referral/check-first-login` |
 | モデレーションと管理 | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
@@ -341,6 +341,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | 通知設定の更新時刻管理 |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | バナー更新時刻管理 |
 | `materials_images` `BEFORE UPDATE` | `update_materials_images_updated_at()` | 素材画像更新時刻管理 |
+| `style_presets` `BEFORE UPDATE` | `update_updated_at_column()` | One-Tap Style プリセット更新時刻管理 |
 
 ## 開発判断のための RLS 要約
 
@@ -374,6 +375,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | --- | --- |
 | `banners` | 公開 SELECT のみ |
 | `materials_images` | 公開 SELECT のみ |
+| `style_presets` | `published` のみ公開 SELECT |
 
 ### service role / RPC 向けテーブル
 
@@ -388,6 +390,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `moderation_audit_logs` | 運用監査。参照はできても管理フロー経由で扱うべき |
 | `style_usage_events` | One-Tap Style の利用ログ。authenticated / guest を区別して service role 経由で記録し、Admin 集計では訪問・生成成功・ダウンロード・上限超過リクエストを集計する。authenticated の日次制限は RPC `consume_style_authenticated_generate_attempt()` で `generate_attempt` を原子的に消費する |
 | `style_guest_generate_attempts` | guest の `/style/generate` を IP hash ベースで `1分2回 / 1日3回` に制限する内部テーブル |
+| `style_presets` | One-Tap Style の管理プリセット。admin route は service role + RPC で create/update/delete/reorder を原子的に処理し、公開側は `published` のみ参照する |
 
 ## 変更ガイド: 何を変える時にどこから読むか
 

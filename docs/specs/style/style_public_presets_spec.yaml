@@ -1,0 +1,48 @@
+metadata:
+  class: StylePublicPresets
+  source: features/style-presets/lib/get-public-style-presets.ts
+  version: "1.0"
+  created_at: "2026-03-22"
+
+dependencies:
+  repositories:
+    - style preset repository
+  services:
+    - cacheTag
+    - cacheLife
+  external: []
+
+state_properties: []
+
+specifications:
+  - id: SPP-001
+    method: getPublishedStylePresets
+    type: state-driven
+    ears: |
+      While the public style page requests presets,
+      the system shall cache the published preset list
+      and return the repository result unchanged.
+    ears_ja: |
+      公開 style ページがプリセット一覧を要求している間、
+      システムは公開プリセット一覧をキャッシュし、
+      repository の結果をそのまま返す。
+    test_cases:
+      - getPublishedStylePresets_キャッシュタグを付けて公開一覧を返す
+    test_cases_ja:
+      - getPublishedStylePresets_キャッシュタグを付けて公開一覧を返す
+
+  - id: SPP-002
+    method: getPublishedStylePreset
+    type: event-driven
+    ears: |
+      When a published preset id is requested,
+      the system shall cache the lookup
+      and return the repository result for that id.
+    ears_ja: |
+      公開プリセット id が要求された場合、
+      システムはその lookup をキャッシュし、
+      その id に対する repository 結果を返す。
+    test_cases:
+      - getPublishedStylePreset_ID指定で公開プリセットを返す
+    test_cases_ja:
+      - getPublishedStylePreset_ID指定で公開プリセットを返す

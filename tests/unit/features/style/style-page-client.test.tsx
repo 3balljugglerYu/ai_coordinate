@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
-import type { StylePresetSummary } from "@/features/style/lib/presets";
+import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
@@ -193,22 +193,20 @@ function translate(
   }, template);
 }
 
-const presets: readonly StylePresetSummary[] = [
+const presets: readonly StylePresetPublicSummary[] = [
   {
-    id: "paris_code",
-    name: "PARIS CODE",
-    imagePublicPath: "/style/paris_code/paris_code.webp",
-    imageWidth: 912,
-    imageHeight: 1173,
-    imageVersion: "111",
+    id: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
+    title: "PARIS CODE",
+    thumbnailImageUrl: "/style/paris_code/paris_code.webp",
+    thumbnailWidth: 912,
+    thumbnailHeight: 1173,
   },
   {
-    id: "fluffy_pajamas_code",
-    name: "FLUFFY PAJAMAS CODE LONG TITLE",
-    imagePublicPath: "/style/fluffy_pajamas_code/fluffy_pajamas_code.webp",
-    imageWidth: 640,
-    imageHeight: 480,
-    imageVersion: "222",
+    id: "a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e",
+    title: "FLUFFY PAJAMAS CODE LONG TITLE",
+    thumbnailImageUrl: "/style/fluffy_pajamas_code/fluffy_pajamas_code.webp",
+    thumbnailWidth: 640,
+    thumbnailHeight: 480,
   },
 ];
 
@@ -289,7 +287,7 @@ describe("StylePageClient", () => {
     jest.restoreAllMocks();
   });
 
-  test("初期表示でparis_codeが選択済みでスタイル画像に反映される", () => {
+  test("初期表示で先頭スタイルが選択済みでスタイル画像に反映される", () => {
     render(<StylePageClient presets={presets} />);
 
     expect(screen.getByText("Select the style you want to try on.")).toBeInTheDocument();
@@ -302,7 +300,7 @@ describe("StylePageClient", () => {
     ).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByAltText("Selected style image")).toHaveAttribute(
       "src",
-      "/style/paris_code/paris_code.webp?v=111"
+      "/style/paris_code/paris_code.webp"
     );
     expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
       eventType: "visit",
@@ -310,12 +308,12 @@ describe("StylePageClient", () => {
     });
   });
 
-  test("スタイル画像URLにversionを付けてキャッシュを更新する", () => {
+  test("スタイル画像URLをそのまま参照する", () => {
     render(<StylePageClient presets={presets} />);
 
     expect(screen.getByAltText("PARIS CODE style card")).toHaveAttribute(
       "src",
-      "/style/paris_code/paris_code.webp?v=111"
+      "/style/paris_code/paris_code.webp"
     );
   });
 
@@ -329,6 +327,31 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     expect(screen.getByAltText("PARIS CODE style card")).toHaveClass("object-top");
+  });
+
+  test("PCではスタイル一覧を左右ドラッグして横スクロールできる", () => {
+    render(<StylePageClient presets={presets} />);
+
+    const strip = screen.getByTestId("style-preset-strip");
+    Object.defineProperty(strip, "scrollLeft", {
+      value: 0,
+      writable: true,
+    });
+
+    fireEvent.mouseDown(strip, {
+      clientX: 100,
+      button: 0,
+    });
+    fireEvent.mouseMove(window, {
+      pointerType: "mouse",
+      clientX: 40,
+    });
+
+    expect(strip.scrollLeft).toBe(60);
+
+    fireEvent.mouseUp(window, {
+      clientX: 40,
+    });
   });
 
   test("アップロード前はコーデスタートが押せず_アップロード後に有効化される", () => {

@@ -11,13 +11,13 @@ alwaysApply: false
 - このファイルは Cursor 向けのスキーマ台帳です。他 agent 向けの共通入口は `../../.agents/skills/project-database-context/SKILL.md` にあります。
 
 ## 取得元と前提
-- 更新日: 2026-03-14
+- 更新日: 2026-03-22
 - 対象: Supabase `public` スキーマ
 - 取得元: Supabase MCP（`list_tables` / `execute_sql`）
 - 本ドキュメントは「現行の実テーブル定義」を記載します（将来追加想定は記載しない）。
-- 2026-03-20 時点で `public` の BASE TABLE は 27 件、`public` 関数は 51 件です。
+- 2026-03-22 時点で `public` の BASE TABLE は 28 件、`public` 関数は 52 件です。
 
-## `public` テーブル一覧（27）
+## `public` テーブル一覧（28）
 - `admin_audit_log`
 - `admin_users`
 - `banners`
@@ -42,6 +42,7 @@ alwaysApply: false
 - `push_subscriptions`
 - `referrals`
 - `source_image_stocks`
+- `style_presets`
 - `style_usage_events`
 - `style_guest_generate_attempts`
 - `user_blocks`
@@ -260,6 +261,13 @@ alwaysApply: false
 - 主要カラム: `page_slug`, `image_url`, `storage_path`, `alt`, `display_order`, `created_at`, `updated_at`
 - RLS: 公開 `SELECT` のみ
 
+#### `style_presets`
+- 主キー: `id`
+- 主要カラム: `slug`, `title`, `prompt`, `thumbnail_image_url`, `thumbnail_storage_path`, `thumbnail_width`, `thumbnail_height`, `sort_order`, `status`, `created_by`, `updated_by`, `created_at`, `updated_at`
+- 外部キー: `created_by -> auth.users.id`, `updated_by -> auth.users.id`
+- 備考: One-Tap Style の管理プリセット。`status` は `draft/published`、seed データでは `thumbnail_storage_path` が `NULL` で `public/style/*.webp` を `thumbnail_image_url` に持つことがある
+- RLS: `published` 行のみ公開 `SELECT`
+
 ## 主要インデックス（現行・抜粋）
 
 ### ペルコイン・課金
@@ -319,6 +327,7 @@ alwaysApply: false
 - `idx_profiles_deletion_scheduled_at`
 - `idx_banners_public_list`
 - `idx_materials_images_page_display`
+- `idx_style_presets_public_order`
 - `idx_moderation_audit_logs_actor_id_created_at`, `idx_moderation_audit_logs_post_id_created_at`
 - `idx_admin_audit_log_action_type`, `idx_admin_audit_log_admin_user_id`, `idx_admin_audit_log_created_at`, `idx_admin_audit_log_target`
 - `idx_style_usage_events_created_at`, `idx_style_usage_events_event_type_created_at`, `idx_style_usage_events_user_id_created_at`, `idx_style_usage_events_auth_state_created_at`, `idx_style_usage_events_user_auth_event_created_at`
@@ -338,7 +347,7 @@ alwaysApply: false
 ### 業務ロジック RPC
 - ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `deduct_percoins_admin`, `expire_free_percoin_batches`
 - ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
-- One-Tap Style: `consume_style_authenticated_generate_attempt`
+- One-Tap Style: `consume_style_authenticated_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
@@ -348,6 +357,7 @@ alwaysApply: false
 ### trigger / helper / 運用関数
 - 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`
 - 更新日時: `update_updated_at_column`, `update_banners_updated_at`, `update_materials_images_updated_at`, `update_notification_preferences_updated_at`
+- `style_presets` は `update_updated_at_column()` trigger で `updated_at` を更新
 - アカウント初期化: `handle_new_user`
 - 監視・診断: `detect_generation_billing_anomalies`, `monitor_generation_billing_anomalies`
 - 拡張由来: `pgmq_send`, `pgmq_read`, `pgmq_delete`

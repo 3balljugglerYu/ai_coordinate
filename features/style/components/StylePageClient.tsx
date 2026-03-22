@@ -2,7 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import { Download, Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -24,7 +31,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import type { UploadedImage } from "@/features/generation/types";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
-import type { StylePresetSummary } from "@/features/style/lib/presets";
+import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
@@ -32,7 +39,7 @@ import { StyleGenerationStatusCard } from "@/features/style/components/StyleGene
 import { getExtensionFromMimeType } from "@/lib/utils";
 
 interface StylePageClientProps {
-  presets: readonly StylePresetSummary[];
+  presets: readonly StylePresetPublicSummary[];
 }
 
 interface StyleErrorState {
@@ -59,8 +66,10 @@ const STYLE_PRESET_CARD_TITLE_HEIGHT_PX = 44;
 const STYLE_PRESET_CARD_HEIGHT_PX =
   STYLE_PRESET_CARD_IMAGE_HEIGHT_PX + STYLE_PRESET_CARD_TITLE_HEIGHT_PX;
 
-function buildPresetImageSrc(preset: Pick<StylePresetSummary, "imagePublicPath" | "imageVersion">): string {
-  return `${preset.imagePublicPath}?v=${encodeURIComponent(preset.imageVersion)}`;
+function buildPresetImageSrc(
+  preset: Pick<StylePresetPublicSummary, "thumbnailImageUrl">
+): string {
+  return preset.thumbnailImageUrl;
 }
 
 function truncatePresetName(name: string): string {
@@ -78,9 +87,9 @@ function StylePresetCard({
   alt,
   disabled = false,
 }: {
-  preset: StylePresetSummary;
+  preset: StylePresetPublicSummary;
   isSelected: boolean;
-  onSelect: (presetId: StylePresetSummary["id"]) => void;
+  onSelect: (presetId: StylePresetPublicSummary["id"]) => void;
   alt: string;
   disabled?: boolean;
 }) {
@@ -121,9 +130,9 @@ function StylePresetCard({
           >
             <p
               className="truncate text-sm font-medium text-slate-900"
-              title={preset.name}
+              title={preset.title}
             >
-              {truncatePresetName(preset.name)}
+              {truncatePresetName(preset.title)}
             </p>
           </div>
         </div>
@@ -395,9 +404,10 @@ function StyleResultDownloadButton({
 export function StylePageClient({ presets }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
-  const [selectedPresetId, setSelectedPresetId] = useState<StylePresetSummary["id"]>(
-    presets[0]?.id ?? "paris_code"
-  );
+  const presetStripRef = useRef<HTMLDivElement | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<
+    StylePresetPublicSummary["id"]
+  >(presets[0]?.id ?? "");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
@@ -409,10 +419,14 @@ export function StylePageClient({ presets }: StylePageClientProps) {
   const [rateLimitDialogMessage, setRateLimitDialogMessage] = useState<string | null>(null);
   const [isReferenceCardCollapsed, setIsReferenceCardCollapsed] = useState(false);
   const [isResultResetDialogOpen, setIsResultResetDialogOpen] = useState(false);
+  const [isPresetStripDragging, setIsPresetStripDragging] = useState(false);
   const [resultConfirmationIntent, setResultConfirmationIntent] =
     useState<ResultConfirmationIntent>("change");
   const pendingResultResetActionRef = useRef<null | (() => void)>(null);
   const hasTrackedVisitRef = useRef(false);
+  const presetDragStartXRef = useRef(0);
+  const presetDragStartScrollLeftRef = useRef(0);
+  const suppressPresetClickRef = useRef(false);
 
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
@@ -422,7 +436,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
   const hasGeneratedResult = Boolean(resultImageUrl);
   const isCompletingGeneration = generationPhase === "completing";
   const selectedPresetAspectRatio = selectedPreset
-    ? selectedPreset.imageWidth / selectedPreset.imageHeight
+    ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
     : 1;
   const remainingDailyNoticeCount =
     rateLimitStatus?.authState === "authenticated" &&
@@ -533,7 +547,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     pendingAction?.();
   };
 
-  const handlePresetSelect = (presetId: StylePresetSummary["id"]) => {
+  const handlePresetSelect = (presetId: StylePresetPublicSummary["id"]) => {
     if (presetId === selectedPresetId) {
       return;
     }
@@ -543,6 +557,69 @@ export function StylePageClient({ presets }: StylePageClientProps) {
       setErrorState(null);
       setResultImageUrl(null);
     });
+  };
+
+  const endPresetStripDrag = () => {
+    presetDragStartXRef.current = 0;
+    presetDragStartScrollLeftRef.current = 0;
+    setIsPresetStripDragging(false);
+  };
+
+  useEffect(() => {
+    if (!isPresetStripDragging) {
+      return;
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const strip = presetStripRef.current;
+      if (!strip) {
+        return;
+      }
+
+      const deltaX = event.clientX - presetDragStartXRef.current;
+      if (Math.abs(deltaX) > 6) {
+        suppressPresetClickRef.current = true;
+      }
+
+      strip.scrollLeft = presetDragStartScrollLeftRef.current - deltaX;
+    };
+
+    const handleMouseUp = () => {
+      endPresetStripDrag();
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isPresetStripDragging]);
+
+  const handlePresetStripMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    presetDragStartXRef.current = event.clientX;
+    presetDragStartScrollLeftRef.current =
+      presetStripRef.current?.scrollLeft ?? 0;
+    suppressPresetClickRef.current = false;
+    setIsPresetStripDragging(true);
+    event.preventDefault();
+  };
+
+  const handlePresetStripClickCapture = (
+    event: ReactMouseEvent<HTMLDivElement>
+  ) => {
+    if (!suppressPresetClickRef.current) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    suppressPresetClickRef.current = false;
   };
 
   const handleUpload = (image: UploadedImage) => {
@@ -688,14 +765,23 @@ export function StylePageClient({ presets }: StylePageClientProps) {
             {t("sectionDescription")}
           </p>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div
+          ref={presetStripRef}
+          data-testid="style-preset-strip"
+          className={`flex gap-4 overflow-x-auto pb-2 ${
+            isPresetStripDragging ? "cursor-grabbing select-none" : "md:cursor-grab"
+          }`}
+          onMouseDown={handlePresetStripMouseDown}
+          onClickCapture={handlePresetStripClickCapture}
+          onDragStart={(event) => event.preventDefault()}
+        >
           {presets.map((preset) => (
             <StylePresetCard
               key={preset.id}
               preset={preset}
               isSelected={preset.id === selectedPreset?.id}
               onSelect={handlePresetSelect}
-              alt={t("styleCardAlt", { name: preset.name })}
+              alt={t("styleCardAlt", { name: preset.title })}
               disabled={isGenerating}
             />
           ))}

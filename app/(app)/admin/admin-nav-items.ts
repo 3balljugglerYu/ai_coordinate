@@ -92,6 +92,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "image",
   },
   {
+    path: "/admin/style-presets",
+    label: "One-Tap Style管理",
+    description: "スタイル画像とpromptを管理",
+    iconKey: "image",
+  },
+  {
     path: "/admin/image-optimization",
     label: "画像最適化",
     description: "WebP変換状況を確認",

@@ -5,6 +5,7 @@ import { postStyleGenerateRoute } from "@/app/(app)/style/generate/handler";
 import type { StyleGenerateRateLimitResult } from "@/features/style/lib/style-rate-limit";
 
 type JsonRecord = Record<string, unknown>;
+const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
 
 function createRequest(formData: FormData): NextRequest {
   return new NextRequest("http://localhost/style/generate", {
@@ -63,7 +64,7 @@ function createSuccessResponse() {
 describe("StyleGenerateRoute integration tests", () => {
   let fetchFn: jest.MockedFunction<typeof fetch>;
   let getUserFn: jest.Mock;
-  let readPromptFileFn: jest.Mock<Promise<string>, [string]>;
+  let getPublishedStylePresetForGenerationFn: jest.Mock;
   let recordStyleUsageEventFn: jest.Mock<Promise<void>, [unknown]>;
   let checkAndConsumeRateLimitFn: jest.Mock<
     Promise<StyleGenerateRateLimitResult>,
@@ -77,9 +78,11 @@ describe("StyleGenerateRoute integration tests", () => {
       typeof fetch
     >;
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
-    readPromptFileFn = jest
-      .fn<Promise<string>, [string]>()
-      .mockResolvedValue("RAW PROMPT\nSECOND LINE");
+    getPublishedStylePresetForGenerationFn = jest
+      .fn()
+      .mockImplementation(async (styleId: string) =>
+        styleId === STYLE_ID ? { id: STYLE_ID, prompt: "RAW PROMPT\nSECOND LINE" } : null
+      );
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
     checkAndConsumeRateLimitFn = jest
       .fn<
@@ -104,14 +107,14 @@ describe("StyleGenerateRoute integration tests", () => {
   test("postStyleGenerateRoute_未認証の場合_guestとして生成できる", async () => {
     getUserFn.mockResolvedValueOnce(null);
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -126,14 +129,14 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(checkAndConsumeRateLimitFn).toHaveBeenCalledWith({
       request: expect.any(NextRequest),
       userId: null,
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
     expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
       userId: null,
       authState: "guest",
       eventType: "generate",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
   });
 
@@ -146,7 +149,7 @@ describe("StyleGenerateRoute integration tests", () => {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -159,13 +162,13 @@ describe("StyleGenerateRoute integration tests", () => {
 
   test("postStyleGenerateRoute_uploadImage未指定の場合_400を返す", async () => {
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -178,7 +181,7 @@ describe("StyleGenerateRoute integration tests", () => {
 
   test("postStyleGenerateRoute_不正uploadImage形式の場合_400を返す", async () => {
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set(
       "uploadImage",
       createUploadImage({ type: "image/gif", name: "upload-image.gif" })
@@ -188,7 +191,7 @@ describe("StyleGenerateRoute integration tests", () => {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -203,7 +206,7 @@ describe("StyleGenerateRoute integration tests", () => {
 
   test("postStyleGenerateRoute_成功時_rawPromptと固定Gemini設定で画像を返す", async () => {
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("sourceImageType", "illustration");
     formData.set("uploadImage", createUploadImage());
 
@@ -211,7 +214,7 @@ describe("StyleGenerateRoute integration tests", () => {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -268,14 +271,14 @@ SECOND LINE`,
     expect(checkAndConsumeRateLimitFn).toHaveBeenCalledWith({
       request: expect.any(NextRequest),
       userId: "user-123",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
     expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
       userId: "user-123",
       authState: "authenticated",
       eventType: "generate",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
   });
 
@@ -287,14 +290,14 @@ SECOND LINE`,
     });
 
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -311,7 +314,7 @@ SECOND LINE`,
       userId: null,
       authState: "guest",
       eventType: "rate_limited",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
   });
 
@@ -323,14 +326,14 @@ SECOND LINE`,
     });
 
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -349,7 +352,7 @@ SECOND LINE`,
       userId: null,
       authState: "guest",
       eventType: "rate_limited",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
   });
 
@@ -360,14 +363,14 @@ SECOND LINE`,
     });
 
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -384,13 +387,13 @@ SECOND LINE`,
       userId: "user-123",
       authState: "authenticated",
       eventType: "rate_limited",
-      styleId: "paris_code",
+      styleId: STYLE_ID,
     });
   });
 
   test("postStyleGenerateRoute_real選択時_前置きpromptをphotorealistic向けに切り替える", async () => {
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("sourceImageType", "real");
     formData.set("uploadImage", createUploadImage());
 
@@ -398,7 +401,7 @@ SECOND LINE`,
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -437,14 +440,14 @@ SECOND LINE`,
     );
 
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -473,14 +476,14 @@ SECOND LINE`,
     );
 
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });
@@ -515,14 +518,14 @@ SECOND LINE`,
     );
 
     const formData = new FormData();
-    formData.set("styleId", "paris_code");
+    formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {
       fetchFn,
       geminiApiKey: "test-api-key",
       getUserFn,
-      readPromptFileFn,
+      getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
     });

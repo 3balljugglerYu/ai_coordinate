@@ -1,11 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { StylePageShareButton } from "@/features/style/components/StylePageShareButton";
-import { getStylePresetSummaries } from "@/features/style/lib/presets";
+import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 
 export default async function StylePage() {
   const t = await getTranslations("style");
-  const presets = getStylePresetSummaries();
+  const presets = await getPublishedStylePresets();
 
   return (
     <div className="min-h-screen bg-gray-50">
