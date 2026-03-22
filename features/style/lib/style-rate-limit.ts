@@ -86,14 +86,8 @@ function extractClientIp(request: NextRequest): string | null {
 
 function getJstStartOfDay(now: Date): Date {
   const jstNow = new Date(now.getTime() + JST_OFFSET_MS);
-  const year = jstNow.getUTCFullYear();
-  const month = jstNow.getUTCMonth();
-  const date = jstNow.getUTCDate();
-  const utcMidnightForJstDay = new Date(
-    Date.UTC(year, month, date, 0, 0, 0, 0)
-  );
-
-  return new Date(utcMidnightForJstDay.getTime() - JST_OFFSET_MS);
+  jstNow.setUTCHours(0, 0, 0, 0);
+  return new Date(jstNow.getTime() - JST_OFFSET_MS);
 }
 
 async function getAuthenticatedDailyGenerateAttemptCount(
