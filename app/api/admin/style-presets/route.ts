@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { stylePresetStatusSchema } from "@/features/style-presets/lib/schema";
 import {
   createStylePreset,
   listStylePresetsForAdmin,
 } from "@/features/style-presets/lib/style-preset-repository";
 import { parseStylePresetSortOrder } from "@/features/style-presets/lib/parse-style-preset-sort-order";
-import { uploadStylePresetImage } from "@/features/style-presets/lib/style-preset-storage";
+import {
+  deleteStylePresetImage,
+  uploadStylePresetImage,
+} from "@/features/style-presets/lib/style-preset-storage";
 import { validateStylePresetImageFile } from "@/features/style-presets/lib/validate-style-preset-image-file";
 import { revalidateStylePresets } from "@/features/style-presets/lib/revalidate-style-presets";
 
@@ -108,8 +110,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadedStoragePath) {
       try {
-        const supabase = createAdminClient();
-        await supabase.storage.from("style_presets").remove([uploadedStoragePath]);
+        await deleteStylePresetImage(uploadedStoragePath);
       } catch {
         // rollback best effort
       }

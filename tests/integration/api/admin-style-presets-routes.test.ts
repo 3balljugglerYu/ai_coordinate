@@ -170,6 +170,37 @@ describe("admin style preset routes", () => {
     expect(body.id).toBe("preset-1");
   });
 
+  test("postAdminStylePresets_DB保存失敗時はアップロード画像をrollback削除する", async () => {
+    const formData = new FormData();
+    formData.set("title", "Spring Smart Casual");
+    formData.set("prompt", "Prompt body");
+    formData.set("sort_order", "3");
+    formData.set("status", "published");
+    formData.set(
+      "file",
+      new File(["image"], "style.png", { type: "image/png" })
+    );
+
+    mockUploadStylePresetImage.mockResolvedValueOnce({
+      imageUrl: "https://example.com/style.webp",
+      storagePath: "style-presets/preset-1/image.webp",
+      width: 720,
+      height: 960,
+    });
+    mockCreateStylePreset.mockRejectedValueOnce(new Error("db failed"));
+
+    const response = await POST(
+      createFormRequest("/api/admin/style-presets", formData, "POST")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(mockDeleteStylePresetImage).toHaveBeenCalledWith(
+      "style-presets/preset-1/image.webp"
+    );
+    expect(body.error).toBe("db failed");
+  });
+
   test("patchAdminStylePreset_画像差し替え時に旧画像を削除する", async () => {
     const formData = new FormData();
     formData.set("title", "Updated Title");

@@ -21,7 +21,7 @@ import type {
 
 interface StylePresetFormProps {
   preset?: StylePresetAdmin;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -126,11 +126,11 @@ export function StylePresetForm({
         throw new Error(body?.error || "保存に失敗しました");
       }
 
+      await onSuccess();
       toast({
         title: "保存しました",
         description: "スタイルを保存しました",
       });
-      onSuccess();
     } catch (error) {
       toast({
         title: "エラー",

@@ -260,11 +260,11 @@ export function StylePresetListClient({
           throw new Error(body?.error || "表示順の更新に失敗しました");
         }
 
+        await reload();
         toast({
           title: "表示順を更新しました",
           description: "スタイルの並び順を保存しました",
         });
-        void reload();
       } catch (error) {
         toast({
           title: "エラー",
@@ -274,7 +274,11 @@ export function StylePresetListClient({
               : "表示順の更新に失敗しました",
           variant: "destructive",
         });
-        void reload();
+        try {
+          await reload();
+        } catch (reloadError) {
+          console.error("[Admin Style Presets] reload error:", reloadError);
+        }
       } finally {
         setIsReordering(false);
       }
@@ -383,9 +387,9 @@ export function StylePresetListClient({
             <DialogTitle>スタイルを追加</DialogTitle>
           </DialogHeader>
           <StylePresetForm
-            onSuccess={() => {
+            onSuccess={async () => {
               setIsCreateOpen(false);
-              void reload();
+              await reload();
             }}
             onCancel={() => setIsCreateOpen(false)}
           />
@@ -407,9 +411,9 @@ export function StylePresetListClient({
           {editingPreset ? (
             <StylePresetForm
               preset={editingPreset}
-              onSuccess={() => {
+              onSuccess={async () => {
                 setEditingPreset(null);
-                void reload();
+                await reload();
               }}
               onCancel={() => setEditingPreset(null)}
             />
