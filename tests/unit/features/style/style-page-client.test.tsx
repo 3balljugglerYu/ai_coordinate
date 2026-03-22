@@ -197,14 +197,14 @@ const presets: readonly StylePresetPublicSummary[] = [
   {
     id: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
     title: "PARIS CODE",
-    thumbnailImageUrl: "/style/paris_code/paris_code.webp",
+    thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
     thumbnailWidth: 912,
     thumbnailHeight: 1173,
   },
   {
     id: "a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e",
     title: "FLUFFY PAJAMAS CODE LONG TITLE",
-    thumbnailImageUrl: "/style/fluffy_pajamas_code/fluffy_pajamas_code.webp",
+    thumbnailImageUrl: "https://example.com/style-presets/fluffy-pajamas-code.webp",
     thumbnailWidth: 640,
     thumbnailHeight: 480,
   },
@@ -300,7 +300,7 @@ describe("StylePageClient", () => {
     ).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByAltText("Selected style image")).toHaveAttribute(
       "src",
-      "/style/paris_code/paris_code.webp"
+      "https://example.com/style-presets/paris-code.webp"
     );
     expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
       eventType: "visit",
@@ -313,7 +313,7 @@ describe("StylePageClient", () => {
 
     expect(screen.getByAltText("PARIS CODE style card")).toHaveAttribute(
       "src",
-      "/style/paris_code/paris_code.webp"
+      "https://example.com/style-presets/paris-code.webp"
     );
   });
 
