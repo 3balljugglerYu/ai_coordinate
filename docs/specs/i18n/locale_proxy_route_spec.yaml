@@ -9,6 +9,7 @@ dependencies:
   services:
     - enforceApiDocsBasicAuth
     - enforceI2iPocBasicAuth
+    - enforceStyleBasicAuth
     - I18nConfig helpers
   external:
     - "@supabase/ssr createServerClient"
@@ -89,6 +90,44 @@ specifications:
 
   - id: LPR-003
     method: proxy
+    type: unwanted
+    ears: |
+      If Style Basic Auth rejects the request,
+      then the proxy shall return that rejection response immediately
+      and shall not perform locale or authentication processing.
+    ears_ja: |
+      Style Basic Authがリクエストを拒否した場合、
+      proxyはその拒否レスポンスを即座に返し、
+      locale処理および認証処理を行ってはならない。
+    preconditions:
+      - The request is evaluated by proxy
+      - enforceApiDocsBasicAuth returns null
+      - enforceI2iPocBasicAuth returns null
+      - enforceStyleBasicAuth returns a response object
+    preconditions_ja:
+      - リクエストがproxyで評価される
+      - enforceApiDocsBasicAuthがnullを返す
+      - enforceI2iPocBasicAuthがnullを返す
+      - enforceStyleBasicAuthがレスポンスを返す
+    postconditions:
+      success:
+        - Returns the response produced by enforceStyleBasicAuth
+      error:
+        - Does not call locale redirect logic
+        - Does not create a Supabase server client
+    postconditions_ja:
+      success:
+        - enforceStyleBasicAuthが返したレスポンスを返す
+      error:
+        - locale redirectロジックを呼び出さない
+        - Supabase server clientを生成しない
+    test_cases:
+      - proxy_GivenStyleBasicAuthRejection_ShouldShortCircuitBeforeLocaleHandling
+    test_cases_ja:
+      - proxy_styleBasicAuthで拒否された場合_locale処理前に短絡終了する
+
+  - id: LPR-004
+    method: proxy
     type: event-driven
     ears: |
       When the request targets a public pathname without a locale prefix,
@@ -127,7 +166,7 @@ specifications:
       - proxy_cookieLocale付きの公開パスの場合_locale付きパスへリダイレクトする
       - proxy_cookieなしの公開パスの場合_AcceptLanguage解決localeでリダイレクトする
 
-  - id: LPR-004
+  - id: LPR-005
     method: proxy
     type: optional
     ears: |
@@ -163,7 +202,7 @@ specifications:
     test_cases_ja:
       - proxy_Supabase環境変数が欠けている場合_locale情報付きで通過させる
 
-  - id: LPR-005
+  - id: LPR-006
     method: proxy
     type: event-driven
     ears: |
@@ -199,7 +238,7 @@ specifications:
     test_cases_ja:
       - proxy_認証済みユーザーが認証ページにいる場合_myPageへリダイレクトする
 
-  - id: LPR-006
+  - id: LPR-007
     method: proxy
     type: unwanted
     ears: |
@@ -237,7 +276,7 @@ specifications:
     test_cases_ja:
       - proxy_停止状態ユーザーがAPIパスを要求した場合_403のJSONを返す
 
-  - id: LPR-007
+  - id: LPR-008
     method: proxy
     type: state-driven
     ears: |
@@ -277,7 +316,7 @@ specifications:
     test_cases_ja:
       - proxy_停止状態ユーザーが非APIパスを要求した場合_再開ページへリダイレクトする
 
-  - id: LPR-008
+  - id: LPR-009
     method: proxy
     type: event-driven
     ears: |
@@ -313,7 +352,7 @@ specifications:
     test_cases_ja:
       - proxy_未認証で保護パスの場合_redirect付きログインへリダイレクトする
 
-  - id: LPR-009
+  - id: LPR-010
     method: createNextResponse
     type: ubiquitous
     ears: |
@@ -347,7 +386,7 @@ specifications:
     test_cases_ja:
       - createNextResponse_requestとlocaleが与えられた場合_localeHeaderとcookieを付与する
 
-  - id: LPR-010
+  - id: LPR-011
     method: applyLocaleCookie
     type: ubiquitous
     ears: |
