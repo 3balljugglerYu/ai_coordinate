@@ -210,11 +210,11 @@ npx playwright install
 - `NEXT_PUBLIC_NANOBANANA_API_KEY`
 - `GEMINI_API_KEY`
 
-### I2I PoC（限定公開）
+### I2I PoC / One-Tap Style（限定公開）
 
 - `I2I_POC_SLUG`（32文字以上の乱数）
-- `I2I_BASIC_AUTH_USER`
-- `I2I_BASIC_AUTH_PASSWORD`
+- `SHARED_BASIC_AUTH_USER`
+- `SHARED_BASIC_AUTH_PASSWORD`
 
 ### 決済
 
