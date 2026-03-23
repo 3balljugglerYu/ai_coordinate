@@ -96,10 +96,10 @@ export function WebViewBanner() {
   };
 
   const handleCopyUrl = async () => {
+    let copiedSuccessfully = false;
     try {
       await navigator.clipboard.writeText(currentUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      copiedSuccessfully = true;
     } catch {
       // フォールバック: 古いブラウザ向け
       const textArea = document.createElement("textarea");
@@ -107,9 +107,18 @@ export function WebViewBanner() {
       textArea.style.position = "fixed";
       textArea.style.opacity = "0";
       document.body.appendChild(textArea);
+      textArea.focus();
       textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
+      try {
+        copiedSuccessfully = document.execCommand("copy");
+      } catch {
+        // execCommand が例外をスローした場合はコピー失敗として扱う
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
+
+    if (copiedSuccessfully) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
