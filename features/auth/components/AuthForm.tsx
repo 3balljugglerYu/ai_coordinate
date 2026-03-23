@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
+import { WebViewBanner } from "./WebViewBanner";
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -139,7 +140,9 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   };
 
   return (
-    <Card className="relative w-full max-w-md p-4 sm:p-6">
+    <>
+      <WebViewBanner />
+      <Card className="relative w-full max-w-md p-4 sm:p-6">
       {/* ローディングオーバーレイ */}
       {isLoading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
@@ -402,6 +405,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
           </p>
         )}
       </div>
-    </Card>
+      </Card>
+    </>
   );
 }
