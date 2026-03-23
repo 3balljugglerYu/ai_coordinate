@@ -28,6 +28,13 @@ function detectWebView(ua: string): WebViewType {
 }
 
 /**
+ * Android端末かどうかを判定する。
+ */
+function isAndroid(ua: string): boolean {
+  return /Android/i.test(ua);
+}
+
+/**
  * 現在のURLに openExternalBrowser=1 を付与して返す（LINE用）。
  */
 function buildLineExternalUrl(): string {
@@ -37,25 +44,39 @@ function buildLineExternalUrl(): string {
 }
 
 /**
+ * intent:// スキームURLを構築する（Android用）。
+ * Chrome を優先的に起動し、フォールバックとして元のURLを指定する。
+ */
+function buildIntentUrl(targetUrl: string): string {
+  const url = new URL(targetUrl);
+  // intent://host/path#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=<encoded>;end
+  return `intent://${url.host}${url.pathname}${url.search}${url.hash}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+}
+
+/**
  * LINE, Facebook, Instagram などのアプリ内ブラウザ（WebView）を検出し、
  * 外部ブラウザで開くよう案内するコンポーネント。
  *
  * - LINE: openExternalBrowser パラメータで外部ブラウザへ自動リダイレクト
- * - その他: URLコピーバナーを表示
+ * - その他 (Android): intent:// スキームで外部ブラウザを起動するボタンを表示
+ * - その他 (iOS): URLコピーバナーを表示
  */
 export function WebViewBanner() {
   const [webViewType, setWebViewType] = useState<WebViewType>(null);
+  const [android, setAndroid] = useState(false);
   const [copied, setCopied] = useState(false);
   const t = useTranslations("auth");
 
   useEffect(() => {
-    const detected = detectWebView(navigator.userAgent);
+    const ua = navigator.userAgent;
+    const detected = detectWebView(ua);
 
     if (detected === "line") {
       // 既に openExternalBrowser=1 が付与済みの場合はリダイレクトしない（ループ防止）
       const params = new URLSearchParams(window.location.search);
       if (params.get("openExternalBrowser") === "1") {
         setWebViewType("other");
+        setAndroid(isAndroid(ua));
         return;
       }
       window.location.href = buildLineExternalUrl();
@@ -63,11 +84,16 @@ export function WebViewBanner() {
     }
 
     setWebViewType(detected);
+    setAndroid(isAndroid(ua));
   }, []);
 
   if (!webViewType) return null;
 
   const currentUrl = window.location.href;
+
+  const handleOpenBrowser = () => {
+    window.location.href = buildIntentUrl(currentUrl);
+  };
 
   const handleCopyUrl = async () => {
     try {
@@ -94,21 +120,39 @@ export function WebViewBanner() {
       <ExternalLink className="h-4 w-4 text-amber-600" />
       <AlertDescription className="text-amber-800">
         <p className="mb-2 font-medium">{t("webViewWarningTitle")}</p>
-        <p className="mb-3 text-sm">{t("webViewWarningDescription")}</p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
-          onClick={handleCopyUrl}
-        >
-          {copied ? (
-            <Check className="mr-1.5 h-4 w-4" />
-          ) : (
-            <Copy className="mr-1.5 h-4 w-4" />
+        <p className="mb-3 text-sm">
+          {android
+            ? t("webViewWarningDescriptionAndroid")
+            : t("webViewWarningDescription")}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {android && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
+              onClick={handleOpenBrowser}
+            >
+              <ExternalLink className="mr-1.5 h-4 w-4" />
+              {t("webViewOpenBrowser")}
+            </Button>
           )}
-          {copied ? t("webViewUrlCopied") : t("webViewCopyUrl")}
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
+            onClick={handleCopyUrl}
+          >
+            {copied ? (
+              <Check className="mr-1.5 h-4 w-4" />
+            ) : (
+              <Copy className="mr-1.5 h-4 w-4" />
+            )}
+            {copied ? t("webViewUrlCopied") : t("webViewCopyUrl")}
+          </Button>
+        </div>
       </AlertDescription>
     </Alert>
   );

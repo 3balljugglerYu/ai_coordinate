@@ -89,7 +89,7 @@ describe("WebViewBanner", () => {
   });
 
   describe("WV-002 その他WebViewでバナー表示", () => {
-    test("Facebook内ブラウザの場合_警告バナーを表示する", () => {
+    test("Facebook内ブラウザ（iOS）の場合_URLコピーバナーを表示しブラウザで開くボタンは非表示", () => {
       // Arrange
       mockUserAgent(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/400.0;]"
@@ -102,9 +102,34 @@ describe("WebViewBanner", () => {
       expect(
         screen.getByText("アプリ内ブラウザではログインできません")
       ).toBeInTheDocument();
+      expect(
+        screen.getByText("Safariなどのブラウザでこのページを開いてください。下のボタンでURLをコピーできます。")
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "URLをコピー" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "ブラウザで開く" })).not.toBeInTheDocument();
     });
 
-    test("Instagram内ブラウザの場合_警告バナーを表示する", () => {
+    test("Facebook内ブラウザ（Android）の場合_ブラウザで開くボタンとURLコピーの両方を表示する", () => {
+      // Arrange
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 [FBAN/FB4A;FBAV/400.0;]"
+      );
+
+      // Act
+      render(<WebViewBanner />);
+
+      // Assert
+      expect(
+        screen.getByText("アプリ内ブラウザではログインできません")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Chromeなどのブラウザでこのページを開いてください。下のボタンからブラウザを起動できます。")
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "ブラウザで開く" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "URLをコピー" })).toBeInTheDocument();
+    });
+
+    test("Instagram内ブラウザ（iOS）の場合_警告バナーを表示する", () => {
       // Arrange
       mockUserAgent(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 300.0"
@@ -117,6 +142,23 @@ describe("WebViewBanner", () => {
       expect(
         screen.getByText("アプリ内ブラウザではログインできません")
       ).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "ブラウザで開く" })).not.toBeInTheDocument();
+    });
+
+    test("Instagram内ブラウザ（Android）の場合_ブラウザで開くボタンを表示する", () => {
+      // Arrange
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 Instagram 300.0"
+      );
+
+      // Act
+      render(<WebViewBanner />);
+
+      // Assert
+      expect(
+        screen.getByText("アプリ内ブラウザではログインできません")
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "ブラウザで開く" })).toBeInTheDocument();
     });
 
     test("WeChat内ブラウザの場合_警告バナーを表示する", () => {
@@ -134,7 +176,7 @@ describe("WebViewBanner", () => {
       ).toBeInTheDocument();
     });
 
-    test("Android WebViewの場合_警告バナーを表示する", () => {
+    test("Android WebViewの場合_ブラウザで開くボタンを表示する", () => {
       // Arrange
       mockUserAgent(
         "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36; wv"
@@ -147,6 +189,7 @@ describe("WebViewBanner", () => {
       expect(
         screen.getByText("アプリ内ブラウザではログインできません")
       ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "ブラウザで開く" })).toBeInTheDocument();
     });
   });
 
@@ -182,7 +225,7 @@ describe("WebViewBanner", () => {
     });
 
     test("X（Twitter）アプリ内ブラウザの場合_バナーを表示しない", () => {
-      // Arrange — X は SFSafariViewController/Chrome Custom Tabs を使用するため検出対象外
+      // Arrange
       mockUserAgent(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Twitter for iPhone"
       );
@@ -212,7 +255,49 @@ describe("WebViewBanner", () => {
     });
   });
 
-  describe("WV-004 URLコピー機能", () => {
+  describe("WV-004 ブラウザで開くボタン（Android）", () => {
+    test("ブラウザで開くボタンクリック時_intent://スキームURLに遷移する", () => {
+      // Arrange
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 [FBAN/FB4A;FBAV/400.0;]"
+      );
+      // jsdom は intent:// への navigation をサポートしないため location.href のセッターをスパイ
+      const hrefSetter = jest.fn();
+      const currentHref = window.location.href;
+      Object.defineProperty(window, "location", {
+        value: {
+          ...originalLocation,
+          href: currentHref,
+          get search() {
+            return "";
+          },
+        },
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window.location, "href", {
+        set: hrefSetter,
+        get: () => currentHref,
+        configurable: true,
+      });
+
+      render(<WebViewBanner />);
+
+      // Act
+      fireEvent.click(screen.getByRole("button", { name: "ブラウザで開く" }));
+
+      // Assert
+      expect(hrefSetter).toHaveBeenCalledTimes(1);
+      const intentUrl = hrefSetter.mock.calls[0][0] as string;
+      expect(intentUrl).toContain("intent://");
+      expect(intentUrl).toContain("package=com.android.chrome");
+      expect(intentUrl).toContain(
+        `S.browser_fallback_url=${encodeURIComponent(currentHref)}`
+      );
+    });
+  });
+
+  describe("WV-005 URLコピー機能", () => {
     test("コピーボタンクリック時_クリップボードにURLをコピーしてボタン文言が変わる", async () => {
       // Arrange
       mockUserAgent(
