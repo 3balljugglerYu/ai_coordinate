@@ -229,6 +229,11 @@ export const jaMessages = {
     sendResetEmail: "メールを送信",
     resetPasswordSubmit: "パスワードを更新",
     backToLogin: "ログイン画面に戻る",
+    webViewWarningTitle: "アプリ内ブラウザではログインできません",
+    webViewWarningDescription:
+      "SafariやChromeなどの外部ブラウザでこのページを開いてください。下のボタンでURLをコピーできます。",
+    webViewCopyUrl: "URLをコピー",
+    webViewUrlCopied: "コピーしました",
   },
   contact: {
     pageTitle: "お問い合わせ",

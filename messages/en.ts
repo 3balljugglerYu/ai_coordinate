@@ -236,6 +236,11 @@ export const enMessages = {
     sendResetEmail: "Send email",
     resetPasswordSubmit: "Update password",
     backToLogin: "Back to login",
+    webViewWarningTitle: "Login is not available in this browser",
+    webViewWarningDescription:
+      "Please open this page in Safari or Chrome. Tap the button below to copy the URL.",
+    webViewCopyUrl: "Copy URL",
+    webViewUrlCopied: "Copied!",
   },
   contact: {
     pageTitle: "Contact",
