@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:programming.vip)",
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:www.inappredirect.com)",
+      "WebFetch(domain:www.tonyherman.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(git -C /Users/hide/ai_coordinate add features/auth/components/WebViewBanner.tsx)",
+      "Bash(git -C:*)",
+      "Bash(git -C /Users/hide/ai_coordinate push)",
+      "Read(//Users/hide/.claude/**)"
+    ]
+  }
+}
