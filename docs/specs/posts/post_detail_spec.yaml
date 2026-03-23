@@ -1,0 +1,532 @@
+metadata:
+  class: PostDetail
+  source: features/posts/components/PostDetail.tsx
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - useTranslations (next-intl, namespace posts)
+    - getPostImageUrl
+    - useToast
+  external:
+    - fetch GET /api/users/{followUserId}/follow-status
+    - navigator.clipboard.writeText
+    - window.Image for aspect ratio
+    - Child components FollowButton, PostActions, CommentInput, CommentList, modals, ImageFullscreen, CollapsibleText
+
+state_properties:
+  - name: isFullscreenOpen
+    type: boolean
+    default: false
+  - name: imageAspectRatio
+    type: portrait | landscape | null
+    default: null
+  - name: isPromptCopied
+    type: boolean
+    default: false
+  - name: editModalOpen
+    type: boolean
+    default: false
+  - name: deleteDialogOpen
+    type: boolean
+    default: false
+  - name: postModalOpen
+    type: boolean
+    default: false
+  - name: commentCount
+    type: number
+    default: from post.comment_count or 0
+  - name: isFollowingAuthor
+    type: boolean
+    default: false
+
+specifications:
+  - id: POSTDET-001
+    method: render
+    type: ubiquitous
+    ears: |
+      The PostDetail shall derive displayName from the post author's email local-part
+      when post.user.email is present.
+    ears_ja: |
+      PostDetail は post.user.email がある場合、
+      メールアドレスの @ より前を displayName として用いる。
+    preconditions:
+      - post.user.email is a non-empty string
+    preconditions_ja:
+      - post.user.email が非空文字列である
+    postconditions:
+      success:
+        - Author label shows the substring before @ in email
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 著者表示がメールの @ 前部分になる
+      error:
+        - なし
+    test_cases:
+      - render_GivenUserEmail_ShouldShowEmailLocalPartAsName
+    test_cases_ja:
+      - 表示_emailがある場合_ローカル部を名前にする
+
+  - id: POSTDET-002
+    method: render
+    type: event-driven
+    ears: |
+      When post.user.email is absent but post.user.id exists,
+      the PostDetail shall show the first 8 characters of user.id as displayName.
+    ears_ja: |
+      post.user.email がなく post.user.id がある場合、
+      PostDetail は user.id の先頭8文字を displayName とする。
+    preconditions:
+      - post.user.id is defined; email missing or empty
+    preconditions_ja:
+      - post.user.id があり email が無いか空
+    postconditions:
+      success:
+        - Author label shows id prefix of length 8
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 著者表示が id 先頭8文字になる
+      error:
+        - なし
+    test_cases:
+      - render_GivenUserIdOnly_ShouldShowIdPrefix
+    test_cases_ja:
+      - 表示_idのみの場合_先頭8文字を表示する
+
+  - id: POSTDET-003
+    method: render
+    type: unwanted
+    ears: |
+      If neither email nor id yields a display string,
+      the PostDetail shall show the localized anonymousUser label.
+    ears_ja: |
+      email も id からも表示文字列が得られない場合、
+      PostDetail は anonymousUser のローカライズ文言を表示する。
+    preconditions:
+      - post.user lacks usable email and id
+    preconditions_ja:
+      - post.user に利用可能な email / id がない
+    postconditions:
+      success:
+        - Anonymous label from translations is shown
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 翻訳の匿名ラベルが表示される
+      error:
+        - なし
+    test_cases:
+      - render_GivenNoUserIdentity_ShouldShowAnonymous
+    test_cases_ja:
+      - 表示_ユーザー識別なしの場合_匿名表示する
+
+  - id: POSTDET-004
+    method: fetchFollowStatus
+    type: event-driven
+    ears: |
+      When currentUserId is missing, or followUserId is missing, or the viewer is the owner,
+      the system shall set isFollowingAuthor to isOwner without calling the follow-status API.
+    ears_ja: |
+      currentUserId が無い、followUserId が無い、または閲覧者がオーナーの場合、
+      システムは follow-status API を呼ばず isFollowingAuthor を isOwner と同値にする。
+    preconditions:
+      - Component mounted with post and currentUserId props
+    preconditions_ja:
+      - post と currentUserId でマウント済み
+    postconditions:
+      success:
+        - No fetch to follow-status in the early-exit branches
+        - isFollowingAuthor reflects owner relationship
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 早期分岐では follow-status へ fetch しない
+        - isFollowingAuthor がオーナー関係を反映する
+      error:
+        - なし
+    test_cases:
+      - fetchFollowStatus_GivenOwnerOrMissingIds_ShouldSkipFetch
+    test_cases_ja:
+      - フォロー状態_オーナーまたはID欠落の場合_fetchをスキップする
+
+  - id: POSTDET-005
+    method: fetchFollowStatus
+    type: event-driven
+    ears: |
+      When the viewer is authenticated, not the owner, and followUserId exists,
+      the system shall GET /api/users/{followUserId}/follow-status
+      and shall set isFollowingAuthor from the JSON field isFollowing.
+    ears_ja: |
+      閲覧者が認証済みでオーナーでなく followUserId がある場合、
+      システムは GET /api/users/{followUserId}/follow-status を行い、
+      JSON の isFollowing から isFollowingAuthor を設定する。
+    preconditions:
+      - fetch returns 200 with JSON body
+    preconditions_ja:
+      - fetch が 200 と JSON を返す
+    postconditions:
+      success:
+        - isFollowingAuthor equals Boolean(data.isFollowing)
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - isFollowingAuthor が data.isFollowing の真偽と一致する
+      error:
+        - なし
+    test_cases:
+      - fetchFollowStatus_GivenOkResponse_ShouldSetFollowingFromJson
+    test_cases_ja:
+      - フォロー状態_200の場合_JSONでフォロー状態を設定する
+
+  - id: POSTDET-006
+    method: fetchFollowStatus
+    type: unwanted
+    ears: |
+      If the follow-status response is not ok or fetch throws,
+      then the system shall set isFollowingAuthor to false.
+    ears_ja: |
+      follow-status の応答が ok でないか fetch が例外の場合、
+      システムは isFollowingAuthor を false にする。
+    preconditions:
+      - Non-owner viewer with valid followUserId
+    preconditions_ja:
+      - オーナー以外で followUserId 有効
+    postconditions:
+      success:
+        - isFollowingAuthor is false after error paths
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - エラー経路の後 isFollowingAuthor が false
+      error:
+        - なし
+    test_cases:
+      - fetchFollowStatus_GivenNotOkOrNetworkError_ShouldSetFollowingFalse
+    test_cases_ja:
+      - フォロー状態_非OKまたは例外の場合_フォロー偽にする
+
+  - id: POSTDET-007
+    method: render
+    type: state-driven
+    ears: |
+      While the viewer cannot view the prompt (not owner and not following),
+      the PostDetail shall render the prompt area with masked asterisks of equal length
+      when post.prompt exists.
+    ears_ja: |
+      プロンプト閲覧不可（オーナーでもフォロー中でもない）の間、
+      post.prompt がある場合 PostDetail は同長のマスク文字でプロンプト領域を表示する。
+    preconditions:
+      - post.prompt is non-empty
+      - canViewPrompt is false
+    preconditions_ja:
+      - post.prompt が非空
+      - canViewPrompt が偽
+    postconditions:
+      success:
+        - CollapsibleText receives masked string of asterisks
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - CollapsibleText にアスタリスクのマスク文字列が渡る
+      error:
+        - なし
+    test_cases:
+      - render_WhileCannotViewPrompt_ShouldShowMaskedPrompt
+    test_cases_ja:
+      - 表示_プロンプト閲覧不可の間_マスク表示する
+
+  - id: POSTDET-008
+    method: render
+    type: state-driven
+    ears: |
+      While the viewer is the owner or follows the author,
+      the PostDetail shall show the real post.prompt text in the prompt section.
+    ears_ja: |
+      閲覧者がオーナーまたは著者をフォロー中である間、
+      PostDetail はプロンプト領域に実際の post.prompt を表示する。
+    preconditions:
+      - post.prompt exists; canViewPrompt is true
+    preconditions_ja:
+      - post.prompt があり canViewPrompt が真
+    postconditions:
+      success:
+        - Prompt body text equals post.prompt
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - プロンプト本文が post.prompt と一致する
+      error:
+        - なし
+    test_cases:
+      - render_WhileCanViewPrompt_ShouldShowPlainPrompt
+    test_cases_ja:
+      - 表示_プロンプト閲覧可の間_平文を表示する
+
+  - id: POSTDET-009
+    method: handleCopyPrompt
+    type: unwanted
+    ears: |
+      If canViewPrompt is false or post.prompt is empty,
+      then handleCopyPrompt shall show a follow-required toast
+      and shall not write to the clipboard.
+    ears_ja: |
+      canViewPrompt が偽または post.prompt が空の場合、
+      handleCopyPrompt はフォロー必須の toast を出しクリップボードに書き込まない。
+    preconditions:
+      - User triggers copy action
+    preconditions_ja:
+      - ユーザーがコピー操作を行う
+    postconditions:
+      success:
+        - Toast with followRequired title/description
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - followRequired の toast
+      error:
+        - なし
+    test_cases:
+      - handleCopyPrompt_GivenCannotView_ShouldToastFollowRequired
+    test_cases_ja:
+      - コピー_閲覧不可の場合_フォロー必須toast
+
+  - id: POSTDET-010
+    method: handleCopyPrompt
+    type: event-driven
+    ears: |
+      When canViewPrompt is true and clipboard write succeeds,
+      the system shall toast copy success and set isPromptCopied true temporarily.
+    ears_ja: |
+      canViewPrompt が真でクリップボード書き込みが成功した場合、
+      システムはコピー成功の toast を出し一時的に isPromptCopied を真にする。
+    preconditions:
+      - navigator.clipboard.writeText resolves
+    preconditions_ja:
+      - navigator.clipboard.writeText が成功する
+    postconditions:
+      success:
+        - Success toast; copied UI state toggles
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 成功 toast、コピー済みUI状態が切り替わる
+      error:
+        - なし
+    test_cases:
+      - handleCopyPrompt_GivenClipboardOk_ShouldToastSuccess
+    test_cases_ja:
+      - コピー_クリップボード成功の場合_成功toast
+
+  - id: POSTDET-011
+    method: handleCopyPrompt
+    type: unwanted
+    ears: |
+      If clipboard write throws,
+      then the system shall toast a destructive copy failure message.
+    ears_ja: |
+      クリップボード書き込みが例外の場合、
+      システムは destructive なコピー失敗の toast を出す。
+    preconditions:
+      - navigator.clipboard.writeText rejects
+    preconditions_ja:
+      - navigator.clipboard.writeText が拒否する
+    postconditions:
+      success:
+        - Destructive variant toast
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - destructive 指定の toast
+      error:
+        - なし
+    test_cases:
+      - handleCopyPrompt_GivenClipboardError_ShouldToastDestructive
+    test_cases_ja:
+      - コピー_クリップボード失敗の場合_destructive toast
+
+  - id: POSTDET-012
+    method: render
+    type: event-driven
+    ears: |
+      When the current user owns the post,
+      the overflow menu shall offer posted vs unposted actions
+      (submit post / delete draft when not posted; edit / unpost when posted).
+    ears_ja: |
+      現在ユーザーが投稿のオーナーの場合、
+      オーバーフローメニューは投稿状態に応じた項目を出す
+      （未投稿なら投稿/下書き削除、投稿済みなら編集/投稿取り消し）。
+    preconditions:
+      - isOwner is true
+    preconditions_ja:
+      - isOwner が真
+    postconditions:
+      success:
+        - Menu items match is_posted flag
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - メニュー項目が is_posted と一致する
+      error:
+        - なし
+    test_cases:
+      - render_GivenOwner_ShouldShowMenuForPostedState
+    test_cases_ja:
+      - 表示_オーナーの場合_投稿状態に応じたメニュー
+
+  - id: POSTDET-013
+    method: render
+    type: state-driven
+    ears: |
+      While the viewer is not the owner and followUserId exists,
+      the PostDetail shall render FollowButton with that userId.
+    ears_ja: |
+      閲覧者がオーナーでなく followUserId がある間、
+      PostDetail はその userId で FollowButton を描画する。
+    preconditions:
+      - followUserId is truthy; isOwner false
+    preconditions_ja:
+      - followUserId が真で isOwner が偽
+    postconditions:
+      success:
+        - FollowButton receives followUserId
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - FollowButton に followUserId が渡る
+      error:
+        - なし
+    test_cases:
+      - render_WhileNotOwnerWithFollowTarget_ShouldRenderFollowButton
+    test_cases_ja:
+      - 表示_オーナー以外でフォロー対象あり_FollowButtonを出す
+
+  - id: POSTDET-014
+    method: onCommentAdded
+    type: event-driven
+    ears: |
+      When CommentInput signals a new comment,
+      the PostDetail shall increment commentCount by one
+      and shall refresh the CommentList ref.
+    ears_ja: |
+      CommentInput が新規コメントを通知した場合、
+      PostDetail は commentCount を1増やし CommentList の ref を refresh する。
+    preconditions:
+      - commentListRef.current supports refresh
+    preconditions_ja:
+      - commentListRef.current が refresh を持つ
+    postconditions:
+      success:
+        - commentCount increases; refresh invoked
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - commentCount が増え refresh が呼ばれる
+      error:
+        - なし
+    test_cases:
+      - onCommentAdded_FromInput_ShouldIncrementCountAndRefresh
+    test_cases_ja:
+      - コメント_入力から追加_件数増とrefresh
+
+  - id: POSTDET-015
+    method: onCommentAdded
+    type: event-driven
+    ears: |
+      When CommentList signals comment removal flow via onCommentAdded callback contract,
+      the PostDetail shall decrement commentCount without going below zero.
+    ears_ja: |
+      CommentList 側のコールバック契約でコメント削除が通知された場合、
+      PostDetail は commentCount を0未満にならないよう減らす。
+    preconditions:
+      - commentCount is positive
+    preconditions_ja:
+      - commentCount が正
+    postconditions:
+      success:
+        - commentCount becomes max(0, prev - 1)
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - commentCount が max(0, 前回-1) になる
+      error:
+        - なし
+    test_cases:
+      - onCommentAdded_FromList_ShouldDecrementCount
+    test_cases_ja:
+      - コメント_リストから通知_件数減
+
+  - id: POSTDET-016
+    method: render
+    type: event-driven
+    ears: |
+      When post.id exists and the image is not posted,
+      the PostDetail shall mount PostModal bound to postModalOpen state.
+    ears_ja: |
+      post.id があり画像が未投稿の場合、
+      PostDetail は postModalOpen 状態に紐づく PostModal をマウントする。
+    preconditions:
+      - post.id defined; is_posted false
+    preconditions_ja:
+      - post.id があり is_posted が偽
+    postconditions:
+      success:
+        - PostModal present with imageId
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - imageId 付きで PostModal がある
+      error:
+        - なし
+    test_cases:
+      - render_GivenUnpostedWithId_ShouldMountPostModal
+    test_cases_ja:
+      - 表示_未投稿かつidあり_PostModalをマウント
+
+  - id: POSTDET-017
+    method: render
+    type: event-driven
+    ears: |
+      When imageUrl from getPostImageUrl is available,
+      clicking the main image container shall set fullscreen open state
+      so ImageFullscreen can display.
+    ears_ja: |
+      getPostImageUrl の imageUrl がある場合、
+      メイン画像コンテナのクリックで全画面オープン状態となり ImageFullscreen が表示できる。
+    preconditions:
+      - imageUrl is truthy
+    preconditions_ja:
+      - imageUrl が真
+    postconditions:
+      success:
+        - isFullscreenOpen becomes true after click
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - クリック後 isFullscreenOpen が真
+      error:
+        - なし
+    test_cases:
+      - render_GivenImageUrl_ClickImage_ShouldOpenFullscreen
+    test_cases_ja:
+      - 表示_画像URLあり_クリックで全画面

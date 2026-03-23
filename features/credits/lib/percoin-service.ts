@@ -124,7 +124,6 @@ export async function recordMockPercoinPurchase(params: {
 export async function deductPercoins(params: {
   userId: string;
   percoinAmount: number;
-  transactionType?: Extract<PercoinTransactionType, "consumption">;
   metadata?: PercoinTransactionMetadata;
   relatedGenerationId?: string | null;
   supabaseClient?: Supabase;

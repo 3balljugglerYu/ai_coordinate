@@ -1,0 +1,209 @@
+metadata:
+  class: PercoinService
+  source: features/credits/lib/percoin-service.ts
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - createServerSupabaseClient
+  external:
+    - Supabase RPC apply_percoin_transaction
+
+state_properties: []
+
+specifications:
+  - id: PERC-001
+    method: recordPercoinPurchase
+    type: event-driven
+    ears: |
+      When recordPercoinPurchase is invoked with a user id, amount, and optional metadata,
+      the system shall call apply_percoin_transaction with mode purchase_paid,
+      shall merge metadata with bucket "paid",
+      shall pass stripePaymentIntentId when provided,
+      and shall return the resulting balance.
+    ears_ja: |
+      recordPercoinPurchase がユーザーID・数量・任意のmetadataで呼び出された場合、
+      システムは mode purchase_paid で apply_percoin_transaction を呼び出し、
+      metadata に bucket "paid" をマージし、
+      stripePaymentIntentId があれば渡し、
+      返却された balance を返す。
+    preconditions:
+      - Supabase client is available (injected or from createServerSupabaseClient)
+      - RPC returns a single row with balance, from_promo, from_paid
+    preconditions_ja:
+      - Supabase クライアントが利用可能である（注入または createServerSupabaseClient）
+      - RPC が balance / from_promo / from_paid を含む1行を返す
+    postconditions:
+      success:
+        - Returns { balance } from the RPC row
+        - RPC is invoked with p_mode purchase_paid and merged metadata including bucket paid
+      error:
+        - Propagates errors from apply_percoin_transaction
+    postconditions_ja:
+      success:
+        - RPC 行の balance を { balance } として返す
+        - RPC が p_mode purchase_paid と bucket paid を含むマージ済みmetadataで呼ばれる
+      error:
+        - apply_percoin_transaction のエラーを伝播する
+    test_cases:
+      - recordPercoinPurchase_GivenSuccessfulRpc_ShouldReturnBalanceAndCallPurchasePaid
+    test_cases_ja:
+      - recordPercoinPurchase_RPC成功の場合_balanceを返しpurchase_paidで呼ぶ
+
+  - id: PERC-002
+    method: recordMockPercoinPurchase
+    type: event-driven
+    ears: |
+      When recordMockPercoinPurchase is invoked with a percoin package,
+      the system shall call apply_percoin_transaction with mode purchase_promo,
+      amount equal to package credits,
+      and metadata including mode mock, packageId, priceYen, and bucket promo,
+      and shall return the resulting balance.
+    ears_ja: |
+      recordMockPercoinPurchase がペルコインパッケージ付きで呼び出された場合、
+      システムは mode purchase_promo で apply_percoin_transaction を呼び出し、
+      数量は package の credits とし、
+      metadata に mode mock, packageId, priceYen, bucket promo を含め、
+      返却された balance を返す。
+    preconditions:
+      - PercoinPackage defines id, credits, and priceYen
+      - RPC returns a single result row
+    preconditions_ja:
+      - PercoinPackage に id, credits, priceYen がある
+      - RPC が結果行を1件返す
+    postconditions:
+      success:
+        - Returns { balance } from the RPC row
+        - RPC p_amount equals package credits and p_mode is purchase_promo
+      error:
+        - Propagates errors from apply_percoin_transaction
+    postconditions_ja:
+      success:
+        - RPC 行の balance を返す
+        - p_amount がパッケージの credits と一致し p_mode が purchase_promo である
+      error:
+        - apply_percoin_transaction のエラーを伝播する
+    test_cases:
+      - recordMockPercoinPurchase_GivenPackage_ShouldCallPromoModeWithPackageMetadata
+    test_cases_ja:
+      - recordMockPercoinPurchase_パッケージ指定の場合_プロモモードとパッケージmetadataで呼ぶ
+
+  - id: PERC-003
+    method: deductPercoins
+    type: event-driven
+    ears: |
+      When deductPercoins is invoked with user id and amount,
+      the system shall call apply_percoin_transaction with mode consumption,
+      shall pass relatedGenerationId and metadata when provided,
+      and shall return the resulting balance.
+    ears_ja: |
+      deductPercoins がユーザーIDと数量で呼び出された場合、
+      システムは mode consumption で apply_percoin_transaction を呼び出し、
+      relatedGenerationId と metadata があれば渡し、
+      返却された balance を返す。
+    preconditions:
+      - RPC returns a single result row
+    preconditions_ja:
+      - RPC が結果行を1件返す
+    postconditions:
+      success:
+        - Returns { balance } from the RPC row
+        - RPC p_mode is consumption
+      error:
+        - Propagates errors from apply_percoin_transaction
+    postconditions_ja:
+      success:
+        - RPC 行の balance を返す
+        - p_mode が consumption である
+      error:
+        - apply_percoin_transaction のエラーを伝播する
+    test_cases:
+      - deductPercoins_GivenAmount_ShouldCallConsumptionMode
+    test_cases_ja:
+      - deductPercoins_数量指定の場合_consumptionモードで呼ぶ
+
+  - id: PERC-004
+    method: applyPercoinTransaction
+    type: unwanted
+    ears: |
+      If the RPC returns an error whose message includes "insufficient balance",
+      then the system shall throw InsufficientPercoinBalanceError.
+    ears_ja: |
+      RPC がメッセージに "insufficient balance" を含むエラーを返した場合、
+      システムは InsufficientPercoinBalanceError をスローする。
+    preconditions:
+      - Any exported function that uses applyPercoinTransaction is invoked
+    preconditions_ja:
+      - apply_percoin_transaction を使う公開関数のいずれかが呼ばれている
+    postconditions:
+      success:
+        - None
+      error:
+        - Throws InsufficientPercoinBalanceError
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - InsufficientPercoinBalanceError をスローする
+    test_cases:
+      - deductPercoins_GivenInsufficientBalanceRpc_ShouldThrowInsufficientPercoinBalanceError
+    test_cases_ja:
+      - deductPercoins_残高不足RPCの場合_InsufficientPercoinBalanceErrorを投げる
+
+  - id: PERC-005
+    method: applyPercoinTransaction
+    type: unwanted
+    ears: |
+      If the RPC returns an error whose message does not indicate insufficient balance,
+      then the system shall throw an Error prefixed with "ペルコイン取引に失敗しました: ".
+    ears_ja: |
+      RPC が残高不足を示さないエラーを返した場合、
+      システムは "ペルコイン取引に失敗しました: " を前置した Error をスローする。
+    preconditions:
+      - RPC error is non-null and message does not include insufficient balance
+    preconditions_ja:
+      - RPC エラーが存在しメッセージに insufficient balance が含まれない
+    postconditions:
+      success:
+        - None
+      error:
+        - Throws Error with the localized failure prefix and original message
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ローカライズされた失敗プレフィックスと元メッセージ付きの Error をスローする
+    test_cases:
+      - recordPercoinPurchase_GivenRpcFailure_ShouldThrowWrappedError
+    test_cases_ja:
+      - recordPercoinPurchase_RPC失敗の場合_ラップされたErrorを投げる
+
+  - id: PERC-006
+    method: applyPercoinTransaction
+    type: unwanted
+    ears: |
+      If the RPC succeeds but returns no usable row,
+      then the system shall throw an Error stating that the transaction result could not be obtained.
+    ears_ja: |
+      RPC は成功するが利用可能な行が返らない場合、
+      システムは取引結果が取得できなかったことを示す Error をスローする。
+    preconditions:
+      - RPC error is null and data is empty or not a non-empty array first element
+    preconditions_ja:
+      - RPC エラーが null で data が空または先頭行がない
+    postconditions:
+      success:
+        - None
+      error:
+        - Throws Error with message indicating result could not be obtained
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 結果が取得できなかったことを示すメッセージの Error をスローする
+    test_cases:
+      - recordPercoinPurchase_GivenEmptyRpcData_ShouldThrowMissingResultError
+    test_cases_ja:
+      - recordPercoinPurchase_RPCデータ空の場合_結果未取得Errorを投げる

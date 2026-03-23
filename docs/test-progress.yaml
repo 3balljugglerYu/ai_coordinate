@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-22"
+last_updated: "2026-03-23"
 
 # Status values:
 # - pending
@@ -100,7 +100,7 @@ tier1:
     test_file: tests/integration/api/generate-async-route.test.ts
 
   PercoinService:
-    status: pending
+    status: completed
     score: 96
     file: features/credits/lib/percoin-service.ts
     prerequisites:
@@ -121,7 +121,7 @@ tier2:
     test_file: tests/unit/lib/i18n-config.test.ts
 
   PostsRoute:
-    status: pending
+    status: completed
     score: 88
     file: app/api/posts/route.ts
     prerequisites:
@@ -139,7 +139,7 @@ tier2:
     test_file: tests/unit/lib/translation-messages.test.ts
 
   NotificationsRoute:
-    status: pending
+    status: completed
     score: 86
     file: app/api/notifications/route.ts
     prerequisites:
@@ -175,7 +175,7 @@ tier2:
     test_file: tests/integration/proxy/locale-proxy-route.test.ts
 
   GenerationForm:
-    status: pending
+    status: completed
     score: 82
     file: features/generation/components/GenerationForm.tsx
     prerequisites:
@@ -183,24 +183,20 @@ tier2:
       - generate API mock
     char_test: null
     spec_file: docs/specs/generation/generation_form_spec.yaml
-    test_file: tests/unit/components/generation-form.test.tsx
+    test_file: tests/unit/features/generation/generation-form.test.tsx
 
   PostDetail:
-    status: pending
+    status: completed
     score: 80
     file: features/posts/components/PostDetail.tsx
-    prerequisites:
-      - comments/likes API mock
     char_test: null
     spec_file: docs/specs/posts/post_detail_spec.yaml
-    test_file: tests/unit/components/post-detail.test.tsx
+    test_file: tests/unit/features/posts/post-detail.test.tsx
 
   GA4DashboardData:
-    status: pending
+    status: completed
     score: 78
     file: features/analytics/lib/get-ga4-dashboard-data.ts
-    prerequisites:
-      - bigquery client mock
     char_test: null
     spec_file: docs/specs/analytics/ga4_dashboard_data_spec.yaml
     test_file: tests/unit/lib/get-ga4-dashboard-data.test.ts
@@ -349,12 +345,12 @@ widgets:
 summary:
   tier1:
     total: 2
-    completed: 1
-    percentage: 50
+    completed: 2
+    percentage: 100
   tier2:
     total: 10
-    completed: 5
-    percentage: 50
+    completed: 10
+    percentage: 100
   tier3:
     total: 8
     completed: 0
@@ -365,5 +361,5 @@ summary:
     percentage: 17
   overall:
     total: 32
-    completed: 8
-    percentage: 25
+    completed: 14
+    percentage: 44

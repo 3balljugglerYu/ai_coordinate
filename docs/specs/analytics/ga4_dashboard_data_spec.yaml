@@ -1,0 +1,248 @@
+metadata:
+  class: GA4DashboardData
+  source: features/analytics/lib/get-ga4-dashboard-data.ts
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - getGa4PageSummaryData
+    - getGa4PageFlowData
+    - getGa4EntryAccessData
+    - getGa4ExternalAccessData
+  external:
+    - None at this module; BigQuery / GA4 access is delegated to the four service functions above
+
+state_properties: []
+
+specifications:
+  - id: GA4DASH-001
+    method: getGa4DashboardData
+    type: event-driven
+    ears: |
+      When getGa4DashboardData is invoked with a DashboardRange,
+      the system shall call getGa4PageSummaryData, getGa4PageFlowData,
+      getGa4EntryAccessData, and getGa4ExternalAccessData concurrently
+      with that same range using Promise.allSettled.
+    ears_ja: |
+      getGa4DashboardData が DashboardRange 付きで呼び出された場合、
+      システムは getGa4PageSummaryData、getGa4PageFlowData、
+      getGa4EntryAccessData、getGa4ExternalAccessData を
+      同一の range で Promise.allSettled により並行して呼び出す。
+    preconditions:
+      - range is a valid DashboardRange
+    preconditions_ja:
+      - range が有効な DashboardRange である
+    postconditions:
+      success:
+        - All four fetchers are invoked once each with the given range
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 4 つの取得関数がそれぞれ 1 回ずつ、与えられた range で呼ばれる
+      error:
+        - なし
+    test_cases:
+      - getGa4DashboardData_GivenRange_ShouldCallAllFetchersInParallelWithRange
+    test_cases_ja:
+      - getGa4DashboardData_range指定_4取得を同一rangeで並行呼び出しする
+
+  - id: GA4DASH-002
+    method: getGa4DashboardData
+    type: event-driven
+    ears: |
+      When all four Promise.allSettled results are fulfilled,
+      the system shall return a Ga4DashboardData object that includes
+      the input range and spreads pageSummary, entryAccess, externalAccess,
+      and pageFlow in that order so later keys override on collision.
+    ears_ja: |
+      Promise.allSettled の 4 結果がすべて fulfilled の場合、
+      システムは入力の range を含む Ga4DashboardData を返し、
+      pageSummary、entryAccess、externalAccess、pageFlow の順にスプレッドする
+      （キー衝突時は後勝ち）。
+    preconditions:
+      - Each sub-call resolves with a value compatible with Ga4DashboardData fields
+    preconditions_ja:
+      - 各サブ呼び出しが Ga4DashboardData のフィールドと整合する値で解決する
+    postconditions:
+      success:
+        - Returned object.range equals the input range
+        - Fields match the merged results of the four fulfilled values
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 返却オブジェクトの range が入力と一致する
+        - 各フィールドが 4 つの fulfilled 値のマージ結果と一致する
+      error:
+        - なし
+    test_cases:
+      - getGa4DashboardData_GivenAllFulfilled_ShouldMergeRangeAndResults
+    test_cases_ja:
+      - getGa4DashboardData_全成功の場合_rangeと結果をマージして返す
+
+  - id: GA4DASH-003
+    method: getGa4DashboardData
+    type: unwanted
+    ears: |
+      If getGa4PageSummaryData rejects or throws so that its allSettled entry is rejected,
+      then the system shall substitute page summary fields with status "error",
+      the configured Japanese GA4 failure statusMessage,
+      and empty topPages and topLandingPages arrays.
+    ears_ja: |
+      getGa4PageSummaryData が拒否され allSettled 上で rejected になる場合、
+      システムはページサマリー部分を status "error"、
+      定義済みの日本語 GA4 失敗 statusMessage、
+      空の topPages / topLandingPages で置き換える。
+    preconditions:
+      - The other three fetchers may succeed or fail independently
+    preconditions_ja:
+      - 他 3 つの取得は独立に成功または失敗しうる
+    postconditions:
+      success:
+        - Other sections reflect their own fulfilled or fallback values
+      error:
+        - Page summary uses error stub with exact fallback message and empty lists
+    postconditions_ja:
+      success:
+        - 他セクションは各自の成功値またはフォールバックを反映する
+      error:
+        - ページサマリーが所定メッセージと空配列の error スタブになる
+    test_cases:
+      - getGa4DashboardData_GivenPageSummaryRejected_ShouldUsePageSummaryErrorStub
+    test_cases_ja:
+      - getGa4DashboardData_ページサマリー失敗の場合_サマリー用errorスタブにする
+
+  - id: GA4DASH-004
+    method: getGa4DashboardData
+    type: unwanted
+    ears: |
+      If getGa4PageFlowData rejects,
+      then the system shall substitute page flow fields with pageFlowStatus "error",
+      the configured Japanese BigQuery page-flow failure message,
+      and empty topTransitions and topDropoffPages arrays.
+    ears_ja: |
+      getGa4PageFlowData が拒否された場合、
+      システムはページフロー部分を pageFlowStatus "error"、
+      定義済みの日本語 BigQuery ページフロー失敗メッセージ、
+      空の topTransitions / topDropoffPages で置き換える。
+    preconditions:
+      - Other fetchers may succeed or fail independently
+    preconditions_ja:
+      - 他の取得は独立に成功または失敗しうる
+    postconditions:
+      success:
+        - Non-page-flow sections use fulfilled values or their own fallbacks
+      error:
+        - Page flow uses error stub with exact fallback message and empty lists
+    postconditions_ja:
+      success:
+        - ページフロー以外は成功値または各フォールバックを使う
+      error:
+        - ページフローが所定メッセージと空配列の error スタブになる
+    test_cases:
+      - getGa4DashboardData_GivenPageFlowRejected_ShouldUsePageFlowErrorStub
+    test_cases_ja:
+      - getGa4DashboardData_ページフロー失敗の場合_フロー用errorスタブにする
+
+  - id: GA4DASH-005
+    method: getGa4DashboardData
+    type: unwanted
+    ears: |
+      If getGa4EntryAccessData rejects,
+      then the system shall substitute entry access fields with entryAccessStatus "error",
+      the configured Japanese BigQuery entry-access failure message,
+      and empty entryAccessRows and entryAccessDateKeys arrays.
+    ears_ja: |
+      getGa4EntryAccessData が拒否された場合、
+      システムは入口アクセス部分を entryAccessStatus "error"、
+      定義済みの日本語 BigQuery 入口アクセス失敗メッセージ、
+      空の entryAccessRows / entryAccessDateKeys で置き換える。
+    preconditions:
+      - Other fetchers may succeed or fail independently
+    preconditions_ja:
+      - 他の取得は独立に成功または失敗しうる
+    postconditions:
+      success:
+        - Non-entry sections use fulfilled values or their own fallbacks
+      error:
+        - Entry access uses error stub with exact fallback message and empty lists
+    postconditions_ja:
+      success:
+        - 入口以外は成功値または各フォールバックを使う
+      error:
+        - 入口アクセスが所定メッセージと空配列の error スタブになる
+    test_cases:
+      - getGa4DashboardData_GivenEntryAccessRejected_ShouldUseEntryAccessErrorStub
+    test_cases_ja:
+      - getGa4DashboardData_入口アクセス失敗の場合_入口用errorスタブにする
+
+  - id: GA4DASH-006
+    method: getGa4DashboardData
+    type: unwanted
+    ears: |
+      If getGa4ExternalAccessData rejects,
+      then the system shall substitute external access fields with externalAccessStatus "error",
+      the configured Japanese BigQuery external-access failure message,
+      and an empty externalAccessRows array.
+    ears_ja: |
+      getGa4ExternalAccessData が拒否された場合、
+      システムは外部流入部分を externalAccessStatus "error"、
+      定義済みの日本語 BigQuery 外部流入失敗メッセージ、
+      空の externalAccessRows で置き換える。
+    preconditions:
+      - Other fetchers may succeed or fail independently
+    preconditions_ja:
+      - 他の取得は独立に成功または失敗しうる
+    postconditions:
+      success:
+        - Non-external sections use fulfilled values or their own fallbacks
+      error:
+        - External access uses error stub with exact fallback message and empty list
+    postconditions_ja:
+      success:
+        - 外部流入以外は成功値または各フォールバックを使う
+      error:
+        - 外部流入が所定メッセージと空配列の error スタブになる
+    test_cases:
+      - getGa4DashboardData_GivenExternalAccessRejected_ShouldUseExternalAccessErrorStub
+    test_cases_ja:
+      - getGa4DashboardData_外部流入失敗の場合_外部流入用errorスタブにする
+
+  - id: GA4DASH-007
+    method: getGa4DashboardData
+    type: state-driven
+    ears: |
+      While more than one sub-fetcher rejects,
+      the system shall apply the corresponding error stub independently for each rejected
+      part and shall still include the input range and successful parts from fulfilled results.
+    ears_ja: |
+      複数のサブ取得が拒否されている間、
+      システムは拒否された各部分に対応する error スタブを独立に適用し、
+      入力の range と fulfilled だった部分の成功値も返却に含める。
+    preconditions:
+      - At least two of the four fetchers reject
+      - At least one fetcher fulfills
+    preconditions_ja:
+      - 4 つの取得のうち少なくとも 2 つが拒否される
+      - 少なくとも 1 つは fulfilled である
+    postconditions:
+      success:
+        - range is preserved
+        - Each failed quadrant matches its stub shape and messages
+        - Each fulfilled quadrant matches its resolved value
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - range が保持される
+        - 失敗した象限ごとにスタブ形・メッセージが一致する
+        - 成功した象限は解決値と一致する
+      error:
+        - なし
+    test_cases:
+      - getGa4DashboardData_GivenMultipleRejected_ShouldApplyIndependentStubsAndKeepFulfilled
+    test_cases_ja:
+      - getGa4DashboardData_複数失敗の場合_独立スタブと成功部分を併せて返す

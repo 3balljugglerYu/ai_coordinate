@@ -1,0 +1,317 @@
+metadata:
+  class: GenerationForm
+  source: features/generation/components/GenerationForm.tsx
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - useTranslations (next-intl, namespace coordinate)
+    - getSourceImageStocks / getStockImageLimit
+    - getCurrentUserId
+    - getPercoinCost
+  external:
+    - Child components ImageUploader, StockImageListClient, StockImageUploadCard, GeneratedImagesFromSource
+    - Browser localStorage / sessionStorage / document events (tutorial)
+    - fetch for tutorial demo image path
+
+state_properties:
+  - name: imageSourceType
+    type: upload | stock
+    default: upload
+  - name: uploadedImage
+    type: UploadedImage | null
+    default: null
+  - name: selectedStockId
+    type: string | null
+    default: null
+  - name: sourceImageType
+    type: illustration | real
+    default: illustration
+  - name: prompt
+    type: string
+    default: ""
+  - name: backgroundMode
+    type: BackgroundMode
+    default: keep
+  - name: selectedCount
+    type: number
+    default: 1
+  - name: selectedModel
+    type: GeminiModel
+    default: gemini-2.5-flash-image
+  - name: stocks
+    type: SourceImageStock[]
+    default: []
+  - name: stockLimit
+    type: number | null
+    default: null
+  - name: currentCount
+    type: number | null
+    default: null
+  - name: isLoadingStocks
+    type: boolean
+    default: true
+  - name: isTutorialInProgress
+    type: boolean
+    default: false
+
+specifications:
+  - id: GENFORM-001
+    method: render
+    type: ubiquitous
+    ears: |
+      The GenerationForm shall render the prompt textarea with maxLength equal to
+      GENERATION_PROMPT_MAX_LENGTH and shall display the current character count versus the max.
+    ears_ja: |
+      GenerationForm はプロンプト用 textarea に GENERATION_PROMPT_MAX_LENGTH と同じ maxLength を付与し、
+      現在文字数と上限を表示する。
+    preconditions:
+      - Component is mounted with onSubmit
+    preconditions_ja:
+      - onSubmit 付きでマウントされる
+    postconditions:
+      success:
+        - Textarea maxLength matches GENERATION_PROMPT_MAX_LENGTH
+        - Character count label reflects prompt length
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - textarea の maxLength が GENERATION_PROMPT_MAX_LENGTH と一致する
+        - 文字数表示がプロンプト長と一致する
+      error:
+        - なし
+    test_cases:
+      - render_ShouldShowPromptMaxLengthAndCharacterCount
+    test_cases_ja:
+      - 表示_プロンプト上限と文字数表示を出す
+
+  - id: GENFORM-002
+    method: render
+    type: state-driven
+    ears: |
+      While the trimmed prompt is empty,
+      the primary submit control shall be disabled
+      and shall not invoke onSubmit when interacted with as a disabled control.
+    ears_ja: |
+      トリム後プロンプトが空である間、
+      主送信コントロールは無効であり、無効なまま操作しても onSubmit を呼ばない。
+    preconditions:
+      - Component mounted in upload mode
+    preconditions_ja:
+      - アップロードモードでマウント済み
+    postconditions:
+      success:
+        - Submit button is disabled; onSubmit not called from normal flow
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 送信ボタンが無効、通常フローで onSubmit なし
+      error:
+        - なし
+    test_cases:
+      - render_WhileEmptyPrompt_ShouldDisableSubmit
+    test_cases_ja:
+      - 表示_プロンプト空の間は送信無効
+
+  - id: GENFORM-003
+    method: render
+    type: state-driven
+    ears: |
+      While isGenerationPromptTooLong(prompt) is true,
+      the primary submit control shall be disabled.
+    ears_ja: |
+      isGenerationPromptTooLong(prompt) が真である間、
+      主送信コントロールは無効である。
+    preconditions:
+      - Prompt state length exceeds GENERATION_PROMPT_MAX_LENGTH
+    preconditions_ja:
+      - プロンプト状態の長さが GENERATION_PROMPT_MAX_LENGTH を超える
+    postconditions:
+      success:
+        - Submit button is disabled
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 送信ボタンが無効
+      error:
+        - なし
+    test_cases:
+      - render_WhilePromptTooLong_ShouldDisableSubmit
+    test_cases_ja:
+      - 表示_プロンプト超過の間は送信無効
+
+  - id: GENFORM-004
+    method: render
+    type: state-driven
+    ears: |
+      While imageSourceType is upload and uploadedImage is missing,
+      the primary submit control shall be disabled.
+    ears_ja: |
+      imageSourceType が upload で uploadedImage がない間、
+      主送信コントロールは無効である。
+    preconditions:
+      - Trimmed prompt is non-empty and not too long
+    preconditions_ja:
+      - トリム後プロンプトが非空かつ超過でない
+    postconditions:
+      success:
+        - Submit button is disabled
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 送信ボタンが無効
+      error:
+        - なし
+    test_cases:
+      - render_WhileUploadModeWithoutImage_ShouldDisableSubmit
+    test_cases_ja:
+      - 表示_アップロード未選択の間は送信無効
+
+  - id: GENFORM-005
+    method: render
+    type: state-driven
+    ears: |
+      While imageSourceType is stock and selectedStockId is missing,
+      the primary submit control shall be disabled.
+    ears_ja: |
+      imageSourceType が stock で selectedStockId がない間、
+      主送信コントロールは無効である。
+    preconditions:
+      - Trimmed prompt is non-empty and not too long
+    preconditions_ja:
+      - トリム後プロンプトが非空かつ超過でない
+    postconditions:
+      success:
+        - Submit button is disabled
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 送信ボタンが無効
+      error:
+        - なし
+    test_cases:
+      - render_WhileStockModeWithoutSelection_ShouldDisableSubmit
+    test_cases_ja:
+      - 表示_ストック未選択の間は送信無効
+
+  - id: GENFORM-006
+    method: handleSubmit
+    type: event-driven
+    ears: |
+      When validation passes in upload mode,
+      the system shall invoke onSubmit with trimmed prompt, source file,
+      sourceImageType, backgroundMode, selectedCount, and selectedModel,
+      and shall omit sourceImageStockId.
+    ears_ja: |
+      upload モードでバリデーションが通った場合、
+      システムはトリム済みプロンプト・ファイル・sourceImageType・backgroundMode・
+      selectedCount・selectedModel で onSubmit を呼び sourceImageStockId は付けない。
+    preconditions:
+      - uploadedImage present; prompt valid
+    preconditions_ja:
+      - アップロード画像あり、プロンプト有効
+    postconditions:
+      success:
+        - onSubmit called once with expected payload shape
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 期待する形で onSubmit が1回呼ばれる
+      error:
+        - なし
+    test_cases:
+      - handleSubmit_GivenValidUpload_ShouldCallOnSubmitWithPayload
+    test_cases_ja:
+      - 送信_アップロード有効の場合_onSubmitにペイロードを渡す
+
+  - id: GENFORM-007
+    method: render
+    type: state-driven
+    ears: |
+      While isGenerating is true,
+      the submit button shall be disabled regardless of other field values.
+    ears_ja: |
+      isGenerating が真の間、
+      送信ボタンは他フィールドに関わらず無効である。
+    preconditions:
+      - Prompt and source image would otherwise allow submit
+    preconditions_ja:
+      - 本来なら送信可能なプロンプトと画像がある
+    postconditions:
+      success:
+        - Primary action button is disabled
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 主アクションボタンが無効
+      error:
+        - なし
+    test_cases:
+      - render_WhileGenerating_ShouldDisableSubmitButton
+    test_cases_ja:
+      - 表示_生成中は送信ボタン無効
+
+  - id: GENFORM-008
+    method: handleSubmit
+    type: optional
+    ears: |
+      Where sessionStorage indicates tutorial in progress,
+      when submit proceeds, the system shall dispatch a tutorial:advance-to-next event on document.
+    ears_ja: |
+      sessionStorage がチュートリアル進行中を示す場合、
+      送信が進むとき document に tutorial:advance-to-next をディスパッチする。
+    preconditions:
+      - Validation passes; TUTORIAL_STORAGE_KEYS.IN_PROGRESS is "true" in sessionStorage
+    preconditions_ja:
+      - バリデーション成功、sessionStorage の IN_PROGRESS が "true"
+    postconditions:
+      success:
+        - CustomEvent tutorial:advance-to-next bubbles from document
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - document から tutorial:advance-to-next がバブルする
+      error:
+        - なし
+    test_cases:
+      - handleSubmit_GivenTutorialInProgress_ShouldDispatchAdvanceEvent
+    test_cases_ja:
+      - 送信_チュートリアル中は進行イベントを送る
+
+  - id: GENFORM-009
+    method: handleImageUpload
+    type: event-driven
+    ears: |
+      When an image is uploaded via handleImageUpload,
+      the system shall clear selectedStockId and remove selectedStockId from localStorage.
+    ears_ja: |
+      handleImageUpload で画像が載った場合、
+      selectedStockId を消し localStorage の selectedStockId を削除する。
+    preconditions:
+      - window.localStorage is available
+    preconditions_ja:
+      - localStorage が利用可能
+    postconditions:
+      success:
+        - Stock selection cleared in storage
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ストック選択がストレージ上で消える
+      error:
+        - なし
+    test_cases:
+      - handleImageUpload_GivenNewFile_ShouldClearStockSelectionInStorage
+    test_cases_ja:
+      - アップロード_新規ファイルでストック選択をストレージから消す

@@ -1,0 +1,246 @@
+metadata:
+  class: PostsRoute
+  source: app/api/posts/route.ts
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - getPosts (features/posts/lib/server-api)
+    - getRouteLocale
+    - postsRouteCopy
+  external:
+    - None at route layer (delegated to getPosts)
+
+state_properties: []
+
+specifications:
+  - id: POSTSGET-001
+    method: GET
+    type: unwanted
+    ears: |
+      If the limit query parameter parses to a value less than 1 or greater than 100,
+      then the route shall respond with HTTP 400,
+      errorCode POSTS_INVALID_LIMIT,
+      and a localized invalidLimit message.
+    ears_ja: |
+      limit クエリが 1 未満または 100 を超える値に解釈される場合、
+      ルートは HTTP 400、errorCode POSTS_INVALID_LIMIT、
+      ローカライズされた invalidLimit メッセージを返す。
+    preconditions:
+      - GET /api/posts is invoked
+    preconditions_ja:
+      - GET /api/posts が呼び出される
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400 with POSTS_INVALID_LIMIT
+        - getPosts is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス400とPOSTS_INVALID_LIMIT
+        - getPosts は呼ばれない
+    test_cases:
+      - GET_GivenLimitZero_ShouldReturn400InvalidLimit
+      - GET_GivenLimitOver100_ShouldReturn400InvalidLimit
+    test_cases_ja:
+      - GET_limit0の場合_400でinvalidLimit
+      - GET_limit101の場合_400でinvalidLimit
+
+  - id: POSTSGET-002
+    method: GET
+    type: unwanted
+    ears: |
+      If the offset query parameter parses to a value less than 0,
+      then the route shall respond with HTTP 400,
+      errorCode POSTS_INVALID_OFFSET,
+      and a localized invalidOffset message.
+    ears_ja: |
+      offset クエリが 0 未満に解釈される場合、
+      ルートは HTTP 400、errorCode POSTS_INVALID_OFFSET、
+      ローカライズされた invalidOffset メッセージを返す。
+    preconditions:
+      - GET /api/posts is invoked
+    preconditions_ja:
+      - GET /api/posts が呼び出される
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400 with POSTS_INVALID_OFFSET
+        - getPosts is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス400とPOSTS_INVALID_OFFSET
+        - getPosts は呼ばれない
+    test_cases:
+      - GET_GivenNegativeOffset_ShouldReturn400InvalidOffset
+    test_cases_ja:
+      - GET_offset負の場合_400でinvalidOffset
+
+  - id: POSTSGET-003
+    method: GET
+    type: event-driven
+    ears: |
+      When GET /api/posts is invoked without sort or with a sort value
+      not in the allowed list,
+      the system shall call getPosts with sort type newest.
+    ears_ja: |
+      sort を省略するか、許可リストにない sort で GET /api/posts が呼び出された場合、
+      システムは getPosts を sort 種別 newest で呼び出す。
+    preconditions:
+      - limit and offset are valid
+    preconditions_ja:
+      - limit と offset が有効である
+    postconditions:
+      success:
+        - getPosts receives sort "newest" for unknown sort values
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 未知のsortでは getPosts に "newest" が渡る
+      error:
+        - なし
+    test_cases:
+      - GET_GivenInvalidSort_ShouldCallGetPostsWithNewest
+    test_cases_ja:
+      - GET_無効なsortの場合_getPostsにnewestで呼ぶ
+
+  - id: POSTSGET-004
+    method: GET
+    type: event-driven
+    ears: |
+      When GET /api/posts is invoked with a recognized sort value,
+      the system shall pass that sort to getPosts.
+    ears_ja: |
+      認識される sort 値で GET /api/posts が呼び出された場合、
+      システムは同じ sort を getPosts に渡す。
+    preconditions:
+      - sort is one of newest, following, daily, week, month, popular
+    preconditions_ja:
+      - sort が newest / following / daily / week / month / popular のいずれか
+    postconditions:
+      success:
+        - getPosts fourth argument matches the requested sort
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - getPosts の第4引数が要求した sort と一致する
+      error:
+        - なし
+    test_cases:
+      - GET_GivenSortPopular_ShouldCallGetPostsWithPopular
+    test_cases_ja:
+      - GET_sortPopularの場合_getPostsにpopularで呼ぶ
+
+  - id: POSTSGET-005
+    method: GET
+    type: event-driven
+    ears: |
+      When GET /api/posts is invoked,
+      the system shall parse limit defaulting to 20 and offset defaulting to 0,
+      shall trim the q parameter and pass undefined when empty after trim,
+      and shall return posts and hasMore where hasMore is true
+      iff the returned posts length equals limit.
+    ears_ja: |
+      GET /api/posts が呼び出された場合、
+      システムは limit を既定20、offset を既定0として解釈し、
+      q はトリムし空なら undefined を渡し、
+      返却 posts と hasMore を返す（hasMore は件数が limit と等しいとき真）。
+    preconditions:
+      - Query parameters are valid
+      - getPosts resolves successfully
+    preconditions_ja:
+      - クエリが有効である
+      - getPosts が成功する
+    postconditions:
+      success:
+        - Response 200 with posts array and hasMore boolean
+        - getPosts called with normalized limit, offset, sort, and search query
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - HTTP 200 で posts と hasMore
+        - getPosts に正規化済みの limit / offset / sort / 検索語が渡る
+      error:
+        - なし
+    test_cases:
+      - GET_GivenDefaults_ShouldCallGetPostsWithTwentyZeroNewest
+      - GET_GivenTrimmedQuery_ShouldPassTrimmedSearchToGetPosts
+      - GET_GivenBlankQuery_ShouldPassUndefinedSearchToGetPosts
+      - GET_GivenFullPage_ShouldSetHasMoreTrue
+      - GET_GivenPartialPage_ShouldSetHasMoreFalse
+    test_cases_ja:
+      - GET_既定クエリの場合_getPostsに20_0_newest
+      - GET_qに前後空白の場合_トリムした検索語を渡す
+      - GET_qが空の場合_undefinedを渡す
+      - GET_件数がlimitと一致の場合_hasMore真
+      - GET_件数がlimit未満の場合_hasMore偽
+
+  - id: POSTSGET-006
+    method: GET
+    type: unwanted
+    ears: |
+      If getPosts throws,
+      then the route shall respond with HTTP 500,
+      errorCode POSTS_FETCH_FAILED,
+      and a localized postsFetchFailed message.
+    ears_ja: |
+      getPosts が例外を投げた場合、
+      ルートは HTTP 500、errorCode POSTS_FETCH_FAILED、
+      ローカライズされた postsFetchFailed メッセージを返す。
+    preconditions:
+      - Valid query parameters
+      - getPosts rejects with an error
+    preconditions_ja:
+      - クエリは有効
+      - getPosts がエラーで拒否する
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with POSTS_FETCH_FAILED
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とPOSTS_FETCH_FAILED
+    test_cases:
+      - GET_GivenGetPostsThrows_ShouldReturn500FetchFailed
+    test_cases_ja:
+      - GET_getPosts例外の場合_500でfetch失敗
+
+  - id: POSTSGET-007
+    method: GET
+    type: ubiquitous
+    ears: |
+      The route shall choose localized error strings using getRouteLocale(request).
+    ears_ja: |
+      ルートは getRouteLocale(request) に応じたローカライズされたエラー文言を選ぶ。
+    preconditions:
+      - A validation error occurs
+    preconditions_ja:
+      - バリデーションエラーが発生する
+    postconditions:
+      success:
+        - Error body matches the locale copy (e.g. ja vs en)
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - エラーボディがロケール（例 ja / en）の文言と一致する
+      error:
+        - なし
+    test_cases:
+      - GET_GivenEnLocale_ShouldReturnEnglishInvalidLimit
+    test_cases_ja:
+      - GET_英語ロケールの場合_英語のinvalidLimit
