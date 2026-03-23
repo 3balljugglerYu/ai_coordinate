@@ -49,8 +49,9 @@ function buildLineExternalUrl(): string {
  */
 function buildIntentUrl(targetUrl: string): string {
   const url = new URL(targetUrl);
-  // intent://host/path#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=<encoded>;end
-  return `intent://${url.host}${url.pathname}${url.search}${url.hash}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+  // hash を除去して intent パラメータの誤解釈を防ぐ
+  const fallbackUrl = `${url.origin}${url.pathname}${url.search}`;
+  return `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
 }
 
 /**
