@@ -1,0 +1,260 @@
+metadata:
+  class: ContactRoute
+  source: app/api/contact/route.ts
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - createClient (Supabase server)
+    - getRouteLocale
+    - getContactRouteCopy
+    - env (RESEND_API_KEY, CONTACT_EMAIL, RESEND_FROM_EMAIL)
+  external:
+    - Supabase Auth getUser and profiles table read
+    - Resend emails.send API
+
+state_properties: []
+
+specifications:
+  - id: CONTACT-001
+    method: POST
+    type: unwanted
+    ears: |
+      If supabase.auth.getUser yields no authenticated user,
+      then POST /api/contact shall respond with HTTP 401,
+      errorCode CONTACT_AUTH_REQUIRED,
+      and the localized authRequired copy for the request locale.
+    ears_ja: |
+      supabase.auth.getUser の結果に認証済みユーザーがない場合、
+      POST /api/contact は HTTP 401、errorCode CONTACT_AUTH_REQUIRED、
+      リクエストロケールに応じた authRequired の文言を返す。
+    preconditions:
+      - POST /api/contact is invoked with a valid NextRequest
+    preconditions_ja:
+      - POST /api/contact が有効な NextRequest で呼び出される
+    postconditions:
+      success:
+        - None
+      error:
+        - Response body includes error and errorCode CONTACT_AUTH_REQUIRED
+        - Resend is not invoked
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 本文に error と errorCode CONTACT_AUTH_REQUIRED がある
+        - Resend は呼ばれない
+    test_cases:
+      - POST_GivenNoSession_ShouldReturn401AuthRequired
+    test_cases_ja:
+      - POST_未ログインの場合_401で認証必須
+
+  - id: CONTACT-002
+    method: POST
+    type: unwanted
+    ears: |
+      If the JSON body fails contactSchema validation,
+      then the route shall respond with HTTP 400,
+      errorCode CONTACT_INVALID_INPUT,
+      and shall choose invalidEmail, invalidSubject, invalidMessage,
+      or invalidInput copy based on the first Zod issue path.
+    ears_ja: |
+      JSON ボディが contactSchema の検証に失敗した場合、
+      ルートは HTTP 400、errorCode CONTACT_INVALID_INPUT を返し、
+      先頭の Zod issue の path に応じて
+      invalidEmail / invalidSubject / invalidMessage / invalidInput のコピーを選ぶ。
+    preconditions:
+      - User is authenticated
+    preconditions_ja:
+      - ユーザーが認証済みである
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400 with CONTACT_INVALID_INPUT
+        - Resend is not invoked
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス400とCONTACT_INVALID_INPUT
+        - Resend は呼ばれない
+    test_cases:
+      - POST_GivenInvalidEmail_ShouldReturn400InvalidInput
+      - POST_GivenEmptySubject_ShouldReturn400InvalidInput
+      - POST_GivenEmptyMessage_ShouldReturn400InvalidInput
+    test_cases_ja:
+      - POST_不正メールの場合_400でinvalidInput系
+      - POST_件名空の場合_400でinvalidSubject
+      - POST_本文空の場合_400でinvalidMessage
+
+  - id: CONTACT-003
+    method: POST
+    type: unwanted
+    ears: |
+      If RESEND_API_KEY is missing or empty in env,
+      then the route shall respond with HTTP 500,
+      errorCode CONTACT_EMAIL_NOT_CONFIGURED,
+      and the localized emailNotConfigured copy.
+    ears_ja: |
+      env の RESEND_API_KEY が欠落または空の場合、
+      ルートは HTTP 500、errorCode CONTACT_EMAIL_NOT_CONFIGURED、
+      ローカライズされた emailNotConfigured を返す。
+    preconditions:
+      - User is authenticated
+      - Body passes contactSchema
+    preconditions_ja:
+      - ユーザーが認証済み
+      - ボディが contactSchema を満たす
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with CONTACT_EMAIL_NOT_CONFIGURED
+        - Resend client send is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とCONTACT_EMAIL_NOT_CONFIGURED
+        - Resend の send は呼ばれない
+    test_cases:
+      - POST_GivenMissingResendKey_ShouldReturn500EmailNotConfigured
+    test_cases_ja:
+      - POST_RESENDキー無しの場合_500で未設定
+
+  - id: CONTACT-004
+    method: POST
+    type: unwanted
+    ears: |
+      If resend.emails.send returns a non-null error object,
+      then the route shall respond with HTTP 500,
+      errorCode CONTACT_SEND_FAILED,
+      and the localized sendFailed copy.
+    ears_ja: |
+      resend.emails.send が null でない error を返した場合、
+      ルートは HTTP 500、errorCode CONTACT_SEND_FAILED、
+      ローカライズされた sendFailed を返す。
+    preconditions:
+      - User is authenticated
+      - Body is valid
+      - RESEND_API_KEY is set
+    preconditions_ja:
+      - ユーザー認証済み
+      - ボディが有効
+      - RESEND_API_KEY が設定されている
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with CONTACT_SEND_FAILED
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とCONTACT_SEND_FAILED
+    test_cases:
+      - POST_GivenResendError_ShouldReturn500SendFailed
+    test_cases_ja:
+      - POST_Resendエラーの場合_500で送信失敗
+
+  - id: CONTACT-005
+    method: POST
+    type: event-driven
+    ears: |
+      When the user is authenticated, the body is valid, RESEND_API_KEY is set,
+      and resend.emails.send succeeds without error,
+      the route shall respond with HTTP 200 and JSON { success: true, id }
+      where id matches the provider id when present.
+    ears_ja: |
+      ユーザーが認証済みでボディが有効、RESEND_API_KEY が設定され、
+      resend.emails.send が error なしで成功した場合、
+      ルートは HTTP 200 と JSON { success: true, id } を返し、
+      id はプロバイダが返す値と一致する（存在する場合）。
+    preconditions:
+      - Resend returns { data: { id: string }, error: null } or equivalent
+    preconditions_ja:
+      - Resend が data.id と error null 相当を返す
+    postconditions:
+      success:
+        - Status 200
+        - Body success true
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200
+        - 本文 success が true
+      error:
+        - なし
+    test_cases:
+      - POST_GivenValidRequestAndResendOk_ShouldReturn200Success
+    test_cases_ja:
+      - POST_正常送信の場合_200でsuccess
+
+  - id: CONTACT-006
+    method: POST
+    type: unwanted
+    ears: |
+      If an unexpected exception is thrown during handling
+      (for example request.json rejects),
+      then the route shall respond with HTTP 500,
+      errorCode CONTACT_UNKNOWN_ERROR,
+      and the localized unknownError copy.
+    ears_ja: |
+      処理中に想定外の例外が発生した場合
+      （例: request.json が拒否）、
+      ルートは HTTP 500、errorCode CONTACT_UNKNOWN_ERROR、
+      ローカライズされた unknownError を返す。
+    preconditions:
+      - Outer try/catch applies
+    preconditions_ja:
+      - 外側の try/catch が適用される
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with CONTACT_UNKNOWN_ERROR
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とCONTACT_UNKNOWN_ERROR
+    test_cases:
+      - POST_GivenUnhandledException_ShouldReturn500UnknownError
+    test_cases_ja:
+      - POST_未処理例外の場合_500でunknown
+
+  - id: CONTACT-007
+    method: POST
+    type: state-driven
+    ears: |
+      While the subject field contains CR or LF characters,
+      the system shall replace line breaks with spaces and trim
+      before using the value in the outbound email subject and HTML.
+    ears_ja: |
+      件名フィールドに CR または LF が含まれる間、
+      システムは送信メールの件名および HTML で使用する前に
+      改行をスペースに置換し trim する。
+    preconditions:
+      - Parsed subject passes Zod min length after raw input
+      - Send path executes
+    preconditions_ja:
+      - 生入力後も Zod の件名最小長を満たす
+      - 送信経路が実行される
+    postconditions:
+      success:
+        - Resend receives a subject string without newline characters from CRLF injection vector
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - Resend に渡る件名に CRLF インジェクション用の改行が残らない
+      error:
+        - なし
+    test_cases:
+      - POST_GivenSubjectWithNewlines_ShouldSanitizeBeforeSend
+    test_cases_ja:
+      - POST_件名に改行の場合_送信前にサニタイズする
