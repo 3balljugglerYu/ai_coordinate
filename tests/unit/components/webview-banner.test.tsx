@@ -317,5 +317,29 @@ describe("WebViewBanner", () => {
       await screen.findByText("コピーしました");
       expect(writeTextMock).toHaveBeenCalledWith(window.location.href);
     });
+
+    test("コピーボタンクリック時_クリップボードAPI失敗時にフォールバックが機能する", async () => {
+      // Arrange
+      mockUserAgent(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/400.0;]"
+      );
+      const writeTextMock = jest.fn().mockRejectedValue(new Error("Clipboard API not available"));
+      Object.assign(navigator, {
+        clipboard: { writeText: writeTextMock },
+      });
+      // execCommand をモック
+      // @ts-expect-error: jsdom 環境で存在しない場合があるため動的に追加
+      document.execCommand = jest.fn().mockReturnValue(true);
+
+      render(<WebViewBanner />);
+
+      // Act
+      fireEvent.click(screen.getByRole("button", { name: "URLをコピー" }));
+
+      // Assert
+      await screen.findByText("コピーしました");
+      expect(writeTextMock).toHaveBeenCalledTimes(1);
+      expect(document.execCommand).toHaveBeenCalledWith("copy");
+    });
   });
 });
