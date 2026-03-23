@@ -45,6 +45,9 @@ yarn-error.log*
 !.cursor/rules/*.mdc
 .agents/mcp.json
 
+# Claude Code local overrides (may contain account-specific settings)
+.claude/settings.local.json
+
 # vercel
 .vercel
 

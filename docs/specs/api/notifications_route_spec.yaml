@@ -1,0 +1,406 @@
+metadata:
+  class: NotificationsRoute
+  source: app/api/notifications/route.ts
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - getUser
+    - createClient (Supabase server)
+    - getPostThumbUrl
+    - getRouteLocale
+    - getNotificationsRouteCopy
+    - jsonError
+  external:
+    - Supabase tables notifications, profiles, generated_images
+
+state_properties: []
+
+specifications:
+  - id: NOTIFGET-001
+    method: GET
+    type: unwanted
+    ears: |
+      If getUser returns no authenticated user,
+      then the route shall respond with HTTP 401,
+      errorCode NOTIFICATIONS_AUTH_REQUIRED,
+      and a localized authRequired message.
+    ears_ja: |
+      getUser が認証済みユーザーを返さない場合、
+      ルートは HTTP 401、errorCode NOTIFICATIONS_AUTH_REQUIRED、
+      ローカライズされた authRequired メッセージを返す。
+    preconditions:
+      - GET /api/notifications is invoked
+    preconditions_ja:
+      - GET /api/notifications が呼び出される
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 401 with NOTIFICATIONS_AUTH_REQUIRED
+        - Supabase is not queried for notifications
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス401とNOTIFICATIONS_AUTH_REQUIRED
+        - 通知のSupabaseクエリは行われない
+    test_cases:
+      - GET_GivenNoUser_ShouldReturn401AuthRequired
+    test_cases_ja:
+      - GET_未認証の場合_401で認証必須
+
+  - id: NOTIFGET-002
+    method: GET
+    type: unwanted
+    ears: |
+      If the limit query parameter parses to a value less than 1 or greater than 100,
+      then the route shall respond with HTTP 400,
+      errorCode NOTIFICATIONS_INVALID_LIMIT,
+      and a localized invalidLimit message.
+    ears_ja: |
+      limit クエリが 1 未満または 100 を超える値に解釈される場合、
+      ルートは HTTP 400、errorCode NOTIFICATIONS_INVALID_LIMIT、
+      ローカライズされた invalidLimit メッセージを返す。
+    preconditions:
+      - User is authenticated
+    preconditions_ja:
+      - ユーザーが認証済みである
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400 with NOTIFICATIONS_INVALID_LIMIT
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス400とNOTIFICATIONS_INVALID_LIMIT
+    test_cases:
+      - GET_GivenLimitOutOfRange_ShouldReturn400InvalidLimit
+    test_cases_ja:
+      - GET_limit範囲外の場合_400でinvalidLimit
+
+  - id: NOTIFGET-003
+    method: GET
+    type: event-driven
+    ears: |
+      When the notifications query succeeds with no rows,
+      the route shall return HTTP 200 with an empty notifications array
+      and nextCursor null.
+    ears_ja: |
+      通知クエリが成功し行が0件の場合、
+      ルートは HTTP 200 で空の notifications 配列と nextCursor null を返す。
+    preconditions:
+      - User is authenticated
+      - limit is valid
+      - Database returns an empty list for the recipient
+    preconditions_ja:
+      - ユーザーが認証済み
+      - limit が有効
+      - DB が受信者向けに0件を返す
+    postconditions:
+      success:
+        - Status 200
+        - Body notifications is [] and nextCursor is null
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200
+        - notifications が空、nextCursor が null
+      error:
+        - なし
+    test_cases:
+      - GET_GivenNoRows_ShouldReturn200EmptyList
+    test_cases_ja:
+      - GET_0件の場合_200で空配列
+
+  - id: NOTIFGET-004
+    method: GET
+    type: unwanted
+    ears: |
+      If the primary notifications query returns a database error,
+      then the route shall respond with HTTP 500,
+      errorCode NOTIFICATIONS_FETCH_FAILED,
+      and a localized fetchFailed message.
+    ears_ja: |
+      主たる通知クエリがDBエラーを返した場合、
+      ルートは HTTP 500、errorCode NOTIFICATIONS_FETCH_FAILED、
+      ローカライズされた fetchFailed メッセージを返す。
+    preconditions:
+      - User is authenticated
+      - Supabase returns error for the notifications select
+    preconditions_ja:
+      - ユーザーが認証済み
+      - 通知selectでSupabaseがエラーを返す
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with NOTIFICATIONS_FETCH_FAILED
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とNOTIFICATIONS_FETCH_FAILED
+    test_cases:
+      - GET_GivenNotificationsQueryError_ShouldReturn500FetchFailed
+    test_cases_ja:
+      - GET_通知クエリエラーの場合_500で取得失敗
+
+  - id: NOTIFGET-005
+    method: GET
+    type: event-driven
+    ears: |
+      When more than limit rows are returned from the over-fetch query,
+      the route shall trim the response to limit items,
+      set nextCursor to a base64 encoding of "last.created_at|last.id",
+      and omit the extra row from notifications.
+    ears_ja: |
+      limit+1 件取得の結果が limit を超える場合、
+      ルートは応答を limit 件に切り詰め、
+      nextCursor を「最終行の created_at|id」の base64 とし、
+      余剰行を notifications に含めない。
+    preconditions:
+      - Query uses limit+1 for pagination probe
+      - At least limit+1 matching notifications exist
+    preconditions_ja:
+      - クエリがページ判定のため limit+1 で取得している
+      - 一致する通知が limit+1 件以上存在する
+    postconditions:
+      success:
+        - notifications length is limit
+        - nextCursor is non-null and decodes to created_at|id of the last returned row
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - notifications の長さが limit
+        - nextCursor が非nullで、最終行の created_at|id を復元できる
+      error:
+        - なし
+    test_cases:
+      - GET_GivenMoreThanLimitRows_ShouldTruncateAndSetNextCursor
+    test_cases_ja:
+      - GET_limit超の行がある場合_切り詰めてnextCursorを返す
+
+  - id: NOTIFGET-006
+    method: GET
+    type: event-driven
+    ears: |
+      When at most limit rows are returned,
+      the route shall return all rows in notifications
+      and nextCursor null.
+    ears_ja: |
+      返却行が limit 件以下の場合、
+      ルートはその全行を notifications に含め nextCursor は null とする。
+    preconditions:
+      - Returned row count is less than or equal to limit
+    preconditions_ja:
+      - 返却行数が limit 以下である
+    postconditions:
+      success:
+        - notifications length equals returned row count
+        - nextCursor is null
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - notifications 件数が返却行数と一致
+        - nextCursor が null
+      error:
+        - なし
+    test_cases:
+      - GET_GivenAtMostLimitRows_ShouldReturnAllWithoutNextCursor
+    test_cases_ja:
+      - GET_limit以下の件数の場合_全件返しnextCursorなし
+
+  - id: NOTIFGET-007
+    method: GET
+    type: optional
+    ears: |
+      Where a cursor query parameter is present and base64-decodes to
+      "created_at|id" with both parts non-empty,
+      the route shall constrain the notifications query with an OR filter
+      for strictly older rows than the cursor tuple.
+    ears_ja: |
+      cursor クエリがあり base64 復号が created_at|id かつ両方非空の場合、
+      ルートはカーソル組より厳密に古い行に絞り込む OR フィルタを通知クエリに付与する。
+    preconditions:
+      - User is authenticated
+      - cursor decodes to two non-empty segments separated by |
+    preconditions_ja:
+      - ユーザーが認証済み
+      - cursor が | 区切りの非空2セグメントに復号できる
+    postconditions:
+      success:
+        - Query includes cursor-based pagination filter
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - クエリにカーソル基準のページングフィルタが含まれる
+      error:
+        - なし
+    test_cases:
+      - GET_GivenValidCursor_ShouldApplyCursorOrFilter
+    test_cases_ja:
+      - GET_有効なcursorの場合_ORフィルタを適用する
+
+  - id: NOTIFGET-008
+    method: GET
+    type: unwanted
+    ears: |
+      If cursor base64 decoding throws,
+      then the route shall log the failure and continue
+      without applying a cursor filter to the query.
+    ears_ja: |
+      cursor の base64 復号が例外を投げた場合、
+      ルートは失敗をログし、カーソルフィルタを付けずにクエリを続行する。
+    preconditions:
+      - cursor parameter is present
+      - Buffer.from(cursor, "base64").toString() throws
+    preconditions_ja:
+      - cursor パラメータがある
+      - base64 復号が例外を投げる
+    postconditions:
+      success:
+        - Notifications query runs without cursor OR filter from decode
+      error:
+        - None (unless query itself fails)
+    postconditions_ja:
+      success:
+        - 復号由来のカーソルORフィルタなしで通知クエリが実行される
+      error:
+        - なし（クエリ自体が失敗しない限り）
+    test_cases:
+      - GET_GivenCursorDecodeThrows_ShouldIgnoreCursorFilter
+    test_cases_ja:
+      - GET_cursor復号例外の場合_フィルタを付けず続行
+
+  - id: NOTIFGET-009
+    method: GET
+    type: event-driven
+    ears: |
+      When profile rows are returned for distinct actor_id values,
+      the route shall attach actor nickname and avatar_url
+      to each notification in the response.
+    ears_ja: |
+      重複排除した actor_id に対する profiles 行が返る場合、
+      ルートは各通知に actor の nickname と avatar_url を付与する。
+    preconditions:
+      - Notifications list is non-empty
+      - profiles query succeeds for actor ids
+    preconditions_ja:
+      - 通知リストが非空
+      - actor id に対する profiles クエリが成功する
+    postconditions:
+      success:
+        - Each notification includes actor object when profile exists
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - プロフィールがある通知に actor オブジェクトが付く
+      error:
+        - なし
+    test_cases:
+      - GET_GivenActorsLoaded_ShouldAttachActorDetails
+    test_cases_ja:
+      - GET_actor取得済みの場合_actor詳細を付与する
+
+  - id: NOTIFGET-010
+    method: GET
+    type: event-driven
+    ears: |
+      When entity_type is post and generated_images rows exist,
+      the route shall attach post image_url from getPostThumbUrl
+      and caption for matching entity_id.
+    ears_ja: |
+      entity_type が post で generated_images の行がある場合、
+      ルートは getPostThumbUrl の結果を image_url として、
+      一致する entity_id に caption を付与する。
+    preconditions:
+      - Notification has entity_type post and entity_id
+      - generated_images select succeeds
+    preconditions_ja:
+      - 通知が entity_type post と entity_id を持つ
+      - generated_images の取得が成功する
+    postconditions:
+      success:
+        - Notification includes post with thumb url and caption
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 通知にサムネURLとcaptionを含む post が付く
+      error:
+        - なし
+    test_cases:
+      - GET_GivenPostEntity_ShouldAttachPostThumbAndCaption
+    test_cases_ja:
+      - GET_post実体の場合_サムネとcaptionを付与する
+
+  - id: NOTIFGET-011
+    method: GET
+    type: unwanted
+    ears: |
+      If an unexpected error is thrown before the successful JSON response,
+      then the route shall respond with HTTP 500,
+      errorCode NOTIFICATIONS_FETCH_FAILED,
+      and a localized fetchFailed message.
+    ears_ja: |
+      成功レスポンス前に想定外の例外が投げられた場合、
+      ルートは HTTP 500、errorCode NOTIFICATIONS_FETCH_FAILED、
+      ローカライズされた fetchFailed を返す。
+    preconditions:
+      - User passed authentication and limit validation
+      - A subsequent step throws (e.g. createClient failure)
+    preconditions_ja:
+      - 認証とlimit検証は通過した
+      - 以降の処理で例外が発生する
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with NOTIFICATIONS_FETCH_FAILED
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とNOTIFICATIONS_FETCH_FAILED
+    test_cases:
+      - GET_GivenUnexpectedThrow_ShouldReturn500FetchFailed
+    test_cases_ja:
+      - GET_想定外例外の場合_500で取得失敗
+
+  - id: NOTIFGET-012
+    method: GET
+    type: ubiquitous
+    ears: |
+      The route shall choose localized strings using getRouteLocale(request)
+      for auth, validation, and fetch failure messages.
+    ears_ja: |
+      ルートは getRouteLocale(request) に応じて
+      認証・バリデーション・取得失敗の文言をローカライズする。
+    preconditions:
+      - A client-visible error is returned
+    preconditions_ja:
+      - クライアント向けエラーが返る
+    postconditions:
+      success:
+        - Error body matches the resolved locale copy
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - エラーボディが解決されたロケールの文言と一致する
+      error:
+        - なし
+    test_cases:
+      - GET_GivenEnLocale_ShouldReturnEnglishInvalidLimit
+    test_cases_ja:
+      - GET_英語ロケールの場合_英語のinvalidLimit

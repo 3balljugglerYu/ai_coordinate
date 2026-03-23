@@ -8,7 +8,31 @@ jest.mock("next-intl", () => ({
 }));
 
 jest.mock("@/features/generation/components/ImageUploader", () => ({
-  ImageUploader: () => <div>image-uploader</div>,
+  ImageUploader: ({
+    onImageUpload,
+  }: {
+    onImageUpload: (image: {
+      file: File;
+      previewUrl: string;
+      width: number;
+      height: number;
+    }) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="mock-add-upload"
+      onClick={() =>
+        onImageUpload({
+          file: new File(["x"], "demo.png", { type: "image/png" }),
+          previewUrl: "blob:mock",
+          width: 100,
+          height: 100,
+        })
+      }
+    >
+      add-upload
+    </button>
+  ),
 }));
 
 jest.mock("@/features/generation/components/StockImageListClient", () => ({
@@ -79,7 +103,7 @@ const messages: Record<string, string> = {
 function translate(
   namespace: string | undefined,
   key: string,
-  values?: Record<string, string | number>
+  values?: Record<string, string | number>,
 ) {
   if (namespace !== "coordinate") {
     return key;
@@ -95,19 +119,28 @@ function translate(
   }, template);
 }
 
+function getSubmitButton() {
+  return screen.getByRole("button", {
+    name: /Start styling|Generating\.\.\./i,
+  });
+}
+
 describe("GenerationForm", () => {
   beforeEach(() => {
     useTranslationsMock.mockImplementation((namespace?: string) => {
       return ((key: string, values?: Record<string, string | number>) =>
         translate(namespace, key, values)) as ReturnType<typeof useTranslations>;
     });
+    window.alert = jest.fn();
+    localStorage.clear();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  test("プロンプト入力欄に1500文字制限と文字数表示を出す", async () => {
+  test("表示_プロンプト上限と文字数表示を出す", async () => {
+    // Spec: GENFORM-001
     await act(async () => {
       render(<GenerationForm onSubmit={jest.fn()} />);
     });
@@ -116,14 +149,183 @@ describe("GenerationForm", () => {
 
     expect(textarea).toHaveAttribute(
       "maxLength",
-      String(GENERATION_PROMPT_MAX_LENGTH)
+      String(GENERATION_PROMPT_MAX_LENGTH),
     );
     expect(
-      screen.getByText(`0/${GENERATION_PROMPT_MAX_LENGTH} characters`)
+      screen.getByText(`0/${GENERATION_PROMPT_MAX_LENGTH} characters`),
     ).toBeInTheDocument();
 
     fireEvent.change(textarea, { target: { value: "witch outfit" } });
 
     expect(screen.getByText("12/1500 characters")).toBeInTheDocument();
+  });
+
+  test("表示_プロンプト空の間は送信無効", async () => {
+    // Spec: GENFORM-002
+    const onSubmit = jest.fn();
+    await act(async () => {
+      render(<GenerationForm onSubmit={onSubmit} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-add-upload"));
+    });
+
+    expect(getSubmitButton()).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  test("表示_プロンプト超過の間は送信無効", async () => {
+    // Spec: GENFORM-003
+    await act(async () => {
+      render(<GenerationForm onSubmit={jest.fn()} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "a".repeat(GENERATION_PROMPT_MAX_LENGTH + 1) },
+    });
+
+    expect(getSubmitButton()).toBeDisabled();
+  });
+
+  test("表示_アップロード未選択の間は送信無効", async () => {
+    // Spec: GENFORM-004
+    await act(async () => {
+      render(<GenerationForm onSubmit={jest.fn()} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "valid prompt" },
+    });
+
+    expect(getSubmitButton()).toBeDisabled();
+  });
+
+  test("表示_ストック未選択の間は送信無効", async () => {
+    // Spec: GENFORM-005
+    await act(async () => {
+      render(<GenerationForm onSubmit={jest.fn()} />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Stock/i }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "valid prompt" },
+    });
+
+    expect(getSubmitButton()).toBeDisabled();
+  });
+
+  test("送信_アップロード有効の場合_onSubmitにペイロードを渡す", async () => {
+    // Spec: GENFORM-006
+    const onSubmit = jest.fn();
+    await act(async () => {
+      render(<GenerationForm onSubmit={onSubmit} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "  nice coat  " },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-add-upload"));
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith({
+      prompt: "nice coat",
+      sourceImage: expect.any(File),
+      sourceImageStockId: undefined,
+      sourceImageType: "illustration",
+      backgroundMode: "keep",
+      count: 1,
+      model: "gemini-2.5-flash-image",
+    });
+  });
+
+  test("表示_生成中は送信ボタン無効", async () => {
+    // Spec: GENFORM-007
+    await act(async () => {
+      render(<GenerationForm onSubmit={jest.fn()} isGenerating />);
+    });
+
+    expect(getSubmitButton()).toBeDisabled();
+  });
+
+  test("送信_チュートリアル中は進行イベントを送る", async () => {
+    // Spec: GENFORM-008
+    const dispatchSpy = jest.spyOn(document, "dispatchEvent");
+    const onSubmit = jest.fn();
+    const sessionGetItem = jest.fn((key: string) =>
+      key === "tutorial_in_progress" ? "true" : null,
+    );
+    const origSession = window.sessionStorage;
+
+    try {
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        value: {
+          length: 0,
+          clear: jest.fn(),
+          getItem: sessionGetItem,
+          setItem: jest.fn(),
+          removeItem: jest.fn(),
+          key: jest.fn(),
+        },
+        writable: true,
+      });
+
+      await act(async () => {
+        render(<GenerationForm onSubmit={onSubmit} />);
+      });
+
+      fireEvent.change(screen.getByRole("textbox"), {
+        target: { value: "tutorial prompt" },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("mock-add-upload"));
+      });
+
+      await act(async () => {
+        fireEvent.click(getSubmitButton());
+      });
+
+      expect(
+        dispatchSpy.mock.calls.some(
+          (c) =>
+            c[0] instanceof CustomEvent &&
+            c[0].type === "tutorial:advance-to-next",
+        ),
+      ).toBe(true);
+      expect(onSubmit).toHaveBeenCalled();
+    } finally {
+      dispatchSpy.mockRestore();
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        value: origSession,
+        writable: true,
+      });
+    }
+  });
+
+  test("アップロード_新規ファイルでストック選択をストレージから消す", async () => {
+    // Spec: GENFORM-009
+    localStorage.setItem("selectedStockId", "stock-abc");
+
+    await act(async () => {
+      render(<GenerationForm onSubmit={jest.fn()} />);
+    });
+
+    expect(localStorage.getItem("selectedStockId")).toBe("stock-abc");
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-add-upload"));
+    });
+
+    expect(localStorage.getItem("selectedStockId")).toBeNull();
   });
 });
