@@ -204,7 +204,7 @@ tier2:
 # Tier 3: Medium Priority (Score 60-74)
 tier3:
   ContactRoute:
-    status: pending
+    status: completed
     score: 72
     file: app/api/contact/route.ts
     char_test: null
@@ -212,7 +212,7 @@ tier3:
     test_file: tests/integration/api/contact-route.test.ts
 
   CreditsBalanceRoute:
-    status: pending
+    status: completed
     score: 70
     file: app/api/credits/balance/route.ts
     char_test: null
@@ -353,13 +353,13 @@ summary:
     percentage: 100
   tier3:
     total: 8
-    completed: 0
-    percentage: 0
+    completed: 2
+    percentage: 25
   widgets:
     total: 12
     completed: 2
     percentage: 17
   overall:
     total: 32
-    completed: 14
-    percentage: 44
+    completed: 16
+    percentage: 50

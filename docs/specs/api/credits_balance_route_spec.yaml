@@ -1,0 +1,178 @@
+metadata:
+  class: CreditsBalanceRoute
+  source: app/api/credits/balance/route.ts
+  version: "1.0"
+  created_at: "2026-03-23"
+
+dependencies:
+  repositories: []
+  services:
+    - createClient (Supabase server)
+    - getRouteLocale
+    - getCreditsRouteCopy
+  external:
+    - Supabase Auth getUser
+    - Supabase user_credits table read (balance)
+
+state_properties: []
+
+specifications:
+  - id: CREDITSBAL-001
+    method: GET
+    type: unwanted
+    ears: |
+      If supabase.auth.getUser yields no authenticated user,
+      then GET /api/credits/balance shall respond with HTTP 401,
+      errorCode CREDITS_AUTH_REQUIRED,
+      and the localized authRequired copy for the request locale.
+    ears_ja: |
+      supabase.auth.getUser の結果に認証済みユーザーがない場合、
+      GET /api/credits/balance は HTTP 401、errorCode CREDITS_AUTH_REQUIRED、
+      リクエストロケールに応じた authRequired の文言を返す。
+    preconditions:
+      - GET /api/credits/balance is invoked
+    preconditions_ja:
+      - GET /api/credits/balance が呼び出される
+    postconditions:
+      success:
+        - None
+      error:
+        - Response includes error and errorCode CREDITS_AUTH_REQUIRED
+        - user_credits query is not performed
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 本文に error と CREDITS_AUTH_REQUIRED がある
+        - user_credits への問い合わせは行われない
+    test_cases:
+      - GET_GivenNoSession_ShouldReturn401AuthRequired
+    test_cases_ja:
+      - GET_未ログインの場合_401で認証必須
+
+  - id: CREDITSBAL-002
+    method: GET
+    type: unwanted
+    ears: |
+      If the user_credits select returns a non-null Supabase error,
+      then the route shall respond with HTTP 500,
+      errorCode CREDITS_BALANCE_FETCH_FAILED,
+      and the localized balanceFetchFailed copy.
+    ears_ja: |
+      user_credits の select が null でない Supabase error を返した場合、
+      ルートは HTTP 500、errorCode CREDITS_BALANCE_FETCH_FAILED、
+      ローカライズされた balanceFetchFailed を返す。
+    preconditions:
+      - User is authenticated
+    preconditions_ja:
+      - ユーザーが認証済みである
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with CREDITS_BALANCE_FETCH_FAILED
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とCREDITS_BALANCE_FETCH_FAILED
+    test_cases:
+      - GET_GivenSupabaseError_ShouldReturn500BalanceFetchFailed
+    test_cases_ja:
+      - GET_Supabaseエラーの場合_500で残高取得失敗
+
+  - id: CREDITSBAL-003
+    method: GET
+    type: event-driven
+    ears: |
+      When the user is authenticated and user_credits returns no row
+      (data null) without error,
+      the route shall respond with HTTP 200 and JSON { balance: 0 }.
+    ears_ja: |
+      ユーザーが認証済みで user_credits がエラーなく行なし（data が null）の場合、
+      ルートは HTTP 200 と JSON { balance: 0 } を返す。
+    preconditions:
+      - maybeSingle resolves with data null and error null
+    preconditions_ja:
+      - maybeSingle が data null・error null で解決する
+    postconditions:
+      success:
+        - Status 200
+        - Body balance is 0
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200
+        - 本文 balance が 0
+      error:
+        - なし
+    test_cases:
+      - GET_GivenNoCreditsRow_ShouldReturn200BalanceZero
+    test_cases_ja:
+      - GET_残高行なしの場合_200でbalance0
+
+  - id: CREDITSBAL-004
+    method: GET
+    type: event-driven
+    ears: |
+      When the user is authenticated and user_credits returns a row
+      with a numeric balance,
+      the route shall respond with HTTP 200 and JSON { balance }
+      using that value.
+    ears_ja: |
+      ユーザーが認証済みで user_credits が数値 balance を持つ行を返した場合、
+      ルートは HTTP 200 と JSON { balance: その値 } を返す。
+    preconditions:
+      - data.balance is a finite number from the query
+    preconditions_ja:
+      - クエリ結果の data.balance が有限の数値である
+    postconditions:
+      success:
+        - Status 200
+        - Body balance equals the stored balance
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200
+        - 本文 balance が保存値と一致する
+      error:
+        - なし
+    test_cases:
+      - GET_GivenBalanceRow_ShouldReturn200WithBalance
+    test_cases_ja:
+      - GET_残高行ありの場合_200でbalanceを返す
+
+  - id: CREDITSBAL-005
+    method: GET
+    type: unwanted
+    ears: |
+      If an unexpected exception is thrown during handling
+      (for example createClient or getUser throws),
+      then the route shall respond with HTTP 500,
+      errorCode CREDITS_BALANCE_FETCH_FAILED,
+      and the localized balanceFetchFailed copy.
+    ears_ja: |
+      処理中に想定外の例外が発生した場合
+      （例: createClient や getUser が例外を投げる）、
+      ルートは HTTP 500、errorCode CREDITS_BALANCE_FETCH_FAILED、
+      ローカライズされた balanceFetchFailed を返す。
+    preconditions:
+      - Outer try/catch applies
+    preconditions_ja:
+      - 外側の try/catch が適用される
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 500 with CREDITS_BALANCE_FETCH_FAILED
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス500とCREDITS_BALANCE_FETCH_FAILED
+    test_cases:
+      - GET_GivenUnhandledException_ShouldReturn500BalanceFetchFailed
+    test_cases_ja:
+      - GET_未処理例外の場合_500で残高取得失敗
