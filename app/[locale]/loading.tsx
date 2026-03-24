@@ -1,4 +1,4 @@
-import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
+import { HomePageSkeleton } from "@/features/home/components/HomePageSkeleton";
 
 /**
  * [locale] ルート群用ローディング
@@ -12,12 +12,7 @@ export default function LocaleLoading() {
         <div className="h-9 w-48 animate-pulse rounded bg-gray-200" />
         <div className="mt-2 h-5 w-80 animate-pulse rounded bg-gray-200" />
       </div>
-      <div className="mb-8 overflow-x-hidden">
-        <div className="-mx-4 px-4">
-          <div className="aspect-[3/1] w-full animate-pulse rounded-lg bg-gray-200" />
-        </div>
-      </div>
-      <PostListSkeleton />
+      <HomePageSkeleton />
     </div>
   );
 }

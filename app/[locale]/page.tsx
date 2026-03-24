@@ -8,6 +8,7 @@ import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 import { HomeHeading } from "@/features/home/components/HomeHeading";
 import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
+import { HomePageSkeleton } from "@/features/home/components/HomePageSkeleton";
 import {
   createLocaleAlternates,
   getDefaultOpenGraphImages,
@@ -99,19 +100,6 @@ async function HomePageContent({
       <Suspense fallback={<PostListSkeleton />}>
         <CachedHomePostList userId={userId} />
       </Suspense>
-    </>
-  );
-}
-
-function HomePageSkeleton() {
-  return (
-    <>
-      <div className="mb-8 overflow-x-hidden">
-        <div className="-mx-4 px-4">
-          <div className="aspect-[3/1] w-full animate-pulse rounded-lg bg-gray-200" />
-        </div>
-      </div>
-      <PostListSkeleton />
     </>
   );
 }
