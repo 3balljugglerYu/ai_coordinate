@@ -1,43 +1,55 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
-import { ExternalLink, Copy, Check } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 
-type WebViewType = "line" | "other" | null;
+/** WebView を提供しているアプリの種別 */
+export type WebViewApp = "line" | "x" | "facebook" | "instagram" | "tiktok" | "wechat" | "other" | null;
+
+interface WebViewInfo {
+  /** WebView 内で動作しているか */
+  isWebView: boolean;
+  /** 検出されたアプリ種別 */
+  app: WebViewApp;
+  /** 表示用のアプリ名 */
+  appName: string;
+  /** Android 端末かどうか */
+  isAndroid: boolean;
+}
 
 /**
- * アプリ内ブラウザ（WebView）を検出する。
- * LINE の場合は openExternalBrowser パラメータで外部ブラウザへ自動遷移できるため区別する。
- * X（Twitter）は SFSafariViewController / Chrome Custom Tabs を使用するため検出対象外。
+ * UA 文字列からアプリ内ブラウザの種別を判定する。
  */
-function detectWebView(ua: string): WebViewType {
+function detectWebViewApp(ua: string): WebViewApp {
   if (/Line\//i.test(ua)) return "line";
-
-  const otherPatterns = [
-    /FBAN|FBAV/i, // Facebook
-    /Instagram/i,
-    /MicroMessenger/i, // WeChat
-    /\bwv\b/, // Android WebView
-  ];
-  if (otherPatterns.some((pattern) => pattern.test(ua))) return "other";
-
+  if (/Twitter|TwitterAndroid/i.test(ua)) return "x";
+  if (/FBAN|FBAV/i.test(ua)) return "facebook";
+  if (/Instagram/i.test(ua)) return "instagram";
+  if (/BytedanceWebview/i.test(ua)) return "tiktok";
+  if (/MicroMessenger/i.test(ua)) return "wechat";
+  if (/\bwv\b/.test(ua)) return "other";
   return null;
 }
 
 /**
- * Android端末かどうかを判定する。
+ * アプリ種別から表示用の名前を返す。
  */
-function isAndroid(ua: string): boolean {
-  return /Android/i.test(ua);
+function getAppDisplayName(app: WebViewApp): string {
+  switch (app) {
+    case "x": return "X";
+    case "line": return "LINE";
+    case "facebook": return "Facebook";
+    case "instagram": return "Instagram";
+    case "tiktok": return "TikTok";
+    case "wechat": return "WeChat";
+    case "other": return "アプリ";
+    default: return "";
+  }
 }
 
 /**
  * 現在のURLに openExternalBrowser=1 を付与して返す（LINE用）。
  */
-function buildLineExternalUrl(): string {
+export function buildLineExternalUrl(): string {
   const url = new URL(window.location.href);
   url.searchParams.set("openExternalBrowser", "1");
   return url.toString();
@@ -47,7 +59,7 @@ function buildLineExternalUrl(): string {
  * intent:// スキームURLを構築する（Android用）。
  * Chrome を優先的に起動し、フォールバックとして元のURLを指定する。
  */
-function buildIntentUrl(targetUrl: string): string {
+export function buildIntentUrl(targetUrl: string): string {
   const url = new URL(targetUrl);
   // hash を除去して intent パラメータの誤解釈を防ぐ
   const fallbackUrl = `${url.origin}${url.pathname}${url.search}`;
@@ -55,115 +67,43 @@ function buildIntentUrl(targetUrl: string): string {
 }
 
 /**
- * LINE, Facebook, Instagram などのアプリ内ブラウザ（WebView）を検出し、
- * 外部ブラウザで開くよう案内するコンポーネント。
+ * WebView 検出のカスタムフック。
  *
- * - LINE: openExternalBrowser パラメータで外部ブラウザへ自動リダイレクト
- * - その他 (Android): intent:// スキームで外部ブラウザを起動するボタンを表示
- * - その他 (iOS): URLコピーバナーを表示
+ * LINE の場合はマウント時に openExternalBrowser パラメータで外部ブラウザへ自動リダイレクトする。
+ * その他のアプリの場合は検出情報を返し、呼び出し側で分岐させる。
  */
-export function WebViewBanner() {
-  const [webViewType, setWebViewType] = useState<WebViewType>(null);
-  const [android, setAndroid] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const t = useTranslations("auth");
+export function useWebViewDetection(): WebViewInfo {
+  const [info, setInfo] = useState<WebViewInfo>({
+    isWebView: false,
+    app: null,
+    appName: "",
+    isAndroid: false,
+  });
 
   useEffect(() => {
     const ua = navigator.userAgent;
-    const detected = detectWebView(ua);
+    const app = detectWebViewApp(ua);
 
-    if (detected === "line") {
+    if (!app) return;
+
+    if (app === "line") {
       // 既に openExternalBrowser=1 が付与済みの場合はリダイレクトしない（ループ防止）
       const params = new URLSearchParams(window.location.search);
-      if (params.get("openExternalBrowser") === "1") {
-        setWebViewType("other");
-        setAndroid(isAndroid(ua));
+      if (params.get("openExternalBrowser") !== "1") {
+        window.location.href = buildLineExternalUrl();
         return;
       }
-      window.location.href = buildLineExternalUrl();
-      return;
+      // リダイレクト失敗時のフォールバック
     }
 
-    setWebViewType(detected);
-    setAndroid(isAndroid(ua));
+    const android = /Android/i.test(ua);
+    setInfo({
+      isWebView: true,
+      app,
+      appName: getAppDisplayName(app),
+      isAndroid: android,
+    });
   }, []);
 
-  if (!webViewType) return null;
-
-  const currentUrl = window.location.href;
-
-  const handleOpenBrowser = () => {
-    window.location.href = buildIntentUrl(currentUrl);
-  };
-
-  const handleCopyUrl = async () => {
-    let copiedSuccessfully = false;
-    try {
-      await navigator.clipboard.writeText(currentUrl);
-      copiedSuccessfully = true;
-    } catch {
-      // フォールバック: 古いブラウザ向け
-      const textArea = document.createElement("textarea");
-      textArea.value = currentUrl;
-      textArea.style.position = "fixed";
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      try {
-        copiedSuccessfully = document.execCommand("copy");
-      } catch {
-        // execCommand が例外をスローした場合はコピー失敗として扱う
-      } finally {
-        document.body.removeChild(textArea);
-      }
-    }
-
-    if (copiedSuccessfully) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  return (
-    <Alert className="mb-4 border-amber-300 bg-amber-50">
-      <ExternalLink className="h-4 w-4 text-amber-600" />
-      <AlertDescription className="text-amber-800">
-        <p className="mb-2 font-medium">{t("webViewWarningTitle")}</p>
-        <p className="mb-3 text-sm">
-          {android
-            ? t("webViewWarningDescriptionAndroid")
-            : t("webViewWarningDescription")}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {android && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
-              onClick={handleOpenBrowser}
-            >
-              <ExternalLink className="mr-1.5 h-4 w-4" />
-              {t("webViewOpenBrowser")}
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
-            onClick={handleCopyUrl}
-          >
-            {copied ? (
-              <Check className="mr-1.5 h-4 w-4" />
-            ) : (
-              <Copy className="mr-1.5 h-4 w-4" />
-            )}
-            {copied ? t("webViewUrlCopied") : t("webViewCopyUrl")}
-          </Button>
-        </div>
-      </AlertDescription>
-    </Alert>
-  );
+  return info;
 }
