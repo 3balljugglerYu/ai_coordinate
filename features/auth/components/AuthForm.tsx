@@ -186,7 +186,6 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     }
     if (copiedSuccessfully) {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
