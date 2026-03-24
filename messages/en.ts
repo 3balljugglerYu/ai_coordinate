@@ -989,4 +989,9 @@ export const enMessages = {
     hoursAgo: "{count}h ago",
     daysAgo: "{count}d ago",
   },
+  home: {
+    heading: "Persta",
+    subtitle:
+      "An AI styling platform for the looks and characters you want to create.",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

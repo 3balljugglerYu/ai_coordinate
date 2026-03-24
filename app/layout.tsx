@@ -66,10 +66,10 @@ export default async function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `(() => {
-  const match = document.cookie.match(/(?:^|; )NEXT_LOCALE=(ja|en)/);
-  if (match) {
-    document.documentElement.lang = match[1];
-  }
+  var d = document.documentElement;
+  var m = document.cookie.match(/(?:^|; )NEXT_LOCALE=(ja|en)/);
+  if (m) d.lang = m[1];
+  d.classList.add("ppr-locale-ready");
 })();`,
           }}
         />

@@ -37,6 +37,7 @@ const clientNamespaces = [
   "style",
   "posts",
   "tutorial",
+  "home",
 ] as const satisfies readonly ClientMessageNamespace[];
 
 type NamespaceSelection<TMessages, TNamespaces extends readonly (keyof TMessages)[]> = {
