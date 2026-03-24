@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/*
+ * PPR ロケールフラッシュ防止
+ * PPR がデフォルトロケール(英語)でプリレンダリングしたコンテンツが
+ * ストリーミング更新前に一瞬表示されるのを防ぐ。
+ *
+ * 仕組み:
+ * 1. PPR は <html lang="en"> で静的シェルを生成
+ * 2. root layout のインラインスクリプトが即座に lang="ja" に変更（クッキーから）
+ * 3. main-content 内のテキストは lang="en" の間は非表示
+ * 4. スクリプト実行後（lang 変更済み）にはこのルールが不適用 → テキスト表示
+ *
+ * 英語ユーザー（lang="en" のまま）は ppr-locale-ready クラスで表示される。
+ * このクラスはインラインスクリプトで追加される。
+ */
+html[lang="en"]:not(.ppr-locale-ready) .main-content {
+  visibility: hidden;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

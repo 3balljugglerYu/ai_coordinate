@@ -957,4 +957,8 @@ export const jaMessages = {
     hoursAgo: "{count}時間前",
     daysAgo: "{count}日前",
   },
+  home: {
+    heading: "Persta | ペルスタ",
+    subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
+  },
 } as const;
