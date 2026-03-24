@@ -7,6 +7,7 @@ import { getPublicBanners } from "@/features/banners/lib/get-banners";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
+import { getDefaultOpenGraphImages, getDefaultTwitterImages } from "@/lib/metadata";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getHomeCopy } from "@/i18n/page-copy";
 
@@ -14,19 +15,29 @@ export async function generateMetadata(): Promise<Metadata> {
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const copy = getHomeCopy(locale);
+  const siteUrl = getSiteUrl();
 
   return {
+    title: copy.metadataTitle,
+    description: copy.metadataDescription,
+    alternates: siteUrl
+      ? {
+          canonical: siteUrl,
+        }
+      : undefined,
     openGraph: {
       title: copy.metadataTitle,
       description: copy.metadataDescription,
-      url: getSiteUrl() || undefined,
+      url: siteUrl || undefined,
       siteName: "Persta.AI",
       type: "website",
+      images: getDefaultOpenGraphImages(siteUrl),
     },
     twitter: {
       card: "summary_large_image",
       title: copy.metadataTitle,
       description: copy.metadataDescription,
+      images: getDefaultTwitterImages(siteUrl),
     },
   };
 }
