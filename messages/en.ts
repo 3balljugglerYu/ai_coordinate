@@ -236,13 +236,11 @@ export const enMessages = {
     sendResetEmail: "Send email",
     resetPasswordSubmit: "Update password",
     backToLogin: "Back to login",
-    webViewWarningTitle: "Login is not available in this browser",
-    webViewWarningDescription:
-      "Please open this page in Safari. Tap the button below to copy the URL.",
-    webViewWarningDescriptionAndroid:
-      "Please open this page in Chrome. Tap the button below to launch your browser.",
-    webViewOpenBrowser: "Open in browser",
+    webViewDialogTitle: "Login is not available in {appName}",
+    webViewDialogDescription:
+      "Please copy the URL and open it in your browser to log in.",
     webViewCopyUrl: "Copy URL",
+    webViewCopyUrlAndClose: "Copy URL and close",
     webViewUrlCopied: "Copied!",
   },
   contact: {

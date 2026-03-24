@@ -5,15 +5,23 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
-import { WebViewBanner } from "./WebViewBanner";
+import { useWebViewDetection, buildIntentUrl } from "./WebViewBanner";
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -33,6 +41,9 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
   const t = useTranslations("auth");
+  const webView = useWebViewDetection();
+  const [showWebViewDialog, setShowWebViewDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const isSignUp = mode === "signup";
 
@@ -127,6 +138,18 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
   };
 
   const handleOAuthSignIn = async (provider: OAuthProvider) => {
+    // Google OAuth + WebView の場合は分岐
+    if (provider === "google" && webView.isWebView) {
+      if (webView.isAndroid) {
+        // Android: 自動で外部ブラウザを起動
+        window.location.href = buildIntentUrl(window.location.href);
+        return;
+      }
+      // iOS: ダイアログでURLコピーを案内
+      setShowWebViewDialog(true);
+      return;
+    }
+
     try {
       setError(null);
       setIsLoading(true);
@@ -139,9 +162,36 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     }
   };
 
+  const handleCopyUrl = async () => {
+    const currentUrl = window.location.href;
+    let copiedSuccessfully = false;
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      copiedSuccessfully = true;
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = currentUrl;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        copiedSuccessfully = document.execCommand("copy");
+      } catch {
+        // execCommand が例外をスローした場合はコピー失敗として扱う
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
+    if (copiedSuccessfully) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <>
-      <WebViewBanner />
       <Card className="relative w-full max-w-md p-4 sm:p-6">
       {/* ローディングオーバーレイ */}
       {isLoading && (
@@ -406,6 +456,41 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         )}
       </div>
       </Card>
+
+      {/* WebView Google ログインブロック ダイアログ（iOS用） */}
+      <Dialog open={showWebViewDialog} onOpenChange={setShowWebViewDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {t("webViewDialogTitle", { appName: webView.appName })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("webViewDialogDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full transition-all duration-200"
+            disabled={copied}
+            onClick={async () => {
+              await handleCopyUrl();
+              // コピー成功をアニメーションで伝えてから閉じる
+              setTimeout(() => {
+                setShowWebViewDialog(false);
+                setCopied(false);
+              }, 1200);
+            }}
+          >
+            {copied ? (
+              <Check className="mr-1.5 h-4 w-4 text-green-600 animate-in zoom-in duration-200" />
+            ) : (
+              <Copy className="mr-1.5 h-4 w-4" />
+            )}
+            {copied ? t("webViewUrlCopied") : t("webViewCopyUrlAndClose")}
+          </Button>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,20 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { WebViewBanner } from "@/features/auth/components/WebViewBanner";
-
-jest.mock("next-intl", () => {
-  const { jaMessages } = require("@/messages/ja");
-
-  return {
-    useTranslations: (namespace?: string) => {
-      const table =
-        namespace && namespace in jaMessages
-          ? (jaMessages as Record<string, Record<string, string>>)[namespace]
-          : {};
-
-      return (key: string) => table[key] ?? key;
-    },
-  };
-});
+import { renderHook } from "@testing-library/react";
+import {
+  useWebViewDetection,
+  buildIntentUrl,
+  buildLineExternalUrl,
+} from "@/features/auth/components/WebViewBanner";
 
 const originalUserAgent = navigator.userAgent;
 const originalLocation = window.location;
@@ -40,7 +29,7 @@ afterEach(() => {
   });
 });
 
-describe("WebViewBanner", () => {
+describe("useWebViewDetection", () => {
   describe("WV-001 LINE自動リダイレクト", () => {
     test("LINEアプリ内ブラウザの場合_openExternalBrowserパラメータ付きURLにリダイレクトする", () => {
       // Arrange
@@ -54,16 +43,13 @@ describe("WebViewBanner", () => {
       });
 
       // Act
-      render(<WebViewBanner />);
+      renderHook(() => useWebViewDetection());
 
-      // Assert — LINE の場合はバナーを表示せずリダイレクト
-      expect(
-        screen.queryByText("アプリ内ブラウザではログインできません")
-      ).not.toBeInTheDocument();
+      // Assert
       expect(window.location.href).toContain("openExternalBrowser=1");
     });
 
-    test("LINEでopenExternalBrowser=1が既に付与済みの場合_リダイレクトせずバナーを表示する", () => {
+    test("LINEでopenExternalBrowser=1が既に付与済みの場合_リダイレクトせずWebView検出を返す", () => {
       // Arrange
       mockUserAgent(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Line/13.0.0"
@@ -79,267 +65,195 @@ describe("WebViewBanner", () => {
       });
 
       // Act
-      render(<WebViewBanner />);
+      const { result } = renderHook(() => useWebViewDetection());
 
-      // Assert — リダイレクトループせずバナーにフォールバック
-      expect(
-        screen.getByText("アプリ内ブラウザではログインできません")
-      ).toBeInTheDocument();
+      // Assert
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("line");
+      expect(result.current.appName).toBe("LINE");
     });
   });
 
-  describe("WV-002 その他WebViewでバナー表示", () => {
-    test("Facebook内ブラウザ（iOS）の場合_URLコピーバナーを表示しブラウザで開くボタンは非表示", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/400.0;]"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.getByText("アプリ内ブラウザではログインできません")
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Safariなどのブラウザでこのページを開いてください。下のボタンでURLをコピーできます。")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "URLをコピー" })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "ブラウザで開く" })).not.toBeInTheDocument();
-    });
-
-    test("Facebook内ブラウザ（Android）の場合_ブラウザで開くボタンとURLコピーの両方を表示する", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 [FBAN/FB4A;FBAV/400.0;]"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.getByText("アプリ内ブラウザではログインできません")
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Chromeなどのブラウザでこのページを開いてください。下のボタンからブラウザを起動できます。")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "ブラウザで開く" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "URLをコピー" })).toBeInTheDocument();
-    });
-
-    test("Instagram内ブラウザ（iOS）の場合_警告バナーを表示する", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 300.0"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.getByText("アプリ内ブラウザではログインできません")
-      ).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "ブラウザで開く" })).not.toBeInTheDocument();
-    });
-
-    test("Instagram内ブラウザ（Android）の場合_ブラウザで開くボタンを表示する", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 Instagram 300.0"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.getByText("アプリ内ブラウザではログインできません")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "ブラウザで開く" })).toBeInTheDocument();
-    });
-
-    test("WeChat内ブラウザの場合_警告バナーを表示する", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.getByText("アプリ内ブラウザではログインできません")
-      ).toBeInTheDocument();
-    });
-
-    test("Android WebViewの場合_ブラウザで開くボタンを表示する", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36; wv"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.getByText("アプリ内ブラウザではログインできません")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "ブラウザで開く" })).toBeInTheDocument();
-    });
-  });
-
-  describe("WV-003 通常ブラウザ・Xでは非表示", () => {
-    test("Safari（iOS）の場合_バナーを表示しない", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.queryByText("アプリ内ブラウザではログインできません")
-      ).not.toBeInTheDocument();
-    });
-
-    test("Chrome（Android）の場合_バナーを表示しない", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36"
-      );
-
-      // Act
-      render(<WebViewBanner />);
-
-      // Assert
-      expect(
-        screen.queryByText("アプリ内ブラウザではログインできません")
-      ).not.toBeInTheDocument();
-    });
-
-    test("X（Twitter）アプリ内ブラウザの場合_バナーを表示しない", () => {
-      // Arrange
+  describe("WV-002 各WebViewアプリの検出", () => {
+    test("X（iOS）の場合_appがxでappNameがXを返す", () => {
       mockUserAgent(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Twitter for iPhone"
       );
 
-      // Act
-      render(<WebViewBanner />);
+      const { result } = renderHook(() => useWebViewDetection());
 
-      // Assert
-      expect(
-        screen.queryByText("アプリ内ブラウザではログインできません")
-      ).not.toBeInTheDocument();
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("x");
+      expect(result.current.appName).toBe("X");
+      expect(result.current.isAndroid).toBe(false);
     });
 
-    test("デスクトップChromeの場合_バナーを表示しない", () => {
-      // Arrange
+    test("X（Android）の場合_appがxでisAndroidがtrueを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 TwitterAndroid"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("x");
+      expect(result.current.isAndroid).toBe(true);
+    });
+
+    test("Facebook（iOS）の場合_appがfacebookを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/400.0;]"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("facebook");
+      expect(result.current.appName).toBe("Facebook");
+      expect(result.current.isAndroid).toBe(false);
+    });
+
+    test("Facebook（Android）の場合_isAndroidがtrueを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 [FBAN/FB4A;FBAV/400.0;]"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("facebook");
+      expect(result.current.isAndroid).toBe(true);
+    });
+
+    test("Instagram（iOS）の場合_appがinstagramを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 300.0"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("instagram");
+      expect(result.current.appName).toBe("Instagram");
+    });
+
+    test("TikTok（iOS）の場合_appがtiktokを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 BytedanceWebview/d8a21c6"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("tiktok");
+      expect(result.current.appName).toBe("TikTok");
+      expect(result.current.isAndroid).toBe(false);
+    });
+
+    test("TikTok（Android）の場合_appがtiktokでisAndroidがtrueを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36; wv BytedanceWebview/d8a21c6"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("tiktok");
+      expect(result.current.isAndroid).toBe(true);
+    });
+
+    test("WeChat内ブラウザの場合_appがwechatを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("wechat");
+      expect(result.current.appName).toBe("WeChat");
+    });
+
+    test("汎用Android WebViewの場合_appがotherでisAndroidがtrueを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36; wv"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(true);
+      expect(result.current.app).toBe("other");
+      expect(result.current.isAndroid).toBe(true);
+    });
+  });
+
+  describe("WV-003 通常ブラウザでは非検出", () => {
+    test("Safari（iOS）の場合_isWebViewがfalseを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(false);
+      expect(result.current.app).toBeNull();
+    });
+
+    test("Chrome（Android）の場合_isWebViewがfalseを返す", () => {
+      mockUserAgent(
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36"
+      );
+
+      const { result } = renderHook(() => useWebViewDetection());
+
+      expect(result.current.isWebView).toBe(false);
+    });
+
+    test("デスクトップChromeの場合_isWebViewがfalseを返す", () => {
       mockUserAgent(
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       );
 
-      // Act
-      render(<WebViewBanner />);
+      const { result } = renderHook(() => useWebViewDetection());
 
-      // Assert
-      expect(
-        screen.queryByText("アプリ内ブラウザではログインできません")
-      ).not.toBeInTheDocument();
+      expect(result.current.isWebView).toBe(false);
     });
   });
+});
 
-  describe("WV-004 ブラウザで開くボタン（Android）", () => {
-    test("ブラウザで開くボタンクリック時_intent://スキームURLに遷移する", () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 [FBAN/FB4A;FBAV/400.0;]"
-      );
-      // jsdom は intent:// への navigation をサポートしないため location.href のセッターをスパイ
-      const hrefSetter = jest.fn();
-      const currentHref = window.location.href;
-      Object.defineProperty(window, "location", {
-        value: {
-          ...originalLocation,
-          href: currentHref,
-          get search() {
-            return "";
-          },
-        },
-        writable: true,
-        configurable: true,
-      });
-      Object.defineProperty(window.location, "href", {
-        set: hrefSetter,
-        get: () => currentHref,
-        configurable: true,
-      });
+describe("buildIntentUrl", () => {
+  test("intent://スキームURLを正しく構築する", () => {
+    const result = buildIntentUrl("https://persta.ai/login?next=/mypage");
 
-      render(<WebViewBanner />);
-
-      // Act
-      fireEvent.click(screen.getByRole("button", { name: "ブラウザで開く" }));
-
-      // Assert
-      expect(hrefSetter).toHaveBeenCalledTimes(1);
-      const intentUrl = hrefSetter.mock.calls[0][0] as string;
-      expect(intentUrl).toContain("intent://");
-      expect(intentUrl).toContain("package=com.android.chrome");
-      expect(intentUrl).toContain(
-        `S.browser_fallback_url=${encodeURIComponent(currentHref)}`
-      );
-    });
+    expect(result).toContain("intent://persta.ai/login?next=/mypage");
+    expect(result).toContain("scheme=https");
+    expect(result).toContain("package=com.android.chrome");
+    expect(result).toContain(
+      `S.browser_fallback_url=${encodeURIComponent("https://persta.ai/login?next=/mypage")}`
+    );
   });
 
-  describe("WV-005 URLコピー機能", () => {
-    test("コピーボタンクリック時_クリップボードにURLをコピーしてボタン文言が変わる", async () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/400.0;]"
-      );
-      const writeTextMock = jest.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, {
-        clipboard: { writeText: writeTextMock },
-      });
+  test("hashを含むURLからhashを除去してfallbackUrlを構築する", () => {
+    const result = buildIntentUrl("https://persta.ai/login#section");
 
-      render(<WebViewBanner />);
+    // fallback URL にハッシュが含まれないこと
+    expect(result).toContain(
+      `S.browser_fallback_url=${encodeURIComponent("https://persta.ai/login")}`
+    );
+  });
+});
 
-      // Act
-      fireEvent.click(screen.getByRole("button", { name: "URLをコピー" }));
-
-      // Assert
-      await screen.findByText("コピーしました");
-      expect(writeTextMock).toHaveBeenCalledWith(window.location.href);
+describe("buildLineExternalUrl", () => {
+  test("現在のURLにopenExternalBrowser=1を付与する", () => {
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, href: "http://localhost:3000/login" },
+      writable: true,
+      configurable: true,
     });
 
-    test("コピーボタンクリック時_クリップボードAPI失敗時にフォールバックが機能する", async () => {
-      // Arrange
-      mockUserAgent(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/400.0;]"
-      );
-      const writeTextMock = jest.fn().mockRejectedValue(new Error("Clipboard API not available"));
-      Object.assign(navigator, {
-        clipboard: { writeText: writeTextMock },
-      });
-      // execCommand をモック
-      // @ts-expect-error: jsdom 環境で存在しない場合があるため動的に追加
-      document.execCommand = jest.fn().mockReturnValue(true);
+    const result = buildLineExternalUrl();
 
-      render(<WebViewBanner />);
-
-      // Act
-      fireEvent.click(screen.getByRole("button", { name: "URLをコピー" }));
-
-      // Assert
-      await screen.findByText("コピーしました");
-      expect(writeTextMock).toHaveBeenCalledTimes(1);
-      expect(document.execCommand).toHaveBeenCalledWith("copy");
-    });
+    expect(result).toContain("openExternalBrowser=1");
+    expect(result).toContain("localhost:3000/login");
   });
 });
