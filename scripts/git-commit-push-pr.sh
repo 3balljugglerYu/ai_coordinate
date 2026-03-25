@@ -30,8 +30,9 @@ Options:
   -h, --help              Show this help
 
 Default PR body behavior:
-  - If --body / --body-file is not provided, use existing PR template file when found.
-  - If template is not found, fallback to gh --fill.
+  - If --body / --body-file is not provided, generate a Japanese PR body.
+  - If a PR template exists, use it as the source for the generated Japanese body.
+  - This repository requires PR title and body text to include Japanese.
 
 Required local auth file (project-only):
   .local/github-auth.env
@@ -506,13 +507,18 @@ is_generic_summary_text() {
   return 1
 }
 
+contains_japanese_text() {
+  local input="$1"
+  printf '%s' "${input}" | grep -q '[ぁ-んァ-ヶ一-龠々ー]'
+}
+
 default_pr_title() {
   local candidate inferred
 
   candidate="$(git log -1 --pretty=%s 2>/dev/null || true)"
   inferred="$(build_inferred_pr_title)"
 
-  if [[ -n "${candidate}" ]] && ! is_generic_summary_text "${candidate}"; then
+  if [[ -n "${candidate}" ]] && contains_japanese_text "${candidate}" && ! is_generic_summary_text "${candidate}"; then
     printf '%s' "${candidate}"
     return
   fi
@@ -522,7 +528,7 @@ default_pr_title() {
     return
   fi
 
-  printf '%s' "${candidate:-${CURRENT_BRANCH}}"
+  printf '%s' '実装を更新'
 }
 
 join_lines_as_args() {
@@ -708,6 +714,16 @@ ${test_result_bullets}
 EOF
 
   printf '%s' "${output_file}"
+}
+
+ensure_pr_text_is_japanese() {
+  local label="$1"
+  local text="$2"
+
+  if ! contains_japanese_text "${text}"; then
+    echo "${label} must include Japanese text in this repository." >&2
+    exit 1
+  fi
 }
 
 while [[ $# -gt 0 ]]; do
@@ -910,14 +926,34 @@ fi
 
 if [[ -z "${PR_BODY}" && -z "${PR_BODY_FILE}" ]]; then
   TEMPLATE_FILE="$(find_pr_template_file || true)"
-  if [[ -n "${TEMPLATE_FILE}" ]]; then
-    if [[ -z "${PR_TITLE}" ]]; then
-      PR_TITLE="$(default_pr_title)"
-    fi
-    GENERATED_PR_BODY_FILE="$(build_pr_body_from_template "${TEMPLATE_FILE}")"
-    PR_BODY_FILE="${GENERATED_PR_BODY_FILE}"
-    echo "Using PR template with auto-filled body: ${TEMPLATE_FILE}"
+  if [[ -z "${PR_TITLE}" ]]; then
+    PR_TITLE="$(default_pr_title)"
   fi
+  GENERATED_PR_BODY_FILE="$(build_pr_body_from_template "${TEMPLATE_FILE:-}")"
+  PR_BODY_FILE="${GENERATED_PR_BODY_FILE}"
+  if [[ -n "${TEMPLATE_FILE}" ]]; then
+    echo "Using PR template with auto-filled body: ${TEMPLATE_FILE}"
+  else
+    echo "Using generated Japanese PR body."
+  fi
+fi
+
+if [[ -z "${PR_TITLE}" ]]; then
+  PR_TITLE="$(default_pr_title)"
+fi
+
+ensure_pr_text_is_japanese "PR title" "${PR_TITLE}"
+
+if [[ -n "${PR_BODY}" ]]; then
+  ensure_pr_text_is_japanese "PR body" "${PR_BODY}"
+fi
+
+if [[ -n "${PR_BODY_FILE}" ]]; then
+  if [[ ! -f "${PR_BODY_FILE}" ]]; then
+    echo "PR body file not found: ${PR_BODY_FILE}" >&2
+    exit 1
+  fi
+  ensure_pr_text_is_japanese "PR body" "$(cat "${PR_BODY_FILE}")"
 fi
 
 if [[ "${DO_DRAFT}" -eq 1 ]]; then
@@ -931,9 +967,6 @@ if [[ -n "${PR_BODY}" ]]; then
 fi
 if [[ -n "${PR_BODY_FILE}" ]]; then
   PR_CREATE_ARGS+=(--body-file "${PR_BODY_FILE}")
-fi
-if [[ -z "${PR_TITLE}" && -z "${PR_BODY}" && -z "${PR_BODY_FILE}" ]]; then
-  PR_CREATE_ARGS+=(--fill)
 fi
 
 PR_URL="$(GH_TOKEN="${GH_TOKEN}" gh "${PR_CREATE_ARGS[@]}")"

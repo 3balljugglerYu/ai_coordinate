@@ -44,6 +44,7 @@ describe("get-public-style-presets", () => {
         thumbnailImageUrl: "https://example.com/style.webp",
         thumbnailWidth: 912,
         thumbnailHeight: 1173,
+        hasBackgroundPrompt: true,
       },
     ]);
 
@@ -52,6 +53,7 @@ describe("get-public-style-presets", () => {
     expect(mockCacheTag).toHaveBeenCalledWith("style-presets");
     expect(mockCacheLife).toHaveBeenCalledWith("minutes");
     expect(result).toHaveLength(1);
+    expect(result[0]?.hasBackgroundPrompt).toBe(true);
   });
 
   test("getPublishedStylePreset_ID指定で公開プリセットを返す", async () => {
@@ -61,6 +63,7 @@ describe("get-public-style-presets", () => {
       thumbnailImageUrl: "https://example.com/style.webp",
       thumbnailWidth: 912,
       thumbnailHeight: 1173,
+      hasBackgroundPrompt: false,
     });
 
     const result = await getPublishedStylePreset("preset-1");
@@ -69,5 +72,6 @@ describe("get-public-style-presets", () => {
     expect(mockCacheLife).toHaveBeenCalledWith("minutes");
     expect(mockGetPublishedStylePresetById).toHaveBeenCalledWith("preset-1");
     expect(result?.id).toBe("preset-1");
+    expect(result?.hasBackgroundPrompt).toBe(false);
   });
 });

@@ -116,8 +116,19 @@ function SortableStylePresetCard({
             <Badge variant={preset.status === "published" ? "default" : "secondary"}>
               {preset.status === "published" ? "公開" : "下書き"}
             </Badge>
+            <Badge
+              variant={
+                preset.backgroundPrompt?.trim() ? "outline" : "secondary"
+              }
+            >
+              {preset.backgroundPrompt?.trim()
+                ? "背景変更対応"
+                : "背景変更なし"}
+            </Badge>
           </div>
-          <p className="line-clamp-2 text-xs text-slate-600">{preset.prompt}</p>
+          <p className="line-clamp-2 text-xs text-slate-600">
+            {preset.stylingPrompt}
+          </p>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
             <span>表示順: {preset.sortOrder}</span>
             <span>
@@ -335,7 +346,7 @@ export function StylePresetListClient({
               スタイル一覧
             </h2>
             <p className="text-sm text-slate-600">
-              画像・タイトル・prompt・公開状態を管理し、ドラッグで表示順を変更できます。
+              画像・タイトル・styling/background prompt・公開状態を管理し、ドラッグで表示順を変更できます。
             </p>
           </div>
           <Button

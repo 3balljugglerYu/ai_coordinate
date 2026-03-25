@@ -37,6 +37,10 @@ const STYLE_PROMPT_ILLUSTRATION_SUFFIX =
   "Maintain the exact artistic style, brushwork, and original composition.";
 const STYLE_PROMPT_REAL_SUFFIX =
   "Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.";
+const STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX =
+  "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.";
+const STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX =
+  "You may restyle the background within the existing framing so it complements the selected outfit. Preserve the camera angle, crop, composition, pose, facial features, and character identity.";
 
 type FetchFn = typeof fetch;
 
@@ -46,7 +50,11 @@ interface StyleGenerateRouteDependencies {
   getUserFn?: typeof getUser;
   getPublishedStylePresetForGenerationFn?: (
     styleId: string
-  ) => Promise<{ id: string; prompt: string } | null>;
+  ) => Promise<{
+    id: string;
+    stylingPrompt: string;
+    backgroundPrompt: string | null;
+  } | null>;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
   checkAndConsumeRateLimitFn?: (params: {
     request: NextRequest;
@@ -144,16 +152,37 @@ function resolveSourceImageType(entry: FormDataEntryValue | null): SourceImageTy
   return entry === "real" ? "real" : "illustration";
 }
 
+function resolveBackgroundChange(entry: FormDataEntryValue | null): boolean {
+  return entry === "true";
+}
+
 function buildGenerationPrompt(
-  rawPrompt: string,
-  sourceImageType: SourceImageType
+  params: {
+    stylingPrompt: string;
+    backgroundPrompt: string | null;
+    backgroundChange: boolean;
+    sourceImageType: SourceImageType;
+  }
 ): string {
   const promptSuffix =
-    sourceImageType === "real"
+    params.sourceImageType === "real"
       ? STYLE_PROMPT_REAL_SUFFIX
       : STYLE_PROMPT_ILLUSTRATION_SUFFIX;
+  const backgroundInstruction = params.backgroundChange
+    ? STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX
+    : STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX;
+  const promptSections = [
+    STYLE_PROMPT_BASE_PREFIX,
+    promptSuffix,
+    backgroundInstruction,
+    `Styling Direction:\n${params.stylingPrompt}`,
+  ];
 
-  return `${STYLE_PROMPT_BASE_PREFIX}\n\n${promptSuffix}\n\n${rawPrompt}`;
+  if (params.backgroundChange && params.backgroundPrompt) {
+    promptSections.push(`Background Direction:\n${params.backgroundPrompt}`);
+  }
+
+  return promptSections.join("\n\n");
 }
 
 function getStyleSignupPath(): string {
@@ -218,6 +247,9 @@ export async function postStyleGenerateRoute(
     const sourceImageType = resolveSourceImageType(
       formData.get("sourceImageType")
     );
+    const backgroundChange = resolveBackgroundChange(
+      formData.get("backgroundChange")
+    );
 
     if (!styleId) {
       return jsonError(copy.missingStyle, "STYLE_MISSING_STYLE", 400);
@@ -250,7 +282,13 @@ export async function postStyleGenerateRoute(
       );
     }
 
-    const promptText = preset.prompt;
+    if (backgroundChange && !preset.backgroundPrompt?.trim()) {
+      return jsonError(
+        copy.styleBackgroundPromptUnavailable,
+        "STYLE_BACKGROUND_PROMPT_UNAVAILABLE",
+        400
+      );
+    }
 
     let rateLimitResult: StyleGenerateRateLimitResult;
     try {
@@ -324,7 +362,12 @@ export async function postStyleGenerateRoute(
 
     const parts: GeminiContentPart[] = [
       {
-        text: buildGenerationPrompt(promptText, sourceImageType),
+        text: buildGenerationPrompt({
+          stylingPrompt: preset.stylingPrompt,
+          backgroundPrompt: preset.backgroundPrompt,
+          backgroundChange,
+          sourceImageType,
+        }),
       },
       await toInlineData(uploadImage),
     ];

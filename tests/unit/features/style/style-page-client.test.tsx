@@ -117,6 +117,12 @@ const styleMessages = {
   sourceImageTypeLabel: "Upload image type",
   sourceImageTypeIllustration: "Illustration",
   sourceImageTypeReal: "Photo",
+  backgroundChangeLabel: "Background",
+  backgroundChangeCheckbox: "Change the background to match the style too",
+  backgroundChangeDescription:
+    "When OFF, the original background is preserved as much as possible. When ON, this preset's background direction is applied as well.",
+  backgroundChangeDisabledHint:
+    "This style does not support background changes.",
   expandReferenceCardAria: "Restore the reference card to full size",
   collapseReferenceCardAria: "Collapse the reference card",
   expandReferenceCardTitle: "Restore",
@@ -200,6 +206,7 @@ const presets: readonly StylePresetPublicSummary[] = [
     thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
     thumbnailWidth: 912,
     thumbnailHeight: 1173,
+    hasBackgroundPrompt: true,
   },
   {
     id: "a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e",
@@ -207,6 +214,7 @@ const presets: readonly StylePresetPublicSummary[] = [
     thumbnailImageUrl: "https://example.com/style-presets/fluffy-pajamas-code.webp",
     thumbnailWidth: 640,
     thumbnailHeight: 480,
+    hasBackgroundPrompt: false,
   },
 ];
 
@@ -365,6 +373,60 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     expect(generateButton).toBeEnabled();
+  });
+
+  test("背景変更対応presetではチェックボックスが有効で送信時にbackgroundChange=falseを含む", async () => {
+    jest.useFakeTimers();
+
+    render(<StylePageClient presets={presets} />);
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Change the background to match the style too",
+    });
+    expect(checkbox).toBeEnabled();
+    expect(
+      screen.getByText(
+        "When OFF, the original background is preserved as much as possible. When ON, this preset's background direction is applied as well."
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const generateCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        (typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url) ===
+          "/style/generate" && (init?.method ?? "GET") === "POST"
+    );
+    expect(generateCall).toBeDefined();
+    const [, init] = generateCall!;
+    const formData = init?.body as FormData;
+    expect(formData.get("backgroundChange")).toBe("false");
+  });
+
+  test("背景変更非対応presetではチェックボックスをdisabledにし、選択切替時にOFFへ戻す", () => {
+    render(<StylePageClient presets={presets} />);
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Change the background to match the style too",
+    });
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i })
+    );
+
+    expect(checkbox).toBeDisabled();
+    expect(checkbox).not.toBeChecked();
+    expect(
+      screen.getByText("This style does not support background changes.")
+    ).toBeInTheDocument();
   });
 
   test("入力エリアはUploadがStyleより前に表示される", () => {

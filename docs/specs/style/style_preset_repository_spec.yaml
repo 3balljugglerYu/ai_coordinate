@@ -18,19 +18,19 @@ specifications:
     method: createStylePreset
     type: event-driven
     ears: |
-      When createStylePreset is invoked with a title and prompt,
+      When createStylePreset is invoked with a title, styling prompt, and optional background prompt,
       the system shall normalize the values,
       generate a unique slug,
       and persist the preset row.
     ears_ja: |
-      createStylePreset が title と prompt 付きで呼び出された場合、
+      createStylePreset が title、styling prompt、および任意の background prompt 付きで呼び出された場合、
       システムは値を正規化し、
       一意な slug を生成し、
       プリセット行を永続化する。
     test_cases:
-      - createStylePreset_タイトル重複時_連番slugで保存する
+      - createStylePreset_タイトル重複時_連番slugで保存し表示順も詰め直す
     test_cases_ja:
-      - createStylePreset_タイトル重複時_連番slugで保存する
+      - createStylePreset_タイトル重複時_連番slugで保存し表示順も詰め直す
 
   - id: SPR-002
     method: listPublishedStylePresets
@@ -38,11 +38,13 @@ specifications:
     ears: |
       While published presets exist,
       the system shall return only published presets
-      ordered by sort_order ascending.
+      ordered by sort_order ascending
+      and include whether each preset has a background prompt.
     ears_ja: |
       公開済みプリセットが存在する間、
       システムは published のみを
-      sort_order 昇順で返す。
+      sort_order 昇順で返し、
+      各プリセットが background prompt を持つかどうかも含める。
     test_cases:
       - listPublishedStylePresets_公開データのみを公開用summaryへ変換する
     test_cases_ja:
@@ -63,3 +65,33 @@ specifications:
       - reorderStylePresets_ID配列順にsortOrderを保存する
     test_cases_ja:
       - reorderStylePresets_ID配列順にsortOrderを保存する
+
+  - id: SPR-004
+    method: updateStylePreset
+    type: event-driven
+    ears: |
+      When updateStylePreset is invoked with partial values,
+      the system shall merge omitted fields from the existing preset
+      and persist the updated styling/background prompt payload through the RPC.
+    ears_ja: |
+      updateStylePreset が部分入力で呼び出された場合、
+      システムは省略されたフィールドを既存プリセットから補完し、
+      更新後の styling/background prompt を RPC 経由で永続化する。
+    test_cases:
+      - updateStylePreset_既存値と入力値をマージしてRPCへ渡す
+    test_cases_ja:
+      - updateStylePreset_既存値と入力値をマージしてRPCへ渡す
+
+  - id: SPR-005
+    method: deleteStylePreset
+    type: event-driven
+    ears: |
+      When deleteStylePreset is invoked for an existing preset,
+      the system shall delegate deletion and reordering to the atomic RPC.
+    ears_ja: |
+      deleteStylePreset が既存プリセットに対して呼び出された場合、
+      システムは削除と再採番を原子的な RPC に委譲する。
+    test_cases:
+      - deleteStylePreset_RPCで削除と再採番を依頼する
+    test_cases_ja:
+      - deleteStylePreset_RPCで削除と再採番を依頼する

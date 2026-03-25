@@ -37,12 +37,12 @@ specifications:
     method: POST
     type: event-driven
     ears: |
-      When an admin submits a valid new preset with an image,
+      When an admin submits a valid new preset with an image, styling prompt, and optional background prompt,
       the system shall upload the thumbnail,
       persist the preset,
       and revalidate style preset caches.
     ears_ja: |
-      管理者が画像付きの有効な新規プリセットを送信した場合、
+      管理者が画像、styling prompt、任意の background prompt 付きで有効な新規プリセットを送信した場合、
       システムはサムネイルをアップロードし、
       プリセットを保存し、
       style preset キャッシュを再検証する。
@@ -55,11 +55,11 @@ specifications:
     method: PATCH
     type: event-driven
     ears: |
-      When an admin updates a preset with a replacement image,
+      When an admin updates a preset with a replacement image or prompt changes,
       the system shall persist the updated preset
       and delete the previous managed image after the update succeeds.
     ears_ja: |
-      管理者が差し替え画像付きでプリセットを更新した場合、
+      管理者が差し替え画像または prompt 変更付きでプリセットを更新した場合、
       システムは更新後プリセットを保存し、
       更新成功後に旧管理画像を削除する。
     test_cases:
@@ -94,7 +94,21 @@ specifications:
       システムは 400 で拒否する。
     test_cases:
       - postAdminStylePresetsReorder_不正payloadは400を返す
-      - postAdminStylePresetsReorder_正常payloadで順序保存する
     test_cases_ja:
       - postAdminStylePresetsReorder_不正payloadは400を返す
+
+  - id: ASPR-006
+    method: POST reorder
+    type: event-driven
+    ears: |
+      When an admin submits a valid reorder payload,
+      the system shall persist the new preset order
+      and revalidate style preset caches.
+    ears_ja: |
+      管理者が有効な並び替え payload を送信した場合、
+      システムは新しいプリセット順序を保存し、
+      style preset キャッシュを再検証する。
+    test_cases:
+      - postAdminStylePresetsReorder_正常payloadで順序保存する
+    test_cases_ja:
       - postAdminStylePresetsReorder_正常payloadで順序保存する
