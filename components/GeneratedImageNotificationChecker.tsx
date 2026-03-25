@@ -61,24 +61,7 @@ export function GeneratedImageNotificationChecker() {
 
         const ackAt = await fetchCoordinateToastAckAt(userId);
 
-        if (!ackAt) {
-          const recentImages = await getGeneratedImages(
-            userId,
-            COORDINATE_TOAST_QUERY_LIMIT,
-            0,
-            "coordinate"
-          );
-          const createdList = recentImages
-            .map((img) => img.created_at)
-            .filter((v): v is string => typeof v === "string" && v.length > 0);
-          const seed =
-            maxIsoTimestamps(createdList) ?? new Date().toISOString();
-          await setCoordinateToastAckAt(userId, seed);
-          return;
-        }
-
-        const ackMs = Date.parse(ackAt);
-        if (!Number.isFinite(ackMs)) {
+        if (!ackAt || !Number.isFinite(Date.parse(ackAt))) {
           const recentImages = await getGeneratedImages(
             userId,
             COORDINATE_TOAST_QUERY_LIMIT,
