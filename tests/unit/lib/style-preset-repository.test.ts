@@ -33,7 +33,8 @@ describe("style-preset repository", () => {
         id: "preset-1",
         slug: "spring-smart-casual-2",
         title: "Spring Smart Casual",
-        prompt: "Line 1\nLine 2",
+        styling_prompt: "Line 1\nLine 2",
+        background_prompt: "Soft spring city background",
         thumbnail_image_url: "https://example.com/style.webp",
         thumbnail_storage_path: "style-presets/preset-1/image.webp",
         thumbnail_width: 720,
@@ -52,7 +53,8 @@ describe("style-preset repository", () => {
 
     const created = await createStylePreset({
       title: "  Spring Smart Casual  ",
-      prompt: "Line 1\r\nLine 2  ",
+      stylingPrompt: "Line 1\r\nLine 2  ",
+      backgroundPrompt: "  Soft spring city background\r\n  ",
       thumbnailImageUrl: "https://example.com/style.webp",
       thumbnailStoragePath: "style-presets/preset-1/image.webp",
       thumbnailWidth: 720,
@@ -67,7 +69,8 @@ describe("style-preset repository", () => {
       expect.objectContaining({
         p_slug: "spring-smart-casual-2",
         p_title: "Spring Smart Casual",
-        p_prompt: "Line 1\nLine 2",
+        p_styling_prompt: "Line 1\nLine 2",
+        p_background_prompt: "Soft spring city background",
         p_thumbnail_image_url: "https://example.com/style.webp",
         p_thumbnail_storage_path: "style-presets/preset-1/image.webp",
         p_thumbnail_width: 720,
@@ -94,7 +97,8 @@ describe("style-preset repository", () => {
                 id: "preset-1",
                 slug: "paris-code",
                 title: "PARIS CODE",
-                prompt: "prompt",
+                styling_prompt: "prompt",
+                background_prompt: "Paris street",
                 thumbnail_image_url: "https://example.com/style.webp",
                 thumbnail_storage_path: null,
                 thumbnail_width: 912,
@@ -126,6 +130,7 @@ describe("style-preset repository", () => {
         thumbnailImageUrl: "https://example.com/style.webp",
         thumbnailWidth: 912,
         thumbnailHeight: 1173,
+        hasBackgroundPrompt: true,
       },
     ]);
   });
@@ -152,7 +157,8 @@ describe("style-preset repository", () => {
           id: "preset-1",
           slug: "preset-1",
           title: "Before",
-          prompt: "Before prompt",
+          styling_prompt: "Before prompt",
+          background_prompt: null,
           thumbnail_image_url: "https://example.com/old.webp",
           thumbnail_storage_path: "style-presets/preset-1/old.webp",
           thumbnail_width: 720,
@@ -172,7 +178,8 @@ describe("style-preset repository", () => {
         id: "preset-1",
         slug: "preset-1",
         title: "Updated",
-        prompt: "Before prompt",
+        styling_prompt: "Before prompt",
+        background_prompt: "Soft city background",
         thumbnail_image_url: "https://example.com/old.webp",
         thumbnail_storage_path: "style-presets/preset-1/old.webp",
         thumbnail_width: 720,
@@ -191,6 +198,7 @@ describe("style-preset repository", () => {
 
     const updated = await updateStylePreset("preset-1", {
       title: " Updated ",
+      backgroundPrompt: " Soft city background ",
       sortOrder: 2,
       updatedBy: "admin-2",
     });
@@ -198,7 +206,8 @@ describe("style-preset repository", () => {
     expect(rpc).toHaveBeenCalledWith("update_style_preset", {
       p_id: "preset-1",
       p_title: "Updated",
-      p_prompt: "Before prompt",
+      p_styling_prompt: "Before prompt",
+      p_background_prompt: "Soft city background",
       p_thumbnail_image_url: "https://example.com/old.webp",
       p_thumbnail_storage_path: "style-presets/preset-1/old.webp",
       p_thumbnail_width: 720,

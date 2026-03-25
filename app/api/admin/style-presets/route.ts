@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     const title = formData.get("title");
-    const prompt = formData.get("prompt");
+    const stylingPromptEntry = formData.get("styling_prompt");
+    const backgroundPromptEntry = formData.get("background_prompt");
     const sortOrderEntry = formData.get("sort_order");
     const statusEntry = formData.get("status");
     const file = formData.get("file");
@@ -55,12 +56,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (typeof prompt !== "string" || prompt.trim() === "") {
+    if (
+      typeof stylingPromptEntry !== "string" ||
+      stylingPromptEntry.trim() === ""
+    ) {
       return NextResponse.json(
-        { error: "prompt は必須です" },
+        { error: "styling prompt は必須です" },
         { status: 400 }
       );
     }
+
+    const backgroundPrompt =
+      typeof backgroundPromptEntry === "string" ? backgroundPromptEntry : null;
 
     if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json(
@@ -93,7 +100,8 @@ export async function POST(request: NextRequest) {
     const created = await createStylePreset({
       id: presetId,
       title,
-      prompt,
+      stylingPrompt: stylingPromptEntry,
+      backgroundPrompt,
       thumbnailImageUrl: uploaded.imageUrl,
       thumbnailStoragePath: uploaded.storagePath,
       thumbnailWidth: uploaded.width,

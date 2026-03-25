@@ -81,7 +81,13 @@ describe("StyleGenerateRoute integration tests", () => {
     getPublishedStylePresetForGenerationFn = jest
       .fn()
       .mockImplementation(async (styleId: string) =>
-        styleId === STYLE_ID ? { id: STYLE_ID, prompt: "RAW PROMPT\nSECOND LINE" } : null
+        styleId === STYLE_ID
+          ? {
+              id: STYLE_ID,
+              stylingPrompt: "RAW PROMPT\nSECOND LINE",
+              backgroundPrompt: null,
+            }
+          : null
       );
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
     checkAndConsumeRateLimitFn = jest
@@ -251,6 +257,9 @@ describe("StyleGenerateRoute integration tests", () => {
 
 Maintain the exact artistic style, brushwork, and original composition.
 
+Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.
+
+Styling Direction:
 RAW PROMPT
 SECOND LINE`,
     });
@@ -429,9 +438,88 @@ SECOND LINE`,
 
 Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.
 
+Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.
+
+Styling Direction:
 RAW PROMPT
 SECOND LINE`,
     });
+  });
+
+  test("postStyleGenerateRoute_backgroundChange有効時_背景promptを合成する", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
+      id: STYLE_ID,
+      stylingPrompt: "RAW PROMPT\nSECOND LINE",
+      backgroundPrompt: "Soft spring city street with blossoms",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("backgroundChange", "true");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,generated-image-base64",
+      mimeType: "image/png",
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const requestBody = JSON.parse(String(init?.body)) as {
+      contents: Array<{ parts: Array<Record<string, unknown>> }>;
+    };
+
+    expect(requestBody.contents[0].parts[0]).toEqual({
+      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
+
+1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
+
+2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
+
+3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
+
+Maintain the exact artistic style, brushwork, and original composition.
+
+You may restyle the background within the existing framing so it complements the selected outfit. Preserve the camera angle, crop, composition, pose, facial features, and character identity.
+
+Styling Direction:
+RAW PROMPT
+SECOND LINE
+
+Background Direction:
+Soft spring city street with blossoms`,
+    });
+  });
+
+  test("postStyleGenerateRoute_backgroundChange有効かつbackgroundPrompt未設定時_400を返す", async () => {
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("backgroundChange", "true");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("このスタイルは背景変更に対応していません。");
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   test("postStyleGenerateRoute_timeout時_504を返す", async () => {

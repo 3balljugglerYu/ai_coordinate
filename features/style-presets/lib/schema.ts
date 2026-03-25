@@ -19,7 +19,8 @@ export interface StylePresetAdmin {
   id: string;
   slug: string;
   title: string;
-  prompt: string;
+  stylingPrompt: string;
+  backgroundPrompt: string | null;
   thumbnailImageUrl: string;
   thumbnailStoragePath: string | null;
   thumbnailWidth: number;
@@ -38,17 +39,20 @@ export interface StylePresetPublicSummary {
   thumbnailImageUrl: string;
   thumbnailWidth: number;
   thumbnailHeight: number;
+  hasBackgroundPrompt: boolean;
 }
 
 export interface StylePresetGenerationRecord extends StylePresetPublicSummary {
-  prompt: string;
+  stylingPrompt: string;
+  backgroundPrompt: string | null;
   status: StylePresetStatus;
 }
 
 export interface StylePresetInsert {
   id?: string;
   title: string;
-  prompt: string;
+  stylingPrompt: string;
+  backgroundPrompt?: string | null;
   thumbnailImageUrl: string;
   thumbnailStoragePath?: string | null;
   thumbnailWidth: number;
@@ -60,7 +64,8 @@ export interface StylePresetInsert {
 
 export interface StylePresetUpdate {
   title?: string;
-  prompt?: string;
+  stylingPrompt?: string;
+  backgroundPrompt?: string | null;
   thumbnailImageUrl?: string;
   thumbnailStoragePath?: string | null;
   thumbnailWidth?: number;
@@ -78,8 +83,23 @@ export function normalizeStylePresetTitle(title: string): string {
   return title.trim();
 }
 
+function normalizeStylePresetText(value: string): string {
+  return value.replace(/\r\n?/g, "\n").trim();
+}
+
 export function normalizeStylePresetPrompt(prompt: string): string {
-  return prompt.replace(/\r\n?/g, "\n").trim();
+  return normalizeStylePresetText(prompt);
+}
+
+export function normalizeStylePresetOptionalPrompt(
+  prompt: string | null | undefined
+): string | null {
+  if (typeof prompt !== "string") {
+    return null;
+  }
+
+  const normalized = normalizeStylePresetText(prompt);
+  return normalized.length > 0 ? normalized : null;
 }
 
 export function buildStylePresetSlug(title: string): string {

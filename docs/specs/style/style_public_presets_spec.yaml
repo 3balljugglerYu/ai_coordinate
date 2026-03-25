@@ -21,11 +21,13 @@ specifications:
     ears: |
       While the public style page requests presets,
       the system shall cache the published preset list
-      and return the repository result unchanged.
+      and return the repository result unchanged,
+      including each preset's background prompt availability.
     ears_ja: |
       公開 style ページがプリセット一覧を要求している間、
       システムは公開プリセット一覧をキャッシュし、
-      repository の結果をそのまま返す。
+      repository の結果をそのまま返し、
+      background prompt の有無も保持する。
     test_cases:
       - getPublishedStylePresets_キャッシュタグを付けて公開一覧を返す
     test_cases_ja:
@@ -37,11 +39,13 @@ specifications:
     ears: |
       When a published preset id is requested,
       the system shall cache the lookup
-      and return the repository result for that id.
+      and return the repository result for that id,
+      including background prompt availability.
     ears_ja: |
       公開プリセット id が要求された場合、
       システムはその lookup をキャッシュし、
-      その id に対する repository 結果を返す。
+      その id に対する repository 結果を返し、
+      background prompt の有無も保持する。
     test_cases:
       - getPublishedStylePreset_ID指定で公開プリセットを返す
     test_cases_ja:

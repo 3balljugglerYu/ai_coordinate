@@ -73,7 +73,8 @@ describe("admin style preset routes", () => {
         id: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
         slug: "preset-1",
         title: "Preset 1",
-        prompt: "Prompt 1",
+        stylingPrompt: "Prompt 1",
+        backgroundPrompt: null,
         thumbnailImageUrl: "https://example.com/1.webp",
         thumbnailStoragePath: null,
         thumbnailWidth: 720,
@@ -89,7 +90,8 @@ describe("admin style preset routes", () => {
         id: "a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e",
         slug: "preset-2",
         title: "Preset 2",
-        prompt: "Prompt 2",
+        stylingPrompt: "Prompt 2",
+        backgroundPrompt: "Prompt background 2",
         thumbnailImageUrl: "https://example.com/2.webp",
         thumbnailStoragePath: null,
         thumbnailWidth: 720,
@@ -119,7 +121,8 @@ describe("admin style preset routes", () => {
   test("postAdminStylePresets_正常入力で新規作成できる", async () => {
     const formData = new FormData();
     formData.set("title", "Spring Smart Casual");
-    formData.set("prompt", "Prompt body");
+    formData.set("styling_prompt", "Prompt body");
+    formData.set("background_prompt", "Soft spring background");
     formData.set("sort_order", "3");
     formData.set("status", "published");
     formData.set(
@@ -137,7 +140,8 @@ describe("admin style preset routes", () => {
       id: "preset-1",
       slug: "spring-smart-casual",
       title: "Spring Smart Casual",
-      prompt: "Prompt body",
+      stylingPrompt: "Prompt body",
+      backgroundPrompt: "Soft spring background",
       thumbnailImageUrl: "https://example.com/style.webp",
       thumbnailStoragePath: "style-presets/preset-1/image.webp",
       thumbnailWidth: 720,
@@ -160,7 +164,8 @@ describe("admin style preset routes", () => {
     expect(mockCreateStylePreset).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Spring Smart Casual",
-        prompt: "Prompt body",
+        stylingPrompt: "Prompt body",
+        backgroundPrompt: "Soft spring background",
         sortOrder: 3,
         status: "published",
         createdBy: "admin-1",
@@ -173,7 +178,8 @@ describe("admin style preset routes", () => {
   test("postAdminStylePresets_DB保存失敗時はアップロード画像をrollback削除する", async () => {
     const formData = new FormData();
     formData.set("title", "Spring Smart Casual");
-    formData.set("prompt", "Prompt body");
+    formData.set("styling_prompt", "Prompt body");
+    formData.set("background_prompt", "");
     formData.set("sort_order", "3");
     formData.set("status", "published");
     formData.set(
@@ -204,7 +210,8 @@ describe("admin style preset routes", () => {
   test("patchAdminStylePreset_画像差し替え時に旧画像を削除する", async () => {
     const formData = new FormData();
     formData.set("title", "Updated Title");
-    formData.set("prompt", "Updated prompt");
+    formData.set("styling_prompt", "Updated prompt");
+    formData.set("background_prompt", "Updated background");
     formData.set("sort_order", "1");
     formData.set("status", "draft");
     formData.set(
@@ -216,7 +223,8 @@ describe("admin style preset routes", () => {
       id: "preset-1",
       slug: "preset-1",
       title: "Before",
-      prompt: "Before prompt",
+      stylingPrompt: "Before prompt",
+      backgroundPrompt: null,
       thumbnailImageUrl: "https://example.com/old.webp",
       thumbnailStoragePath: "style-presets/preset-1/old.webp",
       thumbnailWidth: 720,
@@ -238,7 +246,8 @@ describe("admin style preset routes", () => {
       id: "preset-1",
       slug: "preset-1",
       title: "Updated Title",
-      prompt: "Updated prompt",
+      stylingPrompt: "Updated prompt",
+      backgroundPrompt: "Updated background",
       thumbnailImageUrl: "https://example.com/new.webp",
       thumbnailStoragePath: "style-presets/preset-1/new.webp",
       thumbnailWidth: 720,
@@ -262,7 +271,8 @@ describe("admin style preset routes", () => {
       "preset-1",
       expect.objectContaining({
         title: "Updated Title",
-        prompt: "Updated prompt",
+        stylingPrompt: "Updated prompt",
+        backgroundPrompt: "Updated background",
         status: "draft",
         thumbnailImageUrl: "https://example.com/new.webp",
       })
@@ -279,7 +289,8 @@ describe("admin style preset routes", () => {
       id: "preset-1",
       slug: "preset-1",
       title: "Before",
-      prompt: "Before prompt",
+      stylingPrompt: "Before prompt",
+      backgroundPrompt: null,
       thumbnailImageUrl: "https://example.com/old.webp",
       thumbnailStoragePath: "style-presets/preset-1/old.webp",
       thumbnailWidth: 720,

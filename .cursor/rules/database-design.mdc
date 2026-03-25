@@ -263,9 +263,9 @@ alwaysApply: false
 
 #### `style_presets`
 - 主キー: `id`
-- 主要カラム: `slug`, `title`, `prompt`, `thumbnail_image_url`, `thumbnail_storage_path`, `thumbnail_width`, `thumbnail_height`, `sort_order`, `status`, `created_by`, `updated_by`, `created_at`, `updated_at`
+- 主要カラム: `slug`, `title`, `styling_prompt`, `background_prompt`, `thumbnail_image_url`, `thumbnail_storage_path`, `thumbnail_width`, `thumbnail_height`, `sort_order`, `status`, `created_by`, `updated_by`, `created_at`, `updated_at`
 - 外部キー: `created_by -> auth.users.id`, `updated_by -> auth.users.id`
-- 備考: One-Tap Style の管理プリセット。`status` は `draft/published`、seed データでは `thumbnail_storage_path` が `NULL` で `public/style/*.webp` を `thumbnail_image_url` に持つことがある
+- 備考: One-Tap Style の管理プリセット。`status` は `draft/published`。`styling_prompt` が衣装変更用、`background_prompt` は背景変更チェックが ON のときだけ使う任意フィールド
 - RLS: `published` 行のみ公開 `SELECT`
 
 ## 主要インデックス（現行・抜粋）

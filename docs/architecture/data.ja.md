@@ -390,7 +390,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `moderation_audit_logs` | 運用監査。参照はできても管理フロー経由で扱うべき |
 | `style_usage_events` | One-Tap Style の利用ログ。authenticated / guest を区別して service role 経由で記録し、Admin 集計では訪問・生成成功・ダウンロード・上限超過リクエストを集計する。authenticated の日次制限は RPC `consume_style_authenticated_generate_attempt()` で `generate_attempt` を原子的に消費する |
 | `style_guest_generate_attempts` | guest の `/style/generate` を IP hash ベースで `1分2回 / 1日3回` に制限する内部テーブル |
-| `style_presets` | One-Tap Style の管理プリセット。admin route は service role + RPC で create/update/delete/reorder を原子的に処理し、公開側は `published` のみ参照する |
+| `style_presets` | One-Tap Style の管理プリセット。admin route は service role + RPC で create/update/delete/reorder を原子的に処理し、公開側は `published` のみ参照する。現在は `styling_prompt` と任意の `background_prompt` を持ち、背景変更 UI と generate route がそれぞれ参照する |
 
 ## 変更ガイド: 何を変える時にどこから読むか
 

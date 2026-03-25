@@ -767,6 +767,12 @@ export const enMessages = {
     sourceImageTypeReal: "Photo",
     sourceImageTypeHint:
       "If you are using a real photo, select “Photo.”",
+    backgroundChangeLabel: "Background",
+    backgroundChangeCheckbox: "Change the background to match the style too",
+    backgroundChangeDescription:
+      "When OFF, the original background is preserved as much as possible. When ON, this preset's background direction is applied as well.",
+    backgroundChangeDisabledHint:
+      "This style does not support background changes.",
     expandReferenceCardAria: "Restore the reference card to full size",
     collapseReferenceCardAria: "Collapse the reference card",
     expandReferenceCardTitle: "Restore",
@@ -862,6 +868,8 @@ export const enMessages = {
       "An internal server error occurred. Please try again in a little while.",
     unknownError: "An unknown error occurred.",
     stylePromptReadFailed: "Failed to read the style prompt.",
+    styleBackgroundPromptUnavailable:
+      "This style does not support background changes.",
     styleImageReadFailed: "Failed to read the style image.",
     noCreditsFlow: "This screen does not check or consume Percoins.",
   },

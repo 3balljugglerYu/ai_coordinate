@@ -37,13 +37,33 @@ specifications:
     type: event-driven
     ears: |
       When generation succeeds for a published preset,
-      the system shall build the prompt from the stored preset prompt
+      the system shall build the prompt from the stored styling prompt,
+      optionally add the background prompt when background change is enabled,
       and record a generate usage event.
     ears_ja: |
       公開プリセットで生成が成功した場合、
-      システムは保存済み prompt から生成 prompt を構築し、
+      システムは保存済み styling prompt から生成 prompt を構築し、
+      背景変更が有効なら background prompt も追加し、
       generate 利用イベントを記録する。
     test_cases:
       - postStyleGenerateRoute_成功時_rawPromptと固定Gemini設定で画像を返す
+      - postStyleGenerateRoute_backgroundChange有効時_背景promptを合成する
     test_cases_ja:
       - postStyleGenerateRoute_成功時_rawPromptと固定Gemini設定で画像を返す
+      - postStyleGenerateRoute_backgroundChange有効時_背景promptを合成する
+
+  - id: SGR-003
+    method: postStyleGenerateRoute
+    type: unwanted
+    ears: |
+      If background change is requested for a preset without a background prompt,
+      then the system shall reject the request with 400
+      and shall not call Gemini generation.
+    ears_ja: |
+      background prompt を持たないプリセットに対して背景変更が要求された場合、
+      システムは 400 で拒否し、
+      Gemini 生成を呼び出してはならない。
+    test_cases:
+      - postStyleGenerateRoute_backgroundChange有効かつbackgroundPrompt未設定時_400を返す
+    test_cases_ja:
+      - postStyleGenerateRoute_backgroundChange有効かつbackgroundPrompt未設定時_400を返す

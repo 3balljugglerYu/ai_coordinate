@@ -741,6 +741,12 @@ export const jaMessages = {
     sourceImageTypeReal: "リアル",
     sourceImageTypeHint:
       "実写の画像を使う場合は「リアル」を選択してください。",
+    backgroundChangeLabel: "背景設定",
+    backgroundChangeCheckbox: "背景もスタイルに合わせて変更する",
+    backgroundChangeDescription:
+      "OFF のときは背景をできるだけ維持し、ON のときはこのスタイル用の背景指示も反映します。",
+    backgroundChangeDisabledHint:
+      "このスタイルは背景変更に対応していません。",
     expandReferenceCardAria: "参照カードを元サイズに戻す",
     collapseReferenceCardAria: "参照カードを縮小する",
     expandReferenceCardTitle: "戻す",
@@ -833,6 +839,8 @@ export const jaMessages = {
       "サーバー内部でエラーが発生しました。しばらく時間をおいて再試行してください。",
     unknownError: "不明なエラーが発生しました。",
     stylePromptReadFailed: "スタイルプロンプトの読み込みに失敗しました。",
+    styleBackgroundPromptUnavailable:
+      "このスタイルは背景変更に対応していません。",
     styleImageReadFailed: "スタイル画像の読み込みに失敗しました。",
     noCreditsFlow: "この画面ではペルコイン確認や消費は行いません。",
   },

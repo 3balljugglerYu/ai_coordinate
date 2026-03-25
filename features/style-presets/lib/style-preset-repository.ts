@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildStylePresetSlug,
+  normalizeStylePresetOptionalPrompt,
   normalizeStylePresetPrompt,
   normalizeStylePresetTitle,
   type StylePresetAdmin,
@@ -16,7 +17,8 @@ interface StylePresetRow {
   id: string;
   slug: string;
   title: string;
-  prompt: string;
+  styling_prompt: string;
+  background_prompt: string | null;
   thumbnail_image_url: string;
   thumbnail_storage_path: string | null;
   thumbnail_width: number;
@@ -50,7 +52,8 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
     id: row.id,
     slug: row.slug,
     title: row.title,
-    prompt: row.prompt,
+    stylingPrompt: row.styling_prompt,
+    backgroundPrompt: row.background_prompt,
     thumbnailImageUrl: row.thumbnail_image_url,
     thumbnailStoragePath: row.thumbnail_storage_path,
     thumbnailWidth: row.thumbnail_width,
@@ -71,6 +74,7 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     thumbnailImageUrl: row.thumbnail_image_url,
     thumbnailWidth: row.thumbnail_width,
     thumbnailHeight: row.thumbnail_height,
+    hasBackgroundPrompt: Boolean(row.background_prompt?.trim()),
   };
 }
 
@@ -79,7 +83,8 @@ function mapRowToGenerationRecord(
 ): StylePresetGenerationRecord {
   return {
     ...mapRowToPublicSummary(row),
-    prompt: row.prompt,
+    stylingPrompt: row.styling_prompt,
+    backgroundPrompt: row.background_prompt,
     status: row.status,
   };
 }
@@ -217,7 +222,10 @@ export async function createStylePreset(
 ): Promise<StylePresetAdmin> {
   const supabase = getSupabase(client);
   const title = normalizeStylePresetTitle(input.title);
-  const prompt = normalizeStylePresetPrompt(input.prompt);
+  const stylingPrompt = normalizeStylePresetPrompt(input.stylingPrompt);
+  const backgroundPrompt = normalizeStylePresetOptionalPrompt(
+    input.backgroundPrompt
+  );
   const slug = await generateUniqueSlug(title, supabase);
   const presetId = input.id ?? crypto.randomUUID();
 
@@ -225,7 +233,8 @@ export async function createStylePreset(
     p_id: presetId,
     p_slug: slug,
     p_title: title,
-    p_prompt: prompt,
+    p_styling_prompt: stylingPrompt,
+    p_background_prompt: backgroundPrompt,
     p_thumbnail_image_url: input.thumbnailImageUrl,
     p_thumbnail_storage_path: input.thumbnailStoragePath ?? null,
     p_thumbnail_width: input.thumbnailWidth,
@@ -261,10 +270,14 @@ export async function updateStylePreset(
       input.title !== undefined
         ? normalizeStylePresetTitle(input.title)
         : existing.title,
-    p_prompt:
-      input.prompt !== undefined
-        ? normalizeStylePresetPrompt(input.prompt)
-        : existing.prompt,
+    p_styling_prompt:
+      input.stylingPrompt !== undefined
+        ? normalizeStylePresetPrompt(input.stylingPrompt)
+        : existing.stylingPrompt,
+    p_background_prompt:
+      input.backgroundPrompt !== undefined
+        ? normalizeStylePresetOptionalPrompt(input.backgroundPrompt)
+        : existing.backgroundPrompt,
     p_thumbnail_image_url:
       input.thumbnailImageUrl !== undefined
         ? input.thumbnailImageUrl

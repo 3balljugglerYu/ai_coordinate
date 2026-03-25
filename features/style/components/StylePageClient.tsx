@@ -13,6 +13,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Download, Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -410,6 +411,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
   >(presets[0]?.id ?? "");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
+  const [backgroundChange, setBackgroundChange] = useState(false);
   const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
   const [queuedResultImageUrl, setQueuedResultImageUrl] = useState<string | null>(null);
@@ -432,6 +434,8 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
 
   const isGenerating = generationPhase !== "idle";
+  const isBackgroundChangeAvailable = Boolean(selectedPreset?.hasBackgroundPrompt);
+  const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
   const isGenerateDisabled = !selectedPreset || !uploadedImage || isGenerating;
   const hasGeneratedResult = Boolean(resultImageUrl);
   const isCompletingGeneration = generationPhase === "completing";
@@ -506,6 +510,12 @@ export function StylePageClient({ presets }: StylePageClientProps) {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedPreset?.hasBackgroundPrompt && backgroundChange) {
+      setBackgroundChange(false);
+    }
+  }, [backgroundChange, selectedPreset?.hasBackgroundPrompt]);
 
   const refreshRateLimitStatus = () => {
     void fetchStyleRateLimitStatus()
@@ -650,6 +660,18 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     });
   };
 
+  const handleBackgroundChangeToggle = (checked: boolean) => {
+    if (checked === backgroundChange || isBackgroundChangeDisabled) {
+      return;
+    }
+
+    runAfterResultResetCheck(() => {
+      setBackgroundChange(checked);
+      setErrorState(null);
+      setResultImageUrl(null);
+    });
+  };
+
   const generateImage = async () => {
     if (!selectedPreset || !uploadedImage || isGenerating) {
       return;
@@ -663,6 +685,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
       formData.set("styleId", selectedPreset.id);
       formData.set("uploadImage", uploadedImage.file);
       formData.set("sourceImageType", sourceImageType);
+      formData.set("backgroundChange", backgroundChange ? "true" : "false");
 
       const response = await fetch("/style/generate", {
         method: "POST",
@@ -902,6 +925,42 @@ export function StylePageClient({ presets }: StylePageClientProps) {
               <p className="mt-2 text-xs leading-5 text-slate-500">
                 {t("sourceImageTypeHint")}
               </p>
+            </div>
+
+            <div>
+              <div className="space-y-2">
+                <Label className="text-base font-medium block">
+                  {t("backgroundChangeLabel")}
+                </Label>
+                <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <Checkbox
+                    id="style-background-change"
+                    checked={backgroundChange}
+                    onCheckedChange={(checked) =>
+                      handleBackgroundChangeToggle(checked === true)
+                    }
+                    disabled={isBackgroundChangeDisabled}
+                    className="mt-0.5"
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <Label
+                      htmlFor="style-background-change"
+                      className={`text-sm font-medium ${
+                        isBackgroundChangeDisabled
+                          ? "cursor-not-allowed text-slate-400"
+                          : "cursor-pointer text-slate-900"
+                      }`}
+                    >
+                      {t("backgroundChangeCheckbox")}
+                    </Label>
+                    <p className="text-xs leading-5 text-slate-500">
+                      {isBackgroundChangeAvailable
+                        ? t("backgroundChangeDescription")
+                        : t("backgroundChangeDisabledHint")}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div>

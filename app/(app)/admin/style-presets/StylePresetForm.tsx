@@ -33,7 +33,12 @@ export function StylePresetForm({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(preset?.title ?? "");
-  const [prompt, setPrompt] = useState(preset?.prompt ?? "");
+  const [stylingPrompt, setStylingPrompt] = useState(
+    preset?.stylingPrompt ?? ""
+  );
+  const [backgroundPrompt, setBackgroundPrompt] = useState(
+    preset?.backgroundPrompt ?? ""
+  );
   const [sortOrder, setSortOrder] = useState(preset?.sortOrder ?? 0);
   const [status, setStatus] = useState<StylePresetStatus>(
     preset?.status ?? "draft"
@@ -80,10 +85,10 @@ export function StylePresetForm({
       return;
     }
 
-    if (!prompt.trim()) {
+    if (!stylingPrompt.trim()) {
       toast({
         title: "エラー",
-        description: "prompt を入力してください",
+        description: "styling prompt を入力してください",
         variant: "destructive",
       });
       return;
@@ -102,7 +107,8 @@ export function StylePresetForm({
     try {
       const formData = new FormData();
       formData.append("title", title.trim());
-      formData.append("prompt", prompt);
+      formData.append("styling_prompt", stylingPrompt);
+      formData.append("background_prompt", backgroundPrompt);
       formData.append("sort_order", String(sortOrder));
       formData.append("status", status);
       if (file) {
@@ -213,17 +219,31 @@ export function StylePresetForm({
         </div>
 
         <div>
-          <Label htmlFor="prompt">Prompt</Label>
+          <Label htmlFor="styling_prompt">Styling Prompt</Label>
           <Textarea
-            id="prompt"
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
+            id="styling_prompt"
+            value={stylingPrompt}
+            onChange={(event) => setStylingPrompt(event.target.value)}
             placeholder="Wearing Smart Casual style outfit..."
             className="mt-1 min-h-[220px] text-sm"
             required
           />
           <p className="mt-1 text-xs text-slate-500">
-            改行を含めて保存され、そのまま生成処理に利用されます。
+            衣装変更の指示として改行込みで保存され、そのまま生成処理に利用されます。
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="background_prompt">Background Prompt（任意）</Label>
+          <Textarea
+            id="background_prompt"
+            value={backgroundPrompt}
+            onChange={(event) => setBackgroundPrompt(event.target.value)}
+            placeholder="Soft spring city street with blossoms..."
+            className="mt-1 min-h-[160px] text-sm"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            ユーザーが「背景もスタイルに合わせて変更する」を ON にした時だけ利用されます。
           </p>
         </div>
 
