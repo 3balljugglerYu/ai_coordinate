@@ -1,257 +1,127 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 import { getCurrentUserId } from "@/features/generation/lib/current-user";
-import { getGeneratedImages } from "@/features/generation/lib/database";
+import {
+  getGeneratedImages,
+  listCoordinateImagesCreatedAfter,
+} from "@/features/generation/lib/database";
+import {
+  fetchCoordinateToastAckAt,
+  setCoordinateToastAckAt,
+} from "@/features/generation/lib/coordinate-toast-ack";
 
-const GENERATED_IMAGE_TOAST_HISTORY_STORAGE_KEY =
-  "notified-generated-image-ids:v2";
-const GENERATED_IMAGE_TOAST_SESSION_KEY =
-  "notified-generated-image-ids-session:v2";
-const GENERATED_IMAGE_TOAST_HISTORY_LIMIT = 200;
+const COORDINATE_TOAST_DURATION_MS = 5000;
+/** 初期シード・新規検知の両方で十分な上限（バースト生成時の取りこぼし防止） */
+const COORDINATE_TOAST_QUERY_LIMIT = 50;
 
-// js-cache-storage: Storage API の同期的な読み取りをメモリキャッシュで軽減
-const localStorageCache = new Map<string, string | null>();
-const sessionStorageCache = new Map<string, string | null>();
-
-function getGeneratedImageToastStorageKey(userId: string): string {
-  return `${GENERATED_IMAGE_TOAST_HISTORY_STORAGE_KEY}:${userId}`;
-}
-
-function getSessionShownStorageKey(userId: string): string {
-  return `${GENERATED_IMAGE_TOAST_SESSION_KEY}:${userId}`;
-}
-
-function readSessionShownIds(userId: string): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  const key = getSessionShownStorageKey(userId);
-  let raw: string | null = null;
-  if (sessionStorageCache.has(key)) {
-    raw = sessionStorageCache.get(key) ?? null;
-  } else {
-    try {
-      raw = sessionStorage.getItem(key);
-      sessionStorageCache.set(key, raw);
-    } catch {
-      return new Set();
+function maxIsoTimestamps(values: string[]): string | null {
+  let best: string | null = null;
+  let bestMs = -Infinity;
+  for (const cur of values) {
+    const ms = Date.parse(cur);
+    if (Number.isFinite(ms) && ms >= bestMs) {
+      bestMs = ms;
+      best = cur;
     }
   }
-  if (!raw) return new Set();
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(
-      parsed.filter(
-        (item): item is string => typeof item === "string" && item.length > 0
-      )
-    );
-  } catch {
-    return new Set();
-  }
-}
-
-/**
- * 既存の sessionShownIds を渡すことで二重読み取りを回避（js-cache-storage, 二重読み取り削減）
- */
-function addToSessionShownIds(
-  userId: string,
-  newIds: Iterable<string>,
-  existingSessionShownIds: Set<string>
-): void {
-  if (typeof window === "undefined") return;
-  try {
-    const union = new Set([...existingSessionShownIds, ...newIds]);
-    const normalized = Array.from(union).slice(
-      -GENERATED_IMAGE_TOAST_HISTORY_LIMIT
-    );
-    const key = getSessionShownStorageKey(userId);
-    sessionStorage.setItem(key, JSON.stringify(normalized));
-    sessionStorageCache.set(key, JSON.stringify(normalized));
-  } catch {
-    // セッション記録失敗時は静かに無視（localStorageの永続化に依存）
-  }
-}
-
-function readGeneratedImageToastHistory(storageKey: string): string[] {
-  if (typeof window === "undefined") return [];
-  let raw: string | null = null;
-  if (localStorageCache.has(storageKey)) {
-    raw = localStorageCache.get(storageKey) ?? null;
-  } else {
-    try {
-      raw = localStorage.getItem(storageKey);
-      localStorageCache.set(storageKey, raw);
-    } catch {
-      return [];
-    }
-  }
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .filter(
-        (item): item is string => typeof item === "string" && item.length > 0
-      )
-      .slice(-GENERATED_IMAGE_TOAST_HISTORY_LIMIT);
-  } catch {
-    return [];
-  }
-}
-
-function writeGeneratedImageToastHistory(
-  storageKey: string,
-  ids: Iterable<string>
-): string[] {
-  if (typeof window === "undefined") return [];
-
-  const normalized = Array.from(new Set(ids))
-    .filter((id) => typeof id === "string" && id.length > 0)
-    .slice(-GENERATED_IMAGE_TOAST_HISTORY_LIMIT);
-
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(normalized));
-    localStorageCache.set(storageKey, JSON.stringify(normalized));
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error(
-        "[GeneratedImageNotificationChecker] Failed to persist history:",
-        error
-      );
-    }
-  }
-
-  return normalized;
-}
-
-function invalidateStorageCache(): void {
-  localStorageCache.clear();
-  sessionStorageCache.clear();
-}
-
-// 外部変更時のキャッシュ無効化（他タブのlocalStorage変更、タブ復帰時）
-if (typeof window !== "undefined") {
-  window.addEventListener("storage", (e) => {
-    if (e.key) localStorageCache.delete(e.key);
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      invalidateStorageCache();
-    }
-  });
+  return best;
 }
 
 /**
  * 画像生成完了通知チェックコンポーネント
- * グローバルコンポーネントとして使用し、どの画面でも画像生成完了を通知します
- * StreakCheckerと同様の構造で実装
+ * グローバルにマウントし、coordinate 生成の新規画像をトーストする。
+ * 重複防止は profiles.last_coordinate_toast_ack_at（サーバー）で端末をまたいで共有する。
  */
 export function GeneratedImageNotificationChecker() {
   const { toast } = useToast();
   const t = useTranslations("notifications");
+  const toastRef = useRef(toast);
+  const tRef = useRef(t);
+  toastRef.current = toast;
+  tRef.current = t;
 
+  const isCheckingRef = useRef(false);
+
+  // 翻訳・toast は ref で常に最新を参照。依存を空にしてポーリングの張り直しを防ぐ（Vercel: refs for stable subscriptions）。
   useEffect(() => {
-    let isChecking = false;
-    let currentStorageKey: string | null = null;
-    let notifiedIds = new Set<string>();
-    let hasBaseline = false;
-
-    const persistNotifiedIds = () => {
-      if (!currentStorageKey) return;
-      const normalized = writeGeneratedImageToastHistory(
-        currentStorageKey,
-        notifiedIds
-      );
-      notifiedIds = new Set(normalized);
-    };
-
-    const loadUserHistory = (userId: string) => {
-      const nextStorageKey = getGeneratedImageToastStorageKey(userId);
-      if (nextStorageKey === currentStorageKey) return;
-
-      currentStorageKey = nextStorageKey;
-      notifiedIds = new Set(readGeneratedImageToastHistory(nextStorageKey));
-      hasBaseline = notifiedIds.size > 0;
-    };
-
     const checkNewImages = async () => {
-      if (isChecking) {
+      if (isCheckingRef.current) {
         return;
       }
-      isChecking = true;
+      isCheckingRef.current = true;
 
-      // 認証チェック（未認証の場合は静かに終了）
       try {
         const userId = await getCurrentUserId();
         if (!userId) {
-          currentStorageKey = null;
-          notifiedIds = new Set();
-          hasBaseline = false;
           return;
         }
 
-        loadUserHistory(userId);
+        const ackAt = await fetchCoordinateToastAckAt(userId);
 
-        // 最近作成された画像を取得（最大10件、coordinateタイプのみ）
-        const recentImages = await getGeneratedImages(userId, 10, 0, "coordinate");
-        const recentImageIds = recentImages
-          .map((img) => img.id)
-          .filter((id): id is string => typeof id === "string" && id.length > 0);
-
-        // 初回のみベースラインを確立して、既存画像への通知を防止
-        if (!hasBaseline) {
-          recentImageIds.forEach((id) => notifiedIds.add(id));
-          hasBaseline = true;
-          persistNotifiedIds();
+        if (!ackAt || !Number.isFinite(Date.parse(ackAt))) {
+          const recentImages = await getGeneratedImages(
+            userId,
+            COORDINATE_TOAST_QUERY_LIMIT,
+            0,
+            "coordinate"
+          );
+          const createdList = recentImages
+            .map((img) => img.created_at)
+            .filter((v): v is string => typeof v === "string" && v.length > 0);
+          const seed =
+            maxIsoTimestamps(createdList) ?? new Date().toISOString();
+          await setCoordinateToastAckAt(userId, seed);
           return;
         }
 
-        // 通知済みでない画像IDを抽出（localStorage + sessionStorageの両方で除外し、1回表示したら二度と表示しない）
-        const sessionShownIds = readSessionShownIds(userId);
-        const newImageIds = recentImageIds.filter(
-          (id) => !notifiedIds.has(id) && !sessionShownIds.has(id)
+        const pending = await listCoordinateImagesCreatedAfter(
+          userId,
+          ackAt,
+          COORDINATE_TOAST_QUERY_LIMIT
         );
 
-        // 新規画像があればトースト通知（1回のみ）
-        if (newImageIds.length > 0) {
-          newImageIds.forEach((id) => notifiedIds.add(id));
-          persistNotifiedIds();
-          addToSessionShownIds(userId, newImageIds, sessionShownIds);
-
-          toast({
-            title: t("generatedImageReadyTitle"),
-            description:
-              newImageIds.length === 1
-                ? t("generatedImageReadySingle")
-                : t("generatedImageReadyMultiple", { count: newImageIds.length }),
-          });
+        if (pending.length === 0) {
+          return;
         }
+
+        const pendingCreated = pending
+          .map((img) => img.created_at)
+          .filter((v): v is string => typeof v === "string" && v.length > 0);
+        const nextAck =
+          maxIsoTimestamps(pendingCreated) ?? new Date().toISOString();
+
+        const tr = tRef.current;
+        toastRef.current({
+          title: tr("generatedImageReadyTitle"),
+          description:
+            pending.length === 1
+              ? tr("generatedImageReadySingle")
+              : tr("generatedImageReadyMultiple", { count: pending.length }),
+          duration: COORDINATE_TOAST_DURATION_MS,
+        });
+
+        await setCoordinateToastAckAt(userId, nextAck);
       } catch (error) {
-        // エラーが発生してもユーザー体験を損なわない（静かに失敗）
-        // デバッグ用: 開発環境でのみエラーをログ出力
         if (process.env.NODE_ENV === "development") {
           console.error("[GeneratedImageNotificationChecker] Error:", error);
         }
       } finally {
-        isChecking = false;
+        isCheckingRef.current = false;
       }
     };
 
-    // 初回マウント時にベースラインを確立し、その後10秒ごとにポーリング
     void checkNewImages();
     const intervalId = setInterval(() => {
       void checkNewImages();
     }, 10000);
 
-    // クリーンアップ関数（ポーリングの停止）
     return () => {
       clearInterval(intervalId);
     };
-  }, [t, toast]);
+  }, []);
 
-  // このコンポーネントはUIを表示しない
   return null;
 }

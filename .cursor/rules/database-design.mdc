@@ -211,7 +211,7 @@ alwaysApply: false
 
 #### `profiles`
 - 主キー: `id`
-- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
+- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
 - 外部キー: `id -> auth.users.id`, `user_id -> auth.users.id`
 - 制約: `user_id` UNIQUE、`referral_code` UNIQUE
 - RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ
@@ -297,6 +297,7 @@ alwaysApply: false
 - `idx_generated_images_user_id`
 - `idx_generated_images_created_at`
 - `idx_generated_images_generation_type`
+- `idx_generated_images_user_coord_created`（`generation_type = 'coordinate'` 部分索引、`user_id` + `created_at DESC`）
 - `idx_generated_images_aspect_ratio`
 - `idx_generated_images_source_stock_id`
 - `idx_generated_images_moderation_approved_at`

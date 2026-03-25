@@ -5,7 +5,8 @@ import * as React from "react";
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
 const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+/** Radix 閉じアニメーション後に DOM から外すまでの待ち（ms）。過大だと「消えない」ように感じる */
+const TOAST_REMOVE_DELAY = 1000;
 
 type ToasterToast = ToastProps & {
   id: string;

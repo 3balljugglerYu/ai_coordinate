@@ -131,6 +131,33 @@ export async function getGeneratedImages(
 }
 
 /**
+ * coordinate 生成のうち、created_at が指定時刻より新しい行だけを取得（完了トースト用ポーリング）
+ */
+export async function listCoordinateImagesCreatedAfter(
+  userId: string,
+  afterCreatedAtIso: string,
+  limit = 50
+): Promise<GeneratedImageRecord[]> {
+  const supabase = createBrowserClient();
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("generation_type", "coordinate")
+    .gt("created_at", afterCreatedAtIso)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Database query error:", error);
+    throw new Error(`画像の取得に失敗しました: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
  * 生成画像を削除
  */
 export async function deleteGeneratedImage(id: string): Promise<void> {
