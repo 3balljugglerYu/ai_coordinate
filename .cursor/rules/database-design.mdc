@@ -11,13 +11,13 @@ alwaysApply: false
 - このファイルは Cursor 向けのスキーマ台帳です。他 agent 向けの共通入口は `../../.agents/skills/project-database-context/SKILL.md` にあります。
 
 ## 取得元と前提
-- 更新日: 2026-03-22
+- 更新日: 2026-03-26
 - 対象: Supabase `public` スキーマ
 - 取得元: Supabase MCP（`list_tables` / `execute_sql`）
 - 本ドキュメントは「現行の実テーブル定義」を記載します（将来追加想定は記載しない）。
-- 2026-03-22 時点で `public` の BASE TABLE は 28 件、`public` 関数は 52 件です。
+- 2026-03-26 時点で `public` の BASE TABLE は 31 件、`public` 関数は 55 件です。
 
-## `public` テーブル一覧（28）
+## `public` テーブル一覧（31）
 - `admin_audit_log`
 - `admin_users`
 - `banners`
@@ -37,6 +37,9 @@ alwaysApply: false
 - `notifications`
 - `percoin_bonus_defaults`
 - `percoin_streak_defaults`
+- `popup_banner_analytics`
+- `popup_banner_views`
+- `popup_banners`
 - `post_reports`
 - `profiles`
 - `push_subscriptions`
@@ -256,6 +259,28 @@ alwaysApply: false
 - 主要カラム: `image_url`, `storage_path`, `link_url`, `alt`, `display_start_at`, `display_end_at`, `display_order`, `status`, `tags`, `created_at`, `updated_at`
 - RLS: 公開 `SELECT` のみ
 
+#### `popup_banners`
+- 主キー: `id`
+- 主要カラム: `image_url`, `storage_path`, `link_url`, `alt`, `show_once_only`, `display_start_at`, `display_end_at`, `display_order`, `status`, `created_at`, `updated_at`
+- 備考: ホーム画面のポップアップバナー本体。`link_url` は nullable、`show_once_only` が true のときだけ「次回から表示しない」を許可
+- RLS: 公開 `SELECT` のみ
+
+#### `popup_banner_views`
+- 主キー: `id`
+- 主要カラム: `popup_banner_id`, `user_id`, `action_type`, `permanently_dismissed`, `reshow_after`, `created_at`, `updated_at`
+- 外部キー: `popup_banner_id -> popup_banners.id`, `user_id -> auth.users.id`
+- 制約: `(popup_banner_id, user_id)` UNIQUE
+- 備考: ログインユーザーごとの最新表示状態。`action_type` は `impression/click/close/dismiss_forever`
+- RLS: 本人 `SELECT` のみ
+
+#### `popup_banner_analytics`
+- 主キー: `id`
+- 主要カラム: `popup_banner_id`, `event_date`, `event_type`, `count`, `created_at`
+- 外部キー: `popup_banner_id -> popup_banners.id`
+- 制約: `(popup_banner_id, event_date, event_type)` UNIQUE
+- 備考: 日別イベント集計テーブル。`event_type` は `impression/click/close/dismiss_forever`
+- RLS: 有効だが、公開ポリシーは未定義（service role / RPC 前提）
+
 #### `materials_images`
 - 主キー: `id`
 - 主要カラム: `page_slug`, `image_url`, `storage_path`, `alt`, `display_order`, `created_at`, `updated_at`
@@ -327,6 +352,10 @@ alwaysApply: false
 - `idx_user_blocks_blocked_id_created_at`, `idx_user_blocks_blocker_id_created_at`
 - `idx_profiles_deletion_scheduled_at`
 - `idx_banners_public_list`
+- `idx_popup_banners_public_list`
+- `idx_popup_banner_views_user_updated`
+- `idx_popup_banner_analytics_event_date`
+- `idx_popup_banner_analytics_banner_date`
 - `idx_materials_images_page_display`
 - `idx_style_presets_public_order`
 - `idx_moderation_audit_logs_actor_id_created_at`, `idx_moderation_audit_logs_post_id_created_at`
@@ -349,6 +378,7 @@ alwaysApply: false
 - ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `deduct_percoins_admin`, `expire_free_percoin_batches`
 - ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
 - One-Tap Style: `consume_style_authenticated_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`
+- ポップアップバナー: `record_popup_banner_interaction`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
@@ -357,7 +387,7 @@ alwaysApply: false
 
 ### trigger / helper / 運用関数
 - 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`
-- 更新日時: `update_updated_at_column`, `update_banners_updated_at`, `update_materials_images_updated_at`, `update_notification_preferences_updated_at`
+- 更新日時: `update_updated_at_column`, `update_banners_updated_at`, `update_popup_banners_updated_at`, `update_popup_banner_views_updated_at`, `update_materials_images_updated_at`, `update_notification_preferences_updated_at`
 - `style_presets` は `update_updated_at_column()` trigger で `updated_at` を更新
 - アカウント初期化: `handle_new_user`
 - 監視・診断: `detect_generation_billing_anomalies`, `monitor_generation_billing_anomalies`

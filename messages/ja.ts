@@ -969,4 +969,12 @@ export const jaMessages = {
     heading: "Persta | ペルスタ",
     subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
   },
+  popupBanners: {
+    dialogTitle: "お知らせ",
+    dialogDescription: "おすすめ情報のお知らせ",
+    close: "閉じる",
+    dismissForever: "次回から表示しない",
+    openLink: "詳しく見る",
+    imageAltFallback: "ポップアップバナー",
+  },
 } as const;

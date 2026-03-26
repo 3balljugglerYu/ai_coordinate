@@ -86,6 +86,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "rectangle-horizontal",
   },
   {
+    path: "/admin/popup-banners",
+    label: "ポップアップバナー",
+    description: "ホームのポップアップ表示を管理",
+    iconKey: "image",
+  },
+  {
     path: "/admin/materials-images/free-materials",
     label: "フリー素材管理",
     description: "配布素材の画像を管理",

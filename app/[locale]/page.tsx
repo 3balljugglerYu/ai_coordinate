@@ -4,6 +4,8 @@ import { connection } from "next/server";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
 import { getPublicBanners } from "@/features/banners/lib/get-banners";
+import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-popup-banners";
+import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 import { HomeHeading } from "@/features/home/components/HomeHeading";
 import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
@@ -62,7 +64,10 @@ async function HomePageContent({
   const user = await getUser();
   const userId = user?.id ?? null;
   const siteUrl = getSiteUrl() || "https://persta.ai";
-  const banners = await getPublicBanners();
+  const [banners, popupBanners] = await Promise.all([
+    getPublicBanners(),
+    getActivePopupBanners(),
+  ]);
 
   const organizationSchema = {
     "@context": "https://schema.org",
@@ -84,6 +89,7 @@ async function HomePageContent({
 
   return (
     <>
+      <PopupBannerOverlay banners={popupBanners} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

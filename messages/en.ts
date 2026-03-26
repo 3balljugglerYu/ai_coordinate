@@ -1002,4 +1002,12 @@ export const enMessages = {
     subtitle:
       "An AI styling platform for the looks and characters you want to create.",
   },
+  popupBanners: {
+    dialogTitle: "Announcement",
+    dialogDescription: "Recommended update",
+    close: "Close",
+    dismissForever: "Don't show again",
+    openLink: "Learn more",
+    imageAltFallback: "Popup banner",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;
