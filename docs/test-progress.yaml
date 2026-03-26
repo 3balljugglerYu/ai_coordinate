@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-25"
+last_updated: "2026-03-27"
 
 # Status values:
 # - pending
@@ -26,6 +26,42 @@ foundation:
 
 # Feature-specific workflow runs tracked outside the canonical tier roadmap
 feature_work:
+  PopupBannerHomeE2E:
+    status: completed
+    file: app/[locale]/page.tsx
+    spec_file: docs/specs/popup/popup_banner_home_e2e_spec.yaml
+    test_file: tests/e2e/popup-banner-home.spec.ts
+
+  PopupBannerViewHistoryRoute:
+    status: completed
+    file: app/api/popup-banners/view-history/route.ts
+    spec_file: docs/specs/api/popup_banner_view_history_route_spec.yaml
+    test_file: tests/integration/api/popup-banner-view-history-route.test.ts
+
+  UsePopupBanner:
+    status: completed
+    file: features/popup-banners/hooks/usePopupBanner.ts
+    spec_file: docs/specs/popup/use_popup_banner_spec.yaml
+    test_file: tests/unit/features/popup-banners/use-popup-banner.test.tsx
+
+  PopupBannerOverlay:
+    status: completed
+    file: features/popup-banners/components/PopupBannerOverlay.tsx
+    spec_file: docs/specs/popup/popup_banner_overlay_spec.yaml
+    test_file: tests/unit/components/popup-banner-overlay.test.tsx
+
+  PopupBannerDisplayLogic:
+    status: completed
+    file: features/popup-banners/lib/popup-banner-display-logic.ts
+    spec_file: docs/specs/popup/popup_banner_display_logic_spec.yaml
+    test_file: tests/unit/lib/popup-banner-display-logic.test.ts
+
+  PopupBannerInteractRoute:
+    status: completed
+    file: app/api/popup-banners/interact/route.ts
+    spec_file: docs/specs/api/popup_banner_interact_route_spec.yaml
+    test_file: tests/integration/api/popup-banner-interact-route.test.ts
+
   StylePresetRepository:
     status: completed
     file: features/style-presets/lib/style-preset-repository.ts

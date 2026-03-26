@@ -1,0 +1,35 @@
+metadata:
+  class: PopupBannerHomeE2E
+  source: app/[locale]/page.tsx
+  version: "1.0"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - PopupBannerOverlay
+    - usePopupBanner
+    - getActivePopupBanners
+  external:
+    - Playwright browser
+
+state_properties: []
+
+specifications:
+  - id: PBHE-001
+    method: home page popup banner
+    type: event-driven
+    ears: |
+      When the localized home page is opened with the popup banner e2e fixture enabled,
+      the system shall render the popup banner,
+      allow the user to close it,
+      and remove the banner from the page.
+    ears_ja: |
+      locale 付きホームページが popup banner e2e fixture 有効状態で開かれた場合、
+      システムは popup banner を表示し、
+      ユーザーがそれを閉じられ、
+      その後ページ上からバナーを取り除かなければならない。
+    test_cases:
+      - home_popupFixture有効時_バナーが表示され閉じると消える
+    test_cases_ja:
+      - home_popupFixture有効時_バナーが表示され閉じると消える

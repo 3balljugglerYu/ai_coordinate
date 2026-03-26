@@ -36,6 +36,7 @@ const clientNamespaces = [
   "searchBar",
   "style",
   "posts",
+  "popupBanners",
   "tutorial",
   "home",
 ] as const satisfies readonly ClientMessageNamespace[];

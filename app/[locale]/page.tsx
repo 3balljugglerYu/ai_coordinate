@@ -4,6 +4,8 @@ import { connection } from "next/server";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
 import { getPublicBanners } from "@/features/banners/lib/get-banners";
+import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-popup-banners";
+import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
 import { HomeBannerList } from "@/features/home/components/HomeBannerList";
 import { HomeHeading } from "@/features/home/components/HomeHeading";
 import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
@@ -16,6 +18,25 @@ import {
 } from "@/lib/metadata";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { getHomeCopy } from "@/i18n/page-copy";
+
+const E2E_POPUP_BANNER_QUERY_PARAM = "popupBannerE2E";
+
+function getE2EPopupBannersFixture(enabled: boolean) {
+  if (!enabled) {
+    return null;
+  }
+
+  return [
+    {
+      id: "e2e-popup-banner",
+      imageUrl: "/icon.png",
+      linkUrl: null,
+      alt: "E2E Popup Banner",
+      showOnceOnly: false,
+      displayOrder: 0,
+    },
+  ];
+}
 
 export async function generateMetadata({
   params,
@@ -52,17 +73,28 @@ export async function generateMetadata({
 
 async function HomePageContent({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ popupBannerE2E?: string }>;
 }) {
   await connection();
   const { locale: localeParam } = await params;
+  const query = await searchParams;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
   const copy = getHomeCopy(locale);
   const user = await getUser();
   const userId = user?.id ?? null;
   const siteUrl = getSiteUrl() || "https://persta.ai";
-  const banners = await getPublicBanners();
+  const useE2EPopupBannerFixture =
+    query[E2E_POPUP_BANNER_QUERY_PARAM] === "1" &&
+    (process.env.NODE_ENV !== "production" ||
+      process.env.PLAYWRIGHT_E2E === "1");
+  const e2ePopupBanners = getE2EPopupBannersFixture(useE2EPopupBannerFixture);
+  const [banners, popupBanners] = await Promise.all([
+    getPublicBanners(),
+    e2ePopupBanners ? Promise.resolve(e2ePopupBanners) : getActivePopupBanners(),
+  ]);
 
   const organizationSchema = {
     "@context": "https://schema.org",
@@ -84,6 +116,7 @@ async function HomePageContent({
 
   return (
     <>
+      <PopupBannerOverlay banners={popupBanners} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -106,14 +139,16 @@ async function HomePageContent({
 
 export default function LocaleHome({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ popupBannerE2E?: string }>;
 }) {
   return (
     <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
       <HomeHeading />
       <Suspense fallback={<HomePageSkeleton />}>
-        <HomePageContent params={params} />
+        <HomePageContent params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );

@@ -1,0 +1,118 @@
+metadata:
+  class: PopupBannerOverlay
+  source: features/popup-banners/components/PopupBannerOverlay.tsx
+  version: "1.0"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - usePopupBanner
+    - next-intl useTranslations
+    - next/image
+    - next/link
+    - Dialog
+    - Checkbox
+  external:
+    - window.Image preload
+    - requestAnimationFrame
+
+state_properties:
+  - dismissForeverByBannerId
+  - readyBannerId
+
+specifications:
+  - id: PBO-001
+    method: PopupBannerOverlay
+    type: state-driven
+    ears: |
+      While the current popup banner image has not finished preloading,
+      the system shall not render the visible popup banner content
+      and shall not mark the banner as displayed.
+    ears_ja: |
+      現在のポップアップバナー画像の preload が完了していない間、
+      システムは表示用のポップアップバナー内容を render せず、
+      バナーを displayed として記録しない。
+    test_cases:
+      - PopupBannerOverlay_preload完了前は内容を表示せずdisplayed記録もしない
+    test_cases_ja:
+      - PopupBannerOverlay_preload完了前は内容を表示せずdisplayed記録もしない
+
+  - id: PBO-002
+    method: PopupBannerOverlay
+    type: event-driven
+    ears: |
+      When the current popup banner image preload completes,
+      the system shall render the popup banner content
+      and invoke markBannerDisplayed with the current banner id.
+    ears_ja: |
+      現在のポップアップバナー画像の preload が完了した場合、
+      システムはポップアップバナー内容を render し、
+      現在の banner id で markBannerDisplayed を呼び出す。
+    test_cases:
+      - PopupBannerOverlay_preload完了後は内容を表示しmarkBannerDisplayedを呼ぶ
+    test_cases_ja:
+      - PopupBannerOverlay_preload完了後は内容を表示しmarkBannerDisplayedを呼ぶ
+
+  - id: PBO-003
+    method: PopupBannerOverlay
+    type: event-driven
+    ears: |
+      When the visible banner has a safe external https link,
+      the system shall render the image inside an external anchor
+      and invoke clickBanner when the image is clicked.
+    ears_ja: |
+      表示中バナーが安全な外部 https link を持つ場合、
+      システムは画像を外部 anchor 内に render し、
+      画像クリック時に clickBanner を呼び出す。
+    test_cases:
+      - PopupBannerOverlay_https外部リンクは新規タブanchorで包みclick時にclickBannerを呼ぶ
+    test_cases_ja:
+      - PopupBannerOverlay_https外部リンクは新規タブanchorで包みclick時にclickBannerを呼ぶ
+
+  - id: PBO-004
+    method: PopupBannerOverlay
+    type: unwanted
+    ears: |
+      If the visible banner link is not a safe https or rooted relative URL,
+      then the system shall render the image without a clickable link wrapper.
+    ears_ja: |
+      表示中バナーの link が安全な https またはルート相対 URL でない場合、
+      システムは画像をクリック可能な link wrapper なしで render する。
+    test_cases:
+      - PopupBannerOverlay_unsafeリンクはanchorをrenderしない
+    test_cases_ja:
+      - PopupBannerOverlay_unsafeリンクはanchorをrenderしない
+
+  - id: PBO-005
+    method: PopupBannerOverlay
+    type: state-driven
+    ears: |
+      While the visible banner showOnceOnly flag is true,
+      the system shall render the dismissForever checkbox row,
+      and when the checkbox is enabled before close,
+      it shall pass true to closeBanner.
+    ears_ja: |
+      表示中バナーの showOnceOnly flag が true の間、
+      システムは dismissForever checkbox 行を render し、
+      close 前に checkbox が有効化されていれば closeBanner に true を渡す。
+    test_cases:
+      - PopupBannerOverlay_showOnceOnly時はcheckboxを表示しclose時にdismissForeverを反映する
+    test_cases_ja:
+      - PopupBannerOverlay_showOnceOnly時はcheckboxを表示しclose時にdismissForeverを反映する
+
+  - id: PBO-006
+    method: PopupBannerOverlay
+    type: unwanted
+    ears: |
+      If the visible banner showOnceOnly flag is false,
+      then the system shall not render the dismissForever checkbox row
+      and it shall close with dismissForever false.
+    ears_ja: |
+      表示中バナーの showOnceOnly flag が false の場合、
+      システムは dismissForever checkbox 行を render せず、
+      dismissForever false で close する。
+    test_cases:
+      - PopupBannerOverlay_showOnceOnlyがfalseならcheckboxを出さず通常closeする
+    test_cases_ja:
+      - PopupBannerOverlay_showOnceOnlyがfalseならcheckboxを出さず通常closeする

@@ -1,0 +1,72 @@
+metadata:
+  class: PopupBannerViewHistoryRoute
+  source: app/api/popup-banners/view-history/route.ts
+  version: "1.0"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories:
+    - listPopupBannerViewHistory
+  services:
+    - getUser
+    - createClient (Supabase server)
+    - getRouteLocale
+    - getPopupBannersRouteCopy
+    - jsonError
+  external:
+    - Supabase popup_banner_views table
+
+state_properties: []
+
+specifications:
+  - id: PBVH-001
+    method: GET
+    type: unwanted
+    ears: |
+      If getUser returns no authenticated user,
+      then the route shall respond with HTTP 401,
+      errorCode POPUP_BANNERS_AUTH_REQUIRED,
+      and it shall not create a Supabase client or query popup banner history.
+    ears_ja: |
+      getUser が認証済みユーザーを返さない場合、
+      ルートは HTTP 401、errorCode POPUP_BANNERS_AUTH_REQUIRED を返し、
+      Supabase client 作成とポップアップ履歴取得を行わない。
+    test_cases:
+      - GET_未認証の場合_401で認証必須
+    test_cases_ja:
+      - GET_未認証の場合_401で認証必須
+
+  - id: PBVH-002
+    method: GET
+    type: event-driven
+    ears: |
+      When an authenticated user requests popup banner history,
+      the route shall create the server Supabase client,
+      delegate to listPopupBannerViewHistory with that client and the user id,
+      and return the repository result with HTTP 200.
+    ears_ja: |
+      認証済みユーザーがポップアップ履歴を要求した場合、
+      ルートは server Supabase client を作成し、
+      その client と user id を使って listPopupBannerViewHistory に委譲し、
+      repository の結果を HTTP 200 で返す。
+    test_cases:
+      - GET_認証済みの場合_repository結果を200で返す
+    test_cases_ja:
+      - GET_認証済みの場合_repository結果を200で返す
+
+  - id: PBVH-003
+    method: GET
+    type: unwanted
+    ears: |
+      If popup banner history retrieval throws at any point after request handling starts,
+      then the route shall respond with HTTP 500
+      and errorCode POPUP_BANNERS_HISTORY_FETCH_FAILED.
+    ears_ja: |
+      リクエスト処理開始後のポップアップ履歴取得で例外が発生した場合、
+      ルートは HTTP 500 と errorCode POPUP_BANNERS_HISTORY_FETCH_FAILED を返す。
+    test_cases:
+      - GET_repository例外時_500で履歴取得失敗
+      - GET_client作成例外時_500で履歴取得失敗
+    test_cases_ja:
+      - GET_repository例外時_500で履歴取得失敗
+      - GET_client作成例外時_500で履歴取得失敗

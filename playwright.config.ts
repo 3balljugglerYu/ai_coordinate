@@ -23,8 +23,8 @@ export default defineConfig({
   ],
   webServer: {
     command: process.env.CI
-      ? 'npm run build -- --webpack && npm run start -- -p 3000'
-      : 'npm run dev -- -p 3000',
+      ? 'PLAYWRIGHT_E2E=1 npm run build -- --webpack && PLAYWRIGHT_E2E=1 npm run start -- -p 3000'
+      : 'PLAYWRIGHT_E2E=1 npm run dev -- -p 3000',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
