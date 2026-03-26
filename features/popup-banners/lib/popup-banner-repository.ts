@@ -81,3 +81,14 @@ export async function deletePopupBanner(id: string): Promise<void> {
     throw error;
   }
 }
+
+export async function reorderPopupBanners(order: string[]): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc("reorder_popup_banners", {
+    p_order: order,
+  });
+
+  if (error) {
+    throw error;
+  }
+}

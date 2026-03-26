@@ -58,19 +58,41 @@ specifications:
     method: POST
     type: event-driven
     ears: |
-      When a valid interaction request is received without an authenticated user,
+      When a valid interaction request is received without an authenticated user
+      and the client IP is available,
       the route shall call record_popup_banner_interaction with p_user_id null
+      and a hashed client IP,
       and still respond with HTTP 200 and success true.
     ears_ja: |
-      認証済みユーザーなしで有効な interaction request を受け取った場合、
-      ルートは p_user_id を null にして record_popup_banner_interaction を呼び出し、
+      認証済みユーザーなしで有効な interaction request を受け取り、
+      かつ client IP を取得できる場合、
+      ルートは p_user_id を null、client IP hash 付きで
+      record_popup_banner_interaction を呼び出し、
       それでも HTTP 200 と success true を返す。
     test_cases:
-      - POST_未認証でも有効リクエストならuserIdをnullでRPC委譲する
+      - POST_未認証かつclientIPありならuserIdをnullとclientIpHash付きでRPC委譲する
     test_cases_ja:
-      - POST_未認証でも有効リクエストならuserIdをnullでRPC委譲する
+      - POST_未認証かつclientIPありならuserIdをnullとclientIpHash付きでRPC委譲する
 
   - id: PBIR-004
+    method: POST
+    type: unwanted
+    ears: |
+      If a valid interaction request is received without an authenticated user
+      and the client IP is unavailable,
+      then the route shall skip RPC execution
+      and respond with HTTP 200 and success true.
+    ears_ja: |
+      認証済みユーザーなしで有効な interaction request を受け取り、
+      かつ client IP を取得できない場合、
+      ルートは RPC 実行をスキップし、
+      HTTP 200 と success true を返す。
+    test_cases:
+      - POST_未認証かつclientIPなしなら成功応答でRPCをスキップする
+    test_cases_ja:
+      - POST_未認証かつclientIPなしなら成功応答でRPCをスキップする
+
+  - id: PBIR-005
     method: POST
     type: unwanted
     ears: |
@@ -87,7 +109,7 @@ specifications:
     test_cases_ja:
       - POST_dismissForever非対応エラーの場合_400でforbidden
 
-  - id: PBIR-005
+  - id: PBIR-006
     method: POST
     type: unwanted
     ears: |
@@ -102,7 +124,7 @@ specifications:
     test_cases_ja:
       - POST_対象バナー未検出エラーの場合_404を返す
 
-  - id: PBIR-006
+  - id: PBIR-007
     method: POST
     type: unwanted
     ears: |
@@ -117,7 +139,7 @@ specifications:
     test_cases_ja:
       - POST_RPCがinvalidActionを返した場合_400を返す
 
-  - id: PBIR-007
+  - id: PBIR-008
     method: POST
     type: unwanted
     ears: |
@@ -132,7 +154,7 @@ specifications:
     test_cases_ja:
       - POST_RPCが未知エラーを返した場合_500を返す
 
-  - id: PBIR-008
+  - id: PBIR-009
     method: POST
     type: unwanted
     ears: |

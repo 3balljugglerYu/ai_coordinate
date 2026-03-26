@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getPopupBannerClientIpHash } from "@/features/popup-banners/lib/popup-banner-client-ip";
 import { popupBannerInteractSchema } from "@/features/popup-banners/lib/schema";
 import { getPopupBannersRouteCopy } from "@/features/popup-banners/lib/route-copy";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -23,11 +24,21 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await getUser();
+    const clientIpHash = user ? null : getPopupBannerClientIpHash(request);
+
+    if (!user && !clientIpHash) {
+      console.warn(
+        "[API /popup-banners/interact] Guest interaction skipped because client IP was unavailable"
+      );
+      return NextResponse.json({ success: true });
+    }
+
     const supabase = createAdminClient();
     const { error } = await supabase.rpc("record_popup_banner_interaction", {
       p_banner_id: payload.data.banner_id,
       p_user_id: user?.id ?? null,
       p_action_type: payload.data.action_type,
+      p_client_ip_hash: clientIpHash,
     });
 
     if (error) {

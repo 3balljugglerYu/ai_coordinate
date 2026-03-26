@@ -10,6 +10,7 @@ jest.mock("@/lib/supabase/admin", () => ({
 
 import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/popup-banners/interact/route";
+import { buildPopupBannerClientIpHash } from "@/features/popup-banners/lib/popup-banner-client-ip";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -22,13 +23,15 @@ const bannerId = "11111111-1111-4111-8111-111111111111";
 
 function createRequest(
   body: unknown,
-  acceptLanguage = "ja"
+  acceptLanguage = "ja",
+  forwardedFor?: string
 ): NextRequest {
   const request = new Request("http://localhost/api/popup-banners/interact", {
     method: "POST",
     headers: {
       "accept-language": acceptLanguage,
       "content-type": "application/json",
+      ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -42,17 +45,20 @@ function createRequest(
 describe("POST /api/popup-banners/interact", () => {
   let rpcMock: jest.Mock;
   let consoleErrorSpy: jest.SpyInstance;
+  let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     rpcMock = jest.fn().mockResolvedValue({ error: null });
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
     mockGetUser.mockResolvedValue({ id: "user-123" } as never);
     mockCreateAdminClient.mockReturnValue({ rpc: rpcMock } as never);
   });
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
   });
 
   test("POST_不正リクエストの場合_400でinvalidRequest", async () => {
@@ -82,15 +88,17 @@ describe("POST /api/popup-banners/interact", () => {
       p_banner_id: bannerId,
       p_user_id: "user-123",
       p_action_type: "click",
+      p_client_ip_hash: null,
     });
   });
 
-  test("POST_未認証でも有効リクエストならuserIdをnullでRPC委譲する", async () => {
+  test("POST_未認証かつclientIPありならuserIdをnullとclientIpHash付きでRPC委譲する", async () => {
     // Spec: PBIR-003
     mockGetUser.mockResolvedValue(null);
+    const guestIp = "203.0.113.9";
 
     const response = await POST(
-      createRequest({ banner_id: bannerId, action_type: "impression" })
+      createRequest({ banner_id: bannerId, action_type: "impression" }, "ja", guestIp)
     );
     const body = (await response.json()) as Record<string, unknown>;
 
@@ -100,11 +108,27 @@ describe("POST /api/popup-banners/interact", () => {
       p_banner_id: bannerId,
       p_user_id: null,
       p_action_type: "impression",
+      p_client_ip_hash: buildPopupBannerClientIpHash(guestIp),
     });
   });
 
-  test("POST_dismissForever非対応エラーの場合_400でforbidden", async () => {
+  test("POST_未認証かつclientIPなしなら成功応答でRPCをスキップする", async () => {
     // Spec: PBIR-004
+    mockGetUser.mockResolvedValue(null);
+
+    const response = await POST(
+      createRequest({ banner_id: bannerId, action_type: "impression" })
+    );
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ success: true });
+    expect(mockCreateAdminClient).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  test("POST_dismissForever非対応エラーの場合_400でforbidden", async () => {
+    // Spec: PBIR-005
     rpcMock.mockResolvedValue({
       error: { message: "dismiss_forever is only allowed when show_once_only is true" },
     });
@@ -122,7 +146,7 @@ describe("POST /api/popup-banners/interact", () => {
   });
 
   test("POST_対象バナー未検出エラーの場合_404を返す", async () => {
-    // Spec: PBIR-005
+    // Spec: PBIR-006
     rpcMock.mockResolvedValue({
       error: { message: "Popup banner not found" },
     });
@@ -138,7 +162,7 @@ describe("POST /api/popup-banners/interact", () => {
   });
 
   test("POST_RPCがinvalidActionを返した場合_400を返す", async () => {
-    // Spec: PBIR-006
+    // Spec: PBIR-007
     rpcMock.mockResolvedValue({
       error: { message: "Invalid popup banner action type" },
     });
@@ -154,7 +178,7 @@ describe("POST /api/popup-banners/interact", () => {
   });
 
   test("POST_RPCが未知エラーを返した場合_500を返す", async () => {
-    // Spec: PBIR-007
+    // Spec: PBIR-008
     rpcMock.mockResolvedValue({
       error: { message: "unexpected failure" },
     });
@@ -170,7 +194,7 @@ describe("POST /api/popup-banners/interact", () => {
   });
 
   test("POST_例外送出時_500でinteractFailed", async () => {
-    // Spec: PBIR-008
+    // Spec: PBIR-009
     mockGetUser.mockRejectedValue(new Error("boom"));
 
     const response = await POST(
