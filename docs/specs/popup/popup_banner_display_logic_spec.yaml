@@ -1,0 +1,140 @@
+metadata:
+  class: PopupBannerDisplayLogic
+  source: features/popup-banners/lib/popup-banner-display-logic.ts
+  version: "1.0"
+  created_at: "2026-03-26"
+
+dependencies:
+  repositories: []
+  services: []
+  external: []
+
+state_properties:
+  - PopupBannerHistoryMap
+
+specifications:
+  - id: PBDL-001
+    method: buildPopupBannerHistoryMap
+    type: event-driven
+    ears: |
+      When buildPopupBannerHistoryMap is invoked with popup banner view records,
+      the system shall return a history map keyed by popup banner id
+      and preserve each record's action, dismissal, reshow, and updated timestamp fields.
+    ears_ja: |
+      buildPopupBannerHistoryMap がポップアップバナー表示履歴レコードで呼び出された場合、
+      システムは popup banner id をキーにした履歴 map を返し、
+      各レコードの action、dismissal、reshow、updated timestamp を保持する。
+    test_cases:
+      - buildPopupBannerHistoryMap_DBレコードをbannerIdキー履歴へ変換する
+    test_cases_ja:
+      - buildPopupBannerHistoryMap_DBレコードをbannerIdキー履歴へ変換する
+
+  - id: PBDL-002
+    method: parsePopupBannerHistory
+    type: unwanted
+    ears: |
+      If parsePopupBannerHistory receives invalid JSON,
+      then the system shall return an empty history map.
+    ears_ja: |
+      parsePopupBannerHistory が不正な JSON を受け取った場合、
+      システムは空の履歴 map を返す。
+    test_cases:
+      - parsePopupBannerHistory_不正JSONは空履歴を返す
+    test_cases_ja:
+      - parsePopupBannerHistory_不正JSONは空履歴を返す
+
+  - id: PBDL-003
+    method: parsePopupBannerHistory
+    type: event-driven
+    ears: |
+      When parsePopupBannerHistory receives serialized entries with an unsupported actionType,
+      the system shall normalize the actionType to impression
+      while preserving the other supported fields.
+    ears_ja: |
+      parsePopupBannerHistory が未対応の actionType を含む serialized entry を受け取った場合、
+      システムは actionType を impression に正規化し、
+      それ以外のサポート対象フィールドは保持する。
+    test_cases:
+      - parsePopupBannerHistory_未対応actionTypeはimpressionへ正規化する
+    test_cases_ja:
+      - parsePopupBannerHistory_未対応actionTypeはimpressionへ正規化する
+
+  - id: PBDL-004
+    method: buildPopupBannerHistoryEntry
+    type: event-driven
+    ears: |
+      When buildPopupBannerHistoryEntry is invoked for click or close,
+      the system shall create a non-permanent history entry
+      and set reshowAfter to 3 days for click or 7 days for close from the current time.
+    ears_ja: |
+      buildPopupBannerHistoryEntry が click または close で呼び出された場合、
+      システムは永久非表示ではない履歴 entry を作成し、
+      reshowAfter を click では現在時刻から 3 日後、close では 7 日後に設定する。
+    test_cases:
+      - buildPopupBannerHistoryEntry_clickは3日後再表示を設定する
+      - buildPopupBannerHistoryEntry_closeは7日後再表示を設定する
+    test_cases_ja:
+      - buildPopupBannerHistoryEntry_clickは3日後再表示を設定する
+      - buildPopupBannerHistoryEntry_closeは7日後再表示を設定する
+
+  - id: PBDL-005
+    method: buildPopupBannerHistoryEntry
+    type: event-driven
+    ears: |
+      When buildPopupBannerHistoryEntry is invoked for dismiss_forever or impression,
+      the system shall clear reshowAfter,
+      and it shall mark permanentlyDismissed only for dismiss_forever.
+    ears_ja: |
+      buildPopupBannerHistoryEntry が dismiss_forever または impression で呼び出された場合、
+      システムは reshowAfter を null にし、
+      permanentlyDismissed は dismiss_forever のときだけ true にする。
+    test_cases:
+      - buildPopupBannerHistoryEntry_dismiss_foreverは永久非表示を設定する
+      - buildPopupBannerHistoryEntry_impressionは再表示待ちを持たない
+    test_cases_ja:
+      - buildPopupBannerHistoryEntry_dismiss_foreverは永久非表示を設定する
+      - buildPopupBannerHistoryEntry_impressionは再表示待ちを持たない
+
+  - id: PBDL-006
+    method: selectNextPopupBanner
+    type: state-driven
+    ears: |
+      While unseen popup banners exist,
+      the system shall select the unseen banner with the smallest displayOrder
+      before considering reshow candidates.
+    ears_ja: |
+      未表示のポップアップバナーが存在する間、
+      システムは再表示候補より先に
+      displayOrder が最小の未表示バナーを選択する。
+    test_cases:
+      - selectNextPopupBanner_未表示がある場合_displayOrder最小の未表示を返す
+    test_cases_ja:
+      - selectNextPopupBanner_未表示がある場合_displayOrder最小の未表示を返す
+
+  - id: PBDL-007
+    method: selectNextPopupBanner
+    type: state-driven
+    ears: |
+      While no unseen popup banners exist and one or more reshow dates are due,
+      the system shall select the ready-to-reshow banner with the smallest displayOrder.
+    ears_ja: |
+      未表示バナーがなく、再表示日時を過ぎたバナーが 1 件以上ある間、
+      システムは displayOrder が最小の再表示対象バナーを選択する。
+    test_cases:
+      - selectNextPopupBanner_未表示がない場合_再表示可能かつdisplayOrder最小を返す
+    test_cases_ja:
+      - selectNextPopupBanner_未表示がない場合_再表示可能かつdisplayOrder最小を返す
+
+  - id: PBDL-008
+    method: selectNextPopupBanner
+    type: unwanted
+    ears: |
+      If all known banners are permanently dismissed, impression-only, or not yet due for reshow,
+      then the system shall return null.
+    ears_ja: |
+      既知のバナーがすべて永久非表示、impression のみ、または再表示日時前である場合、
+      システムは null を返す。
+    test_cases:
+      - selectNextPopupBanner_再表示不可の履歴しかない場合_nullを返す
+    test_cases_ja:
+      - selectNextPopupBanner_再表示不可の履歴しかない場合_nullを返す

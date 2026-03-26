@@ -1,0 +1,168 @@
+metadata:
+  class: UsePopupBanner
+  source: features/popup-banners/hooks/usePopupBanner.ts
+  version: "1.0"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - fetch (/api/popup-banners/view-history)
+    - fetch (/api/popup-banners/interact)
+    - localStorage
+    - sessionStorage
+    - popup-banner-display-logic helpers
+  external:
+    - Browser storage
+    - Popup banner history route
+    - Popup banner interaction route
+
+state_properties:
+  - history
+  - historyMode
+  - currentBanner
+  - isReady
+  - sentImpressionIdsRef
+
+specifications:
+  - id: UPB-001
+    method: usePopupBanner
+    type: event-driven
+    ears: |
+      When usePopupBanner initializes and the view-history request succeeds,
+      the system shall build remote history from the returned records,
+      select the next banner from that history,
+      and mark the hook as ready.
+    ears_ja: |
+      usePopupBanner の初期化時に view-history request が成功した場合、
+      システムは返却レコードから remote history を構築し、
+      その履歴に基づいて次のバナーを選択し、
+      hook を ready にする。
+    test_cases:
+      - usePopupBanner_viewHistory成功時_remote履歴から現在バナーを選びreadyになる
+    test_cases_ja:
+      - usePopupBanner_viewHistory成功時_remote履歴から現在バナーを選びreadyになる
+
+  - id: UPB-002
+    method: usePopupBanner
+    type: unwanted
+    ears: |
+      If the view-history request returns 401 or throws,
+      then the system shall fall back to localStorage history
+      and continue in local mode.
+    ears_ja: |
+      view-history request が 401 を返すか例外になる場合、
+      システムは localStorage の履歴へフォールバックし、
+      local mode で継続する。
+    test_cases:
+      - usePopupBanner_viewHistory401時_localStorage履歴へフォールバックする
+      - usePopupBanner_viewHistory例外時_localStorage履歴へフォールバックする
+    test_cases_ja:
+      - usePopupBanner_viewHistory401時_localStorage履歴へフォールバックする
+      - usePopupBanner_viewHistory例外時_localStorage履歴へフォールバックする
+
+  - id: UPB-003
+    method: markBannerDisplayed
+    type: event-driven
+    ears: |
+      When markBannerDisplayed is invoked with the current banner id for the first time in the session,
+      the system shall record an impression in memory,
+      persist the sent impression id in sessionStorage,
+      write local history only in local mode,
+      and post an impression interaction.
+    ears_ja: |
+      markBannerDisplayed が current banner id でその session 中に初めて呼び出された場合、
+      システムは memory 上に impression を記録し、
+      sent impression id を sessionStorage に永続化し、
+      local mode のときだけ local history を保存し、
+      impression interaction を送信する。
+    test_cases:
+      - markBannerDisplayed_localMode初回呼び出し時_impressionを保存して送信する
+      - markBannerDisplayed_remoteMode初回呼び出し時_localStorageへは保存しない
+    test_cases_ja:
+      - markBannerDisplayed_localMode初回呼び出し時_impressionを保存して送信する
+      - markBannerDisplayed_remoteMode初回呼び出し時_localStorageへは保存しない
+
+  - id: UPB-004
+    method: markBannerDisplayed
+    type: unwanted
+    ears: |
+      If markBannerDisplayed is invoked with a different banner id
+      or with an id already sent in the same session,
+      then the system shall not post another impression interaction.
+    ears_ja: |
+      markBannerDisplayed が異なる banner id で呼び出されるか、
+      同一 session 内で既に送信済みの id で呼び出された場合、
+      システムは impression interaction を再送しない。
+    test_cases:
+      - markBannerDisplayed_異なるbannerIdや重複呼び出しでは再送しない
+    test_cases_ja:
+      - markBannerDisplayed_異なるbannerIdや重複呼び出しでは再送しない
+
+  - id: UPB-005
+    method: closeBanner
+    type: event-driven
+    ears: |
+      When closeBanner is invoked in local mode without permanent dismissal,
+      the system shall record a close action in local history,
+      select the next eligible banner,
+      and post a close interaction.
+    ears_ja: |
+      closeBanner が permanent dismissal なしで local mode 中に呼び出された場合、
+      システムは local history に close を記録し、
+      次に表示可能なバナーを選択し、
+      close interaction を送信する。
+    test_cases:
+      - closeBanner_localMode通常close時_closeを保存し次のバナーへ進める
+    test_cases_ja:
+      - closeBanner_localMode通常close時_closeを保存し次のバナーへ進める
+
+  - id: UPB-006
+    method: closeBanner
+    type: event-driven
+    ears: |
+      When closeBanner is invoked with dismissForever true,
+      the system shall record dismiss_forever for the current banner
+      and post a dismiss_forever interaction.
+    ears_ja: |
+      closeBanner が dismissForever true で呼び出された場合、
+      システムは current banner に dismiss_forever を記録し、
+      dismiss_forever interaction を送信する。
+    test_cases:
+      - closeBanner_dismissForever指定時_dismiss_foreverを送信する
+    test_cases_ja:
+      - closeBanner_dismissForever指定時_dismiss_foreverを送信する
+
+  - id: UPB-007
+    method: clickBanner
+    type: event-driven
+    ears: |
+      When clickBanner is invoked,
+      the system shall record a click action,
+      clear the current banner,
+      and post a click interaction.
+    ears_ja: |
+      clickBanner が呼び出された場合、
+      システムは click action を記録し、
+      current banner をクリアし、
+      click interaction を送信する。
+    test_cases:
+      - clickBanner実行時_clickを保存してcurrentBannerをクリアする
+    test_cases_ja:
+      - clickBanner実行時_clickを保存してcurrentBannerをクリアする
+
+  - id: UPB-008
+    method: usePopupBanner
+    type: state-driven
+    ears: |
+      While the previously selected current banner still exists in the new banner list,
+      the system shall preserve that current banner
+      when the banners input changes.
+    ears_ja: |
+      以前に選択された current banner が新しい banner list に引き続き存在する間、
+      システムは banners 入力が変わっても
+      その current banner を保持する。
+    test_cases:
+      - usePopupBanner_banners更新後も既存currentBannerが残っていれば保持する
+    test_cases_ja:
+      - usePopupBanner_banners更新後も既存currentBannerが残っていれば保持する

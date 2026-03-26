@@ -1,0 +1,148 @@
+metadata:
+  class: PopupBannerInteractRoute
+  source: app/api/popup-banners/interact/route.ts
+  version: "1.0"
+  created_at: "2026-03-26"
+
+dependencies:
+  repositories: []
+  services:
+    - getUser
+    - createAdminClient
+    - popupBannerInteractSchema
+    - getRouteLocale
+    - getPopupBannersRouteCopy
+    - jsonError
+  external:
+    - Supabase RPC record_popup_banner_interaction
+
+state_properties: []
+
+specifications:
+  - id: PBIR-001
+    method: POST
+    type: unwanted
+    ears: |
+      If the request body does not satisfy popupBannerInteractSchema,
+      then the route shall respond with HTTP 400,
+      errorCode POPUP_BANNERS_INVALID_REQUEST,
+      and it shall not request the authenticated user or the admin client.
+    ears_ja: |
+      リクエスト body が popupBannerInteractSchema を満たさない場合、
+      ルートは HTTP 400、errorCode POPUP_BANNERS_INVALID_REQUEST を返し、
+      認証ユーザー取得と admin client 作成を行わない。
+    test_cases:
+      - POST_不正リクエストの場合_400でinvalidRequest
+    test_cases_ja:
+      - POST_不正リクエストの場合_400でinvalidRequest
+
+  - id: PBIR-002
+    method: POST
+    type: event-driven
+    ears: |
+      When a valid interaction request is received from an authenticated user,
+      the route shall call record_popup_banner_interaction
+      with the banner id, user id, and action type,
+      and respond with HTTP 200 and success true.
+    ears_ja: |
+      認証済みユーザーから有効な interaction request を受け取った場合、
+      ルートは banner id、user id、action type を使って
+      record_popup_banner_interaction を呼び出し、
+      HTTP 200 と success true を返す。
+    test_cases:
+      - POST_認証済みユーザーの場合_RPCへuserId付きで委譲する
+    test_cases_ja:
+      - POST_認証済みユーザーの場合_RPCへuserId付きで委譲する
+
+  - id: PBIR-003
+    method: POST
+    type: event-driven
+    ears: |
+      When a valid interaction request is received without an authenticated user,
+      the route shall call record_popup_banner_interaction with p_user_id null
+      and still respond with HTTP 200 and success true.
+    ears_ja: |
+      認証済みユーザーなしで有効な interaction request を受け取った場合、
+      ルートは p_user_id を null にして record_popup_banner_interaction を呼び出し、
+      それでも HTTP 200 と success true を返す。
+    test_cases:
+      - POST_未認証でも有効リクエストならuserIdをnullでRPC委譲する
+    test_cases_ja:
+      - POST_未認証でも有効リクエストならuserIdをnullでRPC委譲する
+
+  - id: PBIR-004
+    method: POST
+    type: unwanted
+    ears: |
+      If the RPC error message indicates dismiss_forever is not allowed,
+      then the route shall respond with HTTP 400,
+      errorCode POPUP_BANNERS_DISMISS_FOREVER_FORBIDDEN,
+      and a localized dismissForeverForbidden message.
+    ears_ja: |
+      RPC エラーメッセージが dismiss_forever 不可を示す場合、
+      ルートは HTTP 400、errorCode POPUP_BANNERS_DISMISS_FOREVER_FORBIDDEN、
+      ローカライズされた dismissForeverForbidden メッセージを返す。
+    test_cases:
+      - POST_dismissForever非対応エラーの場合_400でforbidden
+    test_cases_ja:
+      - POST_dismissForever非対応エラーの場合_400でforbidden
+
+  - id: PBIR-005
+    method: POST
+    type: unwanted
+    ears: |
+      If the RPC error message indicates that the popup banner was not found,
+      then the route shall respond with HTTP 404
+      and errorCode POPUP_BANNERS_NOT_FOUND.
+    ears_ja: |
+      RPC エラーメッセージがポップアップバナー未検出を示す場合、
+      ルートは HTTP 404 と errorCode POPUP_BANNERS_NOT_FOUND を返す。
+    test_cases:
+      - POST_対象バナー未検出エラーの場合_404を返す
+    test_cases_ja:
+      - POST_対象バナー未検出エラーの場合_404を返す
+
+  - id: PBIR-006
+    method: POST
+    type: unwanted
+    ears: |
+      If the RPC error message indicates an invalid popup banner action type,
+      then the route shall respond with HTTP 400
+      and errorCode POPUP_BANNERS_INVALID_ACTION.
+    ears_ja: |
+      RPC エラーメッセージが不正な popup banner action type を示す場合、
+      ルートは HTTP 400 と errorCode POPUP_BANNERS_INVALID_ACTION を返す。
+    test_cases:
+      - POST_RPCがinvalidActionを返した場合_400を返す
+    test_cases_ja:
+      - POST_RPCがinvalidActionを返した場合_400を返す
+
+  - id: PBIR-007
+    method: POST
+    type: unwanted
+    ears: |
+      If the RPC returns any other error,
+      then the route shall respond with HTTP 500
+      and errorCode POPUP_BANNERS_INTERACT_FAILED.
+    ears_ja: |
+      RPC がその他のエラーを返した場合、
+      ルートは HTTP 500 と errorCode POPUP_BANNERS_INTERACT_FAILED を返す。
+    test_cases:
+      - POST_RPCが未知エラーを返した場合_500を返す
+    test_cases_ja:
+      - POST_RPCが未知エラーを返した場合_500を返す
+
+  - id: PBIR-008
+    method: POST
+    type: unwanted
+    ears: |
+      If request processing throws before a response is produced,
+      then the route shall respond with HTTP 500
+      and errorCode POPUP_BANNERS_INTERACT_FAILED.
+    ears_ja: |
+      応答生成前の処理で例外が送出された場合、
+      ルートは HTTP 500 と errorCode POPUP_BANNERS_INTERACT_FAILED を返す。
+    test_cases:
+      - POST_例外送出時_500でinteractFailed
+    test_cases_ja:
+      - POST_例外送出時_500でinteractFailed
