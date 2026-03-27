@@ -21,6 +21,7 @@
 ### Available skills
 - codex-webpack-build: Repository-specific production build verification workflow for this Next.js app. Use when a user asks Codex to run a build, verify whether a change builds, investigate build failures, or confirm release readiness in this repo. In Codex and sandbox environments, prefer `npm run build -- --webpack` over plain `npm run build` because the default Turbopack build can stall here while webpack completes. If the user explicitly asks to test Turbopack or change build tooling, follow that request instead. (file: .agents/skills/codex-webpack-build/SKILL.md)
 - project-database-context: Repository-specific guide for understanding Persta.AI's Supabase data model and implementation. Use when a task touches the database schema, RLS, RPCs, triggers, migrations, Storage-backed image flows, or when onboarding a developer or agent to the data layer. (file: .agents/skills/project-database-context/SKILL.md)
+- implementation-planning: 新機能の実装計画を立案するスキル。EARS要件定義、ADR、フェーズ別実装計画、変更ファイル一覧、テスト観点、ロールバック方針を含む計画作成に使う。新機能の設計・実装計画を求められた場合に使用する。 (file: .agents/skills/implementation-planning/SKILL.md)
 
 ### How to use skills
 - Use the repo-local skill above when the request matches its description.

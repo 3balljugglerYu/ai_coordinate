@@ -40,7 +40,7 @@ state_properties:
     default: 1
   - name: selectedModel
     type: GeminiModel
-    default: gemini-2.5-flash-image
+    default: gemini-3.1-flash-image-preview-512
   - name: stocks
     type: SourceImageStock[]
     default: []

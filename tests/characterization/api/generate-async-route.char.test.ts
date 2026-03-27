@@ -150,7 +150,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
 
     getUserMock.mockResolvedValue({
       id: "user-123",
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof getUser>>);
 
     originalFetch = global.fetch;
     fetchMock = jest.fn().mockResolvedValue(
@@ -212,7 +212,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     const supabase = createSupabaseMock({
       creditBalance: 5,
     });
-    createAdminClientMock.mockReturnValue(supabase.client as any);
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
 
     const response = await POST(
       createRequest({
@@ -229,7 +231,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     }).toMatchInlineSnapshot(`
       {
         "body": {
-          "error": "ペルコイン残高が不足しています。生成には20ペルコイン必要ですが、現在の残高は5ペルコインです。",
+          "error": "ペルコイン残高が不足しています。生成には10ペルコイン必要ですが、現在の残高は5ペルコインです。",
           "errorCode": "GENERATION_INSUFFICIENT_BALANCE",
         },
         "status": 400,
@@ -245,7 +247,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       creditBalance: 120,
       rpcError: { message: "queue down" },
     });
-    createAdminClientMock.mockReturnValue(supabase.client as any);
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
 
     const response = await POST(
       createRequest({
@@ -304,7 +308,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
         error: null,
       },
     });
-    createAdminClientMock.mockReturnValue(supabase.client as any);
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
 
     const base64 = Buffer.from("image-bytes").toString("base64");
     const response = await POST(
@@ -337,7 +343,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "background_mode": "keep",
           "generation_type": "coordinate",
           "input_image_url": "https://cdn.example.com/temp/uploaded.png",
-          "model": "gemini-2.5-flash-image",
+          "model": "gemini-3.1-flash-image-preview-512",
           "prompt_text": "linen jacket",
           "source_image_stock_id": null,
           "source_image_type": "real",

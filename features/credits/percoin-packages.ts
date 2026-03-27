@@ -58,7 +58,7 @@ export const PERCOIN_PACKAGES: PercoinPackage[] = [
     priceYen: 500,
     stripePriceIdTest: "price_1So3VWEtgRYjQynQFp1IBmUG",
     stripePriceIdLive: "price_1So0f9ImYtwDZrxbiT1nLlS7",
-    description: "お試しパック\nまず数枚だけ生成したい方へ\n\n生成枚数\n標準モデル：約5枚\n解像度1Kモデル：約2枚",
+    description: "お試しパック\nまず数枚だけ生成したい方へ\n\n生成枚数\nNano Banana 2 0.5K：約11枚\nNano Banana 2 1K：約5枚\nPro 1K：約2枚",
     imageUrl: "/percoin/percoin1.webp",
     badgeLabel: "まずはお試し！",
   },
@@ -69,7 +69,7 @@ export const PERCOIN_PACKAGES: PercoinPackage[] = [
     priceYen: 1000,
     stripePriceIdTest: "price_1So3W8EtgRYjQynQKACSaUuf",
     stripePriceIdLive: "price_1So0o1ImYtwDZrxbw9P7P2cG",
-    description: "ライトパック\n気軽に遊びたい方へ\n\n生成枚数\n標準モデル：約12枚\n解像度1Kモデル：約4枚",
+    description: "ライトパック\n気軽に遊びたい方へ\n\n生成枚数\nNano Banana 2 0.5K：約24枚\nNano Banana 2 1K：約12枚\nPro 1K：約4枚",
     imageUrl: "/percoin/percoin2.webp",
   },
   {
@@ -79,7 +79,7 @@ export const PERCOIN_PACKAGES: PercoinPackage[] = [
     priceYen: 3000,
     stripePriceIdTest: "price_1So3WaEtgRYjQynQmDFItWJG",
     stripePriceIdLive: "price_1So0pGImYtwDZrxbDTih5U7n",
-    description: "ベーシックパック\nしっかり試したい方へ\n\n生成枚数\n標準モデル：約48枚\n解像度1Kモデル：約19枚",
+    description: "ベーシックパック\nしっかり試したい方へ\n\n生成枚数\nNano Banana 2 0.5K：約96枚\nNano Banana 2 1K：約48枚\nPro 1K：約19枚",
     imageUrl: "/percoin/percoin3.webp",
     badgeLabel: "一番人気",
   },
@@ -90,7 +90,7 @@ export const PERCOIN_PACKAGES: PercoinPackage[] = [
     priceYen: 5000,
     stripePriceIdTest: "price_1So3X8EtgRYjQynQ6FbbGnkD",
     stripePriceIdLive: "price_1So0rMImYtwDZrxb22AS2zY6",
-    description: "お得パック\n迷ったらこれ・コスパ◎\n\n生成枚数\n標準モデル：約95枚\n解像度1Kモデル：約38枚",
+    description: "お得パック\n迷ったらこれ・コスパ◎\n\n生成枚数\nNano Banana 2 0.5K：約190枚\nNano Banana 2 1K：約95枚\nPro 1K：約38枚",
     imageUrl: "/percoin/percoin4.webp",
   },
   {
@@ -100,7 +100,7 @@ export const PERCOIN_PACKAGES: PercoinPackage[] = [
     priceYen: 10000,
     stripePriceIdTest: "price_1SoAzfEtgRYjQynQ8ZA8EgvZ",
     stripePriceIdLive: "price_1So11aImYtwDZrxbYeCcIt2b",
-    description: "最大お得パック\n1コイン単価が最安\n\n生成枚数\n標準モデル：約240枚\n解像度1Kモデル：約96枚",
+    description: "最大お得パック\n1コイン単価が最安\n\n生成枚数\nNano Banana 2 0.5K：約480枚\nNano Banana 2 1K：約240枚\nPro 1K：約96枚",
     imageUrl: "/percoin/percoin5.webp",
     badgeLabel: BADGE_LABEL_MOST_VALUABLE,
   },
@@ -110,5 +110,5 @@ export function findPercoinPackage(packageId: string): PercoinPackage | undefine
   return PERCOIN_PACKAGES.find((pkg) => pkg.id === packageId);
 }
 
-/** 標準モデル（gemini-2.5-flash-image）の1枚あたり消費量。料金ページの目安表示に使用 */
-export const GENERATION_PERCOIN_COST = 20;
+/** コーディネート画面の既定モデル（Nano Banana 2 0.5K）の1枚あたり消費量。料金ページの目安表示に使用 */
+export const GENERATION_PERCOIN_COST = 10;

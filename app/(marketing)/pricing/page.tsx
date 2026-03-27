@@ -32,27 +32,27 @@ export default async function PricingPage() {
           "credit-110": {
             name: "110 Percoins",
             description:
-              "Trial pack\nFor trying a few generations first\n\nEstimated generations\nStandard model: about 5\n1K model: about 2",
+              "Trial pack\nFor trying a few generations first\n\nEstimated generations\nNano Banana 2 0.5K: about 11\nNano Banana 2 1K: about 5\nPro 1K: about 2",
           },
           "credit-240": {
             name: "240 Percoins",
             description:
-              "Light pack\nFor casual use\n\nEstimated generations\nStandard model: about 12\n1K model: about 4",
+              "Light pack\nFor casual use\n\nEstimated generations\nNano Banana 2 0.5K: about 24\nNano Banana 2 1K: about 12\nPro 1K: about 4",
           },
           "credit-960": {
             name: "960 Percoins",
             description:
-              "Basic pack\nFor deeper testing\n\nEstimated generations\nStandard model: about 48\n1K model: about 19",
+              "Basic pack\nFor deeper testing\n\nEstimated generations\nNano Banana 2 0.5K: about 96\nNano Banana 2 1K: about 48\nPro 1K: about 19",
           },
           "credit-1900": {
             name: "1,900 Percoins",
             description:
-              "Value pack\nGreat balance of price and volume\n\nEstimated generations\nStandard model: about 95\n1K model: about 38",
+              "Value pack\nGreat balance of price and volume\n\nEstimated generations\nNano Banana 2 0.5K: about 190\nNano Banana 2 1K: about 95\nPro 1K: about 38",
           },
           "credit-4800": {
             name: "4,800 Percoins",
             description:
-              "Best value pack\nLowest cost per coin\n\nEstimated generations\nStandard model: about 240\n1K model: about 96",
+              "Best value pack\nLowest cost per coin\n\nEstimated generations\nNano Banana 2 0.5K: about 480\nNano Banana 2 1K: about 240\nPro 1K: about 96",
           },
         };
   const copy =
@@ -63,7 +63,7 @@ export default async function PricingPage() {
           packagesTitle: "ペルコイン料金表（すべて税込）",
           packagesDescription: "購入画面でも税込価格を表示します。",
           creditsLabel: "ペルコイン",
-          estimateLabel: "目安：画像生成1回あたり",
+          estimateLabel: "目安：コーディネート画面の既定生成1回あたり",
           estimateSuffix: "ペルコインを消費します。",
           paymentTitle: "支払い方法とタイミング",
           paymentDescription: "決済手段と課金のタイミングです。",
@@ -92,7 +92,7 @@ export default async function PricingPage() {
           packagesTitle: "Percoin pricing (tax included)",
           packagesDescription: "Tax-inclusive pricing is also shown on the purchase screen.",
           creditsLabel: "Percoins",
-          estimateLabel: "Estimate: one image generation uses",
+          estimateLabel: "Estimate: one default coordinate generation uses",
           estimateSuffix: "Percoins.",
           paymentTitle: "Payment method and timing",
           paymentDescription: "Supported payment methods and when charges are applied.",

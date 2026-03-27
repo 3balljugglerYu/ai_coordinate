@@ -85,7 +85,9 @@ export function GenerationForm({
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
   const [selectedCount, setSelectedCount] = useState(1);
-  const [selectedModel, setSelectedModel] = useState<GeminiModel>("gemini-2.5-flash-image");
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>(
+    "gemini-3.1-flash-image-preview-512"
+  );
   const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
@@ -254,7 +256,7 @@ export function GenerationForm({
       setPrompt("");
       setBackgroundMode("keep");
       setSelectedCount(1);
-      setSelectedModel("gemini-2.5-flash-image");
+      setSelectedModel("gemini-3.1-flash-image-preview-512");
       setImageSourceType("upload");
       if (typeof window !== "undefined") {
         localStorage.removeItem("selectedStockId");
@@ -564,17 +566,20 @@ export function GenerationForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="gemini-2.5-flash-image">
-                {t("modelStandard")}
+              <SelectItem value="gemini-3.1-flash-image-preview-512">
+                {t("modelLight05k")}
+              </SelectItem>
+              <SelectItem value="gemini-3.1-flash-image-preview-1024">
+                {t("modelStandard1k")}
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-1k">
-                {t("model1k")}
+                {t("modelPro1k")}
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-2k">
-                {t("model2k")}
+                {t("modelPro2k")}
               </SelectItem>
               <SelectItem value="gemini-3-pro-image-4k">
-                {t("model4k")}
+                {t("modelPro4k")}
               </SelectItem>
             </SelectContent>
           </Select>

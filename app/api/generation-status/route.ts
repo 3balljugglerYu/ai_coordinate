@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
+  isInvalidGeminiArgumentErrorMessage,
   isMalformedGeminiPartsErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
 } from "@/shared/generation/errors";
@@ -25,6 +26,10 @@ function normalizeUserFacingGenerationError(
   }
 
   if (isMalformedGeminiPartsErrorMessage(errorMessage)) {
+    return copy.genericGenerationFailed;
+  }
+
+  if (isInvalidGeminiArgumentErrorMessage(errorMessage)) {
     return copy.genericGenerationFailed;
   }
 

@@ -173,7 +173,9 @@ export async function postGenerateAsyncRoute(
     }
 
     // 1枚分のペルコイン残高チェック
-    const percoinCost = getPercoinCost(model || "gemini-2.5-flash-image");
+    const percoinCost = getPercoinCost(
+      model || "gemini-3.1-flash-image-preview-512"
+    );
 
     // 現在の残高を取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
