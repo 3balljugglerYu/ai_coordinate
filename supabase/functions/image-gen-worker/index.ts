@@ -13,6 +13,7 @@ import type {
 } from "../../../shared/generation/prompt-core.ts";
 import {
   MALFORMED_GEMINI_PARTS_ERROR,
+  isInvalidGeminiArgumentErrorMessage,
   isMalformedGeminiPartsErrorMessage,
   SAFETY_POLICY_BLOCKED_ERROR,
   isSafetyPolicyBlockedErrorMessage,
@@ -233,8 +234,18 @@ async function downloadInputImageViaStockFallback(
 }
 
 // 型定義
-type GeminiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-1k" | "gemini-3-pro-image-2k" | "gemini-3-pro-image-4k";
-type GeminiApiModel = "gemini-2.5-flash-image" | "gemini-3-pro-image-preview";
+type GeminiModel =
+  | "gemini-2.5-flash-image"
+  | "gemini-3.1-flash-image-preview-512"
+  | "gemini-3.1-flash-image-preview-1024"
+  | "gemini-3-pro-image-1k"
+  | "gemini-3-pro-image-2k"
+  | "gemini-3-pro-image-4k";
+type GeminiApiModel =
+  | "gemini-2.5-flash-image"
+  | "gemini-3.1-flash-image-preview"
+  | "gemini-3-pro-image-preview";
+type GeminiImageSize = "512" | "1K" | "2K" | "4K";
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -281,6 +292,15 @@ function normalizeModelName(model: string | null): GeminiModel {
   if (model === "gemini-2.5-flash-image-preview" || model === "gemini-2.5-flash-image") {
     return "gemini-2.5-flash-image";
   }
+  if (model === "gemini-3.1-flash-image-preview") {
+    return "gemini-3.1-flash-image-preview-512";
+  }
+  if (
+    model === "gemini-3.1-flash-image-preview-512" ||
+    model === "gemini-3.1-flash-image-preview-1024"
+  ) {
+    return model as GeminiModel;
+  }
   if (model === "gemini-3-pro-image-preview" || model === "gemini-3-pro-image") {
     return "gemini-3-pro-image-2k";
   }
@@ -294,6 +314,9 @@ function normalizeModelName(model: string | null): GeminiModel {
  * データベース保存値をAPIエンドポイント名に変換
  */
 function toApiModelName(model: GeminiModel): GeminiApiModel {
+  if (model.startsWith("gemini-3.1-flash-image-preview-")) {
+    return "gemini-3.1-flash-image-preview";
+  }
   if (model.startsWith("gemini-3-pro-image-")) {
     return "gemini-3-pro-image-preview";
   }
@@ -303,7 +326,9 @@ function toApiModelName(model: GeminiModel): GeminiApiModel {
 /**
  * モデル名から画像サイズを抽出
  */
-function extractImageSize(model: GeminiModel): "1K" | "2K" | "4K" | null {
+function extractImageSize(model: GeminiModel): GeminiImageSize | null {
+  if (model === "gemini-3.1-flash-image-preview-512") return "512";
+  if (model === "gemini-3.1-flash-image-preview-1024") return "1K";
   if (model === "gemini-3-pro-image-1k") return "1K";
   if (model === "gemini-3-pro-image-2k") return "2K";
   if (model === "gemini-3-pro-image-4k") return "4K";
@@ -317,6 +342,8 @@ function getPercoinCost(model: string | null): number {
   const normalized = normalizeModelName(model);
   const costs: Record<string, number> = {
     'gemini-2.5-flash-image': 20,
+    'gemini-3.1-flash-image-preview-512': 10,
+    'gemini-3.1-flash-image-preview-1024': 20,
     'gemini-3-pro-image-1k': 50,
     'gemini-3-pro-image-2k': 80,
     'gemini-3-pro-image-4k': 100,
@@ -330,6 +357,7 @@ function getPercoinCost(model: string | null): number {
 function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
     errorMessage === "No images generated" ||
+    isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
     isSafetyPolicyBlockedErrorMessage(errorMessage)
   );
@@ -971,8 +999,9 @@ Deno.serve(async () => {
             }>;
             generationConfig?: {
               candidateCount?: number;
+              responseModalities?: Array<"TEXT" | "IMAGE">;
               imageConfig?: {
-                imageSize?: "1K" | "2K" | "4K";
+                imageSize?: GeminiImageSize;
               };
             };
           } = {
@@ -989,17 +1018,28 @@ Deno.serve(async () => {
             ],
           };
 
-          // Gemini 3 Pro Image Previewの場合、imageConfigを追加
-          if (apiModel === "gemini-3-pro-image-preview") {
-            const imageSize = extractImageSize(dbModel);
-            if (imageSize) {
-              requestBody.generationConfig = {
-                ...requestBody.generationConfig,
-                imageConfig: {
-                  imageSize: imageSize,
-                },
-              };
+          const imageSize = extractImageSize(dbModel);
+
+          if (apiModel === "gemini-3.1-flash-image-preview") {
+            if (!imageSize) {
+              throw new Error(`Unsupported image size for model: ${dbModel}`);
             }
+            requestBody.generationConfig = {
+              ...requestBody.generationConfig,
+              candidateCount: 1,
+              responseModalities: ["TEXT", "IMAGE"],
+              imageConfig: {
+                imageSize,
+              },
+            };
+          } else if (apiModel === "gemini-3-pro-image-preview" && imageSize) {
+            // Gemini 3 Pro Image Previewの場合、imageConfigを追加
+            requestBody.generationConfig = {
+              ...requestBody.generationConfig,
+              imageConfig: {
+                imageSize,
+              },
+            };
           }
 
           // APIエンドポイントURLを構築

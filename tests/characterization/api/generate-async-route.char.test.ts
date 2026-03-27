@@ -36,13 +36,21 @@ type SupabaseMockOptions = {
 };
 
 function createRequest(body: unknown): NextRequest {
-  return new Request("http://localhost/api/generate-async", {
+  const request = new Request("http://localhost/api/generate-async", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "accept-language": "ja",
     },
     body: JSON.stringify(body),
-  }) as unknown as NextRequest;
+  });
+
+  return Object.assign(request, {
+    nextUrl: new URL(request.url),
+    cookies: {
+      get: () => undefined,
+    },
+  }) as NextRequest;
 }
 
 async function readJson(response: Response): Promise<JsonRecord> {
@@ -142,7 +150,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
 
     getUserMock.mockResolvedValue({
       id: "user-123",
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof getUser>>);
 
     originalFetch = global.fetch;
     fetchMock = jest.fn().mockResolvedValue(
@@ -173,6 +181,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       {
         "body": {
           "error": "認証が必要です",
+          "errorCode": "GENERATION_AUTH_REQUIRED",
         },
         "status": 401,
       }
@@ -191,6 +200,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       {
         "body": {
           "error": "着せ替え内容を入力してください",
+          "errorCode": "GENERATION_INVALID_REQUEST",
         },
         "status": 400,
       }
@@ -202,7 +212,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     const supabase = createSupabaseMock({
       creditBalance: 5,
     });
-    createAdminClientMock.mockReturnValue(supabase.client as any);
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
 
     const response = await POST(
       createRequest({
@@ -219,7 +231,8 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     }).toMatchInlineSnapshot(`
       {
         "body": {
-          "error": "ペルコイン残高が不足しています。生成には20ペルコイン必要ですが、現在の残高は5ペルコインです。",
+          "error": "ペルコイン残高が不足しています。生成には10ペルコイン必要ですが、現在の残高は5ペルコインです。",
+          "errorCode": "GENERATION_INSUFFICIENT_BALANCE",
         },
         "status": 400,
       }
@@ -234,7 +247,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       creditBalance: 120,
       rpcError: { message: "queue down" },
     });
-    createAdminClientMock.mockReturnValue(supabase.client as any);
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
 
     const response = await POST(
       createRequest({
@@ -293,7 +308,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
         error: null,
       },
     });
-    createAdminClientMock.mockReturnValue(supabase.client as any);
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
 
     const base64 = Buffer.from("image-bytes").toString("base64");
     const response = await POST(
@@ -326,7 +343,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "background_mode": "keep",
           "generation_type": "coordinate",
           "input_image_url": "https://cdn.example.com/temp/uploaded.png",
-          "model": "gemini-2.5-flash-image",
+          "model": "gemini-3.1-flash-image-preview-512",
           "prompt_text": "linen jacket",
           "source_image_stock_id": null,
           "source_image_type": "real",

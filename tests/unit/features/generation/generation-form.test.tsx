@@ -57,7 +57,16 @@ jest.mock("@/features/generation/lib/current-user", () => ({
 }));
 
 jest.mock("@/features/generation/lib/model-config", () => ({
-  getPercoinCost: jest.fn().mockReturnValue(20),
+  getPercoinCost: jest.fn((model?: string) => {
+    const costs: Record<string, number> = {
+      "gemini-3.1-flash-image-preview-512": 10,
+      "gemini-3.1-flash-image-preview-1024": 20,
+      "gemini-3-pro-image-1k": 50,
+      "gemini-3-pro-image-2k": 80,
+      "gemini-3-pro-image-4k": 100,
+    };
+    return costs[model ?? ""] ?? 10;
+  }),
 }));
 
 const useTranslationsMock = useTranslations as jest.MockedFunction<
@@ -85,10 +94,11 @@ const messages: Record<string, string> = {
   backgroundKeepLabel: "Keep current background",
   backgroundKeepDescription: "Keep the current background.",
   modelLabel: "Model",
-  modelStandard: "Standard",
-  model1k: "1K",
-  model2k: "2K",
-  model4k: "4K",
+  modelLight05k: "Light model: Nano Banana 2 | 0.5K (10 Percoins / image)",
+  modelStandard1k: "Standard model: Nano Banana 2 | 1K (20 Percoins / image)",
+  modelPro1k: "High-fidelity model: Nano Banana Pro | 1K (50 Percoins / image)",
+  modelPro2k: "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
+  modelPro4k: "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
   countLabel: "Count",
   countSingle: "1 image",
   countMultiple: "{count} images",
@@ -242,8 +252,21 @@ describe("GenerationForm", () => {
       sourceImageType: "illustration",
       backgroundMode: "keep",
       count: 1,
-      model: "gemini-2.5-flash-image",
+      model: "gemini-3.1-flash-image-preview-512",
     });
+  });
+
+  test("表示_既定モデルと必要ペルコインがNano Banana 0.5Kになる", async () => {
+    await act(async () => {
+      render(<GenerationForm onSubmit={jest.fn()} />);
+    });
+
+    expect(
+      screen.getByText("Light model: Nano Banana 2 | 0.5K (10 Percoins / image)")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("1 images require 10 Percoins")
+    ).toBeInTheDocument();
   });
 
   test("表示_生成中は送信ボタン無効", async () => {

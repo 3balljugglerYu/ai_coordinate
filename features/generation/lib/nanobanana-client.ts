@@ -14,8 +14,9 @@ export interface GeminiGenerateContentRequestBody {
   }>;
   generationConfig?: {
     candidateCount?: number;
+    responseModalities?: Array<"TEXT" | "IMAGE">;
     imageConfig?: {
-      imageSize?: "1K" | "2K" | "4K";
+      imageSize?: "512" | "1K" | "2K" | "4K";
     };
   };
 }

@@ -23,6 +23,26 @@ import { track } from "@vercel/analytics/react";
 
 type GenerationFormContainerProps = Record<string, never>;
 
+function appendUniqueErrorMessage(
+  previousMessage: string | null,
+  nextMessage: string
+): string {
+  if (!previousMessage) {
+    return nextMessage;
+  }
+
+  const previousParts = previousMessage
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  if (previousParts.includes(nextMessage)) {
+    return previousMessage;
+  }
+
+  return `${previousMessage}; ${nextMessage}`;
+}
+
 /**
  * クライアントコンポーネント: GenerationFormとその状態管理
  * Suspenseの外に配置して即座に表示される
@@ -107,7 +127,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 setError((prev) => {
                   const errorMsg =
                     currentStatus.errorMessage || t("generationFailedGeneric");
-                  return prev ? `${prev}; ${errorMsg}` : errorMsg;
+                  return appendUniqueErrorMessage(prev, errorMsg);
                 });
               }
                 // キャッシュ無効化後にリフレッシュ
@@ -178,7 +198,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                   setError((prev) => {
                     const errorMsg =
                       status.errorMessage || t("generationFailedGeneric");
-                    return prev ? `${prev}; ${errorMsg}` : errorMsg;
+                    return appendUniqueErrorMessage(prev, errorMsg);
                   });
                   // 失敗時もイベントを発火（返金処理が実行される可能性があるため）
                   window.dispatchEvent(new CustomEvent('generation-complete'));
@@ -197,7 +217,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
                 setCompletedCount((prev) => prev + 1);
                 setError((prev) => {
                   const msg = errorMsg || t("generationFailedGeneric");
-                  return prev ? `${prev}; ${msg}` : msg;
+                  return appendUniqueErrorMessage(prev, msg);
                 });
                 throw err;
               });
@@ -274,7 +294,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               });
           
           setError((prev) => {
-            return prev ? `${prev}; ${baseMsg}` : baseMsg;
+            return appendUniqueErrorMessage(prev, baseMsg);
           });
         }
 

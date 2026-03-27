@@ -106,7 +106,7 @@ curl -X POST "http://localhost:3000/api/generate-async" \
     "sourceImageType": "illustration",
     "backgroundMode": "keep",
     "generationType": "coordinate",
-    "model": "gemini-2.5-flash-image"
+    "model": "gemini-3.1-flash-image-preview-512"
   }'
 ```
 
@@ -165,7 +165,7 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
   "backgroundMode": "enum, optional",
   "count": "1..4, optional",
   "generationType": "coordinate | specified_coordinate | full_body | chibi",
-  "model": "gemini-2.5-flash-image | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k"
+  "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k"
 }
 ```
 
@@ -174,6 +174,7 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
 - `sourceImageStockId` か、`sourceImageBase64 + sourceImageMimeType` のどちらかが必須です。
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
+- `gemini-2.5-flash-image` と `gemini-2.5-flash-image-preview` は後方互換のため受け付けますが、サーバー側で `gemini-3.1-flash-image-preview-512` に正規化されます。
 
 Success response:
 
