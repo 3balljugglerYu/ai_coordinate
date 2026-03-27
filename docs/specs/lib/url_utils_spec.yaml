@@ -1,0 +1,145 @@
+metadata:
+  class: UrlUtils
+  source: lib/url-utils.ts
+  version: "1.1"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - getSiteUrlForClient
+  external: []
+
+state_properties: []
+
+specifications:
+  - id: URLUTIL-001
+    method: getPostDetailPath
+    type: event-driven
+    ears: |
+      When getPostDetailPath is invoked with a postId,
+      the system shall return a relative /posts path
+      whose trailing segment is the URL-encoded postId.
+    ears_ja: |
+      getPostDetailPath が postId 付きで呼び出された場合、
+      システムは /posts の相対パスを返し、
+      末尾セグメントには URL エンコード済みの postId を使わなければならない。
+    preconditions:
+      - postId is provided as a string
+    preconditions_ja:
+      - postId が文字列として指定されている
+    postconditions:
+      success:
+        - The returned string starts with /posts/
+        - The returned path uses encodeURIComponent(postId) for the trailing segment
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 返却文字列は /posts/ で始まる
+        - 返却パスの末尾セグメントには encodeURIComponent(postId) が使われる
+      error:
+        - なし
+    edge_cases:
+      - description: When postId contains reserved URL characters such as slash or question mark
+        expected: The trailing segment is encoded and does not create additional path or query structure
+      - description: When postId is an empty string
+        expected: The helper still returns a /posts/ path with an empty encoded segment
+    edge_cases_ja:
+      - description: postId にスラッシュやクエスチョンマークなどの予約文字が含まれる場合
+        expected: 末尾セグメントはエンコードされ、追加のパスやクエリ構造を作らない
+      - description: postId が空文字列の場合
+        expected: helper はそれでも空のエンコード済みセグメントを持つ /posts/ パスを返す
+    test_cases:
+      - getPostDetailPath_GivenPlainPostId_ShouldReturnRelativePostsPath
+      - getPostDetailPath_GivenReservedCharacters_ShouldReturnEncodedPath
+    test_cases_ja:
+      - getPostDetailPath_通常のpostIdの場合_posts相対パスを返す
+      - getPostDetailPath_予約文字を含む場合_エンコード済みパスを返す
+
+  - id: URLUTIL-002
+    method: getPostDetailUrl
+    type: state-driven
+    ears: |
+      While getSiteUrlForClient returns an empty base URL,
+      the system shall return only the relative post detail path
+      produced by getPostDetailPath.
+    ears_ja: |
+      getSiteUrlForClient が空の base URL を返している間、
+      システムは getPostDetailPath が生成する
+      投稿詳細の相対パスのみを返さなければならない。
+    preconditions:
+      - getSiteUrlForClient returns an empty string
+    preconditions_ja:
+      - getSiteUrlForClient が空文字列を返す
+    postconditions:
+      success:
+        - The function returns the same relative path as getPostDetailPath(postId)
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 関数は getPostDetailPath(postId) と同じ相対パスを返す
+      error:
+        - なし
+    edge_cases:
+      - description: When getSiteUrlForClient returns an empty string repeatedly
+        expected: Each invocation returns the same relative path without caching a previous absolute URL
+      - description: When postId requires URL encoding
+        expected: The returned relative path still matches the encoded output of getPostDetailPath(postId)
+    edge_cases_ja:
+      - description: getSiteUrlForClient が繰り返し空文字列を返す場合
+        expected: 各呼び出しは以前の絶対 URL を保持せず、同じ相対パスを返す
+      - description: postId に URL エンコードが必要な文字が含まれる場合
+        expected: 返却される相対パスはそれでも getPostDetailPath(postId) のエンコード済み出力と一致する
+    test_cases:
+      - getPostDetailUrl_GivenEmptyBaseUrl_ShouldReturnRelativePath
+    test_cases_ja:
+      - getPostDetailUrl_baseUrlが空の場合_相対パスを返す
+
+  - id: URLUTIL-003
+    method: getPostDetailUrl
+    type: event-driven
+    ears: |
+      When getPostDetailUrl is invoked and getSiteUrlForClient returns a base URL,
+      the system shall prepend that base URL to the relative post detail path
+      and shall remove trailing slashes from the base URL before concatenation.
+    ears_ja: |
+      getPostDetailUrl が呼び出され、
+      getSiteUrlForClient が base URL を返す場合、
+      システムはその base URL を投稿詳細の相対パスの前に付与し、
+      連結前に base URL 末尾のスラッシュを取り除かなければならない。
+    preconditions:
+      - getSiteUrlForClient returns a non-empty base URL
+    preconditions_ja:
+      - getSiteUrlForClient が空でない base URL を返す
+    postconditions:
+      success:
+        - The returned string begins with the normalized base URL
+        - Trailing slashes are removed from the base URL before appending the relative path
+        - The appended path matches getPostDetailPath(postId)
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 返却文字列は正規化済みの base URL で始まる
+        - 相対パスの連結前に base URL 末尾のスラッシュが除去される
+        - 連結されるパスは getPostDetailPath(postId) と一致する
+      error:
+        - なし
+    edge_cases:
+      - description: When the base URL already has no trailing slash
+        expected: The base URL is preserved and concatenated directly with the relative path
+      - description: When the base URL ends with multiple trailing slashes
+        expected: All trailing slashes are removed before appending the relative path
+    edge_cases_ja:
+      - description: base URL に末尾スラッシュが最初からない場合
+        expected: base URL はそのまま保持され、相対パスと直接連結される
+      - description: base URL の末尾に複数のスラッシュがある場合
+        expected: 相対パスを付与する前に末尾スラッシュはすべて除去される
+    test_cases:
+      - getPostDetailUrl_GivenBaseUrlWithoutTrailingSlash_ShouldReturnAbsoluteUrl
+      - getPostDetailUrl_GivenBaseUrlWithTrailingSlash_ShouldNormalizeAndReturnAbsoluteUrl
+    test_cases_ja:
+      - getPostDetailUrl_baseUrlに末尾スラッシュがない場合_絶対URLを返す
+      - getPostDetailUrl_baseUrlに末尾スラッシュがある場合_正規化して絶対URLを返す

@@ -256,7 +256,7 @@ tier3:
     test_file: tests/integration/api/credits-balance-route.test.ts
 
   BannerStorage:
-    status: pending
+    status: completed
     score: 68
     file: features/banners/lib/banner-storage.ts
     char_test: null
@@ -272,7 +272,7 @@ tier3:
     test_file: tests/integration/remotion/remotion-locale-compositions.test.ts
 
   NotificationBadge:
-    status: pending
+    status: completed
     score: 65
     file: features/notifications/components/NotificationBadge.tsx
     char_test: null
@@ -280,7 +280,7 @@ tier3:
     test_file: tests/unit/components/notification-badge.test.tsx
 
   MyPageServerApi:
-    status: pending
+    status: completed
     score: 64
     file: features/my-page/lib/server-api.ts
     char_test: null
@@ -288,7 +288,7 @@ tier3:
     test_file: tests/unit/lib/my-page-server-api.test.ts
 
   EventServerApi:
-    status: pending
+    status: completed
     score: 62
     file: features/event/lib/server-api.ts
     char_test: null
@@ -296,7 +296,7 @@ tier3:
     test_file: tests/unit/lib/event-server-api.test.ts
 
   UrlUtils:
-    status: pending
+    status: completed
     score: 60
     file: lib/url-utils.ts
     char_test: null
@@ -306,7 +306,7 @@ tier3:
 # E2E Targets
 widgets:
   CoordinatePage:
-    status: pending
+    status: completed
     priority: 1
     file: app/(app)/coordinate/page.tsx
     e2e_test: tests/e2e/coordinate.spec.ts
@@ -389,13 +389,13 @@ summary:
     percentage: 100
   tier3:
     total: 8
-    completed: 2
-    percentage: 25
+    completed: 7
+    percentage: 88
   widgets:
     total: 12
-    completed: 2
-    percentage: 17
+    completed: 3
+    percentage: 25
   overall:
     total: 32
-    completed: 16
-    percentage: 50
+    completed: 22
+    percentage: 69

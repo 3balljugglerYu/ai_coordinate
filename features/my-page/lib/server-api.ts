@@ -167,12 +167,14 @@ export const getUserStatsServer = cache(async (
     .rpc("get_follow_counts", { p_user_id: userId })
     .single<{ following_count: number; follower_count: number }>();
 
-  const followingCount = followCounts?.following_count ?? 0;
-  const followerCount = followCounts?.follower_count ?? 0;
-
+  let followingCount = 0;
+  let followerCount = 0;
   if (followCountsError) {
     console.error("Follow counts fetch error:", followCountsError);
     // エラーが発生した場合は0を返す（既にデフォルト値で設定済み）
+  } else {
+    followingCount = followCounts?.following_count ?? 0;
+    followerCount = followCounts?.follower_count ?? 0;
   }
 
   return {

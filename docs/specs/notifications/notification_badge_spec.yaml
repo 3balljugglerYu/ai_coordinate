@@ -1,0 +1,323 @@
+metadata:
+  class: NotificationBadge
+  source: features/notifications/components/NotificationBadge.tsx
+  version: "1.1"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - useNotifications
+    - next-intl useTranslations
+    - Button
+    - Bell icon (lucide-react)
+    - cn
+  external:
+    - Browser console.error
+
+state_properties:
+  - name: unreadCount
+    type: number
+    default: 0
+  - name: onClick
+    type: (() => void) | undefined
+    default: undefined
+  - name: className
+    type: string | undefined
+    default: undefined
+
+specifications:
+  - id: NBADGE-001
+    method: render
+    type: state-driven
+    ears: |
+      While NotificationBadge is rendered with unreadCount equal to 0 or less,
+      the system shall render a ghost small notification button with the translated badgeAria accessible name
+      and shall not render the unread indicator dot.
+    ears_ja: |
+      NotificationBadge が unreadCount 0 以下で描画されている間、
+      システムは翻訳済みの badgeAria をアクセシブル名に持つ
+      ghost small の通知ボタンを描画し、
+      未読インジケータのドットを描画してはならない。
+    preconditions:
+      - The component is rendered
+      - useNotifications returns unreadCount less than or equal to 0
+      - notifications translations are available
+    preconditions_ja:
+      - コンポーネントが描画される
+      - useNotifications が unreadCount 0 以下を返す
+      - notifications 翻訳が利用可能である
+    postconditions:
+      success:
+        - A notification button is rendered with aria-label from badgeAria
+        - The bell icon remains rendered
+        - No unread indicator dot is rendered
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - badgeAria 由来の aria-label を持つ通知ボタンが描画される
+        - ベルアイコンが描画される
+        - 未読インジケータのドットは描画されない
+      error:
+        - なし
+    edge_cases:
+      - description: When unreadCount is a negative number
+        expected: The component treats it the same as zero, keeps the default aria label, and renders no unread indicator
+      - description: When translations are available but the component receives no onClick prop
+        expected: The render output remains the same because the missing callback does not affect the idle visual state
+    edge_cases_ja:
+      - description: unreadCount が負数である場合
+        expected: コンポーネントは 0 と同様に扱い、既定 aria label を使い、未読インジケータを表示しない
+      - description: 翻訳は利用可能だが onClick prop が渡されない場合
+        expected: callback の欠如は待機時の見た目に影響しないため、描画結果は変わらない
+    test_cases:
+      - render_GivenZeroUnreadCount_ShouldUseDefaultAriaLabelAndHideIndicator
+      - render_GivenNegativeUnreadCount_ShouldStillHideIndicatorAndUseDefaultAriaLabel
+    test_cases_ja:
+      - render_unreadCountが0の場合_既定ariaLabelを使いドットを表示しない
+      - render_unreadCountが負数の場合_既定ariaLabelのままドットを表示しない
+
+  - id: NBADGE-002
+    method: render
+    type: state-driven
+    ears: |
+      While NotificationBadge is rendered with unreadCount greater than 0,
+      the system shall render the unread indicator dot
+      and shall expose the translated badgeAriaWithCount accessible name with the current unread count.
+    ears_ja: |
+      NotificationBadge が unreadCount 0 より大きい状態で描画されている間、
+      システムは未読インジケータのドットを描画し、
+      現在の未読件数を含む翻訳済み badgeAriaWithCount を
+      アクセシブル名として公開しなければならない。
+    preconditions:
+      - The component is rendered
+      - useNotifications returns unreadCount greater than 0
+      - notifications translations are available
+    preconditions_ja:
+      - コンポーネントが描画される
+      - useNotifications が unreadCount 0 より大きい値を返す
+      - notifications 翻訳が利用可能である
+    postconditions:
+      success:
+        - A notification button is rendered with aria-label from badgeAriaWithCount
+        - A single unread indicator dot is rendered
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - badgeAriaWithCount 由来の aria-label を持つ通知ボタンが描画される
+        - 未読インジケータのドットが1つ描画される
+      error:
+        - なし
+    edge_cases:
+      - description: When unreadCount is 1
+        expected: The component still uses the count-aware aria label and renders the same single unread indicator dot
+      - description: When unreadCount is a large positive value
+        expected: The component still exposes the raw count through aria-label and does not render a separate numeric badge text node
+    edge_cases_ja:
+      - description: unreadCount が 1 の場合
+        expected: コンポーネントは件数付き aria label を使い、同じ単一の未読インジケータドットを描画する
+      - description: unreadCount が大きな正数である場合
+        expected: コンポーネントは生の件数を aria-label で公開し続け、別個の数値バッジテキストは描画しない
+    test_cases:
+      - render_GivenPositiveUnreadCount_ShouldShowUnreadIndicatorAndCountAwareAriaLabel
+      - render_GivenUnreadCountOne_ShouldShowIndicatorForBoundaryPositiveCount
+    test_cases_ja:
+      - render_unreadCountが正数の場合_ドットと件数付きariaLabelを表示する
+      - render_unreadCountが1の場合_正の境界値でもドットを表示する
+
+  - id: NBADGE-003
+    method: render
+    type: event-driven
+    ears: |
+      When NotificationBadge is rendered with a className prop,
+      the system shall merge the provided className with the base notification button classes
+      instead of replacing the base styling.
+    ears_ja: |
+      NotificationBadge が className prop 付きで描画された場合、
+      システムは通知ボタンの基本クラスを置き換えるのではなく、
+      渡された className を基本クラスへマージしなければならない。
+    preconditions:
+      - The component is rendered with a className prop
+    preconditions_ja:
+      - コンポーネントが className prop 付きで描画される
+    postconditions:
+      success:
+        - The rendered button contains the provided className
+        - Base classes relative flex items-center justify-center p-2 h-auto remain present
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 描画されたボタンに渡された className が含まれる
+        - 基本クラス relative flex items-center justify-center p-2 h-auto が保持される
+      error:
+        - なし
+    edge_cases:
+      - description: When className is an empty string
+        expected: The component keeps the base notification button classes without adding extra visible styling tokens
+      - description: When className repeats a utility already present in the base classes
+        expected: The merged class string may contain both sources, but the component still preserves the base layout intent
+    edge_cases_ja:
+      - description: className が空文字である場合
+        expected: コンポーネントは追加の装飾トークンなしで基本通知ボタンクラスを保持する
+      - description: className が基本クラスに既にある utility を重複指定する場合
+        expected: マージ後の class 文字列に両方の由来が残り得るが、コンポーネントは基本レイアウト意図を保持する
+    test_cases:
+      - render_GivenCustomClassName_ShouldMergeItWithBaseButtonClasses
+      - render_GivenEmptyClassName_ShouldKeepBaseButtonClasses
+    test_cases_ja:
+      - render_customClassName指定時_基本ボタンクラスとマージする
+      - render_空className指定時_基本ボタンクラスを保持する
+
+  - id: NBADGE-004
+    method: handleClick
+    type: event-driven
+    ears: |
+      When the notification button is clicked while unreadCount is greater than 0,
+      the system shall await markAllRead
+      and shall invoke onClick after the unread-marking attempt succeeds.
+    ears_ja: |
+      unreadCount が 0 より大きい状態で通知ボタンがクリックされた場合、
+      システムは markAllRead の完了を待ち、
+      未読既読化の成功後に onClick を呼び出さなければならない。
+    preconditions:
+      - The component is rendered
+      - useNotifications returns unreadCount greater than 0
+      - markAllRead resolves successfully
+      - The button is clicked
+    preconditions_ja:
+      - コンポーネントが描画されている
+      - useNotifications が unreadCount 0 より大きい値を返す
+      - markAllRead が成功で完了する
+      - ボタンがクリックされる
+    postconditions:
+      success:
+        - markAllRead is called once
+        - onClick is invoked after markAllRead when onClick is provided
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - markAllRead が1回呼ばれる
+        - onClick が指定されている場合、markAllRead 後に onClick が呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When markAllRead resolves asynchronously after a delay
+        expected: onClick is deferred until the markAllRead promise settles successfully
+      - description: When the button is clicked repeatedly while unreadCount remains positive
+        expected: Each click independently invokes markAllRead because the component does not debounce or coalesce clicks
+    edge_cases_ja:
+      - description: markAllRead が遅延の後に非同期で成功する場合
+        expected: onClick は markAllRead の promise が正常完了するまで遅延される
+      - description: unreadCount が正のままボタンが繰り返しクリックされる場合
+        expected: コンポーネントは debounce や統合を行わないため、各クリックが独立して markAllRead を呼ぶ
+    test_cases:
+      - handleClick_GivenUnreadNotifications_ShouldAwaitMarkAllReadBeforeCallingOnClick
+      - handleClick_GivenUnreadNotificationsWithoutOnClick_ShouldStillCallMarkAllRead
+    test_cases_ja:
+      - handleClick_未読通知ありの場合_markAllRead完了後にonClickを呼ぶ
+      - handleClick_未読通知ありでonClick未指定の場合_markAllReadだけ呼ぶ
+
+  - id: NBADGE-005
+    method: handleClick
+    type: state-driven
+    ears: |
+      While unreadCount is equal to 0 or less,
+      the system shall skip markAllRead on button click
+      and shall invoke onClick only when it is provided.
+    ears_ja: |
+      unreadCount が 0 以下の間、
+      システムはボタンクリック時に markAllRead をスキップし、
+      onClick が指定されている場合にのみそれを呼び出さなければならない。
+    preconditions:
+      - The component is rendered
+      - useNotifications returns unreadCount less than or equal to 0
+      - The button is clicked
+    preconditions_ja:
+      - コンポーネントが描画されている
+      - useNotifications が unreadCount 0 以下を返す
+      - ボタンがクリックされる
+    postconditions:
+      success:
+        - markAllRead is not called
+        - onClick is called once when provided
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - markAllRead は呼ばれない
+        - onClick が指定されている場合は1回呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When unreadCount is exactly 0
+        expected: The click path skips markAllRead and behaves the same as any non-positive unread count
+      - description: When onClick is omitted while unreadCount is non-positive
+        expected: The click handler resolves quietly without logging or invoking markAllRead
+    edge_cases_ja:
+      - description: unreadCount がちょうど 0 の場合
+        expected: click 経路は markAllRead をスキップし、他の非正の unreadCount と同じように振る舞う
+      - description: unreadCount が非正で onClick が省略されている場合
+        expected: click handler はログ出力も markAllRead 呼び出しも行わず静かに完了する
+    test_cases:
+      - handleClick_GivenNoUnreadNotifications_ShouldSkipMarkAllReadAndCallOnClick
+      - handleClick_GivenNoUnreadNotificationsWithoutOnClick_ShouldResolveWithoutCallingMarkAllRead
+    test_cases_ja:
+      - handleClick_未読通知なしの場合_markAllReadを呼ばずonClickを呼ぶ
+      - handleClick_未読通知なしでonClick未指定の場合_markAllReadを呼ばず完了する
+
+  - id: NBADGE-006
+    method: handleClick
+    type: unwanted
+    ears: |
+      If markAllRead rejects while the notification button is clicked with unreadCount greater than 0,
+      then the system shall log the failure to console.error
+      and shall still invoke onClick without rethrowing the rejection.
+    ears_ja: |
+      unreadCount が 0 より大きい状態で通知ボタンがクリックされ、
+      markAllRead が reject した場合、
+      システムは失敗を console.error に記録し、
+      reject を再送出せずに onClick を引き続き呼び出さなければならない。
+    preconditions:
+      - The component is rendered
+      - useNotifications returns unreadCount greater than 0
+      - markAllRead rejects with an error
+      - The button is clicked
+    preconditions_ja:
+      - コンポーネントが描画されている
+      - useNotifications が unreadCount 0 より大きい値を返す
+      - markAllRead が error で reject する
+      - ボタンがクリックされる
+    postconditions:
+      success:
+        - None
+      error:
+        - console.error is called with the fixed failure prefix and the original error
+        - onClick is still called when provided
+        - The click handling does not propagate the markAllRead rejection
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 固定の失敗プレフィックスと元の error で console.error が呼ばれる
+        - onClick が指定されている場合でも引き続き呼ばれる
+        - click 処理は markAllRead の reject を外へ伝播しない
+    edge_cases:
+      - description: When markAllRead rejects with a non-Error thrown value
+        expected: The component still passes the original rejected value as the second console.error argument and continues to onClick
+      - description: When markAllRead fails repeatedly across multiple clicks
+        expected: Each failed click logs independently and the component does not implement retry or suppression
+    edge_cases_ja:
+      - description: markAllRead が Error 以外の値で reject する場合
+        expected: コンポーネントはその拒否値を console.error の第2引数へそのまま渡し、処理を継続して onClick へ進む
+      - description: 複数回のクリックで markAllRead が繰り返し失敗する場合
+        expected: 各失敗クリックは独立してログ出力され、コンポーネントは retry や抑制を実装しない
+    test_cases:
+      - handleClick_GivenMarkAllReadFailure_ShouldLogErrorAndStillCallOnClick
+      - handleClick_GivenMarkAllReadFailureWithoutOnClick_ShouldSwallowErrorAfterLogging
+    test_cases_ja:
+      - handleClick_markAllRead失敗時_エラーログを出してonClickを呼ぶ
+      - handleClick_markAllRead失敗かつonClick未指定時_ログ後にrejectを伝播しない

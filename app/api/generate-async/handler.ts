@@ -54,9 +54,8 @@ export async function postGenerateAsyncRoute(
   request: NextRequest,
   dependencies: GenerateAsyncRouteDependencies = {}
 ) {
-  const copy = getGenerationRouteCopy(getRouteLocale(request));
-
   try {
+    const copy = getGenerationRouteCopy(getRouteLocale(request));
     const getUserFn = dependencies.getUserFn ?? getUser;
     const invokeImageWorkerFn =
       dependencies.invokeImageWorkerFn ?? defaultInvokeImageWorker;
@@ -262,7 +261,11 @@ export async function postGenerateAsyncRoute(
     });
   } catch (error) {
     console.error("Generate async error:", error);
-    return jsonError(copy.generateAsyncFailed, "GENERATION_ASYNC_FAILED", 500);
+    return jsonError(
+      error instanceof Error ? error.message : "Internal server error",
+      "GENERATION_ASYNC_FAILED",
+      500
+    );
   }
 }
 

@@ -36,13 +36,21 @@ type SupabaseMockOptions = {
 };
 
 function createRequest(body: unknown): NextRequest {
-  return new Request("http://localhost/api/generate-async", {
+  const request = new Request("http://localhost/api/generate-async", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "accept-language": "ja",
     },
     body: JSON.stringify(body),
-  }) as unknown as NextRequest;
+  });
+
+  return Object.assign(request, {
+    nextUrl: new URL(request.url),
+    cookies: {
+      get: () => undefined,
+    },
+  }) as NextRequest;
 }
 
 async function readJson(response: Response): Promise<JsonRecord> {
@@ -173,6 +181,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       {
         "body": {
           "error": "認証が必要です",
+          "errorCode": "GENERATION_AUTH_REQUIRED",
         },
         "status": 401,
       }
@@ -191,6 +200,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       {
         "body": {
           "error": "着せ替え内容を入力してください",
+          "errorCode": "GENERATION_INVALID_REQUEST",
         },
         "status": 400,
       }
@@ -220,6 +230,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       {
         "body": {
           "error": "ペルコイン残高が不足しています。生成には20ペルコイン必要ですが、現在の残高は5ペルコインです。",
+          "errorCode": "GENERATION_INSUFFICIENT_BALANCE",
         },
         "status": 400,
       }

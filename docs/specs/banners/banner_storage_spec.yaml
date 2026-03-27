@@ -1,0 +1,304 @@
+metadata:
+  class: BannerStorage
+  source: features/banners/lib/banner-storage.ts
+  version: "1.1"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - createAdminClient
+    - convertToWebP
+  external:
+    - Supabase Storage banners bucket via admin client
+
+state_properties: []
+
+specifications:
+  - id: BSTORE-001
+    method: uploadBannerImage
+    type: event-driven
+    ears: |
+      When uploadBannerImage is invoked with a banner image file and banner id,
+      the system shall ensure the banners bucket is available,
+      convert the file to WebP with maxWidth 1280 and quality 85,
+      upload it as {bannerId}.webp with upsert enabled,
+      and return the public URL and stored path.
+    ears_ja: |
+      uploadBannerImage がバナー画像ファイルと banner id で呼び出された場合、
+      システムは banners バケットを利用可能にし、
+      ファイルを maxWidth 1280・quality 85 の WebP に変換し、
+      upsert 有効な {bannerId}.webp としてアップロードし、
+      公開 URL と保存パスを返す。
+    preconditions:
+      - The input file can be read through arrayBuffer
+      - A banner id is provided
+      - Caller-side validation for file type and size has already passed
+      - Bucket creation succeeds or reports an already-exists conflict
+    preconditions_ja:
+      - 入力ファイルを arrayBuffer 経由で読み取れる
+      - banner id が指定されている
+      - ファイル形式とサイズの検証は呼び出し元で通過済みである
+      - バケット作成が成功するか、already exists の競合として返る
+    postconditions:
+      success:
+        - Calls convertToWebP with maxWidth 1280 and quality 85
+        - Uploads to the banners bucket with contentType image/webp and upsert true
+        - Returns imageUrl from getPublicUrl and storagePath from the uploaded object path
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - convertToWebP を maxWidth 1280、quality 85 で呼ぶ
+        - banners バケットへ contentType image/webp、upsert true でアップロードする
+        - getPublicUrl の imageUrl とアップロード結果の path を storagePath として返す
+      error:
+        - なし
+    edge_cases:
+      - description: When the same bannerId is uploaded again
+        expected: The helper overwrites the existing object because upload uses upsert true and still returns the latest public URL and storage path
+      - description: When the input file is already a WebP image
+        expected: The helper still converts through convertToWebP and stores the result as {bannerId}.webp
+    edge_cases_ja:
+      - description: 同じ bannerId で再度アップロードする場合
+        expected: upload が upsert true のため既存オブジェクトを上書きし、最新の公開URLと保存パスを返す
+      - description: 入力ファイルが既に WebP 画像である場合
+        expected: helper は convertToWebP を通して処理し、{bannerId}.webp として保存する
+    test_cases:
+      - uploadBannerImage_GivenReadableImageFile_ShouldConvertUploadAndReturnPublicUrl
+      - uploadBannerImage_GivenExistingBannerId_ShouldOverwriteStoredObject
+    test_cases_ja:
+      - uploadBannerImage_読める画像ファイルの場合_WebP変換して公開URLを返す
+      - uploadBannerImage_既存bannerIdの場合_保存済みオブジェクトを上書きする
+
+  - id: BSTORE-002
+    method: uploadBannerImage
+    type: state-driven
+    ears: |
+      While the banners bucket already exists,
+      the system shall ignore the bucket creation conflict
+      and shall continue the upload flow without throwing a bucket creation error.
+    ears_ja: |
+      banners バケットが既に存在している間、
+      システムはバケット作成競合を無視し、
+      バケット作成エラーを投げずにアップロード処理を継続する。
+    preconditions:
+      - createBucket returns an error with statusCode 409 or a message containing already exists
+      - The file remains readable and convertible after the bucket check
+    preconditions_ja:
+      - createBucket が statusCode 409 または already exists を含む message の error を返す
+      - バケット確認後もファイルが読み取り・変換可能である
+    postconditions:
+      success:
+        - Does not throw a bucket creation error
+        - Continues to WebP conversion and storage upload
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - バケット作成エラーを投げない
+        - WebP変換とStorageアップロードを継続する
+      error:
+        - なし
+    edge_cases:
+      - description: When createBucket omits statusCode but the message contains Already Exists in mixed case
+        expected: The helper treats the conflict as already exists and continues
+      - description: When createBucket returns statusCode 409 with an empty message
+        expected: The helper still treats the conflict as already exists and continues
+    edge_cases_ja:
+      - description: createBucket に statusCode がなく、message に大文字小文字混在の Already Exists が含まれる場合
+        expected: helper は already exists 競合として扱い、処理を継続する
+      - description: createBucket が空 message 付きの statusCode 409 を返す場合
+        expected: helper はそれでも already exists 競合として扱い、処理を継続する
+    test_cases:
+      - uploadBannerImage_WhileBucketAlreadyExists_ShouldContinueUploadFlow
+      - uploadBannerImage_GivenAlreadyExistsMessageWithoutStatusCode_ShouldContinueUploadFlow
+    test_cases_ja:
+      - uploadBannerImage_バケットが既に存在する場合_アップロード処理を継続する
+      - uploadBannerImage_statusCodeなしでalreadyexists文言がある場合_アップロード処理を継続する
+
+  - id: BSTORE-003
+    method: uploadBannerImage
+    type: unwanted
+    ears: |
+      If bucket creation returns an error other than an already-exists conflict,
+      then the system shall log the bucket creation failure
+      and shall throw a localized bucket creation error before image conversion begins.
+    ears_ja: |
+      バケット作成が already exists 競合以外の error を返した場合、
+      システムはバケット作成失敗をログ出力し、
+      画像変換を始める前にローカライズ済みのバケット作成エラーを投げる。
+    preconditions:
+      - createBucket returns an error that is not a 409 conflict and does not mention already exists
+    preconditions_ja:
+      - createBucket が 409 競合ではなく、already exists も含まない error を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - Logs Banner bucket creation error with the original error
+        - Throws an Error whose message starts with バケットの作成に失敗しました:
+        - Does not call convertToWebP or storage upload
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 元の error とともに Banner bucket creation error をログ出力する
+        - メッセージが バケットの作成に失敗しました: で始まる Error を投げる
+        - convertToWebP や Storage アップロードを呼ばない
+    edge_cases:
+      - description: When bucket creation fails with an empty message
+        expected: The helper still throws a localized bucket creation error with an empty suffix
+      - description: When bucket creation fails before file reading begins
+        expected: file.arrayBuffer is never invoked
+    edge_cases_ja:
+      - description: バケット作成が空 message で失敗する場合
+        expected: helper はそれでも末尾が空のローカライズ済みバケット作成エラーを投げる
+      - description: バケット作成がファイル読み取り前に失敗する場合
+        expected: file.arrayBuffer は呼ばれない
+    test_cases:
+      - uploadBannerImage_GivenBucketCreationFailure_ShouldThrowLocalizedBucketError
+      - uploadBannerImage_GivenBucketCreationFailureBeforeFileRead_ShouldNotReadFile
+    test_cases_ja:
+      - uploadBannerImage_バケット作成失敗の場合_ローカライズ済みエラーを投げる
+      - uploadBannerImage_ファイル読み取り前のバケット作成失敗の場合_ファイルを読まない
+
+  - id: BSTORE-004
+    method: uploadBannerImage
+    type: unwanted
+    ears: |
+      If the banners storage upload fails,
+      then the system shall log the upload failure
+      and shall throw a localized upload error.
+    ears_ja: |
+      banners Storage へのアップロードが失敗した場合、
+      システムはアップロード失敗をログ出力し、
+      ローカライズ済みのアップロードエラーを投げる。
+    preconditions:
+      - Bucket availability has been accepted
+      - convertToWebP returns a WebP buffer
+      - storage.from("banners").upload returns an error
+    preconditions_ja:
+      - バケット利用可否チェックが通過している
+      - convertToWebP が WebP buffer を返す
+      - storage.from("banners").upload が error を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - Logs Banner storage upload error with the original error
+        - Throws an Error whose message starts with バナー画像のアップロードに失敗しました:
+        - Does not call getPublicUrl
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 元の error とともに Banner storage upload error をログ出力する
+        - メッセージが バナー画像のアップロードに失敗しました: で始まる Error を投げる
+        - getPublicUrl を呼ばない
+    edge_cases:
+      - description: When upload fails after successful WebP conversion
+        expected: The helper surfaces only the localized upload error and does not return partial URL data
+      - description: When upload error message is empty
+        expected: The helper still throws a localized upload error with an empty suffix
+    edge_cases_ja:
+      - description: WebP 変換成功後に upload が失敗する場合
+        expected: helper はローカライズ済みアップロードエラーのみを返し、途中のURLデータは返さない
+      - description: upload error message が空の場合
+        expected: helper はそれでも末尾が空のローカライズ済みアップロードエラーを投げる
+    test_cases:
+      - uploadBannerImage_GivenStorageUploadFailure_ShouldThrowLocalizedUploadError
+      - uploadBannerImage_GivenUploadFailureAfterConversion_ShouldNotReturnPublicUrl
+    test_cases_ja:
+      - uploadBannerImage_Storageアップロード失敗の場合_ローカライズ済みエラーを投げる
+      - uploadBannerImage_変換後にアップロード失敗した場合_公開URLを返さない
+
+  - id: BSTORE-005
+    method: deleteBannerImage
+    type: event-driven
+    ears: |
+      When deleteBannerImage is invoked with a storage path,
+      the system shall remove that path from the banners bucket.
+    ears_ja: |
+      deleteBannerImage が storage path 付きで呼び出された場合、
+      システムはその path を banners バケットから削除する。
+    preconditions:
+      - A non-empty storage path is provided by the caller
+      - storage.from("banners").remove succeeds
+    preconditions_ja:
+      - 呼び出し元から空でない storage path が指定されている
+      - storage.from("banners").remove が成功する
+    postconditions:
+      success:
+        - Calls remove with an array containing only the provided storage path
+        - Resolves without returning a value
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 指定された storage path だけを含む配列で remove を呼ぶ
+        - 値を返さずに完了する
+      error:
+        - なし
+    edge_cases:
+      - description: When the storage path includes nested segments
+        expected: The helper forwards the exact path string to remove without normalization
+      - description: When the same storage path is deleted repeatedly
+        expected: Each invocation delegates a single-path remove request independently
+    edge_cases_ja:
+      - description: storage path にネストしたセグメントが含まれる場合
+        expected: helper は正規化せず、そのままの path 文字列を remove に渡す
+      - description: 同じ storage path を繰り返し削除する場合
+        expected: 各呼び出しは独立して単一 path の remove 要求を委譲する
+    test_cases:
+      - deleteBannerImage_GivenStoragePath_ShouldRemoveBannerImage
+      - deleteBannerImage_GivenNestedStoragePath_ShouldForwardExactPath
+    test_cases_ja:
+      - deleteBannerImage_storagePath指定時_バナー画像を削除する
+      - deleteBannerImage_ネストしたstoragePathの場合_そのままのpathを渡す
+
+  - id: BSTORE-006
+    method: deleteBannerImage
+    type: unwanted
+    ears: |
+      If removing the banner image from storage fails,
+      then the system shall log the deletion failure
+      and shall throw a localized delete error.
+    ears_ja: |
+      バナー画像の Storage 削除が失敗した場合、
+      システムは削除失敗をログ出力し、
+      ローカライズ済みの削除エラーを投げる。
+    preconditions:
+      - A storage path is provided
+      - storage.from("banners").remove returns an error
+    preconditions_ja:
+      - storage path が指定されている
+      - storage.from("banners").remove が error を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - Logs Banner storage delete error with the original error
+        - Throws an Error whose message starts with バナー画像の削除に失敗しました:
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 元の error とともに Banner storage delete error をログ出力する
+        - メッセージが バナー画像の削除に失敗しました: で始まる Error を投げる
+    edge_cases:
+      - description: When remove fails with an empty message
+        expected: The helper still throws a localized delete error with an empty suffix
+      - description: When storage reports a transient failure
+        expected: The helper does not retry and immediately throws the localized delete error
+    edge_cases_ja:
+      - description: remove が空 message で失敗する場合
+        expected: helper はそれでも末尾が空のローカライズ済み削除エラーを投げる
+      - description: Storage が一時的失敗を返す場合
+        expected: helper はリトライせず、ただちにローカライズ済み削除エラーを投げる
+    test_cases:
+      - deleteBannerImage_GivenStorageRemovalFailure_ShouldThrowLocalizedDeleteError
+      - deleteBannerImage_GivenTransientRemovalFailure_ShouldNotRetry
+    test_cases_ja:
+      - deleteBannerImage_Storage削除失敗の場合_ローカライズ済みエラーを投げる
+      - deleteBannerImage_一時的な削除失敗の場合_リトライせずエラーを投げる
