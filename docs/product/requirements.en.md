@@ -2,7 +2,7 @@
 
 Japanese version: [`requirements.md`](./requirements.md)
 
-- Last updated: `2026-03-14`
+- Last updated: `2026-03-27`
 - Audience: Developers, product owners, and designers working in this repository
 - Role: Canonical English reference for product requirements
 
@@ -60,14 +60,16 @@ When the "Change background too" option is selected, the app can also change the
 
 #### 1.2 Percoin consumption
 - **When consumption happens**
-  - **Consume Percoins each time an image finishes generating successfully**: 20, 50, 80, or 100 Percoins depending on the model, with 20 as the standard model cost
+  - **Consume Percoins each time an image finishes generating successfully**
+    - On the current coordinate screen, `Nano Banana 2 | 0.5K` costs 10 Percoins, `Nano Banana 2 | 1K` costs 20 Percoins, and `Nano Banana Pro | 1K/2K/4K` costs 50/80/100 Percoins
   - Do not consume Percoins when generation starts
   - Only charge for successfully generated images
   - Calculation: number of successful images x model-specific Percoin cost. See `features/generation/lib/model-config.ts`
-  - Example: if 4-image generation starts and the third image fails, only 40 Percoins are consumed on the standard model
+  - Example: if 4-image generation starts and the third image fails, only 40 Percoins are consumed on `Nano Banana 2 | 1K`
 
 - **When Percoins are insufficient**
-  - Before starting generation, confirm the user has enough balance for the requested count. On the standard model, up to 80 Percoins are needed for 4 images
+  - Before starting generation, confirm the user has enough balance for the selected model and requested count
+    - Example: for 4 images, the light model needs 40 Percoins, the standard model needs 80, and the high-definition models need 200/320/400
   - Disable the start button if the required balance is missing
   - During generation, check the balance after each completed image and stop further generation if the remaining balance is insufficient
   - Show a warning message and a link to the purchase page when balance is insufficient
@@ -363,14 +365,15 @@ For detailed data design and Supabase structure, see `docs/architecture/data.en.
   - Show detailed transaction history
 
 - **On the generation screen**
-  - Show the required Percoin amount for the selected image count and model. Costs are 20, 50, 80, or 100 Percoins per image depending on the model
+  - Show the required Percoin amount for the selected image count and model
+    - On the current coordinate screen, `Nano Banana 2 | 0.5K` costs 10 Percoins per image, `Nano Banana 2 | 1K` costs 20, and `Nano Banana Pro | 1K/2K/4K` costs 50/80/100
   - Compare required amount and current balance
   - Show a link to the purchase page when the balance is insufficient
 
 #### 7.4 Percoin consumption management
 - **Consumption records**
   - **Consume Percoins each time an image successfully completes generation**
-  - Save a separate consumption record to `credit_transactions` for each completed image using the model-specific cost
+  - Save a separate consumption record to `credit_transactions` for each completed image using the model-specific cost: 10 for the light model, 20 for the standard model, and 50/80/100 for the high-definition models
   - Update the `user_credits` balance after each completed image
   - Guarantee consistency with transaction handling
   - Do not consume Percoins for failed images
