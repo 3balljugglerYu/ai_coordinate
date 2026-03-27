@@ -747,7 +747,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
   });
 
   describe("GASYNC-013 postGenerateAsyncRoute", () => {
-    test("postGenerateAsyncRoute_実行時例外の場合_500で汎用エラーを返す", async () => {
+    test("postGenerateAsyncRoute_実行時例外の場合_500と例外メッセージを返す", async () => {
       // ============================================================
       // Arrange
       // ============================================================
@@ -767,10 +767,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(response.status).toBe(500);
-      expect(body.error).toBe("画像生成ジョブの作成に失敗しました");
+      expect(body.error).toBe("auth backend down");
     });
 
-    test("postGenerateAsyncRoute_Error以外がthrowされた場合_500で汎用エラーを返す", async () => {
+    test("postGenerateAsyncRoute_Error以外がthrowされた場合_500とInternalServerErrorを返す", async () => {
       // ============================================================
       // Arrange
       // ============================================================
@@ -790,7 +790,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(response.status).toBe(500);
-      expect(body.error).toBe("画像生成ジョブの作成に失敗しました");
+      expect(body.error).toBe("Internal server error");
     });
   });
 
