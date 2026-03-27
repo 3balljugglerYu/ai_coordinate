@@ -14,8 +14,6 @@ jobs:
     name: Jest Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
       - name: Checkout
@@ -75,20 +73,11 @@ jobs:
           if-no-files-found: error
 
       - name: Upload coverage to Codecov
-        if: always() && hashFiles('coverage/lcov.info') != '' && env.CODECOV_TOKEN != ''
+        if: always() && hashFiles('coverage/lcov.info') != ''
         uses: codecov/codecov-action@v5
         with:
-          token: ${{ env.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
           flags: jest
           name: jest-coverage
           fail_ci_if_error: true
-
-      - name: Explain skipped Codecov upload
-        if: always() && hashFiles('coverage/lcov.info') != '' && env.CODECOV_TOKEN == ''
-        run: |
-          {
-            echo ""
-            echo "Codecov upload was skipped because \`CODECOV_TOKEN\` is not configured."
-            echo "Add \`CODECOV_TOKEN\` to the repository secrets to enable PR comments and diff coverage."
-          } >> "$GITHUB_STEP_SUMMARY"
