@@ -508,19 +508,19 @@ export const enMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoins",
     package110Description:
-      "Trial pack\nFor trying a few generations first\n\nEstimated generations\nStandard model: about 5\n1K model: about 2",
+      "Trial pack\nFor trying a few generations first\n\nEstimated generations\nNano Banana 2 0.5K: about 11\nNano Banana 2 1K: about 5\nPro 1K: about 2",
     package240Name: "240 Percoins",
     package240Description:
-      "Light pack\nFor casual use\n\nEstimated generations\nStandard model: about 12\n1K model: about 4",
+      "Light pack\nFor casual use\n\nEstimated generations\nNano Banana 2 0.5K: about 24\nNano Banana 2 1K: about 12\nPro 1K: about 4",
     package960Name: "960 Percoins",
     package960Description:
-      "Basic pack\nFor deeper testing\n\nEstimated generations\nStandard model: about 48\n1K model: about 19",
+      "Basic pack\nFor deeper testing\n\nEstimated generations\nNano Banana 2 0.5K: about 96\nNano Banana 2 1K: about 48\nPro 1K: about 19",
     package1900Name: "1,900 Percoins",
     package1900Description:
-      "Value pack\nGreat balance of price and volume\n\nEstimated generations\nStandard model: about 95\n1K model: about 38",
+      "Value pack\nGreat balance of price and volume\n\nEstimated generations\nNano Banana 2 0.5K: about 190\nNano Banana 2 1K: about 95\nPro 1K: about 38",
     package4800Name: "4,800 Percoins",
     package4800Description:
-      "Best value pack\nLowest cost per coin\n\nEstimated generations\nStandard model: about 240\n1K model: about 96",
+      "Best value pack\nLowest cost per coin\n\nEstimated generations\nNano Banana 2 0.5K: about 480\nNano Banana 2 1K: about 240\nPro 1K: about 96",
     packageBadgeTrial: "Good for trying",
     packageBadgePopular: "Most popular",
     packageBadgeBestValue: "Best value",
@@ -552,10 +552,14 @@ export const enMessages = {
     backgroundKeepLabel: "Keep current background",
     backgroundKeepDescription: "Keep the current background unchanged.",
     modelLabel: "Select a generation model",
-    modelStandard: "Standard model (20 Percoins / image)",
-    model1k: "High-fidelity model_1K (50 Percoins / image)",
-    model2k: "High-fidelity model_2K (80 Percoins / image)",
-    model4k: "High-fidelity model_4K (100 Percoins / image)",
+    modelLight05k: "Light model: Nano Banana 2 | 0.5K (10 Percoins / image)",
+    modelStandard1k: "Standard model: Nano Banana 2 | 1K (20 Percoins / image)",
+    modelPro1k:
+      "High-fidelity model: Nano Banana Pro | 1K (50 Percoins / image)",
+    modelPro2k:
+      "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
+    modelPro4k:
+      "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
     countLabel: "Choose how many images to generate",
     countSingle: "1 image",
     countMultiple: "{count} images",

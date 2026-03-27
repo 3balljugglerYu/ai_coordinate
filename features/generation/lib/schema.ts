@@ -74,6 +74,9 @@ export const generationRequestSchema = z.object({
     .default('coordinate'),
   model: z
     .enum([
+      'gemini-3.1-flash-image-preview-512',
+      'gemini-3.1-flash-image-preview-1024',
+      'gemini-3.1-flash-image-preview',
       'gemini-2.5-flash-image',
       'gemini-3-pro-image-1k',
       'gemini-3-pro-image-2k',
@@ -84,7 +87,7 @@ export const generationRequestSchema = z.object({
       'gemini-3-pro-image',
     ])
     .optional()
-    .default('gemini-2.5-flash-image')
+    .default('gemini-3.1-flash-image-preview-512')
     .transform(normalizeModelName), // データベース保存用に正規化
 }).superRefine((data, ctx) => {
   const hasSourceImageStockId =

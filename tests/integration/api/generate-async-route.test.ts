@@ -154,7 +154,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         source_image_stock_id: VALID_SOURCE_IMAGE_STOCK_ID,
         source_image_type: "illustration",
         generation_type: "coordinate",
-        model: "gemini-2.5-flash-image",
+        model: "gemini-3.1-flash-image-preview-512",
         background_mode: "keep",
         background_change: false,
         status: "queued",
@@ -170,6 +170,33 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
   });
 
   describe("GASYNC-002 postGenerateAsyncRoute", () => {
+    test("postGenerateAsyncRoute_旧2_5モデル指定の場合_新しい0_5Kモデルへ正規化する", async () => {
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+        model: "gemini-2.5-flash-image",
+      });
+
+      const response = await postGenerateAsyncRoute(request, {
+        getUserFn,
+        jobRepository,
+        invokeImageWorkerFn,
+        supabaseUrl: "https://example.supabase.co",
+      });
+      const body = await readJson(response);
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({
+        jobId: "job-001",
+        status: "queued",
+      });
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "gemini-3.1-flash-image-preview-512",
+        })
+      );
+    });
+
     test("postGenerateAsyncRoute_未認証ユーザーの場合_401を返す", async () => {
       // ============================================================
       // Arrange
@@ -568,7 +595,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // ============================================================
       expect(response.status).toBe(400);
       expect(body.error).toBe(
-        "ペルコイン残高が不足しています。生成には20ペルコイン必要ですが、現在の残高は5ペルコインです。"
+        "ペルコイン残高が不足しています。生成には10ペルコイン必要ですが、現在の残高は5ペルコインです。"
       );
       expect(jobRepository.createImageJob).not.toHaveBeenCalled();
     });
@@ -720,7 +747,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
   });
 
   describe("GASYNC-013 postGenerateAsyncRoute", () => {
-    test("postGenerateAsyncRoute_実行時例外の場合_500と例外メッセージを返す", async () => {
+    test("postGenerateAsyncRoute_実行時例外の場合_500で汎用エラーを返す", async () => {
       // ============================================================
       // Arrange
       // ============================================================
@@ -740,10 +767,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(response.status).toBe(500);
-      expect(body.error).toBe("auth backend down");
+      expect(body.error).toBe("画像生成ジョブの作成に失敗しました");
     });
 
-    test("postGenerateAsyncRoute_Error以外がthrowされた場合_500とInternalServerErrorを返す", async () => {
+    test("postGenerateAsyncRoute_Error以外がthrowされた場合_500で汎用エラーを返す", async () => {
       // ============================================================
       // Arrange
       // ============================================================
@@ -763,7 +790,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(response.status).toBe(500);
-      expect(body.error).toBe("Internal server error");
+      expect(body.error).toBe("画像生成ジョブの作成に失敗しました");
     });
   });
 

@@ -2213,6 +2213,9 @@ components:
         model:
           type: string
           enum:
+            - gemini-3.1-flash-image-preview-512
+            - gemini-3.1-flash-image-preview-1024
+            - gemini-3.1-flash-image-preview
             - gemini-2.5-flash-image
             - gemini-3-pro-image-1k
             - gemini-3-pro-image-2k
@@ -2220,7 +2223,7 @@ components:
             - gemini-2.5-flash-image-preview
             - gemini-3-pro-image-preview
             - gemini-3-pro-image
-          default: gemini-2.5-flash-image
+          default: gemini-3.1-flash-image-preview-512
       additionalProperties: false
     GenerateAsyncQueuedResponse:
       type: object

@@ -93,9 +93,9 @@ function toPositiveInt(value: unknown): number {
 function getUsageBreakdownText(
   transaction: PercoinTransaction,
   labels: {
-    periodLimited: string;
-    unlimitedBonus: string;
-    paid: string;
+    periodLimited: (amount: number) => string;
+    unlimitedBonus: (amount: number) => string;
+    paid: (amount: number) => string;
     prefix: (details: string) => string;
   }
 ): string | null {
@@ -141,13 +141,13 @@ function getUsageBreakdownText(
 
   const parts: string[] = [];
   if (periodLimited > 0) {
-    parts.push(labels.periodLimited.replace("{amount}", String(periodLimited)));
+    parts.push(labels.periodLimited(periodLimited));
   }
   if (unlimitedBonus > 0) {
-    parts.push(labels.unlimitedBonus.replace("{amount}", String(unlimitedBonus)));
+    parts.push(labels.unlimitedBonus(unlimitedBonus));
   }
   if (paid > 0) {
-    parts.push(labels.paid.replace("{amount}", String(paid)));
+    parts.push(labels.paid(paid));
   }
 
   return parts.length > 0 ? labels.prefix(parts.join(" / ")) : null;
@@ -229,9 +229,10 @@ export function PercoinTransactions({
     forfeiture: t("transactionTypeForfeiture"),
   };
   const usageBreakdownLabels = {
-    periodLimited: t("breakdownPeriodLimited"),
-    unlimitedBonus: t("breakdownUnlimitedBonus"),
-    paid: t("breakdownPaid"),
+    periodLimited: (amount: number) => t("breakdownPeriodLimited", { amount }),
+    unlimitedBonus: (amount: number) =>
+      t("breakdownUnlimitedBonus", { amount }),
+    paid: (amount: number) => t("breakdownPaid", { amount }),
     prefix: (details: string) => t("breakdownPrefix", { details }),
   };
   const currentPage = Math.floor(offset / PERCOIN_TRANSACTIONS_PER_PAGE) + 1;
