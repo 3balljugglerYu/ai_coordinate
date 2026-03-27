@@ -1,0 +1,95 @@
+name: Coverage
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  jest-coverage:
+    name: Jest Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest coverage
+        run: npm run test:coverage -- --coverageReporters=text-summary --coverageReporters=json-summary --coverageReporters=lcov
+
+      - name: Add coverage summary to GitHub UI
+        if: always()
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const summaryPath = 'coverage/coverage-summary.json';
+          const commentPath = 'coverage-comment.md';
+          const marker = '<!-- jest-coverage-comment -->';
+
+          if (!fs.existsSync(summaryPath)) {
+            fs.writeFileSync(
+              commentPath,
+              `${marker}\n## Jest Coverage\n\nCoverage summary was not generated.\n`
+            );
+            fs.appendFileSync(
+              process.env.GITHUB_STEP_SUMMARY,
+              '## Jest Coverage\n\nCoverage summary was not generated.\n'
+            );
+            process.exit(0);
+          }
+
+          const total = JSON.parse(fs.readFileSync(summaryPath, 'utf8')).total;
+          const rows = [
+            ['Lines', total.lines],
+            ['Statements', total.statements],
+            ['Functions', total.functions],
+            ['Branches', total.branches],
+          ];
+
+          const format = (metric) => `${metric.pct.toFixed(2)}% (${metric.covered}/${metric.total})`;
+
+          let markdown = '## Jest Coverage\n\n| Metric | Coverage |\n| --- | --- |\n';
+          for (const [name, metric] of rows) {
+            markdown += `| ${name} | ${format(metric)} |\n`;
+          }
+
+          fs.writeFileSync(
+            commentPath,
+            `${marker}\n${markdown}\n`
+          );
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
+          EOF
+
+      - name: Upload coverage artifact
+        if: always() && (hashFiles('coverage/lcov.info') != '' || hashFiles('coverage-comment.md') != '')
+        uses: actions/upload-artifact@v4
+        with:
+          name: jest-coverage
+          path: |
+            coverage
+            coverage-comment.md
+          if-no-files-found: error
+
+      - name: Upload coverage to Codecov
+        if: always() && hashFiles('coverage/lcov.info') != ''
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/lcov.info
+          flags: jest
+          name: jest-coverage
+          fail_ci_if_error: true

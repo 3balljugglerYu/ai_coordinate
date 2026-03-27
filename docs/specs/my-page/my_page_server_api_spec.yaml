@@ -1,0 +1,778 @@
+metadata:
+  class: MyPageServerApi
+  source: features/my-page/lib/server-api.ts
+  version: "1.1"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - react cache
+    - createClient
+    - SupabaseClient override injection
+  external:
+    - Supabase auth.getUser
+    - Supabase tables profiles, generated_images, likes, user_credits
+    - Supabase RPC get_follow_counts
+    - Supabase RPC get_percoin_transactions_with_expiry
+    - Supabase RPC get_percoin_balance_breakdown
+    - Supabase RPC get_free_percoin_batches_expiring
+    - console.error
+
+state_properties: []
+
+specifications:
+  - id: MPSAPI-001
+    method: getUserProfileServer
+    type: event-driven
+    ears: |
+      When getUserProfileServer is invoked without a supabaseOverride
+      and the profiles query succeeds with a profile row,
+      the system shall return the profile fields
+      and shall include email only when auth.getUser reports the same userId.
+    ears_ja: |
+      getUserProfileServer が supabaseOverride なしで呼び出され、
+      profiles クエリがプロフィール行を返した場合、
+      システムはプロフィール項目を返し、
+      auth.getUser が同じ userId を返す場合にのみ email を含めなければならない。
+    preconditions:
+      - supabaseOverride is not provided
+      - The profiles query returns a row for the requested userId
+    preconditions_ja:
+      - supabaseOverride が指定されていない
+      - profiles クエリが要求された userId の行を返す
+    postconditions:
+      success:
+        - createClient is used to obtain the Supabase client
+        - The returned object includes id, nickname, bio, and avatar_url from the profile row
+        - email equals auth user email only when auth user id matches userId
+        - email is undefined for a different authenticated user
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - Supabase client の取得に createClient が使われる
+        - 返却オブジェクトに profile 行の id、nickname、bio、avatar_url が含まれる
+        - email は auth user id が userId と一致する場合のみ auth user email になる
+        - 認証ユーザーが別人の場合、email は undefined になる
+      error:
+        - なし
+    edge_cases:
+      - description: When auth.getUser resolves with no authenticated user
+        expected: The profile row is still returned and email remains undefined
+      - description: When nickname, bio, or avatar_url are null in the profile row
+        expected: Those null values are forwarded unchanged instead of being normalized
+    edge_cases_ja:
+      - description: auth.getUser が認証ユーザーなしで解決する場合
+        expected: profile 行はそのまま返され、email は undefined のままになる
+      - description: profile 行の nickname、bio、avatar_url が null の場合
+        expected: それらの null 値は正規化されず、そのまま返される
+    test_cases:
+      - getUserProfileServer_GivenOwnProfileWithoutOverride_ShouldReturnProfileWithEmail
+      - getUserProfileServer_GivenDifferentAuthUserWithoutOverride_ShouldOmitEmail
+    test_cases_ja:
+      - getUserProfileServer_overrideなしで自分のプロフィールの場合_email付きで返す
+      - getUserProfileServer_overrideなしで他人のプロフィールの場合_emailを含めない
+
+  - id: MPSAPI-002
+    method: getUserProfileServer
+    type: state-driven
+    ears: |
+      While a supabaseOverride is provided to getUserProfileServer,
+      the system shall use that client directly
+      and shall return the profile row without attaching email.
+    ears_ja: |
+      getUserProfileServer に supabaseOverride が指定されている間、
+      システムはその client を直接使い、
+      email を付与せずにプロフィール行を返さなければならない。
+    preconditions:
+      - supabaseOverride is provided
+      - The profiles query returns a row
+    preconditions_ja:
+      - supabaseOverride が指定されている
+      - profiles クエリが行を返す
+    postconditions:
+      success:
+        - createClient is not required for this call
+        - The returned object includes id, nickname, bio, and avatar_url from the profile row
+        - email is omitted even if the caller later represents the same user
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - この呼び出しでは createClient は不要である
+        - 返却オブジェクトに profile 行の id、nickname、bio、avatar_url が含まれる
+        - 呼び出し対象が同一ユーザー相当でも email は付与されない
+      error:
+        - なし
+    edge_cases:
+      - description: When the override client could also authenticate the same user
+        expected: The helper still omits email because override mode never performs auth-based enrichment
+      - description: When the override-backed profile row contains null optional fields
+        expected: Null nickname, bio, and avatar_url values are returned as-is
+    edge_cases_ja:
+      - description: override client が同一ユーザーを認証できる状況でもある場合
+        expected: override モードでは auth ベースの拡張を行わないため、helper はそれでも email を付与しない
+      - description: override 経由の profile 行に null の任意項目が含まれる場合
+        expected: nickname、bio、avatar_url の null 値はそのまま返される
+    test_cases:
+      - getUserProfileServer_GivenSupabaseOverride_ShouldUseOverrideAndOmitEmail
+    test_cases_ja:
+      - getUserProfileServer_supabaseOverride指定時_overrideを使いemailを省略する
+
+  - id: MPSAPI-003
+    method: getUserProfileServer
+    type: unwanted
+    ears: |
+      If the profiles query fails or returns no row in getUserProfileServer,
+      then the system shall return a fallback profile
+      whose id is the requested userId and whose nickname, bio, and avatar_url are null.
+    ears_ja: |
+      getUserProfileServer で profiles クエリが失敗するか行を返さない場合、
+      システムは要求された userId を id に持ち、
+      nickname、bio、avatar_url が null のフォールバックプロフィールを返さなければならない。
+    preconditions:
+      - The profiles query returns an error or no profile row
+    preconditions_ja:
+      - profiles クエリが error を返すか、プロフィール行を返さない
+    postconditions:
+      success:
+        - None
+      error:
+        - "The function resolves with { id: userId, nickname: null, bio: null, avatar_url: null }"
+        - No email field is attached
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - "関数は { id: userId, nickname: null, bio: null, avatar_url: null } で解決する"
+        - email は付与されない
+    edge_cases:
+      - description: When the query returns an error object and no row
+        expected: The helper still uses the same null-field fallback object
+      - description: When no profile row exists
+        expected: The fallback is returned before any auth-based email enrichment is attempted
+    edge_cases_ja:
+      - description: クエリが error オブジェクトと行なしを同時に返す場合
+        expected: helper はそれでも同じ null 項目フォールバックを使う
+      - description: profile 行が存在しない場合
+        expected: auth ベースの email 拡張を試みる前にフォールバックが返される
+    test_cases:
+      - getUserProfileServer_GivenProfileQueryError_ShouldReturnNullFieldFallback
+      - getUserProfileServer_GivenMissingProfileRow_ShouldReturnNullFieldFallback
+    test_cases_ja:
+      - getUserProfileServer_プロフィール取得エラーの場合_null項目のフォールバックを返す
+      - getUserProfileServer_プロフィール行なしの場合_null項目のフォールバックを返す
+
+  - id: MPSAPI-004
+    method: getUserStatsServer
+    type: event-driven
+    ears: |
+      When getUserStatsServer is invoked for the caller's own profile,
+      the system shall aggregate postedCount from posted images,
+      generatedCount from all user images,
+      likeCount from likes targeting posted image ids,
+      viewCount from the sum of posted view_count values,
+      and follower/following counts from get_follow_counts,
+      and shall set generatedCountPublic to true.
+    ears_ja: |
+      getUserStatsServer が呼び出し元自身のプロフィール向けに呼ばれた場合、
+      システムは postedCount を投稿済み画像から集計し、
+      generatedCount を全画像から集計し、
+      likeCount を投稿済み画像 id への likes から集計し、
+      viewCount を投稿済み view_count の合計で算出し、
+      follower/following 数を get_follow_counts から取得し、
+      generatedCountPublic を true にしなければならない。
+    preconditions:
+      - The requested profile is considered own profile by auth.getUser or options.isOwnProfile === true with supabaseOverride
+      - Supabase count and RPC queries complete without fatal rejection
+    preconditions_ja:
+      - 要求対象プロフィールが auth.getUser または supabaseOverride 時の options.isOwnProfile === true により自分のプロフィールと判定される
+      - Supabase の集計クエリと RPC が致命的な reject なく完了する
+    postconditions:
+      success:
+        - postedCount uses generated_images filtered by user_id and is_posted true
+        - generatedCount uses generated_images filtered only by user_id
+        - generatedCountPublic is true
+        - likeCount is the likes exact count for posted image ids, or 0 when there are no posted ids
+        - viewCount is the sum of posted image view_count values with nullish values treated as 0
+        - followerCount and followingCount come from the RPC result with nullish values defaulted to 0
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - postedCount は user_id と is_posted true で絞った generated_images から算出される
+        - generatedCount は user_id のみで絞った generated_images から算出される
+        - generatedCountPublic は true になる
+        - likeCount は投稿済み画像 id 群に対する likes の exact count で、投稿済み id がなければ 0 になる
+        - viewCount は投稿済み画像の view_count 合計で、null 相当は 0 として扱う
+        - followerCount と followingCount は RPC 結果を使い、null 相当は 0 に丸める
+      error:
+        - なし
+    edge_cases:
+      - description: When there are no posted images for the user
+        expected: postedImageIds becomes empty, likeCount stays 0, and the likes count query is skipped
+      - description: When posted image rows contain null or missing view_count values
+        expected: Those entries contribute 0 to the reduced viewCount total
+    edge_cases_ja:
+      - description: ユーザーに投稿済み画像がない場合
+        expected: postedImageIds は空になり、likeCount は 0 のままで、likes の件数クエリは実行されない
+      - description: 投稿済み画像行に null または欠落した view_count が含まれる場合
+        expected: それらの要素は viewCount 合計に 0 として寄与する
+    test_cases:
+      - getUserStatsServer_GivenOwnProfileByAuth_ShouldAggregateAllCountersAndExposeGeneratedCount
+      - getUserStatsServer_GivenSupabaseOverrideOwnProfile_ShouldAggregateWithoutAuthLookup
+    test_cases_ja:
+      - getUserStatsServer_authで自分のプロフィールの場合_全カウンタを集計してgeneratedCountを公開する
+      - getUserStatsServer_supabaseOverrideで自分のプロフィールの場合_auth参照なしで集計する
+
+  - id: MPSAPI-005
+    method: getUserStatsServer
+    type: state-driven
+    ears: |
+      While getUserStatsServer is invoked for another user's profile,
+      the system shall hide generatedCount by returning 0,
+      shall set generatedCountPublic to false,
+      and shall still compute postedCount, likeCount, viewCount,
+      and follow counts from visible posted data.
+    ears_ja: |
+      getUserStatsServer が他ユーザーのプロフィール向けに呼び出されている間、
+      システムは generatedCount を 0 として隠し、
+      generatedCountPublic を false にし、
+      postedCount、likeCount、viewCount、follow 数は
+      表示可能な投稿済みデータから引き続き算出しなければならない。
+    preconditions:
+      - The requested profile is not considered own profile
+    preconditions_ja:
+      - 要求対象プロフィールが自分のプロフィールと判定されない
+    postconditions:
+      success:
+        - generatedCount is 0
+        - generatedCountPublic is false
+        - postedCount, likeCount, viewCount, followerCount, and followingCount still reflect the queried posted data and RPC result
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - generatedCount は 0 になる
+        - generatedCountPublic は false になる
+        - postedCount、likeCount、viewCount、followerCount、followingCount は投稿済みデータと RPC 結果を反映する
+      error:
+        - なし
+    edge_cases:
+      - description: When supabaseOverride is provided without options.isOwnProfile
+        expected: The helper treats the profile as non-own and keeps generatedCount hidden
+      - description: When follow count RPC returns nullish counters without an error
+        expected: followerCount and followingCount still default to 0
+    edge_cases_ja:
+      - description: supabaseOverride が指定され、options.isOwnProfile がない場合
+        expected: helper はそのプロフィールを自分以外として扱い、generatedCount を隠したままにする
+      - description: follow count RPC が error なしで null 相当のカウンタを返す場合
+        expected: followerCount と followingCount はそれでも 0 に丸められる
+    test_cases:
+      - getUserStatsServer_GivenOtherProfile_ShouldHideGeneratedCountButReturnPublicAggregates
+      - getUserStatsServer_GivenOtherProfileWithoutPostedImages_ShouldKeepLikeCountZero
+    test_cases_ja:
+      - getUserStatsServer_他人のプロフィールの場合_generatedCountを隠しつつ公開集計を返す
+      - getUserStatsServer_他人のプロフィールで投稿済み画像なしの場合_likeCountを0に保つ
+
+  - id: MPSAPI-006
+    method: getUserStatsServer
+    type: unwanted
+    ears: |
+      If get_follow_counts returns an error during getUserStatsServer,
+      then the system shall log the follow count failure
+      and shall return followerCount and followingCount as 0
+      while preserving the other aggregates.
+    ears_ja: |
+      getUserStatsServer 中に get_follow_counts が error を返した場合、
+      システムは follow 数取得失敗をログ出力し、
+      他の集計値は維持したまま
+      followerCount と followingCount を 0 で返さなければならない。
+    preconditions:
+      - The follow count RPC returns an error
+    preconditions_ja:
+      - follow 数 RPC が error を返す
+    postconditions:
+      success:
+        - Other computed aggregates remain based on their own query results
+      error:
+        - console.error is called with the follow count failure
+        - followerCount is 0
+        - followingCount is 0
+    postconditions_ja:
+      success:
+        - 他の集計値は各クエリ結果に基づいて維持される
+      error:
+        - follow 数取得失敗で console.error が呼ばれる
+        - followerCount は 0 になる
+        - followingCount は 0 になる
+    edge_cases:
+      - description: When the RPC error arrives together with partial follow count data
+        expected: The helper still uses 0 for both follow counters because the error path wins
+      - description: When the follow count RPC fails repeatedly across separate calls
+        expected: Each invocation logs independently and there is no retry behavior inside the helper
+    edge_cases_ja:
+      - description: RPC error とともに部分的な follow count data も返る場合
+        expected: error 経路が優先されるため、helper は両方の follow count に 0 を使う
+      - description: follow count RPC が別々の呼び出しで繰り返し失敗する場合
+        expected: 各呼び出しは独立してログ出力され、helper 内で retry は行われない
+    test_cases:
+      - getUserStatsServer_GivenFollowCountRpcError_ShouldLogAndFallbackFollowCountsToZero
+    test_cases_ja:
+      - getUserStatsServer_followCountRpcエラーの場合_ログしてfollow数を0にフォールバックする
+
+  - id: MPSAPI-007
+    method: getUserPostsServer
+    type: event-driven
+    ears: |
+      When getUserPostsServer is invoked,
+      the system shall query generated_images for the requested user_id
+      with is_posted true, order by posted_at descending,
+      apply the requested range,
+      and return the resulting rows or an empty array when data is nullish.
+    ears_ja: |
+      getUserPostsServer が呼び出された場合、
+      システムは要求された user_id の generated_images を
+      is_posted true で絞り、posted_at 降順で並べ、
+      要求された range を適用し、
+      結果行を返すか、data が null 相当なら空配列を返さなければならない。
+    preconditions:
+      - userId is provided
+      - limit and offset are provided or use their defaults
+    preconditions_ja:
+      - userId が指定されている
+      - limit と offset が指定されるか既定値を使う
+    postconditions:
+      success:
+        - The query filters by user_id and is_posted true
+        - The query orders by posted_at descending
+        - The query applies range(offset, offset + limit - 1)
+        - The function returns queried rows or []
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - クエリは user_id と is_posted true で絞り込む
+        - クエリは posted_at 降順で並べる
+        - クエリは range(offset, offset + limit - 1) を適用する
+        - 関数は取得行または [] を返す
+      error:
+        - なし
+    edge_cases:
+      - description: When Supabase returns data as null
+        expected: The helper normalizes the result to an empty array
+      - description: When limit and offset are left at defaults
+        expected: The helper still applies range(0, 19) using the default page window
+    edge_cases_ja:
+      - description: Supabase が data を null で返す場合
+        expected: helper は結果を空配列へ正規化する
+      - description: limit と offset が既定値のままの場合
+        expected: helper は既定のページ幅に基づいて range(0, 19) を適用する
+    test_cases:
+      - getUserPostsServer_GivenLimitAndOffset_ShouldReturnPostedRowsInPostedAtDescOrder
+      - getUserPostsServer_GivenNullData_ShouldReturnEmptyArray
+    test_cases_ja:
+      - getUserPostsServer_limitとoffset指定時_postedAt降順の投稿済み行を返す
+      - getUserPostsServer_dataがnull相当の場合_空配列を返す
+
+  - id: MPSAPI-008
+    method: getUserPostsServer
+    type: unwanted
+    ears: |
+      If the getUserPostsServer query returns an error,
+      then the system shall log the fetch failure
+      and shall return an empty array.
+    ears_ja: |
+      getUserPostsServer のクエリが error を返した場合、
+      システムは取得失敗をログ出力し、
+      空配列を返さなければならない。
+    preconditions:
+      - The generated_images query returns an error
+    preconditions_ja:
+      - generated_images クエリが error を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - console.error is called with the posts fetch failure
+        - The function returns []
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 投稿取得失敗で console.error が呼ばれる
+        - 関数は [] を返す
+    edge_cases:
+      - description: When the query returns both an error and a stale data payload
+        expected: The helper prefers the error path and still returns an empty array
+      - description: When the posts query fails repeatedly
+        expected: Each invocation logs and returns [] independently without retry
+    edge_cases_ja:
+      - description: クエリが error と古い data payload を同時に返す場合
+        expected: helper は error 経路を優先し、それでも空配列を返す
+      - description: 投稿クエリが繰り返し失敗する場合
+        expected: 各呼び出しは retry なしで独立してログし、[] を返す
+    test_cases:
+      - getUserPostsServer_GivenQueryError_ShouldLogAndReturnEmptyArray
+    test_cases_ja:
+      - getUserPostsServer_クエリエラーの場合_ログして空配列を返す
+
+  - id: MPSAPI-009
+    method: getMyImagesServer
+    type: state-driven
+    ears: |
+      While getMyImagesServer is invoked with filter all, posted, or unposted,
+      the system shall apply the corresponding user_id predicate,
+      choose the matching is_posted constraint and ordering,
+      apply the requested range,
+      and return the resulting rows or an empty array when data is nullish.
+    ears_ja: |
+      getMyImagesServer が filter all、posted、unposted のいずれかで呼び出されている間、
+      システムは対応する user_id 条件を適用し、
+      一致する is_posted 制約と並び順を選択し、
+      要求された range を適用し、
+      結果行または data が null 相当なら空配列を返さなければならない。
+    preconditions:
+      - userId is provided
+      - filter is one of all, posted, or unposted
+    preconditions_ja:
+      - userId が指定されている
+      - filter が all、posted、unposted のいずれかである
+    postconditions:
+      success:
+        - filter all uses order(created_at, descending) without an is_posted predicate
+        - filter posted uses eq(is_posted, true) and order(posted_at, descending)
+        - filter unposted uses eq(is_posted, false) and order(created_at, descending)
+        - All branches apply range(offset, offset + limit - 1)
+        - The function returns queried rows or []
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - filter all は is_posted 条件なしで order(created_at, descending) を使う
+        - filter posted は eq(is_posted, true) と order(posted_at, descending) を使う
+        - filter unposted は eq(is_posted, false) と order(created_at, descending) を使う
+        - すべての分岐で range(offset, offset + limit - 1) を適用する
+        - 関数は取得行または [] を返す
+      error:
+        - なし
+    edge_cases:
+      - description: When limit and offset are omitted
+        expected: The helper uses the default page window of 50 rows starting from offset 0
+      - description: When Supabase returns data as null for any filter branch
+        expected: The helper normalizes the result to an empty array regardless of filter
+    edge_cases_ja:
+      - description: limit と offset が省略される場合
+        expected: helper は offset 0 から 50 行の既定ページ幅を使う
+      - description: Supabase がどの filter 分岐でも data を null で返す場合
+        expected: helper は filter に関係なく結果を空配列へ正規化する
+    test_cases:
+      - getMyImagesServer_GivenAllFilter_ShouldOrderByCreatedAtDescWithoutIsPostedConstraint
+      - getMyImagesServer_GivenPostedFilter_ShouldFilterPostedAndOrderByPostedAtDesc
+      - getMyImagesServer_GivenUnpostedFilter_ShouldFilterUnpostedAndOrderByCreatedAtDesc
+    test_cases_ja:
+      - getMyImagesServer_all指定時_isPosted条件なしでcreatedAt降順にする
+      - getMyImagesServer_posted指定時_投稿済みのみでpostedAt降順にする
+      - getMyImagesServer_unposted指定時_未投稿のみでcreatedAt降順にする
+
+  - id: MPSAPI-010
+    method: getMyImagesServer
+    type: unwanted
+    ears: |
+      If getMyImagesServer encounters a query error or another unexpected failure,
+      then the system shall log the diagnostic details,
+      and shall throw a localized image fetch error,
+      normalizing non-Error thrown values to an Unknown error suffix.
+    ears_ja: |
+      getMyImagesServer がクエリエラーまたはその他の予期しない失敗に遭遇した場合、
+      システムは診断詳細をログ出力し、
+      ローカライズ済みの画像取得エラーを投げ、
+      Error 以外の throw 値は Unknown error 接尾辞へ正規化しなければならない。
+    preconditions:
+      - The generated_images query returns an error, or another value is thrown inside the try block
+    preconditions_ja:
+      - generated_images クエリが error を返すか、try ブロック内で別の値が throw される
+    postconditions:
+      success:
+        - None
+      error:
+        - Query error path logs database diagnostics including userId and filter
+        - The function throws Error whose message starts with 画像の取得に失敗しました:
+        - Non-Error thrown values become 画像の取得に失敗しました: Unknown error
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - クエリエラー経路では userId と filter を含む DB 診断ログが出る
+        - 関数はメッセージが 画像の取得に失敗しました: で始まる Error を投げる
+        - Error 以外の throw 値は 画像の取得に失敗しました: Unknown error に正規化される
+    edge_cases:
+      - description: When the database query path throws a newly constructed localized Error
+        expected: The catch block logs it as an unexpected error and rethrows the same Error instance
+      - description: When an unexpected non-Error value is thrown inside the try block
+        expected: The helper does not return [], and instead throws a new localized Unknown error
+    edge_cases_ja:
+      - description: DB クエリ経路が新しく構築したローカライズ済み Error を throw する場合
+        expected: catch ブロックはそれを unexpected error としてログ出力し、同じ Error インスタンスを再送出する
+      - description: try ブロック内で予期しない Error 以外の値が throw される場合
+        expected: helper は [] を返さず、新しいローカライズ済み Unknown error を投げる
+    test_cases:
+      - getMyImagesServer_GivenQueryError_ShouldLogDiagnosticsAndThrowLocalizedError
+      - getMyImagesServer_GivenNonErrorThrownValue_ShouldNormalizeToUnknownError
+    test_cases_ja:
+      - getMyImagesServer_クエリエラーの場合_診断ログを出してローカライズ済みエラーを投げる
+      - getMyImagesServer_Error以外がthrowされた場合_UnknownErrorに正規化する
+
+  - id: MPSAPI-011
+    method: getImageDetailServer
+    type: event-driven
+    ears: |
+      When getImageDetailServer is invoked for a userId and imageId pair,
+      the system shall query generated_images for that exact id and user_id,
+      return the matched row when found,
+      and return null when the query errors or no row exists.
+    ears_ja: |
+      getImageDetailServer が userId と imageId の組で呼び出された場合、
+      システムは generated_images をその id と user_id で正確に検索し、
+      一致行があれば返し、
+      クエリが失敗するか行が存在しなければ null を返さなければならない。
+    preconditions:
+      - userId and imageId are provided
+    preconditions_ja:
+      - userId と imageId が指定されている
+    postconditions:
+      success:
+        - The query filters by id and user_id and uses single()
+        - The matching GeneratedImageRecord is returned as-is
+      error:
+        - The function returns null on query error
+        - The function returns null when no row is found
+    postconditions_ja:
+      success:
+        - クエリは id と user_id で絞り込み、single() を使う
+        - 一致する GeneratedImageRecord をそのまま返す
+      error:
+        - クエリエラー時は null を返す
+        - 行が見つからない場合も null を返す
+    edge_cases:
+      - description: When the query returns an error together with no data
+        expected: The helper still resolves to null instead of throwing
+      - description: When supabaseOverride is provided
+        expected: The helper uses the provided client but preserves the same null-on-miss contract
+    edge_cases_ja:
+      - description: クエリが error と data なしを同時に返す場合
+        expected: helper は throw せず、それでも null で解決する
+      - description: supabaseOverride が指定されている場合
+        expected: helper は提供された client を使うが、未検出時は null を返す契約を維持する
+    test_cases:
+      - getImageDetailServer_GivenMatchingUserAndImageId_ShouldReturnImageRecord
+      - getImageDetailServer_GivenMissingOrErroredRow_ShouldReturnNull
+    test_cases_ja:
+      - getImageDetailServer_userとimageIdが一致する場合_画像レコードを返す
+      - getImageDetailServer_行なしまたはエラーの場合_nullを返す
+
+  - id: MPSAPI-012
+    method: getPercoinBalanceServer
+    type: event-driven
+    ears: |
+      When getPercoinBalanceServer is invoked,
+      the system shall query user_credits.balance for the requested user_id
+      and return that balance,
+      defaulting to 0 when the balance is nullish
+      or when the query returns an error after logging it.
+    ears_ja: |
+      getPercoinBalanceServer が呼び出された場合、
+      システムは要求された user_id の user_credits.balance を問い合わせてその残高を返し、
+      balance が null 相当の場合は 0 にし、
+      クエリが error を返した場合はログ出力後に 0 を返さなければならない。
+    preconditions:
+      - userId is provided
+    preconditions_ja:
+      - userId が指定されている
+    postconditions:
+      success:
+        - The query filters user_credits by user_id and uses single()
+        - The function returns the numeric balance or 0 when data.balance is nullish
+      error:
+        - console.error is called with the database query error
+        - The function returns 0
+    postconditions_ja:
+      success:
+        - クエリは user_credits を user_id で絞り込み、single() を使う
+        - 関数は数値残高を返し、data.balance が null 相当なら 0 を返す
+      error:
+        - DB クエリエラーで console.error が呼ばれる
+        - 関数は 0 を返す
+    edge_cases:
+      - description: When user_credits.data exists but balance is null or undefined
+        expected: The helper returns 0 without treating it as an error
+      - description: When the balance query fails repeatedly
+        expected: Each invocation logs and falls back to 0 without retry
+    edge_cases_ja:
+      - description: user_credits.data は存在するが balance が null または undefined の場合
+        expected: helper はそれを error 扱いせず、0 を返す
+      - description: 残高クエリが繰り返し失敗する場合
+        expected: 各呼び出しは retry なしでログし、0 にフォールバックする
+    test_cases:
+      - getPercoinBalanceServer_GivenBalanceRow_ShouldReturnBalanceOrZeroWhenNullish
+      - getPercoinBalanceServer_GivenQueryError_ShouldLogAndReturnZero
+    test_cases_ja:
+      - getPercoinBalanceServer_残高行がある場合_残高またはnull相当なら0を返す
+      - getPercoinBalanceServer_クエリエラーの場合_ログして0を返す
+
+  - id: MPSAPI-013
+    method: getPercoinTransactionsServer
+    type: event-driven
+    ears: |
+      When getPercoinTransactionsServer is invoked,
+      the system shall call get_percoin_transactions_with_expiry
+      with p_user_id, p_filter, p_sort "created_at", p_limit, and p_offset,
+      using PERCOIN_TRANSACTIONS_PER_PAGE as the default limit,
+      and shall map each returned row into a normalized PercoinTransaction object;
+      if the RPC errors, it shall log and return an empty array.
+    ears_ja: |
+      getPercoinTransactionsServer が呼び出された場合、
+      システムは get_percoin_transactions_with_expiry を
+      p_user_id、p_filter、p_sort "created_at"、p_limit、p_offset 付きで呼び、
+      既定 limit には PERCOIN_TRANSACTIONS_PER_PAGE を使い、
+      返却行を正規化済みの PercoinTransaction に変換しなければならない。
+      RPC が error を返した場合はログ出力して空配列を返さなければならない。
+    preconditions:
+      - userId is provided
+      - filter is one of all, regular, period_limited, or usage
+    preconditions_ja:
+      - userId が指定されている
+      - filter が all、regular、period_limited、usage のいずれかである
+    postconditions:
+      success:
+        - The RPC receives p_sort as created_at
+        - The default limit is 30 when limit is omitted
+        - Each row is mapped with string coercion for id, transaction_type, created_at, and optional expire_at
+        - amount is coerced to number and metadata defaults to null
+      error:
+        - console.error is called with the transaction fetch failure
+        - The function returns []
+    postconditions_ja:
+      success:
+        - RPC は p_sort に created_at を受け取る
+        - limit 省略時の既定値は 30 である
+        - 各行は id、transaction_type、created_at、任意の expire_at を文字列へ正規化して変換される
+        - amount は数値化され、metadata の既定値は null になる
+      error:
+        - 取引履歴取得失敗で console.error が呼ばれる
+        - 関数は [] を返す
+    edge_cases:
+      - description: When the RPC succeeds with data omitted or null
+        expected: The helper normalizes the result to an empty array
+      - description: When a row has expire_at as null and metadata omitted
+        expected: expire_at becomes null and metadata defaults to null in the mapped transaction
+    edge_cases_ja:
+      - description: RPC が成功しつつ data が省略または null の場合
+        expected: helper は結果を空配列へ正規化する
+      - description: 行の expire_at が null で metadata が欠落している場合
+        expected: 変換後 transaction では expire_at は null、metadata も null になる
+    test_cases:
+      - getPercoinTransactionsServer_GivenExplicitParams_ShouldCallRpcAndMapNormalizedTransactions
+      - getPercoinTransactionsServer_GivenRpcErrorOrOmittedLimit_ShouldReturnEmptyArrayAndUseDefaultLimit
+    test_cases_ja:
+      - getPercoinTransactionsServer_明示パラメータ指定時_RPCを呼び正規化済み取引へ変換する
+      - getPercoinTransactionsServer_RPCエラーまたはlimit省略時_空配列を返し既定limitを使う
+
+  - id: MPSAPI-014
+    method: getPercoinBalanceBreakdownServer
+    type: event-driven
+    ears: |
+      When getPercoinBalanceBreakdownServer is invoked,
+      the system shall call get_percoin_balance_breakdown,
+      coerce total, regular, paid, unlimited_bonus, and period_limited to numbers when data exists,
+      and otherwise log the failure and return a zeroed breakdown object.
+    ears_ja: |
+      getPercoinBalanceBreakdownServer が呼び出された場合、
+      システムは get_percoin_balance_breakdown を呼び、
+      data が存在すれば total、regular、paid、unlimited_bonus、period_limited を数値化し、
+      そうでなければ失敗をログ出力してゼロ初期化された内訳オブジェクトを返さなければならない。
+    preconditions:
+      - userId is provided
+    preconditions_ja:
+      - userId が指定されている
+    postconditions:
+      success:
+        - The RPC is called with p_user_id
+        - The returned object contains numeric total, regular, paid, unlimited_bonus, and period_limited values
+      error:
+        - console.error is called when the RPC errors or returns no data
+        - "The function returns { total: 0, regular: 0, paid: 0, unlimited_bonus: 0, period_limited: 0 }"
+    postconditions_ja:
+      success:
+        - RPC は p_user_id 付きで呼ばれる
+        - 返却オブジェクトは total、regular、paid、unlimited_bonus、period_limited の数値を含む
+      error:
+        - RPC が error を返すか data がない場合に console.error が呼ばれる
+        - "関数は { total: 0, regular: 0, paid: 0, unlimited_bonus: 0, period_limited: 0 } を返す"
+    edge_cases:
+      - description: When the RPC returns numeric strings instead of numbers
+        expected: The helper coerces all five fields with Number(...)
+      - description: When the RPC returns no data without an explicit error
+        expected: The helper still logs and returns the zeroed breakdown object
+    edge_cases_ja:
+      - description: RPC が数値ではなく数値文字列を返す場合
+        expected: helper は 5 項目すべてを Number(...) で数値化する
+      - description: RPC が明示的 error なしで data を返さない場合
+        expected: helper はそれでもログ出力し、ゼロ初期化された内訳オブジェクトを返す
+    test_cases:
+      - getPercoinBalanceBreakdownServer_GivenBreakdownRow_ShouldCoerceAndReturnNumericBreakdown
+      - getPercoinBalanceBreakdownServer_GivenRpcErrorOrNoData_ShouldLogAndReturnZeroBreakdown
+    test_cases_ja:
+      - getPercoinBalanceBreakdownServer_内訳行がある場合_数値化した内訳を返す
+      - getPercoinBalanceBreakdownServer_RPCエラーまたはdataなしの場合_ログしてゼロ内訳を返す
+
+  - id: MPSAPI-015
+    method: getFreePercoinBatchesExpiringServer
+    type: event-driven
+    ears: |
+      When getFreePercoinBatchesExpiringServer is invoked,
+      the system shall call get_free_percoin_batches_expiring with p_user_id,
+      map each returned row into a normalized FreePercoinBatchExpiring object,
+      and if the RPC errors, log and return an empty array.
+    ears_ja: |
+      getFreePercoinBatchesExpiringServer が呼び出された場合、
+      システムは get_free_percoin_batches_expiring を p_user_id 付きで呼び、
+      返却行を正規化済みの FreePercoinBatchExpiring へ変換し、
+      RPC が error を返した場合はログ出力して空配列を返さなければならない。
+    preconditions:
+      - userId is provided
+    preconditions_ja:
+      - userId が指定されている
+    postconditions:
+      success:
+        - The RPC is called with p_user_id
+        - Each row is mapped with string coercion for id, user_id, expire_at, and source
+        - remaining_amount is coerced to number
+      error:
+        - console.error is called with the RPC failure
+        - The function returns []
+    postconditions_ja:
+      success:
+        - RPC は p_user_id 付きで呼ばれる
+        - 各行は id、user_id、expire_at、source を文字列へ正規化して変換される
+        - remaining_amount は数値化される
+      error:
+        - RPC 失敗で console.error が呼ばれる
+        - 関数は [] を返す
+    edge_cases:
+      - description: When the RPC succeeds with data omitted or null
+        expected: The helper normalizes the result to an empty array
+      - description: When returned row fields are not already strings or numbers
+        expected: id, user_id, expire_at, and source are stringified and remaining_amount is coerced to number
+    edge_cases_ja:
+      - description: RPC が成功しつつ data が省略または null の場合
+        expected: helper は結果を空配列へ正規化する
+      - description: 返却行の項目が最初から文字列や数値ではない場合
+        expected: id、user_id、expire_at、source は文字列化され、remaining_amount は数値化される
+    test_cases:
+      - getFreePercoinBatchesExpiringServer_GivenRpcRows_ShouldMapNormalizedBatches
+      - getFreePercoinBatchesExpiringServer_GivenRpcError_ShouldLogAndReturnEmptyArray
+    test_cases_ja:
+      - getFreePercoinBatchesExpiringServer_RPC行がある場合_正規化済みバッチへ変換する
+      - getFreePercoinBatchesExpiringServer_RPCエラーの場合_ログして空配列を返す

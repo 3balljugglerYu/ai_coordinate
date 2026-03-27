@@ -610,6 +610,7 @@ export const jaMessages = {
     imageDownloadFailed: "画像のダウンロードに失敗しました",
     postAction: "投稿",
     submitJobFailed: "画像生成ジョブの投入に失敗しました",
+    requestIdLabel: "リクエストID",
     fetchStatusFailed: "ステータスの取得に失敗しました",
     fetchJobsFailed: "ジョブの取得に失敗しました",
     pollingTimeout: "ポーリングがタイムアウトしました",

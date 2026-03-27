@@ -747,7 +747,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
   });
 
   describe("GASYNC-013 postGenerateAsyncRoute", () => {
-    test("postGenerateAsyncRoute_実行時例外の場合_500で汎用エラーを返す", async () => {
+    test("postGenerateAsyncRoute_実行時例外の場合_500で汎用エラーとrequestIdを返す", async () => {
       // ============================================================
       // Arrange
       // ============================================================
@@ -767,10 +767,16 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(response.status).toBe(500);
-      expect(body.error).toBe("画像生成ジョブの作成に失敗しました");
+      expect(body).toEqual({
+        error: "画像生成ジョブの作成に失敗しました",
+        errorCode: "GENERATION_ASYNC_FAILED",
+        requestId: expect.stringMatching(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        ),
+      });
     });
 
-    test("postGenerateAsyncRoute_Error以外がthrowされた場合_500で汎用エラーを返す", async () => {
+    test("postGenerateAsyncRoute_Error以外がthrowされた場合_500で汎用エラーとrequestIdを返す", async () => {
       // ============================================================
       // Arrange
       // ============================================================
@@ -790,7 +796,13 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(response.status).toBe(500);
-      expect(body.error).toBe("画像生成ジョブの作成に失敗しました");
+      expect(body).toEqual({
+        error: "画像生成ジョブの作成に失敗しました",
+        errorCode: "GENERATION_ASYNC_FAILED",
+        requestId: expect.stringMatching(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        ),
+      });
     });
   });
 
@@ -801,15 +813,13 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // ============================================================
       // Spec: GASYNC-014
       const request = createRequest({ prompt: "delegate-check" });
-      const delegatedResponse = new Response(
-        JSON.stringify({ delegated: true }),
-        {
+      const delegatedResponse =
+        new Response(JSON.stringify({ delegated: true }), {
           status: 209,
           headers: {
             "Content-Type": "application/json",
           },
-        }
-      );
+        }) as Awaited<ReturnType<typeof postGenerateAsyncRoute>>;
       const delegateSpy = jest.spyOn(
         generateAsyncRouteHandlers,
         "postGenerateAsyncRoute"

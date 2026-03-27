@@ -23,7 +23,9 @@ const expectedClientNamespaces = [
   "searchBar",
   "style",
   "posts",
+  "popupBanners",
   "tutorial",
+  "home",
 ] as const;
 
 function collectLeafPaths(

@@ -17,18 +17,18 @@ export async function LocaleShell({
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const messages = await getClientMessages(locale);
+  const appContent = (
+    <Suspense fallback={<div className="min-h-screen">{children}</div>}>
+      <AppShell>{children}</AppShell>
+    </Suspense>
+  );
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <UnreadNotificationProvider>
-        <Suspense fallback={<div className="min-h-screen">{children}</div>}>
-          <AppShell>{children}</AppShell>
-        </Suspense>
-      </UnreadNotificationProvider>
+      <UnreadNotificationProvider>{appContent}</UnreadNotificationProvider>
       <Toaster />
       <Ga4Script />
       <VercelAnalyticsScripts />
     </NextIntlClientProvider>
   );
 }
-
