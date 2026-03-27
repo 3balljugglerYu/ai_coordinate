@@ -74,6 +74,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       imageConvertFailed: t("imageConvertFailed"),
       imageContextUnavailable: t("imageContextUnavailable"),
       submitJobFailed: t("submitJobFailed"),
+      requestIdLabel: t("requestIdLabel"),
       fetchStatusFailed: t("fetchStatusFailed"),
       fetchJobsFailed: t("fetchJobsFailed"),
       pollingStopped: t("inProgressStopped"),

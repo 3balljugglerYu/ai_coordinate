@@ -636,6 +636,7 @@ export const enMessages = {
     imageDownloadFailed: "Failed to download the image.",
     postAction: "Post",
     submitJobFailed: "Failed to submit the image generation job.",
+    requestIdLabel: "Request ID",
     fetchStatusFailed: "Failed to fetch the generation status.",
     fetchJobsFailed: "Failed to fetch in-progress jobs.",
     pollingTimeout: "Polling timed out.",

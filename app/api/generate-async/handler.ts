@@ -13,6 +13,7 @@ import {
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
+import { DEFAULT_LOCALE } from "@/i18n/config";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -21,6 +22,14 @@ interface GenerateAsyncRouteDependencies {
   jobRepository?: AsyncGenerationJobRepository;
   invokeImageWorkerFn?: (edgeFunctionUrl: string) => void;
   supabaseUrl?: string;
+}
+
+function getUnexpectedGenerateAsyncCopy(request: NextRequest) {
+  try {
+    return getGenerationRouteCopy(getRouteLocale(request));
+  } catch {
+    return getGenerationRouteCopy(DEFAULT_LOCALE);
+  }
 }
 
 function defaultInvokeImageWorker(edgeFunctionUrl: string) {
@@ -54,6 +63,8 @@ export async function postGenerateAsyncRoute(
   request: NextRequest,
   dependencies: GenerateAsyncRouteDependencies = {}
 ) {
+  const requestId = crypto.randomUUID();
+
   try {
     const copy = getGenerationRouteCopy(getRouteLocale(request));
     const getUserFn = dependencies.getUserFn ?? getUser;
@@ -262,11 +273,27 @@ export async function postGenerateAsyncRoute(
       status: job.status,
     });
   } catch (error) {
-    console.error("Generate async error:", error);
-    return jsonError(
-      error instanceof Error ? error.message : "Internal server error",
-      "GENERATION_ASYNC_FAILED",
-      500
+    const copy = getUnexpectedGenerateAsyncCopy(request);
+
+    console.error("Generate async error:", {
+      requestId,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
+    });
+
+    return NextResponse.json(
+      {
+        error: copy.generateAsyncFailed,
+        errorCode: "GENERATION_ASYNC_FAILED",
+        requestId,
+      },
+      { status: 500 }
     );
   }
 }

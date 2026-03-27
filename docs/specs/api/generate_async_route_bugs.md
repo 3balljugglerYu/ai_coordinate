@@ -1,6 +1,6 @@
 # GenerateAsyncRoute Bug Reports
 
-## GASYNC-013: Unexpected exceptions were collapsed into generic copy
+## GASYNC-013: Unexpected exceptions exposed internal error messages to clients
 
 - Date: 2026-03-27
 - Status: Fixed in working tree
@@ -10,30 +10,30 @@
 
 ### Summary
 
-`postGenerateAsyncRoute` was returning a generic localized failure message for unexpected exceptions instead of preserving `Error.message` when available.
+`postGenerateAsyncRoute` was returning `Error.message` for unexpected exceptions, which could leak internal authentication, database, or dependency failure details to end users.
 
 ### Expected
 
 - HTTP 500 is returned for unexpected exceptions.
-- If the thrown value is an `Error`, the response body returns `error.message`.
-- If the thrown value is not an `Error`, the response body returns `Internal server error`.
+- The response body returns the locale-specific generic failure copy.
+- The response body includes `errorCode: GENERATION_ASYNC_FAILED`.
+- The response body includes a `requestId` for log correlation.
 
 ### Actual
 
-- The catch path returned `copy.generateAsyncFailed` for all unexpected failures.
-- This hid the underlying exception message and violated the response contract defined by `GASYNC-013`.
+- The catch path returned raw `error.message` for `Error` throws.
+- This exposed internal runtime failure details directly to clients and UI toasts.
 
 ### Root Cause
 
-- The catch block used generic route copy instead of branching on the thrown value type.
-- Locale/copy resolution happened before the `try` block, so failures in that path would not follow the standardized unexpected-error handling path.
+- The catch block treated unexpected runtime exceptions as user-displayable copy.
+- The route had no correlation identifier to let operators inspect logs without exposing internals.
 
 ### Fix
 
-- Moved `getGenerationRouteCopy(getRouteLocale(request))` inside the `try` block.
-- Changed the catch response to:
-  - `error.message` when `error instanceof Error`
-  - `"Internal server error"` for non-`Error` throws
+- Changed the catch response to always return locale-specific `generateAsyncFailed`.
+- Added `requestId` to the HTTP 500 response for log correlation.
+- Kept detailed exception information in server logs only.
 
 ### Verification
 
