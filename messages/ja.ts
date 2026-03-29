@@ -588,7 +588,7 @@ export const jaMessages = {
       "お着替えのイメージをまとめています...",
     generationStageProcessingMessage4: "仕上がりの方向性を整えています...",
     generationStageProcessingMessage5:
-      "ぴったりのコーデになるよう準備しています...",
+      "フィッティングルームに入っています！...",
     generationStageProcessingHint1: "生成リクエストの処理を始めています。",
     generationStageProcessingHint2: "必要な情報を読み込んでいます。",
     generationStageProcessingHint3: "画像生成の前段を進めています。",
@@ -609,11 +609,11 @@ export const jaMessages = {
     generationStageChargingHint4: "この処理が終わると画像生成へ進みます。",
     generationStageChargingHint5: "料金情報を反映しています。",
     // generating
-    generationStageGeneratingMessage1: "フィッティングルームに入ります！...",
+    generationStageGeneratingMessage1: "少々お待ちください！...",
     generationStageGeneratingMessage2:
-      "お着替えを始めます！...",
+      "お着替え中...",
     generationStageGeneratingMessage3:
-      "着こなせるか心配中...",
+      "着こなせるか心配...",
     generationStageGeneratingMessage4:
       "お着替えをしています...",
     generationStageGeneratingMessage5: "いい感じかも！...",
