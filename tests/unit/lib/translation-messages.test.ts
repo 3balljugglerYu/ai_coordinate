@@ -14,6 +14,7 @@ const expectedClientNamespaces = [
   "moderation",
   "nav",
   "footer",
+  "home",
   "follow",
   "i2iPoc",
   "myPage",
@@ -23,6 +24,7 @@ const expectedClientNamespaces = [
   "searchBar",
   "style",
   "posts",
+  "popupBanners",
   "tutorial",
 ] as const;
 

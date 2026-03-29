@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // 未完了ジョブを取得
     const { data: inProgressJobs, error: inProgressError } = await supabase
       .from("image_jobs")
-      .select("id, status, created_at")
+      .select("id, status, processing_stage, created_at")
       .eq("user_id", user.id)
       .in("status", ["queued", "processing"])
       .order("created_at", { ascending: false });
@@ -39,12 +39,17 @@ export async function GET(request: NextRequest) {
     }
 
     // 最近完了したジョブも取得（直近5分以内、最大10件）
-    let recentCompletedJobs: Array<{ id: string; status: string; createdAt: string }> = [];
+    let recentCompletedJobs: Array<{
+      id: string;
+      status: string;
+      processingStage: string | null;
+      createdAt: string;
+    }> = [];
     if (includeRecent) {
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data: completed, error: completedError } = await supabase
         .from("image_jobs")
-        .select("id, status, created_at")
+        .select("id, status, processing_stage, created_at")
         .eq("user_id", user.id)
         .in("status", ["succeeded", "failed"])
         .gte("created_at", fiveMinutesAgo)
@@ -55,6 +60,7 @@ export async function GET(request: NextRequest) {
         recentCompletedJobs = completed.map((job) => ({
           id: job.id,
           status: job.status,
+          processingStage: job.processing_stage ?? null,
           createdAt: job.created_at,
         }));
       }
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
       ...(inProgressJobs || []).map((job) => ({
         id: job.id,
         status: job.status,
+        processingStage: job.processing_stage ?? null,
         createdAt: job.created_at,
       })),
       ...recentCompletedJobs,

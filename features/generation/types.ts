@@ -137,6 +137,9 @@ export interface GeneratedImageData {
   url: string;
   data?: string;
   is_posted: boolean;
+  galleryKey?: string;
+  jobId?: string;
+  isPreview?: boolean;
 }
 
 /**

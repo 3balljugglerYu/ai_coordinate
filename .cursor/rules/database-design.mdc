@@ -123,9 +123,9 @@ alwaysApply: false
 
 #### `image_jobs`
 - 主キー: `id`
-- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `model`, `background_change`, `status`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
+- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `model`, `background_change`, `status`, `processing_stage`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
-- 備考: `status` は `queued/processing/succeeded/failed`、`source_image_type` は `illustration/real`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` を保持する
+- 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`source_image_type` は `illustration/real`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` を保持する
 - RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
 
 #### `generated_images`

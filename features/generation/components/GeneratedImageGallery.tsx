@@ -22,11 +22,14 @@ interface GeneratedImageGalleryProps {
 
 const FALLBACK_SHOW_DELAY_MS = 800;
 
+function getImageRenderKey(image: GeneratedImageData) {
+  return image.galleryKey ?? image.id;
+}
+
 export function GeneratedImageGallery({
   images,
   isGenerating = false,
   generatingCount = 0,
-  completedCount = 0,
   onDownload,
 }: GeneratedImageGalleryProps) {
   const t = useTranslations("coordinate");
@@ -34,8 +37,8 @@ export function GeneratedImageGallery({
   const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
 
-  const handleImageLoad = (imageId: string) => {
-    setLoadedImageIds((prev) => new Set(prev).add(imageId));
+  const handleImageLoad = (imageRenderKey: string) => {
+    setLoadedImageIds((prev) => new Set(prev).add(imageRenderKey));
   };
 
   // onLoad が発火しない場合のフォールバック（キャッシュ済み・ネットワーク遅延等）
@@ -43,7 +46,9 @@ export function GeneratedImageGallery({
     const timeouts = images.map((img) =>
       setTimeout(() => {
         setLoadedImageIds((prev) =>
-          prev.has(img.id) ? prev : new Set(prev).add(img.id)
+          prev.has(getImageRenderKey(img))
+            ? prev
+            : new Set(prev).add(getImageRenderKey(img))
         );
       }, FALLBACK_SHOW_DELAY_MS)
     );
@@ -156,7 +161,7 @@ export function GeneratedImageGallery({
             ))}
           {images.map((image, index) => (
             <div
-              key={image.id}
+              key={getImageRenderKey(image)}
               className="mb-4"
               {...(index === 0 ? { "data-tour": "tour-first-image" } : {})}
             >
@@ -181,7 +186,7 @@ export function GeneratedImageGallery({
               >
                 <div className="relative w-full overflow-hidden bg-gray-100">
                   {/* 画像ロード完了までスケルトン表示（ブロック要素で高さを確保し空白を防ぐ） */}
-                  {!loadedImageIds.has(image.id) && (
+                  {!loadedImageIds.has(getImageRenderKey(image)) && (
                     <div
                       className="aspect-square w-full animate-pulse bg-gray-200"
                       aria-hidden
@@ -192,18 +197,20 @@ export function GeneratedImageGallery({
                     src={image.url}
                     alt={t("generatedImageAltIndexed", { index: index + 1 })}
                     className={`block object-contain transition-opacity duration-200 ${
-                      loadedImageIds.has(image.id)
+                      loadedImageIds.has(getImageRenderKey(image))
                         ? "relative w-full h-auto opacity-100"
                         : "absolute inset-0 h-full w-full opacity-0"
                     }`}
-                    onLoad={() => handleImageLoad(image.id)}
+                    onLoad={() => handleImageLoad(getImageRenderKey(image))}
                     ref={(el) => {
                       if (
                         el?.complete &&
                         el.naturalHeight > 0 &&
-                        !loadedImageIds.has(image.id)
+                        !loadedImageIds.has(getImageRenderKey(image))
                       ) {
-                        queueMicrotask(() => handleImageLoad(image.id));
+                        queueMicrotask(() =>
+                          handleImageLoad(getImageRenderKey(image))
+                        );
                       }
                     }}
                   />
@@ -258,7 +265,7 @@ export function GeneratedImageGallery({
                     >
                       <ZoomIn className="h-4 w-4" />
                     </Button>
-                    {!image.is_posted && (
+                    {!image.is_posted && !image.isPreview && (
                       <Button
                         size="sm"
                         variant="secondary"
@@ -300,6 +307,9 @@ export function GeneratedImageGallery({
           onClose={() => setSelectedImageIndex(null)}
           onDownload={handleDownload}
           onPost={(image) => {
+            if (image.isPreview) {
+              return;
+            }
             setPostModalImageId(image.id);
             setSelectedImageIndex(null);
           }}

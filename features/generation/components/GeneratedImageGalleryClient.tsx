@@ -33,10 +33,6 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
   // initialImagesが変更されたら状態を更新
   useEffect(() => {
     // 既存画像のIDセットを作成（前回値から）
-    const existingIds = new Set(prevInitialImagesRef.current.map((img) => img.id));
-    const newImages = initialImages.filter((img) => !existingIds.has(img.id));
-
-    // initialImagesを先頭にし、既存の画像をその後に連結
     setImages((prev) => {
       const prevExistingIds = new Set(prev.map((img) => img.id));
       const prevNewImages = initialImages.filter((img) => !prevExistingIds.has(img.id));
@@ -54,13 +50,7 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
     setOffset((prev) => Math.max(prev, initialImages.length));
     setHasMore(initialImages.length === PAGE_SIZE);
     prevInitialImagesRef.current = initialImages;
-
-    // 生成中かつサーバーから新しい画像が届いたら isGenerating を解除
-    // → スケルトンから画像へシームレスに差し替わる（一瞬非表示になるのを防ぐ）
-    if (genState?.isGenerating && newImages.length > 0) {
-      genState.setIsGenerating(false);
-    }
-  }, [initialImages, genState]);
+  }, [initialImages]);
 
   // 無限スクロール: 最下部が表示されたら追加で取得
   useEffect(() => {
@@ -114,10 +104,36 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
     void fetchMore();
   }, [inView, isLoading, hasMore, offset]);
 
+  const previewImages = genState?.previewImages ?? [];
+  const previewImagesByUrl = new Map(
+    previewImages.map((image) => [image.url, image] as const)
+  );
+  const remainingPreviewImages = previewImages.filter(
+    (image) => !images.some((persistedImage) => persistedImage.url === image.url)
+  );
+  const galleryImages = [
+    ...remainingPreviewImages,
+    ...images.map((image) => {
+      const matchingPreview = previewImagesByUrl.get(image.url);
+      if (!matchingPreview) {
+        return image;
+      }
+
+      return {
+        ...image,
+        galleryKey:
+          matchingPreview.galleryKey ??
+          matchingPreview.id ??
+          image.galleryKey ??
+          image.id,
+      };
+    }),
+  ];
+
   return (
     <>
       <GeneratedImageGallery
-        images={images}
+        images={galleryImages}
         isGenerating={genState?.isGenerating ?? false}
         generatingCount={genState?.generatingCount ?? 0}
         completedCount={genState?.completedCount ?? 0}

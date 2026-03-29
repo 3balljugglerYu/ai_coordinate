@@ -8,6 +8,7 @@ import {
   backgroundModeToBackgroundChange,
   resolveBackgroundMode,
 } from "../types";
+import type { ImageJobProcessingStage } from "./job-types";
 
 const MAX_SOURCE_IMAGE_LONG_EDGE = 2048;
 /** Vercel のリクエストボディ制限 4.5MB を考慮。Base64 で約 33% 増加するため、2MB 超は強圧縮 */
@@ -26,6 +27,13 @@ interface AsyncGenerationApiMessages {
   fetchJobsFailed?: string;
   pollingStopped?: string;
   pollingTimeout?: string;
+}
+
+function logCoordinateGenerationTiming(
+  event: string,
+  payload: Record<string, string | number | null>
+) {
+  console.info(`[Coordinate Generation Timing] ${event}`, payload);
 }
 
 function loadImageElement(
@@ -142,6 +150,8 @@ export interface AsyncGenerationResponse {
 export interface AsyncGenerationStatus {
   id: string;
   status: "queued" | "processing" | "succeeded" | "failed";
+  processingStage: ImageJobProcessingStage | null;
+  previewImageUrl: string | null;
   resultImageUrl: string | null;
   errorMessage: string | null;
 }
@@ -164,13 +174,24 @@ export async function generateImageAsync(
   let sourceImageMimeType: string | undefined;
 
   if (request.sourceImage) {
+    const normalizeStartedAt = performance.now();
     const { imageToBase64 } = await import("./nanobanana");
     const normalizedSourceImage = await normalizeSourceImage(
       request.sourceImage,
       messages
     );
+    const normalizeFinishedAt = performance.now();
     sourceImageBase64 = await imageToBase64(normalizedSourceImage);
     sourceImageMimeType = normalizedSourceImage.type;
+    const encodeFinishedAt = performance.now();
+
+    logCoordinateGenerationTiming("sourceImagePrepared", {
+      originalBytes: request.sourceImage.size,
+      normalizedBytes: normalizedSourceImage.size,
+      normalizeMs: Math.round(normalizeFinishedAt - normalizeStartedAt),
+      encodeMs: Math.round(encodeFinishedAt - normalizeFinishedAt),
+      totalPrepareMs: Math.round(encodeFinishedAt - normalizeStartedAt),
+    });
   }
   // sourceImageStockIdの場合は、サーバー側で処理するためここでは何もしない
 
@@ -227,6 +248,8 @@ export async function getGenerationStatus(
   return {
     id: data.id,
     status: data.status,
+    processingStage: data.processingStage || null,
+    previewImageUrl: data.previewImageUrl || null,
     resultImageUrl: data.resultImageUrl || null,
     errorMessage: data.errorMessage || null,
   };
@@ -238,6 +261,7 @@ export async function getGenerationStatus(
 export interface JobStatus {
   id: string;
   status: "queued" | "processing" | "succeeded" | "failed";
+  processingStage: ImageJobProcessingStage | null;
   createdAt: string;
 }
 
@@ -284,7 +308,9 @@ export interface PollGenerationStatusResult {
 export function pollGenerationStatus(
   jobId: string,
   options: {
-    interval?: number; // ポーリング間隔（ミリ秒、デフォルト: 2000）
+    interval?:
+      | number
+      | ((status: AsyncGenerationStatus) => number); // ポーリング間隔（ミリ秒、デフォルト: 2000）
     timeout?: number; // タイムアウト（ミリ秒、デフォルト: 300000 = 5分）
     onStatusUpdate?: (status: AsyncGenerationStatus) => void; // ステータス更新時のコールバック
     messages?: AsyncGenerationApiMessages;
@@ -292,13 +318,13 @@ export function pollGenerationStatus(
 ): PollGenerationStatusResult {
   const { interval = 2000, timeout = 300000, onStatusUpdate, messages } = options;
   const startTime = Date.now();
-  let timeoutId: NodeJS.Timeout | null = null;
+  let timeoutId: number | null = null;
   let isStopped = false;
 
   const stop = () => {
     isStopped = true;
     if (timeoutId !== null) {
-      clearTimeout(timeoutId);
+      window.clearTimeout(timeoutId);
       timeoutId = null;
     }
   };
@@ -338,7 +364,9 @@ export function pollGenerationStatus(
         }
 
         // 続行中の場合は再ポーリング
-        timeoutId = setTimeout(poll, interval);
+        const nextInterval =
+          typeof interval === "function" ? interval(status) : interval;
+        timeoutId = window.setTimeout(poll, nextInterval);
       } catch (error) {
         // 停止された場合は処理を中断（エラーを投げない）
         if (isStopped) {

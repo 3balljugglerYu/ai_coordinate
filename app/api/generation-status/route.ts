@@ -36,6 +36,40 @@ function normalizeUserFacingGenerationError(
   return errorMessage;
 }
 
+function deriveImageUrls(
+  status: string,
+  resultImageUrl: string | null
+): {
+  previewImageUrl: string | null;
+  resultImageUrl: string | null;
+} {
+  if (!resultImageUrl) {
+    return {
+      previewImageUrl: null,
+      resultImageUrl: null,
+    };
+  }
+
+  if (status === "succeeded") {
+    return {
+      previewImageUrl: null,
+      resultImageUrl,
+    };
+  }
+
+  if (status === "processing") {
+    return {
+      previewImageUrl: resultImageUrl,
+      resultImageUrl: null,
+    };
+  }
+
+  return {
+    previewImageUrl: null,
+    resultImageUrl: null,
+  };
+}
+
 /**
  * 画像生成ステータス取得API
  * image_jobsテーブルから生成ステータスを取得
@@ -83,12 +117,15 @@ export async function GET(request: NextRequest) {
       job.error_message,
       copy
     );
+    const imageUrls = deriveImageUrls(job.status, job.result_image_url);
 
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
       id: job.id,
       status: job.status,
-      resultImageUrl: job.result_image_url,
+      processingStage: job.processing_stage ?? null,
+      previewImageUrl: imageUrls.previewImageUrl,
+      resultImageUrl: imageUrls.resultImageUrl,
       errorMessage: normalizedErrorMessage,
     });
   } catch (error) {

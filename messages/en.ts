@@ -581,6 +581,161 @@ export const enMessages = {
     inProgressStopped: "Polling was stopped",
     generatingStatusTitle: "Generating images...",
     generatingStatusProgress: "{completed} / {total} images completed",
+    generationProgressTitle:
+      "Generating images ({completed} / {total} completed)",
+    // preparing
+    generationStagePreparingMessage1: "Checking the outfit...",
+    generationStagePreparingMessage2: "Looking at the outfit...",
+    generationStagePreparingMessage3:
+      "Imagining the look after the outfit change...",
+    generationStagePreparingMessage4: "This looks really promising!...",
+    generationStagePreparingMessage5: "Can't stop admiring the outfit...",
+    generationStagePreparingHint1: "Checking the source image and prompt.",
+    generationStagePreparingHint2: "Sending the data needed for generation.",
+    generationStagePreparingHint3: "Preparing to register the job.",
+    generationStagePreparingHint4: "Working through the pre-start steps.",
+    generationStagePreparingHint5: "This will move into the queue next.",
+    // queued
+    generationStageQueuedMessage1: "Getting your turn for the outfit change ready...",
+    generationStageQueuedMessage2: "The coordinate change is about to begin...",
+    generationStageQueuedMessage3: "Getting ready for your turn...",
+    generationStageQueuedMessage4: "Waiting for a lovely reveal...",
+    generationStageQueuedMessage5: "It's almost time for the coordinate change...",
+    generationStageQueuedHint1: "We're lining this request up for processing.",
+    generationStageQueuedHint2: "Checking current load before we begin.",
+    generationStageQueuedHint3: "Processing will start automatically in a moment.",
+    generationStageQueuedHint4: "Running pre-start checks now.",
+    generationStageQueuedHint5: "We'll move to the next step as soon as it's ready.",
+    // processing
+    generationStageProcessingMessage1: "Shaping the mood of the coordinate...",
+    generationStageProcessingMessage2:
+      "Thinking through a look that suits you...",
+    generationStageProcessingMessage3:
+      "Pulling together the outfit change idea...",
+    generationStageProcessingMessage4:
+      "Refining the direction of the final look...",
+    generationStageProcessingMessage5:
+      "Getting things ready for the perfect coordinate...",
+    generationStageProcessingHint1: "We just started handling this generation request.",
+    generationStageProcessingHint2: "Loading the information needed for the job.",
+    generationStageProcessingHint3: "Working through the setup before image generation.",
+    generationStageProcessingHint4: "This will move to the next stage automatically.",
+    generationStageProcessingHint5: "Preparing a safe start for the job.",
+    // charging
+    generationStageChargingMessage1: "Shaping the mood of the coordinate...",
+    generationStageChargingMessage2:
+      "Thinking through a look that suits you...",
+    generationStageChargingMessage3:
+      "Pulling together the outfit change idea...",
+    generationStageChargingMessage4:
+      "Refining the direction of the final look...",
+    generationStageChargingMessage5:
+      "Getting things ready for the perfect coordinate...",
+    generationStageChargingHint1: "Handling the Percoins required for this generation.",
+    generationStageChargingHint2: "Verifying balance and usage details.",
+    generationStageChargingHint3: "Updating the billing-related records.",
+    generationStageChargingHint4: "Image generation starts right after this.",
+    generationStageChargingHint5: "Applying the pricing details now.",
+    // generating
+    generationStageGeneratingMessage1: "Heading into the fitting room!...",
+    generationStageGeneratingMessage2:
+      "Starting the outfit change!...",
+    generationStageGeneratingMessage3:
+      "A little nervous about how it will look...",
+    generationStageGeneratingMessage4:
+      "Changing outfits now...",
+    generationStageGeneratingMessage5:
+      "This might look really good!...",
+    generationStageGeneratingMessage6:
+      "Checking in front of the mirror...",
+    generationStageGeneratingMessage7:
+      "Tweaking a few details...",
+    generationStageGeneratingMessage8:
+      "Getting excited about the reveal!...",
+    generationStageGeneratingMessage9:
+      "Adjusting the overall silhouette...",
+    generationStageGeneratingMessage10:
+      "The outfit change is almost done...",
+    generationStageGeneratingHint1: "The AI is working through the outfit change.",
+    generationStageGeneratingHint2: "This is usually the longest step.",
+    generationStageGeneratingHint3: "Adjusting the look so it suits you.",
+    generationStageGeneratingHint4: "It should be ready to reveal soon.",
+    generationStageGeneratingHint5: "Finishing the new coordinate now.",
+    // uploading
+    generationStageUploadingMessage1:
+      "It looks like the outfit change is done!",
+    generationStageUploadingMessage2:
+      "They should be coming out of the fitting room soon!",
+    generationStageUploadingMessage3:
+      "They might be a little nervous about whether it suits them...",
+    generationStageUploadingMessage4:
+      "The new coordinate is almost ready to reveal!",
+    generationStageUploadingMessage5:
+      "It looks like they're doing one last appearance check!",
+    generationStageUploadingHint1:
+      "We'll show the new coordinate in a moment.",
+    generationStageUploadingHint2: "Getting ready for the reveal.",
+    generationStageUploadingHint3:
+      "You'll be able to check the result very soon.",
+    generationStageUploadingHint4:
+      "The final update is almost finished.",
+    generationStageUploadingHint5:
+      "The new look is just about to appear.",
+    // persisting
+    generationStagePersistingMessage1:
+      "It looks like the outfit change is done!",
+    generationStagePersistingMessage2:
+      "They should be coming out of the fitting room soon!",
+    generationStagePersistingMessage3:
+      "They might be a little nervous about whether it suits them...",
+    generationStagePersistingMessage4:
+      "The new coordinate is almost ready to reveal!",
+    generationStagePersistingMessage5:
+      "It looks like they're doing one last appearance check!",
+    generationStagePersistingHint1:
+      "We'll show the new coordinate in a moment.",
+    generationStagePersistingHint2: "Getting ready for the reveal.",
+    generationStagePersistingHint3:
+      "You'll be able to check the result very soon.",
+    generationStagePersistingHint4:
+      "The final update is almost finished.",
+    generationStagePersistingHint5:
+      "The new look is just about to appear.",
+    // completed
+    generationStageCompletedMessage1:
+      "It looks like the outfit change is done!",
+    generationStageCompletedMessage2:
+      "They should be coming out of the fitting room soon!",
+    generationStageCompletedMessage3:
+      "They might be a little nervous about whether it suits them...",
+    generationStageCompletedMessage4:
+      "The new coordinate is almost ready to reveal!",
+    generationStageCompletedMessage5:
+      "It looks like they're doing one last appearance check!",
+    generationStageCompletedHint1:
+      "We'll show the new coordinate in a moment.",
+    generationStageCompletedHint2: "Getting ready for the reveal.",
+    generationStageCompletedHint3:
+      "You'll be able to check the result very soon.",
+    generationStageCompletedHint4:
+      "The final update is almost finished.",
+    generationStageCompletedHint5:
+      "The new look is just about to appear.",
+    // failed
+    generationStageFailedMessage1: "Reviewing the interrupted job...",
+    generationStageFailedMessage2: "A problem was detected midway...",
+    generationStageFailedMessage3: "This run could not finish...",
+    generationStageFailedMessage4: "This job has stopped...",
+    generationStageFailedMessage5: "Consider trying again with different inputs...",
+    generationStageFailedHint1: "This job has ended in failure.",
+    generationStageFailedHint2:
+      "Changing the input or image size may help the next run.",
+    generationStageFailedHint3:
+      "Retrying after a short wait may succeed.",
+    generationStageFailedHint4:
+      "If other jobs are still running, we're waiting for them to finish.",
+    generationStageFailedHint5:
+      "You can review the error message shown above.",
     uploadSourceLabel: "Upload a source image",
     addImage: "Add image",
     uploadedImageAlt: "Uploaded image",

@@ -1,27 +1,103 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics/react";
 import { GenerationForm } from "./GenerationForm";
+import { GenerationStatusCard } from "./GenerationStatusCard";
 import {
   generateImageAsync,
-  pollGenerationStatus,
-  getInProgressJobs,
   getGenerationStatus,
+  getInProgressJobs,
+  pollGenerationStatus,
   type AsyncGenerationStatus,
 } from "../lib/async-api";
-import { getPercoinCost } from "../lib/model-config";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { isPercoinInsufficientError } from "@/features/credits/constants";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
+import { getPercoinCost } from "../lib/model-config";
 import { useToast } from "@/components/ui/use-toast";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useGenerationState } from "../context/GenerationStateContext";
-import { track } from "@vercel/analytics/react";
+import {
+  buildCoordinatePreparingCopy,
+  buildCoordinateStageCopy,
+} from "../lib/coordinate-stage-copy";
+import {
+  useCoordinateGenerationFeedback,
+  type CoordinateGenerationFeedbackPhase,
+} from "../hooks/useCoordinateGenerationFeedback";
+import { summarizeJobProgress } from "../lib/job-progress";
+import type { ImageJobProcessingStage } from "../lib/job-types";
+import type { GeneratedImageData } from "../types";
 
 type GenerationFormContainerProps = Record<string, never>;
+
+type TrackedGenerationJobStatus = Pick<
+  AsyncGenerationStatus,
+  "status" | "processingStage"
+>;
+
+const FALLBACK_PROGRESS_PERCENT = 0;
+const RESULT_REVEAL_DELAY_MS = 5000;
+const PREPARING_PROGRESS_PERCENT = 10;
+const PREPARING_PROGRESS_TRANSITION_MS = 3000;
+const DEFAULT_POLLING_INTERVAL_MS = 1200;
+const FAST_POLLING_INTERVAL_MS = 400;
+const SLOW_POLLING_INTERVAL_MS = 1600;
+const COORDINATE_PROGRESS_TRANSITION_MS: Record<
+  ImageJobProcessingStage,
+  number
+> = {
+  queued: 3000,
+  processing: 600,
+  charging: 500,
+  generating: 25000,
+  uploading: 1200,
+  persisting: 800,
+  completed: 1000,
+  failed: 1000,
+};
+type BrowserTimerId = number;
+
+function createPreviewImage(jobId: string, imageUrl: string): GeneratedImageData {
+  return {
+    id: `preview:${jobId}`,
+    galleryKey: `preview:${jobId}`,
+    jobId,
+    url: imageUrl,
+    is_posted: false,
+    isPreview: true,
+  };
+}
+
+function getStatusPollingIntervalMs(status: AsyncGenerationStatus): number {
+  if (status.previewImageUrl || status.processingStage === "persisting") {
+    return FAST_POLLING_INTERVAL_MS;
+  }
+
+  if (
+    status.processingStage === "charging" ||
+    status.processingStage === "uploading"
+  ) {
+    return 800;
+  }
+
+  if (status.processingStage === "queued") {
+    return SLOW_POLLING_INTERVAL_MS;
+  }
+
+  return DEFAULT_POLLING_INTERVAL_MS;
+}
 
 function appendUniqueErrorMessage(
   previousMessage: string | null,
@@ -55,19 +131,34 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
   const { toast } = useToast();
   const ctx = useGenerationState();
   const [localIsGenerating, setLocalIsGenerating] = useState(false);
-  const [localGeneratingCount, setLocalGeneratingCount] = useState(0);
+  const [localTotalCount, setLocalTotalCount] = useState(0);
+  const [, setLocalGeneratingCount] = useState(0);
   const [localCompletedCount, setLocalCompletedCount] = useState(0);
+  const [, setLocalPreviewImages] = useState<
+    GeneratedImageData[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
+  const [jobStatuses, setJobStatuses] = useState<
+    Record<string, TrackedGenerationJobStatus>
+  >({});
+  const [feedbackPhase, setFeedbackPhase] =
+    useState<CoordinateGenerationFeedbackPhase>("idle");
 
   const isGenerating = ctx ? ctx.isGenerating : localIsGenerating;
-  const generatingCount = ctx ? ctx.generatingCount : localGeneratingCount;
+  const totalCount = ctx ? ctx.totalCount : localTotalCount;
   const completedCount = ctx ? ctx.completedCount : localCompletedCount;
   const setIsGenerating = ctx ? ctx.setIsGenerating : setLocalIsGenerating;
-  const setGeneratingCount = ctx ? ctx.setGeneratingCount : setLocalGeneratingCount;
-  const setCompletedCount = ctx ? ctx.setCompletedCount : setLocalCompletedCount;
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const setTotalCount = ctx ? ctx.setTotalCount : setLocalTotalCount;
+  const setGeneratingCount = ctx
+    ? ctx.setGeneratingCount
+    : setLocalGeneratingCount;
+  const setCompletedCount = ctx
+    ? ctx.setCompletedCount
+    : setLocalCompletedCount;
+  const refreshTimeoutRef = useRef<BrowserTimerId | null>(null);
+  const completionTimeoutRef = useRef<BrowserTimerId | null>(null);
   const pollingStopFunctionsRef = useRef<Set<() => void>>(new Set());
+  const recoveryRequestIdRef = useRef(0);
   const asyncApiMessages = useMemo(
     () => ({
       imageLoadFailed: t("imageLoadFailed"),
@@ -81,224 +172,449 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     }),
     [t]
   );
+  const localUpsertPreviewImage = useCallback((image: GeneratedImageData) => {
+    setLocalPreviewImages((previous) => {
+      const nextGalleryKey = image.galleryKey ?? image.id;
+      const currentIndex = previous.findIndex(
+        (item) => (item.galleryKey ?? item.id) === nextGalleryKey
+      );
 
-  // マウント時に未完了ジョブを確認してポーリングを再開
+      if (currentIndex === -1) {
+        return [image, ...previous];
+      }
+
+      const next = [...previous];
+      next[currentIndex] = image;
+      return next;
+    });
+  }, []);
+  const localRemovePreviewImage = useCallback((jobId: string) => {
+    setLocalPreviewImages((previous) =>
+      previous.filter((image) => image.jobId !== jobId)
+    );
+  }, []);
+  const localClearPreviewImages = useCallback(() => {
+    setLocalPreviewImages([]);
+  }, []);
+  const previewImageActions = useMemo(
+    () => ({
+      upsertPreviewImage: ctx?.upsertPreviewImage ?? localUpsertPreviewImage,
+      removePreviewImage: ctx?.removePreviewImage ?? localRemovePreviewImage,
+      clearPreviewImages: ctx?.clearPreviewImages ?? localClearPreviewImages,
+    }),
+    [
+      ctx,
+      localClearPreviewImages,
+      localRemovePreviewImage,
+      localUpsertPreviewImage,
+    ]
+  );
+  const { upsertPreviewImage, removePreviewImage, clearPreviewImages } =
+    previewImageActions;
+
+  const setProgressCounts = useCallback(
+    (nextTotalCount: number, nextCompletedCount: number) => {
+      setTotalCount(nextTotalCount);
+      setCompletedCount(nextCompletedCount);
+      setGeneratingCount(Math.max(nextTotalCount - nextCompletedCount, 0));
+    },
+    [setCompletedCount, setGeneratingCount, setTotalCount]
+  );
+
+  const syncPreviewFromStatus = useCallback(
+    (status: AsyncGenerationStatus) => {
+      const previewUrl = status.previewImageUrl ?? status.resultImageUrl;
+
+      if (status.status === "failed" || !previewUrl) {
+        removePreviewImage(status.id);
+        return;
+      }
+
+      upsertPreviewImage(createPreviewImage(status.id, previewUrl));
+    },
+    [removePreviewImage, upsertPreviewImage]
+  );
+
+  const clearCompletionTimeout = useCallback(() => {
+    if (completionTimeoutRef.current) {
+      window.clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startCompletionReveal = useCallback(() => {
+    clearCompletionTimeout();
+    setFeedbackPhase("completing");
+    completionTimeoutRef.current = window.setTimeout(() => {
+      completionTimeoutRef.current = null;
+      setFeedbackPhase("idle");
+    }, RESULT_REVEAL_DELAY_MS);
+  }, [clearCompletionTimeout]);
+
+  const resetGenerationState = useCallback(() => {
+    clearCompletionTimeout();
+    setIsGenerating(false);
+    setProgressCounts(0, 0);
+    setJobStatuses({});
+    clearPreviewImages();
+    setFeedbackPhase("idle");
+  }, [
+    clearCompletionTimeout,
+    clearPreviewImages,
+    setIsGenerating,
+    setProgressCounts,
+  ]);
+
+  const updateTrackedJob = useCallback(
+    (jobId: string, status: TrackedGenerationJobStatus) => {
+      setJobStatuses((previous) => {
+        const nextProcessingStage = status.processingStage ?? null;
+        const current = previous[jobId];
+        if (
+          current &&
+          current.status === status.status &&
+          current.processingStage === nextProcessingStage
+        ) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          [jobId]: {
+            status: status.status,
+            processingStage: nextProcessingStage,
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const scheduleCoordinateRefresh = useCallback(
+    (shouldInvalidateCache: boolean, delayMs = 500) => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+      }
+
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        void (async () => {
+          if (shouldInvalidateCache) {
+            try {
+              await fetch("/api/revalidate/coordinate", { method: "POST" });
+            } catch {
+              // 無効化失敗時も refresh は継続する
+            }
+          }
+          startTransition(() => {
+            router.refresh();
+          });
+        })();
+      }, delayMs);
+    },
+    [router]
+  );
+
+  const formatPartialFailureMessage = useCallback(
+    (errorMessages: string[], failedCount: number, nextTotalCount: number) => {
+      const uniqueErrorMessages = Array.from(new Set(errorMessages));
+
+      const formatErrorSummary = (messages: string[]): string => {
+        if (messages.length === 0) {
+          return "";
+        }
+        if (messages.length === 1) {
+          const message = messages[0];
+          return message.length > 100
+            ? `${message.substring(0, 100)}...`
+            : message;
+        }
+
+        const messageCounts = new Map<string, number>();
+        messages.forEach((message) => {
+          messageCounts.set(message, (messageCounts.get(message) || 0) + 1);
+        });
+        const sortedMessages = Array.from(messageCounts.entries()).toSorted(
+          (a, b) => b[1] - a[1]
+        );
+        const [mostCommonMessage, mostCommonCount] = sortedMessages[0];
+
+        if (mostCommonCount === messages.length) {
+          return mostCommonMessage.length > 100
+            ? `${mostCommonMessage.substring(0, 100)}...`
+            : mostCommonMessage;
+        }
+
+        const summary =
+          mostCommonMessage.length > 80
+            ? `${mostCommonMessage.substring(0, 80)}...`
+            : mostCommonMessage;
+        return `${summary} (${t("additionalErrorKinds", {
+          count: messages.length - 1,
+        })})`;
+      };
+
+      const errorSummary = formatErrorSummary(uniqueErrorMessages);
+
+      return errorSummary
+        ? t("partialGenerationFailedWithSummary", {
+            failed: failedCount,
+            total: nextTotalCount,
+            summary: errorSummary,
+          })
+        : t("partialGenerationFailed", {
+            failed: failedCount,
+            total: nextTotalCount,
+          });
+    },
+    [t]
+  );
+
+  const progressSummary = useMemo(
+    () => summarizeJobProgress(Object.values(jobStatuses)),
+    [jobStatuses]
+  );
+  const effectiveTotalCount =
+    totalCount > 0 ? totalCount : progressSummary.totalCount;
+  const effectiveCompletedCount =
+    effectiveTotalCount > 0 ? completedCount : progressSummary.completedCount;
+  const progressPercent =
+    progressSummary.totalCount > 0
+      ? progressSummary.progressPercent
+      : effectiveTotalCount > 0
+        ? Math.max(
+            FALLBACK_PROGRESS_PERCENT,
+            Math.round((effectiveCompletedCount / effectiveTotalCount) * 100)
+          )
+        : 0;
+  const representativeStage =
+    progressSummary.totalCount > 0
+      ? progressSummary.representativeStage
+      : "queued";
+  const coordinateStageCopy = useMemo(() => buildCoordinateStageCopy(t), [t]);
+  const coordinatePreparingCopy = useMemo(
+    () => buildCoordinatePreparingCopy(t),
+    [t]
+  );
+  const isPreparingSubmission =
+    feedbackPhase === "running" &&
+    effectiveTotalCount > 0 &&
+    progressSummary.totalCount === 0;
+  const statusCardStage =
+    feedbackPhase === "completing" ? "completed" : representativeStage;
+  const {
+    activeMessage,
+    displayedMessage,
+    activeHint,
+    prefersReducedMotion,
+  } = useCoordinateGenerationFeedback(
+    feedbackPhase,
+    isPreparingSubmission
+      ? coordinatePreparingCopy
+      : coordinateStageCopy[statusCardStage]
+  );
+  const isStatusCardVisible = feedbackPhase !== "idle";
+  const isFormBusy = isGenerating || feedbackPhase === "completing";
+  const displayedProgressPercent =
+    feedbackPhase === "completing"
+      ? 100
+      : isPreparingSubmission
+        ? PREPARING_PROGRESS_PERCENT
+        : progressPercent;
+  const progressTransitionDurationMs =
+    isPreparingSubmission
+      ? PREPARING_PROGRESS_TRANSITION_MS
+      : COORDINATE_PROGRESS_TRANSITION_MS[statusCardStage];
+  const generationStatusTitle = t("generationProgressTitle", {
+    completed:
+      feedbackPhase === "completing"
+        ? effectiveTotalCount
+        : effectiveCompletedCount,
+    total: effectiveTotalCount,
+  });
+
   useEffect(() => {
+    const recoveryRequestId = ++recoveryRequestIdRef.current;
+    let isCancelled = false;
+
     const checkInProgressJobs = async () => {
+      const isStale = () =>
+        isCancelled || recoveryRequestIdRef.current !== recoveryRequestId;
+
       try {
-        // 最近完了したジョブも含めて取得（直近5分以内）
-        const jobs = await getInProgressJobs(true, asyncApiMessages);
-        
-        // 未完了ジョブのみをフィルタリング
-        const inProgressJobs = jobs.filter((job) => 
-          job.status === "queued" || job.status === "processing"
-        );
-        
-        // 完了済みジョブをフィルタリング
-        const completedJobs = jobs.filter((job) => 
-          job.status === "succeeded" || job.status === "failed"
-        );
-        
-        if (inProgressJobs.length === 0 && completedJobs.length === 0) {
-          // 未完了ジョブも最近完了したジョブもない場合は何もしない
+        const inProgressJobs = await getInProgressJobs(false, asyncApiMessages);
+
+        if (isStale()) {
           return;
         }
-        
-        // 未完了ジョブがある場合のみ、ポーリングを再開
-        if (inProgressJobs.length > 0) {
-          setIsGenerating(true);
-          setGeneratingCount(inProgressJobs.length);
-          setCompletedCount(completedJobs.length);
-          setError(null);
 
-          // 各未完了ジョブのステータスをポーリングで監視
-          // まず、各ジョブの現在のステータスを確認してからポーリングを開始
-          const pollPromises = inProgressJobs.map(async (job) => {
-            // まず現在のステータスを確認
-            let currentStatus: AsyncGenerationStatus;
-            try {
-              currentStatus = await getGenerationStatus(job.id, asyncApiMessages);
-              // すでに完了している場合は、ポーリングを開始しない
-              if (currentStatus.status === "succeeded" || currentStatus.status === "failed") {
-              if (currentStatus.status === "succeeded") {
-                setCompletedCount((prev) => prev + 1);
-              } else {
-                setCompletedCount((prev) => prev + 1);
-                setError((prev) => {
-                  const errorMsg =
-                    currentStatus.errorMessage || t("generationFailedGeneric");
-                  return appendUniqueErrorMessage(prev, errorMsg);
-                });
-              }
-                // キャッシュ無効化後にリフレッシュ
-                if (refreshTimeoutRef.current) {
-                  clearTimeout(refreshTimeoutRef.current);
-                }
-                refreshTimeoutRef.current = setTimeout(async () => {
-                  try {
-                    await fetch("/api/revalidate/coordinate", { method: "POST" });
-                  } catch {
-                    // 無効化失敗時もrefreshは実行
-                  }
-                  router.refresh();
-                }, 500);
-                return currentStatus;
-              }
-            } catch (err) {
-              // ステータス取得に失敗した場合は、ポーリングを開始する（エラーは無視）
-              console.error("Failed to get initial job status:", err);
-            }
-
-            // 未完了の場合のみ、ポーリングを開始
-            const { promise, stop } = pollGenerationStatus(job.id, {
-              interval: 2000, // 2秒ごとにポーリング
-              timeout: 300000, // 5分でタイムアウト
-              messages: asyncApiMessages,
-              onStatusUpdate: (status: AsyncGenerationStatus) => {
-                // ステータスが更新されたら、キャッシュ無効化後に生成結果一覧を更新
-                if (refreshTimeoutRef.current) {
-                  clearTimeout(refreshTimeoutRef.current);
-                }
-                refreshTimeoutRef.current = setTimeout(async () => {
-                  if (status.status === "succeeded" || status.status === "failed") {
-                    try {
-                      await fetch("/api/revalidate/coordinate", { method: "POST" });
-                    } catch {
-                      // 無効化失敗時もrefreshは実行
-                    }
-                  }
-                  router.refresh();
-                }, 500);
-              },
-            });
-
-            // 停止関数を保存（コンポーネントのクリーンアップ用）
-            pollingStopFunctionsRef.current.add(stop);
-
-            return promise
-              .then((status) => {
-                if (status.status === "succeeded") {
-                  setCompletedCount((prev) => prev + 1);
-
-                  // 生成結果一覧を更新
-                  if (refreshTimeoutRef.current) {
-                    clearTimeout(refreshTimeoutRef.current);
-                  }
-                  refreshTimeoutRef.current = setTimeout(async () => {
-                    try {
-                      await fetch("/api/revalidate/coordinate", { method: "POST" });
-                    } catch {
-                      // 無効化失敗時もrefreshは実行
-                    }
-                    router.refresh();
-                    window.dispatchEvent(new CustomEvent("generation-complete"));
-                  }, 500);
-                } else if (status.status === "failed") {
-                  setCompletedCount((prev) => prev + 1);
-                  setError((prev) => {
-                    const errorMsg =
-                      status.errorMessage || t("generationFailedGeneric");
-                    return appendUniqueErrorMessage(prev, errorMsg);
-                  });
-                  // 失敗時もイベントを発火（返金処理が実行される可能性があるため）
-                  window.dispatchEvent(new CustomEvent('generation-complete'));
-                }
-                return status;
-              })
-              .catch((err) => {
-                // ポーリング停止によるエラーは無視（ユーザー操作による中断は正常）
-                const errorMsg = err instanceof Error ? err.message : "";
-                if (errorMsg === asyncApiMessages.pollingStopped) {
-                  // ポーリング停止は正常な動作なので、エラーとして扱わない
-                  setCompletedCount((prev) => prev + 1);
-                  return { id: job.id, status: "queued" as const, resultImageUrl: null, errorMessage: null };
-                }
-                // その他のエラーのみ表示
-                setCompletedCount((prev) => prev + 1);
-                setError((prev) => {
-                  const msg = errorMsg || t("generationFailedGeneric");
-                  return appendUniqueErrorMessage(prev, msg);
-                });
-                throw err;
-              });
-          });
-
-        // すべてのジョブの完了を待つ
-        const results = await Promise.allSettled(pollPromises);
-
-        // 失敗したジョブがあるか確認（ポーリング停止によるエラーは除外）
-        const failedJobs = results.filter((result) => {
-          if (result.status === "rejected") {
-            const errorMsg = result.reason?.message || "";
-            // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
-            return errorMsg !== asyncApiMessages.pollingStopped;
-          }
-          return false;
-        });
-        
-        if (failedJobs.length > 0 && failedJobs.length < inProgressJobs.length) {
-          // 一部のジョブが失敗した場合
-          const errorMessages = failedJobs
-            .map((result) =>
-              result.status === "rejected"
-                ? result.reason?.message || t("generationFailedGeneric")
-                : null
-            )
-            .filter((msg): msg is string => msg !== null);
-          
-          // ユニークなエラーメッセージを取得
-          const uniqueErrorMessages = Array.from(new Set(errorMessages));
-          
-          // エラーメッセージを要約
-          const formatErrorSummary = (messages: string[]): string => {
-            if (messages.length === 0) return "";
-            if (messages.length === 1) {
-              const msg = messages[0];
-              return msg.length > 100 ? `${msg.substring(0, 100)}...` : msg;
-            }
-            const messageCounts = new Map<string, number>();
-            messages.forEach((msg) => {
-              messageCounts.set(msg, (messageCounts.get(msg) || 0) + 1);
-            });
-            const sortedMessages = Array.from(messageCounts.entries()).toSorted(
-              (a, b) => b[1] - a[1]
-            );
-            const mostCommonMessage = sortedMessages[0][0];
-            const mostCommonCount = sortedMessages[0][1];
-            
-            if (mostCommonCount === messages.length) {
-              const msg = mostCommonMessage.length > 100 
-                ? `${mostCommonMessage.substring(0, 100)}...` 
-                : mostCommonMessage;
-              return msg;
-            } else {
-              const msg = mostCommonMessage.length > 80 
-                ? `${mostCommonMessage.substring(0, 80)}...` 
-                : mostCommonMessage;
-              return `${msg} (${t("additionalErrorKinds", {
-                count: messages.length - 1,
-              })})`;
-            }
-          };
-          
-          const errorSummary = formatErrorSummary(uniqueErrorMessages);
-          const baseMsg = errorSummary
-            ? t("partialGenerationFailedWithSummary", {
-                failed: failedJobs.length,
-                total: inProgressJobs.length,
-                summary: errorSummary,
-              })
-            : t("partialGenerationFailed", {
-                failed: failedJobs.length,
-                total: inProgressJobs.length,
-              });
-          
-          setError((prev) => {
-            return appendUniqueErrorMessage(prev, baseMsg);
-          });
+        if (inProgressJobs.length === 0) {
+          resetGenerationState();
+          return;
         }
 
-        // チュートリアル中: 生成完了をトリガーに案内表示へ進む
+        const nextTotalCount = inProgressJobs.length;
+        const completedJobIds = new Set<string>();
+
+        setIsGenerating(true);
+        setFeedbackPhase("running");
+        setError(null);
+        setProgressCounts(nextTotalCount, 0);
+        setJobStatuses(
+          Object.fromEntries(
+            inProgressJobs.map((job) => [
+              job.id,
+              {
+                status: job.status,
+                processingStage: job.processingStage ?? null,
+              },
+            ])
+          )
+        );
+
+        const pollPromises = inProgressJobs.map(async (job) => {
+          if (isStale()) {
+            return null;
+          }
+
+          updateTrackedJob(job.id, {
+            status: job.status,
+            processingStage: job.processingStage ?? null,
+          });
+
+          const markTerminalJob = (
+            status: AsyncGenerationStatus,
+            options?: { appendError?: boolean }
+          ) => {
+            updateTrackedJob(status.id, status);
+            syncPreviewFromStatus(status);
+
+            if (!completedJobIds.has(status.id)) {
+              completedJobIds.add(status.id);
+              setProgressCounts(nextTotalCount, completedJobIds.size);
+            }
+
+            if (status.status === "failed" && options?.appendError !== false) {
+              const nextMessage =
+                status.errorMessage || t("generationFailedGeneric");
+              setError((previous) =>
+                appendUniqueErrorMessage(previous, nextMessage)
+              );
+            }
+          };
+
+          try {
+            const currentStatus = await getGenerationStatus(job.id, asyncApiMessages);
+            if (isStale()) {
+              return null;
+            }
+            if (
+              currentStatus.status === "succeeded" ||
+              currentStatus.status === "failed"
+            ) {
+              markTerminalJob(currentStatus);
+              return currentStatus;
+            }
+
+            updateTrackedJob(currentStatus.id, currentStatus);
+            syncPreviewFromStatus(currentStatus);
+          } catch (initialStatusError) {
+            console.error("Failed to get initial job status:", initialStatusError);
+          }
+
+          const { promise, stop } = pollGenerationStatus(job.id, {
+            interval: getStatusPollingIntervalMs,
+            timeout: 300000,
+            messages: asyncApiMessages,
+            onStatusUpdate: (status) => {
+              updateTrackedJob(status.id, status);
+              syncPreviewFromStatus(status);
+              if (status.status === "succeeded" || status.status === "failed") {
+                markTerminalJob(status);
+              }
+            },
+          });
+
+          pollingStopFunctionsRef.current.add(stop);
+
+          try {
+            const status = await promise;
+            if (isStale()) {
+              return status;
+            }
+            markTerminalJob(status);
+            return status;
+          } catch (pollError) {
+            if (isStale()) {
+              return null;
+            }
+            const errorMessage =
+              pollError instanceof Error ? pollError.message : "";
+
+            if (errorMessage === asyncApiMessages.pollingStopped) {
+              return {
+                id: job.id,
+                status: "queued" as const,
+                processingStage: "queued" as const,
+                previewImageUrl: null,
+                resultImageUrl: null,
+                errorMessage: null,
+              };
+            }
+
+            if (!completedJobIds.has(job.id)) {
+              completedJobIds.add(job.id);
+              setProgressCounts(nextTotalCount, completedJobIds.size);
+            }
+
+            setError((previous) =>
+              appendUniqueErrorMessage(
+                previous,
+                errorMessage || t("generationFailedGeneric")
+              )
+            );
+            throw pollError;
+          } finally {
+            pollingStopFunctionsRef.current.delete(stop);
+          }
+        });
+
+        const results = await Promise.allSettled(pollPromises);
+        const succeededJobs = results.filter(
+          (result) =>
+            result.status === "fulfilled" && result.value?.status === "succeeded"
+        ).length;
+
+        if (isStale()) {
+          return;
+        }
+
+        const failedJobs = results.filter((result) => {
+          if (result.status !== "rejected") {
+            return false;
+          }
+
+          const errorMessage = result.reason?.message || "";
+          return errorMessage !== asyncApiMessages.pollingStopped;
+        });
+
+        if (failedJobs.length > 0 && failedJobs.length < nextTotalCount) {
+          const summaryMessage = formatPartialFailureMessage(
+            failedJobs
+              .map((result) =>
+                result.status === "rejected"
+                  ? result.reason?.message || t("generationFailedGeneric")
+                  : null
+              )
+              .filter((message): message is string => message !== null),
+            failedJobs.length,
+            nextTotalCount
+          );
+
+          setError((previous) =>
+            appendUniqueErrorMessage(previous, summaryMessage)
+          );
+        }
+
         if (
           typeof sessionStorage !== "undefined" &&
           sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) === "true"
@@ -307,60 +623,61 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             new CustomEvent("tutorial:generation-complete", { bubbles: true })
           );
         }
-        // すべての未完了ジョブが完了したので、生成状態を解除
-        setIsGenerating(false);
 
-          // 最終的なリフレッシュ
-          if (refreshTimeoutRef.current) {
-            clearTimeout(refreshTimeoutRef.current);
-            refreshTimeoutRef.current = null;
-          }
-          router.refresh();
-          // 画像生成完了イベントを発火（/my-page/creditsページで取引履歴を更新するため）
-          window.dispatchEvent(new CustomEvent('generation-complete'));
-        } else {
-          // 未完了ジョブがなく、完了済みジョブのみがある場合
-          // 状態をリセットして、表示をクリア
-          setIsGenerating(false);
-          setGeneratingCount(0);
-          setCompletedCount(0);
-        }
-      } catch (err) {
-        // エラーが発生した場合、エラーメッセージを設定して生成状態を解除
-        console.error("Failed to check in-progress jobs:", err);
         setIsGenerating(false);
         setGeneratingCount(0);
-        setCompletedCount(0);
+        if (succeededJobs > 0) {
+          startCompletionReveal();
+        } else {
+          setFeedbackPhase("idle");
+        }
+        window.dispatchEvent(new CustomEvent("generation-complete"));
+
+        scheduleCoordinateRefresh(
+          true,
+          succeededJobs > 0 ? RESULT_REVEAL_DELAY_MS : 0
+        );
+      } catch (inProgressError) {
+        if (isCancelled) {
+          return;
+        }
+        console.error("Failed to check in-progress jobs:", inProgressError);
+        resetGenerationState();
       }
     };
 
-    // マウント時に未完了ジョブを確認
     void checkInProgressJobs();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [
     asyncApiMessages,
+    formatPartialFailureMessage,
+    resetGenerationState,
     router,
-    setCompletedCount,
+    scheduleCoordinateRefresh,
     setGeneratingCount,
     setIsGenerating,
+    setProgressCounts,
+    syncPreviewFromStatus,
+    startCompletionReveal,
     t,
+    updateTrackedJob,
   ]);
 
-  // コンポーネントのアンマウント時にポーリングを停止
   useEffect(() => {
     const stopFunctions = pollingStopFunctionsRef.current;
     return () => {
       stopFunctions.forEach((stop) => stop());
       stopFunctions.clear();
+      clearCompletionTimeout();
       if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
+        window.clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = null;
       }
-      if (fallbackTimeoutRef.current) {
-        clearTimeout(fallbackTimeoutRef.current);
-        fallbackTimeoutRef.current = null;
-      }
     };
-  }, []);
+  }, [clearCompletionTimeout]);
 
   const handleGenerate = async (data: {
     prompt: string;
@@ -372,6 +689,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     model: import("../types").GeminiModel;
     generationType?: import("../types").GenerationType;
   }) => {
+    recoveryRequestIdRef.current += 1;
+
     const showGenerationErrorToast = (message: string) => {
       toast({
         variant: "destructive",
@@ -381,25 +700,27 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     };
 
     setIsGenerating(true);
+    clearCompletionTimeout();
+    clearPreviewImages();
+    setFeedbackPhase("running");
     setError(null);
-    setGeneratingCount(data.count);
-    setCompletedCount(0);
+    setJobStatuses({});
+    setProgressCounts(data.count, 0);
 
-    // 既存のポーリングを停止
     pollingStopFunctionsRef.current.forEach((stop) => stop());
     pollingStopFunctionsRef.current.clear();
+    if (refreshTimeoutRef.current) {
+      window.clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
 
     try {
-      // 全体の必要ペルコイン数を計算
       const percoinCost = getPercoinCost(data.model);
       const requiredPercoins = data.count * percoinCost;
-      
-      // ペルコイン残高を取得
       const { balance } = await fetchPercoinBalance({
         fetchBalanceFailed: creditsT("fetchBalanceFailed"),
       });
-      
-      // 残高チェック
+
       if (balance < requiredPercoins) {
         setError(
           t("insufficientBalance", {
@@ -407,114 +728,142 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
             balance,
           })
         );
-        setIsGenerating(false);
+        resetGenerationState();
         return;
       }
-      
-      const jobIds: string[] = [];
-      let completed = 0;
 
-      // 複数枚生成する場合は、それぞれジョブを投入
-      for (let i = 0; i < data.count; i++) {
+      const jobIds: string[] = [];
+      for (let index = 0; index < data.count; index += 1) {
         try {
-          const response = await generateImageAsync({
-            prompt: data.prompt,
-            sourceImage: data.sourceImage,
-            sourceImageStockId: data.sourceImageStockId,
-            sourceImageType: data.sourceImageType,
-            backgroundMode: data.backgroundMode,
-            generationType: data.generationType || "coordinate",
-            model: data.model,
-          }, asyncApiMessages);
+          const response = await generateImageAsync(
+            {
+              prompt: data.prompt,
+              sourceImage: data.sourceImage,
+              sourceImageStockId: data.sourceImageStockId,
+              sourceImageType: data.sourceImageType,
+              backgroundMode: data.backgroundMode,
+              generationType: data.generationType || "coordinate",
+              model: data.model,
+            },
+            asyncApiMessages
+          );
 
           jobIds.push(response.jobId);
-        } catch (err) {
-          throw err;
+          updateTrackedJob(response.jobId, {
+            status: response.status as AsyncGenerationStatus["status"],
+            processingStage: "queued",
+          });
+        } catch (submitError) {
+          if (jobIds.length === 0) {
+            throw submitError;
+          }
+
+          const errorMessage =
+            submitError instanceof Error
+              ? submitError.message
+              : t("submitJobFailed");
+          setError((previous) =>
+            appendUniqueErrorMessage(previous, errorMessage)
+          );
+          showGenerationErrorToast(errorMessage);
+          break;
         }
       }
 
-      // 各ジョブのステータスをポーリングで監視
-      const completedJobIds = new Set<string>(); // 完了済みジョブIDを追跡
-      
-      const pollPromises = jobIds.map((jobId) => {
-        const { promise, stop } = pollGenerationStatus(jobId, {
-          interval: 2000, // 2秒ごとにポーリング
-          timeout: 300000, // 5分でタイムアウト
-          messages: asyncApiMessages,
-          onStatusUpdate: (status: AsyncGenerationStatus) => {
-            // 完了状態（succeeded/failed）の場合は、completedカウントを更新
-            if ((status.status === "succeeded" || status.status === "failed") && !completedJobIds.has(jobId)) {
-              completedJobIds.add(jobId);
-              completed += 1;
-              setCompletedCount(completed);
-            }
-            
-            // 生成結果一覧を更新（キャッシュ無効化後にrefresh）
-            if (refreshTimeoutRef.current) {
-              clearTimeout(refreshTimeoutRef.current);
-            }
-            refreshTimeoutRef.current = setTimeout(async () => {
-              if (status.status === "succeeded" || status.status === "failed") {
-                // use cacheのキャッシュを無効化してからrefresh（生成画像が表示されるようにする）
-                try {
-                  await fetch("/api/revalidate/coordinate", { method: "POST" });
-                } catch {
-                  // 無効化失敗時もrefreshは実行
-                }
-              }
-              router.refresh();
-            }, 500);
-          },
-        });
+      if (jobIds.length === 0) {
+        throw new Error(t("submitJobFailed"));
+      }
 
-        // 停止関数を保存（コンポーネントのクリーンアップ用）
+      const nextTotalCount = jobIds.length;
+      const completedJobIds = new Set<string>();
+      setProgressCounts(nextTotalCount, 0);
+
+      const pollPromises = jobIds.map(async (jobId) => {
+        const markTerminalJob = (
+          status: AsyncGenerationStatus,
+          options?: { appendError?: boolean }
+        ) => {
+          updateTrackedJob(jobId, status);
+          syncPreviewFromStatus(status);
+
+          if (!completedJobIds.has(jobId)) {
+            completedJobIds.add(jobId);
+            setProgressCounts(nextTotalCount, completedJobIds.size);
+          }
+
+          if (status.status === "failed" && options?.appendError !== false) {
+            const nextMessage =
+              status.errorMessage || t("generationFailedGeneric");
+            setError((previous) =>
+              appendUniqueErrorMessage(previous, nextMessage)
+            );
+          }
+        };
+
+        const { promise, stop } = pollGenerationStatus(jobId, {
+          interval: getStatusPollingIntervalMs,
+          timeout: 300000,
+          messages: asyncApiMessages,
+          onStatusUpdate: (status) => {
+            updateTrackedJob(jobId, status);
+              syncPreviewFromStatus(status);
+              if (status.status === "succeeded" || status.status === "failed") {
+                markTerminalJob(status);
+              }
+            },
+          });
+
         pollingStopFunctionsRef.current.add(stop);
 
-        return promise
-          .then((status) => {
-            // onStatusUpdateで完了カウントは既に更新されているので、
-            // ここではエラー処理のみ行う
-            if (status.status === "failed") {
-              throw new Error(status.errorMessage || t("generationFailedGeneric"));
-            }
-            return status;
-          })
-          .catch((err) => {
-            // ポーリング停止によるエラーは無視（正常な動作）
-            const errorMsg = err instanceof Error ? err.message : "";
-            if (errorMsg === asyncApiMessages.pollingStopped) {
-              // 完了カウントが更新されていない場合のみ更新
-              if (!completedJobIds.has(jobId)) {
-                completedJobIds.add(jobId);
-                completed += 1;
-                setCompletedCount(completed);
-              }
-              // エラーとして扱わない
-              return { id: jobId, status: "queued" as const, resultImageUrl: null, errorMessage: null };
-            }
-            // 完了カウントが更新されていない場合のみ更新
-            if (!completedJobIds.has(jobId)) {
-              completedJobIds.add(jobId);
-              completed += 1;
-              setCompletedCount(completed);
-            }
-            throw err;
-          });
-      });
+        try {
+          const status = await promise;
+          if (status.status === "failed") {
+            markTerminalJob(status);
+            throw new Error(status.errorMessage || t("generationFailedGeneric"));
+          }
 
-      // すべてのジョブの完了を待つ
-      const results = await Promise.allSettled(pollPromises);
+          markTerminalJob(status, { appendError: false });
+          return status;
+        } catch (pollError) {
+          const errorMessage =
+            pollError instanceof Error ? pollError.message : "";
 
-      // 失敗したジョブがあるか確認（ポーリング停止によるエラーは除外）
-      const failedJobs = results.filter((result) => {
-        if (result.status === "rejected") {
-          const errorMsg = result.reason?.message || "";
-          // 「ポーリングが停止されました」は正常な動作なので、失敗として扱わない
-          return errorMsg !== asyncApiMessages.pollingStopped;
+          if (errorMessage === asyncApiMessages.pollingStopped) {
+            return {
+              id: jobId,
+              status: "queued" as const,
+              processingStage: "queued" as const,
+              previewImageUrl: null,
+              resultImageUrl: null,
+              errorMessage: null,
+            };
+          }
+
+          if (!completedJobIds.has(jobId)) {
+            completedJobIds.add(jobId);
+            setProgressCounts(nextTotalCount, completedJobIds.size);
+          }
+
+          throw pollError;
+        } finally {
+          pollingStopFunctionsRef.current.delete(stop);
         }
-        return false;
       });
-      
+
+      const results = await Promise.allSettled(pollPromises);
+      const succeededJobs = results.filter(
+        (result) =>
+          result.status === "fulfilled" && result.value?.status === "succeeded"
+      ).length;
+      const failedJobs = results.filter((result) => {
+        if (result.status !== "rejected") {
+          return false;
+        }
+
+        const errorMessage = result.reason?.message || "";
+        return errorMessage !== asyncApiMessages.pollingStopped;
+      });
+
       if (failedJobs.length > 0) {
         const errorMessages = failedJobs
           .map((result) =>
@@ -522,100 +871,50 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
               ? result.reason?.message || t("generationFailedGeneric")
               : null
           )
-          .filter((msg): msg is string => msg !== null);
-        
-        if (failedJobs.length === jobIds.length) {
-          // すべてのジョブが失敗した場合は、簡潔な1つの文言のみ表示
-          const firstErrorMessage =
-            errorMessages[0] || t("generationFailedGeneric");
-          throw new Error(firstErrorMessage);
-        } else {
-          // 一部のジョブが失敗した場合
-          // ユニークなエラーメッセージを取得（重複を除去）
-          const uniqueErrorMessages = Array.from(new Set(errorMessages));
-          
-          // エラーメッセージを要約（長すぎる場合は省略）
-          const formatErrorSummary = (messages: string[]): string => {
-            if (messages.length === 0) {
-              return "";
-            }
-            if (messages.length === 1) {
-              // 1つのエラーメッセージのみの場合、そのまま表示（長すぎる場合は省略）
-              const msg = messages[0];
-              return msg.length > 100 ? `${msg.substring(0, 100)}...` : msg;
-            }
-            // 複数のエラーメッセージがある場合、最も頻繁に出現するものを優先表示
-            const messageCounts = new Map<string, number>();
-            messages.forEach((msg) => {
-              messageCounts.set(msg, (messageCounts.get(msg) || 0) + 1);
-            });
-            const sortedMessages = Array.from(messageCounts.entries()).toSorted(
-              (a, b) => b[1] - a[1]
-            );
-            const mostCommonMessage = sortedMessages[0][0];
-            const mostCommonCount = sortedMessages[0][1];
-            
-            if (mostCommonCount === messages.length) {
-              // すべて同じエラーメッセージの場合
-              const msg = mostCommonMessage.length > 100 
-                ? `${mostCommonMessage.substring(0, 100)}...` 
-                : mostCommonMessage;
-              return msg;
-            } else {
-              // 異なるエラーメッセージがある場合
-              const msg = mostCommonMessage.length > 80 
-                ? `${mostCommonMessage.substring(0, 80)}...` 
-                : mostCommonMessage;
-              return `${msg} (${t("additionalErrorKinds", {
-                count: messages.length - 1,
-              })})`;
-            }
-          };
-          
-          const errorSummary = formatErrorSummary(uniqueErrorMessages);
-          const errorText = errorSummary
-            ? t("partialGenerationFailedWithSummary", {
-                failed: failedJobs.length,
-                total: jobIds.length,
-                summary: errorSummary,
-              })
-            : t("partialGenerationFailed", {
-                failed: failedJobs.length,
-                total: jobIds.length,
-              });
-          
-          setError(errorText);
-          showGenerationErrorToast(errorText);
+          .filter((message): message is string => message !== null);
+
+        if (failedJobs.length === nextTotalCount) {
+          throw new Error(errorMessages[0] || t("generationFailedGeneric"));
         }
+
+        const summaryMessage = formatPartialFailureMessage(
+          errorMessages,
+          failedJobs.length,
+          nextTotalCount
+        );
+        setError(summaryMessage);
+        showGenerationErrorToast(summaryMessage);
       }
 
-      // 最終的なリフレッシュ（キャッシュ無効化後にrefresh）
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-        refreshTimeoutRef.current = null;
-      }
-      try {
-        await fetch("/api/revalidate/coordinate", { method: "POST" });
-      } catch {
-        // 無効化失敗時もrefreshは実行
-      }
-      router.refresh();
       window.dispatchEvent(new CustomEvent("generation-complete"));
+      setIsGenerating(false);
+      setGeneratingCount(0);
+      if (succeededJobs > 0) {
+        startCompletionReveal();
+      } else {
+        setFeedbackPhase("idle");
+      }
+      scheduleCoordinateRefresh(
+        true,
+        succeededJobs > 0 ? RESULT_REVEAL_DELAY_MS : 0
+      );
       track("coordinate_generation_complete", {
-        count: jobIds.length,
-        succeeded: jobIds.length - failedJobs.length,
+        count: nextTotalCount,
+        succeeded: nextTotalCount - failedJobs.length,
       });
-    } catch (err) {
+    } catch (generationError) {
       const errorMessage =
-        err instanceof Error ? err.message : t("generationFailedGeneric");
+        generationError instanceof Error
+          ? generationError.message
+          : t("generationFailedGeneric");
       track("coordinate_generation_failed", {
         error: errorMessage.substring(0, 100),
       });
       setError(errorMessage);
       showGenerationErrorToast(errorMessage);
-      setIsGenerating(false);
+      resetGenerationState();
+      return;
     } finally {
-      // チュートリアル中: 生成完了をトリガーに案内表示へ進む
       if (
         typeof sessionStorage !== "undefined" &&
         sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) === "true"
@@ -624,12 +923,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
           new CustomEvent("tutorial:generation-complete", { bubbles: true })
         );
       }
-      // isGenerating は GeneratedImageGalleryClient が新画像を受信したタイミングで解除
-      // （スケルトン→画像のシームレスな差し替えのため）
-      // フォールバック: 3秒経っても解除されない場合に強制解除
-      const fallbackTimeout = setTimeout(() => setIsGenerating(false), 3000);
-      fallbackTimeoutRef.current = fallbackTimeout;
-      // ポーリングを停止
+
       pollingStopFunctionsRef.current.forEach((stop) => stop());
       pollingStopFunctionsRef.current.clear();
     }
@@ -637,10 +931,8 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
   return (
     <div className="space-y-8">
-      {/* 生成フォーム */}
-      <GenerationForm onSubmit={handleGenerate} isGenerating={isGenerating} />
+      <GenerationForm onSubmit={handleGenerate} isGenerating={isFormBusy} />
 
-      {/* エラー表示 */}
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="whitespace-pre-line text-sm text-red-900">{error}</p>
@@ -657,26 +949,19 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
         </div>
       ) : null}
 
-      {/* 生成中表示 */}
-      {isGenerating ? (
-        <div
-          className="rounded-lg border border-blue-200 bg-blue-50 p-4"
-          data-tour="tour-generating"
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-            <div>
-              <p className="text-sm font-medium text-blue-900">
-                {t("generatingStatusTitle")}
-              </p>
-              <p className="text-xs text-blue-700">
-                {t("generatingStatusProgress", {
-                  completed: completedCount,
-                  total: generatingCount,
-                })}
-              </p>
-            </div>
-          </div>
+      {isStatusCardVisible ? (
+        <div data-tour="tour-generating">
+          <GenerationStatusCard
+            title={generationStatusTitle}
+            message={displayedMessage}
+            liveMessage={activeMessage}
+            footerText={activeHint}
+            progress={displayedProgressPercent}
+            progressTransitionDurationMs={progressTransitionDurationMs}
+            animateFromZeroOnMount
+            isComplete={feedbackPhase === "completing"}
+            prefersReducedMotion={prefersReducedMotion}
+          />
         </div>
       ) : null}
     </div>

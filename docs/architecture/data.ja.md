@@ -194,18 +194,18 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
    - `sourceImageStockId`
    - Base64 アップロードの一時保存
 3. `user_credits` から事前残高チェックを行う
-4. `image_jobs` に `queued` の行を入れる
+4. `image_jobs` に `status = queued`, `processing_stage = queued` の行を入れる
 5. `pgmq_send` でキュー投入し、同時に Edge Function の即時起動も試す
 6. Edge Function 側で次を行う
    - `pgmq_read` でキュー取得
-   - `image_jobs` を `processing` に更新
-   - `deduct_free_percoins` を実行
-   - Gemini を呼ぶ
-   - 生成画像を Storage に保存
-   - `generated_images` を INSERT
-   - `image_jobs` を `succeeded` に更新
+   - `image_jobs` を `status = processing`, `processing_stage = processing` に更新
+   - `processing_stage = charging` にして `deduct_free_percoins` を実行
+   - `processing_stage = generating` にして Gemini を呼ぶ
+   - `processing_stage = uploading` にして生成画像を Storage に保存
+   - `processing_stage = persisting` にして `generated_images` を INSERT
+   - `image_jobs` を `status = succeeded`, `processing_stage = completed` に更新
    - `credit_transactions.related_generation_id` を後で埋める
-7. 終端失敗になった場合は `refund_percoins` を 1 回だけ呼ぶ
+7. 終端失敗になった場合は `processing_stage = failed` を保存し、`refund_percoins` を 1 回だけ呼ぶ
 
 ### 重要な点
 

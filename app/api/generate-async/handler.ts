@@ -23,6 +23,13 @@ interface GenerateAsyncRouteDependencies {
   supabaseUrl?: string;
 }
 
+function logGenerateAsyncTiming(
+  event: string,
+  payload: Record<string, string | number | null>
+) {
+  console.info(`[Generate Async Timing] ${event}`, payload);
+}
+
 function defaultInvokeImageWorker(edgeFunctionUrl: string) {
   try {
     fetch(edgeFunctionUrl, {
@@ -55,6 +62,7 @@ export async function postGenerateAsyncRoute(
   dependencies: GenerateAsyncRouteDependencies = {}
 ) {
   const copy = getGenerationRouteCopy(getRouteLocale(request));
+  const routeStartedAt = Date.now();
 
   try {
     const getUserFn = dependencies.getUserFn ?? getUser;
@@ -93,10 +101,13 @@ export async function postGenerateAsyncRoute(
 
     const jobRepository =
       dependencies.jobRepository ?? createAsyncGenerationJobRepository();
+    const creditBalanceStartedAt = Date.now();
+    const creditBalancePromise = jobRepository.getUserCreditBalance(user.id);
 
     // sourceImageBase64またはsourceImageStockIdがある場合、input_image_urlを設定
     let inputImageUrl: string | null = null;
     let stockId: string | null = null;
+    const sourceImageProcessingStartedAt = Date.now();
 
     if (sourceImageStockId) {
       // ストック画像IDがある場合、ストック画像のURLを取得
@@ -173,6 +184,8 @@ export async function postGenerateAsyncRoute(
       }
     }
 
+    const sourceImageProcessingMs = Date.now() - sourceImageProcessingStartedAt;
+
     // 1枚分のペルコイン残高チェック
     const percoinCost = getPercoinCost(
       model || "gemini-3.1-flash-image-preview-512"
@@ -181,7 +194,8 @@ export async function postGenerateAsyncRoute(
     // 現在の残高を取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
     const { data: creditData, error: creditError } =
-      await jobRepository.getUserCreditBalance(user.id);
+      await creditBalancePromise;
+    const creditBalanceMs = Date.now() - creditBalanceStartedAt;
 
     if (creditError || !creditData) {
       console.error("Failed to fetch user credits:", creditError);
@@ -200,6 +214,7 @@ export async function postGenerateAsyncRoute(
     }
 
     // image_jobsテーブルにレコード作成
+    const createJobStartedAt = Date.now();
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
       prompt_text: prompt,
@@ -211,11 +226,13 @@ export async function postGenerateAsyncRoute(
       background_mode: backgroundMode,
       background_change: backgroundModeToBackgroundChange(backgroundMode),
       status: "queued",
+      processing_stage: "queued",
       attempts: 0,
     };
 
     const { data: job, error: insertError } =
       await jobRepository.createImageJob(jobData);
+    const createJobMs = Date.now() - createJobStartedAt;
 
     if (insertError || !job) {
       console.error("Failed to create image job:", insertError);
@@ -225,8 +242,10 @@ export async function postGenerateAsyncRoute(
     // Supabase Queueにメッセージ送信
     // 注意: PostgRESTはpublicとgraphql_publicスキーマのみを許可するため、
     // pgmq_public.send()の代わりにpublic.pgmq_send()ラッパー関数を使用
+    const queueSendStartedAt = Date.now();
     const { error: queueError } =
       await jobRepository.sendImageJobQueueMessage(job.id);
+    const queueSendMs = Date.now() - queueSendStartedAt;
 
     // 即時処理の起動: Edge FunctionをHTTP経由で呼び出し（非同期、エラーは無視）
     // 注意: Edge Functionは--no-verify-jwtフラグでデプロイされているため、
@@ -234,14 +253,24 @@ export async function postGenerateAsyncRoute(
     // 可能な限り削除を推奨します。
     const supabaseUrl = dependencies.supabaseUrl ?? env.NEXT_PUBLIC_SUPABASE_URL;
 
+    const invokeStartedAt = Date.now();
     if (supabaseUrl) {
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/image-gen-worker`;
       invokeImageWorkerFn(edgeFunctionUrl);
     }
+    const invokeMs = Date.now() - invokeStartedAt;
 
     // キュー送信失敗時の処理
     if (queueError) {
       console.error("Failed to send message to queue:", queueError);
+      logGenerateAsyncTiming("acceptedWithQueueWarning", {
+        sourceImageProcessingMs,
+        creditBalanceMs,
+        createJobMs,
+        queueSendMs,
+        invokeMs,
+        totalMs: Date.now() - routeStartedAt,
+      });
       // キューへの送信に失敗しても、ジョブは作成されている
       // Edge Functionの即時呼び出しも失敗している可能性がある
       // Cronジョブ（10秒ごと）が処理を拾うまで遅延する可能性があることをユーザーに通知
@@ -258,6 +287,14 @@ export async function postGenerateAsyncRoute(
     }
 
     // レスポンス: ジョブIDとステータスを返却
+    logGenerateAsyncTiming("accepted", {
+      sourceImageProcessingMs,
+      creditBalanceMs,
+      createJobMs,
+      queueSendMs,
+      invokeMs,
+      totalMs: Date.now() - routeStartedAt,
+    });
     return NextResponse.json({
       jobId: job.id,
       status: job.status,
