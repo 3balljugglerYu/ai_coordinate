@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import type { GeneratedImageData } from "../types";
@@ -23,7 +23,6 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
   const [offset, setOffset] = useState(initialImages.length);
   const [hasMore, setHasMore] = useState(initialImages.length === PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(false);
-  const prevInitialImagesRef = useRef<GeneratedImageData[]>(initialImages);
 
   const { ref: loadMoreRef, inView } = useInView({
     rootMargin: "200px",
@@ -49,7 +48,6 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
     setOffset((prev) => Math.max(prev, initialImages.length));
     setHasMore(initialImages.length === PAGE_SIZE);
-    prevInitialImagesRef.current = initialImages;
   }, [initialImages]);
 
   // 無限スクロール: 最下部が表示されたら追加で取得
@@ -136,7 +134,6 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
         images={galleryImages}
         isGenerating={genState?.isGenerating ?? false}
         generatingCount={genState?.generatingCount ?? 0}
-        completedCount={genState?.completedCount ?? 0}
       />
       {/* 無限スクロール用トリガー */}
       {hasMore && (

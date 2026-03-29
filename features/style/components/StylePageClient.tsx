@@ -58,7 +58,7 @@ interface StyleRateLimitStatusState {
 type ResultConfirmationIntent = "change" | "regenerate";
 type GenerationPhase = "idle" | "running" | "completing";
 
-const RESULT_REVEAL_DELAY_MS = 10000;
+const RESULT_REVEAL_DELAY_MS = 5000;
 
 const PRESET_NAME_MAX_CHARACTERS = 16;
 const STYLE_PRESET_CARD_WIDTH_PX = 180;

@@ -16,7 +16,6 @@ interface GeneratedImageGalleryProps {
   images: GeneratedImageData[];
   isGenerating?: boolean;
   generatingCount?: number;
-  completedCount?: number;
   onDownload?: (image: GeneratedImageData) => void;
 }
 
