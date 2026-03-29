@@ -626,11 +626,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
         setIsGenerating(false);
         setGeneratingCount(0);
-        const isTutorialInProgress =
-          typeof sessionStorage !== "undefined" &&
-          sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) ===
-            "true";
-        if (succeededJobs > 0 && !isTutorialInProgress) {
+        if (succeededJobs > 0) {
           startCompletionReveal();
         } else {
           setFeedbackPhase("idle");
@@ -893,11 +889,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       window.dispatchEvent(new CustomEvent("generation-complete"));
       setIsGenerating(false);
       setGeneratingCount(0);
-      const isTutorialActive =
-        typeof sessionStorage !== "undefined" &&
-        sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) ===
-          "true";
-      if (succeededJobs > 0 && !isTutorialActive) {
+      if (succeededJobs > 0) {
         startCompletionReveal();
       } else {
         setFeedbackPhase("idle");
