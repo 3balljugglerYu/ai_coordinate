@@ -1,6 +1,6 @@
 # Persta.AI API Reference
 
-最終更新: 2026-03-13  
+最終更新: 2026-03-29  
 ソース: `app/api/**/*.ts`
 閲覧用ビューア: `/api-docs`（`npm run dev` 実行中かつ `API_DOCS_BASIC_AUTH_USER` / `API_DOCS_BASIC_AUTH_PASSWORD` 設定時のみ）
 
@@ -217,6 +217,8 @@ Response:
 {
   "id": "job-id",
   "status": "queued",
+  "processingStage": "queued",
+  "previewImageUrl": null,
   "resultImageUrl": null,
   "errorMessage": null
 }
@@ -225,6 +227,8 @@ Response:
 補足:
 
 - `failed` 時の `errorMessage` は、ユーザー向け文言に正規化される場合があります。
+- `processingStage` は `queued / processing / charging / generating / uploading / persisting / completed / failed` のいずれかです。
+- `previewImageUrl` は生成途中で先行表示できる画像 URL です。`status === "processing"` の間だけ返る場合があります。
 - `id` は自分のジョブのみ取得できます。
 
 Main errors:
@@ -233,6 +237,39 @@ Main errors:
 - `401`: 未認証
 - `404`: ジョブが見つからない
 - `500`: ステータス取得失敗
+
+### `GET /api/generation-status/in-progress?includeRecent=true`
+
+未完了ジョブと、必要に応じて最近完了したジョブの一覧を取得します。
+
+- Access: `user session`
+- Query:
+  - `includeRecent`: `true` の場合、直近 5 分以内に完了したジョブも含める
+
+Response:
+
+```json
+{
+  "jobs": [
+    {
+      "id": "job-id",
+      "status": "processing",
+      "processingStage": "generating",
+      "createdAt": "2026-03-27T10:01:00.000Z"
+    }
+  ]
+}
+```
+
+補足:
+
+- `processingStage` の語彙は `GET /api/generation-status` と同じです。
+- 通常は `queued / processing` の未完了ジョブを返し、`includeRecent=true` のときだけ最近完了した `succeeded / failed` も返します。
+
+Main errors:
+
+- `401`: 未認証
+- `500`: ジョブ取得失敗
 
 ### `POST /api/credits/checkout`
 

@@ -16,6 +16,19 @@ import type {
 export type ImageJobStatus = "queued" | "processing" | "succeeded" | "failed";
 
 /**
+ * ジョブ内部の進捗ステージ
+ */
+export type ImageJobProcessingStage =
+  | "queued"
+  | "processing"
+  | "charging"
+  | "generating"
+  | "uploading"
+  | "persisting"
+  | "completed"
+  | "failed";
+
+/**
  * 画像生成ジョブ（データベースのimage_jobsテーブルに対応）
  */
 export interface ImageJob {
@@ -30,6 +43,7 @@ export interface ImageJob {
   background_mode: BackgroundMode;
   background_change: boolean;
   status: ImageJobStatus;
+  processing_stage: ImageJobProcessingStage | null;
   result_image_url: string | null;
   error_message: string | null;
   attempts: number;
@@ -55,6 +69,7 @@ export type ImageJobCreateInput = Omit<
   | "status"
 > & {
   status?: ImageJobStatus;
+  processing_stage?: ImageJobProcessingStage | null;
   attempts?: number;
 };
 
@@ -65,6 +80,7 @@ export type ImageJobUpdateInput = Partial<
   Pick<
     ImageJob,
     | "status"
+    | "processing_stage"
     | "result_image_url"
     | "error_message"
     | "attempts"

@@ -536,7 +536,7 @@ describe("StylePageClient", () => {
     expect(screen.getByRole("button", { name: "Generating..." })).toBeDisabled();
 
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(5000);
     });
 
     expect(screen.getByRole("button", { name: "Start Styling" })).toBeEnabled();
@@ -591,7 +591,7 @@ describe("StylePageClient", () => {
     expect(screen.queryByAltText("Generated result")).not.toBeInTheDocument();
 
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(5000);
     });
 
     expect(await screen.findByAltText("Generated result")).toHaveAttribute(
@@ -623,7 +623,7 @@ describe("StylePageClient", () => {
       await Promise.resolve();
     });
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(5000);
     });
 
     expect(await screen.findByAltText("Generated result")).toHaveAttribute(
@@ -672,7 +672,7 @@ describe("StylePageClient", () => {
       await Promise.resolve();
     });
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(5000);
     });
 
     expect(screen.getByAltText("Generated result")).toHaveAttribute(
@@ -711,7 +711,7 @@ describe("StylePageClient", () => {
     expect(fetchMock).toHaveBeenCalled();
 
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(5000);
     });
 
     expect(await screen.findByAltText("Generated result")).toHaveAttribute(
@@ -739,7 +739,7 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
 
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(5000);
     });
 
     expect(await screen.findByAltText("Generated result")).toHaveAttribute(

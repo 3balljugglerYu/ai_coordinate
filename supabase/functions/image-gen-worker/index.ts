@@ -549,6 +549,199 @@ function extractBase64FromDataUrl(dataUrl: string): { base64: string; mimeType: 
   };
 }
 
+type TimedProcessingStage =
+  | "charging"
+  | "generating"
+  | "uploading"
+  | "persisting";
+
+type StageDurationsMs = Partial<Record<TimedProcessingStage, number>>;
+
+type GeneratingSubstep =
+  | "inputPreparation"
+  | "geminiRequest"
+  | "responseProcessing";
+
+type GeneratingSubstepDurationsMs = Partial<Record<GeneratingSubstep, number>>;
+
+const TIMED_STAGE_LABELS: Record<TimedProcessingStage, string> = {
+  charging: "ペルコイン減算",
+  generating: "Gemini画像生成",
+  uploading: "Storage保存",
+  persisting: "DB反映",
+};
+
+const GENERATING_SUBSTEP_LABELS: Record<GeneratingSubstep, string> = {
+  inputPreparation: "入力画像準備・プロンプト構築",
+  geminiRequest: "Gemini API呼び出し",
+  responseProcessing: "応答解析",
+};
+
+function formatDurationMs(durationMs: number | null | undefined): string {
+  if (durationMs === null || durationMs === undefined || Number.isNaN(durationMs)) {
+    return "-";
+  }
+  return `${(durationMs / 1000).toFixed(2)}s`;
+}
+
+function buildStageDurationSummary(stageDurationsMs: StageDurationsMs): string {
+  return (Object.keys(TIMED_STAGE_LABELS) as TimedProcessingStage[])
+    .map(
+      (stage) =>
+        `${stage}(${TIMED_STAGE_LABELS[stage]})=${formatDurationMs(stageDurationsMs[stage])}`
+    )
+    .join(",");
+}
+
+function buildGeneratingSubstepSummary(
+  substepDurationsMs: GeneratingSubstepDurationsMs
+): string {
+  return (Object.keys(GENERATING_SUBSTEP_LABELS) as GeneratingSubstep[])
+    .map(
+      (substep) =>
+        `${substep}(${GENERATING_SUBSTEP_LABELS[substep]})=${formatDurationMs(
+          substepDurationsMs[substep]
+        )}`
+    )
+    .join(",");
+}
+
+function logJobTimeline(
+  jobId: string,
+  message: string,
+  details?: Record<string, string | number | boolean | null | undefined>
+): void {
+  const formattedDetails = details
+    ? Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([key, value]) => `${key}=${String(value)}`)
+        .join(" ")
+    : "";
+
+  console.log(
+    `[Job Timeline] ${message} jobId=${jobId}${formattedDetails ? ` ${formattedDetails}` : ""}`
+  );
+}
+
+function logJobTimingSummary(params: {
+  jobId: string;
+  outcome: "ジョブ完了" | "ジョブ失敗" | "ジョブスキップ";
+  queueWaitMs: number | null;
+  workerDurationMs: number;
+  totalDurationMs: number | null;
+  stageDurationsMs: StageDurationsMs;
+  currentStage?: TimedProcessingStage | null;
+  errorMessage?: string | null;
+}): void {
+  const {
+    jobId,
+    outcome,
+    queueWaitMs,
+    workerDurationMs,
+    totalDurationMs,
+    stageDurationsMs,
+    currentStage,
+    errorMessage,
+  } = params;
+
+  logJobTimeline(jobId, outcome, {
+    queueWait: formatDurationMs(queueWaitMs),
+    workerTotal: formatDurationMs(workerDurationMs),
+    total: formatDurationMs(totalDurationMs),
+    currentStage: currentStage
+      ? `${currentStage}(${TIMED_STAGE_LABELS[currentStage]})`
+      : "-",
+    stages: buildStageDurationSummary(stageDurationsMs),
+    error: errorMessage ?? undefined,
+  });
+}
+
+async function measureJobStage<T>(
+  jobId: string,
+  stage: TimedProcessingStage,
+  stageDurationsMs: StageDurationsMs,
+  run: () => Promise<T>
+): Promise<T> {
+  const startedAtMs = Date.now();
+
+  logJobTimeline(jobId, "ステージ開始", {
+    stage,
+    label: TIMED_STAGE_LABELS[stage],
+  });
+
+  try {
+    const result = await run();
+    const durationMs = Date.now() - startedAtMs;
+    stageDurationsMs[stage] = durationMs;
+
+    logJobTimeline(jobId, "ステージ完了", {
+      stage,
+      label: TIMED_STAGE_LABELS[stage],
+      duration: formatDurationMs(durationMs),
+    });
+
+    return result;
+  } catch (error) {
+    const durationMs = Date.now() - startedAtMs;
+    stageDurationsMs[stage] = durationMs;
+
+    logJobTimeline(jobId, "ステージ失敗", {
+      stage,
+      label: TIMED_STAGE_LABELS[stage],
+      duration: formatDurationMs(durationMs),
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    throw error;
+  }
+}
+
+async function measureGeneratingSubstep<T>(
+  jobId: string,
+  substep: GeneratingSubstep,
+  substepDurationsMs: GeneratingSubstepDurationsMs,
+  run: () => Promise<T>,
+  details?: { attempt?: number }
+): Promise<T> {
+  const startedAtMs = Date.now();
+
+  logJobTimeline(jobId, "生成詳細開始", {
+    substep,
+    label: GENERATING_SUBSTEP_LABELS[substep],
+    attempt: details?.attempt,
+  });
+
+  try {
+    const result = await run();
+    const durationMs = Date.now() - startedAtMs;
+    substepDurationsMs[substep] = (substepDurationsMs[substep] ?? 0) + durationMs;
+
+    logJobTimeline(jobId, "生成詳細完了", {
+      substep,
+      label: GENERATING_SUBSTEP_LABELS[substep],
+      attempt: details?.attempt,
+      duration: formatDurationMs(durationMs),
+      total: formatDurationMs(substepDurationsMs[substep]),
+    });
+
+    return result;
+  } catch (error) {
+    const durationMs = Date.now() - startedAtMs;
+    substepDurationsMs[substep] = (substepDurationsMs[substep] ?? 0) + durationMs;
+
+    logJobTimeline(jobId, "生成詳細失敗", {
+      substep,
+      label: GENERATING_SUBSTEP_LABELS[substep],
+      attempt: details?.attempt,
+      duration: formatDurationMs(durationMs),
+      total: formatDurationMs(substepDurationsMs[substep]),
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    throw error;
+  }
+}
+
 Deno.serve(async () => {
   try {
     // 環境変数の取得
@@ -671,6 +864,37 @@ Deno.serve(async () => {
     let processedCount = 0;
     let skippedCount = 0;
 
+    const updateJobProcessingStage = async (
+      jobId: string,
+      processingStage: "charging" | "generating" | "uploading" | "persisting",
+      options?: {
+        resultImageUrl?: string | null;
+      }
+    ) => {
+      const nextUpdate: {
+        processing_stage: "charging" | "generating" | "uploading" | "persisting";
+        result_image_url?: string | null;
+      } = {
+        processing_stage: processingStage,
+      };
+      if (options && "resultImageUrl" in options) {
+        nextUpdate.result_image_url = options.resultImageUrl ?? null;
+      }
+
+      const { error } = await supabase
+        .from("image_jobs")
+        .update(nextUpdate)
+        .eq("id", jobId)
+        .eq("status", "processing");
+
+      if (error) {
+        console.warn(
+          `[Job Processing] Failed to update processing_stage to ${processingStage}:`,
+          error
+        );
+      }
+    };
+
     // 各メッセージを処理
     for (const message of messages) {
       const msgId = message.msg_id;
@@ -736,6 +960,8 @@ Deno.serve(async () => {
             .from("image_jobs")
             .update({
               status: shouldMarkAsFailed ? "failed" : "queued",
+              processing_stage: shouldMarkAsFailed ? "failed" : "queued",
+              result_image_url: null,
               error_message: staleErrorMessage,
               attempts: newAttempts,
               started_at: shouldMarkAsFailed ? job.started_at : null,
@@ -802,6 +1028,8 @@ Deno.serve(async () => {
           .from("image_jobs")
           .update({
             status: "processing",
+            processing_stage: "processing",
+            result_image_url: null,
             started_at: new Date().toISOString(),
           })
           .eq("id", jobId)
@@ -821,22 +1049,76 @@ Deno.serve(async () => {
           continue;
         }
 
+        const stageDurationsMs: StageDurationsMs = {};
+        const createdAtMs =
+          typeof job.created_at === "string"
+            ? new Date(job.created_at).getTime()
+            : null;
+        const queueWaitMs =
+          createdAtMs !== null && !Number.isNaN(createdAtMs)
+            ? Math.max(Date.now() - createdAtMs, 0)
+            : null;
+        const workerStartedAtMs = Date.now();
+        let currentStage: TimedProcessingStage | null = null;
+        const dbModel = normalizeModelName(job.model);
+        const apiModel = toApiModelName(dbModel);
+        const backgroundMode = resolveBackgroundMode(
+          job.background_mode,
+          job.background_change
+        );
+
+        logJobTimeline(jobId, "ジョブ開始", {
+          generationType: job.generation_type,
+          model: dbModel,
+          sourceImage: job.input_image_url ? "yes" : "no",
+          queueWait: formatDurationMs(queueWaitMs),
+        });
+
         // ===== ペルコイン減算処理（画像生成前に実行） =====
+        currentStage = "charging";
         try {
-          const percoinCost = getPercoinCost(job.model);
-          await deductPercoinsFromGeneration(
-            supabase,
-            job.user_id,
-            jobId, // 一時的にjobIdを使用（画像生成後にgenerated_images.idに更新）
-            percoinCost
+          await measureJobStage(
+            jobId,
+            "charging",
+            stageDurationsMs,
+            async () => {
+              await updateJobProcessingStage(jobId, "charging");
+              const percoinCost = getPercoinCost(job.model);
+              await deductPercoinsFromGeneration(
+                supabase,
+                job.user_id,
+                jobId, // 一時的にjobIdを使用（画像生成後にgenerated_images.idに更新）
+                percoinCost
+              );
+            }
           );
         } catch (deductError) {
           // ペルコイン減算失敗時はジョブを失敗としてマーク
           console.error("[Job Processing] Failed to deduct percoins:", deductError);
+          const failedAtMs = Date.now();
+          const totalDurationMs =
+            createdAtMs !== null && !Number.isNaN(createdAtMs)
+              ? Math.max(failedAtMs - createdAtMs, 0)
+              : null;
+          logJobTimingSummary({
+            jobId,
+            outcome: "ジョブ失敗",
+            queueWaitMs,
+            workerDurationMs: Math.max(failedAtMs - workerStartedAtMs, 0),
+            totalDurationMs,
+            stageDurationsMs,
+            currentStage,
+            errorMessage:
+              deductError instanceof Error
+                ? deductError.message
+                : String(deductError),
+          });
           const { data: deductionFailedJob, error: deductionFailUpdateError } = await supabase
             .from("image_jobs")
             .update({
               status: "failed",
+              processing_stage: "failed",
+              result_image_url: null,
               error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
               completed_at: new Date().toISOString(),
             })
@@ -866,233 +1148,255 @@ Deno.serve(async () => {
 
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         try {
-          // モデル名の正規化
-          const dbModel = normalizeModelName(job.model);
-          const apiModel = toApiModelName(dbModel);
+          let generatedImage: { mimeType: string; data: string } | null = null;
+          currentStage = "generating";
+          await measureJobStage(
+            jobId,
+            "generating",
+            stageDurationsMs,
+            async () => {
+              await updateJobProcessingStage(jobId, "generating");
+              const generatingSubstepDurationsMs: GeneratingSubstepDurationsMs = {};
+              const requestBody = await measureGeneratingSubstep(
+                jobId,
+                "inputPreparation",
+                generatingSubstepDurationsMs,
+                async () => {
+                  const parts: Array<{
+                    text?: string;
+                    inline_data?: {
+                      mime_type: string;
+                      data: string;
+                    };
+                  }> = [];
 
-          // リクエストボディを構築
-          const parts: Array<{
-            text?: string;
-            inline_data?: {
-              mime_type: string;
-              data: string;
-            };
-          }> = [];
+                  if (job.input_image_url) {
+                    let inputImageData: InputImageData;
 
-          // 元画像がある場合は追加
-          if (job.input_image_url) {
-            let inputImageData: InputImageData;
+                    if (job.input_image_url.startsWith("data:")) {
+                      const imageData = extractBase64FromDataUrl(job.input_image_url);
+                      if (!imageData) {
+                        throw new Error("Invalid input image data URL");
+                      }
+                      inputImageData = {
+                        base64: imageData.base64,
+                        mimeType: imageData.mimeType,
+                      };
+                    } else {
+                      try {
+                        inputImageData = await downloadInputImageFromUrlWithRetry(job.input_image_url);
+                      } catch (urlError) {
+                        const urlErrorMessage = urlError instanceof Error
+                          ? urlError.message
+                          : String(urlError);
+                        console.warn("[Input Image] URL download failed", {
+                          jobId,
+                          inputImageUrl: job.input_image_url,
+                          sourceImageStockId: job.source_image_stock_id,
+                          error: urlErrorMessage,
+                        });
 
-            // Data URL形式かStorage URLかを判定
-            if (job.input_image_url.startsWith("data:")) {
-              // Data URL形式の場合
-              const imageData = extractBase64FromDataUrl(job.input_image_url);
-              if (!imageData) {
-                throw new Error("Invalid input image data URL");
-              }
-              inputImageData = {
-                base64: imageData.base64,
-                mimeType: imageData.mimeType,
-              };
-            } else {
-              // URL取得が失敗しても、同じ画像をstorage APIから取得して再利用する
-              try {
-                inputImageData = await downloadInputImageFromUrlWithRetry(job.input_image_url);
-              } catch (urlError) {
-                const urlErrorMessage = urlError instanceof Error
-                  ? urlError.message
-                  : String(urlError);
-                console.warn("[Input Image] URL download failed", {
+                        try {
+                          inputImageData = await downloadInputImageViaStorageFallback(
+                            supabase,
+                            job.input_image_url
+                          );
+                          console.log("[Input Image] URL-derived storage fallback succeeded", {
+                            jobId,
+                            inputImageUrl: job.input_image_url,
+                          });
+                        } catch (fallbackError) {
+                          const fallbackErrorMessage = fallbackError instanceof Error
+                            ? fallbackError.message
+                            : String(fallbackError);
+                          console.warn("[Input Image] URL-derived storage fallback failed", {
+                            jobId,
+                            inputImageUrl: job.input_image_url,
+                            sourceImageStockId: job.source_image_stock_id,
+                            error: fallbackErrorMessage,
+                          });
+
+                          if (job.source_image_stock_id) {
+                            try {
+                              inputImageData = await downloadInputImageViaStockFallback(
+                                supabase,
+                                job.source_image_stock_id
+                              );
+                              console.log("[Input Image] Stock fallback download succeeded", {
+                                jobId,
+                                sourceImageStockId: job.source_image_stock_id,
+                              });
+                            } catch (stockFallbackError) {
+                              const stockFallbackErrorMessage = stockFallbackError instanceof Error
+                                ? stockFallbackError.message
+                                : String(stockFallbackError);
+                              throw new Error(
+                                `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: ${stockFallbackErrorMessage}`
+                              );
+                            }
+                          } else {
+                            throw new Error(
+                              `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: skipped(no source_image_stock_id)`
+                            );
+                          }
+                        }
+                      }
+                    }
+
+                    parts.push({
+                      inline_data: {
+                        mime_type: inputImageData.mimeType,
+                        data: inputImageData.base64,
+                      },
+                    });
+                  }
+
+                  const fullPrompt = job.input_image_url
+                    ? buildSharedPrompt({
+                        generationType: job.generation_type as GenerationType,
+                        outfitDescription: job.prompt_text,
+                        backgroundMode,
+                        sourceImageType:
+                          job.source_image_type === "real" ? "real" : "illustration",
+                      })
+                    : job.prompt_text;
+
+                  parts.push({
+                    text: fullPrompt,
+                  });
+
+                  const nextRequestBody: {
+                    contents: Array<{
+                      parts: typeof parts;
+                    }>;
+                    safetySettings: Array<{
+                      category:
+                        | "HARM_CATEGORY_HARASSMENT"
+                        | "HARM_CATEGORY_HATE_SPEECH"
+                        | "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                        | "HARM_CATEGORY_DANGEROUS_CONTENT";
+                      threshold: "BLOCK_ONLY_HIGH";
+                    }>;
+                    generationConfig?: {
+                      candidateCount?: number;
+                      responseModalities?: Array<"TEXT" | "IMAGE">;
+                      imageConfig?: {
+                        imageSize?: GeminiImageSize;
+                      };
+                    };
+                  } = {
+                    contents: [
+                      {
+                        parts,
+                      },
+                    ],
+                    safetySettings: [
+                      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+                      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+                    ],
+                  };
+
+                  const imageSize = extractImageSize(dbModel);
+
+                  if (apiModel === "gemini-3.1-flash-image-preview") {
+                    if (!imageSize) {
+                      throw new Error(`Unsupported image size for model: ${dbModel}`);
+                    }
+                    nextRequestBody.generationConfig = {
+                      ...nextRequestBody.generationConfig,
+                      candidateCount: 1,
+                      responseModalities: ["TEXT", "IMAGE"],
+                      imageConfig: {
+                        imageSize,
+                      },
+                    };
+                  } else if (apiModel === "gemini-3-pro-image-preview" && imageSize) {
+                    nextRequestBody.generationConfig = {
+                      ...nextRequestBody.generationConfig,
+                      imageConfig: {
+                        imageSize,
+                      },
+                    };
+                  }
+
+                  return nextRequestBody;
+                }
+              );
+
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
+              const maxAttempts = 2;
+
+              for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                const geminiData = await measureGeneratingSubstep(
                   jobId,
-                  inputImageUrl: job.input_image_url,
-                  sourceImageStockId: job.source_image_stock_id,
-                  error: urlErrorMessage,
-                });
+                  "geminiRequest",
+                  generatingSubstepDurationsMs,
+                  async () => {
+                    const geminiResponse = await fetch(apiUrl, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": geminiApiKey,
+                      },
+                      body: JSON.stringify(requestBody),
+                    });
 
-                try {
-                  inputImageData = await downloadInputImageViaStorageFallback(
-                    supabase,
-                    job.input_image_url
-                  );
-                  console.log("[Input Image] URL-derived storage fallback succeeded", {
-                    jobId,
-                    inputImageUrl: job.input_image_url,
-                  });
-                } catch (fallbackError) {
-                  const fallbackErrorMessage = fallbackError instanceof Error
-                    ? fallbackError.message
-                    : String(fallbackError);
-                  console.warn("[Input Image] URL-derived storage fallback failed", {
-                    jobId,
-                    inputImageUrl: job.input_image_url,
-                    sourceImageStockId: job.source_image_stock_id,
-                    error: fallbackErrorMessage,
-                  });
-
-                  if (job.source_image_stock_id) {
-                    try {
-                      inputImageData = await downloadInputImageViaStockFallback(
-                        supabase,
-                        job.source_image_stock_id
-                      );
-                      console.log("[Input Image] Stock fallback download succeeded", {
-                        jobId,
-                        sourceImageStockId: job.source_image_stock_id,
-                      });
-                    } catch (stockFallbackError) {
-                      const stockFallbackErrorMessage = stockFallbackError instanceof Error
-                        ? stockFallbackError.message
-                        : String(stockFallbackError);
+                    if (!geminiResponse.ok) {
+                      const errorData = await geminiResponse.json();
                       throw new Error(
-                        `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: ${stockFallbackErrorMessage}`
+                        errorData.error?.message || `Gemini API error: ${geminiResponse.status}`
                       );
                     }
-                  } else {
-                    throw new Error(
-                      `Failed to download input image. URL: ${urlErrorMessage}; url_fallback: ${fallbackErrorMessage}; stock_fallback: skipped(no source_image_stock_id)`
-                    );
-                  }
+
+                    return (await geminiResponse.json()) as GeminiResponse;
+                  },
+                  { attempt }
+                );
+
+                const nextGeneratedImage = await measureGeneratingSubstep(
+                  jobId,
+                  "responseProcessing",
+                  generatingSubstepDurationsMs,
+                  async () => {
+                    if (geminiData.error) {
+                      throw new Error(geminiData.error.message || "Gemini API error");
+                    }
+
+                    if (isGeminiSafetyBlocked(geminiData)) {
+                      throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+                    }
+
+                    const images = extractImagesFromGeminiResponse(geminiData);
+                    return images.length > 0 ? images[0] : null;
+                  },
+                  { attempt }
+                );
+
+                if (nextGeneratedImage) {
+                  generatedImage = nextGeneratedImage;
+                  break;
+                }
+
+                if (attempt < maxAttempts) {
+                  console.log(
+                    `[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`
+                  );
+                } else {
+                  throw new Error("No images generated");
                 }
               }
+
+              logJobTimeline(jobId, "生成詳細サマリ", {
+                steps: buildGeneratingSubstepSummary(generatingSubstepDurationsMs),
+              });
+
+              if (!generatedImage) {
+                throw new Error("No images generated");
+              }
             }
-
-            parts.push({
-              inline_data: {
-                mime_type: inputImageData.mimeType,
-                data: inputImageData.base64,
-              },
-            });
-          }
-
-          const backgroundMode = resolveBackgroundMode(
-            job.background_mode,
-            job.background_change
           );
-
-          // プロンプトを構築
-          const fullPrompt = job.input_image_url
-            ? buildSharedPrompt({
-                generationType: job.generation_type as GenerationType,
-                outfitDescription: job.prompt_text,
-                backgroundMode,
-                sourceImageType:
-                  job.source_image_type === "real" ? "real" : "illustration",
-              })
-            : job.prompt_text;
-
-          parts.push({
-            text: fullPrompt,
-          });
-
-          // リクエストボディ
-          const requestBody: {
-            contents: Array<{
-              parts: typeof parts;
-            }>;
-            safetySettings: Array<{
-              category:
-                | "HARM_CATEGORY_HARASSMENT"
-                | "HARM_CATEGORY_HATE_SPEECH"
-                | "HARM_CATEGORY_SEXUALLY_EXPLICIT"
-                | "HARM_CATEGORY_DANGEROUS_CONTENT";
-              threshold: "BLOCK_ONLY_HIGH";
-            }>;
-            generationConfig?: {
-              candidateCount?: number;
-              responseModalities?: Array<"TEXT" | "IMAGE">;
-              imageConfig?: {
-                imageSize?: GeminiImageSize;
-              };
-            };
-          } = {
-            contents: [
-              {
-                parts,
-              },
-            ],
-            safetySettings: [
-              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
-            ],
-          };
-
-          const imageSize = extractImageSize(dbModel);
-
-          if (apiModel === "gemini-3.1-flash-image-preview") {
-            if (!imageSize) {
-              throw new Error(`Unsupported image size for model: ${dbModel}`);
-            }
-            requestBody.generationConfig = {
-              ...requestBody.generationConfig,
-              candidateCount: 1,
-              responseModalities: ["TEXT", "IMAGE"],
-              imageConfig: {
-                imageSize,
-              },
-            };
-          } else if (apiModel === "gemini-3-pro-image-preview" && imageSize) {
-            // Gemini 3 Pro Image Previewの場合、imageConfigを追加
-            requestBody.generationConfig = {
-              ...requestBody.generationConfig,
-              imageConfig: {
-                imageSize,
-              },
-            };
-          }
-
-          // APIエンドポイントURLを構築
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
-
-          const maxAttempts = 2; // 初回 + 1回リトライ
-          let generatedImage: { mimeType: string; data: string } | null = null;
-
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            // Gemini APIを呼び出し
-            const geminiResponse = await fetch(apiUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": geminiApiKey,
-              },
-              body: JSON.stringify(requestBody),
-            });
-
-            if (!geminiResponse.ok) {
-              const errorData = await geminiResponse.json();
-              throw new Error(errorData.error?.message || `Gemini API error: ${geminiResponse.status}`);
-            }
-
-            const geminiData: GeminiResponse = await geminiResponse.json();
-
-            if (geminiData.error) {
-              throw new Error(geminiData.error.message || "Gemini API error");
-            }
-
-            if (isGeminiSafetyBlocked(geminiData)) {
-              throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
-            }
-
-            // 画像データを抽出
-            const images = extractImagesFromGeminiResponse(geminiData);
-
-            if (images.length > 0) {
-              generatedImage = images[0];
-              break;
-            }
-
-            // 画像が返ってこなかった場合、リトライ可能なら再試行
-            if (attempt < maxAttempts) {
-              console.log(`[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`);
-            } else {
-              throw new Error("No images generated");
-            }
-          }
-
-          if (!generatedImage) {
-            throw new Error("No images generated");
-          }
 
           // 最初の画像を使用（複数生成の場合は1枚目を使用）
 
@@ -1127,97 +1431,144 @@ Deno.serve(async () => {
             // 許可されていない場合はデフォルトの拡張子を使用
             return "png";
           };
-          
+
           const extension = getSafeExtension(generatedImage.mimeType);
           const fileName = `${job.user_id}/${timestamp}-${randomStr}.${extension}`;
+          let publicUrl = "";
+          let uploadPath = "";
 
-          // Supabase Storageにアップロード
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from(STORAGE_BUCKET)
-            .upload(fileName, byteArray, {
-              contentType: generatedImage.mimeType,
-              upsert: false,
-            });
+          currentStage = "uploading";
+          await measureJobStage(
+            jobId,
+            "uploading",
+            stageDurationsMs,
+            async () => {
+              await updateJobProcessingStage(jobId, "uploading");
 
-          if (uploadError) {
-            console.error("Storage upload error:", uploadError);
-            throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
-          }
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from(STORAGE_BUCKET)
+                .upload(fileName, byteArray, {
+                  contentType: generatedImage.mimeType,
+                  upsert: false,
+                });
 
-          // 公開URLを取得
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(uploadData.path);
+              if (uploadError) {
+                console.error("Storage upload error:", uploadError);
+                throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
+              }
+
+              uploadPath = uploadData.path;
+              publicUrl = supabase.storage
+                .from(STORAGE_BUCKET)
+                .getPublicUrl(uploadData.path).data.publicUrl;
+            }
+          );
 
           // ===== フェーズ4-3: generated_imagesテーブルへの保存 =====
-          const { data: imageRecord, error: insertError } = await supabase
-            .from("generated_images")
-            .insert({
-              user_id: job.user_id,
-              image_url: publicUrl,
-              storage_path: uploadData.path,
-              prompt: job.prompt_text,
-              background_mode: backgroundMode,
-              background_change: backgroundModeToBackgroundChange(backgroundMode),
-              is_posted: false,
-              generation_type: job.generation_type,
-              model: dbModel,
-              source_image_stock_id: job.source_image_stock_id,
-            })
-            .select()
-            .single();
+          let shouldSkipAfterPersist = false;
+          let imageRecordId = "";
+          currentStage = "persisting";
+          await measureJobStage(
+            jobId,
+            "persisting",
+            stageDurationsMs,
+            async () => {
+              await updateJobProcessingStage(jobId, "persisting", {
+                resultImageUrl: publicUrl,
+              });
 
-          if (insertError) {
-            console.error("Database insert error:", insertError);
-            throw new Error(`画像メタデータの保存に失敗しました: ${insertError.message}`);
-          }
+              const { data: imageRecord, error: insertError } = await supabase
+                .from("generated_images")
+                .insert({
+                  user_id: job.user_id,
+                  image_url: publicUrl,
+                  storage_path: uploadPath,
+                  prompt: job.prompt_text,
+                  background_mode: backgroundMode,
+                  background_change: backgroundModeToBackgroundChange(backgroundMode),
+                  is_posted: false,
+                  generation_type: job.generation_type,
+                  model: dbModel,
+                  source_image_stock_id: job.source_image_stock_id,
+                })
+                .select()
+                .single();
 
-          // ===== フェーズ4-4: 成功時の処理 =====
-          // image_jobsテーブルを更新（成功時）
-          const { data: succeededJob, error: successUpdateError } = await supabase
-            .from("image_jobs")
-            .update({
-              status: "succeeded",
-              result_image_url: publicUrl,
-              error_message: null,
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", jobId)
-            .eq("status", "processing")
-            .select("id")
-            .maybeSingle();
+              if (insertError) {
+                console.error("Database insert error:", insertError);
+                throw new Error(`画像メタデータの保存に失敗しました: ${insertError.message}`);
+              }
 
-          if (successUpdateError) {
-            console.error("Failed to update job status to succeeded:", successUpdateError);
-            throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
-          }
+              imageRecordId = imageRecord.id;
 
-          if (!succeededJob) {
-            console.warn(`[Job Success] Skipped succeeded update because status changed: ${jobId}`);
-            skippedCount++;
-            continue;
-          }
+              // ===== フェーズ4-4: 成功時の処理 =====
+              // image_jobsテーブルを更新（成功時）
+              const { data: succeededJob, error: successUpdateError } = await supabase
+                .from("image_jobs")
+                .update({
+                  status: "succeeded",
+                  processing_stage: "completed",
+                  result_image_url: publicUrl,
+                  error_message: null,
+                  completed_at: new Date().toISOString(),
+                })
+                .eq("id", jobId)
+                .eq("status", "processing")
+                .select("id")
+                .maybeSingle();
 
-          // credit_transactionsのrelated_generation_idを更新
-          // 画像生成前にNULLで保存していた取引履歴を、generated_images.idに更新
-          try {
-            const { error: updateTransactionError } = await supabase
-              .from("credit_transactions")
-              .update({ related_generation_id: imageRecord.id })
-              .eq("user_id", job.user_id)
-              .is("related_generation_id", null) // NULLの取引履歴を検索
-              .eq("transaction_type", "consumption")
-              .eq("metadata->>job_id", jobId); // metadata内のjob_idで特定
-            
-            if (updateTransactionError) {
-              console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
-              // エラーはログに記録するが、処理は継続
-            } else {
-              console.log(`[Job Success] Updated credit transaction related_generation_id to ${imageRecord.id}`);
+              if (successUpdateError) {
+                console.error("Failed to update job status to succeeded:", successUpdateError);
+                throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
+              }
+
+              if (!succeededJob) {
+                console.warn(`[Job Success] Skipped succeeded update because status changed: ${jobId}`);
+                skippedCount++;
+                shouldSkipAfterPersist = true;
+                return;
+              }
+
+              // credit_transactionsのrelated_generation_idを更新
+              // 画像生成前にNULLで保存していた取引履歴を、generated_images.idに更新
+              try {
+                const { error: updateTransactionError } = await supabase
+                  .from("credit_transactions")
+                  .update({ related_generation_id: imageRecord.id })
+                  .eq("user_id", job.user_id)
+                  .is("related_generation_id", null) // NULLの取引履歴を検索
+                  .eq("transaction_type", "consumption")
+                  .eq("metadata->>job_id", jobId); // metadata内のjob_idで特定
+                
+                if (updateTransactionError) {
+                  console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
+                  // エラーはログに記録するが、処理は継続
+                } else {
+                  console.log(`[Job Success] Updated credit transaction related_generation_id to ${imageRecord.id}`);
+                }
+              } catch (updateTransactionError) {
+                console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
+                // エラーはログに記録するが、処理は継続
+              }
             }
-          } catch (updateTransactionError) {
-            console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
-            // エラーはログに記録するが、処理は継続
+          );
+
+          if (shouldSkipAfterPersist) {
+            const skippedAtMs = Date.now();
+            const totalDurationMs =
+              createdAtMs !== null && !Number.isNaN(createdAtMs)
+                ? Math.max(skippedAtMs - createdAtMs, 0)
+                : null;
+            logJobTimingSummary({
+              jobId,
+              outcome: "ジョブスキップ",
+              queueWaitMs,
+              workerDurationMs: Math.max(skippedAtMs - workerStartedAtMs, 0),
+              totalDurationMs,
+              stageDurationsMs,
+              currentStage,
+            });
+            continue;
           }
 
           const siteUrl = Deno.env.get("SITE_URL");
@@ -1226,13 +1577,28 @@ Deno.serve(async () => {
             scheduleEnsureWebPVariantsNotification(
               siteUrl,
               cronSecret,
-              imageRecord.id
+              imageRecordId
             );
           } else {
             console.warn(
               "[Job Success] Skipped WebP notification because SITE_URL or CRON_SECRET is not configured"
             );
           }
+
+          currentStage = null;
+          const completedAtMs = Date.now();
+          const totalDurationMs =
+            createdAtMs !== null && !Number.isNaN(createdAtMs)
+              ? Math.max(completedAtMs - createdAtMs, 0)
+              : null;
+          logJobTimingSummary({
+            jobId,
+            outcome: "ジョブ完了",
+            queueWaitMs,
+            workerDurationMs: Math.max(completedAtMs - workerStartedAtMs, 0),
+            totalDurationMs,
+            stageDurationsMs,
+          });
 
           // メッセージを削除（成功時）
           await supabase.rpc("pgmq_delete", {
@@ -1245,6 +1611,21 @@ Deno.serve(async () => {
           // ===== フェーズ4-4: 失敗時の処理 =====
           console.error("[Job Processing] Generation error:", error);
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          const failedAtMs = Date.now();
+          const totalDurationMs =
+            createdAtMs !== null && !Number.isNaN(createdAtMs)
+              ? Math.max(failedAtMs - createdAtMs, 0)
+              : null;
+          logJobTimingSummary({
+            jobId,
+            outcome: "ジョブ失敗",
+            queueWaitMs,
+            workerDurationMs: Math.max(failedAtMs - workerStartedAtMs, 0),
+            totalDurationMs,
+            stageDurationsMs,
+            currentStage,
+            errorMessage,
+          });
 
           // 現在のジョブのattemptsを取得（更新前に取得する必要がある）
           const { data: currentJob, error: jobFetchError } = await supabase
@@ -1268,6 +1649,8 @@ Deno.serve(async () => {
             .from("image_jobs")
             .update({
               status: shouldMarkAsFailed ? "failed" : "queued",
+              processing_stage: shouldMarkAsFailed ? "failed" : "queued",
+              result_image_url: null,
               error_message: errorMessage,
               attempts: newAttempts,
               started_at: shouldMarkAsFailed ? currentJob?.started_at ?? job.started_at : null,

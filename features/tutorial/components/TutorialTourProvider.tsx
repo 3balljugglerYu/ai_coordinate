@@ -17,7 +17,7 @@ const prefersReducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const SCROLL_TRANSITION_MS = 450;
-const GENERATION_COMPLETE_TRANSITION_DELAY_MS = 2000;
+const GENERATION_COMPLETE_TRANSITION_DELAY_MS = 5000;
 
 /** driver.js をチュートリアル開始時のみ遅延読み込み（bundle-dynamic-imports） */
 async function loadDriver() {
@@ -522,7 +522,7 @@ export function TutorialTourProvider() {
     return () => document.removeEventListener("tutorial:advance-to-next", handler);
   }, []);
 
-  // 生成完了で「完了しました！それではみてみましょう！」へ進む
+  // 生成完了で完了アニメーション表示後に「完了しました！」へ進む
   useEffect(() => {
     const handler = () => {
       // 同イベントの重複発火時は二重遷移を防ぐ

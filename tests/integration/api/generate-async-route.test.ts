@@ -158,6 +158,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         background_mode: "keep",
         background_change: false,
         status: "queued",
+        processing_stage: "queued",
         attempts: 0,
       });
       expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(

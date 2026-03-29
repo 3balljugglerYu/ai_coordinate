@@ -222,7 +222,7 @@ export function ImageModal({
           {currentIndex + 1} / {images.length}
         </div>
         <div className="flex items-center gap-2">
-          {onPost && !currentImage.is_posted && (
+          {onPost && !currentImage.is_posted && !currentImage.isPreview && (
             <Button
               size="sm"
               variant="ghost"

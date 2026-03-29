@@ -556,6 +556,141 @@ export const jaMessages = {
     inProgressStopped: "ポーリングが停止されました",
     generatingStatusTitle: "画像を生成中...",
     generatingStatusProgress: "{completed} / {total} 枚完了",
+    generationProgressTitle: "画像を生成中です ({completed} / {total} 枚完了)",
+    generationCompletedTitle: "画像の生成が完了しました",
+    // preparing
+    generationStagePreparingMessage1: "衣装を確認中...",
+    generationStagePreparingMessage2: "衣装を見ています...",
+    generationStagePreparingMessage3: "お着替え後のイメージをしてます...",
+    generationStagePreparingMessage4: "とても良さそうな予感！...",
+    generationStagePreparingMessage5: "衣装に見惚れています...",
+    generationStagePreparingHint1: "入力画像とプロンプトを確認しています。",
+    generationStagePreparingHint2: "生成に必要なデータを送信しています。",
+    generationStagePreparingHint3: "ジョブ登録の準備をしています。",
+    generationStagePreparingHint4: "開始前の処理を進めています。",
+    generationStagePreparingHint5: "このあとキュー登録へ進みます。",
+    // queued
+    generationStageQueuedMessage1: "お着替えの順番を整えています...",
+    generationStageQueuedMessage2: "まもなくコーデづくりが始まります...",
+    generationStageQueuedMessage3: "あなたの番に向けて準備しています...",
+    generationStageQueuedMessage4: "すてきな仕上がりに向けて待機中です...",
+    generationStageQueuedMessage5: "コーデの開始まであと少しです...",
+    generationStageQueuedHint1: "生成の順番を調整しています。",
+    generationStageQueuedHint2: "混み具合を確認しながら進めています。",
+    generationStageQueuedHint3: "このあと自動で処理が始まります。",
+    generationStageQueuedHint4: "開始前の確認をしています。",
+    generationStageQueuedHint5: "準備が整い次第、次の工程へ進みます。",
+    // processing
+    generationStageProcessingMessage1: "コーデの雰囲気を整えています...",
+    generationStageProcessingMessage2:
+      "あなたに似合う着こなしを考えています...",
+    generationStageProcessingMessage3:
+      "お着替えのイメージをまとめています...",
+    generationStageProcessingMessage4: "仕上がりの方向性を整えています...",
+    generationStageProcessingMessage5:
+      "フィッティングルームに入っています！...",
+    generationStageProcessingHint1: "生成リクエストの処理を始めています。",
+    generationStageProcessingHint2: "必要な情報を読み込んでいます。",
+    generationStageProcessingHint3: "画像生成の前段を進めています。",
+    generationStageProcessingHint4: "このまま自動で次の工程へ進みます。",
+    generationStageProcessingHint5: "ジョブを安全に開始する準備中です。",
+    // charging
+    generationStageChargingMessage1: "コーデの雰囲気を整えています...",
+    generationStageChargingMessage2:
+      "あなたに似合う着こなしを考えています...",
+    generationStageChargingMessage3:
+      "お着替えのイメージをまとめています...",
+    generationStageChargingMessage4: "仕上がりの方向性を整えています...",
+    generationStageChargingMessage5:
+      "ぴったりのコーデになるよう準備しています...",
+    generationStageChargingHint1: "生成に必要なペルコインを処理しています。",
+    generationStageChargingHint2: "残高と利用情報を確認しています。",
+    generationStageChargingHint3: "課金まわりの記録を更新しています。",
+    generationStageChargingHint4: "この処理が終わると画像生成へ進みます。",
+    generationStageChargingHint5: "料金情報を反映しています。",
+    // generating
+    generationStageGeneratingMessage1: "少々お待ちください！...",
+    generationStageGeneratingMessage2:
+      "お着替え中...",
+    generationStageGeneratingMessage3:
+      "着こなせるか心配...",
+    generationStageGeneratingMessage4:
+      "お着替えをしています...",
+    generationStageGeneratingMessage5: "いい感じかも！...",
+    generationStageGeneratingMessage6:
+      "鏡の前でチェック中です...",
+    generationStageGeneratingMessage7:
+      "ちょっと気になるところを調整中...",
+    generationStageGeneratingMessage8:
+      "テンションがあがってます！...",
+    generationStageGeneratingMessage9:
+      "全体のシルエットを整えています...",
+    generationStageGeneratingMessage10:
+      "あと少しでお着替え完了です...",
+    generationStageGeneratingHint1: "AI がお着替えを進めています。",
+    generationStageGeneratingHint2: "いま一番時間がかかる工程です。",
+    generationStageGeneratingHint3: "似合う着こなしになるよう整えています。",
+    generationStageGeneratingHint4: "もう少しでお披露目できそうです。",
+    generationStageGeneratingHint5: "新しいコーデへ仕上げています。",
+    // uploading
+    generationStageUploadingMessage1: "お着替えができたようです！",
+    generationStageUploadingMessage2:
+      "フィッティングルームから出てきそうです！",
+    generationStageUploadingMessage3:
+      "似合っているか、ちょっと緊張しているかも...",
+    generationStageUploadingMessage4:
+      "もうすぐ新しいコーデがお披露目です！",
+    generationStageUploadingMessage5:
+      "最後の身だしなみチェックをしているみたいです！",
+    generationStageUploadingHint1: "まもなく新しいコーデを表示します。",
+    generationStageUploadingHint2: "お披露目の準備をしています。",
+    generationStageUploadingHint3: "あと少しで結果を確認できます。",
+    generationStageUploadingHint4: "仕上がりの反映はほぼ完了しています。",
+    generationStageUploadingHint5:
+      "新しい着こなしが表示される直前です。",
+    // persisting
+    generationStagePersistingMessage1: "お着替えができたようです！",
+    generationStagePersistingMessage2:
+      "フィッティングルームから出てきそうです！",
+    generationStagePersistingMessage3:
+      "似合っているか、ちょっと緊張しているかも...",
+    generationStagePersistingMessage4:
+      "もうすぐ新しいコーデがお披露目です！",
+    generationStagePersistingMessage5:
+      "最後の身だしなみチェックをしているみたいです！",
+    generationStagePersistingHint1: "まもなく新しいコーデを表示します。",
+    generationStagePersistingHint2: "お披露目の準備をしています。",
+    generationStagePersistingHint3: "あと少しで結果を確認できます。",
+    generationStagePersistingHint4: "仕上がりの反映はほぼ完了しています。",
+    generationStagePersistingHint5:
+      "新しい着こなしが表示される直前です。",
+    // completed
+    generationStageCompletedMessage1: "お着替えができたようです！",
+    generationStageCompletedMessage2:
+      "フィッティングルームから出てきそうです！",
+    generationStageCompletedMessage3:
+      "似合っているか、ちょっと緊張しているかも...",
+    generationStageCompletedMessage4:
+      "もうすぐ新しいコーデがお披露目です！",
+    generationStageCompletedMessage5:
+      "最後の身だしなみチェックをしているみたいです！",
+    generationStageCompletedHint1: "まもなく新しいコーデを表示します。",
+    generationStageCompletedHint2: "お披露目の準備をしています。",
+    generationStageCompletedHint3: "あと少しで結果を確認できます。",
+    generationStageCompletedHint4: "仕上がりの反映はほぼ完了しています。",
+    generationStageCompletedHint5:
+      "新しい着こなしが表示される直前です。",
+    // failed
+    generationStageFailedMessage1: "処理を見直しています...",
+    generationStageFailedMessage2: "途中で問題を検知しました...",
+    generationStageFailedMessage3: "生成の完了まで進めませんでした...",
+    generationStageFailedMessage4: "このジョブは停止しました...",
+    generationStageFailedMessage5: "別の条件での再試行をご検討ください...",
+    generationStageFailedHint1: "このジョブは失敗として終了しました。",
+    generationStageFailedHint2: "入力内容や画像サイズを変えると改善する場合があります。",
+    generationStageFailedHint3: "時間をおいて再試行すると通ることがあります。",
+    generationStageFailedHint4: "ほかのジョブが続いている場合は、その完了を待っています。",
+    generationStageFailedHint5: "エラー内容は上のメッセージで確認できます。",
     uploadSourceLabel: "人物画像をアップロード",
     addImage: "画像を追加",
     uploadedImageAlt: "アップロードされた画像",
@@ -713,7 +848,7 @@ export const jaMessages = {
       "「コーデスタート」ボタンを選択して、開始しましょう！ ※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",
     stepGeneratingTitle: "生成しています！",
     stepGeneratingDescription:
-      "生成完了まで約20秒ほどかかります。しばらくお待ちください！",
+      "進捗バーで生成の状態を確認できます。完了まで少々お待ちください！",
     stepCompletedTitle: "完了しました！",
     stepFirstImageTitle: "着せ替え完了！",
     stepFirstImageDescription:

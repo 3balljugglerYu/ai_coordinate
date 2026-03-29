@@ -344,6 +344,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "generation_type": "coordinate",
           "input_image_url": "https://cdn.example.com/temp/uploaded.png",
           "model": "gemini-3.1-flash-image-preview-512",
+          "processing_stage": "queued",
           "prompt_text": "linen jacket",
           "source_image_stock_id": null,
           "source_image_type": "real",
