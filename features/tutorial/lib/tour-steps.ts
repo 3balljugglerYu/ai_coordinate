@@ -73,7 +73,7 @@ export function getTourSteps(copy: TutorialTourCopy): DriveStep[] {
       popover: {
         title: copy.generatingTitle,
         description: copy.generatingDescription,
-        side: "bottom",
+        side: "top",
         align: "start",
         showButtons: [],
       },

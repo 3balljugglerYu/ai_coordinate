@@ -17,7 +17,6 @@ const prefersReducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const SCROLL_TRANSITION_MS = 450;
-const GENERATION_COMPLETE_TRANSITION_DELAY_MS = 2000;
 
 /** driver.js をチュートリアル開始時のみ遅延読み込み（bundle-dynamic-imports） */
 async function loadDriver() {
@@ -74,8 +73,7 @@ export function TutorialTourProvider() {
   const [isChecking, setIsChecking] = useState(true);
   const driverRef = useRef<Driver | null>(null);
   const coordinateTourStartedRef = useRef(false);
-  const generationCompleteDelayTimerRef =
-    useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generationCompleteHandledRef = useRef(false);
   const normalizedPath = pathname ? stripLocalePrefix(pathname).pathname : "/";
 
   // チュートリアル開始判定（rerender-dependencies: プリミティブな依存のみ）
@@ -522,26 +520,21 @@ export function TutorialTourProvider() {
     return () => document.removeEventListener("tutorial:advance-to-next", handler);
   }, []);
 
-  // 生成完了で「完了しました！それではみてみましょう！」へ進む
+  // 生成完了で「完了しました！それではみてみましょう！」へ即遷移
   useEffect(() => {
     const handler = () => {
       // 同イベントの重複発火時は二重遷移を防ぐ
-      if (generationCompleteDelayTimerRef.current) return;
-      generationCompleteDelayTimerRef.current = setTimeout(() => {
-        generationCompleteDelayTimerRef.current = null;
-        const d = driverRef.current;
-        if (!d || d.isLastStep()) return;
-        const nextIndex = (d.getActiveIndex() ?? 0) + 1;
-        runTransitionFlow(d, nextIndex, () => d.moveNext());
-      }, GENERATION_COMPLETE_TRANSITION_DELAY_MS);
+      if (generationCompleteHandledRef.current) return;
+      generationCompleteHandledRef.current = true;
+      const d = driverRef.current;
+      if (!d || d.isLastStep()) return;
+      const nextIndex = (d.getActiveIndex() ?? 0) + 1;
+      runTransitionFlow(d, nextIndex, () => d.moveNext());
     };
     document.addEventListener("tutorial:generation-complete", handler);
     return () => {
       document.removeEventListener("tutorial:generation-complete", handler);
-      if (generationCompleteDelayTimerRef.current) {
-        clearTimeout(generationCompleteDelayTimerRef.current);
-        generationCompleteDelayTimerRef.current = null;
-      }
+      generationCompleteHandledRef.current = false;
     };
   }, []);
 

@@ -846,7 +846,7 @@ export const jaMessages = {
       "「コーデスタート」ボタンを選択して、開始しましょう！ ※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",
     stepGeneratingTitle: "生成しています！",
     stepGeneratingDescription:
-      "生成完了まで約20秒ほどかかります。しばらくお待ちください！",
+      "進捗バーで生成の状態を確認できます。完了まで少々お待ちください！",
     stepCompletedTitle: "完了しました！",
     stepFirstImageTitle: "着せ替え完了！",
     stepFirstImageDescription:

@@ -896,7 +896,7 @@ export const enMessages = {
       "Select “Start styling” to begin. Your Percoins will be restored after the tutorial, so feel free to continue.",
     stepGeneratingTitle: "Generating...",
     stepGeneratingDescription:
-      "This usually takes around 20 seconds. Please wait a moment.",
+      "You can track the progress below. Please wait a moment for it to finish!",
     stepCompletedTitle: "It's ready!",
     stepFirstImageTitle: "Your outfit swap is complete",
     stepFirstImageDescription:
