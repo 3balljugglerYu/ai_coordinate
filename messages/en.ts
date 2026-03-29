@@ -583,6 +583,7 @@ export const enMessages = {
     generatingStatusProgress: "{completed} / {total} images completed",
     generationProgressTitle:
       "Generating images ({completed} / {total} completed)",
+    generationCompletedTitle: "Image generation is complete",
     // preparing
     generationStagePreparingMessage1: "Checking the outfit...",
     generationStagePreparingMessage2: "Looking at the outfit...",

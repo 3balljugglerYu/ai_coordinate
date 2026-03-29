@@ -557,6 +557,7 @@ export const jaMessages = {
     generatingStatusTitle: "画像を生成中...",
     generatingStatusProgress: "{completed} / {total} 枚完了",
     generationProgressTitle: "画像を生成中です ({completed} / {total} 枚完了)",
+    generationCompletedTitle: "画像の生成が完了しました",
     // preparing
     generationStagePreparingMessage1: "衣装を確認中...",
     generationStagePreparingMessage2: "衣装を見ています...",

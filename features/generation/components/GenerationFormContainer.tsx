@@ -424,13 +424,13 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     isPreparingSubmission
       ? PREPARING_PROGRESS_TRANSITION_MS
       : COORDINATE_PROGRESS_TRANSITION_MS[statusCardStage];
-  const generationStatusTitle = t("generationProgressTitle", {
-    completed:
-      feedbackPhase === "completing"
-        ? effectiveTotalCount
-        : effectiveCompletedCount,
-    total: effectiveTotalCount,
-  });
+  const generationStatusTitle =
+    feedbackPhase === "completing"
+      ? t("generationCompletedTitle")
+      : t("generationProgressTitle", {
+          completed: effectiveCompletedCount,
+          total: effectiveTotalCount,
+        });
 
   useEffect(() => {
     const recoveryRequestId = ++recoveryRequestIdRef.current;
