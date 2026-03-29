@@ -1,0 +1,210 @@
+metadata:
+  class: CoordinatePage
+  source: app/(app)/coordinate/page.tsx
+  version: "1.1"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - requireAuth
+    - next-intl coordinate translations
+    - next-intl credits translations
+    - CachedCoordinatePercoinBalance
+    - GenerationFormContainer
+    - CachedGeneratedImageGallery
+    - RefreshOnMount
+  external:
+    - Browser authenticated session cookies
+    - Next.js server component streaming and Suspense
+
+state_properties: []
+
+specifications:
+  - id: CPE-001
+    method: access
+    type: event-driven
+    ears: |
+      When an unauthenticated browser requests the coordinate page,
+      the system shall redirect the browser to /login
+      and shall not render the coordinate workspace.
+    ears_ja: |
+      未認証ブラウザがコーディネートページを要求した場合、
+      システムはブラウザを /login へリダイレクトし、
+      コーディネート画面本体を描画してはならない。
+    preconditions:
+      - The browser requests /coordinate
+      - No authenticated session is established for the browser
+    preconditions_ja:
+      - ブラウザが /coordinate を要求する
+      - ブラウザに認証済みセッションが確立されていない
+    postconditions:
+      success:
+        - Redirects the browser to /login
+        - Does not render the coordinate page heading
+      error:
+        - Does not remain on /coordinate as an unauthenticated browser
+    postconditions_ja:
+      success:
+        - ブラウザを /login へリダイレクトする
+        - コーディネートページ見出しを描画しない
+      error:
+        - 未認証ブラウザを /coordinate に留まらせない
+    edge_cases:
+      - description: When the browser already has a locale cookie
+        expected: The redirect target remains /login without adding a locale prefix at the coordinate-page boundary
+      - description: When the request is resolved on the server before any Suspense child can stream
+        expected: No partial coordinate workspace copy is rendered before the redirect
+    edge_cases_ja:
+      - description: ブラウザが既に locale cookie を保持している場合
+        expected: CoordinatePage 境界では redirect 先は locale prefix を付けず /login のままである
+      - description: Suspense 子要素が stream する前にサーバー側でリクエストが解決される場合
+        expected: redirect 前にコーディネート画面の部分的な copy を描画しない
+    test_cases:
+      - access_GivenUnauthenticatedBrowser_ShouldRedirectToLoginWithoutRenderingCoordinateUi
+    test_cases_ja:
+      - access_未認証ブラウザの場合_loginへリダイレクトしてコーディネートUIを描画しない
+
+  - id: CPE-002
+    method: render
+    type: state-driven
+    ears: |
+      While an authenticated browser is viewing the coordinate page under a Japanese locale context,
+      the system shall render the Japanese coordinate heading,
+      the Japanese page description,
+      and the Japanese generated-results heading.
+    ears_ja: |
+      認証済みブラウザが日本語locale文脈でコーディネートページを表示している間、
+      システムは日本語のコーディネート見出し、
+      日本語のページ説明文、
+      そして日本語の生成結果見出しを描画しなければならない。
+    preconditions:
+      - An authenticated session is established for the browser
+      - The coordinate page is requested under a Japanese locale context
+    preconditions_ja:
+      - ブラウザに認証済みセッションが確立されている
+      - 日本語locale文脈でコーディネートページが要求される
+    postconditions:
+      success:
+        - Renders the heading "コーディネート"
+        - Renders the description "人物画像をアップロードして、着せ替えを楽しみましょう"
+        - Renders the heading "生成結果一覧"
+      error:
+        - Does not render the English coordinate heading in the same response
+    postconditions_ja:
+      success:
+        - 見出し「コーディネート」を描画する
+        - 説明文「人物画像をアップロードして、着せ替えを楽しみましょう」を描画する
+        - 見出し「生成結果一覧」を描画する
+      error:
+        - 同一レスポンスで英語のコーディネート見出しを描画しない
+    edge_cases:
+      - description: When the internal route is locale-less and Japanese is resolved from cookie or request context
+        expected: The page still renders the Japanese copy set for the authenticated experience
+      - description: When suspended data panels are still loading
+        expected: The static Japanese heading, description, and generated-results heading remain visible
+    edge_cases_ja:
+      - description: 内部ルート自体は locale-less で、日本語が cookie または request context から解決される場合
+        expected: ページはそれでも認証済み体験向けの日本語 copy 一式を描画する
+      - description: Suspense 配下のデータパネルがまだ loading 中の場合
+        expected: 静的な日本語見出し、説明文、生成結果見出しは表示されたままである
+    test_cases:
+      - render_GivenAuthenticatedJapaneseCoordinatePage_ShouldRenderJapaneseCopy
+    test_cases_ja:
+      - render_日本語localeの認証済みコーディネートページの場合_日本語copyを描画する
+
+  - id: CPE-003
+    method: render
+    type: state-driven
+    ears: |
+      While an authenticated browser is viewing the coordinate page under an English locale context,
+      the system shall render the English coordinate heading,
+      the English page description,
+      and the English generated-results heading.
+    ears_ja: |
+      認証済みブラウザが英語locale文脈でコーディネートページを表示している間、
+      システムは英語のコーディネート見出し、
+      英語のページ説明文、
+      そして英語の生成結果見出しを描画しなければならない。
+    preconditions:
+      - An authenticated session is established for the browser
+      - The coordinate page is requested under an English locale context
+    preconditions_ja:
+      - ブラウザに認証済みセッションが確立されている
+      - 英語locale文脈でコーディネートページが要求される
+    postconditions:
+      success:
+        - Renders the heading "Coordinate"
+        - Renders the description "Upload a character image and enjoy styling with AI."
+        - Renders the heading "Generated results"
+      error:
+        - Does not render the Japanese coordinate heading in the same response
+    postconditions_ja:
+      success:
+        - 見出し「Coordinate」を描画する
+        - 説明文「Upload a character image and enjoy styling with AI.」を描画する
+        - 見出し「Generated results」を描画する
+      error:
+        - 同一レスポンスで日本語のコーディネート見出しを描画しない
+    edge_cases:
+      - description: When the internal route is locale-less and English is resolved from cookie or request context
+        expected: The page still renders the English copy set for the authenticated experience
+      - description: When suspended data panels are still loading
+        expected: The static English heading, description, and generated-results heading remain visible
+    edge_cases_ja:
+      - description: 内部ルート自体は locale-less で、英語が cookie または request context から解決される場合
+        expected: ページはそれでも認証済み体験向けの英語 copy 一式を描画する
+      - description: Suspense 配下のデータパネルがまだ loading 中の場合
+        expected: 静的な英語見出し、説明文、生成結果見出しは表示されたままである
+    test_cases:
+      - render_GivenAuthenticatedEnglishCoordinatePage_ShouldRenderEnglishCopy
+    test_cases_ja:
+      - render_英語localeの認証済みコーディネートページの場合_英語copyを描画する
+
+  - id: CPE-004
+    method: render
+    type: state-driven
+    ears: |
+      While an authenticated browser is viewing the coordinate page,
+      the system shall render the percoin balance entry point,
+      the generation form workspace,
+      and the generated-results section for the signed-in user.
+    ears_ja: |
+      認証済みブラウザがコーディネートページを表示している間、
+      システムはサインイン中ユーザー向けのペルコイン残高導線、
+      生成フォームの作業領域、
+      そして生成結果セクションを描画しなければならない。
+    preconditions:
+      - An authenticated session is established for the browser
+      - The coordinate page is requested successfully
+    preconditions_ja:
+      - ブラウザに認証済みセッションが確立されている
+      - コーディネートページが正常に要求される
+    postconditions:
+      success:
+        - Renders a localized percoin balance label and unit
+        - Renders at least one actionable control in the generation form workspace
+        - Renders the generated-results section heading
+      error:
+        - Does not omit the generation workspace while streaming data panels
+    postconditions_ja:
+      success:
+        - localeに応じたペルコイン残高ラベルと単位を描画する
+        - 生成フォーム作業領域に少なくとも1つの操作可能なコントロールを描画する
+        - 生成結果セクション見出しを描画する
+      error:
+        - データパネルのstreaming中でも生成ワークスペースを欠落させない
+    edge_cases:
+      - description: When the percoin balance panel or generated-results panel is still suspended
+        expected: The generation form workspace still renders and remains actionable in the page layout
+      - description: When locale-specific balance copy changes between Japanese and English
+        expected: The balance entry point uses the locale-resolved label and unit without changing the page structure
+    edge_cases_ja:
+      - description: ペルコイン残高パネルまたは生成結果パネルがまだ Suspense 中の場合
+        expected: 生成フォーム作業領域はそれでも描画され、ページ内で操作可能なままである
+      - description: ペルコイン残高 copy が日本語と英語で切り替わる場合
+        expected: 残高導線は locale 解決済みのラベルと単位を使い、ページ構造自体は変えない
+    test_cases:
+      - render_GivenAuthenticatedCoordinatePage_ShouldRenderBalanceEntryPointAndGenerationWorkspace
+    test_cases_ja:
+      - render_認証済みコーディネートページの場合_残高導線と生成ワークスペースを描画する

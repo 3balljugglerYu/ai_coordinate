@@ -575,10 +575,10 @@ specifications:
     ears: |
       If an unexpected exception is thrown in the request pipeline,
       then the system shall return HTTP 500
-      with exception.message when available.
+      with a localized generic failure message and a requestId.
     ears_ja: |
       リクエスト処理パイプラインで予期しない例外が発生した場合、
-      システムは可能な限り例外メッセージを含むHTTP 500を返す。
+      システムはローカライズされた汎用失敗メッセージとrequestIdを含むHTTP 500を返す。
     preconditions:
       - Any unexpected exception occurs during request parsing, validation, repository calls, or response composition
     preconditions_ja:
@@ -588,31 +588,33 @@ specifications:
         - None
       error:
         - HTTP status is 500
-        - Error message is exception.message when thrown value is Error
-        - Error message is Internal server error for non-Error throws
+        - Error message is the locale-specific generateAsyncFailed copy
+        - errorCode is GENERATION_ASYNC_FAILED
+        - requestId is included for log correlation
     postconditions_ja:
       success:
         - なし
       error:
         - HTTPステータスが500になる
-        - Error型例外ではexception.messageを返す
-        - Error型以外のthrowではInternal server errorを返す
+        - エラーメッセージはlocale別のgenerateAsyncFailed文言になる
+        - errorCodeはGENERATION_ASYNC_FAILEDになる
+        - ログ突合用のrequestIdが含まれる
     edge_cases:
       - description: When request.json throws parsing error
-        expected: Catch path returns HTTP 500 with parsing error message
+        expected: Catch path returns HTTP 500 with generic localized copy and requestId
       - description: When non-Error value is thrown
-        expected: Catch path returns HTTP 500 with Internal server error
+        expected: Catch path still returns generic localized copy and requestId
     edge_cases_ja:
       - description: request.jsonがパース例外を投げる場合
-        expected: catch経路でパース例外メッセージ付きHTTP 500を返す
+        expected: catch経路で汎用ローカライズ文言とrequestId付きHTTP 500を返す
       - description: Error型以外の値がthrowされる場合
-        expected: catch経路でInternal server error付きHTTP 500を返す
+        expected: catch経路で同じ汎用ローカライズ文言とrequestId付きHTTP 500を返す
     test_cases:
-      - postGenerateAsyncRoute_GivenRuntimeException_ShouldReturn500WithErrorMessage
-      - postGenerateAsyncRoute_GivenNonErrorThrow_ShouldReturn500WithInternalServerError
+      - postGenerateAsyncRoute_GivenRuntimeException_ShouldReturn500WithGenericErrorAndRequestId
+      - postGenerateAsyncRoute_GivenNonErrorThrow_ShouldReturn500WithGenericErrorAndRequestId
     test_cases_ja:
-      - postGenerateAsyncRoute_実行時例外の場合_500と例外メッセージを返す
-      - postGenerateAsyncRoute_Error以外がthrowされた場合_500とInternalServerErrorを返す
+      - postGenerateAsyncRoute_実行時例外の場合_500で汎用エラーとrequestIdを返す
+      - postGenerateAsyncRoute_Error以外がthrowされた場合_500で汎用エラーとrequestIdを返す
 
   - id: GASYNC-014
     method: POST

@@ -4,7 +4,11 @@
       "WebSearch",
       "WebFetch(domain:gist.github.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:developer.chrome.com)"
+      "WebFetch(domain:developer.chrome.com)",
+      "Bash(grep -r 次へ --include=*.ts --include=*.tsx --include=*.json /Users/hide/ai_coordinate/src)",
+      "Bash(grep -r tutorial --include=*.ts --include=*.tsx /Users/hide/ai_coordinate/src)",
+      "Bash(find /Users/hide/ai_coordinate/src -name *coordinate* -type f)",
+      "Bash(find /Users/hide/ai_coordinate -name *tutorial* -o -name *step*)"
     ]
   }
 }

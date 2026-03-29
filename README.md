@@ -81,6 +81,12 @@ Playwright を初めて使う環境では、先にブラウザをインストー
 npx playwright install
 ```
 
+### 5. GitHub カバレッジ表示
+
+GitHub Actions では `npm run test:coverage` を実行し、Jest のカバレッジを job summary と artifact に出力します。
+
+Codecov 連携も有効化しているため、GitHub 上で diff coverage や PR コメントを出したい場合は、repository secrets に `CODECOV_TOKEN` を追加してください。
+
 ## API ドキュメント
 
 ローカル開発用の API ドキュメントを用意しています。

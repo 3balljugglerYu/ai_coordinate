@@ -23,6 +23,7 @@ interface AsyncGenerationApiMessages {
   imageConvertFailed?: string;
   imageContextUnavailable?: string;
   submitJobFailed?: string;
+  requestIdLabel?: string;
   fetchStatusFailed?: string;
   fetchJobsFailed?: string;
   pollingStopped?: string;
@@ -34,6 +35,12 @@ function logCoordinateGenerationTiming(
   payload: Record<string, string | number | null>
 ) {
   console.info(`[Coordinate Generation Timing] ${event}`, payload);
+}
+
+interface AsyncGenerationErrorResponse {
+  error?: string;
+  errorCode?: string;
+  requestId?: string;
 }
 
 function loadImageElement(
@@ -215,11 +222,18 @@ export async function generateImageAsync(
 
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as
-      | { error?: string }
+      | AsyncGenerationErrorResponse
       | null;
-    throw new Error(
-      error?.error || messages?.submitJobFailed || "画像生成ジョブの投入に失敗しました"
-    );
+    const baseMessage =
+      error?.error || messages?.submitJobFailed || "画像生成ジョブの投入に失敗しました";
+
+    if (error?.errorCode === "GENERATION_ASYNC_FAILED" && error.requestId) {
+      throw new Error(
+        `${baseMessage}\n${messages?.requestIdLabel || "Request ID"}: ${error.requestId}`
+      );
+    }
+
+    throw new Error(baseMessage);
   }
 
   const data: AsyncGenerationResponse = await response.json();

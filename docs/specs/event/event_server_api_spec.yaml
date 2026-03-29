@@ -1,0 +1,162 @@
+metadata:
+  class: EventServerApi
+  source: features/event/lib/server-api.ts
+  version: "1.1"
+  created_at: "2026-03-27"
+
+dependencies:
+  repositories: []
+  services:
+    - react cache
+    - createClient
+    - env
+  external:
+    - Supabase table generated_images
+    - console.error
+
+state_properties: []
+
+specifications:
+  - id: EVTSAPI-001
+    method: getEventImagesServer
+    type: event-driven
+    ears: |
+      When getEventImagesServer is invoked while NEXT_PUBLIC_EVENT_USER_ID is configured
+      and the generated_images query succeeds,
+      the system shall query posted images for that event user,
+      order them by posted_at descending,
+      apply range(offset, offset + limit - 1),
+      and return the resulting rows or an empty array when data is nullish.
+    ears_ja: |
+      getEventImagesServer が呼び出され、
+      NEXT_PUBLIC_EVENT_USER_ID が設定されていて generated_images クエリが成功した場合、
+      システムはそのイベントユーザーの投稿済み画像を検索し、
+      posted_at 降順で並べ、
+      range(offset, offset + limit - 1) を適用し、
+      結果行または data が null 相当なら空配列を返さなければならない。
+    preconditions:
+      - NEXT_PUBLIC_EVENT_USER_ID is configured
+      - The generated_images query completes without error
+    preconditions_ja:
+      - NEXT_PUBLIC_EVENT_USER_ID が設定されている
+      - generated_images クエリが error なく完了する
+    postconditions:
+      success:
+        - createClient is used to obtain the Supabase client
+        - The query filters generated_images by is_posted true and user_id equal to NEXT_PUBLIC_EVENT_USER_ID
+        - The query orders by posted_at descending
+        - The query applies range(offset, offset + limit - 1)
+        - The function returns queried rows or []
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - Supabase client の取得に createClient が使われる
+        - クエリは generated_images を is_posted true と NEXT_PUBLIC_EVENT_USER_ID の user_id で絞り込む
+        - クエリは posted_at 降順で並べる
+        - クエリは range(offset, offset + limit - 1) を適用する
+        - 関数は取得行または [] を返す
+      error:
+        - なし
+    edge_cases:
+      - description: When limit and offset are omitted
+        expected: The helper uses its default page window and applies range(0, 3)
+      - description: When Supabase returns data as null
+        expected: The helper normalizes the result to an empty array instead of throwing
+    edge_cases_ja:
+      - description: limit と offset が省略される場合
+        expected: helper は既定のページ幅を使い、range(0, 3) を適用する
+      - description: Supabase が data を null で返す場合
+        expected: helper は throw せず、結果を空配列へ正規化する
+    test_cases:
+      - getEventImagesServer_GivenConfiguredEventUserId_ShouldReturnPostedImagesOrderedByPostedAtDesc
+      - getEventImagesServer_GivenNullData_ShouldReturnEmptyArray
+    test_cases_ja:
+      - getEventImagesServer_EVENT_USER_ID設定済みの場合_postedAt降順の投稿済み画像を返す
+      - getEventImagesServer_dataがnull相当の場合_空配列を返す
+
+  - id: EVTSAPI-002
+    method: getEventImagesServer
+    type: unwanted
+    ears: |
+      If NEXT_PUBLIC_EVENT_USER_ID is not configured when getEventImagesServer is invoked,
+      then the system shall throw a configuration error
+      before querying Supabase.
+    ears_ja: |
+      getEventImagesServer 呼び出し時に NEXT_PUBLIC_EVENT_USER_ID が設定されていない場合、
+      システムは Supabase を問い合わせる前に
+      設定エラーを投げなければならない。
+    preconditions:
+      - NEXT_PUBLIC_EVENT_USER_ID is empty or undefined
+    preconditions_ja:
+      - NEXT_PUBLIC_EVENT_USER_ID が空または未定義である
+    postconditions:
+      success:
+        - None
+      error:
+        - The function throws Error with message NEXT_PUBLIC_EVENT_USER_ID環境変数が設定されていません
+        - generated_images is not queried
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 関数は NEXT_PUBLIC_EVENT_USER_ID環境変数が設定されていません という Error を投げる
+        - generated_images は問い合わせられない
+    edge_cases:
+      - description: When NEXT_PUBLIC_EVENT_USER_ID is an empty string
+        expected: The helper treats it as missing configuration and throws the same configuration error
+      - description: When createClient succeeds before configuration is checked
+        expected: The helper still throws before any generated_images query is issued
+    edge_cases_ja:
+      - description: NEXT_PUBLIC_EVENT_USER_ID が空文字列の場合
+        expected: helper はそれを未設定として扱い、同じ設定エラーを投げる
+      - description: createClient が設定確認より先に成功する場合
+        expected: helper はそれでも generated_images クエリを発行する前に throw する
+    test_cases:
+      - getEventImagesServer_GivenMissingEventUserId_ShouldThrowConfigurationErrorBeforeQuery
+    test_cases_ja:
+      - getEventImagesServer_EVENT_USER_ID未設定の場合_クエリ前に設定エラーを投げる
+
+  - id: EVTSAPI-003
+    method: getEventImagesServer
+    type: unwanted
+    ears: |
+      If the generated_images query returns an error during getEventImagesServer,
+      then the system shall log the database query error
+      and shall throw a localized event image fetch error.
+    ears_ja: |
+      getEventImagesServer 中に generated_images クエリが error を返した場合、
+      システムはデータベースクエリエラーをログ出力し、
+      ローカライズ済みのイベント画像取得エラーを投げなければならない。
+    preconditions:
+      - NEXT_PUBLIC_EVENT_USER_ID is configured
+      - The generated_images query returns an error
+    preconditions_ja:
+      - NEXT_PUBLIC_EVENT_USER_ID が設定されている
+      - generated_images クエリが error を返す
+    postconditions:
+      success:
+        - None
+      error:
+        - console.error is called with the database query error
+        - The function throws Error whose message starts with イベント画像の取得に失敗しました:
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - データベースクエリエラーで console.error が呼ばれる
+        - 関数はメッセージが イベント画像の取得に失敗しました: で始まる Error を投げる
+    edge_cases:
+      - description: When the query returns an error together with stale data
+        expected: The helper prefers the error path, logs it, and does not return any rows
+      - description: When the query keeps failing across separate calls
+        expected: Each invocation logs and throws independently without retry behavior
+    edge_cases_ja:
+      - description: クエリが error と古い data を同時に返す場合
+        expected: helper は error 経路を優先し、ログ出力したうえで行を返さない
+      - description: クエリが別々の呼び出しで繰り返し失敗する場合
+        expected: 各呼び出しは retry なしで独立してログし、例外を投げる
+    test_cases:
+      - getEventImagesServer_GivenQueryError_ShouldLogAndThrowLocalizedFetchError
+    test_cases_ja:
+      - getEventImagesServer_クエリエラーの場合_ログしてローカライズ済み取得エラーを投げる
