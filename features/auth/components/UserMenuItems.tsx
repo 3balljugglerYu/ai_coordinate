@@ -57,7 +57,7 @@ export function UserMenuItems({
         </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
-        <Link href={ROUTES.MY_PAGE_CREDITS_PURCHASE} className={linkClassName}>
+        <Link href={ROUTES.CREDITS_PURCHASE} className={linkClassName}>
           <Coins className="mr-2 h-4 w-4" />
           {navT("creditsPurchase")}
         </Link>

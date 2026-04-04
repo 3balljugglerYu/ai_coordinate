@@ -23,6 +23,7 @@ export interface Post extends GeneratedImageRecord {
     email?: string;
     nickname?: string | null;
     avatar_url?: string | null;
+    subscription_plan?: "free" | "light" | "standard" | "premium";
   } | null;
   like_count?: number;
   comment_count?: number;

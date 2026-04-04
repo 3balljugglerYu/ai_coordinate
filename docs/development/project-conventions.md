@@ -161,6 +161,8 @@ This product is primarily used on smartphones. Default to a mobile-first impleme
 
 ## Related references
 
+- `docs/development/deployment-environments.ja.md` (Japanese)
+- `docs/development/preview-environment-runbook.ja.md` (Japanese)
 - `docs/architecture/data.en.md`
 - `docs/product/requirements.en.md`
 - `docs/product/user-stories.en.md`

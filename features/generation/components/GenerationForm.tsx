@@ -2,17 +2,23 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles, Upload, Folder } from "lucide-react";
+import { Lock, Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "./ImageUploader";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageUploadCard } from "./StockImageUploadCard";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
+import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
+import {
+  getMaxGenerationCount,
+  type SubscriptionPlan,
+} from "@/features/subscription/subscription-config";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/current-user";
 import { getPercoinCost } from "../lib/model-config";
@@ -30,6 +36,7 @@ import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
 interface GenerationFormProps {
+  subscriptionPlan: SubscriptionPlan;
   onSubmit: (data: {
     prompt: string;
     sourceImage?: File;
@@ -50,10 +57,12 @@ type BackgroundModeOption = {
 };
 
 export function GenerationForm({
+  subscriptionPlan,
   onSubmit,
   isGenerating = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
+  const subscriptionT = useTranslations("subscription");
   const backgroundModeOptions: BackgroundModeOption[] = [
     {
       value: "ai_auto",
@@ -93,8 +102,14 @@ export function GenerationForm({
   const [currentCount, setCurrentCount] = useState<number | null>(null);
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const promptLength = prompt.length;
   const isPromptTooLong = isGenerationPromptTooLong(prompt);
+  const maxGenerationCount = getMaxGenerationCount(subscriptionPlan);
+
+  useEffect(() => {
+    setSelectedCount((current) => Math.min(current, maxGenerationCount));
+  }, [maxGenerationCount]);
 
   // チュートリアル中は入力フィールドを無効化（bodyのdata-tour-in-progressを監視）
   useEffect(() => {
@@ -165,7 +180,7 @@ export function GenerationForm({
       sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
       sourceImageType,
       backgroundMode,
-      count: selectedCount,
+      count: Math.min(selectedCount, maxGenerationCount),
       model: selectedModel,
     });
   };
@@ -294,6 +309,19 @@ export function GenerationForm({
     document.addEventListener("tutorial:set-demo-image", handler);
     return () => document.removeEventListener("tutorial:set-demo-image", handler);
   }, [handleImageUpload]);
+
+  const handleCountSelection = (count: number) => {
+    if (isGenerating || isTutorialInProgress) {
+      return;
+    }
+
+    if (count > maxGenerationCount) {
+      setIsUpsellOpen(true);
+      return;
+    }
+
+    setSelectedCount(count);
+  };
 
   return (
     <Card className="p-6">
@@ -594,7 +622,7 @@ export function GenerationForm({
             <Button
               type="button"
               variant={selectedCount === 1 ? "default" : "outline"}
-              onClick={() => setSelectedCount(1)}
+              onClick={() => handleCountSelection(1)}
               disabled={isGenerating || isTutorialInProgress}
               className="h-12"
             >
@@ -605,14 +633,33 @@ export function GenerationForm({
                 key={count}
                 type="button"
                 variant={selectedCount === count ? "default" : "outline"}
-                onClick={() => setSelectedCount(count)}
+                onClick={() => handleCountSelection(count)}
                 disabled={isGenerating || isTutorialInProgress}
-                className="h-12"
+                aria-disabled={count > maxGenerationCount}
+                className={cn(
+                  "h-12",
+                  count > maxGenerationCount &&
+                    "relative border-dashed text-gray-400 hover:bg-background hover:text-gray-400"
+                )}
               >
-                {t("countMultiple", { count })}
+                {count > maxGenerationCount ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Lock className="h-3.5 w-3.5" />
+                    {t("countMultiple", { count })}
+                  </span>
+                ) : (
+                  t("countMultiple", { count })
+                )}
               </Button>
             ))}
           </div>
+          {maxGenerationCount < 4 ? (
+            <p className="mt-2 text-xs text-amber-700">
+              {subscriptionT("generationLimitHint", {
+                count: maxGenerationCount,
+              })}
+            </p>
+          ) : null}
           <p className="mt-2 text-xs text-gray-500">
             {t("countCostDescription", {
               count: selectedCount,
@@ -641,6 +688,11 @@ export function GenerationForm({
             </>
           )}
         </Button>
+
+        <SubscriptionUpsellDialog
+          open={isUpsellOpen}
+          onOpenChange={setIsUpsellOpen}
+        />
       </div>
     </Card>
   );

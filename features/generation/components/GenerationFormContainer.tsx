@@ -26,6 +26,10 @@ import { isPercoinInsufficientError } from "@/features/credits/constants";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { getPercoinCost } from "../lib/model-config";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  getMaxGenerationCount,
+  type SubscriptionPlan,
+} from "@/features/subscription/subscription-config";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useGenerationState } from "../context/GenerationStateContext";
 import {
@@ -40,7 +44,9 @@ import { summarizeJobProgress } from "../lib/job-progress";
 import type { ImageJobProcessingStage } from "../lib/job-types";
 import type { GeneratedImageData } from "../types";
 
-type GenerationFormContainerProps = Record<string, never>;
+interface GenerationFormContainerProps {
+  subscriptionPlan: SubscriptionPlan;
+}
 
 type TrackedGenerationJobStatus = Pick<
   AsyncGenerationStatus,
@@ -124,7 +130,9 @@ function appendUniqueErrorMessage(
  * Suspenseの外に配置して即座に表示される
  * 非同期画像生成APIを使用
  */
-export function GenerationFormContainer({}: GenerationFormContainerProps) {
+export function GenerationFormContainer({
+  subscriptionPlan,
+}: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
   const router = useRouter();
@@ -691,6 +699,10 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     generationType?: import("../types").GenerationType;
   }) => {
     recoveryRequestIdRef.current += 1;
+    const allowedCount = Math.min(
+      data.count,
+      getMaxGenerationCount(subscriptionPlan)
+    );
 
     const showGenerationErrorToast = (message: string) => {
       toast({
@@ -706,7 +718,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
     setFeedbackPhase("running");
     setError(null);
     setJobStatuses({});
-    setProgressCounts(data.count, 0);
+    setProgressCounts(allowedCount, 0);
 
     pollingStopFunctionsRef.current.forEach((stop) => stop());
     pollingStopFunctionsRef.current.clear();
@@ -717,7 +729,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
     try {
       const percoinCost = getPercoinCost(data.model);
-      const requiredPercoins = data.count * percoinCost;
+      const requiredPercoins = allowedCount * percoinCost;
       const { balance } = await fetchPercoinBalance({
         fetchBalanceFailed: creditsT("fetchBalanceFailed"),
       });
@@ -734,7 +746,7 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
       }
 
       const jobIds: string[] = [];
-      for (let index = 0; index < data.count; index += 1) {
+      for (let index = 0; index < allowedCount; index += 1) {
         try {
           const response = await generateImageAsync(
             {
@@ -932,7 +944,11 @@ export function GenerationFormContainer({}: GenerationFormContainerProps) {
 
   return (
     <div className="space-y-8">
-      <GenerationForm onSubmit={handleGenerate} isGenerating={isFormBusy} />
+      <GenerationForm
+        subscriptionPlan={subscriptionPlan}
+        onSubmit={handleGenerate}
+        isGenerating={isFormBusy}
+      />
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">

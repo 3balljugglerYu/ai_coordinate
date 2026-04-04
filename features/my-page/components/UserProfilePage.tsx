@@ -35,7 +35,7 @@ export function UserProfilePage({
     });
   }, [userId]);
 
-  const handleProfileUpdate = (updatedProfile: UserProfile) => {
+  const handleProfileUpdate = () => {
     // プロフィール更新後の処理（必要に応じて実装）
     router.refresh();
   };
@@ -68,4 +68,3 @@ export function UserProfilePage({
     </>
   );
 }
-

@@ -20,7 +20,7 @@ export async function PercoinBalanceWrapper() {
 
   return (
     <div className="mb-6">
-      <Link href={ROUTES.MY_PAGE_CREDITS_PURCHASE}>
+      <Link href={ROUTES.CREDITS_PURCHASE}>
         <Card className="p-4 transition-opacity hover:opacity-90 cursor-pointer">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-3">

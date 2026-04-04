@@ -26,6 +26,7 @@ import { PostModerationMenu } from "@/features/moderation/components/PostModerat
 import { OneTapStyleDetailCard } from "@/features/style/components/OneTapStyleDetailCard";
 import { getVisiblePrompt } from "@/features/generation/lib/prompt-visibility";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
+import { SubscriptionBadge } from "@/features/subscription/components/SubscriptionBadge";
 import type { Post } from "../types";
 
 // ImageFullscreenコンポーネントを動的インポート（SSR不要）
@@ -217,13 +218,15 @@ export function PostDetailStatic({
               {post.user?.id ? (
                 <Link
                   href={`/users/${post.user.id}`}
-                  className="block truncate text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-900 transition-colors hover:text-gray-600"
                 >
-                  {displayName}
+                  <span className="truncate">{displayName}</span>
+                  <SubscriptionBadge plan={post.user.subscription_plan} />
                 </Link>
               ) : (
-                <span className="block truncate text-sm font-medium text-gray-900">
-                  {displayName}
+                <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <span className="truncate">{displayName}</span>
+                  <SubscriptionBadge plan={post.user?.subscription_plan} />
                 </span>
               )}
             </div>

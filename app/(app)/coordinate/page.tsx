@@ -8,6 +8,7 @@ import { GeneratedImageGallerySkeleton } from "@/features/generation/components/
 import { CachedCoordinatePercoinBalance } from "@/features/credits/components/CachedCoordinatePercoinBalance";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
+import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import type { Locale } from "@/i18n/config";
 
 export default async function CoordinatePage() {
@@ -15,6 +16,7 @@ export default async function CoordinatePage() {
   const creditsT = await getTranslations("credits");
   const locale = (await getLocale()) as Locale;
   const user = await requireAuth();
+  const profile = await getUserProfileServer(user.id);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,7 +53,9 @@ export default async function CoordinatePage() {
           <GenerationStateProvider>
             {/* GenerationForm */}
             <Suspense fallback={<GenerationFormSkeleton />}>
-              <GenerationFormContainer />
+              <GenerationFormContainer
+                subscriptionPlan={profile.subscription_plan ?? "free"}
+              />
             </Suspense>
 
             {/* 生成結果一覧 */}

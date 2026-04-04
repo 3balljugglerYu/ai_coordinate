@@ -30,6 +30,10 @@ export async function CachedPostDetail({
     notFound();
   }
 
+  if (post.user_id) {
+    cacheTag(`subscription-ui-${post.user_id}`);
+  }
+
   const imageUrl = getPostDisplayUrl(post);
   let imageAspectRatio: "portrait" | "landscape" | null =
     post.aspect_ratio as "portrait" | "landscape" | null;

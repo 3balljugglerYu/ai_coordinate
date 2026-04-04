@@ -34,8 +34,24 @@ export type LikeRange = "all" | "day" | "week" | "month";
 async function getProfileMap(
   userIds: string[],
   supabaseOverride?: SupabaseClient
-): Promise<Record<string, { nickname: string | null; avatar_url: string | null }>> {
-  const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> = {};
+): Promise<
+  Record<
+    string,
+    {
+      nickname: string | null;
+      avatar_url: string | null;
+      subscription_plan: "free" | "light" | "standard" | "premium";
+    }
+  >
+> {
+  const profileMap: Record<
+    string,
+    {
+      nickname: string | null;
+      avatar_url: string | null;
+      subscription_plan: "free" | "light" | "standard" | "premium";
+    }
+  > = {};
   
   if (userIds.length === 0) {
     return profileMap;
@@ -44,7 +60,7 @@ async function getProfileMap(
   const supabase = supabaseOverride ?? (await createClient());
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("user_id,nickname,avatar_url")
+    .select("user_id,nickname,avatar_url,subscription_plan")
     .in("user_id", userIds);
 
   if (profilesError) {
@@ -57,6 +73,7 @@ async function getProfileMap(
       profileMap[profile.user_id] = {
         nickname: profile.nickname,
         avatar_url: profile.avatar_url,
+        subscription_plan: profile.subscription_plan ?? "free",
       };
     }
   }
@@ -171,6 +188,7 @@ async function enrichPosts(
             email: undefined, // Phase 5で実装予定
             nickname: profile?.nickname ?? null,
             avatar_url: profile?.avatar_url ?? null,
+            subscription_plan: profile?.subscription_plan ?? "free",
           }
         : null,
       like_count: likeCounts[postId] || 0,
@@ -540,11 +558,15 @@ export const getPost = cache(async (
   }
 
   // プロフィール情報を取得（別クエリ）
-  let profile: { nickname: string | null; avatar_url: string | null } | null = null;
+  let profile: {
+    nickname: string | null;
+    avatar_url: string | null;
+    subscription_plan: "free" | "light" | "standard" | "premium";
+  } | null = null;
   if (data.user_id) {
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("user_id,nickname,avatar_url")
+      .select("user_id,nickname,avatar_url,subscription_plan")
       .eq("user_id", data.user_id)
       .single();
 
@@ -552,6 +574,7 @@ export const getPost = cache(async (
       profile = {
         nickname: profileData.nickname,
         avatar_url: profileData.avatar_url,
+        subscription_plan: profileData.subscription_plan ?? "free",
       };
     }
   }
@@ -628,6 +651,7 @@ export const getPost = cache(async (
           email: undefined, // Phase 5で実装予定
           nickname: profile?.nickname ?? null,
           avatar_url: profile?.avatar_url ?? null,
+          subscription_plan: profile?.subscription_plan ?? "free",
         }
       : null,
     like_count: likeCount,

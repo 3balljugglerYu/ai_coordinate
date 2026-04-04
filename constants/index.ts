@@ -9,11 +9,11 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   LOGIN: "/login",
   SIGNUP: "/signup",
+  CREDITS_PURCHASE: "/credits/purchase",
   MY_PAGE: "/my-page",
   MY_PAGE_ACCOUNT: "/my-page/account",
   MY_PAGE_CONTACT: "/my-page/contact",
   MY_PAGE_CREDITS: "/my-page/credits",
-  MY_PAGE_CREDITS_PURCHASE: "/my-page/credits/purchase",
   COORDINATE: "/coordinate",
 } as const;
 

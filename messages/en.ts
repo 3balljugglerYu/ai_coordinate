@@ -434,6 +434,7 @@ export const enMessages = {
   credits: {
     managementTitle: "Percoin management",
     managementDescription: "Check your balance and transaction history.",
+    purchaseTabLabel: "Percoin Purchase",
     purchaseHeroLine1: "Style more,",
     purchaseHeroLine2: "without limits",
     purchaseDescription:
@@ -524,6 +525,125 @@ export const enMessages = {
     packageBadgeTrial: "Good for trying",
     packageBadgePopular: "Most popular",
     packageBadgeBestValue: "Best value",
+  },
+  subscription: {
+    tabLabel: "Subscription",
+    tabListLabel: "Billing menu",
+    heroLine1: "Style more,",
+    heroLine2: "with a monthly plan",
+    heroDescription:
+      "Recurring plans bundle monthly Percoins with higher generation limits, so you can create without stopping to top up.",
+    panelTitle: "Subscriptions",
+    panelDescription:
+      "Unlock monthly Percoins, higher generation limits, and more stock slots with recurring plans.",
+    badge: {
+      light: "Light",
+      standard: "Standard",
+      premium: "Premium",
+    },
+    plan: {
+      light: "Light Plan",
+      standard: "Standard Plan",
+      premium: "Premium Plan",
+    },
+    statusTitle: "Subscription",
+    inactiveTitle: "You're currently on the free plan",
+    inactiveDescription:
+      "Subscribe to unlock monthly Percoins, higher generation counts, and a larger stock image limit.",
+    joinAction: "View plans",
+    monthlyPercoins: "{amount} Percoins every month",
+    cancelAtPeriodEnd: "Scheduled to cancel on {date}",
+    renewalDate: "Renews on {date}",
+    portalError: "Couldn't open the billing portal.",
+    manageAction: "Manage plan",
+    comparePlansAction: "Compare plans",
+    recommended: "Recommended",
+    billing: {
+      month: "month",
+      year: "year",
+    },
+    yearlySavings: "Yearly billing saves about 15%",
+    maxGenerationCount: "Up to {count} images per generation",
+    stockImageLimit: "Stock image limit: {count}",
+    bonusMultiplier: "Post/login bonus: {multiplier}x",
+    subscribeAction: "Choose this plan",
+    currentPlanAction: "Current plan",
+    scheduledPlanAction: "Scheduled",
+    checkoutError: "Failed to start subscription checkout.",
+    changePreviewError: "Failed to preview the plan change.",
+    changeSubmitError: "Failed to change the plan.",
+    changeSuccessImmediate:
+      "Your plan was updated and {amount} Percoins were granted.",
+    changeSuccessImmediateNoGrant:
+      "Your plan was updated. No Percoins were granted this time.",
+    changeSuccessImmediateMonthlyGrant:
+      "Your plan was updated. Future Percoin grants will continue on the monthly schedule.",
+    changeSuccessScheduled:
+      "Your plan will switch at the renewal on {date}.",
+    cancelScheduledChangeAction: "Cancel schedule",
+    cancelScheduledChangeSuccess:
+      "The scheduled plan change was canceled.",
+    cancelScheduledChangeError:
+      "Failed to cancel the scheduled plan change.",
+    changeDialogImmediateTitle: "Apply this change right away?",
+    changeDialogImmediateDescription:
+      "After payment succeeds, a new billing period starts immediately and your plan benefits switch at once.",
+    changeFinalConfirmationTitle: "Start the payment now?",
+    changeFinalConfirmationDescription:
+      "Choosing yes will try to charge the saved payment method immediately.",
+    changeFinalConfirmationCancelAction: "No",
+    changeFinalConfirmationConfirmAction: "Yes, start payment",
+    changeDialogScheduledTitle: "Schedule this change for the next renewal?",
+    changeDialogScheduledDescription:
+      "Your current billing period stays active, and the new plan starts on the next renewal date.",
+    changeCurrentPlanLabel: "Current plan",
+    changeTargetPlanLabel: "New plan",
+    changeTargetPriceLabel: "Price of the new plan",
+    changeChargeNowLabel: "Payment due now",
+    changeCreditLabel: "Unused amount from the current plan",
+    changeGrantLabel: "Percoins",
+    changeGrantAmount: "{amount} Percoins",
+    changeGrantDifferenceDescription:
+      "You'll receive the plan difference of {amount} Percoins.",
+    changeGrantOnRenewal: "Granted on renewal",
+    changeGrantMonthlySchedule:
+      "Yearly plans still grant Percoins monthly. The next monthly grant will apply this change.",
+    changeNoImmediateCharge: "No extra charge",
+    changePaymentFailureDialogTitle: "The payment didn't complete",
+    changePaymentFailureDialogDescription:
+      "Your plan wasn't changed. Update the payment method and then try the upgrade again.",
+    changePaymentFailureManageAction: "Update payment method",
+    changePaymentFailureCloseAction: "Close",
+    changePaymentFormula:
+      "Price of the new plan - unused amount from the current plan = payment due now",
+    changeEffectiveNow: "Takes effect after payment",
+    changeEffectiveAt: "Takes effect on {date}",
+    changeImmediateHint:
+      "Once this change is paid, the new billing period resets from {date}.",
+    changeScheduledHint:
+      "Your current benefits stay active until {date}, then the new plan starts.",
+    scheduledChangeTitle: "A plan change is scheduled",
+    scheduledChangeDescription:
+      "Your subscription will switch to {plan} / {billing} on {date}.",
+    changeActions: {
+      same_interval_upgrade: "Upgrade now",
+      same_interval_downgrade: "Change at renewal",
+      monthly_to_yearly: "Switch to yearly at renewal",
+      yearly_to_monthly: "Switch to monthly at renewal",
+      no_change: "No change",
+    },
+    upsellTitle: "This image count requires a paid plan",
+    upsellDescription:
+      "Upgrade your plan to increase per-generation image count and stock image capacity.",
+    upsellPlanSummary:
+      "Up to {count} images at once, {stock} stock images, {amount} Percoins every month",
+    laterAction: "Later",
+    seePlansAction: "See pricing",
+    generationLimitHint:
+      "Your current plan allows up to {count} images per generation. Upgrade to increase the limit.",
+    purchaseBannerTitle: "Consider a subscription first",
+    purchaseBannerDescription:
+      "If you use Persta regularly, a subscription is usually more cost-effective than buying Percoins one by one.",
   },
   coordinate: {
     pageTitle: "Coordinate",
