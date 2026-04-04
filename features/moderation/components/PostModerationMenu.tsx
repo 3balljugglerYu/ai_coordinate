@@ -234,7 +234,7 @@ export function PostModerationMenu({
 
   const handleShare = async () => {
     try {
-      const url = getPostDetailUrl(postId);
+      const url = getPostDetailUrl(postId, locale);
       const result = await sharePost(url, postsT("shareDefaultText"));
 
       if (result.method === "clipboard") {
