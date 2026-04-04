@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Share2, Copy } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,7 +31,7 @@ export function ShareButton({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const t = useTranslations("posts");
-  const locale = useLocale();
+  const locale = useLocale() as Locale;
 
   const isMobile = () => {
     if (typeof navigator === "undefined") return false;
@@ -38,7 +39,7 @@ export function ShareButton({
   };
 
   const getPostUrl = () => {
-    return getPostDetailUrl(postId, locale as import("@/i18n/config").Locale);
+    return getPostDetailUrl(postId, locale);
   };
 
   // URLのみをコピーする関数
