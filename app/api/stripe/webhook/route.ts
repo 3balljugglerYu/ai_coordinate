@@ -307,7 +307,14 @@ function hasProrationLine(invoice: Stripe.Invoice) {
       line.parent?.type === "subscription_item_details" &&
       line.parent.subscription_item_details?.proration === true;
 
-    return prorationOnParent || line.proration === true;
+    // Some Stripe webhook payloads still include a legacy top-level proration flag
+    // that is not present in the current SDK type definitions.
+    const legacyProrationFlag =
+      "proration" in line &&
+      typeof line.proration === "boolean" &&
+      line.proration === true;
+
+    return prorationOnParent || legacyProrationFlag;
   });
 }
 
