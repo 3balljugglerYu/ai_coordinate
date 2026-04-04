@@ -20,6 +20,7 @@
 - Vercel Preview Deployment が使える
 - Stripe は `test mode` を使う
 - 検証後に branch を削除する前提である
+- migration replay が通ること。`public.profiles` などの前提 schema が不足して branch 作成時に落ちる場合は、[profiles-migration-gap-checklist.ja.md](/Users/hide/ai_coordinate/docs/development/profiles-migration-gap-checklist.ja.md) を先に使う
 
 ## Branching を使う理由
 
@@ -218,6 +219,13 @@ order by created_at desc;
 ### 想定と違うデータがある
 
 確認:
+
+### branch 作成時に migration が落ちる
+
+確認:
+
+- `public.profiles` など、Dashboard 手作業作成の schema が migration に落ちていない可能性がある
+- その場合は、branch 検証を続けずに [profiles-migration-gap-checklist.ja.md](/Users/hide/ai_coordinate/docs/development/profiles-migration-gap-checklist.ja.md) で不足 schema を補完する
 
 - その branch は production データを持たない
 - 必要な検証データが seed されているか
