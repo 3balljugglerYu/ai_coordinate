@@ -58,4 +58,25 @@ describe("UrlUtils unit tests from EARS specs", () => {
       expect(getPostDetailUrl("post-1")).toBe("https://example.com/posts/post-1");
     });
   });
+
+  describe("URLUTIL-004 getPostDetailUrl with locale", () => {
+    test("getPostDetailUrl_localeを指定した場合_ロケールプレフィックス付きURLを返す", () => {
+      mockGetSiteUrlForClient.mockReturnValue("https://example.com");
+
+      expect(getPostDetailUrl("post-1", "ja")).toBe("https://example.com/ja/posts/post-1");
+      expect(getPostDetailUrl("post-1", "en")).toBe("https://example.com/en/posts/post-1");
+    });
+
+    test("getPostDetailUrl_localeを省略した場合_従来通りプレフィックスなしURLを返す", () => {
+      mockGetSiteUrlForClient.mockReturnValue("https://example.com");
+
+      expect(getPostDetailUrl("post-1")).toBe("https://example.com/posts/post-1");
+    });
+
+    test("getPostDetailUrl_localeありでbaseUrlが空の場合_ロケール付き相対パスを返す", () => {
+      mockGetSiteUrlForClient.mockReturnValue("");
+
+      expect(getPostDetailUrl("post-1", "ja")).toBe("/ja/posts/post-1");
+    });
+  });
 });
