@@ -10,6 +10,7 @@
 
 ```text
 ERROR: relation "public.profiles" does not exist
+ERROR: relation "public.follows" does not exist
 ```
 
 典型的には、次の状態で起きる。
@@ -88,6 +89,7 @@ ERROR: relation "public.profiles" does not exist
 - [20250109000001_initial_setup.sql](/Users/hide/ai_coordinate/supabase/migrations/20250109000001_initial_setup.sql)
 - [20250123140000_add_generation_types_and_stock_images.sql](/Users/hide/ai_coordinate/supabase/migrations/20250123140000_add_generation_types_and_stock_images.sql)
 - [20250123140001_add_functions_and_triggers.sql](/Users/hide/ai_coordinate/supabase/migrations/20250123140001_add_functions_and_triggers.sql)
+- [20250124000000_add_get_follow_counts_function.sql](/Users/hide/ai_coordinate/supabase/migrations/20250124000000_add_get_follow_counts_function.sql)
 
 ### この段階で洗い出すこと
 
@@ -96,6 +98,7 @@ ERROR: relation "public.profiles" does not exist
 - `auth.users` trigger が migration にあるか
 - `profiles` に対する RLS / policy が migration にあるか
 - `profiles.subscription_plan` の追加より前に `profiles` 本体が作られているか
+- `public.follows` を参照する関数より前に `follows` 本体が作られているか
 
 ## Step 3. 不足分一覧を作る
 
@@ -104,6 +107,7 @@ ERROR: relation "public.profiles" does not exist
 ### 例
 
 - `public.profiles` table 本体
+- `public.follows` table 本体
 - `profiles_user_id_key`
 - `profiles_referral_code_key`
 - `profiles_subscription_plan_check`
@@ -123,6 +127,12 @@ ERROR: relation "public.profiles" does not exist
 ```bash
 supabase migration new backfill_missing_profiles_schema
 ```
+
+今回のように、**既存 migration が途中で `relation does not exist` で止まっている場合は、失敗している migration より前の時刻に差し込む**。
+例:
+
+- `20250124000000_add_get_follow_counts_function.sql` が `public.follows` 不足で失敗している
+- この場合は `20250123235959_create_follows_table.sql` のように、**参照関数より前**へ補完 migration を置く
 
 ### 書き方の原則
 
@@ -186,6 +196,12 @@ replay が通ったら、初めて branch 検証に戻る。
 
 次の前提 schema も migration に欠けている。  
 同じ手順で **不足一覧を追加**し、補完 migration を拡張する。
+
+典型例:
+
+- `public.get_follow_counts()` が `public.follows` を参照する
+- しかし `follows` の `CREATE TABLE` が後ろの migration にしかない
+- この場合は `follows` を前倒しで補完する migration を追加する
 
 ### function / trigger で落ちる
 
