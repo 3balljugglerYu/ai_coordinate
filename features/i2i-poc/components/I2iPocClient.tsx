@@ -442,7 +442,7 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
         setIsConverting(true);
         try {
           const remainingBytesForResult =
-            MAX_TOTAL_IMAGE_BYTES - baseImage.size - characterImage.size;
+            MAX_TOTAL_IMAGE_BYTES - normalizedBaseImage.size - normalizedCharacterImage.size;
           const previousResultFile = await buildResultImageForRefine(
             latestTurn.imageBlob,
             remainingBytesForResult,
