@@ -19,6 +19,7 @@ import {
   MAX_IMAGE_BYTES,
   MAX_TOTAL_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
+import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 
 const WEBP_QUALITY = 0.8;
 const WEBP_QUALITY_STEPS = [0.95, 0.9, 0.85, 0.8] as const;
@@ -428,15 +429,20 @@ export function I2iPocClient({ slug }: I2iPocClientProps) {
     setIsGenerating(true);
 
     try {
+      const [normalizedBaseImage, normalizedCharacterImage] = await Promise.all([
+        normalizeSourceImage(baseImage),
+        normalizeSourceImage(characterImage),
+      ]);
+
       const formData = new FormData();
-      formData.set("baseImage", baseImage);
-      formData.set("characterImage", characterImage);
+      formData.set("baseImage", normalizedBaseImage);
+      formData.set("characterImage", normalizedCharacterImage);
 
       if (mode === "refine" && latestTurn) {
         setIsConverting(true);
         try {
           const remainingBytesForResult =
-            MAX_TOTAL_IMAGE_BYTES - baseImage.size - characterImage.size;
+            MAX_TOTAL_IMAGE_BYTES - normalizedBaseImage.size - normalizedCharacterImage.size;
           const previousResultFile = await buildResultImageForRefine(
             latestTurn.imageBlob,
             remainingBytesForResult,
