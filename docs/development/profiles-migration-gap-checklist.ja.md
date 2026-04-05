@@ -12,6 +12,7 @@
 ERROR: relation "public.profiles" does not exist
 ERROR: relation "public.follows" does not exist
 ERROR: duplicate key value violates unique constraint "schema_migrations_pkey"
+ERROR: insert or update on table "admin_users" violates foreign key constraint "admin_users_user_id_fkey"
 ```
 
 典型的には、次の状態で起きる。
@@ -214,6 +215,20 @@ migration filename の version prefix が重複している。Supabase は filen
 - `20250124000000_fix_source_image_stocks_update_rls.sql`
 
 この場合は、**片方の filename を未使用の version にずらす**。SQL 本文ではなく filename の version を一意にするのがポイント。
+
+### `auth.users` 参照 seed の外部キーで落ちる
+
+固定 UUID を seed する migration が、clean 環境ではまだ存在しない `auth.users` を前提にしているケース。
+
+典型例:
+
+- `public.admin_users` に固定 admin UUID を INSERT する
+- しかし preview branch の `auth.users` にその行が存在しない
+
+この場合は、seed を次の形に変える。
+
+- `INSERT ... SELECT ... FROM auth.users WHERE id = ...`
+- 監査ログから backfill する場合も `JOIN auth.users` で実在ユーザーだけに絞る
 
 ### function / trigger で落ちる
 
