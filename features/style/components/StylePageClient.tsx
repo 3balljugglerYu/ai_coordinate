@@ -38,6 +38,7 @@ import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedb
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
 import { getExtensionFromMimeType } from "@/lib/utils";
+import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 
 interface StylePageClientProps {
   presets: readonly StylePresetPublicSummary[];
@@ -681,9 +682,11 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     setErrorState(null);
 
     try {
+      const normalizedFile = await normalizeSourceImage(uploadedImage.file);
+
       const formData = new FormData();
       formData.set("styleId", selectedPreset.id);
-      formData.set("uploadImage", uploadedImage.file);
+      formData.set("uploadImage", normalizedFile);
       formData.set("sourceImageType", sourceImageType);
       formData.set("backgroundChange", backgroundChange ? "true" : "false");
 

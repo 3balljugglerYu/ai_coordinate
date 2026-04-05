@@ -26,13 +26,11 @@ const MAX_RETRYABLE_ATTEMPTS = 2;
 const RETRYABLE_NO_IMAGE_FINISH_REASONS = new Set([
   "MALFORMED_FUNCTION_CALL",
 ]);
-const STYLE_PROMPT_BASE_PREFIX = `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
+const STYLE_PROMPT_BASE_PREFIX = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. Strictly follow these steps:
 
-1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
+1. Strict Filtering: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a part is not in the original frame, omit its description entirely.
 
-2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
-
-3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.`;
+2. Pose Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`.`;
 const STYLE_PROMPT_ILLUSTRATION_SUFFIX =
   "Maintain the exact artistic style, brushwork, and original composition.";
 const STYLE_PROMPT_REAL_SUFFIX =
