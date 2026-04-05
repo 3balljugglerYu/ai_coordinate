@@ -19,6 +19,7 @@ import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
 import { PostModal } from "./PostModal";
 import { getPostImageUrl } from "../lib/utils";
+import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
@@ -88,7 +89,7 @@ export function PostDetailStatic({
     }
     if (post.prompt) {
       try {
-        await navigator.clipboard.writeText(post.prompt);
+        await copyTextToClipboard(post.prompt);
         setIsPromptCopied(true);
         toast({
           title: postsT("copySuccessTitle"),

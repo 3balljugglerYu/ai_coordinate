@@ -20,6 +20,7 @@ import { PostActions } from "./PostActions";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
 import { getPostImageUrl } from "../lib/utils";
+import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import type { Post } from "../types";
@@ -93,7 +94,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
     }
     if (post.prompt) {
       try {
-        await navigator.clipboard.writeText(post.prompt);
+        await copyTextToClipboard(post.prompt);
         setIsPromptCopied(true);
         toast({
           title: t("copySuccessTitle"),
