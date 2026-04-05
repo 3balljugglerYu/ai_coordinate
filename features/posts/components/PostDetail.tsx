@@ -20,6 +20,7 @@ import { PostActions } from "./PostActions";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
 import { getPostImageUrl } from "../lib/utils";
+import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import type { Post } from "../types";
@@ -93,33 +94,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
     }
     if (post.prompt) {
       try {
-        // モバイルブラウザ（アプリ内WebView等）では navigator.clipboard.writeText が
-        // URLエンコードされたテキストをコピーする不具合があるため、
-        // モバイルでは textarea + execCommand を優先し、デスクトップでは Clipboard API を使用する
-        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-        let copied = false;
-        if (isMobile) {
-          // モバイル: execCommand を優先（URLエンコード回避）
-          const textarea = document.createElement("textarea");
-          textarea.value = post.prompt;
-          textarea.setAttribute("readonly", "");
-          textarea.style.position = "fixed";
-          textarea.style.left = "-9999px";
-          textarea.style.top = "-9999px";
-          textarea.style.opacity = "0";
-          document.body.appendChild(textarea);
-          textarea.focus();
-          textarea.select();
-          // iOS Safari では setSelectionRange が必要
-          textarea.setSelectionRange(0, textarea.value.length);
-          copied = document.execCommand("copy");
-          document.body.removeChild(textarea);
-        }
-
-        if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(post.prompt);
-        }
+        await copyTextToClipboard(post.prompt);
         setIsPromptCopied(true);
         toast({
           title: t("copySuccessTitle"),
