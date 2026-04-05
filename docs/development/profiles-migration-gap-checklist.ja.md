@@ -11,6 +11,7 @@
 ```text
 ERROR: relation "public.profiles" does not exist
 ERROR: relation "public.follows" does not exist
+ERROR: duplicate key value violates unique constraint "schema_migrations_pkey"
 ```
 
 典型的には、次の状態で起きる。
@@ -202,6 +203,17 @@ replay が通ったら、初めて branch 検証に戻る。
 - `public.get_follow_counts()` が `public.follows` を参照する
 - しかし `follows` の `CREATE TABLE` が後ろの migration にしかない
 - この場合は `follows` を前倒しで補完する migration を追加する
+
+### `schema_migrations_pkey` の重複で落ちる
+
+migration filename の version prefix が重複している。Supabase は filename 先頭の数字を version として `supabase_migrations.schema_migrations` に保存するため、同じ値が2本あると replay で止まる。
+
+典型例:
+
+- `20250124000000_add_get_follow_counts_function.sql`
+- `20250124000000_fix_source_image_stocks_update_rls.sql`
+
+この場合は、**片方の filename を未使用の version にずらす**。SQL 本文ではなく filename の version を一意にするのがポイント。
 
 ### function / trigger で落ちる
 
