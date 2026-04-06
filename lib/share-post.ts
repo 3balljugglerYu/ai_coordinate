@@ -2,7 +2,7 @@
  * Web Share APIを使用したシェア機能のユーティリティ関数
  */
 
-import { copyTextToClipboard } from "@/features/posts/lib/copy-to-clipboard";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 export type ShareMethod = "share" | "clipboard";
 

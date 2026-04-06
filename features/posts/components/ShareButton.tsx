@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { sharePost } from "@/lib/share-post";
 import { getPostDetailUrl } from "@/lib/url-utils";
 
@@ -50,20 +51,14 @@ export function ShareButton({
 
     try {
       const url = getPostUrl();
-      
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-        toast({
-          title: t("shareCopyTitle"),
-        });
-      } else {
-        throw new Error(t("shareClipboardUnsupported"));
-      }
-    } catch (error) {
+      await copyTextToClipboard(url);
+      toast({
+        title: t("shareCopyTitle"),
+      });
+    } catch {
       toast({
         title: t("errorTitle"),
-        description:
-          error instanceof Error ? error.message : t("shareFailed"),
+        description: t("shareFailed"),
         variant: "destructive",
       });
     } finally {
