@@ -55,7 +55,6 @@ export function ShareButton({
         await navigator.clipboard.writeText(url);
         toast({
           title: t("shareCopyTitle"),
-          description: t("shareCopyDescription"),
         });
       } else {
         throw new Error(t("shareClipboardUnsupported"));
@@ -82,7 +81,6 @@ export function ShareButton({
       const url = getPostUrl();
       const shareData: ShareData = {
         title: "Persta.AI",
-        text: t("shareDefaultText"),
         url: url,
       };
 
@@ -119,16 +117,14 @@ export function ShareButton({
     try {
       // 投稿詳細ページの絶対URLを生成
       const url = getPostUrl();
-      const text = t("shareDefaultText");
 
       // シェアを実行
-      const result = await sharePost(url, text);
+      const result = await sharePost(url);
 
       // sharePostが「何をしたか」を返す想定
       if (result.method === "clipboard") {
         toast({
-          title: t("shareCopiedTitle"),
-          description: t("shareCopiedDescription"),
+          title: t("shareCopyTitle"),
         });
       }
       // result.method === "share" の場合はトーストを表示しない（共有画面が開かれるため）

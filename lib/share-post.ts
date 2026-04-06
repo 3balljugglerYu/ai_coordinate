@@ -2,6 +2,8 @@
  * Web Share APIを使用したシェア機能のユーティリティ関数
  */
 
+import { copyTextToClipboard } from "@/features/posts/lib/copy-to-clipboard";
+
 export type ShareMethod = "share" | "clipboard";
 
 export interface ShareResult {
@@ -10,22 +12,20 @@ export interface ShareResult {
 
 /**
  * 投稿をシェアする
+ * OGP表示を優先するため、URLのみをシェアする（textを含めるとOGPカードが表示されない場合がある）
  * @param url 投稿詳細ページの絶対URL
- * @param text シェアするテキスト
  * @returns シェア方法を返す（"share" または "clipboard"）
  * @throws ユーザーがキャンセルした場合（AbortError）や、クリップボードAPIも失敗した場合
  */
 export async function sharePost(
   url: string,
-  text: string
 ): Promise<ShareResult> {
   const shareData: ShareData = {
     title: "Persta.AI",
-    text,
     url,
   };
 
-  // 1) Share Sheet（URL+textを優先。OGPが主軸なので、まずはリンク共有）
+  // 1) Share Sheet（OGPが主軸なので、URLのみをシェア）
   if (typeof navigator.share === "function") {
     try {
       await navigator.share(shareData);
@@ -39,17 +39,7 @@ export async function sharePost(
     }
   }
 
-  // 2) フォールバック: クリップボードに text + "\n" + url をコピー
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    try {
-      const clipboardText = `${text}\n${url}`;
-      await navigator.clipboard.writeText(clipboardText);
-      return { method: "clipboard" };
-    } catch {
-      // クリップボードAPIも失敗した場合はエラーをスロー
-      throw new Error("Web Share API and Clipboard API are not supported.");
-    }
-  } else {
-    throw new Error("Web Share API and Clipboard API are not supported.");
-  }
+  // 2) フォールバック: クリップボードにURLのみをコピー（HTTP環境にも対応）
+  await copyTextToClipboard(url);
+  return { method: "clipboard" };
 }
