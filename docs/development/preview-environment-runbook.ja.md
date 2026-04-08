@@ -1,6 +1,6 @@
 # Preview 環境セットアップ手順
 
-- 最終更新日: `2026-04-04`
+- 最終更新日: `2026-04-08`
 - 想定読者: Persta.AI の Preview / staging 検証を担当する開発者
 - 役割: Vercel Preview、Stripe test、Supabase staging を使った検証手順の runbook
 
@@ -98,6 +98,14 @@ https://<preview-url>/api/stripe/webhook
 - redirect を挟まない
 - endpoint の signing secret を控える
 - その値を Vercel Preview の `STRIPE_WEBHOOK_SECRET_TEST` に入れる
+- 可能なら deployment 固有 URL ではなく branch alias / 固定 staging URL を使う
+- Vercel Deployment Protection が有効なら、endpoint URL を次にする
+
+```text
+https://<preview-url>/api/stripe/webhook?x-vercel-protection-bypass=<bypass-secret>
+```
+
+- bypass secret を新規作成または再生成したら、Vercel Preview を再デプロイする
 
 ## Step 6. Preview で動作確認する
 
@@ -170,6 +178,29 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 1. Stripe endpoint の `whsec_...` を確認する
 2. Vercel の `STRIPE_WEBHOOK_SECRET_TEST` に同じ値を入れる
 3. 再デプロイする
+4. イベントを再送する
+
+### `404 The deployment could not be found on Vercel.`
+
+原因:
+
+- Stripe endpoint URL が古い deployment 固有 URL を向いている
+
+対策:
+
+- branch alias または固定 staging URL の `/api/stripe/webhook` に修正する
+
+### `401 Authentication Required`
+
+原因:
+
+- Vercel Deployment Protection に Stripe webhook が遮断されている
+
+対策:
+
+1. Vercel の Protection Bypass for Automation を作る
+2. Stripe endpoint URL に `x-vercel-protection-bypass=<bypass-secret>` を付ける
+3. Vercel Preview を再デプロイする
 4. イベントを再送する
 
 ### test event で Stripe API 取得が失敗する

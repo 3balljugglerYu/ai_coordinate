@@ -448,6 +448,7 @@ export const jaMessages = {
     emptyPeriodLimited: "期間限定の取引履歴がありません。",
     emptyUsage: "利用履歴がありません。",
     transactionTypePurchase: "購入",
+    transactionTypeSubscription: "サブスク付与",
     transactionTypeConsumption: "生成利用",
     transactionTypeRefund: "生成失敗返却",
     transactionTypeSignupBonus: "新規登録ボーナス",

@@ -464,6 +464,7 @@ export const enMessages = {
     emptyPeriodLimited: "No limited-time transactions found.",
     emptyUsage: "No usage history found.",
     transactionTypePurchase: "Purchase",
+    transactionTypeSubscription: "Subscription grant",
     transactionTypeConsumption: "Generation usage",
     transactionTypeRefund: "Generation refund",
     transactionTypeSignupBonus: "Sign-up bonus",

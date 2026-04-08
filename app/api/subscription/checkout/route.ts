@@ -8,9 +8,9 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getSubscriptionRouteCopy } from "@/features/subscription/lib/route-copy";
 import {
+  blocksNewSubscriptionCheckout,
   getSubscriptionPriceConfig,
   getSubscriptionMonthlyPercoins,
-  isActiveSubscriptionStatus,
   type PaidSubscriptionPlan,
   type SubscriptionBillingInterval,
 } from "@/features/subscription/subscription-config";
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const existingSubscription = await fetchUserSubscription(user.id);
     if (
       existingSubscription &&
-      isActiveSubscriptionStatus(existingSubscription.status)
+      blocksNewSubscriptionCheckout(existingSubscription.status)
     ) {
       return jsonError(
         copy.activeSubscriptionExists,

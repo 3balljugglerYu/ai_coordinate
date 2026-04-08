@@ -1,6 +1,6 @@
 # Subscription Renewal 検証用 Supabase Branching 手順
 
-- 最終更新日: `2026-04-04`
+- 最終更新日: `2026-04-08`
 - 想定読者: Persta.AI のサブスクリプション renewal と Percoin 付与を短期検証したい開発者
 - 役割: Supabase Branching を使って、更新日反映と月次付与を最短で確認するための手順書
 
@@ -97,6 +97,12 @@ branch を選択した状態で `Settings > API` を開き、次を控える。
 
 - `https://subscription-renewal-check-persta.vercel.app`
 
+### 注意
+
+- Stripe webhook には、deployment 固有 URL ではなく branch alias を使う
+- 例: `https://ai-coordinate-git-feature-subscription-<team>.vercel.app`
+- `https://ai-coordinate-<hash>-<team>.vercel.app` のような deployment 固有 URL は、再デプロイ後に Stripe 側で `404` になることがある
+
 ## Step 5. Stripe test webhook を Preview URL に向ける
 
 Stripe Dashboard の `test mode` で webhook endpoint を開き、送信先を Preview URL にする。
@@ -109,6 +115,13 @@ https://<preview-url>/api/stripe/webhook
 
 - redirect を挟まない URL にする
 - endpoint の signing secret を確認し、Vercel Preview の `STRIPE_WEBHOOK_SECRET_TEST` に入れる
+- Vercel Deployment Protection が有効なら、Protection Bypass for Automation を作り、endpoint URL を次にする
+
+```text
+https://<preview-url>/api/stripe/webhook?x-vercel-protection-bypass=<bypass-secret>
+```
+
+- bypass secret を新規作成または再生成したら、Vercel Preview を再デプロイする
 
 ## Step 6. renewal 検証用ユーザーを作る
 
@@ -144,6 +157,11 @@ Persta が実際に作った Stripe subscription 詳細画面から `Run simulat
 - 年額開始時の初回付与が入るか
 
 進める時刻は、更新時刻ぴったりではなく **少し先** まで進める。
+
+### 追加確認
+
+- renewal の `invoice.paid` を同じ event でもう一度再送し、重複付与されないことを確認する
+- 想定結果は、`user_credits.balance`、`credit_transactions`、`free_percoin_batches` が増えないこと
 
 ## Step 9. branch DB で確認する
 
@@ -204,6 +222,20 @@ order by created_at desc;
 - Vercel Preview の env が branch 用に切り替わっているか
 - production の Supabase URL を見ていないか
 
+初回加入直後に webhook 設定を直した場合は、まず `checkout.session.completed` を再送する。  
+renewal 検証で直した場合は、対象の `invoice.paid` を再送する。
+
+### webhook が `404`
+
+確認:
+
+- Stripe endpoint URL が古い deployment 固有 URL を向いていないか
+- 現在有効な branch alias を向いているか
+
+対策:
+
+- Stripe endpoint URL を branch alias の `/api/stripe/webhook` に修正する
+
 ### webhook が `308`
 
 確認:
@@ -215,6 +247,20 @@ order by created_at desc;
 確認:
 
 - `STRIPE_WEBHOOK_SECRET_TEST` が Preview endpoint の secret と一致しているか
+
+### webhook が `401 Authentication Required`
+
+確認:
+
+- Vercel Deployment Protection が有効か
+- Stripe endpoint URL に `x-vercel-protection-bypass=<bypass-secret>` が付いているか
+
+対策:
+
+1. Vercel の Protection Bypass for Automation を作る
+2. Stripe endpoint URL に bypass query parameter を付ける
+3. Vercel Preview を再デプロイする
+4. event を再送する
 
 ### 想定と違うデータがある
 

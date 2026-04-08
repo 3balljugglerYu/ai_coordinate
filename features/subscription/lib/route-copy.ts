@@ -25,7 +25,7 @@ const COPY: Record<Locale, SubscriptionRouteCopy> = {
   ja: {
     authRequired: "ログインが必要です。",
     activeSubscriptionExists:
-      "加入中のサブスクリプションがあります。プラン変更を利用してください。",
+      "加入中または対応待ちのサブスクリプションがあります。プラン変更または請求情報の確認を利用してください。",
     activeSubscriptionNotFound:
       "変更できるアクティブなサブスクリプションが見つかりません。",
     invalidPlan: "サブスクプランが不正です。",
@@ -49,7 +49,7 @@ const COPY: Record<Locale, SubscriptionRouteCopy> = {
   en: {
     authRequired: "Login is required.",
     activeSubscriptionExists:
-      "You already have an active subscription. Please use the plan change flow.",
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
     activeSubscriptionNotFound:
       "No active subscription was found for plan changes.",
     invalidPlan: "Invalid subscription plan.",

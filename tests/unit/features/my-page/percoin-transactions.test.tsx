@@ -27,6 +27,7 @@ const messages: Record<string, string> = {
   emptyPeriodLimited: "期間限定の取引履歴がありません。",
   emptyUsage: "利用履歴がありません。",
   transactionTypePurchase: "購入",
+  transactionTypeSubscription: "サブスク付与",
   transactionTypeConsumption: "生成利用",
   transactionTypeRefund: "生成失敗返却",
   transactionTypeSignupBonus: "新規登録ボーナス",
@@ -106,5 +107,34 @@ describe("PercoinTransactions", () => {
     );
 
     expect(screen.getByText("内訳: 期間限定 10 / 購入分 3")).toBeInTheDocument();
+  });
+
+  it("renders translated label for subscription grants", () => {
+    const transactions: PercoinTransaction[] = [
+      {
+        id: "tx-subscription",
+        amount: 400,
+        transaction_type: "subscription",
+        metadata: null,
+        created_at: "2026-04-08T00:14:20.636Z",
+        expire_at: "2026-10-31T14:59:59.000Z",
+      },
+    ];
+
+    render(
+      <PercoinTransactions
+        transactions={transactions}
+        filter="all"
+        offset={0}
+        totalCount={1}
+        isLoading={false}
+        onFilterChange={jest.fn()}
+        onPageClick={jest.fn()}
+        onNextPage={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText("サブスク付与")).toBeInTheDocument();
+    expect(screen.getByText("+400")).toBeInTheDocument();
   });
 });

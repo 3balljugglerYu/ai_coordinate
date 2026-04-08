@@ -44,6 +44,14 @@ export const SUBSCRIPTION_ACTIVE_STATUSES: SubscriptionStatus[] = [
   "active",
 ];
 
+export const SUBSCRIPTION_CHECKOUT_BLOCKED_STATUSES: SubscriptionStatus[] = [
+  "trialing",
+  "active",
+  "past_due",
+  "unpaid",
+  "paused",
+];
+
 export const SUBSCRIPTION_PLAN_CONFIG: Record<
   SubscriptionPlan,
   SubscriptionPlanConfig
@@ -166,6 +174,12 @@ export function getSubscriptionStockImageLimit(plan: SubscriptionPlan): number {
 
 export function isActiveSubscriptionStatus(status: SubscriptionStatus): boolean {
   return SUBSCRIPTION_ACTIVE_STATUSES.includes(status);
+}
+
+export function blocksNewSubscriptionCheckout(
+  status: SubscriptionStatus
+): boolean {
+  return SUBSCRIPTION_CHECKOUT_BLOCKED_STATUSES.includes(status);
 }
 
 export function normalizeSubscriptionPlan(value?: string | null): SubscriptionPlan {
