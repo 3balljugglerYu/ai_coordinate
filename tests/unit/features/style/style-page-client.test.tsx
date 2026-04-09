@@ -374,9 +374,9 @@ describe("StylePageClient", () => {
   const startStylingAndWaitForRequest = async () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let i = 0; i < 25 && !hasStyleGenerateRequest(); i += 1) {
+        await Promise.resolve();
+      }
     });
     expect(hasStyleGenerateRequest()).toBe(true);
   };
