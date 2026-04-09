@@ -359,19 +359,15 @@ describe("StylePageClient", () => {
     });
   };
 
-  const waitForStyleGenerateRequest = async () => {
-    await waitFor(() => {
-      expect(
-        fetchMock.mock.calls.some(([input, init]) => {
-          const requestUrl =
-            typeof input === "string"
-              ? input
-              : input instanceof URL
-                ? input.toString()
-                : input.url;
-          return requestUrl === "/style/generate" && (init?.method ?? "GET") === "POST";
-        })
-      ).toBe(true);
+  const hasStyleGenerateRequest = () => {
+    return fetchMock.mock.calls.some(([input, init]) => {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      return requestUrl === "/style/generate" && (init?.method ?? "GET") === "POST";
     });
   };
 
@@ -380,8 +376,9 @@ describe("StylePageClient", () => {
       fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
       await Promise.resolve();
       await Promise.resolve();
+      await Promise.resolve();
     });
-    await waitForStyleGenerateRequest();
+    expect(hasStyleGenerateRequest()).toBe(true);
   };
 
   beforeEach(() => {
