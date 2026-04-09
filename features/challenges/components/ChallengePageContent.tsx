@@ -8,6 +8,7 @@ import {
   Users,
   Flame,
   CalendarCheck2,
+  ArrowRight,
   Check,
   Gift,
   Trophy,
@@ -16,8 +17,10 @@ import {
   XCircle,
   Loader2,
   PlayCircle,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { ChallengeCard } from "./ChallengeCard";
@@ -30,6 +33,10 @@ import {
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { cn } from "@/lib/utils";
+import {
+  buildMissionBonusDisplay,
+  getRewardForDay,
+} from "@/features/challenges/lib/subscription-bonus-display";
 
 const breakpointColumnsObj = {
   default: 3,
@@ -57,7 +64,9 @@ interface ChallengePageContentProps {
   initialChallengeStatus?: ChallengeStatus | null;
   initialTutorialCompleted?: boolean | null;
   referralBonusAmount: number;
+  baseDailyPostBonusAmount: number;
   dailyPostBonusAmount: number;
+  baseStreakBonusSchedule: readonly number[];
   streakBonusSchedule: readonly number[];
 }
 
@@ -65,10 +74,13 @@ export function ChallengePageContent({
   initialChallengeStatus,
   initialTutorialCompleted,
   referralBonusAmount,
+  baseDailyPostBonusAmount,
   dailyPostBonusAmount,
+  baseStreakBonusSchedule,
   streakBonusSchedule,
 }: ChallengePageContentProps) {
   const t = useTranslations("challenge");
+  const subscriptionT = useTranslations("subscription");
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
@@ -80,6 +92,9 @@ export function ChallengePageContent({
   const [lastStreakLoginAt, setLastStreakLoginAt] = useState<string | null>(
     initialChallengeStatus?.lastStreakLoginAt ?? null
   );
+  const [subscriptionPlan, setSubscriptionPlan] = useState<
+    ChallengeStatus["subscriptionPlan"]
+  >(initialChallengeStatus?.subscriptionPlan ?? "free");
   const [isCheckedInToday, setIsCheckedInToday] = useState<boolean>(
     initialChallengeStatus
       ? isSameJstDate(initialChallengeStatus.lastStreakLoginAt)
@@ -95,6 +110,65 @@ export function ChallengePageContent({
   const [tutorialCompleted, setTutorialCompleted] = useState<boolean | null>(
     initialTutorialCompleted ?? null
   );
+  const bonusDisplay = buildMissionBonusDisplay({
+    subscriptionPlan,
+    baseDailyPostBonusAmount,
+    dailyPostBonusAmount,
+    baseStreakBonusSchedule,
+    streakBonusSchedule,
+  });
+  const planAccentClasses = {
+    free: {
+      card: "",
+      badge: "",
+      panel: "",
+      text: "",
+    },
+    light: {
+      card:
+        "border-amber-200/80 bg-gradient-to-br from-amber-50/70 via-white to-white shadow-[0_24px_48px_-36px_rgba(245,158,11,0.45)]",
+      badge:
+        "border-amber-200 bg-amber-50 text-amber-700 shadow-sm",
+      panel:
+        "border-amber-200/80 bg-amber-50/80 text-amber-900",
+      text: "text-amber-700",
+    },
+    standard: {
+      card:
+        "border-sky-200/80 bg-gradient-to-br from-sky-50/75 via-white to-white shadow-[0_24px_48px_-36px_rgba(14,165,233,0.4)]",
+      badge:
+        "border-sky-200 bg-sky-50 text-sky-700 shadow-sm",
+      panel:
+        "border-sky-200/80 bg-sky-50/80 text-sky-900",
+      text: "text-sky-700",
+    },
+    premium: {
+      card:
+        "border-emerald-200/80 bg-gradient-to-br from-emerald-50/80 via-white to-white shadow-[0_24px_48px_-36px_rgba(16,185,129,0.45)]",
+      badge:
+        "border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm",
+      panel:
+        "border-emerald-200/80 bg-emerald-50/80 text-emerald-900",
+      text: "text-emerald-700",
+    },
+  } as const;
+  const accent = planAccentClasses[subscriptionPlan];
+  const getPaidPlanBadgeLabel = (
+    plan: "light" | "standard" | "premium"
+  ) => {
+    if (plan === "light") return subscriptionT("badge.light");
+    if (plan === "standard") return subscriptionT("badge.standard");
+    return subscriptionT("badge.premium");
+  };
+  const planBadgeLabel = bonusDisplay.hasBoostedRewards
+    ? getPaidPlanBadgeLabel(subscriptionPlan as "light" | "standard" | "premium")
+    : null;
+  const missionBoostBadge = bonusDisplay.hasBoostedRewards ? (
+    <Badge variant="outline" className={cn("gap-1.5 px-2.5 py-1", accent.badge)}>
+      <Sparkles className="h-3.5 w-3.5" />
+      {t("boostBadge", { multiplier: bonusDisplay.multiplierLabel })}
+    </Badge>
+  ) : undefined;
 
   useEffect(() => {
     if (typeof initialTutorialCompleted === "boolean") return;
@@ -114,6 +188,7 @@ export function ChallengePageContent({
         const status = await getChallengeStatus();
         setStreakDays(status.streakDays);
         setLastStreakLoginAt(status.lastStreakLoginAt);
+        setSubscriptionPlan(status.subscriptionPlan);
         setIsCheckedInToday(isSameJstDate(status.lastStreakLoginAt));
 
         if (status.lastDailyPostBonusAt) {
@@ -180,6 +255,12 @@ export function ChallengePageContent({
 
       if (result.bonus_granted > 0) {
         const streakDayForMessage = result.streak_days ?? streakDays;
+        const baseRewardForMessage =
+          getRewardForDay(baseStreakBonusSchedule, streakDayForMessage) ?? 0;
+        const hasBoostedCheckInReward =
+          bonusDisplay.hasBoostedRewards &&
+          baseRewardForMessage > 0 &&
+          result.bonus_granted > baseRewardForMessage;
         const description =
           streakDayForMessage > 0
             ? t("checkInSuccessWithStreak", {
@@ -192,7 +273,17 @@ export function ChallengePageContent({
 
         toast({
           title: t("checkInSuccessTitle"),
-          description,
+          description: hasBoostedCheckInReward && planBadgeLabel ? (
+            <div className="space-y-2">
+              <p>{description}</p>
+              <div className={cn("flex flex-wrap items-center gap-2 text-xs font-medium", accent.text)}>
+                <Badge variant="outline" className={cn("gap-1.5 px-2 py-0.5", accent.badge)}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {t("boostBadge", { multiplier: bonusDisplay.multiplierLabel })}
+                </Badge>
+              </div>
+            </div>
+          ) : description,
           variant: "default",
         });
         // チェックイン成功時に未読バッジを即時更新
@@ -271,11 +362,43 @@ export function ChallengePageContent({
             title={t("streakTitle")}
             description={t("streakDescription", { totalBonus: totalStreakBonus })}
             percoinText={t("streakRewardText", { amount: maxStreakBonus })}
+            headerBadge={missionBoostBadge}
             icon={Flame}
             color="purple"
-            className="h-full"
+            className={cn("h-full", bonusDisplay.hasBoostedRewards && accent.card)}
           >
             <div className="mt-4">
+              {bonusDisplay.hasBoostedRewards && planBadgeLabel && (
+                <div className={cn("mb-4 rounded-2xl border p-3", accent.panel)}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-semibold tracking-wide">
+                        {t("streakBoostLabel", { plan: planBadgeLabel })}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <span className="text-muted-foreground line-through">
+                          +{bonusDisplay.streak.baseMax}
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        <span className="font-bold">
+                          +{bonusDisplay.streak.boostedMax}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[11px] font-semibold tracking-wide">
+                        {t("streakBoostTotalLabel")}
+                      </div>
+                      <div className="text-sm font-bold">
+                        {t("boostComparisonCompact", {
+                          base: bonusDisplay.streak.baseTotal,
+                          boosted: bonusDisplay.streak.boostedTotal,
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium text-purple-900 bg-purple-50 px-3 py-1 rounded-full">
                   {t("streakCurrent", { days: streakDays })}
@@ -395,11 +518,39 @@ export function ChallengePageContent({
             title={t("dailyTitle")}
             description={t("dailyDescription")}
             percoinAmount={dailyPostBonusAmount}
+            headerBadge={missionBoostBadge}
             icon={CalendarCheck2}
             color="blue"
-            className="h-full"
+            className={cn("h-full", bonusDisplay.hasBoostedRewards && accent.card)}
           >
             <div className="space-y-4">
+              {bonusDisplay.hasBoostedRewards && planBadgeLabel && (
+                <div className={cn("rounded-2xl border p-3", accent.panel)}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-semibold tracking-wide">
+                        {t("dailyBoostLabel", { plan: planBadgeLabel })}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <span className="text-muted-foreground line-through">
+                          +{bonusDisplay.daily.base}
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        <span className="font-bold">
+                          +{bonusDisplay.daily.boosted}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[11px] font-semibold tracking-wide">
+                        {t("boostBadge", {
+                          multiplier: bonusDisplay.multiplierLabel,
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* ステータス表示 */}
               <div className={cn(
                 "flex items-center justify-between p-4 rounded-lg border transition-colors",

@@ -1,11 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { isStreakBroken } from "./streak-utils";
+import {
+  normalizeSubscriptionPlan,
+  type SubscriptionPlan,
+} from "@/features/subscription/subscription-config";
 
 export interface ChallengeStatus {
   streakDays: number;
   lastStreakLoginAt: string | null;
   lastDailyPostBonusAt: string | null;
+  subscriptionPlan: SubscriptionPlan;
 }
 
 /**
@@ -21,13 +26,18 @@ export async function getChallengeStatusServer(
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("streak_days, last_streak_login_at, last_daily_post_bonus_at")
+    .select("streak_days, last_streak_login_at, last_daily_post_bonus_at, subscription_plan")
     .eq("user_id", userId)
     .single();
 
   if (error) {
     console.error("Error fetching challenge status:", error);
-    return { streakDays: 0, lastStreakLoginAt: null, lastDailyPostBonusAt: null };
+    return {
+      streakDays: 0,
+      lastStreakLoginAt: null,
+      lastDailyPostBonusAt: null,
+      subscriptionPlan: "free",
+    };
   }
 
   let streakDays = data?.streak_days || 0;
@@ -43,5 +53,6 @@ export async function getChallengeStatusServer(
     streakDays,
     lastStreakLoginAt,
     lastDailyPostBonusAt: data?.last_daily_post_bonus_at || null,
+    subscriptionPlan: normalizeSubscriptionPlan(data?.subscription_plan),
   };
 }

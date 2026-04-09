@@ -9,6 +9,7 @@ import { PostCard } from "./PostCard";
 import { PostListSkeleton } from "./PostListSkeleton";
 import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
+import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useToast } from "@/components/ui/use-toast";
@@ -78,11 +79,39 @@ export function PostList({
 
     setPendingHomePostRefresh(pending);
     if (pending.action === "posted") {
+      const hasBoostedBonus =
+        pending.subscriptionPlan &&
+        pending.subscriptionPlan !== "free" &&
+        typeof pending.bonusMultiplier === "number" &&
+        pending.bonusMultiplier > 1;
+      const boostedMultiplier = hasBoostedBonus
+        ? pending.bonusMultiplier
+        : null;
+
       toast({
-        title: postsT("postSuccess"),
+        title:
+          pending.bonusGranted && pending.bonusGranted > 0
+            ? postsT("dailyBonusTitle")
+            : postsT("postSuccess"),
         description:
           pending.bonusGranted && pending.bonusGranted > 0
-            ? postsT("dailyBonusDescription", { amount: pending.bonusGranted })
+            ? (
+                <div className="space-y-2">
+                  <p>{postsT("dailyBonusDescription", { amount: pending.bonusGranted })}</p>
+                  {hasBoostedBonus ? (
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-amber-700">
+                      <Badge
+                        variant="outline"
+                        className="gap-1.5 border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700 shadow-sm"
+                      >
+                        {postsT("dailyBonusMultiplierBadge", {
+                          multiplier: boostedMultiplier?.toFixed(1) ?? "1.0",
+                        })}
+                      </Badge>
+                    </div>
+                  ) : null}
+                </div>
+              )
             : undefined,
       });
     }

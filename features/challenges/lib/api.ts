@@ -5,6 +5,7 @@ export interface ChallengeStatus {
   streakDays: number;
   lastStreakLoginAt: string | null;
   lastDailyPostBonusAt: string | null;
+  subscriptionPlan: "free" | "light" | "standard" | "premium";
 }
 
 export interface CheckInStreakBonusResponse {
@@ -29,18 +30,28 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { streakDays: 0, lastStreakLoginAt: null, lastDailyPostBonusAt: null };
+    return {
+      streakDays: 0,
+      lastStreakLoginAt: null,
+      lastDailyPostBonusAt: null,
+      subscriptionPlan: "free",
+    };
   }
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("streak_days, last_streak_login_at, last_daily_post_bonus_at")
+    .select("streak_days, last_streak_login_at, last_daily_post_bonus_at, subscription_plan")
     .eq("user_id", user.id)
     .single();
 
   if (error) {
     console.error("Error fetching challenge status:", error);
-    return { streakDays: 0, lastStreakLoginAt: null, lastDailyPostBonusAt: null };
+    return {
+      streakDays: 0,
+      lastStreakLoginAt: null,
+      lastDailyPostBonusAt: null,
+      subscriptionPlan: "free",
+    };
   }
 
   let streakDays = data?.streak_days || 0;
@@ -55,6 +66,12 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
     streakDays,
     lastStreakLoginAt,
     lastDailyPostBonusAt: data?.last_daily_post_bonus_at || null,
+    subscriptionPlan:
+      data?.subscription_plan === "light" ||
+      data?.subscription_plan === "standard" ||
+      data?.subscription_plan === "premium"
+        ? data.subscription_plan
+        : "free",
   };
 }
 
