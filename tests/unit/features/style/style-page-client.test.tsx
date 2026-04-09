@@ -350,6 +350,15 @@ describe("StylePageClient", () => {
       url: imageUrl,
     } as Response);
 
+  const uploadImageAndWaitUntilReady = async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Start Styling" })
+      ).toBeEnabled();
+    });
+  };
+
   beforeEach(() => {
     mockToast.mockImplementation(() => ({ id: "toast-id" }));
     mockDismissToast.mockReset();
@@ -662,7 +671,7 @@ describe("StylePageClient", () => {
       )
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
@@ -771,7 +780,7 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     expect(screen.getByRole("button", { name: "Generating..." })).toBeDisabled();
@@ -942,14 +951,14 @@ describe("StylePageClient", () => {
     });
   });
 
-  test("生成が長引くとフォールバック文言に切り替わる", () => {
+  test("生成が長引くとフォールバック文言に切り替わる", async () => {
     jest.useFakeTimers();
 
     generateResponseQueue = [new Promise<Response>(() => {})];
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     expect(
@@ -972,7 +981,7 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
@@ -1183,7 +1192,7 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     await act(async () => {
@@ -1232,7 +1241,7 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     await act(async () => {
@@ -1268,7 +1277,7 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
@@ -1422,7 +1431,7 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     await act(async () => {
@@ -1464,7 +1473,7 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     await act(async () => {
@@ -1525,7 +1534,7 @@ describe("StylePageClient", () => {
       await screen.findByText("You have 2 generations left for today.")
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     await act(async () => {
