@@ -375,6 +375,15 @@ describe("StylePageClient", () => {
     });
   };
 
+  const startStylingAndWaitForRequest = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitForStyleGenerateRequest();
+  };
+
   beforeEach(() => {
     mockToast.mockImplementation(() => ({ id: "toast-id" }));
     mockDismissToast.mockReset();
@@ -689,11 +698,7 @@ describe("StylePageClient", () => {
 
     await uploadImageAndWaitUntilReady();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     const generateCall = fetchMock.mock.calls.find(
       ([input, init]) =>
@@ -797,7 +802,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    await startStylingAndWaitForRequest();
 
     expect(screen.getByRole("button", { name: "Generating..." })).toBeDisabled();
     expect(
@@ -975,7 +980,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    await startStylingAndWaitForRequest();
 
     expect(
       screen.getByText("Checking out the new look.")
@@ -999,11 +1004,7 @@ describe("StylePageClient", () => {
 
     await uploadImageAndWaitUntilReady();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     expect(fetchMock).toHaveBeenCalled();
 
@@ -1209,12 +1210,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
     act(() => {
       jest.advanceTimersByTime(5000);
     });
@@ -1258,12 +1254,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
     act(() => {
       jest.advanceTimersByTime(5000);
     });
@@ -1295,11 +1286,7 @@ describe("StylePageClient", () => {
 
     await uploadImageAndWaitUntilReady();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     expect(fetchMock).toHaveBeenCalled();
 
@@ -1448,15 +1435,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-    });
-    await waitForStyleGenerateRequest();
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     expect(
       screen.getByText(
@@ -1493,15 +1472,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-    });
-    await waitForStyleGenerateRequest();
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     expect(screen.getByText("Traffic is high right now")).toBeInTheDocument();
     expect(
