@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
+import { getCurrentUser, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import { PercoinTransactions } from "./PercoinTransactions";
 import { PeriodLimitedBreakdown } from "./PeriodLimitedBreakdown";
 import {
@@ -106,12 +107,35 @@ export function PercoinPageContent({
     [refreshTransactions]
   );
 
-  // ページ遷移時・マウント時にデータを再フェッチ（/my-page/creditsに遷移した際に最新データを取得）
+  // SSR済みの表示を維持するため、認証済みセッションが取れたときだけクライアント再取得する。
   useEffect(() => {
-    refreshAll();
+    let isActive = true;
+    const subscription = onAuthStateChange((user) => {
+      if (!user || !isActive) {
+        return;
+      }
+      void refreshAll();
+    });
+
+    void (async () => {
+      try {
+        const user = await getCurrentUser();
+        if (!user || !isActive) {
+          return;
+        }
+        await refreshAll();
+      } catch (err) {
+        console.error("Failed to initialize percoin refresh:", err);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
   }, [refreshAll]);
 
-  // フィルタ変更時のみ取引履歴を再取得（初回マウントは refreshAll で対応）
+  // フィルタ変更時のみ取引履歴を再取得
   const isInitialMount = useRef(true);
   useEffect(() => {
     if (isInitialMount.current) {
