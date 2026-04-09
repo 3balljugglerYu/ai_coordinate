@@ -359,6 +359,22 @@ describe("StylePageClient", () => {
     });
   };
 
+  const waitForStyleGenerateRequest = async () => {
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input, init]) => {
+          const requestUrl =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.toString()
+                : input.url;
+          return requestUrl === "/style/generate" && (init?.method ?? "GET") === "POST";
+        })
+      ).toBe(true);
+    });
+  };
+
   beforeEach(() => {
     mockToast.mockImplementation(() => ({ id: "toast-id" }));
     mockDismissToast.mockReset();
@@ -1432,7 +1448,10 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    });
+    await waitForStyleGenerateRequest();
 
     await act(async () => {
       await Promise.resolve();
@@ -1474,7 +1493,10 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    });
+    await waitForStyleGenerateRequest();
 
     await act(async () => {
       await Promise.resolve();
