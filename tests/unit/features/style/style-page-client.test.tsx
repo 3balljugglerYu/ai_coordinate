@@ -350,13 +350,25 @@ describe("StylePageClient", () => {
       url: imageUrl,
     } as Response);
 
+  const flushReactScheduler = async () => {
+    for (let i = 0; i < 10; i += 1) {
+      try {
+        jest.advanceTimersByTime(0);
+      } catch {
+        // Real timers active — nothing to advance.
+      }
+      await Promise.resolve();
+    }
+  };
+
   const uploadImageAndWaitUntilReady = async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "Start Styling" })
-      ).toBeEnabled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+      await flushReactScheduler();
     });
+    expect(
+      screen.getByRole("button", { name: "Start Styling" })
+    ).toBeEnabled();
   };
 
   const hasStyleGenerateRequest = () => {
@@ -374,9 +386,7 @@ describe("StylePageClient", () => {
   const startStylingAndWaitForRequest = async () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      for (let i = 0; i < 25 && !hasStyleGenerateRequest(); i += 1) {
-        await Promise.resolve();
-      }
+      await flushReactScheduler();
     });
     expect(hasStyleGenerateRequest()).toBe(true);
   };
