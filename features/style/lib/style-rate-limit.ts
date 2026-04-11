@@ -7,8 +7,8 @@ import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const GUEST_SHORT_LIMIT = 2;
-const GUEST_DAILY_LIMIT = 3;
-const AUTHENTICATED_DAILY_LIMIT = 6;
+const GUEST_DAILY_LIMIT = 2;
+const AUTHENTICATED_DAILY_LIMIT = 5;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const ONE_MINUTE_MS = 60 * 1000;
 
@@ -88,6 +88,10 @@ function getJstStartOfDay(now: Date): Date {
   const jstNow = new Date(now.getTime() + JST_OFFSET_MS);
   jstNow.setUTCHours(0, 0, 0, 0);
   return new Date(jstNow.getTime() - JST_OFFSET_MS);
+}
+
+function shouldShowRemainingWarning(remainingDaily: number | null): boolean {
+  return typeof remainingDaily === "number" && remainingDaily <= 2;
 }
 
 async function getAuthenticatedDailyGenerateAttemptCount(
@@ -185,7 +189,7 @@ export async function getStyleGenerateRateLimitStatus({
     return {
       authState: "authenticated",
       remainingDaily,
-      showRemainingWarning: remainingDaily === 2,
+      showRemainingWarning: shouldShowRemainingWarning(remainingDaily),
     };
   }
 
@@ -210,7 +214,7 @@ export async function getStyleGenerateRateLimitStatus({
   return {
     authState: "guest",
     remainingDaily,
-    showRemainingWarning: remainingDaily === 2,
+    showRemainingWarning: shouldShowRemainingWarning(remainingDaily),
   };
 }
 

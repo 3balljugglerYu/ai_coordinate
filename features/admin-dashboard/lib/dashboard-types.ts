@@ -92,6 +92,74 @@ export interface DashboardOneTapStyleAnalytics {
   trend: DashboardOneTapStyleTrendPoint[];
 }
 
+export type DashboardOneTapStyleFocusMetricKey =
+  | "attempts"
+  | "successRate"
+  | "downloadRate"
+  | "rateLimitedShare";
+
+export interface DashboardOneTapStyleFocusMetric {
+  key: DashboardOneTapStyleFocusMetricKey;
+  label: string;
+  value: string;
+  previousValue: string;
+  deltaPct: number | null;
+  deltaDirection: DashboardDeltaDirection;
+  description: string;
+}
+
+export interface DashboardOneTapStyleSegmentRow {
+  authState: "guest" | "authenticated";
+  label: string;
+  visits: number;
+  attempts: number;
+  generations: number;
+  downloads: number;
+  rateLimited: number;
+  successRatePct: number | null;
+  downloadRatePct: number | null;
+  rateLimitedSharePct: number | null;
+}
+
+export interface DashboardOneTapStylePresetPerformanceRow {
+  presetId: string;
+  title: string;
+  status: "draft" | "published" | "unknown";
+  authenticatedAttempts: number;
+  generations: number;
+  downloads: number;
+  rateLimited: number;
+  generationSharePct: number;
+  authenticatedSuccessRatePct: number | null;
+  downloadRatePct: number | null;
+}
+
+export interface DashboardOneTapStyleInsight {
+  id: string;
+  title: string;
+  description: string;
+  severity: "success" | "info" | "warning";
+}
+
+export interface DashboardOneTapStyleOperationalSummary {
+  publishedPresetCount: number;
+  draftPresetCount: number;
+  activePresetCount: number;
+  zeroGenerationPublishedPresetCount: number;
+  authenticatedAttemptCount: number;
+  guestAttemptCount: number;
+}
+
+export interface DashboardOneTapStyleDetailedAnalytics {
+  analytics: DashboardOneTapStyleAnalytics;
+  focusMetrics: DashboardOneTapStyleFocusMetric[];
+  segments: DashboardOneTapStyleSegmentRow[];
+  presetPerformance: DashboardOneTapStylePresetPerformanceRow[];
+  insights: DashboardOneTapStyleInsight[];
+  operationalSummary: DashboardOneTapStyleOperationalSummary;
+  dormantPublishedPresetTitles: string[];
+}
+
 export interface DashboardOpsSummary {
   failedJobs: number;
   averageOrderValueYen: number | null;
@@ -130,6 +198,7 @@ export interface AdminDashboardData {
   kpis: AdminDashboardKpi[];
   trend: DashboardTrendPoint[];
   oneTapStyle: DashboardOneTapStyleAnalytics;
+  oneTapStyleDetailed: DashboardOneTapStyleDetailedAnalytics;
   revenueTrend: DashboardRevenueTrend;
   opsSummary: DashboardOpsSummary;
   funnel: DashboardFunnelStep[];

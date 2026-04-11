@@ -3,6 +3,11 @@ import {
   buildOneTapStyleSummary,
   type StyleUsageEventRow,
 } from "@/features/admin-dashboard/lib/build-one-tap-style-summary";
+import {
+  buildOneTapStyleDetailedAnalytics,
+  type StyleGuestGenerateAttemptRow,
+  type StylePresetDashboardRow,
+} from "@/features/admin-dashboard/lib/build-one-tap-style-detailed";
 
 describe("buildOneTapStyleSummary", () => {
   test("current と previous の visit/generate/download を集計する", () => {
@@ -166,5 +171,106 @@ describe("buildOneTapStyleSummary", () => {
         rateLimited: 0,
       },
     ]);
+  });
+
+  test("detail 用の auth_state / style_id / guest試行数 をまとめて分析できる", () => {
+    const events: StyleUsageEventRow[] = [
+      {
+        user_id: "user-1",
+        auth_state: "authenticated",
+        event_type: "generate_attempt",
+        style_id: "paris_code",
+        created_at: "2026-03-18T01:00:00.000Z",
+      },
+      {
+        user_id: "user-1",
+        auth_state: "authenticated",
+        event_type: "generate",
+        style_id: "paris_code",
+        created_at: "2026-03-18T02:00:00.000Z",
+      },
+      {
+        user_id: null,
+        auth_state: "guest",
+        event_type: "generate",
+        style_id: "paris_code",
+        created_at: "2026-03-18T03:00:00.000Z",
+      },
+      {
+        user_id: null,
+        auth_state: "guest",
+        event_type: "download",
+        style_id: "paris_code",
+        created_at: "2026-03-18T04:00:00.000Z",
+      },
+      {
+        user_id: null,
+        auth_state: "guest",
+        event_type: "rate_limited",
+        style_id: "paris_code",
+        created_at: "2026-03-18T05:00:00.000Z",
+      },
+    ];
+    const guestAttempts: StyleGuestGenerateAttemptRow[] = [
+      { created_at: "2026-03-18T03:00:00.000Z" },
+      { created_at: "2026-03-17T03:00:00.000Z" },
+    ];
+    const presets: StylePresetDashboardRow[] = [
+      {
+        id: "paris_code",
+        title: "PARIS CODE",
+        status: "published",
+        sort_order: 1,
+      },
+      {
+        id: "unused_code",
+        title: "UNUSED CODE",
+        status: "published",
+        sort_order: 2,
+      },
+    ];
+
+    const detailed = buildOneTapStyleDetailedAnalytics({
+      events,
+      guestAttempts,
+      presets,
+      previousStart: new Date("2026-03-17T00:00:00.000Z"),
+      currentStart: new Date("2026-03-18T00:00:00.000Z"),
+      now: new Date("2026-03-18T23:59:59.000Z"),
+    });
+
+    expect(detailed.focusMetrics[0]).toMatchObject({
+      key: "attempts",
+      value: "2回",
+      previousValue: "1回",
+    });
+    expect(detailed.segments).toEqual([
+      expect.objectContaining({
+        authState: "authenticated",
+        attempts: 1,
+        generations: 1,
+        successRatePct: 100,
+      }),
+      expect.objectContaining({
+        authState: "guest",
+        attempts: 1,
+        generations: 1,
+        downloads: 1,
+        rateLimited: 1,
+        successRatePct: 100,
+        rateLimitedSharePct: 50,
+      }),
+    ]);
+    expect(detailed.presetPerformance[0]).toMatchObject({
+      presetId: "paris_code",
+      title: "PARIS CODE",
+      generations: 2,
+      downloads: 1,
+      authenticatedAttempts: 1,
+      authenticatedSuccessRatePct: 100,
+      downloadRatePct: 50,
+    });
+    expect(detailed.dormantPublishedPresetTitles).toEqual(["UNUSED CODE"]);
+    expect(detailed.insights.length).toBeGreaterThan(0);
   });
 });

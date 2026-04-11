@@ -894,7 +894,7 @@ export const jaMessages = {
     generateRetryHint:
       "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
     usageLimitHint:
-      "未ログインユーザーは1日3回、ログインユーザーは1日6回まで利用できます。",
+      "未ログインユーザーは1日2回、ログインユーザーは1日5回まで利用できます。",
     generateButton: "Start Styling",
     generatingButton: "生成中...",
     // ステータスカードの見出し

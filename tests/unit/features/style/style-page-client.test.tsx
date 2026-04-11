@@ -31,9 +31,17 @@ jest.mock("@/components/ui/use-toast", () => ({
 
 jest.mock("next/image", () => ({
   __esModule: true,
-  default: ({ fill, priority, unoptimized, ...props }: any) => (
+  default: (props: {
+    alt?: string;
+    className?: string;
+    src?: string;
+  }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img {...props} alt={props.alt ?? ""} />
+    <img
+      src={props.src ?? ""}
+      alt={props.alt ?? ""}
+      className={props.className}
+    />
   ),
 }));
 
@@ -99,6 +107,10 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
   ),
 }));
 
+jest.mock("@/features/generation/lib/normalize-source-image", () => ({
+  normalizeSourceImage: async (file: File) => file,
+}));
+
 const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
@@ -132,7 +144,7 @@ const styleMessages = {
   generateButton: "Start Styling",
   generatingButton: "Generating...",
   usageLimitHint:
-    "Guest users can use this up to 3 times per day, and signed-in users up to 6 times per day.",
+    "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day.",
   generationStatusTitle: "Styling in progress",
   generationStatusHint: "Checking out the new look.",
   generationStatusSlowHint:
@@ -172,6 +184,10 @@ const styleMessages = {
     "Running Start Styling again will replace the generated result with a new image. Do you want to continue?",
   resultReplaceConfirmAction: "Generate again",
   generationFailed: "Failed to generate the image.",
+  guestRateLimitDaily:
+    "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
+  authenticatedRateLimitDaily:
+    "You have reached today's generation limit. Please try again tomorrow.",
   guestRateLimitSignupHint: "Create an account to keep going right away.",
   guestRateLimitSignupAction: "Sign up to continue",
   remainingDailyNotice: "You have {count} generations left for today.",
@@ -836,27 +852,30 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Guest users can use this up to 3 times per day, and signed-in users up to 6 times per day."
+        "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day."
       )
     ).toBeInTheDocument();
   });
 
-  test("未ログインユーザーには残り生成回数を表示しない", async () => {
-    jest.useFakeTimers();
+  test("未ログインユーザーも残り2回以下になるとカウントダウンを表示する", async () => {
     statusPayloadQueue = [
-      {
-        authState: "guest",
-        remainingDaily: 3,
-        showRemainingWarning: false,
-      },
       {
         authState: "guest",
         remainingDaily: 2,
         showRemainingWarning: true,
       },
+      {
+        authState: "guest",
+        remainingDaily: 1,
+        showRemainingWarning: true,
+      },
     ];
 
     render(<StylePageClient presets={presets} />);
+
+    expect(
+      await screen.findByText("You have 2 generations left for today.")
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
@@ -868,11 +887,72 @@ describe("StylePageClient", () => {
 
     expect(
       screen.getByText(
-        "Guest users can use this up to 3 times per day, and signed-in users up to 6 times per day."
+        "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day."
       )
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("You have 2 generations left for today.")
+      await screen.findByText("You have 1 generations left for today.")
+    ).toBeInTheDocument();
+  });
+
+  test("未ログインユーザーが上限到達時_signupカードを表示して生成を止める", async () => {
+    statusPayloadQueue = [
+      {
+        authState: "guest",
+        remainingDaily: 0,
+        showRemainingWarning: true,
+      },
+    ];
+
+    render(<StylePageClient presets={presets} />);
+
+    expect(
+      await screen.findByText(
+        "You have reached today's free trial limit. Sign up to keep using One-Tap Style."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Create an account to keep going right away.")
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("You have 0 generations left for today.")
     ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    expect(
+      screen.getByRole("button", { name: "Start Styling" })
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign up to continue" }));
+
+    expect(routerPushMock).toHaveBeenCalledWith("/signup?next=%2Fstyle");
+  });
+
+  test("ログインユーザーが上限到達時_翌日案内カードを表示して生成を止める", async () => {
+    statusPayloadQueue = [
+      {
+        authState: "authenticated",
+        remainingDaily: 0,
+        showRemainingWarning: true,
+      },
+    ];
+
+    render(<StylePageClient presets={presets} />);
+
+    expect(
+      await screen.findByText(
+        "You have reached today's generation limit. Please try again tomorrow."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Sign up to continue" })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    expect(
+      screen.getByRole("button", { name: "Start Styling" })
+    ).toBeDisabled();
   });
 });

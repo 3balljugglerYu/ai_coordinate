@@ -6,6 +6,35 @@ import type { StyleGenerateRateLimitResult } from "@/features/style/lib/style-ra
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
+const STYLE_PROMPT_BASE_PREFIX = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. Strictly follow these steps:
+
+1. Strict Filtering: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a part is not in the original frame, omit its description entirely.
+
+2. Pose Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`.`;
+
+function buildExpectedPrompt(params: {
+  sourceImageType?: "illustration" | "real";
+  backgroundInstruction: string;
+  backgroundPrompt?: string | null;
+}): string {
+  const promptSuffix =
+    params.sourceImageType === "real"
+      ? "Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering."
+      : "Maintain the exact artistic style, brushwork, and original composition.";
+
+  const promptSections = [
+    STYLE_PROMPT_BASE_PREFIX,
+    promptSuffix,
+    params.backgroundInstruction,
+    "Styling Direction:\nRAW PROMPT\nSECOND LINE",
+  ];
+
+  if (params.backgroundPrompt) {
+    promptSections.push(`Background Direction:\n${params.backgroundPrompt}`);
+  }
+
+  return promptSections.join("\n\n");
+}
 
 function createRequest(formData: FormData): NextRequest {
   return new NextRequest("http://localhost/style/generate", {
@@ -247,21 +276,10 @@ describe("StyleGenerateRoute integration tests", () => {
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent"
     );
     expect(requestBody.contents[0].parts[0]).toEqual({
-      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
-
-1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
-
-2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
-
-3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
-
-Maintain the exact artistic style, brushwork, and original composition.
-
-Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.
-
-Styling Direction:
-RAW PROMPT
-SECOND LINE`,
+      text: buildExpectedPrompt({
+        backgroundInstruction:
+          "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.",
+      }),
     });
     expect(requestBody.contents[0].parts).toHaveLength(2);
     expect(requestBody.contents[0].parts[1]).toEqual({
@@ -428,21 +446,11 @@ SECOND LINE`,
     };
 
     expect(requestBody.contents[0].parts[0]).toEqual({
-      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
-
-1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
-
-2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
-
-3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
-
-Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.
-
-Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.
-
-Styling Direction:
-RAW PROMPT
-SECOND LINE`,
+      text: buildExpectedPrompt({
+        sourceImageType: "real",
+        backgroundInstruction:
+          "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.",
+      }),
     });
   });
 
@@ -480,24 +488,11 @@ SECOND LINE`,
     };
 
     expect(requestBody.contents[0].parts[0]).toEqual({
-      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
-
-1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
-
-2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
-
-3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
-
-Maintain the exact artistic style, brushwork, and original composition.
-
-You may restyle the background within the existing framing so it complements the selected outfit. Preserve the camera angle, crop, composition, pose, facial features, and character identity.
-
-Styling Direction:
-RAW PROMPT
-SECOND LINE
-
-Background Direction:
-Soft spring city street with blossoms`,
+      text: buildExpectedPrompt({
+        backgroundInstruction:
+          "You may restyle the background within the existing framing so it complements the selected outfit. Preserve the camera angle, crop, composition, pose, facial features, and character identity.",
+        backgroundPrompt: "Soft spring city street with blossoms",
+      }),
     });
   });
 

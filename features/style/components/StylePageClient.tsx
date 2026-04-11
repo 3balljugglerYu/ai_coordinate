@@ -437,18 +437,24 @@ export function StylePageClient({ presets }: StylePageClientProps) {
   const isGenerating = generationPhase !== "idle";
   const isBackgroundChangeAvailable = Boolean(selectedPreset?.hasBackgroundPrompt);
   const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
-  const isGenerateDisabled = !selectedPreset || !uploadedImage || isGenerating;
+  const isDailyLimitReached =
+    rateLimitStatus?.remainingDaily === 0 &&
+    (rateLimitStatus.authState === "authenticated" ||
+      rateLimitStatus.authState === "guest");
+  const isGenerateDisabled =
+    !selectedPreset || !uploadedImage || isGenerating || isDailyLimitReached;
   const hasGeneratedResult = Boolean(resultImageUrl);
   const isCompletingGeneration = generationPhase === "completing";
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
     : 1;
   const remainingDailyNoticeCount =
-    rateLimitStatus?.authState === "authenticated" &&
     rateLimitStatus?.showRemainingWarning &&
-    typeof rateLimitStatus.remainingDaily === "number"
+    typeof rateLimitStatus.remainingDaily === "number" &&
+    rateLimitStatus.remainingDaily > 0
       ? rateLimitStatus.remainingDaily
       : null;
+  const shouldShowDailyLimitCard = isDailyLimitReached;
   const generationMessages = useMemo(
     () => [
       t("generationStatusMessage1"),
@@ -1008,6 +1014,35 @@ export function StylePageClient({ presets }: StylePageClientProps) {
                     count: remainingDailyNoticeCount,
                   })}
                 </p>
+              </div>
+            ) : null}
+
+            {shouldShowDailyLimitCard ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-medium text-red-900">
+                  {rateLimitStatus?.authState === "guest"
+                    ? t("guestRateLimitDaily")
+                    : t("authenticatedRateLimitDaily")}
+                </p>
+                {rateLimitStatus?.authState === "guest" ? (
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-red-800">
+                      {t("guestRateLimitSignupHint")}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() =>
+                        router.push(
+                          `/signup?${new URLSearchParams({ next: "/style" }).toString()}`
+                        )
+                      }
+                    >
+                      {t("guestRateLimitSignupAction")}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

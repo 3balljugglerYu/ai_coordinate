@@ -53,7 +53,7 @@ describe("style-rate-limit", () => {
       {
         p_user_id: "user-123",
         p_style_id: "paris_code",
-        p_daily_limit: 6,
+        p_daily_limit: 5,
         p_now: "2026-03-21T12:34:56.000Z",
       }
     );
@@ -77,7 +77,7 @@ describe("style-rate-limit", () => {
   });
 
   test("getStyleGenerateRateLimitStatus_認証ユーザーの日次残数はJSTの当日0時から集計する", async () => {
-    const authenticatedQuery = createCountQuery({ count: 4, error: null });
+    const authenticatedQuery = createCountQuery({ count: 3, error: null });
     const from = jest.fn().mockReturnValue(authenticatedQuery);
     mockCreateAdminClient.mockReturnValue({ from } as never);
 
@@ -101,7 +101,7 @@ describe("style-rate-limit", () => {
 
   test("checkAndConsumeStyleGenerateRateLimit_guestの日次上限はJSTの当日0時から判定する", async () => {
     const shortQuery = createCountQuery({ count: 0, error: null });
-    const dailyQuery = createCountQuery({ count: 2, error: null });
+    const dailyQuery = createCountQuery({ count: 1, error: null });
     const insert = jest.fn().mockResolvedValue({ error: null });
     const from = jest
       .fn()
@@ -125,5 +125,23 @@ describe("style-rate-limit", () => {
       "2026-03-21T15:00:00.000Z"
     );
     expect(insert).toHaveBeenCalled();
+  });
+
+  test("getStyleGenerateRateLimitStatus_残数が1回でも注意表示を維持する", async () => {
+    const authenticatedQuery = createCountQuery({ count: 4, error: null });
+    const from = jest.fn().mockReturnValue(authenticatedQuery);
+    mockCreateAdminClient.mockReturnValue({ from } as never);
+
+    const status = await getStyleGenerateRateLimitStatus({
+      request: createRequest(),
+      userId: "user-123",
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+
+    expect(status).toEqual({
+      authState: "authenticated",
+      remainingDaily: 1,
+      showRemainingWarning: true,
+    });
   });
 });
