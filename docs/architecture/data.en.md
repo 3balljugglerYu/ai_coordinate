@@ -185,15 +185,15 @@ This matches Supabase/Postgres best practices used in this repo:
    - `sourceImageStockId`, or
    - temporary Base64 upload to Storage
 3. It performs an optimistic balance check from `user_credits`.
-4. It inserts a row in `image_jobs` with `status = queued` and `processing_stage = queued`.
+4. It inserts a row in `image_jobs` with `status = queued` and `processing_stage = queued`, plus `generation_metadata` when the flow needs restoreable UI context such as a One-Tap Style preset card.
 5. It sends a queue message through `pgmq_send` and also tries to invoke the Edge Function immediately.
 6. The Edge Function:
    - reads queue messages via `pgmq_read`
    - marks the job `status = processing` and `processing_stage = processing`
-   - switches to `processing_stage = charging` and calls `deduct_free_percoins`
+   - switches to `processing_stage = charging` and calls `deduct_free_percoins` only for paid jobs
    - switches to `processing_stage = generating` and calls Gemini
    - switches to `processing_stage = uploading` and uploads the result to Storage
-   - switches to `processing_stage = persisting` and inserts a row in `generated_images`
+   - switches to `processing_stage = persisting` and inserts a row in `generated_images`, carrying forward `generation_metadata` when needed by later detail views
    - updates `image_jobs` to `status = succeeded` and `processing_stage = completed`
    - backfills `credit_transactions.related_generation_id`
 7. If generation reaches terminal failure, the worker stores `processing_stage = failed` and calls `refund_percoins` exactly once.

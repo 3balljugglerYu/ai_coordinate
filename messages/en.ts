@@ -921,6 +921,13 @@ export const enMessages = {
     addImageAction: "Add image",
     styleImageAlt: "Selected style image",
     styleCardAlt: "{name} style card",
+    detailPresetLabel: "Generated with One-Tap Style",
+    detailPresetCardAlt: "{name} style card",
+    detailReuseConfirmTitle: "Use this outfit?",
+    detailReuseConfirmDescription:
+      "Selecting yes will open One-Tap Style with this card preselected.",
+    detailReuseConfirmCancel: "Cancel",
+    detailReuseConfirmAction: "Yes",
     uploadImageLabel: "Uploaded image",
     authRequired: "Authentication is required.",
     sourceImageTypeLabel: "Upload image type",
@@ -987,10 +994,20 @@ export const enMessages = {
       "Changing the style, your character image, or the upload image type will remove the generated result. Do you want to continue?",
     resultResetConfirmCancel: "Keep result",
     resultResetConfirmAction: "Continue",
+    resultResetConfirmTitleAuthenticated:
+      "This will switch the result shown on this screen",
+    resultResetConfirmDescriptionAuthenticated:
+      "The result shown here will change, but saved images remain available from My Page. Do you want to continue?",
+    resultResetConfirmActionAuthenticated: "Continue",
     resultReplaceConfirmTitle: "This will replace the current result",
     resultReplaceConfirmDescription:
       "Running Start Styling again will replace the generated result with a new image. Do you want to continue?",
     resultReplaceConfirmAction: "Generate again",
+    resultReplaceConfirmTitleAuthenticated:
+      "This will replace the result shown on this screen",
+    resultReplaceConfirmDescriptionAuthenticated:
+      "The result shown here will be replaced with a new image. Saved images remain available from My Page. Do you want to continue?",
+    resultReplaceConfirmActionAuthenticated: "Generate again",
     invalidStylePreset: "The selected style is invalid.",
     invalidUsageEvent: "The usage event is invalid.",
     guestRateLimitCheckFailed:

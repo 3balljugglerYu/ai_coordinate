@@ -19,7 +19,13 @@ export interface GeneratedImageRecord {
   created_at?: string;
   view_count?: number;
   // Phase 1で追加されたカラム（optional）
-  generation_type?: 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi' | null;
+  generation_type?:
+    | 'coordinate'
+    | 'specified_coordinate'
+    | 'full_body'
+    | 'chibi'
+    | 'one_tap_style'
+    | null;
   input_images?: Record<string, unknown> | null;
   generation_metadata?: Record<string, unknown> | null;
   source_image_stock_id?: string | null;
@@ -104,7 +110,12 @@ export async function getGeneratedImages(
   userId: string,
   limit = 50,
   offset = 0,
-  generationType?: "coordinate" | "specified_coordinate" | "full_body" | "chibi"
+  generationType?:
+    | "coordinate"
+    | "specified_coordinate"
+    | "full_body"
+    | "chibi"
+    | "one_tap_style"
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
 

@@ -84,7 +84,7 @@ describe("StyleEventsRoute integration tests", () => {
     expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
 
-  test("postStyleEventsRoute_generateイベントはpublic routeで受け付けない", async () => {
+  test("postStyleEventsRoute_generateイベントも記録できる", async () => {
     const response = await postStyleEventsRoute(
       createRequest({ eventType: "generate", styleId: STYLE_ID }),
       {
@@ -95,9 +95,14 @@ describe("StyleEventsRoute integration tests", () => {
     );
     const body = await readJson(response);
 
-    expect(response.status).toBe(400);
-    expect(body.error).toBe("無効な利用イベントです。");
-    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: "user-123",
+      authState: "authenticated",
+      eventType: "generate",
+      styleId: STYLE_ID,
+    });
   });
 
   test("postStyleEventsRoute_不正styleIdの場合_400を返す", async () => {

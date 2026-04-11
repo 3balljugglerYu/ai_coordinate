@@ -30,6 +30,16 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
+import {
+  getGenerationStatus,
+  pollGenerationStatus,
+  type AsyncGenerationStatus,
+} from "@/features/generation/lib/async-api";
+import {
+  normalizeProcessingStage,
+  summarizeJobProgress,
+} from "@/features/generation/lib/job-progress";
 import type { UploadedImage } from "@/features/generation/types";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -37,11 +47,14 @@ import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
+import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { getExtensionFromMimeType } from "@/lib/utils";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 
 interface StylePageClientProps {
   presets: readonly StylePresetPublicSummary[];
+  initialAuthState?: "authenticated" | "guest";
+  initialSelectedPresetId?: string | null;
 }
 
 interface StyleErrorState {
@@ -61,86 +74,18 @@ type GenerationPhase = "idle" | "running" | "completing";
 
 const RESULT_REVEAL_DELAY_MS = 5000;
 
-const PRESET_NAME_MAX_CHARACTERS = 16;
-const STYLE_PRESET_CARD_WIDTH_PX = 180;
-const STYLE_PRESET_CARD_IMAGE_HEIGHT_PX = 240;
-const STYLE_PRESET_CARD_TITLE_HEIGHT_PX = 44;
-const STYLE_PRESET_CARD_HEIGHT_PX =
-  STYLE_PRESET_CARD_IMAGE_HEIGHT_PX + STYLE_PRESET_CARD_TITLE_HEIGHT_PX;
-
-function buildPresetImageSrc(
-  preset: Pick<StylePresetPublicSummary, "thumbnailImageUrl">
-): string {
-  return preset.thumbnailImageUrl;
-}
-
-function truncatePresetName(name: string): string {
-  const characters = Array.from(name);
-  if (characters.length <= PRESET_NAME_MAX_CHARACTERS) {
-    return name;
+function resolveInitialSelectedPresetId(
+  presets: readonly StylePresetPublicSummary[],
+  initialSelectedPresetId?: string | null
+): StylePresetPublicSummary["id"] {
+  if (
+    initialSelectedPresetId &&
+    presets.some((preset) => preset.id === initialSelectedPresetId)
+  ) {
+    return initialSelectedPresetId;
   }
-  return `${characters.slice(0, PRESET_NAME_MAX_CHARACTERS).join("")}...`;
-}
 
-function StylePresetCard({
-  preset,
-  isSelected,
-  onSelect,
-  alt,
-  disabled = false,
-}: {
-  preset: StylePresetPublicSummary;
-  isSelected: boolean;
-  onSelect: (presetId: StylePresetPublicSummary["id"]) => void;
-  alt: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(preset.id)}
-      className="flex-shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-60"
-      aria-pressed={isSelected}
-      disabled={disabled}
-    >
-      <Card
-        className={`group overflow-hidden p-0 transition ${
-          isSelected ? "border-2 border-primary" : "hover:ring-2 hover:ring-primary/50"
-        }`}
-        style={{
-          width: STYLE_PRESET_CARD_WIDTH_PX,
-          height: STYLE_PRESET_CARD_HEIGHT_PX,
-        }}
-      >
-        <div className="flex h-full flex-col overflow-hidden bg-gray-100">
-          <div
-            className="relative w-full overflow-hidden bg-gray-100"
-            style={{ height: STYLE_PRESET_CARD_IMAGE_HEIGHT_PX }}
-          >
-            <Image
-              src={buildPresetImageSrc(preset)}
-              alt={alt}
-              fill
-              sizes={`${STYLE_PRESET_CARD_WIDTH_PX}px`}
-              className="object-cover object-top"
-              priority={isSelected}
-            />
-          </div>
-          <div
-            className="flex items-center border-t bg-white px-3"
-            style={{ height: STYLE_PRESET_CARD_TITLE_HEIGHT_PX }}
-          >
-            <p
-              className="truncate text-sm font-medium text-slate-900"
-              title={preset.title}
-            >
-              {truncatePresetName(preset.title)}
-            </p>
-          </div>
-        </div>
-      </Card>
-    </button>
-  );
+  return presets[0]?.id ?? "";
 }
 
 function StyleReferencePanel({
@@ -403,13 +348,17 @@ function StyleResultDownloadButton({
   );
 }
 
-export function StylePageClient({ presets }: StylePageClientProps) {
+export function StylePageClient({
+  presets,
+  initialAuthState,
+  initialSelectedPresetId,
+}: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
   const presetStripRef = useRef<HTMLDivElement | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<
     StylePresetPublicSummary["id"]
-  >(presets[0]?.id ?? "");
+  >(() => resolveInitialSelectedPresetId(presets, initialSelectedPresetId));
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
@@ -419,6 +368,8 @@ export function StylePageClient({ presets }: StylePageClientProps) {
   const [errorState, setErrorState] = useState<StyleErrorState | null>(null);
   const [rateLimitStatus, setRateLimitStatus] =
     useState<StyleRateLimitStatusState | null>(null);
+  const [activeAsyncJobStatus, setActiveAsyncJobStatus] =
+    useState<AsyncGenerationStatus | null>(null);
   const [rateLimitDialogMessage, setRateLimitDialogMessage] = useState<string | null>(null);
   const [isReferenceCardCollapsed, setIsReferenceCardCollapsed] = useState(false);
   const [isResultResetDialogOpen, setIsResultResetDialogOpen] = useState(false);
@@ -426,6 +377,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
   const [resultConfirmationIntent, setResultConfirmationIntent] =
     useState<ResultConfirmationIntent>("change");
   const pendingResultResetActionRef = useRef<null | (() => void)>(null);
+  const activePollStopRef = useRef<(() => void) | null>(null);
   const hasTrackedVisitRef = useRef(false);
   const presetDragStartXRef = useRef(0);
   const presetDragStartScrollLeftRef = useRef(0);
@@ -433,6 +385,8 @@ export function StylePageClient({ presets }: StylePageClientProps) {
 
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
+  const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
+  const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
 
   const isGenerating = generationPhase !== "idle";
   const isBackgroundChangeAvailable = Boolean(selectedPreset?.hasBackgroundPrompt);
@@ -472,17 +426,48 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     ],
     [t]
   );
-  const {
-    activeMessage,
-    displayedMessage,
-    progress,
-    isLongWait,
-    prefersReducedMotion,
-  } = useGenerationFeedback(
+  const guestGenerationFeedback = useGenerationFeedback(
     generationPhase,
     generationMessages,
     t("generationStatusCompleteMessage")
   );
+  const activeAsyncStage = activeAsyncJobStatus
+    ? normalizeProcessingStage(
+        activeAsyncJobStatus.status,
+        activeAsyncJobStatus.processingStage
+      )
+    : "queued";
+  const asyncProgressSummary = activeAsyncJobStatus
+    ? summarizeJobProgress([
+        {
+          status: activeAsyncJobStatus.status,
+          processingStage: activeAsyncJobStatus.processingStage,
+        },
+      ])
+    : {
+        totalCount: 1,
+        completedCount: 0,
+        pendingCount: 1,
+        representativeStage: "queued" as const,
+        progressPercent: 15,
+      };
+  const isAsyncStatusCard = shouldUseAsyncGeneration && Boolean(activeAsyncJobStatus);
+  const asyncStatusHint =
+    activeAsyncStage === "uploading" || activeAsyncStage === "persisting"
+      ? t("generationStatusMessage11")
+      : t("generationStatusHint");
+  const statusCardMessage = guestGenerationFeedback.displayedMessage;
+  const statusCardLiveMessage = guestGenerationFeedback.activeMessage;
+  const statusCardHint = isAsyncStatusCard
+    ? asyncStatusHint
+    : t("generationStatusHint");
+  const statusCardProgress = isAsyncStatusCard
+    ? isCompletingGeneration
+      ? 100
+      : asyncProgressSummary.progressPercent
+    : guestGenerationFeedback.progress;
+  const statusCardIsLongWait = isAsyncStatusCard ? false : guestGenerationFeedback.isLongWait;
+  const statusCardPrefersReducedMotion = guestGenerationFeedback.prefersReducedMotion;
 
   useEffect(() => {
     if (generationPhase !== "completing" || !queuedResultImageUrl) {
@@ -499,6 +484,13 @@ export function StylePageClient({ presets }: StylePageClientProps) {
       window.clearTimeout(timeoutId);
     };
   }, [generationPhase, queuedResultImageUrl]);
+
+  useEffect(() => {
+    return () => {
+      activePollStopRef.current?.();
+      activePollStopRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -523,6 +515,25 @@ export function StylePageClient({ presets }: StylePageClientProps) {
       setBackgroundChange(false);
     }
   }, [backgroundChange, selectedPreset?.hasBackgroundPrompt]);
+
+  useEffect(() => {
+    if (
+      initialSelectedPresetId &&
+      presets.some((preset) => preset.id === initialSelectedPresetId) &&
+      initialSelectedPresetId !== selectedPresetId
+    ) {
+      setSelectedPresetId(initialSelectedPresetId);
+      return;
+    }
+
+    if (presets.some((preset) => preset.id === selectedPresetId)) {
+      return;
+    }
+
+    setSelectedPresetId(
+      resolveInitialSelectedPresetId(presets, initialSelectedPresetId)
+    );
+  }, [initialSelectedPresetId, presets, selectedPresetId]);
 
   const refreshRateLimitStatus = () => {
     void fetchStyleRateLimitStatus()
@@ -679,11 +690,26 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     });
   };
 
-  const generateImage = async () => {
+  const stopActivePolling = () => {
+    activePollStopRef.current?.();
+    activePollStopRef.current = null;
+  };
+
+  const handleGenerationError = (message: string) => {
+    stopActivePolling();
+    setActiveAsyncJobStatus(null);
+    setQueuedResultImageUrl(null);
+    setErrorState({ message });
+    setGenerationPhase("idle");
+  };
+
+  const generateImageWithSynchronousPreview = async () => {
     if (!selectedPreset || !uploadedImage || isGenerating) {
       return;
     }
 
+    stopActivePolling();
+    setActiveAsyncJobStatus(null);
     setGenerationPhase("running");
     setErrorState(null);
 
@@ -747,6 +773,134 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     }
   };
 
+  const generateImageWithAsyncJob = async () => {
+    if (!selectedPreset || !uploadedImage || isGenerating) {
+      return;
+    }
+
+    stopActivePolling();
+    setActiveAsyncJobStatus(null);
+    setGenerationPhase("running");
+    setErrorState(null);
+
+    try {
+      const normalizedFile = await normalizeSourceImage(uploadedImage.file);
+
+      const formData = new FormData();
+      formData.set("styleId", selectedPreset.id);
+      formData.set("uploadImage", normalizedFile);
+      formData.set("sourceImageType", sourceImageType);
+      formData.set("backgroundChange", backgroundChange ? "true" : "false");
+
+      const response = await fetch("/style/generate-async", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            error?: string;
+            jobId?: string;
+            status?: AsyncGenerationStatus["status"];
+            signupCta?: boolean;
+            signupPath?: string;
+            showRateLimitDialog?: boolean;
+          }
+        | null;
+
+      if (!response.ok) {
+        if (payload?.showRateLimitDialog === true) {
+          setRateLimitDialogMessage(payload?.error || t("guestRateLimitShort"));
+          setGenerationPhase("idle");
+          refreshRateLimitStatus();
+          return;
+        }
+
+        setErrorState({
+          message: payload?.error || t("generationFailed"),
+          showSignupCta: payload?.signupCta === true,
+          signupPath:
+            typeof payload?.signupPath === "string" ? payload.signupPath : undefined,
+        });
+        setGenerationPhase("idle");
+        refreshRateLimitStatus();
+        return;
+      }
+
+      if (!payload?.jobId || typeof payload.jobId !== "string") {
+        throw new Error(t("unknownError"));
+      }
+
+      const initialStatus =
+        payload.status === "queued" ||
+        payload.status === "processing" ||
+        payload.status === "succeeded" ||
+        payload.status === "failed"
+          ? payload.status
+          : "queued";
+      setActiveAsyncJobStatus({
+        id: payload.jobId,
+        status: initialStatus,
+        processingStage: "queued",
+        previewImageUrl: null,
+        resultImageUrl: null,
+        errorMessage: null,
+      });
+
+      const latestKnownStatus = await getGenerationStatus(payload.jobId).catch(() => ({
+        id: payload.jobId as string,
+        status: initialStatus,
+        processingStage: "queued" as const,
+        previewImageUrl: null,
+        resultImageUrl: null,
+        errorMessage: null,
+      }));
+      setActiveAsyncJobStatus(latestKnownStatus);
+
+      const { promise, stop } = pollGenerationStatus(payload.jobId, {
+        onStatusUpdate: (status) => {
+          setActiveAsyncJobStatus(status);
+        },
+      });
+      activePollStopRef.current = stop;
+
+      const finalStatus = await promise;
+      stopActivePolling();
+      setActiveAsyncJobStatus(finalStatus);
+
+      if (finalStatus.status !== "succeeded" || !finalStatus.resultImageUrl) {
+        handleGenerationError(
+          finalStatus.errorMessage || t("generationFailed")
+        );
+        refreshRateLimitStatus();
+        return;
+      }
+
+      setQueuedResultImageUrl(finalStatus.resultImageUrl);
+      setGenerationPhase("completing");
+      refreshRateLimitStatus();
+      void recordStyleUsageClientEvent({
+        eventType: "generate",
+        styleId: selectedPreset.id,
+      }).catch(() => {
+        // Tracking failures should not affect the page UX.
+      });
+    } catch (error) {
+      handleGenerationError(
+        error instanceof Error ? error.message : t("unknownError")
+      );
+    }
+  };
+
+  const generateImage = async () => {
+    if (shouldUseAsyncGeneration) {
+      await generateImageWithAsyncJob();
+      return;
+    }
+
+    await generateImageWithSynchronousPreview();
+  };
+
   const handleGenerate = () => {
     void runAfterResultResetCheck(() => {
       void generateImage();
@@ -755,16 +909,28 @@ export function StylePageClient({ presets }: StylePageClientProps) {
 
   const resultConfirmationTitle =
     resultConfirmationIntent === "regenerate"
-      ? t("resultReplaceConfirmTitle")
-      : t("resultResetConfirmTitle");
+      ? effectiveAuthState === "authenticated"
+        ? t("resultReplaceConfirmTitleAuthenticated")
+        : t("resultReplaceConfirmTitle")
+      : effectiveAuthState === "authenticated"
+        ? t("resultResetConfirmTitleAuthenticated")
+        : t("resultResetConfirmTitle");
   const resultConfirmationDescription =
     resultConfirmationIntent === "regenerate"
-      ? t("resultReplaceConfirmDescription")
-      : t("resultResetConfirmDescription");
+      ? effectiveAuthState === "authenticated"
+        ? t("resultReplaceConfirmDescriptionAuthenticated")
+        : t("resultReplaceConfirmDescription")
+      : effectiveAuthState === "authenticated"
+        ? t("resultResetConfirmDescriptionAuthenticated")
+        : t("resultResetConfirmDescription");
   const resultConfirmationActionLabel =
     resultConfirmationIntent === "regenerate"
-      ? t("resultReplaceConfirmAction")
-      : t("resultResetConfirmAction");
+      ? effectiveAuthState === "authenticated"
+        ? t("resultReplaceConfirmActionAuthenticated")
+        : t("resultReplaceConfirmAction")
+      : effectiveAuthState === "authenticated"
+        ? t("resultResetConfirmActionAuthenticated")
+        : t("resultResetConfirmAction");
   const generationStatusTitle = isCompletingGeneration
     ? t("generationStatusCompleteTitle")
     : t("generationStatusTitle");
@@ -808,11 +974,11 @@ export function StylePageClient({ presets }: StylePageClientProps) {
           onDragStart={(event) => event.preventDefault()}
         >
           {presets.map((preset) => (
-            <StylePresetCard
+            <StylePresetPreviewCard
               key={preset.id}
               preset={preset}
               isSelected={preset.id === selectedPreset?.id}
-              onSelect={handlePresetSelect}
+              onClick={() => handlePresetSelect(preset.id)}
               alt={t("styleCardAlt", { name: preset.title })}
               disabled={isGenerating}
             />
@@ -882,7 +1048,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
             {selectedPreset ? (
               <StyleReferencePanel
                 label={t("styleLabel")}
-                imageSrc={buildPresetImageSrc(selectedPreset)}
+                imageSrc={selectedPreset.thumbnailImageUrl}
                 imageAlt={t("styleImageAlt")}
                 className={isReferenceCardCollapsed ? "min-w-0 space-y-1" : "min-w-0 space-y-3"}
                 collapsed={isReferenceCardCollapsed}
@@ -1047,17 +1213,29 @@ export function StylePageClient({ presets }: StylePageClientProps) {
             ) : null}
 
             {isGenerating ? (
-              <StyleGenerationStatusCard
-                title={generationStatusTitle}
-                message={displayedMessage}
-                liveMessage={activeMessage}
-                hint={generationStatusHint}
-                slowHint={t("generationStatusSlowHint")}
-                progress={progress}
-                isLongWait={isLongWait}
-                isComplete={isCompletingGeneration}
-                prefersReducedMotion={prefersReducedMotion}
-              />
+              isAsyncStatusCard ? (
+                <GenerationStatusCard
+                  title={generationStatusTitle}
+                  message={statusCardMessage}
+                  liveMessage={statusCardLiveMessage}
+                  footerText={statusCardHint}
+                  progress={statusCardProgress}
+                  isComplete={isCompletingGeneration}
+                  prefersReducedMotion={statusCardPrefersReducedMotion}
+                />
+              ) : (
+                <StyleGenerationStatusCard
+                  title={generationStatusTitle}
+                  message={statusCardMessage}
+                  liveMessage={statusCardLiveMessage}
+                  hint={generationStatusHint}
+                  slowHint={t("generationStatusSlowHint")}
+                  progress={statusCardProgress}
+                  isLongWait={statusCardIsLongWait}
+                  isComplete={isCompletingGeneration}
+                  prefersReducedMotion={statusCardPrefersReducedMotion}
+                />
+              )
             ) : null}
           </div>
         </Card>

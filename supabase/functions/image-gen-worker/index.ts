@@ -1066,6 +1066,7 @@ Deno.serve(async () => {
           job.background_mode,
           job.background_change
         );
+        const isFreeOneTapStyleJob = job.generation_type === "one_tap_style";
 
         logJobTimeline(jobId, "ジョブ開始", {
           generationType: job.generation_type,
@@ -1075,75 +1076,77 @@ Deno.serve(async () => {
         });
 
         // ===== ペルコイン減算処理（画像生成前に実行） =====
-        currentStage = "charging";
-        try {
-          await measureJobStage(
-            jobId,
-            "charging",
-            stageDurationsMs,
-            async () => {
-              await updateJobProcessingStage(jobId, "charging");
-              const percoinCost = getPercoinCost(job.model);
-              await deductPercoinsFromGeneration(
-                supabase,
-                job.user_id,
-                jobId, // 一時的にjobIdを使用（画像生成後にgenerated_images.idに更新）
-                percoinCost
-              );
+        if (!isFreeOneTapStyleJob) {
+          currentStage = "charging";
+          try {
+            await measureJobStage(
+              jobId,
+              "charging",
+              stageDurationsMs,
+              async () => {
+                await updateJobProcessingStage(jobId, "charging");
+                const percoinCost = getPercoinCost(job.model);
+                await deductPercoinsFromGeneration(
+                  supabase,
+                  job.user_id,
+                  jobId, // 一時的にjobIdを使用（画像生成後にgenerated_images.idに更新）
+                  percoinCost
+                );
+              }
+            );
+          } catch (deductError) {
+            // ペルコイン減算失敗時はジョブを失敗としてマーク
+            console.error("[Job Processing] Failed to deduct percoins:", deductError);
+            const failedAtMs = Date.now();
+            const totalDurationMs =
+              createdAtMs !== null && !Number.isNaN(createdAtMs)
+                ? Math.max(failedAtMs - createdAtMs, 0)
+                : null;
+            logJobTimingSummary({
+              jobId,
+              outcome: "ジョブ失敗",
+              queueWaitMs,
+              workerDurationMs: Math.max(failedAtMs - workerStartedAtMs, 0),
+              totalDurationMs,
+              stageDurationsMs,
+              currentStage,
+              errorMessage:
+                deductError instanceof Error
+                  ? deductError.message
+                  : String(deductError),
+            });
+            const { data: deductionFailedJob, error: deductionFailUpdateError } = await supabase
+              .from("image_jobs")
+              .update({
+                status: "failed",
+                processing_stage: "failed",
+                result_image_url: null,
+                error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
+                completed_at: new Date().toISOString(),
+              })
+              .eq("id", jobId)
+              .eq("status", "processing")
+              .select("id")
+              .maybeSingle();
+
+            if (deductionFailUpdateError) {
+              console.error("Failed to update job status after deduction failure:", deductionFailUpdateError);
+              continue;
             }
-          );
-        } catch (deductError) {
-          // ペルコイン減算失敗時はジョブを失敗としてマーク
-          console.error("[Job Processing] Failed to deduct percoins:", deductError);
-          const failedAtMs = Date.now();
-          const totalDurationMs =
-            createdAtMs !== null && !Number.isNaN(createdAtMs)
-              ? Math.max(failedAtMs - createdAtMs, 0)
-              : null;
-          logJobTimingSummary({
-            jobId,
-            outcome: "ジョブ失敗",
-            queueWaitMs,
-            workerDurationMs: Math.max(failedAtMs - workerStartedAtMs, 0),
-            totalDurationMs,
-            stageDurationsMs,
-            currentStage,
-            errorMessage:
-              deductError instanceof Error
-                ? deductError.message
-                : String(deductError),
-          });
-          const { data: deductionFailedJob, error: deductionFailUpdateError } = await supabase
-            .from("image_jobs")
-            .update({
-              status: "failed",
-              processing_stage: "failed",
-              result_image_url: null,
-              error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", jobId)
-            .eq("status", "processing")
-            .select("id")
-            .maybeSingle();
 
-          if (deductionFailUpdateError) {
-            console.error("Failed to update job status after deduction failure:", deductionFailUpdateError);
-            continue;
-          }
+            if (!deductionFailedJob) {
+              skippedCount++;
+              continue;
+            }
 
-          if (!deductionFailedJob) {
-            skippedCount++;
-            continue;
+            // メッセージを削除
+            await supabase.rpc("pgmq_delete", {
+              p_queue_name: QUEUE_NAME,
+              p_msg_id: msgId,
+            });
+
+            continue; // 次のメッセージを処理
           }
-          
-          // メッセージを削除
-          await supabase.rpc("pgmq_delete", {
-            p_queue_name: QUEUE_NAME,
-            p_msg_id: msgId,
-          });
-          
-          continue; // 次のメッセージを処理
         }
 
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
@@ -1251,15 +1254,17 @@ Deno.serve(async () => {
                     });
                   }
 
-                  const fullPrompt = job.input_image_url
-                    ? buildSharedPrompt({
-                        generationType: job.generation_type as GenerationType,
-                        outfitDescription: job.prompt_text,
-                        backgroundMode,
-                        sourceImageType:
-                          job.source_image_type === "real" ? "real" : "illustration",
-                      })
-                    : job.prompt_text;
+                  const fullPrompt = isFreeOneTapStyleJob
+                    ? job.prompt_text
+                    : job.input_image_url
+                      ? buildSharedPrompt({
+                          generationType: job.generation_type as GenerationType,
+                          outfitDescription: job.prompt_text,
+                          backgroundMode,
+                          sourceImageType:
+                            job.source_image_type === "real" ? "real" : "illustration",
+                        })
+                      : job.prompt_text;
 
                   parts.push({
                     text: fullPrompt,
@@ -1488,6 +1493,7 @@ Deno.serve(async () => {
                   background_change: backgroundModeToBackgroundChange(backgroundMode),
                   is_posted: false,
                   generation_type: job.generation_type,
+                  generation_metadata: job.generation_metadata ?? null,
                   model: dbModel,
                   source_image_stock_id: job.source_image_stock_id,
                 })

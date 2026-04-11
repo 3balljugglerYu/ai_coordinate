@@ -8,7 +8,7 @@ export type StyleUsageEventType =
   | "generate"
   | "download"
   | "rate_limited";
-export type StylePublicUsageEventType = "visit" | "download";
+export type StylePublicUsageEventType = "visit" | "download" | "generate";
 export type StyleUsageAuthState = "authenticated" | "guest";
 
 export interface RecordStyleUsageEventInput {

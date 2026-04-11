@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import {
+  redactSensitivePrompt,
+  redactSensitivePrompts,
+} from "@/features/generation/lib/prompt-visibility";
 
 interface MyPageApiMessages {
   loginRequired?: string;
@@ -45,7 +49,7 @@ export async function getMyImages(
     );
   }
 
-  return data || [];
+  return redactSensitivePrompts(data || []);
 }
 
 /**
@@ -79,7 +83,7 @@ export async function getImageDetail(
     );
   }
 
-  return data;
+  return redactSensitivePrompt(data);
 }
 
 /**

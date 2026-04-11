@@ -871,6 +871,13 @@ export const jaMessages = {
     addImageAction: "画像を追加",
     styleImageAlt: "選択中のスタイル画像",
     styleCardAlt: "{name} のスタイルカード",
+    detailPresetLabel: "ワンタップスタイルで生成",
+    detailPresetCardAlt: "{name} のスタイルカード",
+    detailReuseConfirmTitle: "このコーデを利用しますか？",
+    detailReuseConfirmDescription:
+      "「はい」を選択するとワンタップスタイル画面に移動し、このスタイルが選択された状態になります。",
+    detailReuseConfirmCancel: "キャンセル",
+    detailReuseConfirmAction: "はい",
     uploadImageLabel: "アップロード画像",
     authRequired: "認証が必要です。",
     sourceImageTypeLabel: "アップロード画像のタイプ",
@@ -935,10 +942,18 @@ export const jaMessages = {
       "生成された画像が必要な場合は、必ずダウンロードをしてください。\n生成した画像を削除しても大丈夫ですか？",
     resultResetConfirmCancel: "戻る",
     resultResetConfirmAction: "削除する",
+    resultResetConfirmTitleAuthenticated: "画面上の生成結果を切り替えます",
+    resultResetConfirmDescriptionAuthenticated:
+      "この画面の生成結果は切り替わりますが、保存済みの画像はマイページから確認できます。このまま変更しますか？",
+    resultResetConfirmActionAuthenticated: "変更する",
     resultReplaceConfirmTitle: "現在の生成結果を上書きします",
     resultReplaceConfirmDescription:
       "Start Styling を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
     resultReplaceConfirmAction: "再生成する",
+    resultReplaceConfirmTitleAuthenticated: "現在の生成結果を上書きします",
+    resultReplaceConfirmDescriptionAuthenticated:
+      "この画面の生成結果は新しい画像で上書きされます。保存済みの画像はマイページから確認できます。このまま続けますか？",
+    resultReplaceConfirmActionAuthenticated: "再生成する",
     invalidStylePreset: "無効なスタイルです。",
     invalidUsageEvent: "無効な利用イベントです。",
     guestRateLimitCheckFailed: "利用回数の確認に失敗しました。少し時間をおいて再試行してください。",

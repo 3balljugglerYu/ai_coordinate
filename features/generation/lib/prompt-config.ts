@@ -6,7 +6,12 @@
 
 import type { BackgroundMode } from "../types";
 
-export type GenerationType = 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi';
+export type GenerationType =
+  | 'coordinate'
+  | 'specified_coordinate'
+  | 'full_body'
+  | 'chibi'
+  | 'one_tap_style';
 
 export interface PromptVariables {
   outfitDescription: string; // ユーザー入力（サニタイズ済み）
@@ -166,6 +171,13 @@ Keep everything else consistent: face features, hair, pose, expression, lighting
 ${outfitDescription}
 
 Keep everything else consistent: face features, hair, pose, expression, lighting, and art style. Apply chibi proportions (2-head ratio) while preserving the character's recognizable features.`;
+    },
+  },
+
+  one_tap_style: {
+    prompt_template: (vars: PromptVariables) => {
+      // One-tap style passes a prebuilt prompt assembled by the style flow.
+      return vars.outfitDescription;
     },
   },
 };

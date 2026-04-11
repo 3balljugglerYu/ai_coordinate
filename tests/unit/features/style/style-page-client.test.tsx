@@ -179,10 +179,20 @@ const styleMessages = {
     "Changing the style, your character image, or the upload image type will remove the generated result. Do you want to continue?",
   resultResetConfirmCancel: "Keep result",
   resultResetConfirmAction: "Continue",
+  resultResetConfirmTitleAuthenticated:
+    "This will switch the result shown on this screen",
+  resultResetConfirmDescriptionAuthenticated:
+    "The result shown here will change, but saved images remain available from My Page. Do you want to continue?",
+  resultResetConfirmActionAuthenticated: "Continue",
   resultReplaceConfirmTitle: "This will replace the current result",
   resultReplaceConfirmDescription:
     "Running Start Styling again will replace the generated result with a new image. Do you want to continue?",
   resultReplaceConfirmAction: "Generate again",
+  resultReplaceConfirmTitleAuthenticated:
+    "This will replace the result shown on this screen",
+  resultReplaceConfirmDescriptionAuthenticated:
+    "The result shown here will be replaced with a new image. Saved images remain available from My Page. Do you want to continue?",
+  resultReplaceConfirmActionAuthenticated: "Generate again",
   generationFailed: "Failed to generate the image.",
   guestRateLimitDaily:
     "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
@@ -244,6 +254,8 @@ describe("StylePageClient", () => {
     showRemainingWarning: boolean;
   }>;
   let generateResponseQueue: Array<Response | Promise<Response>>;
+  let asyncGenerateResponseQueue: Array<Response | Promise<Response>>;
+  let generationStatusResponseQueue: Array<Response | Promise<Response>>;
 
   const createJsonResponse = (body: Record<string, unknown>, ok = true) =>
     ({
@@ -271,6 +283,30 @@ describe("StylePageClient", () => {
         mimeType: "image/png",
       }),
     ];
+    asyncGenerateResponseQueue = [
+      createJsonResponse({
+        jobId: "style-job-001",
+        status: "queued",
+      }),
+    ];
+    generationStatusResponseQueue = [
+      createJsonResponse({
+        id: "style-job-001",
+        status: "processing",
+        processingStage: "generating",
+        resultImageUrl: null,
+        previewImageUrl: null,
+        errorMessage: null,
+      }),
+      createJsonResponse({
+        id: "style-job-001",
+        status: "succeeded",
+        processingStage: "completed",
+        resultImageUrl: "https://cdn.example.com/generated-style-result.png",
+        previewImageUrl: null,
+        errorMessage: null,
+      }),
+    ];
     fetchMock = jest.fn().mockImplementation((input, init) => {
       const requestUrl =
         typeof input === "string"
@@ -294,6 +330,33 @@ describe("StylePageClient", () => {
           createJsonResponse({
             imageDataUrl: "data:image/png;base64,generated-image-base64",
             mimeType: "image/png",
+          });
+        return Promise.resolve(nextResponse);
+      }
+
+      if (requestUrl === "/style/generate-async" && method === "POST") {
+        const nextResponse =
+          asyncGenerateResponseQueue.shift() ??
+          createJsonResponse({
+            jobId: "style-job-001",
+            status: "queued",
+          });
+        return Promise.resolve(nextResponse);
+      }
+
+      if (
+        requestUrl.startsWith("/api/generation-status?") &&
+        method === "GET"
+      ) {
+        const nextResponse =
+          generationStatusResponseQueue.shift() ??
+          createJsonResponse({
+            id: "style-job-001",
+            status: "succeeded",
+            processingStage: "completed",
+            resultImageUrl: "https://cdn.example.com/generated-style-result.png",
+            previewImageUrl: null,
+            errorMessage: null,
           });
         return Promise.resolve(nextResponse);
       }
@@ -330,6 +393,25 @@ describe("StylePageClient", () => {
       eventType: "visit",
       styleId: null,
     });
+  });
+
+  test("初期選択プリセットIDが指定された場合はそのカードを選択状態で表示する", () => {
+    render(
+      <StylePageClient
+        presets={presets}
+        initialSelectedPresetId="a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e"
+      />
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
+      })
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByAltText("Selected style image")).toHaveAttribute(
+      "src",
+      "https://example.com/style-presets/fluffy-pajamas-code.webp"
+    );
   });
 
   test("スタイル画像URLをそのまま参照する", () => {
@@ -626,6 +708,58 @@ describe("StylePageClient", () => {
     );
   });
 
+  test("ログインユーザーは非同期ジョブの進捗を使って/style生成を表示する", async () => {
+    jest.useFakeTimers();
+
+    render(
+      <StylePageClient
+        presets={presets}
+        initialAuthState="authenticated"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/style/generate-async",
+      expect.objectContaining({
+        method: "POST",
+      })
+    );
+    expect(
+      screen.getByRole("button", { name: "Generating..." })
+    ).toBeDisabled();
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      await screen.findByText("Styling is complete.")
+    ).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/generated-style-result.png"
+    );
+    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+      eventType: "generate",
+      styleId: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
+    });
+  });
+
   test("生成結果がある状態で変更操作をすると確認ダイアログが表示され_キャンセルで結果を保持する", async () => {
     jest.useFakeTimers();
 
@@ -762,6 +896,96 @@ describe("StylePageClient", () => {
       "src",
       "data:image/png;base64,generated-image-base64"
     );
+  });
+
+  test("ログインユーザーが生成結果ありで設定変更すると保存済み前提の確認文言を表示する", async () => {
+    jest.useFakeTimers();
+
+    render(
+      <StylePageClient
+        presets={presets}
+        initialAuthState="authenticated"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/generated-style-result.png"
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Photo" }));
+
+    expect(
+      screen.getByText("This will switch the result shown on this screen")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The result shown here will change, but saved images remain available from My Page. Do you want to continue?"
+      )
+    ).toBeInTheDocument();
+  });
+
+  test("ログインユーザーが再生成すると保存済み前提の上書き確認文言を表示する", async () => {
+    jest.useFakeTimers();
+
+    render(
+      <StylePageClient
+        presets={presets}
+        initialAuthState="authenticated"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/generated-style-result.png"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+
+    expect(
+      screen.getByText("This will replace the result shown on this screen")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The result shown here will be replaced with a new image. Saved images remain available from My Page. Do you want to continue?"
+      )
+    ).toBeInTheDocument();
   });
 
   test("guest制限エラー時_signup CTAを表示して遷移できる", async () => {

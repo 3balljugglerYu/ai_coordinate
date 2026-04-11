@@ -30,7 +30,12 @@ export interface Generation {
   updatedAt: Date;
 }
 
-export type GenerationType = 'coordinate' | 'specified_coordinate' | 'full_body' | 'chibi';
+export type GenerationType =
+  | 'coordinate'
+  | 'specified_coordinate'
+  | 'full_body'
+  | 'chibi'
+  | 'one_tap_style';
 
 // データベース保存用のモデル名型（サイズ情報を含む）
 export type GeminiModel = 

@@ -7,7 +7,8 @@ export type GenerationType =
   | "coordinate"
   | "specified_coordinate"
   | "full_body"
-  | "chibi";
+  | "chibi"
+  | "one_tap_style";
 
 export const SOURCE_IMAGE_TYPES = ["illustration", "real"] as const;
 export type SourceImageType = (typeof SOURCE_IMAGE_TYPES)[number];
@@ -259,7 +260,14 @@ ${sanitizedDescription}
 Keep everything else consistent: face features, hair, pose, expression, lighting, and art style. Apply chibi proportions (2-head ratio) while preserving the character's recognizable features.`;
   }
 
+  if (generationType === "one_tap_style") {
+    // One-tap style stores a fully assembled style-specific prompt in prompt_text.
+    // If this generation type reaches the shared builder, return it as-is after
+    // the normal sanitization pass instead of forcing one of the coordinate templates.
+    return sanitizedDescription;
+  }
+
   throw new Error(
-    `API Error - Configuration '${generationType}' not found. Available types: coordinate, specified_coordinate, full_body, chibi`
+    `API Error - Configuration '${generationType}' not found. Available types: coordinate, specified_coordinate, full_body, chibi, one_tap_style`
   );
 }
