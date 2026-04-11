@@ -6,7 +6,7 @@ import {
 describe("applySubscriptionBonusMultiplierForDisplay", () => {
   const defaults: PercoinDefaultsForDisplay = {
     referralBonusAmount: 100,
-    dailyPostBonusAmount: 30,
+    dailyPostBonusAmount: 15,
     streakBonusSchedule: [10, 10, 20, 50],
   };
 
@@ -21,8 +21,8 @@ describe("applySubscriptionBonusMultiplierForDisplay", () => {
       applySubscriptionBonusMultiplierForDisplay(defaults, "light")
     ).toEqual({
       referralBonusAmount: 100,
-      dailyPostBonusAmount: 36,
-      streakBonusSchedule: [12, 12, 24, 60],
+      dailyPostBonusAmount: 17,
+      streakBonusSchedule: [11, 11, 22, 56],
     });
 
     expect(
@@ -36,8 +36,8 @@ describe("applySubscriptionBonusMultiplierForDisplay", () => {
       )
     ).toEqual({
       referralBonusAmount: 100,
-      dailyPostBonusAmount: 47,
-      streakBonusSchedule: [17],
+      dailyPostBonusAmount: 41,
+      streakBonusSchedule: [15],
     });
   });
 });

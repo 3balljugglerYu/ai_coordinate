@@ -564,7 +564,7 @@ export const enMessages = {
       month: "month",
       year: "year",
     },
-    yearlySavings: "Yearly billing saves about 15%",
+    yearlySavings: "Yearly billing saves about 10%",
     maxGenerationCount: "Up to {count} images per generation",
     stockImageLimit: "Stock image limit: {count}",
     bonusMultiplier: "Post/login bonus: {multiplier}x",

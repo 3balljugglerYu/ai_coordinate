@@ -547,7 +547,7 @@ export const jaMessages = {
       month: "月額",
       year: "年額",
     },
-    yearlySavings: "年額は約15%OFFです",
+    yearlySavings: "年額は約10%OFFです",
     maxGenerationCount: "1回の最大生成枚数: {count}枚",
     stockImageLimit: "ストック画像上限: {count}枚",
     bonusMultiplier: "投稿・ログイン特典: {multiplier}倍",

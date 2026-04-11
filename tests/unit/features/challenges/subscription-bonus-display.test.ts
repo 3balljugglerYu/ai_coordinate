@@ -6,36 +6,36 @@ import {
 
 describe("subscription-bonus-display", () => {
   test("formats subscription bonus multiplier with one decimal place", () => {
-    expect(formatSubscriptionBonusMultiplier(1.2)).toBe("1.2");
-    expect(formatSubscriptionBonusMultiplier(2)).toBe("2.0");
+    expect(formatSubscriptionBonusMultiplier(1.1)).toBe("1.1");
+    expect(formatSubscriptionBonusMultiplier(1.5)).toBe("1.5");
   });
 
   test("builds boosted daily and streak comparison data", () => {
     expect(
       buildMissionBonusDisplay({
         subscriptionPlan: "standard",
-        baseDailyPostBonusAmount: 31,
-        dailyPostBonusAmount: 47,
-        baseStreakBonusSchedule: [11, 20, 60],
-        streakBonusSchedule: [17, 30, 90],
+        baseDailyPostBonusAmount: 15,
+        dailyPostBonusAmount: 20,
+        baseStreakBonusSchedule: [10, 20, 100],
+        streakBonusSchedule: [13, 26, 130],
       })
     ).toEqual({
       subscriptionPlan: "standard",
-      multiplier: 1.5,
-      multiplierLabel: "1.5",
+      multiplier: 1.3,
+      multiplierLabel: "1.3",
       hasBoostedRewards: true,
       daily: {
-        base: 31,
-        boosted: 47,
-        extra: 16,
+        base: 15,
+        boosted: 20,
+        extra: 5,
       },
       streak: {
-        baseMax: 60,
-        boostedMax: 90,
+        baseMax: 100,
+        boostedMax: 130,
         extraMax: 30,
-        baseTotal: 91,
-        boostedTotal: 137,
-        extraTotal: 46,
+        baseTotal: 130,
+        boostedTotal: 169,
+        extraTotal: 39,
       },
     });
   });
@@ -44,8 +44,8 @@ describe("subscription-bonus-display", () => {
     expect(
       buildMissionBonusDisplay({
         subscriptionPlan: "free",
-        baseDailyPostBonusAmount: 30,
-        dailyPostBonusAmount: 30,
+        baseDailyPostBonusAmount: 15,
+        dailyPostBonusAmount: 15,
         baseStreakBonusSchedule: [10, 10, 20],
         streakBonusSchedule: [10, 10, 20],
       }).hasBoostedRewards

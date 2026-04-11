@@ -76,10 +76,10 @@ describe("Subscription change policy", () => {
   });
 
   test("年額サイクルの付与量は月額の 12 倍になる", () => {
-    expect(getSubscriptionCyclePercoins("light", "month")).toBe(400);
-    expect(getSubscriptionCyclePercoins("light", "year")).toBe(4800);
-    expect(getSubscriptionCyclePercoins("standard", "year")).toBe(14400);
-    expect(getSubscriptionMonthlyPercoins("premium")).toBe(3000);
+    expect(getSubscriptionCyclePercoins("light", "month")).toBe(300);
+    expect(getSubscriptionCyclePercoins("light", "year")).toBe(3600);
+    expect(getSubscriptionCyclePercoins("standard", "year")).toBe(12000);
+    expect(getSubscriptionMonthlyPercoins("premium")).toBe(2500);
   });
 
   test("同一 interval のアップグレードでは差分ペルコインだけ付与する", () => {
@@ -91,7 +91,7 @@ describe("Subscription change policy", () => {
         targetPlan: "standard",
         targetBillingInterval: "month",
       })
-    ).toBe(800);
+    ).toBe(700);
 
     expect(
       getImmediateSubscriptionGrantAmount({
@@ -101,7 +101,7 @@ describe("Subscription change policy", () => {
         targetPlan: "premium",
         targetBillingInterval: "month",
       })
-    ).toBe(1800);
+    ).toBe(1500);
   });
 
   test("interval 変更の予約では追加付与しない", () => {

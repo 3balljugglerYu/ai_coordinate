@@ -73,10 +73,10 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
     },
   },
   light: {
-    monthlyPercoins: 400,
+    monthlyPercoins: 300,
     maxGenerationCount: 2,
     stockImageLimit: 5,
-    bonusMultiplier: 1.2,
+    bonusMultiplier: 1.1,
     prices: {
       month: {
         amountYen: 980,
@@ -84,17 +84,17 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
         envVar: "STRIPE_SUBSCRIPTION_LIGHT_MONTHLY_PRICE_ID",
       },
       year: {
-        amountYen: 10000,
+        amountYen: 10600,
         lookupKey: "persta_subscription_light_yearly",
         envVar: "STRIPE_SUBSCRIPTION_LIGHT_YEARLY_PRICE_ID",
       },
     },
   },
   standard: {
-    monthlyPercoins: 1200,
+    monthlyPercoins: 1000,
     maxGenerationCount: 4,
     stockImageLimit: 10,
-    bonusMultiplier: 1.5,
+    bonusMultiplier: 1.3,
     prices: {
       month: {
         amountYen: 2480,
@@ -102,17 +102,17 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
         envVar: "STRIPE_SUBSCRIPTION_STANDARD_MONTHLY_PRICE_ID",
       },
       year: {
-        amountYen: 25300,
+        amountYen: 26800,
         lookupKey: "persta_subscription_standard_yearly",
         envVar: "STRIPE_SUBSCRIPTION_STANDARD_YEARLY_PRICE_ID",
       },
     },
   },
   premium: {
-    monthlyPercoins: 3000,
+    monthlyPercoins: 2500,
     maxGenerationCount: 4,
     stockImageLimit: 30,
-    bonusMultiplier: 2,
+    bonusMultiplier: 1.5,
     prices: {
       month: {
         amountYen: 4980,
@@ -120,7 +120,7 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
         envVar: "STRIPE_SUBSCRIPTION_PREMIUM_MONTHLY_PRICE_ID",
       },
       year: {
-        amountYen: 50800,
+        amountYen: 53800,
         lookupKey: "persta_subscription_premium_yearly",
         envVar: "STRIPE_SUBSCRIPTION_PREMIUM_YEARLY_PRICE_ID",
       },

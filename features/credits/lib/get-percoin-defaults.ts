@@ -56,7 +56,7 @@ export const getPercoinDefaultsForDisplay = cache(
     const referralAmount =
       bonusResult.data?.find((r) => r.source === "referral")?.amount ?? 100;
     const dailyPostAmount =
-      bonusResult.data?.find((r) => r.source === "daily_post")?.amount ?? 30;
+      bonusResult.data?.find((r) => r.source === "daily_post")?.amount ?? 15;
 
     const streakSchedule =
       streakResult.data && streakResult.data.length === 14
