@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,12 +45,27 @@ export function AdminOneTapStyleRangeControls({
   currentStyleToLabel,
 }: AdminOneTapStyleRangeControlsProps) {
   const router = useRouter();
+  const [selectedRange, setSelectedRange] = useState<OneTapStyleDashboardRange>(
+    currentStyleRange
+  );
   const [fromValue, setFromValue] = useState(() =>
     toDateTimeLocalValue(currentStyleFrom)
   );
   const [toValue, setToValue] = useState(() =>
     toDateTimeLocalValue(currentStyleTo)
   );
+
+  useEffect(() => {
+    setSelectedRange(currentStyleRange);
+  }, [currentStyleRange]);
+
+  useEffect(() => {
+    setFromValue(toDateTimeLocalValue(currentStyleFrom));
+  }, [currentStyleFrom]);
+
+  useEffect(() => {
+    setToValue(toDateTimeLocalValue(currentStyleTo));
+  }, [currentStyleTo]);
 
   const hasValidCustomInputs = useMemo(() => {
     if (!fromValue || !toValue) {
@@ -81,6 +95,22 @@ export function AdminOneTapStyleRangeControls({
     );
   }
 
+  function handleRangeSelect(nextRange: OneTapStyleDashboardRange) {
+    if (nextRange === "custom") {
+      setSelectedRange("custom");
+      return;
+    }
+
+    setSelectedRange(nextRange);
+    router.push(
+      buildAdminDashboardHref({
+        range: currentRange,
+        tab: "one-tap-style",
+        styleRange: nextRange,
+      })
+    );
+  }
+
   return (
     <div className="space-y-4 rounded-2xl border border-violet-200/70 bg-white/95 p-4 shadow-sm">
       <div className="space-y-1">
@@ -92,21 +122,12 @@ export function AdminOneTapStyleRangeControls({
 
       <div className="flex flex-wrap gap-2">
         {ONE_TAP_STYLE_DASHBOARD_RANGE_OPTIONS.map((option) => {
-          const isActive = option.value === currentStyleRange;
+          const isActive = option.value === selectedRange;
           return (
-            <Link
+            <button
               key={option.value}
-              href={buildAdminDashboardHref({
-                range: currentRange,
-                tab: "one-tap-style",
-                styleRange: option.value,
-                ...(option.value === "custom"
-                  ? {
-                      styleFrom: currentStyleFrom,
-                      styleTo: currentStyleTo,
-                    }
-                  : {}),
-              })}
+              type="button"
+              onClick={() => handleRangeSelect(option.value)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                 isActive
@@ -115,7 +136,7 @@ export function AdminOneTapStyleRangeControls({
               )}
             >
               {option.label}
-            </Link>
+            </button>
           );
         })}
       </div>
