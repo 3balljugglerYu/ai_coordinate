@@ -107,6 +107,19 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
   ),
 }));
 
+jest.mock("@/features/posts/components/PostModal", () => ({
+  PostModal: ({
+    open,
+    imageId,
+  }: {
+    open: boolean;
+    imageId: string;
+  }) =>
+    open ? (
+      <div data-testid="style-post-modal">post modal for {imageId}</div>
+    ) : null,
+}));
+
 jest.mock("@/features/generation/lib/normalize-source-image", () => ({
   normalizeSourceImage: async (file: File) => file,
 }));
@@ -234,6 +247,17 @@ const coordinateMessages = {
   generationStageCompletedHint1: "The final check is done.",
 };
 
+const postsMessages = {
+  postSubmit: "Post",
+  postModalTitle: "Post image",
+  postModalDescription: "Write a caption if you want.",
+  captionLabel: "Caption",
+  captionPlaceholder: "Add a caption",
+  charactersRemaining: "{count} characters left",
+  cancel: "Cancel",
+  postSubmitting: "Posting...",
+};
+
 function translate(
   namespace: string | undefined,
   key: string,
@@ -241,6 +265,17 @@ function translate(
 ): string {
   if (namespace === "coordinate") {
     return coordinateMessages[key as keyof typeof coordinateMessages] ?? key;
+  }
+
+  if (namespace === "posts") {
+    const template = postsMessages[key as keyof typeof postsMessages] ?? key;
+    if (!values) {
+      return template;
+    }
+
+    return Object.entries(values).reduce((message, [token, value]) => {
+      return message.replace(`{${token}}`, String(value));
+    }, template);
   }
 
   if (namespace !== "style") {
@@ -355,6 +390,7 @@ describe("StylePageClient", () => {
         resultImageUrl: null,
         previewImageUrl: null,
         errorMessage: null,
+        generatedImageId: null,
       }),
       createJsonResponse({
         id: "style-job-001",
@@ -363,6 +399,7 @@ describe("StylePageClient", () => {
         resultImageUrl: "https://cdn.example.com/generated-style-result.png",
         previewImageUrl: null,
         errorMessage: null,
+        generatedImageId: "generated-image-001",
       }),
     ];
     scrollIntoViewMock = jest.fn();
@@ -437,6 +474,7 @@ describe("StylePageClient", () => {
             resultImageUrl: "https://cdn.example.com/generated-style-result.png",
             previewImageUrl: null,
             errorMessage: null,
+            generatedImageId: "generated-image-001",
           });
         return Promise.resolve(nextResponse);
       }
@@ -890,10 +928,52 @@ describe("StylePageClient", () => {
       "src",
       "https://cdn.example.com/generated-style-result.png"
     );
+    fireEvent.click(screen.getByRole("button", { name: "Post" }));
+    expect(screen.getByTestId("style-post-modal")).toHaveTextContent(
+      "generated-image-001"
+    );
     expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
       eventType: "generate",
       styleId: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
     });
+  });
+
+  test("ログインユーザーの/style非同期生成中はpreview画像を先に表示する", async () => {
+    jest.useFakeTimers();
+
+    generationStatusResponseQueue = [
+      createJsonResponse({
+        id: "style-job-001",
+        status: "processing",
+        processingStage: "persisting",
+        resultImageUrl: null,
+        previewImageUrl: "https://cdn.example.com/generated-style-preview.png",
+        errorMessage: null,
+        generatedImageId: null,
+      }),
+      new Promise<Response>(() => {}),
+    ];
+
+    render(
+      <StylePageClient
+        presets={presets}
+        initialAuthState="authenticated"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/generated-style-preview.png"
+    );
+    expect(screen.queryByRole("button", { name: "Post" })).not.toBeInTheDocument();
   });
 
   test("スマホでは/styleのダウンロードが共有シートを優先する", async () => {

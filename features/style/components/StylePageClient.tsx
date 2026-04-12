@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
-import { Download, Maximize2, Minimize2, Sparkles } from "lucide-react";
+import { Download, Maximize2, Minimize2, Share2, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -57,6 +57,7 @@ import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedb
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { PostModal } from "@/features/posts/components/PostModal";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
@@ -441,6 +442,7 @@ export function StylePageClient({
   const router = useRouter();
   const t = useTranslations("style");
   const coordinateT = useTranslations("coordinate");
+  const postsT = useTranslations("posts");
   const presetStripRef = useRef<HTMLDivElement | null>(null);
   const presetButtonRefs = useRef(
     new Map<StylePresetPublicSummary["id"], HTMLButtonElement>()
@@ -454,6 +456,7 @@ export function StylePageClient({
   const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
   const [queuedResultImageUrl, setQueuedResultImageUrl] = useState<string | null>(null);
+  const [resultGeneratedImageId, setResultGeneratedImageId] = useState<string | null>(null);
   const [errorState, setErrorState] = useState<StyleErrorState | null>(null);
   const [rateLimitStatus, setRateLimitStatus] =
     useState<StyleRateLimitStatusState | null>(null);
@@ -468,6 +471,7 @@ export function StylePageClient({
   const [rateLimitDialogMessage, setRateLimitDialogMessage] = useState<string | null>(null);
   const [isReferenceCardCollapsed, setIsReferenceCardCollapsed] = useState(false);
   const [isResultResetDialogOpen, setIsResultResetDialogOpen] = useState(false);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isPresetStripDragging, setIsPresetStripDragging] = useState(false);
   const [resultConfirmationIntent, setResultConfirmationIntent] =
     useState<ResultConfirmationIntent>("change");
@@ -509,6 +513,15 @@ export function StylePageClient({
     isGuestDailyLimitReached ||
     shouldDisablePaidContinuation;
   const hasGeneratedResult = Boolean(resultImageUrl);
+  const resultPreviewImageUrl =
+    shouldUseAsyncGeneration && isGenerating
+      ? activeAsyncJobStatus?.previewImageUrl ?? null
+      : null;
+  const displayedResultImageUrl = resultImageUrl ?? resultPreviewImageUrl;
+  const canPostGeneratedResult =
+    Boolean(resultImageUrl) &&
+    Boolean(resultGeneratedImageId) &&
+    effectiveAuthState === "authenticated";
   const isCompletingGeneration = generationPhase === "completing";
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
@@ -913,6 +926,7 @@ export function StylePageClient({
     stopActivePolling();
     setActiveAsyncJobStatus(null);
     setQueuedResultImageUrl(null);
+    setResultGeneratedImageId(null);
     setErrorState({ message });
     setGenerationPhase("idle");
   };
@@ -924,6 +938,9 @@ export function StylePageClient({
 
     stopActivePolling();
     setActiveAsyncJobStatus(null);
+    setQueuedResultImageUrl(null);
+    setResultGeneratedImageId(null);
+    setResultImageUrl(null);
     setGenerationPhase("running");
     setErrorState(null);
 
@@ -996,6 +1013,9 @@ export function StylePageClient({
 
     stopActivePolling();
     setActiveAsyncJobStatus(null);
+    setQueuedResultImageUrl(null);
+    setResultGeneratedImageId(null);
+    setResultImageUrl(null);
     setGenerationPhase("running");
     setErrorState(null);
 
@@ -1061,6 +1081,7 @@ export function StylePageClient({
         previewImageUrl: null,
         resultImageUrl: null,
         errorMessage: null,
+        generatedImageId: null,
       });
 
       const latestKnownStatus = await getGenerationStatus(payload.jobId).catch(() => ({
@@ -1070,6 +1091,7 @@ export function StylePageClient({
         previewImageUrl: null,
         resultImageUrl: null,
         errorMessage: null,
+        generatedImageId: null,
       }));
       setActiveAsyncJobStatus(latestKnownStatus);
 
@@ -1095,6 +1117,7 @@ export function StylePageClient({
       }
 
       setQueuedResultImageUrl(finalStatus.resultImageUrl);
+      setResultGeneratedImageId(finalStatus.generatedImageId ?? null);
       setGenerationPhase("completing");
       refreshRateLimitStatus();
       void refreshPercoinBalance();
@@ -1545,22 +1568,44 @@ export function StylePageClient({
         </div>
       ) : null}
 
+      {resultGeneratedImageId ? (
+        <PostModal
+          open={isPostModalOpen}
+          onOpenChange={setIsPostModalOpen}
+          imageId={resultGeneratedImageId}
+        />
+      ) : null}
+
       <StyleResultPanel
         title={t("resultsTitle")}
         placeholder={t("resultPlaceholder")}
-        resultImageUrl={resultImageUrl}
+        resultImageUrl={displayedResultImageUrl}
         resultImageAlt={t("resultImageAlt")}
         action={
-          resultImageUrl ? (
-            <StyleResultDownloadButton
-              imageUrl={resultImageUrl}
-              styleId={selectedPreset?.id ?? "unknown"}
-              label={t("downloadAction")}
-              ariaLabel={t("downloadAriaLabel")}
-              successTitle={t("downloadSuccessTitle")}
-              successDescription={t("downloadSuccessDescription")}
-              failedMessage={t("downloadFailed")}
-            />
+          displayedResultImageUrl ? (
+            <div className="flex items-center gap-2">
+              <StyleResultDownloadButton
+                imageUrl={resultImageUrl ?? displayedResultImageUrl}
+                styleId={selectedPreset?.id ?? "unknown"}
+                label={t("downloadAction")}
+                ariaLabel={t("downloadAriaLabel")}
+                successTitle={t("downloadSuccessTitle")}
+                successDescription={t("downloadSuccessDescription")}
+                failedMessage={t("downloadFailed")}
+              />
+              {canPostGeneratedResult ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPostModalOpen(true)}
+                  className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span>{postsT("postSubmit")}</span>
+                </Button>
+              ) : null}
+            </div>
           ) : null
         }
       />
