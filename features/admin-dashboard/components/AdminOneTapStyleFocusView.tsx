@@ -4,6 +4,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BadgeCheck,
+  Coins,
   Download,
   MousePointerClick,
   Sparkles,
@@ -50,10 +51,10 @@ const focusMetricConfig: Record<
     accentClassName: "text-amber-700",
     iconBgClassName: "bg-amber-100",
   },
-  rateLimitedShare: {
-    icon: AlertTriangle,
-    accentClassName: "text-rose-700",
-    iconBgClassName: "bg-rose-100",
+  paidContinuations: {
+    icon: Coins,
+    accentClassName: "text-fuchsia-700",
+    iconBgClassName: "bg-fuchsia-100",
   },
 };
 
@@ -234,7 +235,7 @@ export function AdminOneTapStyleFocusView({
               セグメント別の利用状況
             </CardTitle>
             <CardDescription className="text-sm leading-6 text-slate-600">
-              ユーザー/ゲストで、生成開始回数、生成成功数、生成成功率、無料枠上限到達率がどう違うかを比較できます。
+              ユーザー/ゲストで、生成開始回数、生成成功数、生成成功率、無料枠上限到達率、10ペルコイン継続の差を比較できます。
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
@@ -285,6 +286,14 @@ export function AdminOneTapStyleFocusView({
                     <dt>無料枠上限到達率</dt>
                     <dd className="font-medium">{formatPercent(segment.rateLimitedSharePct)}</dd>
                   </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt>10ペルコイン継続数</dt>
+                    <dd className="font-medium">{segment.paidGenerations.toLocaleString("ja-JP")} 件</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt>10ペルコイン継続率</dt>
+                    <dd className="font-medium">{formatPercent(segment.paidGenerationRatePct)}</dd>
+                  </div>
                 </dl>
               </div>
             ))}
@@ -331,6 +340,10 @@ export function AdminOneTapStyleFocusView({
                 label: "ゲスト生成回数",
                 value: analytics.operationalSummary.guestAttemptCount,
               },
+              {
+                label: "10ペルコイン継続数",
+                value: analytics.operationalSummary.paidGenerationCount,
+              },
             ].map((item) => (
               <div
                 key={item.label}
@@ -363,7 +376,7 @@ export function AdminOneTapStyleFocusView({
             スタイル別パフォーマンス
           </CardTitle>
             <CardDescription className="text-sm leading-6 text-slate-600">
-              生成数、保存率、投稿率、ユーザー/ゲスト別の生成回数、ユーザー/ゲスト生成成功率をスタイル別に比較できます。
+              生成数、保存率、投稿率、10ペルコイン継続数、ユーザー/ゲスト別の生成回数、ユーザー/ゲスト生成成功率をスタイル別に比較できます。
             </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -388,6 +401,12 @@ export function AdminOneTapStyleFocusView({
                   </th>
                   <th className="border-b border-slate-200 px-3 py-2 font-medium">
                     投稿率
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2 font-medium">
+                    10ペルコイン継続
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2 font-medium">
+                    10ペルコイン継続率
                   </th>
                   <th className="border-b border-slate-200 px-3 py-2 font-medium">
                     ユーザー生成回数
@@ -447,6 +466,12 @@ export function AdminOneTapStyleFocusView({
                     </td>
                     <td className="border-b border-slate-100 px-3 py-3">
                       {formatPercent(preset.postRatePct)}
+                    </td>
+                    <td className="border-b border-slate-100 px-3 py-3">
+                      {preset.paidGenerations.toLocaleString("ja-JP")}
+                    </td>
+                    <td className="border-b border-slate-100 px-3 py-3">
+                      {formatPercent(preset.paidGenerationRatePct)}
                     </td>
                     <td className="border-b border-slate-100 px-3 py-3">
                       {preset.authenticatedAttempts.toLocaleString("ja-JP")}
