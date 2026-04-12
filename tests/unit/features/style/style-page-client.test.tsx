@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
@@ -21,11 +21,13 @@ jest.mock("@/features/style/lib/style-usage-client", () => ({
   },
 }));
 
-const mockToast = jest.fn();
+const mockToast = jest.fn(() => ({ id: "toast-id" }));
+const mockDismissToast = jest.fn();
 
 jest.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({
     toast: mockToast,
+    dismiss: mockDismissToast,
   }),
 }));
 
@@ -183,6 +185,7 @@ const styleMessages = {
   generationStatusCompleteTitle: "Styling is complete.",
   generationStatusCompleteMessage: "The reveal is coming up in a moment!",
   generationStatusCompleteHint: "",
+  resultReadyToastTitle: "The outfit change is ready! Want to check it out?",
   resultsTitle: "Results",
   resultImageAlt: "Generated result",
   resultPlaceholder: "Your generated image will appear here.",
@@ -348,6 +351,8 @@ describe("StylePageClient", () => {
     } as Response);
 
   beforeEach(() => {
+    mockToast.mockImplementation(() => ({ id: "toast-id" }));
+    mockDismissToast.mockReset();
     routerPushMock = jest.fn();
     useRouterMock.mockReturnValue({
       push: routerPushMock,
@@ -495,6 +500,7 @@ describe("StylePageClient", () => {
     jest.useRealTimers();
     global.fetch = originalFetch;
     mockToast.mockReset();
+    mockDismissToast.mockReset();
     mockRecordStyleUsageClientEvent.mockReset();
     jest.restoreAllMocks();
   });
@@ -812,7 +818,7 @@ describe("StylePageClient", () => {
     expect(screen.getByRole("button", { name: "Start Styling" })).toBeEnabled();
   });
 
-  test("生成完了の2秒後に結果エリアまでオートスクロールする", async () => {
+  test("生成完了の2秒後に完了トーストを表示し_選択時に結果エリアへ移動する", async () => {
     jest.useFakeTimers();
 
     render(<StylePageClient presets={presets} />);
@@ -827,6 +833,58 @@ describe("StylePageClient", () => {
 
     await screen.findByText("Styling is complete.");
     scrollIntoViewMock.mockClear();
+    mockToast.mockClear();
+
+    act(() => {
+      jest.advanceTimersByTime(1999);
+    });
+
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+    expect(mockToast).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "The outfit change is ready! Want to check it out?",
+        onClick: expect.any(Function),
+      })
+    );
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+    const latestToast = mockToast.mock.calls.at(-1)?.[0] as
+      | { onClick?: () => void }
+      | undefined;
+
+    act(() => {
+      latestToast?.onClick?.();
+    });
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
+    expect(mockDismissToast).toHaveBeenCalledWith("toast-id");
+  });
+
+  test("結果画像の読み込み完了後に結果エリアを再度中央へスクロールする", async () => {
+    jest.useFakeTimers();
+
+    render(<StylePageClient presets={presets} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await screen.findByText("Styling is complete.");
+    scrollIntoViewMock.mockClear();
+    mockToast.mockClear();
 
     act(() => {
       jest.advanceTimersByTime(1999);
@@ -836,6 +894,46 @@ describe("StylePageClient", () => {
 
     act(() => {
       jest.advanceTimersByTime(1);
+    });
+
+    const latestToast = mockToast.mock.calls.at(-1)?.[0] as
+      | { onClick?: () => void }
+      | undefined;
+
+    act(() => {
+      latestToast?.onClick?.();
+    });
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    scrollIntoViewMock.mockClear();
+
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+
+    const resultImage = await screen.findByAltText("Generated result");
+    Object.defineProperty(resultImage, "naturalWidth", {
+      configurable: true,
+      value: 1024,
+    });
+    Object.defineProperty(resultImage, "naturalHeight", {
+      configurable: true,
+      value: 768,
+    });
+
+    fireEvent.load(resultImage);
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("style-result-shell").style.aspectRatio).toBe(
+        String(1024 / 768)
+      );
     });
 
     expect(scrollIntoViewMock).toHaveBeenCalledWith({
@@ -900,14 +998,11 @@ describe("StylePageClient", () => {
       "src",
       "data:image/png;base64,generated-image-base64"
     );
-    expect(screen.getByAltText("Generated result")).toHaveClass(
-      "md:max-h-[550px]"
-    );
-    expect(screen.getByAltText("Generated result").parentElement).toHaveClass(
+    expect(screen.getByTestId("style-result-card")).toHaveClass(
       "max-w-[340px]",
       "sm:max-w-[420px]"
     );
-    expect(screen.getByAltText("Generated result").parentElement).not.toHaveClass(
+    expect(screen.getByTestId("style-result-card")).not.toHaveClass(
       "mx-auto"
     );
     expect(

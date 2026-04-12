@@ -979,6 +979,7 @@ export const enMessages = {
     generationStatusCompleteTitle: "Styling is complete.",
     generationStatusCompleteMessage: "The reveal is coming up in a moment!",
     generationStatusCompleteHint: "",
+    resultReadyToastTitle: "The outfit change is ready! Want to check it out?",
     resultsTitle: "Results",
     resultImageAlt: "Generated result",
     resultPlaceholder: "Your generated image will appear here.",

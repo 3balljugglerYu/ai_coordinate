@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
@@ -98,7 +99,7 @@ const STYLE_PAID_GENERATION_COST = getPercoinCost(STYLE_GENERATION_MODEL);
 const DEFAULT_POLLING_INTERVAL_MS = 1200;
 const FAST_POLLING_INTERVAL_MS = 400;
 const SLOW_POLLING_INTERVAL_MS = 1600;
-const RESULT_SCROLL_DELAY_MS = 2000;
+const RESULT_READY_TOAST_DELAY_MS = 2000;
 const ASYNC_PROGRESS_TRANSITION_MS: Record<ImageJobProcessingStage, number> = {
   queued: 3000,
   processing: 600,
@@ -193,14 +194,20 @@ function StyleResultPanel({
   placeholder,
   resultImageUrl,
   resultImageAlt,
+  aspectRatio,
   action,
+  onResultImageLoad,
 }: {
   title: string;
   placeholder: string;
   resultImageUrl: string | null;
   resultImageAlt: string;
+  aspectRatio: number;
   action?: ReactNode;
+  onResultImageLoad?: (imageAspectRatio: number | null) => void;
 }) {
+  const desktopMaxWidthPx = Math.min(460, Math.round(550 * aspectRatio));
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -208,26 +215,49 @@ function StyleResultPanel({
         {action ?? null}
       </div>
       <Card
+        data-testid="style-result-card"
         className={`overflow-hidden p-0 ${
           resultImageUrl
             ? "w-full max-w-[340px] sm:max-w-[420px] md:w-fit md:max-w-[460px]"
             : "w-full max-w-[340px] sm:max-w-[420px] md:max-w-[460px]"
         }`}
+        style={
+          {
+            "--style-result-desktop-max-width": `${desktopMaxWidthPx}px`,
+          } as CSSProperties
+        }
       >
-        {resultImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resultImageUrl}
-            alt={resultImageAlt}
-            className="block w-full h-auto md:w-auto md:max-w-[460px] md:max-h-[550px]"
-          />
-        ) : (
-          <div className="relative flex h-[320px] items-center justify-center bg-slate-100 sm:h-[420px]">
-            <p className="px-4 text-center text-sm text-slate-500">
-              {placeholder}
-            </p>
-          </div>
-        )}
+        <div
+          data-testid="style-result-shell"
+          className="relative w-full bg-slate-100 md:max-w-[var(--style-result-desktop-max-width)]"
+          style={{ aspectRatio: String(aspectRatio) }}
+        >
+          {resultImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resultImageUrl}
+              alt={resultImageAlt}
+              className="absolute inset-0 h-full w-full object-contain"
+              onLoad={(event) => {
+                const imageAspectRatio =
+                  event.currentTarget.naturalWidth > 0 &&
+                  event.currentTarget.naturalHeight > 0
+                    ? event.currentTarget.naturalWidth /
+                      event.currentTarget.naturalHeight
+                    : null;
+
+                onResultImageLoad?.(imageAspectRatio);
+              }}
+            />
+          ) : null}
+          {!resultImageUrl ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="px-4 text-center text-sm text-slate-500">
+                {placeholder}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </Card>
     </section>
   );
@@ -444,6 +474,7 @@ export function StylePageClient({
   const t = useTranslations("style");
   const coordinateT = useTranslations("coordinate");
   const postsT = useTranslations("posts");
+  const { toast, dismiss } = useToast();
   const presetStripRef = useRef<HTMLDivElement | null>(null);
   const generationStatusSectionRef = useRef<HTMLDivElement | null>(null);
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
@@ -487,6 +518,11 @@ export function StylePageClient({
   const presetDragStartXRef = useRef(0);
   const presetDragStartScrollLeftRef = useRef(0);
   const suppressPresetClickRef = useRef(false);
+  const pendingResultImageRecenterRef = useRef(false);
+  const pendingResultImageRecenterTimeoutRef = useRef<number | null>(null);
+  const resultReadyToastTimeoutRef = useRef<number | null>(null);
+  const resultReadyToastIdRef = useRef<string | null>(null);
+  const resultImageLoadedRef = useRef(false);
 
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
@@ -529,6 +565,9 @@ export function StylePageClient({
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
     : 1;
+  const [resultShellAspectRatio, setResultShellAspectRatio] = useState(
+    selectedPresetAspectRatio
+  );
   const remainingDailyNoticeCount =
     rateLimitStatus?.showRemainingWarning &&
     typeof rateLimitStatus.remainingDaily === "number" &&
@@ -630,6 +669,56 @@ export function StylePageClient({
     });
   };
 
+  const clearResultReadyToastTimeout = () => {
+    if (resultReadyToastTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(resultReadyToastTimeoutRef.current);
+    resultReadyToastTimeoutRef.current = null;
+  };
+
+  const dismissResultReadyToast = () => {
+    clearResultReadyToastTimeout();
+
+    if (resultReadyToastIdRef.current) {
+      dismiss(resultReadyToastIdRef.current);
+      resultReadyToastIdRef.current = null;
+    }
+  };
+
+  const clearPendingResultImageRecenterTimeout = () => {
+    if (pendingResultImageRecenterTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(pendingResultImageRecenterTimeoutRef.current);
+    pendingResultImageRecenterTimeoutRef.current = null;
+  };
+
+  const handleResultImageLoad = (imageAspectRatio: number | null) => {
+    resultImageLoadedRef.current = true;
+
+    if (
+      typeof imageAspectRatio === "number" &&
+      Number.isFinite(imageAspectRatio) &&
+      imageAspectRatio > 0
+    ) {
+      setResultShellAspectRatio(imageAspectRatio);
+    }
+
+    if (!pendingResultImageRecenterRef.current) {
+      return;
+    }
+
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterTimeoutRef.current = window.setTimeout(() => {
+      scrollSectionIntoView(resultSectionRef.current);
+      pendingResultImageRecenterRef.current = false;
+      pendingResultImageRecenterTimeoutRef.current = null;
+    }, 0);
+  };
+
   useEffect(() => {
     if (generationPhase !== "completing" || !queuedResultImageUrl) {
       return;
@@ -659,21 +748,46 @@ export function StylePageClient({
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      scrollSectionIntoView(resultSectionRef.current);
-    }, RESULT_SCROLL_DELAY_MS);
+    clearResultReadyToastTimeout();
+    resultReadyToastTimeoutRef.current = window.setTimeout(() => {
+      dismissResultReadyToast();
+      const { id } = toast({
+        title: t("resultReadyToastTitle"),
+        className: "cursor-pointer",
+        duration: 12000,
+        onClick: () => {
+          pendingResultImageRecenterRef.current =
+            !resultImageLoadedRef.current;
+          scrollSectionIntoView(resultSectionRef.current);
+          dismissResultReadyToast();
+        },
+      });
+      resultReadyToastIdRef.current = id;
+      resultReadyToastTimeoutRef.current = null;
+    }, RESULT_READY_TOAST_DELAY_MS);
 
     return () => {
-      window.clearTimeout(timeoutId);
+      clearResultReadyToastTimeout();
     };
-  }, [generationPhase]);
+  }, [dismiss, generationPhase, t, toast]);
 
   useEffect(() => {
     return () => {
+      dismissResultReadyToast();
+      clearPendingResultImageRecenterTimeout();
       activePollStopRef.current?.();
       activePollStopRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (displayedResultImageUrl) {
+      return;
+    }
+
+    resultImageLoadedRef.current = false;
+    setResultShellAspectRatio(selectedPresetAspectRatio);
+  }, [displayedResultImageUrl, selectedPresetAspectRatio]);
 
   useEffect(() => {
     let isActive = true;
@@ -960,6 +1074,9 @@ export function StylePageClient({
 
   const handleGenerationError = (message: string) => {
     stopActivePolling();
+    dismissResultReadyToast();
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterRef.current = false;
     setActiveAsyncJobStatus(null);
     setQueuedResultImageUrl(null);
     setResultGeneratedImageId(null);
@@ -973,6 +1090,9 @@ export function StylePageClient({
     }
 
     stopActivePolling();
+    dismissResultReadyToast();
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterRef.current = false;
     setActiveAsyncJobStatus(null);
     setQueuedResultImageUrl(null);
     setResultGeneratedImageId(null);
@@ -1048,6 +1168,9 @@ export function StylePageClient({
     }
 
     stopActivePolling();
+    dismissResultReadyToast();
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterRef.current = false;
     setActiveAsyncJobStatus(null);
     setQueuedResultImageUrl(null);
     setResultGeneratedImageId(null);
@@ -1617,10 +1740,12 @@ export function StylePageClient({
       <div ref={resultSectionRef}>
         <StyleResultPanel
           title={t("resultsTitle")}
-          placeholder={t("resultPlaceholder")}
-          resultImageUrl={displayedResultImageUrl}
-          resultImageAlt={t("resultImageAlt")}
-          action={
+      placeholder={t("resultPlaceholder")}
+      resultImageUrl={displayedResultImageUrl}
+      resultImageAlt={t("resultImageAlt")}
+      aspectRatio={resultShellAspectRatio}
+      onResultImageLoad={handleResultImageLoad}
+      action={
             displayedResultImageUrl ? (
               <div className="flex items-center gap-2">
                 <StyleResultDownloadButton

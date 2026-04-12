@@ -927,6 +927,7 @@ export const jaMessages = {
     generationStatusCompleteTitle: "スタイリングが完了しました",
     generationStatusCompleteMessage: "まもなくお披露目です！",
     generationStatusCompleteHint: "",
+    resultReadyToastTitle: "お着替えが完了しました！確認しますか？",
     resultsTitle: "生成結果",
     resultImageAlt: "生成結果",
     resultPlaceholder: "生成した画像がここに表示されます",
