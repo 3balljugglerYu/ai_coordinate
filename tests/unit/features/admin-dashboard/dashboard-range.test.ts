@@ -1,9 +1,45 @@
 import {
+  DASHBOARD_RANGE_OPTIONS,
+  ONE_TAP_STYLE_DASHBOARD_RANGE_OPTIONS,
+  getRangeBounds,
   getOneTapStyleRangeBounds,
+  parseDashboardRange,
   parseOneTapStyleDashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
 
 describe("dashboard-range", () => {
+  test("ワンタップスタイル用の range options に custom を含む", () => {
+    expect(DASHBOARD_RANGE_OPTIONS).toEqual([
+      { value: "24h", label: "24h" },
+      { value: "7d", label: "7d" },
+      { value: "30d", label: "30d" },
+      { value: "90d", label: "90d" },
+    ]);
+    expect(ONE_TAP_STYLE_DASHBOARD_RANGE_OPTIONS).toEqual([
+      ...DASHBOARD_RANGE_OPTIONS,
+      { value: "custom", label: "custom" },
+    ]);
+  });
+
+  test("通常の dashboard range を解釈できる", () => {
+    expect(parseDashboardRange("24h")).toBe("24h");
+    expect(parseDashboardRange("7d")).toBe("7d");
+    expect(parseDashboardRange("30d")).toBe("30d");
+    expect(parseDashboardRange("90d")).toBe("90d");
+    expect(parseDashboardRange("invalid")).toBe("30d");
+  });
+
+  test("通常の range から現在期間と前期間を作る", () => {
+    const now = new Date("2026-04-20T00:00:00.000Z");
+    const bounds = getRangeBounds("90d", now);
+
+    expect(bounds.range).toBe("90d");
+    expect(bounds.durationMs).toBe(90 * 24 * 60 * 60 * 1000);
+    expect(bounds.currentStartIso).toBe("2026-01-20T00:00:00.000Z");
+    expect(bounds.previousStartIso).toBe("2025-10-22T00:00:00.000Z");
+    expect(bounds.nowIso).toBe("2026-04-20T00:00:00.000Z");
+  });
+
   test("ワンタップスタイル用の custom range を解釈できる", () => {
     expect(parseOneTapStyleDashboardRange("custom")).toBe("custom");
     expect(parseOneTapStyleDashboardRange("7d")).toBe("7d");
