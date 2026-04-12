@@ -41,8 +41,20 @@ describe("AdminOneTapStyleRangeControls", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "カスタム期間を適用" }));
 
-    expect(pushMock).toHaveBeenCalledWith(
-      "/admin?range=30d&tab=one-tap-style&styleRange=custom&styleFrom=2026-04-12T03%3A00%3A00.000Z&styleTo=2026-04-15T03%3A00%3A00.000Z"
+    expect(pushMock).toHaveBeenCalledTimes(1);
+
+    const pushedUrl = pushMock.mock.calls[0]?.[0];
+    expect(typeof pushedUrl).toBe("string");
+
+    const params = new URL(pushedUrl as string, "https://example.com").searchParams;
+    expect(params.get("range")).toBe("30d");
+    expect(params.get("tab")).toBe("one-tap-style");
+    expect(params.get("styleRange")).toBe("custom");
+    expect(params.get("styleFrom")).toBe(
+      new Date("2026-04-12T12:00").toISOString()
+    );
+    expect(params.get("styleTo")).toBe(
+      new Date("2026-04-15T12:00").toISOString()
     );
   });
 
