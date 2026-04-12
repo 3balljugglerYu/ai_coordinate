@@ -289,11 +289,27 @@ describe("StylePageClient", () => {
   let generateResponseQueue: Array<Response | Promise<Response>>;
   let asyncGenerateResponseQueue: Array<Response | Promise<Response>>;
   let generationStatusResponseQueue: Array<Response | Promise<Response>>;
+  let scrollIntoViewMock: jest.Mock;
 
   const createJsonResponse = (body: Record<string, unknown>, ok = true) =>
     ({
       ok,
       json: async () => body,
+    } as Response);
+
+  const createBlobResponse = (
+    imageUrl: string,
+    mimeType = "image/png"
+  ) =>
+    ({
+      ok: true,
+      status: 200,
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === "content-type" ? mimeType : null,
+      },
+      blob: async () => new Blob(["image-bytes"], { type: mimeType }),
+      url: imageUrl,
     } as Response);
 
   beforeEach(() => {
@@ -349,6 +365,23 @@ describe("StylePageClient", () => {
         errorMessage: null,
       }),
     ];
+    scrollIntoViewMock = jest.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoViewMock,
+    });
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "Desktop",
+    });
+    Object.defineProperty(window.navigator, "canShare", {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(window.navigator, "share", {
+      configurable: true,
+      value: undefined,
+    });
     fetchMock = jest.fn().mockImplementation((input, init) => {
       const requestUrl =
         typeof input === "string"
@@ -406,6 +439,13 @@ describe("StylePageClient", () => {
             errorMessage: null,
           });
         return Promise.resolve(nextResponse);
+      }
+
+      if (
+        requestUrl.startsWith("data:image/") ||
+        requestUrl === "https://cdn.example.com/generated-style-result.png"
+      ) {
+        return Promise.resolve(createBlobResponse(requestUrl));
       }
 
       return Promise.resolve(createJsonResponse({}));
@@ -487,6 +527,21 @@ describe("StylePageClient", () => {
       "src",
       "https://example.com/style-presets/paris-code.webp"
     );
+  });
+
+  test("詳細画面から選択付きで遷移した場合は選択カードまで自動スクロールする", () => {
+    render(
+      <StylePageClient
+        presets={presets}
+        initialSelectedPresetId="a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e"
+      />
+    );
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
   });
 
   test("スタイル画像URLをそのまま参照する", () => {
@@ -837,6 +892,63 @@ describe("StylePageClient", () => {
     );
     expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
       eventType: "generate",
+      styleId: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
+    });
+  });
+
+  test("スマホでは/styleのダウンロードが共有シートを優先する", async () => {
+    jest.useFakeTimers();
+
+    const shareMock = jest.fn().mockResolvedValue(undefined);
+    const canShareMock = jest.fn().mockReturnValue(true);
+
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "iPhone",
+    });
+    Object.defineProperty(window.navigator, "canShare", {
+      configurable: true,
+      value: canShareMock,
+    });
+    Object.defineProperty(window.navigator, "share", {
+      configurable: true,
+      value: shareMock,
+    });
+
+    render(<StylePageClient presets={presets} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Download generated result" })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(canShareMock).toHaveBeenCalledWith({
+      files: expect.any(Array),
+    });
+    expect(shareMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Persta.AI",
+        files: expect.any(Array),
+      })
+    );
+    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+      eventType: "download",
       styleId: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
     });
   });

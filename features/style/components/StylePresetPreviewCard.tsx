@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 
@@ -25,6 +26,7 @@ interface StylePresetPreviewCardProps {
   disabled?: boolean;
   isSelected?: boolean;
   onClick?: () => void;
+  buttonRef?: Ref<HTMLButtonElement>;
 }
 
 export function buildStylePresetImageSrc(
@@ -47,6 +49,7 @@ export function StylePresetPreviewCard({
   disabled = false,
   isSelected,
   onClick,
+  buttonRef,
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
   const card = (
@@ -94,6 +97,7 @@ export function StylePresetPreviewCard({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={onClick}
       className="flex-shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-60"

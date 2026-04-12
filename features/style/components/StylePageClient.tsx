@@ -60,7 +60,7 @@ import { StylePresetPreviewCard } from "@/features/style/components/StylePresetP
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
-import { getExtensionFromMimeType } from "@/lib/utils";
+import { determineFileName } from "@/lib/utils";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 
 interface StylePageClientProps {
@@ -239,12 +239,6 @@ function isMobileDevice(): boolean {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-function buildStyleResultFileName(mimeType: string): string {
-  const extension = getExtensionFromMimeType(mimeType);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `one-tap-style-${timestamp}.${extension}`;
-}
-
 async function fetchStyleRateLimitStatus(): Promise<StyleRateLimitStatusState | null> {
   const response = await fetch("/style/rate-limit-status", {
     method: "GET",
@@ -298,13 +292,17 @@ function StyleResultDownloadButton({
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
-  const downloadBlob = async () => {
+  const downloadResponse = async () => {
     const response = await fetch(imageUrl, { mode: "cors" });
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(failedMessage);
+    }
+
     if (!response.ok) {
       throw new Error(failedMessage);
     }
 
-    return response.blob();
+    return response;
   };
 
   const triggerDownload = (blob: Blob, fileName: string) => {
@@ -328,20 +326,55 @@ function StyleResultDownloadButton({
 
     setIsDownloading(true);
     try {
-      const blob = await downloadBlob();
-      const mimeType = blob.type || "image/png";
-      const fileName = buildStyleResultFileName(mimeType);
+      const response = await downloadResponse();
+      const blob = await response.blob();
+      const mimeType =
+        blob.type || response.headers.get("content-type") || "image/png";
+      const fileName = determineFileName(response, imageUrl, styleId, mimeType);
+
+      triggerDownload(blob, fileName);
+      toast({
+        title: successTitle,
+        description: successDescription,
+      });
+      void recordStyleUsageClientEvent({
+        eventType: "download",
+        styleId,
+      }).catch(() => {
+        // Usage tracking must not block the successful download flow.
+      });
+    } catch (error) {
+      console.error("Style result download error:", error);
+      toast({
+        title: error instanceof Error ? error.message : failedMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadMobile = async () => {
+    if (isDownloading) {
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const response = await downloadResponse();
+      const blob = await response.blob();
+      const mimeType =
+        blob.type || response.headers.get("content-type") || "image/png";
+      const fileName = determineFileName(response, imageUrl, styleId, mimeType);
+      const file = new File([blob], fileName, { type: mimeType });
 
       if (
-        isMobileDevice() &&
         typeof navigator !== "undefined" &&
         navigator.canShare &&
-        navigator.canShare({
-          files: [new File([blob], fileName, { type: mimeType })],
-        })
+        navigator.canShare({ files: [file] })
       ) {
         await navigator.share({
-          files: [new File([blob], fileName, { type: mimeType })],
+          files: [file],
           title: "Persta.AI",
         });
         void recordStyleUsageClientEvent({
@@ -350,19 +383,10 @@ function StyleResultDownloadButton({
         }).catch(() => {
           // Usage tracking must not block the successful share flow.
         });
-      } else {
-        triggerDownload(blob, fileName);
-        toast({
-          title: successTitle,
-          description: successDescription,
-        });
-        void recordStyleUsageClientEvent({
-          eventType: "download",
-          styleId,
-        }).catch(() => {
-          // Usage tracking must not block the successful download flow.
-        });
+        return;
       }
+
+      await handleDownload();
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : "";
       if (
@@ -370,14 +394,17 @@ function StyleResultDownloadButton({
         message.includes("user gesture") ||
         message.includes("share request")
       ) {
+        setIsDownloading(false);
         return;
       }
 
-      console.error("Style result download error:", error);
-      toast({
-        title: error instanceof Error ? error.message : failedMessage,
-        variant: "destructive",
-      });
+      console.error("Style share sheet error:", error);
+
+      try {
+        await handleDownload();
+      } catch {
+        // handleDownload already reports any fallback error.
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -389,6 +416,11 @@ function StyleResultDownloadButton({
       variant="outline"
       size="sm"
       onClick={() => {
+        if (isMobileDevice()) {
+          void handleDownloadMobile();
+          return;
+        }
+
         void handleDownload();
       }}
       disabled={isDownloading}
@@ -410,6 +442,9 @@ export function StylePageClient({
   const t = useTranslations("style");
   const coordinateT = useTranslations("coordinate");
   const presetStripRef = useRef<HTMLDivElement | null>(null);
+  const presetButtonRefs = useRef(
+    new Map<StylePresetPublicSummary["id"], HTMLButtonElement>()
+  );
   const [selectedPresetId, setSelectedPresetId] = useState<
     StylePresetPublicSummary["id"]
   >(() => resolveInitialSelectedPresetId(presets, initialSelectedPresetId));
@@ -663,6 +698,23 @@ export function StylePageClient({
   }, [backgroundChange, selectedPreset?.hasBackgroundPrompt]);
 
   useEffect(() => {
+    if (!selectedPresetId) {
+      return;
+    }
+
+    const selectedButton = presetButtonRefs.current.get(selectedPresetId);
+    if (typeof selectedButton?.scrollIntoView !== "function") {
+      return;
+    }
+
+    selectedButton.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [selectedPresetId]);
+
+  useEffect(() => {
     const hasValidPresetParam =
       typeof initialSelectedPresetId === "string" &&
       presets.some((preset) => preset.id === initialSelectedPresetId);
@@ -800,6 +852,17 @@ export function StylePageClient({
     event.stopPropagation();
     suppressPresetClickRef.current = false;
   };
+
+  const buildPresetButtonRef =
+    (presetId: StylePresetPublicSummary["id"]) =>
+    (node: HTMLButtonElement | null) => {
+      if (node) {
+        presetButtonRefs.current.set(presetId, node);
+        return;
+      }
+
+      presetButtonRefs.current.delete(presetId);
+    };
 
   const handleUpload = (image: UploadedImage) => {
     runAfterResultResetCheck(() => {
@@ -1143,6 +1206,7 @@ export function StylePageClient({
               preset={preset}
               isSelected={preset.id === selectedPreset?.id}
               onClick={() => handlePresetSelect(preset.id)}
+              buttonRef={buildPresetButtonRef(preset.id)}
               alt={t("styleCardAlt", { name: preset.title })}
               disabled={isGenerating}
             />
