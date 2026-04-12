@@ -1,4 +1,5 @@
 export type DashboardRange = "24h" | "7d" | "30d" | "90d";
+export type OneTapStyleDashboardRange = DashboardRange | "custom";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -20,12 +21,30 @@ export const DASHBOARD_RANGE_OPTIONS: Array<{
   { value: "90d", label: "90d" },
 ];
 
+export const ONE_TAP_STYLE_DASHBOARD_RANGE_OPTIONS: Array<{
+  value: OneTapStyleDashboardRange;
+  label: string;
+}> = [
+  ...DASHBOARD_RANGE_OPTIONS,
+  { value: "custom", label: "custom" },
+];
+
 export function parseDashboardRange(value?: string): DashboardRange {
   if (value === "24h" || value === "7d" || value === "30d" || value === "90d") {
     return value;
   }
 
   return "30d";
+}
+
+export function parseOneTapStyleDashboardRange(
+  value?: string
+): OneTapStyleDashboardRange {
+  if (value === "custom") {
+    return "custom";
+  }
+
+  return parseDashboardRange(value);
 }
 
 export function getRangeBounds(range: DashboardRange, now = new Date()) {
@@ -42,6 +61,70 @@ export function getRangeBounds(range: DashboardRange, now = new Date()) {
     currentStartIso: currentStart.toISOString(),
     previousStartIso: previousStart.toISOString(),
     nowIso: now.toISOString(),
+  };
+}
+
+function parseIsoDateTime(value?: string): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export function getOneTapStyleRangeBounds(params: {
+  range: OneTapStyleDashboardRange;
+  from?: string;
+  to?: string;
+  now?: Date;
+}) {
+  const now = params.now ?? new Date();
+
+  if (params.range !== "custom") {
+    const bounds = getRangeBounds(params.range, now);
+    return {
+      ...bounds,
+      range: params.range,
+      fromIso: null,
+      toIso: null,
+      isCustom: false,
+    };
+  }
+
+  const customFrom = parseIsoDateTime(params.from);
+  const customTo = parseIsoDateTime(params.to);
+
+  if (!customFrom || !customTo || customFrom.getTime() >= customTo.getTime()) {
+    const fallback = getRangeBounds("30d", now);
+    return {
+      ...fallback,
+      range: "30d" as const,
+      fromIso: null,
+      toIso: null,
+      isCustom: false,
+    };
+  }
+
+  const durationMs = customTo.getTime() - customFrom.getTime();
+  const previousStart = new Date(customFrom.getTime() - durationMs);
+
+  return {
+    range: "custom" as const,
+    now: customTo,
+    durationMs,
+    currentStart: customFrom,
+    previousStart,
+    currentStartIso: customFrom.toISOString(),
+    previousStartIso: previousStart.toISOString(),
+    nowIso: customTo.toISOString(),
+    fromIso: customFrom.toISOString(),
+    toIso: customTo.toISOString(),
+    isCustom: true,
   };
 }
 

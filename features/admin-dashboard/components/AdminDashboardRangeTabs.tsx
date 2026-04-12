@@ -9,11 +9,17 @@ import { DASHBOARD_RANGE_OPTIONS, type DashboardRange } from "../lib/dashboard-r
 interface AdminDashboardRangeTabsProps {
   currentRange: DashboardRange;
   currentTab: AdminDashboardTab;
+  currentStyleRange?: string;
+  currentStyleFrom?: string | null;
+  currentStyleTo?: string | null;
 }
 
 export function AdminDashboardRangeTabs({
   currentRange,
   currentTab,
+  currentStyleRange,
+  currentStyleFrom,
+  currentStyleTo,
 }: AdminDashboardRangeTabsProps) {
   return (
     <div
@@ -32,6 +38,9 @@ export function AdminDashboardRangeTabs({
               href={buildAdminDashboardHref({
                 range: option.value,
                 tab: currentTab,
+                styleRange: currentStyleRange,
+                styleFrom: currentStyleFrom,
+                styleTo: currentStyleTo,
               })}
               className={cn(
                 "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",

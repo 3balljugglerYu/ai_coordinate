@@ -18,14 +18,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { AdminOneTapStyleRangeControls } from "./AdminOneTapStyleRangeControls";
 import type {
   DashboardOneTapStyleDetailedAnalytics,
   DashboardOneTapStyleFocusMetric,
 } from "../lib/dashboard-types";
+import type {
+  DashboardRange,
+  OneTapStyleDashboardRange,
+} from "../lib/dashboard-range";
 import { AdminOneTapStyleCard } from "./AdminOneTapStyleCard";
 
 interface AdminOneTapStyleFocusViewProps {
   analytics: DashboardOneTapStyleDetailedAnalytics;
+  currentRange: DashboardRange;
+  currentStyleRange: OneTapStyleDashboardRange;
+  currentStyleFrom: string | null;
+  currentStyleTo: string | null;
 }
 
 const focusMetricConfig: Record<
@@ -101,9 +110,20 @@ function formatPercent(value: number | null): string {
 
 export function AdminOneTapStyleFocusView({
   analytics,
+  currentRange,
+  currentStyleRange,
+  currentStyleFrom,
+  currentStyleTo,
 }: AdminOneTapStyleFocusViewProps) {
   return (
     <section className="space-y-6">
+      <AdminOneTapStyleRangeControls
+        currentRange={currentRange}
+        currentStyleRange={currentStyleRange}
+        currentStyleFrom={currentStyleFrom}
+        currentStyleTo={currentStyleTo}
+      />
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {analytics.focusMetrics.map((metric) => {
           const config = focusMetricConfig[metric.key];

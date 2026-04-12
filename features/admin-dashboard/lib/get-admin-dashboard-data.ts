@@ -8,6 +8,7 @@ import {
   isWithinDateRange,
   toJstDateKey,
   type DashboardRange,
+  type OneTapStyleDashboardRange,
 } from "./dashboard-range";
 import {
   getPurchaseMode,
@@ -79,6 +80,20 @@ type FreePercoinBatchRow = {
   remaining_amount: number;
   expire_at: string;
 };
+
+interface OneTapStyleRangeBoundsLike {
+  range: OneTapStyleDashboardRange;
+  now: Date;
+  durationMs: number;
+  currentStart: Date;
+  previousStart: Date;
+  currentStartIso: string;
+  previousStartIso: string;
+  nowIso: string;
+  fromIso: string | null;
+  toIso: string | null;
+  isCustom: boolean;
+}
 
 type PostReportRow = {
   post_id: string | null;
@@ -506,11 +521,19 @@ function buildAlerts(params: {
 }
 
 export async function getAdminDashboardData(
-  range: DashboardRange
+  range: DashboardRange,
+  oneTapStyleBounds: OneTapStyleRangeBoundsLike = {
+    ...getRangeBounds(range),
+    range,
+    fromIso: null,
+    toIso: null,
+    isCustom: false,
+  }
 ): Promise<AdminDashboardData> {
   const supabase = createAdminClient();
   const { currentStart, previousStart, now, currentStartIso, previousStartIso, nowIso } =
     getRangeBounds(range);
+  const oneTapStyleFetchStartIso = oneTapStyleBounds.previousStart.toISOString();
 
   const expiringCutoffIso = new Date(
     now.getTime() + 7 * 24 * 60 * 60 * 1000
@@ -536,25 +559,25 @@ export async function getAdminDashboardData(
     supabase
       .from("profiles")
       .select("user_id, nickname, created_at, signup_source")
-      .gte("created_at", previousStartIso)
-      .lte("created_at", nowIso),
+      .gte("created_at", oneTapStyleFetchStartIso)
+      .lte("created_at", oneTapStyleBounds.nowIso),
     supabase
       .from("generated_images")
       .select(
         "user_id, created_at, is_posted, moderation_status, model, generation_type, generation_metadata, posted_at"
       )
-      .gte("created_at", previousStartIso)
-      .lte("created_at", nowIso),
+      .gte("created_at", oneTapStyleFetchStartIso)
+      .lte("created_at", oneTapStyleBounds.nowIso),
     supabase
       .from("style_usage_events")
       .select("user_id, auth_state, event_type, style_id, created_at")
-      .gte("created_at", previousStartIso)
-      .lte("created_at", nowIso),
+      .gte("created_at", oneTapStyleFetchStartIso)
+      .lte("created_at", oneTapStyleBounds.nowIso),
     supabase
       .from("style_guest_generate_attempts")
       .select("created_at")
-      .gte("created_at", previousStartIso)
-      .lte("created_at", nowIso),
+      .gte("created_at", oneTapStyleFetchStartIso)
+      .lte("created_at", oneTapStyleBounds.nowIso),
     supabase
       .from("style_presets")
       .select("id, title, status, sort_order")
@@ -736,9 +759,9 @@ export async function getAdminDashboardData(
   const oneTapStyle = buildOneTapStyleAnalytics({
     events: styleUsageEvents,
     profiles,
-    currentStart,
-    previousStart,
-    now,
+    currentStart: oneTapStyleBounds.currentStart,
+    previousStart: oneTapStyleBounds.previousStart,
+    now: oneTapStyleBounds.now,
   });
   const oneTapStyleDetailed = buildOneTapStyleDetailedAnalytics({
     events: styleUsageEvents,
@@ -746,9 +769,9 @@ export async function getAdminDashboardData(
     generatedImages,
     presets: stylePresets,
     profiles,
-    currentStart,
-    previousStart,
-    now,
+    currentStart: oneTapStyleBounds.currentStart,
+    previousStart: oneTapStyleBounds.previousStart,
+    now: oneTapStyleBounds.now,
   });
   const revenueTrend = buildRevenueTrend({
     livePurchases: currentLivePurchases,

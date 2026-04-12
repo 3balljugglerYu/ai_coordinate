@@ -10,11 +10,17 @@ import type { DashboardRange } from "../lib/dashboard-range";
 interface AdminDashboardModeTabsProps {
   currentTab: AdminDashboardTab;
   currentRange: DashboardRange;
+  currentStyleRange?: string;
+  currentStyleFrom?: string | null;
+  currentStyleTo?: string | null;
 }
 
 export function AdminDashboardModeTabs({
   currentTab,
   currentRange,
+  currentStyleRange,
+  currentStyleFrom,
+  currentStyleTo,
 }: AdminDashboardModeTabsProps) {
   return (
     <div className="w-full max-w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:w-auto">
@@ -31,6 +37,9 @@ export function AdminDashboardModeTabs({
               href={buildAdminDashboardHref({
                 range: currentRange,
                 tab: option.value,
+                styleRange: currentStyleRange,
+                styleFrom: currentStyleFrom,
+                styleTo: currentStyleTo,
               })}
               className={cn(
                 "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
