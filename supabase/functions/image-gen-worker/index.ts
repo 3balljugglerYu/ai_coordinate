@@ -1318,17 +1318,20 @@ Deno.serve(async () => {
                     });
                   }
 
-                  const fullPrompt = isFreeOneTapStyleJob
-                    ? job.prompt_text
-                    : job.input_image_url
-                      ? buildSharedPrompt({
-                          generationType: job.generation_type as GenerationType,
-                          outfitDescription: job.prompt_text,
-                          backgroundMode,
-                          sourceImageType:
-                            job.source_image_type === "real" ? "real" : "illustration",
-                        })
-                      : job.prompt_text;
+                  const fullPrompt =
+                    job.generation_type === "one_tap_style"
+                      ? job.prompt_text
+                      : job.input_image_url
+                        ? buildSharedPrompt({
+                            generationType: job.generation_type as GenerationType,
+                            outfitDescription: job.prompt_text,
+                            backgroundMode,
+                            sourceImageType:
+                              job.source_image_type === "real"
+                                ? "real"
+                                : "illustration",
+                          })
+                        : job.prompt_text;
 
                   parts.push({
                     text: fullPrompt,
