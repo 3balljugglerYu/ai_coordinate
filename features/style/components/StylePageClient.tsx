@@ -221,7 +221,7 @@ function StyleResultPanel({
       </div>
       <Card
         data-testid="style-result-card"
-        className="w-full max-w-[340px] overflow-hidden p-0 sm:max-w-[420px] md:max-w-[460px]"
+        className="w-full max-w-[340px] overflow-hidden p-0 sm:max-w-[420px] md:max-w-[var(--style-result-desktop-max-width)]"
         style={
           {
             "--style-result-desktop-max-width": `${desktopMaxWidthPx}px`,
@@ -230,7 +230,7 @@ function StyleResultPanel({
       >
         <div
           data-testid="style-result-shell"
-          className="relative w-full bg-slate-100 md:max-w-[var(--style-result-desktop-max-width)]"
+          className="relative w-full bg-slate-100"
           style={{ aspectRatio: String(aspectRatio) }}
         >
           {resultImageUrl ? (
