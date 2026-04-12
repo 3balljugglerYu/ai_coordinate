@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
+import { parseSignupSource } from "../lib/signup-source";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
 import { useWebViewDetection, buildIntentUrl } from "./WebViewBanner";
@@ -60,6 +61,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
   // URLクエリパラメータから紹介コードを取得
   const referralCode = searchParams.get("ref");
+  const signupSource = parseSignupSource(searchParams.get("signup_source"));
 
   const resolveRedirectTarget = () =>
     redirectTo ??
@@ -100,7 +102,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
       // 認証処理
       if (isSignUp) {
-        await signUp(email, password, referralCode || undefined);
+        await signUp(
+          email,
+          password,
+          referralCode || undefined,
+          signupSource
+        );
         // サインアップ成功
         setError(null);
         toast({
@@ -154,7 +161,12 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
       setError(null);
       setIsLoading(true);
       const redirectTarget = resolveRedirectTarget();
-      await signInWithOAuth(provider, redirectTarget, referralCode || undefined);
+      await signInWithOAuth(
+        provider,
+        redirectTarget,
+        referralCode || undefined,
+        signupSource
+      );
       // OAuthプロバイダーのページにリダイレクトされる
     } catch (err) {
       setError(err instanceof Error ? err.message : t("oauthError"));

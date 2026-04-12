@@ -35,18 +35,42 @@ function setupJobQuery(result: {
     error_message: string | null;
   } | null;
   error: { code?: string; message?: string } | null;
-}) {
+}, generatedImageId: string | null = null) {
   const single = jest.fn().mockResolvedValue(result);
   const secondEq = jest.fn().mockReturnValue({ single });
   const firstEq = jest.fn().mockReturnValue({ eq: secondEq });
   const select = jest.fn().mockReturnValue({ eq: firstEq });
+  const generatedMaybeSingle = jest.fn().mockResolvedValue({
+    data: generatedImageId ? { id: generatedImageId } : null,
+    error: null,
+  });
+  const generatedLimit = jest.fn().mockReturnValue({
+    maybeSingle: generatedMaybeSingle,
+  });
+  const generatedOrder = jest.fn().mockReturnValue({ limit: generatedLimit });
+  const generatedSecondEq = jest.fn().mockReturnValue({
+    order: generatedOrder,
+  });
+  const generatedFirstEq = jest.fn().mockReturnValue({
+    eq: generatedSecondEq,
+  });
+  const generatedSelect = jest.fn().mockReturnValue({
+    eq: generatedFirstEq,
+  });
   const from = jest.fn().mockImplementation((table: string) => {
-    expect(table).toBe("image_jobs");
-    return { select };
+    if (table === "image_jobs") {
+      return { select };
+    }
+
+    if (table === "generated_images") {
+      return { select: generatedSelect };
+    }
+
+    throw new Error(`Unexpected table: ${table}`);
   });
 
   mockCreateClient.mockResolvedValue({ from } as never);
-  return { from, firstEq, secondEq, single };
+  return { from, firstEq, secondEq, single, generatedMaybeSingle };
 }
 
 describe("GET /api/generation-status", () => {
@@ -77,6 +101,7 @@ describe("GET /api/generation-status", () => {
       previewImageUrl: string | null;
       resultImageUrl: string | null;
       errorMessage: string | null;
+      generatedImageId: string | null;
     };
 
     expect(res.status).toBe(200);
@@ -88,6 +113,7 @@ describe("GET /api/generation-status", () => {
       resultImageUrl: null,
       errorMessage:
         "画像生成に失敗しました。しばらくしてから、もう一度お試しください。",
+      generatedImageId: null,
     });
   });
 
@@ -136,6 +162,7 @@ describe("GET /api/generation-status", () => {
       previewImageUrl: string | null;
       resultImageUrl: string | null;
       errorMessage: string | null;
+      generatedImageId: string | null;
     };
 
     expect(res.status).toBe(200);
@@ -146,6 +173,7 @@ describe("GET /api/generation-status", () => {
       previewImageUrl: "https://cdn.example.com/generated.png",
       resultImageUrl: null,
       errorMessage: null,
+      generatedImageId: null,
     });
   });
 
@@ -159,7 +187,7 @@ describe("GET /api/generation-status", () => {
         error_message: null,
       },
       error: null,
-    });
+    }, "generated-image-123");
 
     const res = await GET(
       createRequest("http://localhost/api/generation-status?id=job-4", "ja")
@@ -171,6 +199,7 @@ describe("GET /api/generation-status", () => {
       previewImageUrl: string | null;
       resultImageUrl: string | null;
       errorMessage: string | null;
+      generatedImageId: string | null;
     };
 
     expect(res.status).toBe(200);
@@ -181,6 +210,7 @@ describe("GET /api/generation-status", () => {
       previewImageUrl: null,
       resultImageUrl: "https://cdn.example.com/generated.png",
       errorMessage: null,
+      generatedImageId: "generated-image-123",
     });
   });
 });

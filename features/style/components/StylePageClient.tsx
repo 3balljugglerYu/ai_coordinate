@@ -7,11 +7,12 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
-import { Download, Maximize2, Minimize2, Sparkles } from "lucide-react";
+import { Download, Maximize2, Minimize2, Share2, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,25 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
+import {
+  getGenerationStatus,
+  pollGenerationStatus,
+  type AsyncGenerationStatus,
+} from "@/features/generation/lib/async-api";
+import {
+  buildCoordinatePreparingCopy,
+  buildCoordinateStageCopy,
+} from "@/features/generation/lib/coordinate-stage-copy";
+import {
+  useCoordinateGenerationFeedback,
+  type CoordinateGenerationFeedbackPhase,
+} from "@/features/generation/hooks/useCoordinateGenerationFeedback";
+import {
+  normalizeProcessingStage,
+  summarizeJobProgress,
+} from "@/features/generation/lib/job-progress";
+import type { ImageJobProcessingStage } from "@/features/generation/lib/job-types";
 import type { UploadedImage } from "@/features/generation/types";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -37,11 +57,19 @@ import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
-import { getExtensionFromMimeType } from "@/lib/utils";
+import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { PostModal } from "@/features/posts/components/PostModal";
+import { fetchPercoinBalance } from "@/features/credits/lib/api";
+import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
+import { getPercoinCost } from "@/features/generation/lib/model-config";
+import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
+import { determineFileName } from "@/lib/utils";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 
 interface StylePageClientProps {
   presets: readonly StylePresetPublicSummary[];
+  initialAuthState?: "authenticated" | "guest";
+  initialSelectedPresetId?: string | null;
 }
 
 interface StyleErrorState {
@@ -56,91 +84,69 @@ interface StyleRateLimitStatusState {
   showRemainingWarning: boolean;
 }
 
+interface StylePercoinBalanceState {
+  balance: number | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
 type ResultConfirmationIntent = "change" | "regenerate";
 type GenerationPhase = "idle" | "running" | "completing";
 
 const RESULT_REVEAL_DELAY_MS = 5000;
+const PREPARING_PROGRESS_PERCENT = 10;
+const PREPARING_PROGRESS_TRANSITION_MS = 3000;
+const STYLE_PAID_GENERATION_COST = getPercoinCost(STYLE_GENERATION_MODEL);
+const DEFAULT_POLLING_INTERVAL_MS = 1200;
+const FAST_POLLING_INTERVAL_MS = 400;
+const SLOW_POLLING_INTERVAL_MS = 1600;
+const RESULT_READY_TOAST_DELAY_MS = 2000;
+const ASYNC_PROGRESS_TRANSITION_MS: Record<ImageJobProcessingStage, number> = {
+  queued: 3000,
+  processing: 600,
+  charging: 500,
+  generating: 25000,
+  uploading: 1200,
+  persisting: 800,
+  completed: 1000,
+  failed: 1000,
+};
 
-const PRESET_NAME_MAX_CHARACTERS = 16;
-const STYLE_PRESET_CARD_WIDTH_PX = 180;
-const STYLE_PRESET_CARD_IMAGE_HEIGHT_PX = 240;
-const STYLE_PRESET_CARD_TITLE_HEIGHT_PX = 44;
-const STYLE_PRESET_CARD_HEIGHT_PX =
-  STYLE_PRESET_CARD_IMAGE_HEIGHT_PX + STYLE_PRESET_CARD_TITLE_HEIGHT_PX;
-
-function buildPresetImageSrc(
-  preset: Pick<StylePresetPublicSummary, "thumbnailImageUrl">
-): string {
-  return preset.thumbnailImageUrl;
+function resolveStyleSignupPath(path?: string) {
+  return path ?? buildStyleSignupPath();
 }
 
-function truncatePresetName(name: string): string {
-  const characters = Array.from(name);
-  if (characters.length <= PRESET_NAME_MAX_CHARACTERS) {
-    return name;
+function getStyleAsyncPollingIntervalMs(status: AsyncGenerationStatus): number {
+  if (status.previewImageUrl || status.processingStage === "persisting") {
+    return FAST_POLLING_INTERVAL_MS;
   }
-  return `${characters.slice(0, PRESET_NAME_MAX_CHARACTERS).join("")}...`;
+
+  if (
+    status.processingStage === "charging" ||
+    status.processingStage === "uploading"
+  ) {
+    return 800;
+  }
+
+  if (status.processingStage === "queued") {
+    return SLOW_POLLING_INTERVAL_MS;
+  }
+
+  return DEFAULT_POLLING_INTERVAL_MS;
 }
 
-function StylePresetCard({
-  preset,
-  isSelected,
-  onSelect,
-  alt,
-  disabled = false,
-}: {
-  preset: StylePresetPublicSummary;
-  isSelected: boolean;
-  onSelect: (presetId: StylePresetPublicSummary["id"]) => void;
-  alt: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(preset.id)}
-      className="flex-shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-60"
-      aria-pressed={isSelected}
-      disabled={disabled}
-    >
-      <Card
-        className={`group overflow-hidden p-0 transition ${
-          isSelected ? "border-2 border-primary" : "hover:ring-2 hover:ring-primary/50"
-        }`}
-        style={{
-          width: STYLE_PRESET_CARD_WIDTH_PX,
-          height: STYLE_PRESET_CARD_HEIGHT_PX,
-        }}
-      >
-        <div className="flex h-full flex-col overflow-hidden bg-gray-100">
-          <div
-            className="relative w-full overflow-hidden bg-gray-100"
-            style={{ height: STYLE_PRESET_CARD_IMAGE_HEIGHT_PX }}
-          >
-            <Image
-              src={buildPresetImageSrc(preset)}
-              alt={alt}
-              fill
-              sizes={`${STYLE_PRESET_CARD_WIDTH_PX}px`}
-              className="object-cover object-top"
-              priority={isSelected}
-            />
-          </div>
-          <div
-            className="flex items-center border-t bg-white px-3"
-            style={{ height: STYLE_PRESET_CARD_TITLE_HEIGHT_PX }}
-          >
-            <p
-              className="truncate text-sm font-medium text-slate-900"
-              title={preset.title}
-            >
-              {truncatePresetName(preset.title)}
-            </p>
-          </div>
-        </div>
-      </Card>
-    </button>
-  );
+function resolveInitialSelectedPresetId(
+  presets: readonly StylePresetPublicSummary[],
+  initialSelectedPresetId?: string | null
+): StylePresetPublicSummary["id"] {
+  if (
+    initialSelectedPresetId &&
+    presets.some((preset) => preset.id === initialSelectedPresetId)
+  ) {
+    return initialSelectedPresetId;
+  }
+
+  return presets[0]?.id ?? "";
 }
 
 function StyleReferencePanel({
@@ -193,14 +199,20 @@ function StyleResultPanel({
   placeholder,
   resultImageUrl,
   resultImageAlt,
+  aspectRatio,
   action,
+  onResultImageLoad,
 }: {
   title: string;
   placeholder: string;
   resultImageUrl: string | null;
   resultImageAlt: string;
+  aspectRatio: number;
   action?: ReactNode;
+  onResultImageLoad?: (imageAspectRatio: number | null) => void;
 }) {
+  const desktopMaxWidthPx = Math.min(460, Math.round(550 * aspectRatio));
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -208,26 +220,45 @@ function StyleResultPanel({
         {action ?? null}
       </div>
       <Card
-        className={`overflow-hidden p-0 ${
-          resultImageUrl
-            ? "w-full md:w-fit md:max-w-[460px]"
-            : "w-full max-w-[460px]"
-        }`}
+        data-testid="style-result-card"
+        className="w-full max-w-[340px] overflow-hidden p-0 sm:max-w-[420px] md:max-w-[var(--style-result-desktop-max-width)]"
+        style={
+          {
+            "--style-result-desktop-max-width": `${desktopMaxWidthPx}px`,
+          } as CSSProperties
+        }
       >
-        {resultImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resultImageUrl}
-            alt={resultImageAlt}
-            className="block w-full h-auto md:w-auto md:max-w-[460px] md:max-h-[550px]"
-          />
-        ) : (
-          <div className="relative flex h-[320px] items-center justify-center bg-slate-100 sm:h-[420px]">
-            <p className="px-4 text-center text-sm text-slate-500">
-              {placeholder}
-            </p>
-          </div>
-        )}
+        <div
+          data-testid="style-result-shell"
+          className="relative w-full bg-slate-100"
+          style={{ aspectRatio: String(aspectRatio) }}
+        >
+          {resultImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resultImageUrl}
+              alt={resultImageAlt}
+              className="absolute inset-0 h-full w-full object-contain"
+              onLoad={(event) => {
+                const imageAspectRatio =
+                  event.currentTarget.naturalWidth > 0 &&
+                  event.currentTarget.naturalHeight > 0
+                    ? event.currentTarget.naturalWidth /
+                      event.currentTarget.naturalHeight
+                    : null;
+
+                onResultImageLoad?.(imageAspectRatio);
+              }}
+            />
+          ) : null}
+          {!resultImageUrl ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="px-4 text-center text-sm text-slate-500">
+                {placeholder}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </Card>
     </section>
   );
@@ -239,12 +270,6 @@ function isMobileDevice(): boolean {
   }
 
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-function buildStyleResultFileName(mimeType: string): string {
-  const extension = getExtensionFromMimeType(mimeType);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `one-tap-style-${timestamp}.${extension}`;
 }
 
 async function fetchStyleRateLimitStatus(): Promise<StyleRateLimitStatusState | null> {
@@ -300,13 +325,17 @@ function StyleResultDownloadButton({
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
-  const downloadBlob = async () => {
+  const downloadResponse = async () => {
     const response = await fetch(imageUrl, { mode: "cors" });
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(failedMessage);
+    }
+
     if (!response.ok) {
       throw new Error(failedMessage);
     }
 
-    return response.blob();
+    return response;
   };
 
   const triggerDownload = (blob: Blob, fileName: string) => {
@@ -330,20 +359,55 @@ function StyleResultDownloadButton({
 
     setIsDownloading(true);
     try {
-      const blob = await downloadBlob();
-      const mimeType = blob.type || "image/png";
-      const fileName = buildStyleResultFileName(mimeType);
+      const response = await downloadResponse();
+      const blob = await response.blob();
+      const mimeType =
+        blob.type || response.headers.get("content-type") || "image/png";
+      const fileName = determineFileName(response, imageUrl, styleId, mimeType);
+
+      triggerDownload(blob, fileName);
+      toast({
+        title: successTitle,
+        description: successDescription,
+      });
+      void recordStyleUsageClientEvent({
+        eventType: "download",
+        styleId,
+      }).catch(() => {
+        // Usage tracking must not block the successful download flow.
+      });
+    } catch (error) {
+      console.error("Style result download error:", error);
+      toast({
+        title: error instanceof Error ? error.message : failedMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadMobile = async () => {
+    if (isDownloading) {
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const response = await downloadResponse();
+      const blob = await response.blob();
+      const mimeType =
+        blob.type || response.headers.get("content-type") || "image/png";
+      const fileName = determineFileName(response, imageUrl, styleId, mimeType);
+      const file = new File([blob], fileName, { type: mimeType });
 
       if (
-        isMobileDevice() &&
         typeof navigator !== "undefined" &&
         navigator.canShare &&
-        navigator.canShare({
-          files: [new File([blob], fileName, { type: mimeType })],
-        })
+        navigator.canShare({ files: [file] })
       ) {
         await navigator.share({
-          files: [new File([blob], fileName, { type: mimeType })],
+          files: [file],
           title: "Persta.AI",
         });
         void recordStyleUsageClientEvent({
@@ -352,19 +416,10 @@ function StyleResultDownloadButton({
         }).catch(() => {
           // Usage tracking must not block the successful share flow.
         });
-      } else {
-        triggerDownload(blob, fileName);
-        toast({
-          title: successTitle,
-          description: successDescription,
-        });
-        void recordStyleUsageClientEvent({
-          eventType: "download",
-          styleId,
-        }).catch(() => {
-          // Usage tracking must not block the successful download flow.
-        });
+        return;
       }
+
+      await handleDownload();
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : "";
       if (
@@ -372,14 +427,17 @@ function StyleResultDownloadButton({
         message.includes("user gesture") ||
         message.includes("share request")
       ) {
+        setIsDownloading(false);
         return;
       }
 
-      console.error("Style result download error:", error);
-      toast({
-        title: error instanceof Error ? error.message : failedMessage,
-        variant: "destructive",
-      });
+      console.error("Style share sheet error:", error);
+
+      try {
+        await handleDownload();
+      } catch {
+        // handleDownload already reports any fallback error.
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -391,6 +449,11 @@ function StyleResultDownloadButton({
       variant="outline"
       size="sm"
       onClick={() => {
+        if (isMobileDevice()) {
+          void handleDownloadMobile();
+          return;
+        }
+
         void handleDownload();
       }}
       disabled={isDownloading}
@@ -403,52 +466,125 @@ function StyleResultDownloadButton({
   );
 }
 
-export function StylePageClient({ presets }: StylePageClientProps) {
+export function StylePageClient({
+  presets,
+  initialAuthState,
+  initialSelectedPresetId,
+}: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
+  const coordinateT = useTranslations("coordinate");
+  const postsT = useTranslations("posts");
+  const { toast, dismiss } = useToast();
   const presetStripRef = useRef<HTMLDivElement | null>(null);
+  const generationStatusSectionRef = useRef<HTMLDivElement | null>(null);
+  const resultSectionRef = useRef<HTMLDivElement | null>(null);
+  const presetButtonRefs = useRef(
+    new Map<StylePresetPublicSummary["id"], HTMLButtonElement>()
+  );
   const [selectedPresetId, setSelectedPresetId] = useState<
     StylePresetPublicSummary["id"]
-  >(presets[0]?.id ?? "");
+  >(() => resolveInitialSelectedPresetId(presets, initialSelectedPresetId));
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
   const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
   const [queuedResultImageUrl, setQueuedResultImageUrl] = useState<string | null>(null);
+  const [resultGeneratedImageId, setResultGeneratedImageId] = useState<string | null>(null);
   const [errorState, setErrorState] = useState<StyleErrorState | null>(null);
   const [rateLimitStatus, setRateLimitStatus] =
     useState<StyleRateLimitStatusState | null>(null);
+  const [percoinBalanceState, setPercoinBalanceState] =
+    useState<StylePercoinBalanceState>({
+      balance: null,
+      isLoading: false,
+      error: null,
+    });
+  const [activeAsyncJobStatus, setActiveAsyncJobStatus] =
+    useState<AsyncGenerationStatus | null>(null);
   const [rateLimitDialogMessage, setRateLimitDialogMessage] = useState<string | null>(null);
   const [isReferenceCardCollapsed, setIsReferenceCardCollapsed] = useState(false);
   const [isResultResetDialogOpen, setIsResultResetDialogOpen] = useState(false);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isPresetStripDragging, setIsPresetStripDragging] = useState(false);
   const [resultConfirmationIntent, setResultConfirmationIntent] =
     useState<ResultConfirmationIntent>("change");
   const pendingResultResetActionRef = useRef<null | (() => void)>(null);
+  const activePollStopRef = useRef<(() => void) | null>(null);
   const hasTrackedVisitRef = useRef(false);
+  const syncedSelectedPresetParamRef = useRef<string | null>(
+    initialSelectedPresetId ?? null
+  );
   const presetDragStartXRef = useRef(0);
   const presetDragStartScrollLeftRef = useRef(0);
   const suppressPresetClickRef = useRef(false);
+  const pendingResultImageRecenterRef = useRef(false);
+  const pendingResultImageRecenterTimeoutRef = useRef<number | null>(null);
+  const resultReadyToastTimeoutRef = useRef<number | null>(null);
+  const resultReadyToastIdRef = useRef<string | null>(null);
+  const resultImageLoadedRef = useRef(false);
 
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
+  const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
+  const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
+  const isGuestDailyLimitReached =
+    rateLimitStatus?.remainingDaily === 0 && rateLimitStatus.authState === "guest";
+  const isAuthenticatedPaidOnlyMode =
+    rateLimitStatus?.remainingDaily === 0 &&
+    rateLimitStatus.authState === "authenticated";
+  const hasEnoughPercoins =
+    typeof percoinBalanceState.balance === "number" &&
+    percoinBalanceState.balance >= STYLE_PAID_GENERATION_COST;
+  const shouldDisablePaidContinuation =
+    isAuthenticatedPaidOnlyMode &&
+    (percoinBalanceState.isLoading ||
+      Boolean(percoinBalanceState.error) ||
+      !hasEnoughPercoins);
 
   const isGenerating = generationPhase !== "idle";
   const isBackgroundChangeAvailable = Boolean(selectedPreset?.hasBackgroundPrompt);
   const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
-  const isGenerateDisabled = !selectedPreset || !uploadedImage || isGenerating;
+  const isGenerateDisabled =
+    !selectedPreset ||
+    !uploadedImage ||
+    isGenerating ||
+    isGuestDailyLimitReached ||
+    shouldDisablePaidContinuation;
   const hasGeneratedResult = Boolean(resultImageUrl);
+  const activeAsyncResultImageUrl =
+    shouldUseAsyncGeneration && isGenerating
+      ? activeAsyncJobStatus?.resultImageUrl ?? null
+      : null;
+  const resultPreviewImageUrl =
+    shouldUseAsyncGeneration && isGenerating
+      ? activeAsyncJobStatus?.previewImageUrl ?? null
+      : null;
+  const displayedResultImageUrl =
+    resultImageUrl ??
+    queuedResultImageUrl ??
+    activeAsyncResultImageUrl ??
+    resultPreviewImageUrl;
+  const canPostGeneratedResult =
+    Boolean(resultImageUrl) &&
+    Boolean(resultGeneratedImageId) &&
+    effectiveAuthState === "authenticated";
   const isCompletingGeneration = generationPhase === "completing";
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
     : 1;
+  const [resultShellAspectRatio, setResultShellAspectRatio] = useState(
+    selectedPresetAspectRatio
+  );
   const remainingDailyNoticeCount =
-    rateLimitStatus?.authState === "authenticated" &&
     rateLimitStatus?.showRemainingWarning &&
-    typeof rateLimitStatus.remainingDaily === "number"
+    typeof rateLimitStatus.remainingDaily === "number" &&
+    rateLimitStatus.remainingDaily > 0
       ? rateLimitStatus.remainingDaily
       : null;
+  const shouldShowDailyLimitCard =
+    isGuestDailyLimitReached || isAuthenticatedPaidOnlyMode;
   const generationMessages = useMemo(
     () => [
       t("generationStatusMessage1"),
@@ -466,17 +602,142 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     ],
     [t]
   );
-  const {
-    activeMessage,
-    displayedMessage,
-    progress,
-    isLongWait,
-    prefersReducedMotion,
-  } = useGenerationFeedback(
+  const guestGenerationFeedback = useGenerationFeedback(
     generationPhase,
     generationMessages,
     t("generationStatusCompleteMessage")
   );
+  const asyncStageCopy = useMemo(
+    () => buildCoordinateStageCopy(coordinateT),
+    [coordinateT]
+  );
+  const asyncPreparingCopy = useMemo(
+    () => buildCoordinatePreparingCopy(coordinateT),
+    [coordinateT]
+  );
+  const asyncProgressSummary = activeAsyncJobStatus
+    ? summarizeJobProgress([
+        {
+          status: activeAsyncJobStatus.status,
+          processingStage: normalizeProcessingStage(
+            activeAsyncJobStatus.status,
+            activeAsyncJobStatus.processingStage
+          ),
+        },
+      ])
+    : {
+        totalCount: 1,
+        completedCount: 0,
+        pendingCount: 1,
+        representativeStage: "queued" as const,
+        progressPercent: 15,
+      };
+  const isAsyncStatusCard = shouldUseAsyncGeneration && isGenerating;
+  const asyncFeedbackPhase = generationPhase as CoordinateGenerationFeedbackPhase;
+  const isPreparingAsyncSubmission =
+    asyncFeedbackPhase === "running" && !activeAsyncJobStatus;
+  const asyncStatusCardStage =
+    asyncFeedbackPhase === "completing"
+      ? "completed"
+      : asyncProgressSummary.representativeStage;
+  const {
+    activeMessage: asyncStatusCardLiveMessage,
+    displayedMessage: asyncStatusCardMessage,
+    activeHint: asyncStatusCardHint,
+    prefersReducedMotion: asyncStatusCardPrefersReducedMotion,
+  } = useCoordinateGenerationFeedback(
+    isAsyncStatusCard ? asyncFeedbackPhase : "idle",
+    isPreparingAsyncSubmission
+      ? asyncPreparingCopy
+      : asyncStageCopy[asyncStatusCardStage]
+  );
+  const asyncStatusCardProgress = isCompletingGeneration
+    ? 100
+    : isPreparingAsyncSubmission
+      ? PREPARING_PROGRESS_PERCENT
+      : asyncProgressSummary.progressPercent;
+  const asyncStatusCardProgressTransitionDurationMs =
+    isPreparingAsyncSubmission
+      ? PREPARING_PROGRESS_TRANSITION_MS
+      : ASYNC_PROGRESS_TRANSITION_MS[asyncStatusCardStage];
+  const guestStatusCardMessage = guestGenerationFeedback.displayedMessage;
+  const guestStatusCardLiveMessage = guestGenerationFeedback.activeMessage;
+  const guestStatusCardProgress = guestGenerationFeedback.progress;
+  const guestStatusCardIsLongWait = guestGenerationFeedback.isLongWait;
+  const guestStatusCardPrefersReducedMotion =
+    guestGenerationFeedback.prefersReducedMotion;
+
+  const scrollSectionIntoView = (section: HTMLDivElement | null) => {
+    if (typeof section?.scrollIntoView !== "function") {
+      return;
+    }
+
+    section.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
+
+  const handleSignupCtaClick = (signupPath?: string) => {
+    void recordStyleUsageClientEvent({
+      eventType: "signup_click",
+      styleId: selectedPreset?.id ?? null,
+    }).catch(() => {
+      // Signup CTA tracking must not block navigation.
+    });
+
+    router.push(resolveStyleSignupPath(signupPath));
+  };
+
+  const clearResultReadyToastTimeout = () => {
+    if (resultReadyToastTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(resultReadyToastTimeoutRef.current);
+    resultReadyToastTimeoutRef.current = null;
+  };
+
+  const dismissResultReadyToast = () => {
+    clearResultReadyToastTimeout();
+
+    if (resultReadyToastIdRef.current) {
+      dismiss(resultReadyToastIdRef.current);
+      resultReadyToastIdRef.current = null;
+    }
+  };
+
+  const clearPendingResultImageRecenterTimeout = () => {
+    if (pendingResultImageRecenterTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(pendingResultImageRecenterTimeoutRef.current);
+    pendingResultImageRecenterTimeoutRef.current = null;
+  };
+
+  const handleResultImageLoad = (imageAspectRatio: number | null) => {
+    resultImageLoadedRef.current = true;
+
+    if (
+      typeof imageAspectRatio === "number" &&
+      Number.isFinite(imageAspectRatio) &&
+      imageAspectRatio > 0
+    ) {
+      setResultShellAspectRatio(imageAspectRatio);
+    }
+
+    if (!pendingResultImageRecenterRef.current) {
+      return;
+    }
+
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterTimeoutRef.current = window.setTimeout(() => {
+      scrollSectionIntoView(resultSectionRef.current);
+      pendingResultImageRecenterRef.current = false;
+      pendingResultImageRecenterTimeoutRef.current = null;
+    }, 0);
+  };
 
   useEffect(() => {
     if (generationPhase !== "completing" || !queuedResultImageUrl) {
@@ -493,6 +754,60 @@ export function StylePageClient({ presets }: StylePageClientProps) {
       window.clearTimeout(timeoutId);
     };
   }, [generationPhase, queuedResultImageUrl]);
+
+  useEffect(() => {
+    if (generationPhase !== "running") {
+      return;
+    }
+
+    scrollSectionIntoView(generationStatusSectionRef.current);
+  }, [generationPhase]);
+
+  useEffect(() => {
+    if (generationPhase !== "completing") {
+      return;
+    }
+
+    clearResultReadyToastTimeout();
+    resultReadyToastTimeoutRef.current = window.setTimeout(() => {
+      dismissResultReadyToast();
+      const { id } = toast({
+        title: t("resultReadyToastTitle"),
+        className: "cursor-pointer",
+        duration: 12000,
+        onClick: () => {
+          pendingResultImageRecenterRef.current =
+            !resultImageLoadedRef.current;
+          scrollSectionIntoView(resultSectionRef.current);
+          dismissResultReadyToast();
+        },
+      });
+      resultReadyToastIdRef.current = id;
+      resultReadyToastTimeoutRef.current = null;
+    }, RESULT_READY_TOAST_DELAY_MS);
+
+    return () => {
+      clearResultReadyToastTimeout();
+    };
+  }, [dismiss, generationPhase, t, toast]);
+
+  useEffect(() => {
+    return () => {
+      dismissResultReadyToast();
+      clearPendingResultImageRecenterTimeout();
+      activePollStopRef.current?.();
+      activePollStopRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (displayedResultImageUrl) {
+      return;
+    }
+
+    resultImageLoadedRef.current = false;
+    setResultShellAspectRatio(selectedPresetAspectRatio);
+  }, [displayedResultImageUrl, selectedPresetAspectRatio]);
 
   useEffect(() => {
     let isActive = true;
@@ -512,11 +827,99 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     };
   }, []);
 
+  const refreshPercoinBalance = async () => {
+    if (effectiveAuthState !== "authenticated") {
+      setPercoinBalanceState({
+        balance: null,
+        isLoading: false,
+        error: null,
+      });
+      return;
+    }
+
+    setPercoinBalanceState((previous) => ({
+      balance: previous.balance,
+      isLoading: true,
+      error: null,
+    }));
+
+    try {
+      const payload = await fetchPercoinBalance({
+        fetchBalanceFailed: t("percoinBalanceFetchFailed"),
+      });
+      setPercoinBalanceState({
+        balance: payload.balance,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      setPercoinBalanceState({
+        balance: null,
+        isLoading: false,
+        error: error instanceof Error ? error.message : t("percoinBalanceFetchFailed"),
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (effectiveAuthState !== "authenticated") {
+      setPercoinBalanceState({
+        balance: null,
+        isLoading: false,
+        error: null,
+      });
+      return;
+    }
+
+    void refreshPercoinBalance();
+  }, [effectiveAuthState, isAuthenticatedPaidOnlyMode]);
+
   useEffect(() => {
     if (!selectedPreset?.hasBackgroundPrompt && backgroundChange) {
       setBackgroundChange(false);
     }
   }, [backgroundChange, selectedPreset?.hasBackgroundPrompt]);
+
+  useEffect(() => {
+    if (!selectedPresetId) {
+      return;
+    }
+
+    const selectedButton = presetButtonRefs.current.get(selectedPresetId);
+    if (typeof selectedButton?.scrollIntoView !== "function") {
+      return;
+    }
+
+    selectedButton.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [selectedPresetId]);
+
+  useEffect(() => {
+    const hasValidPresetParam =
+      typeof initialSelectedPresetId === "string" &&
+      presets.some((preset) => preset.id === initialSelectedPresetId);
+
+    if (
+      hasValidPresetParam &&
+      syncedSelectedPresetParamRef.current !== initialSelectedPresetId
+    ) {
+      syncedSelectedPresetParamRef.current = initialSelectedPresetId;
+      setSelectedPresetId(initialSelectedPresetId);
+      return;
+    }
+
+    if (presets.some((preset) => preset.id === selectedPresetId)) {
+      return;
+    }
+
+    syncedSelectedPresetParamRef.current = initialSelectedPresetId ?? null;
+    setSelectedPresetId(
+      resolveInitialSelectedPresetId(presets, initialSelectedPresetId)
+    );
+  }, [initialSelectedPresetId, presets, selectedPresetId]);
 
   const refreshRateLimitStatus = () => {
     void fetchStyleRateLimitStatus()
@@ -633,6 +1036,17 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     suppressPresetClickRef.current = false;
   };
 
+  const buildPresetButtonRef =
+    (presetId: StylePresetPublicSummary["id"]) =>
+    (node: HTMLButtonElement | null) => {
+      if (node) {
+        presetButtonRefs.current.set(presetId, node);
+        return;
+      }
+
+      presetButtonRefs.current.delete(presetId);
+    };
+
   const handleUpload = (image: UploadedImage) => {
     runAfterResultResetCheck(() => {
       setUploadedImage(image);
@@ -673,11 +1087,36 @@ export function StylePageClient({ presets }: StylePageClientProps) {
     });
   };
 
-  const generateImage = async () => {
+  const stopActivePolling = () => {
+    activePollStopRef.current?.();
+    activePollStopRef.current = null;
+  };
+
+  const handleGenerationError = (message: string) => {
+    stopActivePolling();
+    dismissResultReadyToast();
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterRef.current = false;
+    setActiveAsyncJobStatus(null);
+    setQueuedResultImageUrl(null);
+    setResultGeneratedImageId(null);
+    setErrorState({ message });
+    setGenerationPhase("idle");
+  };
+
+  const generateImageWithSynchronousPreview = async () => {
     if (!selectedPreset || !uploadedImage || isGenerating) {
       return;
     }
 
+    stopActivePolling();
+    dismissResultReadyToast();
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterRef.current = false;
+    setActiveAsyncJobStatus(null);
+    setQueuedResultImageUrl(null);
+    setResultGeneratedImageId(null);
+    setResultImageUrl(null);
     setGenerationPhase("running");
     setErrorState(null);
 
@@ -711,6 +1150,85 @@ export function StylePageClient({ presets }: StylePageClientProps) {
           setRateLimitDialogMessage(payload?.error || t("guestRateLimitShort"));
           setGenerationPhase("idle");
           refreshRateLimitStatus();
+          void refreshPercoinBalance();
+          return;
+        }
+
+        setErrorState({
+          message: payload?.error || t("generationFailed"),
+          showSignupCta: payload?.signupCta === true,
+          signupPath:
+            typeof payload?.signupPath === "string" ? payload.signupPath : undefined,
+        });
+        setGenerationPhase("idle");
+        refreshRateLimitStatus();
+        void refreshPercoinBalance();
+        return;
+      }
+
+      if (!payload?.imageDataUrl || typeof payload.imageDataUrl !== "string") {
+        throw new Error(t("unknownError"));
+      }
+
+      setResultImageUrl(payload.imageDataUrl);
+      setQueuedResultImageUrl(payload.imageDataUrl);
+      setGenerationPhase("completing");
+      refreshRateLimitStatus();
+    } catch (error) {
+      setQueuedResultImageUrl(null);
+      setErrorState({
+        message: error instanceof Error ? error.message : t("unknownError"),
+      });
+      setGenerationPhase("idle");
+    }
+  };
+
+  const generateImageWithAsyncJob = async () => {
+    if (!selectedPreset || !uploadedImage || isGenerating) {
+      return;
+    }
+
+    stopActivePolling();
+    dismissResultReadyToast();
+    clearPendingResultImageRecenterTimeout();
+    pendingResultImageRecenterRef.current = false;
+    setActiveAsyncJobStatus(null);
+    setQueuedResultImageUrl(null);
+    setResultGeneratedImageId(null);
+    setResultImageUrl(null);
+    setGenerationPhase("running");
+    setErrorState(null);
+
+    try {
+      const normalizedFile = await normalizeSourceImage(uploadedImage.file);
+
+      const formData = new FormData();
+      formData.set("styleId", selectedPreset.id);
+      formData.set("uploadImage", normalizedFile);
+      formData.set("sourceImageType", sourceImageType);
+      formData.set("backgroundChange", backgroundChange ? "true" : "false");
+
+      const response = await fetch("/style/generate-async", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            error?: string;
+            jobId?: string;
+            status?: AsyncGenerationStatus["status"];
+            signupCta?: boolean;
+            signupPath?: string;
+            showRateLimitDialog?: boolean;
+          }
+        | null;
+
+      if (!response.ok) {
+        if (payload?.showRateLimitDialog === true) {
+          setRateLimitDialogMessage(payload?.error || t("guestRateLimitShort"));
+          setGenerationPhase("idle");
+          refreshRateLimitStatus();
           return;
         }
 
@@ -725,20 +1243,86 @@ export function StylePageClient({ presets }: StylePageClientProps) {
         return;
       }
 
-      if (!payload?.imageDataUrl || typeof payload.imageDataUrl !== "string") {
+      if (!payload?.jobId || typeof payload.jobId !== "string") {
         throw new Error(t("unknownError"));
       }
 
-      setQueuedResultImageUrl(payload.imageDataUrl);
+      const initialStatus =
+        payload.status === "queued" ||
+        payload.status === "processing" ||
+        payload.status === "succeeded" ||
+        payload.status === "failed"
+          ? payload.status
+          : "queued";
+      setActiveAsyncJobStatus({
+        id: payload.jobId,
+        status: initialStatus,
+        processingStage: "queued",
+        previewImageUrl: null,
+        resultImageUrl: null,
+        errorMessage: null,
+        generatedImageId: null,
+      });
+
+      const latestKnownStatus = await getGenerationStatus(payload.jobId).catch(() => ({
+        id: payload.jobId as string,
+        status: initialStatus,
+        processingStage: "queued" as const,
+        previewImageUrl: null,
+        resultImageUrl: null,
+        errorMessage: null,
+        generatedImageId: null,
+      }));
+      setActiveAsyncJobStatus(latestKnownStatus);
+
+      const { promise, stop } = pollGenerationStatus(payload.jobId, {
+        interval: getStyleAsyncPollingIntervalMs,
+        onStatusUpdate: (status) => {
+          setActiveAsyncJobStatus(status);
+        },
+      });
+      activePollStopRef.current = stop;
+
+      const finalStatus = await promise;
+      stopActivePolling();
+      setActiveAsyncJobStatus(finalStatus);
+
+      if (finalStatus.status !== "succeeded" || !finalStatus.resultImageUrl) {
+        handleGenerationError(
+          finalStatus.errorMessage || t("generationFailed")
+        );
+        refreshRateLimitStatus();
+        void refreshPercoinBalance();
+        return;
+      }
+
+      setResultImageUrl(finalStatus.resultImageUrl);
+      setQueuedResultImageUrl(finalStatus.resultImageUrl);
+      setResultGeneratedImageId(finalStatus.generatedImageId ?? null);
       setGenerationPhase("completing");
       refreshRateLimitStatus();
-    } catch (error) {
-      setQueuedResultImageUrl(null);
-      setErrorState({
-        message: error instanceof Error ? error.message : t("unknownError"),
+      void refreshPercoinBalance();
+      void recordStyleUsageClientEvent({
+        eventType: "generate",
+        styleId: selectedPreset.id,
+      }).catch(() => {
+        // Tracking failures should not affect the page UX.
       });
-      setGenerationPhase("idle");
+    } catch (error) {
+      handleGenerationError(
+        error instanceof Error ? error.message : t("unknownError")
+      );
+      void refreshPercoinBalance();
     }
+  };
+
+  const generateImage = async () => {
+    if (shouldUseAsyncGeneration) {
+      await generateImageWithAsyncJob();
+      return;
+    }
+
+    await generateImageWithSynchronousPreview();
   };
 
   const handleGenerate = () => {
@@ -749,22 +1333,41 @@ export function StylePageClient({ presets }: StylePageClientProps) {
 
   const resultConfirmationTitle =
     resultConfirmationIntent === "regenerate"
-      ? t("resultReplaceConfirmTitle")
-      : t("resultResetConfirmTitle");
+      ? effectiveAuthState === "authenticated"
+        ? t("resultReplaceConfirmTitleAuthenticated")
+        : t("resultReplaceConfirmTitle")
+      : effectiveAuthState === "authenticated"
+        ? t("resultResetConfirmTitleAuthenticated")
+        : t("resultResetConfirmTitle");
   const resultConfirmationDescription =
     resultConfirmationIntent === "regenerate"
-      ? t("resultReplaceConfirmDescription")
-      : t("resultResetConfirmDescription");
+      ? effectiveAuthState === "authenticated"
+        ? t("resultReplaceConfirmDescriptionAuthenticated")
+        : t("resultReplaceConfirmDescription")
+      : effectiveAuthState === "authenticated"
+        ? t("resultResetConfirmDescriptionAuthenticated")
+        : t("resultResetConfirmDescription");
   const resultConfirmationActionLabel =
     resultConfirmationIntent === "regenerate"
-      ? t("resultReplaceConfirmAction")
-      : t("resultResetConfirmAction");
+      ? effectiveAuthState === "authenticated"
+        ? t("resultReplaceConfirmActionAuthenticated")
+        : t("resultReplaceConfirmAction")
+      : effectiveAuthState === "authenticated"
+        ? t("resultResetConfirmActionAuthenticated")
+        : t("resultResetConfirmAction");
   const generationStatusTitle = isCompletingGeneration
     ? t("generationStatusCompleteTitle")
     : t("generationStatusTitle");
   const generationStatusHint = isCompletingGeneration
     ? t("generationStatusCompleteHint")
     : t("generationStatusHint");
+  const generateButtonLabel = isGenerating
+    ? t("generatingButton")
+    : isAuthenticatedPaidOnlyMode
+      ? t("paidGenerateButton", {
+          cost: STYLE_PAID_GENERATION_COST,
+        })
+      : t("generateButton");
 
   useEffect(() => {
     if (!selectedPreset || hasTrackedVisitRef.current) {
@@ -802,11 +1405,12 @@ export function StylePageClient({ presets }: StylePageClientProps) {
           onDragStart={(event) => event.preventDefault()}
         >
           {presets.map((preset) => (
-            <StylePresetCard
+            <StylePresetPreviewCard
               key={preset.id}
               preset={preset}
               isSelected={preset.id === selectedPreset?.id}
-              onSelect={handlePresetSelect}
+              onClick={() => handlePresetSelect(preset.id)}
+              buttonRef={buildPresetButtonRef(preset.id)}
               alt={t("styleCardAlt", { name: preset.title })}
               disabled={isGenerating}
             />
@@ -876,7 +1480,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
             {selectedPreset ? (
               <StyleReferencePanel
                 label={t("styleLabel")}
-                imageSrc={buildPresetImageSrc(selectedPreset)}
+                imageSrc={selectedPreset.thumbnailImageUrl}
                 imageAlt={t("styleImageAlt")}
                 className={isReferenceCardCollapsed ? "min-w-0 space-y-1" : "min-w-0 space-y-3"}
                 collapsed={isReferenceCardCollapsed}
@@ -993,7 +1597,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
               onClick={handleGenerate}
             >
               <Sparkles className="mr-2 h-5 w-5" />
-              {isGenerating ? t("generatingButton") : t("generateButton")}
+              {generateButtonLabel}
             </Button>
             <div className="space-y-1 text-xs leading-5 text-slate-500">
               <p>{t("generateHint")}</p>
@@ -1011,18 +1615,107 @@ export function StylePageClient({ presets }: StylePageClientProps) {
               </div>
             ) : null}
 
+            {shouldShowDailyLimitCard ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-medium text-red-900">
+                  {rateLimitStatus?.authState === "guest"
+                    ? t("guestRateLimitDaily")
+                    : t("authenticatedRateLimitDaily")}
+                </p>
+                {rateLimitStatus?.authState === "guest" ? (
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-red-800">
+                      {t("guestRateLimitSignupHint")}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => handleSignupCtaClick()}
+                    >
+                      {t("guestRateLimitSignupAction")}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs leading-5 text-red-800">
+                      {t("authenticatedPaidContinueHint", {
+                        cost: STYLE_PAID_GENERATION_COST,
+                      })}
+                    </p>
+                    <div className="rounded-lg border border-red-100 bg-white/70 px-3 py-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-red-700">
+                        {t("percoinBalanceLabel")}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-red-900">
+                        {percoinBalanceState.isLoading
+                          ? t("percoinBalanceLoading")
+                          : typeof percoinBalanceState.balance === "number"
+                            ? t("percoinBalanceValue", {
+                                balance: percoinBalanceState.balance.toLocaleString(),
+                              })
+                            : t("percoinBalanceUnavailable")}
+                      </p>
+                    </div>
+                    {percoinBalanceState.error ? (
+                      <p className="text-xs leading-5 text-red-800">
+                        {t("percoinBalanceFetchFailed")}
+                      </p>
+                    ) : null}
+                    {!percoinBalanceState.isLoading &&
+                    !percoinBalanceState.error &&
+                    !hasEnoughPercoins ? (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs leading-5 text-red-800">
+                          {t("authenticatedPaidInsufficientBalance", {
+                            cost: STYLE_PAID_GENERATION_COST,
+                          })}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          onClick={() => router.push(getPercoinPurchaseUrl())}
+                        >
+                          {t("percoinPurchaseAction")}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             {isGenerating ? (
-              <StyleGenerationStatusCard
-                title={generationStatusTitle}
-                message={displayedMessage}
-                liveMessage={activeMessage}
-                hint={generationStatusHint}
-                slowHint={t("generationStatusSlowHint")}
-                progress={progress}
-                isLongWait={isLongWait}
-                isComplete={isCompletingGeneration}
-                prefersReducedMotion={prefersReducedMotion}
-              />
+              <div ref={generationStatusSectionRef}>
+                {isAsyncStatusCard ? (
+                  <GenerationStatusCard
+                    title={generationStatusTitle}
+                    message={asyncStatusCardMessage}
+                    liveMessage={asyncStatusCardLiveMessage}
+                    footerText={asyncStatusCardHint}
+                    progress={asyncStatusCardProgress}
+                    progressTransitionDurationMs={
+                      asyncStatusCardProgressTransitionDurationMs
+                    }
+                    animateFromZeroOnMount
+                    isComplete={isCompletingGeneration}
+                    prefersReducedMotion={asyncStatusCardPrefersReducedMotion}
+                  />
+                ) : (
+                  <StyleGenerationStatusCard
+                    title={generationStatusTitle}
+                    message={guestStatusCardMessage}
+                    liveMessage={guestStatusCardLiveMessage}
+                    hint={generationStatusHint}
+                    slowHint={t("generationStatusSlowHint")}
+                    progress={guestStatusCardProgress}
+                    isLongWait={guestStatusCardIsLongWait}
+                    isComplete={isCompletingGeneration}
+                    prefersReducedMotion={guestStatusCardPrefersReducedMotion}
+                  />
+                )}
+              </div>
             ) : null}
           </div>
         </Card>
@@ -1040,12 +1733,7 @@ export function StylePageClient({ presets }: StylePageClientProps) {
                 type="button"
                 size="sm"
                 className="w-full sm:w-auto"
-                onClick={() =>
-                  router.push(
-                    errorState.signupPath ??
-                      `/signup?${new URLSearchParams({ next: "/style" }).toString()}`
-                  )
-                }
+                onClick={() => handleSignupCtaClick(errorState.signupPath)}
               >
                 {t("guestRateLimitSignupAction")}
               </Button>
@@ -1054,25 +1742,51 @@ export function StylePageClient({ presets }: StylePageClientProps) {
         </div>
       ) : null}
 
-      <StyleResultPanel
-        title={t("resultsTitle")}
-        placeholder={t("resultPlaceholder")}
-        resultImageUrl={resultImageUrl}
-        resultImageAlt={t("resultImageAlt")}
-        action={
-          resultImageUrl ? (
-            <StyleResultDownloadButton
-              imageUrl={resultImageUrl}
-              styleId={selectedPreset?.id ?? "unknown"}
-              label={t("downloadAction")}
-              ariaLabel={t("downloadAriaLabel")}
-              successTitle={t("downloadSuccessTitle")}
-              successDescription={t("downloadSuccessDescription")}
-              failedMessage={t("downloadFailed")}
-            />
-          ) : null
-        }
-      />
+      {resultGeneratedImageId ? (
+        <PostModal
+          open={isPostModalOpen}
+          onOpenChange={setIsPostModalOpen}
+          imageId={resultGeneratedImageId}
+        />
+      ) : null}
+
+      <div ref={resultSectionRef}>
+        <StyleResultPanel
+          title={t("resultsTitle")}
+      placeholder={t("resultPlaceholder")}
+      resultImageUrl={displayedResultImageUrl}
+      resultImageAlt={t("resultImageAlt")}
+      aspectRatio={resultShellAspectRatio}
+      onResultImageLoad={handleResultImageLoad}
+      action={
+            displayedResultImageUrl ? (
+              <div className="flex items-center gap-2">
+                <StyleResultDownloadButton
+                  imageUrl={resultImageUrl ?? displayedResultImageUrl}
+                  styleId={selectedPreset?.id ?? "unknown"}
+                  label={t("downloadAction")}
+                  ariaLabel={t("downloadAriaLabel")}
+                  successTitle={t("downloadSuccessTitle")}
+                  successDescription={t("downloadSuccessDescription")}
+                  failedMessage={t("downloadFailed")}
+                />
+                {canPostGeneratedResult ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPostModalOpen(true)}
+                    className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    <span>{postsT("postSubmit")}</span>
+                  </Button>
+                ) : null}
+              </div>
+            ) : null
+          }
+        />
+      </div>
       <p className="text-xs leading-5 text-slate-500">
         {t("resultSaveHint")}
       </p>

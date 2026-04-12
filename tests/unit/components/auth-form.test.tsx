@@ -3,10 +3,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AuthForm } from "@/features/auth/components/AuthForm";
 import { signIn, signInWithOAuth, signUp } from "@/features/auth/lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
+import { jaMessages } from "@/messages/ja";
 
 jest.mock("next-intl", () => {
-  const { jaMessages } = require("@/messages/ja");
-
   return {
     useTranslations: (namespace?: string) => {
       const table =
@@ -102,6 +101,7 @@ describe("AuthForm unit tests from EARS specs", () => {
   let refreshMock: jest.Mock;
   let toastMock: jest.Mock;
   let referralCode: string | null;
+  let signupSource: string | null;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -110,13 +110,22 @@ describe("AuthForm unit tests from EARS specs", () => {
     refreshMock = jest.fn();
     toastMock = jest.fn();
     referralCode = null;
+    signupSource = null;
 
     useRouterMock.mockReturnValue({
       push: pushMock,
       refresh: refreshMock,
     } as unknown as ReturnType<typeof useRouter>);
     useSearchParamsMock.mockReturnValue({
-      get: (key: string) => (key === "ref" ? referralCode : null),
+      get: (key: string) => {
+        if (key === "ref") {
+          return referralCode;
+        }
+        if (key === "signup_source") {
+          return signupSource;
+        }
+        return null;
+      },
     } as unknown as ReturnType<typeof useSearchParams>);
     useToastMock.mockReturnValue({
       toast: toastMock,
@@ -146,7 +155,12 @@ describe("AuthForm unit tests from EARS specs", () => {
       // Assert
       // ============================================================
       await waitFor(() => {
-        expect(signUpMock).toHaveBeenCalledWith(validEmail, validPassword, undefined);
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          null
+        );
       });
       expect(toastMock).toHaveBeenCalledTimes(1);
       expect(toastMock.mock.calls[0]?.[0]).toEqual(
@@ -177,7 +191,8 @@ describe("AuthForm unit tests from EARS specs", () => {
         expect(signUpMock).toHaveBeenCalledWith(
           validEmail,
           validPassword,
-          "REF-CODE-001"
+          "REF-CODE-001",
+          null
         );
       });
       expect(pushMock).toHaveBeenCalledWith("/login");
@@ -194,7 +209,42 @@ describe("AuthForm unit tests from EARS specs", () => {
       submitForm(container);
 
       await waitFor(() => {
-        expect(signUpMock).toHaveBeenCalledWith(validEmail, validPassword, undefined);
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          null
+        );
+      });
+      expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
+    });
+
+    test("handleSubmit_signup_source付き新規登録の場合_signUpへsignup sourceを渡す", async () => {
+      signupSource = "style";
+      useSearchParamsMock.mockReturnValue({
+        get: (key: string) => {
+          if (key === "signup_source") {
+            return signupSource;
+          }
+          if (key === "next") {
+            return "/style";
+          }
+          return null;
+        },
+      } as unknown as ReturnType<typeof useSearchParams>);
+
+      const { container } = render(<AuthForm mode="signup" />);
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          "style"
+        );
       });
       expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
     });
@@ -489,7 +539,8 @@ describe("AuthForm unit tests from EARS specs", () => {
         expect(signInWithOAuthMock).toHaveBeenCalledWith(
           "google",
           "/my-page",
-          "REF-OAUTH-001"
+          "REF-OAUTH-001",
+          null
         );
       });
       expect(screen.getByRole("button", { name: "Googleで続ける" })).toBeDisabled();
@@ -535,6 +586,26 @@ describe("AuthForm unit tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(await screen.findByText("OAuth認証に失敗しました")).toBeInTheDocument();
+    });
+
+    test("handleOAuthSignIn_signup source付きの場合_OAuthにsourceを渡す", async () => {
+      signupSource = "style";
+      useSearchParamsMock.mockReturnValue({
+        get: (key: string) => (key === "signup_source" ? signupSource : null),
+      } as unknown as ReturnType<typeof useSearchParams>);
+
+      render(<AuthForm mode="signin" redirectTo="/style" />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Googleで続ける" }));
+
+      await waitFor(() => {
+        expect(signInWithOAuthMock).toHaveBeenCalledWith(
+          "google",
+          "/style",
+          undefined,
+          "style"
+        );
+      });
     });
   });
 

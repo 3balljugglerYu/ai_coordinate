@@ -921,6 +921,13 @@ export const enMessages = {
     addImageAction: "Add image",
     styleImageAlt: "Selected style image",
     styleCardAlt: "{name} style card",
+    detailPresetLabel: "Generated with One-Tap Style",
+    detailPresetCardAlt: "{name} style card",
+    detailReuseConfirmTitle: "Use this outfit?",
+    detailReuseConfirmDescription:
+      "Selecting yes will open One-Tap Style with this card preselected.",
+    detailReuseConfirmCancel: "Cancel",
+    detailReuseConfirmAction: "Yes",
     uploadImageLabel: "Uploaded image",
     authRequired: "Authentication is required.",
     sourceImageTypeLabel: "Upload image type",
@@ -944,7 +951,7 @@ export const enMessages = {
     generateRetryHint:
       "If the result does not come out well, try again. If it still fails, please let us know.",
     usageLimitHint:
-      "Guest users can use this up to 3 times per day, and signed-in users up to 6 times per day.",
+      "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day.",
     generateButton: "Start Styling",
     generatingButton: "Generating...",
     // Status card heading
@@ -972,6 +979,7 @@ export const enMessages = {
     generationStatusCompleteTitle: "Styling is complete.",
     generationStatusCompleteMessage: "The reveal is coming up in a moment!",
     generationStatusCompleteHint: "",
+    resultReadyToastTitle: "The outfit change is ready! Want to check it out?",
     resultsTitle: "Results",
     resultImageAlt: "Generated result",
     resultPlaceholder: "Your generated image will appear here.",
@@ -987,10 +995,20 @@ export const enMessages = {
       "Changing the style, your character image, or the upload image type will remove the generated result. Do you want to continue?",
     resultResetConfirmCancel: "Keep result",
     resultResetConfirmAction: "Continue",
+    resultResetConfirmTitleAuthenticated:
+      "This will switch the result shown on this screen",
+    resultResetConfirmDescriptionAuthenticated:
+      "The result shown here will change, but saved images remain available from My Page. Do you want to continue?",
+    resultResetConfirmActionAuthenticated: "Continue",
     resultReplaceConfirmTitle: "This will replace the current result",
     resultReplaceConfirmDescription:
       "Running Start Styling again will replace the generated result with a new image. Do you want to continue?",
     resultReplaceConfirmAction: "Generate again",
+    resultReplaceConfirmTitleAuthenticated:
+      "This will replace the result shown on this screen",
+    resultReplaceConfirmDescriptionAuthenticated:
+      "The result shown here will be replaced with a new image. Saved images remain available from My Page. Do you want to continue?",
+    resultReplaceConfirmActionAuthenticated: "Generate again",
     invalidStylePreset: "The selected style is invalid.",
     invalidUsageEvent: "The usage event is invalid.",
     guestRateLimitCheckFailed:
@@ -1000,10 +1018,22 @@ export const enMessages = {
     guestRateLimitDaily:
       "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
     authenticatedRateLimitDaily:
-      "You have reached today's generation limit. Please try again tomorrow.",
+      "You have reached today's free generation limit.",
+    authenticatedPaidContinueHint:
+      "You can keep generating for {cost} Percoins per image.",
+    authenticatedPaidInsufficientBalance:
+      "Your balance is too low. Prepare at least {cost} Percoins to continue.",
     guestRateLimitSignupHint:
       "Create an account to keep going right away.",
     guestRateLimitSignupAction: "Sign up to continue",
+    paidGenerateButton: "Continue for {cost} Percoins",
+    percoinBalanceLabel: "Current Percoin balance",
+    percoinBalanceLoading: "Checking your Percoin balance...",
+    percoinBalanceUnavailable: "We could not load your balance.",
+    percoinBalanceValue: "{balance} Percoins",
+    percoinBalanceFetchFailed:
+      "We could not retrieve your Percoin balance. Please try again in a little while.",
+    percoinPurchaseAction: "Buy Percoins",
     remainingDailyNotice: "You have {count} generations left for today.",
     rateLimitDialogTitle: "Traffic is high right now",
     rateLimitDialogClose: "Close",

@@ -69,7 +69,13 @@ export const generationRequestSchema = z.object({
   backgroundChange: z.boolean().optional(),
   count: z.number().int().min(1).max(4).optional().default(1),
   generationType: z
-    .enum(['coordinate', 'specified_coordinate', 'full_body', 'chibi'])
+    .enum([
+      'coordinate',
+      'specified_coordinate',
+      'full_body',
+      'chibi',
+      'one_tap_style',
+    ])
     .optional()
     .default('coordinate'),
   model: z

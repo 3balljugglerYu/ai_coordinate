@@ -13,6 +13,8 @@ import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-
 const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
   "visit",
   "download",
+  "generate",
+  "signup_click",
 ]);
 
 interface StyleEventsRouteDependencies {

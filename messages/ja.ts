@@ -871,6 +871,13 @@ export const jaMessages = {
     addImageAction: "画像を追加",
     styleImageAlt: "選択中のスタイル画像",
     styleCardAlt: "{name} のスタイルカード",
+    detailPresetLabel: "ワンタップスタイルで生成",
+    detailPresetCardAlt: "{name} のスタイルカード",
+    detailReuseConfirmTitle: "このコーデを利用しますか？",
+    detailReuseConfirmDescription:
+      "「はい」を選択するとワンタップスタイル画面に移動し、このスタイルが選択された状態になります。",
+    detailReuseConfirmCancel: "キャンセル",
+    detailReuseConfirmAction: "はい",
     uploadImageLabel: "アップロード画像",
     authRequired: "認証が必要です。",
     sourceImageTypeLabel: "アップロード画像のタイプ",
@@ -894,7 +901,7 @@ export const jaMessages = {
     generateRetryHint:
       "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
     usageLimitHint:
-      "未ログインユーザーは1日3回、ログインユーザーは1日6回まで利用できます。",
+      "未ログインユーザーは1日2回、ログインユーザーは1日5回まで利用できます。",
     generateButton: "Start Styling",
     generatingButton: "生成中...",
     // ステータスカードの見出し
@@ -920,6 +927,7 @@ export const jaMessages = {
     generationStatusCompleteTitle: "スタイリングが完了しました",
     generationStatusCompleteMessage: "まもなくお披露目です！",
     generationStatusCompleteHint: "",
+    resultReadyToastTitle: "お着替えが完了しました！確認しますか？",
     resultsTitle: "生成結果",
     resultImageAlt: "生成結果",
     resultPlaceholder: "生成した画像がここに表示されます",
@@ -935,10 +943,18 @@ export const jaMessages = {
       "生成された画像が必要な場合は、必ずダウンロードをしてください。\n生成した画像を削除しても大丈夫ですか？",
     resultResetConfirmCancel: "戻る",
     resultResetConfirmAction: "削除する",
+    resultResetConfirmTitleAuthenticated: "画面上の生成結果を切り替えます",
+    resultResetConfirmDescriptionAuthenticated:
+      "この画面の生成結果は切り替わりますが、保存済みの画像はマイページから確認できます。このまま変更しますか？",
+    resultResetConfirmActionAuthenticated: "変更する",
     resultReplaceConfirmTitle: "現在の生成結果を上書きします",
     resultReplaceConfirmDescription:
       "Start Styling を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
     resultReplaceConfirmAction: "再生成する",
+    resultReplaceConfirmTitleAuthenticated: "現在の生成結果を上書きします",
+    resultReplaceConfirmDescriptionAuthenticated:
+      "この画面の生成結果は新しい画像で上書きされます。保存済みの画像はマイページから確認できます。このまま続けますか？",
+    resultReplaceConfirmActionAuthenticated: "再生成する",
     invalidStylePreset: "無効なスタイルです。",
     invalidUsageEvent: "無効な利用イベントです。",
     guestRateLimitCheckFailed: "利用回数の確認に失敗しました。少し時間をおいて再試行してください。",
@@ -947,10 +963,22 @@ export const jaMessages = {
     guestRateLimitDaily:
       "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
     authenticatedRateLimitDaily:
-      "本日の生成回数が上限に達しました。明日以降に再度お試しください。",
+      "本日の無料分の生成回数が上限に達しました。",
+    authenticatedPaidContinueHint:
+      "引き続き、1回{cost}ペルコインで生成できます。",
+    authenticatedPaidInsufficientBalance:
+      "残高が不足しています。{cost}ペルコイン以上を用意してから続けてください。",
     guestRateLimitSignupHint:
       "新規登録すると、このまま続きをお試しいただけます。",
     guestRateLimitSignupAction: "新規登録して続ける",
+    paidGenerateButton: "{cost}ペルコインで続ける",
+    percoinBalanceLabel: "現在のペルコイン残高",
+    percoinBalanceLoading: "ペルコイン残高を確認しています...",
+    percoinBalanceUnavailable: "残高を確認できませんでした",
+    percoinBalanceValue: "{balance}ペルコイン",
+    percoinBalanceFetchFailed:
+      "ペルコイン残高の取得に失敗しました。時間をおいて再度お試しください。",
+    percoinPurchaseAction: "ペルコインを購入する",
     remainingDailyNotice: "本日の残り生成回数は{count}回です。",
     rateLimitDialogTitle: "ただいまアクセスが集中しています",
     rateLimitDialogClose: "閉じる",

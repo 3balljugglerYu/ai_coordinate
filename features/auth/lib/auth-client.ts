@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { getSiteUrlForClient } from "@/lib/env";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
+import type { SignupSource } from "./signup-source";
 import {
   DEFAULT_LOCALE,
   getLocaleCookieMaxAge,
@@ -212,23 +213,29 @@ function translateAuthError(errorMessage: string, locale: Locale = resolveClient
 export async function signUp(
   email: string,
   password: string,
-  referralCode?: string
+  referralCode?: string,
+  signupSource?: SignupSource | null
 ) {
   const supabase = createClient();
   const locale = resolveClientLocale();
 
   const signUpOptions: {
     emailRedirectTo: string;
-    data?: { referral_code?: string };
+    data?: { referral_code?: string; signup_source?: SignupSource };
   } = {
     emailRedirectTo: getSiteUrlForClient() + "/auth/callback",
   };
 
-  // 紹介コードが存在する場合、options.dataに設定
-  if (referralCode) {
-    signUpOptions.data = {
-      referral_code: referralCode,
-    };
+  if (referralCode || signupSource) {
+    signUpOptions.data = {};
+
+    if (referralCode) {
+      signUpOptions.data.referral_code = referralCode;
+    }
+
+    if (signupSource) {
+      signUpOptions.data.signup_source = signupSource;
+    }
   }
 
   const { data, error } = await supabase.auth.signUp({
@@ -495,7 +502,8 @@ export type OAuthProvider = "google" | "github" | "x";
 export async function signInWithOAuth(
   provider: OAuthProvider,
   redirectTo?: string,
-  referralCode?: string
+  referralCode?: string,
+  signupSource?: SignupSource | null
 ) {
   const supabase = createClient();
   const locale = resolveClientLocale();
@@ -529,7 +537,16 @@ export async function signInWithOAuth(
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${siteUrl}/auth/callback?p=x`,
+        redirectTo: (() => {
+          const callbackUrl = new URL(`${siteUrl}/auth/callback`);
+          callbackUrl.searchParams.set("p", "x");
+
+          if (signupSource) {
+            callbackUrl.searchParams.set("signup_source", signupSource);
+          }
+
+          return callbackUrl.toString();
+        })(),
       },
     });
 
@@ -555,6 +572,9 @@ export async function signInWithOAuth(
   callbackUrl.searchParams.set("next", redirectTo || "/");
   if (referralCode) {
     callbackUrl.searchParams.set("p", "oauth");
+  }
+  if (signupSource) {
+    callbackUrl.searchParams.set("signup_source", signupSource);
   }
   
   // 紹介コードが存在する場合、コールバックURLに含める

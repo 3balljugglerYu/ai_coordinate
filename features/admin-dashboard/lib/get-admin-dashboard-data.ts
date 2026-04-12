@@ -17,6 +17,11 @@ import {
   buildOneTapStyleAnalytics,
   type StyleUsageEventRow,
 } from "./build-one-tap-style-summary";
+import {
+  buildOneTapStyleDetailedAnalytics,
+  type StyleGuestGenerateAttemptRow,
+  type StylePresetDashboardRow,
+} from "./build-one-tap-style-detailed";
 import type {
   AdminDashboardData,
   AdminDashboardKpi,
@@ -34,6 +39,7 @@ type ProfileRow = {
   user_id: string;
   nickname: string | null;
   created_at: string;
+  signup_source?: string | null;
 };
 
 type GeneratedImageRow = {
@@ -42,6 +48,8 @@ type GeneratedImageRow = {
   is_posted: boolean | null;
   moderation_status: string | null;
   model: string | null;
+  generation_type?: string | null;
+  generation_metadata?: Record<string, unknown> | null;
   posted_at?: string | null;
 };
 
@@ -515,6 +523,8 @@ export async function getAdminDashboardData(
     profilesResult,
     generatedResult,
     styleUsageEventsResult,
+    styleGuestAttemptsResult,
+    stylePresetsResult,
     pendingResult,
     transactionsResult,
     jobsResult,
@@ -525,12 +535,14 @@ export async function getAdminDashboardData(
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("user_id, nickname, created_at")
+      .select("user_id, nickname, created_at, signup_source")
       .gte("created_at", previousStartIso)
       .lte("created_at", nowIso),
     supabase
       .from("generated_images")
-      .select("user_id, created_at, is_posted, moderation_status, model")
+      .select(
+        "user_id, created_at, is_posted, moderation_status, model, generation_type, generation_metadata, posted_at"
+      )
       .gte("created_at", previousStartIso)
       .lte("created_at", nowIso),
     supabase
@@ -538,6 +550,16 @@ export async function getAdminDashboardData(
       .select("user_id, auth_state, event_type, style_id, created_at")
       .gte("created_at", previousStartIso)
       .lte("created_at", nowIso),
+    supabase
+      .from("style_guest_generate_attempts")
+      .select("created_at")
+      .gte("created_at", previousStartIso)
+      .lte("created_at", nowIso),
+    supabase
+      .from("style_presets")
+      .select("id, title, status, sort_order")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
     supabase
       .from("generated_images")
       .select("id", { count: "exact", head: true })
@@ -580,6 +602,18 @@ export async function getAdminDashboardData(
       styleUsageEventsResult.error
     );
   }
+  if (styleGuestAttemptsResult.error) {
+    console.error(
+      "Dashboard style guest attempts fetch error:",
+      styleGuestAttemptsResult.error
+    );
+  }
+  if (stylePresetsResult.error) {
+    console.error(
+      "Dashboard style presets fetch error:",
+      stylePresetsResult.error
+    );
+  }
   if (pendingResult.error) console.error("Dashboard pending fetch error:", pendingResult.error);
   if (transactionsResult.error) console.error("Dashboard transactions fetch error:", transactionsResult.error);
   if (jobsResult.error) console.error("Dashboard jobs fetch error:", jobsResult.error);
@@ -591,6 +625,9 @@ export async function getAdminDashboardData(
   const profiles = (profilesResult.data ?? []) as ProfileRow[];
   const generatedImages = (generatedResult.data ?? []) as GeneratedImageRow[];
   const styleUsageEvents = (styleUsageEventsResult.data ?? []) as StyleUsageEventRow[];
+  const styleGuestAttempts =
+    (styleGuestAttemptsResult.data ?? []) as StyleGuestGenerateAttemptRow[];
+  const stylePresets = (stylePresetsResult.data ?? []) as StylePresetDashboardRow[];
   const transactions = (transactionsResult.data ?? []) as CreditTransactionRow[];
   const jobs = (jobsResult.data ?? []) as ImageJobRow[];
   const balances = (balancesResult.data ?? []) as CreditBalanceRow[];
@@ -698,6 +735,17 @@ export async function getAdminDashboardData(
   });
   const oneTapStyle = buildOneTapStyleAnalytics({
     events: styleUsageEvents,
+    profiles,
+    currentStart,
+    previousStart,
+    now,
+  });
+  const oneTapStyleDetailed = buildOneTapStyleDetailedAnalytics({
+    events: styleUsageEvents,
+    guestAttempts: styleGuestAttempts,
+    generatedImages,
+    presets: stylePresets,
+    profiles,
     currentStart,
     previousStart,
     now,
@@ -768,6 +816,7 @@ export async function getAdminDashboardData(
     kpis,
     trend,
     oneTapStyle,
+    oneTapStyleDetailed,
     revenueTrend,
     opsSummary,
     funnel,

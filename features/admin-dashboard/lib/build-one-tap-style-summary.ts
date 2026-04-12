@@ -20,6 +20,11 @@ export interface StyleUsageEventRow {
   created_at: string;
 }
 
+export interface StyleSignupProfileRow {
+  created_at: string;
+  signup_source?: string | null;
+}
+
 type OneTapStyleMetricKey = DashboardOneTapStyleMetric["key"];
 
 function calculateDelta(current: number, previous: number): {
@@ -86,8 +91,22 @@ function createMetric(params: {
   };
 }
 
+function countProfiles(
+  rows: StyleSignupProfileRow[],
+  signupSource: string,
+  start: Date,
+  end: Date
+) {
+  return rows.filter(
+    (row) =>
+      row.signup_source === signupSource &&
+      isWithinDateRange(row.created_at, start, end)
+  ).length;
+}
+
 export function buildOneTapStyleSummary(params: {
   events: StyleUsageEventRow[];
+  profiles: StyleSignupProfileRow[];
   currentStart: Date;
   previousStart: Date;
   now: Date;
@@ -116,27 +135,27 @@ export function buildOneTapStyleSummary(params: {
     params.previousStart,
     params.currentStart
   );
-  const downloadsCurrent = countEvents(
+  const signupClicksCurrent = countEvents(
     params.events,
-    "download",
+    "signup_click",
     params.currentStart,
     params.now
   );
-  const downloadsPrevious = countEvents(
+  const signupClicksPrevious = countEvents(
     params.events,
-    "download",
+    "signup_click",
     params.previousStart,
     params.currentStart
   );
-  const rateLimitedCurrent = countEvents(
-    params.events,
-    "rate_limited",
+  const signupCompletionsCurrent = countProfiles(
+    params.profiles,
+    "style",
     params.currentStart,
     params.now
   );
-  const rateLimitedPrevious = countEvents(
-    params.events,
-    "rate_limited",
+  const signupCompletionsPrevious = countProfiles(
+    params.profiles,
+    "style",
     params.previousStart,
     params.currentStart
   );
@@ -151,21 +170,21 @@ export function buildOneTapStyleSummary(params: {
       }),
       createMetric({
         key: "generations",
-        label: "生成数",
+        label: "生成成功数",
         currentCount: generationsCurrent,
         previousCount: generationsPrevious,
       }),
       createMetric({
-        key: "downloads",
-        label: "ダウンロード数",
-        currentCount: downloadsCurrent,
-        previousCount: downloadsPrevious,
+        key: "signupClicks",
+        label: "新規登録CTAクリック数",
+        currentCount: signupClicksCurrent,
+        previousCount: signupClicksPrevious,
       }),
       createMetric({
-        key: "rateLimited",
-        label: "上限超過リクエスト数",
-        currentCount: rateLimitedCurrent,
-        previousCount: rateLimitedPrevious,
+        key: "signupCompletions",
+        label: "新規登録完了数",
+        currentCount: signupCompletionsCurrent,
+        previousCount: signupCompletionsPrevious,
       }),
     ],
   };
@@ -173,6 +192,7 @@ export function buildOneTapStyleSummary(params: {
 
 function buildOneTapStyleTrend(params: {
   events: StyleUsageEventRow[];
+  profiles: StyleSignupProfileRow[];
   currentStart: Date;
   now: Date;
 }): DashboardOneTapStyleTrendPoint[] {
@@ -185,8 +205,8 @@ function buildOneTapStyleTrend(params: {
         label: formatJstDateLabel(key),
         visits: 0,
         generations: 0,
-        downloads: 0,
-        rateLimited: 0,
+        signupClicks: 0,
+        signupCompletions: 0,
       },
     ])
   );
@@ -211,14 +231,25 @@ function buildOneTapStyleTrend(params: {
       continue;
     }
 
-    if (event.event_type === "download") {
-      bucket.downloads += 1;
+    if (event.event_type === "signup_click") {
+      bucket.signupClicks += 1;
+    }
+  }
+
+  for (const profile of params.profiles) {
+    if (
+      profile.signup_source !== "style" ||
+      !isWithinDateRange(profile.created_at, params.currentStart, params.now)
+    ) {
       continue;
     }
 
-    if (event.event_type === "rate_limited") {
-      bucket.rateLimited += 1;
+    const bucket = trendMap.get(toJstDateKey(profile.created_at));
+    if (!bucket) {
+      continue;
     }
+
+    bucket.signupCompletions += 1;
   }
 
   return keys.map((key) => trendMap.get(key)!);
@@ -226,6 +257,7 @@ function buildOneTapStyleTrend(params: {
 
 export function buildOneTapStyleAnalytics(params: {
   events: StyleUsageEventRow[];
+  profiles: StyleSignupProfileRow[];
   currentStart: Date;
   previousStart: Date;
   now: Date;
@@ -234,6 +266,7 @@ export function buildOneTapStyleAnalytics(params: {
     summary: buildOneTapStyleSummary(params),
     trend: buildOneTapStyleTrend({
       events: params.events,
+      profiles: params.profiles,
       currentStart: params.currentStart,
       now: params.now,
     }),

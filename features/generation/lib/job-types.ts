@@ -39,6 +39,7 @@ export interface ImageJob {
   source_image_stock_id: string | null;
   source_image_type: SourceImageType;
   generation_type: GenerationType;
+  generation_metadata?: Record<string, unknown> | null;
   model: GeminiModel | null;
   background_mode: BackgroundMode;
   background_change: boolean;

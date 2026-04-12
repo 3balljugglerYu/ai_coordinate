@@ -23,6 +23,9 @@ import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
+import { OneTapStyleDetailCard } from "@/features/style/components/OneTapStyleDetailCard";
+import { getVisiblePrompt } from "@/features/generation/lib/prompt-visibility";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { Post } from "../types";
 
 // ImageFullscreenコンポーネントを動的インポート（SSR不要）
@@ -78,18 +81,21 @@ export function PostDetailStatic({
   const followUserId = post.user?.id || post.user_id;
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const canViewPrompt = isOwner || isFollowingAuthor;
+  const oneTapStylePreset = getOneTapStylePresetMetadata(post);
+  const visiblePrompt = getVisiblePrompt(post);
+  const hasVisiblePrompt = visiblePrompt.trim().length > 0;
 
   const handleCopyPrompt = async () => {
-    if (!canViewPrompt || !post.prompt) {
+    if (!canViewPrompt || !hasVisiblePrompt) {
       toast({
         title: postsT("followRequiredTitle"),
         description: postsT("followRequiredDescription"),
       });
       return;
     }
-    if (post.prompt) {
+    if (hasVisiblePrompt) {
       try {
-        await copyTextToClipboard(post.prompt);
+        await copyTextToClipboard(visiblePrompt);
         setIsPromptCopied(true);
         toast({
           title: postsT("copySuccessTitle"),
@@ -129,7 +135,7 @@ export function PostDetailStatic({
     fetchFollowStatus();
   }, [currentUserId, followUserId, isOwner]);
 
-  const maskedPrompt = post.prompt ? "*".repeat(post.prompt.length) : "";
+  const maskedPrompt = hasVisiblePrompt ? "*".repeat(visiblePrompt.length) : "";
 
   if (isHidden) {
     return (
@@ -310,7 +316,11 @@ export function PostDetailStatic({
         )}
 
         {/* プロンプト */}
-        {post.prompt && (
+        {oneTapStylePreset ? (
+          <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
+            <OneTapStyleDetailCard preset={oneTapStylePreset} />
+          </div>
+        ) : hasVisiblePrompt ? (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-sm font-bold text-gray-700">
@@ -337,9 +347,9 @@ export function PostDetailStatic({
                 </Button>
               </div>
             </div>
-            <CollapsibleText text={canViewPrompt ? post.prompt : maskedPrompt} maxLines={1} />
+            <CollapsibleText text={canViewPrompt ? visiblePrompt : maskedPrompt} maxLines={1} />
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* 全画面表示 */}

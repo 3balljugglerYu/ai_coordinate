@@ -2,10 +2,19 @@ import { getTranslations } from "next-intl/server";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { StylePageShareButton } from "@/features/style/components/StylePageShareButton";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
+import { getUser } from "@/lib/auth";
 
-export default async function StylePage() {
+interface StylePageProps {
+  searchParams?: Promise<{
+    style?: string;
+  }>;
+}
+
+export default async function StylePage({ searchParams }: StylePageProps) {
   const t = await getTranslations("style");
   const presets = await getPublishedStylePresets();
+  const user = await getUser();
+  const params = (await searchParams) ?? {};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -23,7 +32,11 @@ export default async function StylePage() {
             </p>
           </div>
 
-          <StylePageClient presets={presets} />
+          <StylePageClient
+            presets={presets}
+            initialAuthState={user ? "authenticated" : "guest"}
+            initialSelectedPresetId={params.style ?? null}
+          />
         </div>
       </div>
     </div>

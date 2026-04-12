@@ -8,6 +8,7 @@ import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
 import type { Post, SortType } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
 import { getImageAspectRatio } from "./utils";
 import {
   getJSTStartOfDay,
@@ -158,14 +159,15 @@ async function enrichPosts(
 
   // 投稿データにユーザー情報・いいね数・コメント数を結合
   return postsData.map((post) => {
-    const profile = post.user_id ? profileMap[post.user_id] : undefined;
-    const postId = post.id || "";
+    const safePost = redactSensitivePrompt(post);
+    const profile = safePost.user_id ? profileMap[safePost.user_id] : undefined;
+    const postId = safePost.id || "";
 
     return {
-      ...post,
-      user: post.user_id
+      ...safePost,
+      user: safePost.user_id
         ? {
-            id: post.user_id,
+            id: safePost.user_id,
             email: undefined, // Phase 5で実装予定
             nickname: profile?.nickname ?? null,
             avatar_url: profile?.avatar_url ?? null,
@@ -173,7 +175,7 @@ async function enrichPosts(
         : null,
       like_count: likeCounts[postId] || 0,
       comment_count: commentCounts[postId] || 0,
-      view_count: post.view_count || 0,
+      view_count: safePost.view_count || 0,
       range_like_count: rangeLikeCounts ? rangeLikeCounts[postId] || 0 : undefined,
     };
   });
@@ -398,7 +400,7 @@ export const getPosts = cache(async (
   }
 
   // 投稿データにユーザー情報・いいね数・コメント数を付与
-  let postsWithCounts = await enrichPosts(
+  const postsWithCounts = await enrichPosts(
     postsData,
     rangeLikeCounts,
     supabaseForHelpers
@@ -618,7 +620,7 @@ export const getPost = cache(async (
     }
   }
 
-  return {
+  return redactSensitivePrompt({
     ...data,
     user: data.user_id
       ? {
@@ -632,7 +634,7 @@ export const getPost = cache(async (
     comment_count: commentCount,
     view_count: updatedViewCount,
     aspect_ratio: aspectRatio,
-  };
+  });
 });
 
 /**

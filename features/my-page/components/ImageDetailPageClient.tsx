@@ -12,6 +12,12 @@ import { EditPostModal } from "@/features/posts/components/EditPostModal";
 import { DeletePostDialog } from "@/features/posts/components/DeletePostDialog";
 import type { BackgroundMode } from "@/features/generation/types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { OneTapStyleDetailCard } from "@/features/style/components/OneTapStyleDetailCard";
+import {
+  getPromptSafeAltText,
+  getVisiblePrompt,
+} from "@/features/generation/lib/prompt-visibility";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 
 interface ImageDetailPageClientProps {
   image: GeneratedImageRecord;
@@ -39,6 +45,9 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const backgroundMode = resolveBackgroundMode(image);
+  const oneTapStylePreset = getOneTapStylePresetMetadata(image);
+  const visiblePrompt = getVisiblePrompt(image);
+  const showPrompt = visiblePrompt.trim().length > 0;
   const backgroundModeLabel =
     backgroundMode === "ai_auto"
       ? coordinateT("backgroundAiAutoLabel")
@@ -138,7 +147,7 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={image.image_url}
-            alt={image.prompt}
+            alt={getPromptSafeAltText(image, "Generated image")}
             className="h-auto w-full object-contain bg-gray-100"
           />
         </Card>
@@ -150,12 +159,16 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
           </h2>
 
           <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-gray-700">
-                {myPageT("detailPromptLabel")}
-              </p>
-              <p className="mt-1 text-sm text-gray-600">{image.prompt}</p>
-            </div>
+            {oneTapStylePreset ? (
+              <OneTapStyleDetailCard preset={oneTapStylePreset} />
+            ) : showPrompt ? (
+              <div>
+                <p className="text-sm font-medium text-gray-700">
+                  {myPageT("detailPromptLabel")}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">{visiblePrompt}</p>
+              </div>
+            ) : null}
 
             <div>
               <p className="text-sm font-medium text-gray-700">

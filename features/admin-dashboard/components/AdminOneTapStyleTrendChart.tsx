@@ -94,7 +94,7 @@ export default function AdminOneTapStyleTrendChart({
           <Line
             type="monotone"
             dataKey="generations"
-            name="生成数"
+            name="生成成功数"
             stroke="#059669"
             strokeWidth={2.5}
             dot={false}
@@ -102,8 +102,8 @@ export default function AdminOneTapStyleTrendChart({
           />
           <Line
             type="monotone"
-            dataKey="downloads"
-            name="ダウンロード数"
+            dataKey="signupClicks"
+            name="新規登録CTAクリック数"
             stroke="#D97706"
             strokeWidth={2.5}
             dot={false}
@@ -111,9 +111,9 @@ export default function AdminOneTapStyleTrendChart({
           />
           <Line
             type="monotone"
-            dataKey="rateLimited"
-            name="上限超過リクエスト数"
-            stroke="#E11D48"
+            dataKey="signupCompletions"
+            name="新規登録完了数"
+            stroke="#7C3AED"
             strokeWidth={2.5}
             dot={false}
             activeDot={{ r: 5 }}

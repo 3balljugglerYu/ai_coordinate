@@ -2,7 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { enforceApiDocsBasicAuth } from "@/lib/api-docs-auth";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
-import { enforceStyleBasicAuth } from "@/lib/style-basic-auth";
 import {
   getLocaleCookieMaxAge,
   isPublicPath,
@@ -28,11 +27,6 @@ export async function proxy(request: NextRequest) {
   const basicAuthResponse = enforceI2iPocBasicAuth(request);
   if (basicAuthResponse) {
     return basicAuthResponse;
-  }
-
-  const styleBasicAuthResponse = enforceStyleBasicAuth(request);
-  if (styleBasicAuthResponse) {
-    return styleBasicAuthResponse;
   }
 
   const pathname = request.nextUrl.pathname;

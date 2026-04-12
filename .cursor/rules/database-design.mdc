@@ -123,16 +123,16 @@ alwaysApply: false
 
 #### `image_jobs`
 - 主キー: `id`
-- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `model`, `background_change`, `status`, `processing_stage`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
+- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `generation_metadata`, `model`, `background_change`, `status`, `processing_stage`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
-- 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`source_image_type` は `illustration/real`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` を保持する
+- 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`source_image_type` は `illustration/real`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` を保持する
 - RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
 
 #### `generated_images`
 - 主キー: `id`
 - 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `background_change`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `aspect_ratio`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
-- 備考: `moderation_status` は `visible/pending/removed`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` を保持する
+- 備考: `generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`moderation_status` は `visible/pending/removed`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` を保持する
 - RLS: 投稿済みかつ `visible` の画像は公開、それ以外は本人のみ。`INSERT/UPDATE/DELETE` は本人のみ
 
 #### `source_image_stocks`
@@ -215,9 +215,9 @@ alwaysApply: false
 
 #### `profiles`
 - 主キー: `id`
-- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
+- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `signup_source`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
 - 外部キー: `id -> auth.users.id`, `user_id -> auth.users.id`
-- 制約: `user_id` UNIQUE、`referral_code` UNIQUE
+- 制約: `user_id` UNIQUE、`referral_code` UNIQUE、`signup_source` は現在 `style` のみ
 - RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ
 
 ### 管理・モデレーション・運用
@@ -242,15 +242,16 @@ alwaysApply: false
 
 #### `style_usage_events`
 - 主キー: `id`
-- 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `created_at`
+- 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `image_job_id`, `released_at`, `release_reason`, `created_at`
 - 外部キー: `user_id -> auth.users.id`（guest イベントでは `NULL`）
-- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited`
+- 外部キー: `image_job_id -> image_jobs.id`
+- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited/signup_click`、`release_reason` は `upload_failed/job_create_failed/queue_failed/timeout/upstream_error/no_image_generated/worker_failed/infra_error`
 - RLS: 公開アクセス禁止（`ALL false`）
 
 #### `style_guest_generate_attempts`
 - 主キー: `id`
-- 主要カラム: `client_ip_hash`, `created_at`
-- 備考: guest の `/style/generate` を IP hash ベースで `1分2回 / 1日3回` に制限するための内部テーブル
+- 主要カラム: `client_ip_hash`, `released_at`, `release_reason`, `created_at`
+- 備考: guest の `/style/generate` を IP hash ベースで `1分2回 / 1日2回` に制限するための内部テーブル。`release_reason` は `timeout/upstream_error/no_image_generated/infra_error`
 - RLS: 公開アクセス禁止（`ALL false`）
 
 ### コンテンツ管理
@@ -371,7 +372,9 @@ alwaysApply: false
 - `idx_moderation_audit_logs_actor_id_created_at`, `idx_moderation_audit_logs_post_id_created_at`
 - `idx_admin_audit_log_action_type`, `idx_admin_audit_log_admin_user_id`, `idx_admin_audit_log_created_at`, `idx_admin_audit_log_target`
 - `idx_style_usage_events_created_at`, `idx_style_usage_events_event_type_created_at`, `idx_style_usage_events_user_id_created_at`, `idx_style_usage_events_auth_state_created_at`, `idx_style_usage_events_user_auth_event_created_at`
+- `idx_style_usage_events_active_generate_attempts`
 - `idx_style_guest_generate_attempts_ip_created_at`
+- `idx_style_guest_generate_attempts_active_ip_created_at`
 
 ## 外部キー関係（主要）
 - 多くのテーブルが `auth.users.id` を参照（`profiles`, `user_credits`, `credit_transactions`, `free_percoin_batches`, `notifications` など）
@@ -387,7 +390,7 @@ alwaysApply: false
 ### 業務ロジック RPC
 - ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `deduct_percoins_admin`, `expire_free_percoin_batches`
 - ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
-- One-Tap Style: `consume_style_authenticated_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`
+- One-Tap Style: `consume_style_authenticated_generate_attempt`, `reserve_style_authenticated_generate_attempt`, `attach_style_authenticated_generate_attempt_job`, `release_style_authenticated_generate_attempt`, `reserve_style_guest_generate_attempt`, `release_style_guest_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`
 - ポップアップバナー: `record_popup_banner_interaction`, `reorder_popup_banners`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`

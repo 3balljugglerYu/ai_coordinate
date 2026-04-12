@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { getPromptSafeAltText } from "@/features/generation/lib/prompt-visibility";
 import {
   getGeneratedImagesBySourceImage,
   type GeneratedImageRecord,
@@ -154,7 +155,7 @@ export function GeneratedImagesFromSource({
               <div className="relative w-full overflow-hidden bg-gray-100">
                 <Image
                   src={image.image_url}
-                  alt={image.prompt || t("generatedImageAlt")}
+                  alt={getPromptSafeAltText(image, t("generatedImageAlt"))}
                   width={800}
                   height={800}
                   className="w-full h-auto object-contain"

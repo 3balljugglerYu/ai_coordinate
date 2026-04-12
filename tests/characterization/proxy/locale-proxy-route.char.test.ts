@@ -12,16 +12,11 @@ jest.mock("@/lib/i2i-poc-auth", () => ({
   enforceI2iPocBasicAuth: jest.fn(),
 }));
 
-jest.mock("@/lib/style-basic-auth", () => ({
-  enforceStyleBasicAuth: jest.fn(),
-}));
-
 import { NextRequest, NextResponse } from "next/server";
 import { proxy } from "@/proxy";
 import { createServerClient } from "@supabase/ssr";
 import { enforceApiDocsBasicAuth } from "@/lib/api-docs-auth";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
-import { enforceStyleBasicAuth } from "@/lib/style-basic-auth";
 import { LOCALE_COOKIE } from "@/i18n/config";
 
 type JsonRecord = Record<string, unknown>;
@@ -125,8 +120,6 @@ describe("Characterization: LocaleProxyRoute", () => {
     enforceApiDocsBasicAuth as jest.MockedFunction<typeof enforceApiDocsBasicAuth>;
   const enforceI2iPocBasicAuthMock =
     enforceI2iPocBasicAuth as jest.MockedFunction<typeof enforceI2iPocBasicAuth>;
-  const enforceStyleBasicAuthMock =
-    enforceStyleBasicAuth as jest.MockedFunction<typeof enforceStyleBasicAuth>;
 
   const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const originalSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -139,7 +132,6 @@ describe("Characterization: LocaleProxyRoute", () => {
 
     enforceApiDocsBasicAuthMock.mockReturnValue(null);
     enforceI2iPocBasicAuthMock.mockReturnValue(null);
-    enforceStyleBasicAuthMock.mockReturnValue(null);
     createServerClientMock.mockReturnValue(
       createSupabaseMock().client as ReturnType<typeof createServerClient>
     );
@@ -195,31 +187,6 @@ describe("Characterization: LocaleProxyRoute", () => {
         "location": "http://localhost/ja/about?from=nav",
         "middlewareNext": null,
         "status": 307,
-      }
-    `);
-    expect(createServerClientMock).not.toHaveBeenCalled();
-  });
-
-  test("CHAR-LOCALE-PROXY-002A: style basic auth response short-circuits locale handling", async () => {
-    enforceStyleBasicAuthMock.mockReturnValue(
-      NextResponse.json({ error: "style auth required" }, { status: 401 })
-    );
-
-    const response = await proxy(
-      createRequest("http://localhost/style", {
-        acceptLanguage: "ja-JP,ja;q=0.9",
-      })
-    );
-
-    expect(await summarizeResponse(response)).toMatchInlineSnapshot(`
-      {
-        "body": {
-          "error": "style auth required",
-        },
-        "localeCookie": null,
-        "location": null,
-        "middlewareNext": null,
-        "status": 401,
       }
     `);
     expect(createServerClientMock).not.toHaveBeenCalled();

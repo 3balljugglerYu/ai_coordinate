@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { getPromptSafeAltText } from "@/features/generation/lib/prompt-visibility";
 import { UserProfilePostsLoadMoreSkeleton } from "./UserProfilePostsLoadMoreSkeleton";
 
 interface UserProfilePostsProps {
@@ -102,7 +103,7 @@ export function UserProfilePosts({
                     {imageUrl ? (
                       <Image
                         src={imageUrl}
-                        alt={post.caption || post.prompt || "画像"}
+                        alt={getPromptSafeAltText(post, "画像")}
                         width={800}
                         height={800}
                         className="w-full h-auto object-contain transition-transform hover:scale-105"
@@ -131,4 +132,3 @@ export function UserProfilePosts({
     </>
   );
 }
-

@@ -62,8 +62,8 @@ export interface DashboardFunnelStep {
 export type DashboardOneTapStyleMetricKey =
   | "visits"
   | "generations"
-  | "downloads"
-  | "rateLimited";
+  | "signupClicks"
+  | "signupCompletions";
 
 export interface DashboardOneTapStyleMetric {
   key: DashboardOneTapStyleMetricKey;
@@ -83,13 +83,99 @@ export interface DashboardOneTapStyleTrendPoint {
   label: string;
   visits: number;
   generations: number;
-  downloads: number;
-  rateLimited: number;
+  signupClicks: number;
+  signupCompletions: number;
 }
 
 export interface DashboardOneTapStyleAnalytics {
   summary: DashboardOneTapStyleSummary;
   trend: DashboardOneTapStyleTrendPoint[];
+}
+
+export type DashboardOneTapStyleFocusMetricKey =
+  | "attempts"
+  | "successRate"
+  | "downloadRate"
+  | "rateLimitedShare";
+
+export interface DashboardOneTapStyleFocusMetric {
+  key: DashboardOneTapStyleFocusMetricKey;
+  label: string;
+  value: string;
+  previousValue: string;
+  deltaPct: number | null;
+  deltaDirection: DashboardDeltaDirection;
+  description: string;
+}
+
+export interface DashboardOneTapStyleSegmentRow {
+  authState: "guest" | "authenticated";
+  label: string;
+  visits: number;
+  attempts: number;
+  generations: number;
+  downloads: number;
+  rateLimited: number;
+  successRatePct: number | null;
+  downloadRatePct: number | null;
+  rateLimitedSharePct: number | null;
+}
+
+export interface DashboardOneTapStylePresetPerformanceRow {
+  presetId: string;
+  title: string;
+  status: "draft" | "published" | "unknown";
+  authenticatedAttempts: number;
+  guestAttempts: number;
+  generations: number;
+  downloads: number;
+  postedCount: number;
+  rateLimited: number;
+  generationSharePct: number;
+  authenticatedSuccessRatePct: number | null;
+  guestSuccessRatePct: number | null;
+  downloadRatePct: number | null;
+  postRatePct: number | null;
+}
+
+export interface DashboardOneTapStyleInsight {
+  id: string;
+  title: string;
+  description: string;
+  severity: "success" | "info" | "warning";
+}
+
+export interface DashboardOneTapStyleSignupFunnelStep {
+  label: string;
+  count: number;
+  rateFromPrevious: number | null;
+}
+
+export interface DashboardOneTapStyleSignupFunnel {
+  steps: DashboardOneTapStyleSignupFunnelStep[];
+  clickToSignupRatePct: number | null;
+  signupReturnRatePct: number | null;
+  signupGenerationRatePct: number | null;
+}
+
+export interface DashboardOneTapStyleOperationalSummary {
+  publishedPresetCount: number;
+  draftPresetCount: number;
+  activePresetCount: number;
+  zeroGenerationPublishedPresetCount: number;
+  authenticatedAttemptCount: number;
+  guestAttemptCount: number;
+}
+
+export interface DashboardOneTapStyleDetailedAnalytics {
+  analytics: DashboardOneTapStyleAnalytics;
+  focusMetrics: DashboardOneTapStyleFocusMetric[];
+  segments: DashboardOneTapStyleSegmentRow[];
+  presetPerformance: DashboardOneTapStylePresetPerformanceRow[];
+  signupFunnel: DashboardOneTapStyleSignupFunnel;
+  insights: DashboardOneTapStyleInsight[];
+  operationalSummary: DashboardOneTapStyleOperationalSummary;
+  dormantPublishedPresetTitles: string[];
 }
 
 export interface DashboardOpsSummary {
@@ -130,6 +216,7 @@ export interface AdminDashboardData {
   kpis: AdminDashboardKpi[];
   trend: DashboardTrendPoint[];
   oneTapStyle: DashboardOneTapStyleAnalytics;
+  oneTapStyleDetailed: DashboardOneTapStyleDetailedAnalytics;
   revenueTrend: DashboardRevenueTrend;
   opsSummary: DashboardOpsSummary;
   funnel: DashboardFunnelStep[];
