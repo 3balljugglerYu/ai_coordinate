@@ -96,7 +96,7 @@ export type DashboardOneTapStyleFocusMetricKey =
   | "attempts"
   | "successRate"
   | "downloadRate"
-  | "rateLimitedShare";
+  | "paidContinuations";
 
 export interface DashboardOneTapStyleFocusMetric {
   key: DashboardOneTapStyleFocusMetricKey;
@@ -116,9 +116,11 @@ export interface DashboardOneTapStyleSegmentRow {
   generations: number;
   downloads: number;
   rateLimited: number;
+  paidGenerations: number;
   successRatePct: number | null;
   downloadRatePct: number | null;
   rateLimitedSharePct: number | null;
+  paidGenerationRatePct: number | null;
 }
 
 export interface DashboardOneTapStylePresetPerformanceRow {
@@ -130,12 +132,14 @@ export interface DashboardOneTapStylePresetPerformanceRow {
   generations: number;
   downloads: number;
   postedCount: number;
+  paidGenerations: number;
   rateLimited: number;
   generationSharePct: number;
   authenticatedSuccessRatePct: number | null;
   guestSuccessRatePct: number | null;
   downloadRatePct: number | null;
   postRatePct: number | null;
+  paidGenerationRatePct: number | null;
 }
 
 export interface DashboardOneTapStyleInsight {
@@ -165,6 +169,7 @@ export interface DashboardOneTapStyleOperationalSummary {
   zeroGenerationPublishedPresetCount: number;
   authenticatedAttemptCount: number;
   guestAttemptCount: number;
+  paidGenerationCount: number;
 }
 
 export interface DashboardOneTapStyleDetailedAnalytics {

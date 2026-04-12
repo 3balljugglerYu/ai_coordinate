@@ -237,7 +237,7 @@ describe("buildOneTapStyleSummary", () => {
             thumbnailWidth: 912,
             thumbnailHeight: 1173,
             hasBackgroundPrompt: true,
-            billingMode: "free",
+            billingMode: "paid",
           },
         },
       },
@@ -301,6 +301,8 @@ describe("buildOneTapStyleSummary", () => {
         authState: "authenticated",
         attempts: 1,
         generations: 1,
+        paidGenerations: 1,
+        paidGenerationRatePct: 100,
         successRatePct: 100,
       }),
       expect.objectContaining({
@@ -309,23 +311,33 @@ describe("buildOneTapStyleSummary", () => {
         generations: 1,
         downloads: 1,
         rateLimited: 1,
+        paidGenerations: 0,
+        paidGenerationRatePct: null,
         successRatePct: 100,
         rateLimitedSharePct: 50,
       }),
     ]);
+    expect(detailed.focusMetrics[3]).toMatchObject({
+      key: "paidContinuations",
+      value: "1件",
+      previousValue: "0件",
+    });
     expect(detailed.presetPerformance[0]).toMatchObject({
       presetId: "paris_code",
       title: "PARIS CODE",
       generations: 2,
       downloads: 1,
       postedCount: 1,
+      paidGenerations: 1,
       authenticatedAttempts: 1,
       guestAttempts: 1,
       authenticatedSuccessRatePct: 100,
       guestSuccessRatePct: 100,
       downloadRatePct: 50,
       postRatePct: 50,
+      paidGenerationRatePct: 100,
     });
+    expect(detailed.operationalSummary.paidGenerationCount).toBe(1);
     expect(detailed.signupFunnel).toEqual({
       steps: [
         {

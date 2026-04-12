@@ -59,6 +59,7 @@ interface StylePresetCounters {
   generations: number;
   downloads: number;
   postedCount: number;
+  paidGenerations: number;
   rateLimited: number;
 }
 
@@ -84,6 +85,7 @@ function createStylePresetCounters(): StylePresetCounters {
     generations: 0,
     downloads: 0,
     postedCount: 0,
+    paidGenerations: 0,
     rateLimited: 0,
   };
 }
@@ -228,9 +230,11 @@ function aggregateStyleGeneratedImages(
   end: Date
 ) {
   const presetPostedMap = new Map<string, number>();
+  const presetPaidMap = new Map<string, number>();
+  let paidGenerationCount = 0;
 
   for (const image of images) {
-    if (!isWithinDateRange(image.created_at, start, end) || !image.is_posted) {
+    if (!isWithinDateRange(image.created_at, start, end)) {
       continue;
     }
 
@@ -239,14 +243,26 @@ function aggregateStyleGeneratedImages(
       continue;
     }
 
-    presetPostedMap.set(
-      presetMetadata.id,
-      (presetPostedMap.get(presetMetadata.id) ?? 0) + 1
-    );
+    if (presetMetadata.billingMode === "paid") {
+      paidGenerationCount += 1;
+      presetPaidMap.set(
+        presetMetadata.id,
+        (presetPaidMap.get(presetMetadata.id) ?? 0) + 1
+      );
+    }
+
+    if (image.is_posted) {
+      presetPostedMap.set(
+        presetMetadata.id,
+        (presetPostedMap.get(presetMetadata.id) ?? 0) + 1
+      );
+    }
   }
 
   return {
     presetPostedMap,
+    presetPaidMap,
+    paidGenerationCount,
   };
 }
 
@@ -417,6 +433,7 @@ function buildSegmentRow(params: {
   label: string;
   counters: StyleEventCounters;
   guestAttemptCount?: number;
+  paidGenerations?: number;
 }): DashboardOneTapStyleSegmentRow {
   const generations = toGenerationCount(params.counters);
   const attempts =
@@ -436,9 +453,17 @@ function buildSegmentRow(params: {
     generations,
     downloads: params.counters.downloads,
     rateLimited,
+    paidGenerations: params.paidGenerations ?? 0,
     successRatePct: safeRate(generations, attempts),
     downloadRatePct: safeRate(params.counters.downloads, generations),
     rateLimitedSharePct: safeRate(rateLimited, attempts + rateLimited),
+    paidGenerationRatePct:
+      params.authState === "authenticated"
+        ? safeRate(
+            params.paidGenerations ?? 0,
+            params.counters.authenticatedGenerations
+          )
+        : null,
   };
 }
 
@@ -446,6 +471,7 @@ function buildPresetPerformance(params: {
   presets: StylePresetDashboardRow[];
   currentPresetCounters: Map<string, StylePresetCounters>;
   currentPresetPostedMap: Map<string, number>;
+  currentPresetPaidMap: Map<string, number>;
   totalGenerations: number;
 }): DashboardOneTapStylePresetPerformanceRow[] {
   const presetMetaMap = new Map(
@@ -472,6 +498,7 @@ function buildPresetPerformance(params: {
       generations: counters.generations,
       downloads: counters.downloads,
       postedCount: params.currentPresetPostedMap.get(presetId) ?? 0,
+      paidGenerations: params.currentPresetPaidMap.get(presetId) ?? 0,
       rateLimited: counters.rateLimited,
       generationSharePct:
         params.totalGenerations > 0
@@ -491,6 +518,10 @@ function buildPresetPerformance(params: {
       postRatePct: safeRate(
         params.currentPresetPostedMap.get(presetId) ?? 0,
         counters.generations
+      ),
+      paidGenerationRatePct: safeRate(
+        params.currentPresetPaidMap.get(presetId) ?? 0,
+        counters.authenticatedGenerations
       ),
     };
   });
@@ -514,6 +545,7 @@ function buildOperationalSummary(params: {
   presetPerformance: DashboardOneTapStylePresetPerformanceRow[];
   authenticatedAttemptCount: number;
   guestAttemptCount: number;
+  paidGenerationCount: number;
 }): DashboardOneTapStyleOperationalSummary {
   const publishedPresetCount = params.presets.filter(
     (preset) => preset.status === "published"
@@ -540,6 +572,7 @@ function buildOperationalSummary(params: {
     zeroGenerationPublishedPresetCount,
     authenticatedAttemptCount: params.authenticatedAttemptCount,
     guestAttemptCount: params.guestAttemptCount,
+    paidGenerationCount: params.paidGenerationCount,
   };
 }
 
@@ -690,6 +723,11 @@ export function buildOneTapStyleDetailedAnalytics(params: {
     params.currentStart,
     params.now
   );
+  const previousGeneratedImages = aggregateStyleGeneratedImages(
+    params.generatedImages,
+    params.previousStart,
+    params.currentStart
+  );
   const signupFunnel = aggregateStyleSignupFunnel({
     profiles: params.profiles,
     events: params.events,
@@ -746,6 +784,7 @@ export function buildOneTapStyleDetailedAnalytics(params: {
     authState: "authenticated",
     label: "ログインユーザー",
     counters: current.authenticated,
+    paidGenerations: currentGeneratedImages.paidGenerationCount,
   });
   const guestSegment = buildSegmentRow({
     authState: "guest",
@@ -758,6 +797,7 @@ export function buildOneTapStyleDetailedAnalytics(params: {
     presets: params.presets,
     currentPresetCounters: current.presetMap,
     currentPresetPostedMap: currentGeneratedImages.presetPostedMap,
+    currentPresetPaidMap: currentGeneratedImages.presetPaidMap,
     totalGenerations: currentTotalGenerations,
   });
   const operationalSummary = buildOperationalSummary({
@@ -765,6 +805,7 @@ export function buildOneTapStyleDetailedAnalytics(params: {
     presetPerformance,
     authenticatedAttemptCount: current.total.authenticatedAttempts,
     guestAttemptCount: currentGuestAttemptCount,
+    paidGenerationCount: currentGeneratedImages.paidGenerationCount,
   });
   const dormantPublishedPresetTitles = presetPerformance
     .filter(
@@ -815,15 +856,15 @@ export function buildOneTapStyleDetailedAnalytics(params: {
         )}件に対する保存率です`,
       }),
       createFocusMetric({
-        key: "rateLimitedShare",
-        label: "上限到達率",
-        currentValueText: formatPercent(currentOverallRateLimitedShare),
-        previousValueText: formatPercent(previousOverallRateLimitedShare),
-        currentComparableValue: currentOverallRateLimitedShare ?? 0,
-        previousComparableValue: previousOverallRateLimitedShare ?? 0,
-        description: `上限到達 ${
-          current.total.authenticatedRateLimited + current.total.guestRateLimited
-        } 件`,
+        key: "paidContinuations",
+        label: "10ペルコイン継続数",
+        currentValueText: `${formatInteger(currentGeneratedImages.paidGenerationCount)}件`,
+        previousValueText: `${formatInteger(previousGeneratedImages.paidGenerationCount)}件`,
+        currentComparableValue: currentGeneratedImages.paidGenerationCount,
+        previousComparableValue: previousGeneratedImages.paidGenerationCount,
+        description: `ログイン生成 ${formatInteger(
+          authenticatedSegment.generations
+        )}件のうち ${formatPercent(authenticatedSegment.paidGenerationRatePct)}`,
       }),
     ],
     segments: [authenticatedSegment, guestSegment],
