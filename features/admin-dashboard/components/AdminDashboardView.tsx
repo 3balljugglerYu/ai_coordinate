@@ -16,10 +16,17 @@ import { AdminRevenueChartPanel } from "./AdminRevenueChartPanel";
 import { AdminRecentPurchasesTable } from "./AdminRecentPurchasesTable";
 import type { AdminDashboardTab } from "../lib/dashboard-tab";
 import type { AdminDashboardData } from "../lib/dashboard-types";
+import type {
+  DashboardRange,
+  OneTapStyleDashboardRange,
+} from "../lib/dashboard-range";
 
 interface AdminDashboardViewProps {
   data: AdminDashboardData;
   currentTab: AdminDashboardTab;
+  currentStyleRange: OneTapStyleDashboardRange;
+  currentStyleFrom: string | null;
+  currentStyleTo: string | null;
   children?: ReactNode;
 }
 
@@ -33,6 +40,9 @@ const kpiIconMap = {
 export function AdminDashboardView({
   data,
   currentTab,
+  currentStyleRange,
+  currentStyleFrom,
+  currentStyleTo,
   children,
 }: AdminDashboardViewProps) {
   const description =
@@ -65,10 +75,16 @@ export function AdminDashboardView({
           <AdminDashboardModeTabs
             currentTab={currentTab}
             currentRange={data.range}
+            currentStyleRange={currentStyleRange}
+            currentStyleFrom={currentStyleFrom}
+            currentStyleTo={currentStyleTo}
           />
           <AdminDashboardRangeTabs
             currentRange={data.range}
             currentTab={currentTab}
+            currentStyleRange={currentStyleRange}
+            currentStyleFrom={currentStyleFrom}
+            currentStyleTo={currentStyleTo}
           />
           <p className="text-xs text-slate-500">
             最終更新 {new Date(data.updatedAt).toLocaleString("ja-JP")}
