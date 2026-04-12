@@ -772,6 +772,10 @@ describe("StylePageClient", () => {
     expect(
       screen.getByText("Styling in progress")
     ).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
     expect(
       screen.getByText("Checking out the new look.")
     ).toBeInTheDocument();
@@ -806,6 +810,38 @@ describe("StylePageClient", () => {
     });
 
     expect(screen.getByRole("button", { name: "Start Styling" })).toBeEnabled();
+  });
+
+  test("生成完了の2秒後に結果エリアまでオートスクロールする", async () => {
+    jest.useFakeTimers();
+
+    render(<StylePageClient presets={presets} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await screen.findByText("Styling is complete.");
+    scrollIntoViewMock.mockClear();
+
+    act(() => {
+      jest.advanceTimersByTime(1999);
+    });
+
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
   });
 
   test("生成が長引くとフォールバック文言に切り替わる", () => {
@@ -866,6 +902,13 @@ describe("StylePageClient", () => {
     );
     expect(screen.getByAltText("Generated result")).toHaveClass(
       "md:max-h-[550px]"
+    );
+    expect(screen.getByAltText("Generated result").parentElement).toHaveClass(
+      "max-w-[340px]",
+      "sm:max-w-[420px]"
+    );
+    expect(screen.getByAltText("Generated result").parentElement).not.toHaveClass(
+      "mx-auto"
     );
     expect(
       screen.getByRole("button", { name: "Download generated result" })

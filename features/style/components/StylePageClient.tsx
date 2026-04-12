@@ -98,6 +98,7 @@ const STYLE_PAID_GENERATION_COST = getPercoinCost(STYLE_GENERATION_MODEL);
 const DEFAULT_POLLING_INTERVAL_MS = 1200;
 const FAST_POLLING_INTERVAL_MS = 400;
 const SLOW_POLLING_INTERVAL_MS = 1600;
+const RESULT_SCROLL_DELAY_MS = 2000;
 const ASYNC_PROGRESS_TRANSITION_MS: Record<ImageJobProcessingStage, number> = {
   queued: 3000,
   processing: 600,
@@ -209,8 +210,8 @@ function StyleResultPanel({
       <Card
         className={`overflow-hidden p-0 ${
           resultImageUrl
-            ? "w-full md:w-fit md:max-w-[460px]"
-            : "w-full max-w-[460px]"
+            ? "w-full max-w-[340px] sm:max-w-[420px] md:w-fit md:max-w-[460px]"
+            : "w-full max-w-[340px] sm:max-w-[420px] md:max-w-[460px]"
         }`}
       >
         {resultImageUrl ? (
@@ -444,6 +445,8 @@ export function StylePageClient({
   const coordinateT = useTranslations("coordinate");
   const postsT = useTranslations("posts");
   const presetStripRef = useRef<HTMLDivElement | null>(null);
+  const generationStatusSectionRef = useRef<HTMLDivElement | null>(null);
+  const resultSectionRef = useRef<HTMLDivElement | null>(null);
   const presetButtonRefs = useRef(
     new Map<StylePresetPublicSummary["id"], HTMLButtonElement>()
   );
@@ -616,6 +619,17 @@ export function StylePageClient({
   const guestStatusCardPrefersReducedMotion =
     guestGenerationFeedback.prefersReducedMotion;
 
+  const scrollSectionIntoView = (section: HTMLDivElement | null) => {
+    if (typeof section?.scrollIntoView !== "function") {
+      return;
+    }
+
+    section.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
+
   useEffect(() => {
     if (generationPhase !== "completing" || !queuedResultImageUrl) {
       return;
@@ -631,6 +645,28 @@ export function StylePageClient({
       window.clearTimeout(timeoutId);
     };
   }, [generationPhase, queuedResultImageUrl]);
+
+  useEffect(() => {
+    if (generationPhase !== "running") {
+      return;
+    }
+
+    scrollSectionIntoView(generationStatusSectionRef.current);
+  }, [generationPhase]);
+
+  useEffect(() => {
+    if (generationPhase !== "completing") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      scrollSectionIntoView(resultSectionRef.current);
+    }, RESULT_SCROLL_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [generationPhase]);
 
   useEffect(() => {
     return () => {
@@ -1510,33 +1546,35 @@ export function StylePageClient({
             ) : null}
 
             {isGenerating ? (
-              isAsyncStatusCard ? (
-                <GenerationStatusCard
-                  title={generationStatusTitle}
-                  message={asyncStatusCardMessage}
-                  liveMessage={asyncStatusCardLiveMessage}
-                  footerText={asyncStatusCardHint}
-                  progress={asyncStatusCardProgress}
-                  progressTransitionDurationMs={
-                    asyncStatusCardProgressTransitionDurationMs
-                  }
-                  animateFromZeroOnMount
-                  isComplete={isCompletingGeneration}
-                  prefersReducedMotion={asyncStatusCardPrefersReducedMotion}
-                />
-              ) : (
-                <StyleGenerationStatusCard
-                  title={generationStatusTitle}
-                  message={guestStatusCardMessage}
-                  liveMessage={guestStatusCardLiveMessage}
-                  hint={generationStatusHint}
-                  slowHint={t("generationStatusSlowHint")}
-                  progress={guestStatusCardProgress}
-                  isLongWait={guestStatusCardIsLongWait}
-                  isComplete={isCompletingGeneration}
-                  prefersReducedMotion={guestStatusCardPrefersReducedMotion}
-                />
-              )
+              <div ref={generationStatusSectionRef}>
+                {isAsyncStatusCard ? (
+                  <GenerationStatusCard
+                    title={generationStatusTitle}
+                    message={asyncStatusCardMessage}
+                    liveMessage={asyncStatusCardLiveMessage}
+                    footerText={asyncStatusCardHint}
+                    progress={asyncStatusCardProgress}
+                    progressTransitionDurationMs={
+                      asyncStatusCardProgressTransitionDurationMs
+                    }
+                    animateFromZeroOnMount
+                    isComplete={isCompletingGeneration}
+                    prefersReducedMotion={asyncStatusCardPrefersReducedMotion}
+                  />
+                ) : (
+                  <StyleGenerationStatusCard
+                    title={generationStatusTitle}
+                    message={guestStatusCardMessage}
+                    liveMessage={guestStatusCardLiveMessage}
+                    hint={generationStatusHint}
+                    slowHint={t("generationStatusSlowHint")}
+                    progress={guestStatusCardProgress}
+                    isLongWait={guestStatusCardIsLongWait}
+                    isComplete={isCompletingGeneration}
+                    prefersReducedMotion={guestStatusCardPrefersReducedMotion}
+                  />
+                )}
+              </div>
             ) : null}
           </div>
         </Card>
@@ -1576,39 +1614,41 @@ export function StylePageClient({
         />
       ) : null}
 
-      <StyleResultPanel
-        title={t("resultsTitle")}
-        placeholder={t("resultPlaceholder")}
-        resultImageUrl={displayedResultImageUrl}
-        resultImageAlt={t("resultImageAlt")}
-        action={
-          displayedResultImageUrl ? (
-            <div className="flex items-center gap-2">
-              <StyleResultDownloadButton
-                imageUrl={resultImageUrl ?? displayedResultImageUrl}
-                styleId={selectedPreset?.id ?? "unknown"}
-                label={t("downloadAction")}
-                ariaLabel={t("downloadAriaLabel")}
-                successTitle={t("downloadSuccessTitle")}
-                successDescription={t("downloadSuccessDescription")}
-                failedMessage={t("downloadFailed")}
-              />
-              {canPostGeneratedResult ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsPostModalOpen(true)}
-                  className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
-                >
-                  <Share2 className="h-4 w-4" />
-                  <span>{postsT("postSubmit")}</span>
-                </Button>
-              ) : null}
-            </div>
-          ) : null
-        }
-      />
+      <div ref={resultSectionRef}>
+        <StyleResultPanel
+          title={t("resultsTitle")}
+          placeholder={t("resultPlaceholder")}
+          resultImageUrl={displayedResultImageUrl}
+          resultImageAlt={t("resultImageAlt")}
+          action={
+            displayedResultImageUrl ? (
+              <div className="flex items-center gap-2">
+                <StyleResultDownloadButton
+                  imageUrl={resultImageUrl ?? displayedResultImageUrl}
+                  styleId={selectedPreset?.id ?? "unknown"}
+                  label={t("downloadAction")}
+                  ariaLabel={t("downloadAriaLabel")}
+                  successTitle={t("downloadSuccessTitle")}
+                  successDescription={t("downloadSuccessDescription")}
+                  failedMessage={t("downloadFailed")}
+                />
+                {canPostGeneratedResult ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPostModalOpen(true)}
+                    className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    <span>{postsT("postSubmit")}</span>
+                  </Button>
+                ) : null}
+              </div>
+            ) : null
+          }
+        />
+      </div>
       <p className="text-xs leading-5 text-slate-500">
         {t("resultSaveHint")}
       </p>
