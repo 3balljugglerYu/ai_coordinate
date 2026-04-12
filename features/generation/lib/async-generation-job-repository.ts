@@ -24,6 +24,10 @@ export interface AsyncGenerationJobRepository {
   createImageJob(
     jobData: ImageJobCreateInput
   ): Promise<RepositoryResult<{ id: string; status: string }>>;
+  markImageJobFailed(
+    jobId: string,
+    errorMessage: string
+  ): Promise<QueueResult>;
   sendImageJobQueueMessage(jobId: string): Promise<QueueResult>;
 }
 
@@ -96,6 +100,24 @@ export class SupabaseAsyncGenerationJobRepository
     }
 
     return { data, error: null } as const;
+  }
+
+  async markImageJobFailed(jobId: string, errorMessage: string) {
+    const { error } = await this.supabase
+      .from("image_jobs")
+      .update({
+        status: "failed",
+        processing_stage: "failed",
+        error_message: errorMessage,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+
+    if (error) {
+      return { error } as const;
+    }
+
+    return { error: null } as const;
   }
 
   async sendImageJobQueueMessage(jobId: string) {

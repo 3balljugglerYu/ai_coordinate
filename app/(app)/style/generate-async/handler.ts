@@ -7,7 +7,11 @@ import { getPublishedStylePresetForGeneration } from "@/features/style-presets/l
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import {
+  attachStyleGenerateRateLimitReservationToJob,
   checkAndConsumeStyleGenerateRateLimit,
+  releaseStyleGenerateRateLimitAttempt,
+  type StyleAttemptReleaseReason,
+  type StyleGenerateAttemptReservation,
   type StyleGenerateRateLimitResult,
 } from "@/features/style/lib/style-rate-limit";
 import { getAllMessages } from "@/i18n/messages";
@@ -66,6 +70,14 @@ interface StyleGenerateAsyncRouteDependencies {
     userId: string | null;
     styleId: string;
   }) => Promise<StyleGenerateRateLimitResult>;
+  releaseRateLimitAttemptFn?: (params: {
+    reservation: StyleGenerateAttemptReservation | null | undefined;
+    reason: StyleAttemptReleaseReason;
+  }) => Promise<boolean>;
+  attachReservationToJobFn?: (params: {
+    reservation: StyleGenerateAttemptReservation | null | undefined;
+    jobId: string;
+  }) => Promise<boolean>;
 }
 
 function defaultInvokeImageWorker(edgeFunctionUrl: string) {
@@ -172,6 +184,10 @@ export async function postStyleGenerateAsyncRoute(
 ) {
   const locale = getRouteLocale(request);
   const copy = (await getAllMessages(locale)).style;
+  let reservation: StyleGenerateAttemptReservation | null = null;
+  const releaseRateLimitAttemptFn =
+    dependencies.releaseRateLimitAttemptFn ??
+    releaseStyleGenerateRateLimitAttempt;
 
   try {
     const getUserFn = dependencies.getUserFn ?? getUser;
@@ -187,6 +203,29 @@ export async function postStyleGenerateAsyncRoute(
     const checkAndConsumeRateLimitFn =
       dependencies.checkAndConsumeRateLimitFn ??
       checkAndConsumeStyleGenerateRateLimit;
+    const attachReservationToJobFn =
+      dependencies.attachReservationToJobFn ??
+      attachStyleGenerateRateLimitReservationToJob;
+
+    const releaseReservedAttempt = async (
+      reason: StyleAttemptReleaseReason
+    ) => {
+      if (!reservation) {
+        return;
+      }
+
+      try {
+        await releaseRateLimitAttemptFn({
+          reservation,
+          reason,
+        });
+      } catch (error) {
+        console.error(
+          "Style async generate route: failed to release reserved attempt",
+          error
+        );
+      }
+    };
 
     const user = await getUserFn();
     if (!user) {
@@ -247,6 +286,9 @@ export async function postStyleGenerateAsyncRoute(
       userId: user.id,
       styleId,
     });
+    reservation = rateLimitResult.allowed
+      ? rateLimitResult.reservation ?? null
+      : null;
 
     if (!rateLimitResult.allowed) {
       await recordStyleRateLimitedEvent({
@@ -283,6 +325,7 @@ export async function postStyleGenerateAsyncRoute(
 
     if (uploadError || !uploadData) {
       console.error("Style async generate route: failed to upload source image", uploadError);
+      await releaseReservedAttempt("upload_failed");
       return jsonError(
         copy.styleImageReadFailed,
         "STYLE_SOURCE_UPLOAD_FAILED",
@@ -302,7 +345,12 @@ export async function postStyleGenerateAsyncRoute(
       model: normalizeModelName(STYLE_GENERATION_MODEL),
       background_mode: backgroundChangeToBackgroundMode(backgroundChange),
       background_change: backgroundChange,
-      generation_metadata: buildOneTapStyleGenerationMetadata(preset, "free"),
+      generation_metadata: buildOneTapStyleGenerationMetadata(preset, "free", {
+        reservedAttemptId:
+          reservation?.authState === "authenticated"
+            ? reservation.attemptId
+            : null,
+      }),
       status: "queued",
       processing_stage: "queued",
       attempts: 0,
@@ -313,27 +361,51 @@ export async function postStyleGenerateAsyncRoute(
 
     if (insertError || !job) {
       console.error("Style async generate route: failed to create job", insertError);
+      await releaseReservedAttempt("job_create_failed");
       return jsonError(copy.generationFailed, "STYLE_JOB_CREATE_FAILED", 500);
+    }
+
+    try {
+      await attachReservationToJobFn({
+        reservation,
+        jobId: job.id,
+      });
+    } catch (error) {
+      console.error(
+        "Style async generate route: failed to attach reserved attempt to job",
+        error
+      );
     }
 
     const { error: queueError } =
       await jobRepository.sendImageJobQueueMessage(job.id);
 
-    const supabaseUrl = dependencies.supabaseUrl ?? env.NEXT_PUBLIC_SUPABASE_URL;
-    if (supabaseUrl) {
-      invokeImageWorkerFn(`${supabaseUrl}/functions/v1/image-gen-worker`);
-    }
-
     if (queueError) {
       console.error("Style async generate route: failed to enqueue job", queueError);
-      return NextResponse.json(
-        {
-          jobId: job.id,
-          status: job.status,
-          warning: "queue_delayed",
-        },
-        { status: 202 }
+      await releaseReservedAttempt("queue_failed");
+      const failedUpdate = await jobRepository.markImageJobFailed(
+        job.id,
+        "Queue message dispatch failed."
       );
+      if (failedUpdate.error) {
+        console.error(
+          "Style async generate route: failed to mark queue error job as failed",
+          failedUpdate.error
+        );
+      }
+      return jsonError(copy.generationFailed, "STYLE_QUEUE_FAILED", 500);
+    }
+
+    const supabaseUrl = dependencies.supabaseUrl ?? env.NEXT_PUBLIC_SUPABASE_URL;
+    if (supabaseUrl) {
+      try {
+        invokeImageWorkerFn(`${supabaseUrl}/functions/v1/image-gen-worker`);
+      } catch (error) {
+        console.error(
+          "Style async generate route: failed to invoke image worker",
+          error
+        );
+      }
     }
 
     return NextResponse.json({
@@ -342,6 +414,19 @@ export async function postStyleGenerateAsyncRoute(
     });
   } catch (error) {
     console.error("Style async generate route error", error);
+    if (reservation) {
+      try {
+        await releaseRateLimitAttemptFn({
+          reservation,
+          reason: "infra_error",
+        });
+      } catch (releaseError) {
+        console.error(
+          "Style async generate route: failed to release reserved attempt after internal error",
+          releaseError
+        );
+      }
+    }
     return jsonError(copy.internalError, "STYLE_ASYNC_INTERNAL_ERROR", 500);
   }
 }

@@ -37,9 +37,18 @@ import {
   type AsyncGenerationStatus,
 } from "@/features/generation/lib/async-api";
 import {
+  buildCoordinatePreparingCopy,
+  buildCoordinateStageCopy,
+} from "@/features/generation/lib/coordinate-stage-copy";
+import {
+  useCoordinateGenerationFeedback,
+  type CoordinateGenerationFeedbackPhase,
+} from "@/features/generation/hooks/useCoordinateGenerationFeedback";
+import {
   normalizeProcessingStage,
   summarizeJobProgress,
 } from "@/features/generation/lib/job-progress";
+import type { ImageJobProcessingStage } from "@/features/generation/lib/job-types";
 import type { UploadedImage } from "@/features/generation/types";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -73,6 +82,40 @@ type ResultConfirmationIntent = "change" | "regenerate";
 type GenerationPhase = "idle" | "running" | "completing";
 
 const RESULT_REVEAL_DELAY_MS = 5000;
+const PREPARING_PROGRESS_PERCENT = 10;
+const PREPARING_PROGRESS_TRANSITION_MS = 3000;
+const DEFAULT_POLLING_INTERVAL_MS = 1200;
+const FAST_POLLING_INTERVAL_MS = 400;
+const SLOW_POLLING_INTERVAL_MS = 1600;
+const ASYNC_PROGRESS_TRANSITION_MS: Record<ImageJobProcessingStage, number> = {
+  queued: 3000,
+  processing: 600,
+  charging: 500,
+  generating: 25000,
+  uploading: 1200,
+  persisting: 800,
+  completed: 1000,
+  failed: 1000,
+};
+
+function getStyleAsyncPollingIntervalMs(status: AsyncGenerationStatus): number {
+  if (status.previewImageUrl || status.processingStage === "persisting") {
+    return FAST_POLLING_INTERVAL_MS;
+  }
+
+  if (
+    status.processingStage === "charging" ||
+    status.processingStage === "uploading"
+  ) {
+    return 800;
+  }
+
+  if (status.processingStage === "queued") {
+    return SLOW_POLLING_INTERVAL_MS;
+  }
+
+  return DEFAULT_POLLING_INTERVAL_MS;
+}
 
 function resolveInitialSelectedPresetId(
   presets: readonly StylePresetPublicSummary[],
@@ -355,6 +398,7 @@ export function StylePageClient({
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
+  const coordinateT = useTranslations("coordinate");
   const presetStripRef = useRef<HTMLDivElement | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<
     StylePresetPublicSummary["id"]
@@ -431,17 +475,22 @@ export function StylePageClient({
     generationMessages,
     t("generationStatusCompleteMessage")
   );
-  const activeAsyncStage = activeAsyncJobStatus
-    ? normalizeProcessingStage(
-        activeAsyncJobStatus.status,
-        activeAsyncJobStatus.processingStage
-      )
-    : "queued";
+  const asyncStageCopy = useMemo(
+    () => buildCoordinateStageCopy(coordinateT),
+    [coordinateT]
+  );
+  const asyncPreparingCopy = useMemo(
+    () => buildCoordinatePreparingCopy(coordinateT),
+    [coordinateT]
+  );
   const asyncProgressSummary = activeAsyncJobStatus
     ? summarizeJobProgress([
         {
           status: activeAsyncJobStatus.status,
-          processingStage: activeAsyncJobStatus.processingStage,
+          processingStage: normalizeProcessingStage(
+            activeAsyncJobStatus.status,
+            activeAsyncJobStatus.processingStage
+          ),
         },
       ])
     : {
@@ -451,23 +500,40 @@ export function StylePageClient({
         representativeStage: "queued" as const,
         progressPercent: 15,
       };
-  const isAsyncStatusCard = shouldUseAsyncGeneration && Boolean(activeAsyncJobStatus);
-  const asyncStatusHint =
-    activeAsyncStage === "uploading" || activeAsyncStage === "persisting"
-      ? t("generationStatusMessage11")
-      : t("generationStatusHint");
-  const statusCardMessage = guestGenerationFeedback.displayedMessage;
-  const statusCardLiveMessage = guestGenerationFeedback.activeMessage;
-  const statusCardHint = isAsyncStatusCard
-    ? asyncStatusHint
-    : t("generationStatusHint");
-  const statusCardProgress = isAsyncStatusCard
-    ? isCompletingGeneration
-      ? 100
-      : asyncProgressSummary.progressPercent
-    : guestGenerationFeedback.progress;
-  const statusCardIsLongWait = isAsyncStatusCard ? false : guestGenerationFeedback.isLongWait;
-  const statusCardPrefersReducedMotion = guestGenerationFeedback.prefersReducedMotion;
+  const isAsyncStatusCard = shouldUseAsyncGeneration && isGenerating;
+  const asyncFeedbackPhase = generationPhase as CoordinateGenerationFeedbackPhase;
+  const isPreparingAsyncSubmission =
+    asyncFeedbackPhase === "running" && !activeAsyncJobStatus;
+  const asyncStatusCardStage =
+    asyncFeedbackPhase === "completing"
+      ? "completed"
+      : asyncProgressSummary.representativeStage;
+  const {
+    activeMessage: asyncStatusCardLiveMessage,
+    displayedMessage: asyncStatusCardMessage,
+    activeHint: asyncStatusCardHint,
+    prefersReducedMotion: asyncStatusCardPrefersReducedMotion,
+  } = useCoordinateGenerationFeedback(
+    isAsyncStatusCard ? asyncFeedbackPhase : "idle",
+    isPreparingAsyncSubmission
+      ? asyncPreparingCopy
+      : asyncStageCopy[asyncStatusCardStage]
+  );
+  const asyncStatusCardProgress = isCompletingGeneration
+    ? 100
+    : isPreparingAsyncSubmission
+      ? PREPARING_PROGRESS_PERCENT
+      : asyncProgressSummary.progressPercent;
+  const asyncStatusCardProgressTransitionDurationMs =
+    isPreparingAsyncSubmission
+      ? PREPARING_PROGRESS_TRANSITION_MS
+      : ASYNC_PROGRESS_TRANSITION_MS[asyncStatusCardStage];
+  const guestStatusCardMessage = guestGenerationFeedback.displayedMessage;
+  const guestStatusCardLiveMessage = guestGenerationFeedback.activeMessage;
+  const guestStatusCardProgress = guestGenerationFeedback.progress;
+  const guestStatusCardIsLongWait = guestGenerationFeedback.isLongWait;
+  const guestStatusCardPrefersReducedMotion =
+    guestGenerationFeedback.prefersReducedMotion;
 
   useEffect(() => {
     if (generationPhase !== "completing" || !queuedResultImageUrl) {
@@ -858,6 +924,7 @@ export function StylePageClient({
       setActiveAsyncJobStatus(latestKnownStatus);
 
       const { promise, stop } = pollGenerationStatus(payload.jobId, {
+        interval: getStyleAsyncPollingIntervalMs,
         onStatusUpdate: (status) => {
           setActiveAsyncJobStatus(status);
         },
@@ -1216,24 +1283,28 @@ export function StylePageClient({
               isAsyncStatusCard ? (
                 <GenerationStatusCard
                   title={generationStatusTitle}
-                  message={statusCardMessage}
-                  liveMessage={statusCardLiveMessage}
-                  footerText={statusCardHint}
-                  progress={statusCardProgress}
+                  message={asyncStatusCardMessage}
+                  liveMessage={asyncStatusCardLiveMessage}
+                  footerText={asyncStatusCardHint}
+                  progress={asyncStatusCardProgress}
+                  progressTransitionDurationMs={
+                    asyncStatusCardProgressTransitionDurationMs
+                  }
+                  animateFromZeroOnMount
                   isComplete={isCompletingGeneration}
-                  prefersReducedMotion={statusCardPrefersReducedMotion}
+                  prefersReducedMotion={asyncStatusCardPrefersReducedMotion}
                 />
               ) : (
                 <StyleGenerationStatusCard
                   title={generationStatusTitle}
-                  message={statusCardMessage}
-                  liveMessage={statusCardLiveMessage}
+                  message={guestStatusCardMessage}
+                  liveMessage={guestStatusCardLiveMessage}
                   hint={generationStatusHint}
                   slowHint={t("generationStatusSlowHint")}
-                  progress={statusCardProgress}
-                  isLongWait={statusCardIsLongWait}
+                  progress={guestStatusCardProgress}
+                  isLongWait={guestStatusCardIsLongWait}
                   isComplete={isCompletingGeneration}
-                  prefersReducedMotion={statusCardPrefersReducedMotion}
+                  prefersReducedMotion={guestStatusCardPrefersReducedMotion}
                 />
               )
             ) : null}

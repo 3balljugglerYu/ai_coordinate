@@ -18,6 +18,10 @@ import {
   SAFETY_POLICY_BLOCKED_ERROR,
   isSafetyPolicyBlockedErrorMessage,
 } from "../../../shared/generation/errors.ts";
+import {
+  getOneTapStylePresetMetadata,
+  getOneTapStyleReservedAttemptId,
+} from "../../../shared/generation/one-tap-style-metadata.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -488,6 +492,25 @@ async function refundPercoinsFromGeneration(
     );
   } catch (error) {
     console.error("[Percoin Refund] Error refunding percoins:", error);
+    throw error;
+  }
+}
+
+async function releaseStyleAuthenticatedGenerateAttempt(
+  supabase: ReturnType<typeof createClient>,
+  attemptId: string,
+  reason: "no_image_generated" | "worker_failed" | "infra_error"
+): Promise<void> {
+  const { error } = await supabase.rpc(
+    "release_style_authenticated_generate_attempt",
+    {
+      p_attempt_id: attemptId,
+      p_release_reason: reason,
+      p_released_at: new Date().toISOString(),
+    }
+  );
+
+  if (error) {
     throw error;
   }
 }
@@ -990,28 +1013,59 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗確定時のみ返金（未減算ジョブの過剰返金も防ぐ）
-          try {
-            const { data: consumptionTx } = await supabase
-              .from("credit_transactions")
-              .select("id")
-              .eq("user_id", job.user_id)
-              .eq("transaction_type", "consumption")
-              .eq("metadata->>job_id", jobId)
-              .maybeSingle();
+          // 最終失敗確定時のみ返金または無料枠release（未減算ジョブの過剰返金も防ぐ）
+          const staleOneTapStyleMetadata =
+            job.generation_type === "one_tap_style"
+              ? getOneTapStylePresetMetadata(job)
+              : null;
+          const staleReservedAttemptId =
+            job.generation_type === "one_tap_style"
+              ? getOneTapStyleReservedAttemptId(job)
+              : null;
 
-            if (consumptionTx) {
-              const percoinCost = getPercoinCost(job.model);
-              await refundPercoinsFromGeneration(
+          if (
+            job.generation_type === "one_tap_style" &&
+            staleOneTapStyleMetadata?.billingMode === "free" &&
+            staleReservedAttemptId
+          ) {
+            try {
+              await releaseStyleAuthenticatedGenerateAttempt(
                 supabase,
-                job.user_id,
-                jobId,
-                percoinCost
+                staleReservedAttemptId,
+                "worker_failed"
               );
-              console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
+              console.log(
+                `[Job Processing] Released free style attempt for final stale-failed job ${jobId}`
+              );
+            } catch (releaseError) {
+              console.error(
+                "[Job Processing] Failed to release free style attempt for final stale-failed job:",
+                releaseError
+              );
             }
-          } catch (refundError) {
-            console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
+          } else {
+            try {
+              const { data: consumptionTx } = await supabase
+                .from("credit_transactions")
+                .select("id")
+                .eq("user_id", job.user_id)
+                .eq("transaction_type", "consumption")
+                .eq("metadata->>job_id", jobId)
+                .maybeSingle();
+
+              if (consumptionTx) {
+                const percoinCost = getPercoinCost(job.model);
+                await refundPercoinsFromGeneration(
+                  supabase,
+                  job.user_id,
+                  jobId,
+                  percoinCost
+                );
+                console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
+              }
+            } catch (refundError) {
+              console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
+            }
           }
 
           // 失敗確定したためメッセージを削除
@@ -1066,7 +1120,17 @@ Deno.serve(async () => {
           job.background_mode,
           job.background_change
         );
-        const isFreeOneTapStyleJob = job.generation_type === "one_tap_style";
+        const oneTapStyleMetadata =
+          job.generation_type === "one_tap_style"
+            ? getOneTapStylePresetMetadata(job)
+            : null;
+        const reservedAttemptId =
+          job.generation_type === "one_tap_style"
+            ? getOneTapStyleReservedAttemptId(job)
+            : null;
+        const isFreeOneTapStyleJob =
+          job.generation_type === "one_tap_style" &&
+          oneTapStyleMetadata?.billingMode === "free";
 
         logJobTimeline(jobId, "ジョブ開始", {
           generationType: job.generation_type,
@@ -1678,20 +1742,48 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗が確定した場合のみ返金
+          // 最終失敗が確定した場合のみ返金または無料枠release
           if (shouldMarkAsFailed) {
-            try {
-              const percoinCost = getPercoinCost(job.model);
-              await refundPercoinsFromGeneration(
-                supabase,
-                job.user_id,
-                jobId,
-                percoinCost
-              );
-              console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
-            } catch (refundError) {
-              // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
-              console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
+            if (isFreeOneTapStyleJob) {
+              const shouldReleaseFreeAttempt =
+                reservedAttemptId !== null &&
+                !isSafetyPolicyBlockedErrorMessage(errorMessage);
+
+              if (shouldReleaseFreeAttempt) {
+                try {
+                  const releaseReason =
+                    errorMessage === "No images generated"
+                      ? "no_image_generated"
+                      : "worker_failed";
+                  await releaseStyleAuthenticatedGenerateAttempt(
+                    supabase,
+                    reservedAttemptId,
+                    releaseReason
+                  );
+                  console.log(
+                    `[Job Processing] Released free style attempt for failed job ${jobId}`
+                  );
+                } catch (releaseError) {
+                  console.error(
+                    "[Job Processing] Failed to release free style attempt after final generation failure:",
+                    releaseError
+                  );
+                }
+              }
+            } else {
+              try {
+                const percoinCost = getPercoinCost(job.model);
+                await refundPercoinsFromGeneration(
+                  supabase,
+                  job.user_id,
+                  jobId,
+                  percoinCost
+                );
+                console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
+              } catch (refundError) {
+                // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
+                console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
+              }
             }
           }
 

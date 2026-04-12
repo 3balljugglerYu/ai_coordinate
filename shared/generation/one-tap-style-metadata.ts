@@ -8,6 +8,7 @@ export interface OneTapStylePresetMetadata extends Record<string, unknown> {
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
   billingMode: OneTapStyleBillingMode;
+  reservedAttemptId?: string;
 }
 
 export interface OneTapStyleGenerationMetadata extends Record<string, unknown> {
@@ -21,6 +22,10 @@ interface OneTapStylePresetInput {
   thumbnailWidth: number;
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
+}
+
+interface OneTapStyleMetadataOptions {
+  reservedAttemptId?: string | null;
 }
 
 interface OneTapStyleRecordLike {
@@ -38,7 +43,8 @@ function isBillingMode(value: unknown): value is OneTapStyleBillingMode {
 
 export function buildOneTapStyleGenerationMetadata(
   preset: OneTapStylePresetInput,
-  billingMode: OneTapStyleBillingMode = "free"
+  billingMode: OneTapStyleBillingMode = "free",
+  options: OneTapStyleMetadataOptions = {}
 ): OneTapStyleGenerationMetadata {
   return {
     oneTapStyle: {
@@ -49,6 +55,10 @@ export function buildOneTapStyleGenerationMetadata(
       thumbnailHeight: preset.thumbnailHeight,
       hasBackgroundPrompt: preset.hasBackgroundPrompt,
       billingMode,
+      ...(typeof options.reservedAttemptId === "string" &&
+      options.reservedAttemptId.length > 0
+        ? { reservedAttemptId: options.reservedAttemptId }
+        : {}),
     },
   };
 }
@@ -94,5 +104,17 @@ export function getOneTapStylePresetMetadata(
     thumbnailHeight,
     hasBackgroundPrompt,
     billingMode: isBillingMode(billingMode) ? billingMode : "free",
+    ...(typeof oneTapStyle.reservedAttemptId === "string"
+      ? { reservedAttemptId: oneTapStyle.reservedAttemptId }
+      : {}),
   };
+}
+
+export function getOneTapStyleReservedAttemptId(
+  record: OneTapStyleRecordLike
+): string | null {
+  const metadata = getOneTapStylePresetMetadata(record);
+  return typeof metadata?.reservedAttemptId === "string"
+    ? metadata.reservedAttemptId
+    : null;
 }

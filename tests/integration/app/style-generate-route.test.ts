@@ -2,7 +2,10 @@
 
 import { NextRequest } from "next/server";
 import { postStyleGenerateRoute } from "@/app/(app)/style/generate/handler";
-import type { StyleGenerateRateLimitResult } from "@/features/style/lib/style-rate-limit";
+import type {
+  StyleGenerateAttemptReservation,
+  StyleGenerateRateLimitResult,
+} from "@/features/style/lib/style-rate-limit";
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
@@ -99,6 +102,23 @@ describe("StyleGenerateRoute integration tests", () => {
     Promise<StyleGenerateRateLimitResult>,
     [{ request: NextRequest; userId: string | null; styleId: string }]
   >;
+  let releaseRateLimitAttemptFn: jest.Mock<
+    Promise<boolean>,
+    [
+      {
+        reservation: StyleGenerateAttemptReservation | null | undefined;
+        reason:
+          | "upload_failed"
+          | "job_create_failed"
+          | "queue_failed"
+          | "timeout"
+          | "upstream_error"
+          | "no_image_generated"
+          | "worker_failed"
+          | "infra_error";
+      },
+    ]
+  >;
   let consoleErrorSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
 
@@ -125,6 +145,7 @@ describe("StyleGenerateRoute integration tests", () => {
         [{ request: NextRequest; userId: string | null; styleId: string }]
       >()
       .mockResolvedValue({ allowed: true });
+    releaseRateLimitAttemptFn = jest.fn().mockResolvedValue(true);
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {
       // keep test output deterministic
     });
@@ -152,6 +173,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -187,6 +209,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -206,6 +229,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -229,6 +253,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -252,6 +277,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -327,6 +353,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -363,6 +390,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -400,6 +428,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -431,6 +460,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -473,6 +503,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -518,6 +549,13 @@ describe("StyleGenerateRoute integration tests", () => {
   });
 
   test("postStyleGenerateRoute_timeout時_504を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
     fetchFn.mockRejectedValueOnce(
       Object.assign(new Error("aborted"), { name: "AbortError" })
     );
@@ -533,15 +571,30 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
     expect(response.status).toBe(504);
     expect(body.error).toBe("画像生成がタイムアウトしました。もう一度お試しください。");
     expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+      reason: "timeout",
+    });
   });
 
   test("postStyleGenerateRoute_safetyBlock時_400を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
     fetchFn.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
@@ -569,6 +622,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -576,9 +630,17 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(body.error).toBe(
       "安全性でブロックされました。画像または指示を調整して再試行してください。"
     );
+    expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
   });
 
   test("postStyleGenerateRoute_noImageResponse時_502を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
     fetchFn.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
@@ -611,6 +673,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -619,5 +682,62 @@ describe("StyleGenerateRoute integration tests", () => {
       "画像が生成されませんでした（finishReason: STOP）。別の画像や入力で再試行してください。"
     );
     expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+      reason: "no_image_generated",
+    });
+  });
+
+  test("postStyleGenerateRoute_upstream5xx時_releaseして同じstatusを返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
+    fetchFn.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "upstream overloaded",
+          },
+        }),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(503);
+    expect(body.error).toBe("upstream overloaded");
+    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+      reason: "upstream_error",
+    });
   });
 });

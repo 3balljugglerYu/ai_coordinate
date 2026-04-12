@@ -115,6 +115,10 @@ const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
 const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
+const translationFunctionCache = new Map<
+  string | undefined,
+  ReturnType<typeof useTranslations>
+>();
 
 const styleMessages = {
   sectionTitle: "Choose a Style",
@@ -206,11 +210,27 @@ const styleMessages = {
   unknownError: "An unknown error occurred.",
 };
 
+const coordinateMessages = {
+  generationStagePreparingMessage1: "Checking the outfit...",
+  generationStagePreparingHint1: "Checking the source image and prompt.",
+  generationStageQueuedMessage1: "Getting your turn for the outfit change ready...",
+  generationStageQueuedHint1: "We're lining this request up for processing.",
+  generationStageGeneratingMessage1: "Heading into the fitting room!...",
+  generationStageGeneratingHint1:
+    "The AI is working through the outfit change.",
+  generationStageCompletedMessage1: "The outfit change is ready!",
+  generationStageCompletedHint1: "The final check is done.",
+};
+
 function translate(
   namespace: string | undefined,
   key: string,
   values?: Record<string, string | number>
 ): string {
+  if (namespace === "coordinate") {
+    return coordinateMessages[key as keyof typeof coordinateMessages] ?? key;
+  }
+
   if (namespace !== "style") {
     return key;
   }
@@ -270,9 +290,17 @@ describe("StylePageClient", () => {
       refresh: jest.fn(),
     } as unknown as ReturnType<typeof useRouter>);
 
+    translationFunctionCache.clear();
     useTranslationsMock.mockImplementation((namespace?: string) => {
-      return ((key: string, values?: Record<string, string | number>) =>
+      const cached = translationFunctionCache.get(namespace);
+      if (cached) {
+        return cached;
+      }
+
+      const nextTranslationFn = ((key: string, values?: Record<string, string | number>) =>
         translate(namespace, key, values)) as ReturnType<typeof useTranslations>;
+      translationFunctionCache.set(namespace, nextTranslationFn);
+      return nextTranslationFn;
     });
 
     originalFetch = global.fetch;
@@ -710,6 +738,7 @@ describe("StylePageClient", () => {
 
   test("ログインユーザーは非同期ジョブの進捗を使って/style生成を表示する", async () => {
     jest.useFakeTimers();
+    jest.spyOn(Math, "random").mockReturnValue(0);
 
     render(
       <StylePageClient
@@ -735,6 +764,11 @@ describe("StylePageClient", () => {
     expect(
       screen.getByRole("button", { name: "Generating..." })
     ).toBeDisabled();
+    const liveRegion = await screen.findByRole("status");
+    expect(liveRegion.textContent).not.toContain("Checking out the new look.");
+    expect(liveRegion.textContent ?? "").toMatch(
+      /Checking the source image and prompt\.|We're lining this request up for processing\.|The AI is working through the outfit change\.|The outfit change is ready!|The final check is done\.|generationStage/
+    );
 
     await act(async () => {
       jest.advanceTimersByTime(2000);

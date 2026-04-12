@@ -12,6 +12,9 @@ import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import {
   checkAndConsumeStyleGenerateRateLimit,
+  releaseStyleGenerateRateLimitAttempt,
+  type StyleAttemptReleaseReason,
+  type StyleGenerateAttemptReservation,
   type StyleGenerateRateLimitResult,
 } from "@/features/style/lib/style-rate-limit";
 import { getAllMessages } from "@/i18n/messages";
@@ -59,6 +62,10 @@ interface StyleGenerateRouteDependencies {
     userId: string | null;
     styleId: string;
   }) => Promise<StyleGenerateRateLimitResult>;
+  releaseRateLimitAttemptFn?: (params: {
+    reservation: StyleGenerateAttemptReservation | null | undefined;
+    reason: StyleAttemptReleaseReason;
+  }) => Promise<boolean>;
 }
 
 interface GeminiErrorPayload {
@@ -214,6 +221,10 @@ export async function postStyleGenerateRoute(
 ) {
   const locale = getRouteLocale(request);
   const copy = (await getAllMessages(locale)).style;
+  let reservation: StyleGenerateAttemptReservation | null = null;
+  const releaseRateLimitAttemptFn =
+    dependencies.releaseRateLimitAttemptFn ??
+    releaseStyleGenerateRateLimitAttempt;
 
   try {
     const getUserFn = dependencies.getUserFn ?? getUser;
@@ -226,6 +237,26 @@ export async function postStyleGenerateRoute(
     const checkAndConsumeRateLimitFn =
       dependencies.checkAndConsumeRateLimitFn ??
       checkAndConsumeStyleGenerateRateLimit;
+
+    const releaseReservedAttempt = async (
+      reason: StyleAttemptReleaseReason
+    ) => {
+      if (!reservation) {
+        return;
+      }
+
+      try {
+        await releaseRateLimitAttemptFn({
+          reservation,
+          reason,
+        });
+      } catch (error) {
+        console.error(
+          "Style generate route: failed to release reserved attempt",
+          error
+        );
+      }
+    };
 
     const user = await getUserFn();
     const authState: StyleUsageAuthState = user ? "authenticated" : "guest";
@@ -295,6 +326,9 @@ export async function postStyleGenerateRoute(
         userId: user?.id ?? null,
         styleId,
       });
+      reservation = rateLimitResult.allowed
+        ? rateLimitResult.reservation ?? null
+        : null;
     } catch (error) {
       console.error(
         "Style generate route: failed to verify guest rate limit",
@@ -399,6 +433,7 @@ export async function postStyleGenerateRoute(
         );
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
+          await releaseReservedAttempt("timeout");
           return jsonError(copy.requestTimedOut, "STYLE_TIMEOUT", 504);
         }
         throw error;
@@ -426,6 +461,10 @@ export async function postStyleGenerateRoute(
           /safety|blocked|block_reason|policy|prohibited/i.test(apiErrorMessage)
         ) {
           return jsonError(copy.safetyBlocked, "STYLE_SAFETY_BLOCKED", 400);
+        }
+
+        if (response.status >= 500) {
+          await releaseReservedAttempt("upstream_error");
         }
 
         return NextResponse.json(
@@ -479,6 +518,7 @@ export async function postStyleGenerateRoute(
       console.warn("Style generate route: no image part in Gemini response", {
         finishReasons,
       });
+      await releaseReservedAttempt("no_image_generated");
 
       return NextResponse.json(
         {
@@ -495,6 +535,19 @@ export async function postStyleGenerateRoute(
     return jsonError(copy.generationFailed, "STYLE_GENERATION_FAILED", 502);
   } catch (error) {
     console.error("Style generate route error", error);
+    if (reservation) {
+      try {
+        await releaseRateLimitAttemptFn({
+          reservation,
+          reason: "infra_error",
+        });
+      } catch (releaseError) {
+        console.error(
+          "Style generate route: failed to release reserved attempt after internal error",
+          releaseError
+        );
+      }
+    }
     return jsonError(copy.internalError, "STYLE_INTERNAL_ERROR", 500);
   }
 }

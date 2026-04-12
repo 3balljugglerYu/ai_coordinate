@@ -17,8 +17,23 @@ export type StyleGenerateRateLimitReason =
   | "guest_daily"
   | "authenticated_daily";
 
+export type StyleAttemptReleaseReason =
+  | "upload_failed"
+  | "job_create_failed"
+  | "queue_failed"
+  | "timeout"
+  | "upstream_error"
+  | "no_image_generated"
+  | "worker_failed"
+  | "infra_error";
+
+export interface StyleGenerateAttemptReservation {
+  authState: StyleUsageAuthState;
+  attemptId: string;
+}
+
 export type StyleGenerateRateLimitResult =
-  | { allowed: true }
+  | { allowed: true; reservation?: StyleGenerateAttemptReservation | null }
   | { allowed: false; reason: StyleGenerateRateLimitReason };
 
 export interface StyleGenerateRateLimitStatus {
@@ -32,6 +47,17 @@ interface CheckAndConsumeStyleGenerateRateLimitParams {
   userId: string | null;
   styleId: string;
   now?: Date;
+}
+
+interface ReleaseStyleGenerateRateLimitAttemptParams {
+  reservation: StyleGenerateAttemptReservation | null | undefined;
+  reason: StyleAttemptReleaseReason;
+  releasedAt?: Date;
+}
+
+interface AttachStyleGenerateRateLimitReservationToJobParams {
+  reservation: StyleGenerateAttemptReservation | null | undefined;
+  jobId: string;
 }
 
 interface GetStyleGenerateRateLimitStatusParams {
@@ -105,6 +131,7 @@ async function getAuthenticatedDailyGenerateAttemptCount(
     .eq("user_id", userId)
     .eq("auth_state", "authenticated")
     .eq("event_type", "generate_attempt")
+    .is("released_at", null)
     .gte("created_at", dailyWindowIso);
 
   if (error) {
@@ -118,10 +145,10 @@ async function consumeAuthenticatedGenerateAttempt(params: {
   userId: string;
   styleId: string;
   now: Date;
-}): Promise<boolean> {
+}): Promise<StyleGenerateRateLimitResult> {
   const supabase = createAdminClient();
   const { data, error } = await supabase.rpc(
-    "consume_style_authenticated_generate_attempt",
+    "reserve_style_authenticated_generate_attempt",
     {
       p_user_id: params.userId,
       p_style_id: params.styleId,
@@ -134,7 +161,34 @@ async function consumeAuthenticatedGenerateAttempt(params: {
     throw error;
   }
 
-  return data === true;
+  const payload = Array.isArray(data) ? data[0] : data;
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Invalid authenticated style rate-limit reservation response");
+  }
+  const payloadRecord = payload as Record<string, unknown>;
+
+  const allowed = payloadRecord.allowed === true;
+  const attemptId =
+    typeof payloadRecord.attemptId === "string"
+      ? payloadRecord.attemptId
+      : typeof payloadRecord.attempt_id === "string"
+        ? payloadRecord.attempt_id
+        : null;
+
+  if (!allowed) {
+    return { allowed: false, reason: "authenticated_daily" };
+  }
+
+  return {
+    allowed: true,
+    reservation:
+      attemptId !== null
+        ? {
+            authState: "authenticated",
+            attemptId,
+          }
+        : null,
+  };
 }
 
 async function getGuestGenerateAttemptCounts(
@@ -151,11 +205,13 @@ async function getGuestGenerateAttemptCounts(
       .from("style_guest_generate_attempts")
       .select("id", { count: "exact", head: true })
       .eq("client_ip_hash", clientIpHash)
+      .is("released_at", null)
       .gte("created_at", shortWindowIso),
     supabase
       .from("style_guest_generate_attempts")
       .select("id", { count: "exact", head: true })
       .eq("client_ip_hash", clientIpHash)
+      .is("released_at", null)
       .gte("created_at", dailyWindowIso),
   ]);
 
@@ -225,52 +281,134 @@ export async function checkAndConsumeStyleGenerateRateLimit({
   now = new Date(),
 }: CheckAndConsumeStyleGenerateRateLimitParams): Promise<StyleGenerateRateLimitResult> {
   if (userId) {
-    const didConsumeAttempt = await consumeAuthenticatedGenerateAttempt({
+    return consumeAuthenticatedGenerateAttempt({
       userId,
       styleId,
       now,
     });
-
-    if (!didConsumeAttempt) {
-      return { allowed: false, reason: "authenticated_daily" };
-    }
-
-    return { allowed: true };
   }
 
-  const dailyWindowIso = getJstStartOfDay(now).toISOString();
   const clientIp = extractClientIp(request);
   if (!clientIp) {
     console.warn("Style guest rate limit: client IP header was unavailable");
-    return { allowed: true };
-  }
-
-  const clientIpHash = buildClientIpHash(clientIp);
-  const shortWindowIso = new Date(now.getTime() - ONE_MINUTE_MS).toISOString();
-  const { shortCount, dailyCount } = await getGuestGenerateAttemptCounts(
-    clientIpHash,
-    shortWindowIso,
-    dailyWindowIso
-  );
-
-  if (shortCount >= GUEST_SHORT_LIMIT) {
-    return { allowed: false, reason: "guest_short" };
-  }
-
-  if (dailyCount >= GUEST_DAILY_LIMIT) {
-    return { allowed: false, reason: "guest_daily" };
+    return { allowed: true, reservation: null };
   }
 
   const supabase = createAdminClient();
-  const { error: insertError } = await supabase
-    .from("style_guest_generate_attempts")
-    .insert({
-      client_ip_hash: clientIpHash,
-    });
+  const clientIpHash = buildClientIpHash(clientIp);
+  const { data, error } = await supabase.rpc(
+    "reserve_style_guest_generate_attempt",
+    {
+      p_client_ip_hash: clientIpHash,
+      p_short_limit: GUEST_SHORT_LIMIT,
+      p_daily_limit: GUEST_DAILY_LIMIT,
+      p_now: now.toISOString(),
+    }
+  );
 
-  if (insertError) {
-    throw insertError;
+  if (error) {
+    throw error;
   }
 
-  return { allowed: true };
+  const payload = Array.isArray(data) ? data[0] : data;
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Invalid guest style rate-limit reservation response");
+  }
+  const payloadRecord = payload as Record<string, unknown>;
+
+  const allowed = payloadRecord.allowed === true;
+  const attemptId =
+    typeof payloadRecord.attemptId === "string"
+      ? payloadRecord.attemptId
+      : typeof payloadRecord.attempt_id === "string"
+        ? payloadRecord.attempt_id
+        : null;
+  const reasonValue =
+    typeof payloadRecord.reason === "string" ? payloadRecord.reason : null;
+
+  if (!allowed) {
+    return {
+      allowed: false,
+      reason: reasonValue === "short_limit" ? "guest_short" : "guest_daily",
+    };
+  }
+
+  return {
+    allowed: true,
+    reservation:
+      attemptId !== null
+        ? {
+            authState: "guest",
+            attemptId,
+          }
+        : null,
+  };
+}
+
+export async function attachStyleGenerateRateLimitReservationToJob({
+  reservation,
+  jobId,
+}: AttachStyleGenerateRateLimitReservationToJobParams): Promise<boolean> {
+  if (!reservation || reservation.authState !== "authenticated") {
+    return false;
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc(
+    "attach_style_authenticated_generate_attempt_job",
+    {
+      p_attempt_id: reservation.attemptId,
+      p_job_id: jobId,
+    }
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return data === true;
+}
+
+export async function releaseStyleGenerateRateLimitAttempt({
+  reservation,
+  reason,
+  releasedAt = new Date(),
+}: ReleaseStyleGenerateRateLimitAttemptParams): Promise<boolean> {
+  if (!reservation) {
+    return false;
+  }
+
+  const supabase = createAdminClient();
+
+  if (reservation.authState === "authenticated") {
+    const { data, error } = await supabase.rpc(
+      "release_style_authenticated_generate_attempt",
+      {
+        p_attempt_id: reservation.attemptId,
+        p_release_reason: reason,
+        p_released_at: releasedAt.toISOString(),
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return data === true;
+  }
+
+  const { data, error } = await supabase.rpc(
+    "release_style_guest_generate_attempt",
+    {
+      p_attempt_id: reservation.attemptId,
+      p_release_reason: reason,
+      p_released_at: releasedAt.toISOString(),
+    }
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return data === true;
 }
