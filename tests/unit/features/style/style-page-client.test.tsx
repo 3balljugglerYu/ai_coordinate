@@ -988,7 +988,10 @@ describe("StylePageClient", () => {
     expect(
       await screen.findByText("The reveal is coming up in a moment!")
     ).toBeInTheDocument();
-    expect(screen.queryByAltText("Generated result")).not.toBeInTheDocument();
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
+      "src",
+      "data:image/png;base64,generated-image-base64"
+    );
 
     act(() => {
       jest.advanceTimersByTime(5000);
@@ -1057,6 +1060,10 @@ describe("StylePageClient", () => {
     expect(
       await screen.findByText("Styling is complete.")
     ).toBeInTheDocument();
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/generated-style-result.png"
+    );
 
     act(() => {
       jest.advanceTimersByTime(5000);
@@ -1407,7 +1414,7 @@ describe("StylePageClient", () => {
             "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
           errorCode: "STYLE_RATE_LIMIT_DAILY",
           signupCta: true,
-          signupPath: "/signup?next=%2Fstyle",
+          signupPath: "/signup?next=%2Fstyle&signup_source=style",
         },
         false
       ),
@@ -1434,7 +1441,13 @@ describe("StylePageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sign up to continue" }));
 
-    expect(routerPushMock).toHaveBeenCalledWith("/signup?next=%2Fstyle");
+    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+      eventType: "signup_click",
+      styleId: presets[0].id,
+    });
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/signup?next=%2Fstyle&signup_source=style"
+    );
   });
 
   test("短時間制限エラー時_ダイアログを表示する", async () => {
@@ -1561,7 +1574,13 @@ describe("StylePageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sign up to continue" }));
 
-    expect(routerPushMock).toHaveBeenCalledWith("/signup?next=%2Fstyle");
+    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+      eventType: "signup_click",
+      styleId: presets[0].id,
+    });
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/signup?next=%2Fstyle&signup_source=style"
+    );
   });
 
   test("ログインユーザーが上限到達時_翌日案内カードを表示して生成を止める", async () => {

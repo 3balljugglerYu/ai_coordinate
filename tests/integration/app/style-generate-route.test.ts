@@ -188,8 +188,14 @@ describe("StyleGenerateRoute integration tests", () => {
       userId: null,
       styleId: STYLE_ID,
     });
-    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(2);
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(1, {
+      userId: null,
+      authState: "guest",
+      eventType: "generate_attempt",
+      styleId: STYLE_ID,
+    });
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(2, {
       userId: null,
       authState: "guest",
       eventType: "generate",
@@ -400,7 +406,7 @@ describe("StyleGenerateRoute integration tests", () => {
         "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
       errorCode: "STYLE_RATE_LIMIT_DAILY",
       signupCta: true,
-      signupPath: "/signup?next=%2Fstyle",
+      signupPath: "/signup?next=%2Fstyle&signup_source=style",
     });
     expect(fetchFn).not.toHaveBeenCalled();
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
@@ -434,8 +440,7 @@ describe("StyleGenerateRoute integration tests", () => {
 
     expect(response.status).toBe(429);
     expect(body).toEqual({
-      error:
-        "本日の生成回数が上限に達しました。明日以降に再度お試しください。",
+      error: "本日の無料分の生成回数が上限に達しました。",
       errorCode: "STYLE_RATE_LIMIT_AUTHENTICATED_DAILY",
     });
     expect(fetchFn).not.toHaveBeenCalled();

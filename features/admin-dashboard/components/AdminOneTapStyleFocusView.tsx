@@ -154,6 +154,74 @@ export function AdminOneTapStyleFocusView({
 
       <AdminOneTapStyleCard analytics={analytics.analytics} />
 
+      <Card className="border-violet-200/60 bg-white/95 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle
+            className="text-lg text-slate-900"
+            style={{
+              fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
+            }}
+          >
+            /style 起点の新規登録ファネル
+          </CardTitle>
+          <CardDescription className="text-sm leading-6 text-slate-600">
+            CTA クリックから登録完了、style 復帰、初回生成までを追っています。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {analytics.signupFunnel.steps.map((step) => (
+              <div
+                key={step.label}
+                className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4"
+              >
+                <p className="text-sm font-medium text-slate-600">{step.label}</p>
+                <p
+                  className="mt-2 text-2xl font-bold tracking-tight text-slate-950"
+                  style={{
+                    fontFamily:
+                      "var(--font-admin-heading), ui-monospace, monospace",
+                  }}
+                >
+                  {step.count.toLocaleString("ja-JP")}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {step.rateFromPrevious === null
+                    ? "最上流ステップ"
+                    : `前段階比 ${formatPercent(step.rateFromPrevious)}`}
+                </p>
+              </div>
+            ))}
+          </div>
+          <dl className="grid gap-3 text-sm text-slate-700 md:grid-cols-3">
+            <div className="rounded-xl border border-slate-200/80 bg-white px-4 py-3">
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                CTA→登録完了率
+              </dt>
+              <dd className="mt-2 text-base font-semibold text-slate-900">
+                {formatPercent(analytics.signupFunnel.clickToSignupRatePct)}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-slate-200/80 bg-white px-4 py-3">
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                登録後復帰率
+              </dt>
+              <dd className="mt-2 text-base font-semibold text-slate-900">
+                {formatPercent(analytics.signupFunnel.signupReturnRatePct)}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-slate-200/80 bg-white px-4 py-3">
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                登録後初回生成率
+              </dt>
+              <dd className="mt-2 text-base font-semibold text-slate-900">
+                {formatPercent(analytics.signupFunnel.signupGenerationRatePct)}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
       <section className="grid gap-4 xl:grid-cols-12">
         <Card className="border-violet-200/60 bg-white/95 shadow-sm xl:col-span-7">
           <CardHeader className="pb-4">
@@ -166,7 +234,7 @@ export function AdminOneTapStyleFocusView({
               セグメント別の利用状況
             </CardTitle>
             <CardDescription className="text-sm leading-6 text-slate-600">
-              ログイン前後で、試行数、生成成功率、上限到達率がどう違うかを比較できます。
+              ユーザー/ゲストで、生成開始回数、生成成功数、生成成功率、無料枠上限到達率がどう違うかを比較できます。
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
@@ -190,11 +258,11 @@ export function AdminOneTapStyleFocusView({
                 </div>
                 <dl className="mt-4 space-y-2 text-sm text-slate-700">
                   <div className="flex items-center justify-between gap-3">
-                    <dt>試行数</dt>
+                    <dt>生成開始回数</dt>
                     <dd className="font-medium">{segment.attempts.toLocaleString("ja-JP")} 回</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <dt>生成数</dt>
+                    <dt>生成成功数</dt>
                     <dd className="font-medium">{segment.generations.toLocaleString("ja-JP")} 件</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3">
@@ -202,7 +270,7 @@ export function AdminOneTapStyleFocusView({
                     <dd className="font-medium">{segment.downloads.toLocaleString("ja-JP")} 件</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <dt>上限到達数</dt>
+                    <dt>無料枠上限到達数</dt>
                     <dd className="font-medium">{segment.rateLimited.toLocaleString("ja-JP")} 件</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3">
@@ -214,7 +282,7 @@ export function AdminOneTapStyleFocusView({
                     <dd className="font-medium">{formatPercent(segment.downloadRatePct)}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <dt>上限到達率</dt>
+                    <dt>無料枠上限到達率</dt>
                     <dd className="font-medium">{formatPercent(segment.rateLimitedSharePct)}</dd>
                   </div>
                 </dl>
@@ -256,11 +324,11 @@ export function AdminOneTapStyleFocusView({
                 value: analytics.operationalSummary.zeroGenerationPublishedPresetCount,
               },
               {
-                label: "ログイン試行数",
+                label: "ユーザー生成回数",
                 value: analytics.operationalSummary.authenticatedAttemptCount,
               },
               {
-                label: "未ログイン試行数",
+                label: "ゲスト生成回数",
                 value: analytics.operationalSummary.guestAttemptCount,
               },
             ].map((item) => (
@@ -294,9 +362,9 @@ export function AdminOneTapStyleFocusView({
           >
             スタイル別パフォーマンス
           </CardTitle>
-          <CardDescription className="text-sm leading-6 text-slate-600">
-            生成数、保存率、ログイン成功率、上限到達数をスタイル別に比較できます。
-          </CardDescription>
+            <CardDescription className="text-sm leading-6 text-slate-600">
+              生成数、保存率、投稿率、ユーザー/ゲスト別の生成回数、ユーザー/ゲスト生成成功率をスタイル別に比較できます。
+            </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="overflow-x-auto">
@@ -316,13 +384,22 @@ export function AdminOneTapStyleFocusView({
                     DL率
                   </th>
                   <th className="border-b border-slate-200 px-3 py-2 font-medium">
-                    ログイン試行
+                    投稿
                   </th>
                   <th className="border-b border-slate-200 px-3 py-2 font-medium">
-                    ログイン成功率
+                    投稿率
                   </th>
                   <th className="border-b border-slate-200 px-3 py-2 font-medium">
-                    上限到達
+                    ユーザー生成回数
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2 font-medium">
+                    ゲスト生成回数
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2 font-medium">
+                    ユーザー生成成功率
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2 font-medium">
+                    ゲスト生成成功率
                   </th>
                 </tr>
               </thead>
@@ -366,13 +443,22 @@ export function AdminOneTapStyleFocusView({
                       {formatPercent(preset.downloadRatePct)}
                     </td>
                     <td className="border-b border-slate-100 px-3 py-3">
+                      {preset.postedCount.toLocaleString("ja-JP")}
+                    </td>
+                    <td className="border-b border-slate-100 px-3 py-3">
+                      {formatPercent(preset.postRatePct)}
+                    </td>
+                    <td className="border-b border-slate-100 px-3 py-3">
                       {preset.authenticatedAttempts.toLocaleString("ja-JP")}
+                    </td>
+                    <td className="border-b border-slate-100 px-3 py-3">
+                      {preset.guestAttempts.toLocaleString("ja-JP")}
                     </td>
                     <td className="border-b border-slate-100 px-3 py-3">
                       {formatPercent(preset.authenticatedSuccessRatePct)}
                     </td>
                     <td className="border-b border-slate-100 px-3 py-3">
-                      {preset.rateLimited.toLocaleString("ja-JP")}
+                      {formatPercent(preset.guestSuccessRatePct)}
                     </td>
                   </tr>
                 ))}

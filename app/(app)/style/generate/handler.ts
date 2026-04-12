@@ -23,6 +23,7 @@ import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StyleUsageAuthState } from "@/features/style/lib/style-usage-events";
+import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 
 const GEMINI_TIMEOUT_MS = 35_000;
 const MAX_RETRYABLE_ATTEMPTS = 2;
@@ -190,10 +191,6 @@ function buildGenerationPrompt(
   return promptSections.join("\n\n");
 }
 
-function getStyleSignupPath(): string {
-  return `/signup?${new URLSearchParams({ next: "/style" }).toString()}`;
-}
-
 async function recordStyleRateLimitedEvent(params: {
   recordStyleUsageEventFn: typeof recordStyleUsageEvent;
   userId: string | null;
@@ -210,6 +207,27 @@ async function recordStyleRateLimitedEvent(params: {
   } catch (error) {
     console.error(
       "Style generate route: failed to record rate-limited usage event",
+      error
+    );
+  }
+}
+
+async function recordStyleGenerateAttemptEvent(params: {
+  recordStyleUsageEventFn: typeof recordStyleUsageEvent;
+  userId: string | null;
+  authState: StyleUsageAuthState;
+  styleId: string;
+}) {
+  try {
+    await params.recordStyleUsageEventFn({
+      userId: params.userId,
+      authState: params.authState,
+      eventType: "generate_attempt",
+      styleId: params.styleId,
+    });
+  } catch (error) {
+    console.error(
+      "Style generate route: failed to record generate attempt usage event",
       error
     );
   }
@@ -371,7 +389,7 @@ export async function postStyleGenerateRoute(
             error: copy.guestRateLimitDaily,
             errorCode: "STYLE_RATE_LIMIT_DAILY",
             signupCta: true,
-            signupPath: getStyleSignupPath(),
+            signupPath: buildStyleSignupPath(),
           },
           { status: 429 }
         );
@@ -390,6 +408,15 @@ export async function postStyleGenerateRoute(
         },
         { status: 429 }
       );
+    }
+
+    if (authState === "guest") {
+      await recordStyleGenerateAttemptEvent({
+        recordStyleUsageEventFn,
+        userId: null,
+        authState,
+        styleId,
+      });
     }
 
     const parts: GeminiContentPart[] = [

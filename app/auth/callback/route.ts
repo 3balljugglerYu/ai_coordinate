@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { parseSignupSource } from "@/features/auth/lib/signup-source";
 
 const REFERRAL_METADATA_UPDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -28,6 +29,9 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") || "/";
   const referralCode = requestUrl.searchParams.get("ref");
+  const signupSource = parseSignupSource(
+    requestUrl.searchParams.get("signup_source")
+  );
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
   // X OAuth識別用パラメータ（state 500文字制限回避のため）
@@ -63,27 +67,65 @@ export async function GET(request: Request) {
 
     // 紹介コードと紹介特典の処理
     if (sessionData.user) {
-      // 1. 紹介コードをメタデータに保存（未設定の場合のみ）
-      if (referralCode && !sessionData.user.user_metadata?.referral_code) {
-        // 既存アカウントに紹介コードが後付けされるのを防ぐため、
-        // アカウント作成から24時間以内の場合のみ保存する。
-        if (isWithinReferralMetadataUpdateWindow(sessionData.user)) {
-          try {
-            const { error: updateError } = await supabase.auth.updateUser({
-              data: { referral_code: referralCode },
-            });
-            if (updateError) {
-              console.error(
-                "Failed to update user metadata with referral code:",
-                updateError
-              );
-            }
-          } catch (err) {
+      const shouldUpdateRecentUserMetadata =
+        isWithinReferralMetadataUpdateWindow(sessionData.user);
+
+      const nextUserMetadata: Record<string, string> = {};
+
+      if (
+        referralCode &&
+        !sessionData.user.user_metadata?.referral_code &&
+        shouldUpdateRecentUserMetadata
+      ) {
+        nextUserMetadata.referral_code = referralCode;
+      }
+
+      if (
+        signupSource &&
+        !sessionData.user.user_metadata?.signup_source &&
+        shouldUpdateRecentUserMetadata
+      ) {
+        nextUserMetadata.signup_source = signupSource;
+      }
+
+      if (Object.keys(nextUserMetadata).length > 0) {
+        try {
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: nextUserMetadata,
+          });
+          if (updateError) {
             console.error(
-              "Failed to update user metadata with referral code:",
-              err
+              "Failed to update user metadata during auth callback:",
+              updateError
             );
           }
+        } catch (err) {
+          console.error(
+            "Failed to update user metadata during auth callback:",
+            err
+          );
+        }
+      }
+
+      if (signupSource && shouldUpdateRecentUserMetadata) {
+        try {
+          const { error: profileUpdateError } = await supabase
+            .from("profiles")
+            .update({ signup_source: signupSource })
+            .eq("user_id", sessionData.user.id)
+            .is("signup_source", null);
+
+          if (profileUpdateError) {
+            console.error(
+              "Failed to update profile signup_source during auth callback:",
+              profileUpdateError
+            );
+          }
+        } catch (err) {
+          console.error(
+            "Failed to update profile signup_source during auth callback:",
+            err
+          );
         }
       }
 

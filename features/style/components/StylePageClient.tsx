@@ -62,6 +62,7 @@ import { PostModal } from "@/features/posts/components/PostModal";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
+import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { determineFileName } from "@/lib/utils";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 
@@ -110,6 +111,10 @@ const ASYNC_PROGRESS_TRANSITION_MS: Record<ImageJobProcessingStage, number> = {
   completed: 1000,
   failed: 1000,
 };
+
+function resolveStyleSignupPath(path?: string) {
+  return path ?? buildStyleSignupPath();
+}
 
 function getStyleAsyncPollingIntervalMs(status: AsyncGenerationStatus): number {
   if (status.previewImageUrl || status.processingStage === "persisting") {
@@ -216,11 +221,7 @@ function StyleResultPanel({
       </div>
       <Card
         data-testid="style-result-card"
-        className={`overflow-hidden p-0 ${
-          resultImageUrl
-            ? "w-full max-w-[340px] sm:max-w-[420px] md:w-fit md:max-w-[460px]"
-            : "w-full max-w-[340px] sm:max-w-[420px] md:max-w-[460px]"
-        }`}
+        className="w-full max-w-[340px] overflow-hidden p-0 sm:max-w-[420px] md:max-w-[460px]"
         style={
           {
             "--style-result-desktop-max-width": `${desktopMaxWidthPx}px`,
@@ -552,11 +553,19 @@ export function StylePageClient({
     isGuestDailyLimitReached ||
     shouldDisablePaidContinuation;
   const hasGeneratedResult = Boolean(resultImageUrl);
+  const activeAsyncResultImageUrl =
+    shouldUseAsyncGeneration && isGenerating
+      ? activeAsyncJobStatus?.resultImageUrl ?? null
+      : null;
   const resultPreviewImageUrl =
     shouldUseAsyncGeneration && isGenerating
       ? activeAsyncJobStatus?.previewImageUrl ?? null
       : null;
-  const displayedResultImageUrl = resultImageUrl ?? resultPreviewImageUrl;
+  const displayedResultImageUrl =
+    resultImageUrl ??
+    queuedResultImageUrl ??
+    activeAsyncResultImageUrl ??
+    resultPreviewImageUrl;
   const canPostGeneratedResult =
     Boolean(resultImageUrl) &&
     Boolean(resultGeneratedImageId) &&
@@ -667,6 +676,17 @@ export function StylePageClient({
       behavior: "smooth",
       block: "center",
     });
+  };
+
+  const handleSignupCtaClick = (signupPath?: string) => {
+    void recordStyleUsageClientEvent({
+      eventType: "signup_click",
+      styleId: selectedPreset?.id ?? null,
+    }).catch(() => {
+      // Signup CTA tracking must not block navigation.
+    });
+
+    router.push(resolveStyleSignupPath(signupPath));
   };
 
   const clearResultReadyToastTimeout = () => {
@@ -1150,6 +1170,7 @@ export function StylePageClient({
         throw new Error(t("unknownError"));
       }
 
+      setResultImageUrl(payload.imageDataUrl);
       setQueuedResultImageUrl(payload.imageDataUrl);
       setGenerationPhase("completing");
       refreshRateLimitStatus();
@@ -1275,6 +1296,7 @@ export function StylePageClient({
         return;
       }
 
+      setResultImageUrl(finalStatus.resultImageUrl);
       setQueuedResultImageUrl(finalStatus.resultImageUrl);
       setResultGeneratedImageId(finalStatus.generatedImageId ?? null);
       setGenerationPhase("completing");
@@ -1609,11 +1631,7 @@ export function StylePageClient({
                       type="button"
                       size="sm"
                       className="w-full sm:w-auto"
-                      onClick={() =>
-                        router.push(
-                          `/signup?${new URLSearchParams({ next: "/style" }).toString()}`
-                        )
-                      }
+                      onClick={() => handleSignupCtaClick()}
                     >
                       {t("guestRateLimitSignupAction")}
                     </Button>
@@ -1715,12 +1733,7 @@ export function StylePageClient({
                 type="button"
                 size="sm"
                 className="w-full sm:w-auto"
-                onClick={() =>
-                  router.push(
-                    errorState.signupPath ??
-                      `/signup?${new URLSearchParams({ next: "/style" }).toString()}`
-                  )
-                }
+                onClick={() => handleSignupCtaClick(errorState.signupPath)}
               >
                 {t("guestRateLimitSignupAction")}
               </Button>

@@ -392,9 +392,10 @@ Use this section to decide whether a new feature should use session access, serv
 | `admin_users` | Admin authorization source |
 | `admin_audit_log` | Admin audit trail |
 | `moderation_audit_logs` | Operational audit; readable by authenticated users but managed by moderation flow |
-| `style_usage_events` | One-Tap Style usage log recorded via service role with authenticated / guest state; admin aggregation counts visits, successful generations, downloads, and rate-limit blocked requests. Authenticated free usage reserves `generate_attempt` rows through `reserve_style_authenticated_generate_attempt()`, links them to async jobs through `attach_style_authenticated_generate_attempt_job()`, and can exclude them from quota only on system failures via `release_style_authenticated_generate_attempt()` |
+| `style_usage_events` | One-Tap Style usage log recorded via service role with authenticated / guest state; admin aggregation counts visits, successful generations, downloads, rate-limit blocked requests, and signup CTA clicks. Authenticated free usage reserves `generate_attempt` rows through `reserve_style_authenticated_generate_attempt()`, links them to async jobs through `attach_style_authenticated_generate_attempt_job()`, and can exclude them from quota only on system failures via `release_style_authenticated_generate_attempt()` |
 | `style_guest_generate_attempts` | Internal table used to enforce guest `/style/generate` limits with an IP hash (`2/min`, `2/day`). System-caused failures can release a reservation through `release_style_guest_generate_attempt()` |
 | `style_presets` | One-Tap Style managed presets. Admin routes perform create/update/delete/reorder atomically through service-role RPCs, while public `/style` reads only `published` rows. Presets now carry `styling_prompt` plus an optional `background_prompt` consumed by the background-change UI and generate route |
+| `profiles.signup_source` | First-touch signup attribution. The app currently stores `/style`-origin registrations as `style` and uses the field to power the One-Tap Style signup funnel in admin |
 
 ## Change guide: where to edit what
 

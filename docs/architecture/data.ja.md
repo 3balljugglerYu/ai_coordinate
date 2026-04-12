@@ -389,9 +389,10 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `admin_users` | DB 側の管理者権限ソース |
 | `admin_audit_log` | 管理操作監査 |
 | `moderation_audit_logs` | 運用監査。参照はできても管理フロー経由で扱うべき |
-| `style_usage_events` | One-Tap Style の利用ログ。authenticated / guest を区別して service role 経由で記録し、Admin 集計では訪問・生成成功・ダウンロード・上限超過リクエストを集計する。authenticated の無料枠は `reserve_style_authenticated_generate_attempt()` で `generate_attempt` を予約し、`attach_style_authenticated_generate_attempt_job()` で async job に紐付け、`release_style_authenticated_generate_attempt()` で system failure 時のみ quota から除外できる |
+| `style_usage_events` | One-Tap Style の利用ログ。authenticated / guest を区別して service role 経由で記録し、Admin 集計では訪問・生成成功・ダウンロード・上限超過リクエストに加えて signup CTA クリックも集計する。authenticated の無料枠は `reserve_style_authenticated_generate_attempt()` で `generate_attempt` を予約し、`attach_style_authenticated_generate_attempt_job()` で async job に紐付け、`release_style_authenticated_generate_attempt()` で system failure 時のみ quota から除外できる |
 | `style_guest_generate_attempts` | guest の `/style/generate` を IP hash ベースで `1分2回 / 1日2回` に制限する内部テーブル。system failure 時は `release_style_guest_generate_attempt()` で reservation を無効化できる |
 | `style_presets` | One-Tap Style の管理プリセット。admin route は service role + RPC で create/update/delete/reorder を原子的に処理し、公開側は `published` のみ参照する。現在は `styling_prompt` と任意の `background_prompt` を持ち、背景変更 UI と generate route がそれぞれ参照する |
+| `profiles.signup_source` | 初回登録の導線属性。現在は `/style` 起点の新規登録を `style` として保持し、admin の One-Tap Style ファネル集計で使用する |
 
 ## 変更ガイド: 何を変える時にどこから読むか
 

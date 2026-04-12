@@ -1,6 +1,7 @@
 import {
   isWithinDateRange,
 } from "./dashboard-range";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type {
   DashboardDeltaDirection,
   DashboardOneTapStyleDetailedAnalytics,
@@ -9,6 +10,8 @@ import type {
   DashboardOneTapStyleOperationalSummary,
   DashboardOneTapStylePresetPerformanceRow,
   DashboardOneTapStyleSegmentRow,
+  DashboardOneTapStyleSignupFunnel,
+  DashboardOneTapStyleSignupFunnelStep,
 } from "./dashboard-types";
 import { buildOneTapStyleAnalytics } from "./build-one-tap-style-summary";
 import type { StyleUsageEventRow } from "./build-one-tap-style-summary";
@@ -24,9 +27,23 @@ export interface StylePresetDashboardRow {
   sort_order: number;
 }
 
+export interface StyleGeneratedImageRow {
+  created_at: string;
+  is_posted: boolean | null;
+  generation_type?: string | null;
+  generation_metadata?: Record<string, unknown> | null;
+}
+
+export interface StyleSignupProfileRow {
+  user_id: string;
+  created_at: string;
+  signup_source?: string | null;
+}
+
 interface StyleEventCounters {
   visits: number;
   authenticatedAttempts: number;
+  guestAttempts: number;
   authenticatedGenerations: number;
   guestGenerations: number;
   downloads: number;
@@ -36,9 +53,12 @@ interface StyleEventCounters {
 
 interface StylePresetCounters {
   authenticatedAttempts: number;
+  guestAttempts: number;
   authenticatedGenerations: number;
+  guestGenerations: number;
   generations: number;
   downloads: number;
+  postedCount: number;
   rateLimited: number;
 }
 
@@ -46,6 +66,7 @@ function createStyleEventCounters(): StyleEventCounters {
   return {
     visits: 0,
     authenticatedAttempts: 0,
+    guestAttempts: 0,
     authenticatedGenerations: 0,
     guestGenerations: 0,
     downloads: 0,
@@ -57,10 +78,25 @@ function createStyleEventCounters(): StyleEventCounters {
 function createStylePresetCounters(): StylePresetCounters {
   return {
     authenticatedAttempts: 0,
+    guestAttempts: 0,
     authenticatedGenerations: 0,
+    guestGenerations: 0,
     generations: 0,
     downloads: 0,
+    postedCount: 0,
     rateLimited: 0,
+  };
+}
+
+function createSignupFunnelStep(params: {
+  label: string;
+  count: number;
+  previousCount: number;
+}): DashboardOneTapStyleSignupFunnelStep {
+  return {
+    label: params.label,
+    count: params.count,
+    rateFromPrevious: safeRate(params.count, params.previousCount),
   };
 }
 
@@ -83,6 +119,11 @@ function applyEventCounters(
 
   if (event.auth_state === "authenticated" && event.event_type === "generate_attempt") {
     counters.authenticatedAttempts += 1;
+    return;
+  }
+
+  if (event.auth_state === "guest" && event.event_type === "generate_attempt") {
+    counters.guestAttempts += 1;
     return;
   }
 
@@ -147,8 +188,15 @@ function aggregateStyleEvents(
       continue;
     }
 
+    if (event.auth_state === "guest" && event.event_type === "generate_attempt") {
+      presetCounters.guestAttempts += 1;
+      continue;
+    }
+
     if (event.auth_state === "authenticated" && event.event_type === "generate") {
       presetCounters.authenticatedGenerations += 1;
+    } else if (event.auth_state === "guest" && event.event_type === "generate") {
+      presetCounters.guestGenerations += 1;
     }
 
     if (event.event_type === "generate") {
@@ -171,6 +219,111 @@ function aggregateStyleEvents(
     authenticated,
     guest,
     presetMap,
+  };
+}
+
+function aggregateStyleGeneratedImages(
+  images: StyleGeneratedImageRow[],
+  start: Date,
+  end: Date
+) {
+  const presetPostedMap = new Map<string, number>();
+
+  for (const image of images) {
+    if (!isWithinDateRange(image.created_at, start, end) || !image.is_posted) {
+      continue;
+    }
+
+    const presetMetadata = getOneTapStylePresetMetadata(image);
+    if (!presetMetadata) {
+      continue;
+    }
+
+    presetPostedMap.set(
+      presetMetadata.id,
+      (presetPostedMap.get(presetMetadata.id) ?? 0) + 1
+    );
+  }
+
+  return {
+    presetPostedMap,
+  };
+}
+
+function aggregateStyleSignupFunnel(params: {
+  profiles: StyleSignupProfileRow[];
+  events: StyleUsageEventRow[];
+  start: Date;
+  end: Date;
+}): DashboardOneTapStyleSignupFunnel {
+  const styleSignupProfiles = params.profiles.filter(
+    (profile) =>
+      profile.signup_source === "style" &&
+      isWithinDateRange(profile.created_at, params.start, params.end)
+  );
+  const signupCreatedAtMap = new Map(
+    styleSignupProfiles.map((profile) => [profile.user_id, Date.parse(profile.created_at)])
+  );
+  const returnedUsers = new Set<string>();
+  const generatedUsers = new Set<string>();
+  let ctaClicks = 0;
+
+  for (const event of params.events) {
+    if (!isWithinDateRange(event.created_at, params.start, params.end)) {
+      continue;
+    }
+
+    if (event.event_type === "signup_click") {
+      ctaClicks += 1;
+      continue;
+    }
+
+    if (event.auth_state !== "authenticated" || !event.user_id) {
+      continue;
+    }
+
+    const signupCreatedAtMs = signupCreatedAtMap.get(event.user_id);
+    if (
+      typeof signupCreatedAtMs !== "number" ||
+      Number.isNaN(signupCreatedAtMs) ||
+      Date.parse(event.created_at) < signupCreatedAtMs
+    ) {
+      continue;
+    }
+
+    returnedUsers.add(event.user_id);
+
+    if (event.event_type === "generate") {
+      generatedUsers.add(event.user_id);
+    }
+  }
+
+  const signupCount = styleSignupProfiles.length;
+  const returnCount = returnedUsers.size;
+  const firstGenerationCount = generatedUsers.size;
+
+  return {
+    steps: [
+      { label: "CTAクリック数", count: ctaClicks, rateFromPrevious: null },
+      createSignupFunnelStep({
+        label: "登録完了数",
+        count: signupCount,
+        previousCount: ctaClicks,
+      }),
+      createSignupFunnelStep({
+        label: "style復帰数",
+        count: returnCount,
+        previousCount: signupCount,
+      }),
+      createSignupFunnelStep({
+        label: "初回生成数",
+        count: firstGenerationCount,
+        previousCount: returnCount,
+      }),
+    ],
+    clickToSignupRatePct: safeRate(signupCount, ctaClicks),
+    signupReturnRatePct: safeRate(returnCount, signupCount),
+    signupGenerationRatePct: safeRate(firstGenerationCount, signupCount),
   };
 }
 
@@ -292,6 +445,7 @@ function buildSegmentRow(params: {
 function buildPresetPerformance(params: {
   presets: StylePresetDashboardRow[];
   currentPresetCounters: Map<string, StylePresetCounters>;
+  currentPresetPostedMap: Map<string, number>;
   totalGenerations: number;
 }): DashboardOneTapStylePresetPerformanceRow[] {
   const presetMetaMap = new Map(
@@ -314,8 +468,10 @@ function buildPresetPerformance(params: {
       title: presetMeta?.title ?? "未登録スタイル",
       status,
       authenticatedAttempts: counters.authenticatedAttempts,
+      guestAttempts: counters.guestAttempts,
       generations: counters.generations,
       downloads: counters.downloads,
+      postedCount: params.currentPresetPostedMap.get(presetId) ?? 0,
       rateLimited: counters.rateLimited,
       generationSharePct:
         params.totalGenerations > 0
@@ -327,7 +483,15 @@ function buildPresetPerformance(params: {
         counters.authenticatedGenerations,
         counters.authenticatedAttempts
       ),
+      guestSuccessRatePct: safeRate(
+        counters.guestGenerations,
+        counters.guestAttempts
+      ),
       downloadRatePct: safeRate(counters.downloads, counters.generations),
+      postRatePct: safeRate(
+        params.currentPresetPostedMap.get(presetId) ?? 0,
+        counters.generations
+      ),
     };
   });
 
@@ -504,7 +668,9 @@ function buildInsights(params: {
 export function buildOneTapStyleDetailedAnalytics(params: {
   events: StyleUsageEventRow[];
   guestAttempts: StyleGuestGenerateAttemptRow[];
+  generatedImages: StyleGeneratedImageRow[];
   presets: StylePresetDashboardRow[];
+  profiles: StyleSignupProfileRow[];
   currentStart: Date;
   previousStart: Date;
   now: Date;
@@ -519,6 +685,17 @@ export function buildOneTapStyleDetailedAnalytics(params: {
     params.previousStart,
     params.currentStart
   );
+  const currentGeneratedImages = aggregateStyleGeneratedImages(
+    params.generatedImages,
+    params.currentStart,
+    params.now
+  );
+  const signupFunnel = aggregateStyleSignupFunnel({
+    profiles: params.profiles,
+    events: params.events,
+    start: params.currentStart,
+    end: params.now,
+  });
   const currentGuestAttemptCount = countGuestAttempts(
     params.guestAttempts,
     params.currentStart,
@@ -580,6 +757,7 @@ export function buildOneTapStyleDetailedAnalytics(params: {
   const presetPerformance = buildPresetPerformance({
     presets: params.presets,
     currentPresetCounters: current.presetMap,
+    currentPresetPostedMap: currentGeneratedImages.presetPostedMap,
     totalGenerations: currentTotalGenerations,
   });
   const operationalSummary = buildOperationalSummary({
@@ -597,6 +775,7 @@ export function buildOneTapStyleDetailedAnalytics(params: {
   return {
     analytics: buildOneTapStyleAnalytics({
       events: params.events,
+      profiles: params.profiles,
       currentStart: params.currentStart,
       previousStart: params.previousStart,
       now: params.now,
@@ -649,6 +828,7 @@ export function buildOneTapStyleDetailedAnalytics(params: {
     ],
     segments: [authenticatedSegment, guestSegment],
     presetPerformance,
+    signupFunnel,
     insights: buildInsights({
       presetPerformance,
       operationalSummary,

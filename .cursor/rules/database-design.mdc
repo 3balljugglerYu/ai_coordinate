@@ -215,9 +215,9 @@ alwaysApply: false
 
 #### `profiles`
 - 主キー: `id`
-- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
+- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `signup_source`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
 - 外部キー: `id -> auth.users.id`, `user_id -> auth.users.id`
-- 制約: `user_id` UNIQUE、`referral_code` UNIQUE
+- 制約: `user_id` UNIQUE、`referral_code` UNIQUE、`signup_source` は現在 `style` のみ
 - RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ
 
 ### 管理・モデレーション・運用
@@ -245,7 +245,7 @@ alwaysApply: false
 - 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `image_job_id`, `released_at`, `release_reason`, `created_at`
 - 外部キー: `user_id -> auth.users.id`（guest イベントでは `NULL`）
 - 外部キー: `image_job_id -> image_jobs.id`
-- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited`、`release_reason` は `upload_failed/job_create_failed/queue_failed/timeout/upstream_error/no_image_generated/worker_failed/infra_error`
+- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited/signup_click`、`release_reason` は `upload_failed/job_create_failed/queue_failed/timeout/upstream_error/no_image_generated/worker_failed/infra_error`
 - RLS: 公開アクセス禁止（`ALL false`）
 
 #### `style_guest_generate_attempts`

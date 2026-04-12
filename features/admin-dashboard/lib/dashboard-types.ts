@@ -62,8 +62,8 @@ export interface DashboardFunnelStep {
 export type DashboardOneTapStyleMetricKey =
   | "visits"
   | "generations"
-  | "downloads"
-  | "rateLimited";
+  | "signupClicks"
+  | "signupCompletions";
 
 export interface DashboardOneTapStyleMetric {
   key: DashboardOneTapStyleMetricKey;
@@ -83,8 +83,8 @@ export interface DashboardOneTapStyleTrendPoint {
   label: string;
   visits: number;
   generations: number;
-  downloads: number;
-  rateLimited: number;
+  signupClicks: number;
+  signupCompletions: number;
 }
 
 export interface DashboardOneTapStyleAnalytics {
@@ -126,12 +126,16 @@ export interface DashboardOneTapStylePresetPerformanceRow {
   title: string;
   status: "draft" | "published" | "unknown";
   authenticatedAttempts: number;
+  guestAttempts: number;
   generations: number;
   downloads: number;
+  postedCount: number;
   rateLimited: number;
   generationSharePct: number;
   authenticatedSuccessRatePct: number | null;
+  guestSuccessRatePct: number | null;
   downloadRatePct: number | null;
+  postRatePct: number | null;
 }
 
 export interface DashboardOneTapStyleInsight {
@@ -139,6 +143,19 @@ export interface DashboardOneTapStyleInsight {
   title: string;
   description: string;
   severity: "success" | "info" | "warning";
+}
+
+export interface DashboardOneTapStyleSignupFunnelStep {
+  label: string;
+  count: number;
+  rateFromPrevious: number | null;
+}
+
+export interface DashboardOneTapStyleSignupFunnel {
+  steps: DashboardOneTapStyleSignupFunnelStep[];
+  clickToSignupRatePct: number | null;
+  signupReturnRatePct: number | null;
+  signupGenerationRatePct: number | null;
 }
 
 export interface DashboardOneTapStyleOperationalSummary {
@@ -155,6 +172,7 @@ export interface DashboardOneTapStyleDetailedAnalytics {
   focusMetrics: DashboardOneTapStyleFocusMetric[];
   segments: DashboardOneTapStyleSegmentRow[];
   presetPerformance: DashboardOneTapStylePresetPerformanceRow[];
+  signupFunnel: DashboardOneTapStyleSignupFunnel;
   insights: DashboardOneTapStyleInsight[];
   operationalSummary: DashboardOneTapStyleOperationalSummary;
   dormantPublishedPresetTitles: string[];

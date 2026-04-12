@@ -39,6 +39,7 @@ type ProfileRow = {
   user_id: string;
   nickname: string | null;
   created_at: string;
+  signup_source?: string | null;
 };
 
 type GeneratedImageRow = {
@@ -47,6 +48,8 @@ type GeneratedImageRow = {
   is_posted: boolean | null;
   moderation_status: string | null;
   model: string | null;
+  generation_type?: string | null;
+  generation_metadata?: Record<string, unknown> | null;
   posted_at?: string | null;
 };
 
@@ -532,12 +535,14 @@ export async function getAdminDashboardData(
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("user_id, nickname, created_at")
+      .select("user_id, nickname, created_at, signup_source")
       .gte("created_at", previousStartIso)
       .lte("created_at", nowIso),
     supabase
       .from("generated_images")
-      .select("user_id, created_at, is_posted, moderation_status, model")
+      .select(
+        "user_id, created_at, is_posted, moderation_status, model, generation_type, generation_metadata, posted_at"
+      )
       .gte("created_at", previousStartIso)
       .lte("created_at", nowIso),
     supabase
@@ -730,6 +735,7 @@ export async function getAdminDashboardData(
   });
   const oneTapStyle = buildOneTapStyleAnalytics({
     events: styleUsageEvents,
+    profiles,
     currentStart,
     previousStart,
     now,
@@ -737,7 +743,9 @@ export async function getAdminDashboardData(
   const oneTapStyleDetailed = buildOneTapStyleDetailedAnalytics({
     events: styleUsageEvents,
     guestAttempts: styleGuestAttempts,
+    generatedImages,
     presets: stylePresets,
+    profiles,
     currentStart,
     previousStart,
     now,

@@ -7,8 +7,13 @@ export type StyleUsageEventType =
   | "generate_attempt"
   | "generate"
   | "download"
-  | "rate_limited";
-export type StylePublicUsageEventType = "visit" | "download" | "generate";
+  | "rate_limited"
+  | "signup_click";
+export type StylePublicUsageEventType =
+  | "visit"
+  | "download"
+  | "generate"
+  | "signup_click";
 export type StyleUsageAuthState = "authenticated" | "guest";
 
 export interface RecordStyleUsageEventInput {
