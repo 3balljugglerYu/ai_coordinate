@@ -147,6 +147,26 @@ export function formatJstDateLabel(key: string): string {
   return `${Number(month)}/${Number(day)}`;
 }
 
+export function formatAdminDateTimeLabel(value: string | null): string {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  }).format(date);
+}
+
 export function enumerateJstDateKeys(start: Date, end: Date): string[] {
   const current = new Date(start.getTime() + JST_OFFSET_MS);
   const last = new Date(end.getTime() + JST_OFFSET_MS);

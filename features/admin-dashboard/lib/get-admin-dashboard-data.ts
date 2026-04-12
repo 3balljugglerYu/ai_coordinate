@@ -534,6 +534,12 @@ export async function getAdminDashboardData(
   const { currentStart, previousStart, now, currentStartIso, previousStartIso, nowIso } =
     getRangeBounds(range);
   const oneTapStyleFetchStartIso = oneTapStyleBounds.previousStart.toISOString();
+  const sharedFetchStartIso = new Date(
+    Math.min(previousStart.getTime(), oneTapStyleBounds.previousStart.getTime())
+  ).toISOString();
+  const sharedFetchEndIso = new Date(
+    Math.max(now.getTime(), oneTapStyleBounds.now.getTime())
+  ).toISOString();
 
   const expiringCutoffIso = new Date(
     now.getTime() + 7 * 24 * 60 * 60 * 1000
@@ -559,15 +565,15 @@ export async function getAdminDashboardData(
     supabase
       .from("profiles")
       .select("user_id, nickname, created_at, signup_source")
-      .gte("created_at", oneTapStyleFetchStartIso)
-      .lte("created_at", oneTapStyleBounds.nowIso),
+      .gte("created_at", sharedFetchStartIso)
+      .lte("created_at", sharedFetchEndIso),
     supabase
       .from("generated_images")
       .select(
         "user_id, created_at, is_posted, moderation_status, model, generation_type, generation_metadata, posted_at"
       )
-      .gte("created_at", oneTapStyleFetchStartIso)
-      .lte("created_at", oneTapStyleBounds.nowIso),
+      .gte("created_at", sharedFetchStartIso)
+      .lte("created_at", sharedFetchEndIso),
     supabase
       .from("style_usage_events")
       .select("user_id, auth_state, event_type, style_id, created_at")

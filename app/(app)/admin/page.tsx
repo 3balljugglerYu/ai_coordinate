@@ -4,6 +4,7 @@ import { AdminPageAnalyticsSectionServer } from "@/features/admin-dashboard/comp
 import { parseAdminDashboardTab } from "@/features/admin-dashboard/lib/dashboard-tab";
 import { getAdminDashboardData } from "@/features/admin-dashboard/lib/get-admin-dashboard-data";
 import {
+  formatAdminDateTimeLabel,
   getOneTapStyleRangeBounds,
   parseDashboardRange,
   parseOneTapStyleDashboardRange,
@@ -35,6 +36,8 @@ export default async function AdminDashboardPage({
     from: params.styleFrom,
     to: params.styleTo,
   });
+  const formattedStyleFrom = formatAdminDateTimeLabel(oneTapStyleRangeBounds.fromIso);
+  const formattedStyleTo = formatAdminDateTimeLabel(oneTapStyleRangeBounds.toIso);
   const data = await getAdminDashboardData(range, oneTapStyleRangeBounds);
 
   return (
@@ -52,6 +55,8 @@ export default async function AdminDashboardPage({
           currentStyleRange={oneTapStyleRangeBounds.range}
           currentStyleFrom={oneTapStyleRangeBounds.fromIso}
           currentStyleTo={oneTapStyleRangeBounds.toIso}
+          currentStyleFromLabel={formattedStyleFrom}
+          currentStyleToLabel={formattedStyleTo}
         />
       ) : (
         <AdminPageAnalyticsSectionServer

@@ -35,6 +35,8 @@ interface AdminOneTapStyleFocusViewProps {
   currentStyleRange: OneTapStyleDashboardRange;
   currentStyleFrom: string | null;
   currentStyleTo: string | null;
+  currentStyleFromLabel: string;
+  currentStyleToLabel: string;
 }
 
 const focusMetricConfig: Record<
@@ -114,6 +116,8 @@ export function AdminOneTapStyleFocusView({
   currentStyleRange,
   currentStyleFrom,
   currentStyleTo,
+  currentStyleFromLabel,
+  currentStyleToLabel,
 }: AdminOneTapStyleFocusViewProps) {
   return (
     <section className="space-y-6">
@@ -122,6 +126,8 @@ export function AdminOneTapStyleFocusView({
         currentStyleRange={currentStyleRange}
         currentStyleFrom={currentStyleFrom}
         currentStyleTo={currentStyleTo}
+        currentStyleFromLabel={currentStyleFromLabel}
+        currentStyleToLabel={currentStyleToLabel}
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

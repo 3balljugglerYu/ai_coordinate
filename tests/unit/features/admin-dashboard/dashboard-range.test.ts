@@ -1,6 +1,7 @@
 import {
   DASHBOARD_RANGE_OPTIONS,
   ONE_TAP_STYLE_DASHBOARD_RANGE_OPTIONS,
+  formatAdminDateTimeLabel,
   getRangeBounds,
   getOneTapStyleRangeBounds,
   parseDashboardRange,
@@ -38,6 +39,14 @@ describe("dashboard-range", () => {
     expect(bounds.currentStartIso).toBe("2026-01-20T00:00:00.000Z");
     expect(bounds.previousStartIso).toBe("2025-10-22T00:00:00.000Z");
     expect(bounds.nowIso).toBe("2026-04-20T00:00:00.000Z");
+  });
+
+  test("管理画面用の日時ラベルを JST で整形する", () => {
+    expect(formatAdminDateTimeLabel("2026-04-12T03:00:00.000Z")).toBe(
+      "2026/04/12 12:00"
+    );
+    expect(formatAdminDateTimeLabel(null)).toBe("-");
+    expect(formatAdminDateTimeLabel("invalid")).toBe("-");
   });
 
   test("ワンタップスタイル用の custom range を解釈できる", () => {

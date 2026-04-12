@@ -19,6 +19,8 @@ interface AdminOneTapStyleRangeControlsProps {
   currentStyleRange: OneTapStyleDashboardRange;
   currentStyleFrom: string | null;
   currentStyleTo: string | null;
+  currentStyleFromLabel: string;
+  currentStyleToLabel: string;
 }
 
 function toDateTimeLocalValue(value: string | null): string {
@@ -40,6 +42,8 @@ export function AdminOneTapStyleRangeControls({
   currentStyleRange,
   currentStyleFrom,
   currentStyleTo,
+  currentStyleFromLabel,
+  currentStyleToLabel,
 }: AdminOneTapStyleRangeControlsProps) {
   const router = useRouter();
   const [fromValue, setFromValue] = useState(() =>
@@ -137,7 +141,7 @@ export function AdminOneTapStyleRangeControls({
         </div>
         <div className="flex items-end gap-2">
           <Button type="submit" disabled={!hasValidCustomInputs}>
-            customを適用
+            カスタム期間を適用
           </Button>
         </div>
       </form>
@@ -145,11 +149,11 @@ export function AdminOneTapStyleRangeControls({
         <p className="text-xs text-slate-500">
           現在の custom 期間:
           {" "}
-          {currentStyleFrom ? new Date(currentStyleFrom).toLocaleString("ja-JP") : "-"}
+          {currentStyleFromLabel}
           {" "}
           〜
           {" "}
-          {currentStyleTo ? new Date(currentStyleTo).toLocaleString("ja-JP") : "-"}
+          {currentStyleToLabel}
         </p>
       ) : null}
     </div>
