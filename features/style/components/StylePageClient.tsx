@@ -57,6 +57,9 @@ import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedb
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { fetchPercoinBalance } from "@/features/credits/lib/api";
+import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
+import { getPercoinCost } from "@/features/generation/lib/model-config";
 import { getExtensionFromMimeType } from "@/lib/utils";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 
@@ -78,12 +81,19 @@ interface StyleRateLimitStatusState {
   showRemainingWarning: boolean;
 }
 
+interface StylePercoinBalanceState {
+  balance: number | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
 type ResultConfirmationIntent = "change" | "regenerate";
 type GenerationPhase = "idle" | "running" | "completing";
 
 const RESULT_REVEAL_DELAY_MS = 5000;
 const PREPARING_PROGRESS_PERCENT = 10;
 const PREPARING_PROGRESS_TRANSITION_MS = 3000;
+const STYLE_PAID_GENERATION_COST = getPercoinCost(STYLE_GENERATION_MODEL);
 const DEFAULT_POLLING_INTERVAL_MS = 1200;
 const FAST_POLLING_INTERVAL_MS = 400;
 const SLOW_POLLING_INTERVAL_MS = 1600;
@@ -412,6 +422,12 @@ export function StylePageClient({
   const [errorState, setErrorState] = useState<StyleErrorState | null>(null);
   const [rateLimitStatus, setRateLimitStatus] =
     useState<StyleRateLimitStatusState | null>(null);
+  const [percoinBalanceState, setPercoinBalanceState] =
+    useState<StylePercoinBalanceState>({
+      balance: null,
+      isLoading: false,
+      error: null,
+    });
   const [activeAsyncJobStatus, setActiveAsyncJobStatus] =
     useState<AsyncGenerationStatus | null>(null);
   const [rateLimitDialogMessage, setRateLimitDialogMessage] = useState<string | null>(null);
@@ -423,6 +439,9 @@ export function StylePageClient({
   const pendingResultResetActionRef = useRef<null | (() => void)>(null);
   const activePollStopRef = useRef<(() => void) | null>(null);
   const hasTrackedVisitRef = useRef(false);
+  const syncedSelectedPresetParamRef = useRef<string | null>(
+    initialSelectedPresetId ?? null
+  );
   const presetDragStartXRef = useRef(0);
   const presetDragStartScrollLeftRef = useRef(0);
   const suppressPresetClickRef = useRef(false);
@@ -431,16 +450,29 @@ export function StylePageClient({
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
   const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
   const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
+  const isGuestDailyLimitReached =
+    rateLimitStatus?.remainingDaily === 0 && rateLimitStatus.authState === "guest";
+  const isAuthenticatedPaidOnlyMode =
+    rateLimitStatus?.remainingDaily === 0 &&
+    rateLimitStatus.authState === "authenticated";
+  const hasEnoughPercoins =
+    typeof percoinBalanceState.balance === "number" &&
+    percoinBalanceState.balance >= STYLE_PAID_GENERATION_COST;
+  const shouldDisablePaidContinuation =
+    isAuthenticatedPaidOnlyMode &&
+    (percoinBalanceState.isLoading ||
+      Boolean(percoinBalanceState.error) ||
+      !hasEnoughPercoins);
 
   const isGenerating = generationPhase !== "idle";
   const isBackgroundChangeAvailable = Boolean(selectedPreset?.hasBackgroundPrompt);
   const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
-  const isDailyLimitReached =
-    rateLimitStatus?.remainingDaily === 0 &&
-    (rateLimitStatus.authState === "authenticated" ||
-      rateLimitStatus.authState === "guest");
   const isGenerateDisabled =
-    !selectedPreset || !uploadedImage || isGenerating || isDailyLimitReached;
+    !selectedPreset ||
+    !uploadedImage ||
+    isGenerating ||
+    isGuestDailyLimitReached ||
+    shouldDisablePaidContinuation;
   const hasGeneratedResult = Boolean(resultImageUrl);
   const isCompletingGeneration = generationPhase === "completing";
   const selectedPresetAspectRatio = selectedPreset
@@ -452,7 +484,8 @@ export function StylePageClient({
     rateLimitStatus.remainingDaily > 0
       ? rateLimitStatus.remainingDaily
       : null;
-  const shouldShowDailyLimitCard = isDailyLimitReached;
+  const shouldShowDailyLimitCard =
+    isGuestDailyLimitReached || isAuthenticatedPaidOnlyMode;
   const generationMessages = useMemo(
     () => [
       t("generationStatusMessage1"),
@@ -576,6 +609,53 @@ export function StylePageClient({
     };
   }, []);
 
+  const refreshPercoinBalance = async () => {
+    if (effectiveAuthState !== "authenticated") {
+      setPercoinBalanceState({
+        balance: null,
+        isLoading: false,
+        error: null,
+      });
+      return;
+    }
+
+    setPercoinBalanceState((previous) => ({
+      balance: previous.balance,
+      isLoading: true,
+      error: null,
+    }));
+
+    try {
+      const payload = await fetchPercoinBalance({
+        fetchBalanceFailed: t("percoinBalanceFetchFailed"),
+      });
+      setPercoinBalanceState({
+        balance: payload.balance,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      setPercoinBalanceState({
+        balance: null,
+        isLoading: false,
+        error: error instanceof Error ? error.message : t("percoinBalanceFetchFailed"),
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (effectiveAuthState !== "authenticated") {
+      setPercoinBalanceState({
+        balance: null,
+        isLoading: false,
+        error: null,
+      });
+      return;
+    }
+
+    void refreshPercoinBalance();
+  }, [effectiveAuthState, isAuthenticatedPaidOnlyMode]);
+
   useEffect(() => {
     if (!selectedPreset?.hasBackgroundPrompt && backgroundChange) {
       setBackgroundChange(false);
@@ -583,11 +663,15 @@ export function StylePageClient({
   }, [backgroundChange, selectedPreset?.hasBackgroundPrompt]);
 
   useEffect(() => {
+    const hasValidPresetParam =
+      typeof initialSelectedPresetId === "string" &&
+      presets.some((preset) => preset.id === initialSelectedPresetId);
+
     if (
-      initialSelectedPresetId &&
-      presets.some((preset) => preset.id === initialSelectedPresetId) &&
-      initialSelectedPresetId !== selectedPresetId
+      hasValidPresetParam &&
+      syncedSelectedPresetParamRef.current !== initialSelectedPresetId
     ) {
+      syncedSelectedPresetParamRef.current = initialSelectedPresetId;
       setSelectedPresetId(initialSelectedPresetId);
       return;
     }
@@ -596,6 +680,7 @@ export function StylePageClient({
       return;
     }
 
+    syncedSelectedPresetParamRef.current = initialSelectedPresetId ?? null;
     setSelectedPresetId(
       resolveInitialSelectedPresetId(presets, initialSelectedPresetId)
     );
@@ -809,6 +894,7 @@ export function StylePageClient({
           setRateLimitDialogMessage(payload?.error || t("guestRateLimitShort"));
           setGenerationPhase("idle");
           refreshRateLimitStatus();
+          void refreshPercoinBalance();
           return;
         }
 
@@ -820,6 +906,7 @@ export function StylePageClient({
         });
         setGenerationPhase("idle");
         refreshRateLimitStatus();
+        void refreshPercoinBalance();
         return;
       }
 
@@ -940,12 +1027,14 @@ export function StylePageClient({
           finalStatus.errorMessage || t("generationFailed")
         );
         refreshRateLimitStatus();
+        void refreshPercoinBalance();
         return;
       }
 
       setQueuedResultImageUrl(finalStatus.resultImageUrl);
       setGenerationPhase("completing");
       refreshRateLimitStatus();
+      void refreshPercoinBalance();
       void recordStyleUsageClientEvent({
         eventType: "generate",
         styleId: selectedPreset.id,
@@ -956,6 +1045,7 @@ export function StylePageClient({
       handleGenerationError(
         error instanceof Error ? error.message : t("unknownError")
       );
+      void refreshPercoinBalance();
     }
   };
 
@@ -1004,6 +1094,13 @@ export function StylePageClient({
   const generationStatusHint = isCompletingGeneration
     ? t("generationStatusCompleteHint")
     : t("generationStatusHint");
+  const generateButtonLabel = isGenerating
+    ? t("generatingButton")
+    : isAuthenticatedPaidOnlyMode
+      ? t("paidGenerateButton", {
+          cost: STYLE_PAID_GENERATION_COST,
+        })
+      : t("generateButton");
 
   useEffect(() => {
     if (!selectedPreset || hasTrackedVisitRef.current) {
@@ -1232,7 +1329,7 @@ export function StylePageClient({
               onClick={handleGenerate}
             >
               <Sparkles className="mr-2 h-5 w-5" />
-              {isGenerating ? t("generatingButton") : t("generateButton")}
+              {generateButtonLabel}
             </Button>
             <div className="space-y-1 text-xs leading-5 text-slate-500">
               <p>{t("generateHint")}</p>
@@ -1275,7 +1372,53 @@ export function StylePageClient({
                       {t("guestRateLimitSignupAction")}
                     </Button>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs leading-5 text-red-800">
+                      {t("authenticatedPaidContinueHint", {
+                        cost: STYLE_PAID_GENERATION_COST,
+                      })}
+                    </p>
+                    <div className="rounded-lg border border-red-100 bg-white/70 px-3 py-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-red-700">
+                        {t("percoinBalanceLabel")}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-red-900">
+                        {percoinBalanceState.isLoading
+                          ? t("percoinBalanceLoading")
+                          : typeof percoinBalanceState.balance === "number"
+                            ? t("percoinBalanceValue", {
+                                balance: percoinBalanceState.balance.toLocaleString(),
+                              })
+                            : t("percoinBalanceUnavailable")}
+                      </p>
+                    </div>
+                    {percoinBalanceState.error ? (
+                      <p className="text-xs leading-5 text-red-800">
+                        {t("percoinBalanceFetchFailed")}
+                      </p>
+                    ) : null}
+                    {!percoinBalanceState.isLoading &&
+                    !percoinBalanceState.error &&
+                    !hasEnoughPercoins ? (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs leading-5 text-red-800">
+                          {t("authenticatedPaidInsufficientBalance", {
+                            cost: STYLE_PAID_GENERATION_COST,
+                          })}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          onClick={() => router.push(getPercoinPurchaseUrl())}
+                        >
+                          {t("percoinPurchaseAction")}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
             ) : null}
 

@@ -962,10 +962,22 @@ export const jaMessages = {
     guestRateLimitDaily:
       "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
     authenticatedRateLimitDaily:
-      "本日の生成回数が上限に達しました。明日以降に再度お試しください。",
+      "本日の無料分の生成回数が上限に達しました。",
+    authenticatedPaidContinueHint:
+      "引き続き、1回{cost}ペルコインで生成できます。",
+    authenticatedPaidInsufficientBalance:
+      "残高が不足しています。{cost}ペルコイン以上を用意してから続けてください。",
     guestRateLimitSignupHint:
       "新規登録すると、このまま続きをお試しいただけます。",
     guestRateLimitSignupAction: "新規登録して続ける",
+    paidGenerateButton: "{cost}ペルコインで続ける",
+    percoinBalanceLabel: "現在のペルコイン残高",
+    percoinBalanceLoading: "ペルコイン残高を確認しています...",
+    percoinBalanceUnavailable: "残高を確認できませんでした",
+    percoinBalanceValue: "{balance}ペルコイン",
+    percoinBalanceFetchFailed:
+      "ペルコイン残高の取得に失敗しました。時間をおいて再度お試しください。",
+    percoinPurchaseAction: "ペルコインを購入する",
     remainingDailyNotice: "本日の残り生成回数は{count}回です。",
     rateLimitDialogTitle: "ただいまアクセスが集中しています",
     rateLimitDialogClose: "閉じる",

@@ -29,6 +29,7 @@ import {
   backgroundChangeToBackgroundMode,
   normalizeModelName,
 } from "@/features/generation/types";
+import { getPercoinCost } from "@/features/generation/lib/model-config";
 import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StyleUsageAuthState } from "@/features/style/lib/style-usage-events";
@@ -286,11 +287,14 @@ export async function postStyleGenerateAsyncRoute(
       userId: user.id,
       styleId,
     });
+    const isPaidGeneration =
+      !rateLimitResult.allowed &&
+      rateLimitResult.reason === "authenticated_daily";
     reservation = rateLimitResult.allowed
       ? rateLimitResult.reservation ?? null
       : null;
 
-    if (!rateLimitResult.allowed) {
+    if (!rateLimitResult.allowed && !isPaidGeneration) {
       await recordStyleRateLimitedEvent({
         recordStyleUsageEventFn,
         userId: user.id,
@@ -304,6 +308,37 @@ export async function postStyleGenerateAsyncRoute(
         },
         { status: 429 }
       );
+    }
+
+    if (isPaidGeneration) {
+      const { data: creditData, error: creditError } =
+        await jobRepository.getUserCreditBalance(user.id);
+
+      if (creditError || !creditData) {
+        console.error(
+          "Style async generate route: failed to fetch user credits",
+          creditError
+        );
+        return jsonError(
+          copy.percoinBalanceFetchFailed,
+          "STYLE_BALANCE_FETCH_FAILED",
+          500
+        );
+      }
+
+      const currentBalance = creditData.balance;
+      const percoinCost = getPercoinCost(STYLE_GENERATION_MODEL);
+
+      if (currentBalance < percoinCost) {
+        return jsonError(
+          copy.authenticatedPaidInsufficientBalance.replace(
+            "{cost}",
+            String(percoinCost)
+          ),
+          "STYLE_INSUFFICIENT_PERCOIN_BALANCE",
+          400
+        );
+      }
     }
 
     const prompt = buildGenerationPrompt({
@@ -345,12 +380,16 @@ export async function postStyleGenerateAsyncRoute(
       model: normalizeModelName(STYLE_GENERATION_MODEL),
       background_mode: backgroundChangeToBackgroundMode(backgroundChange),
       background_change: backgroundChange,
-      generation_metadata: buildOneTapStyleGenerationMetadata(preset, "free", {
-        reservedAttemptId:
-          reservation?.authState === "authenticated"
-            ? reservation.attemptId
-            : null,
-      }),
+      generation_metadata: buildOneTapStyleGenerationMetadata(
+        preset,
+        isPaidGeneration ? "paid" : "free",
+        {
+          reservedAttemptId:
+            reservation?.authState === "authenticated"
+              ? reservation.attemptId
+              : null,
+        }
+      ),
       status: "queued",
       processing_stage: "queued",
       attempts: 0,

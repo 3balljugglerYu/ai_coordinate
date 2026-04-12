@@ -145,6 +145,10 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     jobRepository.getSourceImagePublicUrl.mockReturnValue(
       "https://cdn.example.com/temp/user-123/upload-image.png"
     );
+    jobRepository.getUserCreditBalance.mockResolvedValue({
+      data: { balance: 120 },
+      error: null,
+    });
     jobRepository.createImageJob.mockResolvedValue({
       data: { id: "style-job-001", status: "queued" },
       error: null,
@@ -235,7 +239,7 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     );
   });
 
-  test("postStyleGenerateAsyncRoute_認証済み日次制限時_429を返してイベントを記録する", async () => {
+  test("postStyleGenerateAsyncRoute_認証済み日次制限後はpaidジョブを作成する", async () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: false,
       reason: "authenticated_daily",
@@ -258,17 +262,64 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     });
     const body = await readJson(response);
 
-    expect(response.status).toBe(429);
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      jobId: "style-job-001",
+      status: "queued",
+    });
+    expect(jobRepository.getUserCreditBalance).toHaveBeenCalledWith("user-123");
+    expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generation_metadata: {
+          oneTapStyle: {
+            id: STYLE_ID,
+            title: "PARIS CODE",
+            thumbnailImageUrl:
+              "https://example.com/style-presets/paris-code.webp",
+            thumbnailWidth: 912,
+            thumbnailHeight: 1173,
+            hasBackgroundPrompt: false,
+            billingMode: "paid",
+          },
+        },
+      })
+    );
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateAsyncRoute_認証済み日次制限後に残高不足なら400を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: false,
+      reason: "authenticated_daily",
+    });
+    jobRepository.getUserCreditBalance.mockResolvedValueOnce({
+      data: { balance: 5 },
+      error: null,
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+      attachReservationToJobFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_INSUFFICIENT_PERCOIN_BALANCE");
     expect(body.error).toBe(
-      "本日の生成回数が上限に達しました。明日以降に再度お試しください。"
+      "残高が不足しています。10ペルコイン以上を用意してから続けてください。"
     );
     expect(jobRepository.createImageJob).not.toHaveBeenCalled();
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
-      userId: "user-123",
-      authState: "authenticated",
-      eventType: "rate_limited",
-      styleId: STYLE_ID,
-    });
   });
 
   test("postStyleGenerateAsyncRoute_upload失敗時_releaseして500を返す", async () => {

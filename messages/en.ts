@@ -1017,10 +1017,22 @@ export const enMessages = {
     guestRateLimitDaily:
       "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
     authenticatedRateLimitDaily:
-      "You have reached today's generation limit. Please try again tomorrow.",
+      "You have reached today's free generation limit.",
+    authenticatedPaidContinueHint:
+      "You can keep generating for {cost} Percoins per image.",
+    authenticatedPaidInsufficientBalance:
+      "Your balance is too low. Prepare at least {cost} Percoins to continue.",
     guestRateLimitSignupHint:
       "Create an account to keep going right away.",
     guestRateLimitSignupAction: "Sign up to continue",
+    paidGenerateButton: "Continue for {cost} Percoins",
+    percoinBalanceLabel: "Current Percoin balance",
+    percoinBalanceLoading: "Checking your Percoin balance...",
+    percoinBalanceUnavailable: "We could not load your balance.",
+    percoinBalanceValue: "{balance} Percoins",
+    percoinBalanceFetchFailed:
+      "We could not retrieve your Percoin balance. Please try again in a little while.",
+    percoinPurchaseAction: "Buy Percoins",
     remainingDailyNotice: "You have {count} generations left for today.",
     rateLimitDialogTitle: "Traffic is high right now",
     rateLimitDialogClose: "Close",

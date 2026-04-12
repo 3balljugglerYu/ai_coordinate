@@ -201,9 +201,21 @@ const styleMessages = {
   guestRateLimitDaily:
     "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
   authenticatedRateLimitDaily:
-    "You have reached today's generation limit. Please try again tomorrow.",
+    "You have reached today's free generation limit.",
+  authenticatedPaidContinueHint:
+    "You can keep generating for {cost} Percoins per image.",
+  authenticatedPaidInsufficientBalance:
+    "Your balance is too low. Prepare at least {cost} Percoins to continue.",
   guestRateLimitSignupHint: "Create an account to keep going right away.",
   guestRateLimitSignupAction: "Sign up to continue",
+  paidGenerateButton: "Continue for {cost} Percoins",
+  percoinBalanceLabel: "Current Percoin balance",
+  percoinBalanceLoading: "Checking your Percoin balance...",
+  percoinBalanceUnavailable: "We could not load your balance.",
+  percoinBalanceValue: "{balance} Percoins",
+  percoinBalanceFetchFailed:
+    "We could not retrieve your Percoin balance. Please try again in a little while.",
+  percoinPurchaseAction: "Buy Percoins",
   remainingDailyNotice: "You have {count} generations left for today.",
   rateLimitDialogTitle: "Traffic is high right now",
   rateLimitDialogClose: "Close",
@@ -273,6 +285,7 @@ describe("StylePageClient", () => {
     remainingDaily: number | null;
     showRemainingWarning: boolean;
   }>;
+  let percoinBalanceQueue: Array<{ balance: number }>;
   let generateResponseQueue: Array<Response | Promise<Response>>;
   let asyncGenerateResponseQueue: Array<Response | Promise<Response>>;
   let generationStatusResponseQueue: Array<Response | Promise<Response>>;
@@ -305,6 +318,7 @@ describe("StylePageClient", () => {
 
     originalFetch = global.fetch;
     statusPayloadQueue = [];
+    percoinBalanceQueue = [{ balance: 120 }];
     generateResponseQueue = [
       createJsonResponse({
         imageDataUrl: "data:image/png;base64,generated-image-base64",
@@ -349,6 +363,11 @@ describe("StylePageClient", () => {
         if (!nextPayload) {
           return new Promise<Response>(() => {});
         }
+        return Promise.resolve(createJsonResponse(nextPayload));
+      }
+
+      if (requestUrl === "/api/credits/balance" && method === "GET") {
+        const nextPayload = percoinBalanceQueue.shift() ?? { balance: 120 };
         return Promise.resolve(createJsonResponse(nextPayload));
       }
 
@@ -439,6 +458,34 @@ describe("StylePageClient", () => {
     expect(screen.getByAltText("Selected style image")).toHaveAttribute(
       "src",
       "https://example.com/style-presets/fluffy-pajamas-code.webp"
+    );
+  });
+
+  test("詳細画面からの初期選択後でも別スタイルへ切り替えられる", () => {
+    render(
+      <StylePageClient
+        presets={presets}
+        initialSelectedPresetId="a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e"
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /PARIS CODE style card/i,
+      })
+    );
+
+    expect(
+      screen.getByRole("button", { name: /PARIS CODE style card/i })
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", {
+        name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
+      })
+    ).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByAltText("Selected style image")).toHaveAttribute(
+      "src",
+      "https://example.com/style-presets/paris-code.webp"
     );
   });
 
@@ -1195,14 +1242,19 @@ describe("StylePageClient", () => {
         showRemainingWarning: true,
       },
     ];
+    percoinBalanceQueue = [{ balance: 25 }, { balance: 25 }];
 
     render(<StylePageClient presets={presets} />);
 
     expect(
       await screen.findByText(
-        "You have reached today's generation limit. Please try again tomorrow."
+        "You have reached today's free generation limit."
       )
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("You can keep generating for 10 Percoins per image.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("25 Percoins")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Sign up to continue" })
     ).not.toBeInTheDocument();
@@ -1210,7 +1262,41 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     expect(
-      screen.getByRole("button", { name: "Start Styling" })
+      screen.getByRole("button", { name: "Continue for 10 Percoins" })
+    ).toBeEnabled();
+  });
+
+  test("ログインユーザーが無料上限到達かつ残高不足の時_購入導線を表示してボタンを無効化する", async () => {
+    statusPayloadQueue = [
+      {
+        authState: "authenticated",
+        remainingDaily: 0,
+        showRemainingWarning: true,
+      },
+    ];
+    percoinBalanceQueue = [{ balance: 5 }, { balance: 5 }];
+
+    render(<StylePageClient presets={presets} />);
+
+    expect(
+      await screen.findByText(
+        "You have reached today's free generation limit."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Your balance is too low. Prepare at least 10 Percoins to continue."
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    expect(
+      screen.getByRole("button", { name: "Continue for 10 Percoins" })
     ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Buy Percoins" }));
+
+    expect(routerPushMock).toHaveBeenCalledWith("/my-page/credits/purchase");
   });
 });
