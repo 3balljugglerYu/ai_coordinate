@@ -16,9 +16,9 @@ language sql
 immutable
 as $function$
   select case coalesce(p_plan, 'free')
-    when 'light' then 400
-    when 'standard' then 1200
-    when 'premium' then 3000
+    when 'light' then 300
+    when 'standard' then 1000
+    when 'premium' then 2500
     else 0
   end
 $function$;
@@ -95,6 +95,12 @@ begin
   return v_processed_count;
 end;
 $function$;
+
+revoke all on function public.grant_due_yearly_subscription_percoins()
+from public, anon, authenticated;
+
+grant execute on function public.grant_due_yearly_subscription_percoins()
+to service_role;
 
 update public.user_subscriptions
 set
