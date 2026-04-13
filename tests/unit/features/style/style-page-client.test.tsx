@@ -1658,6 +1658,6 @@ describe("StylePageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Buy Percoins" }));
 
-    expect(routerPushMock).toHaveBeenCalledWith("/my-page/credits/purchase");
+    expect(routerPushMock).toHaveBeenCalledWith("/credits/purchase");
   });
 });
