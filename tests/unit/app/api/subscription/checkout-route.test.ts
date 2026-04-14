@@ -74,6 +74,7 @@ describe("POST /api/subscription/checkout", () => {
       last_percoin_grant_at: null,
       next_percoin_grant_at: null,
       cancel_at_period_end: false,
+      cancel_at: null,
       canceled_at: null,
     });
 

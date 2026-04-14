@@ -24,6 +24,7 @@ export interface UserSubscription {
   last_percoin_grant_at: string | null;
   next_percoin_grant_at: string | null;
   cancel_at_period_end: boolean;
+  cancel_at: string | null;
   canceled_at: string | null;
 }
 
@@ -89,6 +90,8 @@ function mapUserSubscription(
         ? value.next_percoin_grant_at
         : null,
     cancel_at_period_end: value.cancel_at_period_end === true,
+    cancel_at:
+      typeof value.cancel_at === "string" ? value.cancel_at : null,
     canceled_at:
       typeof value.canceled_at === "string" ? value.canceled_at : null,
   };
@@ -103,7 +106,7 @@ export async function fetchUserSubscription(
   const { data, error } = await supabase
     .from("user_subscriptions")
     .select(
-      "user_id, stripe_customer_id, stripe_subscription_id, plan, status, billing_interval, current_period_start, current_period_end, scheduled_plan, scheduled_billing_interval, scheduled_change_at, last_percoin_grant_at, next_percoin_grant_at, cancel_at_period_end, canceled_at"
+      "user_id, stripe_customer_id, stripe_subscription_id, plan, status, billing_interval, current_period_start, current_period_end, scheduled_plan, scheduled_billing_interval, scheduled_change_at, last_percoin_grant_at, next_percoin_grant_at, cancel_at_period_end, cancel_at, canceled_at"
     )
     .eq("user_id", userId)
     .maybeSingle();

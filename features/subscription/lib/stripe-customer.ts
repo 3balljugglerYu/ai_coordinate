@@ -20,6 +20,7 @@ async function persistStripeCustomerId(params: {
       scheduled_billing_interval: null,
       scheduled_change_at: null,
       cancel_at_period_end: false,
+      cancel_at: null,
       canceled_at: null,
     },
     { onConflict: "user_id" }

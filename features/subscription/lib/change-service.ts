@@ -154,7 +154,10 @@ async function getActiveSubscriptionContext(
 async function clearPendingCancellation(
   ctx: ActiveSubscriptionContext
 ): Promise<ActiveSubscriptionContext> {
-  if (!ctx.stripeSubscription.cancel_at_period_end) {
+  if (
+    !ctx.stripeSubscription.cancel_at_period_end &&
+    !ctx.stripeSubscription.cancel_at
+  ) {
     return ctx;
   }
 
@@ -162,6 +165,7 @@ async function clearPendingCancellation(
     ctx.stripeSubscription.id,
     {
       cancel_at_period_end: false,
+      cancel_at: null,
       proration_behavior: "none",
     }
   );
@@ -229,6 +233,7 @@ async function upsertSubscriptionRecord(params: {
           ? params.nextPercoinGrantAt ?? null
           : null,
       cancel_at_period_end: params.subscription.cancel_at_period_end ?? false,
+      cancel_at: toIsoTimestamp(params.subscription.cancel_at),
       canceled_at: toIsoTimestamp(params.subscription.canceled_at),
     },
     { onConflict: "user_id" }

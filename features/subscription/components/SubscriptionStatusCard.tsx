@@ -37,6 +37,13 @@ export function SubscriptionStatusCard({
   const currentPeriodEnd = subscription?.current_period_end
     ? formatter.format(new Date(subscription.current_period_end))
     : null;
+  const cancelAt = subscription?.cancel_at
+    ? formatter.format(new Date(subscription.cancel_at))
+    : null;
+  const pendingCancellationDate =
+    subscription?.cancel_at_period_end || subscription?.cancel_at
+      ? cancelAt ?? currentPeriodEnd
+      : null;
 
   const handleOpenPortal = async () => {
     try {
@@ -102,9 +109,9 @@ export function SubscriptionStatusCard({
               amount: getSubscriptionMonthlyPercoins(plan as SubscriptionPlan),
             })}
           </p>
-          {subscription?.cancel_at_period_end && currentPeriodEnd ? (
+          {pendingCancellationDate ? (
             <p className="mt-1 text-sm text-amber-700">
-              {t("cancelAtPeriodEnd", { date: currentPeriodEnd })}
+              {t("cancelAtPeriodEnd", { date: pendingCancellationDate })}
             </p>
           ) : currentPeriodEnd ? (
             <p className="mt-1 text-sm text-gray-600">

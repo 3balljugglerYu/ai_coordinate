@@ -222,6 +222,7 @@ async function upsertSubscriptionFromStripe(params: {
           null
         : null,
     cancel_at_period_end: params.subscription.cancel_at_period_end ?? false,
+    cancel_at: toIsoTimestamp(params.subscription.cancel_at),
     canceled_at: toIsoTimestamp(params.subscription.canceled_at),
   };
 
@@ -252,13 +253,19 @@ async function updateSubscriptionStatus(params: {
   canceledAt?: number | null;
 }) {
   const supabase = createAdminClient();
-  let query = supabase.from("user_subscriptions").update({
-    status: normalizeSubscriptionStatus(params.status),
+  const normalizedStatus = normalizeSubscriptionStatus(params.status);
+  const update: Record<string, unknown> = {
+    status: normalizedStatus,
     canceled_at: toIsoTimestamp(params.canceledAt),
     scheduled_plan: null,
     scheduled_billing_interval: null,
     scheduled_change_at: null,
-  });
+  };
+  if (normalizedStatus === "canceled") {
+    update.cancel_at = null;
+    update.cancel_at_period_end = false;
+  }
+  let query = supabase.from("user_subscriptions").update(update);
 
   if (params.subscriptionId) {
     query = query.eq("stripe_subscription_id", params.subscriptionId);
