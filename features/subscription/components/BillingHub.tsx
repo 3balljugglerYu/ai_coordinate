@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { PricingPlans } from "@/features/subscription/components/PricingPlans";
 import { BillingPageTabs } from "@/features/subscription/components/BillingPageTabs";
@@ -27,11 +27,26 @@ export function BillingHub({
 }: BillingHubProps) {
   const creditsT = useTranslations("credits");
   const subscriptionT = useTranslations("subscription");
+  const locale = useLocale();
   const [activeTab, setActiveTab] = useState<"subscription" | "credits">(
     initialTab
   );
   const hasActiveSubscription =
     subscription != null && isActiveSubscriptionStatus(subscription.status);
+  const pendingCancellationDate = useMemo(() => {
+    if (!subscription) return null;
+    const source =
+      subscription.cancel_at ??
+      (subscription.cancel_at_period_end
+        ? subscription.current_period_end
+        : null);
+    if (!source) return null;
+    return new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(source));
+  }, [subscription, locale]);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -77,6 +92,16 @@ export function BillingHub({
                 </div>
               ) : null}
             </div>
+
+            {hasActiveSubscription && pendingCancellationDate ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/50">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  {subscriptionT("cancelAtPeriodEnd", {
+                    date: pendingCancellationDate,
+                  })}
+                </p>
+              </div>
+            ) : null}
 
             <PricingPlans subscription={subscription} />
           </div>
