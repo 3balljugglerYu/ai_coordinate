@@ -555,6 +555,8 @@ export const enMessages = {
     joinAction: "View plans",
     monthlyPercoins: "{amount} Percoins every month",
     cancelAtPeriodEnd: "Scheduled to cancel on {date}",
+    resumeAction: "Resume subscription",
+    resumeError: "Failed to resume the subscription.",
     renewalDate: "Renews on {date}",
     portalError: "Couldn't open the billing portal.",
     manageAction: "Manage plan",

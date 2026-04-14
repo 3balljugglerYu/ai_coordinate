@@ -16,6 +16,8 @@ type SubscriptionRouteCopy = {
   changePaymentFailed: string;
   scheduledChangeNotFound: string;
   scheduledChangeCancelFailed: string;
+  pendingCancellationNotFound: string;
+  resumeCancellationFailed: string;
   portalUnavailable: string;
   portalSessionFailed: string;
   customerNotFound: string;
@@ -42,6 +44,8 @@ const COPY: Record<Locale, SubscriptionRouteCopy> = {
       "支払いが完了しなかったため、プランは変更されませんでした。",
     scheduledChangeNotFound: "取り消せる予約変更が見つかりません。",
     scheduledChangeCancelFailed: "予約していたプラン変更を取り消せませんでした。",
+    pendingCancellationNotFound: "取り消せる解約予定が見つかりません。",
+    resumeCancellationFailed: "解約予定の取り消しに失敗しました。",
     portalUnavailable: "サブスク加入情報が見つかりません。",
     portalSessionFailed: "サブスク管理画面の準備に失敗しました。",
     customerNotFound: "Stripe Customer が見つかりません。",
@@ -67,6 +71,8 @@ const COPY: Record<Locale, SubscriptionRouteCopy> = {
       "The payment did not complete, so the subscription was not changed.",
     scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
     scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
     portalUnavailable: "No subscription record was found.",
     portalSessionFailed: "Failed to prepare the customer portal.",
     customerNotFound: "Stripe customer was not found.",

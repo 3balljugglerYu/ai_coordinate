@@ -538,6 +538,8 @@ export const jaMessages = {
     joinAction: "プランを見る",
     monthlyPercoins: "毎月 {amount} ペルコイン付与",
     cancelAtPeriodEnd: "{date} で解約予定です",
+    resumeAction: "解約を取り消す",
+    resumeError: "解約予定の取り消しに失敗しました。",
     renewalDate: "次回更新日: {date}",
     portalError: "契約管理ページを開けませんでした。",
     manageAction: "契約を管理",

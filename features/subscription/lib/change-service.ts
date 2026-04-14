@@ -763,6 +763,55 @@ export async function cancelScheduledSubscriptionChange(params: {
   return { canceled: true };
 }
 
+export async function resumeSubscriptionCancellation(params: {
+  userId: string;
+}): Promise<{ resumed: true }> {
+  const ctx = await getActiveSubscriptionContext(params.userId);
+
+  const hasPendingCancellation =
+    ctx.stripeSubscription.cancel_at_period_end === true ||
+    ctx.stripeSubscription.cancel_at != null ||
+    ctx.userSubscription.cancel_at_period_end === true ||
+    ctx.userSubscription.cancel_at != null;
+
+  if (!hasPendingCancellation) {
+    throw new SubscriptionChangeServiceError(
+      "No pending cancellation to resume.",
+      "PENDING_CANCELLATION_NOT_FOUND",
+      409
+    );
+  }
+
+  const updatedCtx = await clearPendingCancellation(ctx);
+
+  await upsertSubscriptionRecord({
+    userId: updatedCtx.userSubscription.user_id,
+    customerId: updatedCtx.customerId,
+    subscription: updatedCtx.stripeSubscription,
+    plan: updatedCtx.currentPlan,
+    billingInterval: updatedCtx.currentBillingInterval,
+    scheduledPlan:
+      updatedCtx.userSubscription.scheduled_plan === "free"
+        ? null
+        : (updatedCtx.userSubscription.scheduled_plan as PaidSubscriptionPlan | null),
+    scheduledBillingInterval:
+      updatedCtx.userSubscription.scheduled_billing_interval,
+    scheduledChangeAt: updatedCtx.userSubscription.scheduled_change_at,
+    lastPercoinGrantAt:
+      updatedCtx.currentBillingInterval === "year"
+        ? updatedCtx.userSubscription.last_percoin_grant_at
+        : null,
+    nextPercoinGrantAt:
+      updatedCtx.currentBillingInterval === "year"
+        ? updatedCtx.userSubscription.next_percoin_grant_at
+        : null,
+  });
+
+  revalidateSubscriptionSurfaces(updatedCtx.userSubscription.user_id);
+
+  return { resumed: true };
+}
+
 export function isSubscriptionChangeServiceError(
   error: unknown
 ): error is SubscriptionChangeServiceError {

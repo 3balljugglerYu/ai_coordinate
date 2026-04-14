@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { PricingPlans } from "@/features/subscription/components/PricingPlans";
@@ -8,7 +9,7 @@ import { BillingPageTabs } from "@/features/subscription/components/BillingPageT
 import { SubscriptionPortalButton } from "@/features/subscription/components/SubscriptionPortalButton";
 import { PercoinPurchaseGrid } from "@/features/credits/components/PercoinPurchaseGrid";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Sparkles, XCircle } from "lucide-react";
+import { CheckCircle2, LoaderCircle, Sparkles, XCircle } from "lucide-react";
 import { isActiveSubscriptionStatus } from "@/features/subscription/subscription-config";
 import type { UserSubscription } from "@/features/subscription/lib/server-api";
 
@@ -28,9 +29,12 @@ export function BillingHub({
   const creditsT = useTranslations("credits");
   const subscriptionT = useTranslations("subscription");
   const locale = useLocale();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"subscription" | "credits">(
     initialTab
   );
+  const [isResuming, startResumeTransition] = useTransition();
+  const [resumeError, setResumeError] = useState<string | null>(null);
   const hasActiveSubscription =
     subscription != null && isActiveSubscriptionStatus(subscription.status);
   const pendingCancellationDate = useMemo(() => {
@@ -51,6 +55,26 @@ export function BillingHub({
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  const handleResume = () => {
+    setResumeError(null);
+    startResumeTransition(async () => {
+      try {
+        const response = await fetch("/api/subscription/resume", {
+          method: "POST",
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error || subscriptionT("resumeError"));
+        }
+        router.refresh();
+      } catch (error) {
+        setResumeError(
+          error instanceof Error ? error.message : subscriptionT("resumeError")
+        );
+      }
+    });
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -95,11 +119,28 @@ export function BillingHub({
 
             {hasActiveSubscription && pendingCancellationDate ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/50">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  {subscriptionT("cancelAtPeriodEnd", {
-                    date: pendingCancellationDate,
-                  })}
-                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                    {subscriptionT("cancelAtPeriodEnd", {
+                      date: pendingCancellationDate,
+                    })}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResume}
+                    disabled={isResuming}
+                    className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+                  >
+                    {isResuming ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : null}
+                    {subscriptionT("resumeAction")}
+                  </Button>
+                </div>
+                {resumeError ? (
+                  <p className="mt-2 text-sm text-destructive">{resumeError}</p>
+                ) : null}
               </div>
             ) : null}
 
