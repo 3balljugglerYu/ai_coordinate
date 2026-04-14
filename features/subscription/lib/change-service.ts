@@ -154,20 +154,31 @@ async function getActiveSubscriptionContext(
 async function clearPendingCancellation(
   ctx: ActiveSubscriptionContext
 ): Promise<ActiveSubscriptionContext> {
-  if (
-    !ctx.stripeSubscription.cancel_at_period_end &&
-    !ctx.stripeSubscription.cancel_at
-  ) {
+  const hasCancelAt = ctx.stripeSubscription.cancel_at != null;
+  const hasCancelAtPeriodEnd =
+    ctx.stripeSubscription.cancel_at_period_end === true;
+
+  if (!hasCancelAt && !hasCancelAtPeriodEnd) {
     return ctx;
+  }
+
+  // Stripe's flexible billing mode uses `cancel_at` (not the deprecated
+  // `cancel_at_period_end`) when the Billing Portal cancels a subscription.
+  // Sending both fields together can be rejected, so only send the field
+  // that is currently set.
+  const updateParams: Stripe.SubscriptionUpdateParams = {
+    proration_behavior: "none",
+  };
+  if (hasCancelAt) {
+    updateParams.cancel_at = null;
+  }
+  if (hasCancelAtPeriodEnd) {
+    updateParams.cancel_at_period_end = false;
   }
 
   const stripeSubscription = await ctx.stripe.subscriptions.update(
     ctx.stripeSubscription.id,
-    {
-      cancel_at_period_end: false,
-      cancel_at: null,
-      proration_behavior: "none",
-    }
+    updateParams
   );
 
   const currentItem = getSubscriptionItem(stripeSubscription);
