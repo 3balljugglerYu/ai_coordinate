@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics/react";
 import { useLocale, useTranslations } from "next-intl";
 import { PERCOIN_PACKAGES } from "@/features/credits/percoin-packages";
@@ -14,6 +15,7 @@ import { PercoinPurchaseCard } from "./PercoinPurchaseCard";
 export function PercoinPurchaseGrid() {
   const t = useTranslations("credits");
   const locale = useLocale();
+  const router = useRouter();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -33,6 +35,11 @@ export function PercoinPurchaseGrid() {
       });
 
       const data = await response.json().catch(() => null);
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data?.error || t("checkoutCreateFailed"));
       }

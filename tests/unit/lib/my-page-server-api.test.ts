@@ -249,7 +249,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       expect(mockCreateClient).toHaveBeenCalledTimes(1);
       expect(supabase.from).toHaveBeenCalledWith("profiles");
       expect(supabase.fromCalls.profiles[0].calls.select).toEqual([
-        ["id, nickname, bio, avatar_url"],
+        ["id, nickname, bio, avatar_url, subscription_plan"],
       ]);
       expect(supabase.fromCalls.profiles[0].calls.eq).toEqual([["user_id", "user-1"]]);
       expect(supabase.fromCalls.profiles[0].calls.single).toBe(1);
@@ -259,6 +259,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: "Taro",
         bio: "bio",
         avatar_url: "/avatar.png",
+        subscription_plan: "free",
         email: "own@example.com",
       });
     });
@@ -315,6 +316,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: null,
         bio: null,
         avatar_url: null,
+        subscription_plan: "free",
         email: undefined,
       });
       expect(unauthenticatedResult).toEqual({
@@ -322,6 +324,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: "Guest",
         bio: null,
         avatar_url: null,
+        subscription_plan: "free",
         email: undefined,
       });
       expect(differentUserSupabase.getUser).toHaveBeenCalledTimes(1);
@@ -359,6 +362,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: "Hanako",
         bio: null,
         avatar_url: "/avatar-2.png",
+        subscription_plan: "free",
       });
     });
   });

@@ -350,6 +350,46 @@ describe("StylePageClient", () => {
       url: imageUrl,
     } as Response);
 
+  // React 19 uses setTimeout(fn, 0) for scheduling in jsdom (no MessageChannel).
+  // advanceTimersByTime(0) won't trigger nested setTimeout(0) calls scheduled
+  // during execution, so we advance by 1ms to let React's scheduler fully flush.
+  const flushReactScheduler = async () => {
+    for (let i = 0; i < 10; i += 1) {
+      jest.advanceTimersByTime(1);
+      await Promise.resolve();
+    }
+  };
+
+  const uploadImageAndWaitUntilReady = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+      await flushReactScheduler();
+    });
+    expect(
+      screen.getByRole("button", { name: "Start Styling" })
+    ).toBeEnabled();
+  };
+
+  const hasStyleGenerateRequest = () => {
+    return fetchMock.mock.calls.some(([input, init]) => {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      return requestUrl === "/style/generate" && (init?.method ?? "GET") === "POST";
+    });
+  };
+
+  const startStylingAndWaitForRequest = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      await flushReactScheduler();
+    });
+    expect(hasStyleGenerateRequest()).toBe(true);
+  };
+
   beforeEach(() => {
     mockToast.mockImplementation(() => ({ id: "toast-id" }));
     mockDismissToast.mockReset();
@@ -648,7 +688,7 @@ describe("StylePageClient", () => {
   });
 
   test("背景変更対応presetではチェックボックスが有効で送信時にbackgroundChange=falseを含む", async () => {
-    jest.useFakeTimers();
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
 
@@ -662,13 +702,9 @@ describe("StylePageClient", () => {
       )
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     const generateCall = fetchMock.mock.calls.find(
       ([input, init]) =>
@@ -760,7 +796,7 @@ describe("StylePageClient", () => {
   });
 
   test("生成中はスタイル選択とアップロード削除を操作できない", async () => {
-    jest.useFakeTimers();
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     let resolveFetch: ((value: Response) => void) | null = null;
     generateResponseQueue = [
@@ -771,8 +807,8 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
 
     expect(screen.getByRole("button", { name: "Generating..." })).toBeDisabled();
     expect(
@@ -942,15 +978,15 @@ describe("StylePageClient", () => {
     });
   });
 
-  test("生成が長引くとフォールバック文言に切り替わる", () => {
-    jest.useFakeTimers();
+  test("生成が長引くとフォールバック文言に切り替わる", async () => {
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     generateResponseQueue = [new Promise<Response>(() => {})];
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
 
     expect(
       screen.getByText("Checking out the new look.")
@@ -968,17 +1004,13 @@ describe("StylePageClient", () => {
   });
 
   test("生成成功時にFormDataを送信し_単一結果を表示する", async () => {
-    jest.useFakeTimers();
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     expect(fetchMock).toHaveBeenCalled();
 
@@ -1179,17 +1211,12 @@ describe("StylePageClient", () => {
   });
 
   test("生成結果がある状態で変更操作をすると確認ダイアログが表示され_キャンセルで結果を保持する", async () => {
-    jest.useFakeTimers();
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
     act(() => {
       jest.advanceTimersByTime(5000);
     });
@@ -1228,17 +1255,12 @@ describe("StylePageClient", () => {
   });
 
   test("生成結果がある状態で変更確認に同意すると結果を削除して変更を反映する", async () => {
-    jest.useFakeTimers();
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
     act(() => {
       jest.advanceTimersByTime(5000);
     });
@@ -1264,17 +1286,13 @@ describe("StylePageClient", () => {
   });
 
   test("生成結果がある状態でStart Stylingを押すと確認ダイアログが表示され_続行後に再生成する", async () => {
-    jest.useFakeTimers();
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await startStylingAndWaitForRequest();
 
     expect(fetchMock).toHaveBeenCalled();
 
@@ -1407,6 +1425,8 @@ describe("StylePageClient", () => {
   });
 
   test("guest制限エラー時_signup CTAを表示して遷移できる", async () => {
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+
     generateResponseQueue = [
       createJsonResponse(
         {
@@ -1422,13 +1442,8 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
 
     expect(
       screen.getByText(
@@ -1451,6 +1466,8 @@ describe("StylePageClient", () => {
   });
 
   test("短時間制限エラー時_ダイアログを表示する", async () => {
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+
     generateResponseQueue = [
       createJsonResponse(
         {
@@ -1464,13 +1481,8 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
 
     expect(screen.getByText("Traffic is high right now")).toBeInTheDocument();
     expect(
@@ -1525,7 +1537,7 @@ describe("StylePageClient", () => {
       await screen.findByText("You have 2 generations left for today.")
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+    await uploadImageAndWaitUntilReady();
     fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
 
     await act(async () => {
@@ -1646,6 +1658,6 @@ describe("StylePageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Buy Percoins" }));
 
-    expect(routerPushMock).toHaveBeenCalledWith("/my-page/credits/purchase");
+    expect(routerPushMock).toHaveBeenCalledWith("/credits/purchase");
   });
 });

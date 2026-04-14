@@ -10,6 +10,7 @@ const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const PUBLIC_PATH_PATTERNS = [
   /^\/$/,
   /^\/about$/,
+  /^\/credits\/purchase$/,
   /^\/pricing$/,
   /^\/terms$/,
   /^\/privacy$/,
@@ -129,4 +130,3 @@ export function resolveRequestLocale({
 
   return resolveLocaleFromAcceptLanguage(acceptLanguage);
 }
-

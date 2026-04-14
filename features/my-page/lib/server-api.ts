@@ -22,6 +22,7 @@ export interface UserProfile {
   nickname: string | null;
   bio: string | null;
   avatar_url: string | null;
+  subscription_plan?: "free" | "light" | "standard" | "premium";
   email?: string;
 }
 
@@ -55,7 +56,7 @@ export const getUserProfileServer = cache(async (
   // profilesテーブルからプロフィール情報を取得
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, nickname, bio, avatar_url")
+    .select("id, nickname, bio, avatar_url, subscription_plan")
     .eq("user_id", userId)
     .single();
 
@@ -76,6 +77,7 @@ export const getUserProfileServer = cache(async (
       nickname: profile.nickname,
       bio: profile.bio,
       avatar_url: profile.avatar_url,
+      subscription_plan: profile.subscription_plan ?? "free",
     };
   }
 
@@ -88,6 +90,7 @@ export const getUserProfileServer = cache(async (
     nickname: profile.nickname,
     bio: profile.bio,
     avatar_url: profile.avatar_url,
+    subscription_plan: profile.subscription_plan ?? "free",
     email: isOwnProfile ? user?.email : undefined,
   };
 });

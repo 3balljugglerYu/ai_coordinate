@@ -4,8 +4,13 @@ import { getUser } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
+import {
+  getSubscriptionBonusMultiplier,
+  normalizeSubscriptionPlan,
+} from "@/features/subscription/subscription-config";
 
 /**
  * デイリー投稿特典を付与するヘルパー関数
@@ -46,6 +51,34 @@ async function grantDailyPostBonus(
   }
 }
 
+async function getDailyPostBonusMeta(userId: string): Promise<{
+  bonusMultiplier: number;
+  subscriptionPlan: "free" | "light" | "standard" | "premium";
+} | null> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("subscription_plan")
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      console.error("[Daily Post Bonus] Failed to fetch subscription plan:", error);
+      return null;
+    }
+
+    const subscriptionPlan = normalizeSubscriptionPlan(data?.subscription_plan);
+    return {
+      bonusMultiplier: getSubscriptionBonusMultiplier(subscriptionPlan),
+      subscriptionPlan,
+    };
+  } catch (error) {
+    console.error("[Daily Post Bonus] Failed to prepare bonus meta:", error);
+    return null;
+  }
+}
+
 /**
  * 投稿API
  */
@@ -77,6 +110,8 @@ export async function POST(request: NextRequest) {
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
     const bonus_granted = await grantDailyPostBonus(user.id, result.id!);
+    const bonusMeta =
+      bonus_granted > 0 ? await getDailyPostBonusMeta(user.id) : null;
 
     revalidateTag("home-posts", "max");
     revalidateTag("home-posts-week", "max");
@@ -108,6 +143,8 @@ export async function POST(request: NextRequest) {
       caption: result.caption ?? null,
       posted_at: result.posted_at || new Date().toISOString(),
       bonus_granted, // 付与されたペルコイン数（0: 未付与、50: 付与成功）
+      bonus_multiplier: bonusMeta?.bonusMultiplier,
+      subscription_plan: bonusMeta?.subscriptionPlan,
     });
   } catch (error) {
     // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください

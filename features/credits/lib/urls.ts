@@ -9,6 +9,6 @@ export type PercoinPurchaseReferrer = "coordinate";
  */
 export function getPercoinPurchaseUrl(from?: PercoinPurchaseReferrer): string {
   return from
-    ? `${ROUTES.MY_PAGE_CREDITS_PURCHASE}?from=${from}`
-    : ROUTES.MY_PAGE_CREDITS_PURCHASE;
+    ? `${ROUTES.CREDITS_PURCHASE}?from=${from}`
+    : ROUTES.CREDITS_PURCHASE;
 }

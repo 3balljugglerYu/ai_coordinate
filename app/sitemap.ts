@@ -12,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/about",
     "/terms",
     "/privacy",
-    "/pricing",
+    "/credits/purchase",
     "/tokushoho",
     "/payment-services-act",
     "/thanks-sample",
@@ -27,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency:
         path === "/" || path === "/search"
           ? ("daily" as const)
-          : path === "/pricing" || path === "/free-materials"
+          : path === "/credits/purchase" || path === "/free-materials"
             ? ("weekly" as const)
             : ("monthly" as const),
       priority:
@@ -35,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           ? 1
           : path === "/search"
             ? 0.8
-            : path === "/about" || path === "/pricing"
+            : path === "/about" || path === "/credits/purchase"
               ? 0.7
               : path === "/free-materials"
                 ? 0.6

@@ -96,8 +96,11 @@ const consumePendingHomePostRefreshMock =
 
 const postTranslations = {
   postSuccess: "投稿しました",
+  dailyBonusTitle: "特典獲得！",
   dailyBonusDescription: ({ amount }: { amount: number }) =>
     `今日の投稿で${amount}ペルコインを獲得しました！`,
+  dailyBonusMultiplierBadge: ({ multiplier }: { multiplier: string }) =>
+    `${multiplier}x 適用中`,
   noMatch: ({ query }: { query: string }) => `"${query}"に一致する投稿が見つかりませんでした`,
   noFollowingPosts: "フォローしているユーザーの投稿がありません",
   preparing: "準備中...",
@@ -197,7 +200,9 @@ describe("PostList", () => {
     pendingPayload = {
       action: "posted",
       postId: "post-1",
-      bonusGranted: 50,
+      bonusGranted: 20,
+      bonusMultiplier: 1.3,
+      subscriptionPlan: "standard",
     };
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -221,10 +226,17 @@ describe("PostList", () => {
     });
     await screen.findByTestId("post-card-post-1");
 
-    expect(toastMock).toHaveBeenCalledWith({
-      title: "投稿しました",
-      description: "今日の投稿で50ペルコインを獲得しました！",
-    });
+    expect(toastMock).toHaveBeenCalledTimes(1);
+    const toastArg = toastMock.mock.calls[0][0] as {
+      title: string;
+      description: React.ReactNode;
+    };
+    expect(toastArg.title).toBe("特典獲得！");
+    render(<>{toastArg.description}</>);
+    expect(
+      screen.getByText("今日の投稿で20ペルコインを獲得しました！")
+    ).toBeInTheDocument();
+    expect(screen.getByText("1.3x 適用中")).toBeInTheDocument();
     expect(screen.getByTestId("post-card-post-1")).toHaveAttribute(
       "data-highlighted",
       "true"

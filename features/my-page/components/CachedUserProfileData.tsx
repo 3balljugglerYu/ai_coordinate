@@ -12,15 +12,10 @@ interface CachedUserProfileDataProps {
   profileUserId: string;
 }
 
-/**
- * 他ユーザーのプロフィール用（use cache でサーバーキャッシュ）
- * 自分のプロフィール閲覧時は使用せず、UserProfileData を使用すること
- */
-export async function CachedUserProfileData({
-  profileUserId,
-}: CachedUserProfileDataProps) {
+async function getCachedUserProfileData(profileUserId: string) {
   "use cache";
   cacheTag(`user-profile-${profileUserId}`);
+  cacheTag(`subscription-ui-${profileUserId}`);
   cacheLife("minutes");
 
   const supabase = createAdminClient();
@@ -30,6 +25,18 @@ export async function CachedUserProfileData({
     getUserStatsServer(profileUserId, supabase),
     getUserPostsServer(profileUserId, 20, 0, supabase),
   ]);
+
+  return { profile, stats, posts };
+}
+
+/**
+ * 他ユーザーのプロフィール用（データ取得のみ use cache でキャッシュ）
+ * 自分のプロフィール閲覧時は使用せず、UserProfileData を使用すること
+ */
+export async function CachedUserProfileData({
+  profileUserId,
+}: CachedUserProfileDataProps) {
+  const { profile, stats, posts } = await getCachedUserProfileData(profileUserId);
 
   if (!profile || !profile.nickname) {
     notFound();

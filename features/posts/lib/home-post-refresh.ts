@@ -2,7 +2,9 @@ export type PendingHomePostRefresh =
   | {
       action: "posted";
       bonusGranted?: number;
+      bonusMultiplier?: number;
       postId: string;
+      subscriptionPlan?: "free" | "light" | "standard" | "premium";
     }
   | {
       action: "unposted";
@@ -65,6 +67,17 @@ export function consumePendingHomePostRefresh(): PendingHomePostRefresh | null {
         bonusGranted:
           typeof parsed.bonusGranted === "number"
             ? parsed.bonusGranted
+            : undefined,
+        bonusMultiplier:
+          typeof parsed.bonusMultiplier === "number"
+            ? parsed.bonusMultiplier
+            : undefined,
+        subscriptionPlan:
+          parsed.subscriptionPlan === "light" ||
+          parsed.subscriptionPlan === "standard" ||
+          parsed.subscriptionPlan === "premium" ||
+          parsed.subscriptionPlan === "free"
+            ? parsed.subscriptionPlan
             : undefined,
       };
     }

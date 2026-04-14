@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -17,6 +18,7 @@ import { ProfileEditModal } from "./ProfileEditModal";
 import { AvatarUpload } from "./AvatarUpload";
 import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
 import { FollowButton } from "@/features/users/components/FollowButton";
+import { SubscriptionBadge } from "@/features/subscription/components/SubscriptionBadge";
 import type { UserProfile } from "../lib/server-api";
 import {
   DEFAULT_LOCALE,
@@ -44,6 +46,7 @@ export function ProfileHeader({
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const navT = useTranslations("nav");
   const postsT = useTranslations("posts");
+  const subscriptionT = useTranslations("subscription");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(profile);
 
@@ -78,6 +81,20 @@ export function ProfileHeader({
     onProfileUpdate?.(updatedProfile);
   };
 
+  const planBadge =
+    currentProfile.subscription_plan && currentProfile.subscription_plan !== "free" ? (
+      <Link
+        href="/pricing"
+        aria-label={subscriptionT("seePlansAction")}
+        className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
+      >
+        <SubscriptionBadge
+          plan={currentProfile.subscription_plan}
+          className="cursor-pointer transition-transform hover:-translate-y-0.5"
+        />
+      </Link>
+    ) : null;
+
   return (
     <>
       <div className="relative mb-6">
@@ -111,6 +128,7 @@ export function ProfileHeader({
             <div className="mt-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+                {planBadge}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -152,7 +170,10 @@ export function ProfileHeader({
             </div>
             {/* プロフィール情報 */}
             <div className="mt-4">
-              <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+                {planBadge}
+              </div>
               {currentProfile.bio && (
                 <div className="mt-1">
                   <CollapsibleText

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
+import { ROUTES } from "@/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
   findPercoinPackage,
@@ -104,14 +105,15 @@ export async function POST(request: NextRequest) {
 
     const stripeSecretKey = env.STRIPE_SECRET_KEY;
     const baseUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const successRedirect = `${baseUrl.replace(/\/$/, "")}/my-page`;
-    const cancelRedirect = `${baseUrl.replace(/\/$/, "")}/my-page/credits/purchase`;
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+    const successRedirect = `${normalizedBaseUrl}${ROUTES.CREDITS_PURCHASE}?success=true`;
+    const cancelRedirect = `${normalizedBaseUrl}${ROUTES.CREDITS_PURCHASE}?canceled=true`;
 
     // Stripeが利用できない場合はモックモードで擬似的に成功させる
     if (!stripeSecretKey) {
       return NextResponse.json({
         mode: "mock",
-        checkoutUrl: `${successRedirect}?mockPurchase=1&packageId=${encodeURIComponent(
+        checkoutUrl: `${successRedirect}&mockPurchase=1&packageId=${encodeURIComponent(
           packageId
         )}`,
         package: percoinPackage,

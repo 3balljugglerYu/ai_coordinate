@@ -11,6 +11,7 @@ interface ChallengeCardProps {
   description: string;
   percoinAmount?: number;
   percoinText?: string;
+  headerBadge?: ReactNode;
   icon: LucideIcon;
   color?: "blue" | "purple" | "orange" | "green";
   children?: ReactNode;
@@ -22,6 +23,7 @@ export function ChallengeCard({
   description,
   percoinAmount,
   percoinText,
+  headerBadge,
   icon: Icon,
   color = "blue",
   children,
@@ -54,13 +56,16 @@ export function ChallengeCard({
           <div className={cn("p-3 rounded-2xl transition-transform duration-300 group-hover:scale-110 motion-reduce:scale-100 motion-reduce:transition-none", iconColorStyles[color])}>
             <Icon className="w-8 h-8" strokeWidth={1.5} />
           </div>
-          {(percoinAmount || percoinText) && (
-            <div className={cn("px-4 py-1.5 rounded-full text-sm font-bold border", colorStyles[color])}>
-              {percoinAmount
-                ? `+${percoinAmount} ${creditsT("percoinUnit")}`
-                : percoinText}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {headerBadge}
+            {(percoinAmount || percoinText) && (
+              <div className={cn("px-4 py-1.5 rounded-full text-sm font-bold border", colorStyles[color])}>
+                {percoinAmount
+                  ? `+${percoinAmount} ${creditsT("percoinUnit")}`
+                  : percoinText}
+              </div>
+            )}
+          </div>
         </div>
         
         <h3 className="text-xl font-bold mb-2 text-gray-900 group-hover:text-primary transition-colors">

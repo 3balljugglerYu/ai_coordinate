@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, User, User as UserIcon } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +57,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const topLevelPaths = [
     "/",
     ROUTES.COORDINATE,
+    ROUTES.CREDITS_PURCHASE,
     "/challenge",
     ROUTES.MY_PAGE,
     "/notifications",

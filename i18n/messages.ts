@@ -24,6 +24,7 @@ const clientNamespaces = [
   "coordinate",
   "contact",
   "credits",
+  "subscription",
   "moderation",
   "nav",
   "footer",
