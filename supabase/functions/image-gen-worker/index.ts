@@ -1545,15 +1545,19 @@ Deno.serve(async () => {
                   "responseProcessing",
                   generatingSubstepDurationsMs,
                   async () => {
-                    if (geminiData!.error) {
-                      throw new Error(geminiData!.error!.message || "Gemini API error");
+                    if (!geminiData) {
+                      throw new Error("Internal error: Gemini response data is missing.");
                     }
 
-                    if (isGeminiSafetyBlocked(geminiData!)) {
+                    if (geminiData.error) {
+                      throw new Error(geminiData.error.message || "Gemini API error");
+                    }
+
+                    if (isGeminiSafetyBlocked(geminiData)) {
                       throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
                     }
 
-                    const images = extractImagesFromGeminiResponse(geminiData!);
+                    const images = extractImagesFromGeminiResponse(geminiData);
                     return images.length > 0 ? images[0] : null;
                   },
                   { attempt }
