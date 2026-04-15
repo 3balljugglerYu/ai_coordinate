@@ -6,11 +6,13 @@ import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
 import {
   buildPrompt as buildSharedPrompt,
   backgroundModeToBackgroundChange,
+  buildCoordinateAttemptReinforcementPrefix,
   resolveBackgroundMode,
 } from "../../../shared/generation/prompt-core.ts";
 import type {
   GenerationType,
 } from "../../../shared/generation/prompt-core.ts";
+import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import {
   MALFORMED_GEMINI_PARTS_ERROR,
   isInvalidGeminiArgumentErrorMessage,
@@ -36,6 +38,31 @@ const PROCESSING_STALE_TIMEOUT_SECONDS = 360; // processing状態がこの秒数
 
 const INPUT_IMAGE_FETCH_MAX_ATTEMPTS = 3;
 const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+
+const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
+
+type GeminiAttemptMetadata = {
+  attempt: number;
+  startedAt: string;
+  durationMs: number;
+  httpStatus: number | null;
+  httpOk: boolean;
+  finishReasons: string[];
+  hasImage: boolean;
+  timedOut: boolean;
+  errorMessage: string | null;
+  reinforcementApplied: boolean;
+};
+
+function extractGeminiFinishReasons(payload: GeminiResponse | null | undefined): string[] {
+  if (!payload?.candidates || payload.candidates.length === 0) {
+    return [];
+  }
+  const reasons = payload.candidates
+    .map((candidate) => candidate?.finishReason?.trim())
+    .filter((reason): reason is string => Boolean(reason));
+  return Array.from(new Set(reasons));
+}
 
 type InputImageData = {
   base64: string;
@@ -1214,6 +1241,7 @@ Deno.serve(async () => {
         }
 
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
+        const geminiAttempts: GeminiAttemptMetadata[] = [];
         try {
           let generatedImage: { mimeType: string; data: string } | null = null;
           currentStage = "generating";
@@ -1399,52 +1427,151 @@ Deno.serve(async () => {
 
               const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
               const maxAttempts = 2;
+              const isOneTapStyle = job.generation_type === "one_tap_style";
+              const isCoordinate = job.generation_type === "coordinate";
+              const basePromptText =
+                requestBody.contents[0]?.parts.find((part) => typeof part.text === "string")
+                  ?.text ?? "";
 
               for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-                const geminiData = await measureGeneratingSubstep(
-                  jobId,
-                  "geminiRequest",
-                  generatingSubstepDurationsMs,
-                  async () => {
-                    const geminiResponse = await fetch(apiUrl, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": geminiApiKey,
-                      },
-                      body: JSON.stringify(requestBody),
-                    });
+                const reinforcementPrefix = isOneTapStyle
+                  ? buildStyleAttemptReinforcementPrefix(attempt)
+                  : isCoordinate
+                    ? buildCoordinateAttemptReinforcementPrefix(attempt)
+                    : "";
+                const reinforcementApplied = reinforcementPrefix.length > 0;
 
-                    if (!geminiResponse.ok) {
-                      const errorData = await geminiResponse.json();
-                      throw new Error(
-                        errorData.error?.message || `Gemini API error: ${geminiResponse.status}`
+                const attemptParts = requestBody.contents[0].parts.map((part) => {
+                  if (typeof part.text === "string") {
+                    return {
+                      ...part,
+                      text: reinforcementApplied
+                        ? `${reinforcementPrefix}${basePromptText}`
+                        : part.text,
+                    };
+                  }
+                  return part;
+                });
+
+                const attemptRequestBody = {
+                  ...requestBody,
+                  contents: [
+                    {
+                      ...requestBody.contents[0],
+                      parts: attemptParts,
+                    },
+                  ],
+                };
+
+                const attemptStartedAtMs = Date.now();
+                let attemptHttpStatus: number | null = null;
+                let attemptHttpOk = false;
+                let attemptTimedOut = false;
+                let attemptErrorMessage: string | null = null;
+                let geminiData: GeminiResponse | null = null;
+
+                try {
+                  geminiData = await measureGeneratingSubstep(
+                    jobId,
+                    "geminiRequest",
+                    generatingSubstepDurationsMs,
+                    async () => {
+                      const abortController = new AbortController();
+                      const timeoutId = setTimeout(
+                        () => abortController.abort(),
+                        GEMINI_REQUEST_TIMEOUT_MS
                       );
-                    }
+                      try {
+                        const geminiResponse = await fetch(apiUrl, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            "x-goog-api-key": geminiApiKey,
+                          },
+                          body: JSON.stringify(attemptRequestBody),
+                          signal: abortController.signal,
+                        });
 
-                    return (await geminiResponse.json()) as GeminiResponse;
-                  },
-                  { attempt }
-                );
+                        attemptHttpStatus = geminiResponse.status;
+                        attemptHttpOk = geminiResponse.ok;
+
+                        if (!geminiResponse.ok) {
+                          const errorData = await geminiResponse
+                            .json()
+                            .catch(() => null);
+                          throw new Error(
+                            errorData?.error?.message ||
+                              `Gemini API error: ${geminiResponse.status}`
+                          );
+                        }
+
+                        return (await geminiResponse.json()) as GeminiResponse;
+                      } finally {
+                        clearTimeout(timeoutId);
+                      }
+                    },
+                    { attempt }
+                  );
+                } catch (attemptError) {
+                  attemptErrorMessage =
+                    attemptError instanceof Error
+                      ? attemptError.message
+                      : String(attemptError);
+                  if (
+                    attemptError instanceof Error &&
+                    (attemptError.name === "AbortError" ||
+                      /aborted/i.test(attemptErrorMessage))
+                  ) {
+                    attemptTimedOut = true;
+                    attemptErrorMessage = `Gemini request timed out after ${GEMINI_REQUEST_TIMEOUT_MS}ms`;
+                  }
+                  geminiAttempts.push({
+                    attempt,
+                    startedAt: new Date(attemptStartedAtMs).toISOString(),
+                    durationMs: Date.now() - attemptStartedAtMs,
+                    httpStatus: attemptHttpStatus,
+                    httpOk: attemptHttpOk,
+                    finishReasons: [],
+                    hasImage: false,
+                    timedOut: attemptTimedOut,
+                    errorMessage: attemptErrorMessage,
+                    reinforcementApplied,
+                  });
+                  throw attemptError;
+                }
 
                 const nextGeneratedImage = await measureGeneratingSubstep(
                   jobId,
                   "responseProcessing",
                   generatingSubstepDurationsMs,
                   async () => {
-                    if (geminiData.error) {
-                      throw new Error(geminiData.error.message || "Gemini API error");
+                    if (geminiData!.error) {
+                      throw new Error(geminiData!.error!.message || "Gemini API error");
                     }
 
-                    if (isGeminiSafetyBlocked(geminiData)) {
+                    if (isGeminiSafetyBlocked(geminiData!)) {
                       throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
                     }
 
-                    const images = extractImagesFromGeminiResponse(geminiData);
+                    const images = extractImagesFromGeminiResponse(geminiData!);
                     return images.length > 0 ? images[0] : null;
                   },
                   { attempt }
                 );
+
+                const finishReasons = extractGeminiFinishReasons(geminiData);
+                geminiAttempts.push({
+                  attempt,
+                  startedAt: new Date(attemptStartedAtMs).toISOString(),
+                  durationMs: Date.now() - attemptStartedAtMs,
+                  httpStatus: attemptHttpStatus,
+                  httpOk: attemptHttpOk,
+                  finishReasons,
+                  hasImage: Boolean(nextGeneratedImage),
+                  timedOut: false,
+                  errorMessage: null,
+                  reinforcementApplied,
+                });
 
                 if (nextGeneratedImage) {
                   generatedImage = nextGeneratedImage;
@@ -1453,7 +1580,8 @@ Deno.serve(async () => {
 
                 if (attempt < maxAttempts) {
                   console.log(
-                    `[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`
+                    `[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`,
+                    { finishReasons }
                   );
                 } else {
                   throw new Error("No images generated");
@@ -1576,6 +1704,10 @@ Deno.serve(async () => {
 
               // ===== フェーズ4-4: 成功時の処理 =====
               // image_jobsテーブルを更新（成功時）
+              const successGenerationMetadata = {
+                ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
+                geminiAttempts,
+              };
               const { data: succeededJob, error: successUpdateError } = await supabase
                 .from("image_jobs")
                 .update({
@@ -1584,6 +1716,7 @@ Deno.serve(async () => {
                   result_image_url: publicUrl,
                   error_message: null,
                   completed_at: new Date().toISOString(),
+                  generation_metadata: successGenerationMetadata,
                 })
                 .eq("id", jobId)
                 .eq("status", "processing")
@@ -1718,6 +1851,10 @@ Deno.serve(async () => {
           const shouldMarkAsFailed = isNonRetriable || newAttempts >= 3;
 
           // image_jobsテーブルを更新（失敗時）
+          const failureGenerationMetadata = {
+            ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
+            geminiAttempts,
+          };
           const { data: failUpdatedJob, error: failUpdateError } = await supabase
             .from("image_jobs")
             .update({
@@ -1728,6 +1865,7 @@ Deno.serve(async () => {
               attempts: newAttempts,
               started_at: shouldMarkAsFailed ? currentJob?.started_at ?? job.started_at : null,
               completed_at: shouldMarkAsFailed ? new Date().toISOString() : null,
+              generation_metadata: failureGenerationMetadata,
             })
             .eq("id", jobId)
             .eq("status", "processing")

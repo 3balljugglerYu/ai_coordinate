@@ -108,66 +108,43 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   if (generationType === "coordinate") {
-    if (sourceImageType === "real") {
-      if (backgroundMode === "keep") {
-        return `A photorealistic image based on the uploaded photo.
-Captured with an 85mm portrait lens.
-Do not change the camera angle or framing.
-Edit only the outfit.
+    const coordinateBasePrefix = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
 
-New Outfit:
+1. Outfit Transformation within the Existing Frame (REQUIRED): You MUST replace the person's current clothing with the outfit described under "New Outfit" below. The replacement MUST appear only on body parts that are already visible in \`image_0.png\`. DO NOT extend the crop, widen the framing, or reveal additional body parts (legs, feet, lower body, etc.) that are not visible in the original image. The output image MUST visibly show the new outfit on the parts of the body that were already in frame. Returning the original outfit unchanged is a failure; extending the frame or adding body parts not in the original image is also a failure.
 
-${sanitizedDescription}`;
-      }
+2. Pose & Identity Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`. Do not alter the person's identity.
 
-      if (backgroundMode === "ai_auto") {
-        return `A photorealistic image based on the uploaded photo.
-Captured with an 85mm portrait lens.
-Do not change the camera angle or framing.
-Adjust the background to match the new outfit’s style.
+3. Strict Framing: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a body part is not in the original frame, do not add it. Preserve the exact crop, camera angle, and composition of \`image_0.png\`.`;
 
-New Outfit:
+    const coordinateRealStyleSuffix =
+      "Generate a photorealistic result based on the uploaded photo. Captured with an 85mm portrait lens. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.";
 
-${sanitizedDescription}`;
-      }
+    const coordinateIllustrationStyleSuffix =
+      "Maintain the exact illustration touch and artistic style of the uploaded image. Preserve the original camera angle, framing, pose, and composition.";
 
-      // include_in_prompt: 背景についてはシステム指示を追加せず、ユーザー記述に委ねる
-      return `A photorealistic image based on the uploaded photo.
-Captured with an 85mm portrait lens.
-Do not change the camera angle or framing.
+    const coordinateKeepBackgroundSuffix =
+      "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.";
 
-New Outfit:
+    const coordinateChangeBackgroundSuffix =
+      "You MUST restyle the background within the existing framing so that it complements the new outfit's style and color palette. Replace or redesign the original background accordingly. Preserve the camera angle, crop, composition, pose, facial features, and character identity.";
 
-${sanitizedDescription}`;
-    }
+    const styleSuffix =
+      sourceImageType === "real"
+        ? coordinateRealStyleSuffix
+        : coordinateIllustrationStyleSuffix;
+
+    const sections: string[] = [coordinateBasePrefix, styleSuffix];
 
     if (backgroundMode === "keep") {
-      return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
-Do not change the camera angle or framing from the original image.
-Edit only the outfit.
-
-New Outfit:
-
-${sanitizedDescription}`;
+      sections.push(coordinateKeepBackgroundSuffix);
+    } else if (backgroundMode === "ai_auto") {
+      sections.push(coordinateChangeBackgroundSuffix);
     }
+    // include_in_prompt: ユーザー記述に背景指示を委ねるため、システム側の背景指示は追加しない
 
-    if (backgroundMode === "ai_auto") {
-      return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
-Do not change the camera angle or framing from the original image.
-Adjust the background to match the new outfit’s style and color palette.
+    sections.push(`New Outfit:\n\n${sanitizedDescription}`);
 
-New Outfit:
-
-${sanitizedDescription}`;
-    }
-
-    // include_in_prompt: 背景についてはシステム指示を追加せず、ユーザー記述に委ねる
-    return `Maintain the exact illustration touch and artistic style of the uploaded image, and preserve its pose and composition exactly.
-Do not change the camera angle or framing from the original image.
-
-New Outfit:
-
-${sanitizedDescription}`;
+    return sections.join("\n\n");
   }
 
   if (generationType === "specified_coordinate") {
@@ -270,4 +247,15 @@ Keep everything else consistent: face features, hair, pose, expression, lighting
   throw new Error(
     `API Error - Configuration '${generationType}' not found. Available types: coordinate, specified_coordinate, full_body, chibi, one_tap_style`
   );
+}
+
+/**
+ * coordinate 生成タイプ向けのリトライ強化 prefix。
+ * attempt=1 は空文字、attempt>=2 で「前回は衣装置換が反映されなかった」旨を Gemini に強く伝える。
+ */
+export function buildCoordinateAttemptReinforcementPrefix(attempt: number): string {
+  if (attempt <= 1) {
+    return "";
+  }
+  return `RETRY NOTICE (attempt ${attempt}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the New Outfit described below. You MUST strictly apply the outfit replacement on the body parts already visible in \`image_0.png\`, within the existing frame, and any background instruction below. Do not return the original image unchanged. Do not extend the crop, widen the framing, or add body parts (legs, feet, lower body) that were not visible in \`image_0.png\`.\n\n`;
 }

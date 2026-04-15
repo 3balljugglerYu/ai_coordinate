@@ -6,14 +6,17 @@ import type {
   StyleGenerateAttemptReservation,
   StyleGenerateRateLimitResult,
 } from "@/features/style/lib/style-rate-limit";
+import {
+  STYLE_PROMPT_BASE_PREFIX,
+  STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX,
+  STYLE_PROMPT_ILLUSTRATION_SUFFIX,
+  STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+  STYLE_PROMPT_REAL_SUFFIX,
+  buildStyleAttemptReinforcementPrefix,
+} from "@/shared/generation/style-prompts";
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
-const STYLE_PROMPT_BASE_PREFIX = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. Strictly follow these steps:
-
-1. Strict Filtering: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a part is not in the original frame, omit its description entirely.
-
-2. Pose Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`.`;
 
 function buildExpectedPrompt(params: {
   sourceImageType?: "illustration" | "real";
@@ -22,8 +25,8 @@ function buildExpectedPrompt(params: {
 }): string {
   const promptSuffix =
     params.sourceImageType === "real"
-      ? "Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering."
-      : "Maintain the exact artistic style, brushwork, and original composition.";
+      ? STYLE_PROMPT_REAL_SUFFIX
+      : STYLE_PROMPT_ILLUSTRATION_SUFFIX;
 
   const promptSections = [
     STYLE_PROMPT_BASE_PREFIX,
@@ -310,7 +313,7 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(requestBody.contents[0].parts[0]).toEqual({
       text: buildExpectedPrompt({
         backgroundInstruction:
-          "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.",
+          STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
       }),
     });
     expect(requestBody.contents[0].parts).toHaveLength(2);
@@ -484,7 +487,7 @@ describe("StyleGenerateRoute integration tests", () => {
       text: buildExpectedPrompt({
         sourceImageType: "real",
         backgroundInstruction:
-          "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.",
+          STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
       }),
     });
   });
@@ -525,8 +528,7 @@ describe("StyleGenerateRoute integration tests", () => {
 
     expect(requestBody.contents[0].parts[0]).toEqual({
       text: buildExpectedPrompt({
-        backgroundInstruction:
-          "You may restyle the background within the existing framing so it complements the selected outfit. Preserve the camera angle, crop, composition, pose, facial features, and character identity.",
+        backgroundInstruction: STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX,
         backgroundPrompt: "Soft spring city street with blossoms",
       }),
     });
@@ -744,5 +746,62 @@ describe("StyleGenerateRoute integration tests", () => {
       },
       reason: "upstream_error",
     });
+  });
+
+  test("postStyleGenerateRoute_MALFORMED_FUNCTION_CALLリトライ時_2回目にreinforcementPrefix付きで送信する", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
+    fetchFn.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: { parts: [{ text: "" }] },
+              finishReason: "MALFORMED_FUNCTION_CALL",
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    fetchFn.mockResolvedValueOnce(createSuccessResponse());
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+
+    const firstBody = JSON.parse(
+      String(fetchFn.mock.calls[0][1]?.body)
+    ) as { contents: Array<{ parts: Array<{ text?: string }> }> };
+    const secondBody = JSON.parse(
+      String(fetchFn.mock.calls[1][1]?.body)
+    ) as { contents: Array<{ parts: Array<{ text?: string }> }> };
+
+    const firstText = firstBody.contents[0].parts[0].text ?? "";
+    const secondText = secondBody.contents[0].parts[0].text ?? "";
+    expect(firstText.startsWith("RETRY NOTICE")).toBe(false);
+    expect(secondText.startsWith("RETRY NOTICE (attempt 2)")).toBe(true);
+    expect(secondText).toBe(
+      `${buildStyleAttemptReinforcementPrefix(2)}${firstText}`
+    );
+    expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
   });
 });
