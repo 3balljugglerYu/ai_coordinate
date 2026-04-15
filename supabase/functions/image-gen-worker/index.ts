@@ -38,6 +38,7 @@ const PROCESSING_STALE_TIMEOUT_SECONDS = 360; // processing状態がこの秒数
 
 const INPUT_IMAGE_FETCH_MAX_ATTEMPTS = 3;
 const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
 
@@ -162,8 +163,15 @@ async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promis
   let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= INPUT_IMAGE_FETCH_MAX_ATTEMPTS; attempt++) {
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(
+      () => abortController.abort(),
+      INPUT_IMAGE_FETCH_TIMEOUT_MS
+    );
     try {
-      const response = await fetch(inputImageUrl);
+      const response = await fetch(inputImageUrl, {
+        signal: abortController.signal,
+      });
       if (response.ok) {
         const imageBlob = await response.blob();
         const mimeType = imageBlob.type || "image/png";
@@ -180,7 +188,14 @@ async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promis
         break;
       }
     } catch (error) {
-      lastError = error;
+      lastError =
+        error instanceof Error && error.name === "AbortError"
+          ? new Error(
+              `URL download timed out after ${INPUT_IMAGE_FETCH_TIMEOUT_MS}ms`
+            )
+          : error;
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (attempt < INPUT_IMAGE_FETCH_MAX_ATTEMPTS) {
@@ -196,6 +211,38 @@ async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promis
   throw new Error(`URL download failed: ${lastErrorMessage}`);
 }
 
+async function withInputImageFetchTimeout<T>(
+  operation: PromiseLike<T>,
+  label: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race<T>([
+      Promise.resolve(operation),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `${label} timed out after ${INPUT_IMAGE_FETCH_TIMEOUT_MS}ms`
+              )
+            ),
+          INPUT_IMAGE_FETCH_TIMEOUT_MS
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+type StorageDownloadResult = {
+  data: Blob | null;
+  error: { message: string } | null;
+};
+
 async function downloadInputImageViaStorageFallback(
   supabase: ReturnType<typeof createClient>,
   inputImageUrl: string
@@ -205,9 +252,10 @@ async function downloadInputImageViaStorageFallback(
     throw new Error("Storage path could not be parsed from input_image_url");
   }
 
-  const { data, error } = await supabase.storage
-    .from(location.bucket)
-    .download(location.objectPath);
+  const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+    supabase.storage.from(location.bucket).download(location.objectPath),
+    "Storage fallback download"
+  );
 
   if (error || !data) {
     throw new Error(`Storage fallback download failed: ${error?.message ?? "Unknown error"}`);
@@ -240,9 +288,10 @@ async function downloadInputImageViaStockFallback(
 
   let storagePathError = "";
   if (stock.storage_path) {
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .download(stock.storage_path);
+    const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+      supabase.storage.from(STORAGE_BUCKET).download(stock.storage_path),
+      "Stock fallback download"
+    );
 
     if (!error && data) {
       const mimeType = data.type || "image/png";
