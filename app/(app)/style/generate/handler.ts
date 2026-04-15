@@ -9,6 +9,10 @@ import {
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
 import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
+import {
+  buildStyleAttemptReinforcementPrefix,
+  buildStyleGenerationPrompt,
+} from "@/shared/generation/style-prompts";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import {
   checkAndConsumeStyleGenerateRateLimit,
@@ -30,19 +34,6 @@ const MAX_RETRYABLE_ATTEMPTS = 2;
 const RETRYABLE_NO_IMAGE_FINISH_REASONS = new Set([
   "MALFORMED_FUNCTION_CALL",
 ]);
-const STYLE_PROMPT_BASE_PREFIX = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. Strictly follow these steps:
-
-1. Strict Filtering: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a part is not in the original frame, omit its description entirely.
-
-2. Pose Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`.`;
-const STYLE_PROMPT_ILLUSTRATION_SUFFIX =
-  "Maintain the exact artistic style, brushwork, and original composition.";
-const STYLE_PROMPT_REAL_SUFFIX =
-  "Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.";
-const STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX =
-  "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.";
-const STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX =
-  "You may restyle the background within the existing framing so it complements the selected outfit. Preserve the camera angle, crop, composition, pose, facial features, and character identity.";
 
 type FetchFn = typeof fetch;
 
@@ -160,35 +151,6 @@ function resolveSourceImageType(entry: FormDataEntryValue | null): SourceImageTy
 
 function resolveBackgroundChange(entry: FormDataEntryValue | null): boolean {
   return entry === "true";
-}
-
-function buildGenerationPrompt(
-  params: {
-    stylingPrompt: string;
-    backgroundPrompt: string | null;
-    backgroundChange: boolean;
-    sourceImageType: SourceImageType;
-  }
-): string {
-  const promptSuffix =
-    params.sourceImageType === "real"
-      ? STYLE_PROMPT_REAL_SUFFIX
-      : STYLE_PROMPT_ILLUSTRATION_SUFFIX;
-  const backgroundInstruction = params.backgroundChange
-    ? STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX
-    : STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX;
-  const promptSections = [
-    STYLE_PROMPT_BASE_PREFIX,
-    promptSuffix,
-    backgroundInstruction,
-    `Styling Direction:\n${params.stylingPrompt}`,
-  ];
-
-  if (params.backgroundChange && params.backgroundPrompt) {
-    promptSections.push(`Background Direction:\n${params.backgroundPrompt}`);
-  }
-
-  return promptSections.join("\n\n");
 }
 
 async function recordStyleRateLimitedEvent(params: {
@@ -419,19 +381,21 @@ export async function postStyleGenerateRoute(
       });
     }
 
-    const parts: GeminiContentPart[] = [
-      {
-        text: buildGenerationPrompt({
-          stylingPrompt: preset.stylingPrompt,
-          backgroundPrompt: preset.backgroundPrompt,
-          backgroundChange,
-          sourceImageType,
-        }),
-      },
-      await toInlineData(uploadImage),
-    ];
+    const basePromptText = buildStyleGenerationPrompt({
+      stylingPrompt: preset.stylingPrompt,
+      backgroundPrompt: preset.backgroundPrompt,
+      backgroundChange,
+      sourceImageType,
+    });
+    const imagePart = await toInlineData(uploadImage);
 
     for (let attempt = 1; attempt <= MAX_RETRYABLE_ATTEMPTS; attempt += 1) {
+      const reinforcementPrefix = buildStyleAttemptReinforcementPrefix(attempt);
+      const parts: GeminiContentPart[] = [
+        { text: `${reinforcementPrefix}${basePromptText}` },
+        imagePart,
+      ];
+
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => abortController.abort(), GEMINI_TIMEOUT_MS);
 

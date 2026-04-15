@@ -7,14 +7,15 @@ import type {
   StyleGenerateAttemptReservation,
   StyleGenerateRateLimitResult,
 } from "@/features/style/lib/style-rate-limit";
+import {
+  STYLE_PROMPT_BASE_PREFIX,
+  STYLE_PROMPT_ILLUSTRATION_SUFFIX,
+  STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+  STYLE_PROMPT_REAL_SUFFIX,
+} from "@/shared/generation/style-prompts";
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
-const STYLE_PROMPT_BASE_PREFIX = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. Strictly follow these steps:
-
-1. Strict Filtering: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a part is not in the original frame, omit its description entirely.
-
-2. Pose Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`.`;
 
 function buildExpectedPrompt(params: {
   sourceImageType?: "illustration" | "real";
@@ -23,8 +24,8 @@ function buildExpectedPrompt(params: {
 }): string {
   const promptSuffix =
     params.sourceImageType === "real"
-      ? "Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering."
-      : "Maintain the exact artistic style, brushwork, and original composition.";
+      ? STYLE_PROMPT_REAL_SUFFIX
+      : STYLE_PROMPT_ILLUSTRATION_SUFFIX;
 
   const promptSections = [
     STYLE_PROMPT_BASE_PREFIX,
@@ -198,7 +199,7 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
       user_id: "user-123",
       prompt_text: buildExpectedPrompt({
         backgroundInstruction:
-          "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.",
+          STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
       }),
       input_image_url: "https://cdn.example.com/temp/user-123/upload-image.png",
       source_image_stock_id: null,
