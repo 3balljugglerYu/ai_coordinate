@@ -188,6 +188,7 @@ async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promis
         break;
       }
     } catch (error) {
+      lastStatus = null;
       lastError =
         error instanceof Error && error.name === "AbortError"
           ? new Error(
