@@ -450,6 +450,11 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
       // 遷移
       if (notification.entity_type === "post") {
         router.push(`/posts/${notification.entity_id}?from=notifications`);
+      } else if (
+        notification.entity_type === "comment" &&
+        notification.data?.image_id
+      ) {
+        router.push(`/posts/${notification.data.image_id}?from=notifications`);
       } else if (notification.entity_type === "user") {
         router.push(`/users/${notification.entity_id}?from=notifications`);
       }

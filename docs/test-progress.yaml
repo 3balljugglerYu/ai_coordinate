@@ -2,7 +2,7 @@
 # Updated by /test-checklist and read by /test-flow.
 
 version: "2.0"
-last_updated: "2026-03-27"
+last_updated: "2026-04-16"
 
 # Status values:
 # - pending
@@ -121,6 +121,39 @@ feature_work:
     file: app/api/posts/post/route.ts
     spec_file: docs/specs/api/posts_cache_invalidation_routes_spec.yaml
     test_file: tests/integration/api/posts-cache-invalidation-route.test.ts
+
+  CommentRepliesRoute:
+    status: completed
+    file: app/api/comments/[id]/replies/route.ts
+    prerequisites:
+      - auth user fixture
+      - parent comment fixture
+    spec_file: docs/specs/api/comment_replies_route_spec.yaml
+    test_file: tests/integration/api/comments-route.test.ts
+
+  CommentDeleteRoute:
+    status: completed
+    file: app/api/comments/[id]/route.ts
+    prerequisites:
+      - auth user fixture
+      - delete result fixture
+    spec_file: docs/specs/api/comment_delete_route_spec.yaml
+    test_file: tests/integration/api/comments-route.test.ts
+
+  UseNotifications:
+    status: completed
+    file: features/notifications/hooks/useNotifications.ts
+    prerequisites:
+      - next navigation mock
+      - supabase client mock
+    spec_file: docs/specs/notifications/use_notifications_spec.yaml
+    test_file: tests/unit/features/notifications/use-notifications.test.tsx
+
+  NotificationPresentation:
+    status: completed
+    file: features/notifications/lib/presentation.ts
+    spec_file: docs/specs/notifications/notification_presentation_spec.yaml
+    test_file: tests/unit/lib/notification-presentation.test.ts
 
 # Tier 1: Highest Priority (Score 90-100)
 tier1:

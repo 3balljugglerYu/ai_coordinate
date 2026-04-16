@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
-import { updateComment, deleteComment } from "@/features/posts/lib/server-api";
+import {
+  deleteComment,
+  PostCommentError,
+  updateComment,
+} from "@/features/posts/lib/server-api";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -15,15 +20,17 @@ export async function PUT(
 ) {
   const copy = postsRouteCopy[getRouteLocale(request)];
   try {
-    const user = await getUser();
+    const userPromise = getUser();
+    const paramsPromise = params;
+    const bodyPromise = request.json();
+    const user = await userPromise;
     if (!user) {
       return NextResponse.json(
         { error: copy.authRequired, errorCode: "POSTS_AUTH_REQUIRED" },
         { status: 401 }
       );
     }
-    const { id } = await params;
-    const body = await request.json();
+    const [{ id }, body] = await Promise.all([paramsPromise, bodyPromise]);
     const { content } = body;
 
     if (!id) {
@@ -71,6 +78,12 @@ export async function PUT(
 
     return NextResponse.json({ comment });
   } catch (error) {
+    if (error instanceof PostCommentError) {
+      return NextResponse.json(
+        { error: error.message, errorCode: error.code },
+        { status: error.status }
+      );
+    }
     console.error("Comment update API error:", error);
     return NextResponse.json(
       {
@@ -88,17 +101,16 @@ export async function DELETE(
 ) {
   const copy = postsRouteCopy[getRouteLocale(request)];
   try {
-    const user = await getUser();
+    const userPromise = getUser();
+    const paramsPromise = params;
+    const user = await userPromise;
     if (!user) {
       return NextResponse.json(
         { error: copy.authRequired, errorCode: "POSTS_AUTH_REQUIRED" },
         { status: 401 }
       );
     }
-    const { id } = await params;
-
-    console.log("[DELETE /api/comments/[id]] User:", user.id);
-    console.log("[DELETE /api/comments/[id]] Comment ID:", id);
+    const { id } = await paramsPromise;
 
     if (!id) {
       return NextResponse.json(
@@ -107,12 +119,18 @@ export async function DELETE(
       );
     }
 
-    await deleteComment(id, user.id);
+    const result = await deleteComment(id, user.id);
+    revalidateTag(`post-detail-${result.image_id}`, "max");
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof PostCommentError) {
+      return NextResponse.json(
+        { error: error.message, errorCode: error.code },
+        { status: error.status }
+      );
+    }
     console.error("Comment deletion API error:", error);
-    console.error("Error stack:", error instanceof Error ? error.stack : "");
     return NextResponse.json(
       {
         error: copy.commentDeleteFailed,

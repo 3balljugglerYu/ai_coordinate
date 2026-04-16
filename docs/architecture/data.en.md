@@ -129,7 +129,7 @@ This matches Supabase/Postgres best practices used in this repo:
 | Wallet and purchase | `user_credits`, `credit_transactions`, `free_percoin_batches`, `generation_percoin_allocations` | `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `get_percoin_balance_breakdown` | `/api/credits/checkout`, `/api/stripe/webhook`, cached my-page screens |
 | Async image generation | `image_jobs`, `generated_images`, `source_image_stocks`, `credit_transactions` | `deduct_free_percoins`, `refund_percoins`, `insert_source_image_stock`, `pgmq_send/read/delete` | `/api/generate-async`, `/api/generation-status`, Edge Function worker |
 | One-Tap Style | `style_presets`, `style_usage_events`, `style_guest_generate_attempts` | `consume_style_authenticated_generate_attempt`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets` | `/style`, `/style/events`, `/style/generate`, `/admin/style-presets`, `/admin` |
-| Posting and social | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
+| Posting and social | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification`, `delete_comment_thread` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
 | Bonuses and growth | `percoin_bonus_defaults`, `percoin_streak_defaults`, `referrals`, `notifications`, `free_percoin_batches` | `grant_tour_bonus`, `grant_streak_bonus`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `grant_referral_bonus` | `/api/tutorial/complete`, `/api/streak/check`, `/api/referral/check-first-login` |
 | Moderation and admin | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
 | Home promotion banners | `popup_banners`, `popup_banner_views`, `popup_banner_analytics`, `popup_banner_guest_events` | `record_popup_banner_interaction`, `reorder_popup_banners` | `/api/popup-banners/**`, `/api/admin/popup-banners/**`, `/admin/popup-banners` |
@@ -209,9 +209,9 @@ This matches Supabase/Postgres best practices used in this repo:
 ### What happens
 
 1. `/api/posts/post` updates `generated_images.is_posted = true` and may call `grant_daily_post_bonus`.
-2. Likes, comments, and follows are mostly direct table writes through session-scoped routes.
+2. Likes and follows are mostly direct table writes through session-scoped routes. Comments now support parent/reply threading through `comments.parent_comment_id`, and parent deletion semantics are centralized in `delete_comment_thread`.
 3. Notifications are not normally inserted from app code.
-4. Postgres triggers create and delete notification rows:
+4. Postgres triggers create and delete notification rows, keep `comments.last_activity_at` in sync, and emit reply lifecycle broadcasts:
    - `likes` INSERT/DELETE
    - `comments` INSERT/DELETE
    - `follows` INSERT/DELETE
@@ -338,6 +338,11 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `likes` `AFTER DELETE` | `delete_notification_on_like_removal()` | Remove like notification when like is removed |
 | `comments` `AFTER INSERT` | `notify_on_comment()` | Create comment notification |
 | `comments` `AFTER DELETE` | `delete_notification_on_comment_deletion()` | Remove comment notification on delete |
+| `comments` `BEFORE INSERT/UPDATE` | `validate_parent_comment()` | Enforce parent/reply integrity and prevent direct `deleted_at` mutation |
+| `comments` `BEFORE DELETE` | `prevent_direct_parent_delete_with_replies()` | Block direct deletion of parent comments that already have replies |
+| `comments` `AFTER INSERT` | `update_parent_last_activity_at()` | Promote parent thread ordering when a reply is added |
+| `comments` `AFTER DELETE` | `update_parent_last_activity_at_on_delete()` | Recompute parent thread ordering when a reply is removed |
+| `comments` `AFTER INSERT/DELETE` | `broadcast_reply_lifecycle_event()` | Emit public realtime payloads for reply insert/delete |
 | `follows` `AFTER INSERT` | `notify_on_follow()` | Create follow notification |
 | `follows` `AFTER DELETE` | `delete_notification_on_follow_removal()` | Remove follow notification on unfollow |
 | `generated_images` `AFTER INSERT` | `update_stock_image_last_used()` | Update stock-image usage metadata after generation |

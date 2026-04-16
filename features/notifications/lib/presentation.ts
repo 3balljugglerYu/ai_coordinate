@@ -16,7 +16,8 @@ export type NotificationTranslationKey =
   | "bonusTourTitle"
   | "commentTitle"
   | "followTitle"
-  | "likeTitle";
+  | "likeTitle"
+  | "replyTitle";
 
 function getStringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -113,7 +114,10 @@ export function formatNotificationContent(
       };
     case "comment":
       return {
-        title: t("commentTitle", { actor: actorName }),
+        title:
+          notification.entity_type === "comment"
+            ? t("replyTitle", { actor: actorName })
+            : t("commentTitle", { actor: actorName }),
         body: getStringValue(notification.data?.comment_content) ?? notification.body,
       };
     case "follow":

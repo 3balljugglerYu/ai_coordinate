@@ -1,0 +1,276 @@
+metadata:
+  class: CommentDeleteRoute
+  source: app/api/comments/[id]/route.ts
+  version: "1.1"
+  created_at: "2026-04-16"
+
+dependencies:
+  repositories: []
+  services:
+    - getUser
+    - getRouteLocale
+    - postsRouteCopy
+    - sanitizeProfileText
+    - validateProfileText
+    - updateComment
+    - deleteComment
+    - revalidateTag
+  external:
+    - Comment server API
+    - Next.js route params
+
+state_properties: []
+
+specifications:
+  - id: CDR-001
+    method: PUT
+    type: event-driven
+    ears: |
+      When PUT /api/comments/[id] is invoked by an authenticated user
+      with valid sanitized content,
+      the route shall update the comment via updateComment
+      and return the updated comment.
+    ears_ja: |
+      PUT /api/comments/[id] が認証済みユーザーにより
+      有効にサニタイズされた content で呼び出された場合、
+      ルートは updateComment でコメントを更新し、
+      更新後のコメントを返す。
+    preconditions:
+      - User is authenticated
+      - Route params include a non-empty comment id
+      - Request body contains string content
+      - Sanitized content passes validation
+    preconditions_ja:
+      - ユーザーが認証済みである
+      - route params に空でない comment id が含まれる
+      - request body に文字列 content が含まれる
+      - サニタイズ後の content がバリデーションを通過する
+    postconditions:
+      success:
+        - Status 200 is returned
+        - Response body includes the updated comment
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200を返す
+        - レスポンス body に更新後の comment が含まれる
+      error:
+        - なし
+    edge_cases:
+      - description: When the target comment is a reply instead of a parent comment
+        expected: The route still returns the reply-shaped updated comment from updateComment
+    edge_cases_ja:
+      - description: 対象コメントが親コメントではなく返信である場合
+        expected: ルートは updateComment が返した reply 形状の更新結果をそのまま返す
+    test_cases:
+      - PUT_GivenValidCommentContent_ShouldReturnUpdatedComment
+      - PUT_GivenReplyComment_ShouldReturnUpdatedReply
+    test_cases_ja:
+      - PUT_有効なコメント内容の場合_更新後コメントを返す
+      - PUT_返信コメントの場合_更新後返信を返す
+
+  - id: CDR-002
+    method: DELETE
+    type: event-driven
+    ears: |
+      When DELETE /api/comments/[id] is invoked by an authenticated user,
+      the route shall delete the comment via deleteComment
+      and revalidate the post-detail tag for the affected image.
+    ears_ja: |
+      DELETE /api/comments/[id] が認証済みユーザーにより呼び出された場合、
+      ルートは deleteComment でコメントを削除し、
+      対象 image の post-detail tag を再検証する。
+    preconditions:
+      - User is authenticated
+      - Route params include a non-empty comment id
+      - deleteComment returns comment_id, image_id, and deleted mode
+    preconditions_ja:
+      - ユーザーが認証済みである
+      - route params に空でない comment id が含まれる
+      - deleteComment が comment_id、image_id、deleted mode を返す
+    postconditions:
+      success:
+        - Status 200 is returned
+        - Response body includes delete result
+        - revalidateTag is called with post-detail-{image_id}
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200を返す
+        - レスポンス body に削除結果が含まれる
+        - revalidateTag が post-detail-{image_id} で呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When deleteComment returns deleted mode physical or logical
+        expected: The route returns that mode unchanged in the response body
+    edge_cases_ja:
+      - description: deleteComment が deleted mode として physical または logical を返す場合
+        expected: ルートはその mode をレスポンス body にそのまま返す
+    test_cases:
+      - DELETE_GivenAuthenticatedUser_ShouldDeleteCommentAndRevalidatePostDetail
+      - DELETE_GivenPhysicalOrLogicalDeleteResult_ShouldReturnDeleteModeUnchanged
+    test_cases_ja:
+      - DELETE_認証済みユーザーの場合_コメントを削除して投稿詳細タグを再検証する
+      - DELETE_physicalまたはlogical削除結果の場合_deleted modeをそのまま返す
+
+  - id: CDR-003
+    method: DELETE
+    type: unwanted
+    ears: |
+      If DELETE /api/comments/[id] is invoked without an authenticated user,
+      then the route shall respond with HTTP 401
+      and not attempt to delete the comment.
+    ears_ja: |
+      DELETE /api/comments/[id] が未認証ユーザーにより呼び出された場合、
+      ルートは HTTP 401 を返し、
+      コメント削除を試みない。
+    preconditions:
+      - getUser returns no authenticated user
+    preconditions_ja:
+      - getUser が認証済みユーザーを返さない
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 401 is returned
+        - deleteComment is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス401を返す
+        - deleteComment は呼ばれない
+    edge_cases:
+      - description: When route params resolve after auth fails
+        expected: The route still returns 401 and skips deleteComment
+    edge_cases_ja:
+      - description: 認証失敗後に route params が解決される場合
+        expected: ルートはなお401を返し、deleteComment を呼ばない
+    test_cases:
+      - DELETE_GivenNoAuthenticatedUser_ShouldReturn401
+    test_cases_ja:
+      - DELETE_未認証の場合_401を返す
+
+  - id: CDR-004
+    method: PUT
+    type: unwanted
+    ears: |
+      If PUT /api/comments/[id] receives missing content,
+      non-string content, or sanitized content that fails validation,
+      then the route shall respond with HTTP 400
+      and not call updateComment.
+    ears_ja: |
+      PUT /api/comments/[id] が content 欠落、
+      非文字列 content、またはサニタイズ後にバリデーション失敗する content を受け取った場合、
+      ルートは HTTP 400 を返し、
+      updateComment を呼ばない。
+    preconditions:
+      - User is authenticated
+      - Request body content is missing, non-string, or invalid after sanitization
+    preconditions_ja:
+      - ユーザーが認証済みである
+      - request body の content が欠落、非文字列、またはサニタイズ後に不正である
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400 is returned
+        - updateComment is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス400を返す
+        - updateComment は呼ばれない
+    edge_cases:
+      - description: When sanitized content becomes empty
+        expected: The route returns 400 with invalid-input semantics
+    edge_cases_ja:
+      - description: サニタイズ後の content が空文字になる場合
+        expected: ルートは invalid input 相当の400を返す
+    test_cases:
+      - PUT_GivenInvalidContent_ShouldReturn400WithoutUpdateComment
+    test_cases_ja:
+      - PUT_不正なcontentの場合_更新せず400を返す
+
+  - id: CDR-005
+    method: PUT
+    type: unwanted
+    ears: |
+      If updateComment rejects because the comment is missing,
+      belongs to another user, or is already deleted,
+      then the route shall propagate the PostCommentError status and code.
+    ears_ja: |
+      updateComment がコメント不存在、
+      他ユーザー所有、
+      または既に削除済みを理由に失敗した場合、
+      ルートは PostCommentError の status と code をそのまま返す。
+    preconditions:
+      - User is authenticated
+      - updateComment throws PostCommentError
+    preconditions_ja:
+      - ユーザーが認証済みである
+      - updateComment が PostCommentError を投げる
+    postconditions:
+      success:
+        - None
+      error:
+        - Status and errorCode match the thrown PostCommentError
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - status と errorCode が投げられた PostCommentError と一致する
+    edge_cases:
+      - description: When the comment becomes tombstoned before the update write
+        expected: The route returns already-deleted semantics instead of a successful update
+    edge_cases_ja:
+      - description: 更新書き込み前にコメントが tombstone 化された場合
+        expected: ルートは成功更新ではなく削除済み相当の結果を返す
+    test_cases:
+      - PUT_GivenNotFoundForbiddenOrDeletedComment_ShouldPropagatePostCommentError
+    test_cases_ja:
+      - PUT_不存在権限不足削除済みコメントの場合_PostCommentErrorをそのまま返す
+
+  - id: CDR-006
+    method: DELETE
+    type: unwanted
+    ears: |
+      If DELETE /api/comments/[id] is invoked with a missing comment id
+      or deleteComment rejects with PostCommentError,
+      then the route shall return the matching client error response
+      and skip revalidation.
+    ears_ja: |
+      DELETE /api/comments/[id] が comment id 欠落で呼び出されるか、
+      deleteComment が PostCommentError で失敗した場合、
+      ルートは対応する client error を返し、
+      再検証を行わない。
+    preconditions:
+      - Comment id is missing, or deleteComment throws PostCommentError
+    preconditions_ja:
+      - comment id が欠落している、または deleteComment が PostCommentError を投げる
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400, 403, 404, or 409 is returned depending on the failure
+        - revalidateTag is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - 失敗内容に応じて 400、403、404、または409を返す
+        - revalidateTag は呼ばれない
+    edge_cases:
+      - description: When the underlying RPC reports an already-deleted comment
+        expected: The route returns the conflict response and leaves caches untouched
+    edge_cases_ja:
+      - description: 下位 RPC が既に削除済みコメントを報告した場合
+        expected: ルートは conflict を返し、キャッシュ再検証は行わない
+    test_cases:
+      - DELETE_GivenMissingIdOrDeleteCommentError_ShouldReturnClientErrorWithoutRevalidate
+    test_cases_ja:
+      - DELETE_ID欠落またはdeleteComment失敗の場合_再検証せずclient errorを返す

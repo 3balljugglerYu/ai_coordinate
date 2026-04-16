@@ -6,7 +6,13 @@ import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
-import type { Post, SortType } from "../types";
+import type {
+  CommentDeleteResult,
+  ParentComment,
+  Post,
+  ReplyComment,
+  SortType,
+} from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getImageAspectRatio } from "./utils";
 import {
@@ -25,6 +31,151 @@ import {
  */
 
 export type LikeRange = "all" | "day" | "week" | "month";
+
+type CommentRow = {
+  id: string;
+  user_id: string | null;
+  image_id: string;
+  parent_comment_id: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  last_activity_at?: string | null;
+};
+
+type ParentCommentLookupRow = Pick<
+  CommentRow,
+  "id" | "image_id" | "parent_comment_id" | "deleted_at"
+>;
+
+const COMMENT_SELECT_COLUMNS = [
+  "id",
+  "user_id",
+  "image_id",
+  "parent_comment_id",
+  "content",
+  "created_at",
+  "updated_at",
+  "deleted_at",
+  "last_activity_at",
+].join(",");
+
+export class PostCommentError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code: string
+  ) {
+    super(message);
+    this.name = "PostCommentError";
+  }
+}
+
+function validateCommentContent(content: string): string {
+  const sanitized = sanitizeProfileText(content);
+  const validation = validateProfileText(
+    sanitized.value,
+    COMMENT_MAX_LENGTH,
+    "コメント",
+    false
+  );
+
+  if (!validation.valid) {
+    throw new PostCommentError(
+      validation.error || "コメントのバリデーションに失敗しました",
+      400,
+      "POSTS_COMMENT_INVALID_INPUT"
+    );
+  }
+
+  return sanitized.value;
+}
+
+function toParentComment(
+  comment: CommentRow,
+  profileMap: Record<string, { nickname: string | null; avatar_url: string | null }>,
+  replyCount: number,
+  deletedCommentPlaceholder: string
+): ParentComment {
+  if (comment.deleted_at) {
+    return {
+      id: comment.id,
+      user_id: null,
+      image_id: comment.image_id,
+      parent_comment_id: null,
+      content: deletedCommentPlaceholder,
+      created_at: comment.created_at,
+      updated_at: comment.updated_at,
+      deleted_at: comment.deleted_at,
+      last_activity_at: comment.last_activity_at ?? comment.created_at,
+      reply_count: replyCount,
+      user_nickname: null,
+      user_avatar_url: null,
+    };
+  }
+
+  return {
+    id: comment.id,
+    user_id: comment.user_id,
+    image_id: comment.image_id,
+    parent_comment_id: null,
+    content: comment.content,
+    created_at: comment.created_at,
+    updated_at: comment.updated_at,
+    deleted_at: null,
+    last_activity_at: comment.last_activity_at ?? comment.created_at,
+    reply_count: replyCount,
+    user_nickname: comment.user_id ? profileMap[comment.user_id]?.nickname ?? null : null,
+    user_avatar_url: comment.user_id ? profileMap[comment.user_id]?.avatar_url ?? null : null,
+  };
+}
+
+function toReplyComment(
+  comment: CommentRow,
+  profileMap: Record<string, { nickname: string | null; avatar_url: string | null }>
+): ReplyComment {
+  return {
+    id: comment.id,
+    user_id: comment.user_id,
+    image_id: comment.image_id,
+    parent_comment_id: comment.parent_comment_id || "",
+    content: comment.content,
+    created_at: comment.created_at,
+    updated_at: comment.updated_at,
+    deleted_at: comment.deleted_at,
+    user_nickname: comment.user_id ? profileMap[comment.user_id]?.nickname ?? null : null,
+    user_avatar_url: comment.user_id ? profileMap[comment.user_id]?.avatar_url ?? null : null,
+  };
+}
+
+function mapDeleteCommentRpcError(errorMessage: string): PostCommentError | null {
+  if (errorMessage.includes("Comment not found")) {
+    return new PostCommentError(
+      "コメントが見つかりません",
+      404,
+      "POSTS_COMMENT_NOT_FOUND"
+    );
+  }
+
+  if (errorMessage.includes("Not authorized")) {
+    return new PostCommentError(
+      "コメントを削除する権限がありません",
+      403,
+      "POSTS_COMMENT_FORBIDDEN"
+    );
+  }
+
+  if (errorMessage.includes("already deleted")) {
+    return new PostCommentError(
+      "削除済みコメントは操作できません",
+      409,
+      "POSTS_COMMENT_ALREADY_DELETED"
+    );
+  }
+
+  return null;
+}
 
 /**
  * プロフィール情報を一括取得するヘルパー関数
@@ -398,7 +549,7 @@ export const getPosts = cache(async (
   }
 
   // 投稿データにユーザー情報・いいね数・コメント数を付与
-  let postsWithCounts = await enrichPosts(
+  const postsWithCounts = await enrichPosts(
     postsData,
     rangeLikeCounts,
     supabaseForHelpers
@@ -928,6 +1079,7 @@ export async function getCommentCount(imageId: string): Promise<number> {
     .from("comments")
     .select("*", { count: "exact", head: true })
     .eq("image_id", imageId)
+    .is("parent_comment_id", null)
     .is("deleted_at", null);
 
   if (error) {
@@ -960,6 +1112,7 @@ export async function getCommentCountsBatch(
     .from("comments")
     .select("image_id")
     .in("image_id", imageIds)
+    .is("parent_comment_id", null)
     .is("deleted_at", null);
 
   if (error) {
@@ -982,33 +1135,79 @@ export async function getCommentCountsBatch(
   return counts;
 }
 
+export async function getReplyCount(parentCommentId: string): Promise<number> {
+  const supabase = await createClient();
+
+  const { count, error } = await supabase
+    .from("comments")
+    .select("*", { count: "exact", head: true })
+    .eq("parent_comment_id", parentCommentId)
+    .is("deleted_at", null);
+
+  if (error) {
+    console.error("Database query error:", error);
+    throw new Error(`返信数の取得に失敗しました: ${error.message}`);
+  }
+
+  return count || 0;
+}
+
+export async function getReplyCountsBatch(
+  parentCommentIds: string[],
+  supabaseOverride?: SupabaseClient
+): Promise<Record<string, number>> {
+  if (parentCommentIds.length === 0) {
+    return {};
+  }
+
+  if (parentCommentIds.length > 100) {
+    throw new Error("バッチサイズは100件までです");
+  }
+
+  const supabase = supabaseOverride ?? (await createClient());
+
+  const { data, error } = await supabase
+    .from("comments")
+    .select("parent_comment_id")
+    .in("parent_comment_id", parentCommentIds)
+    .is("deleted_at", null);
+
+  if (error) {
+    console.error("Database query error:", error);
+    throw new Error(`返信数の一括取得に失敗しました: ${error.message}`);
+  }
+
+  const counts: Record<string, number> = {};
+  parentCommentIds.forEach((id) => {
+    counts[id] = 0;
+  });
+
+  data?.forEach((reply) => {
+    if (reply.parent_comment_id) {
+      counts[reply.parent_comment_id] = (counts[reply.parent_comment_id] || 0) + 1;
+    }
+  });
+
+  return counts;
+}
+
 /**
  * コメント一覧を取得
  */
 export async function getComments(
   imageId: string,
   limit: number,
-  offset: number
-): Promise<Array<{
-  id: string;
-  user_id: string;
-  image_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  user_nickname: string | null;
-  user_avatar_url: string | null;
-}>> {
-  const supabase = await createClient();
+  offset: number,
+  deletedCommentPlaceholder = ""
+): Promise<ParentComment[]> {
+  const supabase = createAdminClient();
 
-  // 1. コメントを取得
-  const { data: comments, error: commentsError } = await supabase
+  const { data: commentsData, error: commentsError } = await supabase
     .from("comments")
-    .select("*")
+    .select(COMMENT_SELECT_COLUMNS)
     .eq("image_id", imageId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
+    .is("parent_comment_id", null)
+    .order("last_activity_at", { ascending: false })
     .order("id", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -1017,48 +1216,74 @@ export async function getComments(
     throw new Error(`コメントの取得に失敗しました: ${commentsError.message}`);
   }
 
-  if (!comments || comments.length === 0) {
+  const comments = (commentsData ?? []) as unknown as CommentRow[];
+
+  if (comments.length === 0) {
     return [];
   }
 
-  // 2. user_idのリストを抽出（重複除去、null除外）
+  const commentIds = comments.map((comment) => comment.id);
   const userIds = Array.from(
-    new Set(comments.map((c) => c.user_id).filter(Boolean) as string[])
+    new Set(
+      comments
+        .filter((comment) => !comment.deleted_at)
+        .map((comment) => comment.user_id)
+        .filter((userId): userId is string => Boolean(userId))
+    )
   );
 
-  // 3. profilesテーブルから一括取得（空配列の場合はスキップ）
-  const profileMap: Record<
-    string,
-    { nickname: string | null; avatar_url: string | null }
-  > = {};
-  if (userIds.length > 0) {
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("user_id, nickname, avatar_url")
-      .in("user_id", userIds);
+  const [profileMap, replyCounts] = await Promise.all([
+    getProfileMap(userIds, supabase),
+    getReplyCountsBatch(commentIds, supabase),
+  ]);
 
-    // エラーが発生した場合はログに記録するが、コメント表示は続行
-    if (profilesError) {
-      console.error("Profile fetch error:", profilesError);
-      // profileMapは空のまま（すべてnullでフォールバック）
-    } else if (profiles) {
-      profiles.forEach((p) => {
-        profileMap[p.user_id] = {
-          nickname: p.nickname,
-          avatar_url: p.avatar_url,
-        };
-      });
-    }
+  return comments.map((comment) =>
+    toParentComment(
+      comment as CommentRow,
+      profileMap,
+      replyCounts[comment.id] ?? 0,
+      deletedCommentPlaceholder
+    )
+  );
+}
+
+export async function getReplies(
+  parentCommentId: string,
+  limit: number,
+  offset: number
+): Promise<ReplyComment[]> {
+  const supabase = createAdminClient();
+
+  const { data: repliesData, error } = await supabase
+    .from("comments")
+    .select(COMMENT_SELECT_COLUMNS)
+    .eq("parent_comment_id", parentCommentId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error("Database query error:", error);
+    throw new Error(`返信の取得に失敗しました: ${error.message}`);
   }
 
-  // 4. コメントデータとマージ
-  const commentsWithProfiles = comments.map((comment) => ({
-    ...comment,
-    user_nickname: profileMap[comment.user_id]?.nickname ?? null,
-    user_avatar_url: profileMap[comment.user_id]?.avatar_url ?? null,
-  }));
+  const replies = (repliesData ?? []) as unknown as CommentRow[];
 
-  return commentsWithProfiles;
+  if (replies.length === 0) {
+    return [];
+  }
+
+  const userIds = Array.from(
+    new Set(
+      replies
+        .map((reply) => reply.user_id)
+        .filter((userId): userId is string => Boolean(userId))
+    )
+  );
+  const profileMap = await getProfileMap(userIds, supabase);
+
+  return replies.map((reply) => toReplyComment(reply as CommentRow, profileMap));
 }
 
 /**
@@ -1068,43 +1293,19 @@ export async function createComment(
   imageId: string,
   userId: string,
   content: string
-): Promise<{
-  id: string;
-  user_id: string;
-  image_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  user_nickname: string | null;
-  user_avatar_url: string | null;
-}> {
-  // サニタイズ（既にAPIでサニタイズ済みだが、念のため再実行）
-  const sanitized = sanitizeProfileText(content);
-
-  // バリデーション（空文字は許可しない）
-  const validation = validateProfileText(
-    sanitized.value,
-    COMMENT_MAX_LENGTH,
-    "コメント",
-    false // 空文字を許可しない
-  );
-
-  if (!validation.valid) {
-    throw new Error(validation.error || "コメントのバリデーションに失敗しました");
-  }
+): Promise<ParentComment> {
+  const sanitized = validateCommentContent(content);
 
   const supabase = await createClient();
 
-  // コメントを投稿（サニタイズ後の値を使用）
-  const { data: comment, error: commentError } = await supabase
+  const { data: commentData, error: commentError } = await supabase
     .from("comments")
     .insert({
       image_id: imageId,
       user_id: userId,
-      content: sanitized.value,
-    })
-    .select()
+      content: sanitized,
+    } as never)
+    .select(COMMENT_SELECT_COLUMNS)
     .single();
 
   if (commentError) {
@@ -1112,29 +1313,76 @@ export async function createComment(
     throw new Error(`コメントの投稿に失敗しました: ${commentError.message}`);
   }
 
-  // プロフィール情報を取得
-  let user_nickname: string | null = null;
-  let user_avatar_url: string | null = null;
+  const comment = commentData as unknown as CommentRow;
+  const profileMap = await getProfileMap([userId], supabase);
+  return toParentComment(
+    comment,
+    profileMap,
+    0,
+    ""
+  );
+}
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("nickname, avatar_url")
-    .eq("user_id", userId)
+export async function createReply(
+  parentCommentId: string,
+  userId: string,
+  content: string
+): Promise<ReplyComment> {
+  const sanitized = validateCommentContent(content);
+  const adminSupabase = createAdminClient();
+
+  const { data: parentCommentData, error: parentCommentError } = await adminSupabase
+    .from("comments")
+    .select("id,image_id,parent_comment_id,deleted_at")
+    .eq("id", parentCommentId)
     .single();
 
-  if (profileError) {
-    console.error("Profile fetch error:", profileError);
-    // エラーが発生してもコメントは返す（プロフィール情報はnullのまま）
-  } else if (profile) {
-    user_nickname = profile.nickname;
-    user_avatar_url = profile.avatar_url;
+  const parentComment = parentCommentData as unknown as ParentCommentLookupRow | null;
+
+  if (parentCommentError || !parentComment) {
+    throw new PostCommentError(
+      "返信先のコメントが見つかりません",
+      404,
+      "POSTS_REPLY_PARENT_NOT_FOUND"
+    );
   }
 
-  return {
-    ...comment,
-    user_nickname,
-    user_avatar_url,
-  };
+  if (parentComment.parent_comment_id) {
+    throw new PostCommentError(
+      "返信は親コメントにのみ投稿できます",
+      400,
+      "POSTS_REPLY_PARENT_INVALID"
+    );
+  }
+
+  if (parentComment.deleted_at) {
+    throw new PostCommentError(
+      "削除済みコメントには返信できません",
+      409,
+      "POSTS_REPLY_PARENT_DELETED"
+    );
+  }
+
+  const supabase = await createClient();
+  const { data: replyData, error: replyError } = await supabase
+    .from("comments")
+    .insert({
+      image_id: parentComment.image_id,
+      user_id: userId,
+      parent_comment_id: parentCommentId,
+      content: sanitized,
+    } as never)
+    .select(COMMENT_SELECT_COLUMNS)
+    .single();
+
+  if (replyError) {
+    console.error("Database query error:", replyError);
+    throw new Error(`返信の投稿に失敗しました: ${replyError.message}`);
+  }
+
+  const reply = replyData as unknown as CommentRow;
+  const profileMap = await getProfileMap([userId], supabase);
+  return toReplyComment(reply, profileMap);
 }
 
 /**
@@ -1144,42 +1392,53 @@ export async function updateComment(
   commentId: string,
   userId: string,
   content: string
-): Promise<{
-  id: string;
-  user_id: string;
-  image_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-}> {
-  // サニタイズ（既にAPIでサニタイズ済みだが、念のため再実行）
-  const sanitized = sanitizeProfileText(content);
+): Promise<ParentComment | ReplyComment> {
+  const sanitized = validateCommentContent(content);
+  const adminSupabase = createAdminClient();
+  const { data: existingCommentData, error: existingCommentError } = await adminSupabase
+    .from("comments")
+    .select("id,user_id,parent_comment_id,deleted_at")
+    .eq("id", commentId)
+    .single();
 
-  // バリデーション（空文字は許可しない）
-  const validation = validateProfileText(
-    sanitized.value,
-    COMMENT_MAX_LENGTH,
-    "コメント",
-    false // 空文字を許可しない
-  );
+  const existingComment = existingCommentData as unknown as CommentRow | null;
 
-  if (!validation.valid) {
-    throw new Error(validation.error || "コメントのバリデーションに失敗しました");
+  if (existingCommentError || !existingComment) {
+    throw new PostCommentError(
+      "コメントが見つかりません",
+      404,
+      "POSTS_COMMENT_NOT_FOUND"
+    );
+  }
+
+  if (existingComment.user_id !== userId) {
+    throw new PostCommentError(
+      "コメントを編集する権限がありません",
+      403,
+      "POSTS_COMMENT_FORBIDDEN"
+    );
+  }
+
+  if (existingComment.deleted_at) {
+    throw new PostCommentError(
+      "削除済みコメントは編集できません",
+      409,
+      "POSTS_COMMENT_ALREADY_DELETED"
+    );
   }
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const { data: updatedCommentData, error } = await supabase
     .from("comments")
     .update({
-      content: sanitized.value,
+      content: sanitized,
       updated_at: new Date().toISOString(),
-    })
+    } as never)
     .eq("id", commentId)
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .select()
+    .select(COMMENT_SELECT_COLUMNS)
     .single();
 
   if (error) {
@@ -1187,86 +1446,66 @@ export async function updateComment(
     throw new Error(`コメントの編集に失敗しました: ${error.message}`);
   }
 
-  if (!data) {
-    throw new Error("コメントが見つかりません");
+  const updatedComment = updatedCommentData as unknown as CommentRow | null;
+
+  if (!updatedComment) {
+    throw new PostCommentError(
+      "コメントが見つかりません",
+      404,
+      "POSTS_COMMENT_NOT_FOUND"
+    );
   }
 
-  return data;
+  if (existingComment.parent_comment_id) {
+    const profileMap = await getProfileMap([userId], supabase);
+    return toReplyComment(updatedComment, profileMap);
+  }
+
+  const profileMap = await getProfileMap([userId], supabase);
+  const replyCount = await getReplyCount(commentId);
+  return toParentComment(updatedComment, profileMap, replyCount, "");
 }
 
 /**
- * コメントを削除（論理削除）
+ * コメントを削除（RPC経由の物理/論理削除）
  */
 export async function deleteComment(
   commentId: string,
   userId: string
-): Promise<void> {
+): Promise<CommentDeleteResult> {
   const supabase = await createClient();
-
-  // デバッグ: 認証状態を確認
   const {
     data: { user: authUser },
     error: authError,
   } = await supabase.auth.getUser();
-  console.log("[deleteComment] Auth user:", authUser?.id);
-  console.log("[deleteComment] Provided userId:", userId);
-  console.log("[deleteComment] Auth error:", authError);
 
-  // まずコメントが存在し、所有者であることを確認
-  const { data: existingComment, error: checkError } = await supabase
-    .from("comments")
-    .select("id, user_id")
-    .eq("id", commentId)
-    .single();
-
-  console.log("[deleteComment] Existing comment:", existingComment);
-  console.log("[deleteComment] Check error:", checkError);
-
-  if (checkError || !existingComment) {
-    console.error("Comment check error:", checkError);
-    throw new Error("コメントが見つかりません");
-  }
-
-  if (existingComment.user_id !== userId) {
-    console.error(
-      "[deleteComment] User ID mismatch:",
-      existingComment.user_id,
-      "!=",
-      userId
+  if (authError || authUser?.id !== userId) {
+    throw new PostCommentError(
+      "コメントを削除する権限がありません",
+      403,
+      "POSTS_COMMENT_FORBIDDEN"
     );
-    throw new Error("コメントを削除する権限がありません");
   }
 
-  // 認証ユーザーIDと一致するか確認
-  if (authUser?.id !== userId) {
-    console.error(
-      "[deleteComment] Auth user ID mismatch:",
-      authUser?.id,
-      "!=",
-      userId
-    );
-    throw new Error("認証ユーザーと一致しません");
-  }
-
-  console.log("[deleteComment] Attempting to delete comment:", commentId);
-
-  // 物理削除を実行
-  const { error } = await supabase
-    .from("comments")
-    .delete()
-    .eq("id", commentId)
-    .eq("user_id", userId);
-
-  console.log("[deleteComment] Delete error:", error);
+  const { data, error } = await supabase.rpc("delete_comment_thread", {
+    p_comment_id: commentId,
+  });
 
   if (error) {
     console.error("Database query error:", error);
-    console.error("Error details:", JSON.stringify(error, null, 2));
-    console.error("[deleteComment] Comment ID:", commentId);
-    console.error("[deleteComment] User ID:", userId);
-    console.error("[deleteComment] Auth User ID:", authUser?.id);
+    const mappedError = mapDeleteCommentRpcError(error.message || "");
+    if (mappedError) {
+      throw mappedError;
+    }
     throw new Error(`コメントの削除に失敗しました: ${error.message}`);
   }
+
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result) {
+    throw new Error("コメント削除結果が取得できませんでした");
+  }
+
+  return result as CommentDeleteResult;
 }
 
 /**

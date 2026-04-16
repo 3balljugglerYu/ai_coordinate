@@ -1,0 +1,102 @@
+metadata:
+  class: NotificationPresentation
+  source: features/notifications/lib/presentation.ts
+  version: "1.1"
+  created_at: "2026-04-16"
+
+dependencies:
+  repositories: []
+  services:
+    - translation callback
+  external: []
+
+state_properties: []
+
+specifications:
+  - id: NPS-001
+    method: formatNotificationContent
+    type: event-driven
+    ears: |
+      When formatNotificationContent receives a comment notification
+      whose entity_type is post,
+      the formatter shall use the commentTitle translation key
+      and return comment_content as the body when available.
+    ears_ja: |
+      formatNotificationContent が entity_type が post の
+      comment 通知を受け取った場合、
+      formatter は commentTitle の翻訳キーを使い、
+      利用可能であれば comment_content を本文として返す。
+    preconditions:
+      - notification.type is comment
+      - notification.entity_type is post
+    preconditions_ja:
+      - notification.type が comment である
+      - notification.entity_type が post である
+    postconditions:
+      success:
+        - Returned title uses commentTitle with actor interpolation
+        - Returned body prefers notification.data.comment_content
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 返却 title が actor 補間付きの commentTitle を使う
+        - 返却 body が notification.data.comment_content を優先する
+      error:
+        - なし
+    edge_cases:
+      - description: When comment_content is missing or blank
+        expected: The formatter falls back to notification.body
+    edge_cases_ja:
+      - description: comment_content が存在しない、または空白のみの場合
+        expected: formatter は notification.body にフォールバックする
+    test_cases:
+      - formatNotificationContent_GivenPostCommentNotification_ShouldUseCommentTitle
+      - formatNotificationContent_GivenPostCommentWithoutCommentContent_ShouldFallbackToBody
+    test_cases_ja:
+      - formatNotificationContent_post実体のcomment通知の場合_commentTitleを使う
+      - formatNotificationContent_post実体でcomment_contentが無い場合_bodyへフォールバックする
+
+  - id: NPS-002
+    method: formatNotificationContent
+    type: event-driven
+    ears: |
+      When formatNotificationContent receives a comment notification
+      whose entity_type is comment,
+      the formatter shall use the replyTitle translation key
+      and return comment_content as the body when available.
+    ears_ja: |
+      formatNotificationContent が entity_type が comment の
+      comment 通知を受け取った場合、
+      formatter は replyTitle の翻訳キーを使い、
+      利用可能であれば comment_content を本文として返す。
+    preconditions:
+      - notification.type is comment
+      - notification.entity_type is comment
+    preconditions_ja:
+      - notification.type が comment である
+      - notification.entity_type が comment である
+    postconditions:
+      success:
+        - Returned title uses replyTitle with actor interpolation
+        - Returned body prefers notification.data.comment_content
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - 返却 title が actor 補間付きの replyTitle を使う
+        - 返却 body が notification.data.comment_content を優先する
+      error:
+        - なし
+    edge_cases:
+      - description: When comment_content is missing or blank
+        expected: The formatter falls back to notification.body
+    edge_cases_ja:
+      - description: comment_content が存在しない、または空白のみの場合
+        expected: formatter は notification.body にフォールバックする
+    test_cases:
+      - formatNotificationContent_GivenReplyNotification_ShouldUseReplyTitle
+      - formatNotificationContent_GivenReplyNotificationWithoutCommentContent_ShouldFallbackToBody
+    test_cases_ja:
+      - formatNotificationContent_comment実体のcomment通知の場合_replyTitleを使う
+      - formatNotificationContent_comment実体でcomment_contentが無い場合_bodyへフォールバックする

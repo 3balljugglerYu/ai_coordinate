@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getNotificationsRouteCopy } from "@/features/notifications/lib/route-copy";
+import { enrichNotificationsWithDetails } from "@/features/notifications/lib/server-api";
 
 /**
  * 通知一覧取得API
@@ -81,79 +81,10 @@ export async function GET(request: NextRequest) {
       nextCursor = Buffer.from(cursorString).toString("base64");
     }
 
-    // actor情報を取得（別クエリ）
-    const actorIds = Array.from(
-      new Set(notifications.map((n) => n.actor_id).filter(Boolean))
+    const notificationsWithDetails = await enrichNotificationsWithDetails(
+      supabase,
+      notifications
     );
-
-    const actorMap: Record<
-      string,
-      { nickname: string | null; avatar_url: string | null }
-    > = {};
-    if (actorIds.length > 0) {
-      const { data: actors, error: actorsError } = await supabase
-        .from("profiles")
-        .select("user_id, nickname, avatar_url")
-        .in("user_id", actorIds);
-
-      if (!actorsError && actors) {
-        for (const actor of actors) {
-          actorMap[actor.user_id] = {
-            nickname: actor.nickname,
-            avatar_url: actor.avatar_url,
-          };
-        }
-      }
-    }
-
-    // 投稿情報を取得（entity_typeが'post'の場合）
-    const postIds = notifications
-      .filter((n) => n.entity_type === "post")
-      .map((n) => n.entity_id);
-
-    const postMap: Record<
-      string,
-      { image_url: string | null; caption: string | null }
-    > = {};
-    if (postIds.length > 0) {
-      const { data: posts, error: postsError } = await supabase
-        .from("generated_images")
-        .select("id, image_url, storage_path, storage_path_thumb, caption")
-        .in("id", postIds);
-
-      if (!postsError && posts) {
-        for (const post of posts) {
-          postMap[post.id] = {
-            image_url: getPostThumbUrl({
-              storage_path_thumb: post.storage_path_thumb,
-              storage_path: post.storage_path,
-              image_url: post.image_url,
-            }) || null,
-            caption: post.caption,
-          };
-        }
-      }
-    }
-
-    // 通知にactor情報と投稿情報を追加
-    const notificationsWithDetails = notifications.map((notification) => {
-      const actor = actorMap[notification.actor_id];
-      const post =
-        notification.entity_type === "post"
-          ? postMap[notification.entity_id]
-          : null;
-      return {
-        ...notification,
-        actor: actor
-          ? {
-              id: notification.actor_id,
-              nickname: actor.nickname,
-              avatar_url: actor.avatar_url,
-            }
-          : null,
-        post: post || null,
-      };
-    });
 
     return NextResponse.json({
       notifications: notificationsWithDetails,
