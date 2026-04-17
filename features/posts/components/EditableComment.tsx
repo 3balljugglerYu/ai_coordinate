@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { User, MoreVertical, Edit, Trash2, Check, X } from "lucide-react";
@@ -26,7 +31,8 @@ import { deleteCommentAPI, updateCommentAPI } from "../lib/api";
 import type { ParentComment, ReplyComment } from "../types";
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsibleText } from "./CollapsibleText";
-import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
+import { cn, sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
 
 type DisplayComment = ParentComment | ReplyComment;
@@ -36,6 +42,7 @@ interface EditableCommentProps {
   currentUserId?: string | null;
   onCommentUpdated: () => void;
   onCommentDeleted: () => void;
+  onCommentSelected?: () => void;
 }
 
 export function EditableComment({
@@ -43,6 +50,7 @@ export function EditableComment({
   currentUserId,
   onCommentUpdated,
   onCommentDeleted,
+  onCommentSelected,
 }: EditableCommentProps) {
   const t = useTranslations("posts");
   const locale = useLocale();
@@ -57,8 +65,11 @@ export function EditableComment({
   const isOwner = !isDeleted && currentUserId === comment.user_id;
   const displayName = isDeleted
     ? ""
-    : comment.user_nickname || comment.user_id?.slice(0, 8) || t("anonymousUser");
+    : comment.user_nickname ||
+      comment.user_id?.slice(0, 8) ||
+      t("anonymousUser");
   const remainingChars = COMMENT_MAX_LENGTH - editContent.length;
+  const isSelectable = Boolean(onCommentSelected) && !isEditing && !isDeleted;
 
   useEffect(() => {
     setEditContent(comment.content);
@@ -85,7 +96,7 @@ export function EditableComment({
         required: t("commentRequired"),
         invalidCharacters: t("commentInvalidCharacters"),
         maxLength: t("commentTooLong", { max: COMMENT_MAX_LENGTH }),
-      }
+      },
     );
 
     if (!validation.valid) {
@@ -136,87 +147,131 @@ export function EditableComment({
     }
   };
 
+  const handleSelect = (target: EventTarget | null) => {
+    if (
+      !isSelectable ||
+      window.innerWidth >= REPLY_PANEL_MOBILE_BREAKPOINT
+    ) {
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement &&
+      target.closest("button, a, input, textarea, [role='menuitem']")
+    ) {
+      return;
+    }
+
+    onCommentSelected?.();
+  };
+
+  const handleSelectClick = (event: MouseEvent<HTMLDivElement>) => {
+    handleSelect(event.target);
+  };
+
+  const handleSelectKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    handleSelect(event.target);
+  };
+
   return (
     <>
       <div className="flex gap-3 py-3">
-        {!isDeleted &&
-          (comment.user_avatar_url ? (
-            <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
-              <Image
-                src={comment.user_avatar_url}
-                alt={displayName}
-                fill
-                className="object-cover"
-                sizes="32px"
-              />
-            </div>
-          ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
-              <User className="h-4 w-4 text-gray-500" />
-            </div>
-          ))}
+        <div
+          role={isSelectable ? "button" : undefined}
+          tabIndex={isSelectable ? 0 : -1}
+          className={cn(
+            "flex min-w-0 flex-1 gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            isSelectable && "cursor-pointer md:cursor-default",
+          )}
+          onClick={handleSelectClick}
+          onKeyDown={handleSelectKeyDown}
+        >
+          {!isDeleted &&
+            (comment.user_avatar_url ? (
+              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
+                <Image
+                  src={comment.user_avatar_url}
+                  alt={displayName}
+                  fill
+                  className="object-cover"
+                  sizes="32px"
+                />
+              </div>
+            ) : (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
+                <User className="h-4 w-4 text-gray-500" />
+              </div>
+            ))}
 
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-2">
-            {!isDeleted && (
-              <span className="text-sm font-medium text-gray-900">
-                {displayName}
-              </span>
-            )}
-            <span className="text-xs text-gray-500">
-              {new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }).format(new Date(comment.created_at))}
-            </span>
-          </div>
-
-          {isEditing ? (
-            <div className="space-y-2">
-              <Textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                maxLength={COMMENT_MAX_LENGTH}
-                rows={3}
-                className="resize-none text-sm"
-                disabled={isLoading}
-              />
-              <div className="flex items-center justify-between">
-                <span
-                  className={`text-xs ${
-                    remainingChars < 20 ? "text-red-500" : "text-gray-500"
-                  }`}
-                >
-                  {t("commentRemaining", { count: remainingChars })}
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center gap-2">
+              {!isDeleted && (
+                <span className="text-sm font-medium text-gray-900">
+                  {displayName}
                 </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCancelEdit}
-                    disabled={isLoading}
+              )}
+              <span className="text-xs text-gray-500">
+                {new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date(comment.created_at))}
+              </span>
+            </div>
+
+            {isEditing ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  maxLength={COMMENT_MAX_LENGTH}
+                  rows={3}
+                  className="resize-none text-sm"
+                  disabled={isLoading}
+                />
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`text-xs ${
+                      remainingChars < 20 ? "text-red-500" : "text-gray-500"
+                    }`}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleSaveEdit}
-                    disabled={isLoading || editContent.trim().length === 0}
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
+                    {t("commentRemaining", { count: remainingChars })}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={isLoading}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      disabled={isLoading || editContent.trim().length === 0}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <CollapsibleText
-              text={comment.content}
-              maxLines={2}
-              textClassName={isDeleted ? "italic text-gray-500" : "text-gray-900"}
-            />
-          )}
+            ) : (
+              <CollapsibleText
+                text={comment.content}
+                maxLines={2}
+                textClassName={
+                  isDeleted ? "italic text-gray-500" : "text-gray-900"
+                }
+              />
+            )}
+          </div>
         </div>
 
         {isOwner && !isEditing && (

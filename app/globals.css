@@ -132,7 +132,7 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   * {
     @apply border-border;
   }
-  
+
   html {
     /* モバイル向けスクロール最適化 */
     scroll-behavior: smooth;
@@ -155,33 +155,34 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
       scroll-padding-bottom: 0;
     }
   }
-  
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans);
     /* モバイル向けのタップハイライト最適化 */
     -webkit-tap-highlight-color: transparent;
     /* iOSセーフエリア対応（必要に応じて使用） */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
     /* モバイル向けフォントレンダリング */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
     /* モバイル向けタップ感度向上 */
     touch-action: manipulation;
   }
-  
+
   /* 入力フィールドのモバイル最適化 */
   input,
   textarea,
   select {
     font-size: 16px; /* iOSのズームを防ぐ */
   }
-  
+
   @media (min-width: 640px) {
     input,
     textarea,
@@ -196,12 +197,12 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
       transition: padding-left 200ms ease;
     }
   }
-  
+
   /* モバイルナビゲーションバーのセーフエリア対応 */
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
+
   /* 管理画面表示時: 下部ナビゲーションバー用の余白を無効化 */
   body.admin-active {
     padding-bottom: 0;
@@ -219,7 +220,7 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
       width: 2rem; /* w-8 = 2rem */
     }
   }
-  
+
   .nav-indicator-expand {
     animation: expandFromCenter 0.2s ease-out;
   }
@@ -254,14 +255,45 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   }
 
   .popup-banner-panel-enter {
-    animation: popupBannerPanelFadeIn 1000ms cubic-bezier(0.2, 0.8, 0.2, 1)
-      both;
+    animation: popupBannerPanelFadeIn 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
     will-change: opacity, transform;
+  }
+
+  @keyframes replyPanelSlideIn {
+    from {
+      opacity: 0.96;
+      transform: translate3d(40px, 0, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes replyPanelOverlayIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .reply-panel-mobile-content[data-state="open"] {
+    animation: replyPanelSlideIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: transform, opacity;
+  }
+
+  .reply-panel-mobile-overlay[data-state="open"] {
+    animation: replyPanelOverlayIn 220ms ease-out both;
+    will-change: opacity;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .popup-banner-card-enter,
-    .popup-banner-panel-enter {
+    .popup-banner-panel-enter,
+    .reply-panel-mobile-content[data-state="open"],
+    .reply-panel-mobile-overlay[data-state="open"] {
       animation: none;
     }
   }
