@@ -208,16 +208,19 @@ DECLARE
   v_image_id UUID;
   v_parent_comment_id UUID;
   v_comment_id UUID;
+  v_user_id UUID;
   v_payload JSONB;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     v_image_id := OLD.image_id;
     v_parent_comment_id := OLD.parent_comment_id;
     v_comment_id := OLD.id;
+    v_user_id := OLD.user_id;
   ELSE
     v_image_id := NEW.image_id;
     v_parent_comment_id := NEW.parent_comment_id;
     v_comment_id := NEW.id;
+    v_user_id := NEW.user_id;
   END IF;
 
   IF v_parent_comment_id IS NULL THEN
@@ -335,7 +338,7 @@ BEGIN
   SELECT EXISTS (
     SELECT 1
     FROM public.comments
-    WHERE parent_comment_id = v_comment.id
+    WHERE public.comments.parent_comment_id = v_comment.id
   )
   INTO v_has_replies;
 
@@ -345,9 +348,9 @@ BEGIN
     WHERE id = v_comment.id;
 
     DELETE FROM public.notifications
-    WHERE comment_id = v_comment.id
-      AND type = 'comment'
-      AND entity_type = 'post';
+    WHERE public.notifications.comment_id = v_comment.id
+      AND public.notifications.type = 'comment'
+      AND public.notifications.entity_type = 'post';
 
     RETURN QUERY
     SELECT v_comment.id, v_comment.image_id, v_comment.parent_comment_id, 'logical'::TEXT;

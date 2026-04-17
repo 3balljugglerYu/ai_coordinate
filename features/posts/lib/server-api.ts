@@ -158,7 +158,10 @@ function mapDeleteCommentRpcError(errorMessage: string): PostCommentError | null
     );
   }
 
-  if (errorMessage.includes("Not authorized")) {
+  if (
+    errorMessage.includes("Not authorized") ||
+    errorMessage.includes("Unauthorized")
+  ) {
     return new PostCommentError(
       "コメントを削除する権限がありません",
       403,
