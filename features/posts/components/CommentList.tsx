@@ -1,24 +1,30 @@
 "use client";
 
-import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
 import { useInView } from "react-intersection-observer";
 import { useTranslations } from "next-intl";
 import { CommentItem } from "./CommentItem";
 import { CommentLoadMoreSkeleton } from "./CommentLoadMoreSkeleton";
 import { getCommentsAPI } from "../lib/api";
+import type { ParentComment } from "../types";
 import { createClient } from "@/lib/supabase/client";
 
-interface Comment {
-  id: string;
-  user_id: string;
-  image_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  user_nickname: string | null;
-  user_avatar_url: string | null;
-}
+type CommentRealtimeRow = {
+  id?: string;
+  user_id?: string | null;
+  parent_comment_id?: string | null;
+  content?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
+};
+
+type ReplyLifecyclePayload = {
+  event_type?: "INSERT" | "DELETE";
+  image_id?: string;
+  parent_comment_id?: string;
+  comment_id?: string;
+  user_id?: string | null;
+};
 
 interface CommentListProps {
   imageId: string;
@@ -46,10 +52,13 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
     ref
   ) {
   const t = useTranslations("posts");
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<ParentComment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  const requestSequenceRef = useRef(0);
+  const inFlightKeysRef = useRef<Set<string>>(new Set());
+  const pendingRequestsRef = useRef(0);
   const { ref: inViewRef, inView } = useInView({
     threshold: 0,
     rootMargin: "200px",
@@ -57,7 +66,16 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
 
   const loadComments = useCallback(
     async (newOffset: number, reset: boolean = false) => {
+      const requestKey = `${newOffset}:${reset ? "reset" : "append"}`;
+      if (inFlightKeysRef.current.has(requestKey)) {
+        return;
+      }
+
+      inFlightKeysRef.current.add(requestKey);
+      pendingRequestsRef.current += 1;
       setIsLoading(true);
+      const requestId = ++requestSequenceRef.current;
+
       try {
         const newComments = await getCommentsAPI(
           imageId,
@@ -67,6 +85,10 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
             commentsFetchFailed: t("commentsFetchFailed"),
           }
         );
+
+        if (requestId !== requestSequenceRef.current) {
+          return;
+        }
 
         if (reset) {
           setComments(newComments);
@@ -80,11 +102,20 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
       } catch (error) {
         console.error("Failed to load comments:", error);
       } finally {
-        setIsLoading(false);
+        inFlightKeysRef.current.delete(requestKey);
+        pendingRequestsRef.current = Math.max(0, pendingRequestsRef.current - 1);
+
+        if (pendingRequestsRef.current === 0) {
+          setIsLoading(false);
+        }
       }
     },
     [imageId, t]
   );
+
+  const handleThreadChanged = useCallback(() => {
+    loadComments(0, true);
+  }, [loadComments]);
 
   // 親コンポーネントから呼び出せるrefresh関数を公開
   useImperativeHandle(ref, () => ({
@@ -121,41 +152,66 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
           filter: `image_id=eq.${imageId}`,
         },
         (payload) => {
-          // 自分の操作はオプティミスティックUIで既に反映済みなので、Realtimeイベントでは追加しない
-          if (payload.new && (payload.new as any).user_id === currentUserId) {
+          const nextComment = payload.new as CommentRealtimeRow | null;
+          const previousComment = payload.old as CommentRealtimeRow | null;
+
+          if (nextComment?.parent_comment_id) {
             return;
           }
 
-          if (payload.eventType === "INSERT" && payload.new) {
-            // リアルタイムで受信したコメントにはユーザー情報が含まれないため、
-            // loadComments(0, true)を呼び出して再取得する
-            // これにより、常にユーザー情報を含む完全なコメントデータが表示される
+          if (previousComment?.parent_comment_id) {
+            return;
+          }
+
+          // 自分の操作はオプティミスティックUIで既に反映済みなので、Realtimeイベントでは追加しない
+          if (
+            nextComment?.user_id === currentUserId ||
+            previousComment?.user_id === currentUserId
+          ) {
+            return;
+          }
+
+          if (payload.eventType === "INSERT" && nextComment) {
             loadComments(0, true);
-            // コメントが追加されたことを親コンポーネントに通知
-            onCommentAdded?.();
-          } else if (payload.eventType === "UPDATE" && payload.new) {
-            const updatedComment = payload.new as Comment;
-            // 削除された場合はリストから削除
-            if (updatedComment.deleted_at) {
-              setComments((prev) =>
-                prev.filter((c) => c.id !== updatedComment.id)
-              );
-            } else {
-              // 更新された場合は置き換え
-              setComments((prev) =>
-                prev.map((c) =>
-                  c.id === updatedComment.id ? updatedComment : c
-                )
-              );
-            }
-          } else if (payload.eventType === "DELETE" || (payload.old && (payload.old as any).deleted_at)) {
-            // 削除された場合はリストから削除
-            const deletedCommentId = (payload.old as any)?.id;
-            if (deletedCommentId) {
-              setComments((prev) =>
-                prev.filter((c) => c.id !== deletedCommentId)
-              );
-            }
+            return;
+          }
+
+          if (
+            payload.eventType === "UPDATE" &&
+            nextComment &&
+            !previousComment?.deleted_at &&
+            nextComment.deleted_at
+          ) {
+            setComments((prev) =>
+              prev.map((comment) =>
+                comment.id === nextComment.id
+                  ? {
+                      ...comment,
+                      content: t("commentDeletedPlaceholder"),
+                      deleted_at: nextComment.deleted_at ?? comment.deleted_at,
+                      updated_at: nextComment.updated_at ?? comment.updated_at,
+                    }
+                  : comment
+              )
+            );
+            return;
+          }
+
+          if (payload.eventType === "UPDATE" || payload.eventType === "DELETE") {
+            loadComments(0, true);
+          }
+        }
+      )
+      .on(
+        "broadcast",
+        { event: "reply_lifecycle" },
+        ({ payload }: { payload: ReplyLifecyclePayload }) => {
+          if (payload.user_id && payload.user_id === currentUserId) {
+            return;
+          }
+
+          if (payload.parent_comment_id) {
+            loadComments(0, true);
           }
         }
       )
@@ -164,7 +220,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [imageId, currentUserId, loadComments]);
+  }, [imageId, currentUserId, loadComments, t]);
 
   const handleCommentUpdated = () => {
     // コメントが更新されたら再読み込み
@@ -180,7 +236,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
 
   if (comments.length === 0 && !isLoading) {
     return (
-        <div className="py-8 text-center text-sm text-gray-500">
+      <div className="py-8 text-center text-sm text-gray-500">
         {t("noComments")}
       </div>
     );
@@ -195,6 +251,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
           currentUserId={currentUserId}
           onCommentUpdated={handleCommentUpdated}
           onCommentDeleted={handleCommentDeleted}
+          onThreadChanged={handleThreadChanged}
         />
       ))}
 

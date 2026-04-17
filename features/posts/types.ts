@@ -33,6 +33,41 @@ export interface Post extends GeneratedImageRecord {
   moderation_status?: "visible" | "pending" | "removed";
 }
 
+export interface CommentProfile {
+  user_nickname: string | null;
+  user_avatar_url: string | null;
+}
+
+export interface CommentRecordBase {
+  id: string;
+  user_id: string | null;
+  image_id: string;
+  parent_comment_id: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface ParentComment extends CommentRecordBase, CommentProfile {
+  parent_comment_id: null;
+  reply_count: number;
+  last_activity_at: string;
+}
+
+export interface ReplyComment extends CommentRecordBase, CommentProfile {
+  parent_comment_id: string;
+}
+
+export type CommentDeleteMode = "physical" | "logical";
+
+export interface CommentDeleteResult {
+  comment_id: string;
+  image_id: string;
+  parent_comment_id: string | null;
+  deleted: CommentDeleteMode;
+}
+
 /**
  * 投稿のソートタイプ
  */

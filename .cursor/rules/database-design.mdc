@@ -153,8 +153,9 @@ alwaysApply: false
 
 #### `comments`
 - 主キー: `id`
-- 主要カラム: `user_id`, `image_id`, `content`, `created_at`, `updated_at`, `deleted_at`
-- 外部キー: `user_id -> auth.users.id`, `image_id -> generated_images.id`
+- 主要カラム: `user_id`, `image_id`, `parent_comment_id`, `content`, `last_activity_at`, `created_at`, `updated_at`, `deleted_at`
+- 外部キー: `user_id -> auth.users.id`, `image_id -> generated_images.id`, `parent_comment_id -> comments.id`
+- 備考: `parent_comment_id IS NULL` が親コメント、非NULLが返信。親一覧ソートは `last_activity_at DESC, id DESC`
 - RLS: `deleted_at IS NULL` は公開 `SELECT`、自分の削除済みコメントは本人も `SELECT` 可。`INSERT/UPDATE/DELETE` は本人のみ
 
 #### `follows`
@@ -342,7 +343,7 @@ alwaysApply: false
 - `idx_image_jobs_user_id`
 - `idx_image_jobs_status`
 - `idx_image_jobs_source_image_stock_id`
-- `idx_comments_image_id`, `idx_comments_image_id_created_at`, `idx_comments_user_id`
+- `idx_comments_image_id`, `idx_comments_image_id_created_at`, `idx_comments_user_id`, `idx_comments_image_top_level_last_activity`, `idx_comments_parent_comment_created_at`
 - `idx_likes_image_id`, `idx_likes_image_id_created_at`, `idx_likes_user_id`
 
 ### ソーシャル・通知
@@ -394,12 +395,14 @@ alwaysApply: false
 - ポップアップバナー: `record_popup_banner_interaction`, `reorder_popup_banners`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`
+- コメント削除: `delete_comment_thread`（親に返信が残る場合は tombstone 化し、最後の返信が消えた時点で tombstone 親も物理削除）
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
 - モデレーション: `mark_post_pending_by_report`, `apply_admin_moderation_decision`
 - 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`
 
 ### trigger / helper / 運用関数
 - 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`
+- コメント返信/整合性: `validate_parent_comment`, `prevent_direct_parent_delete_with_replies`, `update_parent_last_activity_at`, `update_parent_last_activity_at_on_delete`, `broadcast_reply_lifecycle_event`
 - 更新日時: `update_updated_at_column`, `update_banners_updated_at`, `update_popup_banners_updated_at`, `update_popup_banner_views_updated_at`, `update_materials_images_updated_at`, `update_notification_preferences_updated_at`
 - `style_presets` は `update_updated_at_column()` trigger で `updated_at` を更新
 - アカウント初期化: `handle_new_user`

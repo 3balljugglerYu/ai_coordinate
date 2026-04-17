@@ -1,0 +1,273 @@
+metadata:
+  class: CommentRepliesRoute
+  source: app/api/comments/[id]/replies/route.ts
+  version: "1.1"
+  created_at: "2026-04-16"
+
+dependencies:
+  repositories: []
+  services:
+    - getUser
+    - getRouteLocale
+    - postsRouteCopy
+    - sanitizeProfileText
+    - validateProfileText
+    - getReplies
+    - createReply
+    - revalidateTag
+  external:
+    - Comment reply server API
+    - Next.js route params
+
+state_properties: []
+
+specifications:
+  - id: CRR-001
+    method: GET
+    type: event-driven
+    ears: |
+      When GET /api/comments/[id]/replies is invoked with a valid comment id,
+      limit, and offset,
+      the route shall return the replies loaded by getReplies.
+    ears_ja: |
+      GET /api/comments/[id]/replies が有効な comment id、limit、offset で呼び出された場合、
+      ルートは getReplies で取得した返信一覧を返す。
+    preconditions:
+      - Route params include a non-empty comment id
+      - limit is between 1 and 100
+      - offset is 0 or greater
+    preconditions_ja:
+      - route params に空でない comment id が含まれる
+      - limit が 1 以上 100 以下である
+      - offset が 0 以上である
+    postconditions:
+      success:
+        - Status 200 is returned
+        - Response body includes replies from getReplies
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200を返す
+        - レスポンス body に getReplies の結果が含まれる
+      error:
+        - なし
+    edge_cases:
+      - description: When no replies exist for the parent comment
+        expected: The route returns status 200 with an empty replies array
+    edge_cases_ja:
+      - description: 親コメントに返信が存在しない場合
+        expected: ルートはステータス200で空の replies 配列を返す
+    test_cases:
+      - GET_GivenValidCommentIdAndPaging_ShouldReturnReplies
+      - GET_GivenParentCommentWithoutReplies_ShouldReturnEmptyReplies
+    test_cases_ja:
+      - GET_有効なコメントIDとページング指定の場合_返信一覧を返す
+      - GET_返信が存在しない親コメントの場合_空の返信一覧を返す
+
+  - id: CRR-002
+    method: POST
+    type: event-driven
+    ears: |
+      When POST /api/comments/[id]/replies is invoked by an authenticated user
+      with valid reply content,
+      the route shall create the reply via createReply
+      and revalidate the post-detail tag for the reply's image.
+    ears_ja: |
+      POST /api/comments/[id]/replies が認証済みユーザーにより
+      有効な返信内容で呼び出された場合、
+      ルートは createReply で返信を作成し、
+      返信の image に対応する post-detail tag を再検証する。
+    preconditions:
+      - User is authenticated
+      - Route params include a non-empty comment id
+      - Request body contains string content
+      - Sanitized content passes validation
+    preconditions_ja:
+      - ユーザーが認証済みである
+      - route params に空でない comment id が含まれる
+      - request body に文字列 content が含まれる
+      - サニタイズ後の content がバリデーションを通過する
+    postconditions:
+      success:
+        - Status 200 is returned
+        - Response body includes the created reply
+        - revalidateTag is called with post-detail-{image_id}
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - ステータス200を返す
+        - レスポンス body に作成された reply が含まれる
+        - revalidateTag が post-detail-{image_id} で呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When the parent comment resolves to a different image_id than the caller expects
+        expected: The route uses the parent comment image_id returned by createReply for revalidation
+    edge_cases_ja:
+      - description: 親コメントの image_id が呼び出し側の想定と異なる場合
+        expected: ルートは createReply が返した親コメントの image_id で再検証する
+    test_cases:
+      - POST_GivenValidReplyContent_ShouldCreateReplyAndRevalidatePostDetail
+    test_cases_ja:
+      - POST_有効な返信内容の場合_返信を作成して投稿詳細タグを再検証する
+
+  - id: CRR-003
+    method: POST
+    type: unwanted
+    ears: |
+      If POST /api/comments/[id]/replies is invoked without an authenticated user,
+      then the route shall respond with HTTP 401
+      and not attempt to create a reply.
+    ears_ja: |
+      POST /api/comments/[id]/replies が未認証ユーザーにより呼び出された場合、
+      ルートは HTTP 401 を返し、
+      返信作成を試みない。
+    preconditions:
+      - getUser returns no authenticated user
+    preconditions_ja:
+      - getUser が認証済みユーザーを返さない
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 401 is returned
+        - createReply is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス401を返す
+        - createReply は呼ばれない
+    edge_cases:
+      - description: When request body parsing succeeds before auth completes
+        expected: The route still returns 401 and skips createReply
+    edge_cases_ja:
+      - description: 認証判定より先に request body の解析が完了した場合
+        expected: ルートはなお401を返し、createReply を呼ばない
+    test_cases:
+      - POST_GivenNoAuthenticatedUser_ShouldReturn401
+    test_cases_ja:
+      - POST_未認証の場合_401を返す
+
+  - id: CRR-004
+    method: GET
+    type: unwanted
+    ears: |
+      If GET /api/comments/[id]/replies is invoked with a missing comment id,
+      a limit outside 1-100, or an offset below 0,
+      then the route shall respond with HTTP 400
+      and skip getReplies.
+    ears_ja: |
+      GET /api/comments/[id]/replies が comment id 欠落、
+      1-100 範囲外の limit、または 0 未満の offset で呼び出された場合、
+      ルートは HTTP 400 を返し、
+      getReplies を呼ばない。
+    preconditions:
+      - Route params omit the comment id, or paging values are invalid
+    preconditions_ja:
+      - route params に comment id が無い、またはページング値が不正である
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400 is returned
+        - getReplies is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス400を返す
+        - getReplies は呼ばれない
+    edge_cases:
+      - description: When offset is negative but limit is valid
+        expected: The route returns 400 with invalidOffset semantics
+    edge_cases_ja:
+      - description: limit は有効だが offset が負数の場合
+        expected: ルートは invalidOffset 相当の400を返す
+    test_cases:
+      - GET_GivenInvalidPagingOrMissingId_ShouldReturn400
+    test_cases_ja:
+      - GET_不正なページングまたはID欠落の場合_400を返す
+
+  - id: CRR-005
+    method: POST
+    type: unwanted
+    ears: |
+      If POST /api/comments/[id]/replies receives missing content,
+      non-string content, or sanitized content that fails validation,
+      then the route shall respond with HTTP 400
+      and not call createReply.
+    ears_ja: |
+      POST /api/comments/[id]/replies が content 欠落、
+      非文字列 content、またはサニタイズ後にバリデーション失敗する content を受け取った場合、
+      ルートは HTTP 400 を返し、
+      createReply を呼ばない。
+    preconditions:
+      - User is authenticated
+      - Request body content is missing, non-string, or invalid after sanitization
+    preconditions_ja:
+      - ユーザーが認証済みである
+      - request body の content が欠落、非文字列、またはサニタイズ後に不正である
+    postconditions:
+      success:
+        - None
+      error:
+        - Status 400 is returned
+        - createReply is not called
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - ステータス400を返す
+        - createReply は呼ばれない
+    edge_cases:
+      - description: When content exceeds COMMENT_MAX_LENGTH after sanitization
+        expected: The route returns 400 with invalid-input semantics
+    edge_cases_ja:
+      - description: サニタイズ後の content が COMMENT_MAX_LENGTH を超える場合
+        expected: ルートは invalid input 相当の400を返す
+    test_cases:
+      - POST_GivenInvalidContent_ShouldReturn400WithoutCreateReply
+    test_cases_ja:
+      - POST_不正なcontentの場合_返信を作成せず400を返す
+
+  - id: CRR-006
+    method: POST
+    type: unwanted
+    ears: |
+      If createReply rejects because the parent comment is missing,
+      not a top-level parent, or already deleted,
+      then the route shall propagate the PostCommentError status and code.
+    ears_ja: |
+      createReply が親コメント不存在、
+      親コメントでない、
+      または削除済みである理由で失敗した場合、
+      ルートは PostCommentError の status と code をそのまま返す。
+    preconditions:
+      - User is authenticated
+      - createReply throws PostCommentError for parent lookup or parent state
+    preconditions_ja:
+      - ユーザーが認証済みである
+      - createReply が親参照または親状態の理由で PostCommentError を投げる
+    postconditions:
+      success:
+        - None
+      error:
+        - Status and errorCode match the thrown PostCommentError
+    postconditions_ja:
+      success:
+        - なし
+      error:
+        - status と errorCode が投げられた PostCommentError と一致する
+    edge_cases:
+      - description: When the parent comment is tombstoned between request parse and createReply
+        expected: The route returns the deleted-parent conflict instead of creating a reply
+    edge_cases_ja:
+      - description: request 解析後から createReply 実行までの間に親コメントが tombstone 化された場合
+        expected: ルートは返信作成せず、削除済み親の conflict を返す
+    test_cases:
+      - POST_GivenMissingInvalidOrDeletedParent_ShouldPropagatePostCommentError
+    test_cases_ja:
+      - POST_存在しない無効な削除済み親コメントの場合_PostCommentErrorをそのまま返す

@@ -19,6 +19,7 @@ export const postsRouteCopy = {
     commentCreateFailed: "コメントの投稿に失敗しました",
     commentUpdateFailed: "コメントの編集に失敗しました",
     commentDeleteFailed: "コメントの削除に失敗しました",
+    deletedCommentPlaceholder: "このコメントは削除されました",
     commentRequired: "コメントを入力してください",
     commentInvalidCharacters: "< と > は使用できません",
     commentTooLong: (max: number) =>
@@ -46,6 +47,7 @@ export const postsRouteCopy = {
     commentCreateFailed: "Failed to post the comment.",
     commentUpdateFailed: "Failed to update the comment.",
     commentDeleteFailed: "Failed to delete the comment.",
+    deletedCommentPlaceholder: "This comment has been deleted.",
     commentRequired: "Enter a comment.",
     commentInvalidCharacters: "< and > are not allowed.",
     commentTooLong: (max: number) =>
@@ -75,6 +77,7 @@ export const postsRouteCopy = {
     commentCreateFailed: string;
     commentUpdateFailed: string;
     commentDeleteFailed: string;
+    deletedCommentPlaceholder: string;
     commentRequired: string;
     commentInvalidCharacters: string;
     commentTooLong: (max: number) => string;

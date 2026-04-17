@@ -272,7 +272,7 @@ export function NotificationList({
                 </div>
 
                 {/* 投稿画像のプレビュー */}
-                {imageUrl && notification.entity_type === "post" && (
+                {imageUrl && (
                   <div className="mt-2">
                     <Image
                       src={imageUrl}

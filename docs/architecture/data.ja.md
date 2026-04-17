@@ -138,7 +138,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | ウォレットと購入 | `user_credits`, `credit_transactions`, `free_percoin_batches`, `generation_percoin_allocations` | `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `get_percoin_balance_breakdown` | `/api/credits/checkout`, `/api/stripe/webhook`, マイページ系 cached view |
 | 非同期画像生成 | `image_jobs`, `generated_images`, `source_image_stocks`, `credit_transactions` | `deduct_free_percoins`, `refund_percoins`, `insert_source_image_stock`, `pgmq_send/read/delete` | `/api/generate-async`, `/api/generation-status`, Edge Function worker |
 | One-Tap Style | `style_presets`, `style_usage_events`, `style_guest_generate_attempts`, `image_jobs` | `reserve_style_authenticated_generate_attempt`, `release_style_authenticated_generate_attempt`, `reserve_style_guest_generate_attempt`, `release_style_guest_generate_attempt`, `attach_style_authenticated_generate_attempt_job`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets` | `/style`, `/style/events`, `/style/generate`, `/style/generate-async`, `/admin/style-presets`, `/admin` |
-| 投稿とソーシャル | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
+| 投稿とソーシャル | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification`, `delete_comment_thread` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
 | 特典とグロース | `percoin_bonus_defaults`, `percoin_streak_defaults`, `referrals`, `notifications`, `free_percoin_batches` | `grant_tour_bonus`, `grant_streak_bonus`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `grant_referral_bonus` | `/api/tutorial/complete`, `/api/streak/check`, `/api/referral/check-first-login` |
 | モデレーションと管理 | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
 | ホーム訴求バナー | `popup_banners`, `popup_banner_views`, `popup_banner_analytics`, `popup_banner_guest_events` | `record_popup_banner_interaction`, `reorder_popup_banners` | `/api/popup-banners/**`, `/api/admin/popup-banners/**`, `/admin/popup-banners` |
@@ -218,9 +218,9 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 ### 何が起きるか
 
 1. `/api/posts/post` が `generated_images.is_posted = true` を更新し、必要なら `grant_daily_post_bonus` を呼ぶ
-2. いいね、コメント、フォローは基本的に session client から各テーブルへ直接書き込む
+2. いいねとフォローは基本的に session client から各テーブルへ直接書き込む。コメントは `comments.parent_comment_id` で親子構造を持ち、親コメント削除の意味論は `delete_comment_thread` RPC に集約される。親に返信が残る間は tombstone を返し、最後の返信が消えた時点で tombstone 親も物理削除する
 3. 通知は通常アプリコードから直接 INSERT しない
-4. Postgres trigger が通知の作成・削除を行う
+4. Postgres trigger が通知の作成・削除に加えて、`comments.last_activity_at` の維持と reply lifecycle の Broadcast を行う
    - `likes` の INSERT / DELETE
    - `comments` の INSERT / DELETE
    - `follows` の INSERT / DELETE
@@ -335,6 +335,11 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `likes` `AFTER DELETE` | `delete_notification_on_like_removal()` | いいね解除時の通知削除 |
 | `comments` `AFTER INSERT` | `notify_on_comment()` | コメント通知作成 |
 | `comments` `AFTER DELETE` | `delete_notification_on_comment_deletion()` | コメント削除時の通知削除 |
+| `comments` `BEFORE INSERT/UPDATE` | `validate_parent_comment()` | 親子整合性の保証と `deleted_at` 直更新の防止 |
+| `comments` `BEFORE DELETE` | `prevent_direct_parent_delete_with_replies()` | reply を持つ親コメントの直接削除を防止 |
+| `comments` `AFTER INSERT` | `update_parent_last_activity_at()` | reply 追加時に親スレッドの並び順を更新 |
+| `comments` `AFTER DELETE` | `update_parent_last_activity_at_on_delete()` | reply 削除時に親スレッドの並び順を再計算 |
+| `comments` `AFTER INSERT/DELETE` | `broadcast_reply_lifecycle_event()` | reply insert/delete の public realtime payload を配信 |
 | `follows` `AFTER INSERT` | `notify_on_follow()` | フォロー通知作成 |
 | `follows` `AFTER DELETE` | `delete_notification_on_follow_removal()` | フォロー解除時の通知削除 |
 | `generated_images` `AFTER INSERT` | `update_stock_image_last_used()` | 元画像ストックの利用状況更新 |

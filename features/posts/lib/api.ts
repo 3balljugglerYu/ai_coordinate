@@ -1,4 +1,10 @@
-import type { PostImageRequest, PostImageResponse } from "../types";
+import type {
+  CommentDeleteResult,
+  ParentComment,
+  PostImageRequest,
+  PostImageResponse,
+  ReplyComment,
+} from "../types";
 
 interface PostsApiMessages {
   postFailed?: string;
@@ -12,6 +18,8 @@ interface PostsApiMessages {
   commentCreateFailed?: string;
   commentUpdateFailed?: string;
   commentDeleteFailed?: string;
+  repliesFetchFailed?: string;
+  replyCreateFailed?: string;
   likeCountFetchFailed?: string;
   likeCountBatchFetchFailed?: string;
 }
@@ -200,17 +208,7 @@ export async function getCommentsAPI(
   limit: number,
   offset: number,
   messages?: PostsApiMessages
-): Promise<Array<{
-  id: string;
-  user_id: string;
-  image_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  user_nickname: string | null;
-  user_avatar_url: string | null;
-}>> {
+): Promise<ParentComment[]> {
   const response = await fetch(
     `/api/posts/${imageId}/comments?limit=${limit}&offset=${offset}`
   );
@@ -233,21 +231,8 @@ export async function getCommentCountAPI(
   imageId: string,
   messages?: PostsApiMessages
 ): Promise<number> {
-  const response = await fetch(`/api/posts/${imageId}/comments?limit=1&offset=0`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(
-      error?.error ||
-        messages?.commentCountFetchFailed ||
-        "コメント数の取得に失敗しました"
-    );
-  }
-
-  // 実際にはコメント数を直接取得するAPIが必要だが、現時点ではコメント一覧から推測
-  // 将来的に専用APIを追加する可能性あり
-  const data = await response.json();
-  return data.comments?.length || 0;
+  const counts = await getCommentCountsBatchAPI([imageId], messages);
+  return counts[imageId] || 0;
 }
 
 /**
@@ -285,17 +270,7 @@ export async function createCommentAPI(
   imageId: string,
   content: string,
   messages?: PostsApiMessages
-): Promise<{
-  id: string;
-  user_id: string;
-  image_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  user_nickname: string | null;
-  user_avatar_url: string | null;
-}> {
+): Promise<ParentComment> {
   const response = await fetch(`/api/posts/${imageId}/comments`, {
     method: "POST",
     headers: {
@@ -324,15 +299,7 @@ export async function updateCommentAPI(
   commentId: string,
   content: string,
   messages?: PostsApiMessages
-): Promise<{
-  id: string;
-  user_id: string;
-  image_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-}> {
+): Promise<ParentComment | ReplyComment> {
   const response = await fetch(`/api/comments/${commentId}`, {
     method: "PUT",
     headers: {
@@ -360,7 +327,7 @@ export async function updateCommentAPI(
 export async function deleteCommentAPI(
   commentId: string,
   messages?: PostsApiMessages
-): Promise<void> {
+): Promise<CommentDeleteResult> {
   const response = await fetch(`/api/comments/${commentId}`, {
     method: "DELETE",
   });
@@ -373,4 +340,57 @@ export async function deleteCommentAPI(
         "コメントの削除に失敗しました"
     );
   }
+
+  return response.json();
+}
+
+/**
+ * 返信一覧を取得
+ */
+export async function getRepliesAPI(
+  parentCommentId: string,
+  limit: number,
+  offset: number,
+  messages?: PostsApiMessages
+): Promise<ReplyComment[]> {
+  const response = await fetch(
+    `/api/comments/${parentCommentId}/replies?limit=${limit}&offset=${offset}`
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.error || messages?.repliesFetchFailed || "返信の取得に失敗しました"
+    );
+  }
+
+  const data = await response.json();
+  return data.replies || [];
+}
+
+/**
+ * 返信を投稿
+ */
+export async function createReplyAPI(
+  parentCommentId: string,
+  content: string,
+  messages?: PostsApiMessages
+): Promise<ReplyComment> {
+  const response = await fetch(`/api/comments/${parentCommentId}/replies`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.error || messages?.replyCreateFailed || "返信の投稿に失敗しました"
+    );
+  }
+
+  const data = await response.json();
+  return data.reply;
 }

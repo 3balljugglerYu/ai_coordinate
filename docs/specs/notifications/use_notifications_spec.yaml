@@ -1,0 +1,208 @@
+metadata:
+  class: UseNotifications
+  source: features/notifications/hooks/useNotifications.ts
+  version: "1.1"
+  created_at: "2026-04-16"
+
+dependencies:
+  repositories: []
+  services:
+    - useTranslations
+    - usePathname
+    - useRouter
+    - createClient (Supabase browser)
+    - getCurrentUser
+    - getNotifications
+    - getUnreadCount
+    - markNotificationsRead
+    - markAllNotificationsRead
+    - useToast
+    - useUnreadNotificationCount
+    - formatNotificationContent
+  external:
+    - Browser localStorage
+    - Supabase Realtime notifications channel
+    - Next.js router navigation
+
+state_properties:
+  - notifications
+  - unreadCount
+  - isLoading
+  - isLoadingMore
+  - hasMore
+  - nextCursor
+  - currentUserId
+
+specifications:
+  - id: UNT-001
+    method: useNotifications
+    type: event-driven
+    ears: |
+      When useNotifications initializes for an authenticated user,
+      the hook shall load notifications and unread count,
+      subscribe to the user's realtime notifications channel,
+      and expose navigation handlers for notification clicks.
+    ears_ja: |
+      useNotifications が認証済みユーザー向けに初期化された場合、
+      hook は通知一覧と未読件数を読み込み、
+      ユーザーの realtime notifications channel を購読し、
+      通知クリック用の遷移ハンドラを公開する。
+    preconditions:
+      - getCurrentUser resolves an authenticated user
+    preconditions_ja:
+      - getCurrentUser が認証済みユーザーを返す
+    postconditions:
+      success:
+        - notifications state is initialized from the API or initialData
+        - unreadCount is synchronized from the unread-count API
+        - a realtime subscription is created for notifications:{userId}
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - notifications state が API または initialData から初期化される
+        - unreadCount が未読件数 API と同期される
+        - notifications:{userId} の realtime 購読が作成される
+      error:
+        - なし
+    edge_cases:
+      - description: When initialData is provided
+        expected: The hook skips the initial notifications fetch and only refreshes unread count
+      - description: When the route is not /notifications and a new unread bonus notification arrives
+        expected: The hook shows a toast once and synchronizes the unread badge count
+    edge_cases_ja:
+      - description: initialData が提供される場合
+        expected: hook は初回 notifications fetch をスキップし、未読件数だけ更新する
+      - description: 現在の route が /notifications 以外で新しい未読ボーナス通知が到着した場合
+        expected: hook は toast を一度だけ表示し、未読バッジ件数を同期する
+    test_cases:
+      - useNotifications_GivenAuthenticatedUser_ShouldInitializeStateAndSubscription
+      - useNotifications_GivenInitialData_ShouldSkipInitialNotificationsFetch
+      - useNotifications_GivenUnreadBonusInsertOutsideNotificationsPage_ShouldToastOnce
+    test_cases_ja:
+      - useNotifications_認証済みユーザーの場合_状態と購読を初期化する
+      - useNotifications_initialDataがある場合_初回通知取得をスキップする
+      - useNotifications_通知画面外で未読ボーナス通知が到着した場合_toastを一度だけ表示する
+
+  - id: UNT-002
+    method: handleNotificationClick
+    type: event-driven
+    ears: |
+      When handleNotificationClick receives a comment-entity notification
+      that contains image_id in its data,
+      the hook shall navigate to /posts/{image_id}?from=notifications.
+    ears_ja: |
+      handleNotificationClick が data.image_id を含む
+      comment 実体の通知を受け取った場合、
+      hook は /posts/{image_id}?from=notifications に遷移する。
+    preconditions:
+      - Notification entity_type is comment
+      - notification.data.image_id is present
+    preconditions_ja:
+      - 通知の entity_type が comment である
+      - notification.data.image_id が存在する
+    postconditions:
+      success:
+        - router.push is called with /posts/{image_id}?from=notifications
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - router.push が /posts/{image_id}?from=notifications で呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When the comment notification is already read
+        expected: The hook routes without issuing an extra markRead call
+      - description: When the comment notification lacks image_id
+        expected: The hook does not navigate through the comment entity branch
+    edge_cases_ja:
+      - description: comment 通知が既読済みの場合
+        expected: hook は追加の markRead を呼ばずに遷移する
+      - description: comment 通知に image_id が無い場合
+        expected: hook は comment entity 分岐では遷移しない
+    test_cases:
+      - handleNotificationClick_GivenCommentEntityWithImageId_ShouldNavigateToPostDetail
+      - handleNotificationClick_GivenReadCommentNotification_ShouldNavigateWithoutMarkRead
+      - handleNotificationClick_GivenCommentEntityWithoutImageId_ShouldNotNavigateViaCommentBranch
+    test_cases_ja:
+      - handleNotificationClick_comment通知でimage_idがある場合_投稿詳細へ遷移する
+      - handleNotificationClick_既読のcomment通知の場合_既読化せず遷移する
+      - handleNotificationClick_image_idのないcomment通知の場合_comment分岐では遷移しない
+
+  - id: UNT-003
+    method: handleNotificationClick
+    type: state-driven
+    ears: |
+      While a clicked notification is unread,
+      the hook shall mark that notification as read
+      before routing to its destination.
+    ears_ja: |
+      クリックされた通知が未読である間、
+      hook は遷移先へ routing する前に
+      その通知を既読化する。
+    preconditions:
+      - Notification is unread
+    preconditions_ja:
+      - 通知が未読である
+    postconditions:
+      success:
+        - markRead is invoked with the notification id
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - markRead が通知 id で呼ばれる
+      error:
+        - なし
+    edge_cases:
+      - description: When markNotificationsRead fails
+        expected: The hook refetches notifications and unread count to recover optimistic state
+    edge_cases_ja:
+      - description: markNotificationsRead が失敗した場合
+        expected: hook は楽観更新を戻すため notifications と unread count を再取得する
+    test_cases:
+      - handleNotificationClick_GivenUnreadNotification_ShouldMarkReadBeforeRouting
+      - markRead_GivenApiFailure_ShouldRefetchNotificationsAndUnreadCount
+    test_cases_ja:
+      - handleNotificationClick_未読通知の場合_遷移前に既読化する
+      - markRead_API失敗の場合_通知一覧と未読件数を再取得する
+
+  - id: UNT-004
+    method: handleNotificationClick
+    type: event-driven
+    ears: |
+      When handleNotificationClick receives a post, user, follow, or supported bonus notification,
+      the hook shall navigate to the destination that matches that notification type.
+    ears_ja: |
+      handleNotificationClick が post、user、follow、
+      またはサポート対象の bonus 通知を受け取った場合、
+      hook はその通知種別に対応する遷移先へ移動する。
+    preconditions:
+      - Notification entity_type or bonus_type matches a supported navigation branch
+    preconditions_ja:
+      - 通知の entity_type または bonus_type がサポート対象の遷移分岐に一致する
+    postconditions:
+      success:
+        - post notifications navigate to /posts/{entity_id}?from=notifications
+        - user and follow notifications navigate to the matching user profile
+        - supported bonus notifications navigate to /my-page
+      error:
+        - None
+    postconditions_ja:
+      success:
+        - post 通知は /posts/{entity_id}?from=notifications に遷移する
+        - user および follow 通知は対応するユーザープロフィールへ遷移する
+        - サポート対象の bonus 通知は /my-page に遷移する
+      error:
+        - なし
+    edge_cases:
+      - description: When a follow notification lacks follower_id
+        expected: The hook skips the follow-profile branch
+    edge_cases_ja:
+      - description: follow 通知に follower_id が無い場合
+        expected: hook は follow profile 分岐をスキップする
+    test_cases:
+      - handleNotificationClick_GivenPostUserFollowOrBonusNotification_ShouldNavigateToSupportedDestination
+    test_cases_ja:
+      - handleNotificationClick_post_user_follow_bonus通知の場合_対応する遷移先へ移動する

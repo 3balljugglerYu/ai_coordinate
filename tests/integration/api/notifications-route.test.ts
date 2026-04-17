@@ -85,6 +85,7 @@ function setupSupabaseFromTables(config: {
   notifications: { data: unknown; error: unknown };
   profiles?: { data: unknown; error: unknown };
   generatedImages?: { data: unknown; error: unknown };
+  comments?: { data: unknown; error: unknown };
 }) {
   const notif = createNotificationsChain(config.notifications);
   const profilesBuilder = createInChain(
@@ -93,11 +94,15 @@ function setupSupabaseFromTables(config: {
   const generatedImagesBuilder = createInChain(
     config.generatedImages ?? { data: [], error: null },
   );
+  const commentsBuilder = createInChain(
+    config.comments ?? { data: [], error: null },
+  );
 
   const from = jest.fn((table: string) => {
     if (table === "notifications") return notif.builder;
     if (table === "profiles") return profilesBuilder;
     if (table === "generated_images") return generatedImagesBuilder;
+    if (table === "comments") return commentsBuilder;
     throw new Error(`unexpected table: ${JSON.stringify(table)}`);
   });
 
@@ -387,6 +392,126 @@ describe("GET /api/notifications", () => {
       image_url: "https://cdn.example/thumb.webp",
       caption: "Hello",
     });
+  });
+
+  test("GET_comment通知でimage_id保持済みの場合_投稿サムネを補完する", async () => {
+    // Spec: NOTIFGET-010A
+    const rows = [
+      {
+        id: "n1",
+        created_at: "2024-01-01T00:00:00Z",
+        recipient_id: "user-1",
+        actor_id: "actor-1",
+        type: "comment",
+        entity_type: "comment",
+        entity_id: "comment-parent-1",
+        data: {
+          image_id: "post-77",
+          comment_id: "comment-reply-1",
+          comment_content: "reply body",
+        },
+      },
+    ];
+    const { from } = setupSupabaseFromTables({
+      notifications: { data: rows, error: null },
+      profiles: {
+        data: [
+          {
+            user_id: "actor-1",
+            nickname: "Reply Actor",
+            avatar_url: "https://av.example/reply.png",
+          },
+        ],
+        error: null,
+      },
+      generatedImages: {
+        data: [
+          {
+            id: "post-77",
+            image_url: "https://img.example/post-77.png",
+            storage_path: "u/post-77.png",
+            storage_path_thumb: "u/post-77_thumb.webp",
+            caption: "Reply target",
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const res = await GET(createRequest("http://localhost/api/notifications"));
+    const body = (await res.json()) as {
+      notifications: Array<{
+        data: { image_id?: string };
+        post: { image_url: string | null; caption: string | null } | null;
+      }>;
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.notifications[0].data.image_id).toBe("post-77");
+    expect(body.notifications[0].post).toEqual({
+      image_url: "https://cdn.example/thumb.webp",
+      caption: "Reply target",
+    });
+    expect(from).not.toHaveBeenCalledWith("comments");
+  });
+
+  test("GET_comment通知でimage_id欠落時_commentsから投稿IDを解決する", async () => {
+    // Spec: NOTIFGET-010B
+    const rows = [
+      {
+        id: "n1",
+        created_at: "2024-01-01T00:00:00Z",
+        recipient_id: "user-1",
+        actor_id: "actor-1",
+        type: "comment",
+        entity_type: "comment",
+        entity_id: "comment-parent-2",
+        data: {
+          comment_id: "comment-reply-2",
+          comment_content: "reply body",
+        },
+      },
+    ];
+    const { from } = setupSupabaseFromTables({
+      notifications: { data: rows, error: null },
+      comments: {
+        data: [
+          {
+            id: "comment-parent-2",
+            image_id: "post-88",
+          },
+        ],
+        error: null,
+      },
+      generatedImages: {
+        data: [
+          {
+            id: "post-88",
+            image_url: "https://img.example/post-88.png",
+            storage_path: "u/post-88.png",
+            storage_path_thumb: "u/post-88_thumb.webp",
+            caption: "Resolved target",
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const res = await GET(createRequest("http://localhost/api/notifications"));
+    const body = (await res.json()) as {
+      notifications: Array<{
+        data: { image_id?: string };
+        post: { image_url: string | null; caption: string | null } | null;
+      }>;
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.notifications[0].data.image_id).toBe("post-88");
+    expect(body.notifications[0].post).toEqual({
+      image_url: "https://cdn.example/thumb.webp",
+      caption: "Resolved target",
+    });
+    expect(from).toHaveBeenCalledWith("comments");
   });
 
   test("GET_想定外例外の場合_500で取得失敗", async () => {

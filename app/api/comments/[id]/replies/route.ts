@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import {
-  createComment,
-  getComments,
+  createReply,
+  getReplies,
   PostCommentError,
 } from "@/features/posts/lib/server-api";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
@@ -11,14 +11,12 @@ import { COMMENT_MAX_LENGTH } from "@/constants";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
-/**
- * コメント一覧取得・コメント投稿API
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const copy = postsRouteCopy[getRouteLocale(request)];
+
   try {
     const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
@@ -27,7 +25,7 @@ export async function GET(
 
     if (!id) {
       return NextResponse.json(
-        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
+        { error: copy.commentIdRequired, errorCode: "POSTS_COMMENT_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -46,14 +44,8 @@ export async function GET(
       );
     }
 
-    const comments = await getComments(
-      id,
-      limit,
-      offset,
-      copy.deletedCommentPlaceholder
-    );
-
-    return NextResponse.json({ comments });
+    const replies = await getReplies(id, limit, offset);
+    return NextResponse.json({ replies });
   } catch (error) {
     if (error instanceof PostCommentError) {
       return NextResponse.json(
@@ -61,11 +53,12 @@ export async function GET(
         { status: error.status }
       );
     }
-    console.error("Comments API error:", error);
+
+    console.error("Replies API error:", error);
     return NextResponse.json(
       {
         error: copy.commentsFetchFailed,
-        errorCode: "POSTS_COMMENTS_FETCH_FAILED",
+        errorCode: "POSTS_REPLIES_FETCH_FAILED",
       },
       { status: 500 }
     );
@@ -77,23 +70,26 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const copy = postsRouteCopy[getRouteLocale(request)];
+
   try {
     const userPromise = getUser();
     const paramsPromise = params;
     const bodyPromise = request.json();
     const user = await userPromise;
+
     if (!user) {
       return NextResponse.json(
         { error: copy.authRequired, errorCode: "POSTS_AUTH_REQUIRED" },
         { status: 401 }
       );
     }
+
     const [{ id }, body] = await Promise.all([paramsPromise, bodyPromise]);
     const { content } = body;
 
     if (!id) {
       return NextResponse.json(
-        { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
+        { error: copy.commentIdRequired, errorCode: "POSTS_COMMENT_ID_REQUIRED" },
         { status: 400 }
       );
     }
@@ -105,10 +101,7 @@ export async function POST(
       );
     }
 
-    // サニタイズ
     const sanitized = sanitizeProfileText(content);
-
-    // バリデーション（空文字は許可しない）
     const validation = validateProfileText(
       sanitized.value,
       COMMENT_MAX_LENGTH,
@@ -131,11 +124,10 @@ export async function POST(
       );
     }
 
-    // サニタイズ後の値をサーバーサイド関数に渡す
-    const comment = await createComment(id, user.id, sanitized.value);
+    const reply = await createReply(id, user.id, sanitized.value);
+    revalidateTag(`post-detail-${reply.image_id}`, { expire: 0 });
 
-    revalidateTag(`post-detail-${id}`, { expire: 0 });
-    return NextResponse.json({ comment });
+    return NextResponse.json({ reply });
   } catch (error) {
     if (error instanceof PostCommentError) {
       return NextResponse.json(
@@ -143,11 +135,12 @@ export async function POST(
         { status: error.status }
       );
     }
-    console.error("Comment creation API error:", error);
+
+    console.error("Reply creation API error:", error);
     return NextResponse.json(
       {
         error: copy.commentCreateFailed,
-        errorCode: "POSTS_COMMENT_CREATE_FAILED",
+        errorCode: "POSTS_REPLY_CREATE_FAILED",
       },
       { status: 500 }
     );
