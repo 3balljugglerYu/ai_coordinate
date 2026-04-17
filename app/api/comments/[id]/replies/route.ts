@@ -125,7 +125,7 @@ export async function POST(
     }
 
     const reply = await createReply(id, user.id, sanitized.value);
-    revalidateTag(`post-detail-${reply.image_id}`, "max");
+    revalidateTag(`post-detail-${reply.image_id}`, { expire: 0 });
 
     return NextResponse.json({ reply });
   } catch (error) {

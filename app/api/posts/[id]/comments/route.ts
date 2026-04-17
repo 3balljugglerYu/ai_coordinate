@@ -134,7 +134,7 @@ export async function POST(
     // サニタイズ後の値をサーバーサイド関数に渡す
     const comment = await createComment(id, user.id, sanitized.value);
 
-    revalidateTag(`post-detail-${id}`, "max");
+    revalidateTag(`post-detail-${id}`, { expire: 0 });
     return NextResponse.json({ comment });
   } catch (error) {
     if (error instanceof PostCommentError) {

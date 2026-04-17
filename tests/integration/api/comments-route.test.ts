@@ -198,7 +198,9 @@ describe("Comment reply route", () => {
     expect(response.status).toBe(200);
     expect(body.reply.id).toBe("reply-1");
     expect(mockCreateReply).toHaveBeenCalledWith("comment-1", "user-1", "reply body");
-    expect(mockRevalidateTag).toHaveBeenCalledWith("post-detail-post-1", "max");
+    expect(mockRevalidateTag).toHaveBeenCalledWith("post-detail-post-1", {
+      expire: 0,
+    });
   });
 
   test("POST /api/comments/[id]/replies_未認証の場合_401を返す", async () => {
@@ -395,7 +397,9 @@ describe("Comment edit/delete route", () => {
     expect(response.status).toBe(200);
     expect(body.deleted).toBe("logical");
     expect(mockDeleteComment).toHaveBeenCalledWith("comment-1", "user-1");
-    expect(mockRevalidateTag).toHaveBeenCalledWith("post-detail-post-1", "max");
+    expect(mockRevalidateTag).toHaveBeenCalledWith("post-detail-post-1", {
+      expire: 0,
+    });
   });
 
   test("DELETE /api/comments/[id]_physical削除結果でもdeletedをそのまま返す", async () => {

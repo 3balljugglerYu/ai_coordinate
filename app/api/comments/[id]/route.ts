@@ -120,7 +120,7 @@ export async function DELETE(
     }
 
     const result = await deleteComment(id, user.id);
-    revalidateTag(`post-detail-${result.image_id}`, "max");
+    revalidateTag(`post-detail-${result.image_id}`, { expire: 0 });
 
     return NextResponse.json(result);
   } catch (error) {
