@@ -11,7 +11,11 @@ const resizeObserverObserveMock = jest.fn();
 const resizeObserverDisconnectMock = jest.fn();
 
 jest.mock("@/features/posts/components/CommentInput", () => ({
-  CommentInput: () => <div data-testid="comment-input" />,
+  CommentInput: ({ onCommentAdded }: { onCommentAdded?: () => void }) => (
+    <button type="button" onClick={() => onCommentAdded?.()}>
+      add-comment
+    </button>
+  ),
 }));
 
 jest.mock("@/features/posts/components/CommentList", () => {
@@ -283,5 +287,61 @@ describe("CommentSection", () => {
       expect.any(Function),
     );
     expect(resizeObserverDisconnectMock).toHaveBeenCalled();
+  });
+
+  test("ビューポート変更時に返信パネルのスタイルを再計算する", async () => {
+    const { container } = render(
+      <CommentSection postId="post-1" currentUserId="user-1" />,
+    );
+
+    const section = setSectionRect(container);
+    fireEvent.click(screen.getByRole("button", { name: "open-reply-panel" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("reply-panel-style")).toHaveTextContent(
+        JSON.stringify({
+          top: 240,
+          left: 0,
+          width: 390,
+          height: 604,
+        }),
+      );
+    });
+
+    Object.defineProperty(section, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        top: 180,
+        left: 12,
+        width: 360,
+        height: 900,
+        bottom: 1080,
+        right: 372,
+        x: 12,
+        y: 180,
+        toJSON: () => ({}),
+      }),
+    });
+
+    fireEvent(window, new Event("resize"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("reply-panel-style")).toHaveTextContent(
+        JSON.stringify({
+          top: 180,
+          left: 12,
+          width: 360,
+          height: 664,
+        }),
+      );
+    });
+  });
+
+  test("コメント追加後に一覧を refresh する", () => {
+    render(<CommentSection postId="post-1" currentUserId="user-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "add-comment" }));
+
+    expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 });
