@@ -1,7 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -9,19 +7,13 @@ import type { ParentComment } from "../types";
 import { EditableComment } from "./EditableComment";
 import { ReplyThread } from "./ReplyThread";
 
-const ReplyPanel = dynamic(
-  () => import("./ReplyPanel").then((mod) => mod.ReplyPanel),
-  {
-    ssr: false,
-  }
-);
-
 interface CommentItemProps {
   comment: ParentComment;
   currentUserId?: string | null;
   onCommentUpdated: () => void;
   onCommentDeleted: () => void;
   onThreadChanged: () => void;
+  onOpenReplyPanel?: () => void;
 }
 
 /**
@@ -34,16 +26,10 @@ export function CommentItem({
   onCommentUpdated,
   onCommentDeleted,
   onThreadChanged,
+  onOpenReplyPanel,
 }: CommentItemProps) {
   const t = useTranslations("posts");
-  const [isReplyPanelOpen, setIsReplyPanelOpen] = useState(false);
-  const [hasLoadedReplyPanel, setHasLoadedReplyPanel] = useState(false);
-  const hasReplyEntryPoint = comment.reply_count > 0 || !comment.deleted_at;
-
-  const handleOpenReplyPanel = () => {
-    setHasLoadedReplyPanel(true);
-    setIsReplyPanelOpen(true);
-  };
+  const hasReplies = comment.reply_count > 0;
 
   return (
     <div>
@@ -52,21 +38,18 @@ export function CommentItem({
         currentUserId={currentUserId}
         onCommentUpdated={onCommentUpdated}
         onCommentDeleted={onCommentDeleted}
+        onCommentSelected={!comment.deleted_at ? onOpenReplyPanel : undefined}
       />
-      {hasReplyEntryPoint && (
+      {hasReplies && (
         <div className="pb-3 pl-11 md:hidden">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="h-8 px-2 text-xs text-gray-600"
-            onClick={handleOpenReplyPanel}
+            onClick={onOpenReplyPanel}
           >
-            <span>
-              {comment.reply_count > 0
-                ? t("repliesCount", { count: comment.reply_count })
-                : t("replyAction")}
-            </span>
+            <span>{t("repliesCount", { count: comment.reply_count })}</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -78,15 +61,6 @@ export function CommentItem({
           onThreadChanged={onThreadChanged}
         />
       </div>
-      {hasLoadedReplyPanel && (
-        <ReplyPanel
-          open={isReplyPanelOpen}
-          onOpenChange={setIsReplyPanelOpen}
-          parentComment={comment}
-          currentUserId={currentUserId}
-          onThreadChanged={onThreadChanged}
-        />
-      )}
     </div>
   );
 }

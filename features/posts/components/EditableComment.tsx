@@ -26,7 +26,7 @@ import { deleteCommentAPI, updateCommentAPI } from "../lib/api";
 import type { ParentComment, ReplyComment } from "../types";
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsibleText } from "./CollapsibleText";
-import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
+import { cn, sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
 
 type DisplayComment = ParentComment | ReplyComment;
@@ -36,6 +36,7 @@ interface EditableCommentProps {
   currentUserId?: string | null;
   onCommentUpdated: () => void;
   onCommentDeleted: () => void;
+  onCommentSelected?: () => void;
 }
 
 export function EditableComment({
@@ -43,6 +44,7 @@ export function EditableComment({
   currentUserId,
   onCommentUpdated,
   onCommentDeleted,
+  onCommentSelected,
 }: EditableCommentProps) {
   const t = useTranslations("posts");
   const locale = useLocale();
@@ -57,8 +59,11 @@ export function EditableComment({
   const isOwner = !isDeleted && currentUserId === comment.user_id;
   const displayName = isDeleted
     ? ""
-    : comment.user_nickname || comment.user_id?.slice(0, 8) || t("anonymousUser");
+    : comment.user_nickname ||
+      comment.user_id?.slice(0, 8) ||
+      t("anonymousUser");
   const remainingChars = COMMENT_MAX_LENGTH - editContent.length;
+  const isSelectable = Boolean(onCommentSelected) && !isEditing && !isDeleted;
 
   useEffect(() => {
     setEditContent(comment.content);
@@ -85,7 +90,7 @@ export function EditableComment({
         required: t("commentRequired"),
         invalidCharacters: t("commentInvalidCharacters"),
         maxLength: t("commentTooLong", { max: COMMENT_MAX_LENGTH }),
-      }
+      },
     );
 
     if (!validation.valid) {
@@ -136,9 +141,28 @@ export function EditableComment({
     }
   };
 
+  const handleSelect = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSelectable || window.innerWidth >= 768) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea, [role='menuitem']")) {
+      return;
+    }
+
+    onCommentSelected?.();
+  };
+
   return (
     <>
-      <div className="flex gap-3 py-3">
+      <div
+        className={cn(
+          "flex gap-3 py-3",
+          isSelectable && "cursor-pointer md:cursor-default",
+        )}
+        onClick={handleSelect}
+      >
         {!isDeleted &&
           (comment.user_avatar_url ? (
             <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
@@ -214,7 +238,9 @@ export function EditableComment({
             <CollapsibleText
               text={comment.content}
               maxLines={2}
-              textClassName={isDeleted ? "italic text-gray-500" : "text-gray-900"}
+              textClassName={
+                isDeleted ? "italic text-gray-500" : "text-gray-900"
+              }
             />
           )}
         </div>

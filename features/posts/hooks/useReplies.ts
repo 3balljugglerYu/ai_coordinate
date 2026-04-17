@@ -44,6 +44,9 @@ export function useReplies({
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [hasResolvedInitialLoad, setHasResolvedInitialLoad] = useState(
+    parentReplyCount === 0,
+  );
   const requestSequenceRef = useRef(0);
   const inFlightKeysRef = useRef<Set<string>>(new Set());
   const pendingRequestsRef = useRef(0);
@@ -67,7 +70,7 @@ export function useReplies({
           nextOffset,
           {
             repliesFetchFailed: t("repliesFetchFailed"),
-          }
+          },
         );
 
         if (requestId !== requestSequenceRef.current) {
@@ -87,14 +90,18 @@ export function useReplies({
         console.error("Failed to load replies:", error);
       } finally {
         inFlightKeysRef.current.delete(requestKey);
-        pendingRequestsRef.current = Math.max(0, pendingRequestsRef.current - 1);
+        pendingRequestsRef.current = Math.max(
+          0,
+          pendingRequestsRef.current - 1,
+        );
+        setHasResolvedInitialLoad(true);
 
         if (pendingRequestsRef.current === 0) {
           setIsLoading(false);
         }
       }
     },
-    [parentCommentId, t]
+    [parentCommentId, t],
   );
 
   const refreshReplies = useCallback(async () => {
@@ -105,18 +112,25 @@ export function useReplies({
     setReplies([]);
     setHasMore(false);
     setOffset(0);
+    setHasResolvedInitialLoad(parentReplyCount === 0);
     requestSequenceRef.current = 0;
     inFlightKeysRef.current.clear();
     pendingRequestsRef.current = 0;
     setIsLoading(false);
-  }, [parentCommentId]);
+  }, [parentCommentId, parentReplyCount]);
 
   useEffect(() => {
-    if (!enabled || parentReplyCount === 0) {
+    if (!enabled) {
+      return;
+    }
+
+    if (parentReplyCount === 0) {
+      setHasResolvedInitialLoad(true);
       return;
     }
 
     if (replies.length > 0 && replies.length === parentReplyCount && !hasMore) {
+      setHasResolvedInitialLoad(true);
       return;
     }
 
@@ -139,11 +153,14 @@ export function useReplies({
             return;
           }
 
-          if (payload.event_type === "INSERT" || payload.event_type === "DELETE") {
+          if (
+            payload.event_type === "INSERT" ||
+            payload.event_type === "DELETE"
+          ) {
             void refreshReplies();
             onReplyCountChanged?.();
           }
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -170,14 +187,14 @@ export function useReplies({
                     ...reply,
                     content: updatedReply.deleted_at
                       ? t("commentDeletedPlaceholder")
-                      : updatedReply.content ?? reply.content,
+                      : (updatedReply.content ?? reply.content),
                     deleted_at: updatedReply.deleted_at ?? reply.deleted_at,
                     updated_at: updatedReply.updated_at ?? reply.updated_at,
                   }
-                : reply
-            )
+                : reply,
+            ),
           );
-        }
+        },
       )
       .subscribe();
 
@@ -198,6 +215,7 @@ export function useReplies({
     isLoading,
     hasMore,
     offset,
+    hasResolvedInitialLoad,
     loadReplies,
     refreshReplies,
   };
