@@ -132,6 +132,13 @@ function toParentComment(
   };
 }
 
+export function shouldExposeParentComment(
+  comment: Pick<CommentRow, "deleted_at">,
+  replyCount: number
+): boolean {
+  return !comment.deleted_at || replyCount > 0;
+}
+
 function toReplyComment(
   comment: CommentRow,
   profileMap: Record<string, { nickname: string | null; avatar_url: string | null }>
@@ -1266,14 +1273,17 @@ export async function getComments(
     getReplyCountsBatch(commentIds, supabase),
   ]);
 
-  return comments.map((comment) =>
-    toParentComment(
-      comment as CommentRow,
-      profileMap,
-      replyCounts[comment.id] ?? 0,
-      deletedCommentPlaceholder
+  return comments
+    .map((comment) => ({
+      comment: comment as CommentRow,
+      replyCount: replyCounts[comment.id] ?? 0,
+    }))
+    .filter(({ comment, replyCount }) =>
+      shouldExposeParentComment(comment, replyCount)
     )
-  );
+    .map(({ comment, replyCount }) =>
+      toParentComment(comment, profileMap, replyCount, deletedCommentPlaceholder)
+    );
 }
 
 export async function getReplies(
