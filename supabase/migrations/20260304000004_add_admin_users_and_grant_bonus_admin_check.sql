@@ -25,16 +25,16 @@ REVOKE ALL ON public.admin_users FROM anon;
 REVOKE ALL ON public.admin_users FROM authenticated;
 
 INSERT INTO public.admin_users (user_id, created_by)
-VALUES (
-  'dfe54c3c-3764-4758-89eb-2bd445fdc4c6',
-  'dfe54c3c-3764-4758-89eb-2bd445fdc4c6'
-)
+SELECT u.id, u.id
+FROM auth.users u
+WHERE u.id = 'dfe54c3c-3764-4758-89eb-2bd445fdc4c6'
 ON CONFLICT (user_id) DO NOTHING;
 
 INSERT INTO public.admin_users (user_id, created_by)
-SELECT DISTINCT admin_user_id, admin_user_id
-FROM public.admin_audit_log
-WHERE admin_user_id IS NOT NULL
+SELECT DISTINCT u.id, u.id
+FROM public.admin_audit_log aal
+JOIN auth.users u
+  ON u.id = aal.admin_user_id
 ON CONFLICT (user_id) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.grant_admin_bonus(

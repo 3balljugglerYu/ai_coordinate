@@ -235,12 +235,11 @@ export function PostModerationMenu({
   const handleShare = async () => {
     try {
       const url = getPostDetailUrl(postId, locale);
-      const result = await sharePost(url, postsT("shareDefaultText"));
+      const result = await sharePost(url);
 
       if (result.method === "clipboard") {
         toast({
-          title: postsT("shareCopiedTitle"),
-          description: postsT("shareCopiedDescription"),
+          title: postsT("shareCopyTitle"),
         });
       }
     } catch (error) {

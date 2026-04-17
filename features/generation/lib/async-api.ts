@@ -54,6 +54,7 @@ export interface AsyncGenerationStatus {
   previewImageUrl: string | null;
   resultImageUrl: string | null;
   errorMessage: string | null;
+  generatedImageId: string | null;
 }
 
 /**
@@ -159,6 +160,8 @@ export async function getGenerationStatus(
     previewImageUrl: data.previewImageUrl || null,
     resultImageUrl: data.resultImageUrl || null,
     errorMessage: data.errorMessage || null,
+    generatedImageId:
+      typeof data.generatedImageId === "string" ? data.generatedImageId : null,
   };
 }
 

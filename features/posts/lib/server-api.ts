@@ -14,6 +14,7 @@ import type {
   SortType,
 } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
 import { getImageAspectRatio } from "./utils";
 import {
   getJSTStartOfDay,
@@ -187,8 +188,24 @@ function mapDeleteCommentRpcError(errorMessage: string): PostCommentError | null
 async function getProfileMap(
   userIds: string[],
   supabaseOverride?: SupabaseClient
-): Promise<Record<string, { nickname: string | null; avatar_url: string | null }>> {
-  const profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> = {};
+): Promise<
+  Record<
+    string,
+    {
+      nickname: string | null;
+      avatar_url: string | null;
+      subscription_plan: "free" | "light" | "standard" | "premium";
+    }
+  >
+> {
+  const profileMap: Record<
+    string,
+    {
+      nickname: string | null;
+      avatar_url: string | null;
+      subscription_plan: "free" | "light" | "standard" | "premium";
+    }
+  > = {};
   
   if (userIds.length === 0) {
     return profileMap;
@@ -197,7 +214,7 @@ async function getProfileMap(
   const supabase = supabaseOverride ?? (await createClient());
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("user_id,nickname,avatar_url")
+    .select("user_id,nickname,avatar_url,subscription_plan")
     .in("user_id", userIds);
 
   if (profilesError) {
@@ -210,6 +227,7 @@ async function getProfileMap(
       profileMap[profile.user_id] = {
         nickname: profile.nickname,
         avatar_url: profile.avatar_url,
+        subscription_plan: profile.subscription_plan ?? "free",
       };
     }
   }
@@ -312,22 +330,24 @@ async function enrichPosts(
 
   // 投稿データにユーザー情報・いいね数・コメント数を結合
   return postsData.map((post) => {
-    const profile = post.user_id ? profileMap[post.user_id] : undefined;
-    const postId = post.id || "";
+    const safePost = redactSensitivePrompt(post);
+    const profile = safePost.user_id ? profileMap[safePost.user_id] : undefined;
+    const postId = safePost.id || "";
 
     return {
-      ...post,
-      user: post.user_id
+      ...safePost,
+      user: safePost.user_id
         ? {
-            id: post.user_id,
+            id: safePost.user_id,
             email: undefined, // Phase 5で実装予定
             nickname: profile?.nickname ?? null,
             avatar_url: profile?.avatar_url ?? null,
+            subscription_plan: profile?.subscription_plan ?? "free",
           }
         : null,
       like_count: likeCounts[postId] || 0,
       comment_count: commentCounts[postId] || 0,
-      view_count: post.view_count || 0,
+      view_count: safePost.view_count || 0,
       range_like_count: rangeLikeCounts ? rangeLikeCounts[postId] || 0 : undefined,
     };
   });
@@ -692,11 +712,15 @@ export const getPost = cache(async (
   }
 
   // プロフィール情報を取得（別クエリ）
-  let profile: { nickname: string | null; avatar_url: string | null } | null = null;
+  let profile: {
+    nickname: string | null;
+    avatar_url: string | null;
+    subscription_plan: "free" | "light" | "standard" | "premium";
+  } | null = null;
   if (data.user_id) {
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("user_id,nickname,avatar_url")
+      .select("user_id,nickname,avatar_url,subscription_plan")
       .eq("user_id", data.user_id)
       .single();
 
@@ -704,6 +728,7 @@ export const getPost = cache(async (
       profile = {
         nickname: profileData.nickname,
         avatar_url: profileData.avatar_url,
+        subscription_plan: profileData.subscription_plan ?? "free",
       };
     }
   }
@@ -772,7 +797,7 @@ export const getPost = cache(async (
     }
   }
 
-  return {
+  return redactSensitivePrompt({
     ...data,
     user: data.user_id
       ? {
@@ -780,13 +805,14 @@ export const getPost = cache(async (
           email: undefined, // Phase 5で実装予定
           nickname: profile?.nickname ?? null,
           avatar_url: profile?.avatar_url ?? null,
+          subscription_plan: profile?.subscription_plan ?? "free",
         }
       : null,
     like_count: likeCount,
     comment_count: commentCount,
     view_count: updatedViewCount,
     aspect_ratio: aspectRatio,
-  };
+  });
 });
 
 /**

@@ -12,15 +12,10 @@ jest.mock("@/lib/i2i-poc-auth", () => ({
   enforceI2iPocBasicAuth: jest.fn(),
 }));
 
-jest.mock("@/lib/style-basic-auth", () => ({
-  enforceStyleBasicAuth: jest.fn(),
-}));
-
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { enforceApiDocsBasicAuth } from "@/lib/api-docs-auth";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
-import { enforceStyleBasicAuth } from "@/lib/style-basic-auth";
 import { proxy } from "@/proxy";
 import {
   getLocaleCookieMaxAge,
@@ -124,8 +119,6 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
     enforceApiDocsBasicAuth as jest.MockedFunction<typeof enforceApiDocsBasicAuth>;
   const enforceI2iPocBasicAuthMock =
     enforceI2iPocBasicAuth as jest.MockedFunction<typeof enforceI2iPocBasicAuth>;
-  const enforceStyleBasicAuthMock =
-    enforceStyleBasicAuth as jest.MockedFunction<typeof enforceStyleBasicAuth>;
 
   const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const originalSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -138,7 +131,6 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
 
     enforceApiDocsBasicAuthMock.mockReturnValue(null);
     enforceI2iPocBasicAuthMock.mockReturnValue(null);
-    enforceStyleBasicAuthMock.mockReturnValue(null);
     createServerClientMock.mockReturnValue(
       createSupabaseMock().client as ReturnType<typeof createServerClient>
     );
@@ -201,34 +193,6 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       // ============================================================
       expect(response.status).toBe(401);
       expect(body).toEqual({ error: "i2i auth required" });
-      expect(createServerClientMock).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("LPR-003 proxy", () => {
-    test("proxy_styleBasicAuthで拒否された場合_locale処理前に短絡終了する", async () => {
-      // ============================================================
-      // Arrange
-      // ============================================================
-      enforceStyleBasicAuthMock.mockReturnValue(
-        NextResponse.json({ error: "style auth required" }, { status: 401 })
-      );
-
-      // ============================================================
-      // Act
-      // ============================================================
-      const response = await proxy(
-        createRequest("http://localhost/style", {
-          acceptLanguage: "ja-JP,ja;q=0.9",
-        })
-      );
-      const body = await readJson(response);
-
-      // ============================================================
-      // Assert
-      // ============================================================
-      expect(response.status).toBe(401);
-      expect(body).toEqual({ error: "style auth required" });
       expect(createServerClientMock).not.toHaveBeenCalled();
     });
   });

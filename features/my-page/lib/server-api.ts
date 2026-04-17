@@ -2,6 +2,10 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import {
+  redactSensitivePrompt,
+  redactSensitivePrompts,
+} from "@/features/generation/lib/prompt-visibility";
 
 export interface PercoinTransaction {
   id: string;
@@ -18,6 +22,7 @@ export interface UserProfile {
   nickname: string | null;
   bio: string | null;
   avatar_url: string | null;
+  subscription_plan?: "free" | "light" | "standard" | "premium";
   email?: string;
 }
 
@@ -51,7 +56,7 @@ export const getUserProfileServer = cache(async (
   // profilesテーブルからプロフィール情報を取得
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, nickname, bio, avatar_url")
+    .select("id, nickname, bio, avatar_url, subscription_plan")
     .eq("user_id", userId)
     .single();
 
@@ -72,6 +77,7 @@ export const getUserProfileServer = cache(async (
       nickname: profile.nickname,
       bio: profile.bio,
       avatar_url: profile.avatar_url,
+      subscription_plan: profile.subscription_plan ?? "free",
     };
   }
 
@@ -84,6 +90,7 @@ export const getUserProfileServer = cache(async (
     nickname: profile.nickname,
     bio: profile.bio,
     avatar_url: profile.avatar_url,
+    subscription_plan: profile.subscription_plan ?? "free",
     email: isOwnProfile ? user?.email : undefined,
   };
 });
@@ -214,7 +221,7 @@ export async function getUserPostsServer(
     return [];
   }
 
-  return data || [];
+  return redactSensitivePrompts(data || []);
 }
 
 /**
@@ -260,7 +267,7 @@ export const getMyImagesServer = cache(async (
       throw new Error(`画像の取得に失敗しました: ${error.message || "Unknown error"}`);
     }
 
-    return data || [];
+    return redactSensitivePrompts(data || []);
   } catch (err) {
     console.error("[getMyImagesServer] Unexpected error:", err);
     if (err instanceof Error) {
@@ -293,7 +300,7 @@ export async function getImageDetailServer(
     return null;
   }
 
-  return data;
+  return redactSensitivePrompt(data);
 }
 
 /**

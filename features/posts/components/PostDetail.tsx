@@ -23,6 +23,9 @@ import { getPostImageUrl } from "../lib/utils";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
+import { OneTapStyleDetailCard } from "@/features/style/components/OneTapStyleDetailCard";
+import { getVisiblePrompt } from "@/features/generation/lib/prompt-visibility";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { Post } from "../types";
 
 interface PostDetailProps {
@@ -82,19 +85,22 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   const followUserId = post.user?.id || post.user_id;
   const isOwner = currentUserId === post.user_id;
   const canViewPrompt = isOwner || isFollowingAuthor;
+  const oneTapStylePreset = getOneTapStylePresetMetadata(post);
+  const visiblePrompt = getVisiblePrompt(post);
+  const hasVisiblePrompt = visiblePrompt.trim().length > 0;
 
   // プロンプトのコピー機能
   const handleCopyPrompt = async () => {
-    if (!canViewPrompt || !post.prompt) {
+    if (!canViewPrompt || !hasVisiblePrompt) {
       toast({
         title: t("followRequiredTitle"),
         description: t("followRequiredDescription"),
       });
       return;
     }
-    if (post.prompt) {
+    if (hasVisiblePrompt) {
       try {
-        await copyTextToClipboard(post.prompt);
+        await copyTextToClipboard(visiblePrompt);
         setIsPromptCopied(true);
         toast({
           title: t("copySuccessTitle"),
@@ -134,7 +140,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
     fetchFollowStatus();
   }, [currentUserId, followUserId, isOwner]);
 
-  const maskedPrompt = post.prompt ? "*".repeat(post.prompt.length) : "";
+  const maskedPrompt = hasVisiblePrompt ? "*".repeat(visiblePrompt.length) : "";
 
   return (
     <div className="min-h-screen bg-white">
@@ -278,7 +284,11 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
 
 
         {/* プロンプト */}
-        {post.prompt && (
+        {oneTapStylePreset ? (
+          <div className="border-t border-gray-200 bg-white px-4 py-3">
+            <OneTapStyleDetailCard preset={oneTapStylePreset} />
+          </div>
+        ) : hasVisiblePrompt ? (
           <div className="border-t border-gray-200 bg-white px-4 py-3">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-sm font-bold text-gray-700">{t("prompt")}</span>
@@ -303,9 +313,9 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
                 </Button>
               </div>
             </div>
-            <CollapsibleText text={canViewPrompt ? post.prompt : maskedPrompt} maxLines={1} />
+            <CollapsibleText text={canViewPrompt ? visiblePrompt : maskedPrompt} maxLines={1} />
           </div>
-        )}
+        ) : null}
 
         {/* コメントセクション */}
         <div className="border-t border-gray-200 bg-white px-4 py-3">

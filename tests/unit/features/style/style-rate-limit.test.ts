@@ -6,8 +6,10 @@ jest.mock("@/lib/supabase/admin", () => ({
 
 import { NextRequest } from "next/server";
 import {
+  attachStyleGenerateRateLimitReservationToJob,
   checkAndConsumeStyleGenerateRateLimit,
   getStyleGenerateRateLimitStatus,
+  releaseStyleGenerateRateLimitAttempt,
 } from "@/features/style/lib/style-rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -27,6 +29,7 @@ function createCountQuery(result: { count: number; error: null }) {
   return {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
+    is: jest.fn().mockReturnThis(),
     gte: jest.fn().mockResolvedValue(result),
   };
 }
@@ -37,7 +40,14 @@ describe("style-rate-limit", () => {
   });
 
   test("checkAndConsumeStyleGenerateRateLimit_認証ユーザーはRPCで原子的に消費する", async () => {
-    const rpc = jest.fn().mockResolvedValue({ data: true, error: null });
+    const rpc = jest.fn().mockResolvedValue({
+      data: {
+        allowed: true,
+        attemptId: "attempt-auth-001",
+        reason: null,
+      },
+      error: null,
+    });
     mockCreateAdminClient.mockReturnValue({ rpc } as never);
 
     const result = await checkAndConsumeStyleGenerateRateLimit({
@@ -47,20 +57,33 @@ describe("style-rate-limit", () => {
       now: new Date("2026-03-21T12:34:56.000Z"),
     });
 
-    expect(result).toEqual({ allowed: true });
+    expect(result).toEqual({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
     expect(rpc).toHaveBeenCalledWith(
-      "consume_style_authenticated_generate_attempt",
+      "reserve_style_authenticated_generate_attempt",
       {
         p_user_id: "user-123",
         p_style_id: "paris_code",
-        p_daily_limit: 6,
+        p_daily_limit: 5,
         p_now: "2026-03-21T12:34:56.000Z",
       }
     );
   });
 
   test("checkAndConsumeStyleGenerateRateLimit_認証ユーザー上限時はauthenticated_dailyを返す", async () => {
-    const rpc = jest.fn().mockResolvedValue({ data: false, error: null });
+    const rpc = jest.fn().mockResolvedValue({
+      data: {
+        allowed: false,
+        attemptId: null,
+        reason: "daily_limit",
+      },
+      error: null,
+    });
     mockCreateAdminClient.mockReturnValue({ rpc } as never);
 
     const result = await checkAndConsumeStyleGenerateRateLimit({
@@ -77,7 +100,7 @@ describe("style-rate-limit", () => {
   });
 
   test("getStyleGenerateRateLimitStatus_認証ユーザーの日次残数はJSTの当日0時から集計する", async () => {
-    const authenticatedQuery = createCountQuery({ count: 4, error: null });
+    const authenticatedQuery = createCountQuery({ count: 3, error: null });
     const from = jest.fn().mockReturnValue(authenticatedQuery);
     mockCreateAdminClient.mockReturnValue({ from } as never);
 
@@ -100,15 +123,15 @@ describe("style-rate-limit", () => {
   });
 
   test("checkAndConsumeStyleGenerateRateLimit_guestの日次上限はJSTの当日0時から判定する", async () => {
-    const shortQuery = createCountQuery({ count: 0, error: null });
-    const dailyQuery = createCountQuery({ count: 2, error: null });
-    const insert = jest.fn().mockResolvedValue({ error: null });
-    const from = jest
-      .fn()
-      .mockReturnValueOnce(shortQuery)
-      .mockReturnValueOnce(dailyQuery)
-      .mockReturnValueOnce({ insert });
-    mockCreateAdminClient.mockReturnValue({ from } as never);
+    const rpc = jest.fn().mockResolvedValue({
+      data: {
+        allowed: true,
+        attemptId: "attempt-guest-001",
+        reason: null,
+      },
+      error: null,
+    });
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
 
     const result = await checkAndConsumeStyleGenerateRateLimit({
       request: createRequest(),
@@ -117,13 +140,84 @@ describe("style-rate-limit", () => {
       now: new Date("2026-03-21T15:30:00.000Z"),
     });
 
-    expect(result).toEqual({ allowed: true });
-    expect(from).toHaveBeenNthCalledWith(1, "style_guest_generate_attempts");
-    expect(from).toHaveBeenNthCalledWith(2, "style_guest_generate_attempts");
-    expect(dailyQuery.gte).toHaveBeenCalledWith(
-      "created_at",
-      "2026-03-21T15:00:00.000Z"
+    expect(result).toEqual({
+      allowed: true,
+      reservation: {
+        authState: "guest",
+        attemptId: "attempt-guest-001",
+      },
+    });
+    expect(rpc).toHaveBeenCalledWith("reserve_style_guest_generate_attempt", {
+      p_client_ip_hash: expect.any(String),
+      p_short_limit: 2,
+      p_daily_limit: 2,
+      p_now: "2026-03-21T15:30:00.000Z",
+    });
+  });
+
+  test("getStyleGenerateRateLimitStatus_残数が1回でも注意表示を維持する", async () => {
+    const authenticatedQuery = createCountQuery({ count: 4, error: null });
+    const from = jest.fn().mockReturnValue(authenticatedQuery);
+    mockCreateAdminClient.mockReturnValue({ from } as never);
+
+    const status = await getStyleGenerateRateLimitStatus({
+      request: createRequest(),
+      userId: "user-123",
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+
+    expect(status).toEqual({
+      authState: "authenticated",
+      remainingDaily: 1,
+      showRemainingWarning: true,
+    });
+  });
+
+  test("attachStyleGenerateRateLimitReservationToJob_認証予約をジョブに紐づける", async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: true, error: null });
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
+
+    await expect(
+      attachStyleGenerateRateLimitReservationToJob({
+        reservation: {
+          authState: "authenticated",
+          attemptId: "attempt-auth-001",
+        },
+        jobId: "job-001",
+      })
+    ).resolves.toBe(true);
+
+    expect(rpc).toHaveBeenCalledWith(
+      "attach_style_authenticated_generate_attempt_job",
+      {
+        p_attempt_id: "attempt-auth-001",
+        p_job_id: "job-001",
+      }
     );
-    expect(insert).toHaveBeenCalled();
+  });
+
+  test("releaseStyleGenerateRateLimitAttempt_guest予約をreleaseする", async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: true, error: null });
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
+
+    await expect(
+      releaseStyleGenerateRateLimitAttempt({
+        reservation: {
+          authState: "guest",
+          attemptId: "attempt-guest-001",
+        },
+        reason: "timeout",
+        releasedAt: new Date("2026-03-21T15:30:00.000Z"),
+      })
+    ).resolves.toBe(true);
+
+    expect(rpc).toHaveBeenCalledWith(
+      "release_style_guest_generate_attempt",
+      {
+        p_attempt_id: "attempt-guest-001",
+        p_release_reason: "timeout",
+        p_released_at: "2026-03-21T15:30:00.000Z",
+      }
+    );
   });
 });

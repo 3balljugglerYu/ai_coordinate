@@ -2,10 +2,45 @@
 
 import { NextRequest } from "next/server";
 import { postStyleGenerateRoute } from "@/app/(app)/style/generate/handler";
-import type { StyleGenerateRateLimitResult } from "@/features/style/lib/style-rate-limit";
+import type {
+  StyleGenerateAttemptReservation,
+  StyleGenerateRateLimitResult,
+} from "@/features/style/lib/style-rate-limit";
+import {
+  STYLE_PROMPT_BASE_PREFIX,
+  STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX,
+  STYLE_PROMPT_ILLUSTRATION_SUFFIX,
+  STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+  STYLE_PROMPT_REAL_SUFFIX,
+  buildStyleAttemptReinforcementPrefix,
+} from "@/shared/generation/style-prompts";
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
+
+function buildExpectedPrompt(params: {
+  sourceImageType?: "illustration" | "real";
+  backgroundInstruction: string;
+  backgroundPrompt?: string | null;
+}): string {
+  const promptSuffix =
+    params.sourceImageType === "real"
+      ? STYLE_PROMPT_REAL_SUFFIX
+      : STYLE_PROMPT_ILLUSTRATION_SUFFIX;
+
+  const promptSections = [
+    STYLE_PROMPT_BASE_PREFIX,
+    promptSuffix,
+    params.backgroundInstruction,
+    "Styling Direction:\nRAW PROMPT\nSECOND LINE",
+  ];
+
+  if (params.backgroundPrompt) {
+    promptSections.push(`Background Direction:\n${params.backgroundPrompt}`);
+  }
+
+  return promptSections.join("\n\n");
+}
 
 function createRequest(formData: FormData): NextRequest {
   return new NextRequest("http://localhost/style/generate", {
@@ -70,6 +105,23 @@ describe("StyleGenerateRoute integration tests", () => {
     Promise<StyleGenerateRateLimitResult>,
     [{ request: NextRequest; userId: string | null; styleId: string }]
   >;
+  let releaseRateLimitAttemptFn: jest.Mock<
+    Promise<boolean>,
+    [
+      {
+        reservation: StyleGenerateAttemptReservation | null | undefined;
+        reason:
+          | "upload_failed"
+          | "job_create_failed"
+          | "queue_failed"
+          | "timeout"
+          | "upstream_error"
+          | "no_image_generated"
+          | "worker_failed"
+          | "infra_error";
+      },
+    ]
+  >;
   let consoleErrorSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
 
@@ -96,6 +148,7 @@ describe("StyleGenerateRoute integration tests", () => {
         [{ request: NextRequest; userId: string | null; styleId: string }]
       >()
       .mockResolvedValue({ allowed: true });
+    releaseRateLimitAttemptFn = jest.fn().mockResolvedValue(true);
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {
       // keep test output deterministic
     });
@@ -123,6 +176,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -137,8 +191,14 @@ describe("StyleGenerateRoute integration tests", () => {
       userId: null,
       styleId: STYLE_ID,
     });
-    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(2);
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(1, {
+      userId: null,
+      authState: "guest",
+      eventType: "generate_attempt",
+      styleId: STYLE_ID,
+    });
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(2, {
       userId: null,
       authState: "guest",
       eventType: "generate",
@@ -158,6 +218,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -177,6 +238,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -200,6 +262,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -223,6 +286,7 @@ describe("StyleGenerateRoute integration tests", () => {
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -247,21 +311,10 @@ describe("StyleGenerateRoute integration tests", () => {
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent"
     );
     expect(requestBody.contents[0].parts[0]).toEqual({
-      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
-
-1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
-
-2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
-
-3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
-
-Maintain the exact artistic style, brushwork, and original composition.
-
-Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.
-
-Styling Direction:
-RAW PROMPT
-SECOND LINE`,
+      text: buildExpectedPrompt({
+        backgroundInstruction:
+          STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+      }),
     });
     expect(requestBody.contents[0].parts).toHaveLength(2);
     expect(requestBody.contents[0].parts[1]).toEqual({
@@ -309,6 +362,7 @@ SECOND LINE`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -345,6 +399,7 @@ SECOND LINE`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -354,7 +409,7 @@ SECOND LINE`,
         "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
       errorCode: "STYLE_RATE_LIMIT_DAILY",
       signupCta: true,
-      signupPath: "/signup?next=%2Fstyle",
+      signupPath: "/signup?next=%2Fstyle&signup_source=style",
     });
     expect(fetchFn).not.toHaveBeenCalled();
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
@@ -382,13 +437,13 @@ SECOND LINE`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
     expect(response.status).toBe(429);
     expect(body).toEqual({
-      error:
-        "本日の生成回数が上限に達しました。明日以降に再度お試しください。",
+      error: "本日の無料分の生成回数が上限に達しました。",
       errorCode: "STYLE_RATE_LIMIT_AUTHENTICATED_DAILY",
     });
     expect(fetchFn).not.toHaveBeenCalled();
@@ -413,6 +468,7 @@ SECOND LINE`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -428,21 +484,11 @@ SECOND LINE`,
     };
 
     expect(requestBody.contents[0].parts[0]).toEqual({
-      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
-
-1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
-
-2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
-
-3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
-
-Generate a photorealistic result based on the uploaded photo. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.
-
-Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.
-
-Styling Direction:
-RAW PROMPT
-SECOND LINE`,
+      text: buildExpectedPrompt({
+        sourceImageType: "real",
+        backgroundInstruction:
+          STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+      }),
     });
   });
 
@@ -465,6 +511,7 @@ SECOND LINE`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -480,24 +527,10 @@ SECOND LINE`,
     };
 
     expect(requestBody.contents[0].parts[0]).toEqual({
-      text: `CRITICAL INSTRUCTION: strictly follow these steps before initiating the image generation process.
-
-1. Analyze Source Image: Precisely analyze the framing, composition, and visible body parts of the uploaded image. Determine exactly what is depicted (e.g., full body, upper body only, waist up, etc.).
-
-2. Modify Prompt (Filtering): Based on your analysis, automatically modify the detailed description prompt below. Completely remove any text descriptions that refer to body parts or items NOT visible in the original image (e.g., if the original is waist-up, delete all references to trousers, bare legs, feet, and shoes).
-
-3. Strictly Limited Generation: Generate the new image using only the filtered prompt details. Apply clothing details only within the visible frame of the original image. Strictly ignore and exclude any elements that are outside the original cropping, even if described below.
-
-Maintain the exact artistic style, brushwork, and original composition.
-
-You may restyle the background within the existing framing so it complements the selected outfit. Preserve the camera angle, crop, composition, pose, facial features, and character identity.
-
-Styling Direction:
-RAW PROMPT
-SECOND LINE
-
-Background Direction:
-Soft spring city street with blossoms`,
+      text: buildExpectedPrompt({
+        backgroundInstruction: STYLE_PROMPT_CHANGE_BACKGROUND_SUFFIX,
+        backgroundPrompt: "Soft spring city street with blossoms",
+      }),
     });
   });
 
@@ -523,6 +556,13 @@ Soft spring city street with blossoms`,
   });
 
   test("postStyleGenerateRoute_timeout時_504を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
     fetchFn.mockRejectedValueOnce(
       Object.assign(new Error("aborted"), { name: "AbortError" })
     );
@@ -538,15 +578,30 @@ Soft spring city street with blossoms`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
     expect(response.status).toBe(504);
     expect(body.error).toBe("画像生成がタイムアウトしました。もう一度お試しください。");
     expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+      reason: "timeout",
+    });
   });
 
   test("postStyleGenerateRoute_safetyBlock時_400を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
     fetchFn.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
@@ -574,6 +629,7 @@ Soft spring city street with blossoms`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -581,9 +637,17 @@ Soft spring city street with blossoms`,
     expect(body.error).toBe(
       "安全性でブロックされました。画像または指示を調整して再試行してください。"
     );
+    expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
   });
 
   test("postStyleGenerateRoute_noImageResponse時_502を返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
     fetchFn.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
@@ -616,6 +680,7 @@ Soft spring city street with blossoms`,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
       checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
     const body = await readJson(response);
 
@@ -624,5 +689,119 @@ Soft spring city street with blossoms`,
       "画像が生成されませんでした（finishReason: STOP）。別の画像や入力で再試行してください。"
     );
     expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+      reason: "no_image_generated",
+    });
+  });
+
+  test("postStyleGenerateRoute_upstream5xx時_releaseして同じstatusを返す", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
+    fetchFn.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "upstream overloaded",
+          },
+        }),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(503);
+    expect(body.error).toBe("upstream overloaded");
+    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+      reason: "upstream_error",
+    });
+  });
+
+  test("postStyleGenerateRoute_MALFORMED_FUNCTION_CALLリトライ時_2回目にreinforcementPrefix付きで送信する", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: {
+        authState: "authenticated",
+        attemptId: "attempt-auth-001",
+      },
+    });
+    fetchFn.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: { parts: [{ text: "" }] },
+              finishReason: "MALFORMED_FUNCTION_CALL",
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    fetchFn.mockResolvedValueOnce(createSuccessResponse());
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+
+    const firstBody = JSON.parse(
+      String(fetchFn.mock.calls[0][1]?.body)
+    ) as { contents: Array<{ parts: Array<{ text?: string }> }> };
+    const secondBody = JSON.parse(
+      String(fetchFn.mock.calls[1][1]?.body)
+    ) as { contents: Array<{ parts: Array<{ text?: string }> }> };
+
+    const firstText = firstBody.contents[0].parts[0].text ?? "";
+    const secondText = secondBody.contents[0].parts[0].text ?? "";
+    expect(firstText.startsWith("RETRY NOTICE")).toBe(false);
+    expect(secondText.startsWith("RETRY NOTICE (attempt 2)")).toBe(true);
+    expect(secondText).toBe(
+      `${buildStyleAttemptReinforcementPrefix(2)}${firstText}`
+    );
+    expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
   });
 });

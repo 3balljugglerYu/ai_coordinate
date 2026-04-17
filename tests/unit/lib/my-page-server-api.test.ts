@@ -249,7 +249,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       expect(mockCreateClient).toHaveBeenCalledTimes(1);
       expect(supabase.from).toHaveBeenCalledWith("profiles");
       expect(supabase.fromCalls.profiles[0].calls.select).toEqual([
-        ["id, nickname, bio, avatar_url"],
+        ["id, nickname, bio, avatar_url, subscription_plan"],
       ]);
       expect(supabase.fromCalls.profiles[0].calls.eq).toEqual([["user_id", "user-1"]]);
       expect(supabase.fromCalls.profiles[0].calls.single).toBe(1);
@@ -259,6 +259,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: "Taro",
         bio: "bio",
         avatar_url: "/avatar.png",
+        subscription_plan: "free",
         email: "own@example.com",
       });
     });
@@ -315,6 +316,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: null,
         bio: null,
         avatar_url: null,
+        subscription_plan: "free",
         email: undefined,
       });
       expect(unauthenticatedResult).toEqual({
@@ -322,6 +324,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: "Guest",
         bio: null,
         avatar_url: null,
+        subscription_plan: "free",
         email: undefined,
       });
       expect(differentUserSupabase.getUser).toHaveBeenCalledTimes(1);
@@ -359,6 +362,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         nickname: "Hanako",
         bio: null,
         avatar_url: "/avatar-2.png",
+        subscription_plan: "free",
       });
     });
   });
@@ -864,6 +868,43 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       ]);
       expect(supabase.fromCalls.generated_images[0].calls.range).toEqual([[0, 49]]);
     });
+
+    test("getMyImagesServer_one_tap_styleのpromptは空文字にする", async () => {
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [
+            {
+              rangeResult: {
+                data: [
+                  createImageRecord({
+                    id: "style-1",
+                    generation_type: "one_tap_style",
+                    prompt: "secret style prompt",
+                  }),
+                ],
+                error: null,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await getMyImagesServer(
+        "user-1",
+        "all",
+        10,
+        0,
+        supabase.client as never
+      );
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: "style-1",
+          generation_type: "one_tap_style",
+          prompt: "",
+        }),
+      ]);
+    });
   });
 
   describe("MPSAPI-010 getMyImagesServer", () => {
@@ -996,6 +1037,40 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       await expect(
         getImageDetailServer("user-1", "image-1", errorSupabase.client as never)
       ).resolves.toBeNull();
+    });
+
+    test("getImageDetailServer_one_tap_styleのpromptは空文字にする", async () => {
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [
+            {
+              singleResult: {
+                data: createImageRecord({
+                  id: "style-detail",
+                  user_id: "user-7",
+                  generation_type: "one_tap_style",
+                  prompt: "high value secret prompt",
+                }),
+                error: null,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await getImageDetailServer(
+        "user-7",
+        "style-detail",
+        supabase.client as never
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: "style-detail",
+          generation_type: "one_tap_style",
+          prompt: "",
+        })
+      );
     });
   });
 

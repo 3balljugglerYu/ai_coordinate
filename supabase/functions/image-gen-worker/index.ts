@@ -6,11 +6,13 @@ import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
 import {
   buildPrompt as buildSharedPrompt,
   backgroundModeToBackgroundChange,
+  buildCoordinateAttemptReinforcementPrefix,
   resolveBackgroundMode,
 } from "../../../shared/generation/prompt-core.ts";
 import type {
   GenerationType,
 } from "../../../shared/generation/prompt-core.ts";
+import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import {
   MALFORMED_GEMINI_PARTS_ERROR,
   isInvalidGeminiArgumentErrorMessage,
@@ -18,6 +20,10 @@ import {
   SAFETY_POLICY_BLOCKED_ERROR,
   isSafetyPolicyBlockedErrorMessage,
 } from "../../../shared/generation/errors.ts";
+import {
+  getOneTapStylePresetMetadata,
+  getOneTapStyleReservedAttemptId,
+} from "../../../shared/generation/one-tap-style-metadata.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -32,6 +38,32 @@ const PROCESSING_STALE_TIMEOUT_SECONDS = 360; // processing状態がこの秒数
 
 const INPUT_IMAGE_FETCH_MAX_ATTEMPTS = 3;
 const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
+
+const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
+
+type GeminiAttemptMetadata = {
+  attempt: number;
+  startedAt: string;
+  durationMs: number;
+  httpStatus: number | null;
+  httpOk: boolean;
+  finishReasons: string[];
+  hasImage: boolean;
+  timedOut: boolean;
+  errorMessage: string | null;
+  reinforcementApplied: boolean;
+};
+
+function extractGeminiFinishReasons(payload: GeminiResponse | null | undefined): string[] {
+  if (!payload?.candidates || payload.candidates.length === 0) {
+    return [];
+  }
+  const reasons = payload.candidates
+    .map((candidate) => candidate?.finishReason?.trim())
+    .filter((reason): reason is string => Boolean(reason));
+  return Array.from(new Set(reasons));
+}
 
 type InputImageData = {
   base64: string;
@@ -131,8 +163,15 @@ async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promis
   let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= INPUT_IMAGE_FETCH_MAX_ATTEMPTS; attempt++) {
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(
+      () => abortController.abort(),
+      INPUT_IMAGE_FETCH_TIMEOUT_MS
+    );
     try {
-      const response = await fetch(inputImageUrl);
+      const response = await fetch(inputImageUrl, {
+        signal: abortController.signal,
+      });
       if (response.ok) {
         const imageBlob = await response.blob();
         const mimeType = imageBlob.type || "image/png";
@@ -149,7 +188,15 @@ async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promis
         break;
       }
     } catch (error) {
-      lastError = error;
+      lastStatus = null;
+      lastError =
+        error instanceof Error && error.name === "AbortError"
+          ? new Error(
+              `URL download timed out after ${INPUT_IMAGE_FETCH_TIMEOUT_MS}ms`
+            )
+          : error;
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (attempt < INPUT_IMAGE_FETCH_MAX_ATTEMPTS) {
@@ -165,6 +212,38 @@ async function downloadInputImageFromUrlWithRetry(inputImageUrl: string): Promis
   throw new Error(`URL download failed: ${lastErrorMessage}`);
 }
 
+async function withInputImageFetchTimeout<T>(
+  operation: PromiseLike<T>,
+  label: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race<T>([
+      Promise.resolve(operation),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `${label} timed out after ${INPUT_IMAGE_FETCH_TIMEOUT_MS}ms`
+              )
+            ),
+          INPUT_IMAGE_FETCH_TIMEOUT_MS
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+type StorageDownloadResult = {
+  data: Blob | null;
+  error: { message: string } | null;
+};
+
 async function downloadInputImageViaStorageFallback(
   supabase: ReturnType<typeof createClient>,
   inputImageUrl: string
@@ -174,9 +253,10 @@ async function downloadInputImageViaStorageFallback(
     throw new Error("Storage path could not be parsed from input_image_url");
   }
 
-  const { data, error } = await supabase.storage
-    .from(location.bucket)
-    .download(location.objectPath);
+  const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+    supabase.storage.from(location.bucket).download(location.objectPath),
+    "Storage fallback download"
+  );
 
   if (error || !data) {
     throw new Error(`Storage fallback download failed: ${error?.message ?? "Unknown error"}`);
@@ -209,9 +289,10 @@ async function downloadInputImageViaStockFallback(
 
   let storagePathError = "";
   if (stock.storage_path) {
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .download(stock.storage_path);
+    const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+      supabase.storage.from(STORAGE_BUCKET).download(stock.storage_path),
+      "Stock fallback download"
+    );
 
     if (!error && data) {
       const mimeType = data.type || "image/png";
@@ -488,6 +569,25 @@ async function refundPercoinsFromGeneration(
     );
   } catch (error) {
     console.error("[Percoin Refund] Error refunding percoins:", error);
+    throw error;
+  }
+}
+
+async function releaseStyleAuthenticatedGenerateAttempt(
+  supabase: ReturnType<typeof createClient>,
+  attemptId: string,
+  reason: "no_image_generated" | "worker_failed" | "infra_error"
+): Promise<void> {
+  const { error } = await supabase.rpc(
+    "release_style_authenticated_generate_attempt",
+    {
+      p_attempt_id: attemptId,
+      p_release_reason: reason,
+      p_released_at: new Date().toISOString(),
+    }
+  );
+
+  if (error) {
     throw error;
   }
 }
@@ -990,28 +1090,59 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗確定時のみ返金（未減算ジョブの過剰返金も防ぐ）
-          try {
-            const { data: consumptionTx } = await supabase
-              .from("credit_transactions")
-              .select("id")
-              .eq("user_id", job.user_id)
-              .eq("transaction_type", "consumption")
-              .eq("metadata->>job_id", jobId)
-              .maybeSingle();
+          // 最終失敗確定時のみ返金または無料枠release（未減算ジョブの過剰返金も防ぐ）
+          const staleOneTapStyleMetadata =
+            job.generation_type === "one_tap_style"
+              ? getOneTapStylePresetMetadata(job)
+              : null;
+          const staleReservedAttemptId =
+            job.generation_type === "one_tap_style"
+              ? getOneTapStyleReservedAttemptId(job)
+              : null;
 
-            if (consumptionTx) {
-              const percoinCost = getPercoinCost(job.model);
-              await refundPercoinsFromGeneration(
+          if (
+            job.generation_type === "one_tap_style" &&
+            staleOneTapStyleMetadata?.billingMode === "free" &&
+            staleReservedAttemptId
+          ) {
+            try {
+              await releaseStyleAuthenticatedGenerateAttempt(
                 supabase,
-                job.user_id,
-                jobId,
-                percoinCost
+                staleReservedAttemptId,
+                "worker_failed"
               );
-              console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
+              console.log(
+                `[Job Processing] Released free style attempt for final stale-failed job ${jobId}`
+              );
+            } catch (releaseError) {
+              console.error(
+                "[Job Processing] Failed to release free style attempt for final stale-failed job:",
+                releaseError
+              );
             }
-          } catch (refundError) {
-            console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
+          } else {
+            try {
+              const { data: consumptionTx } = await supabase
+                .from("credit_transactions")
+                .select("id")
+                .eq("user_id", job.user_id)
+                .eq("transaction_type", "consumption")
+                .eq("metadata->>job_id", jobId)
+                .maybeSingle();
+
+              if (consumptionTx) {
+                const percoinCost = getPercoinCost(job.model);
+                await refundPercoinsFromGeneration(
+                  supabase,
+                  job.user_id,
+                  jobId,
+                  percoinCost
+                );
+                console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
+              }
+            } catch (refundError) {
+              console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
+            }
           }
 
           // 失敗確定したためメッセージを削除
@@ -1066,6 +1197,17 @@ Deno.serve(async () => {
           job.background_mode,
           job.background_change
         );
+        const oneTapStyleMetadata =
+          job.generation_type === "one_tap_style"
+            ? getOneTapStylePresetMetadata(job)
+            : null;
+        const reservedAttemptId =
+          job.generation_type === "one_tap_style"
+            ? getOneTapStyleReservedAttemptId(job)
+            : null;
+        const isFreeOneTapStyleJob =
+          job.generation_type === "one_tap_style" &&
+          oneTapStyleMetadata?.billingMode === "free";
 
         logJobTimeline(jobId, "ジョブ開始", {
           generationType: job.generation_type,
@@ -1075,78 +1217,81 @@ Deno.serve(async () => {
         });
 
         // ===== ペルコイン減算処理（画像生成前に実行） =====
-        currentStage = "charging";
-        try {
-          await measureJobStage(
-            jobId,
-            "charging",
-            stageDurationsMs,
-            async () => {
-              await updateJobProcessingStage(jobId, "charging");
-              const percoinCost = getPercoinCost(job.model);
-              await deductPercoinsFromGeneration(
-                supabase,
-                job.user_id,
-                jobId, // 一時的にjobIdを使用（画像生成後にgenerated_images.idに更新）
-                percoinCost
-              );
+        if (!isFreeOneTapStyleJob) {
+          currentStage = "charging";
+          try {
+            await measureJobStage(
+              jobId,
+              "charging",
+              stageDurationsMs,
+              async () => {
+                await updateJobProcessingStage(jobId, "charging");
+                const percoinCost = getPercoinCost(job.model);
+                await deductPercoinsFromGeneration(
+                  supabase,
+                  job.user_id,
+                  jobId, // 一時的にjobIdを使用（画像生成後にgenerated_images.idに更新）
+                  percoinCost
+                );
+              }
+            );
+          } catch (deductError) {
+            // ペルコイン減算失敗時はジョブを失敗としてマーク
+            console.error("[Job Processing] Failed to deduct percoins:", deductError);
+            const failedAtMs = Date.now();
+            const totalDurationMs =
+              createdAtMs !== null && !Number.isNaN(createdAtMs)
+                ? Math.max(failedAtMs - createdAtMs, 0)
+                : null;
+            logJobTimingSummary({
+              jobId,
+              outcome: "ジョブ失敗",
+              queueWaitMs,
+              workerDurationMs: Math.max(failedAtMs - workerStartedAtMs, 0),
+              totalDurationMs,
+              stageDurationsMs,
+              currentStage,
+              errorMessage:
+                deductError instanceof Error
+                  ? deductError.message
+                  : String(deductError),
+            });
+            const { data: deductionFailedJob, error: deductionFailUpdateError } = await supabase
+              .from("image_jobs")
+              .update({
+                status: "failed",
+                processing_stage: "failed",
+                result_image_url: null,
+                error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
+                completed_at: new Date().toISOString(),
+              })
+              .eq("id", jobId)
+              .eq("status", "processing")
+              .select("id")
+              .maybeSingle();
+
+            if (deductionFailUpdateError) {
+              console.error("Failed to update job status after deduction failure:", deductionFailUpdateError);
+              continue;
             }
-          );
-        } catch (deductError) {
-          // ペルコイン減算失敗時はジョブを失敗としてマーク
-          console.error("[Job Processing] Failed to deduct percoins:", deductError);
-          const failedAtMs = Date.now();
-          const totalDurationMs =
-            createdAtMs !== null && !Number.isNaN(createdAtMs)
-              ? Math.max(failedAtMs - createdAtMs, 0)
-              : null;
-          logJobTimingSummary({
-            jobId,
-            outcome: "ジョブ失敗",
-            queueWaitMs,
-            workerDurationMs: Math.max(failedAtMs - workerStartedAtMs, 0),
-            totalDurationMs,
-            stageDurationsMs,
-            currentStage,
-            errorMessage:
-              deductError instanceof Error
-                ? deductError.message
-                : String(deductError),
-          });
-          const { data: deductionFailedJob, error: deductionFailUpdateError } = await supabase
-            .from("image_jobs")
-            .update({
-              status: "failed",
-              processing_stage: "failed",
-              result_image_url: null,
-              error_message: `ペルコイン減算に失敗しました: ${deductError instanceof Error ? deductError.message : String(deductError)}`,
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", jobId)
-            .eq("status", "processing")
-            .select("id")
-            .maybeSingle();
 
-          if (deductionFailUpdateError) {
-            console.error("Failed to update job status after deduction failure:", deductionFailUpdateError);
-            continue;
-          }
+            if (!deductionFailedJob) {
+              skippedCount++;
+              continue;
+            }
 
-          if (!deductionFailedJob) {
-            skippedCount++;
-            continue;
+            // メッセージを削除
+            await supabase.rpc("pgmq_delete", {
+              p_queue_name: QUEUE_NAME,
+              p_msg_id: msgId,
+            });
+
+            continue; // 次のメッセージを処理
           }
-          
-          // メッセージを削除
-          await supabase.rpc("pgmq_delete", {
-            p_queue_name: QUEUE_NAME,
-            p_msg_id: msgId,
-          });
-          
-          continue; // 次のメッセージを処理
         }
 
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
+        const geminiAttempts: GeminiAttemptMetadata[] = [];
         try {
           let generatedImage: { mimeType: string; data: string } | null = null;
           currentStage = "generating";
@@ -1251,15 +1396,20 @@ Deno.serve(async () => {
                     });
                   }
 
-                  const fullPrompt = job.input_image_url
-                    ? buildSharedPrompt({
-                        generationType: job.generation_type as GenerationType,
-                        outfitDescription: job.prompt_text,
-                        backgroundMode,
-                        sourceImageType:
-                          job.source_image_type === "real" ? "real" : "illustration",
-                      })
-                    : job.prompt_text;
+                  const fullPrompt =
+                    job.generation_type === "one_tap_style"
+                      ? job.prompt_text
+                      : job.input_image_url
+                        ? buildSharedPrompt({
+                            generationType: job.generation_type as GenerationType,
+                            outfitDescription: job.prompt_text,
+                            backgroundMode,
+                            sourceImageType:
+                              job.source_image_type === "real"
+                                ? "real"
+                                : "illustration",
+                          })
+                        : job.prompt_text;
 
                   parts.push({
                     text: fullPrompt,
@@ -1327,39 +1477,128 @@ Deno.serve(async () => {
 
               const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
               const maxAttempts = 2;
+              const isOneTapStyle = job.generation_type === "one_tap_style";
+              const isCoordinate = job.generation_type === "coordinate";
+              const basePromptText =
+                requestBody.contents[0]?.parts.find((part) => typeof part.text === "string")
+                  ?.text ?? "";
 
               for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-                const geminiData = await measureGeneratingSubstep(
-                  jobId,
-                  "geminiRequest",
-                  generatingSubstepDurationsMs,
-                  async () => {
-                    const geminiResponse = await fetch(apiUrl, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": geminiApiKey,
-                      },
-                      body: JSON.stringify(requestBody),
-                    });
+                const reinforcementPrefix = isOneTapStyle
+                  ? buildStyleAttemptReinforcementPrefix(attempt)
+                  : isCoordinate
+                    ? buildCoordinateAttemptReinforcementPrefix(attempt)
+                    : "";
+                const reinforcementApplied = reinforcementPrefix.length > 0;
 
-                    if (!geminiResponse.ok) {
-                      const errorData = await geminiResponse.json();
-                      throw new Error(
-                        errorData.error?.message || `Gemini API error: ${geminiResponse.status}`
+                const attemptParts = requestBody.contents[0].parts.map((part) => {
+                  if (typeof part.text === "string") {
+                    return {
+                      ...part,
+                      text: reinforcementApplied
+                        ? `${reinforcementPrefix}${basePromptText}`
+                        : part.text,
+                    };
+                  }
+                  return part;
+                });
+
+                const attemptRequestBody = {
+                  ...requestBody,
+                  contents: [
+                    {
+                      ...requestBody.contents[0],
+                      parts: attemptParts,
+                    },
+                  ],
+                };
+
+                const attemptStartedAtMs = Date.now();
+                let attemptHttpStatus: number | null = null;
+                let attemptHttpOk = false;
+                let attemptTimedOut = false;
+                let attemptErrorMessage: string | null = null;
+                let geminiData: GeminiResponse | null = null;
+
+                try {
+                  geminiData = await measureGeneratingSubstep(
+                    jobId,
+                    "geminiRequest",
+                    generatingSubstepDurationsMs,
+                    async () => {
+                      const abortController = new AbortController();
+                      const timeoutId = setTimeout(
+                        () => abortController.abort(),
+                        GEMINI_REQUEST_TIMEOUT_MS
                       );
-                    }
+                      try {
+                        const geminiResponse = await fetch(apiUrl, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            "x-goog-api-key": geminiApiKey,
+                          },
+                          body: JSON.stringify(attemptRequestBody),
+                          signal: abortController.signal,
+                        });
 
-                    return (await geminiResponse.json()) as GeminiResponse;
-                  },
-                  { attempt }
-                );
+                        attemptHttpStatus = geminiResponse.status;
+                        attemptHttpOk = geminiResponse.ok;
+
+                        if (!geminiResponse.ok) {
+                          const errorData = await geminiResponse
+                            .json()
+                            .catch(() => null);
+                          throw new Error(
+                            errorData?.error?.message ||
+                              `Gemini API error: ${geminiResponse.status}`
+                          );
+                        }
+
+                        return (await geminiResponse.json()) as GeminiResponse;
+                      } finally {
+                        clearTimeout(timeoutId);
+                      }
+                    },
+                    { attempt }
+                  );
+                } catch (attemptError) {
+                  attemptErrorMessage =
+                    attemptError instanceof Error
+                      ? attemptError.message
+                      : String(attemptError);
+                  if (
+                    attemptError instanceof Error &&
+                    (attemptError.name === "AbortError" ||
+                      /aborted/i.test(attemptErrorMessage))
+                  ) {
+                    attemptTimedOut = true;
+                    attemptErrorMessage = `Gemini request timed out after ${GEMINI_REQUEST_TIMEOUT_MS}ms`;
+                  }
+                  geminiAttempts.push({
+                    attempt,
+                    startedAt: new Date(attemptStartedAtMs).toISOString(),
+                    durationMs: Date.now() - attemptStartedAtMs,
+                    httpStatus: attemptHttpStatus,
+                    httpOk: attemptHttpOk,
+                    finishReasons: [],
+                    hasImage: false,
+                    timedOut: attemptTimedOut,
+                    errorMessage: attemptErrorMessage,
+                    reinforcementApplied,
+                  });
+                  throw attemptError;
+                }
 
                 const nextGeneratedImage = await measureGeneratingSubstep(
                   jobId,
                   "responseProcessing",
                   generatingSubstepDurationsMs,
                   async () => {
+                    if (!geminiData) {
+                      throw new Error("Internal error: Gemini response data is missing.");
+                    }
+
                     if (geminiData.error) {
                       throw new Error(geminiData.error.message || "Gemini API error");
                     }
@@ -1374,6 +1613,20 @@ Deno.serve(async () => {
                   { attempt }
                 );
 
+                const finishReasons = extractGeminiFinishReasons(geminiData);
+                geminiAttempts.push({
+                  attempt,
+                  startedAt: new Date(attemptStartedAtMs).toISOString(),
+                  durationMs: Date.now() - attemptStartedAtMs,
+                  httpStatus: attemptHttpStatus,
+                  httpOk: attemptHttpOk,
+                  finishReasons,
+                  hasImage: Boolean(nextGeneratedImage),
+                  timedOut: false,
+                  errorMessage: null,
+                  reinforcementApplied,
+                });
+
                 if (nextGeneratedImage) {
                   generatedImage = nextGeneratedImage;
                   break;
@@ -1381,7 +1634,8 @@ Deno.serve(async () => {
 
                 if (attempt < maxAttempts) {
                   console.log(
-                    `[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`
+                    `[Job Processing] No images generated (attempt ${attempt}/${maxAttempts}), retrying...`,
+                    { finishReasons }
                   );
                 } else {
                   throw new Error("No images generated");
@@ -1488,6 +1742,7 @@ Deno.serve(async () => {
                   background_change: backgroundModeToBackgroundChange(backgroundMode),
                   is_posted: false,
                   generation_type: job.generation_type,
+                  generation_metadata: job.generation_metadata ?? null,
                   model: dbModel,
                   source_image_stock_id: job.source_image_stock_id,
                 })
@@ -1503,6 +1758,10 @@ Deno.serve(async () => {
 
               // ===== フェーズ4-4: 成功時の処理 =====
               // image_jobsテーブルを更新（成功時）
+              const successGenerationMetadata = {
+                ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
+                geminiAttempts,
+              };
               const { data: succeededJob, error: successUpdateError } = await supabase
                 .from("image_jobs")
                 .update({
@@ -1511,6 +1770,7 @@ Deno.serve(async () => {
                   result_image_url: publicUrl,
                   error_message: null,
                   completed_at: new Date().toISOString(),
+                  generation_metadata: successGenerationMetadata,
                 })
                 .eq("id", jobId)
                 .eq("status", "processing")
@@ -1645,6 +1905,10 @@ Deno.serve(async () => {
           const shouldMarkAsFailed = isNonRetriable || newAttempts >= 3;
 
           // image_jobsテーブルを更新（失敗時）
+          const failureGenerationMetadata = {
+            ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
+            geminiAttempts,
+          };
           const { data: failUpdatedJob, error: failUpdateError } = await supabase
             .from("image_jobs")
             .update({
@@ -1655,6 +1919,7 @@ Deno.serve(async () => {
               attempts: newAttempts,
               started_at: shouldMarkAsFailed ? currentJob?.started_at ?? job.started_at : null,
               completed_at: shouldMarkAsFailed ? new Date().toISOString() : null,
+              generation_metadata: failureGenerationMetadata,
             })
             .eq("id", jobId)
             .eq("status", "processing")
@@ -1672,20 +1937,48 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗が確定した場合のみ返金
+          // 最終失敗が確定した場合のみ返金または無料枠release
           if (shouldMarkAsFailed) {
-            try {
-              const percoinCost = getPercoinCost(job.model);
-              await refundPercoinsFromGeneration(
-                supabase,
-                job.user_id,
-                jobId,
-                percoinCost
-              );
-              console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
-            } catch (refundError) {
-              // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
-              console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
+            if (isFreeOneTapStyleJob) {
+              const shouldReleaseFreeAttempt =
+                reservedAttemptId !== null &&
+                !isSafetyPolicyBlockedErrorMessage(errorMessage);
+
+              if (shouldReleaseFreeAttempt) {
+                try {
+                  const releaseReason =
+                    errorMessage === "No images generated"
+                      ? "no_image_generated"
+                      : "worker_failed";
+                  await releaseStyleAuthenticatedGenerateAttempt(
+                    supabase,
+                    reservedAttemptId,
+                    releaseReason
+                  );
+                  console.log(
+                    `[Job Processing] Released free style attempt for failed job ${jobId}`
+                  );
+                } catch (releaseError) {
+                  console.error(
+                    "[Job Processing] Failed to release free style attempt after final generation failure:",
+                    releaseError
+                  );
+                }
+              }
+            } else {
+              try {
+                const percoinCost = getPercoinCost(job.model);
+                await refundPercoinsFromGeneration(
+                  supabase,
+                  job.user_id,
+                  jobId,
+                  percoinCost
+                );
+                console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
+              } catch (refundError) {
+                // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
+                console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
+              }
             }
           }
 

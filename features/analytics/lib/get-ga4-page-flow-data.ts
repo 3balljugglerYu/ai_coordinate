@@ -13,13 +13,13 @@ import type {
 
 const TRACKED_PAGE_PATHS = [
   "/",
+  "/credits/purchase",
   "/pricing",
   "/login",
   "/signup",
   "/coordinate",
   "/my-page",
   "/my-page/credits",
-  "/my-page/credits/purchase",
 ] as const;
 
 const DEFAULT_DISABLED_MESSAGE =

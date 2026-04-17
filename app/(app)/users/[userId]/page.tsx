@@ -23,7 +23,7 @@ export async function generateMetadata({
   let profile;
   try {
     profile = await getUserProfileServer(userId);
-  } catch (error) {
+  } catch {
     // エラーが発生した場合は404用のメタデータを返す
     return {
       title: "ユーザーが見つかりません | Persta.AI",

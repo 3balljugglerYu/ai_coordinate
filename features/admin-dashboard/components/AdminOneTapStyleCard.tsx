@@ -1,11 +1,11 @@
 import {
-  AlertTriangle,
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
-  Download,
   Eye,
+  MousePointerClick,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import {
   Card,
@@ -43,15 +43,15 @@ const metricConfig: Record<
     accentClassName: "text-emerald-700",
     iconBgClassName: "bg-emerald-100",
   },
-  downloads: {
-    icon: Download,
+  signupClicks: {
+    icon: MousePointerClick,
     accentClassName: "text-amber-700",
     iconBgClassName: "bg-amber-100",
   },
-  rateLimited: {
-    icon: AlertTriangle,
-    accentClassName: "text-rose-700",
-    iconBgClassName: "bg-rose-100",
+  signupCompletions: {
+    icon: UserPlus,
+    accentClassName: "text-violet-700",
+    iconBgClassName: "bg-violet-100",
   },
 };
 
@@ -100,7 +100,7 @@ export function AdminOneTapStyleCard({
           One-Tap Style
         </CardTitle>
         <CardDescription className="text-sm leading-6 text-slate-600">
-          対象期間の One-Tap Style 利用状況です。訪問、生成成功、ダウンロード、上限超過リクエストを前期間比較で確認できます。
+          対象期間の One-Tap Style 利用状況です。訪問、生成成功、新規登録CTAクリック、登録完了を前期間比較で確認できます。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

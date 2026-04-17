@@ -23,7 +23,11 @@ const envSchema = {
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_SECRET_KEY_TEST: process.env.STRIPE_SECRET_KEY_TEST,
+  STRIPE_SECRET_KEY_LIVE: process.env.STRIPE_SECRET_KEY_LIVE,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_WEBHOOK_SECRET_TEST: process.env.STRIPE_WEBHOOK_SECRET_TEST,
+  STRIPE_WEBHOOK_SECRET_LIVE: process.env.STRIPE_WEBHOOK_SECRET_LIVE,
   STRIPE_PRICING_TABLE_ID: process.env.STRIPE_PRICING_TABLE_ID,
   NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID: process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID,
 
@@ -108,7 +112,13 @@ function getEnv() {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       envSchema.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
     STRIPE_SECRET_KEY: envSchema.STRIPE_SECRET_KEY || "",
+    STRIPE_SECRET_KEY_TEST: envSchema.STRIPE_SECRET_KEY_TEST || "",
+    STRIPE_SECRET_KEY_LIVE: envSchema.STRIPE_SECRET_KEY_LIVE || "",
     STRIPE_WEBHOOK_SECRET: envSchema.STRIPE_WEBHOOK_SECRET || "",
+    STRIPE_WEBHOOK_SECRET_TEST:
+      envSchema.STRIPE_WEBHOOK_SECRET_TEST || "",
+    STRIPE_WEBHOOK_SECRET_LIVE:
+      envSchema.STRIPE_WEBHOOK_SECRET_LIVE || "",
     STRIPE_PRICING_TABLE_ID:
       envSchema.STRIPE_PRICING_TABLE_ID || "",
     NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID:
@@ -140,6 +150,34 @@ function getEnv() {
 }
 
 export const env = getEnv();
+
+export function getStripeWebhookSecrets(): string[] {
+  return Array.from(
+    new Set(
+      [
+        env.STRIPE_WEBHOOK_SECRET,
+        env.STRIPE_WEBHOOK_SECRET_TEST,
+        env.STRIPE_WEBHOOK_SECRET_LIVE,
+      ].filter((value): value is string => value.trim().length > 0)
+    )
+  );
+}
+
+export function getStripeSecretKeyForMode(livemode: boolean): string {
+  if (livemode) {
+    return env.STRIPE_SECRET_KEY_LIVE || env.STRIPE_SECRET_KEY;
+  }
+
+  return env.STRIPE_SECRET_KEY_TEST || env.STRIPE_SECRET_KEY;
+}
+
+export function getStripeSecretKeyForVerification(): string {
+  return (
+    env.STRIPE_SECRET_KEY ||
+    env.STRIPE_SECRET_KEY_TEST ||
+    env.STRIPE_SECRET_KEY_LIVE
+  );
+}
 
 /**
  * サイトのベースURLを取得（サーバーサイド用）

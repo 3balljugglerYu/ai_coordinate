@@ -152,7 +152,7 @@ describe("GenerationForm", () => {
   test("表示_プロンプト上限と文字数表示を出す", async () => {
     // Spec: GENFORM-001
     await act(async () => {
-      render(<GenerationForm onSubmit={jest.fn()} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     const textarea = screen.getByRole("textbox");
@@ -174,7 +174,7 @@ describe("GenerationForm", () => {
     // Spec: GENFORM-002
     const onSubmit = jest.fn();
     await act(async () => {
-      render(<GenerationForm onSubmit={onSubmit} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
     });
 
     await act(async () => {
@@ -188,7 +188,7 @@ describe("GenerationForm", () => {
   test("表示_プロンプト超過の間は送信無効", async () => {
     // Spec: GENFORM-003
     await act(async () => {
-      render(<GenerationForm onSubmit={jest.fn()} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     fireEvent.change(screen.getByRole("textbox"), {
@@ -201,7 +201,7 @@ describe("GenerationForm", () => {
   test("表示_アップロード未選択の間は送信無効", async () => {
     // Spec: GENFORM-004
     await act(async () => {
-      render(<GenerationForm onSubmit={jest.fn()} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     fireEvent.change(screen.getByRole("textbox"), {
@@ -214,7 +214,7 @@ describe("GenerationForm", () => {
   test("表示_ストック未選択の間は送信無効", async () => {
     // Spec: GENFORM-005
     await act(async () => {
-      render(<GenerationForm onSubmit={jest.fn()} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     fireEvent.click(screen.getByRole("button", { name: /Stock/i }));
@@ -229,7 +229,7 @@ describe("GenerationForm", () => {
     // Spec: GENFORM-006
     const onSubmit = jest.fn();
     await act(async () => {
-      render(<GenerationForm onSubmit={onSubmit} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
     });
 
     fireEvent.change(screen.getByRole("textbox"), {
@@ -258,7 +258,7 @@ describe("GenerationForm", () => {
 
   test("表示_既定モデルと必要ペルコインがNano Banana 0.5Kになる", async () => {
     await act(async () => {
-      render(<GenerationForm onSubmit={jest.fn()} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     expect(
@@ -272,7 +272,13 @@ describe("GenerationForm", () => {
   test("表示_生成中は送信ボタン無効", async () => {
     // Spec: GENFORM-007
     await act(async () => {
-      render(<GenerationForm onSubmit={jest.fn()} isGenerating />);
+      render(
+        <GenerationForm
+          subscriptionPlan="free"
+          onSubmit={jest.fn()}
+          isGenerating
+        />
+      );
     });
 
     expect(getSubmitButton()).toBeDisabled();
@@ -302,7 +308,7 @@ describe("GenerationForm", () => {
       });
 
       await act(async () => {
-        render(<GenerationForm onSubmit={onSubmit} />);
+        render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
       });
 
       fireEvent.change(screen.getByRole("textbox"), {
@@ -340,7 +346,7 @@ describe("GenerationForm", () => {
     localStorage.setItem("selectedStockId", "stock-abc");
 
     await act(async () => {
-      render(<GenerationForm onSubmit={jest.fn()} />);
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     expect(localStorage.getItem("selectedStockId")).toBe("stock-abc");

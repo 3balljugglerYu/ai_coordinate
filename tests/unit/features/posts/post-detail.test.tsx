@@ -10,6 +10,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { PostDetail } from "@/features/posts/components/PostDetail";
 import type { Post } from "@/features/posts/types";
 
@@ -27,6 +28,10 @@ jest.mock("next/image", () => ({
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
+}));
+
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(),
 }));
 
 jest.mock("@/components/ui/use-toast", () => ({
@@ -151,8 +156,12 @@ jest.mock("@/components/ui/dropdown-menu", () => ({
 const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
+const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
 
-const messages: Record<string, string> = {
+const routerPushMock = jest.fn();
+
+const messages: Record<string, Record<string, string>> = {
+  posts: {
   anonymousUser: "Anonymous",
   postImageAlt: "Post image",
   noImage: "No image",
@@ -168,11 +177,33 @@ const messages: Record<string, string> = {
   postSubmit: "Submit post",
   edit: "Edit",
   unpost: "Unpost",
+  },
+  style: {
+    detailPresetLabel: "Generated with One-Tap Style",
+    detailPresetCardAlt: "{name} style card",
+    detailReuseConfirmTitle: "Use this outfit?",
+    detailReuseConfirmDescription:
+      "Selecting yes will open One-Tap Style with this card preselected.",
+    detailReuseConfirmCancel: "Cancel",
+    detailReuseConfirmAction: "Yes",
+  },
 };
 
-function translate(namespace: string | undefined, key: string) {
-  if (namespace !== "posts") return key;
-  return messages[key] ?? key;
+function translate(
+  namespace: string | undefined,
+  key: string,
+  values?: Record<string, string | number>
+) {
+  if (!namespace) return key;
+
+  const template = messages[namespace]?.[key] ?? key;
+  if (!values) {
+    return template;
+  }
+
+  return Object.entries(values).reduce((message, [token, value]) => {
+    return message.replace(`{${token}}`, String(value));
+  }, template);
 }
 
 function createPost(overrides: Partial<Post> = {}): Post {
@@ -204,15 +235,20 @@ describe("PostDetail", () => {
       ok: true,
       json: async () => ({ isFollowing: false }),
     });
+    useRouterMock.mockReturnValue({
+      push: routerPushMock,
+      refresh: jest.fn(),
+    } as unknown as ReturnType<typeof useRouter>);
     Object.assign(navigator, {
       clipboard: {
         writeText: jest.fn().mockResolvedValue(undefined),
       },
     });
     useTranslationsMock.mockImplementation((namespace?: string) => {
-      return ((key: string) => translate(namespace, key)) as ReturnType<
-        typeof useTranslations
-      >;
+      return ((
+        key: string,
+        values?: Record<string, string | number>
+      ) => translate(namespace, key, values)) as ReturnType<typeof useTranslations>;
     });
 
     class MockImage {
@@ -500,5 +536,73 @@ describe("PostDetail", () => {
     await waitFor(() => {
       expect(screen.getByTestId("fullscreen-open")).toBeInTheDocument();
     });
+  });
+
+  test("表示_one_tap_styleの場合_プロンプトセクションを出さない", async () => {
+    const post = createPost({
+      generation_type: "one_tap_style",
+      prompt: "style secret prompt",
+      generation_metadata: {
+        oneTapStyle: {
+          id: "preset-1",
+          title: "PARIS CODE",
+          thumbnailImageUrl: "https://example.com/style-card.webp",
+          thumbnailWidth: 912,
+          thumbnailHeight: 1173,
+          hasBackgroundPrompt: true,
+          billingMode: "free",
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<PostDetail post={post} currentUserId="owner-1" />);
+    });
+
+    expect(screen.queryByText("style secret prompt")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prompt")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Copy/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Generated with One-Tap Style")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /PARIS CODE style card/i })
+    ).toBeInTheDocument();
+  });
+
+  test("表示_one_tap_styleのカード確認後_style画面へ遷移する", async () => {
+    const post = createPost({
+      generation_type: "one_tap_style",
+      prompt: "style secret prompt",
+      generation_metadata: {
+        oneTapStyle: {
+          id: "preset-1",
+          title: "PARIS CODE",
+          thumbnailImageUrl: "https://example.com/style-card.webp",
+          thumbnailWidth: 912,
+          thumbnailHeight: 1173,
+          hasBackgroundPrompt: true,
+          billingMode: "free",
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<PostDetail post={post} currentUserId="owner-1" />);
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: /PARIS CODE style card/i })
+      );
+    });
+
+    expect(screen.getByText("Use this outfit?")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Yes" }));
+    });
+
+    expect(routerPushMock).toHaveBeenCalledWith("/style?style=preset-1");
   });
 });

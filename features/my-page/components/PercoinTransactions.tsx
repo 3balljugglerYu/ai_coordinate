@@ -30,6 +30,7 @@ function formatTransactionType(
   metadata: Record<string, unknown> | null | undefined,
   labels: {
     purchase: string;
+    subscription: string;
     consumption: string;
     refund: string;
     signupBonus: string;
@@ -45,6 +46,8 @@ function formatTransactionType(
   switch (type) {
     case "purchase":
       return labels.purchase;
+    case "subscription":
+      return labels.subscription;
     case "consumption":
       return labels.consumption;
     case "refund":
@@ -217,6 +220,7 @@ export function PercoinTransactions({
   };
   const transactionTypeLabels = {
     purchase: t("transactionTypePurchase"),
+    subscription: t("transactionTypeSubscription"),
     consumption: t("transactionTypeConsumption"),
     refund: t("transactionTypeRefund"),
     signupBonus: t("transactionTypeSignupBonus"),

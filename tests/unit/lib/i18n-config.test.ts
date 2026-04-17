@@ -67,6 +67,7 @@ describe("I18nConfig unit tests from EARS specs", () => {
     test("isPublicPath_設定済み公開パスの場合_trueを返す", () => {
       expect(isPublicPath("/")).toBe(true);
       expect(isPublicPath("/about")).toBe(true);
+      expect(isPublicPath("/credits/purchase")).toBe(true);
       expect(isPublicPath("/posts/post-123")).toBe(true);
       expect(isPublicPath("/i2i/demo-slug")).toBe(true);
     });
@@ -84,6 +85,9 @@ describe("I18nConfig unit tests from EARS specs", () => {
 
     test("localizePublicPath_locale有無にかかわらず公開パスの場合_locale付きパスを返す", () => {
       expect(localizePublicPath("/about", "ja")).toBe("/ja/about");
+      expect(localizePublicPath("/credits/purchase", "en")).toBe(
+        "/en/credits/purchase"
+      );
       expect(localizePublicPath("/en/posts/post-123", "ja")).toBe(
         "/ja/posts/post-123"
       );

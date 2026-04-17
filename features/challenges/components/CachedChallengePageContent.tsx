@@ -23,9 +23,10 @@ export async function CachedChallengePageContent({
   cacheLife("minutes");
 
   const supabase = createAdminClient();
-  const [status, percoinDefaults] = await Promise.all([
-    getChallengeStatusServer(userId, supabase),
-    getPercoinDefaultsForDisplay(),
+  const status = await getChallengeStatusServer(userId, supabase);
+  const [baseDefaults, displayDefaults] = await Promise.all([
+    getPercoinDefaultsForDisplay("free"),
+    getPercoinDefaultsForDisplay(status.subscriptionPlan),
   ]);
 
   return (
@@ -33,9 +34,11 @@ export async function CachedChallengePageContent({
       key={userId}
       initialChallengeStatus={status}
       initialTutorialCompleted={tutorialCompleted}
-      referralBonusAmount={percoinDefaults.referralBonusAmount}
-      dailyPostBonusAmount={percoinDefaults.dailyPostBonusAmount}
-      streakBonusSchedule={percoinDefaults.streakBonusSchedule}
+      referralBonusAmount={displayDefaults.referralBonusAmount}
+      baseDailyPostBonusAmount={baseDefaults.dailyPostBonusAmount}
+      dailyPostBonusAmount={displayDefaults.dailyPostBonusAmount}
+      baseStreakBonusSchedule={baseDefaults.streakBonusSchedule}
+      streakBonusSchedule={displayDefaults.streakBonusSchedule}
     />
   );
 }

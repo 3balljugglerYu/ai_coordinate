@@ -70,6 +70,32 @@ function deriveImageUrls(
   };
 }
 
+async function findGeneratedImageId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  resultImageUrl: string | null
+): Promise<string | null> {
+  if (!resultImageUrl) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("image_url", resultImageUrl)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to fetch generated image id for job:", error);
+    return null;
+  }
+
+  return typeof data?.id === "string" ? data.id : null;
+}
+
 /**
  * 画像生成ステータス取得API
  * image_jobsテーブルから生成ステータスを取得
@@ -118,6 +144,10 @@ export async function GET(request: NextRequest) {
       copy
     );
     const imageUrls = deriveImageUrls(job.status, job.result_image_url);
+    const generatedImageId =
+      job.status === "succeeded"
+        ? await findGeneratedImageId(supabase, user.id, imageUrls.resultImageUrl)
+        : null;
 
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
@@ -127,6 +157,7 @@ export async function GET(request: NextRequest) {
       previewImageUrl: imageUrls.previewImageUrl,
       resultImageUrl: imageUrls.resultImageUrl,
       errorMessage: normalizedErrorMessage,
+      generatedImageId,
     });
   } catch (error) {
     console.error("Status check error:", error);

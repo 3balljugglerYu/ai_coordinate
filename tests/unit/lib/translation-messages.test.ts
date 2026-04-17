@@ -22,6 +22,7 @@ const expectedClientNamespaces = [
   "referral",
   "searchBar",
   "style",
+  "subscription",
   "posts",
   "popupBanners",
   "tutorial",

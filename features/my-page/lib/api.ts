@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import {
+  redactSensitivePrompt,
+  redactSensitivePrompts,
+} from "@/features/generation/lib/prompt-visibility";
 
 interface MyPageApiMessages {
   loginRequired?: string;
@@ -45,7 +49,7 @@ export async function getMyImages(
     );
   }
 
-  return data || [];
+  return redactSensitivePrompts(data || []);
 }
 
 /**
@@ -79,7 +83,7 @@ export async function getImageDetail(
     );
   }
 
-  return data;
+  return redactSensitivePrompt(data);
 }
 
 /**
@@ -126,24 +130,34 @@ export interface FreePercoinBatchExpiring {
   source: string;
 }
 
-export async function getPercoinBalanceBreakdown(): Promise<PercoinBalanceBreakdown> {
+async function getAuthenticatedUserId() {
   const supabase = createClient();
-
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { total: 0, regular: 0, paid: 0, unlimited_bonus: 0, period_limited: 0 };
+  if (error) {
+    throw new Error(error.message);
   }
 
+  if (!user) {
+    throw new Error("Authentication session unavailable");
+  }
+
+  return { supabase, userId: user.id };
+}
+
+export async function getPercoinBalanceBreakdown(): Promise<PercoinBalanceBreakdown> {
+  const { supabase, userId } = await getAuthenticatedUserId();
+
   const { data, error } = await supabase
-    .rpc("get_percoin_balance_breakdown", { p_user_id: user.id })
+    .rpc("get_percoin_balance_breakdown", { p_user_id: userId })
     .maybeSingle();
 
   if (error) {
     console.error("get_percoin_balance_breakdown error:", error.message, error.code, error.details);
-    return { total: 0, regular: 0, paid: 0, unlimited_bonus: 0, period_limited: 0 };
+    throw new Error(error.message);
   }
 
   const raw = data as {
@@ -163,23 +177,15 @@ export async function getPercoinBalanceBreakdown(): Promise<PercoinBalanceBreakd
 }
 
 export async function getFreePercoinBatchesExpiring(): Promise<FreePercoinBatchExpiring[]> {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return [];
-  }
+  const { supabase, userId } = await getAuthenticatedUserId();
 
   const { data, error } = await supabase.rpc("get_free_percoin_batches_expiring", {
-    p_user_id: user.id,
+    p_user_id: userId,
   });
 
   if (error) {
     console.error("get_free_percoin_batches_expiring error:", error);
-    return [];
+    throw new Error(error.message);
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -210,18 +216,10 @@ export async function getPercoinTransactions(
   filter: PercoinTransactionFilter = "all",
   offset = 0
 ): Promise<PercoinTransaction[]> {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return [];
-  }
+  const { supabase, userId } = await getAuthenticatedUserId();
 
   const { data, error } = await supabase.rpc("get_percoin_transactions_with_expiry", {
-    p_user_id: user.id,
+    p_user_id: userId,
     p_filter: filter,
     p_sort: "created_at",
     p_limit: limit,
@@ -230,7 +228,7 @@ export async function getPercoinTransactions(
 
   if (error) {
     console.error("Percoin transactions fetch error:", error.message, error.code, error.details);
-    return [];
+    throw new Error(error.message);
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -246,24 +244,16 @@ export async function getPercoinTransactions(
 export async function getPercoinTransactionsCount(
   filter: PercoinTransactionFilter = "all"
 ): Promise<number> {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return 0;
-  }
+  const { supabase, userId } = await getAuthenticatedUserId();
 
   const { data, error } = await supabase.rpc("get_percoin_transactions_count", {
-    p_user_id: user.id,
+    p_user_id: userId,
     p_filter: filter,
   });
 
   if (error) {
     console.error("get_percoin_transactions_count error:", error.message);
-    return 0;
+    throw new Error(error.message);
   }
 
   return Number(data ?? 0);

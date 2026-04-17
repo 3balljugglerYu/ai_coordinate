@@ -39,6 +39,7 @@ export async function CachedMyPageContent({
 }: CachedMyPageContentProps) {
   "use cache";
   cacheTag(`my-page-${userId}`);
+  cacheTag(`subscription-ui-${userId}`);
   cacheLife("minutes");
 
   const supabase = createAdminClient();
@@ -69,7 +70,7 @@ export async function CachedMyPageContent({
       <UserStats stats={stats} />
 
       <div className="mb-6">
-        <Link href={ROUTES.MY_PAGE_CREDITS_PURCHASE}>
+        <Link href={`${ROUTES.CREDITS_PURCHASE}?tab=subscription`}>
           <Card className="p-4 transition-opacity hover:opacity-90 cursor-pointer">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 flex-1 items-center gap-3">

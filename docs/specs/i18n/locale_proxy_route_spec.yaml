@@ -9,7 +9,6 @@ dependencies:
   services:
     - enforceApiDocsBasicAuth
     - enforceI2iPocBasicAuth
-    - enforceStyleBasicAuth
     - I18nConfig helpers
   external:
     - "@supabase/ssr createServerClient"
@@ -87,44 +86,6 @@ specifications:
       - proxy_GivenI2iPocBasicAuthRejection_ShouldShortCircuitBeforeLocaleHandling
     test_cases_ja:
       - proxy_i2iPOCBasicAuthで拒否された場合_locale処理前に短絡終了する
-
-  - id: LPR-003
-    method: proxy
-    type: unwanted
-    ears: |
-      If Style Basic Auth rejects the request,
-      then the proxy shall return that rejection response immediately
-      and shall not perform locale or authentication processing.
-    ears_ja: |
-      Style Basic Authがリクエストを拒否した場合、
-      proxyはその拒否レスポンスを即座に返し、
-      locale処理および認証処理を行ってはならない。
-    preconditions:
-      - The request is evaluated by proxy
-      - enforceApiDocsBasicAuth returns null
-      - enforceI2iPocBasicAuth returns null
-      - enforceStyleBasicAuth returns a response object
-    preconditions_ja:
-      - リクエストがproxyで評価される
-      - enforceApiDocsBasicAuthがnullを返す
-      - enforceI2iPocBasicAuthがnullを返す
-      - enforceStyleBasicAuthがレスポンスを返す
-    postconditions:
-      success:
-        - Returns the response produced by enforceStyleBasicAuth
-      error:
-        - Does not call locale redirect logic
-        - Does not create a Supabase server client
-    postconditions_ja:
-      success:
-        - enforceStyleBasicAuthが返したレスポンスを返す
-      error:
-        - locale redirectロジックを呼び出さない
-        - Supabase server clientを生成しない
-    test_cases:
-      - proxy_GivenStyleBasicAuthRejection_ShouldShortCircuitBeforeLocaleHandling
-    test_cases_ja:
-      - proxy_styleBasicAuthで拒否された場合_locale処理前に短絡終了する
 
   - id: LPR-004
     method: proxy

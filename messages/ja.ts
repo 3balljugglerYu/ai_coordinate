@@ -95,6 +95,7 @@ export const jaMessages = {
     dailyBonusTitle: "特典獲得！",
     dailyBonusDescription:
       "今日の投稿で{amount}ペルコインを獲得しました！",
+    dailyBonusMultiplierBadge: "{multiplier}x 適用中",
     commentRequired: "コメントを入力してください",
     commentInvalidCharacters: "< と > は使用できません",
     commentTooLong: "コメントは{max}文字以内で入力してください",
@@ -438,6 +439,7 @@ export const jaMessages = {
   credits: {
     managementTitle: "ペルコイン管理",
     managementDescription: "残高と取引履歴を確認できます",
+    purchaseTabLabel: "コイン購入",
     purchaseHeroLine1: "コーディネートを、",
     purchaseHeroLine2: "もっと自由に",
     purchaseDescription: "あなたにぴったりのプランを選んで、創作を続けよう",
@@ -463,6 +465,7 @@ export const jaMessages = {
     emptyPeriodLimited: "期間限定の取引履歴がありません。",
     emptyUsage: "利用履歴がありません。",
     transactionTypePurchase: "購入",
+    transactionTypeSubscription: "サブスク付与",
     transactionTypeConsumption: "生成利用",
     transactionTypeRefund: "生成失敗返却",
     transactionTypeSignupBonus: "新規登録ボーナス",
@@ -523,6 +526,122 @@ export const jaMessages = {
     packageBadgeTrial: "まずはお試し！",
     packageBadgePopular: "一番人気",
     packageBadgeBestValue: "もっともお得！",
+  },
+  subscription: {
+    tabLabel: "サブスクリプション",
+    tabListLabel: "課金メニュー",
+    heroLine1: "コーディネートを、",
+    heroLine2: "もっと自由に",
+    heroDescription:
+      "月額・年額プランで、毎月のペルコイン付与と生成上限の拡張をまとめて利用できます。",
+    panelTitle: "サブスクリプション",
+    panelDescription:
+      "月額・年額プランで、毎月のペルコイン付与と生成上限の拡張を利用できます。",
+    badge: {
+      light: "ライト",
+      standard: "スタンダード",
+      premium: "プレミアム",
+    },
+    plan: {
+      light: "ライトプラン",
+      standard: "スタンダードプラン",
+      premium: "プレミアムプラン",
+    },
+    statusTitle: "サブスクリプション",
+    inactiveTitle: "現在は無料プランです",
+    inactiveDescription:
+      "サブスクに加入すると、毎月のペルコイン付与、生成枚数の拡張、ストック画像上限の拡張が使えます。",
+    joinAction: "プランを見る",
+    monthlyPercoins: "毎月 {amount} ペルコイン付与",
+    cancelAtPeriodEnd: "{date} で解約予定です",
+    resumeAction: "解約を取り消す",
+    resumeError: "解約予定の取り消しに失敗しました。",
+    renewalDate: "次回更新日: {date}",
+    portalError: "契約管理ページを開けませんでした。",
+    manageAction: "契約を管理",
+    comparePlansAction: "プラン比較",
+    recommended: "おすすめ",
+    billing: {
+      month: "月額",
+      year: "年額",
+    },
+    yearlySavings: "年額は約10%OFFです",
+    maxGenerationCount: "1回の最大生成枚数: {count}枚",
+    stockImageLimit: "ストック画像上限: {count}枚",
+    bonusMultiplier: "投稿・ログイン特典: {multiplier}倍",
+    subscribeAction: "このプランにする",
+    currentPlanAction: "現在のプラン",
+    scheduledPlanAction: "反映予約中",
+    checkoutError: "サブスク決済の開始に失敗しました。",
+    changePreviewError: "変更内容の確認に失敗しました。",
+    changeSubmitError: "プラン変更に失敗しました。",
+    changeSuccessImmediate: "プランを更新しました。{amount} ペルコインを付与しました。",
+    changeSuccessImmediateNoGrant: "プランを更新しました。今回のペルコイン付与はありません。",
+    changeSuccessImmediateMonthlyGrant:
+      "プランを更新しました。ペルコイン付与は次回の月次タイミングから反映されます。",
+    changeSuccessScheduled: "{date} の更新タイミングでプランを切り替えます。",
+    cancelScheduledChangeAction: "予約を取り消す",
+    cancelScheduledChangeSuccess: "予約していたプラン変更を取り消しました。",
+    cancelScheduledChangeError: "予約していたプラン変更を取り消せませんでした。",
+    changeDialogImmediateTitle: "この内容で即時変更しますか？",
+    changeDialogImmediateDescription:
+      "支払い完了後すぐに新しい請求期間を開始し、プラン特典も切り替えます。",
+    changeFinalConfirmationTitle: "決済処理を開始しますか？",
+    changeFinalConfirmationDescription:
+      "「はい」を選択すると、保存済みの支払い方法で即時決済を試行します。",
+    changeFinalConfirmationCancelAction: "いいえ",
+    changeFinalConfirmationConfirmAction: "はい、決済を開始する",
+    changeDialogScheduledTitle: "次回更新から変更しますか？",
+    changeDialogScheduledDescription:
+      "現在の請求期間はそのまま利用し、次回更新時に新しいプランへ切り替えます。",
+    changeCurrentPlanLabel: "現在のプラン",
+    changeTargetPlanLabel: "変更後のプラン",
+    changeTargetPriceLabel: "新プラン金額",
+    changeChargeNowLabel: "今回のお支払額",
+    changeCreditLabel: "現プラン未使用分",
+    changeGrantLabel: "付与ペルコイン",
+    changeGrantAmount: "{amount} ペルコイン",
+    changeGrantDifferenceDescription:
+      "ペルコインは、プラン間の差である {amount} ペルコインが付与されます。",
+    changeGrantOnRenewal: "次回更新で付与",
+    changeGrantMonthlySchedule:
+      "年額プランのペルコイン付与は毎月行われます。次回の月次付与から反映します。",
+    changeNoImmediateCharge: "追加請求なし",
+    changePaymentFailureDialogTitle: "支払いが完了しませんでした",
+    changePaymentFailureDialogDescription:
+      "プランは変更されていません。支払い方法を更新してから、もう一度アップグレードしてください。",
+    changePaymentFailureManageAction: "支払い方法を更新",
+    changePaymentFailureCloseAction: "閉じる",
+    changePaymentFormula:
+      "今回のプランの金額 - 現在のプランの未使用分 = 今回のお支払額",
+    changeEffectiveNow: "決済後すぐに反映",
+    changeEffectiveAt: "{date} から反映",
+    changeImmediateHint:
+      "この変更が完了すると、新しい請求期間は {date} を起点に再計算されます。",
+    changeScheduledHint:
+      "{date} までは現在の特典が続き、その後に新しいプランへ切り替わります。",
+    scheduledChangeTitle: "変更を予約しています",
+    scheduledChangeDescription:
+      "{date} の更新タイミングで {plan} / {billing} に切り替わります。",
+    changeActions: {
+      same_interval_upgrade: "今すぐアップグレード",
+      same_interval_downgrade: "次回更新から変更",
+      monthly_to_yearly: "次回更新から年額プランへ切り替える",
+      yearly_to_monthly: "次回更新から月額プランへ切り替える",
+      no_change: "変更なし",
+    },
+    upsellTitle: "この枚数は有料プラン限定です",
+    upsellDescription:
+      "プランをアップグレードすると、1回で生成できる枚数とストック画像の上限が増えます。",
+    upsellPlanSummary:
+      "1回最大{count}枚、ストック{stock}枚、毎月{amount}ペルコイン",
+    laterAction: "あとで",
+    seePlansAction: "料金プランを見る",
+    generationLimitHint:
+      "現在のプランでは1回に{count}枚まで生成できます。上位プランで上限を拡張できます。",
+    purchaseBannerTitle: "まずはサブスクも検討してください",
+    purchaseBannerDescription:
+      "定期的に使うなら、都度購入よりサブスクの方がコスパよく運用できます。",
   },
   coordinate: {
     pageTitle: "コーディネート",
@@ -800,13 +919,19 @@ export const jaMessages = {
     streakRewardText: "最大 +{amount}",
     streakCurrent: "現在の連続記録: {days} 日",
     streakRemaining: "あと {days} 日でコンプリート",
+    boostBadge: "{multiplier}x 適用中",
+    boostComparisonCompact: "{base} → {boosted}",
+    boostExtraLabel: "+{amount} 上乗せ",
     checkedIn: "チェックイン済み",
     checkingIn: "チェックイン中...",
     checkIn: "チェックイン",
     resetAtJst: "日本時間（JST）で毎日0時にリセット",
+    streakBoostLabel: "{plan}特典で最大ボーナスアップ",
+    streakBoostTotalLabel: "14日合計",
     dailyTitle: "デイリー投稿ボーナス",
     dailyDescription:
       "1日1回、生成した画像を投稿してペルコインをゲット！毎日の習慣にしてコインを貯めよう。",
+    dailyBoostLabel: "{plan}特典で今日の投稿ボーナスアップ",
     dailyReceivedTitle: "今日のボーナス獲得済み",
     dailyPendingTitle: "まだ投稿していません",
     dailyReceivedDescription: "明日も投稿してコインをゲットしよう！",
@@ -887,6 +1012,13 @@ export const jaMessages = {
     addImageAction: "画像を追加",
     styleImageAlt: "選択中のスタイル画像",
     styleCardAlt: "{name} のスタイルカード",
+    detailPresetLabel: "ワンタップスタイルで生成",
+    detailPresetCardAlt: "{name} のスタイルカード",
+    detailReuseConfirmTitle: "このコーデを利用しますか？",
+    detailReuseConfirmDescription:
+      "「はい」を選択するとワンタップスタイル画面に移動し、このスタイルが選択された状態になります。",
+    detailReuseConfirmCancel: "キャンセル",
+    detailReuseConfirmAction: "はい",
     uploadImageLabel: "アップロード画像",
     authRequired: "認証が必要です。",
     sourceImageTypeLabel: "アップロード画像のタイプ",
@@ -910,7 +1042,7 @@ export const jaMessages = {
     generateRetryHint:
       "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
     usageLimitHint:
-      "未ログインユーザーは1日3回、ログインユーザーは1日6回まで利用できます。",
+      "未ログインユーザーは1日2回、ログインユーザーは1日5回まで利用できます。",
     generateButton: "Start Styling",
     generatingButton: "生成中...",
     // ステータスカードの見出し
@@ -936,6 +1068,7 @@ export const jaMessages = {
     generationStatusCompleteTitle: "スタイリングが完了しました",
     generationStatusCompleteMessage: "まもなくお披露目です！",
     generationStatusCompleteHint: "",
+    resultReadyToastTitle: "お着替えが完了しました！確認しますか？",
     resultsTitle: "生成結果",
     resultImageAlt: "生成結果",
     resultPlaceholder: "生成した画像がここに表示されます",
@@ -951,10 +1084,18 @@ export const jaMessages = {
       "生成された画像が必要な場合は、必ずダウンロードをしてください。\n生成した画像を削除しても大丈夫ですか？",
     resultResetConfirmCancel: "戻る",
     resultResetConfirmAction: "削除する",
+    resultResetConfirmTitleAuthenticated: "画面上の生成結果を切り替えます",
+    resultResetConfirmDescriptionAuthenticated:
+      "この画面の生成結果は切り替わりますが、保存済みの画像はマイページから確認できます。このまま変更しますか？",
+    resultResetConfirmActionAuthenticated: "変更する",
     resultReplaceConfirmTitle: "現在の生成結果を上書きします",
     resultReplaceConfirmDescription:
       "Start Styling を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
     resultReplaceConfirmAction: "再生成する",
+    resultReplaceConfirmTitleAuthenticated: "現在の生成結果を上書きします",
+    resultReplaceConfirmDescriptionAuthenticated:
+      "この画面の生成結果は新しい画像で上書きされます。保存済みの画像はマイページから確認できます。このまま続けますか？",
+    resultReplaceConfirmActionAuthenticated: "再生成する",
     invalidStylePreset: "無効なスタイルです。",
     invalidUsageEvent: "無効な利用イベントです。",
     guestRateLimitCheckFailed: "利用回数の確認に失敗しました。少し時間をおいて再試行してください。",
@@ -963,10 +1104,22 @@ export const jaMessages = {
     guestRateLimitDaily:
       "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
     authenticatedRateLimitDaily:
-      "本日の生成回数が上限に達しました。明日以降に再度お試しください。",
+      "本日の無料分の生成回数が上限に達しました。",
+    authenticatedPaidContinueHint:
+      "引き続き、1回{cost}ペルコインで生成できます。",
+    authenticatedPaidInsufficientBalance:
+      "残高が不足しています。{cost}ペルコイン以上を用意してから続けてください。",
     guestRateLimitSignupHint:
       "新規登録すると、このまま続きをお試しいただけます。",
     guestRateLimitSignupAction: "新規登録して続ける",
+    paidGenerateButton: "{cost}ペルコインで続ける",
+    percoinBalanceLabel: "現在のペルコイン残高",
+    percoinBalanceLoading: "ペルコイン残高を確認しています...",
+    percoinBalanceUnavailable: "残高を確認できませんでした",
+    percoinBalanceValue: "{balance}ペルコイン",
+    percoinBalanceFetchFailed:
+      "ペルコイン残高の取得に失敗しました。時間をおいて再度お試しください。",
+    percoinPurchaseAction: "ペルコインを購入する",
     remainingDailyNotice: "本日の残り生成回数は{count}回です。",
     rateLimitDialogTitle: "ただいまアクセスが集中しています",
     rateLimitDialogClose: "閉じる",
