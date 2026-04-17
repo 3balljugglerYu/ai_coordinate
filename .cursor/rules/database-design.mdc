@@ -392,7 +392,7 @@ alwaysApply: false
 - ポップアップバナー: `record_popup_banner_interaction`, `reorder_popup_banners`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`
-- コメント削除: `delete_comment_thread`
+- コメント削除: `delete_comment_thread`（親に返信が残る場合は tombstone 化し、最後の返信が消えた時点で tombstone 親も物理削除）
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
 - モデレーション: `mark_post_pending_by_report`, `apply_admin_moderation_decision`
 - 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`

@@ -209,7 +209,7 @@ This matches Supabase/Postgres best practices used in this repo:
 ### What happens
 
 1. `/api/posts/post` updates `generated_images.is_posted = true` and may call `grant_daily_post_bonus`.
-2. Likes and follows are mostly direct table writes through session-scoped routes. Comments now support parent/reply threading through `comments.parent_comment_id`, and parent deletion semantics are centralized in `delete_comment_thread`.
+2. Likes and follows are mostly direct table writes through session-scoped routes. Comments now support parent/reply threading through `comments.parent_comment_id`, and parent deletion semantics are centralized in `delete_comment_thread`. While replies remain, parent deletion becomes a tombstone; once the last reply is removed, that tombstoned parent is physically deleted.
 3. Notifications are not normally inserted from app code.
 4. Postgres triggers create and delete notification rows, keep `comments.last_activity_at` in sync, and emit reply lifecycle broadcasts:
    - `likes` INSERT/DELETE
