@@ -1,0 +1,1 @@
+export const REPLY_PANEL_MOBILE_BREAKPOINT = 768;

@@ -2,10 +2,9 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
-
-const REPLY_PANEL_MOBILE_BREAKPOINT = 768;
 
 interface CommentSectionProps {
   postId: string;
