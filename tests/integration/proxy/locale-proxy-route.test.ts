@@ -369,6 +369,27 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       );
       expectLocaleCookie(response, "ja");
     });
+
+    test("proxy_停止状態ユーザーが公開パスを要求した場合_profile参照せず通過させる", async () => {
+      const supabase = createSupabaseMock({
+        user: { id: "user-public" },
+        deactivatedAt: "2026-03-01T00:00:00.000Z",
+      });
+      createServerClientMock.mockReturnValue(
+        supabase.client as ReturnType<typeof createServerClient>
+      );
+
+      const response = (await proxy(
+        createRequest("http://localhost/en/about", {
+          acceptLanguage: "en-US,en;q=0.9",
+        })
+      )) as NextResponse;
+
+      expect(response.status).toBe(200);
+      expect(getForwardedLocaleHeader(response)).toBe("en");
+      expectLocaleCookie(response, "en");
+      expect(supabase.from).not.toHaveBeenCalled();
+    });
   });
 
   describe("LPR-009 proxy", () => {
@@ -432,6 +453,80 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
         LOCALE_HEADER.toLowerCase()
       );
       expect(getForwardedLocaleHeader(response)).toBe("en");
+      expectLocaleCookie(response, "en");
+    });
+
+    test("createNextResponse_session取得で警告が出ても通過させる", async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, "warn")
+        .mockImplementation(() => undefined);
+
+      createServerClientMock.mockReturnValue(
+        {
+          auth: {
+            getSession: jest.fn().mockResolvedValue({
+              data: { session: null },
+              error: { message: "session failed" },
+            }),
+          },
+          from: jest.fn(),
+        } as ReturnType<typeof createServerClient>
+      );
+
+      try {
+        const response = (await proxy(
+          createRequest("http://localhost/en/about", {
+            acceptLanguage: "en-US,en;q=0.9",
+          })
+        )) as NextResponse;
+
+        expect(response.status).toBe(200);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          "[proxy] Failed to read auth session:",
+          "session failed"
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
+    });
+
+    test("createNextResponse_Supabaseがcookie bridgeを要求した場合_requestとresponseへ反映する", async () => {
+      const supabase = createSupabaseMock({ user: null });
+
+      createServerClientMock.mockImplementation(
+        ((_url, _key, options) => {
+          expect(options.cookies.getAll()).toEqual([
+            expect.objectContaining({
+              name: "sb-refresh-token",
+              value: "refresh-token",
+            }),
+          ]);
+
+          options.cookies.setAll([
+            {
+              name: "sb-access-token",
+              value: "access-token",
+              options: { path: "/", httpOnly: true },
+            },
+          ]);
+
+          return supabase.client;
+        }) as typeof createServerClient
+      );
+
+      const request = createRequest("http://localhost/en/about", {
+        acceptLanguage: "en-US,en;q=0.9",
+        cookie: "sb-refresh-token=refresh-token",
+      });
+
+      const response = (await proxy(request)) as NextResponse;
+
+      expect(response.status).toBe(200);
+      expect(response.cookies.get("sb-access-token")).toMatchObject({
+        value: "access-token",
+        path: "/",
+        httpOnly: true,
+      });
       expectLocaleCookie(response, "en");
     });
   });

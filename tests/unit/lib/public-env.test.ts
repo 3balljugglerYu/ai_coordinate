@@ -52,6 +52,37 @@ describe("Public env helpers", () => {
     expect(getSiteUrlForClient()).toBe(window.location.origin);
   });
 
+  test("development で NEXT_PUBLIC_SITE_URL がない場合は localhost を返す", async () => {
+    process.env.NODE_ENV = "development";
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+
+    const { getSiteUrlForClient } = await import("@/lib/public-env");
+
+    expect(getSiteUrlForClient()).toBe("http://localhost:3000");
+  });
+
+  test("browser でなく production かつ NEXT_PUBLIC_SITE_URL がない場合は空文字を返す", async () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      value: undefined,
+      configurable: true,
+    });
+
+    try {
+      const { getSiteUrlForClient } = await import("@/lib/public-env");
+
+      expect(getSiteUrlForClient()).toBe("");
+    } finally {
+      Object.defineProperty(globalThis, "window", {
+        value: originalWindow,
+        configurable: true,
+      });
+    }
+  });
+
   test("isStripeTestMode は pk_test_ プレフィックスを判定する", async () => {
     process.env.NODE_ENV = "test";
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_123";
