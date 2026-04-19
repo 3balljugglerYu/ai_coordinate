@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition, useRef } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useState,
+  useTransition,
+  useRef,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Home, Sparkles, User as UserIcon, Trophy, Bell /* , Coins */ } from "lucide-react";
@@ -26,9 +32,23 @@ export function NavigationBar() {
   const [, startTransition] = useTransition();
   // プリフェッチ実行フラグ: 1回のみ実行するため
   const hasPrefetched = useRef(false);
+  const pendingResetTimeoutRef = useRef<number | null>(null);
+  const pendingSourcePathRef = useRef<string | null>(null);
   const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
+  const [pendingPathname, setPendingPathname] = useState<string | null>(null);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
+  const effectiveActivePathname = pendingPathname ?? normalizedPathname;
+
+  const clearPendingNavigation = useEffectEvent(() => {
+    if (pendingResetTimeoutRef.current) {
+      clearTimeout(pendingResetTimeoutRef.current);
+      pendingResetTimeoutRef.current = null;
+    }
+
+    pendingSourcePathRef.current = null;
+    setPendingPathname(null);
+  });
 
   useEffect(() => {
     // 初回ロード時のユーザー取得
@@ -58,32 +78,61 @@ export function NavigationBar() {
     }
   }, [localizedHomePath, user, router]);
 
-  const handleNavigation = (path: string) => {
-    const normalizedTargetPath = stripLocalePrefix(path).pathname;
-
-    if (normalizedPathname === normalizedTargetPath) {
+  useEffect(() => {
+    if (!pendingPathname || !pendingSourcePathRef.current) {
       return;
     }
 
+    if (normalizedPathname !== pendingSourcePathRef.current) {
+      clearPendingNavigation();
+    }
+  }, [normalizedPathname, pendingPathname]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingResetTimeoutRef.current) {
+        clearTimeout(pendingResetTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleNavigation = (path: string) => {
+    const normalizedTargetPath = stripLocalePrefix(path).pathname;
+
+    if (pendingPathname || normalizedPathname === normalizedTargetPath) {
+      return;
+    }
+
+    let destinationPath = path;
+    let pendingTargetPath = normalizedTargetPath;
+
+    if (
+      (normalizedTargetPath === "/coordinate" ||
+        normalizedTargetPath === "/challenge" ||
+        normalizedTargetPath === "/notifications" ||
+        normalizedTargetPath.startsWith("/my-page")) &&
+      !user
+    ) {
+      destinationPath = `/login?redirect=/`;
+      pendingTargetPath = "/login";
+    }
+
+    pendingSourcePathRef.current = normalizedPathname;
+    setPendingPathname(pendingTargetPath);
+    if (pendingResetTimeoutRef.current) {
+      clearTimeout(pendingResetTimeoutRef.current);
+    }
+    pendingResetTimeoutRef.current = window.setTimeout(() => {
+      clearPendingNavigation();
+    }, 2000);
+
     // startTransitionでナビゲーションを非ブロッキングにする
     startTransition(() => {
-      // コーディネートとマイページ関連は認証必須
-      if (
-        (normalizedTargetPath === "/coordinate" ||
-          normalizedTargetPath === "/challenge" ||
-          normalizedTargetPath === "/notifications" ||
-          normalizedTargetPath.startsWith("/my-page")) &&
-        !user
-      ) {
-        router.push(`/login?redirect=/`);
-        return;
-      }
-
       if (normalizedTargetPath === "/notifications") {
         void markAnnouncementPageSeen();
       }
 
-      router.push(path);
+      router.push(destinationPath);
     });
   };
 
@@ -103,17 +152,19 @@ export function NavigationBar() {
           {/* ナビゲーションアイテム */}
           <div className="flex flex-1 items-center justify-around">
             {navItems.map(({ path, label, icon: Icon }) => {
-              const isActive =
-                normalizedPathname === stripLocalePrefix(path).pathname;
+              const normalizedItemPath = stripLocalePrefix(path).pathname;
+              const isActive = effectiveActivePathname === normalizedItemPath;
               return (
                 <button
                   key={path}
                   data-tour={path === "/coordinate" ? "coordinate-nav-mobile" : undefined}
                   onClick={() => handleNavigation(path)}
+                  disabled={pendingPathname !== null}
                   className={cn(
                     "relative flex min-w-[60px] flex-col items-center gap-1 px-2 py-2 text-[10px] font-medium transition-all duration-200 ease-out",
-                    "active:scale-80 active:opacity-80",
+                    "active:scale-80 active:opacity-80 disabled:cursor-wait",
                     "md:flex-row md:gap-2 md:text-sm",
+                    pendingPathname !== null && !isActive && "opacity-60",
                     isActive
                       ? "text-primary"
                       : "text-gray-400"
