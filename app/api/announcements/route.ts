@@ -4,9 +4,11 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getAnnouncementsRouteCopy } from "@/features/announcements/lib/route-copy";
 import { listPublishedAnnouncementsForUser } from "@/features/announcements/lib/announcement-repository";
+import { decorateAnnouncementSummary } from "@/features/announcements/lib/presentation";
 
 export async function GET(request: NextRequest) {
-  const copy = getAnnouncementsRouteCopy(getRouteLocale(request));
+  const locale = getRouteLocale(request);
+  const copy = getAnnouncementsRouteCopy(locale);
 
   try {
     const user = await getUser();
@@ -15,7 +17,11 @@ export async function GET(request: NextRequest) {
     }
 
     const announcements = await listPublishedAnnouncementsForUser(user.id);
-    return NextResponse.json({ announcements });
+    return NextResponse.json({
+      announcements: announcements.map((announcement) =>
+        decorateAnnouncementSummary(announcement, locale)
+      ),
+    });
   } catch (error) {
     console.error("[Announcements] GET list error:", error);
     return jsonError(

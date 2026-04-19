@@ -8,16 +8,16 @@ import {
   getAnnouncements,
   markAnnouncementRead,
 } from "@/features/announcements/lib/api";
-import type { AnnouncementSummary } from "@/features/announcements/lib/schema";
+import type { AnnouncementSummaryView } from "@/features/announcements/lib/schema";
 
-export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
+export function useAnnouncements(initialAnnouncements?: AnnouncementSummaryView[]) {
   const t = useTranslations("notifications");
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const hasInitialAnnouncements = initialAnnouncements !== undefined;
   const [isNavigating, startTransition] = useTransition();
-  const [announcements, setAnnouncements] = useState<AnnouncementSummary[]>(
+  const [announcements, setAnnouncements] = useState<AnnouncementSummaryView[]>(
     initialAnnouncements ?? []
   );
   const [isLoading, setIsLoading] = useState(!hasInitialAnnouncements);
@@ -73,7 +73,7 @@ export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
   }, [announcements, router]);
 
   const handleAnnouncementClick = useCallback(
-    (announcement: AnnouncementSummary) => {
+    (announcement: AnnouncementSummaryView) => {
       if (pendingAnnouncementId) {
         return;
       }

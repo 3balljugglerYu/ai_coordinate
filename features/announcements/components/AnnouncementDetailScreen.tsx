@@ -3,30 +3,21 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { AnnouncementDetail } from "@/features/announcements/components/AnnouncementDetail";
 import { markAnnouncementRead } from "@/features/announcements/lib/api";
-import type { AnnouncementDetail as AnnouncementDetailData } from "@/features/announcements/lib/schema";
+import type { AnnouncementDetailView } from "@/features/announcements/lib/schema";
 
 interface AnnouncementDetailScreenProps {
-  announcement: AnnouncementDetailData;
-}
-
-function formatPublishedAt(value: string, locale: string) {
-  return new Date(value).toLocaleDateString(locale === "ja" ? "ja-JP" : "en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  announcement: AnnouncementDetailView;
 }
 
 export function AnnouncementDetailScreen({
   announcement,
 }: AnnouncementDetailScreenProps) {
   const t = useTranslations("notifications");
-  const locale = useLocale();
   const { toast } = useToast();
   const hasMarkedReadRef = useRef(false);
 
@@ -63,7 +54,7 @@ export function AnnouncementDetailScreen({
       <div className="space-y-2">
         <p className="text-sm text-slate-500">
           {t("announcementsPublishedLabel", {
-            date: formatPublishedAt(announcement.publishAt, locale),
+            date: announcement.publishedAtLabel,
           })}
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

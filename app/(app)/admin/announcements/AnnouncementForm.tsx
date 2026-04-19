@@ -15,13 +15,13 @@ import {
 } from "@/components/ui/select";
 import { AnnouncementEditor } from "@/features/announcements/components/AnnouncementEditor";
 import type {
-  AnnouncementAdmin,
+  AnnouncementAdminView,
   AnnouncementStatus,
 } from "@/features/announcements/lib/schema";
 
 interface AnnouncementFormProps {
-  announcement?: AnnouncementAdmin;
-  onSuccess: (announcement: AnnouncementAdmin) => void | Promise<void>;
+  announcement?: AnnouncementAdminView;
+  onSuccess: (announcement: AnnouncementAdminView) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -82,7 +82,7 @@ export function AnnouncementForm({
       );
 
       const payload = (await response.json().catch(() => null)) as
-        | AnnouncementAdmin
+        | AnnouncementAdminView
         | { error?: string }
         | null;
 

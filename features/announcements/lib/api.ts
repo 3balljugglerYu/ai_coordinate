@@ -1,6 +1,6 @@
 import type {
-  AnnouncementDetail,
-  AnnouncementSummary,
+  AnnouncementDetailView,
+  AnnouncementSummaryView,
   AnnouncementUnreadState,
   AnnouncementSeenSurface,
 } from "./schema";
@@ -15,7 +15,7 @@ interface AnnouncementApiMessages {
 
 export async function getAnnouncements(
   messages?: AnnouncementApiMessages
-): Promise<AnnouncementSummary[]> {
+): Promise<AnnouncementSummaryView[]> {
   const response = await fetch("/api/announcements", {
     method: "GET",
     headers: {
@@ -36,14 +36,16 @@ export async function getAnnouncements(
     );
   }
 
-  const data = (await response.json()) as { announcements: AnnouncementSummary[] };
+  const data = (await response.json()) as {
+    announcements: AnnouncementSummaryView[];
+  };
   return data.announcements;
 }
 
 export async function getAnnouncement(
   id: string,
   messages?: AnnouncementApiMessages
-): Promise<AnnouncementDetail> {
+): Promise<AnnouncementDetailView> {
   const response = await fetch(`/api/announcements/${id}`, {
     method: "GET",
     headers: {

@@ -16,6 +16,7 @@ import {
   validateAnnouncementDocument,
 } from "@/features/announcements/lib/announcement-rich-text";
 import { deleteAnnouncementImages } from "@/features/announcements/lib/announcement-storage";
+import { decorateAnnouncementAdmin } from "@/features/announcements/lib/presentation";
 import { revalidateAnnouncements } from "@/features/announcements/lib/revalidate-announcements";
 
 function normalizeSaveInput(input: AnnouncementAdminSaveInput) {
@@ -55,7 +56,9 @@ export async function GET() {
 
   try {
     const announcements = await listAnnouncementsForAdmin();
-    return NextResponse.json(announcements);
+    return NextResponse.json(
+      announcements.map((announcement) => decorateAnnouncementAdmin(announcement))
+    );
   } catch (error) {
     console.error("[Admin Announcements] GET error:", error);
     return NextResponse.json(
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest) {
     });
 
     revalidateAnnouncements(created.id);
-    return NextResponse.json(created);
+    return NextResponse.json(decorateAnnouncementAdmin(created));
   } catch (error) {
     console.error("[Admin Announcements] POST error:", error);
 

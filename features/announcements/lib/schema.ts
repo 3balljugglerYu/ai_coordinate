@@ -57,6 +57,12 @@ export interface AnnouncementAdmin {
   updatedAt: string;
 }
 
+export interface AnnouncementAdminView extends AnnouncementAdmin {
+  publishAtDisplay: string;
+  displayStatusLabel: string;
+  displayStatusClassName: string;
+}
+
 export interface AnnouncementSummary {
   id: string;
   title: string;
@@ -65,9 +71,17 @@ export interface AnnouncementSummary {
   readAt: string | null;
 }
 
+export interface AnnouncementSummaryView extends AnnouncementSummary {
+  publishAtLabel: string;
+}
+
 export interface AnnouncementDetail extends AnnouncementSummary {
   bodyJson: unknown;
   bodyText: string;
+}
+
+export interface AnnouncementDetailView extends AnnouncementDetail {
+  publishedAtLabel: string;
 }
 
 export interface AnnouncementUnreadState {

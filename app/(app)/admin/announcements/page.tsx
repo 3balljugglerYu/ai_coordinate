@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { listAnnouncementsForAdmin } from "@/features/announcements/lib/announcement-repository";
+import { decorateAnnouncementAdmin } from "@/features/announcements/lib/presentation";
 import { AnnouncementListClient } from "./AnnouncementListClient";
 
 export default async function AdminAnnouncementsPage() {
@@ -13,7 +14,9 @@ export default async function AdminAnnouncementsPage() {
     redirect("/");
   }
 
-  const announcements = await listAnnouncementsForAdmin();
+  const announcements = (await listAnnouncementsForAdmin()).map((announcement) =>
+    decorateAnnouncementAdmin(announcement)
+  );
 
   return (
     <div className="space-y-6">

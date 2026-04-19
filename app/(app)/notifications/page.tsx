@@ -1,10 +1,11 @@
 import { Suspense } from "react";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { CachedAnnouncementList } from "@/features/announcements/components/CachedAnnouncementList";
 import { CachedNotificationList } from "@/features/notifications/components/CachedNotificationList";
 import { NotificationsPageTabs } from "@/features/notifications/components/NotificationsPageTabs";
 import { parseNotificationTab } from "@/features/notifications/lib/notification-tab";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 
 interface NotificationsPageProps {
   searchParams?: Promise<{
@@ -18,6 +19,8 @@ export default async function NotificationsPage({
   const params = (await searchParams) ?? {};
   const activeTab = parseNotificationTab(params.tab);
   const t = await getTranslations("notifications");
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const user = await requireAuth();
 
   return (
@@ -66,7 +69,7 @@ export default async function NotificationsPage({
                     </div>
                   }
                 >
-                  <CachedAnnouncementList userId={user.id} />
+                  <CachedAnnouncementList userId={user.id} locale={locale} />
                 </Suspense>
               )}
             </div>

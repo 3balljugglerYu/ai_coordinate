@@ -14,6 +14,7 @@ import {
   validateAnnouncementDocument,
 } from "@/features/announcements/lib/announcement-rich-text";
 import { deleteAnnouncementImages } from "@/features/announcements/lib/announcement-storage";
+import { decorateAnnouncementAdmin } from "@/features/announcements/lib/presentation";
 import { revalidateAnnouncements } from "@/features/announcements/lib/revalidate-announcements";
 
 function difference(source: string[], target: string[]) {
@@ -44,7 +45,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(announcement);
+    return NextResponse.json(decorateAnnouncementAdmin(announcement));
   } catch (error) {
     console.error("[Admin Announcements] GET by id error:", error);
     return NextResponse.json(
@@ -142,7 +143,7 @@ export async function PATCH(
     });
 
     revalidateAnnouncements(updated.id);
-    return NextResponse.json(updated);
+    return NextResponse.json(decorateAnnouncementAdmin(updated));
   } catch (error) {
     console.error("[Admin Announcements] PATCH error:", error);
 

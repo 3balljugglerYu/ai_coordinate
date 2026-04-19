@@ -1,23 +1,15 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import type { AnnouncementSummary } from "@/features/announcements/lib/schema";
+import type { AnnouncementSummaryView } from "@/features/announcements/lib/schema";
 
 interface AnnouncementListItemProps {
-  announcement: AnnouncementSummary;
+  announcement: AnnouncementSummaryView;
   disabled?: boolean;
   isPending?: boolean;
-  onClick: (announcement: AnnouncementSummary) => void;
-}
-
-function formatDate(value: string, locale: string) {
-  return new Date(value).toLocaleDateString(locale === "ja" ? "ja-JP" : "en-US", {
-    year: "numeric",
-    month: locale === "ja" ? "2-digit" : "short",
-    day: "2-digit",
-  });
+  onClick: (announcement: AnnouncementSummaryView) => void;
 }
 
 export function AnnouncementListItem({
@@ -27,7 +19,6 @@ export function AnnouncementListItem({
   onClick,
 }: AnnouncementListItemProps) {
   const t = useTranslations("notifications");
-  const locale = useLocale();
 
   return (
     <button
@@ -43,9 +34,7 @@ export function AnnouncementListItem({
     >
       <div className="flex-1 space-y-1">
         <p className="text-sm font-medium text-slate-900">{announcement.title}</p>
-        <p className="text-xs text-slate-500">
-          {formatDate(announcement.publishAt, locale)}
-        </p>
+        <p className="text-xs text-slate-500">{announcement.publishAtLabel}</p>
       </div>
       {isPending && (
         <Loader2

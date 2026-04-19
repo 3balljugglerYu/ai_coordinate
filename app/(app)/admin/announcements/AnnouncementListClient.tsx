@@ -34,14 +34,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import type { AnnouncementAdmin } from "@/features/announcements/lib/schema";
+import type { AnnouncementAdminView } from "@/features/announcements/lib/schema";
 import { AnnouncementForm } from "./AnnouncementForm";
 
 interface AnnouncementListClientProps {
-  initialAnnouncements: AnnouncementAdmin[];
+  initialAnnouncements: AnnouncementAdminView[];
 }
 
-function sortAnnouncements(items: AnnouncementAdmin[]) {
+function sortAnnouncements(items: AnnouncementAdminView[]) {
   return [...items].sort((a, b) => {
     if (a.publishAt && b.publishAt) {
       const publishDiff =
@@ -58,40 +58,6 @@ function sortAnnouncements(items: AnnouncementAdmin[]) {
   });
 }
 
-function getDisplayStatus(announcement: AnnouncementAdmin) {
-  if (announcement.status === "draft") {
-    return {
-      label: "下書き",
-      className: "bg-slate-100 text-slate-700",
-    };
-  }
-
-  if (announcement.publishAt && new Date(announcement.publishAt) > new Date()) {
-    return {
-      label: "公開予約",
-      className: "bg-amber-100 text-amber-800",
-    };
-  }
-
-  return {
-    label: "公開中",
-    className: "bg-emerald-100 text-emerald-800",
-  };
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return "未設定";
-  }
-
-  return new Date(value).toLocaleString("ja-JP", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export function AnnouncementListClient({
   initialAnnouncements,
 }: AnnouncementListClientProps) {
@@ -101,7 +67,7 @@ export function AnnouncementListClient({
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] =
-    useState<AnnouncementAdmin | null>(null);
+    useState<AnnouncementAdminView | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -179,7 +145,6 @@ export function AnnouncementListClient({
       ) : (
         <div className="space-y-3">
           {announcements.map((announcement) => {
-            const displayStatus = getDisplayStatus(announcement);
             return (
               <div
                 key={announcement.id}
@@ -188,11 +153,11 @@ export function AnnouncementListClient({
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className={displayStatus.className}>
-                        {displayStatus.label}
+                      <Badge className={announcement.displayStatusClassName}>
+                        {announcement.displayStatusLabel}
                       </Badge>
                       <span className="text-xs text-slate-500">
-                        公開日時: {formatDateTime(announcement.publishAt)}
+                        公開日時: {announcement.publishAtDisplay}
                       </span>
                     </div>
                     <h3 className="truncate text-base font-semibold text-slate-900">

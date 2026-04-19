@@ -29,7 +29,7 @@ export async function POST(
     }
 
     await markAnnouncementReadForUser(id, user.id);
-    revalidateTag(`announcements-${user.id}`, "max");
+    revalidateTag(`announcements-${user.id}`, { expire: 0 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[Announcements] POST read error:", error);

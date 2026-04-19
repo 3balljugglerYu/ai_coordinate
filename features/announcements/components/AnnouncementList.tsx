@@ -5,10 +5,10 @@ import { FileText } from "lucide-react";
 import { AnnouncementListItem } from "./AnnouncementListItem";
 import { useAnnouncements } from "@/features/announcements/hooks/useAnnouncements";
 import { useTranslations } from "next-intl";
-import type { AnnouncementSummary } from "@/features/announcements/lib/schema";
+import type { AnnouncementSummaryView } from "@/features/announcements/lib/schema";
 
 interface AnnouncementListProps {
-  initialAnnouncements?: AnnouncementSummary[];
+  initialAnnouncements?: AnnouncementSummaryView[];
 }
 
 export function AnnouncementList({
