@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { FileText } from "lucide-react";
 import { AnnouncementListItem } from "./AnnouncementListItem";
 import { useAnnouncements } from "@/features/announcements/hooks/useAnnouncements";
@@ -14,8 +15,18 @@ export function AnnouncementList({
   initialAnnouncements,
 }: AnnouncementListProps) {
   const t = useTranslations("notifications");
-  const { announcements, isLoading, handleAnnouncementClick } =
+  const {
+    announcements,
+    isLoading,
+    isNavigating,
+    pendingAnnouncementId,
+    handleAnnouncementClick,
+  } =
     useAnnouncements(initialAnnouncements);
+  const disabledAnnouncementId = useMemo(
+    () => pendingAnnouncementId,
+    [pendingAnnouncementId]
+  );
 
   if (isLoading) {
     return (
@@ -48,6 +59,8 @@ export function AnnouncementList({
         <AnnouncementListItem
           key={announcement.id}
           announcement={announcement}
+          disabled={isNavigating}
+          isPending={disabledAnnouncementId === announcement.id}
           onClick={handleAnnouncementClick}
         />
       ))}

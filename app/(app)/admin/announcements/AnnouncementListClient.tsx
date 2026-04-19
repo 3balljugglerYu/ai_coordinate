@@ -41,6 +41,23 @@ interface AnnouncementListClientProps {
   initialAnnouncements: AnnouncementAdmin[];
 }
 
+function sortAnnouncements(items: AnnouncementAdmin[]) {
+  return [...items].sort((a, b) => {
+    if (a.publishAt && b.publishAt) {
+      const publishDiff =
+        new Date(b.publishAt).getTime() - new Date(a.publishAt).getTime();
+
+      if (publishDiff !== 0) {
+        return publishDiff;
+      }
+    } else if (a.publishAt || b.publishAt) {
+      return a.publishAt ? -1 : 1;
+    }
+
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
 function getDisplayStatus(announcement: AnnouncementAdmin) {
   if (announcement.status === "draft") {
     return {
@@ -79,7 +96,9 @@ export function AnnouncementListClient({
   initialAnnouncements,
 }: AnnouncementListClientProps) {
   const { toast } = useToast();
-  const [announcements, setAnnouncements] = useState(initialAnnouncements);
+  const [announcements, setAnnouncements] = useState(() =>
+    sortAnnouncements(initialAnnouncements)
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] =
     useState<AnnouncementAdmin | null>(null);
@@ -92,16 +111,6 @@ export function AnnouncementListClient({
       null,
     [announcements, deleteConfirmId]
   );
-
-  const reload = useCallback(async () => {
-    const response = await fetch("/api/admin/announcements");
-    if (!response.ok) {
-      return;
-    }
-
-    const data = (await response.json()) as AnnouncementAdmin[];
-    setAnnouncements(data);
-  }, []);
 
   const handleDelete = useCallback(async () => {
     if (!deleteConfirmId) {
@@ -259,8 +268,10 @@ export function AnnouncementListClient({
             <DialogTitle>お知らせを作成</DialogTitle>
           </DialogHeader>
           <AnnouncementForm
-            onSuccess={async () => {
-              await reload();
+            onSuccess={(savedAnnouncement) => {
+              setAnnouncements((current) =>
+                sortAnnouncements([savedAnnouncement, ...current])
+              );
               setIsCreateOpen(false);
             }}
             onCancel={() => setIsCreateOpen(false)}
@@ -283,8 +294,16 @@ export function AnnouncementListClient({
           {editingAnnouncement && (
             <AnnouncementForm
               announcement={editingAnnouncement}
-              onSuccess={async () => {
-                await reload();
+              onSuccess={(savedAnnouncement) => {
+                setAnnouncements((current) =>
+                  sortAnnouncements(
+                    current.map((announcement) =>
+                      announcement.id === savedAnnouncement.id
+                        ? savedAnnouncement
+                        : announcement
+                    )
+                  )
+                );
                 setEditingAnnouncement(null);
               }}
               onCancel={() => setEditingAnnouncement(null)}

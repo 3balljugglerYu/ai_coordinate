@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
@@ -15,10 +15,14 @@ export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
   const router = useRouter();
   const { toast } = useToast();
   const hasInitialAnnouncements = initialAnnouncements !== undefined;
+  const [isNavigating, startTransition] = useTransition();
   const [announcements, setAnnouncements] = useState<AnnouncementSummary[]>(
     initialAnnouncements ?? []
   );
   const [isLoading, setIsLoading] = useState(!hasInitialAnnouncements);
+  const [pendingAnnouncementId, setPendingAnnouncementId] = useState<string | null>(
+    null
+  );
 
   const fetchAnnouncements = useCallback(async () => {
     setIsLoading(true);
@@ -50,8 +54,19 @@ export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
     void fetchAnnouncements();
   }, [fetchAnnouncements, hasInitialAnnouncements]);
 
+  useEffect(() => {
+    announcements.slice(0, 5).forEach((announcement) => {
+      router.prefetch(`/notifications/announcements/${announcement.id}`);
+    });
+  }, [announcements, router]);
+
   const handleAnnouncementClick = useCallback(
     (announcement: AnnouncementSummary) => {
+      if (pendingAnnouncementId) {
+        return;
+      }
+
+      setPendingAnnouncementId(announcement.id);
       const wasUnread = !announcement.isRead;
 
       if (wasUnread) {
@@ -90,17 +105,24 @@ export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
                 : currentAnnouncement
             )
           );
+          setPendingAnnouncementId((current) =>
+            current === announcement.id ? null : current
+          );
         });
       }
 
-      router.push(`/notifications/announcements/${announcement.id}`);
+      startTransition(() => {
+        router.push(`/notifications/announcements/${announcement.id}`);
+      });
     },
-    [router, t, toast]
+    [pendingAnnouncementId, router, startTransition, t, toast]
   );
 
   return {
     announcements,
     isLoading,
+    isNavigating,
+    pendingAnnouncementId,
     refresh: fetchAnnouncements,
     handleAnnouncementClick,
   };

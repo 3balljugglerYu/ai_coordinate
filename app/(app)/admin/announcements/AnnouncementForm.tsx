@@ -21,7 +21,7 @@ import type {
 
 interface AnnouncementFormProps {
   announcement?: AnnouncementAdmin;
-  onSuccess: () => void | Promise<void>;
+  onSuccess: (announcement: AnnouncementAdmin) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -82,14 +82,27 @@ export function AnnouncementForm({
       );
 
       const payload = (await response.json().catch(() => null)) as
+        | AnnouncementAdmin
         | { error?: string }
         | null;
 
       if (!response.ok) {
-        throw new Error(payload?.error || "保存に失敗しました");
+        const errorMessage =
+          payload &&
+          typeof payload === "object" &&
+          "error" in payload &&
+          typeof payload.error === "string"
+            ? payload.error
+            : "保存に失敗しました";
+
+        throw new Error(errorMessage);
       }
 
-      await onSuccess();
+      if (!payload || typeof payload !== "object" || !("id" in payload)) {
+        throw new Error("保存に失敗しました");
+      }
+
+      await onSuccess(payload);
       toast({
         title: "保存しました",
         description: "お知らせを保存しました",
