@@ -38,9 +38,6 @@ export async function proxy(request: NextRequest) {
   const { pathname: unprefixedPathname, locale: pathnameLocale } =
     stripLocalePrefix(pathname);
   const isPublicRoute = isPublicPath(unprefixedPathname);
-  const isApiRoute =
-    unprefixedPathname === "/api" || unprefixedPathname.startsWith("/api/");
-
   if (isPublicRoute && !pathnameLocale) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = localizePublicPath(unprefixedPathname, resolvedLocale);
@@ -51,12 +48,6 @@ export async function proxy(request: NextRequest) {
   }
 
   let response = createNextResponse(request, resolvedLocale);
-
-  // API Route Handler 側は各自で認証・locale 解決をしているため、
-  // Proxy では重い Supabase auth/profile 参照を避ける。
-  if (isApiRoute) {
-    return response;
-  }
 
   // 環境変数が設定されていない場合は、認証チェックをスキップ
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -85,14 +76,15 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Proxy では軽量な claims ベースの判定を優先する。
-  // プロジェクト設定によっては内部で Auth サーバー確認へフォールバックする。
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
-  if (claimsError) {
-    console.warn("[proxy] Failed to read auth claims:", claimsError.message);
+  // Proxy では cookie/session から軽量にユーザーを解決する。
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+  if (sessionError) {
+    console.warn("[proxy] Failed to read auth session:", sessionError.message);
   }
-  const userId =
-    typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : null;
+  const userId = session?.user?.id ?? null;
 
   if (userId) {
     // 認証済みユーザーがログイン・サインアップ・パスワードリセットにアクセスしたら /my-page へリダイレクト

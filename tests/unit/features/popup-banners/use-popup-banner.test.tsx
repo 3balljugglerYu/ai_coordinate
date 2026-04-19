@@ -1,4 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import {
+  getCurrentUser,
+  onAuthStateChange,
+} from "@/features/auth/lib/auth-client";
 import { usePopupBanner } from "@/features/popup-banners/hooks/usePopupBanner";
 import { POPUP_BANNER_HISTORY_STORAGE_KEY } from "@/features/popup-banners/lib/popup-banner-display-logic";
 import type {
@@ -8,6 +12,11 @@ import type {
 } from "@/features/popup-banners/lib/schema";
 
 const POPUP_BANNER_IMPRESSION_SESSION_KEY = "popup-banner-impressions-v1";
+
+jest.mock("@/features/auth/lib/auth-client", () => ({
+  getCurrentUser: jest.fn(),
+  onAuthStateChange: jest.fn(),
+}));
 
 function createBanner(
   id: string,
@@ -56,11 +65,19 @@ function readStoredImpressionIds() {
   ) as string[];
 }
 
+const getCurrentUserMock = getCurrentUser as jest.MockedFunction<
+  typeof getCurrentUser
+>;
+const onAuthStateChangeMock = onAuthStateChange as jest.MockedFunction<
+  typeof onAuthStateChange
+>;
+
 describe("usePopupBanner", () => {
   const originalFetch = global.fetch;
   let fetchMock: jest.MockedFunction<typeof fetch>;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     window.localStorage.clear();
     window.sessionStorage.clear();
     fetchMock = jest.fn() as jest.MockedFunction<typeof fetch>;
@@ -69,6 +86,12 @@ describe("usePopupBanner", () => {
       configurable: true,
       value: fetchMock,
     });
+    getCurrentUserMock.mockResolvedValue({ id: "user-1" } as Awaited<
+      ReturnType<typeof getCurrentUser>
+    >);
+    onAuthStateChangeMock.mockReturnValue({
+      unsubscribe: jest.fn(),
+    } as ReturnType<typeof onAuthStateChange>);
   });
 
   afterAll(() => {

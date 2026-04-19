@@ -1,10 +1,10 @@
 /** @jest-environment node */
 
-jest.mock("@/lib/env", () => ({
+jest.mock("@/lib/public-env", () => ({
   getSiteUrlForClient: jest.fn(),
 }));
 
-import { getSiteUrlForClient } from "@/lib/env";
+import { getSiteUrlForClient } from "@/lib/public-env";
 import { getPostDetailPath, getPostDetailUrl } from "@/lib/url-utils";
 
 const mockGetSiteUrlForClient = getSiteUrlForClient as jest.MockedFunction<

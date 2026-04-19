@@ -47,8 +47,11 @@ function createRequest(
 }
 
 function createSupabaseMock(options: SupabaseMockOptions = {}) {
-  const authGetUser = jest.fn().mockResolvedValue({
-    data: { user: options.user ?? null },
+  const authGetSession = jest.fn().mockResolvedValue({
+    data: {
+      session: options.user ? { user: options.user } : null,
+    },
+    error: null,
   });
   const maybeSingle = jest.fn().mockResolvedValue({
     data:
@@ -75,11 +78,11 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
   return {
     client: {
       auth: {
-        getUser: authGetUser,
+        getSession: authGetSession,
       },
       from,
     },
-    authGetUser,
+    authGetSession,
     from,
     select,
     eq,
@@ -247,7 +250,7 @@ describe("Characterization: LocaleProxyRoute", () => {
         "status": 307,
       }
     `);
-    expect(supabase.authGetUser).toHaveBeenCalledTimes(1);
+    expect(supabase.authGetSession).toHaveBeenCalledTimes(1);
   });
 
   test("CHAR-LOCALE-PROXY-005: deactivated authenticated user on api route returns json 403", async () => {
@@ -307,6 +310,6 @@ describe("Characterization: LocaleProxyRoute", () => {
         "status": 307,
       }
     `);
-    expect(supabase.authGetUser).toHaveBeenCalledTimes(1);
+    expect(supabase.authGetSession).toHaveBeenCalledTimes(1);
   });
 });

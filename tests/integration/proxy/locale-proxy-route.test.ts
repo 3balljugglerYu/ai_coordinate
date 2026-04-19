@@ -55,8 +55,11 @@ async function readJson(response: Response): Promise<JsonRecord> {
 }
 
 function createSupabaseMock(options: SupabaseMockOptions = {}) {
-  const authGetUser = jest.fn().mockResolvedValue({
-    data: { user: options.user ?? null },
+  const authGetSession = jest.fn().mockResolvedValue({
+    data: {
+      session: options.user ? { user: options.user } : null,
+    },
+    error: null,
   });
   const maybeSingle = jest.fn().mockResolvedValue({
     data:
@@ -83,11 +86,11 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
   return {
     client: {
       auth: {
-        getUser: authGetUser,
+        getSession: authGetSession,
       },
       from,
     },
-    authGetUser,
+    authGetSession,
     from,
     select,
     eq,
@@ -299,7 +302,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       expect(response.status).toBe(307);
       expect(response.headers.get("location")).toBe("http://localhost/my-page");
       expectLocaleCookie(response, "en");
-      expect(supabase.authGetUser).toHaveBeenCalledTimes(1);
+      expect(supabase.authGetSession).toHaveBeenCalledTimes(1);
       expect(supabase.from).not.toHaveBeenCalled();
     });
   });
@@ -396,6 +399,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
         "http://localhost/login?redirect=%2Fchallenge"
       );
       expectLocaleCookie(response, "en");
+      expect(supabase.authGetSession).toHaveBeenCalledTimes(1);
     });
   });
 
