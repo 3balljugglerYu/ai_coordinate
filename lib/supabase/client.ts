@@ -1,13 +1,13 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { env } from "@/lib/env";
+import { publicEnv } from "@/lib/public-env";
 
 /**
  * ブラウザ用Supabaseクライアント
  * NEXT_PUBLIC_*環境変数を使用
  */
 export function createClient() {
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = publicEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
     throw new Error(
@@ -17,4 +17,3 @@ export function createClient() {
 
   return createBrowserClient(url, anonKey);
 }
-

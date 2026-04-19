@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { generateReferralCode } from "../lib/api";
-import { getSiteUrlForClient } from "@/lib/env";
+import { getSiteUrlForClient } from "@/lib/public-env";
 import { QRCodeSVG } from "qrcode.react";
 /**
  * 紹介コード表示コンポーネント

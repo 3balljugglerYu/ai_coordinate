@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  getCurrentUser,
+  onAuthStateChange,
+} from "@/features/auth/lib/auth-client";
+import {
   buildPopupBannerHistoryEntry,
   buildPopupBannerHistoryMap,
   parsePopupBannerHistory,
@@ -72,7 +76,7 @@ function writeSentImpressionIds(ids: Set<string>) {
   );
 }
 
-async function loadHistory(): Promise<{
+async function loadRemoteHistory(): Promise<{
   history: PopupBannerHistoryMap;
   mode: HistoryMode;
 }> {
@@ -138,6 +142,7 @@ export function usePopupBanner(
   const [currentBanner, setCurrentBanner] = useState<ActivePopupBanner | null>(
     null
   );
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isReady, setIsReady] = useState(false);
   const sentImpressionIdsRef = useRef<Set<string>>(new Set());
 
@@ -146,10 +151,42 @@ export function usePopupBanner(
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
+    getCurrentUser().then((user) => {
+      if (!mounted) {
+        return;
+      }
+
+      setIsAuthenticated(Boolean(user));
+    });
+
+    const subscription = onAuthStateChange((user) => {
+      setIsAuthenticated(Boolean(user));
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated === null) {
+      return;
+    }
+
     let cancelled = false;
 
     async function initialize() {
-      const resolved = await loadHistory();
+      setIsReady(false);
+
+      const resolved = isAuthenticated
+        ? await loadRemoteHistory()
+        : {
+            history: readLocalHistory(),
+            mode: "local" as const,
+          };
       if (cancelled) {
         return;
       }
@@ -174,7 +211,7 @@ export function usePopupBanner(
     return () => {
       cancelled = true;
     };
-  }, [banners]);
+  }, [banners, isAuthenticated]);
 
   const markBannerDisplayed = useCallback(
     (bannerId: string) => {
@@ -203,9 +240,11 @@ export function usePopupBanner(
         return nextHistory;
       });
 
-      void postInteraction(bannerId, "impression");
+      if (isAuthenticated) {
+        void postInteraction(bannerId, "impression");
+      }
     },
-    [currentBanner?.id, historyMode]
+    [currentBanner?.id, historyMode, isAuthenticated]
   );
 
   function applyAction(actionType: PopupBannerActionType) {
@@ -229,7 +268,9 @@ export function usePopupBanner(
       setCurrentBanner(selectNextPopupBanner(banners, nextHistory));
     }
 
-    void postInteraction(currentBanner.id, actionType);
+    if (isAuthenticated) {
+      void postInteraction(currentBanner.id, actionType);
+    }
   }
 
   return {
