@@ -8,7 +8,10 @@ export type AdminAuditAction =
   | "bonus_defaults_update"
   | "deduction"
   | "moderation_approve"
-  | "moderation_reject";
+  | "moderation_reject"
+  | "announcement_create"
+  | "announcement_update"
+  | "announcement_delete";
 
 export interface AdminAuditLogParams {
   adminUserId: string;

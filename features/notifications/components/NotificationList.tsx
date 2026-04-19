@@ -19,6 +19,7 @@ import { User, Heart, MessageCircle, UserPlus, Bell } from "lucide-react";
 interface NotificationListProps {
   initialNotifications?: Notification[];
   initialNextCursor?: string | null;
+  autoMarkAllRead?: boolean;
 }
 
 /**
@@ -29,6 +30,7 @@ interface NotificationListProps {
 export function NotificationList({
   initialNotifications,
   initialNextCursor,
+  autoMarkAllRead = true,
 }: NotificationListProps = {}) {
   const t = useTranslations("notifications");
   const locale = useLocale();
@@ -52,7 +54,7 @@ export function NotificationList({
     handleNotificationClick,
     markAllRead,
     markRead,
-  } = useNotifications(initialData);
+  } = useNotifications(initialData, { autoMarkAllRead });
 
   const { ref: inViewRef, inView } = useInView({
     threshold: 0,

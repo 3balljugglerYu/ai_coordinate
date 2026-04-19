@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 interface CachedNotificationListProps {
   userId: string;
+  autoMarkAllRead?: boolean;
 }
 
 /**
@@ -13,6 +14,7 @@ interface CachedNotificationListProps {
  */
 export async function CachedNotificationList({
   userId,
+  autoMarkAllRead = true,
 }: CachedNotificationListProps) {
   "use cache";
   cacheTag(`notifications-${userId}`);
@@ -27,6 +29,7 @@ export async function CachedNotificationList({
 
   return (
     <NotificationList
+      autoMarkAllRead={autoMarkAllRead}
       initialNotifications={notifications}
       initialNextCursor={nextCursor}
     />

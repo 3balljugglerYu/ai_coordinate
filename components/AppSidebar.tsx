@@ -55,7 +55,7 @@ export function AppSidebar() {
   const [isOthersOpen, setIsOthersOpen] = useState(false);
   const [, startTransition] = useTransition();
   const hasPrefetched = useRef(false);
-  const { unreadCount } = useUnreadNotificationCount();
+  const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -139,6 +139,11 @@ export function AppSidebar() {
         router.push(`/login?redirect=/`);
         return;
       }
+
+      if (normalizedTargetPath === "/notifications") {
+        void markAnnouncementPageSeen();
+      }
+
       router.push(path);
     });
   };
@@ -213,7 +218,7 @@ export function AppSidebar() {
                       isActive ? "scale-110" : "scale-100"
                     )}
                   />
-                  {path === "/notifications" && unreadCount > 0 && (
+                  {path === "/notifications" && hasSidebarDot && (
                     <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                   )}
                 </div>

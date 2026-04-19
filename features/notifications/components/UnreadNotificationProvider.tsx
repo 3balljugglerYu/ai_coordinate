@@ -16,10 +16,21 @@ import {
   onAuthStateChange,
 } from "@/features/auth/lib/auth-client";
 import { getUnreadCount } from "@/features/notifications/lib/api";
+import {
+  getAnnouncementUnreadState,
+  markAnnouncementSeen,
+} from "@/features/announcements/lib/api";
+import type { AnnouncementUnreadState } from "@/features/announcements/lib/schema";
 
 interface UnreadNotificationContextValue {
   unreadCount: number;
+  hasAnnouncementPageDot: boolean;
+  hasAnnouncementTabDot: boolean;
+  hasSidebarDot: boolean;
   refreshUnreadCount: () => Promise<void>;
+  refreshAnnouncementDots: () => Promise<void>;
+  markAnnouncementPageSeen: () => Promise<void>;
+  markAnnouncementTabSeen: () => Promise<void>;
 }
 
 const UnreadNotificationContext =
@@ -33,6 +44,12 @@ export function UnreadNotificationProvider({
   const t = useTranslations("notifications");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [announcementUnreadState, setAnnouncementUnreadState] =
+    useState<AnnouncementUnreadState>({
+      hasPageDot: false,
+      hasTabDot: false,
+      latestPublishedAt: null,
+    });
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchUnreadCountForUser = useCallback(async (userId: string | null) => {
@@ -50,6 +67,29 @@ export function UnreadNotificationProvider({
       console.error("Failed to fetch unread notification count:", error);
     }
   }, [t]);
+
+  const fetchAnnouncementUnreadStateForUser = useCallback(
+    async (userId: string | null) => {
+      if (!userId) {
+        setAnnouncementUnreadState({
+          hasPageDot: false,
+          hasTabDot: false,
+          latestPublishedAt: null,
+        });
+        return;
+      }
+
+      try {
+        const nextState = await getAnnouncementUnreadState({
+          unreadStateFailed: t("announcementsUnreadStateFailed"),
+        });
+        setAnnouncementUnreadState(nextState);
+      } catch (error) {
+        console.error("Failed to fetch announcement unread state:", error);
+      }
+    },
+    [t]
+  );
 
   const scheduleUnreadCountRefresh = useCallback(
     (userId: string) => {
@@ -73,19 +113,21 @@ export function UnreadNotificationProvider({
       const nextUserId = user?.id ?? null;
       setCurrentUserId(nextUserId);
       void fetchUnreadCountForUser(nextUserId);
+      void fetchAnnouncementUnreadStateForUser(nextUserId);
     });
 
     const subscription = onAuthStateChange((user) => {
       const nextUserId = user?.id ?? null;
       setCurrentUserId(nextUserId);
       void fetchUnreadCountForUser(nextUserId);
+      void fetchAnnouncementUnreadStateForUser(nextUserId);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUnreadCountForUser]);
+  }, [fetchAnnouncementUnreadStateForUser, fetchUnreadCountForUser]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -129,16 +171,103 @@ export function UnreadNotificationProvider({
     };
   }, [currentUserId, scheduleUnreadCountRefresh]);
 
+  useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
+    void fetchAnnouncementUnreadStateForUser(currentUserId);
+
+    const intervalId = window.setInterval(() => {
+      void fetchAnnouncementUnreadStateForUser(currentUserId);
+    }, 60_000);
+
+    const handleWindowFocus = () => {
+      void fetchAnnouncementUnreadStateForUser(currentUserId);
+      void fetchUnreadCountForUser(currentUserId);
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, [
+    currentUserId,
+    fetchAnnouncementUnreadStateForUser,
+    fetchUnreadCountForUser,
+  ]);
+
   const refreshUnreadCount = useCallback(async () => {
     await fetchUnreadCountForUser(currentUserId);
   }, [currentUserId, fetchUnreadCountForUser]);
 
+  const refreshAnnouncementDots = useCallback(async () => {
+    await fetchAnnouncementUnreadStateForUser(currentUserId);
+  }, [currentUserId, fetchAnnouncementUnreadStateForUser]);
+
+  const markAnnouncementPageSeen = useCallback(async () => {
+    if (!currentUserId) {
+      return;
+    }
+
+    setAnnouncementUnreadState((current) => ({
+      ...current,
+      hasPageDot: false,
+    }));
+
+    try {
+      await markAnnouncementSeen("page", {
+        markSeenFailed: t("announcementsMarkSeenFailed"),
+      });
+    } catch (error) {
+      console.error("Failed to mark announcement page seen:", error);
+      await fetchAnnouncementUnreadStateForUser(currentUserId);
+    }
+  }, [currentUserId, fetchAnnouncementUnreadStateForUser, t]);
+
+  const markAnnouncementTabSeen = useCallback(async () => {
+    if (!currentUserId) {
+      return;
+    }
+
+    setAnnouncementUnreadState((current) => ({
+      ...current,
+      hasTabDot: false,
+    }));
+
+    try {
+      await markAnnouncementSeen("tab", {
+        markSeenFailed: t("announcementsMarkSeenFailed"),
+      });
+    } catch (error) {
+      console.error("Failed to mark announcement tab seen:", error);
+      await fetchAnnouncementUnreadStateForUser(currentUserId);
+    }
+  }, [currentUserId, fetchAnnouncementUnreadStateForUser, t]);
+
   const value = useMemo(
     () => ({
       unreadCount,
+      hasAnnouncementPageDot: announcementUnreadState.hasPageDot,
+      hasAnnouncementTabDot: announcementUnreadState.hasTabDot,
+      hasSidebarDot:
+        unreadCount > 0 || announcementUnreadState.hasPageDot,
       refreshUnreadCount,
+      refreshAnnouncementDots,
+      markAnnouncementPageSeen,
+      markAnnouncementTabSeen,
     }),
-    [unreadCount, refreshUnreadCount]
+    [
+      announcementUnreadState.hasPageDot,
+      announcementUnreadState.hasTabDot,
+      markAnnouncementPageSeen,
+      markAnnouncementTabSeen,
+      refreshAnnouncementDots,
+      refreshUnreadCount,
+      unreadCount,
+    ]
   );
 
   return (
