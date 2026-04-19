@@ -58,7 +58,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+    <html
+      lang={DEFAULT_LOCALE}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-16 lg:pb-0`}
         suppressHydrationWarning

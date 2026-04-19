@@ -48,9 +48,9 @@ export function HomeBannerList({ banners }: HomeBannerListProps) {
             disableOnInteraction: false,
           }}
         >
-          {banners.map((banner) => (
+          {banners.map((banner, index) => (
             <SwiperSlide key={banner.id}>
-              <HomeBannerCard banner={banner} />
+              <HomeBannerCard banner={banner} prioritizeImage={index === 0} />
             </SwiperSlide>
           ))}
         </Swiper>

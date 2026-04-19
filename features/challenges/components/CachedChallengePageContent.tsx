@@ -6,7 +6,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 interface CachedChallengePageContentProps {
   userId: string;
-  tutorialCompleted: boolean;
 }
 
 /**
@@ -15,7 +14,6 @@ interface CachedChallengePageContentProps {
  */
 export async function CachedChallengePageContent({
   userId,
-  tutorialCompleted,
 }: CachedChallengePageContentProps) {
   "use cache";
   cacheTag(`challenge-${userId}`);
@@ -33,8 +31,6 @@ export async function CachedChallengePageContent({
     <ChallengePageContent
       key={userId}
       initialChallengeStatus={status}
-      initialTutorialCompleted={tutorialCompleted}
-      referralBonusAmount={displayDefaults.referralBonusAmount}
       baseDailyPostBonusAmount={baseDefaults.dailyPostBonusAmount}
       dailyPostBonusAmount={displayDefaults.dailyPostBonusAmount}
       baseStreakBonusSchedule={baseDefaults.streakBonusSchedule}
