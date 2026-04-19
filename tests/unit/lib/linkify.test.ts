@@ -134,6 +134,15 @@ describe("linkify", () => {
       expect(tokens.every((t) => t.type === "text")).toBe(true);
     });
 
+    test("URL_REGEXにマッチするがnew URLがthrowする場合_textトークンに戻す", () => {
+      // 不正な IPv6 ブラケットは URL_REGEX にはマッチするが new URL() で例外
+      const tokens = linkify("see https://[invalid end");
+      const link = tokens.find((t) => t.type === "link");
+      expect(link).toBeUndefined();
+      // rawValue が text として残っていることを確認（safeParseHttpUrl の catch → linkify の else 経路）
+      expect(tokens.some((t) => t.type === "text" && t.value.includes("https://[invalid"))).toBe(true);
+    });
+
     test("末尾のピリオドは剥離してtextトークンに戻す", () => {
       const tokens = linkify("see https://example.com.");
       expect(tokens).toEqual([
