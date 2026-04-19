@@ -4,11 +4,18 @@ import { FileText } from "lucide-react";
 import { AnnouncementListItem } from "./AnnouncementListItem";
 import { useAnnouncements } from "@/features/announcements/hooks/useAnnouncements";
 import { useTranslations } from "next-intl";
+import type { AnnouncementSummary } from "@/features/announcements/lib/schema";
 
-export function AnnouncementList() {
+interface AnnouncementListProps {
+  initialAnnouncements?: AnnouncementSummary[];
+}
+
+export function AnnouncementList({
+  initialAnnouncements,
+}: AnnouncementListProps) {
   const t = useTranslations("notifications");
   const { announcements, isLoading, handleAnnouncementClick } =
-    useAnnouncements();
+    useAnnouncements(initialAnnouncements);
 
   if (isLoading) {
     return (

@@ -10,12 +10,15 @@ import {
 } from "@/features/announcements/lib/api";
 import type { AnnouncementSummary } from "@/features/announcements/lib/schema";
 
-export function useAnnouncements() {
+export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
   const t = useTranslations("notifications");
   const router = useRouter();
   const { toast } = useToast();
-  const [announcements, setAnnouncements] = useState<AnnouncementSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const hasInitialAnnouncements = initialAnnouncements !== undefined;
+  const [announcements, setAnnouncements] = useState<AnnouncementSummary[]>(
+    initialAnnouncements ?? []
+  );
+  const [isLoading, setIsLoading] = useState(!hasInitialAnnouncements);
 
   const fetchAnnouncements = useCallback(async () => {
     setIsLoading(true);
@@ -40,8 +43,12 @@ export function useAnnouncements() {
   }, [t, toast]);
 
   useEffect(() => {
+    if (hasInitialAnnouncements) {
+      return;
+    }
+
     void fetchAnnouncements();
-  }, [fetchAnnouncements]);
+  }, [fetchAnnouncements, hasInitialAnnouncements]);
 
   const handleAnnouncementClick = useCallback(
     (announcement: AnnouncementSummary) => {

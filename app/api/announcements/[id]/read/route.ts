@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -28,6 +29,7 @@ export async function POST(
     }
 
     await markAnnouncementReadForUser(id, user.id);
+    revalidateTag(`announcements-${user.id}`, "max");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[Announcements] POST read error:", error);
