@@ -104,6 +104,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "image",
   },
   {
+    path: "/admin/announcements",
+    label: "運営お知らせ",
+    description: "運営からのお知らせを作成・公開",
+    iconKey: "file-text",
+  },
+  {
     path: "/admin/image-optimization",
     label: "画像最適化",
     description: "WebP変換状況を確認",

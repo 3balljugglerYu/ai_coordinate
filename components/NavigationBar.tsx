@@ -26,7 +26,7 @@ export function NavigationBar() {
   const [, startTransition] = useTransition();
   // プリフェッチ実行フラグ: 1回のみ実行するため
   const hasPrefetched = useRef(false);
-  const { unreadCount } = useUnreadNotificationCount();
+  const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
 
@@ -78,6 +78,11 @@ export function NavigationBar() {
         router.push(`/login?redirect=/`);
         return;
       }
+
+      if (normalizedTargetPath === "/notifications") {
+        void markAnnouncementPageSeen();
+      }
+
       router.push(path);
     });
   };
@@ -129,7 +134,7 @@ export function NavigationBar() {
                         isActive ? "scale-110" : "scale-100"
                       )}
                     />
-                    {path === "/notifications" && unreadCount > 0 && (
+                    {path === "/notifications" && hasSidebarDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}
                   </div>

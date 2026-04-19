@@ -24,6 +24,10 @@ export interface UseNotificationsInitialData {
 import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 
+interface UseNotificationsOptions {
+  autoMarkAllRead?: boolean;
+}
+
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
 const BONUS_TOAST_HISTORY_LIMIT = 100;
 
@@ -71,7 +75,10 @@ function writeBonusToastHistory(userId: string, signatures: string[]) {
  * 通知一覧、未読数、Realtime購読を管理
  * @param initialData - サーバーキャッシュから渡された初期データ（ある場合スキップして即時表示）
  */
-export function useNotifications(initialData?: UseNotificationsInitialData | null) {
+export function useNotifications(
+  initialData?: UseNotificationsInitialData | null,
+  options?: UseNotificationsOptions
+) {
   const t = useTranslations("notifications");
   const pathname = usePathname();
   const router = useRouter();
@@ -93,6 +100,7 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
   const shownBonusToastSignaturesRef = useRef<Set<string>>(new Set());
   const hasAutoMarkedReadOnNotificationsPage = useRef(false);
   const isNotificationsPage = pathname === "/notifications";
+  const autoMarkAllRead = options?.autoMarkAllRead ?? isNotificationsPage;
 
   // 初期化: ユーザーIDを取得
   useEffect(() => {
@@ -388,7 +396,7 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
 
   // お知らせ画面に入ったタイミングで未読を自動既読化
   useEffect(() => {
-    if (!isNotificationsPage) return;
+    if (!autoMarkAllRead) return;
     if (isLoading) return;
     if (hasAutoMarkedReadOnNotificationsPage.current) return;
     if (unreadCount <= 0) return;
@@ -404,7 +412,7 @@ export function useNotifications(initialData?: UseNotificationsInitialData | nul
     };
 
     void markAllReadOnPageEnter();
-  }, [isLoading, isNotificationsPage, markAllRead, unreadCount]);
+  }, [autoMarkAllRead, isLoading, markAllRead, unreadCount]);
 
   // もっと読み込む
   const loadMore = useCallback(() => {

@@ -52,6 +52,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const headerRef = useRef<HTMLElement | null>(null);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
+  const isNotificationAnnouncementDetail =
+    normalizedPathname.startsWith("/notifications/announcements/");
 
   // トップレベルのページ（戻るボタン非表示）
   const topLevelPaths = [
@@ -73,7 +75,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const shouldShowBackButton =
     showBackButton !== undefined
       ? showBackButton
-      : !topLevelPaths.includes(normalizedPathname);
+      : !topLevelPaths.includes(normalizedPathname) &&
+        !isNotificationAnnouncementDetail;
 
   // 遷移元を確認して戻る先を決定
   const fromParam = searchParams.get("from");
