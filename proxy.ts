@@ -38,6 +38,8 @@ export async function proxy(request: NextRequest) {
   const { pathname: unprefixedPathname, locale: pathnameLocale } =
     stripLocalePrefix(pathname);
   const isPublicRoute = isPublicPath(unprefixedPathname);
+  const isApiRoute =
+    unprefixedPathname === "/api" || unprefixedPathname.startsWith("/api/");
 
   if (isPublicRoute && !pathnameLocale) {
     const redirectUrl = request.nextUrl.clone();
@@ -49,6 +51,12 @@ export async function proxy(request: NextRequest) {
   }
 
   let response = createNextResponse(request, resolvedLocale);
+
+  // API Route Handler 側は各自で認証・locale 解決をしているため、
+  // Proxy では重い Supabase auth/profile 参照を避ける。
+  if (isApiRoute) {
+    return response;
+  }
 
   // 環境変数が設定されていない場合は、認証チェックをスキップ
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,12 +85,16 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // セッションを更新
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Proxy では軽量な claims ベースの判定を優先する。
+  // プロジェクト設定によっては内部で Auth サーバー確認へフォールバックする。
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError) {
+    console.warn("[proxy] Failed to read auth claims:", claimsError.message);
+  }
+  const userId =
+    typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : null;
 
-  if (user) {
+  if (userId) {
     // 認証済みユーザーがログイン・サインアップ・パスワードリセットにアクセスしたら /my-page へリダイレクト
     const authPages = ["/login", "/signup", "/reset-password"];
     const isAuthPage = authPages.some((path) =>
@@ -111,11 +123,13 @@ export async function proxy(request: NextRequest) {
       request.nextUrl.pathname.startsWith(path)
     );
 
-    if (!isAllowedWhileDeactivated) {
+    // 公開ページでは公開コンテンツの閲覧だけを許可し、
+    // 追加の profile 参照コストは避ける。
+    if (!isAllowedWhileDeactivated && !isPublicRoute) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("deactivated_at")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (profile?.deactivated_at) {
@@ -144,7 +158,7 @@ export async function proxy(request: NextRequest) {
   );
 
   if (isProtectedPath) {
-    if (!user) {
+    if (!userId) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
       redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);
