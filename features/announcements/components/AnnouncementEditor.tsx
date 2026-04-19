@@ -104,10 +104,22 @@ export function AnnouncementEditor({
         body: formData,
       });
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string; publicUrl?: string; storagePath?: string }
+        | {
+            error?: string;
+            publicUrl?: string;
+            storagePath?: string;
+            width?: number;
+            height?: number;
+          }
         | null;
 
-      if (!response.ok || !payload?.publicUrl || !payload?.storagePath) {
+      if (
+        !response.ok ||
+        !payload?.publicUrl ||
+        !payload?.storagePath ||
+        typeof payload.width !== "number" ||
+        typeof payload.height !== "number"
+      ) {
         throw new Error(payload?.error || "画像のアップロードに失敗しました");
       }
 
@@ -120,6 +132,8 @@ export function AnnouncementEditor({
             src: payload.publicUrl,
             alt: file.name,
             storagePath: payload.storagePath,
+            width: payload.width,
+            height: payload.height,
           },
         })
         .run();

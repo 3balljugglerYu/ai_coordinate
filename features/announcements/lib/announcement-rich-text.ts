@@ -12,6 +12,7 @@ const ALLOWED_FONT_SIZES = new Set<AnnouncementFontSize>([
 ]);
 const COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
 const STORAGE_PATH_PATTERN = /^(?!\/)(?!.*\.\.)[\w./-]+\.webp$/;
+const IMAGE_DIMENSION_PATTERN = /^\d+(?:\.\d+)?$/;
 
 type RichTextNode = {
   type?: unknown;
@@ -71,6 +72,23 @@ export function isValidAnnouncementImageUrl(url: string): boolean {
 
 function isValidStoragePath(value: unknown): value is string {
   return typeof value === "string" && STORAGE_PATH_PATTERN.test(value.trim());
+}
+
+function isValidImageDimension(value: unknown): boolean {
+  if (value == null) {
+    return true;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return IMAGE_DIMENSION_PATTERN.test(trimmed) && Number(trimmed) > 0;
+  }
+
+  return false;
 }
 
 function validateMark(mark: unknown): string | null {
@@ -203,7 +221,11 @@ function validateNode(node: unknown): string | null {
     const attrs = typedNode.attrs;
     const keys = Object.keys(attrs);
     for (const key of keys) {
-      if (!["src", "alt", "storagePath", "title"].includes(key)) {
+      if (
+        !["src", "alt", "storagePath", "title", "width", "height"].includes(
+          key
+        )
+      ) {
         return "許可されていない image 属性が含まれています";
       }
     }
@@ -228,6 +250,14 @@ function validateNode(node: unknown): string | null {
       (typeof attrs.title !== "string" || attrs.title.length > 200)
     ) {
       return "画像 title 属性が不正です";
+    }
+
+    if (!isValidImageDimension(attrs.width)) {
+      return "画像 width 属性が不正です";
+    }
+
+    if (!isValidImageDimension(attrs.height)) {
+      return "画像 height 属性が不正です";
     }
 
     if (
