@@ -26,7 +26,7 @@ export function linkify(text: string): LinkifyToken[] {
   let lastIndex = 0;
 
   for (const match of text.matchAll(URL_REGEX)) {
-    const start = match.index ?? 0;
+    const start = match.index!;
     const matched = match[0];
 
     const trailingMatch = matched.match(TRAILING_PUNCTUATION);
@@ -67,8 +67,7 @@ export function linkify(text: string): LinkifyToken[] {
 
 function safeParseHttpUrl(raw: string): URL | null {
   try {
-    const url = new URL(raw);
-    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+    return new URL(raw);
   } catch {
     return null;
   }
