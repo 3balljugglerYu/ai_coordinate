@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
+import { linkify as linkifyText } from "@/lib/linkify";
 
 interface CollapsibleTextProps {
   text: string;
   maxLines: number;
   className?: string;
   textClassName?: string;
+  linkify?: boolean;
 }
 
 /**
@@ -21,11 +23,32 @@ export function CollapsibleText({
   maxLines,
   className = "",
   textClassName = "text-gray-700",
+  linkify = false,
 }: CollapsibleTextProps) {
   const postsT = useTranslations("posts");
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const textRef = useRef<HTMLParagraphElement>(null);
+
+  const renderedContent = useMemo(() => {
+    if (!linkify) return text;
+    return linkifyText(text).map((token, index) =>
+      token.type === "link" ? (
+        <a
+          key={index}
+          href={token.href}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          title={token.rawValue}
+          className="text-blue-600 hover:underline break-all"
+        >
+          {token.displayValue}
+        </a>
+      ) : (
+        <span key={index}>{token.value}</span>
+      )
+    );
+  }, [text, linkify]);
 
   useEffect(() => {
     if (textRef.current) {
@@ -56,7 +79,7 @@ export function CollapsibleText({
             : {}
         }
       >
-        {text}
+        {renderedContent}
       </p>
       {shouldShowButton && (
         <Button

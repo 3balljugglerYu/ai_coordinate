@@ -144,6 +144,7 @@ export function ProfileHeader({
                     text={currentProfile.bio}
                     maxLines={3}
                     textClassName="text-sm text-gray-600"
+                    linkify
                   />
                 </div>
               )}
@@ -180,6 +181,7 @@ export function ProfileHeader({
                     text={currentProfile.bio}
                     maxLines={3}
                     textClassName="text-sm text-gray-600"
+                    linkify
                   />
                 </div>
               )}
