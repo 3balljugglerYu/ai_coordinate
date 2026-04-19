@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import {
   getAnnouncements,
@@ -12,6 +12,7 @@ import type { AnnouncementSummary } from "@/features/announcements/lib/schema";
 
 export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
   const t = useTranslations("notifications");
+  const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const hasInitialAnnouncements = initialAnnouncements !== undefined;
@@ -53,6 +54,17 @@ export function useAnnouncements(initialAnnouncements?: AnnouncementSummary[]) {
 
     void fetchAnnouncements();
   }, [fetchAnnouncements, hasInitialAnnouncements]);
+
+  useEffect(() => {
+    if (pathname?.startsWith("/notifications/announcements/")) {
+      setPendingAnnouncementId(null);
+      return;
+    }
+
+    if (pathname === "/notifications") {
+      setPendingAnnouncementId(null);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     announcements.slice(0, 5).forEach((announcement) => {
