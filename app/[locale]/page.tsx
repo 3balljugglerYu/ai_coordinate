@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { connection } from "next/server";
 import { getSiteUrl } from "@/lib/env";
-import { getUser } from "@/lib/auth";
-import { getPublicBanners } from "@/features/banners/lib/get-banners";
 import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-popup-banners";
 import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
-import { HomeBannerList } from "@/features/home/components/HomeBannerList";
+import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
+import { CachedHomePostListSection } from "@/features/home/components/CachedHomePostListSection";
+import { HomeBannerSkeleton } from "@/features/home/components/HomeBannerSkeleton";
 import { HomeHeading } from "@/features/home/components/HomeHeading";
-import { CachedHomePostList } from "@/features/posts/components/CachedHomePostList";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
-import { HomePageSkeleton } from "@/features/home/components/HomePageSkeleton";
 import {
   createLocaleAlternates,
   getDefaultOpenGraphImages,
   getDefaultTwitterImages,
 } from "@/lib/metadata";
-import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+  type Locale,
+} from "@/i18n/config";
 import { getHomeCopy } from "@/i18n/page-copy";
 
 const E2E_POPUP_BANNER_QUERY_PARAM = "popupBannerE2E";
@@ -71,30 +73,9 @@ export async function generateMetadata({
   };
 }
 
-async function HomePageContent({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ popupBannerE2E?: string }>;
-}) {
-  await connection();
-  const { locale: localeParam } = await params;
-  const query = await searchParams;
-  const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
+function HomeStructuredData({ locale }: { locale: Locale }) {
   const copy = getHomeCopy(locale);
-  const user = await getUser();
-  const userId = user?.id ?? null;
   const siteUrl = getSiteUrl() || "https://persta.ai";
-  const useE2EPopupBannerFixture =
-    query[E2E_POPUP_BANNER_QUERY_PARAM] === "1" &&
-    (process.env.NODE_ENV !== "production" ||
-      process.env.PLAYWRIGHT_E2E === "1");
-  const e2ePopupBanners = getE2EPopupBannersFixture(useE2EPopupBannerFixture);
-  const [banners, popupBanners] = await Promise.all([
-    getPublicBanners(),
-    e2ePopupBanners ? Promise.resolve(e2ePopupBanners) : getActivePopupBanners(),
-  ]);
 
   const organizationSchema = {
     "@context": "https://schema.org",
@@ -116,7 +97,6 @@ async function HomePageContent({
 
   return (
     <>
-      <PopupBannerOverlay banners={popupBanners} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -129,26 +109,50 @@ async function HomePageContent({
           __html: JSON.stringify(websiteSchema),
         }}
       />
-      <HomeBannerList banners={banners} />
-      <Suspense fallback={<PostListSkeleton />}>
-        <CachedHomePostList userId={userId} />
-      </Suspense>
     </>
   );
 }
 
-export default function LocaleHome({
+async function HomePopupBannerSection({
+  searchParams,
+}: {
+  searchParams: Promise<{ popupBannerE2E?: string }>;
+}) {
+  const query = await searchParams;
+  const useE2EPopupBannerFixture =
+    query[E2E_POPUP_BANNER_QUERY_PARAM] === "1" &&
+    (process.env.NODE_ENV !== "production" ||
+      process.env.PLAYWRIGHT_E2E === "1");
+  const e2ePopupBanners = getE2EPopupBannersFixture(useE2EPopupBannerFixture);
+  const popupBanners = e2ePopupBanners
+    ? e2ePopupBanners
+    : await getActivePopupBanners();
+
+  return <PopupBannerOverlay banners={popupBanners} />;
+}
+
+export default async function LocaleHome({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ popupBannerE2E?: string }>;
 }) {
+  const { locale: localeParam } = await params;
+  const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
+
   return (
     <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
+      <HomeStructuredData locale={locale} />
+      <Suspense fallback={null}>
+        <HomePopupBannerSection searchParams={searchParams} />
+      </Suspense>
       <HomeHeading />
-      <Suspense fallback={<HomePageSkeleton />}>
-        <HomePageContent params={params} searchParams={searchParams} />
+      <Suspense fallback={<HomeBannerSkeleton />}>
+        <CachedHomeBannerSection />
+      </Suspense>
+      <Suspense fallback={<PostListSkeleton />}>
+        <CachedHomePostListSection />
       </Suspense>
     </div>
   );

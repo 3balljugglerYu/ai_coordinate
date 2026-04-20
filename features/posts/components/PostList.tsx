@@ -401,12 +401,13 @@ export function PostList({
             className="flex -ml-1 w-auto sm:-ml-4"
             columnClassName="pl-1 bg-clip-padding sm:pl-4"
           >
-            {posts.map((post) => (
+            {posts.map((post, index) => (
               <div key={post.id} className="mb-4">
         <PostCard
           post={post}
           currentUserId={currentUserId}
           isHighlighted={post.id === highlightPostId}
+          prioritizeImage={index < 2}
         />
       </div>
     ))}

@@ -38,7 +38,6 @@ export async function proxy(request: NextRequest) {
   const { pathname: unprefixedPathname, locale: pathnameLocale } =
     stripLocalePrefix(pathname);
   const isPublicRoute = isPublicPath(unprefixedPathname);
-
   if (isPublicRoute && !pathnameLocale) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = localizePublicPath(unprefixedPathname, resolvedLocale);
@@ -77,12 +76,17 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // セッションを更新
+  // Proxy では cookie/session から軽量にユーザーを解決する。
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+  if (sessionError) {
+    console.warn("[proxy] Failed to read auth session:", sessionError.message);
+  }
+  const userId = session?.user?.id ?? null;
 
-  if (user) {
+  if (userId) {
     // 認証済みユーザーがログイン・サインアップ・パスワードリセットにアクセスしたら /my-page へリダイレクト
     const authPages = ["/login", "/signup", "/reset-password"];
     const isAuthPage = authPages.some((path) =>
@@ -111,11 +115,13 @@ export async function proxy(request: NextRequest) {
       request.nextUrl.pathname.startsWith(path)
     );
 
-    if (!isAllowedWhileDeactivated) {
+    // 公開ページでは公開コンテンツの閲覧だけを許可し、
+    // 追加の profile 参照コストは避ける。
+    if (!isAllowedWhileDeactivated && !isPublicRoute) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("deactivated_at")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (profile?.deactivated_at) {
@@ -144,7 +150,7 @@ export async function proxy(request: NextRequest) {
   );
 
   if (isProtectedPath) {
-    if (!user) {
+    if (!userId) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
       redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);

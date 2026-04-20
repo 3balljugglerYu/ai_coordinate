@@ -20,6 +20,7 @@ function getSafeLinkUrl(url: string): string {
 
 interface HomeBannerCardProps {
   banner: HomeBanner;
+  prioritizeImage?: boolean;
 }
 
 /**
@@ -27,7 +28,10 @@ interface HomeBannerCardProps {
  * 画像を表示し、クリックで指定されたURLへ遷移
  * 外部URLの場合は <a> タグ（新規タブ）、内部URLは Next.js Link を使用
  */
-export function HomeBannerCard({ banner }: HomeBannerCardProps) {
+export function HomeBannerCard({
+  banner,
+  prioritizeImage = false,
+}: HomeBannerCardProps) {
   const linkUrl = getSafeLinkUrl(banner.linkUrl);
   const card = (
     <Card className="overflow-hidden hover:scale-[1.02] transition-transform duration-200 p-0">
@@ -39,6 +43,8 @@ export function HomeBannerCard({ banner }: HomeBannerCardProps) {
           height={400}
           className="w-full h-auto object-cover aspect-[3/1]"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          priority={prioritizeImage}
+          loading={prioritizeImage ? "eager" : undefined}
         />
       </div>
     </Card>

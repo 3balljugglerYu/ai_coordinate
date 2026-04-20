@@ -1,4 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import {
+  getCurrentUser,
+  onAuthStateChange,
+} from "@/features/auth/lib/auth-client";
 import { usePopupBanner } from "@/features/popup-banners/hooks/usePopupBanner";
 import { POPUP_BANNER_HISTORY_STORAGE_KEY } from "@/features/popup-banners/lib/popup-banner-display-logic";
 import type {
@@ -8,6 +12,11 @@ import type {
 } from "@/features/popup-banners/lib/schema";
 
 const POPUP_BANNER_IMPRESSION_SESSION_KEY = "popup-banner-impressions-v1";
+
+jest.mock("@/features/auth/lib/auth-client", () => ({
+  getCurrentUser: jest.fn(),
+  onAuthStateChange: jest.fn(),
+}));
 
 function createBanner(
   id: string,
@@ -37,6 +46,17 @@ function createJsonResponse(body: unknown, init?: { status?: number }) {
   return createMockResponse(init?.status ?? 200, body);
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 function seedLocalHistory(history: PopupBannerHistoryMap) {
   window.localStorage.setItem(
     POPUP_BANNER_HISTORY_STORAGE_KEY,
@@ -56,18 +76,39 @@ function readStoredImpressionIds() {
   ) as string[];
 }
 
+const getCurrentUserMock = getCurrentUser as jest.MockedFunction<
+  typeof getCurrentUser
+>;
+const onAuthStateChangeMock = onAuthStateChange as jest.MockedFunction<
+  typeof onAuthStateChange
+>;
+
 describe("usePopupBanner", () => {
   const originalFetch = global.fetch;
   let fetchMock: jest.MockedFunction<typeof fetch>;
+  let authStateChangeCallback: ((user: { id: string } | null) => void) | null;
+  let unsubscribeMock: jest.Mock;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     window.localStorage.clear();
     window.sessionStorage.clear();
+    authStateChangeCallback = null;
+    unsubscribeMock = jest.fn();
     fetchMock = jest.fn() as jest.MockedFunction<typeof fetch>;
     Object.defineProperty(global, "fetch", {
       writable: true,
       configurable: true,
       value: fetchMock,
+    });
+    getCurrentUserMock.mockResolvedValue({ id: "user-1" } as Awaited<
+      ReturnType<typeof getCurrentUser>
+    >);
+    onAuthStateChangeMock.mockImplementation((callback) => {
+      authStateChangeCallback = callback as (user: { id: string } | null) => void;
+      return {
+        unsubscribe: unsubscribeMock,
+      } as ReturnType<typeof onAuthStateChange>;
     });
   });
 
@@ -394,5 +435,121 @@ describe("usePopupBanner", () => {
     });
 
     expect(result.current.currentBanner?.id).toBe("banner-a");
+  });
+
+  test("auth change で未認証から認証済みに変わった場合_remote履歴へ切り替える", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    fetchMock.mockResolvedValue(
+      createJsonResponse([
+        {
+          popup_banner_id: "banner-a",
+          action_type: "close",
+          permanently_dismissed: false,
+          reshow_after: "2099-04-10T00:00:00.000Z",
+          updated_at: "2099-03-20T00:00:00.000Z",
+        },
+      ] satisfies PopupBannerViewRecord[])
+    );
+
+    const { result } = renderHook(() =>
+      usePopupBanner([createBanner("banner-a", 1), createBanner("banner-b", 2)])
+    );
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    act(() => {
+      authStateChangeCallback?.({ id: "user-1" });
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/popup-banners/view-history", {
+        cache: "no-store",
+      });
+    });
+    expect(result.current.currentBanner?.id).toBe("banner-a");
+  });
+
+  test("unmount 後に getCurrentUser が解決しても state を更新しない", async () => {
+    const deferredUser = createDeferred<Awaited<ReturnType<typeof getCurrentUser>>>();
+    getCurrentUserMock.mockReturnValue(deferredUser.promise);
+
+    const { unmount } = renderHook(() => usePopupBanner([createBanner("banner-a", 1)]));
+
+    unmount();
+
+    await act(async () => {
+      deferredUser.resolve({ id: "user-1" } as Awaited<ReturnType<typeof getCurrentUser>>);
+      await deferredUser.promise;
+    });
+
+    expect(unsubscribeMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("remote history 読み込み中に unmount された場合は結果を破棄する", async () => {
+    const deferredHistory = createDeferred<Response>();
+    fetchMock.mockReturnValue(deferredHistory.promise);
+
+    const { unmount } = renderHook(() => usePopupBanner([createBanner("banner-a", 1)]));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    unmount();
+
+    await act(async () => {
+      deferredHistory.resolve(createJsonResponse([]));
+      await deferredHistory.promise;
+    });
+
+    expect(unsubscribeMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("local mode で banners 更新後も既存 currentBanner を保持する", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+
+    const { result, rerender } = renderHook(
+      ({ banners }) => usePopupBanner(banners),
+      {
+        initialProps: {
+          banners: [createBanner("banner-a", 1), createBanner("banner-b", 2)],
+        },
+      }
+    );
+
+    await waitFor(() => {
+      expect(result.current.currentBanner?.id).toBe("banner-a");
+    });
+
+    rerender({
+      banners: [createBanner("banner-a", 1), createBanner("banner-c", 2)],
+    });
+
+    await waitFor(() => {
+      expect(result.current.currentBanner?.id).toBe("banner-a");
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("currentBanner がない状態で close と click を呼んでも何もしない", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+
+    const { result } = renderHook(() => usePopupBanner([]));
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    act(() => {
+      result.current.closeBanner();
+      result.current.clickBanner();
+    });
+
+    expect(result.current.currentBanner).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

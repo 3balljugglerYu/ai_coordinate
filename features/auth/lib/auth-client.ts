@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
-import { getSiteUrlForClient } from "@/lib/env";
+import { getSiteUrlForClient } from "@/lib/public-env";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 import type { SignupSource } from "./signup-source";
 import {

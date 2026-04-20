@@ -16,12 +16,14 @@ interface PostCardProps {
   post: Post;
   currentUserId?: string | null;
   isHighlighted?: boolean;
+  prioritizeImage?: boolean;
 }
 
 export function PostCard({
   post,
   currentUserId,
   isHighlighted = false,
+  prioritizeImage = false,
 }: PostCardProps) {
   const t = useTranslations("posts");
   const [isHidden, setIsHidden] = useState(false);
@@ -66,6 +68,8 @@ export function PostCard({
           className="w-full h-auto object-contain transition-transform hover:scale-105"
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
           unoptimized
+          priority={prioritizeImage}
+          loading={prioritizeImage ? "eager" : undefined}
         />
       ) : (
         <div className="flex aspect-square items-center justify-center text-gray-400">

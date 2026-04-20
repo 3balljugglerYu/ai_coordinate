@@ -1,4 +1,4 @@
-import { getSiteUrlForClient } from "@/lib/env";
+import { getSiteUrlForClient } from "@/lib/public-env";
 import { localizePublicPath, type Locale } from "@/i18n/config";
 
 export function getPostDetailPath(postId: string): string {
@@ -16,4 +16,3 @@ export function getPostDetailUrl(postId: string, locale?: Locale): string {
 
   return `${baseUrl.replace(/\/+$/, "")}${localizedPath}`;
 }
-

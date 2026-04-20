@@ -1,4 +1,4 @@
-import { isStripeTestMode } from "@/lib/env";
+import { isStripeTestMode } from "@/lib/public-env";
 
 export type SubscriptionPlan = "free" | "light" | "standard" | "premium";
 export type SubscriptionBillingInterval = "month" | "year";

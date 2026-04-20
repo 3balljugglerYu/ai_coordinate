@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import Masonry from "react-masonry-css";
 import {
-  Users,
   Flame,
   CalendarCheck2,
   ArrowRight,
@@ -16,7 +14,6 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  PlayCircle,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,25 +21,16 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { ChallengeCard } from "./ChallengeCard";
-import { ReferralCodeDisplay } from "@/features/referral/components/ReferralCodeDisplay";
 import type { ChallengeStatus } from "@/features/challenges/lib/api";
 import {
   checkInStreakBonus,
   getChallengeStatus,
 } from "@/features/challenges/lib/api";
-import { getCurrentUser } from "@/features/auth/lib/auth-client";
-import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { cn } from "@/lib/utils";
 import {
   buildMissionBonusDisplay,
   getRewardForDay,
 } from "@/features/challenges/lib/subscription-bonus-display";
-
-const breakpointColumnsObj = {
-  default: 3,
-  1024: 2,
-  640: 1,
-};
 
 const jstDateFormatter = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
@@ -62,8 +50,6 @@ function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
 
 interface ChallengePageContentProps {
   initialChallengeStatus?: ChallengeStatus | null;
-  initialTutorialCompleted?: boolean | null;
-  referralBonusAmount: number;
   baseDailyPostBonusAmount: number;
   dailyPostBonusAmount: number;
   baseStreakBonusSchedule: readonly number[];
@@ -72,8 +58,6 @@ interface ChallengePageContentProps {
 
 export function ChallengePageContent({
   initialChallengeStatus,
-  initialTutorialCompleted,
-  referralBonusAmount,
   baseDailyPostBonusAmount,
   dailyPostBonusAmount,
   baseStreakBonusSchedule,
@@ -107,9 +91,6 @@ export function ChallengePageContent({
       : false
   );
   const [timeToReset, setTimeToReset] = useState<string>("");
-  const [tutorialCompleted, setTutorialCompleted] = useState<boolean | null>(
-    initialTutorialCompleted ?? null
-  );
   const bonusDisplay = buildMissionBonusDisplay({
     subscriptionPlan,
     baseDailyPostBonusAmount,
@@ -170,17 +151,6 @@ export function ChallengePageContent({
     </Badge>
   ) : undefined;
 
-  useEffect(() => {
-    if (typeof initialTutorialCompleted === "boolean") return;
-
-    const check = async () => {
-      const user = await getCurrentUser();
-      setTutorialCompleted(user?.user_metadata?.tutorial_completed === true);
-    };
-    void check();
-  }, [initialTutorialCompleted]);
-
-  // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、
   // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、常に最新データを取得
   useEffect(() => {
     const fetchData = async () => {
@@ -303,60 +273,9 @@ export function ChallengePageContent({
     }
   };
 
-  const tutorialCard = (
-    <div className="mb-6">
-      <ChallengeCard
-        title={t("tutorialTitle")}
-        description={t("tutorialDescription")}
-        icon={PlayCircle}
-        color="green"
-        className={cn(
-          "h-full",
-          tutorialCompleted && "opacity-75"
-        )}
-      >
-        <div className="mt-4">
-          {tutorialCompleted ? (
-            <div className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 border-green-200">
-              <div className="bg-green-100 p-2 rounded-full shrink-0">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <div className="font-bold text-green-800">{t("tutorialCompletedTitle")}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {t("tutorialCompletedDescription")}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              className="min-h-11 w-full"
-              onClick={() => {
-                if (typeof localStorage !== "undefined") {
-                  localStorage.removeItem(TUTORIAL_STORAGE_KEYS.DECLINED);
-                }
-                router.push("/");
-              }}
-            >
-              <PlayCircle className="mr-2 h-4 w-4" />
-              {t("tutorialStart")}
-            </Button>
-          )}
-        </div>
-      </ChallengeCard>
-    </div>
-  );
-
   return (
     <div className="animate-in fade-in duration-500 motion-reduce:animate-none">
-      <Masonry
-        breakpointCols={breakpointColumnsObj}
-        className="flex w-auto -ml-6"
-        columnClassName="pl-6 bg-clip-padding"
-      >
-        {tutorialCompleted === false && tutorialCard}
-        {/* 1. ストリーク特典 */}
+      <div className="grid gap-6 lg:grid-cols-2">
         <div className="mb-6">
           <ChallengeCard
             title={t("streakTitle")}
@@ -512,7 +431,6 @@ export function ChallengePageContent({
           </ChallengeCard>
         </div>
 
-        {/* 2. デイリー投稿特典 */}
         <div className="mb-6">
           <ChallengeCard
             title={t("dailyTitle")}
@@ -612,22 +530,7 @@ export function ChallengePageContent({
             </div>
           </ChallengeCard>
         </div>
-
-        {/* 3. リファラル特典 */}
-        <div className="mb-6">
-          <ChallengeCard
-            title={t("referralTitle")}
-            description={t("referralDescription")}
-            percoinAmount={referralBonusAmount}
-            icon={Users}
-            color="orange"
-            className="h-full"
-          >
-            <ReferralCodeDisplay referralBonusAmount={referralBonusAmount} />
-          </ChallengeCard>
-        </div>
-        {tutorialCompleted === true && tutorialCard}
-      </Masonry>
+      </div>
     </div>
   );
 }
