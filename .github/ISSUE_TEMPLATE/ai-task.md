@@ -25,5 +25,6 @@ labels: ["claude-implement"]
 <!-- 実装完了後にどう確認するかを記載。タスクに応じて項目を追加・削除 -->
 - [ ] `npm run lint` — 今回の変更で新規エラーが増えていない
 - [ ] `npm run typecheck` — 今回の変更で新規エラーが増えていない
+- [ ] `npm run test` — 既存のテストが全てパスし、今回の変更に対応するテストが追加されている(必要な場合)
 - [ ] `npm run build -- --webpack` がパス
 - [ ] 

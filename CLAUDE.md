@@ -21,6 +21,7 @@ Claude Code は作業前に必ず以下を順番に参照してください。
 
 - `npm run lint`
 - `npm run typecheck`
+- `npm run test`
 - `npm run build -- --webpack`
 
 ### ビルドに関する重要な注意
