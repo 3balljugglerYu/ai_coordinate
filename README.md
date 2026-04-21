@@ -279,3 +279,5 @@ Codecov 連携も有効化しているため、GitHub 上で diff coverage や P
 
 - このリポジトリには現時点で共有用の `.env.example` はありません。
 - 新規参加者向けの導線をさらに改善するなら、次は `.env.example` の追加が有効です。
+
+<!-- Claude Code Action 動作確認用の小さな追記 -->
