@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { StylePageShareButton } from "@/features/style/components/StylePageShareButton";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
+import { getTotalStyleGenerateCount } from "@/features/style/lib/style-usage-stats";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getUser } from "@/lib/auth";
 import { createMarketingPageMetadata } from "@/lib/metadata";
@@ -49,11 +50,29 @@ export default async function StylePage({ searchParams }: StylePageProps) {
   const presets = await getPublishedStylePresets();
   const user = await getUser();
   const params = (await searchParams) ?? {};
+  const totalGenerationCount = await getTotalStyleGenerateCount().catch(
+    () => null
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
         <div className="mx-auto max-w-3xl space-y-8">
+          {typeof totalGenerationCount === "number" &&
+          totalGenerationCount > 0 ? (
+            <div
+              data-testid="style-total-generation-count"
+              className="relative overflow-hidden rounded-xl border border-[#B7BDC6] bg-[linear-gradient(135deg,#F9FBFF_0%,#E6F0FF_20%,#E5E4E2_45%,#CBD6E3_70%,#FFFFFF_100%)] px-4 py-3 text-center shadow-[0_0_12px_rgba(216,235,255,0.8),0_0_28px_rgba(216,235,255,0.45)] transition-shadow hover:shadow-[0_0_16px_rgba(216,235,255,0.9),0_0_32px_rgba(216,235,255,0.6)]"
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent,45%,#D8EBFF,55%,transparent)] bg-[length:250%_100%] animate-shine opacity-60 mix-blend-overlay" />
+              <span className="relative z-10 block text-sm font-semibold text-slate-900">
+                {t("totalGenerationCount", {
+                  count: totalGenerationCount.toLocaleString(),
+                })}
+              </span>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-3xl font-bold text-gray-900">

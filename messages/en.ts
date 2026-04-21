@@ -1057,6 +1057,7 @@ export const enMessages = {
     pageTitle: "One-Tap Style",
     pageDescription:
       "No prompt needed. Pick a style and transform your look in one tap.",
+    totalGenerationCount: "{count} images have been generated so far!",
     sectionTitle: "Choose a Style",
     sectionDescription: "Select the style you want to try on.",
     characterSectionTitle: "Choose My Character",
