@@ -1002,6 +1002,7 @@ export const jaMessages = {
     pageTitle: "One-Tap Style",
     pageDescription:
       "プロンプト不要！好きなスタイルを選択するだけで、そのスタイルに変身！！",
+    totalGenerationCount: "これまでに生成された枚数 {count} 枚！",
     sectionTitle: "スタイル選択",
     sectionDescription: "着せ替えたいスタイルを選択してください。",
     characterSectionTitle: "マイキャラ選択",
