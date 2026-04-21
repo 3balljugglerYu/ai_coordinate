@@ -1,0 +1,53 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    # コスト管理: Dependabot や Claude 自身、Draft PR はレビュー対象外
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'claude[bot]' &&
+      github.event.pull_request.draft == false &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-claude-review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: |
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+            レビュー時は必ず以下を読んでからコメントしてください:
+            1. `CLAUDE.md` — プロジェクト規約の入口(薄いポインタ構成)
+            2. `AGENTS.md` — PR 規約(日本語必須)、コーディング規約の正典
+            3. `docs/architecture/` — アーキテクチャドキュメント
+            4. `docs/development/project-conventions.md` — プロジェクト規約の詳細
+
+            ## レビューコメントの方針
+            - **日本語で**記述してください(AGENTS.md の規約に従う)
+            - 深刻度を明示: **[Must]** / **[Should]** / **[Nit]** の3段階
+            - 行指定レビューを優先
+            - 良い実装も褒める
+            - 問題がなければ「LGTM」と承認
+          claude_args: |
+            --max-turns 15
