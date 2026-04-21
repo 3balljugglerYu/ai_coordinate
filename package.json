@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "video:studio": "remotion studio remotion/index.ts",
     "video:render": "remotion render remotion/index.ts PerstaIntroVideo out/videos/persta-ai-intro.mp4",
     "video:render:composition": "remotion render remotion/index.ts",
