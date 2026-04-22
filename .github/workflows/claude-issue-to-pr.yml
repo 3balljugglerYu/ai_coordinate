@@ -46,6 +46,7 @@ jobs:
 
           claude_args: |
             --max-turns 40
+            --allowedTools Edit,Read,Write,Bash,Glob,Grep,MultiEdit,WebFetch
 
           prompt: |
             あなたは ai_coordinate (Persta.AI) の自律開発エージェントです。
