@@ -1,0 +1,109 @@
+name: Claude - Issue to PR
+
+on:
+  issues:
+    types: [labeled]
+
+# 同じ Issue の並列実行を防ぐ
+concurrency:
+  group: claude-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  implement:
+    # claude-implement ラベルが付いたときだけ発火
+    if: github.event.label.name == 'claude-implement'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+      id-token: write  # OAuth トークン使用に必須
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Claude Code to implement issue
+        id: claude-implement
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          claude_args: |
+            --max-turns 40
+
+          prompt: |
+            あなたは ai_coordinate (Persta.AI) の自律開発エージェントです。
+            以下の GitHub Issue を実装してください。
+
+            ## Issue 情報
+            - リポジトリ: ${{ github.repository }}
+            - Issue 番号: #${{ github.event.issue.number }}
+            - タイトル: ${{ github.event.issue.title }}
+            - 本文:
+            ${{ github.event.issue.body }}
+
+            ## 作業手順
+            1. **必ず最初に**: `CLAUDE.md` と `AGENTS.md` を読んでプロジェクト規約を把握
+            2. 必要に応じて `docs/architecture/` と `docs/development/project-conventions.md` を参照
+            3. 関連する既存コードを調査し、実装パターンを踏襲
+            4. ブランチを作成: `feat/issue-${{ github.event.issue.number }}-<短い英語説明>`
+               - 例: `feat/issue-217-fix-lint-no-var`
+            5. Issue の受入基準に従って実装 + テスト追加
+            6. 以下を実行し、すべてパスすることを確認:
+               - `npm run lint` (今回の変更で新規エラーが増えていないこと)
+               - `npm run typecheck` (今回の変更で新規エラーが増えていないこと)
+               - `npm run test` (全パス、必要なら新規テスト追加)
+               - `npm run build -- --webpack` (必ず --webpack フラグ使用)
+            7. コミット(Conventional Commits 準拠、件名は英語可、本文は日本語推奨)
+            8. push
+            9. **Draft PR として**作成 (タイトル・本文は日本語、AGENTS.md 規約に従う)
+            10. PR 本文に必須項目:
+                - `Closes #${{ github.event.issue.number }}`
+                - ### 概要 (変更の要約)
+                - ### 変更内容 (具体的な変更リスト)
+                - ### 実機テスト (今回の実装で確認すべき挙動)
+                - ### テスト方法 (検証コマンドのチェックリスト)
+                - ### レビューで特に見てほしい点 (判断が分かれた箇所、実装の選択肢など)
+            11. Issue に「Draft PR を作成しました: #<番号>」とコメント
+
+            ## 絶対制約
+            - **main/master へ直接 push 禁止**
+            - **.env や秘密情報のコミット禁止**
+            - 既存の公開 API の破壊的変更禁止
+            - 範囲外の変更(無関係なリファクタ、依存更新)禁止
+            - Prettier の自発的導入禁止
+            - 判断に迷ったら**Issue にコメントして停止**(実装を強行しない)
+            - **必ず Draft PR として作成、マージは行わない**(マージは人間が判断)
+
+            ## 失敗時の振る舞い
+            - 検証コマンドがパスしない場合は、修正を試みる
+            - 3回試して解決できない場合は、Issue にコメントして現状を報告して停止
+            - 技術的に実装不可能と判断した場合は、Issue にコメントで理由を説明して停止
+
+      - name: Comment on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.issue.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ Claude による自動実装が失敗しました。[Actions ログ](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) を確認してください。\n\n考えられる原因:\n- 実装範囲が広すぎる (Issue を分割することを検討)\n- 規約に明記されていない判断が必要\n- 検証コマンドがタイムアウトした\n\n必要に応じて Issue 本文を具体化するか、手動で実装してください。'
+            })
