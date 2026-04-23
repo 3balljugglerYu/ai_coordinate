@@ -4,7 +4,15 @@
       "WebSearch",
       "WebFetch(domain:gist.github.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:developer.chrome.com)"
+      "WebFetch(domain:developer.chrome.com)",
+      "Bash(git push *)",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(gh api *)",
+      "Bash(git switch *)",
+      "Bash(git pull *)",
+      "Bash(git branch *)",
+      "Bash(git fetch *)"
     ]
   }
 }
