@@ -5,8 +5,10 @@ import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-p
 import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
 import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
 import { CachedHomePostListSection } from "@/features/home/components/CachedHomePostListSection";
+import { CachedHomeStylePresetSection } from "@/features/home/components/CachedHomeStylePresetSection";
 import { HomeBannerSkeleton } from "@/features/home/components/HomeBannerSkeleton";
 import { HomeHeading } from "@/features/home/components/HomeHeading";
+import { HomeStylePresetCarouselSkeleton } from "@/features/home/components/HomeStylePresetCarouselSkeleton";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import {
   createLocaleAlternates,
@@ -150,6 +152,9 @@ export default async function LocaleHome({
       <HomeHeading />
       <Suspense fallback={<HomeBannerSkeleton />}>
         <CachedHomeBannerSection />
+      </Suspense>
+      <Suspense fallback={<HomeStylePresetCarouselSkeleton />}>
+        <CachedHomeStylePresetSection />
       </Suspense>
       <Suspense fallback={<PostListSkeleton />}>
         <CachedHomePostListSection />
