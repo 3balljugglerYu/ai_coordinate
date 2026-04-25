@@ -265,3 +265,24 @@ export async function getImageAspectRatio(imageUrl: string): Promise<"portrait" 
     return null;
   }
 }
+
+/**
+ * width / height からアスペクト比ラベル（"portrait" | "landscape"）を派生する。
+ * Post 詳細で `aspect_ratio` 列が NULL の場合のみ fallback として使う。
+ *
+ * @returns 両方とも正の整数なら派生結果、いずれかが欠けていれば null
+ */
+export function deriveAspectRatioFromDimensions(
+  width: number | null | undefined,
+  height: number | null | undefined,
+): "portrait" | "landscape" | null {
+  if (
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return null;
+  }
+  return height > width ? "portrait" : "landscape";
+}

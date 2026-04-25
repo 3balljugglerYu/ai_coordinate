@@ -19,6 +19,7 @@ import { PostModal } from "./PostModal";
 import { PostActions } from "./PostActions";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
+import { PostMetaLine } from "./PostMetaLine";
 import { getPostImageUrl } from "../lib/utils";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
@@ -282,6 +283,13 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
           </div>
         )}
 
+
+        {/* 生成モデル / サイズ（プロンプト直前） */}
+        <PostMetaLine
+          model={post.model ?? null}
+          width={post.width ?? null}
+          height={post.height ?? null}
+        />
 
         {/* プロンプト */}
         {oneTapStylePreset ? (

@@ -49,6 +49,8 @@ export const enMessages = {
     postImageAlt: "Post image",
     hiddenMessage: "This post is hidden based on your display settings.",
     prompt: "Prompt",
+    metaModelLabel: "Generation model",
+    metaSizeLabel: "Size",
     copy: "Copy",
     copied: "Copied",
     followRequiredTitle: "Follow required",

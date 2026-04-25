@@ -1,7 +1,11 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { getPost } from "../lib/server-api";
-import { getPostDisplayUrl, getImageAspectRatio } from "../lib/utils";
+import {
+  deriveAspectRatioFromDimensions,
+  getImageAspectRatio,
+  getPostDisplayUrl,
+} from "../lib/utils";
 import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -37,6 +41,14 @@ export async function CachedPostDetail({
   const imageUrl = getPostDisplayUrl(post);
   let imageAspectRatio: "portrait" | "landscape" | null =
     post.aspect_ratio as "portrait" | "landscape" | null;
+  // 1) 既存 aspect_ratio が NULL でも、width/height が揃っていれば派生で済ませる
+  // 2) それも無理なら従来通り画像をフェッチして判定（最後のフォールバック）
+  if (!imageAspectRatio) {
+    imageAspectRatio = deriveAspectRatioFromDimensions(
+      post.width ?? null,
+      post.height ?? null,
+    );
+  }
   if (!imageAspectRatio && imageUrl) {
     imageAspectRatio = await getImageAspectRatio(imageUrl);
   }

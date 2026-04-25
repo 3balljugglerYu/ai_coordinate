@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { normalizeUserFacingGenerationError } from "@/app/api/generation-status/route";
+import { normalizeUserFacingGenerationError } from "@/features/generation/lib/normalize-generation-error";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import {
   OPENAI_PROVIDER_ERROR,

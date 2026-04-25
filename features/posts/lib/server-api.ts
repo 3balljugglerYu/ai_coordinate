@@ -15,7 +15,11 @@ import type {
 } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
-import { getImageAspectRatio } from "./utils";
+import { getImageDimensions } from "./utils";
+import {
+  ensureImageDimensions,
+  type ImageRowSubset,
+} from "./ensure-image-dimensions";
 import {
   getJSTStartOfDay,
   getJSTEndOfDay,
@@ -744,37 +748,28 @@ export const getPost = cache(async (
         getCommentCount(id),
       ]);
 
-  // アスペクト比が存在しない場合は計算して保存
-  let aspectRatio: "portrait" | "landscape" | null = data.aspect_ratio as "portrait" | "landscape" | null;
-  if (!aspectRatio) {
-    // 画像URLを取得
-    const imageUrl = data.image_url || (data.storage_path ? 
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generated-images/${data.storage_path}` : 
-      null);
-    
-    if (imageUrl) {
-      try {
-        // アスペクト比を計算
-        aspectRatio = await getImageAspectRatio(imageUrl);
-        
-        // データベースに保存（use cache 時はスキップ：書き込みを避ける）
-        if (aspectRatio && !useCache) {
-          try {
-            await supabase
-              .from("generated_images")
-              .update({ aspect_ratio: aspectRatio })
-              .eq("id", id);
-          } catch (updateError) {
-            // 競合エラーは無視（他のリクエストが既に更新した可能性がある）
-            console.warn("Failed to update aspect_ratio:", updateError);
-          }
-        }
-      } catch (error) {
-        // アスペクト比の計算に失敗した場合はnullのまま
-        console.warn("Failed to calculate aspect ratio:", error);
-      }
-    }
-  }
+  // アスペクト比 / 実寸が未計算の場合は lazy compute で算出して DB に書き戻す。
+  // 詳細は features/posts/lib/ensure-image-dimensions.ts。
+  const {
+    aspectRatio,
+    width,
+    height,
+  } = await ensureImageDimensions({
+    data: data as ImageRowSubset,
+    useCache,
+    fetchDimensions: getImageDimensions,
+    resolveImageUrl: (row) =>
+      row.image_url ||
+      (row.storage_path
+        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generated-images/${row.storage_path}`
+        : null),
+    updateRow: async (updates) => {
+      await supabase
+        .from("generated_images")
+        .update(updates)
+        .eq("id", id);
+    },
+  });
 
   // 閲覧数をインクリメント（重複カウント）
   // skipViewCountがtrue、またはuse cache時はカウントをスキップ
@@ -812,6 +807,8 @@ export const getPost = cache(async (
     comment_count: commentCount,
     view_count: updatedViewCount,
     aspect_ratio: aspectRatio,
+    width,
+    height,
   });
 });
 
