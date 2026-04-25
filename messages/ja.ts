@@ -1291,7 +1291,7 @@ export const jaMessages = {
     subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
     stylePresetCarouselTitle: "プロンプトなしでお着替え！",
     stylePresetConfirmTitle: "こちらを試着しますか？",
-    stylePresetConfirmCancel: "キャンセル",
+    stylePresetConfirmCancel: "他のコーデをみる",
     stylePresetConfirmAction: "試着する",
   },
   popupBanners: {
