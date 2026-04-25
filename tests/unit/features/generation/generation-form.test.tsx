@@ -64,6 +64,7 @@ jest.mock("@/features/generation/lib/model-config", () => ({
       "gemini-3-pro-image-1k": 50,
       "gemini-3-pro-image-2k": 80,
       "gemini-3-pro-image-4k": 100,
+      "gpt-image-2-low": 10,
     };
     return costs[model ?? ""] ?? 10;
   }),
@@ -99,6 +100,7 @@ const messages: Record<string, string> = {
   modelPro1k: "High-fidelity model: Nano Banana Pro | 1K (50 Percoins / image)",
   modelPro2k: "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
   modelPro4k: "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
+  modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
   countLabel: "Count",
   countSingle: "1 image",
   countMultiple: "{count} images",

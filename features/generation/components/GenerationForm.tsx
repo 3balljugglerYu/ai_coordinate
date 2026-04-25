@@ -597,6 +597,9 @@ export function GenerationForm({
               <SelectItem value="gemini-3.1-flash-image-preview-512">
                 {t("modelLight05k")}
               </SelectItem>
+              <SelectItem value="gpt-image-2-low">
+                {t("modelGptImage2Low")}
+              </SelectItem>
               <SelectItem value="gemini-3.1-flash-image-preview-1024">
                 {t("modelStandard1k")}
               </SelectItem>

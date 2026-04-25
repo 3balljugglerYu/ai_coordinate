@@ -700,6 +700,7 @@ export const enMessages = {
       "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
     modelPro4k:
       "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
+    modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
     countLabel: "Choose how many images to generate",
     countSingle: "1 image",
     countMultiple: "{count} images",

@@ -87,6 +87,7 @@ export const generationRequestSchema = z.object({
       'gemini-3-pro-image-1k',
       'gemini-3-pro-image-2k',
       'gemini-3-pro-image-4k',
+      'gpt-image-2-low',
       // 後方互換性のため、preview版も受け入れる
       'gemini-2.5-flash-image-preview',
       'gemini-3-pro-image-preview',

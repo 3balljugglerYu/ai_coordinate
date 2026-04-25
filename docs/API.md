@@ -165,13 +165,14 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
   "backgroundMode": "enum, optional",
   "count": "1..4, optional",
   "generationType": "coordinate | specified_coordinate | full_body | chibi",
-  "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k"
+  "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-low"
 }
 ```
 
 補足:
 
 - `sourceImageStockId` か、`sourceImageBase64 + sourceImageMimeType` のどちらかが必須です。
+- `gpt-image-2-low` は OpenAI gpt-image-2 (`quality=low`) を呼び出す経路。1 枚あたり 10 ペルコイン消費。出力解像度は入力画像のアスペクト比から `1024x1024` / `1024x1536` / `1536x1024` を自動選択。GIF 入力は非対応。
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
 - `gemini-2.5-flash-image` と `gemini-2.5-flash-image-preview` は後方互換のため受け付けますが、サーバー側で `gemini-3.1-flash-image-preview-512` に正規化されます。

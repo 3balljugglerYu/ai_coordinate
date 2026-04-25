@@ -394,4 +394,80 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       })
     );
   });
+
+  test("CHAR-GENERATE-ASYNC-006: gpt-image-2-low job records 10 percoin cost and uses provider model id", async () => {
+    const supabase = createSupabaseMock({
+      creditBalance: 30,
+      jobResult: {
+        data: { id: "job-openai-001", status: "queued" },
+        error: null,
+      },
+    });
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
+
+    const response = await POST(
+      createRequest({
+        prompt: "monochrome trench coat",
+        sourceImageBase64: SAMPLE_SOURCE_IMAGE_BASE64,
+        sourceImageMimeType: "image/png",
+        model: "gpt-image-2-low",
+      })
+    );
+    const body = await readJson(response);
+
+    expect({
+      status: response.status,
+      body,
+      insertedModel: supabase.jobsBuilder.insert.mock.calls[0]?.[0]?.[0]?.model,
+    }).toMatchInlineSnapshot(`
+      {
+        "body": {
+          "jobId": "job-openai-001",
+          "status": "queued",
+        },
+        "insertedModel": "gpt-image-2-low",
+        "status": 200,
+      }
+    `);
+    // 10 ペルコイン残高チェックが効いていることの確認: 残高 30 で 400 にならない
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.supabase.co/functions/v1/image-gen-worker",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  test("CHAR-GENERATE-ASYNC-007: gpt-image-2-low rejects insufficient balance below 10 percoin", async () => {
+    const supabase = createSupabaseMock({
+      creditBalance: 5,
+    });
+    createAdminClientMock.mockReturnValue(
+      supabase.client as unknown as ReturnType<typeof createAdminClient>
+    );
+
+    const response = await POST(
+      createRequest({
+        prompt: "monochrome trench coat",
+        sourceImageBase64: SAMPLE_SOURCE_IMAGE_BASE64,
+        sourceImageMimeType: "image/png",
+        model: "gpt-image-2-low",
+      })
+    );
+    const body = await readJson(response);
+
+    expect({
+      status: response.status,
+      body,
+    }).toMatchInlineSnapshot(`
+      {
+        "body": {
+          "error": "ペルコイン残高が不足しています。生成には10ペルコイン必要ですが、現在の残高は5ペルコインです。",
+          "errorCode": "GENERATION_INSUFFICIENT_BALANCE",
+        },
+        "status": 400,
+      }
+    `);
+    expect(supabase.jobsBuilder.insert).not.toHaveBeenCalled();
+  });
 });

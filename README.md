@@ -50,6 +50,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY=
 GEMINI_API_KEY=
+# OpenAI gpt-image-2 (quality=low) 用。Edge Function secrets にも同名で登録すること
+OPENAI_API_KEY=
 
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 STRIPE_SECRET_KEY=
@@ -219,6 +221,7 @@ Codecov 連携も有効化しているため、GitHub 上で diff coverage や P
 - `NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY`
 - `NEXT_PUBLIC_NANOBANANA_API_KEY`
 - `GEMINI_API_KEY`
+- `OPENAI_API_KEY`（OpenAI gpt-image-2 用、Edge Function secrets にも同名で登録）
 
 ### I2I PoC / One-Tap Style（限定公開）
 

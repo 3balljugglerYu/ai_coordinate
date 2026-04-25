@@ -672,6 +672,7 @@ export const jaMessages = {
     modelPro1k: "高精細モデル：Nano Banana Pro | 1K（50ペルコイン/枚）",
     modelPro2k: "高精細モデル：Nano Banana Pro | 2K（80ペルコイン/枚）",
     modelPro4k: "高精細モデル：Nano Banana Pro | 4K（100ペルコイン/枚）",
+    modelGptImage2Low: "軽量モデル： ChatGPT Images 2.0 （10ペルコイン/ 枚）",
     countLabel: "生成枚数を選択",
     countSingle: "1枚",
     countMultiple: "{count}枚",
