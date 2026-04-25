@@ -28,8 +28,22 @@ interface HomeStylePresetCarouselProps {
 
 const SCROLL_VELOCITY_PX_PER_SEC = 32;
 const MAX_FRAME_DELTA_MS = 100;
-const SLIDE_PITCH_PX = 192; // card 180 + spaceBetween 12
 const TRANSLATE_STORAGE_KEY = "home-style-carousel-translate";
+
+/**
+ * Read the per-slide pitch (slide width + spaceBetween) from Swiper's
+ * measured snapGrid. Returns null until Swiper has computed its layout.
+ * We avoid hardcoding the value so that any change to card width or
+ * spaceBetween automatically flows through to the loop wrap math.
+ */
+function getSlidePitchPx(swiper: SwiperType): number | null {
+  const grid = swiper.snapGrid;
+  if (!Array.isArray(grid) || grid.length < 2) {
+    return null;
+  }
+  const pitch = grid[1] - grid[0];
+  return pitch > 0 ? pitch : null;
+}
 
 function readSavedTranslate(): number | null {
   if (typeof window === "undefined") {
@@ -69,7 +83,6 @@ export function HomeStylePresetCarousel({
   const tHome = useTranslations("home");
   const swiperRef = useRef<SwiperType | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const isVisibleRef = useRef(true);
   const isUserActiveRef = useRef(false);
   const isDialogOpenRef = useRef(false);
   const [confirmingPreset, setConfirmingPreset] =
@@ -83,7 +96,6 @@ export function HomeStylePresetCarousel({
 
     let rafId: number | null = null;
     let lastTime = performance.now();
-    const realWidthPx = presets.length * SLIDE_PITCH_PX;
 
     const tick = (now: number) => {
       const delta = Math.min(now - lastTime, MAX_FRAME_DELTA_MS);
@@ -92,28 +104,47 @@ export function HomeStylePresetCarousel({
       if (
         swiper &&
         swiper.wrapperEl &&
-        isVisibleRef.current &&
         !isUserActiveRef.current &&
         !isDialogOpenRef.current &&
         !swiper.animating
       ) {
-        swiper.wrapperEl.style.transitionDuration = "0ms";
-        let next =
-          swiper.translate - (SCROLL_VELOCITY_PX_PER_SEC * delta) / 1000;
-        // Slides are rendered three times. We keep `next` in the central
-        // band [-2*realWidthPx, 0] so dragging in either direction still
-        // shows content from the other copies. Wrap is invisible because
-        // the three copies are visually identical.
-        if (next < -2 * realWidthPx) {
-          next += realWidthPx;
-        } else if (next > 0) {
-          next -= realWidthPx;
+        const slidePitch = getSlidePitchPx(swiper);
+        if (slidePitch !== null) {
+          swiper.wrapperEl.style.transitionDuration = "0ms";
+          const realWidthPx = presets.length * slidePitch;
+          let next =
+            swiper.translate - (SCROLL_VELOCITY_PX_PER_SEC * delta) / 1000;
+          // Slides are rendered three times. We keep `next` in the central
+          // band [-2*realWidthPx, 0] so dragging in either direction still
+          // shows content from the other copies. Wrap is invisible because
+          // the three copies are visually identical.
+          if (next < -2 * realWidthPx) {
+            next += realWidthPx;
+          } else if (next > 0) {
+            next -= realWidthPx;
+          }
+          swiper.setTranslate(next);
         }
-        swiper.setTranslate(next);
       }
       rafId = requestAnimationFrame(tick);
     };
-    rafId = requestAnimationFrame(tick);
+
+    const startTick = () => {
+      if (rafId !== null) {
+        return;
+      }
+      lastTime = performance.now();
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const stopTick = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    startTick();
 
     const intersectionObserver = new IntersectionObserver(
       (entries) => {
@@ -122,24 +153,30 @@ export function HomeStylePresetCarousel({
           return;
         }
         const visible = entry.isIntersecting && !document.hidden;
-        if (!visible) {
+        if (visible) {
+          startTick();
+        } else {
           saveCurrentTranslate(swiperRef.current);
+          stopTick();
         }
-        isVisibleRef.current = visible;
-        // Reset to avoid a huge delta jump after the carousel was paused.
-        lastTime = performance.now();
       },
       { threshold: 0 }
     );
     intersectionObserver.observe(container);
 
     const handleVisibilityChange = () => {
-      const visible = !document.hidden;
-      if (!visible) {
+      if (document.hidden) {
         saveCurrentTranslate(swiperRef.current);
+        stopTick();
+        return;
       }
-      isVisibleRef.current = visible;
-      lastTime = performance.now();
+      const rect = container.getBoundingClientRect();
+      const isOnScreen =
+        rect.bottom > 0 &&
+        rect.top < (window.innerHeight || document.documentElement.clientHeight);
+      if (isOnScreen) {
+        startTick();
+      }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -150,9 +187,7 @@ export function HomeStylePresetCarousel({
 
     return () => {
       saveCurrentTranslate(swiperRef.current);
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
+      stopTick();
       intersectionObserver.disconnect();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
@@ -201,13 +236,18 @@ export function HomeStylePresetCarousel({
             }
             wrapperEl.style.transitionDuration = "0ms";
 
-            const realWidthPx = presets.length * SLIDE_PITCH_PX;
+            // Make sure Swiper has computed snapGrid before reading pitch.
+            swiper.update();
+            const slidePitch = getSlidePitchPx(swiper);
+            const realWidthPx =
+              slidePitch !== null ? presets.length * slidePitch : null;
             const savedTranslate = readSavedTranslate();
             // Default to the middle copy so the user has buffer in both
             // drag directions. Restored values are normalized into the
             // valid central band [-2*realWidthPx, 0].
-            let initialTranslate = -realWidthPx;
-            if (savedTranslate !== null) {
+            let initialTranslate =
+              realWidthPx !== null ? -realWidthPx : 0;
+            if (savedTranslate !== null && realWidthPx !== null) {
               let normalized = savedTranslate;
               while (normalized > 0) normalized -= realWidthPx;
               while (normalized < -2 * realWidthPx)
@@ -215,7 +255,6 @@ export function HomeStylePresetCarousel({
               initialTranslate = normalized;
             }
             swiper.setTranslate(initialTranslate);
-            swiper.update();
 
             wrapperEl.style.transform = `translate3d(${swiper.translate}px, 0, 0)`;
             void wrapperEl.offsetHeight;
