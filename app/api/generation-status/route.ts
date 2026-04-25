@@ -11,7 +11,9 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 
-function normalizeUserFacingGenerationError(
+// 単体テスト容易化のため named export として公開する。
+// 詳細は tests/unit/app/api/generation-status/normalize-error.test.ts 参照。
+export function normalizeUserFacingGenerationError(
   status: string,
   errorMessage: string | null,
   copy: ReturnType<typeof getGenerationRouteCopy>
@@ -34,18 +36,10 @@ function normalizeUserFacingGenerationError(
     return copy.genericGenerationFailed;
   }
 
-  // OpenAI 側の構成不備（組織未検証 / API key 不正 / 残高不足 / 401・403）は
-  // upstream のメッセージをそのまま返さず汎用文言に差し替える。詳細は Edge Function ログ参照。
+  // OpenAI 側の非リトライ系エラー（組織未検証 / API key 不正 / 残高不足 /
+  // 401・403 / GIF 拒否 / OPENAI_API_KEY 未設定）は upstream の生メッセージを
+  // 表に出さず汎用文言に差し替える。詳細は Edge Function ログ参照。
   if (isOpenAIProviderErrorMessage(errorMessage)) {
-    return copy.genericGenerationFailed;
-  }
-
-  // OpenAI 経路での GIF 拒否や OPENAI_API_KEY 未設定など、ユーザーに見せたくない
-  // 内部メッセージは汎用文言に差し替える。
-  if (
-    errorMessage.toLowerCase().includes("openai_api_key") ||
-    /^gif images are not supported/i.test(errorMessage)
-  ) {
     return copy.genericGenerationFailed;
   }
 
