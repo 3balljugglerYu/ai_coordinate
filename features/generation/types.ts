@@ -38,13 +38,19 @@ export type GenerationType =
   | 'one_tap_style';
 
 // データベース保存用のモデル名型（サイズ情報を含む）
-export type GeminiModel = 
+// 注: 名称は歴史的経緯で GeminiModel のまま。OpenAI モデルも同 union に含めるため
+// 新コードでは ImageGenerationModel エイリアスを参照すること。
+export type GeminiModel =
   | 'gemini-2.5-flash-image'
   | 'gemini-3.1-flash-image-preview-512'
   | 'gemini-3.1-flash-image-preview-1024'
   | 'gemini-3-pro-image-1k'
   | 'gemini-3-pro-image-2k'
-  | 'gemini-3-pro-image-4k';
+  | 'gemini-3-pro-image-4k'
+  | 'gpt-image-2-low';
+
+// 画像生成モデル全体の型エイリアス（将来のリネーム足場）
+export type ImageGenerationModel = GeminiModel;
 
 // APIエンドポイント用のモデル名型
 export type GeminiApiModel =
@@ -53,6 +59,13 @@ export type GeminiApiModel =
   | 'gemini-3-pro-image-preview';
 
 export type GeminiImageSize = "512" | "1K" | "2K" | "4K";
+
+/**
+ * モデル ID が OpenAI 系 (gpt-image-*) かを判定
+ */
+export function isOpenAIImageModel(model: string | null | undefined): boolean {
+  return typeof model === 'string' && model.startsWith('gpt-image-');
+}
 
 /**
  * データベース保存用のモデル名に正規化（APIエンドポイント名から変換）
@@ -81,6 +94,10 @@ export function normalizeModelName(model: string | null | undefined): GeminiMode
   }
   // サイズ情報を含むモデル名はそのまま返す
   if (model === 'gemini-3-pro-image-1k' || model === 'gemini-3-pro-image-2k' || model === 'gemini-3-pro-image-4k') {
+    return model as GeminiModel;
+  }
+  // OpenAI 系モデルはそのまま通す
+  if (model === 'gpt-image-2-low') {
     return model as GeminiModel;
   }
   // デフォルトは新しい軽量モデル

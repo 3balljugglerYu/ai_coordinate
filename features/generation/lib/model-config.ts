@@ -14,6 +14,7 @@ export const MODEL_PERCOIN_COSTS = {
   'gemini-3-pro-image-1k': 50,
   'gemini-3-pro-image-2k': 80,
   'gemini-3-pro-image-4k': 100,
+  'gpt-image-2-low': 10,
 } as const;
 
 /**
