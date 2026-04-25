@@ -24,6 +24,7 @@ import {
   getOneTapStylePresetMetadata,
   getOneTapStyleReservedAttemptId,
 } from "../../../shared/generation/one-tap-style-metadata.ts";
+import { callOpenAIImageEdit } from "./openai-image.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -41,6 +42,7 @@ const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504
 const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
+const OPENAI_REQUEST_TIMEOUT_MS = 90_000;
 
 type GeminiAttemptMetadata = {
   attempt: number;
@@ -315,18 +317,28 @@ async function downloadInputImageViaStockFallback(
 }
 
 // 型定義
+// 注: 名称は歴史的経緯で GeminiModel のまま。OpenAI 系も含むため新コードでは
+// プロバイダ判定に isOpenAIImageModel を使用すること。
 type GeminiModel =
   | "gemini-2.5-flash-image"
   | "gemini-3.1-flash-image-preview-512"
   | "gemini-3.1-flash-image-preview-1024"
   | "gemini-3-pro-image-1k"
   | "gemini-3-pro-image-2k"
-  | "gemini-3-pro-image-4k";
+  | "gemini-3-pro-image-4k"
+  | "gpt-image-2-low";
 type GeminiApiModel =
   | "gemini-2.5-flash-image"
   | "gemini-3.1-flash-image-preview"
   | "gemini-3-pro-image-preview";
 type GeminiImageSize = "512" | "1K" | "2K" | "4K";
+
+/**
+ * モデル ID が OpenAI 系 (gpt-image-*) かを判定
+ */
+function isOpenAIImageModel(model: string | null | undefined): boolean {
+  return typeof model === "string" && model.startsWith("gpt-image-");
+}
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -388,6 +400,9 @@ function normalizeModelName(model: string | null): GeminiModel {
   if (model === "gemini-3-pro-image-1k" || model === "gemini-3-pro-image-2k" || model === "gemini-3-pro-image-4k") {
     return model as GeminiModel;
   }
+  if (model === "gpt-image-2-low") {
+    return model as GeminiModel;
+  }
   return "gemini-2.5-flash-image";
 }
 
@@ -428,6 +443,7 @@ function getPercoinCost(model: string | null): number {
     'gemini-3-pro-image-1k': 50,
     'gemini-3-pro-image-2k': 80,
     'gemini-3-pro-image-4k': 100,
+    'gpt-image-2-low': 10,
   };
   return costs[normalized] ?? 20;
 }
@@ -850,8 +866,12 @@ Deno.serve(async () => {
     // SERVICE_ROLE_KEYは手動で設定する必要がある（SUPABASE_プレフィックスは使用不可）
     const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY");
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_STUDIO_API_KEY");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
     // 環境変数のチェック（詳細なエラーメッセージを返す）
+    // Provider 別 API key（GEMINI_API_KEY / OPENAI_API_KEY）はジョブのモデル判定後に
+    // charging stage 前で検証するため、ここでは必須化しない。worker 全体の起動を
+    // 片方の key 不在で止めないことで、もう一方の provider のジョブを処理できるようにする。
     if (!supabaseUrl) {
       console.error("Missing SUPABASE_URL environment variable");
       return new Response(
@@ -872,20 +892,6 @@ Deno.serve(async () => {
         JSON.stringify({ 
           error: "Missing environment variable: SERVICE_ROLE_KEY",
           message: "Please set SERVICE_ROLE_KEY in Edge Function Secrets (not SUPABASE_SERVICE_ROLE_KEY)"
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!geminiApiKey) {
-      console.error("Missing GEMINI_API_KEY environment variable");
-      return new Response(
-        JSON.stringify({ 
-          error: "Missing environment variable: GEMINI_API_KEY",
-          message: "Please set GEMINI_API_KEY or GOOGLE_AI_STUDIO_API_KEY in Edge Function Secrets"
         }),
         {
           status: 500,
@@ -1216,6 +1222,39 @@ Deno.serve(async () => {
           queueWait: formatDurationMs(queueWaitMs),
         });
 
+        // ===== Provider 別 API key 検証（charging 前・再試行不可） =====
+        const requiresOpenAIKey = isOpenAIImageModel(dbModel);
+        const missingProviderKey = requiresOpenAIKey
+          ? !openaiApiKey
+          : !geminiApiKey;
+        if (missingProviderKey) {
+          const missingKeyMessage = requiresOpenAIKey
+            ? "OPENAI_API_KEY is not configured in Edge Function Secrets"
+            : "GEMINI_API_KEY is not configured in Edge Function Secrets";
+          console.error("[Job Processing] Missing provider API key", {
+            jobId,
+            model: dbModel,
+            requiresOpenAIKey,
+          });
+          await supabase
+            .from("image_jobs")
+            .update({
+              status: "failed",
+              processing_stage: "failed",
+              result_image_url: null,
+              error_message: missingKeyMessage,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", jobId)
+            .eq("status", "processing");
+          await supabase.rpc("pgmq_delete", {
+            p_queue_name: QUEUE_NAME,
+            p_msg_id: msgId,
+          });
+          skippedCount++;
+          continue;
+        }
+
         // ===== ペルコイン減算処理（画像生成前に実行） =====
         if (!isFreeOneTapStyleJob) {
           currentStage = "charging";
@@ -1302,6 +1341,9 @@ Deno.serve(async () => {
             async () => {
               await updateJobProcessingStage(jobId, "generating");
               const generatingSubstepDurationsMs: GeneratingSubstepDurationsMs = {};
+              // OpenAI 経路で再利用するため、inputPreparation 内で取得した入力画像を
+              // 外側スコープに保持する（Gemini 経路でも parts に inline_data として使うのは同じ）
+              let resolvedInputImageData: InputImageData | null = null;
               const requestBody = await measureGeneratingSubstep(
                 jobId,
                 "inputPreparation",
@@ -1388,6 +1430,7 @@ Deno.serve(async () => {
                       }
                     }
 
+                    resolvedInputImageData = inputImageData;
                     parts.push({
                       inline_data: {
                         mime_type: inputImageData.mimeType,
@@ -1475,13 +1518,95 @@ Deno.serve(async () => {
                 }
               );
 
+              const basePromptText =
+                requestBody.contents[0]?.parts.find((part) => typeof part.text === "string")
+                  ?.text ?? "";
+
+              if (isOpenAIImageModel(dbModel)) {
+                // ===== OpenAI 経路 =====
+                if (!resolvedInputImageData) {
+                  // coordinate 系は schema で input image 必須化済みだが念のため
+                  throw new Error("OpenAI gpt-image-2 requires an input image");
+                }
+                const openAIInputImage = resolvedInputImageData;
+                const attemptStartedAtMs = Date.now();
+                let attemptHttpStatus: number | null = null;
+                let attemptHttpOk = false;
+                let attemptTimedOut = false;
+                let attemptErrorMessage: string | null = null;
+                try {
+                  const result = await measureGeneratingSubstep(
+                    jobId,
+                    "geminiRequest",
+                    generatingSubstepDurationsMs,
+                    () =>
+                      callOpenAIImageEdit({
+                        prompt: basePromptText,
+                        inputImage: openAIInputImage,
+                        timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                      }),
+                    { attempt: 1 }
+                  );
+                  attemptHttpOk = true;
+                  attemptHttpStatus = 200;
+                  generatedImage = { mimeType: result.mimeType, data: result.data };
+                  geminiAttempts.push({
+                    attempt: 1,
+                    startedAt: new Date(attemptStartedAtMs).toISOString(),
+                    durationMs: Date.now() - attemptStartedAtMs,
+                    httpStatus: attemptHttpStatus,
+                    httpOk: attemptHttpOk,
+                    finishReasons: [],
+                    hasImage: true,
+                    timedOut: false,
+                    errorMessage: null,
+                    reinforcementApplied: false,
+                  });
+                } catch (openAIError) {
+                  attemptErrorMessage =
+                    openAIError instanceof Error
+                      ? openAIError.message
+                      : String(openAIError);
+                  if (
+                    openAIError instanceof Error &&
+                    (openAIError.name === "AbortError" ||
+                      /aborted/i.test(attemptErrorMessage))
+                  ) {
+                    attemptTimedOut = true;
+                    attemptErrorMessage = `OpenAI request timed out after ${OPENAI_REQUEST_TIMEOUT_MS}ms`;
+                  }
+                  geminiAttempts.push({
+                    attempt: 1,
+                    startedAt: new Date(attemptStartedAtMs).toISOString(),
+                    durationMs: Date.now() - attemptStartedAtMs,
+                    httpStatus: attemptHttpStatus,
+                    httpOk: attemptHttpOk,
+                    finishReasons: [],
+                    hasImage: false,
+                    timedOut: attemptTimedOut,
+                    errorMessage: attemptErrorMessage,
+                    reinforcementApplied: false,
+                  });
+                  throw openAIError;
+                }
+
+                logJobTimeline(jobId, "生成詳細サマリ", {
+                  steps: buildGeneratingSubstepSummary(generatingSubstepDurationsMs),
+                });
+
+                if (!generatedImage) {
+                  throw new Error("No images generated");
+                }
+                return;
+              }
+
+              // ===== Gemini 経路 =====
+              // provider 別 env key 検証は charging 前に実施済みのため、ここでは必ず存在する
+              const geminiApiKeyResolved = geminiApiKey ?? "";
               const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
               const maxAttempts = 2;
               const isOneTapStyle = job.generation_type === "one_tap_style";
               const isCoordinate = job.generation_type === "coordinate";
-              const basePromptText =
-                requestBody.contents[0]?.parts.find((part) => typeof part.text === "string")
-                  ?.text ?? "";
 
               for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 const reinforcementPrefix = isOneTapStyle
@@ -1536,7 +1661,7 @@ Deno.serve(async () => {
                           method: "POST",
                           headers: {
                             "Content-Type": "application/json",
-                            "x-goog-api-key": geminiApiKey,
+                            "x-goog-api-key": geminiApiKeyResolved,
                           },
                           body: JSON.stringify(attemptRequestBody),
                           signal: abortController.signal,
