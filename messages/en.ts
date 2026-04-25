@@ -1355,6 +1355,9 @@ export const enMessages = {
     subtitle:
       "An AI styling platform for the looks and characters you want to create.",
     stylePresetCarouselTitle: "Change outfits — no prompt needed!",
+    stylePresetConfirmTitle: "Try this on?",
+    stylePresetConfirmCancel: "Cancel",
+    stylePresetConfirmAction: "Try on",
   },
   popupBanners: {
     dialogTitle: "Announcement",

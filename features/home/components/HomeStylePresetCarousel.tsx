@@ -1,11 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { FreeMode } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
@@ -61,6 +71,9 @@ export function HomeStylePresetCarousel({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isVisibleRef = useRef(true);
   const isUserActiveRef = useRef(false);
+  const isDialogOpenRef = useRef(false);
+  const [confirmingPreset, setConfirmingPreset] =
+    useState<StylePresetPublicSummary | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -81,6 +94,7 @@ export function HomeStylePresetCarousel({
         swiper.wrapperEl &&
         isVisibleRef.current &&
         !isUserActiveRef.current &&
+        !isDialogOpenRef.current &&
         !swiper.animating
       ) {
         swiper.wrapperEl.style.transitionDuration = "0ms";
@@ -149,9 +163,27 @@ export function HomeStylePresetCarousel({
     return null;
   }
 
-  const handleSelect = (presetId: string) => {
+  const handleSelect = (preset: StylePresetPublicSummary) => {
     saveCurrentTranslate(swiperRef.current);
-    router.push(`/style?style=${encodeURIComponent(presetId)}`);
+    isDialogOpenRef.current = true;
+    setConfirmingPreset(preset);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      isDialogOpenRef.current = false;
+      setConfirmingPreset(null);
+    }
+  };
+
+  const handleConfirm = () => {
+    const preset = confirmingPreset;
+    if (!preset) {
+      return;
+    }
+    isDialogOpenRef.current = false;
+    setConfirmingPreset(null);
+    router.push(`/style?style=${encodeURIComponent(preset.id)}`);
   };
 
   return (
@@ -215,13 +247,49 @@ export function HomeStylePresetCarousel({
                 <StylePresetPreviewCard
                   preset={preset}
                   alt={t("styleCardAlt", { name: preset.title })}
-                  onClick={() => handleSelect(preset.id)}
+                  onClick={() => handleSelect(preset)}
                 />
               </SwiperSlide>
             );
           })}
         </Swiper>
       </div>
+      <AlertDialog
+        open={confirmingPreset !== null}
+        onOpenChange={handleDialogOpenChange}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tHome("stylePresetConfirmTitle")}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          {confirmingPreset ? (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="relative aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-lg bg-gray-100">
+                <Image
+                  src={confirmingPreset.thumbnailImageUrl}
+                  alt={t("styleCardAlt", { name: confirmingPreset.title })}
+                  fill
+                  sizes="280px"
+                  className="object-cover object-top"
+                />
+              </div>
+              <p className="text-base font-medium text-slate-900">
+                {confirmingPreset.title}
+              </p>
+            </div>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {tHome("stylePresetConfirmCancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm}>
+              {tHome("stylePresetConfirmAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
