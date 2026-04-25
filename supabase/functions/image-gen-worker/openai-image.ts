@@ -5,7 +5,10 @@
 // - GIF 入力は OpenAI 経路では非対応（呼び出し側で再試行不可エラーとして扱う）
 
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
-import { SAFETY_POLICY_BLOCKED_ERROR } from "../../../shared/generation/errors.ts";
+import {
+  OPENAI_PROVIDER_ERROR,
+  SAFETY_POLICY_BLOCKED_ERROR,
+} from "../../../shared/generation/errors.ts";
 
 const OPENAI_IMAGES_EDITS_URL = "https://api.openai.com/v1/images/edits";
 
@@ -205,6 +208,22 @@ export async function callOpenAIImageEdit(
           /moderation|safety/i.test(message))
       ) {
         throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+      }
+      // 構成不備系（組織未検証 / API key 不正 / 残高不足 / 認証エラー）は
+      // リトライしても直らないため、共有プレフィックスを付けて非リトライ系として throw する。
+      // upstream のメッセージは Edge Function ログに残し、UI には別途サニタイズしたコピーを返す。
+      const isAuthFailure = response.status === 401 || response.status === 403;
+      const isInvalidApiKey =
+        code === "invalid_api_key" || /incorrect api key/i.test(message);
+      const isInsufficientQuota = code === "insufficient_quota";
+      const isUnverifiedOrg = /must be verified/i.test(message);
+      if (
+        isAuthFailure ||
+        isInvalidApiKey ||
+        isInsufficientQuota ||
+        isUnverifiedOrg
+      ) {
+        throw new Error(`${OPENAI_PROVIDER_ERROR}: ${message}`);
       }
       throw new Error(message);
     }

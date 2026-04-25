@@ -19,6 +19,7 @@ import {
   isMalformedGeminiPartsErrorMessage,
   SAFETY_POLICY_BLOCKED_ERROR,
   isSafetyPolicyBlockedErrorMessage,
+  isOpenAIProviderErrorMessage,
 } from "../../../shared/generation/errors.ts";
 import {
   getOneTapStylePresetMetadata,
@@ -456,7 +457,8 @@ function isNonRetriableGenerationError(errorMessage: string): boolean {
     errorMessage === "No images generated" ||
     isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
-    isSafetyPolicyBlockedErrorMessage(errorMessage)
+    isSafetyPolicyBlockedErrorMessage(errorMessage) ||
+    isOpenAIProviderErrorMessage(errorMessage)
   );
 }
 

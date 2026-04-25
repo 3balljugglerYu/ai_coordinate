@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   isInvalidGeminiArgumentErrorMessage,
   isMalformedGeminiPartsErrorMessage,
+  isOpenAIProviderErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
 } from "@/shared/generation/errors";
 import { jsonError } from "@/lib/api/json-error";
@@ -30,6 +31,21 @@ function normalizeUserFacingGenerationError(
   }
 
   if (isInvalidGeminiArgumentErrorMessage(errorMessage)) {
+    return copy.genericGenerationFailed;
+  }
+
+  // OpenAI 側の構成不備（組織未検証 / API key 不正 / 残高不足 / 401・403）は
+  // upstream のメッセージをそのまま返さず汎用文言に差し替える。詳細は Edge Function ログ参照。
+  if (isOpenAIProviderErrorMessage(errorMessage)) {
+    return copy.genericGenerationFailed;
+  }
+
+  // OpenAI 経路での GIF 拒否や OPENAI_API_KEY 未設定など、ユーザーに見せたくない
+  // 内部メッセージは汎用文言に差し替える。
+  if (
+    errorMessage.toLowerCase().includes("openai_api_key") ||
+    /^gif images are not supported/i.test(errorMessage)
+  ) {
     return copy.genericGenerationFailed;
   }
 
