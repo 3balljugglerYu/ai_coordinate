@@ -1355,6 +1355,10 @@ export const enMessages = {
     heading: "Persta",
     subtitle:
       "An AI styling platform for the looks and characters you want to create.",
+    stylePresetCarouselTitle: "Change outfits — no prompt needed!",
+    stylePresetConfirmTitle: "Try this on?",
+    stylePresetConfirmCancel: "See other outfits",
+    stylePresetConfirmAction: "Try on",
   },
   popupBanners: {
     dialogTitle: "Announcement",

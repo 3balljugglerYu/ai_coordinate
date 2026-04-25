@@ -17,6 +17,14 @@
 - Pull request titles and bodies must always be written in Japanese in this repository.
 - Conventional Commit messages may remain in English, but PR-facing text must include Japanese.
 
+## UI Verification Workflow
+
+When verifying UI changes via browser automation (Playwright MCP, Puppeteer, headless browsers, etc.):
+
+- **Stop running animations before interacting.** Carousels (e.g. Swiper with autoplay), CSS marquees, and other auto-animating elements can fail click stability checks and time out the click action (e.g. `browser_click` after 5s). Before any click, programmatically halt the animation — for Swiper, run `el.swiper?.autoplay?.stop()` via the page evaluator. The same applies to measurement: take one stable sample instead of many in-flight rAF samples.
+- **Trust HMR; do not call `location.reload()` to verify code changes.** This Next.js project (App Router, dev mode) recompiles routes on demand, so each reload incurs roughly 5–15 seconds of wait. After editing a file, re-run the same browser flow without reloading. Only reload if you have concrete evidence HMR did not pick up the change.
+- **Account for first-navigation compile delay.** When navigating to a route the agent has not visited yet in this dev session (`/style`, `/posts/[id]`, `/my-page/...`, etc.), the first hit triggers an on-demand compile. Allow extra wait time and do not interpret the delay as a bug.
+
 ## Skills
 ### Available skills
 - codex-webpack-build: Repository-specific production build verification workflow for this Next.js app. Use when a user asks Codex to run a build, verify whether a change builds, investigate build failures, or confirm release readiness in this repo. In Codex and sandbox environments, prefer `npm run build -- --webpack` over plain `npm run build` because the default Turbopack build can stall here while webpack completes. If the user explicitly asks to test Turbopack or change build tooling, follow that request instead. (file: .agents/skills/codex-webpack-build/SKILL.md)

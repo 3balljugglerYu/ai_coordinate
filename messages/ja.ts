@@ -1290,6 +1290,10 @@ export const jaMessages = {
   home: {
     heading: "Persta | ペルスタ",
     subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
+    stylePresetCarouselTitle: "プロンプトなしでお着替え！",
+    stylePresetConfirmTitle: "こちらを試着しますか？",
+    stylePresetConfirmCancel: "他のコーデをみる",
+    stylePresetConfirmAction: "試着する",
   },
   popupBanners: {
     dialogTitle: "お知らせ",
