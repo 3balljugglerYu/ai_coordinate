@@ -678,6 +678,7 @@ type StageDurationsMs = Partial<Record<TimedProcessingStage, number>>;
 type GeneratingSubstep =
   | "inputPreparation"
   | "geminiRequest"
+  | "providerRequest"
   | "responseProcessing";
 
 type GeneratingSubstepDurationsMs = Partial<Record<GeneratingSubstep, number>>;
@@ -692,6 +693,7 @@ const TIMED_STAGE_LABELS: Record<TimedProcessingStage, string> = {
 const GENERATING_SUBSTEP_LABELS: Record<GeneratingSubstep, string> = {
   inputPreparation: "入力画像準備・プロンプト構築",
   geminiRequest: "Gemini API呼び出し",
+  providerRequest: "画像生成プロバイダ API呼び出し",
   responseProcessing: "応答解析",
 };
 
@@ -1537,9 +1539,11 @@ Deno.serve(async () => {
                 let attemptTimedOut = false;
                 let attemptErrorMessage: string | null = null;
                 try {
+                  // OpenAI 経路は provider 中立な substep 名を使用し、
+                  // 運用ログ・タイムラインで Gemini 経路と区別できるようにする。
                   const result = await measureGeneratingSubstep(
                     jobId,
-                    "geminiRequest",
+                    "providerRequest",
                     generatingSubstepDurationsMs,
                     () =>
                       callOpenAIImageEdit({

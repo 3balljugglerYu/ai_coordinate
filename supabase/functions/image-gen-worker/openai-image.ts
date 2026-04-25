@@ -159,13 +159,18 @@ export async function callOpenAIImageEdit(
 ): Promise<OpenAIImageEditResult> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) {
-    // 通常は呼び出し側で charging 前にチェック済み
-    throw new Error("OPENAI_API_KEY is not configured");
+    // 通常は呼び出し側で charging 前にチェック済み。
+    // ここまで来た場合も非リトライ（OPENAI_PROVIDER_ERROR）として扱う。
+    throw new Error(
+      `${OPENAI_PROVIDER_ERROR}: OPENAI_API_KEY is not configured`,
+    );
   }
 
   if (params.inputImage.mimeType.toLowerCase() === "image/gif") {
+    // 入力フォーマット非対応もリトライしても直らないため、共有プレフィックスで
+    // 即時失敗 + 返金経路に乗せる。
     throw new Error(
-      "GIF images are not supported by gpt-image-2; please upload PNG, JPEG, or WebP",
+      `${OPENAI_PROVIDER_ERROR}: GIF images are not supported by gpt-image-2; please upload PNG, JPEG, or WebP`,
     );
   }
 
