@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, FreeMode } from "swiper/modules";
+import { FreeMode } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -16,7 +16,9 @@ interface HomeStylePresetCarouselProps {
   presets: StylePresetPublicSummary[];
 }
 
-const AUTOPLAY_SPEED_MS = 6000;
+const SCROLL_VELOCITY_PX_PER_SEC = 32;
+const MAX_FRAME_DELTA_MS = 100;
+const SLIDE_PITCH_PX = 192; // card 180 + spaceBetween 12
 const TRANSLATE_STORAGE_KEY = "home-style-carousel-translate";
 
 function readSavedTranslate(): number | null {
@@ -57,6 +59,8 @@ export function HomeStylePresetCarousel({
   const tHome = useTranslations("home");
   const swiperRef = useRef<SwiperType | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const isVisibleRef = useRef(true);
+  const isUserActiveRef = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -64,17 +68,38 @@ export function HomeStylePresetCarousel({
       return;
     }
 
-    const pauseAutoplay = () => {
-      swiperRef.current?.autoplay?.pause();
-    };
+    let rafId: number | null = null;
+    let lastTime = performance.now();
+    const realWidthPx = presets.length * SLIDE_PITCH_PX;
 
-    const resumeAutoplay = () => {
+    const tick = (now: number) => {
+      const delta = Math.min(now - lastTime, MAX_FRAME_DELTA_MS);
+      lastTime = now;
       const swiper = swiperRef.current;
-      if (!swiper?.autoplay) {
-        return;
+      if (
+        swiper &&
+        swiper.wrapperEl &&
+        isVisibleRef.current &&
+        !isUserActiveRef.current &&
+        !swiper.animating
+      ) {
+        swiper.wrapperEl.style.transitionDuration = "0ms";
+        let next =
+          swiper.translate - (SCROLL_VELOCITY_PX_PER_SEC * delta) / 1000;
+        // Slides are rendered three times. We keep `next` in the central
+        // band [-2*realWidthPx, 0] so dragging in either direction still
+        // shows content from the other copies. Wrap is invisible because
+        // the three copies are visually identical.
+        if (next < -2 * realWidthPx) {
+          next += realWidthPx;
+        } else if (next > 0) {
+          next -= realWidthPx;
+        }
+        swiper.setTranslate(next);
       }
-      swiper.autoplay.resume();
+      rafId = requestAnimationFrame(tick);
     };
+    rafId = requestAnimationFrame(tick);
 
     const intersectionObserver = new IntersectionObserver(
       (entries) => {
@@ -82,30 +107,25 @@ export function HomeStylePresetCarousel({
         if (!entry) {
           return;
         }
-        if (entry.isIntersecting && !document.hidden) {
-          resumeAutoplay();
-        } else {
+        const visible = entry.isIntersecting && !document.hidden;
+        if (!visible) {
           saveCurrentTranslate(swiperRef.current);
-          pauseAutoplay();
         }
+        isVisibleRef.current = visible;
+        // Reset to avoid a huge delta jump after the carousel was paused.
+        lastTime = performance.now();
       },
       { threshold: 0 }
     );
     intersectionObserver.observe(container);
 
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      const visible = !document.hidden;
+      if (!visible) {
         saveCurrentTranslate(swiperRef.current);
-        pauseAutoplay();
-        return;
       }
-      const rect = container.getBoundingClientRect();
-      const isOnScreen =
-        rect.bottom > 0 &&
-        rect.top < (window.innerHeight || document.documentElement.clientHeight);
-      if (isOnScreen) {
-        resumeAutoplay();
-      }
+      isVisibleRef.current = visible;
+      lastTime = performance.now();
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -116,11 +136,14 @@ export function HomeStylePresetCarousel({
 
     return () => {
       saveCurrentTranslate(swiperRef.current);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
       intersectionObserver.disconnect();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, []);
+  }, [presets.length]);
 
   if (presets.length === 0) {
     return null;
@@ -144,33 +167,37 @@ export function HomeStylePresetCarousel({
             if (!wrapperEl) {
               return;
             }
-            // Always clear the wrapper transition first to defend against
-            // Next.js Router Cache preserving the prior 6s transition,
-            // which would animate the upcoming translate for 6s.
             wrapperEl.style.transitionDuration = "0ms";
 
-            // Restore prior position from sessionStorage so the carousel
-            // resumes where the user left off.
+            const realWidthPx = presets.length * SLIDE_PITCH_PX;
             const savedTranslate = readSavedTranslate();
-            if (savedTranslate !== null && savedTranslate <= 0) {
-              swiper.setTranslate(savedTranslate);
-              swiper.update();
+            // Default to the middle copy so the user has buffer in both
+            // drag directions. Restored values are normalized into the
+            // valid central band [-2*realWidthPx, 0].
+            let initialTranslate = -realWidthPx;
+            if (savedTranslate !== null) {
+              let normalized = savedTranslate;
+              while (normalized > 0) normalized -= realWidthPx;
+              while (normalized < -2 * realWidthPx)
+                normalized += realWidthPx;
+              initialTranslate = normalized;
             }
+            swiper.setTranslate(initialTranslate);
+            swiper.update();
 
             wrapperEl.style.transform = `translate3d(${swiper.translate}px, 0, 0)`;
             void wrapperEl.offsetHeight;
             wrapperEl.style.transitionDuration = "";
           }}
-          modules={[Autoplay, FreeMode]}
+          onTouchStart={() => {
+            isUserActiveRef.current = true;
+          }}
+          onTouchEnd={() => {
+            isUserActiveRef.current = false;
+          }}
+          modules={[FreeMode]}
           slidesPerView="auto"
           spaceBetween={12}
-          loop
-          speed={AUTOPLAY_SPEED_MS}
-          autoplay={{
-            delay: 0,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: false,
-          }}
           freeMode={{ enabled: true, momentum: true, momentumRatio: 0.4 }}
           grabCursor
           allowTouchMove
@@ -178,15 +205,21 @@ export function HomeStylePresetCarousel({
           observeParents
           className="!overflow-visible"
         >
-          {presets.map((preset) => (
-            <SwiperSlide key={preset.id} style={{ width: "auto" }}>
-              <StylePresetPreviewCard
-                preset={preset}
-                alt={t("styleCardAlt", { name: preset.title })}
-                onClick={() => handleSelect(preset.id)}
-              />
-            </SwiperSlide>
-          ))}
+          {[...presets, ...presets, ...presets].map((preset, index) => {
+            const copy = ["a", "b", "c"][Math.floor(index / presets.length)];
+            return (
+              <SwiperSlide
+                key={`${preset.id}-${copy}`}
+                style={{ width: "auto" }}
+              >
+                <StylePresetPreviewCard
+                  preset={preset}
+                  alt={t("styleCardAlt", { name: preset.title })}
+                  onClick={() => handleSelect(preset.id)}
+                />
+              </SwiperSlide>
+            );
+          })}
         </Swiper>
       </div>
     </div>
