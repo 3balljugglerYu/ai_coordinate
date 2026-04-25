@@ -6,20 +6,19 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:developer.chrome.com)",
       "Bash(npm run *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
       "mcp__plugin_playwright_playwright__browser_resize",
       "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_navigate_back",
       "mcp__plugin_playwright_playwright__browser_wait_for",
       "mcp__plugin_playwright_playwright__browser_evaluate",
       "mcp__plugin_playwright_playwright__browser_take_screenshot",
       "mcp__plugin_playwright_playwright__browser_snapshot",
       "mcp__plugin_playwright_playwright__browser_click",
-      "mcp__plugin_playwright_playwright__browser_navigate_back",
-      "Read(//Users/hide/.claude/projects/-Users-hide-ai-coordinate/**)",
-      "Read(//Users/hide/.claude/projects/**)",
-      "mcp__plugin_playwright_playwright__browser_console_messages",
-      "Bash(git config *)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "mcp__plugin_playwright_playwright__browser_console_messages"
     ]
   }
 }
