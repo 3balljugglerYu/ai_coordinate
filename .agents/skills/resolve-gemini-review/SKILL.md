@@ -1,20 +1,28 @@
 ---
 name: resolve-gemini-review
 description: >
-  Resolve, reply to, and triage Gemini Code Assist pull request review comments.
-  Use this skill whenever the user wants to address PR review feedback from Gemini Code Assist,
-  including listing unresolved comments, deciding how to respond, fixing code, and marking
-  comments as resolved. Trigger on phrases like "resolve gemini comments", "handle gemini review",
-  "reply to gemini", "fix gemini feedback", or any time the user wants to work through PR review comments.
+  Resolve, reply to, and triage automated PR review feedback — Gemini Code Assist review
+  comments and Codecov coverage reports. Use this skill whenever the user wants to address
+  PR review feedback, including listing unresolved Gemini comments, deciding how to respond,
+  fixing code, marking comments as resolved, and reviewing/closing coverage gaps reported by
+  Codecov. Trigger on phrases like "resolve gemini comments", "handle gemini review",
+  "reply to gemini", "fix gemini feedback", "check codecov", "codecov coverage", or any time
+  the user wants to work through PR review comments and coverage reports.
 ---
 
-# Gemini Code Assist Review Resolution Skill
+# PR Review Resolution Skill (Gemini Code Assist + Codecov)
 
 ## Overview
 
 This skill guides Claude through a structured, interactive workflow for triaging and resolving
-Gemini Code Assist review comments on a pull request. It enforces the rule:
-**never resolve a comment without a reply, and never dismiss feedback without reasoning.**
+**two kinds of automated PR feedback**:
+
+1. **Gemini Code Assist review comments** — line-level review comments. Replies and
+   resolution are required. Rule: **never resolve a comment without a reply, and never dismiss
+   feedback without reasoning.**
+2. **Codecov coverage reports** — top-level PR comments listing files with missing patch
+   coverage. Replies are NOT required (Codecov is a bot that does not converse). Goal:
+   surface the missing-line files, decide whether to add tests, and close the gap.
 
 ---
 
@@ -67,9 +75,18 @@ to fetch the latest documentation:
 
 ## Workflow
 
-### Step 1 — List All Unresolved Conversations
+The workflow has two parallel tracks:
 
-Fetch all review comments on the current PR using:
+- **Track G** (Gemini): Steps G1–G5
+- **Track C** (Codecov): Steps C1–C3
+
+When the user invokes the skill, fetch both kinds of feedback first (Step G1 + Step C1),
+then present a combined summary, then act per track.
+
+### Step G1 — List All Unresolved Gemini Conversations
+
+Fetch all review comments on the current PR (review comments are returned by the
+`/pulls/.../comments` endpoint):
 
 ```bash
 gh pr view --json number,url
@@ -96,9 +113,40 @@ Unresolved Gemini comments:
 3. [Cargo.toml:12]     "This dependency version is outdated. Please update to >=2.1."
 ```
 
+### Step C1 — Fetch Codecov Coverage Report
+
+Codecov posts to **issue comments** (top-level PR discussion), not review comments. Use the
+issues endpoint:
+
+```bash
+gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
+  --jq '[.[] | select(.user.login == "codecov-commenter") | {id: .id, updated_at: .updated_at, body: .body}]'
+```
+
+If multiple Codecov comments exist (Codecov edits the same comment but rare cases create
+multiples), pick the **most recently updated** one — that's the latest report.
+
+Parse the body to extract:
+- **Patch coverage** percentage (e.g. `66.66667%`)
+- **Files with missing lines** table — each row shows `path | patch %  | N Missing`
+- **Project coverage delta** (if shown — e.g. `coverage delta: -0.05%`)
+
+Present a summary alongside the Gemini list:
+
+```
+Codecov Report (PR #229, updated 2026-04-25 06:13):
+- Patch coverage: 66.67%
+- Project delta: not shown
+- Files with missing lines:
+  • app/api/generation-status/route.ts — 20.00% (4 lines missing)
+```
+
+If no Codecov comment exists yet, say so and continue (it may not have run, or coverage is
+100%).
+
 ---
 
-### Step 2 — Analyze and Categorize
+### Step G2 — Analyze and Categorize Gemini Comments
 
 Read each comment carefully. **Before evaluating**, gather context:
 
@@ -129,7 +177,7 @@ My assessment:
 
 ---
 
-### Step 3 — Ask the User Which to Address
+### Step G3 — Ask the User Which to Address
 
 Ask the user which comments to resolve in this session:
 
@@ -139,7 +187,7 @@ Handle one comment at a time when the user picks individual items.
 
 ---
 
-### Step 4 — For Each Selected Comment
+### Step G4 — For Each Selected Gemini Comment
 
 #### If agreed (or user agrees with your assessment):
 
@@ -176,7 +224,7 @@ Handle one comment at a time when the user picks individual items.
 
 ---
 
-### Step 5 — Repeat
+### Step G5 — Repeat
 
 After handling a comment, return to the numbered list and ask which to tackle next, or confirm all are done.
 
@@ -194,7 +242,69 @@ Summarize what was done:
 
 ---
 
+### Step C2 — Decide Whether to Close Coverage Gaps
+
+For each file in the Codecov "missing lines" list, decide:
+
+- ✅ **Add tests** — the file has new logic that should be covered (typical case for code
+  introduced in this PR).
+- 🤔 **Defer** — the file has trivial / boilerplate code (e.g., type re-exports, generated
+  code, glue code where mocking would be more cost than value).
+- ❌ **Skip** — the file is intentionally not covered (e.g., dev-only debug code, test
+  fixtures).
+
+Show your assessment to the user with the same agree/disagree style as Gemini comments:
+
+```
+Codecov coverage decisions:
+
+- app/api/generation-status/route.ts (4 missing) ✅ Add tests
+  Lines correspond to the new sanitization branches added in this PR. Tests
+  should hit each branch (provider error / openai_api_key / GIF rejection).
+```
+
+Ask the user which files to address (same prompt style as Step G3).
+
+### Step C3 — Add Tests and Verify Coverage
+
+For each file the user wants covered:
+
+1. **Identify the missing lines**: read the file in the dashboard link from Codecov, or
+   open the patch coverage detail. The Codecov UI shows uncovered lines highlighted; the
+   PR comment usually only lists counts.
+   - Alternative: run `npm run test:coverage` (or repo-specific equivalent) locally and
+     read `coverage/lcov-report/index.html` to find uncovered lines in the changed file.
+2. **Choose the right test layer**:
+   - Pure utility / classification helpers → unit test.
+   - API route handlers → characterization or integration test.
+   - UI components → component test in `tests/unit/.../*.test.tsx`.
+3. **If a helper is local to a route file**, export it (named export alongside the
+   route handler — Next.js supports this) so it can be unit-tested directly. Document
+   the export in a brief comment so a reader understands why it is exported.
+4. **Write the test** covering each missing branch / line.
+5. **Run** `npm run test` (or repo-specific test command) to verify pass.
+6. **Commit** using Conventional Commits with the `test(...)` type:
+   ```bash
+   git commit -m "test(scope): cover <function/branches> per codecov report"
+   ```
+7. **Push and wait** for Codecov to re-run on the new commit. Confirm the new patch
+   coverage in the updated Codecov comment.
+
+Do **not** reply to the Codecov comment. Codecov is a bot that does not converse;
+it edits its existing comment when re-run.
+
+---
+
 ## Hard Rules
+
+### Common to both tracks
+
+| Rule                            | Detail                                                       |
+| ------------------------------- | ------------------------------------------------------------ |
+| **Use project skills**          | Check relevant project skills before evaluating comments.    |
+| **Verify with context7**        | Query latest docs when comment involves library-specific API or version behavior. |
+
+### Gemini track (G)
 
 | Rule                            | Detail                                                       |
 | ------------------------------- | ------------------------------------------------------------ |
@@ -204,5 +314,12 @@ Summarize what was done:
 | **Always tag Gemini**           | Start every reply with `/gemini review`.                     |
 | **Include SHA on fixes**        | Every "Fixed" reply must include the short commit SHA.       |
 | **Get sign-off before resolve** | If disagreeing, only resolve after user explicitly confirms. |
-| **Use project skills**          | Check relevant project skills before evaluating comments.    |
-| **Verify with context7**        | Query latest docs when comment involves library-specific API or version behavior. |
+
+### Codecov track (C)
+
+| Rule                            | Detail                                                       |
+| ------------------------------- | ------------------------------------------------------------ |
+| **Never reply to Codecov**      | Codecov is a bot; comments are auto-edited on re-run. Do not post replies. |
+| **Always check the latest comment** | Codecov usually edits a single comment in place. Use the most recent `updated_at`. |
+| **Add tests, don't tweak coverage config** | Default action is to add tests covering the missing lines. Avoid silencing coverage via config (`coverage.ignore`, `--passWithNoTests`, etc.) unless the user explicitly approves. |
+| **Use the `test(scope):` commit type** | Coverage-only commits should use Conventional Commits `test(...)` so they are distinguishable from feature/fix commits. |

@@ -11,7 +11,21 @@
       "Bash(git switch *)",
       "Bash(git pull *)",
       "Bash(git branch *)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git check-ignore *)",
+      "Bash(npm run *)",
+      "Bash(npx jest *)",
+      "Bash(npx eslint *)",
+      "Bash(supabase --version)",
+      "Bash(supabase functions *)",
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__list_organizations",
+      "Bash(git --no-pager diff --stat HEAD)",
+      "Bash(gh api *)"
     ]
   }
 }
