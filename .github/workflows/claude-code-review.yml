@@ -50,4 +50,4 @@ jobs:
             - 良い実装も褒める
             - 問題がなければ「LGTM」と承認
           claude_args: |
-            --max-turns 15
+            --max-turns 25
