@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  DEFAULT_GENERATION_MODEL,
   normalizeModelName,
   backgroundModeToBackgroundChange,
   resolveBackgroundMode,
@@ -94,7 +95,7 @@ export const generationRequestSchema = z.object({
       'gemini-3-pro-image',
     ])
     .optional()
-    .default('gemini-3.1-flash-image-preview-512')
+    .default(DEFAULT_GENERATION_MODEL)
     .transform(normalizeModelName), // データベース保存用に正規化
 }).superRefine((data, ctx) => {
   const hasSourceImageStockId =

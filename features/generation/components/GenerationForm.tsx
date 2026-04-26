@@ -32,6 +32,7 @@ import {
   GENERATION_PROMPT_MAX_LENGTH,
   isGenerationPromptTooLong,
 } from "../lib/prompt-validation";
+import { DEFAULT_GENERATION_MODEL } from "../types";
 import type {
   UploadedImage,
   GeminiModel,
@@ -101,7 +102,7 @@ export function GenerationForm({
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
   const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
-    "gemini-3.1-flash-image-preview-512"
+    DEFAULT_GENERATION_MODEL
   );
   const [stocks, setStocks] = useState<SourceImageStock[]>([]);
   const [stockLimit, setStockLimit] = useState<number | null>(null);
@@ -298,7 +299,7 @@ export function GenerationForm({
       setPrompt("");
       setBackgroundMode("keep");
       setSelectedCount(1);
-      setSelectedModel("gemini-3.1-flash-image-preview-512");
+      setSelectedModel(DEFAULT_GENERATION_MODEL);
       setImageSourceType("upload");
       if (typeof window !== "undefined") {
         localStorage.removeItem("selectedStockId");

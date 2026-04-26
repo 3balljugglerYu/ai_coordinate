@@ -52,6 +52,13 @@ export type GeminiModel =
 // 画像生成モデル全体の型エイリアス（将来のリネーム足場）
 export type ImageGenerationModel = GeminiModel;
 
+/**
+ * 全画面共通の既定モデル ID。
+ * フォーム初期値、サーバー側スキーマ default、normalize の fallback の単一の正本。
+ * 拡張ヘルパは @/features/generation/lib/model-config.ts を参照。
+ */
+export const DEFAULT_GENERATION_MODEL: GeminiModel = 'gpt-image-2-low';
+
 // APIエンドポイント用のモデル名型
 export type GeminiApiModel =
   | 'gemini-2.5-flash-image'
@@ -72,7 +79,7 @@ export function isOpenAIImageModel(model: string | null | undefined): boolean {
  */
 export function normalizeModelName(model: string | null | undefined): GeminiModel {
   if (!model) {
-    return 'gemini-3.1-flash-image-preview-512';
+    return DEFAULT_GENERATION_MODEL;
   }
 
   // 廃止した 2.5 は新しい軽量モデルへ吸収する
@@ -100,8 +107,8 @@ export function normalizeModelName(model: string | null | undefined): GeminiMode
   if (model === 'gpt-image-2-low') {
     return model as GeminiModel;
   }
-  // デフォルトは新しい軽量モデル
-  return 'gemini-3.1-flash-image-preview-512';
+  // 不明な値は全画面共通の既定モデルへ寄せる
+  return DEFAULT_GENERATION_MODEL;
 }
 
 /**

@@ -18,12 +18,15 @@ import {
   BACKGROUND_MODES,
   type BackgroundMode,
 } from "@/shared/generation/prompt-core";
-import type { GeminiModel } from "@/features/generation/types";
+import {
+  DEFAULT_GENERATION_MODEL,
+  type GeminiModel,
+} from "@/features/generation/types";
 
 export const SELECTED_MODEL_STORAGE_KEY = "persta-ai:last-selected-model";
 export const BACKGROUND_MODE_STORAGE_KEY = "persta-ai:last-background-mode";
 
-const DEFAULT_MODEL: GeminiModel = "gemini-3.1-flash-image-preview-512";
+const DEFAULT_MODEL: GeminiModel = DEFAULT_GENERATION_MODEL;
 const DEFAULT_BACKGROUND_MODE: BackgroundMode = "keep";
 
 /**

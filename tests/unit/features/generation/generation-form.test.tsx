@@ -254,17 +254,17 @@ describe("GenerationForm", () => {
       sourceImageType: "illustration",
       backgroundMode: "keep",
       count: 1,
-      model: "gemini-3.1-flash-image-preview-512",
+      model: "gpt-image-2-low",
     });
   });
 
-  test("表示_既定モデルと必要ペルコインがNano Banana 0.5Kになる", async () => {
+  test("表示_既定モデルと必要ペルコインがChatGPT Images 2.0になる", async () => {
     await act(async () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     expect(
-      screen.getByText("Light model: Nano Banana 2 | 0.5K (10 Percoins / image)")
+      screen.getByText("Light model: ChatGPT Images 2.0 (10 Percoins / image)")
     ).toBeInTheDocument();
     expect(
       screen.getByText("1 images require 10 Percoins")

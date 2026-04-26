@@ -16,7 +16,7 @@ describe("form-preferences", () => {
 
   describe("readPreferredModel", () => {
     it("returns default when nothing is stored", () => {
-      expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+      expect(readPreferredModel()).toBe("gpt-image-2-low");
     });
 
     it("returns the stored value when it is a known persistable model", () => {
@@ -40,17 +40,17 @@ describe("form-preferences", () => {
 
     it("falls back to default for unknown / legacy / empty values", () => {
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "dall-e-3");
-      expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+      expect(readPreferredModel()).toBe("gpt-image-2-low");
 
       // legacy ID (not in dropdown) も default に丸める
       window.localStorage.setItem(
         SELECTED_MODEL_STORAGE_KEY,
         "gemini-2.5-flash-image",
       );
-      expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+      expect(readPreferredModel()).toBe("gpt-image-2-low");
 
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "");
-      expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+      expect(readPreferredModel()).toBe("gpt-image-2-low");
     });
   });
 
@@ -136,7 +136,7 @@ describe("form-preferences", () => {
         throw new Error("SecurityError");
       });
       try {
-        expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+        expect(readPreferredModel()).toBe("gpt-image-2-low");
         expect(readPreferredBackgroundMode()).toBe("keep");
       } finally {
         getItemSpy.mockRestore();
@@ -151,7 +151,7 @@ describe("form-preferences", () => {
       });
 
       try {
-        expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+        expect(readPreferredModel()).toBe("gpt-image-2-low");
         expect(readPreferredBackgroundMode()).toBe("keep");
         expect(() => writePreferredModel("gpt-image-2-low")).not.toThrow();
         expect(() => writePreferredBackgroundMode("ai_auto")).not.toThrow();

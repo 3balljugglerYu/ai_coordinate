@@ -154,7 +154,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         source_image_stock_id: VALID_SOURCE_IMAGE_STOCK_ID,
         source_image_type: "illustration",
         generation_type: "coordinate",
-        model: "gemini-3.1-flash-image-preview-512",
+        model: "gpt-image-2-low",
         background_mode: "keep",
         background_change: false,
         status: "queued",
