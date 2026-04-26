@@ -514,6 +514,8 @@ ALTER TABLE public.image_jobs
   DROP COLUMN IF EXISTS background_change;
 ```
 
+実装ファイル: `supabase/migrations/20260426170000_drop_legacy_image_metadata_columns.sql`
+
 Phase B では migration と同じ PR で以下を更新する。
 
 - `.cursor/rules/database-design.mdc`
