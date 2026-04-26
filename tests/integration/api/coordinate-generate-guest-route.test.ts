@@ -399,4 +399,159 @@ describe("CoordinateGenerateGuest integration", () => {
     expect(response.status).toBe(400);
     expect(body.errorCode).toBe("GUEST_IMAGE_MISSING");
   });
+
+  test("OpenAI モデルで OpenAI API key が無い場合は reserve 前に 500", async () => {
+    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      geminiApiKey: "gemini-key",
+      openaiApiKey: "",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(500);
+    expect(body.errorCode).toBe("GUEST_UPSTREAM_UNAVAILABLE");
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+  });
+
+  test("Gemini モデルで Gemini API key が無い場合は reserve 前に 500", async () => {
+    const fd = buildBaseFormData({
+      model: "gemini-3.1-flash-image-preview-512",
+    });
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      geminiApiKey: "",
+      openaiApiKey: "openai-key",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(500);
+    expect(body.errorCode).toBe("GUEST_UPSTREAM_UNAVAILABLE");
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+  });
+
+  test("UCL-011a: no_image は release して 502 を返す", async () => {
+    openaiClient.mockRejectedValueOnce(new Error("No images generated"));
+    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      geminiApiKey: "gemini-key",
+      openaiApiKey: "openai-key",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(502);
+    expect(body.errorCode).toBe("GUEST_NO_IMAGE_GENERATED");
+    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
+      reservation: { authState: "guest", attemptId: "attempt-001" },
+      reason: "no_image_generated",
+    });
+  });
+
+  test("release 対象でも reservation が無い場合は release を呼ばずに応答する", async () => {
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: true,
+      reservation: null,
+    });
+    openaiClient.mockRejectedValueOnce(new Error("No images generated"));
+    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      geminiApiKey: "gemini-key",
+      openaiApiKey: "openai-key",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(502);
+    expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
+  });
+
+  test("release 失敗はログに残して元の upstream 応答を返す", async () => {
+    openaiClient.mockRejectedValueOnce(new Error("No images generated"));
+    releaseRateLimitAttemptFn.mockRejectedValueOnce(new Error("release failed"));
+    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      geminiApiKey: "gemini-key",
+      openaiApiKey: "openai-key",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(502);
+    expect(body.errorCode).toBe("GUEST_NO_IMAGE_GENERATED");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Coordinate guest generate route: failed to release reserved attempt",
+      expect.any(Error)
+    );
+  });
+
+  test("Gemini の 4xx upstream_error は release せず upstream status を返す", async () => {
+    fetchFn.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: { message: "bad request" } }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    const fd = buildBaseFormData({
+      model: "gemini-3.1-flash-image-preview-512",
+    });
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      geminiApiKey: "gemini-key",
+      openaiApiKey: "openai-key",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("GUEST_UPSTREAM_ERROR");
+    expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
+  });
+
+  test("formData 解析に失敗した場合は 500 GUEST_INTERNAL_ERROR", async () => {
+    const request = new NextRequest("http://localhost/api/coordinate-generate-guest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "accept-language": "ja",
+      },
+      body: "{}",
+    });
+    const response = await postCoordinateGenerateGuestRoute(request, {
+      getUserFn,
+      geminiApiKey: "gemini-key",
+      openaiApiKey: "openai-key",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(500);
+    expect(body.errorCode).toBe("GUEST_INTERNAL_ERROR");
+    expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
+  });
 });

@@ -271,6 +271,37 @@ describe("style-rate-limit", () => {
     });
   });
 
+  test("getStyleGenerateRateLimitStatus_guestの日次残数もIP+Cookieで集計する", async () => {
+    const shortQuery = createCountQuery({ count: 0, error: null });
+    const dailyQuery = createCountQuery({ count: 1, error: null });
+    const from = jest
+      .fn()
+      .mockReturnValueOnce(shortQuery)
+      .mockReturnValueOnce(dailyQuery);
+    mockCreateAdminClient.mockReturnValue({ from } as never);
+
+    const status = await getStyleGenerateRateLimitStatus({
+      request: createRequest(),
+      userId: null,
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+
+    expect(status).toEqual({
+      authState: "guest",
+      remainingDaily: 0,
+      showRemainingWarning: true,
+    });
+    expect(from).toHaveBeenCalledWith("style_guest_generate_attempts");
+    expect(shortQuery.gte).toHaveBeenCalledWith(
+      "created_at",
+      "2026-03-21T15:29:00.000Z"
+    );
+    expect(dailyQuery.gte).toHaveBeenCalledWith(
+      "created_at",
+      "2026-03-21T15:00:00.000Z"
+    );
+  });
+
   test("attachStyleGenerateRateLimitReservationToJob_認証予約をジョブに紐づける", async () => {
     const rpc = jest.fn().mockResolvedValue({ data: true, error: null });
     mockCreateAdminClient.mockReturnValue({ rpc } as never);
@@ -317,5 +348,19 @@ describe("style-rate-limit", () => {
         p_released_at: "2026-03-21T15:30:00.000Z",
       }
     );
+  });
+
+  test("releaseStyleGenerateRateLimitAttempt_reservation が無ければ false", async () => {
+    const rpc = jest.fn();
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
+
+    await expect(
+      releaseStyleGenerateRateLimitAttempt({
+        reservation: null,
+        reason: "timeout",
+      })
+    ).resolves.toBe(false);
+
+    expect(rpc).not.toHaveBeenCalled();
   });
 });

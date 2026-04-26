@@ -278,6 +278,46 @@ describe("guest-generate", () => {
       expect(result).toMatchObject({ kind: "no_image", retryable: false });
     });
 
+    test("JSON として読めない成功レスポンスは no_image (finishReasons=[]) にする", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response("not json", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      const result = await dispatchGuestImageGeneration({
+        model: "gemini-3.1-flash-image-preview-512",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+      expect(result).toEqual({
+        kind: "no_image",
+        finishReasons: [],
+        retryable: false,
+      });
+    });
+
+    test("promptFeedback.blockReason を含む成功レスポンスは safety_blocked", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            promptFeedback: { blockReason: "SAFETY" },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      const result = await dispatchGuestImageGeneration({
+        model: "gemini-3.1-flash-image-preview-512",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+      expect(result.kind).toBe("safety_blocked");
+    });
+
     test("AbortError は timeout", async () => {
       const fetchFn = jest.fn().mockRejectedValue(
         Object.assign(new Error("aborted"), { name: "AbortError" })
@@ -290,6 +330,43 @@ describe("guest-generate", () => {
         fetchFn: fetchFn as unknown as typeof fetch,
       });
       expect(result.kind).toBe("timeout");
+    });
+
+    test("fetch の AbortError 以外の失敗は upstream_error", async () => {
+      const fetchFn = jest.fn().mockRejectedValue(new Error("network down"));
+      const result = (await dispatchGuestImageGeneration({
+        model: "gemini-3.1-flash-image-preview-512",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      })) as Extract<DispatchGuestImageGenerationResult, { kind: "upstream_error" }>;
+      expect(result).toEqual({
+        kind: "upstream_error",
+        message: "network down",
+        status: 502,
+      });
+    });
+
+    test("HTTP エラーで JSON を読めない場合は fallback message の upstream_error", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response("not json", {
+          status: 502,
+          headers: { "Content-Type": "text/plain" },
+        })
+      );
+      const result = (await dispatchGuestImageGeneration({
+        model: "gemini-3.1-flash-image-preview-512",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      })) as Extract<DispatchGuestImageGenerationResult, { kind: "upstream_error" }>;
+      expect(result).toEqual({
+        kind: "upstream_error",
+        message: "Gemini API request failed (HTTP 502)",
+        status: 502,
+      });
     });
 
     test("HTTP 503 は upstream_error (status=503)", async () => {
@@ -394,6 +471,23 @@ describe("guest-generate", () => {
         openaiClient,
       });
       expect(result.kind).toBe("timeout");
+    });
+
+    test("openaiClient の一般エラーは upstream_error", async () => {
+      const openaiClient = jest.fn().mockRejectedValue(new Error("server busy"));
+      const result = (await dispatchGuestImageGeneration({
+        model: "gpt-image-2-low",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        geminiApiKey: "(unused)",
+        openaiApiKey: "openai-key",
+        openaiClient,
+      })) as Extract<DispatchGuestImageGenerationResult, { kind: "upstream_error" }>;
+      expect(result).toEqual({
+        kind: "upstream_error",
+        message: "server busy",
+        status: 502,
+      });
     });
   });
 });
