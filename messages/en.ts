@@ -1163,6 +1163,14 @@ export const enMessages = {
     invalidUsageEvent: "The usage event is invalid.",
     guestRateLimitCheckFailed:
       "We could not verify the usage limit. Please try again in a little while.",
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview is unavailable. Please use the regular generate flow.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
     guestRateLimitShort:
       "Servers are busy right now. Please try again in a moment.",
     guestRateLimitDaily:

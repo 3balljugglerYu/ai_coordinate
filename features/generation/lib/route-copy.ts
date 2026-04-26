@@ -29,6 +29,23 @@ export const generationRouteCopy = {
       "画像生成に失敗しました。しばらくしてから、もう一度お試しください。",
     webpMissingParams: "imageUrl, imageId, storagePath が必要です",
     webpFailed: "WebP生成に失敗しました",
+    // ゲスト sync 経路（/api/coordinate-generate-guest）用
+    guestRouteAuthForbidden:
+      "ログイン中のため、こちらのお試し経路は利用できません。コーディネート画面の通常の生成をご利用ください。",
+    guestModelNotAllowed:
+      "選択したモデルはお試しではご利用いただけません。",
+    guestImageMissing: "画像をアップロードしてください。",
+    guestPromptMissing: "コーディネート内容を入力してください。",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 では GIF 画像はご利用いただけません。PNG / JPEG / WebP の画像をアップロードしてください。",
+    guestRateLimitDaily:
+      "本日の無料お試し回数（1日1回）に達しました。新規登録すると引き続き利用できます。",
+    guestIdentifierUnavailable:
+      "クライアント識別子を取得できませんでした。Cookie を有効にして再試行してください。",
+    guestUpstreamUnavailable:
+      "画像生成サービスが一時的に利用できません。少し時間をおいて再試行してください。",
+    guestSafetyBlocked:
+      "安全性ポリシーにより画像を生成できませんでした。内容を変更して再試行してください。",
   },
   en: {
     authRequired: "You need to be logged in.",
@@ -57,6 +74,23 @@ export const generationRouteCopy = {
       "Image generation failed. Please try again in a little while.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
   },
 } as const satisfies Record<
   Locale,
@@ -83,6 +117,15 @@ export const generationRouteCopy = {
     genericGenerationFailed: string;
     webpMissingParams: string;
     webpFailed: string;
+    guestRouteAuthForbidden: string;
+    guestModelNotAllowed: string;
+    guestImageMissing: string;
+    guestPromptMissing: string;
+    guestGifNotSupportedByOpenAI: string;
+    guestRateLimitDaily: string;
+    guestIdentifierUnavailable: string;
+    guestUpstreamUnavailable: string;
+    guestSafetyBlocked: string;
   }
 >;
 

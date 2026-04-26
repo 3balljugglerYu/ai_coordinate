@@ -1103,6 +1103,13 @@ export const jaMessages = {
     invalidStylePreset: "無効なスタイルです。",
     invalidUsageEvent: "無効な利用イベントです。",
     guestRateLimitCheckFailed: "利用回数の確認に失敗しました。少し時間をおいて再試行してください。",
+    guestRouteAuthForbidden:
+      "ログイン中のため、こちらのお試し経路は利用できません。通常の生成をご利用ください。",
+    guestModelNotAllowed: "選択したモデルはお試しではご利用いただけません。",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 では GIF 画像はご利用いただけません。PNG / JPEG / WebP の画像をアップロードしてください。",
+    guestUpstreamUnavailable:
+      "画像生成サービスが一時的に利用できません。少し時間をおいて再試行してください。",
     guestRateLimitShort:
       "サーバーが混み合っています。時間をおいて再度お試しください。",
     guestRateLimitDaily:
