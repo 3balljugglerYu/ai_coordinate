@@ -39,16 +39,10 @@ export async function CachedPostDetail({
   }
 
   const imageUrl = getPostDisplayUrl(post);
+  // 1) width/height が揃っていれば派生で済ませる
+  // 2) それが無理なら画像をフェッチして判定（最後のフォールバック）
   let imageAspectRatio: "portrait" | "landscape" | null =
-    post.aspect_ratio as "portrait" | "landscape" | null;
-  // 1) 既存 aspect_ratio が NULL でも、width/height が揃っていれば派生で済ませる
-  // 2) それも無理なら従来通り画像をフェッチして判定（最後のフォールバック）
-  if (!imageAspectRatio) {
-    imageAspectRatio = deriveAspectRatioFromDimensions(
-      post.width ?? null,
-      post.height ?? null,
-    );
-  }
+    deriveAspectRatioFromDimensions(post.width ?? null, post.height ?? null);
   if (!imageAspectRatio && imageUrl) {
     imageAspectRatio = await getImageAspectRatio(imageUrl);
   }

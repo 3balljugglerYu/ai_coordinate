@@ -5,7 +5,6 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
 import {
   buildPrompt as buildSharedPrompt,
-  backgroundModeToBackgroundChange,
   buildCoordinateAttemptReinforcementPrefix,
   resolveBackgroundMode,
 } from "../../../shared/generation/prompt-core.ts";
@@ -1203,10 +1202,7 @@ Deno.serve(async () => {
         let currentStage: TimedProcessingStage | null = null;
         const dbModel = normalizeModelName(job.model);
         const apiModel = toApiModelName(dbModel);
-        const backgroundMode = resolveBackgroundMode(
-          job.background_mode,
-          job.background_change
-        );
+        const backgroundMode = resolveBackgroundMode(job.background_mode, null);
         const oneTapStyleMetadata =
           job.generation_type === "one_tap_style"
             ? getOneTapStylePresetMetadata(job)
@@ -1870,7 +1866,6 @@ Deno.serve(async () => {
                   storage_path: uploadPath,
                   prompt: job.prompt_text,
                   background_mode: backgroundMode,
-                  background_change: backgroundModeToBackgroundChange(backgroundMode),
                   is_posted: false,
                   generation_type: job.generation_type,
                   generation_metadata: job.generation_metadata ?? null,

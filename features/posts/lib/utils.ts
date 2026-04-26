@@ -268,7 +268,8 @@ export async function getImageAspectRatio(imageUrl: string): Promise<"portrait" 
 
 /**
  * width / height からアスペクト比ラベル（"portrait" | "landscape"）を派生する。
- * Post 詳細で `aspect_ratio` 列が NULL の場合のみ fallback として使う。
+ * Post 詳細の向き判定の第一候補として使う。
+ * 寸法が無い場合のみ画像ヘッダー解析へ fallback する。
  *
  * @returns 両方とも正の整数なら派生結果、いずれかが欠けていれば null
  */

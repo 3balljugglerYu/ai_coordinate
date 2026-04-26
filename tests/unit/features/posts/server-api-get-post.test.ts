@@ -56,7 +56,6 @@ function createSupabaseMock(
   postOverrides: Partial<{
     image_url: string | null;
     storage_path: string | null;
-    aspect_ratio: string | null;
     width: number | null;
     height: number | null;
   }> = {},
@@ -68,12 +67,10 @@ function createSupabaseMock(
     image_url: null,
     storage_path: "generated/path.png",
     prompt: "prompt",
-    background_change: false,
     is_posted: true,
     moderation_status: "visible",
     caption: null,
     view_count: 7,
-    aspect_ratio: null,
     width: null,
     height: null,
     created_at: "2026-04-26T00:00:00.000Z",
@@ -197,7 +194,6 @@ describe("getPost", () => {
       }),
     );
     expect(updateGeneratedImage).toHaveBeenCalledWith({
-      aspect_ratio: "landscape",
       width: 2048,
       height: 1024,
     });
@@ -206,7 +202,6 @@ describe("getPost", () => {
         id: "post-1",
         like_count: 1,
         comment_count: 2,
-        aspect_ratio: "landscape",
         width: 2048,
         height: 1024,
       }),
@@ -227,7 +222,6 @@ describe("getPost", () => {
     expect(post).toEqual(
       expect.objectContaining({
         id: "post-1",
-        aspect_ratio: null,
         width: null,
         height: null,
       }),
