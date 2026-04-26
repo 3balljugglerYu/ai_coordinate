@@ -52,7 +52,15 @@ function createPngHeader(width: number, height: number): ArrayBuffer {
   );
 }
 
-function createSupabaseMock() {
+function createSupabaseMock(
+  postOverrides: Partial<{
+    image_url: string | null;
+    storage_path: string | null;
+    aspect_ratio: string | null;
+    width: number | null;
+    height: number | null;
+  }> = {},
+) {
   const updateGeneratedImage = jest.fn();
   const postRow = {
     id: "post-1",
@@ -70,6 +78,7 @@ function createSupabaseMock() {
     height: null,
     created_at: "2026-04-26T00:00:00.000Z",
     updated_at: "2026-04-26T00:00:00.000Z",
+    ...postOverrides,
   };
 
   const from = jest.fn((table: string): QueryBuilder => {
@@ -200,6 +209,27 @@ describe("getPost", () => {
         aspect_ratio: "landscape",
         width: 2048,
         height: 1024,
+      }),
+    );
+  });
+
+  it("keeps dimensions empty when no image URL can be resolved", async () => {
+    const { supabase, updateGeneratedImage } = createSupabaseMock({
+      image_url: null,
+      storage_path: null,
+    });
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", null, true);
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(updateGeneratedImage).not.toHaveBeenCalled();
+    expect(post).toEqual(
+      expect.objectContaining({
+        id: "post-1",
+        aspect_ratio: null,
+        width: null,
+        height: null,
       }),
     );
   });
