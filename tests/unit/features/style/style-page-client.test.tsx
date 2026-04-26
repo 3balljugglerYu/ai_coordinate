@@ -10,6 +10,9 @@ jest.mock("next-intl", () => ({
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
+  // Phase 4 で追加した useCurrentUrlForRedirect が usePathname / useSearchParams を使う
+  usePathname: jest.fn(() => "/style"),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
 }));
 
 const mockRecordStyleUsageClientEvent = jest.fn();
