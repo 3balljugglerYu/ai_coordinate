@@ -186,6 +186,25 @@ describe("CoordinateGenerateGuest integration", () => {
     expect(openaiClient).not.toHaveBeenCalled();
   });
 
+  test("UCL-014: provider key 未設定でも認証ユーザー拒否を先に返す", async () => {
+    getUserFn.mockResolvedValueOnce({ id: "user-001" });
+    const fd = buildBaseFormData();
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(403);
+    expect(body.errorCode).toBe("GUEST_ROUTE_AUTHENTICATED_FORBIDDEN");
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(openaiClient).not.toHaveBeenCalled();
+  });
+
   test("UCL-011c: GIF を OpenAI に投げると reserve 前に 400 で拒否", async () => {
     const gif = new File([new Uint8Array(16)], "x.gif", { type: "image/gif" });
     const fd = buildBaseFormData({

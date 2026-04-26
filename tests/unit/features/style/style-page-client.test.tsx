@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
+import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 jest.mock("next-intl", () => ({
@@ -541,6 +542,7 @@ describe("StylePageClient", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    window.localStorage.clear();
     global.fetch = originalFetch;
     mockToast.mockReset();
     mockDismissToast.mockReset();
@@ -711,13 +713,44 @@ describe("StylePageClient", () => {
 
     const generateCall = fetchMock.mock.calls.find(
       ([input, init]) =>
+        (typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url) === "/style/generate" &&
+        (init?.method ?? "GET") === "POST"
+    );
+    expect(generateCall).toBeDefined();
+    const [, init] = generateCall!;
+    const formData = init?.body as FormData;
+    expect(formData.get("backgroundChange")).toBe("false");
+  });
+
+  test("ゲストでlocalStorageに許可外モデルが残っていてもstyle sync送信では既定モデルに丸める", async () => {
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+    window.localStorage.setItem(
+      SELECTED_MODEL_STORAGE_KEY,
+      "gemini-3-pro-image-4k"
+    );
+
+    render(<StylePageClient presets={presets} />);
+
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
+
+    const generateCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
         (typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url) ===
           "/style/generate" && (init?.method ?? "GET") === "POST"
     );
     expect(generateCall).toBeDefined();
     const [, init] = generateCall!;
     const formData = init?.body as FormData;
-    expect(formData.get("backgroundChange")).toBe("false");
+
+    expect(formData.get("model")).toBe("gpt-image-2-low");
+    expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
+      "gemini-3-pro-image-4k"
+    );
   });
 
   test("背景変更非対応presetではチェックボックスをdisabledにし、選択切替時にOFFへ戻す", () => {

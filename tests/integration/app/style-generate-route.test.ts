@@ -16,6 +16,12 @@ import {
 } from "@/shared/generation/style-prompts";
 
 type JsonRecord = Record<string, unknown>;
+type StyleGenerateRouteDependencies = NonNullable<
+  Parameters<typeof postStyleGenerateRoute>[1]
+>;
+type StyleOpenAIClient = NonNullable<
+  StyleGenerateRouteDependencies["openaiClient"]
+>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
 
 function buildExpectedPrompt(params: {
@@ -351,6 +357,37 @@ describe("StyleGenerateRoute integration tests", () => {
       eventType: "generate",
       styleId: STYLE_ID,
     });
+  });
+
+  test("postStyleGenerateRoute_OpenAIモデルはGEMINI_API_KEY無しでも生成できる", async () => {
+    const openaiClient = jest.fn().mockResolvedValue({
+      data: "openai-generated-image-base64",
+      mimeType: "image/png",
+    }) as jest.MockedFunction<StyleOpenAIClient>;
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("model", "gpt-image-2-low");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      openaiApiKey: "openai-key",
+      openaiClient,
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,openai-generated-image-base64",
+      mimeType: "image/png",
+    });
+    expect(openaiClient).toHaveBeenCalledTimes(1);
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   test("postStyleGenerateRoute_guest短時間制限時_429とsignup導線を返す", async () => {

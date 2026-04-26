@@ -27,7 +27,11 @@ import {
 import {
   callOpenAIImageEdit,
 } from "@/features/generation/lib/openai-image";
-import { normalizeModelName, type GeminiModel } from "@/features/generation/types";
+import {
+  isOpenAIImageModel,
+  normalizeModelName,
+  type GeminiModel,
+} from "@/features/generation/types";
 import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -202,13 +206,6 @@ export async function postStyleGenerateRoute(
       dependencies.geminiApiKey ?? process.env.GEMINI_API_KEY?.trim();
     const openaiApiKey =
       dependencies.openaiApiKey ?? process.env.OPENAI_API_KEY?.trim();
-    if (!geminiApiKey) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY is not configured." },
-        { status: 500 }
-      );
-    }
-
     const formData = await request.formData();
     const styleIdEntry = formData.get("styleId");
     const styleId = typeof styleIdEntry === "string" ? styleIdEntry.trim() : "";
@@ -274,6 +271,21 @@ export async function postStyleGenerateRoute(
         copy.styleBackgroundPromptUnavailable,
         "STYLE_BACKGROUND_PROMPT_UNAVAILABLE",
         400
+      );
+    }
+
+    if (!geminiApiKey && !isOpenAIImageModel(model)) {
+      return jsonError(
+        copy.guestUpstreamUnavailable,
+        "STYLE_UPSTREAM_UNAVAILABLE",
+        500
+      );
+    }
+    if (!openaiApiKey && isOpenAIImageModel(model)) {
+      return jsonError(
+        copy.guestUpstreamUnavailable,
+        "STYLE_UPSTREAM_UNAVAILABLE",
+        500
       );
     }
 
@@ -385,7 +397,7 @@ export async function postStyleGenerateRoute(
         model,
         promptText,
         uploadImage,
-        geminiApiKey,
+        geminiApiKey: geminiApiKey ?? "",
         openaiApiKey,
         fetchFn,
         openaiClient,

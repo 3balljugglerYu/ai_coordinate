@@ -3,6 +3,7 @@ import {
   GUEST_ALLOWED_MODELS,
   isCanonicalGuestAllowedModel,
   parseGuestRequestedModel,
+  resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import {
   isOpenAIImageModel,
@@ -121,6 +122,29 @@ describe("model-config / model identification helpers", () => {
       expect(parseGuestRequestedModel("")).toBeNull();
       expect(parseGuestRequestedModel(null)).toBeNull();
       expect(parseGuestRequestedModel(undefined)).toBeNull();
+    });
+  });
+
+  describe("resolveEffectiveModelForAuthState", () => {
+    it("ゲストの許可外モデルは DEFAULT_GENERATION_MODEL に丸める", () => {
+      expect(
+        resolveEffectiveModelForAuthState("gemini-3-pro-image-4k", "guest")
+      ).toBe("gpt-image-2-low");
+    });
+
+    it("ゲストの許可モデルと認証ユーザーの選択はそのまま返す", () => {
+      expect(
+        resolveEffectiveModelForAuthState(
+          "gemini-3.1-flash-image-preview-512",
+          "guest"
+        )
+      ).toBe("gemini-3.1-flash-image-preview-512");
+      expect(
+        resolveEffectiveModelForAuthState(
+          "gemini-3-pro-image-4k",
+          "authenticated"
+        )
+      ).toBe("gemini-3-pro-image-4k");
     });
   });
 });

@@ -24,6 +24,7 @@ import {
   type GenerationType,
   type SourceImageType,
 } from "@/shared/generation/prompt-core";
+import { isOpenAIImageModel } from "@/features/generation/types";
 
 interface CoordinateGenerateGuestRouteDependencies {
   getUserFn?: typeof getUser;
@@ -135,23 +136,16 @@ export async function postCoordinateGenerateGuestRoute(
     const checkAndConsumeRateLimitFn =
       dependencies.checkAndConsumeRateLimitFn ??
       checkAndConsumeGuestGenerateRateLimit;
-    const geminiApiKey =
-      dependencies.geminiApiKey ?? process.env.GEMINI_API_KEY?.trim();
-    const openaiApiKey =
-      dependencies.openaiApiKey ?? process.env.OPENAI_API_KEY?.trim();
-
-    if (!geminiApiKey && !openaiApiKey) {
-      console.error(
-        "Coordinate guest generate route: neither GEMINI_API_KEY nor OPENAI_API_KEY is configured"
-      );
-      return jsonError(copy.guestUpstreamUnavailable, "GUEST_UPSTREAM_UNAVAILABLE", 500);
-    }
-
     const user = await getUserFn();
     const authReject = await rejectIfAuthenticated(user, copy);
     if (authReject) {
       return authReject;
     }
+
+    const geminiApiKey =
+      dependencies.geminiApiKey ?? process.env.GEMINI_API_KEY?.trim();
+    const openaiApiKey =
+      dependencies.openaiApiKey ?? process.env.OPENAI_API_KEY?.trim();
 
     const formData = await request.formData();
 
@@ -220,6 +214,21 @@ export async function postCoordinateGenerateGuestRoute(
       return jsonError(copy.invalidRequest, "GUEST_PROMPT_INVALID", 400);
     }
 
+    if (!geminiApiKey && !isOpenAIImageModel(model)) {
+      return jsonError(
+        copy.guestUpstreamUnavailable,
+        "GUEST_UPSTREAM_UNAVAILABLE",
+        500
+      );
+    }
+    if (!openaiApiKey && isOpenAIImageModel(model)) {
+      return jsonError(
+        copy.guestUpstreamUnavailable,
+        "GUEST_UPSTREAM_UNAVAILABLE",
+        500
+      );
+    }
+
     // レート制限の reserve（IP+Cookie ハッシュで識別）
     const rateLimitResult = await checkAndConsumeRateLimitFn({
       request,
@@ -250,24 +259,6 @@ export async function postCoordinateGenerateGuestRoute(
       );
     }
     reservation = rateLimitResult.reservation ?? null;
-
-    if (!geminiApiKey && model !== "gpt-image-2-low") {
-      // Gemini を呼ぶ必要があるが API キーが無い → 上流不可
-      await releaseReservedAttempt("infra_error");
-      return jsonError(
-        copy.guestUpstreamUnavailable,
-        "GUEST_UPSTREAM_UNAVAILABLE",
-        500
-      );
-    }
-    if (!openaiApiKey && model === "gpt-image-2-low") {
-      await releaseReservedAttempt("infra_error");
-      return jsonError(
-        copy.guestUpstreamUnavailable,
-        "GUEST_UPSTREAM_UNAVAILABLE",
-        500
-      );
-    }
 
     const dispatchResult = await dispatchGuestImageGeneration({
       model,

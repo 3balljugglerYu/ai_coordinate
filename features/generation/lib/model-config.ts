@@ -69,6 +69,22 @@ export function parseGuestRequestedModel(
 }
 
 /**
+ * UI state / localStorage に残ったモデルを、現在の認証状態で実際に使えるモデルへ丸める。
+ *
+ * ゲスト時は保存値そのものを書き換えず、送信・表示・料金表示で使う実効値だけを
+ * DEFAULT_GENERATION_MODEL に clamp する。ログイン後は保存済みの選択をそのまま復元する。
+ */
+export function resolveEffectiveModelForAuthState(
+  model: GeminiModel,
+  authState: "guest" | "authenticated"
+): GeminiModel {
+  if (authState === "guest" && !isCanonicalGuestAllowedModel(model)) {
+    return DEFAULT_GENERATION_MODEL;
+  }
+  return model;
+}
+
+/**
  * モデル名からペルコイン消費量を取得
  */
 export function getPercoinCost(model: string | null | undefined): number {

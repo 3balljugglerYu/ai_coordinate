@@ -10,8 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DEFAULT_GENERATION_MODEL,
   isCanonicalGuestAllowedModel,
+  resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import type { GeminiModel } from "@/features/generation/types";
 
@@ -65,10 +65,10 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
   const isGuest = props.authState === "guest";
 
   // 表示値の clamp: ゲストのまま許可外モデルが渡されたら表示上は既定モデル扱い
-  const displayValue: GeminiModel =
-    isGuest && !isCanonicalGuestAllowedModel(props.value)
-      ? DEFAULT_GENERATION_MODEL
-      : props.value;
+  const displayValue = resolveEffectiveModelForAuthState(
+    props.value,
+    props.authState
+  );
 
   const handleValueChange = (next: string) => {
     const nextModel = next as GeminiModel;

@@ -61,7 +61,10 @@ import { StylePresetPreviewCard } from "@/features/style/components/StylePresetP
 import { PostModal } from "@/features/posts/components/PostModal";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
-import { getPercoinCost } from "@/features/generation/lib/model-config";
+import {
+  getPercoinCost,
+  resolveEffectiveModelForAuthState,
+} from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { determineFileName } from "@/lib/utils";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
@@ -547,6 +550,12 @@ export function StylePageClient({
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
   const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
+  const modelAuthState =
+    effectiveAuthState === "authenticated" ? "authenticated" : "guest";
+  const effectiveSelectedModel = resolveEffectiveModelForAuthState(
+    selectedModel,
+    modelAuthState
+  );
   const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
   const isGuestDailyLimitReached =
     rateLimitStatus?.remainingDaily === 0 && rateLimitStatus.authState === "guest";
@@ -554,7 +563,7 @@ export function StylePageClient({
     rateLimitStatus?.remainingDaily === 0 &&
     rateLimitStatus.authState === "authenticated";
   // 選択中モデル単価でペルコイン残高をチェックする (Phase 5 / UCL-007)
-  const selectedModelPercoinCost = getPercoinCost(selectedModel);
+  const selectedModelPercoinCost = getPercoinCost(effectiveSelectedModel);
   const hasEnoughPercoins =
     typeof percoinBalanceState.balance === "number" &&
     percoinBalanceState.balance >= selectedModelPercoinCost;
@@ -1160,7 +1169,7 @@ export function StylePageClient({
       formData.set("uploadImage", normalizedFile);
       formData.set("sourceImageType", sourceImageType);
       formData.set("backgroundChange", backgroundChange ? "true" : "false");
-      formData.set("model", selectedModel);
+      formData.set("model", effectiveSelectedModel);
 
       const response = await fetch("/style/generate", {
         method: "POST",
@@ -1240,7 +1249,7 @@ export function StylePageClient({
       formData.set("uploadImage", normalizedFile);
       formData.set("sourceImageType", sourceImageType);
       formData.set("backgroundChange", backgroundChange ? "true" : "false");
-      formData.set("model", selectedModel);
+      formData.set("model", effectiveSelectedModel);
 
       const response = await fetch("/style/generate-async", {
         method: "POST",
@@ -1609,14 +1618,10 @@ export function StylePageClient({
                 {t("modelLabel")}
               </Label>
               <LockableModelSelect
-                value={selectedModel}
+                value={effectiveSelectedModel}
                 onChange={handleSelectedModelChange}
                 onLockedClick={() => setShowAuthModal(true)}
-                authState={
-                  effectiveAuthState === "authenticated"
-                    ? "authenticated"
-                    : "guest"
-                }
+                authState={modelAuthState}
                 disabled={isGenerating}
               />
             </div>

@@ -22,7 +22,10 @@ import {
 } from "@/features/subscription/subscription-config";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/current-user";
-import { getPercoinCost } from "../lib/model-config";
+import {
+  getPercoinCost,
+  resolveEffectiveModelForAuthState,
+} from "../lib/model-config";
 import {
   readPreferredBackgroundMode,
   readPreferredModel,
@@ -124,6 +127,10 @@ export function GenerationForm({
   const promptLength = prompt.length;
   const isPromptTooLong = isGenerationPromptTooLong(prompt);
   const maxGenerationCount = getMaxGenerationCount(subscriptionPlan);
+  const effectiveSelectedModel = resolveEffectiveModelForAuthState(
+    selectedModel,
+    authState
+  );
 
   useEffect(() => {
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
@@ -220,7 +227,7 @@ export function GenerationForm({
       sourceImageType,
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
-      model: selectedModel,
+      model: effectiveSelectedModel,
     });
   };
 
@@ -627,7 +634,7 @@ export function GenerationForm({
             {t("modelLabel")}
           </Label>
           <LockableModelSelect
-            value={selectedModel}
+            value={effectiveSelectedModel}
             onChange={handleSelectedModelChange}
             onLockedClick={() => setShowAuthModal(true)}
             authState={authState}
@@ -685,7 +692,7 @@ export function GenerationForm({
           <p className="mt-2 text-xs text-gray-500">
             {t("countCostDescription", {
               count: selectedCount,
-              amount: selectedCount * getPercoinCost(selectedModel),
+              amount: selectedCount * getPercoinCost(effectiveSelectedModel),
             })}
           </p>
         </div>
