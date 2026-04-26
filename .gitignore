@@ -49,6 +49,9 @@ yarn-error.log*
 # Claude Code local overrides (may contain account-specific settings)
 .claude/settings.local.json
 
+# Claude Code worktrees (independent working trees, not part of repo content)
+.claude/worktrees/
+
 # vercel
 .vercel
 
