@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
+import { LockableModelSelect } from "./LockableModelSelect";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageUploadCard } from "./StockImageUploadCard";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
@@ -41,6 +42,7 @@ import type {
 } from "../types";
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
+import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
 
 interface GenerationFormProps {
   subscriptionPlan: SubscriptionPlan;
@@ -54,6 +56,12 @@ interface GenerationFormProps {
     model: GeminiModel;
   }) => void;
   isGenerating?: boolean;
+  /**
+   * 認証状態。"guest" のときは LockableModelSelect で 4 モデルに南京錠を表示し、
+   * クリックで AuthModal を開く。既定値は "authenticated"（既存の /coordinate ページ
+   * は認証済みのみが入るため）。
+   */
+  authState?: "guest" | "authenticated";
 }
 
 type ImageSourceType = "upload" | "stock";
@@ -67,9 +75,12 @@ export function GenerationForm({
   subscriptionPlan,
   onSubmit,
   isGenerating = false,
+  authState = "authenticated",
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const currentUrl = useCurrentUrlForRedirect();
   const backgroundModeOptions: BackgroundModeOption[] = [
     {
       value: "ai_auto",
@@ -615,37 +626,13 @@ export function GenerationForm({
           <Label className="text-base font-medium mb-3 block">
             {t("modelLabel")}
           </Label>
-          <Select
+          <LockableModelSelect
             value={selectedModel}
-            onValueChange={(value) =>
-              handleSelectedModelChange(value as GeminiModel)
-            }
+            onChange={handleSelectedModelChange}
+            onLockedClick={() => setShowAuthModal(true)}
+            authState={authState}
             disabled={isGenerating || isTutorialInProgress}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="gemini-3.1-flash-image-preview-512">
-                {t("modelLight05k")}
-              </SelectItem>
-              <SelectItem value="gpt-image-2-low">
-                {t("modelGptImage2Low")}
-              </SelectItem>
-              <SelectItem value="gemini-3.1-flash-image-preview-1024">
-                {t("modelStandard1k")}
-              </SelectItem>
-              <SelectItem value="gemini-3-pro-image-1k">
-                {t("modelPro1k")}
-              </SelectItem>
-              <SelectItem value="gemini-3-pro-image-2k">
-                {t("modelPro2k")}
-              </SelectItem>
-              <SelectItem value="gemini-3-pro-image-4k">
-                {t("modelPro4k")}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          />
         </div>
 
         {/* 生成枚数選択 */}
@@ -727,6 +714,12 @@ export function GenerationForm({
         <SubscriptionUpsellDialog
           open={isUpsellOpen}
           onOpenChange={setIsUpsellOpen}
+        />
+
+        <AuthModal
+          open={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          redirectTo={currentUrl}
         />
       </div>
     </Card>
