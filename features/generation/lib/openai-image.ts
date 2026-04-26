@@ -252,7 +252,7 @@ export async function callOpenAIImageEdit(
       throw new Error(message);
     }
 
-    const json = (await response.json()) as {
+    const json = (await response.json().catch(() => ({}))) as {
       data?: Array<{ b64_json?: string }>;
     };
     const b64 = json?.data?.[0]?.b64_json;

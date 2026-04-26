@@ -17,6 +17,7 @@ import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 import {
   BACKGROUND_MODES,
   buildPrompt,
@@ -44,8 +45,6 @@ const ALLOWED_GENERATION_TYPES: GenerationType[] = [
   "full_body",
   "chibi",
 ];
-
-const PROMPT_MAX_LENGTH = 2000;
 
 function getFile(entry: FormDataEntryValue | null): File | null {
   return entry instanceof File ? entry : null;
@@ -154,7 +153,7 @@ export async function postCoordinateGenerateGuestRoute(
     if (!promptText) {
       return jsonError(copy.guestPromptMissing, "GUEST_PROMPT_MISSING", 400);
     }
-    if (promptText.length > PROMPT_MAX_LENGTH) {
+    if (promptText.length > GENERATION_PROMPT_MAX_LENGTH) {
       return jsonError(copy.invalidRequest, "GUEST_PROMPT_TOO_LONG", 400);
     }
 
@@ -233,9 +232,7 @@ export async function postCoordinateGenerateGuestRoute(
     const rateLimitResult = await checkAndConsumeRateLimitFn({
       request,
       userId: null,
-      // 既存の RPC は p_style_id を取らないため、識別用のラベルとして空文字を渡す。
-      // /coordinate ゲストはスタイル概念がない。
-      styleId: "",
+      styleId: null,
     });
 
     if (!rateLimitResult.allowed) {

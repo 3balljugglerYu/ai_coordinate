@@ -58,7 +58,7 @@ export interface StyleGenerateRateLimitStatus {
 interface CheckAndConsumeStyleGenerateRateLimitParams {
   request: NextRequest;
   userId: string | null;
-  styleId: string;
+  styleId: string | null;
   now?: Date;
 }
 
@@ -189,7 +189,7 @@ async function getAuthenticatedDailyGenerateAttemptCount(
 
 async function consumeAuthenticatedGenerateAttempt(params: {
   userId: string;
-  styleId: string;
+  styleId: string | null;
   now: Date;
 }): Promise<StyleGenerateRateLimitResult> {
   const supabase = createAdminClient();

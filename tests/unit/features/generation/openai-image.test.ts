@@ -178,5 +178,23 @@ describe("openai-image (Node port)", () => {
         })
       ).rejects.toThrow(/No images generated/);
     });
+
+    test("200 OK でも JSON が壊れている場合は 'No images generated' で throw", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response("not json", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      await expect(
+        callOpenAIImageEdit({
+          prompt: "test",
+          inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+          timeoutMs: 1000,
+          fetchFn: fetchFn as unknown as typeof fetch,
+          apiKey: "test-key",
+        })
+      ).rejects.toThrow(/No images generated/);
+    });
   });
 });

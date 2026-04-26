@@ -2,6 +2,7 @@
 
 import { NextRequest } from "next/server";
 import { postCoordinateGenerateGuestRoute } from "@/app/api/coordinate-generate-guest/handler";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -125,6 +126,11 @@ describe("CoordinateGenerateGuest integration", () => {
     });
     expect(openaiClient).toHaveBeenCalledTimes(1);
     expect(fetchFn).not.toHaveBeenCalled();
+    expect(checkAndConsumeRateLimitFn).toHaveBeenCalledWith({
+      request: expect.any(NextRequest),
+      userId: null,
+      styleId: null,
+    });
   });
 
   test("UCL-001: Nano Banana 0.5K (Gemini) も成功する", async () => {
@@ -352,6 +358,26 @@ describe("CoordinateGenerateGuest integration", () => {
     const body = await readJson(response);
     expect(response.status).toBe(400);
     expect(body.errorCode).toBe("GUEST_PROMPT_MISSING");
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+  });
+
+  test("prompt が共通上限を超えると 400 GUEST_PROMPT_TOO_LONG", async () => {
+    const fd = buildBaseFormData({
+      prompt: "a".repeat(GENERATION_PROMPT_MAX_LENGTH + 1),
+    });
+    const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
+      getUserFn,
+      geminiApiKey: "gemini-key",
+      openaiApiKey: "openai-key",
+      fetchFn,
+      openaiClient,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("GUEST_PROMPT_TOO_LONG");
     expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
   });
 
