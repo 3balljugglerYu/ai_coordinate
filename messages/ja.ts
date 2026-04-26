@@ -682,7 +682,7 @@ export const jaMessages = {
     guestResultLoginCta: "ログインして保存する",
     guestLoginCtaTitle: "未ログインでお試しいただけます",
     guestLoginCtaDescription:
-      "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。生成結果はリロードで消えます。",
+      "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。保存はされません。",
     guestLoginCtaAction: "ログイン / 新規登録",
     guestSubmitFailed: "生成に失敗しました。少し時間をおいて再試行してください。",
     guestRateLimitDailyMessage:
@@ -1057,8 +1057,10 @@ export const jaMessages = {
     generateHint: "生成には20〜30秒ほどかかります。",
     generateRetryHint:
       "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
-    usageLimitHint:
-      "未ログインユーザーは /style と /coordinate 合算で1日1回までお試しできます。ログインするとペルコインを使って続けて生成できます。",
+    guestLoginCtaTitle: "未ログインでお試しいただけます",
+    guestLoginCtaDescription:
+      "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。保存はされません。",
+    guestLoginCtaAction: "ログイン / 新規登録",
     generateButton: "Start Styling",
     generatingButton: "生成中...",
     // ステータスカードの見出し

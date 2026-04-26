@@ -166,8 +166,6 @@ const styleMessages = {
   modelFixedOption: "Nano Banana 2 / 0.5K",
   generateButton: "Start Styling",
   generatingButton: "Generating...",
-  usageLimitHint:
-    "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins.",
   generationStatusTitle: "Styling in progress",
   generationStatusHint: "Checking out the new look.",
   generationStatusSlowHint:
@@ -1547,10 +1545,8 @@ describe("StylePageClient", () => {
       await screen.findByText("You have 2 generations left for today.")
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins."
-      )
-    ).toBeInTheDocument();
+      screen.queryByText(/Guest users can try generation/)
+    ).not.toBeInTheDocument();
   });
 
   test("未ログインユーザーも残り2回以下になるとカウントダウンを表示する", async () => {
@@ -1582,10 +1578,8 @@ describe("StylePageClient", () => {
     });
 
     expect(
-      screen.getByText(
-        "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins."
-      )
-    ).toBeInTheDocument();
+      screen.queryByText(/Guest users can try generation/)
+    ).not.toBeInTheDocument();
     expect(
       await screen.findByText("You have 1 generations left for today.")
     ).toBeInTheDocument();

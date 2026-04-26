@@ -710,7 +710,7 @@ export const enMessages = {
     guestResultLoginCta: "Sign in to save",
     guestLoginCtaTitle: "Try without signing in",
     guestLoginCtaDescription:
-      "Generate one image per day using ChatGPT Image 2.0 or Nano Banana 2 (0.5K). Previews disappear on reload.",
+      "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
     guestLoginCtaAction: "Sign in / Sign up",
     guestSubmitFailed: "Generation failed. Please try again in a few moments.",
     guestRateLimitDailyMessage:
@@ -1112,8 +1112,10 @@ export const enMessages = {
     generateHint: "Generation usually takes around 20 to 30 seconds.",
     generateRetryHint:
       "If the result does not come out well, try again. If it still fails, please let us know.",
-    usageLimitHint:
-      "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins.",
+    guestLoginCtaTitle: "Try without signing in",
+    guestLoginCtaDescription:
+      "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
+    guestLoginCtaAction: "Sign in / Sign up",
     generateButton: "Start Styling",
     generatingButton: "Generating...",
     // Status card heading

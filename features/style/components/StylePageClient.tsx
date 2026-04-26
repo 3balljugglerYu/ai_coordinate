@@ -1639,7 +1639,6 @@ export function StylePageClient({
             <div className="space-y-1 text-xs leading-5 text-slate-500">
               <p>{t("generateHint")}</p>
               <p>{t("generateRetryHint")}</p>
-              <p>{t("usageLimitHint")}</p>
             </div>
 
             {typeof remainingDailyNoticeCount === "number" ? (
