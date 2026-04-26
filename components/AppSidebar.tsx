@@ -28,6 +28,7 @@ import {
   localizePublicPath,
   stripLocalePrefix,
 } from "@/i18n/config";
+import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
 
 const SIDEBAR_OPEN_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
@@ -129,13 +130,7 @@ export function AppSidebar() {
     }
 
     startTransition(() => {
-      if (
-        (normalizedTargetPath === "/coordinate" ||
-          normalizedTargetPath === "/challenge" ||
-          normalizedTargetPath === "/notifications" ||
-          normalizedTargetPath.startsWith("/my-page")) &&
-        !user
-      ) {
+      if (requiresAuthForGuestNavigation(normalizedTargetPath) && !user) {
         router.push(`/login?redirect=/`);
         return;
       }

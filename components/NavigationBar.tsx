@@ -20,6 +20,7 @@ import {
   localizePublicPath,
   stripLocalePrefix,
 } from "@/i18n/config";
+import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
 
 export function NavigationBar() {
   const pathname = usePathname();
@@ -40,7 +41,7 @@ export function NavigationBar() {
   const localizedHomePath = localizePublicPath("/", locale);
   const effectiveActivePathname = pendingPathname ?? normalizedPathname;
 
-  const clearPendingNavigation = useEffectEvent(() => {
+  const clearPendingNavigationFromEffect = useEffectEvent(() => {
     if (pendingResetTimeoutRef.current) {
       clearTimeout(pendingResetTimeoutRef.current);
       pendingResetTimeoutRef.current = null;
@@ -84,7 +85,7 @@ export function NavigationBar() {
     }
 
     if (normalizedPathname !== pendingSourcePathRef.current) {
-      clearPendingNavigation();
+      clearPendingNavigationFromEffect();
     }
   }, [normalizedPathname, pendingPathname]);
 
@@ -106,13 +107,7 @@ export function NavigationBar() {
     let destinationPath = path;
     let pendingTargetPath = normalizedTargetPath;
 
-    if (
-      (normalizedTargetPath === "/coordinate" ||
-        normalizedTargetPath === "/challenge" ||
-        normalizedTargetPath === "/notifications" ||
-        normalizedTargetPath.startsWith("/my-page")) &&
-      !user
-    ) {
+    if (requiresAuthForGuestNavigation(normalizedTargetPath) && !user) {
       destinationPath = `/login?redirect=/`;
       pendingTargetPath = "/login";
     }
@@ -123,7 +118,9 @@ export function NavigationBar() {
       clearTimeout(pendingResetTimeoutRef.current);
     }
     pendingResetTimeoutRef.current = window.setTimeout(() => {
-      clearPendingNavigation();
+      pendingResetTimeoutRef.current = null;
+      pendingSourcePathRef.current = null;
+      setPendingPathname(null);
     }, 2000);
 
     // startTransitionでナビゲーションを非ブロッキングにする

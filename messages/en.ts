@@ -1113,7 +1113,7 @@ export const enMessages = {
     generateRetryHint:
       "If the result does not come out well, try again. If it still fails, please let us know.",
     usageLimitHint:
-      "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day.",
+      "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins.",
     generateButton: "Start Styling",
     generatingButton: "Generating...",
     // Status card heading

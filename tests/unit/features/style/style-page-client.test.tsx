@@ -167,7 +167,7 @@ const styleMessages = {
   generateButton: "Start Styling",
   generatingButton: "Generating...",
   usageLimitHint:
-    "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day.",
+    "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins.",
   generationStatusTitle: "Styling in progress",
   generationStatusHint: "Checking out the new look.",
   generationStatusSlowHint:
@@ -1548,7 +1548,7 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day."
+        "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins."
       )
     ).toBeInTheDocument();
   });
@@ -1583,7 +1583,7 @@ describe("StylePageClient", () => {
 
     expect(
       screen.getByText(
-        "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day."
+        "Guest users can try generation once per day across /style and /coordinate. Sign in to keep generating with Percoins."
       )
     ).toBeInTheDocument();
     expect(
