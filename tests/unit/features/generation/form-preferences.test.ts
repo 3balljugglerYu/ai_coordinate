@@ -128,4 +128,39 @@ describe("form-preferences", () => {
       }
     });
   });
+
+  describe("safe access under restricted storage / SSR", () => {
+    it("falls back to defaults when localStorage.getItem throws", () => {
+      const getItemSpy = jest.spyOn(Storage.prototype, "getItem");
+      getItemSpy.mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
+      try {
+        expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+        expect(readPreferredBackgroundMode()).toBe("keep");
+      } finally {
+        getItemSpy.mockRestore();
+      }
+    });
+
+    it("does not touch localStorage when window is unavailable", () => {
+      const originalWindow = window;
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: undefined,
+      });
+
+      try {
+        expect(readPreferredModel()).toBe("gemini-3.1-flash-image-preview-512");
+        expect(readPreferredBackgroundMode()).toBe("keep");
+        expect(() => writePreferredModel("gpt-image-2-low")).not.toThrow();
+        expect(() => writePreferredBackgroundMode("ai_auto")).not.toThrow();
+      } finally {
+        Object.defineProperty(globalThis, "window", {
+          configurable: true,
+          value: originalWindow,
+        });
+      }
+    });
+  });
 });
