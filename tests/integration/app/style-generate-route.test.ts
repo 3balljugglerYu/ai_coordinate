@@ -420,6 +420,39 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
+  test("postStyleGenerateRoute_guest識別子取得失敗時_400で拒否する", async () => {
+    // UCL-010: IP も Cookie も無いと無制限利用を許してしまうため、明示拒否する
+    getUserFn.mockResolvedValueOnce(null);
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: false,
+      reason: "missing_identifier",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      error: expect.any(String),
+      errorCode: "STYLE_GUEST_IDENTIFIER_UNAVAILABLE",
+    });
+    expect(fetchFn).not.toHaveBeenCalled();
+    // missing_identifier は reserve に到達していないので usage event は発火しない
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
   test("postStyleGenerateRoute_認証済み日次制限時_429を返す", async () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: false,

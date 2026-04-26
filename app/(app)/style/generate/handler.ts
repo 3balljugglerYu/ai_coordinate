@@ -357,6 +357,16 @@ export async function postStyleGenerateRoute(
         );
       }
 
+      // UCL-010: ゲスト識別子（IP / Cookie）が取れないと無制限利用を許してしまうため
+      // 明示的に拒否する。利用回数は消費しない（reserve 自体に到達しないため）。
+      if (rateLimitResult.reason === "missing_identifier") {
+        return jsonError(
+          copy.guestRateLimitCheckFailed,
+          "STYLE_GUEST_IDENTIFIER_UNAVAILABLE",
+          400
+        );
+      }
+
       await recordStyleRateLimitedEvent({
         recordStyleUsageEventFn,
         userId: user?.id ?? null,

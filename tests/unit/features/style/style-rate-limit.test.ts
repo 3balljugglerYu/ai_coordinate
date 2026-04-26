@@ -16,12 +16,26 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const mockCreateAdminClient =
   createAdminClient as jest.MockedFunction<typeof createAdminClient>;
 
-function createRequest(): NextRequest {
+const VALID_GUEST_COOKIE_ID = "11111111-2222-4333-8444-555555555555";
+
+function createRequest(
+  options: { ip?: string | null; guestCookieId?: string | null } = {}
+): NextRequest {
+  const headers: Record<string, string> = {};
+  const ip = options.ip === undefined ? "203.0.113.10" : options.ip;
+  if (ip) {
+    headers["x-forwarded-for"] = ip;
+  }
+  const cookieId =
+    options.guestCookieId === undefined
+      ? VALID_GUEST_COOKIE_ID
+      : options.guestCookieId;
+  if (cookieId) {
+    headers["cookie"] = `persta_guest_id=${cookieId}`;
+  }
   return new NextRequest("http://localhost/style/generate", {
     method: "POST",
-    headers: {
-      "x-forwarded-for": "203.0.113.10",
-    },
+    headers,
   });
 }
 
@@ -149,10 +163,94 @@ describe("style-rate-limit", () => {
     });
     expect(rpc).toHaveBeenCalledWith("reserve_style_guest_generate_attempt", {
       p_client_ip_hash: expect.any(String),
-      p_short_limit: 2,
-      p_daily_limit: 2,
+      p_short_limit: 999,
+      p_daily_limit: 1,
       p_now: "2026-03-21T15:30:00.000Z",
     });
+  });
+
+  test("checkAndConsumeStyleGenerateRateLimit_guestはIP+Cookieのハッシュで識別する", async () => {
+    const rpc = jest.fn().mockResolvedValue({
+      data: {
+        allowed: true,
+        attemptId: "attempt-guest-002",
+        reason: null,
+      },
+      error: null,
+    });
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
+
+    // Cookie ID が異なれば同じ IP でも別ハッシュになる（ADR-009）
+    await checkAndConsumeStyleGenerateRateLimit({
+      request: createRequest({ guestCookieId: VALID_GUEST_COOKIE_ID }),
+      userId: null,
+      styleId: "paris_code",
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+    const firstHash =
+      rpc.mock.calls[0][1].p_client_ip_hash as string;
+
+    rpc.mockClear();
+    await checkAndConsumeStyleGenerateRateLimit({
+      request: createRequest({
+        guestCookieId: "99999999-aaaa-4bbb-8ccc-dddddddddddd",
+      }),
+      userId: null,
+      styleId: "paris_code",
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+    const secondHash =
+      rpc.mock.calls[0][1].p_client_ip_hash as string;
+
+    expect(firstHash).toEqual(expect.any(String));
+    expect(secondHash).toEqual(expect.any(String));
+    expect(firstHash).not.toEqual(secondHash);
+  });
+
+  test("checkAndConsumeStyleGenerateRateLimit_guestはIP無しならmissing_identifierで拒否", async () => {
+    // RPC は呼ばれてはいけない
+    const rpc = jest.fn();
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
+
+    const result = await checkAndConsumeStyleGenerateRateLimit({
+      request: createRequest({ ip: null }),
+      userId: null,
+      styleId: "paris_code",
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+
+    expect(result).toEqual({ allowed: false, reason: "missing_identifier" });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  test("checkAndConsumeStyleGenerateRateLimit_guestはCookie無しならmissing_identifierで拒否", async () => {
+    const rpc = jest.fn();
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
+
+    const result = await checkAndConsumeStyleGenerateRateLimit({
+      request: createRequest({ guestCookieId: null }),
+      userId: null,
+      styleId: "paris_code",
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+
+    expect(result).toEqual({ allowed: false, reason: "missing_identifier" });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  test("checkAndConsumeStyleGenerateRateLimit_guestはCookieが不正な値ならmissing_identifierで拒否", async () => {
+    const rpc = jest.fn();
+    mockCreateAdminClient.mockReturnValue({ rpc } as never);
+
+    const result = await checkAndConsumeStyleGenerateRateLimit({
+      request: createRequest({ guestCookieId: "not-a-valid-uuid" }),
+      userId: null,
+      styleId: "paris_code",
+      now: new Date("2026-03-21T15:30:00.000Z"),
+    });
+
+    expect(result).toEqual({ allowed: false, reason: "missing_identifier" });
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   test("getStyleGenerateRateLimitStatus_残数が1回でも注意表示を維持する", async () => {
