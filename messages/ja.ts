@@ -675,6 +675,18 @@ export const jaMessages = {
     modelPro2k: "高精細モデル：Nano Banana Pro | 2K（80ペルコイン/枚）",
     modelPro4k: "高精細モデル：Nano Banana Pro | 4K（100ペルコイン/枚）",
     modelGptImage2Low: "軽量モデル： ChatGPT Images 2.0 （10ペルコイン/ 枚）",
+    // Phase 6: ゲスト用 UI
+    guestResultAlt: "お試し生成結果",
+    guestResultSaveHint:
+      "結果はこのページを離れると消えます。保存するにはログイン / 新規登録してください。",
+    guestResultLoginCta: "ログインして保存する",
+    guestLoginCtaTitle: "未ログインでお試しいただけます",
+    guestLoginCtaDescription:
+      "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。生成結果はリロードで消えます。",
+    guestLoginCtaAction: "ログイン / 新規登録",
+    guestSubmitFailed: "生成に失敗しました。少し時間をおいて再試行してください。",
+    guestRateLimitDailyMessage:
+      "本日のお試し回数（1 日 1 回）に達しました。ログイン / 新規登録すると引き続き利用できます。",
     countLabel: "生成枚数を選択",
     countSingle: "1枚",
     countMultiple: "{count}枚",

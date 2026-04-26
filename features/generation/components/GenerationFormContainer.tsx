@@ -43,9 +43,22 @@ import {
 import { summarizeJobProgress } from "../lib/job-progress";
 import type { ImageJobProcessingStage } from "../lib/job-types";
 import type { GeneratedImageData } from "../types";
+import { submitGuestCoordinateGeneration } from "../lib/coordinate-guest-api";
+import { GuestResultPreview } from "./GuestResultPreview";
+import { AuthModal } from "@/features/auth/components/AuthModal";
+import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
 
 interface GenerationFormContainerProps {
   subscriptionPlan: SubscriptionPlan;
+  /**
+   * 認証状態。"guest" のときはゲスト sync ルートに切り替え、結果は
+   * `GuestResultPreview` に in-memory で表示する。既定は "authenticated"。
+   */
+  authState?: "guest" | "authenticated";
+  /**
+   * ロックモデル選択や「保存するにはログイン」CTA から呼ばれる。AuthModal を開く想定。
+   */
+  onRequestSignIn?: () => void;
 }
 
 type TrackedGenerationJobStatus = Pick<
@@ -132,12 +145,28 @@ function appendUniqueErrorMessage(
  */
 export function GenerationFormContainer({
   subscriptionPlan,
+  authState = "authenticated",
+  onRequestSignIn,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
   const router = useRouter();
   const { toast } = useToast();
   const ctx = useGenerationState();
+  const isGuest = authState === "guest";
+  const [guestResult, setGuestResult] = useState<{
+    url: string;
+    mimeType: string;
+  } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const currentUrl = useCurrentUrlForRedirect();
+  const handleRequestSignIn = () => {
+    if (onRequestSignIn) {
+      onRequestSignIn();
+    } else {
+      setShowAuthModal(true);
+    }
+  };
   const [localIsGenerating, setLocalIsGenerating] = useState(false);
   const [localTotalCount, setLocalTotalCount] = useState(0);
   const [, setLocalGeneratingCount] = useState(0);
@@ -442,6 +471,10 @@ export function GenerationFormContainer({
         });
 
   useEffect(() => {
+    // ゲストは async ジョブを持たないため復旧不要
+    if (isGuest) {
+      return;
+    }
     const recoveryRequestId = ++recoveryRequestIdRef.current;
     let isCancelled = false;
 
@@ -663,6 +696,7 @@ export function GenerationFormContainer({
   }, [
     asyncApiMessages,
     formatPartialFailureMessage,
+    isGuest,
     resetGenerationState,
     router,
     scheduleCoordinateRefresh,
@@ -698,12 +732,6 @@ export function GenerationFormContainer({
     model: import("../types").GeminiModel;
     generationType?: import("../types").GenerationType;
   }) => {
-    recoveryRequestIdRef.current += 1;
-    const allowedCount = Math.min(
-      data.count,
-      getMaxGenerationCount(subscriptionPlan)
-    );
-
     const showGenerationErrorToast = (message: string) => {
       toast({
         variant: "destructive",
@@ -711,6 +739,55 @@ export function GenerationFormContainer({
         description: <span className="whitespace-pre-line">{message}</span>,
       });
     };
+
+    // ゲストは sync ルートで完結する。in-memory に結果を保持し、リロードで消える (UCL-017)。
+    if (isGuest) {
+      if (!data.sourceImage) {
+        showGenerationErrorToast(t("imageContextUnavailable"));
+        return;
+      }
+      setError(null);
+      setGuestResult(null);
+      setIsGenerating(true);
+      setFeedbackPhase("running");
+      try {
+        const result = await submitGuestCoordinateGeneration({
+          prompt: data.prompt,
+          sourceImage: data.sourceImage,
+          sourceImageType: data.sourceImageType,
+          backgroundMode: data.backgroundMode,
+          generationType: data.generationType ?? "coordinate",
+          model: data.model,
+        });
+        if (result.kind === "success") {
+          setGuestResult({ url: result.imageDataUrl, mimeType: result.mimeType });
+          setFeedbackPhase("idle");
+        } else {
+          // signupCta が立っていれば「保存はログイン」CTA で代替できるので、
+          // メッセージはそのまま表示しトーストでも通知。
+          setError(result.message);
+          if (result.errorCode !== "GUEST_RATE_LIMIT_DAILY") {
+            showGenerationErrorToast(result.message);
+          }
+          setFeedbackPhase("idle");
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : t("guestSubmitFailed");
+        setError(message);
+        showGenerationErrorToast(message);
+        setFeedbackPhase("idle");
+      } finally {
+        setIsGenerating(false);
+      }
+      return;
+    }
+
+    recoveryRequestIdRef.current += 1;
+    const allowedCount = Math.min(
+      data.count,
+      getMaxGenerationCount(subscriptionPlan)
+    );
 
     setIsGenerating(true);
     clearCompletionTimeout();
@@ -948,12 +1025,13 @@ export function GenerationFormContainer({
         subscriptionPlan={subscriptionPlan}
         onSubmit={handleGenerate}
         isGenerating={isFormBusy}
+        authState={authState}
       />
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="whitespace-pre-line text-sm text-red-900">{error}</p>
-          {isPercoinInsufficientError(error) ? (
+          {isPercoinInsufficientError(error) && !isGuest ? (
             <div className="mt-3 flex justify-center lg:justify-start">
               <Link
                 href={getPercoinPurchaseUrl("coordinate")}
@@ -966,7 +1044,22 @@ export function GenerationFormContainer({
         </div>
       ) : null}
 
-      {isStatusCardVisible ? (
+      {isGuest ? (
+        <GuestResultPreview
+          result={guestResult}
+          onLoginCtaClick={handleRequestSignIn}
+        />
+      ) : null}
+
+      {isGuest && !onRequestSignIn ? (
+        <AuthModal
+          open={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          redirectTo={currentUrl}
+        />
+      ) : null}
+
+      {!isGuest && isStatusCardVisible ? (
         <div data-tour="tour-generating">
           <GenerationStatusCard
             title={generationStatusTitle}

@@ -703,6 +703,18 @@ export const enMessages = {
     modelPro4k:
       "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
     modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
+    // Phase 6: guest UI
+    guestResultAlt: "Guest preview result",
+    guestResultSaveHint:
+      "This preview disappears when you leave the page. Sign in to save it.",
+    guestResultLoginCta: "Sign in to save",
+    guestLoginCtaTitle: "Try without signing in",
+    guestLoginCtaDescription:
+      "Generate one image per day using ChatGPT Image 2.0 or Nano Banana 2 (0.5K). Previews disappear on reload.",
+    guestLoginCtaAction: "Sign in / Sign up",
+    guestSubmitFailed: "Generation failed. Please try again in a few moments.",
+    guestRateLimitDailyMessage:
+      "You have reached today's trial limit (1 per day). Sign up to continue.",
     countLabel: "Choose how many images to generate",
     countSingle: "1 image",
     countMultiple: "{count} images",

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
-import { requireAuth } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
@@ -10,17 +10,20 @@ import { CachedGeneratedImageGallery } from "@/features/generation/components/Ca
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import type { Locale } from "@/i18n/config";
+import { CoordinateGuestLoginCta } from "@/features/generation/components/CoordinateGuestLoginCta";
 
 export default async function CoordinatePage() {
   const t = await getTranslations("coordinate");
   const creditsT = await getTranslations("credits");
   const locale = (await getLocale()) as Locale;
-  const user = await requireAuth();
-  const profile = await getUserProfileServer(user.id);
+  // Phase 6 / UCL-005: 未ログインユーザーも /coordinate を開けるようにする。
+  const user = await getUser();
+  const isGuest = user === null;
+  const profile = isGuest ? null : await getUserProfileServer(user.id);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <RefreshOnMount />
+      {!isGuest ? <RefreshOnMount /> : null}
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl">
           {/* 静的コンテンツ: タイトルと説明文 */}
@@ -33,40 +36,47 @@ export default async function CoordinatePage() {
             </p>
           </div>
 
-          {/* ペルコイン残高と購入リンク */}
-          <Suspense
-            fallback={
-              <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
-            }
-          >
-            <CachedCoordinatePercoinBalance
-              userId={user.id}
-              locale={locale}
-              copy={{
-                balanceLabel: creditsT("balanceLabel"),
-                percoinUnit: creditsT("percoinUnit"),
-              }}
-            />
-          </Suspense>
+          {isGuest ? (
+            // UCL-005: 未ログイン時は上部にログイン誘導 CTA を常時表示
+            <CoordinateGuestLoginCta />
+          ) : (
+            // ペルコイン残高と購入リンク
+            <Suspense
+              fallback={
+                <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
+              }
+            >
+              <CachedCoordinatePercoinBalance
+                userId={user.id}
+                locale={locale}
+                copy={{
+                  balanceLabel: creditsT("balanceLabel"),
+                  percoinUnit: creditsT("percoinUnit"),
+                }}
+              />
+            </Suspense>
+          )}
 
-          {/* GenerationForm と 生成結果一覧を GenerationStateProvider でラップ（スケルトン表示のため） */}
+          {/* GenerationForm と 生成結果一覧を GenerationStateProvider でラップ */}
           <GenerationStateProvider>
-            {/* GenerationForm */}
             <Suspense fallback={<GenerationFormSkeleton />}>
               <GenerationFormContainer
-                subscriptionPlan={profile.subscription_plan ?? "free"}
+                subscriptionPlan={profile?.subscription_plan ?? "free"}
+                authState={isGuest ? "guest" : "authenticated"}
               />
             </Suspense>
 
-            {/* 生成結果一覧 */}
-            <div className="mt-8">
-              <h2 className="mb-4 text-xl font-semibold text-gray-900">
-                {t("resultsTitle")}
-              </h2>
-              <Suspense fallback={<GeneratedImageGallerySkeleton />}>
-                <CachedGeneratedImageGallery userId={user.id} />
-              </Suspense>
-            </div>
+            {/* 生成結果一覧 (認証ユーザーのみ。ゲストは GuestResultPreview を見る) */}
+            {!isGuest ? (
+              <div className="mt-8">
+                <h2 className="mb-4 text-xl font-semibold text-gray-900">
+                  {t("resultsTitle")}
+                </h2>
+                <Suspense fallback={<GeneratedImageGallerySkeleton />}>
+                  <CachedGeneratedImageGallery userId={user.id} />
+                </Suspense>
+              </div>
+            ) : null}
           </GenerationStateProvider>
         </div>
       </div>
