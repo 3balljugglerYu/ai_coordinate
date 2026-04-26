@@ -53,6 +53,44 @@ export type GeminiModel =
 export type ImageGenerationModel = GeminiModel;
 
 /**
+ * Gemini API に投げられるモデル ID のサブセット。
+ * `toApiModelName()` の入力を「Gemini ファミリーのみ」に絞るために使う。
+ * OpenAI 系（`gpt-image-*`）は別経路（`features/generation/lib/openai-image.ts`）で扱う。
+ */
+export type GeminiOnlyModel = Exclude<GeminiModel, 'gpt-image-2-low'>;
+
+/**
+ * クライアントが API に送ってよい model 値の正本リスト。
+ * 後方互換のためのエイリアス（`gemini-2.5-flash-image-preview` 等）も含む。
+ *
+ * Zod の `model.enum(...)` と必ず一致させる。これを「既知の raw 入力」の判定に使うと、
+ * `normalizeModelName()` の fallback で「未知の値も既定モデルへ丸めて受理してしまう」
+ * 挙動を回避できる（ゲスト経路の whitelist で重要）。
+ */
+export const KNOWN_MODEL_INPUTS = [
+  'gemini-3.1-flash-image-preview-512',
+  'gemini-3.1-flash-image-preview-1024',
+  'gemini-3.1-flash-image-preview',
+  'gemini-2.5-flash-image',
+  'gemini-3-pro-image-1k',
+  'gemini-3-pro-image-2k',
+  'gemini-3-pro-image-4k',
+  'gpt-image-2-low',
+  'gemini-2.5-flash-image-preview',
+  'gemini-3-pro-image-preview',
+  'gemini-3-pro-image',
+] as const;
+
+export type KnownModelInput = (typeof KNOWN_MODEL_INPUTS)[number];
+
+export function isKnownModelInput(value: unknown): value is KnownModelInput {
+  return (
+    typeof value === 'string' &&
+    (KNOWN_MODEL_INPUTS as ReadonlyArray<string>).includes(value)
+  );
+}
+
+/**
  * 全画面共通の既定モデル ID。
  * フォーム初期値、サーバー側スキーマ default、normalize の fallback の単一の正本。
  * 拡張ヘルパは @/features/generation/lib/model-config.ts を参照。
@@ -112,9 +150,21 @@ export function normalizeModelName(model: string | null | undefined): GeminiMode
 }
 
 /**
- * データベース保存値をAPIエンドポイント名に変換
+ * データベース保存値を Gemini API のエンドポイント名に変換する。
+ *
+ * OpenAI 系（`gpt-image-*`）はそもそも Gemini API に投げないので、
+ * 入力型を `GeminiOnlyModel` に絞り、ランタイムでも防御する。
+ * 旧シグネチャ（`GeminiModel` 全体を受ける）は OpenAI モデルが Gemini 名へ
+ * 黙って誤変換される事故源だったため、本関数は OpenAI モデルを受けたら
+ * 例外で失敗させる方針に変更している。
  */
-export function toApiModelName(model: GeminiModel): GeminiApiModel {
+export function toApiModelName(model: GeminiOnlyModel): GeminiApiModel {
+  // 型が広い呼び出し側（unknown を経由するなど）からの誤投入を防ぐためのガード
+  if (isOpenAIImageModel(model)) {
+    throw new Error(
+      `toApiModelName: OpenAI image models are not Gemini-routable: ${String(model)}`
+    );
+  }
   if (model.startsWith('gemini-3.1-flash-image-preview-')) {
     return 'gemini-3.1-flash-image-preview';
   }

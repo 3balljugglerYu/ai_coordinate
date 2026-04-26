@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   DEFAULT_GENERATION_MODEL,
+  KNOWN_MODEL_INPUTS,
   normalizeModelName,
   backgroundModeToBackgroundChange,
   resolveBackgroundMode,
@@ -79,21 +80,10 @@ export const generationRequestSchema = z.object({
     ])
     .optional()
     .default('coordinate'),
+  // 受理可能な model 値は types.ts の KNOWN_MODEL_INPUTS を単一の正本とする。
+  // ゲスト sync 経路は同 enum を経由してから whitelist 判定するため、二重管理を避ける。
   model: z
-    .enum([
-      'gemini-3.1-flash-image-preview-512',
-      'gemini-3.1-flash-image-preview-1024',
-      'gemini-3.1-flash-image-preview',
-      'gemini-2.5-flash-image',
-      'gemini-3-pro-image-1k',
-      'gemini-3-pro-image-2k',
-      'gemini-3-pro-image-4k',
-      'gpt-image-2-low',
-      // 後方互換性のため、preview版も受け入れる
-      'gemini-2.5-flash-image-preview',
-      'gemini-3-pro-image-preview',
-      'gemini-3-pro-image',
-    ])
+    .enum(KNOWN_MODEL_INPUTS)
     .optional()
     .default(DEFAULT_GENERATION_MODEL)
     .transform(normalizeModelName), // データベース保存用に正規化
