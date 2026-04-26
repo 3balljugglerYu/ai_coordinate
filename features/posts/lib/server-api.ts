@@ -15,7 +15,7 @@ import type {
 } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
-import { getImageDimensions } from "./utils";
+import { getImageDimensions, getPostImageUrl } from "./utils";
 import {
   ensureImageDimensions,
   type ImageRowSubset,
@@ -758,11 +758,7 @@ export const getPost = cache(async (
     data: data as ImageRowSubset,
     useCache,
     fetchDimensions: getImageDimensions,
-    resolveImageUrl: (row) =>
-      row.image_url ||
-      (row.storage_path
-        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generated-images/${row.storage_path}`
-        : null),
+    resolveImageUrl: (row) => getPostImageUrl(row) || null,
     updateRow: async (updates) => {
       await supabase
         .from("generated_images")
