@@ -102,11 +102,11 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
                 data-locked
               >
                 <span className="flex items-center gap-2">
-                  <span>{t(option.labelKey)}</span>
                   <Lock
                     className="h-3.5 w-3.5 text-gray-500"
                     aria-hidden="true"
                   />
+                  <span>{t(option.labelKey)}</span>
                 </span>
               </SelectItem>
             );

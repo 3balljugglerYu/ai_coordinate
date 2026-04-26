@@ -76,6 +76,25 @@ afterEach(() => {
 });
 
 describe("LockableModelSelect interactions", () => {
+  test("guest のロックモデルは鍵アイコンをラベルの左側に表示する", () => {
+    render(
+      <LockableModelSelect
+        value="gpt-image-2-low"
+        authState="guest"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    const lockedButton = screen.getByRole("button", {
+      name: /Nano Banana Pro 1K/,
+    });
+    const row = lockedButton.firstElementChild;
+
+    expect(row?.children.item(0)?.tagName.toLowerCase()).toBe("svg");
+    expect(row?.children.item(1)).toHaveTextContent("Nano Banana Pro 1K");
+  });
+
   test("guest がロックモデルを選ぶと onLockedClick だけを呼ぶ", () => {
     const onChange = jest.fn();
     const onLockedClick = jest.fn();
