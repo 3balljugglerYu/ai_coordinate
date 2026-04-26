@@ -155,6 +155,22 @@ jest.mock("@/features/generation/lib/model-config", () => ({
     };
     return costs[model ?? ""] ?? 10;
   }),
+  isCanonicalGuestAllowedModel: jest.fn((model: string) =>
+    ["gpt-image-2-low", "gemini-3.1-flash-image-preview-512"].includes(model),
+  ),
+  resolveEffectiveModelForAuthState: jest.fn(
+    (model: string, authState: "guest" | "authenticated") => {
+      if (
+        authState === "guest" &&
+        !["gpt-image-2-low", "gemini-3.1-flash-image-preview-512"].includes(
+          model,
+        )
+      ) {
+        return "gpt-image-2-low";
+      }
+      return model;
+    },
+  ),
 }));
 
 const useTranslationsMock = useTranslations as jest.MockedFunction<
