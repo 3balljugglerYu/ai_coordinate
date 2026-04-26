@@ -31,7 +31,7 @@ function resolveBackgroundMode(image: GeneratedImageRecord): BackgroundMode {
   ) {
     return image.background_mode;
   }
-  return image.background_change ? "ai_auto" : "keep";
+  return "keep";
 }
 
 export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {

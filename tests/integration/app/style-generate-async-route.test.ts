@@ -207,7 +207,6 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
       generation_type: "one_tap_style",
       model: "gemini-3.1-flash-image-preview-512",
       background_mode: "keep",
-      background_change: false,
       generation_metadata: {
         oneTapStyle: {
           id: STYLE_ID,

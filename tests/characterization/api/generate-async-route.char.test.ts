@@ -339,7 +339,6 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
         },
         "insertedJob": {
           "attempts": 0,
-          "background_change": false,
           "background_mode": "keep",
           "generation_type": "coordinate",
           "input_image_url": "https://cdn.example.com/temp/uploaded.png",

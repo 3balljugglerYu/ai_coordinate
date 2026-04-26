@@ -11,7 +11,6 @@ export interface GeneratedImageRecord {
   image_url: string;
   storage_path: string;
   prompt: string;
-  background_change: boolean | null;
   background_mode?: BackgroundMode | null;
   is_posted: boolean;
   caption?: string | null;
@@ -29,8 +28,6 @@ export interface GeneratedImageRecord {
   input_images?: Record<string, unknown> | null;
   generation_metadata?: Record<string, unknown> | null;
   source_image_stock_id?: string | null;
-  // Phase 2で追加されたカラム（optional）
-  aspect_ratio?: 'portrait' | 'landscape' | null;
   // Phase 3で追加されたカラム（optional）
   model?: GeminiModel | null;
   // 画像実寸（Post 詳細画面でモデル名と併記して表示）。

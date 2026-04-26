@@ -156,7 +156,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         generation_type: "coordinate",
         model: "gemini-3.1-flash-image-preview-512",
         background_mode: "keep",
-        background_change: false,
         status: "queued",
         processing_stage: "queued",
         attempts: 0,
