@@ -68,8 +68,9 @@ export function ensureGuestIdOnResponse(
     sameSite: "lax",
     path: "/",
     maxAge: GUEST_ID_COOKIE_MAX_AGE,
-    // secure はデフォルトで Vercel 上の本番では Set-Cookie ヘッダに自動付与される。
-    // ローカル http 開発でも cookie を保存できるよう、明示的には付けない。
+    // 本番 (HTTPS) では Secure を必須にする。
+    // ローカル http 開発では Secure を外して Cookie を保存できるようにする。
+    secure: process.env.NODE_ENV === "production",
   });
   return next;
 }
