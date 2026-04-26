@@ -42,7 +42,6 @@ export interface ImageJob {
   generation_metadata?: Record<string, unknown> | null;
   model: GeminiModel | null;
   background_mode: BackgroundMode;
-  background_change: boolean;
   status: ImageJobStatus;
   processing_stage: ImageJobProcessingStage | null;
   result_image_url: string | null;

@@ -41,7 +41,6 @@ describe("ensureImageDimensions", () => {
     it("returns existing values without fetching or updating", async () => {
       const params = makeParams({
         data: {
-          aspect_ratio: "portrait",
           width: 1024,
           height: 1536,
           image_url: "https://cdn.example.com/img.png",
@@ -51,7 +50,6 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: "portrait",
         width: 1024,
         height: 1536,
       });
@@ -70,7 +68,6 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: "portrait",
         width: 1024,
         height: 1536,
       });
@@ -83,8 +80,7 @@ describe("ensureImageDimensions", () => {
     it("UPDATEs only the fields that were null on the input row", async () => {
       const params = makeParams({
         data: {
-          aspect_ratio: "portrait", // already set
-          width: null, // missing
+          width: 1024, // already set
           height: null, // missing
           image_url: "https://cdn.example.com/img.png",
         },
@@ -93,18 +89,16 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: "portrait", // unchanged
         width: 1024,
         height: 1536,
       });
       expect(params.updateRow).toHaveBeenCalledTimes(1);
       expect(params.updateRow).toHaveBeenCalledWith({
-        width: 1024,
         height: 1536,
       });
     });
 
-    it("UPDATEs all three fields when all are null", async () => {
+    it("UPDATEs width and height when both are null", async () => {
       const params = makeParams({
         data: { image_url: "https://cdn.example.com/img.png" },
       });
@@ -112,13 +106,12 @@ describe("ensureImageDimensions", () => {
       await ensureImageDimensions(params);
 
       expect(params.updateRow).toHaveBeenCalledWith({
-        aspect_ratio: "portrait",
         width: 1024,
         height: 1536,
       });
     });
 
-    it("derives aspect_ratio='landscape' when width > height", async () => {
+    it("persists landscape dimensions without deriving orientation metadata", async () => {
       const params = makeParams({
         data: { image_url: "https://cdn.example.com/img.png" },
         fetchDimensions: jest
@@ -128,27 +121,14 @@ describe("ensureImageDimensions", () => {
 
       const result = await ensureImageDimensions(params);
 
-      expect(result.aspectRatio).toBe("landscape");
-      expect(params.updateRow).toHaveBeenCalledWith({
-        aspect_ratio: "landscape",
+      expect(result).toEqual({
         width: 1536,
         height: 1024,
       });
-    });
-
-    it("treats square as 'landscape' (same as existing aspect_ratio behaviour)", async () => {
-      const params = makeParams({
-        data: { image_url: "https://cdn.example.com/img.png" },
-        fetchDimensions: jest
-          .fn()
-          .mockResolvedValue({ width: 1024, height: 1024 }),
+      expect(params.updateRow).toHaveBeenCalledWith({
+        width: 1536,
+        height: 1024,
       });
-
-      const result = await ensureImageDimensions(params);
-
-      // existing aspect_ratio CHECK constraint is portrait | landscape only,
-      // so equal dimensions fall into landscape branch
-      expect(result.aspectRatio).toBe("landscape");
     });
 
     it("does not UPDATE when nothing changed", async () => {
@@ -156,7 +136,6 @@ describe("ensureImageDimensions", () => {
       // 「fetch したが情報が新規でない」理論上のケースを念のため確認する
       const params = makeParams({
         data: {
-          aspect_ratio: "portrait",
           width: 1024,
           height: 1536,
           image_url: "https://cdn.example.com/img.png",
@@ -180,7 +159,6 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: null,
         width: null,
         height: null,
       });
@@ -197,7 +175,6 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: null,
         width: null,
         height: null,
       });
@@ -213,7 +190,6 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: null,
         width: null,
         height: null,
       });
@@ -231,7 +207,6 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: "portrait",
         width: 1024,
         height: 1536,
       });
@@ -242,7 +217,6 @@ describe("ensureImageDimensions", () => {
     it("ignores non-positive width/height as if missing", async () => {
       const params = makeParams({
         data: {
-          aspect_ratio: "portrait",
           width: 0,
           height: -1,
           image_url: "https://cdn.example.com/img.png",
@@ -252,27 +226,10 @@ describe("ensureImageDimensions", () => {
       const result = await ensureImageDimensions(params);
 
       expect(result).toEqual({
-        aspectRatio: "portrait",
         width: 1024,
         height: 1536,
       });
       expect(params.fetchDimensions).toHaveBeenCalledTimes(1);
-    });
-
-    it("ignores unknown aspect_ratio strings as if missing", async () => {
-      const params = makeParams({
-        data: {
-          aspect_ratio: "square" as unknown as "portrait", // 未対応値
-          width: 1024,
-          height: 1536,
-          image_url: "https://cdn.example.com/img.png",
-        },
-      });
-
-      const result = await ensureImageDimensions(params);
-
-      // aspect_ratio は既存値が無効なので fetch して再計算される
-      expect(result.aspectRatio).toBe("portrait");
     });
   });
 });

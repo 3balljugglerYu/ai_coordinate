@@ -156,7 +156,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         generation_type: "coordinate",
         model: "gpt-image-2-low",
         background_mode: "keep",
-        background_change: false,
         status: "queued",
         processing_stage: "queued",
         attempts: 0,

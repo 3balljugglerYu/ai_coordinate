@@ -5,10 +5,7 @@ import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
-import {
-  DEFAULT_GENERATION_MODEL,
-  backgroundModeToBackgroundChange,
-} from "@/features/generation/types";
+import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
 import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
@@ -235,7 +232,6 @@ export async function postGenerateAsyncRoute(
       generation_type: generationType || "coordinate",
       model: model || null,
       background_mode: backgroundMode,
-      background_change: backgroundModeToBackgroundChange(backgroundMode),
       status: "queued",
       processing_stage: "queued",
       attempts: 0,

@@ -256,7 +256,6 @@ export async function postStyleGenerateAsyncRoute(
       generation_type: "one_tap_style",
       model,
       background_mode: backgroundChangeToBackgroundMode(backgroundChange),
-      background_change: backgroundChange,
       generation_metadata: buildOneTapStyleGenerationMetadata(preset, "paid", {
         reservedAttemptId: null,
       }),

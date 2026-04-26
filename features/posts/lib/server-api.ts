@@ -748,13 +748,9 @@ export const getPost = cache(async (
         getCommentCount(id),
       ]);
 
-  // アスペクト比 / 実寸が未計算の場合は lazy compute で算出して DB に書き戻す。
+  // 実寸が未計算の場合は lazy compute で算出して DB に書き戻す。
   // 詳細は features/posts/lib/ensure-image-dimensions.ts。
-  const {
-    aspectRatio,
-    width,
-    height,
-  } = await ensureImageDimensions({
+  const { width, height } = await ensureImageDimensions({
     data: data as ImageRowSubset,
     useCache,
     fetchDimensions: getImageDimensions,
@@ -802,7 +798,6 @@ export const getPost = cache(async (
     like_count: likeCount,
     comment_count: commentCount,
     view_count: updatedViewCount,
-    aspect_ratio: aspectRatio,
     width,
     height,
   });

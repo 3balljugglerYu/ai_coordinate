@@ -213,7 +213,6 @@ function createPost(overrides: Partial<Post> = {}): Post {
     image_url: "https://img/full",
     storage_path: "path",
     prompt: "secret prompt text",
-    background_change: false,
     is_posted: true,
     caption: null,
     like_count: 0,
