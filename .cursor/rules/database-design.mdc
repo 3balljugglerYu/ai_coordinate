@@ -130,9 +130,9 @@ alwaysApply: false
 
 #### `generated_images`
 - 主キー: `id`
-- 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `background_change`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `aspect_ratio`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
+- 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `background_change`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `aspect_ratio`, `width`, `height`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
-- 備考: `generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`moderation_status` は `visible/pending/removed`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low` を保持する
+- 備考: `generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`moderation_status` は `visible/pending/removed`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low` を保持する。`width` / `height` は画像実寸（INT、`> 0` の CHECK 制約、NULL 許容）で、Post 詳細画面のサイズ表示用に server-api の lazy compute で fetch 時に保存される
 - RLS: 投稿済みかつ `visible` の画像は公開、それ以外は本人のみ。`INSERT/UPDATE/DELETE` は本人のみ
 
 #### `source_image_stocks`

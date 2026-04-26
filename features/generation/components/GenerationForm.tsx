@@ -23,6 +23,12 @@ import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from 
 import { getCurrentUserId } from "../lib/current-user";
 import { getPercoinCost } from "../lib/model-config";
 import {
+  readPreferredBackgroundMode,
+  readPreferredModel,
+  writePreferredBackgroundMode,
+  writePreferredModel,
+} from "../lib/form-preferences";
+import {
   GENERATION_PROMPT_MAX_LENGTH,
   isGenerationPromptTooLong,
 } from "../lib/prompt-validation";
@@ -110,6 +116,27 @@ export function GenerationForm({
   useEffect(() => {
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
   }, [maxGenerationCount]);
+
+  // ブラウザに保存された前回の選択（モデル / 背景設定）をマウント時に復元する。
+  // SSR との hydration mismatch を避けるため初期値は default のまま、
+  // クライアント側の useEffect で上書きする。
+  useEffect(() => {
+    setSelectedModel(readPreferredModel());
+    setBackgroundMode(readPreferredBackgroundMode());
+  }, []);
+
+  // ユーザー操作時にだけ localStorage に書き込むラッパー。
+  // tutorial:clear / tutorial:set-background-mode のような system-driven な
+  // setState では呼ばれない（直接 setSelectedModel / setBackgroundMode する）。
+  const handleSelectedModelChange = useCallback((value: GeminiModel) => {
+    setSelectedModel(value);
+    writePreferredModel(value);
+  }, []);
+
+  const handleBackgroundModeChange = useCallback((value: BackgroundMode) => {
+    setBackgroundMode(value);
+    writePreferredBackgroundMode(value);
+  }, []);
 
   // チュートリアル中は入力フィールドを無効化（bodyのdata-tour-in-progressを監視）
   useEffect(() => {
@@ -553,7 +580,9 @@ export function GenerationForm({
           <Label className="text-base font-medium">{t("backgroundLabel")}</Label>
           <RadioGroup
             value={backgroundMode}
-            onValueChange={(value) => setBackgroundMode(value as BackgroundMode)}
+            onValueChange={(value) =>
+              handleBackgroundModeChange(value as BackgroundMode)
+            }
             className="mt-2 space-y-3"
             disabled={isGenerating || isTutorialInProgress}
           >
@@ -587,7 +616,9 @@ export function GenerationForm({
           </Label>
           <Select
             value={selectedModel}
-            onValueChange={(value) => setSelectedModel(value as GeminiModel)}
+            onValueChange={(value) =>
+              handleSelectedModelChange(value as GeminiModel)
+            }
             disabled={isGenerating || isTutorialInProgress}
           >
             <SelectTrigger className="w-full">

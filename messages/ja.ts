@@ -43,6 +43,8 @@ export const jaMessages = {
     postImageAlt: "投稿画像",
     hiddenMessage: "この投稿はあなたの表示設定により非表示になりました。",
     prompt: "プロンプト",
+    metaModelLabel: "生成モデル",
+    metaSizeLabel: "サイズ",
     copy: "コピー",
     copied: "コピー済み",
     followRequiredTitle: "フォローが必要です",

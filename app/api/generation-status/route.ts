@@ -1,50 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import {
-  isInvalidGeminiArgumentErrorMessage,
-  isMalformedGeminiPartsErrorMessage,
-  isOpenAIProviderErrorMessage,
-  isSafetyPolicyBlockedErrorMessage,
-} from "@/shared/generation/errors";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
-
-// 単体テスト容易化のため named export として公開する。
-// 詳細は tests/unit/app/api/generation-status/normalize-error.test.ts 参照。
-export function normalizeUserFacingGenerationError(
-  status: string,
-  errorMessage: string | null,
-  copy: ReturnType<typeof getGenerationRouteCopy>
-): string | null {
-  if (status !== "failed" || !errorMessage) return errorMessage;
-
-  if (errorMessage === "No images generated") {
-    return copy.noImagesGenerated;
-  }
-
-  if (isSafetyPolicyBlockedErrorMessage(errorMessage)) {
-    return copy.safetyBlocked;
-  }
-
-  if (isMalformedGeminiPartsErrorMessage(errorMessage)) {
-    return copy.genericGenerationFailed;
-  }
-
-  if (isInvalidGeminiArgumentErrorMessage(errorMessage)) {
-    return copy.genericGenerationFailed;
-  }
-
-  // OpenAI 側の非リトライ系エラー（組織未検証 / API key 不正 / 残高不足 /
-  // 401・403 / GIF 拒否 / OPENAI_API_KEY 未設定）は upstream の生メッセージを
-  // 表に出さず汎用文言に差し替える。詳細は Edge Function ログ参照。
-  if (isOpenAIProviderErrorMessage(errorMessage)) {
-    return copy.genericGenerationFailed;
-  }
-
-  return errorMessage;
-}
+import { normalizeUserFacingGenerationError } from "@/features/generation/lib/normalize-generation-error";
 
 function deriveImageUrls(
   status: string,

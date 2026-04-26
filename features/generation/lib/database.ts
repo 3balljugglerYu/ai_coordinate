@@ -33,6 +33,10 @@ export interface GeneratedImageRecord {
   aspect_ratio?: 'portrait' | 'landscape' | null;
   // Phase 3で追加されたカラム（optional）
   model?: GeminiModel | null;
+  // 画像実寸（Post 詳細画面でモデル名と併記して表示）。
+  // server-api の lazy compute で fetch 時に画像ヘッダーをパースして埋まる。
+  width?: number | null;
+  height?: number | null;
   // Phase 2-1で追加されたカラム（optional）
   storage_path_display?: string | null;
   storage_path_thumb?: string | null;

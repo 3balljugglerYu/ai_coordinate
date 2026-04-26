@@ -18,6 +18,7 @@ import { CollapsibleText } from "./CollapsibleText";
 import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
 import { PostModal } from "./PostModal";
+import { PostMetaLine } from "./PostMetaLine";
 import { getPostImageUrl } from "../lib/utils";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
@@ -317,6 +318,13 @@ export function PostDetailStatic({
             <CollapsibleText text={post.caption} maxLines={3} />
           </div>
         )}
+
+        {/* 生成モデル / サイズ（プロンプト直前） */}
+        <PostMetaLine
+          model={post.model ?? null}
+          width={post.width ?? null}
+          height={post.height ?? null}
+        />
 
         {/* プロンプト */}
         {oneTapStylePreset ? (
