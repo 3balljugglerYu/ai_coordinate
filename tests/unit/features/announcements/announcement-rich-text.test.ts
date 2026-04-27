@@ -14,7 +14,7 @@ const safeLinkMark = {
   },
 };
 
-function linkDocument(markAttrs: Record<string, unknown>) {
+function linkMarkDocument(mark: unknown) {
   return {
     type: "doc",
     content: [
@@ -25,16 +25,20 @@ function linkDocument(markAttrs: Record<string, unknown>) {
             type: "text",
             text: "お知らせ",
             marks: [
-              {
-                type: "link",
-                attrs: markAttrs,
-              },
+              mark,
             ],
           },
         ],
       },
     ],
   };
+}
+
+function linkDocument(markAttrs: Record<string, unknown>) {
+  return linkMarkDocument({
+    type: "link",
+    attrs: markAttrs,
+  });
 }
 
 describe("announcement rich text link validation", () => {
@@ -53,6 +57,7 @@ describe("announcement rich text link validation", () => {
       expect(isSafeAnnouncementLinkUrl("//example.com")).toBe(false);
       expect(isSafeAnnouncementLinkUrl("/\\example.com")).toBe(false);
       expect(isSafeAnnouncementLinkUrl(" https://example.com")).toBe(false);
+      expect(isSafeAnnouncementLinkUrl("x".repeat(2049))).toBe(false);
     });
   });
 
@@ -64,6 +69,43 @@ describe("announcement rich text link validation", () => {
           bodyJson: linkDocument(safeLinkMark.attrs),
         }
       );
+    });
+
+    test("attrs が不正な link mark を拒否する", () => {
+      expect(
+        validateAnnouncementDocument(linkMarkDocument({ type: "link" }))
+      ).toEqual({
+        ok: false,
+        error: "link mark の属性が不正です",
+      });
+    });
+
+    test("許可されていない link 属性を拒否する", () => {
+      expect(
+        validateAnnouncementDocument(
+          linkDocument({
+            ...safeLinkMark.attrs,
+            onclick: "alert(1)",
+          })
+        )
+      ).toEqual({
+        ok: false,
+        error: "許可されていない link 属性が含まれています",
+      });
+    });
+
+    test("不正な href を持つ link mark を拒否する", () => {
+      expect(
+        validateAnnouncementDocument(
+          linkDocument({
+            ...safeLinkMark.attrs,
+            href: "http://example.com",
+          })
+        )
+      ).toEqual({
+        ok: false,
+        error: "リンク URL が不正です",
+      });
     });
 
     test("target が欠落した link mark を拒否する", () => {
@@ -103,6 +145,34 @@ describe("announcement rich text link validation", () => {
       ).toEqual({
         ok: false,
         error: "リンクの rel 属性が不正です",
+      });
+    });
+
+    test("class 属性を持つ link mark を拒否する", () => {
+      expect(
+        validateAnnouncementDocument(
+          linkDocument({
+            ...safeLinkMark.attrs,
+            class: "text-red-500",
+          })
+        )
+      ).toEqual({
+        ok: false,
+        error: "リンクの class 属性は指定できません",
+      });
+    });
+
+    test("長すぎる title 属性を持つ link mark を拒否する", () => {
+      expect(
+        validateAnnouncementDocument(
+          linkDocument({
+            ...safeLinkMark.attrs,
+            title: "x".repeat(201),
+          })
+        )
+      ).toEqual({
+        ok: false,
+        error: "リンクの title 属性が不正です",
       });
     });
 
