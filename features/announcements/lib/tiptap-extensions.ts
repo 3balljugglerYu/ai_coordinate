@@ -60,6 +60,7 @@ export const AnnouncementLink = Link.configure({
     rel: ANNOUNCEMENT_LINK_REL,
   },
   isAllowedUri: (url) => isSafeAnnouncementLinkUrl(url),
+  shouldAutoLink: (url) => isSafeAnnouncementLinkUrl(url),
 });
 
 export const announcementTiptapExtensions = [

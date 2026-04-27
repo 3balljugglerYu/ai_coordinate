@@ -13,6 +13,8 @@ const ALLOWED_FONT_SIZES = new Set<AnnouncementFontSize>([
 const COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
 const STORAGE_PATH_PATTERN = /^(?!\/)(?!.*\.\.)[\w./-]+\.webp$/;
 const IMAGE_DIMENSION_PATTERN = /^\d+(?:\.\d+)?$/;
+const LINK_FORBIDDEN_CHARACTER_PATTERN = /[\u0000-\u001F\u007F\s\\]/;
+const MAX_LINK_URL_LENGTH = 2048;
 
 type RichTextNode = {
   type?: unknown;
@@ -42,7 +44,12 @@ function getAnnouncementImagePublicPrefix() {
 
 export function isSafeAnnouncementLinkUrl(url: string): boolean {
   const trimmed = url.trim();
-  if (!trimmed) {
+  if (
+    !trimmed ||
+    trimmed !== url ||
+    trimmed.length > MAX_LINK_URL_LENGTH ||
+    LINK_FORBIDDEN_CHARACTER_PATTERN.test(trimmed)
+  ) {
     return false;
   }
 
@@ -50,7 +57,12 @@ export function isSafeAnnouncementLinkUrl(url: string): boolean {
     return true;
   }
 
-  return trimmed.startsWith("https://");
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "https:" && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function isValidAnnouncementImageUrl(url: string): boolean {
@@ -110,24 +122,21 @@ function validateLinkMark(typedMark: RichTextMark): string | null {
     return "リンク URL が不正です";
   }
 
-  if (attrs.target != null) {
-    if (
-      typeof attrs.target !== "string" ||
-      !ALLOWED_LINK_TARGETS.has(attrs.target)
-    ) {
-      return "リンクの target 属性が不正です";
-    }
+  if (
+    typeof attrs.target !== "string" ||
+    !ALLOWED_LINK_TARGETS.has(attrs.target)
+  ) {
+    return "リンクの target 属性が不正です";
   }
 
-  if (attrs.rel != null) {
-    if (typeof attrs.rel !== "string") {
+  if (typeof attrs.rel !== "string") {
+    return "リンクの rel 属性が不正です";
+  }
+
+  const tokens = attrs.rel.split(/\s+/).filter(Boolean);
+  for (const required of REQUIRED_LINK_REL_TOKENS) {
+    if (!tokens.includes(required)) {
       return "リンクの rel 属性が不正です";
-    }
-    const tokens = attrs.rel.split(/\s+/).filter(Boolean);
-    for (const required of REQUIRED_LINK_REL_TOKENS) {
-      if (!tokens.includes(required)) {
-        return "リンクの rel 属性が不正です";
-      }
     }
   }
 
