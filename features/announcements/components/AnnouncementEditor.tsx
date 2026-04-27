@@ -6,7 +6,12 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { ImagePlus, Link as LinkIcon, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { announcementTiptapExtensions } from "@/features/announcements/lib/tiptap-extensions";
+import {
+  ANNOUNCEMENT_LINK_CLASS_NAME,
+  ANNOUNCEMENT_LINK_REL,
+  ANNOUNCEMENT_LINK_TARGET,
+  announcementTiptapExtensions,
+} from "@/features/announcements/lib/tiptap-extensions";
 import { isSafeAnnouncementLinkUrl } from "@/features/announcements/lib/announcement-rich-text";
 import { ANNOUNCEMENT_FONT_SIZE_VALUES } from "@/features/announcements/lib/schema";
 import { cn } from "@/lib/utils";
@@ -121,7 +126,11 @@ export function AnnouncementEditor({
       .chain()
       .focus()
       .extendMarkRange("link")
-      .setLink({ href: trimmed })
+      .setLink({
+        href: trimmed,
+        target: ANNOUNCEMENT_LINK_TARGET,
+        rel: ANNOUNCEMENT_LINK_REL,
+      })
       .run();
   };
 
@@ -325,7 +334,10 @@ export function AnnouncementEditor({
       >
         <EditorContent
           editor={editor}
-          className="[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-slate-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-['本文を入力してください'] [&_.ProseMirror_img]:my-3 [&_.ProseMirror_img]:max-h-[360px] [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain [&_.ProseMirror_a]:text-sky-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_a:hover]:text-sky-700"
+          className={cn(
+            "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-slate-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-['本文を入力してください'] [&_.ProseMirror_img]:my-3 [&_.ProseMirror_img]:max-h-[360px] [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain",
+            ANNOUNCEMENT_LINK_CLASS_NAME
+          )}
         />
       </div>
     </div>

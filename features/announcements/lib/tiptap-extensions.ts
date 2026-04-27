@@ -8,6 +8,8 @@ import { isSafeAnnouncementLinkUrl } from "./announcement-rich-text";
 
 export const ANNOUNCEMENT_LINK_REL = "noopener noreferrer nofollow";
 export const ANNOUNCEMENT_LINK_TARGET = "_blank";
+export const ANNOUNCEMENT_LINK_CLASS_NAME =
+  "[&_.ProseMirror_a]:text-sky-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_a:hover]:text-sky-700";
 
 export const AnnouncementImage = Image.extend({
   addAttributes() {
