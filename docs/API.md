@@ -152,7 +152,7 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
 
 非同期画像生成ジョブを作成し、キューへ投入します。
 
-- Access: `user session`
+- Access: `user session` (認証必須。未ログインは `/api/coordinate-generate-guest` を使う / Phase 6)
 - Request body:
 
 ```json
@@ -203,6 +203,48 @@ Main errors:
 - `404`: 指定したストック画像が見つからない
 - `500`: アップロード失敗、ジョブ作成失敗など
 - `202`: ジョブ作成済みだがキュー投入が遅延している可能性あり
+
+### `POST /api/coordinate-generate-guest`
+
+未ログインユーザー向けのコーディネート同期生成エンドポイント (Phase 3)。
+画像は data URL で返り、`generated_images` / `image_jobs` には保存しません (UCL-003)。
+
+- Access: `guest only` (認証ユーザーは `403 GUEST_ROUTE_AUTHENTICATED_FORBIDDEN` で拒否、UCL-014)
+- Request body: `multipart/form-data`
+  - `prompt`: 必須、最大 2000 文字
+  - `uploadImage`: 必須 (PNG / JPEG / WebP / GIF。`gpt-image-2-low` モデルのみ GIF 非対応)
+  - `model`: 必須、`gpt-image-2-low` か `gemini-3.1-flash-image-preview-512` のみ許可 (UCL-001)
+  - `sourceImageType`: 任意、`illustration` (default) / `real`
+  - `backgroundMode`: 任意、`keep` (default) / `ai_auto` / `include_in_prompt`
+  - `generationType`: 任意、`coordinate` (default) / `specified_coordinate` / `full_body` / `chibi`
+
+Success response:
+
+```json
+{
+  "imageDataUrl": "data:image/png;base64,...",
+  "mimeType": "image/png"
+}
+```
+
+Rate limit:
+
+- JST 1 日 1 回まで (`/style/generate` と合算、UCL-002)
+- 識別子は `client_ip` と永続 Cookie `persta_guest_id` の SHA-256 ハッシュ
+- 上限到達時: `429 GUEST_RATE_LIMIT_DAILY` + `signupCta: true` + `signupPath`
+
+Main errors:
+
+- `400 GUEST_PROMPT_MISSING` / `GUEST_IMAGE_MISSING` / `GUEST_PROMPT_TOO_LONG`: 必須欠落・長さ違反
+- `400 GUEST_MODEL_NOT_ALLOWED`: 許可外モデル指定
+- `400 GUEST_INVALID_IMAGE` / `GUEST_INVALID_MODEL_FOR_IMAGE`: MIME / size / GIF on OpenAI
+- `400 GUEST_IDENTIFIER_UNAVAILABLE`: IP も Cookie も取れない (UCL-010)
+- `400 GUEST_SAFETY_BLOCKED`: 上流の safety / policy block。試行は消費 (UCL-011b)
+- `403 GUEST_ROUTE_AUTHENTICATED_FORBIDDEN`: 認証ユーザーが直叩き
+- `429 GUEST_RATE_LIMIT_DAILY`: 1 日 1 回上限到達
+- `502 GUEST_NO_IMAGE_GENERATED` / `GUEST_UPSTREAM_ERROR` / `GUEST_UPSTREAM_UNAVAILABLE`: 上流側失敗 (試行は release / UCL-011a)
+- `504 GUEST_TIMEOUT`: 上流タイムアウト (試行は release)
+- `500 GUEST_INTERNAL_ERROR` / `GUEST_UPSTREAM_UNAVAILABLE`: API キー未設定など
 
 ### `GET /api/generation-status?id=<jobId>`
 
@@ -537,6 +579,7 @@ Main errors:
 | Method | Path | Access | Summary |
 | --- | --- | --- | --- |
 | POST | `/api/generate-async` | user session | 非同期画像生成ジョブを作成する |
+| POST | `/api/coordinate-generate-guest` | guest only | 未ログイン用コーディネート同期生成。data URL 返却、JST 1 日 1 回 |
 
 ### generation-status
 

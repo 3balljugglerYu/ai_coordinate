@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -28,7 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
@@ -53,7 +53,7 @@ import type { ImageJobProcessingStage } from "@/features/generation/lib/job-type
 import type { UploadedImage } from "@/features/generation/types";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
-import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
+import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
@@ -61,10 +61,24 @@ import { StylePresetPreviewCard } from "@/features/style/components/StylePresetP
 import { PostModal } from "@/features/posts/components/PostModal";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
-import { getPercoinCost } from "@/features/generation/lib/model-config";
+import {
+  getPercoinCost,
+  resolveEffectiveModelForAuthState,
+} from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { determineFileName } from "@/lib/utils";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
+import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
+import { AuthModal } from "@/features/auth/components/AuthModal";
+import {
+  readPreferredModel,
+  writePreferredModel,
+} from "@/features/generation/lib/form-preferences";
+import {
+  DEFAULT_GENERATION_MODEL,
+  type GeminiModel,
+} from "@/features/generation/types";
+import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
 
 interface StylePageClientProps {
   presets: readonly StylePresetPublicSummary[];
@@ -96,7 +110,10 @@ type GenerationPhase = "idle" | "running" | "completing";
 const RESULT_REVEAL_DELAY_MS = 5000;
 const PREPARING_PROGRESS_PERCENT = 10;
 const PREPARING_PROGRESS_TRANSITION_MS = 3000;
+// Phase 5 で選択モデル単価に基づく動的コストへ移行 (selectedModelPercoinCost)。
+// 旧定数は import 互換のため残しているが、新しい code パスでは参照しない。
 const STYLE_PAID_GENERATION_COST = getPercoinCost(STYLE_GENERATION_MODEL);
+void STYLE_PAID_GENERATION_COST;
 const DEFAULT_POLLING_INTERVAL_MS = 1200;
 const FAST_POLLING_INTERVAL_MS = 400;
 const SLOW_POLLING_INTERVAL_MS = 1600;
@@ -488,6 +505,11 @@ export function StylePageClient({
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>(
+    DEFAULT_GENERATION_MODEL
+  );
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const currentUrl = useCurrentUrlForRedirect();
   const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
   const [queuedResultImageUrl, setQueuedResultImageUrl] = useState<string | null>(null);
@@ -528,15 +550,23 @@ export function StylePageClient({
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
   const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
+  const modelAuthState =
+    effectiveAuthState === "authenticated" ? "authenticated" : "guest";
+  const effectiveSelectedModel = resolveEffectiveModelForAuthState(
+    selectedModel,
+    modelAuthState
+  );
   const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
   const isGuestDailyLimitReached =
     rateLimitStatus?.remainingDaily === 0 && rateLimitStatus.authState === "guest";
   const isAuthenticatedPaidOnlyMode =
     rateLimitStatus?.remainingDaily === 0 &&
     rateLimitStatus.authState === "authenticated";
+  // 選択中モデル単価でペルコイン残高をチェックする (Phase 5 / UCL-007)
+  const selectedModelPercoinCost = getPercoinCost(effectiveSelectedModel);
   const hasEnoughPercoins =
     typeof percoinBalanceState.balance === "number" &&
-    percoinBalanceState.balance >= STYLE_PAID_GENERATION_COST;
+    percoinBalanceState.balance >= selectedModelPercoinCost;
   const shouldDisablePaidContinuation =
     isAuthenticatedPaidOnlyMode &&
     (percoinBalanceState.isLoading ||
@@ -738,6 +768,17 @@ export function StylePageClient({
       pendingResultImageRecenterTimeoutRef.current = null;
     }, 0);
   };
+
+  // localStorage に保存された前回選択モデルを復元 (Phase 5 / UCL-013)
+  useEffect(() => {
+    setSelectedModel(readPreferredModel());
+  }, []);
+
+  // ユーザー操作経由のモデル変更だけ localStorage に書く
+  const handleSelectedModelChange = useCallback((next: GeminiModel) => {
+    setSelectedModel(next);
+    writePreferredModel(next);
+  }, []);
 
   useEffect(() => {
     if (generationPhase !== "completing" || !queuedResultImageUrl) {
@@ -1128,6 +1169,7 @@ export function StylePageClient({
       formData.set("uploadImage", normalizedFile);
       formData.set("sourceImageType", sourceImageType);
       formData.set("backgroundChange", backgroundChange ? "true" : "false");
+      formData.set("model", effectiveSelectedModel);
 
       const response = await fetch("/style/generate", {
         method: "POST",
@@ -1207,6 +1249,7 @@ export function StylePageClient({
       formData.set("uploadImage", normalizedFile);
       formData.set("sourceImageType", sourceImageType);
       formData.set("backgroundChange", backgroundChange ? "true" : "false");
+      formData.set("model", effectiveSelectedModel);
 
       const response = await fetch("/style/generate-async", {
         method: "POST",
@@ -1365,7 +1408,7 @@ export function StylePageClient({
     ? t("generatingButton")
     : isAuthenticatedPaidOnlyMode
       ? t("paidGenerateButton", {
-          cost: STYLE_PAID_GENERATION_COST,
+          cost: selectedModelPercoinCost,
         })
       : t("generateButton");
 
@@ -1574,19 +1617,13 @@ export function StylePageClient({
               <Label className="text-base font-medium mb-3 block">
                 {t("modelLabel")}
               </Label>
-              <Select value={STYLE_GENERATION_MODEL} disabled>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={STYLE_GENERATION_MODEL}>
-                    {t("modelFixedOption")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="mt-2 text-xs text-slate-500">
-                {STYLE_GENERATION_IMAGE_SIZE}px
-              </p>
+              <LockableModelSelect
+                value={effectiveSelectedModel}
+                onChange={handleSelectedModelChange}
+                onLockedClick={() => setShowAuthModal(true)}
+                authState={modelAuthState}
+                disabled={isGenerating}
+              />
             </div>
 
             <Button
@@ -1602,7 +1639,6 @@ export function StylePageClient({
             <div className="space-y-1 text-xs leading-5 text-slate-500">
               <p>{t("generateHint")}</p>
               <p>{t("generateRetryHint")}</p>
-              <p>{t("usageLimitHint")}</p>
             </div>
 
             {typeof remainingDailyNoticeCount === "number" ? (
@@ -1640,7 +1676,7 @@ export function StylePageClient({
                   <div className="mt-3 space-y-3">
                     <p className="text-xs leading-5 text-red-800">
                       {t("authenticatedPaidContinueHint", {
-                        cost: STYLE_PAID_GENERATION_COST,
+                        cost: selectedModelPercoinCost,
                       })}
                     </p>
                     <div className="rounded-lg border border-red-100 bg-white/70 px-3 py-2">
@@ -1668,7 +1704,7 @@ export function StylePageClient({
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs leading-5 text-red-800">
                           {t("authenticatedPaidInsufficientBalance", {
-                            cost: STYLE_PAID_GENERATION_COST,
+                            cost: selectedModelPercoinCost,
                           })}
                         </p>
                         <Button
@@ -1833,6 +1869,12 @@ export function StylePageClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo={currentUrl}
+      />
     </div>
   );
 }

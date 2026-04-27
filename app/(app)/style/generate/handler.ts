@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  extractImagesFromGeminiResponse,
-  type GeminiResponse,
-} from "@/features/generation/lib/nanobanana";
-import {
   ALLOWED_IMAGE_MIME_TYPE_SET,
   MAX_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
-import { STYLE_GENERATION_IMAGE_SIZE, STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
+import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import {
   buildStyleAttemptReinforcementPrefix,
   buildStyleGenerationPrompt,
@@ -21,6 +17,21 @@ import {
   type StyleGenerateAttemptReservation,
   type StyleGenerateRateLimitResult,
 } from "@/features/style/lib/style-rate-limit";
+import {
+  GUEST_AUTH_FORBIDDEN,
+  dispatchGuestImageGeneration,
+  parseGuestModelInput,
+  shouldReleaseReservationFor,
+  type DispatchGuestImageGenerationResult,
+} from "@/features/generation/lib/guest-generate";
+import {
+  callOpenAIImageEdit,
+} from "@/features/generation/lib/openai-image";
+import {
+  isOpenAIImageModel,
+  normalizeModelName,
+  type GeminiModel,
+} from "@/features/generation/types";
 import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -29,17 +40,18 @@ import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StyleUsageAuthState } from "@/features/style/lib/style-usage-events";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 
-const GEMINI_TIMEOUT_MS = 35_000;
 const MAX_RETRYABLE_ATTEMPTS = 2;
-const RETRYABLE_NO_IMAGE_FINISH_REASONS = new Set([
-  "MALFORMED_FUNCTION_CALL",
-]);
 
 type FetchFn = typeof fetch;
 
 interface StyleGenerateRouteDependencies {
   fetchFn?: FetchFn;
   geminiApiKey?: string;
+  openaiApiKey?: string;
+  /**
+   * テスト用 OpenAI クライアント差し替え (gpt-image-2-low が選ばれた場合のみ呼ばれる)
+   */
+  openaiClient?: typeof callOpenAIImageEdit;
   getUserFn?: typeof getUser;
   getPublishedStylePresetForGenerationFn?: (
     styleId: string
@@ -60,63 +72,11 @@ interface StyleGenerateRouteDependencies {
   }) => Promise<boolean>;
 }
 
-interface GeminiErrorPayload {
-  error?: {
-    message?: string;
-  };
-}
-
-type GeminiContentPart =
-  | { text: string }
-  | { inline_data: { mime_type: string; data: string } };
-
 function getFile(entry: FormDataEntryValue | null): File | null {
   if (!(entry instanceof File)) {
     return null;
   }
   return entry;
-}
-
-function getFinishReasons(payload: GeminiResponse | null): string[] {
-  if (!payload?.candidates || payload.candidates.length === 0) {
-    return [];
-  }
-
-  const reasons = payload.candidates
-    .map((candidate) => candidate.finishReason?.trim())
-    .filter((reason): reason is string => Boolean(reason));
-
-  return Array.from(new Set(reasons));
-}
-
-function isSafetyBlockedResponse(payload: GeminiResponse | null): boolean {
-  if (!payload) {
-    return false;
-  }
-
-  const withPromptFeedback = payload as GeminiResponse & {
-    promptFeedback?: { blockReason?: string };
-  };
-
-  if (typeof withPromptFeedback.promptFeedback?.blockReason === "string") {
-    return true;
-  }
-
-  if (!payload.candidates || payload.candidates.length === 0) {
-    return false;
-  }
-
-  return payload.candidates.some((candidate) => {
-    const finishReason = candidate.finishReason?.toUpperCase();
-    return finishReason === "SAFETY";
-  });
-}
-
-function shouldRetryNoImageResponse(payload: GeminiResponse | null): boolean {
-  const finishReasons = getFinishReasons(payload);
-  return finishReasons.some((reason) =>
-    RETRYABLE_NO_IMAGE_FINISH_REASONS.has(reason)
-  );
 }
 
 function validateImageFile(
@@ -132,17 +92,6 @@ function validateImageFile(
     return copy.imageTooLarge.replace("{label}", label);
   }
   return null;
-}
-
-async function toInlineData(file: File): Promise<GeminiContentPart> {
-  const arrayBuffer = await file.arrayBuffer();
-  const data = Buffer.from(arrayBuffer).toString("base64");
-  return {
-    inline_data: {
-      mime_type: file.type,
-      data,
-    },
-  };
 }
 
 function resolveSourceImageType(entry: FormDataEntryValue | null): SourceImageType {
@@ -209,6 +158,7 @@ export async function postStyleGenerateRoute(
   try {
     const getUserFn = dependencies.getUserFn ?? getUser;
     const fetchFn = dependencies.fetchFn ?? fetch;
+    const openaiClient = dependencies.openaiClient ?? callOpenAIImageEdit;
     const getPublishedStylePresetForGenerationFn =
       dependencies.getPublishedStylePresetForGenerationFn ??
       getPublishedStylePresetForGeneration;
@@ -239,17 +189,23 @@ export async function postStyleGenerateRoute(
     };
 
     const user = await getUserFn();
-    const authState: StyleUsageAuthState = user ? "authenticated" : "guest";
+
+    // UCL-014 / ADR-007: 認証済みユーザーは guest sync ルートを直叩きできない。
+    // フロントは authState で経路を切り替えるため通常はここに到達しないが、
+    // 課金抜け / 利用制限抜けを防ぐためサーバー側で必ず弾く。
+    if (user) {
+      return jsonError(
+        copy.guestRouteAuthForbidden,
+        GUEST_AUTH_FORBIDDEN.errorCode,
+        403
+      );
+    }
+    const authState: StyleUsageAuthState = "guest";
 
     const geminiApiKey =
       dependencies.geminiApiKey ?? process.env.GEMINI_API_KEY?.trim();
-    if (!geminiApiKey) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY is not configured." },
-        { status: 500 }
-      );
-    }
-
+    const openaiApiKey =
+      dependencies.openaiApiKey ?? process.env.OPENAI_API_KEY?.trim();
     const formData = await request.formData();
     const styleIdEntry = formData.get("styleId");
     const styleId = typeof styleIdEntry === "string" ? styleIdEntry.trim() : "";
@@ -262,6 +218,25 @@ export async function postStyleGenerateRoute(
 
     if (!styleId) {
       return jsonError(copy.missingStyle, "STYLE_MISSING_STYLE", 400);
+    }
+
+    // model は Phase 5 でフロントから明示的に送られるようになる。それまでは未送信が多数。
+    // - 未送信 → STYLE_GENERATION_MODEL の正規化結果（gemini-3.1-flash-image-preview-512）
+    // - 送信あり → guest 許可 whitelist で検証。許可外なら 400。
+    const modelEntry = formData.get("model");
+    let model: GeminiModel;
+    if (typeof modelEntry === "string" && modelEntry.length > 0) {
+      const parsed = parseGuestModelInput(modelEntry);
+      if (!parsed) {
+        return jsonError(
+          copy.guestModelNotAllowed,
+          "GUEST_MODEL_NOT_ALLOWED",
+          400
+        );
+      }
+      model = parsed;
+    } else {
+      model = normalizeModelName(STYLE_GENERATION_MODEL);
     }
 
     const preset = await getPublishedStylePresetForGenerationFn(styleId);
@@ -299,11 +274,26 @@ export async function postStyleGenerateRoute(
       );
     }
 
+    if (!geminiApiKey && !isOpenAIImageModel(model)) {
+      return jsonError(
+        copy.guestUpstreamUnavailable,
+        "STYLE_UPSTREAM_UNAVAILABLE",
+        500
+      );
+    }
+    if (!openaiApiKey && isOpenAIImageModel(model)) {
+      return jsonError(
+        copy.guestUpstreamUnavailable,
+        "STYLE_UPSTREAM_UNAVAILABLE",
+        500
+      );
+    }
+
     let rateLimitResult: StyleGenerateRateLimitResult;
     try {
       rateLimitResult = await checkAndConsumeRateLimitFn({
         request,
-        userId: user?.id ?? null,
+        userId: null,
         styleId,
       });
       reservation = rateLimitResult.allowed
@@ -325,7 +315,7 @@ export async function postStyleGenerateRoute(
       if (rateLimitResult.reason === "guest_short") {
         await recordStyleRateLimitedEvent({
           recordStyleUsageEventFn,
-          userId: user?.id ?? null,
+          userId: null,
           authState,
           styleId,
         });
@@ -342,7 +332,7 @@ export async function postStyleGenerateRoute(
       if (rateLimitResult.reason === "guest_daily") {
         await recordStyleRateLimitedEvent({
           recordStyleUsageEventFn,
-          userId: user?.id ?? null,
+          userId: null,
           authState,
           styleId,
         });
@@ -357,9 +347,19 @@ export async function postStyleGenerateRoute(
         );
       }
 
+      // UCL-010: ゲスト識別子（IP / Cookie）が取れないと無制限利用を許してしまうため
+      // 明示的に拒否する。利用回数は消費しない（reserve 自体に到達しないため）。
+      if (rateLimitResult.reason === "missing_identifier") {
+        return jsonError(
+          copy.guestRateLimitCheckFailed,
+          "STYLE_GUEST_IDENTIFIER_UNAVAILABLE",
+          400
+        );
+      }
+
       await recordStyleRateLimitedEvent({
         recordStyleUsageEventFn,
-        userId: user?.id ?? null,
+        userId: null,
         authState,
         styleId,
       });
@@ -387,96 +387,27 @@ export async function postStyleGenerateRoute(
       backgroundChange,
       sourceImageType,
     });
-    const imagePart = await toInlineData(uploadImage);
 
+    let lastDispatchResult: DispatchGuestImageGenerationResult | null = null;
     for (let attempt = 1; attempt <= MAX_RETRYABLE_ATTEMPTS; attempt += 1) {
       const reinforcementPrefix = buildStyleAttemptReinforcementPrefix(attempt);
-      const parts: GeminiContentPart[] = [
-        { text: `${reinforcementPrefix}${basePromptText}` },
-        imagePart,
-      ];
+      const promptText = `${reinforcementPrefix}${basePromptText}`;
 
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => abortController.abort(), GEMINI_TIMEOUT_MS);
+      const dispatchResult = await dispatchGuestImageGeneration({
+        model,
+        promptText,
+        uploadImage,
+        geminiApiKey: geminiApiKey ?? "",
+        openaiApiKey,
+        fetchFn,
+        openaiClient,
+      });
+      lastDispatchResult = dispatchResult;
 
-      let response: Response;
-      try {
-        response = await fetchFn(
-          `https://generativelanguage.googleapis.com/v1beta/models/${STYLE_GENERATION_MODEL}:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": geminiApiKey,
-            },
-            body: JSON.stringify({
-              contents: [{ parts }],
-              generationConfig: {
-                candidateCount: 1,
-                responseModalities: ["TEXT", "IMAGE"],
-                imageConfig: {
-                  imageSize: STYLE_GENERATION_IMAGE_SIZE,
-                },
-              },
-            }),
-            signal: abortController.signal,
-          }
-        );
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          await releaseReservedAttempt("timeout");
-          return jsonError(copy.requestTimedOut, "STYLE_TIMEOUT", 504);
-        }
-        throw error;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      const responsePayload = (await response.json().catch(() => null)) as
-        | GeminiResponse
-        | GeminiErrorPayload
-        | null;
-      const geminiPayload = (responsePayload ?? null) as GeminiResponse | null;
-
-      if (!response.ok) {
-        const apiErrorMessage =
-          responsePayload &&
-          typeof responsePayload === "object" &&
-          "error" in responsePayload &&
-          typeof responsePayload.error?.message === "string"
-            ? responsePayload.error.message
-            : "Gemini API request failed.";
-
-        if (
-          isSafetyBlockedResponse(geminiPayload) ||
-          /safety|blocked|block_reason|policy|prohibited/i.test(apiErrorMessage)
-        ) {
-          return jsonError(copy.safetyBlocked, "STYLE_SAFETY_BLOCKED", 400);
-        }
-
-        if (response.status >= 500) {
-          await releaseReservedAttempt("upstream_error");
-        }
-
-        return NextResponse.json(
-          { error: apiErrorMessage },
-          { status: response.status }
-        );
-      }
-
-      if (isSafetyBlockedResponse(geminiPayload)) {
-        return jsonError(copy.safetyBlocked, "STYLE_SAFETY_BLOCKED", 400);
-      }
-
-      const images = extractImagesFromGeminiResponse(
-        (geminiPayload ?? {}) as GeminiResponse
-      );
-
-      if (images.length > 0) {
-        const firstImage = images[0];
+      if (dispatchResult.kind === "success") {
         try {
           await recordStyleUsageEventFn({
-            userId: user?.id ?? null,
+            userId: null,
             authState,
             eventType: "generate",
             styleId,
@@ -485,29 +416,71 @@ export async function postStyleGenerateRoute(
           console.error("Style generate route: failed to record usage event", error);
         }
         return NextResponse.json({
-          imageDataUrl: `data:${firstImage.mimeType};base64,${firstImage.data}`,
-          mimeType: firstImage.mimeType,
+          imageDataUrl: dispatchResult.imageDataUrl,
+          mimeType: dispatchResult.mimeType,
         });
       }
 
-      const finishReasons = getFinishReasons(geminiPayload);
-      const shouldRetry =
-        attempt < MAX_RETRYABLE_ATTEMPTS &&
-        shouldRetryNoImageResponse(geminiPayload);
+      if (dispatchResult.kind === "safety_blocked") {
+        return jsonError(copy.safetyBlocked, "STYLE_SAFETY_BLOCKED", 400);
+      }
 
-      if (shouldRetry) {
+      if (dispatchResult.kind === "timeout") {
+        await releaseReservedAttempt("timeout");
+        return jsonError(copy.requestTimedOut, "STYLE_TIMEOUT", 504);
+      }
+
+      if (dispatchResult.kind === "upstream_error") {
+        if (dispatchResult.status >= 500) {
+          await releaseReservedAttempt("upstream_error");
+        }
+        return NextResponse.json(
+          { error: dispatchResult.message },
+          { status: dispatchResult.status }
+        );
+      }
+
+      if (dispatchResult.kind === "openai_provider_error") {
+        console.error(
+          "Style generate route: OpenAI provider error",
+          dispatchResult.message
+        );
+        await releaseReservedAttempt("infra_error");
+        return jsonError(
+          copy.guestUpstreamUnavailable,
+          "STYLE_UPSTREAM_UNAVAILABLE",
+          502
+        );
+      }
+
+      if (dispatchResult.kind === "user_input_error") {
+        // UCL-011c: validateGuestImageInput を後付けで足してもここに来るケースがあり得るので
+        // 念のため。試行は consume しない。
+        return jsonError(
+          dispatchResult.message,
+          "STYLE_INVALID_UPLOAD_IMAGE",
+          400
+        );
+      }
+
+      // no_image
+      if (
+        dispatchResult.retryable &&
+        attempt < MAX_RETRYABLE_ATTEMPTS
+      ) {
         console.warn("Style generate route: retrying after no-image response", {
           attempt,
-          finishReasons,
+          finishReasons: dispatchResult.finishReasons,
         });
         continue;
       }
 
       const finishReasonText =
-        finishReasons.length > 0 ? `（finishReason: ${finishReasons.join(", ")}）` : "";
-
+        dispatchResult.finishReasons.length > 0
+          ? `（finishReason: ${dispatchResult.finishReasons.join(", ")}）`
+          : "";
       console.warn("Style generate route: no image part in Gemini response", {
-        finishReasons,
+        finishReasons: dispatchResult.finishReasons,
       });
       await releaseReservedAttempt("no_image_generated");
 
@@ -523,6 +496,17 @@ export async function postStyleGenerateRoute(
       );
     }
 
+    // ループを抜けた = リトライ上限に達したのに success にも分岐確定エラーにも到達しなかったケース。
+    // 通常起き得ないはずだが、保険として 502 で終わらせる。
+    if (lastDispatchResult) {
+      console.warn(
+        "Style generate route: exhausted retries without resolving",
+        { lastKind: lastDispatchResult.kind }
+      );
+      if (shouldReleaseReservationFor(lastDispatchResult)) {
+        await releaseReservedAttempt("upstream_error");
+      }
+    }
     return jsonError(copy.generationFailed, "STYLE_GENERATION_FAILED", 502);
   } catch (error) {
     console.error("Style generate route error", error);

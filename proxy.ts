@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { enforceApiDocsBasicAuth } from "@/lib/api-docs-auth";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
 import {
+  ensureGuestIdOnResponse,
+  shouldIssueGuestIdForPathname,
+} from "@/lib/guest-id";
+import {
   getLocaleCookieMaxAge,
   isPublicPath,
   localizePublicPath,
@@ -158,6 +162,13 @@ export async function proxy(request: NextRequest) {
       applyLocaleCookie(redirectResponse, resolvedLocale);
       return redirectResponse;
     }
+  }
+
+  // /style と /coordinate 配下では未ログインユーザーのレート制限識別に使う
+  // 永続 Cookie を発行する（既に存在すれば触らない）。Cookie が無いとサーバー側で
+  // ゲストレート制限を成立させられないため、ページ表示の段階で発行しておく。
+  if (shouldIssueGuestIdForPathname(pathname)) {
+    ensureGuestIdOnResponse(request, response);
   }
 
   return response;

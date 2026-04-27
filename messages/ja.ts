@@ -675,6 +675,18 @@ export const jaMessages = {
     modelPro2k: "高精細モデル：Nano Banana Pro | 2K（80ペルコイン/枚）",
     modelPro4k: "高精細モデル：Nano Banana Pro | 4K（100ペルコイン/枚）",
     modelGptImage2Low: "軽量モデル： ChatGPT Images 2.0 （10ペルコイン/ 枚）",
+    // Phase 6: ゲスト用 UI
+    guestResultAlt: "お試し生成結果",
+    guestResultSaveHint:
+      "結果はこのページを離れると消えます。保存するにはログイン / 新規登録してください。",
+    guestResultLoginCta: "ログインして保存する",
+    guestLoginCtaTitle: "未ログインでお試しいただけます",
+    guestLoginCtaDescription:
+      "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。保存はされません。",
+    guestLoginCtaAction: "ログイン / 新規登録",
+    guestSubmitFailed: "生成に失敗しました。少し時間をおいて再試行してください。",
+    guestRateLimitDailyMessage:
+      "本日のお試し回数（1 日 1 回）に達しました。ログイン / 新規登録すると引き続き利用できます。",
     countLabel: "生成枚数を選択",
     countSingle: "1枚",
     countMultiple: "{count}枚",
@@ -1045,8 +1057,10 @@ export const jaMessages = {
     generateHint: "生成には20〜30秒ほどかかります。",
     generateRetryHint:
       "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
-    usageLimitHint:
-      "未ログインユーザーは1日2回、ログインユーザーは1日5回まで利用できます。",
+    guestLoginCtaTitle: "未ログインでお試しいただけます",
+    guestLoginCtaDescription:
+      "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。保存はされません。",
+    guestLoginCtaAction: "ログイン / 新規登録",
     generateButton: "Start Styling",
     generatingButton: "生成中...",
     // ステータスカードの見出し
@@ -1103,6 +1117,13 @@ export const jaMessages = {
     invalidStylePreset: "無効なスタイルです。",
     invalidUsageEvent: "無効な利用イベントです。",
     guestRateLimitCheckFailed: "利用回数の確認に失敗しました。少し時間をおいて再試行してください。",
+    guestRouteAuthForbidden:
+      "ログイン中のため、こちらのお試し経路は利用できません。通常の生成をご利用ください。",
+    guestModelNotAllowed: "選択したモデルはお試しではご利用いただけません。",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 では GIF 画像はご利用いただけません。PNG / JPEG / WebP の画像をアップロードしてください。",
+    guestUpstreamUnavailable:
+      "画像生成サービスが一時的に利用できません。少し時間をおいて再試行してください。",
     guestRateLimitShort:
       "サーバーが混み合っています。時間をおいて再度お試しください。",
     guestRateLimitDaily:

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { StylePageShareButton } from "@/features/style/components/StylePageShareButton";
+import { GuestGenerationTrialCta } from "@/features/generation/components/GuestGenerationTrialCta";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { getTotalStyleGenerateCount } from "@/features/style/lib/style-usage-stats";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
@@ -84,6 +85,15 @@ export default async function StylePage({ searchParams }: StylePageProps) {
               {t("pageDescription")}
             </p>
           </div>
+
+          {!user ? (
+            <GuestGenerationTrialCta
+              title={t("guestLoginCtaTitle")}
+              description={t("guestLoginCtaDescription")}
+              actionLabel={t("guestLoginCtaAction")}
+              testId="style-guest-login-cta"
+            />
+          ) : null}
 
           <StylePageClient
             presets={presets}

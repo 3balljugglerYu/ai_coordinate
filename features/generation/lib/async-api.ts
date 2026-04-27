@@ -5,6 +5,7 @@
 
 import type { GenerationRequest } from "../types";
 import {
+  DEFAULT_GENERATION_MODEL,
   backgroundModeToBackgroundChange,
   resolveBackgroundMode,
 } from "../types";
@@ -110,7 +111,7 @@ export async function generateImageAsync(
       backgroundMode,
       backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
       generationType: request.generationType || "coordinate",
-      model: request.model || "gemini-3.1-flash-image-preview-512",
+      model: request.model || DEFAULT_GENERATION_MODEL,
     }),
   });
 

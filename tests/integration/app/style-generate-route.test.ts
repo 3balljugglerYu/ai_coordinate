@@ -16,6 +16,12 @@ import {
 } from "@/shared/generation/style-prompts";
 
 type JsonRecord = Record<string, unknown>;
+type StyleGenerateRouteDependencies = NonNullable<
+  Parameters<typeof postStyleGenerateRoute>[1]
+>;
+type StyleOpenAIClient = NonNullable<
+  StyleGenerateRouteDependencies["openaiClient"]
+>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
 
 function buildExpectedPrompt(params: {
@@ -129,7 +135,9 @@ describe("StyleGenerateRoute integration tests", () => {
     fetchFn = jest.fn().mockResolvedValue(createSuccessResponse()) as jest.MockedFunction<
       typeof fetch
     >;
-    getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
+    // /style/generate は UCL-014 でゲスト専用（認証ユーザーは 403）。
+    // 既定はゲスト（null）にして、認証ユーザー拒否ケースだけ明示的に上書きする。
+    getUserFn = jest.fn().mockResolvedValue(null);
     getPublishedStylePresetForGenerationFn = jest
       .fn()
       .mockImplementation(async (styleId: string) =>
@@ -332,16 +340,54 @@ describe("StyleGenerateRoute integration tests", () => {
     });
     expect(checkAndConsumeRateLimitFn).toHaveBeenCalledWith({
       request: expect.any(NextRequest),
-      userId: "user-123",
+      userId: null,
       styleId: STYLE_ID,
     });
-    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
-      userId: "user-123",
-      authState: "authenticated",
+    // ゲスト経路では reserve 後に "generate_attempt"、成功後に "generate" の 2 イベントが発火する
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(2);
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(1, {
+      userId: null,
+      authState: "guest",
+      eventType: "generate_attempt",
+      styleId: STYLE_ID,
+    });
+    expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(2, {
+      userId: null,
+      authState: "guest",
       eventType: "generate",
       styleId: STYLE_ID,
     });
+  });
+
+  test("postStyleGenerateRoute_OpenAIモデルはGEMINI_API_KEY無しでも生成できる", async () => {
+    const openaiClient = jest.fn().mockResolvedValue({
+      data: "openai-generated-image-base64",
+      mimeType: "image/png",
+    }) as jest.MockedFunction<StyleOpenAIClient>;
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("model", "gpt-image-2-low");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      openaiApiKey: "openai-key",
+      openaiClient,
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,openai-generated-image-base64",
+      mimeType: "image/png",
+    });
+    expect(openaiClient).toHaveBeenCalledTimes(1);
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   test("postStyleGenerateRoute_guest短時間制限時_429とsignup導線を返す", async () => {
@@ -420,10 +466,12 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
-  test("postStyleGenerateRoute_認証済み日次制限時_429を返す", async () => {
+  test("postStyleGenerateRoute_guest識別子取得失敗時_400で拒否する", async () => {
+    // UCL-010: IP も Cookie も無いと無制限利用を許してしまうため、明示拒否する
+    getUserFn.mockResolvedValueOnce(null);
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: false,
-      reason: "authenticated_daily",
+      reason: "missing_identifier",
     });
 
     const formData = new FormData();
@@ -441,18 +489,45 @@ describe("StyleGenerateRoute integration tests", () => {
     });
     const body = await readJson(response);
 
-    expect(response.status).toBe(429);
+    expect(response.status).toBe(400);
     expect(body).toEqual({
-      error: "本日の無料分の生成回数が上限に達しました。",
-      errorCode: "STYLE_RATE_LIMIT_AUTHENTICATED_DAILY",
+      error: expect.any(String),
+      errorCode: "STYLE_GUEST_IDENTIFIER_UNAVAILABLE",
     });
     expect(fetchFn).not.toHaveBeenCalled();
-    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
-      userId: "user-123",
-      authState: "authenticated",
-      eventType: "rate_limited",
-      styleId: STYLE_ID,
+    // missing_identifier は reserve に到達していないので usage event は発火しない
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_認証ユーザーの直叩きは403で拒否される", async () => {
+    // UCL-014 / ADR-007: 認証済みユーザーが guest sync ルートを直接叩いたら 403。
+    // フロントは authState で経路を分けるためここに到達しない想定だが、サーバー側で必ず弾く。
+    getUserFn.mockResolvedValueOnce({ id: "user-123" });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
     });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({
+      error: expect.any(String),
+      errorCode: "GUEST_ROUTE_AUTHENTICATED_FORBIDDEN",
+    });
+    // 拒否は reserve に到達する前に行うため、レート制限・モデル呼び出し・記録は発火しない
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
 
   test("postStyleGenerateRoute_real選択時_前置きpromptをphotorealistic向けに切り替える", async () => {
@@ -559,7 +634,7 @@ describe("StyleGenerateRoute integration tests", () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: true,
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
     });
@@ -584,10 +659,17 @@ describe("StyleGenerateRoute integration tests", () => {
 
     expect(response.status).toBe(504);
     expect(body.error).toBe("画像生成がタイムアウトしました。もう一度お試しください。");
-    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    // ゲストの reserve 直後に発火する generate_attempt のみ
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: null,
+      authState: "guest",
+      eventType: "generate_attempt",
+      styleId: STYLE_ID,
+    });
     expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
       reason: "timeout",
@@ -598,7 +680,7 @@ describe("StyleGenerateRoute integration tests", () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: true,
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
     });
@@ -644,7 +726,7 @@ describe("StyleGenerateRoute integration tests", () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: true,
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
     });
@@ -688,10 +770,16 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(body.error).toBe(
       "画像が生成されませんでした（finishReason: STOP）。別の画像や入力で再試行してください。"
     );
-    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    expect(recordStyleUsageEventFn).toHaveBeenCalledTimes(1);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: null,
+      authState: "guest",
+      eventType: "generate_attempt",
+      styleId: STYLE_ID,
+    });
     expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
       reason: "no_image_generated",
@@ -702,7 +790,7 @@ describe("StyleGenerateRoute integration tests", () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: true,
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
     });
@@ -741,7 +829,7 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(body.error).toBe("upstream overloaded");
     expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
       reason: "upstream_error",
@@ -752,7 +840,7 @@ describe("StyleGenerateRoute integration tests", () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: true,
       reservation: {
-        authState: "authenticated",
+        authState: "guest",
         attemptId: "attempt-auth-001",
       },
     });

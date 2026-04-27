@@ -342,7 +342,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "background_mode": "keep",
           "generation_type": "coordinate",
           "input_image_url": "https://cdn.example.com/temp/uploaded.png",
-          "model": "gemini-3.1-flash-image-preview-512",
+          "model": "gpt-image-2-low",
           "processing_stage": "queued",
           "prompt_text": "linen jacket",
           "source_image_stock_id": null,

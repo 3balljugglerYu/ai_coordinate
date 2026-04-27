@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
+import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
 jest.mock("next-intl", () => ({
@@ -68,6 +69,22 @@ jest.mock("@/features/generation/lib/model-config", () => ({
     };
     return costs[model ?? ""] ?? 10;
   }),
+  isCanonicalGuestAllowedModel: jest.fn((model?: string | null) =>
+    model === "gpt-image-2-low" ||
+    model === "gemini-3.1-flash-image-preview-512"
+  ),
+  resolveEffectiveModelForAuthState: jest.fn(
+    (model: string, authState: "guest" | "authenticated") => {
+      if (
+        authState === "guest" &&
+        model !== "gpt-image-2-low" &&
+        model !== "gemini-3.1-flash-image-preview-512"
+      ) {
+        return "gpt-image-2-low";
+      }
+      return model;
+    }
+  ),
 }));
 
 const useTranslationsMock = useTranslations as jest.MockedFunction<
@@ -254,21 +271,57 @@ describe("GenerationForm", () => {
       sourceImageType: "illustration",
       backgroundMode: "keep",
       count: 1,
-      model: "gemini-3.1-flash-image-preview-512",
+      model: "gpt-image-2-low",
     });
   });
 
-  test("表示_既定モデルと必要ペルコインがNano Banana 0.5Kになる", async () => {
+  test("表示_既定モデルと必要ペルコインがChatGPT Images 2.0になる", async () => {
     await act(async () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
     expect(
-      screen.getByText("Light model: Nano Banana 2 | 0.5K (10 Percoins / image)")
+      screen.getByText("Light model: ChatGPT Images 2.0 (10 Percoins / image)")
     ).toBeInTheDocument();
     expect(
       screen.getByText("1 images require 10 Percoins")
     ).toBeInTheDocument();
+  });
+
+  test("送信_guestでlocalStorageに許可外モデルが残っていても実効モデルだけ既定値に丸める", async () => {
+    const onSubmit = jest.fn();
+    localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gemini-3-pro-image-4k");
+
+    await act(async () => {
+      render(
+        <GenerationForm
+          subscriptionPlan="free"
+          onSubmit={onSubmit}
+          authState="guest"
+        />
+      );
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "guest prompt" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-add-upload"));
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-image-2-low",
+      })
+    );
+    expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
+      "gemini-3-pro-image-4k"
+    );
   });
 
   test("表示_生成中は送信ボタン無効", async () => {

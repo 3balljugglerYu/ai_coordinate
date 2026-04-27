@@ -252,7 +252,11 @@ alwaysApply: false
 #### `style_guest_generate_attempts`
 - 主キー: `id`
 - 主要カラム: `client_ip_hash`, `released_at`, `release_reason`, `created_at`
-- 備考: guest の `/style/generate` を IP hash ベースで `1分2回 / 1日2回` に制限するための内部テーブル。`release_reason` は `timeout/upstream_error/no_image_generated/infra_error`
+- 備考: 未ログインユーザーの画面横断（`/style` と `/coordinate` を合算）生成試行を記録するテーブル。歴史的経緯でテーブル名・カラム名は `style_*` / `client_ip_hash` のままだが、内容は以下のとおり拡張済み（`docs/planning/unify-style-coordinate-usage-limits-plan.md` ADR-002 / ADR-009）。
+  - `client_ip_hash` の中身は `SHA-256("<client_ip>|<persistent_cookie_id>|<salt>")`。Cookie は `persta_guest_id`（`lib/guest-id.ts` で発行）。
+  - 制限は **JST 1 日 1 回**（短期 1 分上限は `reserve_style_guest_generate_attempt` の `p_short_limit=999` 既定で実質無効化）。
+  - IP も Cookie も無いリクエストは reserve 前に 400 で拒否する（`features/style/lib/style-rate-limit.ts` の `missing_identifier`）。
+  - `release_reason` は `timeout/upstream_error/no_image_generated/infra_error`。
 - RLS: 公開アクセス禁止（`ALL false`）
 
 ### コンテンツ管理
@@ -391,6 +395,8 @@ alwaysApply: false
 - ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `deduct_percoins_admin`, `expire_free_percoin_batches`
 - ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
 - One-Tap Style: `consume_style_authenticated_generate_attempt`, `reserve_style_authenticated_generate_attempt`, `attach_style_authenticated_generate_attempt_job`, `release_style_authenticated_generate_attempt`, `reserve_style_guest_generate_attempt`, `release_style_guest_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`
+  - 注: `reserve_style_guest_generate_attempt` は意味を画面横断ゲスト試行（`/style` と `/coordinate` 合算）に拡張済み。現行 default は `p_short_limit=999`（実質無効）/ `p_daily_limit=1`。引数の `p_client_ip_hash` には `SHA-256("<ip>|<persta_guest_id>|<salt>")` を渡す（`features/style/lib/style-rate-limit.ts`）。
+  - 注: `consume_style_authenticated_generate_attempt` と `reserve_style_authenticated_generate_attempt` は Phase 5 で `/style/generate-async` の無料枠廃止に伴って呼び出されなくなる予定（残回数表示の互換のため当面残す）。
 - ポップアップバナー: `record_popup_banner_interaction`, `reorder_popup_banners`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`

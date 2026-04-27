@@ -135,6 +135,95 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
+  /coordinate-generate-guest:
+    post:
+      tags: [generate-async]
+      summary: Run guest-only coordinate image generation synchronously (Phase 3).
+      description: |
+        Generates a single image for an unauthenticated user and returns it as a data URL.
+        Nothing is persisted in `image_jobs` or `generated_images`.
+
+        Rate limit: 1 successful attempt per JST day, identified by SHA-256 hash of
+        `client_ip + persta_guest_id` cookie. Combined with `/style/generate` (UCL-002).
+
+        Authenticated users are rejected with `403 GUEST_ROUTE_AUTHENTICATED_FORBIDDEN`
+        and must use `/api/generate-async` instead (UCL-014).
+      operationId: postCoordinateGenerateGuest
+      x-access-level: guest only
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [prompt, uploadImage, model]
+              properties:
+                prompt:
+                  type: string
+                  maxLength: 2000
+                uploadImage:
+                  type: string
+                  format: binary
+                model:
+                  type: string
+                  description: Only the two guest-allowed models are accepted.
+                  enum:
+                    - gpt-image-2-low
+                    - gemini-3.1-flash-image-preview-512
+                sourceImageType:
+                  type: string
+                  enum: [illustration, real]
+                  default: illustration
+                backgroundMode:
+                  type: string
+                  enum: [keep, ai_auto, include_in_prompt]
+                  default: keep
+                generationType:
+                  type: string
+                  enum: [coordinate, specified_coordinate, full_body, chibi]
+                  default: coordinate
+      responses:
+        "200":
+          description: Image generated. Result is in-memory only.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [imageDataUrl, mimeType]
+                properties:
+                  imageDataUrl:
+                    type: string
+                    example: "data:image/png;base64,..."
+                  mimeType:
+                    type: string
+                    example: image/png
+        "400":
+          description: Validation failure or guest identifier unavailable (UCL-010).
+        "403":
+          description: Authenticated user attempted to use the guest route (UCL-014).
+        "429":
+          description: Daily limit reached (UCL-002).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  errorCode:
+                    type: string
+                    example: GUEST_RATE_LIMIT_DAILY
+                  signupCta:
+                    type: boolean
+                  signupPath:
+                    type: string
+        "502":
+          description: Upstream provider failure (UCL-011a, attempt released).
+        "504":
+          description: Upstream timeout (UCL-011a, attempt released).
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
   /generation-status:
     get:
       tags: [generation-status]
@@ -2224,7 +2313,7 @@ components:
             - gemini-2.5-flash-image-preview
             - gemini-3-pro-image-preview
             - gemini-3-pro-image
-          default: gemini-3.1-flash-image-preview-512
+          default: gpt-image-2-low
       additionalProperties: false
     GenerateAsyncQueuedResponse:
       type: object

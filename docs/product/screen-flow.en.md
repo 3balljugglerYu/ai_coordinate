@@ -28,8 +28,8 @@ The main navigation currently shown in the app shell is:
 - `/notifications`: Notifications
 - `/my-page`: My Page
 
-Unauthenticated users can directly use only Home.
-If they tap Coordinate, Mission, Notifications, or My Page, they are routed to `/login?redirect=/`.
+Unauthenticated users can directly use Home, Style, and Coordinate.
+If they tap Mission, Notifications, or My Page, they are routed to `/login?redirect=/`.
 
 ## Main user flows
 
@@ -39,7 +39,7 @@ Home (/)
   │    ├─ Tap author -> User profile (/users/[userId])
   │    └─ Like / comment / follow -> Authentication required
   │
-  ├─ Tap Coordinate -> Login / Signup if unauthenticated
+  ├─ Tap Coordinate -> Guest users can run one trial generation per day
   │    └─ Coordinate (/coordinate)
   │         ├─ Tutorial for eligible users
   │         ├─ Image generation

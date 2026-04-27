@@ -5,6 +5,7 @@ import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
+import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
 import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
@@ -196,9 +197,7 @@ export async function postGenerateAsyncRoute(
     const sourceImageProcessingMs = Date.now() - sourceImageProcessingStartedAt;
 
     // 1枚分のペルコイン残高チェック
-    const percoinCost = getPercoinCost(
-      model || "gemini-3.1-flash-image-preview-512"
-    );
+    const percoinCost = getPercoinCost(model || DEFAULT_GENERATION_MODEL);
 
     // 現在の残高を取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出

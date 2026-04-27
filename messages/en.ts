@@ -703,6 +703,18 @@ export const enMessages = {
     modelPro4k:
       "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
     modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
+    // Phase 6: guest UI
+    guestResultAlt: "Guest preview result",
+    guestResultSaveHint:
+      "This preview disappears when you leave the page. Sign in to save it.",
+    guestResultLoginCta: "Sign in to save",
+    guestLoginCtaTitle: "Try without signing in",
+    guestLoginCtaDescription:
+      "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
+    guestLoginCtaAction: "Sign in / Sign up",
+    guestSubmitFailed: "Generation failed. Please try again in a few moments.",
+    guestRateLimitDailyMessage:
+      "You have reached today's trial limit (1 per day). Sign up to continue.",
     countLabel: "Choose how many images to generate",
     countSingle: "1 image",
     countMultiple: "{count} images",
@@ -1100,8 +1112,10 @@ export const enMessages = {
     generateHint: "Generation usually takes around 20 to 30 seconds.",
     generateRetryHint:
       "If the result does not come out well, try again. If it still fails, please let us know.",
-    usageLimitHint:
-      "Guest users can use this up to 2 times per day, and signed-in users up to 5 times per day.",
+    guestLoginCtaTitle: "Try without signing in",
+    guestLoginCtaDescription:
+      "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
+    guestLoginCtaAction: "Sign in / Sign up",
     generateButton: "Start Styling",
     generatingButton: "Generating...",
     // Status card heading
@@ -1163,6 +1177,14 @@ export const enMessages = {
     invalidUsageEvent: "The usage event is invalid.",
     guestRateLimitCheckFailed:
       "We could not verify the usage limit. Please try again in a little while.",
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview is unavailable. Please use the regular generate flow.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
     guestRateLimitShort:
       "Servers are busy right now. Please try again in a moment.",
     guestRateLimitDaily:

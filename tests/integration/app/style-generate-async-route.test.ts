@@ -3,10 +3,6 @@
 import { NextRequest } from "next/server";
 import { postStyleGenerateAsyncRoute } from "@/app/(app)/style/generate-async/handler";
 import type { AsyncGenerationJobRepository } from "@/features/generation/lib/async-generation-job-repository";
-import type {
-  StyleGenerateAttemptReservation,
-  StyleGenerateRateLimitResult,
-} from "@/features/style/lib/style-rate-limit";
 import {
   STYLE_PROMPT_BASE_PREFIX,
   STYLE_PROMPT_ILLUSTRATION_SUFFIX,
@@ -79,64 +75,27 @@ function createAsyncGenerationJobRepositoryMock(): jest.Mocked<AsyncGenerationJo
   };
 }
 
-describe("StyleGenerateAsyncRoute integration tests", () => {
+describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
   let getUserFn: jest.Mock;
   let jobRepository: jest.Mocked<AsyncGenerationJobRepository>;
   let getPublishedStylePresetForGenerationFn: jest.Mock;
   let recordStyleUsageEventFn: jest.Mock<Promise<void>, [unknown]>;
-  let checkAndConsumeRateLimitFn: jest.Mock<
-    Promise<StyleGenerateRateLimitResult>,
-    [{ request: NextRequest; userId: string | null; styleId: string }]
-  >;
-  let releaseRateLimitAttemptFn: jest.Mock<
-    Promise<boolean>,
-    [
-      {
-        reservation: StyleGenerateAttemptReservation | null | undefined;
-        reason:
-          | "upload_failed"
-          | "job_create_failed"
-          | "queue_failed"
-          | "timeout"
-          | "upstream_error"
-          | "no_image_generated"
-          | "worker_failed"
-          | "infra_error";
-      },
-    ]
-  >;
-  let attachReservationToJobFn: jest.Mock<
-    Promise<boolean>,
-    [
-      {
-        reservation: StyleGenerateAttemptReservation | null | undefined;
-        jobId: string;
-      },
-    ]
-  >;
   let invokeImageWorkerFn: jest.Mock;
 
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
     jobRepository = createAsyncGenerationJobRepositoryMock();
-    getPublishedStylePresetForGenerationFn = jest
-      .fn()
-      .mockResolvedValue({
-        id: STYLE_ID,
-        title: "PARIS CODE",
-        thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
-        thumbnailWidth: 912,
-        thumbnailHeight: 1173,
-        hasBackgroundPrompt: false,
-        stylingPrompt: "RAW PROMPT\nSECOND LINE",
-        backgroundPrompt: null,
-      });
+    getPublishedStylePresetForGenerationFn = jest.fn().mockResolvedValue({
+      id: STYLE_ID,
+      title: "PARIS CODE",
+      thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
+      thumbnailWidth: 912,
+      thumbnailHeight: 1173,
+      hasBackgroundPrompt: false,
+      stylingPrompt: "RAW PROMPT\nSECOND LINE",
+      backgroundPrompt: null,
+    });
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
-    checkAndConsumeRateLimitFn = jest
-      .fn()
-      .mockResolvedValue({ allowed: true });
-    releaseRateLimitAttemptFn = jest.fn().mockResolvedValue(true);
-    attachReservationToJobFn = jest.fn().mockResolvedValue(true);
     invokeImageWorkerFn = jest.fn();
 
     jobRepository.uploadSourceImage.mockResolvedValue({
@@ -162,29 +121,19 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     });
   });
 
-  test("postStyleGenerateAsyncRoute_認証済みユーザーはone_tap_styleジョブを作成する", async () => {
-    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
-      allowed: true,
-      reservation: {
-        authState: "authenticated",
-        attemptId: "attempt-auth-001",
-      },
-    });
-
+  test("UCL-016: 認証ユーザーのジョブは常に billingMode=paid で作成される", async () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
     formData.set("sourceImageType", "illustration");
     formData.set("backgroundChange", "false");
+    formData.set("model", "gemini-3.1-flash-image-preview-512");
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
       jobRepository,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
-      checkAndConsumeRateLimitFn,
-      releaseRateLimitAttemptFn,
-      attachReservationToJobFn,
       invokeImageWorkerFn,
       supabaseUrl: "https://example.supabase.co",
     });
@@ -195,11 +144,11 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
       jobId: "style-job-001",
       status: "queued",
     });
+    expect(jobRepository.getUserCreditBalance).toHaveBeenCalledWith("user-123");
     expect(jobRepository.createImageJob).toHaveBeenCalledWith({
       user_id: "user-123",
       prompt_text: buildExpectedPrompt({
-        backgroundInstruction:
-          STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
       }),
       input_image_url: "https://cdn.example.com/temp/user-123/upload-image.png",
       source_image_stock_id: null,
@@ -216,8 +165,7 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
           thumbnailWidth: 912,
           thumbnailHeight: 1173,
           hasBackgroundPrompt: false,
-          billingMode: "free",
-          reservedAttemptId: "attempt-auth-001",
+          billingMode: "paid",
         },
       },
       status: "queued",
@@ -227,71 +175,40 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
       "style-job-001"
     );
-    expect(attachReservationToJobFn).toHaveBeenCalledWith({
-      reservation: {
-        authState: "authenticated",
-        attemptId: "attempt-auth-001",
-      },
-      jobId: "style-job-001",
-    });
     expect(invokeImageWorkerFn).toHaveBeenCalledWith(
       "https://example.supabase.co/functions/v1/image-gen-worker"
     );
   });
 
-  test("postStyleGenerateAsyncRoute_認証済み日次制限後はpaidジョブを作成する", async () => {
-    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
-      allowed: false,
-      reason: "authenticated_daily",
-    });
-
+  test("Phase 5: 5回無料枠は完全廃止 (reservation 系 RPC を呼び出さない)", async () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gpt-image-2-low");
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
       jobRepository,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
-      checkAndConsumeRateLimitFn,
-      releaseRateLimitAttemptFn,
-      attachReservationToJobFn,
       invokeImageWorkerFn,
       supabaseUrl: "https://example.supabase.co",
     });
-    const body = await readJson(response);
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      jobId: "style-job-001",
-      status: "queued",
-    });
-    expect(jobRepository.getUserCreditBalance).toHaveBeenCalledWith("user-123");
+    // この経路ではゲスト/認証双方の reserve_*_generate_attempt 系 RPC は呼ばれない。
+    // dependencies 引数自体に存在しないため、テストは「存在しないこと」をシグネチャで保証。
     expect(jobRepository.createImageJob).toHaveBeenCalledWith(
       expect.objectContaining({
-        generation_metadata: {
-          oneTapStyle: {
-            id: STYLE_ID,
-            title: "PARIS CODE",
-            thumbnailImageUrl:
-              "https://example.com/style-presets/paris-code.webp",
-            thumbnailWidth: 912,
-            thumbnailHeight: 1173,
-            hasBackgroundPrompt: false,
-            billingMode: "paid",
-          },
-        },
+        model: "gpt-image-2-low",
+        generation_metadata: expect.objectContaining({
+          oneTapStyle: expect.objectContaining({ billingMode: "paid" }),
+        }),
       })
     );
-    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
 
-  test("postStyleGenerateAsyncRoute_認証済み日次制限後に残高不足なら400を返す", async () => {
-    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
-      allowed: false,
-      reason: "authenticated_daily",
-    });
+  test("UCL-007: 残高不足は 400 STYLE_INSUFFICIENT_PERCOIN_BALANCE", async () => {
     jobRepository.getUserCreditBalance.mockResolvedValueOnce({
       data: { balance: 5 },
       error: null,
@@ -300,15 +217,13 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gemini-3.1-flash-image-preview-512"); // cost=10
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
       jobRepository,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
-      checkAndConsumeRateLimitFn,
-      releaseRateLimitAttemptFn,
-      attachReservationToJobFn,
       invokeImageWorkerFn,
       supabaseUrl: "https://example.supabase.co",
     });
@@ -322,14 +237,54 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     expect(jobRepository.createImageJob).not.toHaveBeenCalled();
   });
 
-  test("postStyleGenerateAsyncRoute_upload失敗時_releaseして500を返す", async () => {
-    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
-      allowed: true,
-      reservation: {
-        authState: "authenticated",
-        attemptId: "attempt-auth-001",
-      },
+  test("Pro 1K (50) のときは 50 ペルコイン以上を要求する", async () => {
+    jobRepository.getUserCreditBalance.mockResolvedValueOnce({
+      data: { balance: 49 },
+      error: null,
     });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gemini-3-pro-image-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_INSUFFICIENT_PERCOIN_BALANCE");
+    expect(body.error).toMatch(/50ペルコイン/);
+  });
+
+  test("未送信 model は DEFAULT_GENERATION_MODEL (gpt-image-2-low) として扱う", async () => {
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    // model は意図的にセットしない
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    expect(response.status).toBe(200);
+    expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "gpt-image-2-low" })
+    );
+  });
+
+  test("upload 失敗時は 500 STYLE_SOURCE_UPLOAD_FAILED (reservation がないので release も呼ばない)", async () => {
     jobRepository.uploadSourceImage.mockResolvedValueOnce({
       data: null,
       error: new Error("upload failed"),
@@ -338,15 +293,13 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gpt-image-2-low");
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
       jobRepository,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
-      checkAndConsumeRateLimitFn,
-      releaseRateLimitAttemptFn,
-      attachReservationToJobFn,
       invokeImageWorkerFn,
       supabaseUrl: "https://example.supabase.co",
     });
@@ -354,24 +307,10 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
 
     expect(response.status).toBe(500);
     expect(body.errorCode).toBe("STYLE_SOURCE_UPLOAD_FAILED");
-    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
-      reservation: {
-        authState: "authenticated",
-        attemptId: "attempt-auth-001",
-      },
-      reason: "upload_failed",
-    });
     expect(jobRepository.createImageJob).not.toHaveBeenCalled();
   });
 
-  test("postStyleGenerateAsyncRoute_queue失敗時_releaseしてjobをfailedにする", async () => {
-    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
-      allowed: true,
-      reservation: {
-        authState: "authenticated",
-        attemptId: "attempt-auth-001",
-      },
-    });
+  test("queue 失敗時は 500 STYLE_QUEUE_FAILED + ジョブを failed にマーク", async () => {
     jobRepository.sendImageJobQueueMessage.mockResolvedValueOnce({
       error: new Error("queue failed"),
     });
@@ -379,15 +318,13 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gpt-image-2-low");
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
       jobRepository,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
-      checkAndConsumeRateLimitFn,
-      releaseRateLimitAttemptFn,
-      attachReservationToJobFn,
       invokeImageWorkerFn,
       supabaseUrl: "https://example.supabase.co",
     });
@@ -395,13 +332,6 @@ describe("StyleGenerateAsyncRoute integration tests", () => {
 
     expect(response.status).toBe(500);
     expect(body.errorCode).toBe("STYLE_QUEUE_FAILED");
-    expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
-      reservation: {
-        authState: "authenticated",
-        attemptId: "attempt-auth-001",
-      },
-      reason: "queue_failed",
-    });
     expect(jobRepository.markImageJobFailed).toHaveBeenCalledWith(
       "style-job-001",
       "Queue message dispatch failed."
