@@ -41,7 +41,7 @@ export function AnnouncementDetail({ bodyJson }: AnnouncementDetailProps) {
   return (
     <EditorContent
       editor={editor}
-      className="[&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-[420px] [&_.ProseMirror_img]:w-full [&_.ProseMirror_img]:rounded-xl [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain"
+      className="[&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-[420px] [&_.ProseMirror_img]:w-full [&_.ProseMirror_img]:rounded-xl [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain [&_.ProseMirror_a]:text-sky-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_a:hover]:text-sky-700"
     />
   );
 }

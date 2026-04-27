@@ -3,10 +3,11 @@
 import type { Content } from "@tiptap/core";
 import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Link as LinkIcon, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { announcementTiptapExtensions } from "@/features/announcements/lib/tiptap-extensions";
+import { isSafeAnnouncementLinkUrl } from "@/features/announcements/lib/announcement-rich-text";
 import { ANNOUNCEMENT_FONT_SIZE_VALUES } from "@/features/announcements/lib/schema";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +83,54 @@ export function AnnouncementEditor({
   const currentTextStyle = editor?.getAttributes("textStyle") as {
     color?: string | null;
     fontSize?: string | null;
+  };
+
+  const handleSetLink = () => {
+    if (!editor) {
+      return;
+    }
+
+    const previousHref = (editor.getAttributes("link") as { href?: string })
+      .href;
+    const input = window.prompt(
+      "リンク URL を入力してください (https:// または / で始まる内部リンク)",
+      previousHref ?? "https://"
+    );
+
+    if (input === null) {
+      return;
+    }
+
+    const trimmed = input.trim();
+    if (!trimmed) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+
+    if (!isSafeAnnouncementLinkUrl(trimmed)) {
+      toast({
+        title: "エラー",
+        description:
+          "リンクは https:// で始まる URL か、/ で始まる内部リンクのみ指定できます",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("link")
+      .setLink({ href: trimmed })
+      .run();
+  };
+
+  const handleUnsetLink = () => {
+    if (!editor) {
+      return;
+    }
+
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
   };
 
   const handleImageUpload = async (
@@ -225,6 +274,30 @@ export function AnnouncementEditor({
 
         <Button
           type="button"
+          variant={editor?.isActive("link") ? "default" : "outline"}
+          size="sm"
+          disabled={!editor || disabled}
+          onClick={handleSetLink}
+          className="min-h-[40px] cursor-pointer"
+        >
+          <LinkIcon className="mr-2 h-4 w-4" aria-hidden />
+          リンク
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!editor || disabled || !editor?.isActive("link")}
+          onClick={handleUnsetLink}
+          className="min-h-[40px] cursor-pointer"
+        >
+          <Unlink className="mr-2 h-4 w-4" aria-hidden />
+          リンク解除
+        </Button>
+
+        <Button
+          type="button"
           variant="outline"
           size="sm"
           disabled={!editor || disabled || isUploadingImage}
@@ -252,7 +325,7 @@ export function AnnouncementEditor({
       >
         <EditorContent
           editor={editor}
-          className="[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-slate-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-['本文を入力してください'] [&_.ProseMirror_img]:my-3 [&_.ProseMirror_img]:max-h-[360px] [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain"
+          className="[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-slate-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-['本文を入力してください'] [&_.ProseMirror_img]:my-3 [&_.ProseMirror_img]:max-h-[360px] [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain [&_.ProseMirror_a]:text-sky-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_a:hover]:text-sky-700"
         />
       </div>
     </div>
