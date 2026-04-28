@@ -11,6 +11,22 @@ export function getJstDateString(date: Date): string {
   }).format(date);
 }
 
+export function isSameJstDate(
+  at: string | null,
+  now: Date
+): boolean {
+  if (!at) return false;
+  return getJstDateString(new Date(at)) === getJstDateString(now);
+}
+
+export function isSameJstDateString(
+  at: string | null,
+  jstDateString: string
+): boolean {
+  if (!at) return false;
+  return getJstDateString(new Date(at)) === jstDateString;
+}
+
 /**
  * 連続チェックインが途切れているか（継続条件外か）を判定する
  * 継続条件: 前回チェックインが昨日であること

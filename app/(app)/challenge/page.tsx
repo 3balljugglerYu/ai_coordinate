@@ -6,6 +6,7 @@ import { ChallengeMissionCardsSkeleton } from "@/features/challenges/components/
 import { ChallengeReferralCard } from "@/features/challenges/components/ChallengeReferralCard";
 import { ChallengeTopCardsSkeleton } from "@/features/challenges/components/ChallengeTopCardsSkeleton";
 import { ChallengeTutorialCard } from "@/features/challenges/components/ChallengeTutorialCard";
+import { getJstDateString } from "@/features/challenges/lib/streak-utils";
 import { getPercoinDefaultsForDisplay } from "@/features/credits/lib/get-percoin-defaults";
 import { requireAuth } from "@/lib/auth";
 
@@ -124,8 +125,14 @@ async function ChallengeMissionSection({
   userPromise: ReturnType<typeof requireAuth>;
 }) {
   const user = await userPromise;
+  const initialJstDateString = getJstDateString(new Date());
 
-  return <CachedChallengePageContent userId={user.id} />;
+  return (
+    <CachedChallengePageContent
+      userId={user.id}
+      initialJstDateString={initialJstDateString}
+    />
+  );
 }
 
 async function ChallengeReferralSection({
