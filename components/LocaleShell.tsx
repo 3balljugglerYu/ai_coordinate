@@ -4,6 +4,7 @@ import { getLocale } from "next-intl/server";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/toaster";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
+import { MissionDotProvider } from "@/features/challenges/components/MissionDotProvider";
 import { Ga4Script } from "@/features/analytics/components/Ga4Script";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
@@ -25,7 +26,9 @@ export async function LocaleShell({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <UnreadNotificationProvider>{appContent}</UnreadNotificationProvider>
+      <UnreadNotificationProvider>
+        <MissionDotProvider>{appContent}</MissionDotProvider>
+      </UnreadNotificationProvider>
       <Toaster />
       <Ga4Script />
       <VercelAnalyticsScripts />

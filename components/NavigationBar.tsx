@@ -14,6 +14,7 @@ import { getCurrentUser, onAuthStateChange } from "@/features/auth/lib/auth-clie
 import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -36,6 +37,7 @@ export function NavigationBar() {
   const pendingResetTimeoutRef = useRef<number | null>(null);
   const pendingSourcePathRef = useRef<string | null>(null);
   const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
+  const { hasMissionTabDot, markMissionTabSnoozed } = useMissionDots();
   const [pendingPathname, setPendingPathname] = useState<string | null>(null);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
@@ -100,6 +102,13 @@ export function NavigationBar() {
   const handleNavigation = (path: string) => {
     const normalizedTargetPath = stripLocalePrefix(path).pathname;
 
+    if (
+      normalizedTargetPath === "/challenge" &&
+      normalizedPathname === normalizedTargetPath
+    ) {
+      markMissionTabSnoozed();
+    }
+
     if (pendingPathname || normalizedPathname === normalizedTargetPath) {
       return;
     }
@@ -127,6 +136,9 @@ export function NavigationBar() {
     startTransition(() => {
       if (normalizedTargetPath === "/notifications") {
         void markAnnouncementPageSeen();
+      }
+      if (normalizedTargetPath === "/challenge") {
+        markMissionTabSnoozed();
       }
 
       router.push(destinationPath);
@@ -183,6 +195,9 @@ export function NavigationBar() {
                       )}
                     />
                     {path === "/notifications" && hasSidebarDot && (
+                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                    )}
+                    {path === "/challenge" && hasMissionTabDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}
                   </div>

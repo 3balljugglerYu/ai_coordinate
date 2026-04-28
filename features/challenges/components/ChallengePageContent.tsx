@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import { ChallengeCard } from "./ChallengeCard";
 import type { ChallengeStatus } from "@/features/challenges/lib/api";
 import {
@@ -68,6 +69,7 @@ export function ChallengePageContent({
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
+  const { refreshMissionDots, markMissionTabSnoozed } = useMissionDots();
   const maxStreakBonus = Math.max(...streakBonusSchedule);
   const totalStreakBonus = streakBonusSchedule.reduce((a, b) => a + b, 0);
   const [streakDays, setStreakDays] = useState<number>(
@@ -151,28 +153,42 @@ export function ChallengePageContent({
     </Badge>
   ) : undefined;
 
+  const refreshChallengeStatus = useCallback(async () => {
+    try {
+      const status = await getChallengeStatus();
+      setStreakDays(status.streakDays);
+      setLastStreakLoginAt(status.lastStreakLoginAt);
+      setSubscriptionPlan(status.subscriptionPlan);
+      setIsCheckedInToday(isSameJstDate(status.lastStreakLoginAt));
+      setIsDailyBonusReceived(isSameJstDate(status.lastDailyPostBonusAt));
+    } catch (error) {
+      console.error("Failed to fetch challenge status:", error);
+    }
+  }, []);
+
   // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、常に最新データを取得
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const status = await getChallengeStatus();
-        setStreakDays(status.streakDays);
-        setLastStreakLoginAt(status.lastStreakLoginAt);
-        setSubscriptionPlan(status.subscriptionPlan);
-        setIsCheckedInToday(isSameJstDate(status.lastStreakLoginAt));
+    void refreshChallengeStatus();
 
-        if (status.lastDailyPostBonusAt) {
-          setIsDailyBonusReceived(isSameJstDate(status.lastDailyPostBonusAt));
-        } else {
-          setIsDailyBonusReceived(false);
-        }
-      } catch (error) {
-        console.error("Failed to fetch challenge status:", error);
-      }
+    const intervalId = window.setInterval(() => {
+      void refreshChallengeStatus();
+    }, 60_000);
+    const handleFocus = () => {
+      void refreshChallengeStatus();
     };
 
-    fetchData();
-  }, []);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [refreshChallengeStatus]);
+
+  // ミッションページ表示中はナビのバッジを楽観的に消す（URL 直アクセス時も含む）
+  useEffect(() => {
+    markMissionTabSnoozed();
+  }, [markMissionTabSnoozed]);
 
   useEffect(() => {
     // カウントダウンタイマー（JST 0:00 = UTC 15:00 まで）
@@ -258,9 +274,11 @@ export function ChallengePageContent({
         });
         // チェックイン成功時に未読バッジを即時更新
         await refreshUnreadCount();
-        // ペルコイン残高の即時反映
-        router.refresh();
       }
+
+      await refreshMissionDots();
+      // ペルコイン残高の即時反映
+      router.refresh();
     } catch (error) {
       console.error("Failed to check in streak bonus:", error);
       toast({
@@ -330,19 +348,24 @@ export function ChallengePageContent({
               </div>
 
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <Button
-                  type="button"
-                  className="min-h-11"
-                  onClick={handleCheckIn}
-                  disabled={isCheckingIn || isCheckedInToday}
-                >
-                  {isCheckingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isCheckedInToday
-                    ? t("checkedIn")
-                    : isCheckingIn
-                      ? t("checkingIn")
-                      : t("checkIn")}
-                </Button>
+                <div className="relative inline-flex">
+                  <Button
+                    type="button"
+                    className="min-h-11"
+                    onClick={handleCheckIn}
+                    disabled={isCheckingIn || isCheckedInToday}
+                  >
+                    {isCheckingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isCheckedInToday
+                      ? t("checkedIn")
+                      : isCheckingIn
+                        ? t("checkingIn")
+                        : t("checkIn")}
+                  </Button>
+                  {!isCheckedInToday && !isCheckingIn && (
+                    <span className="pointer-events-none absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   <span>{t("resetAtJst")}</span>
@@ -431,7 +454,10 @@ export function ChallengePageContent({
           </ChallengeCard>
         </div>
 
-        <div className="mb-6">
+        <div className="relative mb-6">
+          {!isDailyBonusReceived && (
+            <span className="pointer-events-none absolute -top-1 -right-1 z-10 h-2.5 w-2.5 rounded-full bg-red-500" />
+          )}
           <ChallengeCard
             title={t("dailyTitle")}
             description={t("dailyDescription")}
