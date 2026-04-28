@@ -249,6 +249,8 @@ export function GenerationFormContainer({
   );
   const { upsertPreviewImage, removePreviewImage, clearPreviewImages } =
     previewImageActions;
+  const registerPendingSourceImage = ctx?.registerPendingSourceImage;
+  const dropPendingSourceImageJob = ctx?.dropPendingSourceImageJob;
 
   const setProgressCounts = useCallback(
     (nextTotalCount: number, nextCompletedCount: number) => {
@@ -864,6 +866,12 @@ export function GenerationFormContainer({
         throw new Error(t("submitJobFailed"));
       }
 
+      // ライブラリタブの upload 由来生成の場合、元画像 File を jobId 群に紐づけて
+      // 保持する。SaveSourceImageToStockDialog が「拡大表示を閉じた直後」に取り出す。
+      if (data.sourceImage && registerPendingSourceImage) {
+        registerPendingSourceImage([...jobIds], data.sourceImage);
+      }
+
       const nextTotalCount = jobIds.length;
       const completedJobIds = new Set<string>();
       setProgressCounts(nextTotalCount, 0);
@@ -881,12 +889,17 @@ export function GenerationFormContainer({
             setProgressCounts(nextTotalCount, completedJobIds.size);
           }
 
-          if (status.status === "failed" && options?.appendError !== false) {
-            const nextMessage =
-              status.errorMessage || t("generationFailedGeneric");
-            setError((previous) =>
-              appendUniqueErrorMessage(previous, nextMessage)
-            );
+          if (status.status === "failed") {
+            // 失敗 jobId は保存促進対象から落とす（成功 jobId は残す）
+            dropPendingSourceImageJob?.(jobId);
+
+            if (options?.appendError !== false) {
+              const nextMessage =
+                status.errorMessage || t("generationFailedGeneric");
+              setError((previous) =>
+                appendUniqueErrorMessage(previous, nextMessage)
+              );
+            }
           }
         };
 

@@ -963,6 +963,16 @@ export const enMessages = {
     statusFailed: "Failed",
     statusUnknown: "Unknown",
     generatedResultAlt: "Generated image",
+    saveStockDialogTitle: "Save the source image to your stock?",
+    saveStockDialogDescription:
+      "Saving lets you compare the generated result with the original image later.",
+    saveStockAction: "Save",
+    saveStockSaving: "Saving...",
+    saveStockLater: "Not now",
+    saveStockSucceeded: "Saved to your stock.",
+    saveStockFailed: "Failed to save to your stock.",
+    linkStockFailed: "Failed to link the stock to your generations.",
+    stockTabUnreadDotLabel: "You have unseen stock images.",
   },
   challenge: {
     metaTitle: "Missions | Persta.AI",

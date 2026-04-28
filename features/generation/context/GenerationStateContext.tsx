@@ -1,7 +1,24 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { GeneratedImageData } from "../types";
+
+interface PendingSourceImageEntry {
+  file: File;
+  batchId: string;
+}
+
+export interface PendingSourceImageBatch {
+  file: File;
+  jobIds: string[];
+}
 
 interface GenerationStateContextValue {
   isGenerating: boolean;
@@ -16,6 +33,25 @@ interface GenerationStateContextValue {
   upsertPreviewImage: (image: GeneratedImageData) => void;
   removePreviewImage: (jobId: string) => void;
   clearPreviewImages: () => void;
+  /**
+   * 「upload 由来の元画像」を生成 jobId と紐づけて in-memory 保持する。
+   * SaveSourceImageToStockDialog がストック保存時に再利用する。
+   */
+  registerPendingSourceImage: (
+    jobIds: string[],
+    file: File
+  ) => void;
+  /**
+   * 渡された jobId が属するバッチ全体（同じ File で生成された jobId 群）を返し、
+   * その File を以後の close で再表示しないように消費する。該当が無ければ null。
+   */
+  consumePendingSourceImageBatch: (
+    jobId: string
+  ) => PendingSourceImageBatch | null;
+  /**
+   * 失敗した jobId だけを pending から除外する（成功した jobId は保存促進対象に残す）。
+   */
+  dropPendingSourceImageJob: (jobId: string) => void;
 }
 
 const GenerationStateContext = createContext<GenerationStateContextValue | null>(
@@ -32,6 +68,43 @@ export function GenerationStateProvider({
   const [generatingCount, setGeneratingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [previewImages, setPreviewImages] = useState<GeneratedImageData[]>([]);
+  const pendingSourceImageMapRef = useRef<Map<string, PendingSourceImageEntry>>(
+    new Map()
+  );
+
+  const registerPendingSourceImage = useCallback(
+    (jobIds: string[], file: File) => {
+      if (jobIds.length === 0) return;
+      const batchId = `${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      jobIds.forEach((jobId) => {
+        pendingSourceImageMapRef.current.set(jobId, { file, batchId });
+      });
+    },
+    []
+  );
+
+  const consumePendingSourceImageBatch = useCallback(
+    (jobId: string): PendingSourceImageBatch | null => {
+      const entry = pendingSourceImageMapRef.current.get(jobId);
+      if (!entry) return null;
+      const { file, batchId } = entry;
+      const jobIds: string[] = [];
+      pendingSourceImageMapRef.current.forEach((value, key) => {
+        if (value.batchId === batchId) {
+          jobIds.push(key);
+        }
+      });
+      jobIds.forEach((id) => pendingSourceImageMapRef.current.delete(id));
+      return { file, jobIds };
+    },
+    []
+  );
+
+  const dropPendingSourceImageJob = useCallback((jobId: string) => {
+    pendingSourceImageMapRef.current.delete(jobId);
+  }, []);
 
   const upsertPreviewImage = useCallback((image: GeneratedImageData) => {
     setPreviewImages((previous) => {
@@ -84,13 +157,19 @@ export function GenerationStateProvider({
       upsertPreviewImage,
       removePreviewImage,
       clearPreviewImages,
+      registerPendingSourceImage,
+      consumePendingSourceImageBatch,
+      dropPendingSourceImageJob,
     }),
     [
       clearPreviewImages,
       completedCount,
+      consumePendingSourceImageBatch,
+      dropPendingSourceImageJob,
       generatingCount,
       isGenerating,
       previewImages,
+      registerPendingSourceImage,
       removePreviewImage,
       totalCount,
       upsertPreviewImage,

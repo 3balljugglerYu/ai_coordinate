@@ -398,18 +398,22 @@ describe("GenerationForm", () => {
 
   test("アップロード_新規ファイルでストック選択をストレージから消す", async () => {
     // Spec: GENFORM-009
-    localStorage.setItem("selectedStockId", "stock-abc");
+    // 永続化キーは form-preferences.ts の SELECTED_STOCK_ID_STORAGE_KEY を使用し、
+    // UUID 形式で保存される。
+    const stockId = "11111111-1111-4111-8111-111111111111";
+    const SELECTED_STOCK_ID_KEY = "persta-ai:last-selected-stock-id";
+    localStorage.setItem(SELECTED_STOCK_ID_KEY, stockId);
 
     await act(async () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
-    expect(localStorage.getItem("selectedStockId")).toBe("stock-abc");
+    expect(localStorage.getItem(SELECTED_STOCK_ID_KEY)).toBe(stockId);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId("mock-add-upload"));
     });
 
-    expect(localStorage.getItem("selectedStockId")).toBeNull();
+    expect(localStorage.getItem(SELECTED_STOCK_ID_KEY)).toBeNull();
   });
 });

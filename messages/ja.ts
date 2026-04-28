@@ -911,6 +911,16 @@ export const jaMessages = {
     statusFailed: "失敗",
     statusUnknown: "不明",
     generatedResultAlt: "生成された画像",
+    saveStockDialogTitle: "元画像をストックに保存しますか？",
+    saveStockDialogDescription:
+      "保存すると、次回以降も生成結果と元画像を比較できます。",
+    saveStockAction: "保存する",
+    saveStockSaving: "保存中...",
+    saveStockLater: "後で",
+    saveStockSucceeded: "ストックに保存しました",
+    saveStockFailed: "ストックの保存に失敗しました",
+    linkStockFailed: "ストックの紐づけに失敗しました",
+    stockTabUnreadDotLabel: "未確認のストックがあります",
   },
   challenge: {
     metaTitle: "ミッション | Persta.AI",

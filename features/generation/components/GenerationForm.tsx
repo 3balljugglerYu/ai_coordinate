@@ -22,15 +22,21 @@ import {
 } from "@/features/subscription/subscription-config";
 import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
 import { getCurrentUserId } from "../lib/current-user";
+import { useCoordinateStocksUnread } from "../hooks/useCoordinateStocksUnread";
 import {
   getPercoinCost,
   resolveEffectiveModelForAuthState,
 } from "../lib/model-config";
 import {
+  migrateLegacySelectedStockIdKey,
   readPreferredBackgroundMode,
+  readPreferredImageSourceType,
   readPreferredModel,
+  readPreferredSelectedStockId,
   writePreferredBackgroundMode,
+  writePreferredImageSourceType,
   writePreferredModel,
+  writePreferredSelectedStockId,
 } from "../lib/form-preferences";
 import {
   GENERATION_PROMPT_MAX_LENGTH,
@@ -124,6 +130,11 @@ export function GenerationForm({
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
+  const isAuthenticated = authState === "authenticated";
+  const {
+    hasDot: hasStockTabDot,
+    markSeen: markStockTabSeen,
+  } = useCoordinateStocksUnread({ enabled: isAuthenticated });
   const promptLength = prompt.length;
   const isPromptTooLong = isGenerationPromptTooLong(prompt);
   const maxGenerationCount = getMaxGenerationCount(subscriptionPlan);
@@ -136,12 +147,17 @@ export function GenerationForm({
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
   }, [maxGenerationCount]);
 
-  // ブラウザに保存された前回の選択（モデル / 背景設定）をマウント時に復元する。
-  // SSR との hydration mismatch を避けるため初期値は default のまま、
+  // ブラウザに保存された前回の選択（モデル / 背景設定 / 画像ソースタブ / ストック選択）を
+  // マウント時に復元する。SSR との hydration mismatch を避けるため初期値は default のまま、
   // クライアント側の useEffect で上書きする。
   useEffect(() => {
+    migrateLegacySelectedStockIdKey();
     setSelectedModel(readPreferredModel());
     setBackgroundMode(readPreferredBackgroundMode());
+    const restoredImageSourceType = readPreferredImageSourceType();
+    const restoredStockId = readPreferredSelectedStockId();
+    setImageSourceType(restoredImageSourceType);
+    setSelectedStockId(restoredStockId);
   }, []);
 
   // ユーザー操作時にだけ localStorage に書き込むラッパー。
@@ -174,15 +190,16 @@ export function GenerationForm({
     return () => observer.disconnect();
   }, []);
 
-  // localStorageから選択されたストック画像IDを取得
+  // ストック選択 ID は上のマウント useEffect で `readPreferredSelectedStockId` 経由で復元する。
+  // 旧 `localStorage.getItem("selectedStockId")` 直接アクセスは削除済み。
+
+  // ストックタブを開いている間は赤丸ドットを既読化する。
+  // imageSourceType が "stock" に変化した瞬間と、マウント直後に "stock" だったケースを両方拾える。
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedId = localStorage.getItem("selectedStockId");
-      if (storedId) {
-        setSelectedStockId(storedId);
-      }
-    }
-  }, []);
+    if (!isAuthenticated) return;
+    if (imageSourceType !== "stock") return;
+    void markStockTabSeen();
+  }, [imageSourceType, isAuthenticated, markStockTabSeen]);
 
   const handleSubmit = async () => {
     const trimmedPrompt = prompt.trim();
@@ -235,16 +252,24 @@ export function GenerationForm({
   const isSubmitDisabled =
     !prompt.trim() || !hasSourceImage || isGenerating || isPromptTooLong;
 
-  // localStorageの変更を監視
+  // localStorageの変更を別タブから監視（新キーに統一）。
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const handleStorageChange = () => {
-        const storedId = localStorage.getItem("selectedStockId");
-        setSelectedStockId(storedId);
-      };
-      window.addEventListener("storage", handleStorageChange);
-      return () => window.removeEventListener("storage", handleStorageChange);
-    }
+    if (typeof window === "undefined") return;
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === null) {
+        // localStorage.clear() の場合は再読込
+        setSelectedStockId(readPreferredSelectedStockId());
+        setImageSourceType(readPreferredImageSourceType());
+        return;
+      }
+      if (event.key === "persta-ai:last-selected-stock-id") {
+        setSelectedStockId(readPreferredSelectedStockId());
+      } else if (event.key === "persta-ai:last-image-source-type") {
+        setImageSourceType(readPreferredImageSourceType());
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   // ストック画像と制限数を取得
@@ -264,6 +289,16 @@ export function GenerationForm({
         setStocks(stocksData);
         setStockLimit(limit);
         setCurrentCount(stocksData.length);
+        // 永続化された selectedStockId が現存しないなら破棄して upload に戻す（R12）。
+        setSelectedStockId((current) => {
+          if (current && !stocksData.some((s) => s.id === current)) {
+            writePreferredSelectedStockId(null);
+            setImageSourceType("upload");
+            writePreferredImageSourceType("upload");
+            return null;
+          }
+          return current;
+        });
       } catch (error) {
         console.error("Failed to fetch stocks:", error);
       } finally {
@@ -276,9 +311,7 @@ export function GenerationForm({
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
     setSelectedStockId(null);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("selectedStockId");
-    }
+    writePreferredSelectedStockId(null);
   }, []);
 
   // チュートリアルモード: プロンプトをセット（step4のonHighlightedで自動セット）
@@ -319,9 +352,8 @@ export function GenerationForm({
       setSelectedCount(1);
       setSelectedModel(DEFAULT_GENERATION_MODEL);
       setImageSourceType("upload");
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("selectedStockId");
-      }
+      writePreferredSelectedStockId(null);
+      writePreferredImageSourceType("upload");
     };
     document.addEventListener("tutorial:clear", handler);
     return () => document.removeEventListener("tutorial:clear", handler);
@@ -383,10 +415,9 @@ export function GenerationForm({
               variant={imageSourceType === "upload" ? "default" : "outline"}
               onClick={() => {
                 setImageSourceType("upload");
+                writePreferredImageSourceType("upload");
                 setSelectedStockId(null);
-                if (typeof window !== "undefined") {
-                  localStorage.removeItem("selectedStockId");
-                }
+                writePreferredSelectedStockId(null);
               }}
               disabled={isGenerating}
               className="flex-1"
@@ -399,13 +430,20 @@ export function GenerationForm({
               variant={imageSourceType === "stock" ? "default" : "outline"}
               onClick={() => {
                 setImageSourceType("stock");
+                writePreferredImageSourceType("stock");
                 setUploadedImage(null);
               }}
               disabled={isGenerating}
-              className="flex-1"
+              className="relative flex-1"
             >
               <Folder className="mr-2 h-4 w-4" />
               {t("stockTab")}
+              {hasStockTabDot && (
+                <span
+                  className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500"
+                  aria-label={t("stockTabUnreadDotLabel")}
+                />
+              )}
             </Button>
           </div>
         </div>
@@ -450,24 +488,16 @@ export function GenerationForm({
                   onSelect={(stock) => {
                     if (stock) {
                       setSelectedStockId(stock.id);
-                      if (typeof window !== "undefined") {
-                        localStorage.setItem("selectedStockId", stock.id);
-                        window.dispatchEvent(new Event("storage"));
-                      }
+                      writePreferredSelectedStockId(stock.id);
                     } else {
                       setSelectedStockId(null);
-                      if (typeof window !== "undefined") {
-                        localStorage.removeItem("selectedStockId");
-                        window.dispatchEvent(new Event("storage"));
-                      }
+                      writePreferredSelectedStockId(null);
                     }
                   }}
                   onDelete={(stockId) => {
                     if (selectedStockId === stockId) {
                       setSelectedStockId(null);
-                      if (typeof window !== "undefined") {
-                        localStorage.removeItem("selectedStockId");
-                      }
+                      writePreferredSelectedStockId(null);
                     }
                     // ストックリストから削除
                     setStocks((prev) => prev.filter((s) => s.id !== stockId));

@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { PostModal } from "@/features/posts/components/PostModal";
 import type { GeneratedImageData } from "../types";
 import { ImageModal } from "./ImageModal";
+import { SaveSourceImageToStockDialog } from "./SaveSourceImageToStockDialog";
 import { determineFileName } from "@/lib/utils";
+import { useGenerationState } from "../context/GenerationStateContext";
 
 interface GeneratedImageGalleryProps {
   images: GeneratedImageData[];
@@ -32,9 +34,14 @@ export function GeneratedImageGallery({
   onDownload,
 }: GeneratedImageGalleryProps) {
   const t = useTranslations("coordinate");
+  const ctx = useGenerationState();
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
+  const [pendingSavePrompt, setPendingSavePrompt] = useState<{
+    file: File;
+    jobIds: string[];
+  } | null>(null);
 
   const handleImageLoad = (imageRenderKey: string) => {
     setLoadedImageIds((prev) => new Set(prev).add(imageRenderKey));
@@ -303,7 +310,17 @@ export function GeneratedImageGallery({
         <ImageModal
           images={images}
           initialIndex={selectedImageIndex}
-          onClose={() => setSelectedImageIndex(null)}
+          onClose={(closedImage) => {
+            setSelectedImageIndex(null);
+            // 拡大表示を閉じた瞬間に、当該画像が「upload 由来の生成 (jobId 経由で
+            // pending File が紐づいている)」なら保存促進ダイアログを 1 回だけ出す。
+            const jobId = closedImage?.jobId;
+            if (!ctx || !jobId) return;
+            const batch = ctx.consumePendingSourceImageBatch(jobId);
+            if (batch) {
+              setPendingSavePrompt(batch);
+            }
+          }}
           onDownload={handleDownload}
           onPost={(image) => {
             if (image.isPreview) {
@@ -313,6 +330,19 @@ export function GeneratedImageGallery({
             setSelectedImageIndex(null);
           }}
           disablePostAndDownload={disablePostAndDownload}
+        />
+      )}
+
+      {pendingSavePrompt && (
+        <SaveSourceImageToStockDialog
+          open={Boolean(pendingSavePrompt)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingSavePrompt(null);
+            }
+          }}
+          originalFile={pendingSavePrompt.file}
+          jobIds={pendingSavePrompt.jobIds}
         />
       )}
 
