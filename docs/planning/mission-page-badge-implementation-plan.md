@@ -16,7 +16,7 @@
 
 1. **ミッションタブ**: モバイル下部ナビ（`NavigationBar`）+ PC サイドバー（`AppSidebar`）の「ミッション」アイコン右上
 2. **チェックインボタン**: ミッションページ（`/challenge`）のチェックインボタン右上
-3. **デイリー投稿ボーナスカード**: 同ページの「まだ投稿していません」ステータスカード右上
+3. **デイリー投稿ボーナスカード**: 同ページの「投稿でボーナス獲得」ステータスカード右上
 
 ### バッジ挙動の要約
 
@@ -26,7 +26,7 @@
 | チェックインボタン | 今日未チェックイン | チェックイン押下で即時消失（楽観的更新） | なし |
 | デイリー投稿ボーナス | 今日未デイリー投稿 | 当日のボーナス対象投稿で消失 | なし |
 
-ナビの赤丸スタイルは既存のお知らせ赤丸と同一（`bg-red-500` / `h-2.5 w-2.5`）。ページ内のチェックインボタンとデイリー投稿ステータスカードは、ストリークグリッドの次アクション表示と同じ `animate-ping` 付きの二重丸 UI を赤色で使う。
+ナビの赤丸スタイルは既存のお知らせ赤丸と同一（`bg-red-500` / `h-2.5 w-2.5`）。ページ内のチェックインボタンとデイリー投稿ステータスカードは、ストリークグリッドの次アクション表示と同じ `animate-ping` 付きの二重丸 UI を赤色で使う。デイリー投稿の未完了状態は、否定的な `XCircle` ではなく `ImagePlus` とブルー系カードで「投稿すれば獲得できる」状態として表現する。
 
 ---
 
@@ -289,7 +289,7 @@ flowchart LR
 
 ### Phase 4: ページ内バッジとスヌーズ連携
 
-**目的**: チェックインボタン右上と「まだ投稿していません」ステータスカード右上に赤いパルスバッジを出す。`/challenge` 表示時に Provider をスヌーズし、チェックイン成功時に Provider を再評価する。
+**目的**: チェックインボタン右上と「投稿でボーナス獲得」ステータスカード右上に赤いパルスバッジを出す。`/challenge` 表示時に Provider をスヌーズし、チェックイン成功時に Provider を再評価する。
 
 **ビルド確認**: `/challenge` を開き、チェックイン押下で 200 OK が返り、ボタン赤丸が即時消える。
 
@@ -297,7 +297,8 @@ flowchart LR
   - `useMissionDots()` から `refreshMissionDots` / `markMissionTabSnoozed` を取得
   - `useEffect(() => { markMissionTabSnoozed(); }, [markMissionTabSnoozed])` でマウント時にスヌーズ（EARS-04）
   - チェックインボタンを `<div className="relative inline-flex">` で包み、`!isCheckedInToday && !isCheckingIn` のとき右上に赤色の `RedPulseDot`（`animate-ping` 付き二重丸）を描画
-  - 「まだ投稿していません」ステータスカードのラッパに `relative` を付与し、`!isDailyBonusReceived` のとき右上に同じ `RedPulseDot` を描画
+  - 「投稿でボーナス獲得」ステータスカードのラッパに `relative` を付与し、`!isDailyBonusReceived` のとき右上に同じ `RedPulseDot` を描画
+  - 未完了カードは `ImagePlus` アイコンとブルー系配色で、否定ではなく行動可能な状態として表示
   - `handleCheckIn` 成功時に、付与額の有無に関係なく `await refreshMissionDots()` を呼ぶ
   - ページ側の `getChallengeStatus()` 再取得をマウント時・60秒ポーリング・ウィンドウフォーカスで実行し、デイリー投稿ボーナスカードのローカル state も同期
 
@@ -321,8 +322,10 @@ flowchart LR
 | `components/NavigationBar.tsx` | 修正 | モバイル下部ナビのミッションタブに赤丸 + スヌーズ呼び出し |
 | `components/AppSidebar.tsx` | 修正 | PC サイドバーのミッションタブに赤丸 + スヌーズ呼び出し |
 | `features/challenges/components/ChallengePageContent.tsx` | 修正 | チェックインボタン / デイリー投稿ステータスカード右上に赤いパルスバッジ、ページ表示時スヌーズ、チェックイン成功時 refresh |
+| `messages/ja.ts` | 修正 | デイリー投稿未完了状態の文言を前向きな表現へ変更 |
+| `messages/en.ts` | 修正 | デイリー投稿未完了状態の英語文言を前向きな表現へ変更 |
 
-合計: 新規 1 / 修正 4。DB マイグレーション・API ルート・i18n キー追加なし。
+合計: 新規 1 / 修正 6。DB マイグレーション・API ルート・i18n キー追加なし（既存キーの文言変更あり）。
 
 ---
 

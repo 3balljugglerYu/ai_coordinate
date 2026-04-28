@@ -12,7 +12,7 @@ import {
   Trophy,
   Clock,
   CheckCircle2,
-  XCircle,
+  ImagePlus,
   Loader2,
   Sparkles,
 } from "lucide-react";
@@ -503,32 +503,39 @@ export function ChallengePageContent({
               )}
               {/* ステータス表示 */}
               <div className={cn(
-                "relative flex items-center justify-between p-4 rounded-lg border transition-colors",
+                "relative flex items-center justify-between rounded-lg border p-4 transition-colors",
                 isDailyBonusReceived
                   ? "bg-green-50 border-green-200"
-                  : "bg-gray-50 border-gray-100"
+                  : "border-blue-200/80 bg-blue-50/80 pr-7"
               )}>
                 {!isDailyBonusReceived && <RedPulseDot />}
                 <div className="flex items-center gap-3">
                   {isDailyBonusReceived ? (
-                    <div className="bg-green-100 p-2 rounded-full">
+                    <div className="shrink-0 rounded-full bg-green-100 p-2">
                       <CheckCircle2 className="w-6 h-6 text-green-600" />
                     </div>
                   ) : (
-                    <div className="bg-gray-200 p-2 rounded-full">
-                      <XCircle className="w-6 h-6 text-gray-500" />
+                    <div className="shrink-0 rounded-full bg-blue-100 p-2">
+                      <ImagePlus className="w-6 h-6 text-blue-600" />
                     </div>
                   )}
                   <div>
                     <div className={cn(
                       "font-bold",
-                      isDailyBonusReceived ? "text-green-800" : "text-gray-700"
+                      isDailyBonusReceived ? "text-green-800" : "text-blue-900"
                     )}>
                       {isDailyBonusReceived
                         ? t("dailyReceivedTitle")
                         : t("dailyPendingTitle")}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
+                    <div
+                      className={cn(
+                        "mt-0.5 text-xs",
+                        isDailyBonusReceived
+                          ? "text-muted-foreground"
+                          : "text-blue-700"
+                      )}
+                    >
                       {isDailyBonusReceived
                         ? t("dailyReceivedDescription")
                         : t("dailyPendingDescription", {
