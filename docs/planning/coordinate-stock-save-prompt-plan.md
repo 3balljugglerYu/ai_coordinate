@@ -326,7 +326,7 @@ flowchart LR
   - 「ストックを整理」押下: `onRequestManageStocks` を呼び、ダイアログを閉じてストックタブを開く
   - 「プランを見る」押下: `${ROUTES.CREDITS_PURCHASE}?tab=subscription` に遷移
   - 成功時は `window.dispatchEvent(new CustomEvent("coordinate-stock-created"))` を発火して、ストックタブ未確認状態を再取得させる
-  - 翻訳キー: `coordinate.saveStockDialogTitle`, `coordinate.saveStockDialogDescription`, `coordinate.saveStockAction`, `coordinate.saveStockLater`, `coordinate.saveStockSucceeded`, `coordinate.saveStockFailed`, `coordinate.saveStockLimitTitle`, `coordinate.saveStockLimitDescription`, `coordinate.manageStocksAction`, `coordinate.seeSubscriptionPlansAction`
+  - 翻訳キー: `coordinate.saveStockDialogTitle`, `coordinate.saveStockDialogDescription`, `coordinate.saveStockAction`, `coordinate.saveStockSaving`, `coordinate.saveStockLater`, `coordinate.saveStockCancel`, `coordinate.saveStockSucceeded`, `coordinate.saveStockFailed`, `coordinate.saveStockLimitTitle`, `coordinate.saveStockLimitDescription`, `coordinate.manageStocksAction`, `coordinate.seeSubscriptionPlansAction`
 - [ ] [`features/generation/context/GenerationStateContext.tsx`](../../features/generation/context/GenerationStateContext.tsx) を拡張:
   - `pendingSourceImageMap: Map<string /*jobId*/, File>` を `useRef` ベースで持つ（state にすると render が爆発するため、ref + getter）
   - `registerPendingSourceImage(jobId, file)` / `consumePendingSourceImageBatch(jobId): { file: File; jobIds: string[] } | null`（同じ File オブジェクトで生成された全 jobId をまとめて取り出し、対象を消費する）

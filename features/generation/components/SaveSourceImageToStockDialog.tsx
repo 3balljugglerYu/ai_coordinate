@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
+import { ROUTES } from "@/constants";
 import { linkSourceImageStockToJobs } from "../lib/database";
 import { COORDINATE_STOCK_CREATED_EVENT } from "../hooks/useCoordinateStocksUnread";
 
@@ -27,11 +28,14 @@ interface SaveSourceImageToStockDialogProps {
   jobIds: string[];
   /** ストック作成成功時のコールバック */
   onSaved?: (stockId: string) => void;
+  /** 上限到達時にストック整理導線を選んだ時のコールバック */
+  onRequestManageStocks?: () => void;
 }
 
 interface SaveStockResponse {
   id?: string;
   error?: string;
+  errorCode?: string;
 }
 
 function isLimitReachedMessage(message: string): boolean {
@@ -48,15 +52,23 @@ export function SaveSourceImageToStockDialog({
   originalFile,
   jobIds,
   onSaved,
+  onRequestManageStocks,
 }: SaveSourceImageToStockDialogProps) {
   const t = useTranslations("coordinate");
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showUpsell, setShowUpsell] = useState(false);
+  const [isLimitReached, setIsLimitReached] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setError(null);
+    setIsLimitReached(false);
+  }, [open, originalFile, jobIds]);
 
   const handleSave = async () => {
     setError(null);
+    setIsLimitReached(false);
     setIsSaving(true);
     try {
       const formData = new FormData();
@@ -76,10 +88,11 @@ export function SaveSourceImageToStockDialog({
 
       if (!res.ok) {
         const message = data.error || t("saveStockFailed");
-        if (isLimitReachedMessage(message)) {
-          // 上限到達 -> サブスク誘導モーダルに切り替え
-          setShowUpsell(true);
-          onOpenChange(false);
+        if (
+          data.errorCode === "SOURCE_IMAGE_LIMIT_REACHED" ||
+          isLimitReachedMessage(message)
+        ) {
+          setIsLimitReached(true);
           return;
         }
         throw new Error(message);
@@ -128,54 +141,82 @@ export function SaveSourceImageToStockDialog({
     }
   };
 
-  return (
-    <>
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (!isSaving) {
-            onOpenChange(next);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("saveStockDialogTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("saveStockDialogDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSaving}
-            >
-              {t("saveStockLater")}
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("saveStockSaving")}
-                </>
-              ) : (
-                t("saveStockAction")
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+  const handleRequestManageStocks = () => {
+    onRequestManageStocks?.();
+  };
 
-      <SubscriptionUpsellDialog
-        open={showUpsell}
-        onOpenChange={setShowUpsell}
-      />
-    </>
+  const title = isLimitReached
+    ? t("saveStockLimitTitle")
+    : t("saveStockDialogTitle");
+  const description = isLimitReached
+    ? t("saveStockLimitDescription")
+    : t("saveStockDialogDescription");
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!isSaving) {
+          onOpenChange(next);
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        <DialogFooter>
+          {isLimitReached ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSaving}
+              >
+                {t("saveStockCancel")}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleRequestManageStocks}
+                disabled={isSaving}
+              >
+                {t("manageStocksAction")}
+              </Button>
+              <Button asChild>
+                <Link href={`${ROUTES.CREDITS_PURCHASE}?tab=subscription`}>
+                  {t("seeSubscriptionPlansAction")}
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSaving}
+              >
+                {t("saveStockLater")}
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("saveStockSaving")}
+                  </>
+                ) : (
+                  t("saveStockAction")
+                )}
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

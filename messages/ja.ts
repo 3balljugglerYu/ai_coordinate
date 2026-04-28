@@ -917,9 +917,15 @@ export const jaMessages = {
     saveStockAction: "保存する",
     saveStockSaving: "保存中...",
     saveStockLater: "後で",
+    saveStockCancel: "キャンセル",
     saveStockSucceeded: "ストックに保存しました",
     saveStockFailed: "ストックの保存に失敗しました",
     linkStockFailed: "ストックの紐づけに失敗しました",
+    saveStockLimitTitle: "ストック画像の上限に達しています",
+    saveStockLimitDescription:
+      "元画像を保存するには、不要なストック画像を削除して空きを作るか、サブスクプランで保存上限を増やしてください。",
+    manageStocksAction: "ストックを整理",
+    seeSubscriptionPlansAction: "プランを見る",
     stockTabUnreadDotLabel: "未確認のストックがあります",
   },
   challenge: {

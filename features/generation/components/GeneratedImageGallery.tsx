@@ -42,6 +42,7 @@ export function GeneratedImageGallery({
     file: File;
     jobIds: string[];
   } | null>(null);
+  const [isSavePromptOpen, setIsSavePromptOpen] = useState(false);
 
   const handleImageLoad = (imageRenderKey: string) => {
     setLoadedImageIds((prev) => new Set(prev).add(imageRenderKey));
@@ -319,6 +320,11 @@ export function GeneratedImageGallery({
             const batch = ctx.consumePendingSourceImageBatch(jobId);
             if (batch) {
               setPendingSavePrompt(batch);
+              setIsSavePromptOpen(true);
+              return;
+            }
+            if (pendingSavePrompt?.jobIds.includes(jobId)) {
+              setIsSavePromptOpen(true);
             }
           }}
           onDownload={handleDownload}
@@ -335,14 +341,21 @@ export function GeneratedImageGallery({
 
       {pendingSavePrompt && (
         <SaveSourceImageToStockDialog
-          open={Boolean(pendingSavePrompt)}
+          open={isSavePromptOpen}
           onOpenChange={(open) => {
             if (!open) {
+              setIsSavePromptOpen(false);
               setPendingSavePrompt(null);
+              return;
             }
+            setIsSavePromptOpen(true);
           }}
           originalFile={pendingSavePrompt.file}
           jobIds={pendingSavePrompt.jobIds}
+          onRequestManageStocks={() => {
+            setIsSavePromptOpen(false);
+            ctx?.requestOpenStockTab();
+          }}
         />
       )}
 

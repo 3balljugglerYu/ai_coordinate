@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
@@ -51,6 +52,11 @@ jest.mock("@/features/generation/components/GeneratedImagesFromSource", () => ({
 jest.mock("@/features/generation/lib/database", () => ({
   getSourceImageStocks: jest.fn(),
   getStockImageLimit: jest.fn(),
+  getStocksTabUnreadState: jest.fn().mockResolvedValue({
+    hasDot: false,
+    latestStockCreatedAt: null,
+  }),
+  markStocksTabSeen: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("@/features/generation/lib/current-user", () => ({

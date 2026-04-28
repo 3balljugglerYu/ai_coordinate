@@ -969,9 +969,15 @@ export const enMessages = {
     saveStockAction: "Save",
     saveStockSaving: "Saving...",
     saveStockLater: "Not now",
+    saveStockCancel: "Cancel",
     saveStockSucceeded: "Saved to your stock.",
     saveStockFailed: "Failed to save to your stock.",
     linkStockFailed: "Failed to link the stock to your generations.",
+    saveStockLimitTitle: "You've reached the stock image limit",
+    saveStockLimitDescription:
+      "To save this source image, remove unused stock images to make room or increase your save limit with a subscription plan.",
+    manageStocksAction: "Manage stock",
+    seeSubscriptionPlansAction: "View plans",
     stockTabUnreadDotLabel: "You have unseen stock images.",
   },
   challenge: {

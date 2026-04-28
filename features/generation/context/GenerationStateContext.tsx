@@ -52,6 +52,11 @@ interface GenerationStateContextValue {
    * 失敗した jobId だけを pending から除外する（成功した jobId は保存促進対象に残す）。
    */
   dropPendingSourceImageJob: (jobId: string) => void;
+  /**
+   * 別コンポーネントから GenerationForm のストックタブ選択を要求する。
+   */
+  requestOpenStockTab: () => void;
+  openStockTabRequestId: number;
 }
 
 const GenerationStateContext = createContext<GenerationStateContextValue | null>(
@@ -68,6 +73,7 @@ export function GenerationStateProvider({
   const [generatingCount, setGeneratingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [previewImages, setPreviewImages] = useState<GeneratedImageData[]>([]);
+  const [openStockTabRequestId, setOpenStockTabRequestId] = useState(0);
   const pendingSourceImageMapRef = useRef<Map<string, PendingSourceImageEntry>>(
     new Map()
   );
@@ -104,6 +110,10 @@ export function GenerationStateProvider({
 
   const dropPendingSourceImageJob = useCallback((jobId: string) => {
     pendingSourceImageMapRef.current.delete(jobId);
+  }, []);
+
+  const requestOpenStockTab = useCallback(() => {
+    setOpenStockTabRequestId((current) => current + 1);
   }, []);
 
   const upsertPreviewImage = useCallback((image: GeneratedImageData) => {
@@ -160,6 +170,8 @@ export function GenerationStateProvider({
       registerPendingSourceImage,
       consumePendingSourceImageBatch,
       dropPendingSourceImageJob,
+      requestOpenStockTab,
+      openStockTabRequestId,
     }),
     [
       clearPreviewImages,
@@ -171,6 +183,8 @@ export function GenerationStateProvider({
       previewImages,
       registerPendingSourceImage,
       removePreviewImage,
+      requestOpenStockTab,
+      openStockTabRequestId,
       totalCount,
       upsertPreviewImage,
     ]

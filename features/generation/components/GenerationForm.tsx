@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Lock, Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ import type {
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
+import { useGenerationState } from "../context/GenerationStateContext";
 
 interface GenerationFormProps {
   subscriptionPlan: SubscriptionPlan;
@@ -88,8 +89,11 @@ export function GenerationForm({
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
+  const generationState = useGenerationState();
+  const openStockTabRequestId = generationState?.openStockTabRequestId ?? 0;
   const [showAuthModal, setShowAuthModal] = useState(false);
   const currentUrl = useCurrentUrlForRedirect();
+  const lastHandledOpenStockTabRequestIdRef = useRef(0);
   const backgroundModeOptions: BackgroundModeOption[] = [
     {
       value: "ai_auto",
@@ -200,6 +204,19 @@ export function GenerationForm({
     if (imageSourceType !== "stock") return;
     void markStockTabSeen();
   }, [imageSourceType, isAuthenticated, markStockTabSeen]);
+
+  useEffect(() => {
+    const requestId = openStockTabRequestId;
+    if (!isAuthenticated) return;
+    if (requestId <= 0) return;
+    if (lastHandledOpenStockTabRequestIdRef.current === requestId) return;
+
+    lastHandledOpenStockTabRequestIdRef.current = requestId;
+    setImageSourceType("stock");
+    writePreferredImageSourceType("stock");
+    setUploadedImage(null);
+    void markStockTabSeen();
+  }, [openStockTabRequestId, isAuthenticated, markStockTabSeen]);
 
   const handleSubmit = async () => {
     const trimmedPrompt = prompt.trim();
@@ -538,6 +555,7 @@ export function GenerationForm({
                               setStockLimit(limit);
                               setCurrentCount(stocksData.length);
                             }
+                            await markStockTabSeen();
                           } catch (error) {
                             console.error("Failed to refresh stocks:", error);
                           }
