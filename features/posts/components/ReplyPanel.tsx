@@ -6,7 +6,7 @@ import { useTransition } from "react";
 import { ChevronLeft, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { CommentInput } from "./CommentInput";
+import { CommentComposerTrigger } from "./CommentComposerTrigger";
 import { EditableComment } from "./EditableComment";
 import { ReplyItem } from "./ReplyItem";
 import { ReplyPanelSkeleton } from "./ReplyPanelSkeleton";
@@ -161,11 +161,13 @@ export function ReplyPanel({
             </div>
 
             <div className="safe-area-inset-bottom border-t border-gray-200 bg-white p-4">
-              <CommentInput
+              <CommentComposerTrigger
                 parentCommentId={parentComment.id}
                 currentUserId={currentUserId}
                 onCommentAdded={handleReplyAdded}
                 placeholder={t("replyPlaceholder")}
+                triggerLabel={t("replyPlaceholder")}
+                sheetTitle={t("replySheetTitle")}
                 submitLabel={t("replySubmit")}
                 submittingLabel={t("replySubmitting")}
                 compact

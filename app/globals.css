@@ -289,11 +289,41 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     will-change: opacity;
   }
 
+  @keyframes commentComposerSheetSlideIn {
+    from {
+      transform: translate3d(0, 100%, 0);
+    }
+    to {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes commentComposerSheetSlideOut {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(0, 100%, 0);
+    }
+  }
+
+  .comment-composer-sheet-content[data-state="open"] {
+    animation: commentComposerSheetSlideIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: transform;
+  }
+
+  .comment-composer-sheet-content[data-state="closed"] {
+    animation: commentComposerSheetSlideOut 220ms cubic-bezier(0.4, 0, 1, 1) both;
+    will-change: transform;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .popup-banner-card-enter,
     .popup-banner-panel-enter,
     .reply-panel-mobile-content[data-state="open"],
-    .reply-panel-mobile-overlay[data-state="open"] {
+    .reply-panel-mobile-overlay[data-state="open"],
+    .comment-composer-sheet-content[data-state="open"],
+    .comment-composer-sheet-content[data-state="closed"] {
       animation: none;
     }
   }
