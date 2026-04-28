@@ -33,14 +33,20 @@ jest.mock("@/features/posts/components/CommentComposerSheet", () => ({
 jest.mock("@/features/auth/components/AuthModal", () => ({
   AuthModal: ({
     open,
+    onClose,
     redirectTo,
   }: {
     open: boolean;
+    onClose: () => void;
     redirectTo?: string;
   }) => {
     authModalOpenSpy(open, redirectTo);
     return open ? (
-      <div data-testid="auth-modal" data-redirect-to={redirectTo} />
+      <div data-testid="auth-modal" data-redirect-to={redirectTo}>
+        <button type="button" onClick={onClose}>
+          close-auth-modal
+        </button>
+      </div>
     ) : null;
   },
 }));
@@ -86,6 +92,26 @@ describe("CommentComposerTrigger", () => {
     expect(authModal).toBeInTheDocument();
     expect(authModal).toHaveAttribute("data-redirect-to", "/posts/post-1");
     expect(screen.queryByTestId("composer-sheet")).not.toBeInTheDocument();
+  });
+
+  test("AuthModal の onClose で認証モーダルが閉じる", () => {
+    render(
+      <CommentComposerTrigger
+        imageId="post-1"
+        currentUserId={null}
+        onCommentAdded={jest.fn()}
+        placeholder="コメントを入力..."
+        triggerLabel="コメントを入力..."
+        sheetTitle="コメントを追加"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "コメントを入力..." }));
+    expect(screen.getByTestId("auth-modal")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "close-auth-modal" }));
+
+    expect(screen.queryByTestId("auth-modal")).not.toBeInTheDocument();
   });
 
   test("disabled の時はタップしても Sheet も AuthModal も開かない", () => {

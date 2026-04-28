@@ -103,6 +103,7 @@ export const jaMessages = {
     commentTooLong: "コメントは{max}文字以内で入力してください",
     commentPlaceholder: "コメントを入力...",
     commentSheetTitle: "コメントを追加",
+    commentSheetClose: "閉じる",
     commentRemaining: "{count}文字",
     commentOverLimit: "{count}文字超過",
     commentSubmitting: "投稿中...",

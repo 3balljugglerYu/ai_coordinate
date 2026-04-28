@@ -12,6 +12,11 @@ type CommentInputMockProps = {
 
 const commentInputProps: CommentInputMockProps = {};
 
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string) =>
+    key === "commentSheetClose" ? "閉じる" : key,
+}));
+
 jest.mock("@/features/posts/components/CommentInput", () => ({
   CommentInput: (props: CommentInputMockProps) => {
     Object.assign(commentInputProps, props);
@@ -82,6 +87,22 @@ describe("CommentComposerSheet", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "fire-cancel" }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test("header の閉じるボタンで onOpenChange(false) が呼ばれる", () => {
+    const onOpenChange = jest.fn();
+    render(
+      <CommentComposerSheet
+        open
+        onOpenChange={onOpenChange}
+        title="コメントを追加"
+        onCommentAdded={jest.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

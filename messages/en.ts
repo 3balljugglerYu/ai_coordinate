@@ -109,6 +109,7 @@ export const enMessages = {
     commentTooLong: "Comment must be {max} characters or fewer.",
     commentPlaceholder: "Write a comment...",
     commentSheetTitle: "Add a comment",
+    commentSheetClose: "Close",
     commentRemaining: "{count} characters",
     commentOverLimit: "{count} characters over",
     commentSubmitting: "Posting...",

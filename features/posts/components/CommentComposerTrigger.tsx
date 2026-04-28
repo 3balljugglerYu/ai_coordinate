@@ -39,9 +39,6 @@ export function CommentComposerTrigger({
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const handleClick = () => {
-    if (disabled) {
-      return;
-    }
     if (!currentUserId) {
       setAuthModalOpen(true);
       return;
