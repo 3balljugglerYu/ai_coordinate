@@ -8,20 +8,19 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  getCurrentUser,
-  onAuthStateChange,
-} from "@/features/auth/lib/auth-client";
+import { onAuthStateChange } from "@/features/auth/lib/auth-client";
 import {
   getChallengeStatus,
   type ChallengeStatus,
 } from "@/features/challenges/lib/api";
+import { isSameJstDate } from "@/features/challenges/lib/streak-utils";
 
 const SNOOZE_KEY_PREFIX = "missionTabDot:snoozedUntil:";
 const SNOOZE_TTL_MS = 30 * 60 * 1000;
 const POLL_INTERVAL_MS = 60_000;
 
 interface MissionDotContextValue {
+  missionStatus: ChallengeStatus | null;
   hasMissionTabDot: boolean;
   hasCheckInDot: boolean;
   hasDailyPostDot: boolean;
@@ -30,18 +29,6 @@ interface MissionDotContextValue {
 }
 
 const MissionDotContext = createContext<MissionDotContextValue | null>(null);
-
-const jstDateFormatter = new Intl.DateTimeFormat("ja-JP", {
-  timeZone: "Asia/Tokyo",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function isSameJstDateAsToday(at: string | null, now: Date): boolean {
-  if (!at) return false;
-  return jstDateFormatter.format(new Date(at)) === jstDateFormatter.format(now);
-}
 
 function snoozeKeyFor(userId: string): string {
   return `${SNOOZE_KEY_PREFIX}${userId}`;
@@ -99,15 +86,8 @@ export function MissionDotProvider({
   useEffect(() => {
     let mounted = true;
 
-    void getCurrentUser().then((user) => {
-      if (!mounted) return;
-      const nextUserId = user?.id ?? null;
-      setCurrentUserId(nextUserId);
-      setSnoozedUntil(readSnoozedUntil(nextUserId));
-      void fetchStatus(nextUserId);
-    });
-
     const subscription = onAuthStateChange((user) => {
+      if (!mounted) return;
       const nextUserId = user?.id ?? null;
       setCurrentUserId(nextUserId);
       setSnoozedUntil(readSnoozedUntil(nextUserId));
@@ -156,6 +136,7 @@ export function MissionDotProvider({
   const value = useMemo<MissionDotContextValue>(() => {
     if (!currentUserId || !status) {
       return {
+        missionStatus: null,
         hasMissionTabDot: false,
         hasCheckInDot: false,
         hasDailyPostDot: false,
@@ -165,11 +146,11 @@ export function MissionDotProvider({
     }
 
     const nowDate = new Date(now);
-    const isCheckedInToday = isSameJstDateAsToday(
+    const isCheckedInToday = isSameJstDate(
       status.lastStreakLoginAt,
       nowDate
     );
-    const isDailyBonusReceived = isSameJstDateAsToday(
+    const isDailyBonusReceived = isSameJstDate(
       status.lastDailyPostBonusAt,
       nowDate
     );
@@ -177,6 +158,7 @@ export function MissionDotProvider({
     const isSnoozed = snoozedUntil !== null && now < snoozedUntil;
 
     return {
+      missionStatus: status,
       hasMissionTabDot: hasIncompleteTask && !isSnoozed,
       hasCheckInDot: !isCheckedInToday,
       hasDailyPostDot: !isDailyBonusReceived,

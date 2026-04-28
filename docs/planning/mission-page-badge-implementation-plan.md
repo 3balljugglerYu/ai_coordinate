@@ -48,13 +48,14 @@
 | `profiles.last_streak_login_at`（カラム） | チェックインの最終 JST 日時 |
 | `profiles.last_daily_post_bonus_at`（カラム） | デイリー投稿ボーナスの最終 JST 日時 |
 | [getChallengeStatus()](../../features/challenges/lib/api.ts) | `streakDays` / `lastStreakLoginAt` / `lastDailyPostBonusAt` / `subscriptionPlan` を返すクライアント API |
-| [getCurrentUser() / onAuthStateChange()](../../features/auth/lib/auth-client.ts) | ユーザー識別と auth 状態購読 |
-| `Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo" })` | JST 日付の文字列比較（`features/challenges/lib/streak-utils.ts` と同様） |
+| [onAuthStateChange()](../../features/auth/lib/auth-client.ts) | ユーザー識別と auth 状態購読 |
+| [getJstDateString() / isSameJstDate() / isSameJstDateString()](../../features/challenges/lib/streak-utils.ts) | JST 日付の文字列比較を共通化 |
 
 ### 影響範囲
 
 - `LocaleShell` に新規 Provider を追加
 - `NavigationBar` / `AppSidebar` に Mission タブ赤丸描画とスヌーズ呼び出しを追加
+- `ChallengePage` から初期表示用の JST 日付文字列を渡し、ハイドレーション前後の初期判定を安定化
 - `ChallengePageContent` にボタン / カード右上の赤丸を追加、ページ表示時とチェックイン成功時に Provider と通信
 - DB スキーマ変更なし
 - API 新設なし
@@ -115,7 +116,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([Provider マウント]) --> Auth["getCurrentUser で userId 取得"]
+    Start([Provider マウント]) --> Auth["onAuthStateChange で userId 取得"]
     Auth --> ReadStore["localStorage から snoozedUntil を読む"]
     ReadStore --> Fetch["getChallengeStatus を取得"]
     Fetch --> Eval{"未完了タスクあり"}
@@ -153,8 +154,8 @@ flowchart TD
 - **EARS-06 (en)**: When the user successfully checks in, the system shall hide the check-in button red dot immediately and refresh the mission tab badge state via `refreshMissionDots()`.
 - **EARS-06 (ja)**: チェックインに成功したとき、システムはチェックインボタンの赤丸を即時非表示にし、`refreshMissionDots()` でナビのバッジ状態を再評価する。
 
-- **EARS-07 (en)**: When the user successfully creates a bonus-eligible post, the system shall hide the daily post bonus red dot on the mission page upon the next challenge status refresh (mount, 60-second polling, or window focus).
-- **EARS-07 (ja)**: ユーザーがボーナス対象投稿を完了したとき、システムはミッションページの次のチャレンジ状態更新（マウント／60秒ポーリング／ウィンドウフォーカス）でデイリー投稿ボーナスの赤丸を非表示にする。
+- **EARS-07 (en)**: When the user successfully creates a bonus-eligible post, the system shall hide the daily post bonus red dot on the mission page when `MissionDotProvider` refreshes challenge status (mount, 60-second polling, or window focus).
+- **EARS-07 (ja)**: ユーザーがボーナス対象投稿を完了したとき、システムは `MissionDotProvider` のチャレンジ状態更新（マウント／60秒ポーリング／ウィンドウフォーカス）でデイリー投稿ボーナスの赤丸を非表示にする。
 
 ### 状態駆動
 
@@ -213,7 +214,7 @@ flowchart TD
   - 将来的に Provider のキャッシュ戦略やポーリング間隔を独立に最適化できる
   - 単一 Provider に詰め込むと state や useEffect が肥大化し可読性が落ちる
 - **Consequence**:
-  - 同じ `getCurrentUser()` / `onAuthStateChange()` を 2 つの Provider が購読することになるが、軽量な購読なので無視できる
+  - `MissionDotProvider` は `onAuthStateChange()` の初期セッション通知を使い、マウント時の `getCurrentUser()` 追加呼び出しを避ける
 
 ### ADR-004: スヌーズの TTL を 30分とする
 
@@ -259,7 +260,7 @@ flowchart LR
   - `SNOOZE_KEY_PREFIX = "missionTabDot:snoozedUntil:"`、`SNOOZE_TTL_MS = 30 * 60 * 1000`、`POLL_INTERVAL_MS = 60_000`
   - `currentUserId` / `status` / `snoozedUntil` / `now` を state 管理
   - `fetchStatus(userId)` / `refreshMissionDots()` / `markMissionTabSnoozed()` を実装
-  - `useEffect` で `getCurrentUser()` 初回取得 + `onAuthStateChange` 購読
+  - `useEffect` で `onAuthStateChange` を購読し、初期セッション通知から `userId` を取得
   - `useEffect` で 60秒 `setInterval` + `window.focus` リスナで再取得
   - `useMemo` で `hasMissionTabDot` / `hasCheckInDot` / `hasDailyPostDot` を派生
   - `status === null` または `currentUserId === null` の間は全て `false`（誤表示防止 / EARS-09）
@@ -299,8 +300,9 @@ flowchart LR
   - チェックインボタンを `<div className="relative inline-flex">` で包み、`!isCheckedInToday && !isCheckingIn` のとき右上に赤色の `RedPulseDot`（`animate-ping` 付き二重丸）を描画
   - 「投稿でボーナス獲得」ステータスカードのラッパに `relative` を付与し、`!isDailyBonusReceived` のとき右上に同じ `RedPulseDot` を描画
   - 未完了カードは `ImagePlus` アイコンとブルー系配色で、否定ではなく行動可能な状態として表示
+  - 初期表示ではサーバー側で作成した `initialJstDateString` を使い、クライアントの現在時刻に依存した hydration 差分を避ける
   - `handleCheckIn` 成功時に、付与額の有無に関係なく `await refreshMissionDots()` を呼ぶ
-  - ページ側の `getChallengeStatus()` 再取得をマウント時・60秒ポーリング・ウィンドウフォーカスで実行し、デイリー投稿ボーナスカードのローカル state も同期
+  - ページ側は独自の `getChallengeStatus()` ポーリングを持たず、`MissionDotProvider` の `missionStatus` / 派生フラグを購読してローカル state を同期
 
 ### Phase 5: 検証
 
@@ -317,7 +319,10 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 |
 |----------|------|----------|
+| `app/(app)/challenge/page.tsx` | 修正 | 初期表示用 JST 日付文字列を `CachedChallengePageContent` へ渡す |
+| `features/challenges/components/CachedChallengePageContent.tsx` | 修正 | `initialJstDateString` を `ChallengePageContent` へ中継 |
 | `features/challenges/components/MissionDotProvider.tsx` | 新規 | バッジ状態 Context、60秒ポーリング、localStorage スヌーズ |
+| `features/challenges/lib/streak-utils.ts` | 修正 | JST 日付比較ヘルパー `isSameJstDate()` / `isSameJstDateString()` を追加 |
 | `components/LocaleShell.tsx` | 修正 | `MissionDotProvider` で全画面ラップ |
 | `components/NavigationBar.tsx` | 修正 | モバイル下部ナビのミッションタブに赤丸 + スヌーズ呼び出し |
 | `components/AppSidebar.tsx` | 修正 | PC サイドバーのミッションタブに赤丸 + スヌーズ呼び出し |
@@ -325,7 +330,7 @@ flowchart LR
 | `messages/ja.ts` | 修正 | デイリー投稿未完了状態の文言を前向きな表現へ変更 |
 | `messages/en.ts` | 修正 | デイリー投稿未完了状態の英語文言を前向きな表現へ変更 |
 
-合計: 新規 1 / 修正 6。DB マイグレーション・API ルート・i18n キー追加なし（既存キーの文言変更あり）。
+合計: 新規 1 / 修正 9。DB マイグレーション・API ルート・i18n キー追加なし（既存キーの文言変更あり）。
 
 ---
 
@@ -345,7 +350,7 @@ flowchart LR
 |----------|-----------|----------|
 | 正常系 | 未チェックイン状態でログイン → ナビ・ページ・カードに赤丸 | dev サーバ手動検証 |
 | 正常系 | チェックイン押下 → ボタン赤丸即時消失 → ナビ赤丸（投稿が未完了なら残る） | dev サーバ手動検証 |
-| 正常系 | デイリー投稿完了 → カード赤丸消失（マウント / 60秒ポーリング / フォーカス） | dev サーバ手動検証 |
+| 正常系 | デイリー投稿完了 → カード赤丸消失（Provider mount / 60秒ポーリング / フォーカス） | dev サーバ手動検証 |
 | 正常系 | ナビのミッションタブ選択 → ナビ赤丸即時消失 → 30分後復活 | localStorage 直接編集で短縮検証 |
 | 正常系 | `/challenge` URL 直アクセス → ナビ赤丸消失 | dev サーバ手動検証 |
 | 異常系 | `getChallengeStatus()` ネットワーク失敗 → クラッシュなし、前回値保持 | DevTools の network throttle |

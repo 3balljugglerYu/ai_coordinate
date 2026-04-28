@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -23,31 +23,16 @@ import { useUnreadNotificationCount } from "@/features/notifications/components/
 import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import { ChallengeCard } from "./ChallengeCard";
 import type { ChallengeStatus } from "@/features/challenges/lib/api";
-import {
-  checkInStreakBonus,
-  getChallengeStatus,
-} from "@/features/challenges/lib/api";
+import { checkInStreakBonus } from "@/features/challenges/lib/api";
 import { cn } from "@/lib/utils";
 import {
   buildMissionBonusDisplay,
   getRewardForDay,
 } from "@/features/challenges/lib/subscription-bonus-display";
-
-const jstDateFormatter = new Intl.DateTimeFormat("ja-JP", {
-  timeZone: "Asia/Tokyo",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function formatJstDate(date: Date | string) {
-  return jstDateFormatter.format(typeof date === "string" ? new Date(date) : date);
-}
-
-function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
-  if (!lastAt) return false;
-  return formatJstDate(lastAt) === formatJstDate(now);
-}
+import {
+  isSameJstDate,
+  isSameJstDateString,
+} from "@/features/challenges/lib/streak-utils";
 
 function RedPulseDot() {
   return (
@@ -60,6 +45,7 @@ function RedPulseDot() {
 
 interface ChallengePageContentProps {
   initialChallengeStatus?: ChallengeStatus | null;
+  initialJstDateString: string;
   baseDailyPostBonusAmount: number;
   dailyPostBonusAmount: number;
   baseStreakBonusSchedule: readonly number[];
@@ -68,6 +54,7 @@ interface ChallengePageContentProps {
 
 export function ChallengePageContent({
   initialChallengeStatus,
+  initialJstDateString,
   baseDailyPostBonusAmount,
   dailyPostBonusAmount,
   baseStreakBonusSchedule,
@@ -78,7 +65,13 @@ export function ChallengePageContent({
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
-  const { refreshMissionDots, markMissionTabSnoozed } = useMissionDots();
+  const {
+    missionStatus,
+    hasCheckInDot,
+    hasDailyPostDot,
+    refreshMissionDots,
+    markMissionTabSnoozed,
+  } = useMissionDots();
   const maxStreakBonus = Math.max(...streakBonusSchedule);
   const totalStreakBonus = streakBonusSchedule.reduce((a, b) => a + b, 0);
   const [streakDays, setStreakDays] = useState<number>(
@@ -92,13 +85,19 @@ export function ChallengePageContent({
   >(initialChallengeStatus?.subscriptionPlan ?? "free");
   const [isCheckedInToday, setIsCheckedInToday] = useState<boolean>(
     initialChallengeStatus
-      ? isSameJstDate(initialChallengeStatus.lastStreakLoginAt)
+      ? isSameJstDateString(
+          initialChallengeStatus.lastStreakLoginAt,
+          initialJstDateString
+        )
       : false
   );
   const [isCheckingIn, setIsCheckingIn] = useState<boolean>(false);
   const [isDailyBonusReceived, setIsDailyBonusReceived] = useState<boolean>(
     initialChallengeStatus?.lastDailyPostBonusAt
-      ? isSameJstDate(initialChallengeStatus.lastDailyPostBonusAt)
+      ? isSameJstDateString(
+          initialChallengeStatus.lastDailyPostBonusAt,
+          initialJstDateString
+        )
       : false
   );
   const [timeToReset, setTimeToReset] = useState<string>("");
@@ -162,37 +161,14 @@ export function ChallengePageContent({
     </Badge>
   ) : undefined;
 
-  const refreshChallengeStatus = useCallback(async () => {
-    try {
-      const status = await getChallengeStatus();
-      setStreakDays(status.streakDays);
-      setLastStreakLoginAt(status.lastStreakLoginAt);
-      setSubscriptionPlan(status.subscriptionPlan);
-      setIsCheckedInToday(isSameJstDate(status.lastStreakLoginAt));
-      setIsDailyBonusReceived(isSameJstDate(status.lastDailyPostBonusAt));
-    } catch (error) {
-      console.error("Failed to fetch challenge status:", error);
-    }
-  }, []);
-
-  // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、常に最新データを取得
   useEffect(() => {
-    void refreshChallengeStatus();
-
-    const intervalId = window.setInterval(() => {
-      void refreshChallengeStatus();
-    }, 60_000);
-    const handleFocus = () => {
-      void refreshChallengeStatus();
-    };
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [refreshChallengeStatus]);
+    if (!missionStatus) return;
+    setStreakDays(missionStatus.streakDays);
+    setLastStreakLoginAt(missionStatus.lastStreakLoginAt);
+    setSubscriptionPlan(missionStatus.subscriptionPlan);
+    setIsCheckedInToday(!hasCheckInDot);
+    setIsDailyBonusReceived(!hasDailyPostDot);
+  }, [hasCheckInDot, hasDailyPostDot, missionStatus]);
 
   // ミッションページ表示中はナビのバッジを楽観的に消す（URL 直アクセス時も含む）
   useEffect(() => {
