@@ -49,6 +49,15 @@ function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
   return formatJstDate(lastAt) === formatJstDate(now);
 }
 
+function RedPulseDot() {
+  return (
+    <span className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-3 w-3">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75 motion-reduce:animate-none" />
+      <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+    </span>
+  );
+}
+
 interface ChallengePageContentProps {
   initialChallengeStatus?: ChallengeStatus | null;
   baseDailyPostBonusAmount: number;
@@ -363,7 +372,7 @@ export function ChallengePageContent({
                         : t("checkIn")}
                   </Button>
                   {!isCheckedInToday && !isCheckingIn && (
-                    <span className="pointer-events-none absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                    <RedPulseDot />
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -454,10 +463,7 @@ export function ChallengePageContent({
           </ChallengeCard>
         </div>
 
-        <div className="relative mb-6">
-          {!isDailyBonusReceived && (
-            <span className="pointer-events-none absolute -top-1 -right-1 z-10 h-2.5 w-2.5 rounded-full bg-red-500" />
-          )}
+        <div className="mb-6">
           <ChallengeCard
             title={t("dailyTitle")}
             description={t("dailyDescription")}
@@ -497,11 +503,12 @@ export function ChallengePageContent({
               )}
               {/* ステータス表示 */}
               <div className={cn(
-                "flex items-center justify-between p-4 rounded-lg border transition-colors",
+                "relative flex items-center justify-between p-4 rounded-lg border transition-colors",
                 isDailyBonusReceived
                   ? "bg-green-50 border-green-200"
                   : "bg-gray-50 border-gray-100"
               )}>
+                {!isDailyBonusReceived && <RedPulseDot />}
                 <div className="flex items-center gap-3">
                   {isDailyBonusReceived ? (
                     <div className="bg-green-100 p-2 rounded-full">
