@@ -10,10 +10,26 @@ const visualViewportRemoveEventListenerMock = jest.fn();
 const resizeObserverObserveMock = jest.fn();
 const resizeObserverDisconnectMock = jest.fn();
 
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
 jest.mock("@/features/posts/components/CommentInput", () => ({
   CommentInput: ({ onCommentAdded }: { onCommentAdded?: () => void }) => (
     <button type="button" onClick={() => onCommentAdded?.()}>
       add-comment
+    </button>
+  ),
+}));
+
+jest.mock("@/features/posts/components/CommentComposerTrigger", () => ({
+  CommentComposerTrigger: ({
+    onCommentAdded,
+  }: {
+    onCommentAdded?: () => void;
+  }) => (
+    <button type="button" onClick={() => onCommentAdded?.()}>
+      mobile-add-comment
     </button>
   ),
 }));
@@ -341,6 +357,14 @@ describe("CommentSection", () => {
     render(<CommentSection postId="post-1" currentUserId="user-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "add-comment" }));
+
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("モバイル trigger 経由のコメント追加でも一覧を refresh する", () => {
+    render(<CommentSection postId="post-1" currentUserId="user-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "mobile-add-comment" }));
 
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });

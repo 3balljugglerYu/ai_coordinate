@@ -2,8 +2,10 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
 import { CommentInput } from "./CommentInput";
+import { CommentComposerTrigger } from "./CommentComposerTrigger";
 import { CommentList, type CommentListRef } from "./CommentList";
 
 interface CommentSectionProps {
@@ -16,6 +18,7 @@ interface CommentSectionProps {
  * 認証状態に依存し、リアルタイムで更新される可能性があるコンテンツ
  */
 export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
+  const t = useTranslations("posts");
   const commentListRef = useRef<CommentListRef>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<
@@ -113,14 +116,28 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
       className="container mx-auto max-w-4xl border-t border-gray-200 bg-white px-4 py-3"
     >
       <div className="mb-4">
-        <CommentInput
-          imageId={postId}
-          onCommentAdded={() => {
-            // コメントが追加されたら、CommentListをリフレッシュ
-            commentListRef.current?.refresh();
-          }}
-          currentUserId={currentUserId}
-        />
+        <div className="hidden md:block">
+          <CommentInput
+            imageId={postId}
+            onCommentAdded={() => {
+              // コメントが追加されたら、CommentListをリフレッシュ
+              commentListRef.current?.refresh();
+            }}
+            currentUserId={currentUserId}
+          />
+        </div>
+        <div className="md:hidden">
+          <CommentComposerTrigger
+            imageId={postId}
+            currentUserId={currentUserId}
+            onCommentAdded={() => {
+              commentListRef.current?.refresh();
+            }}
+            placeholder={t("commentPlaceholder")}
+            triggerLabel={t("commentPlaceholder")}
+            sheetTitle={t("commentSheetTitle")}
+          />
+        </div>
       </div>
       <CommentList
         ref={commentListRef}
