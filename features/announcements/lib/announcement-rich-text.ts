@@ -13,6 +13,8 @@ const ALLOWED_FONT_SIZES = new Set<AnnouncementFontSize>([
 const COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
 const STORAGE_PATH_PATTERN = /^(?!\/)(?!.*\.\.)[\w./-]+\.webp$/;
 const IMAGE_DIMENSION_PATTERN = /^\d+(?:\.\d+)?$/;
+const LINK_FORBIDDEN_CHARACTER_PATTERN = /[\u0000-\u001F\u007F\s\\]/;
+const MAX_LINK_URL_LENGTH = 2048;
 
 type RichTextNode = {
   type?: unknown;
@@ -42,7 +44,12 @@ function getAnnouncementImagePublicPrefix() {
 
 export function isSafeAnnouncementLinkUrl(url: string): boolean {
   const trimmed = url.trim();
-  if (!trimmed) {
+  if (
+    !trimmed ||
+    trimmed !== url ||
+    trimmed.length > MAX_LINK_URL_LENGTH ||
+    LINK_FORBIDDEN_CHARACTER_PATTERN.test(trimmed)
+  ) {
     return false;
   }
 
@@ -50,7 +57,12 @@ export function isSafeAnnouncementLinkUrl(url: string): boolean {
     return true;
   }
 
-  return trimmed.startsWith("https://");
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "https:" && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function isValidAnnouncementImageUrl(url: string): boolean {
@@ -91,6 +103,57 @@ function isValidImageDimension(value: unknown): boolean {
   return false;
 }
 
+const ALLOWED_LINK_TARGETS = new Set<string>(["_blank"]);
+const REQUIRED_LINK_REL_TOKENS = ["noopener", "noreferrer"] as const;
+
+function validateLinkMark(typedMark: RichTextMark): string | null {
+  if (!isObject(typedMark.attrs)) {
+    return "link mark の属性が不正です";
+  }
+
+  const attrs = typedMark.attrs;
+  for (const key of Object.keys(attrs)) {
+    if (!["href", "target", "rel", "class", "title"].includes(key)) {
+      return "許可されていない link 属性が含まれています";
+    }
+  }
+
+  if (typeof attrs.href !== "string" || !isSafeAnnouncementLinkUrl(attrs.href)) {
+    return "リンク URL が不正です";
+  }
+
+  if (
+    typeof attrs.target !== "string" ||
+    !ALLOWED_LINK_TARGETS.has(attrs.target)
+  ) {
+    return "リンクの target 属性が不正です";
+  }
+
+  if (typeof attrs.rel !== "string") {
+    return "リンクの rel 属性が不正です";
+  }
+
+  const tokens = attrs.rel.split(/\s+/).filter(Boolean);
+  for (const required of REQUIRED_LINK_REL_TOKENS) {
+    if (!tokens.includes(required)) {
+      return "リンクの rel 属性が不正です";
+    }
+  }
+
+  if (attrs.class != null && attrs.class !== "") {
+    return "リンクの class 属性は指定できません";
+  }
+
+  if (
+    attrs.title != null &&
+    (typeof attrs.title !== "string" || attrs.title.length > 200)
+  ) {
+    return "リンクの title 属性が不正です";
+  }
+
+  return null;
+}
+
 function validateMark(mark: unknown): string | null {
   if (!isObject(mark)) {
     return "mark が不正です";
@@ -99,6 +162,10 @@ function validateMark(mark: unknown): string | null {
   const typedMark = mark as RichTextMark;
   if (typedMark.type === "bold") {
     return typedMark.attrs == null ? null : "bold mark の属性が不正です";
+  }
+
+  if (typedMark.type === "link") {
+    return validateLinkMark(typedMark);
   }
 
   if (typedMark.type !== "textStyle") {

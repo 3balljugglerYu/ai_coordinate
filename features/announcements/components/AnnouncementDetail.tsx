@@ -3,7 +3,11 @@
 import type { Content } from "@tiptap/core";
 import { useEffect, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { announcementTiptapExtensions } from "@/features/announcements/lib/tiptap-extensions";
+import {
+  ANNOUNCEMENT_LINK_CLASS_NAME,
+  announcementTiptapExtensions,
+} from "@/features/announcements/lib/tiptap-extensions";
+import { cn } from "@/lib/utils";
 
 interface AnnouncementDetailProps {
   bodyJson: unknown;
@@ -41,7 +45,10 @@ export function AnnouncementDetail({ bodyJson }: AnnouncementDetailProps) {
   return (
     <EditorContent
       editor={editor}
-      className="[&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-[420px] [&_.ProseMirror_img]:w-full [&_.ProseMirror_img]:rounded-xl [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain"
+      className={cn(
+        "[&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-[420px] [&_.ProseMirror_img]:w-full [&_.ProseMirror_img]:rounded-xl [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_img]:object-contain",
+        ANNOUNCEMENT_LINK_CLASS_NAME
+      )}
     />
   );
 }
