@@ -12,7 +12,7 @@ import {
   Trophy,
   Clock,
   CheckCircle2,
-  XCircle,
+  ImagePlus,
   Loader2,
   Sparkles,
 } from "lucide-react";
@@ -20,36 +20,32 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import { ChallengeCard } from "./ChallengeCard";
 import type { ChallengeStatus } from "@/features/challenges/lib/api";
-import {
-  checkInStreakBonus,
-  getChallengeStatus,
-} from "@/features/challenges/lib/api";
+import { checkInStreakBonus } from "@/features/challenges/lib/api";
 import { cn } from "@/lib/utils";
 import {
   buildMissionBonusDisplay,
   getRewardForDay,
 } from "@/features/challenges/lib/subscription-bonus-display";
+import {
+  isSameJstDate,
+  isSameJstDateString,
+} from "@/features/challenges/lib/streak-utils";
 
-const jstDateFormatter = new Intl.DateTimeFormat("ja-JP", {
-  timeZone: "Asia/Tokyo",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function formatJstDate(date: Date | string) {
-  return jstDateFormatter.format(typeof date === "string" ? new Date(date) : date);
-}
-
-function isSameJstDate(lastAt: string | null, now: Date = new Date()) {
-  if (!lastAt) return false;
-  return formatJstDate(lastAt) === formatJstDate(now);
+function RedPulseDot() {
+  return (
+    <span className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-3 w-3">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75 motion-reduce:animate-none" />
+      <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+    </span>
+  );
 }
 
 interface ChallengePageContentProps {
   initialChallengeStatus?: ChallengeStatus | null;
+  initialJstDateString: string;
   baseDailyPostBonusAmount: number;
   dailyPostBonusAmount: number;
   baseStreakBonusSchedule: readonly number[];
@@ -58,6 +54,7 @@ interface ChallengePageContentProps {
 
 export function ChallengePageContent({
   initialChallengeStatus,
+  initialJstDateString,
   baseDailyPostBonusAmount,
   dailyPostBonusAmount,
   baseStreakBonusSchedule,
@@ -68,6 +65,13 @@ export function ChallengePageContent({
   const router = useRouter();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
+  const {
+    missionStatus,
+    hasCheckInDot,
+    hasDailyPostDot,
+    refreshMissionDots,
+    markMissionTabSnoozed,
+  } = useMissionDots();
   const maxStreakBonus = Math.max(...streakBonusSchedule);
   const totalStreakBonus = streakBonusSchedule.reduce((a, b) => a + b, 0);
   const [streakDays, setStreakDays] = useState<number>(
@@ -81,13 +85,19 @@ export function ChallengePageContent({
   >(initialChallengeStatus?.subscriptionPlan ?? "free");
   const [isCheckedInToday, setIsCheckedInToday] = useState<boolean>(
     initialChallengeStatus
-      ? isSameJstDate(initialChallengeStatus.lastStreakLoginAt)
+      ? isSameJstDateString(
+          initialChallengeStatus.lastStreakLoginAt,
+          initialJstDateString
+        )
       : false
   );
   const [isCheckingIn, setIsCheckingIn] = useState<boolean>(false);
   const [isDailyBonusReceived, setIsDailyBonusReceived] = useState<boolean>(
     initialChallengeStatus?.lastDailyPostBonusAt
-      ? isSameJstDate(initialChallengeStatus.lastDailyPostBonusAt)
+      ? isSameJstDateString(
+          initialChallengeStatus.lastDailyPostBonusAt,
+          initialJstDateString
+        )
       : false
   );
   const [timeToReset, setTimeToReset] = useState<string>("");
@@ -151,28 +161,19 @@ export function ChallengePageContent({
     </Badge>
   ) : undefined;
 
-  // アカウント切り替え時に Router Cache が古いデータを返す場合があるため、常に最新データを取得
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const status = await getChallengeStatus();
-        setStreakDays(status.streakDays);
-        setLastStreakLoginAt(status.lastStreakLoginAt);
-        setSubscriptionPlan(status.subscriptionPlan);
-        setIsCheckedInToday(isSameJstDate(status.lastStreakLoginAt));
+    if (!missionStatus) return;
+    setStreakDays(missionStatus.streakDays);
+    setLastStreakLoginAt(missionStatus.lastStreakLoginAt);
+    setSubscriptionPlan(missionStatus.subscriptionPlan);
+    setIsCheckedInToday(!hasCheckInDot);
+    setIsDailyBonusReceived(!hasDailyPostDot);
+  }, [hasCheckInDot, hasDailyPostDot, missionStatus]);
 
-        if (status.lastDailyPostBonusAt) {
-          setIsDailyBonusReceived(isSameJstDate(status.lastDailyPostBonusAt));
-        } else {
-          setIsDailyBonusReceived(false);
-        }
-      } catch (error) {
-        console.error("Failed to fetch challenge status:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
+  // ミッションページ表示中はナビのバッジを楽観的に消す（URL 直アクセス時も含む）
+  useEffect(() => {
+    markMissionTabSnoozed();
+  }, [markMissionTabSnoozed]);
 
   useEffect(() => {
     // カウントダウンタイマー（JST 0:00 = UTC 15:00 まで）
@@ -258,9 +259,11 @@ export function ChallengePageContent({
         });
         // チェックイン成功時に未読バッジを即時更新
         await refreshUnreadCount();
-        // ペルコイン残高の即時反映
-        router.refresh();
       }
+
+      await refreshMissionDots();
+      // ペルコイン残高の即時反映
+      router.refresh();
     } catch (error) {
       console.error("Failed to check in streak bonus:", error);
       toast({
@@ -330,19 +333,24 @@ export function ChallengePageContent({
               </div>
 
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <Button
-                  type="button"
-                  className="min-h-11"
-                  onClick={handleCheckIn}
-                  disabled={isCheckingIn || isCheckedInToday}
-                >
-                  {isCheckingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isCheckedInToday
-                    ? t("checkedIn")
-                    : isCheckingIn
-                      ? t("checkingIn")
-                      : t("checkIn")}
-                </Button>
+                <div className="relative inline-flex">
+                  <Button
+                    type="button"
+                    className="min-h-11"
+                    onClick={handleCheckIn}
+                    disabled={isCheckingIn || isCheckedInToday}
+                  >
+                    {isCheckingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isCheckedInToday
+                      ? t("checkedIn")
+                      : isCheckingIn
+                        ? t("checkingIn")
+                        : t("checkIn")}
+                  </Button>
+                  {!isCheckedInToday && !isCheckingIn && (
+                    <RedPulseDot />
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   <span>{t("resetAtJst")}</span>
@@ -471,31 +479,39 @@ export function ChallengePageContent({
               )}
               {/* ステータス表示 */}
               <div className={cn(
-                "flex items-center justify-between p-4 rounded-lg border transition-colors",
+                "relative flex items-center justify-between rounded-lg border p-4 transition-colors",
                 isDailyBonusReceived
                   ? "bg-green-50 border-green-200"
-                  : "bg-gray-50 border-gray-100"
+                  : "border-blue-200/80 bg-blue-50/80 pr-7"
               )}>
+                {!isDailyBonusReceived && <RedPulseDot />}
                 <div className="flex items-center gap-3">
                   {isDailyBonusReceived ? (
-                    <div className="bg-green-100 p-2 rounded-full">
+                    <div className="shrink-0 rounded-full bg-green-100 p-2">
                       <CheckCircle2 className="w-6 h-6 text-green-600" />
                     </div>
                   ) : (
-                    <div className="bg-gray-200 p-2 rounded-full">
-                      <XCircle className="w-6 h-6 text-gray-500" />
+                    <div className="shrink-0 rounded-full bg-blue-100 p-2">
+                      <ImagePlus className="w-6 h-6 text-blue-600" />
                     </div>
                   )}
                   <div>
                     <div className={cn(
                       "font-bold",
-                      isDailyBonusReceived ? "text-green-800" : "text-gray-700"
+                      isDailyBonusReceived ? "text-green-800" : "text-blue-900"
                     )}>
                       {isDailyBonusReceived
                         ? t("dailyReceivedTitle")
                         : t("dailyPendingTitle")}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
+                    <div
+                      className={cn(
+                        "mt-0.5 text-xs",
+                        isDailyBonusReceived
+                          ? "text-muted-foreground"
+                          : "text-blue-700"
+                      )}
+                    >
                       {isDailyBonusReceived
                         ? t("dailyReceivedDescription")
                         : t("dailyPendingDescription", {

@@ -4,6 +4,7 @@ import { getLocale } from "next-intl/server";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/toaster";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
+import { MissionDotProvider } from "@/features/challenges/components/MissionDotProvider";
 import { Ga4Script } from "@/features/analytics/components/Ga4Script";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
@@ -26,7 +27,9 @@ export async function LocaleShell({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <UnreadNotificationProvider>{appContent}</UnreadNotificationProvider>
+      <UnreadNotificationProvider>
+        <MissionDotProvider>{appContent}</MissionDotProvider>
+      </UnreadNotificationProvider>
       {/*
         ナビゲーション中も生き残る必要があるため、Suspense 境界（appContent）の
         外側にマウントする。AppShell 配下に置くと router.refresh() などで

@@ -20,6 +20,7 @@ import {
   getCoordinateSourceStockSavePromptDot,
   subscribeCoordinateSourceStockSavePromptDot,
 } from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
+import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import {
   Collapsible,
@@ -65,6 +66,7 @@ export function AppSidebar() {
     hasCoordinateSourceStockSavePromptDot,
     setHasCoordinateSourceStockSavePromptDot,
   ] = useState(getCoordinateSourceStockSavePromptDot);
+  const { hasMissionTabDot, markMissionTabSnoozed } = useMissionDots();
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -139,6 +141,13 @@ export function AppSidebar() {
   const handleNavigation = (path: string) => {
     const normalizedTargetPath = stripLocalePrefix(path).pathname;
 
+    if (
+      normalizedTargetPath === "/challenge" &&
+      normalizedPathname === normalizedTargetPath
+    ) {
+      markMissionTabSnoozed();
+    }
+
     if (normalizedPathname === normalizedTargetPath) {
       return;
     }
@@ -151,6 +160,9 @@ export function AppSidebar() {
 
       if (normalizedTargetPath === "/notifications") {
         void markAnnouncementPageSeen();
+      }
+      if (normalizedTargetPath === "/challenge") {
+        markMissionTabSnoozed();
       }
 
       router.push(path);
@@ -234,6 +246,9 @@ export function AppSidebar() {
                     hasCoordinateSourceStockSavePromptDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}
+                  {path === "/challenge" && hasMissionTabDot && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                  )}
                 </div>
               </div>
 
