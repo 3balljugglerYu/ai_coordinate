@@ -1,3 +1,5 @@
+import { readCoordinateStockSavePromptDismissed } from "./form-preferences";
+
 export interface CoordinateSourceStockSavePromptBatch {
   file: File;
   jobIds: string[];
@@ -56,6 +58,11 @@ export function setCoordinateSourceStockSavePromptPending(
 export function showCoordinateSourceStockSavePrompt(
   batch: CoordinateSourceStockSavePromptBatch
 ): void {
+  if (readCoordinateStockSavePromptDismissed()) {
+    clearCoordinateSourceStockSavePrompt();
+    return;
+  }
+
   currentState = {
     pending: true,
     batch,

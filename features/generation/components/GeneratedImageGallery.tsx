@@ -23,6 +23,7 @@ import {
   showCoordinateSourceStockSavePrompt,
 } from "../lib/coordinate-source-stock-save-prompt-state";
 import {
+  readCoordinateStockSavePromptDismissed,
   writePreferredImageSourceType,
   writePreferredSelectedStockId,
 } from "../lib/form-preferences";
@@ -75,9 +76,12 @@ export function GeneratedImageGallery({
     );
   };
 
-  const openSavePrompt = (
-    batch: PendingSourceImageBatch
-  ) => {
+  const openSavePrompt = (batch: PendingSourceImageBatch) => {
+    if (readCoordinateStockSavePromptDismissed()) {
+      setCoordinateSourceStockSavePromptPending(false);
+      return;
+    }
+
     setPendingSavePrompt(batch);
     setCoordinateSourceStockSavePromptPending(true);
     setIsSavePromptOpen(true);
@@ -377,7 +381,11 @@ export function GeneratedImageGallery({
               openSavePrompt(batch);
               return;
             }
-            if (jobId && pendingSavePrompt?.jobIds.includes(jobId)) {
+            if (
+              jobId &&
+              pendingSavePrompt?.jobIds.includes(jobId) &&
+              !readCoordinateStockSavePromptDismissed()
+            ) {
               setCoordinateSourceStockSavePromptPending(true);
               setIsSavePromptOpen(true);
             }
@@ -411,12 +419,6 @@ export function GeneratedImageGallery({
           onSaved={(stockId) => {
             writePreferredImageSourceType("stock");
             writePreferredSelectedStockId(stockId);
-          }}
-          onRequestManageStocks={() => {
-            setIsSavePromptOpen(false);
-            setPendingSavePrompt(null);
-            setCoordinateSourceStockSavePromptPending(false);
-            ctx?.requestOpenStockTab();
           }}
         />
       )}

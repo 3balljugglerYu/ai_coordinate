@@ -27,6 +27,8 @@ export const SELECTED_MODEL_STORAGE_KEY = "persta-ai:last-selected-model";
 export const BACKGROUND_MODE_STORAGE_KEY = "persta-ai:last-background-mode";
 export const IMAGE_SOURCE_TYPE_STORAGE_KEY = "persta-ai:last-image-source-type";
 export const SELECTED_STOCK_ID_STORAGE_KEY = "persta-ai:last-selected-stock-id";
+export const COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY =
+  "persta-ai:coordinate-stock-save-prompt-dismissed";
 export const LEGACY_SELECTED_STOCK_ID_KEY = "selectedStockId";
 
 const DEFAULT_MODEL: GeminiModel = DEFAULT_GENERATION_MODEL;
@@ -156,6 +158,28 @@ export function writePreferredSelectedStockId(stockId: string | null): void {
     return;
   }
   safeWriteLocalStorage(SELECTED_STOCK_ID_STORAGE_KEY, stockId);
+}
+
+export function readCoordinateStockSavePromptDismissed(): boolean {
+  return (
+    safeReadLocalStorage(
+      COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY
+    ) === "true"
+  );
+}
+
+export function writeCoordinateStockSavePromptDismissed(
+  dismissed: boolean
+): void {
+  if (dismissed) {
+    safeWriteLocalStorage(
+      COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
+      "true"
+    );
+    return;
+  }
+
+  safeRemoveLocalStorage(COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY);
 }
 
 /**

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { SaveSourceImageToStockDialog } from "./SaveSourceImageToStockDialog";
 import {
   clearCoordinateSourceStockSavePrompt,
@@ -14,7 +13,6 @@ import {
 } from "../lib/form-preferences";
 
 export function CoordinateSourceStockSavePromptDialogHost() {
-  const router = useRouter();
   const [state, setState] = useState(getCoordinateSourceStockSavePromptState);
 
   useEffect(() => {
@@ -39,12 +37,6 @@ export function CoordinateSourceStockSavePromptDialogHost() {
         writePreferredImageSourceType("stock");
         writePreferredSelectedStockId(stockId);
       }}
-      onRequestManageStocks={() => {
-        clearCoordinateSourceStockSavePrompt();
-        writePreferredImageSourceType("stock");
-        router.push("/coordinate");
-      }}
-      onRequestSubscriptionPlans={clearCoordinateSourceStockSavePrompt}
     />
   );
 }

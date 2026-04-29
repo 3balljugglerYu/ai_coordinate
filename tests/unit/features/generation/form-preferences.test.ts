@@ -2,9 +2,12 @@
 
 import {
   BACKGROUND_MODE_STORAGE_KEY,
+  COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
   SELECTED_MODEL_STORAGE_KEY,
+  readCoordinateStockSavePromptDismissed,
   readPreferredBackgroundMode,
   readPreferredModel,
+  writeCoordinateStockSavePromptDismissed,
   writePreferredBackgroundMode,
   writePreferredModel,
 } from "@/features/generation/lib/form-preferences";
@@ -111,6 +114,30 @@ describe("form-preferences", () => {
     it("ignores unknown values", () => {
       writePreferredBackgroundMode("invalid" as never);
       expect(window.localStorage.getItem(BACKGROUND_MODE_STORAGE_KEY)).toBeNull();
+    });
+  });
+
+  describe("coordinate stock save prompt dismissed preference", () => {
+    it("returns false when the prompt has not been dismissed", () => {
+      expect(readCoordinateStockSavePromptDismissed()).toBe(false);
+    });
+
+    it("persists true and removes the key when reset to false", () => {
+      writeCoordinateStockSavePromptDismissed(true);
+      expect(
+        window.localStorage.getItem(
+          COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
+        ),
+      ).toBe("true");
+      expect(readCoordinateStockSavePromptDismissed()).toBe(true);
+
+      writeCoordinateStockSavePromptDismissed(false);
+      expect(
+        window.localStorage.getItem(
+          COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
+        ),
+      ).toBeNull();
+      expect(readCoordinateStockSavePromptDismissed()).toBe(false);
     });
   });
 

@@ -966,20 +966,26 @@ export const enMessages = {
     statusUnknown: "Unknown",
     generatedResultAlt: "Generated image",
     saveStockDialogTitle: "Save the source illustration too?",
-    saveStockDialogDescription:
-      "Saving it means you won't have to search for it again next time.",
+    saveStockDialogDescription: "You won't have to search for it next time.",
     saveStockAction: "Save",
     saveStockSaving: "Saving...",
-    saveStockLater: "Not now",
+    saveStockLater: "Don't save",
     saveStockCancel: "Cancel",
+    saveStockDecline: "Not this time",
+    saveStockDoNotShowAgain: "Don't show again",
     saveStockSucceeded: "Saved to your stock.",
     saveStockFailed: "Failed to save to your stock.",
     linkStockFailed: "Failed to link the stock to your generations.",
     saveStockLimitTitle: "You've reached the stock image limit",
     saveStockLimitDescription:
       "To save this source image, remove unused stock images to make room or increase your save limit with a subscription plan.",
-    manageStocksAction: "Manage stock",
-    seeSubscriptionPlansAction: "View plans",
+    saveStockManageDescription:
+      "Choose a stock image to remove, then the illustration you just used will be added.",
+    saveStockManageLoading: "Loading stock images...",
+    saveStockDeleteAndAddAction: "Delete and add",
+    saveStockDeleteAndAddConfirm:
+      "Delete this illustration and add the illustration you just used.",
+    manageStocksAction: "Organize stock",
     stockTabUnreadDotLabel: "You have unseen stock images.",
   },
   challenge: {

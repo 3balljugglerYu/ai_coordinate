@@ -914,20 +914,26 @@ export const jaMessages = {
     statusUnknown: "不明",
     generatedResultAlt: "生成された画像",
     saveStockDialogTitle: "着せ替え前のイラストも保存しますか？",
-    saveStockDialogDescription:
-      "保存すると、次回以降も探す手間がなくなります♪",
+    saveStockDialogDescription: "次回以降、探す手間がなくなります♪",
     saveStockAction: "保存する",
     saveStockSaving: "保存中...",
-    saveStockLater: "後で",
+    saveStockLater: "保存しない",
     saveStockCancel: "キャンセル",
+    saveStockDecline: "今回は不要",
+    saveStockDoNotShowAgain: "次回から表示しない",
     saveStockSucceeded: "ストックに保存しました",
     saveStockFailed: "ストックの保存に失敗しました",
     linkStockFailed: "ストックの紐づけに失敗しました",
     saveStockLimitTitle: "ストック画像の上限に達しています",
     saveStockLimitDescription:
       "元画像を保存するには、不要なストック画像を削除して空きを作るか、サブスクプランで保存上限を増やしてください。",
-    manageStocksAction: "ストックを整理",
-    seeSubscriptionPlansAction: "プランを見る",
+    saveStockManageDescription:
+      "削除するストックを選ぶと、先ほどのイラストを追加します。",
+    saveStockManageLoading: "ストック画像を読み込み中...",
+    saveStockDeleteAndAddAction: "削除して追加",
+    saveStockDeleteAndAddConfirm:
+      "このイラストを削除し、先ほどのイラストを追加します",
+    manageStocksAction: "ストックを整理する",
     stockTabUnreadDotLabel: "未確認のストックがあります",
   },
   challenge: {
