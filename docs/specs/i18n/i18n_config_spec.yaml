@@ -260,12 +260,12 @@ specifications:
       When resolveLocaleFromAcceptLanguage is invoked with an Accept-Language header,
       the system shall parse language tags and quality values,
       and shall resolve to ja if any parsed candidate is ja or starts with ja-;
-      otherwise it shall resolve to en.
+      otherwise it shall resolve to DEFAULT_LOCALE.
     ears_ja: |
       resolveLocaleFromAcceptLanguageがAccept-Languageヘッダーで呼び出された場合、
       システムは言語タグとquality値を解析し、
       解析後の候補にjaまたはja-で始まる値が1つでもあればjaを返し、
-      それ以外はenを返す。
+      それ以外はDEFAULT_LOCALEを返す。
     preconditions:
       - The caller may provide a null, empty, or populated Accept-Language header
     preconditions_ja:
@@ -274,25 +274,25 @@ specifications:
       success:
         - Returns DEFAULT_LOCALE when the header is absent
         - Returns ja when any parsed candidate is ja or ja-*
-        - Returns en when no parsed candidate is in the ja family
+        - Returns DEFAULT_LOCALE when no parsed candidate is in the ja family
       error:
         - Non-numeric quality values are treated as default quality 1
     postconditions_ja:
       success:
         - ヘッダーがない場合はDEFAULT_LOCALEを返す
         - 解析候補に ja または ja-* があればjaを返す
-        - ja系候補が1つもなければenを返す
+        - ja系候補が1つもなければDEFAULT_LOCALEを返す
       error:
         - 数値でないquality値は既定値1として扱う
     test_cases:
       - resolveLocaleFromAcceptLanguage_GivenMissingHeader_ShouldReturnDefaultLocale
       - resolveLocaleFromAcceptLanguage_GivenJaFamilyCandidate_ShouldReturnJa
-      - resolveLocaleFromAcceptLanguage_GivenNonJaCandidatesOnly_ShouldReturnEn
+      - resolveLocaleFromAcceptLanguage_GivenNonJaCandidatesOnly_ShouldReturnDefaultLocale
       - resolveLocaleFromAcceptLanguage_GivenInvalidQualityValue_ShouldFallbackToDefaultQuality
     test_cases_ja:
       - resolveLocaleFromAcceptLanguage_ヘッダー未指定の場合_DEFAULT_LOCALEを返す
       - resolveLocaleFromAcceptLanguage_ja系候補がある場合_jaを返す
-      - resolveLocaleFromAcceptLanguage_ja系以外のみの場合_enを返す
+      - resolveLocaleFromAcceptLanguage_ja系以外のみの場合_DEFAULT_LOCALEを返す
       - resolveLocaleFromAcceptLanguage_quality値が不正な場合_既定qualityで扱う
 
   - id: I18N-009
@@ -331,10 +331,10 @@ specifications:
     test_cases:
       - resolveRequestLocale_GivenPathnameLocale_ShouldPrioritizePathnameLocaleOverCookie
       - resolveRequestLocale_GivenValidCookieWithoutPathnameLocale_ShouldReturnCookieLocale
-      - resolveRequestLocale_GivenInvalidCookieWithoutPathnameLocale_ShouldFallbackToAcceptLanguage
+      - resolveRequestLocale_GivenInvalidCookieWithoutPathnameLocale_ShouldFallbackToDefaultLocale
       - resolveRequestLocale_GivenNoInputs_ShouldReturnDefaultLocaleFromAcceptLanguageResolver
     test_cases_ja:
       - resolveRequestLocale_pathnameにlocaleがある場合_cookieよりpathnameを優先する
       - resolveRequestLocale_pathnameにlocaleがなく有効cookieがある場合_cookieを返す
-      - resolveRequestLocale_pathnameにlocaleがなくcookieが無効な場合_AcceptLanguageへフォールバックする
+      - resolveRequestLocale_pathnameにlocaleがなくcookieが無効な場合_DEFAULT_LOCALEへフォールバックする
       - resolveRequestLocale_入力不足の場合_AcceptLanguage解決経由でDEFAULT_LOCALEを返す

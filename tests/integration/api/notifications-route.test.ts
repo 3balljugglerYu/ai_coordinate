@@ -40,7 +40,10 @@ function createRequestEn(url: string): NextRequest {
   });
   return Object.assign(request, {
     nextUrl: new URL(request.url),
-    cookies: { get: () => undefined },
+    cookies: {
+      get: (name: string) =>
+        name === "NEXT_LOCALE" ? { name: "NEXT_LOCALE", value: "en" } : undefined,
+    },
   }) as NextRequest;
 }
 

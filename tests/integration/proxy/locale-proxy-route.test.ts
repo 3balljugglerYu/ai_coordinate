@@ -301,7 +301,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       // ============================================================
       expect(response.status).toBe(307);
       expect(response.headers.get("location")).toBe("http://localhost/my-page");
-      expectLocaleCookie(response, "en");
+      expectLocaleCookie(response, "ja");
       expect(supabase.authGetSession).toHaveBeenCalledTimes(1);
       expect(supabase.from).not.toHaveBeenCalled();
     });
@@ -419,7 +419,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       expect(response.headers.get("location")).toBe(
         "http://localhost/login?redirect=%2Fchallenge"
       );
-      expectLocaleCookie(response, "en");
+      expectLocaleCookie(response, "ja");
       expect(supabase.authGetSession).toHaveBeenCalledTimes(1);
     });
   });
@@ -549,7 +549,7 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       // Assert
       // ============================================================
       expect(response.status).toBe(307);
-      expectLocaleCookie(response, "en");
+      expectLocaleCookie(response, "ja");
     });
   });
 });

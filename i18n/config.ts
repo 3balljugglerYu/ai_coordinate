@@ -2,7 +2,7 @@ export const locales = ["ja", "en"] as const;
 
 export type Locale = (typeof locales)[number];
 
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "ja";
 export const LOCALE_COOKIE = "NEXT_LOCALE";
 export const LOCALE_HEADER = "X-NEXT-INTL-LOCALE";
 const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -101,12 +101,13 @@ export function resolveLocaleFromAcceptLanguage(
         quality: Number.isFinite(quality) ? quality : 1,
       };
     })
-    .filter((entry) => entry.tag.length > 0)
-    .sort((left, right) => right.quality - left.quality);
+    .filter((entry) => entry.tag.length > 0 && entry.quality > 0);
 
-  return candidates.some((candidate) => candidate.tag === "ja" || candidate.tag.startsWith("ja-"))
-    ? "ja"
-    : "en";
+  const requestedJapanese = candidates.some(
+    (candidate) => candidate.tag === "ja" || candidate.tag.startsWith("ja-")
+  );
+
+  return requestedJapanese ? "ja" : DEFAULT_LOCALE;
 }
 
 export function resolveRequestLocale({

@@ -207,8 +207,8 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
 
       renderMenu({ variant: "dropdown" });
 
-      expect(screen.getByTestId("dropdown-shortcut")).toHaveTextContent("English");
-      expect(screen.getByTestId("radio-en")).toHaveAttribute("data-active", "true");
+      expect(screen.getByTestId("dropdown-shortcut")).toHaveTextContent("日本語");
+      expect(screen.getByTestId("radio-ja")).toHaveAttribute("data-active", "true");
     });
   });
 
@@ -253,9 +253,9 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
 
       expect(screen.getByRole("button", { name: "言語設定" })).toHaveAttribute(
         "title",
-        "English"
+        "日本語"
       );
-      expect(screen.getByTestId("radio-en")).toHaveAttribute("data-active", "true");
+      expect(screen.getByTestId("radio-ja")).toHaveAttribute("data-active", "true");
     });
   });
 

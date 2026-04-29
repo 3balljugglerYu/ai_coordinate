@@ -115,8 +115,8 @@ describe("I18nConfig unit tests from EARS specs", () => {
 
   describe("I18N-008 resolveLocaleFromAcceptLanguage", () => {
     test("resolveLocaleFromAcceptLanguage_ヘッダー未指定の場合_DEFAULT_LOCALEを返す", () => {
-      expect(resolveLocaleFromAcceptLanguage(undefined)).toBe("en");
-      expect(resolveLocaleFromAcceptLanguage(null)).toBe("en");
+      expect(resolveLocaleFromAcceptLanguage(undefined)).toBe("ja");
+      expect(resolveLocaleFromAcceptLanguage(null)).toBe("ja");
     });
 
     test("resolveLocaleFromAcceptLanguage_ja系候補がある場合_jaを返す", () => {
@@ -128,8 +128,9 @@ describe("I18nConfig unit tests from EARS specs", () => {
       ).toBe("ja");
     });
 
-    test("resolveLocaleFromAcceptLanguage_ja系以外のみの場合_enを返す", () => {
-      expect(resolveLocaleFromAcceptLanguage("fr,de;q=0.8,en;q=0.7")).toBe("en");
+    test("resolveLocaleFromAcceptLanguage_ja系以外のみの場合_DEFAULT_LOCALEを返す", () => {
+      expect(resolveLocaleFromAcceptLanguage("fr,de;q=0.8,en;q=0.7")).toBe("ja");
+      expect(resolveLocaleFromAcceptLanguage("en-US,en;q=0.8")).toBe("ja");
     });
 
     test("resolveLocaleFromAcceptLanguage_quality値が不正な場合_既定qualityで扱う", () => {
@@ -158,14 +159,14 @@ describe("I18nConfig unit tests from EARS specs", () => {
       ).toBe("ja");
     });
 
-    test("resolveRequestLocale_pathnameにlocaleがなくcookieが無効な場合_AcceptLanguageへフォールバックする", () => {
+    test("resolveRequestLocale_pathnameにlocaleがなくcookieが無効な場合_DEFAULT_LOCALEへフォールバックする", () => {
       expect(
         resolveRequestLocale({
           pathname: "/about",
           cookieLocale: "fr",
           acceptLanguage: "de,en;q=0.8",
         })
-      ).toBe("en");
+      ).toBe("ja");
     });
 
     test("resolveRequestLocale_入力不足の場合_AcceptLanguage解決経由でDEFAULT_LOCALEを返す", () => {
@@ -175,7 +176,7 @@ describe("I18nConfig unit tests from EARS specs", () => {
           cookieLocale: undefined,
           acceptLanguage: undefined,
         })
-      ).toBe("en");
+      ).toBe("ja");
     });
   });
 });

@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     languages: {
       ja: `${siteUrl}/ja`,
       en: `${siteUrl}/en`,
-      "x-default": `${siteUrl}/en`,
+      "x-default": `${siteUrl}/ja`,
     },
   },
   robots: {

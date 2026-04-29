@@ -66,7 +66,7 @@ describe("auth-client signOut locale persistence", () => {
     await signOut();
 
     expect(cookieSetterSpy).toHaveBeenLastCalledWith(
-      `${LOCALE_COOKIE}=en; path=/; max-age=${getLocaleCookieMaxAge()}; samesite=lax`
+      `${LOCALE_COOKIE}=ja; path=/; max-age=${getLocaleCookieMaxAge()}; samesite=lax`
     );
   });
 
