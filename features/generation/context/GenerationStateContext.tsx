@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import type { GeneratedImageData } from "../types";
@@ -13,6 +12,7 @@ import type { GeneratedImageData } from "../types";
 interface PendingSourceImageEntry {
   file: File;
   batchId: string;
+  resultImageUrl: string | null;
 }
 
 export interface PendingSourceImageBatch {
@@ -49,6 +49,20 @@ interface GenerationStateContextValue {
     jobId: string
   ) => PendingSourceImageBatch | null;
   /**
+   * 生成完了後に DB 由来の確定画像へ置き換わり、画像側から jobId が落ちても
+   * result URL から pending File を取り出せるようにする。
+   */
+  consumePendingSourceImageBatchByResultUrl: (
+    resultImageUrl: string
+  ) => PendingSourceImageBatch | null;
+  /**
+   * 成功した jobId と確定画像URLを紐づける。
+   */
+  bindPendingSourceImageResult: (
+    jobId: string,
+    resultImageUrl: string
+  ) => void;
+  /**
    * 失敗した jobId だけを pending から除外する（成功した jobId は保存促進対象に残す）。
    */
   dropPendingSourceImageJob: (jobId: string) => void;
@@ -63,6 +77,33 @@ const GenerationStateContext = createContext<GenerationStateContextValue | null>
   null
 );
 
+const pendingSourceImageMap = new Map<string, PendingSourceImageEntry>();
+const pendingSourceImageJobIdByResultUrl = new Map<string, string>();
+
+function consumePendingSourceImageBatchByJobId(
+  jobId: string
+): PendingSourceImageBatch | null {
+  const entry = pendingSourceImageMap.get(jobId);
+  if (!entry) return null;
+
+  const { file, batchId } = entry;
+  const jobIds: string[] = [];
+  pendingSourceImageMap.forEach((value, key) => {
+    if (value.batchId === batchId) {
+      jobIds.push(key);
+    }
+  });
+  jobIds.forEach((id) => {
+    const current = pendingSourceImageMap.get(id);
+    if (current?.resultImageUrl) {
+      pendingSourceImageJobIdByResultUrl.delete(current.resultImageUrl);
+    }
+    pendingSourceImageMap.delete(id);
+  });
+
+  return { file, jobIds };
+}
+
 export function GenerationStateProvider({
   children,
 }: {
@@ -74,9 +115,6 @@ export function GenerationStateProvider({
   const [completedCount, setCompletedCount] = useState(0);
   const [previewImages, setPreviewImages] = useState<GeneratedImageData[]>([]);
   const [openStockTabRequestId, setOpenStockTabRequestId] = useState(0);
-  const pendingSourceImageMapRef = useRef<Map<string, PendingSourceImageEntry>>(
-    new Map()
-  );
 
   const registerPendingSourceImage = useCallback(
     (jobIds: string[], file: File) => {
@@ -85,7 +123,11 @@ export function GenerationStateProvider({
         .toString(36)
         .slice(2, 8)}`;
       jobIds.forEach((jobId) => {
-        pendingSourceImageMapRef.current.set(jobId, { file, batchId });
+        pendingSourceImageMap.set(jobId, {
+          file,
+          batchId,
+          resultImageUrl: null,
+        });
       });
     },
     []
@@ -93,23 +135,46 @@ export function GenerationStateProvider({
 
   const consumePendingSourceImageBatch = useCallback(
     (jobId: string): PendingSourceImageBatch | null => {
-      const entry = pendingSourceImageMapRef.current.get(jobId);
-      if (!entry) return null;
-      const { file, batchId } = entry;
-      const jobIds: string[] = [];
-      pendingSourceImageMapRef.current.forEach((value, key) => {
-        if (value.batchId === batchId) {
-          jobIds.push(key);
-        }
-      });
-      jobIds.forEach((id) => pendingSourceImageMapRef.current.delete(id));
-      return { file, jobIds };
+      return consumePendingSourceImageBatchByJobId(jobId);
+    },
+    []
+  );
+
+  const consumePendingSourceImageBatchByResultUrl = useCallback(
+    (resultImageUrl: string): PendingSourceImageBatch | null => {
+      const jobId =
+        pendingSourceImageJobIdByResultUrl.get(resultImageUrl) ??
+        Array.from(pendingSourceImageMap.entries()).find(
+          ([, entry]) => entry.resultImageUrl === resultImageUrl
+        )?.[0];
+
+      if (!jobId) return null;
+      return consumePendingSourceImageBatchByJobId(jobId);
+    },
+    []
+  );
+
+  const bindPendingSourceImageResult = useCallback(
+    (jobId: string, resultImageUrl: string) => {
+      const entry = pendingSourceImageMap.get(jobId);
+      if (!entry) return;
+
+      if (entry.resultImageUrl && entry.resultImageUrl !== resultImageUrl) {
+        pendingSourceImageJobIdByResultUrl.delete(entry.resultImageUrl);
+      }
+
+      entry.resultImageUrl = resultImageUrl;
+      pendingSourceImageJobIdByResultUrl.set(resultImageUrl, jobId);
     },
     []
   );
 
   const dropPendingSourceImageJob = useCallback((jobId: string) => {
-    pendingSourceImageMapRef.current.delete(jobId);
+    const entry = pendingSourceImageMap.get(jobId);
+    if (entry?.resultImageUrl) {
+      pendingSourceImageJobIdByResultUrl.delete(entry.resultImageUrl);
+    }
+    pendingSourceImageMap.delete(jobId);
   }, []);
 
   const requestOpenStockTab = useCallback(() => {
@@ -169,6 +234,8 @@ export function GenerationStateProvider({
       clearPreviewImages,
       registerPendingSourceImage,
       consumePendingSourceImageBatch,
+      consumePendingSourceImageBatchByResultUrl,
+      bindPendingSourceImageResult,
       dropPendingSourceImageJob,
       requestOpenStockTab,
       openStockTabRequestId,
@@ -176,7 +243,9 @@ export function GenerationStateProvider({
     [
       clearPreviewImages,
       completedCount,
+      bindPendingSourceImageResult,
       consumePendingSourceImageBatch,
+      consumePendingSourceImageBatchByResultUrl,
       dropPendingSourceImageJob,
       generatingCount,
       isGenerating,

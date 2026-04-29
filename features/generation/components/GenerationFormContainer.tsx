@@ -250,6 +250,7 @@ export function GenerationFormContainer({
   const { upsertPreviewImage, removePreviewImage, clearPreviewImages } =
     previewImageActions;
   const registerPendingSourceImage = ctx?.registerPendingSourceImage;
+  const bindPendingSourceImageResult = ctx?.bindPendingSourceImageResult;
   const dropPendingSourceImageJob = ctx?.dropPendingSourceImageJob;
 
   const setProgressCounts = useCallback(
@@ -270,9 +271,13 @@ export function GenerationFormContainer({
         return;
       }
 
+      if (status.status === "succeeded" && status.resultImageUrl) {
+        bindPendingSourceImageResult?.(status.id, status.resultImageUrl);
+      }
+
       upsertPreviewImage(createPreviewImage(status.id, previewUrl));
     },
-    [removePreviewImage, upsertPreviewImage]
+    [bindPendingSourceImageResult, removePreviewImage, upsertPreviewImage]
   );
 
   const clearCompletionTimeout = useCallback(() => {

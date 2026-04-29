@@ -13,6 +13,7 @@
 # testing
 /coverage
 /playwright-report
+/.playwright-mcp/
 /playwright/.auth/
 /test-results
 /blob-report

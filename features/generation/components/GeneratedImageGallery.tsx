@@ -316,14 +316,16 @@ export function GeneratedImageGallery({
             // 拡大表示を閉じた瞬間に、当該画像が「upload 由来の生成 (jobId 経由で
             // pending File が紐づいている)」なら保存促進ダイアログを 1 回だけ出す。
             const jobId = closedImage?.jobId;
-            if (!ctx || !jobId) return;
-            const batch = ctx.consumePendingSourceImageBatch(jobId);
+            if (!ctx || !closedImage) return;
+            const batch =
+              (jobId ? ctx.consumePendingSourceImageBatch(jobId) : null) ??
+              ctx.consumePendingSourceImageBatchByResultUrl(closedImage.url);
             if (batch) {
               setPendingSavePrompt(batch);
               setIsSavePromptOpen(true);
               return;
             }
-            if (pendingSavePrompt?.jobIds.includes(jobId)) {
+            if (jobId && pendingSavePrompt?.jobIds.includes(jobId)) {
               setIsSavePromptOpen(true);
             }
           }}
