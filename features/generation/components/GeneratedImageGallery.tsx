@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PostModal } from "@/features/posts/components/PostModal";
+import { HOME_POST_REFRESH_EVENT } from "@/features/posts/lib/home-post-refresh";
 import type { GeneratedImageData } from "../types";
 import { ImageModal } from "./ImageModal";
 import { SaveSourceImageToStockDialog } from "./SaveSourceImageToStockDialog";
@@ -107,6 +108,19 @@ export function GeneratedImageGallery({
     window.setTimeout(() => {
       router.refresh();
     }, 0);
+
+    // PC（高速 CPU + プリフェッチ済み）では router.push("/") が即座に完了して
+    // router.refresh() が navigation 完了前に走り、Next.js 側で no-op 化されて
+    // 新着投稿が反映されない場合がある。防御的フォールバックとして、
+    // ナビゲーション完了が見込まれるタイミングで HOME_POST_REFRESH_EVENT を
+    // 再ディスパッチし、ホーム画面の PostList が sessionStorage を再消費できる
+    // 経路を確保する。
+    //
+    // 二重 fetch にはならない: 既にマウント時に消費済みの場合は
+    // consumePendingHomePostRefresh() が null を返してイベントハンドラが早期 return する。
+    window.setTimeout(() => {
+      window.dispatchEvent(new Event(HOME_POST_REFRESH_EVENT));
+    }, 300);
   };
 
   // onLoad が発火しない場合のフォールバック（キャッシュ済み・ネットワーク遅延等）
