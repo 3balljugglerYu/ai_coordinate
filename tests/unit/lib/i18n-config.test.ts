@@ -115,8 +115,8 @@ describe("I18nConfig unit tests from EARS specs", () => {
 
   describe("I18N-008 resolveLocaleFromAcceptLanguage", () => {
     test("resolveLocaleFromAcceptLanguage_ヘッダー未指定の場合_DEFAULT_LOCALEを返す", () => {
-      expect(resolveLocaleFromAcceptLanguage(undefined)).toBe("en");
-      expect(resolveLocaleFromAcceptLanguage(null)).toBe("en");
+      expect(resolveLocaleFromAcceptLanguage(undefined)).toBe("ja");
+      expect(resolveLocaleFromAcceptLanguage(null)).toBe("ja");
     });
 
     test("resolveLocaleFromAcceptLanguage_ja系候補がある場合_jaを返す", () => {
@@ -175,7 +175,7 @@ describe("I18nConfig unit tests from EARS specs", () => {
           cookieLocale: undefined,
           acceptLanguage: undefined,
         })
-      ).toBe("en");
+      ).toBe("ja");
     });
   });
 });

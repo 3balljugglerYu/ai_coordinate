@@ -2,7 +2,7 @@ export const locales = ["ja", "en"] as const;
 
 export type Locale = (typeof locales)[number];
 
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "ja";
 export const LOCALE_COOKIE = "NEXT_LOCALE";
 export const LOCALE_HEADER = "X-NEXT-INTL-LOCALE";
 const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
