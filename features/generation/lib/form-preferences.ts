@@ -25,9 +25,24 @@ import {
 
 export const SELECTED_MODEL_STORAGE_KEY = "persta-ai:last-selected-model";
 export const BACKGROUND_MODE_STORAGE_KEY = "persta-ai:last-background-mode";
+export const IMAGE_SOURCE_TYPE_STORAGE_KEY = "persta-ai:last-image-source-type";
+export const SELECTED_STOCK_ID_STORAGE_KEY = "persta-ai:last-selected-stock-id";
+export const COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY =
+  "persta-ai:coordinate-stock-save-prompt-dismissed";
+export const LEGACY_SELECTED_STOCK_ID_KEY = "selectedStockId";
 
 const DEFAULT_MODEL: GeminiModel = DEFAULT_GENERATION_MODEL;
 const DEFAULT_BACKGROUND_MODE: BackgroundMode = "keep";
+
+export type PersistedImageSourceType = "upload" | "stock";
+const PERSISTED_IMAGE_SOURCE_TYPES: ReadonlyArray<PersistedImageSourceType> = [
+  "upload",
+  "stock",
+];
+const DEFAULT_IMAGE_SOURCE_TYPE: PersistedImageSourceType = "upload";
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * GenerationForm の `<Select>` で実際に表示しているモデル ID 一覧。
@@ -64,6 +79,15 @@ function safeWriteLocalStorage(key: string, value: string): void {
   }
 }
 
+function safeRemoveLocalStorage(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
 export function readPreferredModel(): GeminiModel {
   const stored = safeReadLocalStorage(SELECTED_MODEL_STORAGE_KEY);
   if (stored && (PERSISTABLE_MODELS as ReadonlyArray<string>).includes(stored)) {
@@ -95,4 +119,86 @@ export function writePreferredBackgroundMode(mode: BackgroundMode): void {
     return;
   }
   safeWriteLocalStorage(BACKGROUND_MODE_STORAGE_KEY, mode);
+}
+
+export function readPreferredImageSourceType(): PersistedImageSourceType {
+  const stored = safeReadLocalStorage(IMAGE_SOURCE_TYPE_STORAGE_KEY);
+  if (
+    stored &&
+    (PERSISTED_IMAGE_SOURCE_TYPES as ReadonlyArray<string>).includes(stored)
+  ) {
+    return stored as PersistedImageSourceType;
+  }
+  return DEFAULT_IMAGE_SOURCE_TYPE;
+}
+
+export function writePreferredImageSourceType(
+  type: PersistedImageSourceType
+): void {
+  if (!(PERSISTED_IMAGE_SOURCE_TYPES as ReadonlyArray<string>).includes(type)) {
+    return;
+  }
+  safeWriteLocalStorage(IMAGE_SOURCE_TYPE_STORAGE_KEY, type);
+}
+
+export function readPreferredSelectedStockId(): string | null {
+  const stored = safeReadLocalStorage(SELECTED_STOCK_ID_STORAGE_KEY);
+  if (stored && UUID_REGEX.test(stored)) {
+    return stored;
+  }
+  return null;
+}
+
+export function writePreferredSelectedStockId(stockId: string | null): void {
+  if (stockId === null) {
+    safeRemoveLocalStorage(SELECTED_STOCK_ID_STORAGE_KEY);
+    return;
+  }
+  if (!UUID_REGEX.test(stockId)) {
+    return;
+  }
+  safeWriteLocalStorage(SELECTED_STOCK_ID_STORAGE_KEY, stockId);
+}
+
+export function readCoordinateStockSavePromptDismissed(): boolean {
+  return (
+    safeReadLocalStorage(
+      COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY
+    ) === "true"
+  );
+}
+
+export function writeCoordinateStockSavePromptDismissed(
+  dismissed: boolean
+): void {
+  if (dismissed) {
+    safeWriteLocalStorage(
+      COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
+      "true"
+    );
+    return;
+  }
+
+  safeRemoveLocalStorage(COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY);
+}
+
+/**
+ * 旧キー `"selectedStockId"` から新キーへの一回限りの移行。
+ * - 旧キーが UUID 形式なら新キーへ転記
+ * - そうでなければ単に破棄
+ * - いずれにせよ旧キーは削除する
+ */
+export function migrateLegacySelectedStockIdKey(): void {
+  if (typeof window === "undefined") return;
+  const legacy = safeReadLocalStorage(LEGACY_SELECTED_STOCK_ID_KEY);
+  if (legacy === null) {
+    return;
+  }
+  if (UUID_REGEX.test(legacy)) {
+    const existing = safeReadLocalStorage(SELECTED_STOCK_ID_STORAGE_KEY);
+    if (!existing) {
+      safeWriteLocalStorage(SELECTED_STOCK_ID_STORAGE_KEY, legacy);
+    }
+  }
+  safeRemoveLocalStorage(LEGACY_SELECTED_STOCK_ID_KEY);
 }

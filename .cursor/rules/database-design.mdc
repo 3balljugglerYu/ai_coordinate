@@ -216,7 +216,7 @@ alwaysApply: false
 
 #### `profiles`
 - 主キー: `id`
-- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `signup_source`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
+- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `signup_source`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `coordinate_stocks_tab_seen_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
 - 外部キー: `id -> auth.users.id`, `user_id -> auth.users.id`
 - 制約: `user_id` UNIQUE、`referral_code` UNIQUE、`signup_source` は現在 `style` のみ
 - RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ

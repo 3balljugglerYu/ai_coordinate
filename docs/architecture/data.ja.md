@@ -398,6 +398,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `style_guest_generate_attempts` | 名前は歴史的経緯で `style_*` のままだが、Phase 2 以降は **画面横断ゲスト生成試行** (`/style` と `/coordinate` を合算) を記録する内部テーブル。`client_ip_hash` カラムには `SHA-256("<client_ip>|<persta_guest_id>|<salt>")` を保存し、IP + 永続 Cookie の複合識別子で重複を防ぐ。制限は **JST 1 日 1 回**（短期 1 分上限は実質無効化）。識別子が取れない場合は reserve 前に 400 で拒否する。system failure 時は `release_style_guest_generate_attempt()` で reservation を無効化できる。詳細は `docs/planning/unify-style-coordinate-usage-limits-plan.md` の ADR-002 / ADR-009 / UCL-002 / UCL-010 |
 | `style_presets` | One-Tap Style の管理プリセット。admin route は service role + RPC で create/update/delete/reorder を原子的に処理し、公開側は `published` のみ参照する。現在は `styling_prompt` と任意の `background_prompt` を持ち、背景変更 UI と generate route がそれぞれ参照する |
 | `profiles.signup_source` | 初回登録の導線属性。現在は `/style` 起点の新規登録を `style` として保持し、admin の One-Tap Style ファネル集計で使用する |
+| `profiles.coordinate_stocks_tab_seen_at` | `/coordinate` のストックタブを最後に開いた日時。`MAX(source_image_stocks.created_at)` と比較し、未確認ストックの赤丸表示を判定する |
 
 ## 変更ガイド: 何を変える時にどこから読むか
 

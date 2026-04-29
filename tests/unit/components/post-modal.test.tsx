@@ -4,7 +4,10 @@ import { useTranslations } from "next-intl";
 import { PostModal } from "@/features/posts/components/PostModal";
 import { postImageAPI } from "@/features/posts/lib/api";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
-import { persistPendingHomePostRefresh } from "@/features/posts/lib/home-post-refresh";
+import {
+  notifyPendingHomePostRefresh,
+  persistPendingHomePostRefresh,
+} from "@/features/posts/lib/home-post-refresh";
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
@@ -19,6 +22,7 @@ jest.mock("@/features/notifications/components/UnreadNotificationProvider", () =
 }));
 
 jest.mock("@/features/posts/lib/home-post-refresh", () => ({
+  notifyPendingHomePostRefresh: jest.fn(),
   persistPendingHomePostRefresh: jest.fn(),
 }));
 
@@ -49,6 +53,10 @@ const persistPendingHomePostRefreshMock =
   persistPendingHomePostRefresh as jest.MockedFunction<
     typeof persistPendingHomePostRefresh
   >;
+const notifyPendingHomePostRefreshMock =
+  notifyPendingHomePostRefresh as jest.MockedFunction<
+    typeof notifyPendingHomePostRefresh
+  >;
 
 const postTranslations = {
   captionTooLong: ({ max }: { max: number }) => `キャプションは${max}文字以内で入力してください`,
@@ -76,15 +84,17 @@ describe("PostModal", () => {
   let refreshUnreadCountMock: jest.Mock;
 
   beforeAll(() => {
-    delete (window as Window & typeof globalThis & { location?: Location }).location;
-    (window as Window & typeof globalThis & { location: Location }).location = {
-      href: "",
-    } as unknown as Location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { href: "" },
+    });
   });
 
   afterAll(() => {
-    (window as Window & typeof globalThis & { location: Location }).location =
-      originalLocation;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   beforeEach(() => {
@@ -109,7 +119,14 @@ describe("PostModal", () => {
       bonus_granted: 50,
     });
     useUnreadNotificationCountMock.mockReturnValue({
+      unreadCount: 0,
+      hasAnnouncementPageDot: false,
+      hasAnnouncementTabDot: false,
+      hasSidebarDot: false,
       refreshUnreadCount: refreshUnreadCountMock,
+      refreshAnnouncementDots: jest.fn(),
+      markAnnouncementPageSeen: jest.fn(),
+      markAnnouncementTabSeen: jest.fn(),
     });
   });
 
@@ -148,8 +165,44 @@ describe("PostModal", () => {
       bonusGranted: 50,
     });
     expect(refreshUnreadCountMock).toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", { method: "POST" });
+    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", {
+      method: "POST",
+    });
+    expect(notifyPendingHomePostRefreshMock).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(window.location.href).toBe("/");
+  });
+
+  test("投稿成功ハンドラが既定遷移を抑止した場合_ホームへ遷移しない", async () => {
+    const onOpenChange = jest.fn();
+    const onPostSuccess = jest
+      .fn()
+      .mockResolvedValue({ skipDefaultRedirect: true });
+
+    render(
+      <PostModal
+        open
+        onOpenChange={onOpenChange}
+        imageId="image-1"
+        onPostSuccess={onPostSuccess}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "投稿する" }));
+
+    await waitFor(() => {
+      expect(onPostSuccess).toHaveBeenCalledWith({
+        id: "post-1",
+        is_posted: true,
+        caption: "fresh caption",
+        posted_at: "2026-03-16T00:00:00.000Z",
+        bonus_granted: 50,
+      });
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", { method: "POST" });
+    expect(notifyPendingHomePostRefreshMock).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(window.location.href).toBe("");
   });
 });

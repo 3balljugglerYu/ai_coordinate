@@ -5,6 +5,11 @@ import { StockImageListClient } from "./StockImageListClient";
 import { StockImageUploadCard } from "./StockImageUploadCard";
 import type { SourceImageStock } from "../lib/database";
 import { useRouter } from "next/navigation";
+import {
+  SELECTED_STOCK_ID_STORAGE_KEY,
+  writePreferredImageSourceType,
+  writePreferredSelectedStockId,
+} from "../lib/form-preferences";
 
 interface StockImageListInteractiveProps {
   stocks: SourceImageStock[];
@@ -25,15 +30,19 @@ export function StockImageListInteractive({
 
   const handleSelect = (stock: SourceImageStock | null) => {
     setSelectedStock(stock);
-    // 選択状態をlocalStorageに保存して、GenerationFormと共有
+    // 選択状態を localStorage に保存して、別タブの GenerationForm と共有
+    writePreferredSelectedStockId(stock?.id ?? null);
     if (stock) {
-      localStorage.setItem("selectedStockId", stock.id);
-      // カスタムイベントを発火してGenerationFormに通知
-      window.dispatchEvent(new Event("storage"));
-    } else {
-      localStorage.removeItem("selectedStockId");
-      // カスタムイベントを発火してGenerationFormに通知
-      window.dispatchEvent(new Event("storage"));
+      writePreferredImageSourceType("stock");
+    }
+    // 同一タブ内の他コンポーネントへ通知（同一タブでは storage event は発火しないため）
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: SELECTED_STOCK_ID_STORAGE_KEY,
+          newValue: stock?.id ?? null,
+        })
+      );
     }
   };
 
@@ -41,7 +50,7 @@ export function StockImageListInteractive({
     // 削除された画像が選択されていた場合は選択を解除
     if (selectedStock) {
       setSelectedStock(null);
-      localStorage.removeItem("selectedStockId");
+      writePreferredSelectedStockId(null);
     }
   };
 

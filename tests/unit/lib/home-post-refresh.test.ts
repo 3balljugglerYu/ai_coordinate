@@ -1,5 +1,7 @@
 import {
   consumePendingHomePostRefresh,
+  HOME_POST_REFRESH_EVENT,
+  notifyPendingHomePostRefresh,
   persistPendingHomePostRefresh,
 } from "@/features/posts/lib/home-post-refresh";
 
@@ -60,5 +62,17 @@ describe("home-post-refresh", () => {
     expect(consumePendingHomePostRefresh()).toBeNull();
     expect(getItem).toHaveBeenCalledWith(STORAGE_KEY);
     expect(removeItem).toHaveBeenCalledWith(STORAGE_KEY);
+  });
+
+  test("notifyPendingHomePostRefresh_ホーム更新イベントを通知する", () => {
+    const listener = jest.fn();
+    window.addEventListener(HOME_POST_REFRESH_EVENT, listener);
+
+    try {
+      notifyPendingHomePostRefresh();
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener(HOME_POST_REFRESH_EVENT, listener);
+    }
   });
 });

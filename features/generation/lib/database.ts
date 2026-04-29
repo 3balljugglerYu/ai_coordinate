@@ -474,3 +474,77 @@ export async function getStockImageUsageCount(stockId: string): Promise<number> 
 
   return data || 0;
 }
+
+/**
+ * ストックタブの未確認状態を取得（赤丸ドット表示判定）。
+ */
+export interface StocksTabUnreadState {
+  hasDot: boolean;
+  latestStockCreatedAt: string | null;
+}
+
+export async function getStocksTabUnreadState(): Promise<StocksTabUnreadState> {
+  const response = await fetch("/api/coordinate/stocks-unread-state", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (response.status === 401) {
+    return { hasDot: false, latestStockCreatedAt: null };
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.error || "ストックの未確認状態の取得に失敗しました"
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * ストックタブを開いた契機で profiles.coordinate_stocks_tab_seen_at を now() に更新。
+ */
+export async function markStocksTabSeen(): Promise<void> {
+  const response = await fetch("/api/coordinate/stocks-tab-seen", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.error || "ストックタブの既読状態の更新に失敗しました"
+    );
+  }
+}
+
+/**
+ * ユーザーがストックに保存した元画像と、そのストック作成より前に走った image_jobs を紐づける。
+ * generated_images 側は image_jobs.result_image_url との一致で best-effort 更新する。
+ */
+export async function linkSourceImageStockToJobs(
+  stockId: string,
+  jobIds: string[]
+): Promise<{ updatedJobIds: string[]; updatedGeneratedImageIds: string[] }> {
+  const response = await fetch("/api/generation-status/link-stock", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stockId, jobIds }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "ストックの紐づけに失敗しました");
+  }
+
+  const data = (await response.json()) as {
+    updatedJobIds: string[];
+    updatedGeneratedImageIds: string[];
+  };
+  return {
+    updatedJobIds: data.updatedJobIds ?? [],
+    updatedGeneratedImageIds: data.updatedGeneratedImageIds ?? [],
+  };
+}

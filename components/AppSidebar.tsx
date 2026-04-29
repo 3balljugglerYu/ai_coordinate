@@ -16,6 +16,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getCurrentUser, onAuthStateChange, signOut } from "@/features/auth/lib/auth-client";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import {
+  getCoordinateSourceStockSavePromptDot,
+  subscribeCoordinateSourceStockSavePromptDot,
+} from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
 import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import {
@@ -58,6 +62,10 @@ export function AppSidebar() {
   const [, startTransition] = useTransition();
   const hasPrefetched = useRef(false);
   const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
+  const [
+    hasCoordinateSourceStockSavePromptDot,
+    setHasCoordinateSourceStockSavePromptDot,
+  ] = useState(getCoordinateSourceStockSavePromptDot);
   const { hasMissionTabDot, markMissionTabSnoozed } = useMissionDots();
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -94,6 +102,12 @@ export function AppSidebar() {
       hasPrefetched.current = true;
     }
   }, [localizedHomePath, user, router]);
+
+  useEffect(() => {
+    return subscribeCoordinateSourceStockSavePromptDot(
+      setHasCoordinateSourceStockSavePromptDot
+    );
+  }, []);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -228,6 +242,10 @@ export function AppSidebar() {
                   {path === "/notifications" && hasSidebarDot && (
                     <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                   )}
+                  {path === "/coordinate" &&
+                    hasCoordinateSourceStockSavePromptDot && (
+                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                    )}
                   {path === "/challenge" && hasMissionTabDot && (
                     <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                   )}

@@ -16,6 +16,10 @@ import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import {
+  getCoordinateSourceStockSavePromptDot,
+  subscribeCoordinateSourceStockSavePromptDot,
+} from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
+import {
   DEFAULT_LOCALE,
   isLocale,
   localizePublicPath,
@@ -39,6 +43,10 @@ export function NavigationBar() {
   const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
   const { hasMissionTabDot, markMissionTabSnoozed } = useMissionDots();
   const [pendingPathname, setPendingPathname] = useState<string | null>(null);
+  const [
+    hasCoordinateSourceStockSavePromptDot,
+    setHasCoordinateSourceStockSavePromptDot,
+  ] = useState(getCoordinateSourceStockSavePromptDot);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
   const effectiveActivePathname = pendingPathname ?? normalizedPathname;
@@ -97,6 +105,12 @@ export function NavigationBar() {
         clearTimeout(pendingResetTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    return subscribeCoordinateSourceStockSavePromptDot(
+      setHasCoordinateSourceStockSavePromptDot
+    );
   }, []);
 
   const handleNavigation = (path: string) => {
@@ -197,6 +211,10 @@ export function NavigationBar() {
                     {path === "/notifications" && hasSidebarDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}
+                    {path === "/coordinate" &&
+                      hasCoordinateSourceStockSavePromptDot && (
+                        <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                      )}
                     {path === "/challenge" && hasMissionTabDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}

@@ -401,6 +401,7 @@ Use this section to decide whether a new feature should use session access, serv
 | `style_guest_generate_attempts` | The name is historical; from Phase 2 this table records **cross-screen guest generation attempts** (combined across `/style` and `/coordinate`). The `client_ip_hash` column stores `SHA-256("<client_ip>|<persta_guest_id>|<salt>")` so the identifier mixes IP and a persistent cookie. Limit is **1 attempt per JST day** (the per-minute short window is effectively disabled). Requests without an identifier are rejected before reservation. System-caused failures can release a reservation through `release_style_guest_generate_attempt()`. See `docs/planning/unify-style-coordinate-usage-limits-plan.md` ADR-002 / ADR-009 / UCL-002 / UCL-010 |
 | `style_presets` | One-Tap Style managed presets. Admin routes perform create/update/delete/reorder atomically through service-role RPCs, while public `/style` reads only `published` rows. Presets now carry `styling_prompt` plus an optional `background_prompt` consumed by the background-change UI and generate route |
 | `profiles.signup_source` | First-touch signup attribution. The app currently stores `/style`-origin registrations as `style` and uses the field to power the One-Tap Style signup funnel in admin |
+| `profiles.coordinate_stocks_tab_seen_at` | Last time the user opened the `/coordinate` stock tab. The app compares it with `MAX(source_image_stocks.created_at)` to decide whether to show the unseen-stock dot |
 
 ## Change guide: where to edit what
 

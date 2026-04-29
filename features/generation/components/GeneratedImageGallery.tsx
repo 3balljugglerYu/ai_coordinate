@@ -3,14 +3,29 @@
 import { useState, useEffect } from "react";
 import { Download, ZoomIn, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import Masonry from "react-masonry-css";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PostModal } from "@/features/posts/components/PostModal";
+import { HOME_POST_REFRESH_EVENT } from "@/features/posts/lib/home-post-refresh";
 import type { GeneratedImageData } from "../types";
 import { ImageModal } from "./ImageModal";
+import { SaveSourceImageToStockDialog } from "./SaveSourceImageToStockDialog";
 import { determineFileName } from "@/lib/utils";
+import {
+  type PendingSourceImageBatch,
+  useGenerationState,
+} from "../context/GenerationStateContext";
+import {
+  showCoordinateSourceStockSavePrompt,
+} from "../lib/coordinate-source-stock-save-prompt-state";
+import {
+  readCoordinateStockSavePromptDismissed,
+  writePreferredImageSourceType,
+  writePreferredSelectedStockId,
+} from "../lib/form-preferences";
 
 interface GeneratedImageGalleryProps {
   images: GeneratedImageData[];
@@ -32,12 +47,80 @@ export function GeneratedImageGallery({
   onDownload,
 }: GeneratedImageGalleryProps) {
   const t = useTranslations("coordinate");
+  const router = useRouter();
+  const ctx = useGenerationState();
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const [postModalImageId, setPostModalImageId] = useState<string | null>(null);
+  const [postModalImage, setPostModalImage] =
+    useState<GeneratedImageData | null>(null);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
+  const [pendingSavePrompt, setPendingSavePrompt] = useState<{
+    file: File;
+    jobIds: string[];
+  } | null>(null);
+  const [isSavePromptOpen, setIsSavePromptOpen] = useState(false);
 
   const handleImageLoad = (imageRenderKey: string) => {
     setLoadedImageIds((prev) => new Set(prev).add(imageRenderKey));
+  };
+
+  const consumePendingSourceImageBatchForImage = (
+    image: GeneratedImageData
+  ): PendingSourceImageBatch | null => {
+    if (!ctx) return null;
+
+    const jobId = image.jobId;
+    return (
+      (jobId ? ctx.consumePendingSourceImageBatch(jobId) : null) ??
+      ctx.consumePendingSourceImageBatchByResultUrl(image.url)
+    );
+  };
+
+  const openSavePrompt = (batch: PendingSourceImageBatch) => {
+    if (readCoordinateStockSavePromptDismissed()) {
+      return;
+    }
+
+    setPendingSavePrompt(batch);
+    setIsSavePromptOpen(true);
+  };
+
+  const closeSavePrompt = () => {
+    setIsSavePromptOpen(false);
+    setPendingSavePrompt(null);
+  };
+
+  const scrollToPageTopOnSaveStart = () => {
+    if (typeof window === "undefined") return;
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  };
+
+  const navigateHomeAfterPostSuccess = () => {
+    router.push("/");
+
+    if (typeof window === "undefined") return;
+
+    // ホームに反映された新着投稿を即座に表示するため、RSC を強制再 fetch する。
+    // CoordinateSourceStockSavePromptDialogHost は LocaleShell の Suspense 外で
+    // マウントされているため、refresh による Suspense 再活性化で unmount されない。
+    window.setTimeout(() => {
+      router.refresh();
+    }, 0);
+
+    // PC（高速 CPU + プリフェッチ済み）では router.push("/") が即座に完了して
+    // router.refresh() が navigation 完了前に走り、Next.js 側で no-op 化されて
+    // 新着投稿が反映されない場合がある。防御的フォールバックとして、
+    // ナビゲーション完了が見込まれるタイミングで HOME_POST_REFRESH_EVENT を
+    // 再ディスパッチし、ホーム画面の PostList が sessionStorage を再消費できる
+    // 経路を確保する。
+    //
+    // 二重 fetch にはならない: 既にマウント時に消費済みの場合は
+    // consumePendingHomePostRefresh() が null を返してイベントハンドラが早期 return する。
+    window.setTimeout(() => {
+      window.dispatchEvent(new Event(HOME_POST_REFRESH_EVENT));
+    }, 300);
   };
 
   // onLoad が発火しない場合のフォールバック（キャッシュ済み・ネットワーク遅延等）
@@ -272,7 +355,7 @@ export function GeneratedImageGallery({
                         disabled={disablePostAndDownload}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPostModalImageId(image.id);
+                          setPostModalImage(image);
                         }}
                       >
                         <Plus className="h-4 w-4" />
@@ -303,27 +386,75 @@ export function GeneratedImageGallery({
         <ImageModal
           images={images}
           initialIndex={selectedImageIndex}
-          onClose={() => setSelectedImageIndex(null)}
+          onClose={(closedImage) => {
+            setSelectedImageIndex(null);
+            // 拡大表示を閉じた瞬間に、当該画像が「upload 由来の生成 (jobId 経由で
+            // pending File が紐づいている)」なら保存促進ダイアログを 1 回だけ出す。
+            if (!ctx || !closedImage) return;
+            const jobId = closedImage.jobId;
+            const batch = consumePendingSourceImageBatchForImage(closedImage);
+            if (batch) {
+              openSavePrompt(batch);
+              return;
+            }
+            if (
+              jobId &&
+              pendingSavePrompt?.jobIds.includes(jobId) &&
+              !readCoordinateStockSavePromptDismissed()
+            ) {
+              setIsSavePromptOpen(true);
+            }
+          }}
           onDownload={handleDownload}
           onPost={(image) => {
             if (image.isPreview) {
               return;
             }
-            setPostModalImageId(image.id);
+            setPostModalImage(image);
             setSelectedImageIndex(null);
           }}
           disablePostAndDownload={disablePostAndDownload}
         />
       )}
 
-      {/* 投稿モーダル */}
-      {postModalImageId && (
-        <PostModal
-          open={!!postModalImageId}
+      {pendingSavePrompt && (
+        <SaveSourceImageToStockDialog
+          open={isSavePromptOpen}
           onOpenChange={(open) => {
-            if (!open) setPostModalImageId(null);
+            if (!open) {
+              closeSavePrompt();
+              return;
+            }
+            setIsSavePromptOpen(true);
           }}
-          imageId={postModalImageId}
+          originalFile={pendingSavePrompt.file}
+          jobIds={pendingSavePrompt.jobIds}
+          onSaveStart={scrollToPageTopOnSaveStart}
+          onSaved={(stockId) => {
+            writePreferredImageSourceType("stock");
+            writePreferredSelectedStockId(stockId);
+          }}
+        />
+      )}
+
+      {/* 投稿モーダル */}
+      {postModalImage && (
+        <PostModal
+          open={!!postModalImage}
+          onOpenChange={(open) => {
+            if (!open) setPostModalImage(null);
+          }}
+          imageId={postModalImage.id}
+          onPostSuccess={() => {
+            const batch = consumePendingSourceImageBatchForImage(postModalImage);
+            if (!batch) {
+              return;
+            }
+
+            showCoordinateSourceStockSavePrompt(batch);
+            navigateHomeAfterPostSuccess();
+            return { skipDefaultRedirect: true };
+          }}
         />
       )}
 

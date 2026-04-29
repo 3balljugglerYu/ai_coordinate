@@ -10,7 +10,11 @@ import { determineFileName } from "@/lib/utils";
 interface ImageModalProps {
   images: GeneratedImageData[];
   initialIndex: number;
-  onClose: () => void;
+  /**
+   * 閉じる契機。close 時に表示していた画像が保存促進などで必要な場合があるため、
+   * 該当 image を引数で渡す（後方互換のため引数省略でも呼び出せる）。
+   */
+  onClose: (image?: GeneratedImageData) => void;
   onDownload?: (image: GeneratedImageData) => void;
   onPost?: (image: GeneratedImageData) => void;
   /** チュートリアルStep11（PC）時に投稿・ダウンロードを無効化 */
@@ -43,7 +47,7 @@ export function ImageModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onClose(currentImage);
       } else if (e.key === "ArrowLeft" && hasMultipleImages) {
         handlePrevious();
       } else if (e.key === "ArrowRight" && hasMultipleImages) {
@@ -53,7 +57,7 @@ export function ImageModal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, hasMultipleImages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentImage, currentIndex, hasMultipleImages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
@@ -261,7 +265,7 @@ export function ImageModal({
               ) {
                 document.dispatchEvent(new CustomEvent("tutorial:modal-closed"));
               }
-              onClose();
+              onClose(currentImage);
             }}
           >
             <X className="h-5 w-5" />

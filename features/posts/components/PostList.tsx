@@ -17,6 +17,7 @@ import type { Post, SortType } from "../types";
 import { isValidSortType } from "../lib/utils";
 import {
   consumePendingHomePostRefresh,
+  HOME_POST_REFRESH_EVENT,
   type PendingHomePostRefresh,
 } from "../lib/home-post-refresh";
 
@@ -71,7 +72,7 @@ export function PostList({
     rootMargin: "200px",
   });
 
-  useEffect(() => {
+  const consumePendingRefresh = useCallback(() => {
     const pending = consumePendingHomePostRefresh();
     if (!pending) {
       return;
@@ -116,6 +117,17 @@ export function PostList({
       });
     }
   }, [postsT, toast]);
+
+  useEffect(() => {
+    consumePendingRefresh();
+  }, [consumePendingRefresh]);
+
+  useEffect(() => {
+    window.addEventListener(HOME_POST_REFRESH_EVENT, consumePendingRefresh);
+    return () => {
+      window.removeEventListener(HOME_POST_REFRESH_EVENT, consumePendingRefresh);
+    };
+  }, [consumePendingRefresh]);
 
   // 現在のユーザーIDを取得
   useEffect(() => {

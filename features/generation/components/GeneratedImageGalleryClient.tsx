@@ -119,6 +119,7 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
       return {
         ...image,
+        jobId: matchingPreview.jobId ?? image.jobId,
         galleryKey:
           matchingPreview.galleryKey ??
           matchingPreview.id ??

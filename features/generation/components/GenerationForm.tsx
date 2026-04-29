@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Lock, Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,24 +13,37 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { LockableModelSelect } from "./LockableModelSelect";
 import { StockImageListClient } from "./StockImageListClient";
-import { StockImageUploadCard } from "./StockImageUploadCard";
+import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
   getMaxGenerationCount,
   type SubscriptionPlan,
 } from "@/features/subscription/subscription-config";
-import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
+import {
+  getSourceImageStocks,
+  getStockImageLimit,
+  type SourceImageStock,
+} from "../lib/database";
 import { getCurrentUserId } from "../lib/current-user";
+import {
+  COORDINATE_STOCK_CREATED_EVENT,
+  useCoordinateStocksUnread,
+} from "../hooks/useCoordinateStocksUnread";
 import {
   getPercoinCost,
   resolveEffectiveModelForAuthState,
 } from "../lib/model-config";
 import {
+  migrateLegacySelectedStockIdKey,
   readPreferredBackgroundMode,
+  readPreferredImageSourceType,
   readPreferredModel,
+  readPreferredSelectedStockId,
   writePreferredBackgroundMode,
+  writePreferredImageSourceType,
   writePreferredModel,
+  writePreferredSelectedStockId,
 } from "../lib/form-preferences";
 import {
   GENERATION_PROMPT_MAX_LENGTH,
@@ -46,6 +59,8 @@ import type {
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
+import { useGenerationState } from "../context/GenerationStateContext";
+import { clearCoordinateSourceStockSavePromptDot } from "../lib/coordinate-source-stock-save-prompt-state";
 
 interface GenerationFormProps {
   subscriptionPlan: SubscriptionPlan;
@@ -73,6 +88,31 @@ type BackgroundModeOption = {
   label: string;
   description: string;
 };
+type RefreshStocksOptions = {
+  showLoading?: boolean;
+  validateSelectedStock?: boolean;
+  waitForStockImageId?: string | null;
+};
+
+function preloadImage(src: string): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let finished = false;
+    const image = new window.Image();
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+
+    const timeoutId = window.setTimeout(finish, 5000);
+    image.onload = finish;
+    image.onerror = finish;
+    image.src = src;
+  });
+}
 
 export function GenerationForm({
   subscriptionPlan,
@@ -82,8 +122,11 @@ export function GenerationForm({
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
+  const generationState = useGenerationState();
+  const openStockTabRequestId = generationState?.openStockTabRequestId ?? 0;
   const [showAuthModal, setShowAuthModal] = useState(false);
   const currentUrl = useCurrentUrlForRedirect();
+  const lastHandledOpenStockTabRequestIdRef = useRef(0);
   const backgroundModeOptions: BackgroundModeOption[] = [
     {
       value: "ai_auto",
@@ -111,6 +154,9 @@ export function GenerationForm({
   const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
+  const [recentlySavedStockId, setRecentlySavedStockId] = useState<string | null>(
+    null
+  );
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
@@ -122,8 +168,15 @@ export function GenerationForm({
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
+  const [isRefreshingStocks, setIsRefreshingStocks] = useState(false);
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
+  const activeStockRefreshCountRef = useRef(0);
+  const isAuthenticated = authState === "authenticated";
+  const {
+    hasDot: hasStockTabDot,
+    markSeen: markStockTabSeen,
+  } = useCoordinateStocksUnread({ enabled: isAuthenticated });
   const promptLength = prompt.length;
   const isPromptTooLong = isGenerationPromptTooLong(prompt);
   const maxGenerationCount = getMaxGenerationCount(subscriptionPlan);
@@ -136,12 +189,17 @@ export function GenerationForm({
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
   }, [maxGenerationCount]);
 
-  // ブラウザに保存された前回の選択（モデル / 背景設定）をマウント時に復元する。
-  // SSR との hydration mismatch を避けるため初期値は default のまま、
+  // ブラウザに保存された前回の選択（モデル / 背景設定 / 画像ソースタブ / ストック選択）を
+  // マウント時に復元する。SSR との hydration mismatch を避けるため初期値は default のまま、
   // クライアント側の useEffect で上書きする。
   useEffect(() => {
+    migrateLegacySelectedStockIdKey();
     setSelectedModel(readPreferredModel());
     setBackgroundMode(readPreferredBackgroundMode());
+    const restoredImageSourceType = readPreferredImageSourceType();
+    const restoredStockId = readPreferredSelectedStockId();
+    setImageSourceType(restoredImageSourceType);
+    setSelectedStockId(restoredStockId);
   }, []);
 
   // ユーザー操作時にだけ localStorage に書き込むラッパー。
@@ -174,15 +232,34 @@ export function GenerationForm({
     return () => observer.disconnect();
   }, []);
 
-  // localStorageから選択されたストック画像IDを取得
+  // ストック選択 ID は上のマウント useEffect で `readPreferredSelectedStockId` 経由で復元する。
+  // 旧 `localStorage.getItem("selectedStockId")` 直接アクセスは削除済み。
+
+  // 投稿後にホームで保存した場合のナビ赤丸は、コーディネート画面を開いた時点で既読扱いにする。
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedId = localStorage.getItem("selectedStockId");
-      if (storedId) {
-        setSelectedStockId(storedId);
-      }
-    }
+    clearCoordinateSourceStockSavePromptDot();
   }, []);
+
+  // ストックタブを開いている間は赤丸ドットを既読化する。
+  // imageSourceType が "stock" に変化した瞬間と、マウント直後に "stock" だったケースを両方拾える。
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (imageSourceType !== "stock") return;
+    void markStockTabSeen();
+  }, [imageSourceType, isAuthenticated, markStockTabSeen]);
+
+  useEffect(() => {
+    const requestId = openStockTabRequestId;
+    if (!isAuthenticated) return;
+    if (requestId <= 0) return;
+    if (lastHandledOpenStockTabRequestIdRef.current === requestId) return;
+
+    lastHandledOpenStockTabRequestIdRef.current = requestId;
+    setImageSourceType("stock");
+    writePreferredImageSourceType("stock");
+    setUploadedImage(null);
+    void markStockTabSeen();
+  }, [openStockTabRequestId, isAuthenticated, markStockTabSeen]);
 
   const handleSubmit = async () => {
     const trimmedPrompt = prompt.trim();
@@ -234,51 +311,155 @@ export function GenerationForm({
   const hasSourceImage = imageSourceType === "upload" ? !!uploadedImage : !!selectedStockId;
   const isSubmitDisabled =
     !prompt.trim() || !hasSourceImage || isGenerating || isPromptTooLong;
+  const isStockLimitReached =
+    stockLimit !== null && currentCount !== null && currentCount >= stockLimit;
+  const shouldShowStockListLoading =
+    isLoadingStocks || (imageSourceType === "stock" && isRefreshingStocks);
+  const stockListContainsSelectedStock =
+    selectedStockId !== null && stocks.some((stock) => stock.id === selectedStockId);
+  const shouldShowGeneratedImagesFromSelectedStock =
+    selectedStockId !== null &&
+    !shouldShowStockListLoading &&
+    stockListContainsSelectedStock;
+  const displayedStocks = useMemo(() => {
+    if (!recentlySavedStockId) return stocks;
 
-  // localStorageの変更を監視
+    const recentlySavedStock = stocks.find(
+      (stock) => stock.id === recentlySavedStockId
+    );
+    if (!recentlySavedStock) return stocks;
+
+    return [
+      recentlySavedStock,
+      ...stocks.filter((stock) => stock.id !== recentlySavedStockId),
+    ];
+  }, [recentlySavedStockId, stocks]);
+
+  // localStorageの変更を別タブから監視（新キーに統一）。
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const handleStorageChange = () => {
-        const storedId = localStorage.getItem("selectedStockId");
-        setSelectedStockId(storedId);
-      };
-      window.addEventListener("storage", handleStorageChange);
-      return () => window.removeEventListener("storage", handleStorageChange);
-    }
+    if (typeof window === "undefined") return;
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === null) {
+        // localStorage.clear() の場合は再読込
+        setSelectedStockId(readPreferredSelectedStockId());
+        setImageSourceType(readPreferredImageSourceType());
+        return;
+      }
+      if (event.key === "persta-ai:last-selected-stock-id") {
+        setSelectedStockId(readPreferredSelectedStockId());
+      } else if (event.key === "persta-ai:last-image-source-type") {
+        setImageSourceType(readPreferredImageSourceType());
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // ストック画像と制限数を取得
-  useEffect(() => {
-    const fetchStocks = async () => {
+  const refreshStocks = useCallback(
+    async ({
+      showLoading = false,
+      validateSelectedStock = true,
+      waitForStockImageId = null,
+    }: RefreshStocksOptions = {}) => {
+      activeStockRefreshCountRef.current += 1;
+      setIsRefreshingStocks(true);
       try {
-        setIsLoadingStocks(true);
+        if (showLoading) {
+          setIsLoadingStocks(true);
+        }
         const userId = await getCurrentUserId();
         if (!userId) {
-          setIsLoadingStocks(false);
+          setStocks([]);
+          setStockLimit(null);
+          setCurrentCount(null);
           return;
         }
         const [stocksData, limit] = await Promise.all([
           getSourceImageStocks(50, 0),
           getStockImageLimit(),
         ]);
+        const stockToWaitFor =
+          waitForStockImageId !== null
+            ? stocksData.find((stock) => stock.id === waitForStockImageId)
+            : null;
+        if (stockToWaitFor?.image_url) {
+          await preloadImage(stockToWaitFor.image_url);
+        }
         setStocks(stocksData);
         setStockLimit(limit);
         setCurrentCount(stocksData.length);
+        if (validateSelectedStock) {
+          // 永続化された selectedStockId が現存しないなら破棄して upload に戻す（R12）。
+          setSelectedStockId((current) => {
+            if (current && !stocksData.some((s) => s.id === current)) {
+              writePreferredSelectedStockId(null);
+              setImageSourceType("upload");
+              writePreferredImageSourceType("upload");
+              return null;
+            }
+            return current;
+          });
+        }
       } catch (error) {
         console.error("Failed to fetch stocks:", error);
       } finally {
-        setIsLoadingStocks(false);
+        if (showLoading) {
+          setIsLoadingStocks(false);
+        }
+        activeStockRefreshCountRef.current -= 1;
+        if (activeStockRefreshCountRef.current <= 0) {
+          activeStockRefreshCountRef.current = 0;
+          setIsRefreshingStocks(false);
+        }
       }
+    },
+    []
+  );
+
+  // ストック画像と制限数を取得
+  useEffect(() => {
+    void refreshStocks({ showLoading: true });
+  }, [refreshStocks]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (typeof window === "undefined") return;
+
+    const handleStockCreated = (event: Event) => {
+      if (
+        event instanceof CustomEvent &&
+        typeof event.detail?.stockId === "string"
+      ) {
+        setSelectedStockId(event.detail.stockId);
+        setRecentlySavedStockId(event.detail.stockId);
+      }
+      const stockId =
+        event instanceof CustomEvent &&
+        typeof event.detail?.stockId === "string"
+          ? event.detail.stockId
+          : null;
+      void refreshStocks({
+        validateSelectedStock: false,
+        waitForStockImageId: stockId,
+      });
     };
-    void fetchStocks();
-  }, []);
+
+    window.addEventListener(
+      COORDINATE_STOCK_CREATED_EVENT,
+      handleStockCreated
+    );
+    return () => {
+      window.removeEventListener(
+        COORDINATE_STOCK_CREATED_EVENT,
+        handleStockCreated
+      );
+    };
+  }, [isAuthenticated, refreshStocks]);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
     setSelectedStockId(null);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("selectedStockId");
-    }
+    writePreferredSelectedStockId(null);
   }, []);
 
   // チュートリアルモード: プロンプトをセット（step4のonHighlightedで自動セット）
@@ -319,9 +500,8 @@ export function GenerationForm({
       setSelectedCount(1);
       setSelectedModel(DEFAULT_GENERATION_MODEL);
       setImageSourceType("upload");
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("selectedStockId");
-      }
+      writePreferredSelectedStockId(null);
+      writePreferredImageSourceType("upload");
     };
     document.addEventListener("tutorial:clear", handler);
     return () => document.removeEventListener("tutorial:clear", handler);
@@ -383,10 +563,9 @@ export function GenerationForm({
               variant={imageSourceType === "upload" ? "default" : "outline"}
               onClick={() => {
                 setImageSourceType("upload");
+                writePreferredImageSourceType("upload");
                 setSelectedStockId(null);
-                if (typeof window !== "undefined") {
-                  localStorage.removeItem("selectedStockId");
-                }
+                writePreferredSelectedStockId(null);
               }}
               disabled={isGenerating}
               className="flex-1"
@@ -399,13 +578,28 @@ export function GenerationForm({
               variant={imageSourceType === "stock" ? "default" : "outline"}
               onClick={() => {
                 setImageSourceType("stock");
+                writePreferredImageSourceType("stock");
                 setUploadedImage(null);
               }}
               disabled={isGenerating}
-              className="flex-1"
+              className="relative flex-1"
             >
               <Folder className="mr-2 h-4 w-4" />
               {t("stockTab")}
+              {/*
+                ストックタブが既にアクティブな場合（保存後のリロード復帰や
+                imageSourceType="stock" の永続化からの復元）は、ユーザーは
+                即座にストック内容を確認できる状態にあるため、`useCoordinateStocksUnread`
+                の初期 fetch でドットが立っていても見せない。
+                seen 状態の永続化は別の useEffect で markStockTabSeen() が走るので
+                次回アクセス時もドットは表示されない。
+              */}
+              {hasStockTabDot && imageSourceType !== "stock" && (
+                <span
+                  className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500"
+                  aria-label={t("stockTabUnreadDotLabel")}
+                />
+              )}
             </Button>
           </div>
         </div>
@@ -432,10 +626,41 @@ export function GenerationForm({
         ) : (
           <div className="space-y-4">
             <div>
-              <Label className="text-base font-medium mb-3 block">
-                {t("stockImagesLabel")}
-              </Label>
-              {isLoadingStocks ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Label className="text-base font-medium">
+                  {t("stockImagesLabel")}
+                </Label>
+                <StockImageAddButton
+                  disabled={
+                    isGenerating ||
+                    isLoadingStocks ||
+                    isRefreshingStocks ||
+                    stockLimit === null ||
+                    currentCount === null ||
+                    isStockLimitReached
+                  }
+                    onUploadSuccess={(stockId) => {
+                      setSelectedStockId(stockId);
+                      setRecentlySavedStockId(stockId);
+                      writePreferredSelectedStockId(stockId);
+                      void refreshStocks({
+                        validateSelectedStock: false,
+                        waitForStockImageId: stockId,
+                      });
+                      void markStockTabSeen();
+                    }}
+                  onUploadError={(error) => {
+                    console.error("Stock upload error:", error);
+                    alert(error);
+                  }}
+                />
+                {isStockLimitReached && (
+                  <span className="text-xs text-muted-foreground">
+                    {t("stockLimitReachedInline")}
+                  </span>
+                )}
+              </div>
+              {shouldShowStockListLoading ? (
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex-shrink-0 w-[140px] sm:w-[160px]">
@@ -445,83 +670,36 @@ export function GenerationForm({
                 </div>
               ) : (
                 <StockImageListClient
-                  stocks={stocks}
+                  stocks={displayedStocks}
                   selectedStockId={selectedStockId}
                   onSelect={(stock) => {
+                    setRecentlySavedStockId(null);
                     if (stock) {
                       setSelectedStockId(stock.id);
-                      if (typeof window !== "undefined") {
-                        localStorage.setItem("selectedStockId", stock.id);
-                        window.dispatchEvent(new Event("storage"));
-                      }
+                      writePreferredSelectedStockId(stock.id);
                     } else {
                       setSelectedStockId(null);
-                      if (typeof window !== "undefined") {
-                        localStorage.removeItem("selectedStockId");
-                        window.dispatchEvent(new Event("storage"));
-                      }
+                      writePreferredSelectedStockId(null);
                     }
                   }}
                   onDelete={(stockId) => {
                     if (selectedStockId === stockId) {
                       setSelectedStockId(null);
-                      if (typeof window !== "undefined") {
-                        localStorage.removeItem("selectedStockId");
-                      }
+                      writePreferredSelectedStockId(null);
+                    }
+                    if (recentlySavedStockId === stockId) {
+                      setRecentlySavedStockId(null);
                     }
                     // ストックリストから削除
                     setStocks((prev) => prev.filter((s) => s.id !== stockId));
                     setCurrentCount((prev) => (prev !== null ? Math.max(0, prev - 1) : null));
                   }}
-                  onRefreshTrigger={async () => {
-                    // ストックリストを再取得
-                    try {
-                      const userId = await getCurrentUserId();
-                      if (userId) {
-                        const [stocksData, limit] = await Promise.all([
-                          getSourceImageStocks(50, 0),
-                          getStockImageLimit(),
-                        ]);
-                        setStocks(stocksData);
-                        setStockLimit(limit);
-                        setCurrentCount(stocksData.length);
-                      }
-                    } catch (error) {
-                      console.error("Failed to refresh stocks:", error);
-                    }
+                  onRefreshTrigger={() => {
+                    void refreshStocks({ validateSelectedStock: false });
                   }}
-                  renderUploadCard={() => (
-                    stockLimit !== null && currentCount !== null ? (
-                      <StockImageUploadCard
-                        stockLimit={stockLimit}
-                        currentCount={currentCount}
-                        onUploadSuccess={async () => {
-                          // ストックリストを再取得
-                          try {
-                            const userId = await getCurrentUserId();
-                            if (userId) {
-                              const [stocksData, limit] = await Promise.all([
-                                getSourceImageStocks(50, 0),
-                                getStockImageLimit(),
-                              ]);
-                              setStocks(stocksData);
-                              setStockLimit(limit);
-                              setCurrentCount(stocksData.length);
-                            }
-                          } catch (error) {
-                            console.error("Failed to refresh stocks:", error);
-                          }
-                        }}
-                        onUploadError={(error) => {
-                          console.error("Stock upload error:", error);
-                          alert(error);
-                        }}
-                      />
-                    ) : null
-                  )}
                 />
               )}
-              {selectedStockId && (
+              {shouldShowGeneratedImagesFromSelectedStock && (
                 <div className="mt-4">
                   <GeneratedImagesFromSource
                     stockId={selectedStockId}
