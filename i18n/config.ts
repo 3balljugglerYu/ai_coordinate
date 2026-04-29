@@ -101,12 +101,13 @@ export function resolveLocaleFromAcceptLanguage(
         quality: Number.isFinite(quality) ? quality : 1,
       };
     })
-    .filter((entry) => entry.tag.length > 0)
-    .sort((left, right) => right.quality - left.quality);
+    .filter((entry) => entry.tag.length > 0 && entry.quality > 0);
 
-  return candidates.some((candidate) => candidate.tag === "ja" || candidate.tag.startsWith("ja-"))
-    ? "ja"
-    : "en";
+  const requestedJapanese = candidates.some(
+    (candidate) => candidate.tag === "ja" || candidate.tag.startsWith("ja-")
+  );
+
+  return requestedJapanese ? "ja" : DEFAULT_LOCALE;
 }
 
 export function resolveRequestLocale({

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { getLocale } from "next-intl/server";
 import localFont from "next/font/local";
 import "./globals.css";
 import { LocaleShell } from "@/components/LocaleShell";
 import { getSiteUrl } from "@/lib/env";
-import { DEFAULT_LOCALE } from "@/i18n/config";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getSiteCopy } from "@/i18n/page-copy";
 
 const geistSans = localFont({
@@ -57,9 +58,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+
   return (
     <html
-      lang={DEFAULT_LOCALE}
+      lang={locale}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
