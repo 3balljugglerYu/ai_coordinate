@@ -9,7 +9,6 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
-import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 
 /**
  * Persta のヘッダー・サイドバー・フッターを条件付きで表示。
@@ -47,9 +46,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Suspense>
       <Suspense fallback={null}>
         <BonusNotificationToastListener />
-      </Suspense>
-      <Suspense fallback={null}>
-        <CoordinateSourceStockSavePromptDialogHost />
       </Suspense>
       <div className="main-content">
         {children}

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
 import { Ga4Script } from "@/features/analytics/components/Ga4Script";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
+import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 
@@ -26,6 +27,13 @@ export async function LocaleShell({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <UnreadNotificationProvider>{appContent}</UnreadNotificationProvider>
+      {/*
+        ナビゲーション中も生き残る必要があるため、Suspense 境界（appContent）の
+        外側にマウントする。AppShell 配下に置くと router.refresh() などで
+        Suspense が再活性化した際に Host も unmount され、表示中の
+        ストック保存促進モーダルが消えてしまう。
+      */}
+      <CoordinateSourceStockSavePromptDialogHost />
       <Toaster />
       <Ga4Script />
       <VercelAnalyticsScripts />
