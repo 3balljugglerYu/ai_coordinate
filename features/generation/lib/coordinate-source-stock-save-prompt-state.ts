@@ -8,6 +8,7 @@ export interface CoordinateSourceStockSavePromptBatch {
 interface CoordinateSourceStockSavePromptState {
   pending: boolean;
   batch: CoordinateSourceStockSavePromptBatch | null;
+  coordinateNavDot: boolean;
 }
 
 type StateChangeListener = (
@@ -18,6 +19,7 @@ type PendingChangeListener = (pending: boolean) => void;
 let currentState: CoordinateSourceStockSavePromptState = {
   pending: false,
   batch: null,
+  coordinateNavDot: false,
 };
 const listeners = new Set<StateChangeListener>();
 
@@ -25,6 +27,7 @@ function getSnapshot(): CoordinateSourceStockSavePromptState {
   return {
     pending: currentState.pending,
     batch: currentState.batch,
+    coordinateNavDot: currentState.coordinateNavDot,
   };
 }
 
@@ -35,6 +38,10 @@ function emitChange(): void {
 
 export function getCoordinateSourceStockSavePromptPending(): boolean {
   return currentState.pending;
+}
+
+export function getCoordinateSourceStockSavePromptDot(): boolean {
+  return currentState.coordinateNavDot;
 }
 
 export function getCoordinateSourceStockSavePromptState(): CoordinateSourceStockSavePromptState {
@@ -49,6 +56,7 @@ export function setCoordinateSourceStockSavePromptPending(
   }
 
   currentState = {
+    ...currentState,
     pending,
     batch: pending ? currentState.batch : null,
   };
@@ -59,25 +67,59 @@ export function showCoordinateSourceStockSavePrompt(
   batch: CoordinateSourceStockSavePromptBatch
 ): void {
   if (readCoordinateStockSavePromptDismissed()) {
-    clearCoordinateSourceStockSavePrompt();
+    currentState = {
+      pending: false,
+      batch: null,
+      coordinateNavDot: false,
+    };
+    emitChange();
     return;
   }
 
   currentState = {
     pending: true,
     batch,
+    coordinateNavDot: currentState.coordinateNavDot,
   };
   emitChange();
 }
 
-export function clearCoordinateSourceStockSavePrompt(): void {
-  if (!currentState.pending && !currentState.batch) {
+export function clearCoordinateSourceStockSavePrompt({
+  clearDot = false,
+}: { clearDot?: boolean } = {}): void {
+  if (!currentState.pending && !currentState.batch && !clearDot) {
     return;
   }
 
   currentState = {
+    ...currentState,
     pending: false,
     batch: null,
+    coordinateNavDot: clearDot ? false : currentState.coordinateNavDot,
+  };
+  emitChange();
+}
+
+export function markCoordinateSourceStockSavePromptDot(): void {
+  if (currentState.coordinateNavDot) {
+    return;
+  }
+
+  currentState = {
+    ...currentState,
+    coordinateNavDot: true,
+  };
+  emitChange();
+}
+
+export function clearCoordinateSourceStockSavePromptDot(): void {
+  if (!currentState.coordinateNavDot) {
+    return;
+  }
+
+  currentState = {
+    ...currentState,
+    coordinateNavDot: false,
   };
   emitChange();
 }
@@ -104,5 +146,13 @@ export function subscribeCoordinateSourceStockSavePromptPending(
 ): () => void {
   return subscribeCoordinateSourceStockSavePromptState((state) => {
     listener(state.pending);
+  });
+}
+
+export function subscribeCoordinateSourceStockSavePromptDot(
+  listener: PendingChangeListener
+): () => void {
+  return subscribeCoordinateSourceStockSavePromptState((state) => {
+    listener(state.coordinateNavDot);
   });
 }

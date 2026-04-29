@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PostList } from "@/features/posts/components/PostList";
 import {
   consumePendingHomePostRefresh,
+  HOME_POST_REFRESH_EVENT,
   type PendingHomePostRefresh,
 } from "@/features/posts/lib/home-post-refresh";
 import type { Post } from "@/features/posts/types";
@@ -76,6 +77,7 @@ jest.mock("@/features/posts/components/PostCard", () => ({
 
 jest.mock("@/features/posts/lib/home-post-refresh", () => ({
   consumePendingHomePostRefresh: jest.fn(),
+  HOME_POST_REFRESH_EVENT: "persta:home-post-refresh",
 }));
 
 const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
@@ -275,5 +277,41 @@ describe("PostList", () => {
       "data-highlighted",
       "false"
     );
+  });
+
+  test("ホームがマウント済みの場合_投稿更新イベントでno-store再取得する", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        posts: [createPost("post-4", "event refreshed post")],
+        hasMore: false,
+      }),
+    });
+
+    render(
+      <PostList
+        initialPosts={initialPosts}
+        skipInitialFetch
+      />
+    );
+
+    expect(screen.getByTestId("post-card-initial-1")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    pendingPayload = {
+      action: "posted",
+      postId: "post-4",
+    };
+
+    act(() => {
+      window.dispatchEvent(new Event(HOME_POST_REFRESH_EVENT));
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/posts?limit=20&offset=0&sort=newest", {
+        cache: "no-store",
+      });
+    });
+    await screen.findByTestId("post-card-post-4");
   });
 });

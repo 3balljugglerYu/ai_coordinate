@@ -4,7 +4,10 @@ import { useTranslations } from "next-intl";
 import { PostModal } from "@/features/posts/components/PostModal";
 import { postImageAPI } from "@/features/posts/lib/api";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
-import { persistPendingHomePostRefresh } from "@/features/posts/lib/home-post-refresh";
+import {
+  notifyPendingHomePostRefresh,
+  persistPendingHomePostRefresh,
+} from "@/features/posts/lib/home-post-refresh";
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
@@ -19,6 +22,7 @@ jest.mock("@/features/notifications/components/UnreadNotificationProvider", () =
 }));
 
 jest.mock("@/features/posts/lib/home-post-refresh", () => ({
+  notifyPendingHomePostRefresh: jest.fn(),
   persistPendingHomePostRefresh: jest.fn(),
 }));
 
@@ -48,6 +52,10 @@ const useUnreadNotificationCountMock =
 const persistPendingHomePostRefreshMock =
   persistPendingHomePostRefresh as jest.MockedFunction<
     typeof persistPendingHomePostRefresh
+  >;
+const notifyPendingHomePostRefreshMock =
+  notifyPendingHomePostRefresh as jest.MockedFunction<
+    typeof notifyPendingHomePostRefresh
   >;
 
 const postTranslations = {
@@ -160,6 +168,7 @@ describe("PostModal", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", {
       method: "POST",
     });
+    expect(notifyPendingHomePostRefreshMock).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(window.location.href).toBe("/");
   });
@@ -192,6 +201,7 @@ describe("PostModal", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", { method: "POST" });
+    expect(notifyPendingHomePostRefreshMock).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(window.location.href).toBe("");
   });

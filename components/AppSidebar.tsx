@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 import { getCurrentUser, onAuthStateChange, signOut } from "@/features/auth/lib/auth-client";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import {
-  getCoordinateSourceStockSavePromptPending,
-  subscribeCoordinateSourceStockSavePromptPending,
+  getCoordinateSourceStockSavePromptDot,
+  subscribeCoordinateSourceStockSavePromptDot,
 } from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
 import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import {
@@ -64,7 +64,7 @@ export function AppSidebar() {
   const [
     hasCoordinateSourceStockSavePromptDot,
     setHasCoordinateSourceStockSavePromptDot,
-  ] = useState(getCoordinateSourceStockSavePromptPending);
+  ] = useState(getCoordinateSourceStockSavePromptDot);
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -102,7 +102,7 @@ export function AppSidebar() {
   }, [localizedHomePath, user, router]);
 
   useEffect(() => {
-    return subscribeCoordinateSourceStockSavePromptPending(
+    return subscribeCoordinateSourceStockSavePromptDot(
       setHasCoordinateSourceStockSavePromptDot
     );
   }, []);

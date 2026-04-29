@@ -18,8 +18,6 @@ import {
   useGenerationState,
 } from "../context/GenerationStateContext";
 import {
-  clearCoordinateSourceStockSavePromptIfLocalOnly,
-  setCoordinateSourceStockSavePromptPending,
   showCoordinateSourceStockSavePrompt,
 } from "../lib/coordinate-source-stock-save-prompt-state";
 import {
@@ -36,6 +34,7 @@ interface GeneratedImageGalleryProps {
 }
 
 const FALLBACK_SHOW_DELAY_MS = 800;
+const POST_SUCCESS_HOME_NAVIGATION_FALLBACK_MS = 1500;
 
 function getImageRenderKey(image: GeneratedImageData) {
   return image.galleryKey ?? image.id;
@@ -78,19 +77,16 @@ export function GeneratedImageGallery({
 
   const openSavePrompt = (batch: PendingSourceImageBatch) => {
     if (readCoordinateStockSavePromptDismissed()) {
-      setCoordinateSourceStockSavePromptPending(false);
       return;
     }
 
     setPendingSavePrompt(batch);
-    setCoordinateSourceStockSavePromptPending(true);
     setIsSavePromptOpen(true);
   };
 
   const closeSavePrompt = () => {
     setIsSavePromptOpen(false);
     setPendingSavePrompt(null);
-    setCoordinateSourceStockSavePromptPending(false);
   };
 
   const scrollToPageTopOnSaveStart = () => {
@@ -99,6 +95,22 @@ export function GeneratedImageGallery({
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
+  };
+
+  const navigateHomeAfterPostSuccess = () => {
+    router.push("/");
+
+    if (typeof window === "undefined") return;
+
+    window.setTimeout(() => {
+      router.refresh();
+    }, 0);
+
+    window.setTimeout(() => {
+      if (window.location.pathname.endsWith("/coordinate")) {
+        window.location.assign("/");
+      }
+    }, POST_SUCCESS_HOME_NAVIGATION_FALLBACK_MS);
   };
 
   // onLoad が発火しない場合のフォールバック（キャッシュ済み・ネットワーク遅延等）
@@ -114,12 +126,6 @@ export function GeneratedImageGallery({
     );
     return () => timeouts.forEach(clearTimeout);
   }, [images]);
-
-  useEffect(() => {
-    return () => {
-      clearCoordinateSourceStockSavePromptIfLocalOnly();
-    };
-  }, []);
 
   // チュートリアルStep11（PC）時は投稿・ダウンロードボタンを無効化
   const [disablePostAndDownload, setDisablePostAndDownload] = useState(false);
@@ -386,7 +392,6 @@ export function GeneratedImageGallery({
               pendingSavePrompt?.jobIds.includes(jobId) &&
               !readCoordinateStockSavePromptDismissed()
             ) {
-              setCoordinateSourceStockSavePromptPending(true);
               setIsSavePromptOpen(true);
             }
           }}
@@ -410,7 +415,6 @@ export function GeneratedImageGallery({
               closeSavePrompt();
               return;
             }
-            setCoordinateSourceStockSavePromptPending(true);
             setIsSavePromptOpen(true);
           }}
           originalFile={pendingSavePrompt.file}
@@ -438,7 +442,7 @@ export function GeneratedImageGallery({
             }
 
             showCoordinateSourceStockSavePrompt(batch);
-            router.push("/");
+            navigateHomeAfterPostSuccess();
             return { skipDefaultRedirect: true };
           }}
         />

@@ -60,6 +60,7 @@ import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
 import { useGenerationState } from "../context/GenerationStateContext";
+import { clearCoordinateSourceStockSavePromptDot } from "../lib/coordinate-source-stock-save-prompt-state";
 
 interface GenerationFormProps {
   subscriptionPlan: SubscriptionPlan;
@@ -233,6 +234,11 @@ export function GenerationForm({
 
   // ストック選択 ID は上のマウント useEffect で `readPreferredSelectedStockId` 経由で復元する。
   // 旧 `localStorage.getItem("selectedStockId")` 直接アクセスは削除済み。
+
+  // 投稿後にホームで保存した場合のナビ赤丸は、コーディネート画面を開いた時点で既読扱いにする。
+  useEffect(() => {
+    clearCoordinateSourceStockSavePromptDot();
+  }, []);
 
   // ストックタブを開いている間は赤丸ドットを既読化する。
   // imageSourceType が "stock" に変化した瞬間と、マウント直後に "stock" だったケースを両方拾える。

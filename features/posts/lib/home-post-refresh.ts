@@ -12,6 +12,7 @@ export type PendingHomePostRefresh =
     };
 
 const HOME_POST_REFRESH_STORAGE_KEY = "persta:home-post-refresh";
+export const HOME_POST_REFRESH_EVENT = "persta:home-post-refresh";
 
 function clearPendingHomePostRefresh() {
   if (typeof window === "undefined") {
@@ -40,6 +41,14 @@ export function persistPendingHomePostRefresh(
   } catch {
     // セッションストレージが使えない環境では、即時反映を諦めて通常遷移する
   }
+}
+
+export function notifyPendingHomePostRefresh() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(HOME_POST_REFRESH_EVENT));
 }
 
 export function consumePendingHomePostRefresh(): PendingHomePostRefresh | null {

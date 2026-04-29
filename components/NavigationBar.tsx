@@ -15,8 +15,8 @@ import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import {
-  getCoordinateSourceStockSavePromptPending,
-  subscribeCoordinateSourceStockSavePromptPending,
+  getCoordinateSourceStockSavePromptDot,
+  subscribeCoordinateSourceStockSavePromptDot,
 } from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
 import {
   DEFAULT_LOCALE,
@@ -44,7 +44,7 @@ export function NavigationBar() {
   const [
     hasCoordinateSourceStockSavePromptDot,
     setHasCoordinateSourceStockSavePromptDot,
-  ] = useState(getCoordinateSourceStockSavePromptPending);
+  ] = useState(getCoordinateSourceStockSavePromptDot);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
   const effectiveActivePathname = pendingPathname ?? normalizedPathname;
@@ -106,7 +106,7 @@ export function NavigationBar() {
   }, []);
 
   useEffect(() => {
-    return subscribeCoordinateSourceStockSavePromptPending(
+    return subscribeCoordinateSourceStockSavePromptDot(
       setHasCoordinateSourceStockSavePromptDot
     );
   }, []);

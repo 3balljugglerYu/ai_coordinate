@@ -5,6 +5,7 @@ import { SaveSourceImageToStockDialog } from "./SaveSourceImageToStockDialog";
 import {
   clearCoordinateSourceStockSavePrompt,
   getCoordinateSourceStockSavePromptState,
+  markCoordinateSourceStockSavePromptDot,
   subscribeCoordinateSourceStockSavePromptState,
 } from "../lib/coordinate-source-stock-save-prompt-state";
 import {
@@ -34,6 +35,7 @@ export function CoordinateSourceStockSavePromptDialogHost() {
       originalFile={state.batch.file}
       jobIds={state.batch.jobIds}
       onSaved={(stockId) => {
+        markCoordinateSourceStockSavePromptDot();
         writePreferredImageSourceType("stock");
         writePreferredSelectedStockId(stockId);
       }}

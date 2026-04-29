@@ -15,7 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { postImageAPI } from "../lib/api";
-import { persistPendingHomePostRefresh } from "../lib/home-post-refresh";
+import {
+  notifyPendingHomePostRefresh,
+  persistPendingHomePostRefresh,
+} from "../lib/home-post-refresh";
 import type { PostImageResponse } from "../types";
 
 interface PostModalProps {
@@ -88,6 +91,7 @@ export function PostModal({
       } catch {
         // 無効化失敗時も遷移は実行
       }
+      notifyPendingHomePostRefresh();
 
       const postSuccessResult = await onPostSuccess?.(response);
       if (postSuccessResult?.skipDefaultRedirect) {
