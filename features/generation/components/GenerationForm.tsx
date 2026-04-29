@@ -586,7 +586,15 @@ export function GenerationForm({
             >
               <Folder className="mr-2 h-4 w-4" />
               {t("stockTab")}
-              {hasStockTabDot && (
+              {/*
+                ストックタブが既にアクティブな場合（保存後のリロード復帰や
+                imageSourceType="stock" の永続化からの復元）は、ユーザーは
+                即座にストック内容を確認できる状態にあるため、`useCoordinateStocksUnread`
+                の初期 fetch でドットが立っていても見せない。
+                seen 状態の永続化は別の useEffect で markStockTabSeen() が走るので
+                次回アクセス時もドットは表示されない。
+              */}
+              {hasStockTabDot && imageSourceType !== "stock" && (
                 <span
                   className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500"
                   aria-label={t("stockTabUnreadDotLabel")}
