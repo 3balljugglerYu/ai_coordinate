@@ -9,6 +9,7 @@ import {
   validateImageFile,
   DEFAULT_IMAGE_CONFIG,
 } from "../lib/validation";
+import { normalizeSourceImage } from "../lib/normalize-source-image";
 import type { ImageUploadConfig, UploadedImage } from "../types";
 import NextImage from "next/image";
 
@@ -31,7 +32,6 @@ export function StockImageUploadCard({
 }: StockImageUploadCardProps) {
   const t = useTranslations("coordinate");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,8 +51,6 @@ export function StockImageUploadCard({
 
   const handleFileChange = useCallback(
     async (file: File) => {
-      setError(null);
-
       const result = await validateImageFile(file, config, {
         imageLoadFailed: t("imageLoadFailed"),
         invalidFileFormat: (formats) => t("invalidFileFormat", { formats }),
@@ -63,7 +61,6 @@ export function StockImageUploadCard({
 
       if (!result.isValid) {
         const errorMsg = result.error || t("generationFailedGeneric");
-        setError(errorMsg);
         onUploadError?.(errorMsg);
         return;
       }
@@ -87,18 +84,22 @@ export function StockImageUploadCard({
       };
       img.src = result.previewUrl!;
     },
-    [config, onUploadError]
+    [config, onUploadError, t]
   );
 
   const handleUpload = useCallback(async () => {
     if (!uploadedImage) return;
 
     setIsUploading(true);
-    setError(null);
 
     try {
+      const normalizedFile = await normalizeSourceImage(uploadedImage.file, {
+        imageLoadFailed: t("imageLoadFailed"),
+        imageConvertFailed: t("imageConvertFailed"),
+        imageContextUnavailable: t("imageContextUnavailable"),
+      });
       const formData = new FormData();
-      formData.append("file", uploadedImage.file);
+      formData.append("file", normalizedFile);
 
       const res = await fetch("/api/source-image-stocks", {
         method: "POST",
@@ -128,12 +129,11 @@ export function StockImageUploadCard({
       const errorMessage =
         err instanceof Error ? err.message : t("stockUploadFailed");
 
-      setError(errorMessage);
       onUploadError?.(errorMessage);
     } finally {
       setIsUploading(false);
     }
-  }, [uploadedImage, onUploadSuccess, onUploadError]);
+  }, [onUploadError, onUploadSuccess, t, uploadedImage]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -169,7 +169,6 @@ export function StockImageUploadCard({
       handleFileChange(file);
     } else {
       const errorMsg = t("dropImageFile");
-      setError(errorMsg);
       onUploadError?.(errorMsg);
     }
   };
@@ -179,7 +178,6 @@ export function StockImageUploadCard({
       URL.revokeObjectURL(uploadedImage.previewUrl);
     }
     setUploadedImage(null);
-    setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }

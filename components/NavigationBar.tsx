@@ -15,6 +15,10 @@ import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import {
+  getCoordinateSourceStockSavePromptPending,
+  subscribeCoordinateSourceStockSavePromptPending,
+} from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
+import {
   DEFAULT_LOCALE,
   isLocale,
   localizePublicPath,
@@ -37,6 +41,10 @@ export function NavigationBar() {
   const pendingSourcePathRef = useRef<string | null>(null);
   const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
   const [pendingPathname, setPendingPathname] = useState<string | null>(null);
+  const [
+    hasCoordinateSourceStockSavePromptDot,
+    setHasCoordinateSourceStockSavePromptDot,
+  ] = useState(getCoordinateSourceStockSavePromptPending);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
   const effectiveActivePathname = pendingPathname ?? normalizedPathname;
@@ -95,6 +103,12 @@ export function NavigationBar() {
         clearTimeout(pendingResetTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    return subscribeCoordinateSourceStockSavePromptPending(
+      setHasCoordinateSourceStockSavePromptDot
+    );
   }, []);
 
   const handleNavigation = (path: string) => {
@@ -185,6 +199,10 @@ export function NavigationBar() {
                     {path === "/notifications" && hasSidebarDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}
+                    {path === "/coordinate" &&
+                      hasCoordinateSourceStockSavePromptDot && (
+                        <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                      )}
                   </div>
                   {/* ラベル */}
                   <span className="transition-all duration-200">

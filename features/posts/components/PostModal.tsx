@@ -16,12 +16,19 @@ import { Label } from "@/components/ui/label";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { postImageAPI } from "../lib/api";
 import { persistPendingHomePostRefresh } from "../lib/home-post-refresh";
+import type { PostImageResponse } from "../types";
 
 interface PostModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imageId: string;
   currentCaption?: string | null;
+  onPostSuccess?: (
+    response: PostImageResponse
+  ) =>
+    | void
+    | { skipDefaultRedirect?: boolean }
+    | Promise<void | { skipDefaultRedirect?: boolean }>;
 }
 
 const MAX_CAPTION_LENGTH = 200;
@@ -31,6 +38,7 @@ export function PostModal({
   onOpenChange,
   imageId,
   currentCaption,
+  onPostSuccess,
 }: PostModalProps) {
   const t = useTranslations("posts");
   const { refreshUnreadCount } = useUnreadNotificationCount();
@@ -80,6 +88,12 @@ export function PostModal({
       } catch {
         // 無効化失敗時も遷移は実行
       }
+
+      const postSuccessResult = await onPostSuccess?.(response);
+      if (postSuccessResult?.skipDefaultRedirect) {
+        return;
+      }
+
       window.location.href = "/";
     } catch (err) {
       // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください

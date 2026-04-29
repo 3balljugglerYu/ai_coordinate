@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { ROUTES } from "@/constants";
 import { linkSourceImageStockToJobs } from "../lib/database";
+import { normalizeSourceImage } from "../lib/normalize-source-image";
 import { COORDINATE_STOCK_CREATED_EVENT } from "../hooks/useCoordinateStocksUnread";
 
 interface SaveSourceImageToStockDialogProps {
@@ -30,6 +31,8 @@ interface SaveSourceImageToStockDialogProps {
   onSaved?: (stockId: string) => void;
   /** 上限到達時にストック整理導線を選んだ時のコールバック */
   onRequestManageStocks?: () => void;
+  /** 上限到達時にサブスク導線を選んだ時のコールバック */
+  onRequestSubscriptionPlans?: () => void;
 }
 
 interface SaveStockResponse {
@@ -53,6 +56,7 @@ export function SaveSourceImageToStockDialog({
   jobIds,
   onSaved,
   onRequestManageStocks,
+  onRequestSubscriptionPlans,
 }: SaveSourceImageToStockDialogProps) {
   const t = useTranslations("coordinate");
   const { toast } = useToast();
@@ -71,8 +75,13 @@ export function SaveSourceImageToStockDialog({
     setIsLimitReached(false);
     setIsSaving(true);
     try {
+      const normalizedFile = await normalizeSourceImage(originalFile, {
+        imageLoadFailed: t("imageLoadFailed"),
+        imageConvertFailed: t("imageConvertFailed"),
+        imageContextUnavailable: t("imageContextUnavailable"),
+      });
       const formData = new FormData();
-      formData.append("file", originalFile);
+      formData.append("file", normalizedFile);
 
       const res = await fetch("/api/source-image-stocks", {
         method: "POST",
@@ -189,7 +198,10 @@ export function SaveSourceImageToStockDialog({
                 {t("manageStocksAction")}
               </Button>
               <Button asChild>
-                <Link href={`${ROUTES.CREDITS_PURCHASE}?tab=subscription`}>
+                <Link
+                  href={`${ROUTES.CREDITS_PURCHASE}?tab=subscription`}
+                  onClick={onRequestSubscriptionPlans}
+                >
                   {t("seeSubscriptionPlansAction")}
                 </Link>
               </Button>

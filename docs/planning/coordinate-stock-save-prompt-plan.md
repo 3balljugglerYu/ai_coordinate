@@ -40,10 +40,15 @@ flowchart TD
     B --> C{"生成完了"}
     C --> D["生成結果を表示<br/>カードに完了マーク"]
     D --> E["ユーザーが結果をタップ -> 拡大表示"]
+    D --> Q["ユーザーが生成結果を投稿"]
     E --> F["拡大表示を閉じる"]
     F --> G{"今回バッチに<br/>upload 由来の<br/>未保存ジョブが残るか"}
+    Q --> R["投稿完了後にホームへ SPA 遷移"]
+    R --> S{"今回バッチに<br/>upload 由来の<br/>未保存ジョブが残るか"}
     G -->|"残る"| H{"現在のストック数"}
     G -->|"残らない"| Z["何も出さない"]
+    S -->|"残る"| I
+    S -->|"残らない"| Z
     H -->|"上限未満"| I["ストック保存促進モーダル"]
     H -->|"上限到達"| J["ストック上限到達モーダル"]
     I -->|"保存する"| K["POST /api/source-image-stocks"]
@@ -131,6 +136,7 @@ erDiagram
 - **R3 / EARS-EVENT**: When ユーザーがモーダルで「保存する」を選択したとき, the system shall ストック画像を作成し、当該バッチの `image_jobs.source_image_stock_id` と、`image_jobs.result_image_url` に一致する `generated_images.source_image_stock_id` を更新する。
 - **R4 / EARS-IF**: If 「保存する」操作時に保有ストック数が上限以上であるとき, then the system shall 上限到達モーダルを表示し、不要なストックを削除して空きを作る導線と、サブスクで保存上限を増やす導線を提示する。
 - **R5 / EARS-EVENT**: When ユーザーがモーダルで「後で」または閉じるを選択したとき, the system shall ストック画像を作成しない。
+- **R19 / EARS-EVENT**: When ストック保存促進モーダルからの保存が成功したとき, the system shall 次回 `/coordinate` 表示でストックタブが選択されるよう `imageSourceType="stock"` を永続化し、保存した `stockId` を `selectedStockId` として永続化する。
 
 ### 未確認バッジ
 
@@ -151,6 +157,8 @@ erDiagram
 - **R14 / EARS-IF**: If link-stock UPDATE が失敗したとき, then the system shall ユーザーには「ストック保存は完了したが紐づけに失敗した」旨を通知しつつコンソールに warning を残し、ストック自体は維持する（次回手動関連付けは v2 で検討）。
 - **R15 / EARS-IF**: If 上限到達モーダルから「プラン見る」を選択したとき, then the system shall `${ROUTES.CREDITS_PURCHASE}?tab=subscription` に遷移する。
 - **R16 / EARS-IF**: If 上限到達モーダルから「ストックを整理」を選択したとき, then the system shall モーダルを閉じて `/coordinate` のストックタブを選択状態にし、ユーザーが既存ストックを削除できる状態にする。
+- **R17 / EARS-EVENT**: When `/coordinate` で `upload` 由来の生成結果を投稿し、投稿が成功したとき, the system shall ホームへ SPA 遷移した後も同じストック保存促進モーダルを表示する。
+- **R18 / EARS-STATE**: While 投稿完了後のストック保存促進モーダルが pending である間, the system shall スマホ版ボトムナビと PC 版サイドメニューの「コーディネート」に赤丸ドットを表示し、モーダルを保存・後で・閉じる・導線遷移で解消したときにドットを解除する。
 
 ---
 
@@ -217,6 +225,7 @@ erDiagram
 - **Decision**:
   - GenerationFormContainer に Map（`jobId -> File`）を `useRef` で持つ
   - 生成完了 → 拡大表示 → 閉じた時、対応 jobId の File を取り出してダイアログに渡す
+  - 投稿完了後にホームへ遷移してから保存促進モーダルを出すケースでは、`window.location.href` のフルリロードでは File が失われるため、`PostModal` の投稿成功フックから AppShell 配下のグローバルホストへ pending batch を渡し、`router.push("/")` の SPA 遷移後も in-memory File を保持する
   - リロードや別画面からの戻りでは元画像ファイルが取れないので、その場合はモーダルを出さない（次回生成時のみ）
 - **Reason**: シンプル。Storage の temp/ 経由で再ダウンロードするより明確で速い
 - **Consequence**: ページリロード後に過去生成の元画像を後追いストック化することは不可（v2 で必要なら image_jobs.input_image_url から再取得）
@@ -326,6 +335,7 @@ flowchart LR
   - 「ストックを整理」押下: `onRequestManageStocks` を呼び、ダイアログを閉じてストックタブを開く
   - 「プランを見る」押下: `${ROUTES.CREDITS_PURCHASE}?tab=subscription` に遷移
   - 成功時は `window.dispatchEvent(new CustomEvent("coordinate-stock-created"))` を発火して、ストックタブ未確認状態を再取得させる
+  - 成功時は `writePreferredImageSourceType("stock")` と `writePreferredSelectedStockId(stockId)` を実行し、次回 `/coordinate` 表示でストックタブと保存済みストックを復元できるようにする
   - 翻訳キー: `coordinate.saveStockDialogTitle`, `coordinate.saveStockDialogDescription`, `coordinate.saveStockAction`, `coordinate.saveStockSaving`, `coordinate.saveStockLater`, `coordinate.saveStockCancel`, `coordinate.saveStockSucceeded`, `coordinate.saveStockFailed`, `coordinate.saveStockLimitTitle`, `coordinate.saveStockLimitDescription`, `coordinate.manageStocksAction`, `coordinate.seeSubscriptionPlansAction`
 - [ ] [`features/generation/context/GenerationStateContext.tsx`](../../features/generation/context/GenerationStateContext.tsx) を拡張:
   - `pendingSourceImageMap: Map<string /*jobId*/, File>` を `useRef` ベースで持つ（state にすると render が爆発するため、ref + getter）
@@ -343,6 +353,11 @@ flowchart LR
   - 同一バッチで複数画像のうち 1 枚閉じた瞬間に出すか、すべて閉じてからにするかは仕様検討。**最初に閉じた対象画像が pending jobId を持つ場合に 1 回だけ出す**に決定し、出した直後に `consumePendingSourceImageBatch(jobId)` で対象を消費して再表示を防ぐ
   - 永続化済み gallery 画像には `jobId` がない場合があるため、その場合は保存促進モーダルを出さない
   - `SaveSourceImageToStockDialog` の `onRequestManageStocks` から `requestOpenStockTab()` を呼ぶ
+- [ ] 投稿完了後の保存促進導線を追加:
+  - `PostModal` に投稿成功後の既定ホーム遷移を呼び出し元が抑止できるフックを追加
+  - `/coordinate` の投稿成功時は pending batch をグローバルな保存促進状態へ渡し、`router.push("/")` でホームへ SPA 遷移する
+  - `AppShell` 配下に `CoordinateSourceStockSavePromptDialogHost` を置き、ホーム遷移後も保存促進モーダルを表示する
+  - pending 中は `NavigationBar` のスマホ版「コーディネート」と `AppSidebar` の PC 版「コーディネート」に赤丸ドットを表示し、モーダル解消時に解除する
 - [ ] R2 対応: stock 由来生成（`sourceImageStockId` あり）はそもそも `registerPendingSourceImage` を呼ばないため、自動的にダイアログは出ない
 
 ### Phase 6: 仕上げ・i18n・テスト
@@ -373,6 +388,9 @@ flowchart LR
   - 上限到達ユーザーで「保存する」→ 上限到達モーダルに「ストックを整理」「プランを見る」が出る
   - 上限到達モーダルで「ストックを整理」→ ダイアログが閉じ、ストックタブに切り替わり、既存ストックを削除できる
   - 上限到達モーダルで「プランを見る」→ `/credits/purchase?tab=subscription` に遷移する
+  - upload → 生成 → 投稿 → ホームへ SPA 遷移 → 保存促進モーダルが表示され、スマホ版ボトムナビと PC 版サイドメニューの「コーディネート」に赤丸が出る
+  - 保存促進モーダルで「保存する」成功 → 次回 `/coordinate` 表示でストックタブが選択され、保存したストックが復元対象になる
+  - 投稿後保存促進モーダルで「後で」または閉じる → 赤丸が消える
   - 別タブから新規ストック追加 → /coordinate 戻ると赤丸 → ストックタブクリックで消える
 - [ ] サンドボックス build 確認: `npm run build -- --webpack`
 
@@ -394,8 +412,14 @@ flowchart LR
 | `features/generation/components/GenerationForm.tsx` | 修正 | localStorage 経路統一、タブにドット、imageSourceType 永続化 |
 | `features/generation/components/GenerationFormContainer.tsx` | 修正 | 元画像ファイルを ref 登録 |
 | `features/generation/context/GenerationStateContext.tsx` | 修正 | pendingSourceImage の get/register とストックタブを開く要求を追加 |
+| `features/generation/lib/coordinate-source-stock-save-prompt-state.ts` | 新規 | 投稿後保存促進モーダルとスマホ下部ナビ赤丸の in-memory 状態 |
+| `features/generation/components/CoordinateSourceStockSavePromptDialogHost.tsx` | 新規 | AppShell 配下で投稿後保存促進モーダルを表示 |
+| `components/AppShell.tsx` | 修正 | 投稿後保存促進モーダルホストを配置 |
+| `components/NavigationBar.tsx` | 修正 | スマホ版ボトムナビのコーディネート赤丸を表示 |
+| `components/AppSidebar.tsx` | 修正 | PC 版サイドメニューのコーディネート赤丸を表示 |
+| `features/posts/components/PostModal.tsx` | 修正 | 投稿成功後の既定遷移を呼び出し元が抑止できるフック追加 |
 | `features/generation/components/ImageModal.tsx` | 修正 | close 時の current image を親へ返す |
-| `features/generation/components/GeneratedImageGallery.tsx` | 修正 | ImageModal close 時にダイアログを開く |
+| `features/generation/components/GeneratedImageGallery.tsx` | 修正 | ImageModal close 時と投稿成功時にダイアログを開く |
 | `features/generation/components/SaveSourceImageToStockDialog.tsx` | 新規 | 保存導線モーダル |
 | `messages/ja.ts` `messages/en.ts` | 修正 | 翻訳キー追加 |
 | `tests/...` (E2E + 単体) | 新規 | 上記要件に沿うテスト |

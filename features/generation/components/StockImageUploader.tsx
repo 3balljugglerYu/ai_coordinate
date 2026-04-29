@@ -11,6 +11,7 @@ import {
   DEFAULT_IMAGE_CONFIG,
   getReadableFileFormat,
 } from "../lib/validation";
+import { normalizeSourceImage } from "../lib/normalize-source-image";
 import {
   getStockImageLimit,
   getCurrentStockImageCount,
@@ -111,8 +112,13 @@ export function StockImageUploader({
     setError(null);
 
     try {
+      const normalizedFile = await normalizeSourceImage(uploadedImage.file, {
+        imageLoadFailed: t("imageLoadFailed"),
+        imageConvertFailed: t("imageConvertFailed"),
+        imageContextUnavailable: t("imageContextUnavailable"),
+      });
       const formData = new FormData();
-      formData.append("file", uploadedImage.file);
+      formData.append("file", normalizedFile);
 
       const res = await fetch("/api/source-image-stocks", {
         method: "POST",

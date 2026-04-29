@@ -16,6 +16,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getCurrentUser, onAuthStateChange, signOut } from "@/features/auth/lib/auth-client";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
+import {
+  getCoordinateSourceStockSavePromptPending,
+  subscribeCoordinateSourceStockSavePromptPending,
+} from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
 import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import {
   Collapsible,
@@ -57,6 +61,10 @@ export function AppSidebar() {
   const [, startTransition] = useTransition();
   const hasPrefetched = useRef(false);
   const { hasSidebarDot, markAnnouncementPageSeen } = useUnreadNotificationCount();
+  const [
+    hasCoordinateSourceStockSavePromptDot,
+    setHasCoordinateSourceStockSavePromptDot,
+  ] = useState(getCoordinateSourceStockSavePromptPending);
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -92,6 +100,12 @@ export function AppSidebar() {
       hasPrefetched.current = true;
     }
   }, [localizedHomePath, user, router]);
+
+  useEffect(() => {
+    return subscribeCoordinateSourceStockSavePromptPending(
+      setHasCoordinateSourceStockSavePromptDot
+    );
+  }, []);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -216,6 +230,10 @@ export function AppSidebar() {
                   {path === "/notifications" && hasSidebarDot && (
                     <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                   )}
+                  {path === "/coordinate" &&
+                    hasCoordinateSourceStockSavePromptDot && (
+                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                    )}
                 </div>
               </div>
 

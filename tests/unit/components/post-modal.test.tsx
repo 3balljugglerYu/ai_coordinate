@@ -76,15 +76,17 @@ describe("PostModal", () => {
   let refreshUnreadCountMock: jest.Mock;
 
   beforeAll(() => {
-    delete (window as Window & typeof globalThis & { location?: Location }).location;
-    (window as Window & typeof globalThis & { location: Location }).location = {
-      href: "",
-    } as unknown as Location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { href: "" },
+    });
   });
 
   afterAll(() => {
-    (window as Window & typeof globalThis & { location: Location }).location =
-      originalLocation;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   beforeEach(() => {
@@ -109,7 +111,14 @@ describe("PostModal", () => {
       bonus_granted: 50,
     });
     useUnreadNotificationCountMock.mockReturnValue({
+      unreadCount: 0,
+      hasAnnouncementPageDot: false,
+      hasAnnouncementTabDot: false,
+      hasSidebarDot: false,
       refreshUnreadCount: refreshUnreadCountMock,
+      refreshAnnouncementDots: jest.fn(),
+      markAnnouncementPageSeen: jest.fn(),
+      markAnnouncementTabSeen: jest.fn(),
     });
   });
 
@@ -148,8 +157,42 @@ describe("PostModal", () => {
       bonusGranted: 50,
     });
     expect(refreshUnreadCountMock).toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", { method: "POST" });
+    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", {
+      method: "POST",
+    });
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(window.location.href).toBe("/");
+  });
+
+  test("投稿成功ハンドラが既定遷移を抑止した場合_ホームへ遷移しない", async () => {
+    const onOpenChange = jest.fn();
+    const onPostSuccess = jest
+      .fn()
+      .mockResolvedValue({ skipDefaultRedirect: true });
+
+    render(
+      <PostModal
+        open
+        onOpenChange={onOpenChange}
+        imageId="image-1"
+        onPostSuccess={onPostSuccess}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "投稿する" }));
+
+    await waitFor(() => {
+      expect(onPostSuccess).toHaveBeenCalledWith({
+        id: "post-1",
+        is_posted: true,
+        caption: "fresh caption",
+        posted_at: "2026-03-16T00:00:00.000Z",
+        bonus_granted: 50,
+      });
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", { method: "POST" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(window.location.href).toBe("");
   });
 });
