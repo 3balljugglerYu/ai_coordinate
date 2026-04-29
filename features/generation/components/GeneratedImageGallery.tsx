@@ -34,7 +34,6 @@ interface GeneratedImageGalleryProps {
 }
 
 const FALLBACK_SHOW_DELAY_MS = 800;
-const POST_SUCCESS_HOME_NAVIGATION_FALLBACK_MS = 1500;
 
 function getImageRenderKey(image: GeneratedImageData) {
   return image.galleryKey ?? image.id;
@@ -98,19 +97,17 @@ export function GeneratedImageGallery({
   };
 
   const navigateHomeAfterPostSuccess = () => {
+    // router.push("/") のみで完結させる。
+    // 以前は router.refresh() を 0ms で重ねていたが、これが LocaleShell の
+    // Suspense 境界（components/LocaleShell.tsx 21-23 行目）を再活性化させ、
+    // AppShell ごと unmount → 中の CoordinateSourceStockSavePromptDialogHost
+    // も unmount されることで、表示直後の SaveDialog が消える事象が
+    // モバイル（特に iOS Safari）で再現していた。
+    // ホーム側の新着反映は notifyPendingHomePostRefresh() の event で
+    // PostList が消化するため、refresh() は不要。
+    // 1500ms ハードリロードのフォールバックも、発火するとさらに状態が
+    // 飛んで UX が悪化するため削除。
     router.push("/");
-
-    if (typeof window === "undefined") return;
-
-    window.setTimeout(() => {
-      router.refresh();
-    }, 0);
-
-    window.setTimeout(() => {
-      if (window.location.pathname.endsWith("/coordinate")) {
-        window.location.assign("/");
-      }
-    }, POST_SUCCESS_HOME_NAVIGATION_FALLBACK_MS);
   };
 
   // onLoad が発火しない場合のフォールバック（キャッシュ済み・ネットワーク遅延等）

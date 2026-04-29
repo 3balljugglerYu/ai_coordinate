@@ -302,7 +302,11 @@ export function SaveSourceImageToStockDialog({
         }
       }}
     >
-      <DialogContent className="border-none bg-transparent p-0 shadow-none sm:max-w-[520px] data-[state=closed]:animate-none data-[state=open]:animate-none">
+      <DialogContent
+        className="border-none bg-transparent p-0 shadow-none sm:max-w-[520px] data-[state=closed]:animate-none data-[state=open]:animate-none"
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <div className="popup-banner-card-enter grid max-h-[calc(100dvh-2rem)] gap-4 overflow-y-auto rounded-lg border bg-background p-6 shadow-lg">
           <SaveStockPromptIllustration
             sourceImageUrl={sourceImagePreviewUrl ?? undefined}
