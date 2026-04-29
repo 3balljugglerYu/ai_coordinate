@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Lock, Sparkles, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,16 +13,23 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { LockableModelSelect } from "./LockableModelSelect";
 import { StockImageListClient } from "./StockImageListClient";
-import { StockImageUploadCard } from "./StockImageUploadCard";
+import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
   getMaxGenerationCount,
   type SubscriptionPlan,
 } from "@/features/subscription/subscription-config";
-import { getSourceImageStocks, getStockImageLimit, type SourceImageStock } from "../lib/database";
+import {
+  getSourceImageStocks,
+  getStockImageLimit,
+  type SourceImageStock,
+} from "../lib/database";
 import { getCurrentUserId } from "../lib/current-user";
-import { useCoordinateStocksUnread } from "../hooks/useCoordinateStocksUnread";
+import {
+  COORDINATE_STOCK_CREATED_EVENT,
+  useCoordinateStocksUnread,
+} from "../hooks/useCoordinateStocksUnread";
 import {
   getPercoinCost,
   resolveEffectiveModelForAuthState,
@@ -80,6 +87,31 @@ type BackgroundModeOption = {
   label: string;
   description: string;
 };
+type RefreshStocksOptions = {
+  showLoading?: boolean;
+  validateSelectedStock?: boolean;
+  waitForStockImageId?: string | null;
+};
+
+function preloadImage(src: string): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let finished = false;
+    const image = new window.Image();
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+
+    const timeoutId = window.setTimeout(finish, 5000);
+    image.onload = finish;
+    image.onerror = finish;
+    image.src = src;
+  });
+}
 
 export function GenerationForm({
   subscriptionPlan,
@@ -121,6 +153,9 @@ export function GenerationForm({
   const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
+  const [recentlySavedStockId, setRecentlySavedStockId] = useState<string | null>(
+    null
+  );
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
@@ -132,8 +167,10 @@ export function GenerationForm({
   const [stockLimit, setStockLimit] = useState<number | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
+  const [isRefreshingStocks, setIsRefreshingStocks] = useState(false);
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
+  const activeStockRefreshCountRef = useRef(0);
   const isAuthenticated = authState === "authenticated";
   const {
     hasDot: hasStockTabDot,
@@ -268,6 +305,29 @@ export function GenerationForm({
   const hasSourceImage = imageSourceType === "upload" ? !!uploadedImage : !!selectedStockId;
   const isSubmitDisabled =
     !prompt.trim() || !hasSourceImage || isGenerating || isPromptTooLong;
+  const isStockLimitReached =
+    stockLimit !== null && currentCount !== null && currentCount >= stockLimit;
+  const shouldShowStockListLoading =
+    isLoadingStocks || (imageSourceType === "stock" && isRefreshingStocks);
+  const stockListContainsSelectedStock =
+    selectedStockId !== null && stocks.some((stock) => stock.id === selectedStockId);
+  const shouldShowGeneratedImagesFromSelectedStock =
+    selectedStockId !== null &&
+    !shouldShowStockListLoading &&
+    stockListContainsSelectedStock;
+  const displayedStocks = useMemo(() => {
+    if (!recentlySavedStockId) return stocks;
+
+    const recentlySavedStock = stocks.find(
+      (stock) => stock.id === recentlySavedStockId
+    );
+    if (!recentlySavedStock) return stocks;
+
+    return [
+      recentlySavedStock,
+      ...stocks.filter((stock) => stock.id !== recentlySavedStockId),
+    ];
+  }, [recentlySavedStockId, stocks]);
 
   // localStorageの変更を別タブから監視（新キーに統一）。
   useEffect(() => {
@@ -289,41 +349,106 @@ export function GenerationForm({
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // ストック画像と制限数を取得
-  useEffect(() => {
-    const fetchStocks = async () => {
+  const refreshStocks = useCallback(
+    async ({
+      showLoading = false,
+      validateSelectedStock = true,
+      waitForStockImageId = null,
+    }: RefreshStocksOptions = {}) => {
+      activeStockRefreshCountRef.current += 1;
+      setIsRefreshingStocks(true);
       try {
-        setIsLoadingStocks(true);
+        if (showLoading) {
+          setIsLoadingStocks(true);
+        }
         const userId = await getCurrentUserId();
         if (!userId) {
-          setIsLoadingStocks(false);
+          setStocks([]);
+          setStockLimit(null);
+          setCurrentCount(null);
           return;
         }
         const [stocksData, limit] = await Promise.all([
           getSourceImageStocks(50, 0),
           getStockImageLimit(),
         ]);
+        const stockToWaitFor =
+          waitForStockImageId !== null
+            ? stocksData.find((stock) => stock.id === waitForStockImageId)
+            : null;
+        if (stockToWaitFor?.image_url) {
+          await preloadImage(stockToWaitFor.image_url);
+        }
         setStocks(stocksData);
         setStockLimit(limit);
         setCurrentCount(stocksData.length);
-        // 永続化された selectedStockId が現存しないなら破棄して upload に戻す（R12）。
-        setSelectedStockId((current) => {
-          if (current && !stocksData.some((s) => s.id === current)) {
-            writePreferredSelectedStockId(null);
-            setImageSourceType("upload");
-            writePreferredImageSourceType("upload");
-            return null;
-          }
-          return current;
-        });
+        if (validateSelectedStock) {
+          // 永続化された selectedStockId が現存しないなら破棄して upload に戻す（R12）。
+          setSelectedStockId((current) => {
+            if (current && !stocksData.some((s) => s.id === current)) {
+              writePreferredSelectedStockId(null);
+              setImageSourceType("upload");
+              writePreferredImageSourceType("upload");
+              return null;
+            }
+            return current;
+          });
+        }
       } catch (error) {
         console.error("Failed to fetch stocks:", error);
       } finally {
-        setIsLoadingStocks(false);
+        if (showLoading) {
+          setIsLoadingStocks(false);
+        }
+        activeStockRefreshCountRef.current -= 1;
+        if (activeStockRefreshCountRef.current <= 0) {
+          activeStockRefreshCountRef.current = 0;
+          setIsRefreshingStocks(false);
+        }
       }
+    },
+    []
+  );
+
+  // ストック画像と制限数を取得
+  useEffect(() => {
+    void refreshStocks({ showLoading: true });
+  }, [refreshStocks]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (typeof window === "undefined") return;
+
+    const handleStockCreated = (event: Event) => {
+      if (
+        event instanceof CustomEvent &&
+        typeof event.detail?.stockId === "string"
+      ) {
+        setSelectedStockId(event.detail.stockId);
+        setRecentlySavedStockId(event.detail.stockId);
+      }
+      const stockId =
+        event instanceof CustomEvent &&
+        typeof event.detail?.stockId === "string"
+          ? event.detail.stockId
+          : null;
+      void refreshStocks({
+        validateSelectedStock: false,
+        waitForStockImageId: stockId,
+      });
     };
-    void fetchStocks();
-  }, []);
+
+    window.addEventListener(
+      COORDINATE_STOCK_CREATED_EVENT,
+      handleStockCreated
+    );
+    return () => {
+      window.removeEventListener(
+        COORDINATE_STOCK_CREATED_EVENT,
+        handleStockCreated
+      );
+    };
+  }, [isAuthenticated, refreshStocks]);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
@@ -487,10 +612,41 @@ export function GenerationForm({
         ) : (
           <div className="space-y-4">
             <div>
-              <Label className="text-base font-medium mb-3 block">
-                {t("stockImagesLabel")}
-              </Label>
-              {isLoadingStocks ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Label className="text-base font-medium">
+                  {t("stockImagesLabel")}
+                </Label>
+                <StockImageAddButton
+                  disabled={
+                    isGenerating ||
+                    isLoadingStocks ||
+                    isRefreshingStocks ||
+                    stockLimit === null ||
+                    currentCount === null ||
+                    isStockLimitReached
+                  }
+                    onUploadSuccess={(stockId) => {
+                      setSelectedStockId(stockId);
+                      setRecentlySavedStockId(stockId);
+                      writePreferredSelectedStockId(stockId);
+                      void refreshStocks({
+                        validateSelectedStock: false,
+                        waitForStockImageId: stockId,
+                      });
+                      void markStockTabSeen();
+                    }}
+                  onUploadError={(error) => {
+                    console.error("Stock upload error:", error);
+                    alert(error);
+                  }}
+                />
+                {isStockLimitReached && (
+                  <span className="text-xs text-muted-foreground">
+                    {t("stockLimitReachedInline")}
+                  </span>
+                )}
+              </div>
+              {shouldShowStockListLoading ? (
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex-shrink-0 w-[140px] sm:w-[160px]">
@@ -500,9 +656,10 @@ export function GenerationForm({
                 </div>
               ) : (
                 <StockImageListClient
-                  stocks={stocks}
+                  stocks={displayedStocks}
                   selectedStockId={selectedStockId}
                   onSelect={(stock) => {
+                    setRecentlySavedStockId(null);
                     if (stock) {
                       setSelectedStockId(stock.id);
                       writePreferredSelectedStockId(stock.id);
@@ -516,60 +673,19 @@ export function GenerationForm({
                       setSelectedStockId(null);
                       writePreferredSelectedStockId(null);
                     }
+                    if (recentlySavedStockId === stockId) {
+                      setRecentlySavedStockId(null);
+                    }
                     // ストックリストから削除
                     setStocks((prev) => prev.filter((s) => s.id !== stockId));
                     setCurrentCount((prev) => (prev !== null ? Math.max(0, prev - 1) : null));
                   }}
-                  onRefreshTrigger={async () => {
-                    // ストックリストを再取得
-                    try {
-                      const userId = await getCurrentUserId();
-                      if (userId) {
-                        const [stocksData, limit] = await Promise.all([
-                          getSourceImageStocks(50, 0),
-                          getStockImageLimit(),
-                        ]);
-                        setStocks(stocksData);
-                        setStockLimit(limit);
-                        setCurrentCount(stocksData.length);
-                      }
-                    } catch (error) {
-                      console.error("Failed to refresh stocks:", error);
-                    }
+                  onRefreshTrigger={() => {
+                    void refreshStocks({ validateSelectedStock: false });
                   }}
-                  renderUploadCard={() => (
-                    stockLimit !== null && currentCount !== null ? (
-                      <StockImageUploadCard
-                        stockLimit={stockLimit}
-                        currentCount={currentCount}
-                        onUploadSuccess={async () => {
-                          // ストックリストを再取得
-                          try {
-                            const userId = await getCurrentUserId();
-                            if (userId) {
-                              const [stocksData, limit] = await Promise.all([
-                                getSourceImageStocks(50, 0),
-                                getStockImageLimit(),
-                              ]);
-                              setStocks(stocksData);
-                              setStockLimit(limit);
-                              setCurrentCount(stocksData.length);
-                            }
-                            await markStockTabSeen();
-                          } catch (error) {
-                            console.error("Failed to refresh stocks:", error);
-                          }
-                        }}
-                        onUploadError={(error) => {
-                          console.error("Stock upload error:", error);
-                          alert(error);
-                        }}
-                      />
-                    ) : null
-                  )}
                 />
               )}
-              {selectedStockId && (
+              {shouldShowGeneratedImagesFromSelectedStock && (
                 <div className="mt-4">
                   <GeneratedImagesFromSource
                     stockId={selectedStockId}

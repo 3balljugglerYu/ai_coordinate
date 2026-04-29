@@ -48,7 +48,7 @@ export function StockImageListClient({
       // 楽観的更新: クライアントサイドで即座に状態を更新
       setStocks((prev) => prev.filter((s) => s.id !== stock.id));
       onDelete?.(stock.id);
-      // リフレッシュトリガーを呼び出してStockImageUploadCardの制限数を更新
+      // リフレッシュトリガーを呼び出して親側の制限数・一覧を同期
       onRefreshTrigger?.();
       // サーバーコンポーネントを再レンダリングしてデータを同期
       router.refresh();

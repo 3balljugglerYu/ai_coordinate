@@ -1,7 +1,13 @@
 import "@testing-library/jest-dom";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
+import { COORDINATE_STOCK_CREATED_EVENT } from "@/features/generation/hooks/useCoordinateStocksUnread";
+import {
+  getSourceImageStocks,
+  getStockImageLimit,
+} from "@/features/generation/lib/database";
+import { getCurrentUserId } from "@/features/generation/lib/current-user";
 import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
@@ -38,7 +44,26 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
 }));
 
 jest.mock("@/features/generation/components/StockImageListClient", () => ({
-  StockImageListClient: () => <div>stock-image-list</div>,
+  StockImageListClient: ({
+    stocks,
+    selectedStockId,
+  }: {
+    stocks: Array<{ id: string; image_url: string; name?: string | null }>;
+    selectedStockId?: string | null;
+  }) => (
+    <div data-testid="mock-stock-list">
+      <div data-testid="mock-stock-count">{stocks.length}</div>
+      {stocks.map((stock) => (
+        <div
+          key={stock.id}
+          data-testid={`stock-${stock.id}`}
+          data-selected={selectedStockId === stock.id ? "true" : "false"}
+        >
+          {stock.name ?? stock.image_url}
+        </div>
+      ))}
+    </div>
+  ),
 }));
 
 jest.mock("@/features/generation/components/StockImageUploadCard", () => ({
@@ -96,11 +121,23 @@ jest.mock("@/features/generation/lib/model-config", () => ({
 const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
+const getSourceImageStocksMock = getSourceImageStocks as jest.MockedFunction<
+  typeof getSourceImageStocks
+>;
+const getStockImageLimitMock = getStockImageLimit as jest.MockedFunction<
+  typeof getStockImageLimit
+>;
+const getCurrentUserIdMock = getCurrentUserId as jest.MockedFunction<
+  typeof getCurrentUserId
+>;
 
 const messages: Record<string, string> = {
   imageSourceLabel: "Choose source image",
   libraryTab: "Library",
   stockTab: "Stock",
+  stockImagesLabel: "Stock images",
+  addStockImageAction: "Add stock image",
+  stockLimitReachedInline: "Limit reached.",
   sourceImageTypeLabel: "Source image type",
   sourceImageTypeIllustration: "Illustration",
   sourceImageTypeReal: "Photoreal",
@@ -161,16 +198,46 @@ function getSubmitButton() {
 }
 
 describe("GenerationForm", () => {
+  let originalWindowImage: typeof Image;
+
+  beforeAll(() => {
+    originalWindowImage = window.Image;
+  });
+
   beforeEach(() => {
+    class MockImage {
+      onload: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+
+      set src(_value: string) {
+        window.setTimeout(() => {
+          this.onload?.(new Event("load"));
+        }, 0);
+      }
+    }
+
+    Object.defineProperty(window, "Image", {
+      configurable: true,
+      writable: true,
+      value: MockImage,
+    });
     useTranslationsMock.mockImplementation((namespace?: string) => {
       return ((key: string, values?: Record<string, string | number>) =>
         translate(namespace, key, values)) as ReturnType<typeof useTranslations>;
     });
+    getCurrentUserIdMock.mockResolvedValue(null);
+    getSourceImageStocksMock.mockResolvedValue([]);
+    getStockImageLimitMock.mockResolvedValue(0);
     window.alert = jest.fn();
     localStorage.clear();
   });
 
   afterEach(() => {
+    Object.defineProperty(window, "Image", {
+      configurable: true,
+      writable: true,
+      value: originalWindowImage,
+    });
     jest.clearAllMocks();
   });
 
@@ -421,5 +488,175 @@ describe("GenerationForm", () => {
     });
 
     expect(localStorage.getItem(SELECTED_STOCK_ID_KEY)).toBeNull();
+  });
+
+  test("ストック保存イベント_ストック一覧を再取得し作成済み画像を即時表示する", async () => {
+    // Spec: GENFORM-010
+    const stockId = "22222222-2222-4222-8222-222222222222";
+    const existingStock = {
+      id: "11111111-1111-4111-8111-111111111111",
+      user_id: "user-1",
+      image_url: "https://example.com/existing-source.png",
+      storage_path: "source/user-1/existing-source.png",
+      name: "existing source",
+      usage_count: 0,
+      created_at: "2026-04-28T00:00:00.000Z",
+      updated_at: "2026-04-28T00:00:00.000Z",
+      last_used_at: null,
+      deleted_at: null,
+    };
+    const savedStock = {
+      id: stockId,
+      user_id: "user-1",
+      image_url: "https://example.com/source.png",
+      storage_path: "source/user-1/source.png",
+      name: "saved source",
+      usage_count: 0,
+      created_at: "2026-04-29T00:00:00.000Z",
+      updated_at: "2026-04-29T00:00:00.000Z",
+      last_used_at: null,
+      deleted_at: null,
+    };
+
+    getCurrentUserIdMock.mockResolvedValue("user-1");
+    getStockImageLimitMock.mockResolvedValue(5);
+    getSourceImageStocksMock
+      .mockResolvedValueOnce([existingStock])
+      .mockResolvedValueOnce([existingStock, savedStock]);
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+    await waitFor(() => {
+      expect(getSourceImageStocksMock).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent(COORDINATE_STOCK_CREATED_EVENT, {
+          detail: { stockId },
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(getSourceImageStocksMock).toHaveBeenCalledTimes(2);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Stock/i }));
+
+    expect(screen.getByTestId(`stock-${stockId}`)).toHaveTextContent(
+      "saved source",
+    );
+    expect(screen.getByTestId(`stock-${stockId}`)).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
+    expect(
+      screen
+        .getByTestId("mock-stock-list")
+        .querySelector('[data-testid^="stock-"]'),
+    ).toBe(screen.getByTestId(`stock-${stockId}`));
+  });
+
+  test("ストック保存イベント_再取得中にストックタブを開いた場合は一覧表示を待機する", async () => {
+    // Spec: GENFORM-011
+    const stockId = "44444444-4444-4444-8444-444444444444";
+    const savedStock = {
+      id: stockId,
+      user_id: "user-1",
+      image_url: "https://example.com/source.png",
+      storage_path: "source/user-1/source.png",
+      name: "saved source",
+      usage_count: 0,
+      created_at: "2026-04-29T00:00:00.000Z",
+      updated_at: "2026-04-29T00:00:00.000Z",
+      last_used_at: null,
+      deleted_at: null,
+    };
+    let resolveRefresh!: (
+      stocks: Awaited<ReturnType<typeof getSourceImageStocks>>,
+    ) => void;
+    const refreshPromise = new Promise<
+      Awaited<ReturnType<typeof getSourceImageStocks>>
+    >((resolve) => {
+      resolveRefresh = resolve;
+    });
+
+    getCurrentUserIdMock.mockResolvedValue("user-1");
+    getStockImageLimitMock.mockResolvedValue(5);
+    getSourceImageStocksMock
+      .mockResolvedValueOnce([])
+      .mockReturnValueOnce(refreshPromise);
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+    await waitFor(() => {
+      expect(getSourceImageStocksMock).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent(COORDINATE_STOCK_CREATED_EVENT, {
+          detail: { stockId },
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(getSourceImageStocksMock).toHaveBeenCalledTimes(2);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Stock/i }));
+
+    expect(screen.queryByTestId("mock-stock-list")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add stock image" }),
+    ).toBeDisabled();
+
+    await act(async () => {
+      resolveRefresh([savedStock]);
+      await refreshPromise;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`stock-${stockId}`)).toHaveTextContent(
+        "saved source",
+      );
+    });
+  });
+
+  test("ストックタブ_追加カードを出さず見出し横の追加ボタンを上限時は非活性にする", async () => {
+    // Spec: GENFORM-012
+    getCurrentUserIdMock.mockResolvedValue("user-1");
+    getStockImageLimitMock.mockResolvedValue(1);
+    getSourceImageStocksMock.mockResolvedValue([
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        user_id: "user-1",
+        image_url: "https://example.com/source.png",
+        storage_path: "source/user-1/source.png",
+        name: "source",
+        usage_count: 0,
+        created_at: "2026-04-29T00:00:00.000Z",
+        updated_at: "2026-04-29T00:00:00.000Z",
+        last_used_at: null,
+        deleted_at: null,
+      },
+    ]);
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+    await waitFor(() => {
+      expect(getSourceImageStocksMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Stock/i }));
+
+    expect(screen.queryByText("stock-image-upload-card")).not.toBeInTheDocument();
+    expect(screen.getByText("Limit reached.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add stock image" }),
+    ).toBeDisabled();
   });
 });

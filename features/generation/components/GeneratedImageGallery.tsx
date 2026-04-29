@@ -89,6 +89,14 @@ export function GeneratedImageGallery({
     setCoordinateSourceStockSavePromptPending(false);
   };
 
+  const scrollToPageTopOnSaveStart = () => {
+    if (typeof window === "undefined") return;
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  };
+
   // onLoad が発火しない場合のフォールバック（キャッシュ済み・ネットワーク遅延等）
   useEffect(() => {
     const timeouts = images.map((img) =>
@@ -399,6 +407,7 @@ export function GeneratedImageGallery({
           }}
           originalFile={pendingSavePrompt.file}
           jobIds={pendingSavePrompt.jobIds}
+          onSaveStart={scrollToPageTopOnSaveStart}
           onSaved={(stockId) => {
             writePreferredImageSourceType("stock");
             writePreferredSelectedStockId(stockId);

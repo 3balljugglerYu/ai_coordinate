@@ -3,7 +3,7 @@
 ## 0. 目的
 
 `/coordinate` のライブラリタブから生成した結果と元画像を比較できるようにするため、
-生成完了後に「元画像をストックに保存しますか？」という導線をモーダルで提示し、
+生成完了後に「着せ替え前のイラストも保存しますか？」という導線をモーダルで提示し、
 ユーザーが保存した場合に `image_jobs.source_image_stock_id` を紐づける。
 あわせて、ストックタブの未確認バッジ表示と、「ストック」タブ選択状態の永続化を行う。
 
@@ -214,7 +214,7 @@ erDiagram
 - **Context**: stock 作成導線には「ストックタブ上の uploader」と「ライブラリタブの生成結果 close 後モーダル」がある。前者はユーザーが既にストックタブを見ているが、後者はまだストックタブを見ていない。
 - **Decision**:
   - `insert_source_image_stock` RPC / `/api/source-image-stocks` は `coordinate_stocks_tab_seen_at` を自動更新しない
-  - ストックタブ上の `StockImageUploadCard` 経由で作成した場合は、成功後に `markStocksTabSeen()` を呼び、ドットを出さない
+  - ストックタブ上の `StockImageAddButton` 経由で作成した場合は、成功後に `markStocksTabSeen()` を呼び、ドットを出さない
   - ライブラリタブの保存促進モーダル経由で作成した場合は、既読化せず `coordinate-stock-created` event を発火して未確認状態を再取得する
 - **Reason**: 「ストックタブを見たら既読」というセマンティクスを保ちつつ、保存モーダルから作った stock はストックタブ未確認として自然に通知できる
 - **Consequence**: route handler / RPC は UI 状態を知らずに済む。stock 作成後の既読化は呼び出し元 UI の責務になる
@@ -315,7 +315,8 @@ flowchart LR
   - 「ストック」タブボタンに [`NotificationsPageTabs`](../../features/notifications/components/NotificationsPageTabs.tsx) と同じ赤丸 span を条件付き表示
   - タブクリック時 (`setImageSourceType("stock")` の前後) に `markSeen()` を呼ぶ
   - 復元時に既に `imageSourceType="stock"` だった場合もマウント直後に `markSeen()` を呼ぶ
-  - `StockImageUploadCard` 経由のアップロード成功時は、ストックタブ表示中なので `markSeen()` を呼んでドットを出さない
+  - `StockImageAddButton` 経由のアップロード成功時は、ストックタブ表示中なので `markSeen()` を呼んでドットを出さない
+  - ストック一覧末尾のアップロードカードは表示せず、「ストック画像」見出しテキストの右隣のプラスアイコンから画像選択と即時保存を行う。上限到達時はプラスアイコンを非活性にし、「上限に達しています。」を表示する
 - [ ] aria-label に未読件数の概念がない（ドットだけ）ので、`coordinate.stockTabUnreadDotLabel` 翻訳を追加
 
 ### Phase 5: ストック保存促進モーダル
@@ -324,9 +325,11 @@ flowchart LR
 
 - [ ] `features/generation/components/SaveSourceImageToStockDialog.tsx` 新規（クライアントコンポーネント）
   - shadcn `Dialog` ベース。保存促進状態と上限到達状態を同一ダイアログ内で切り替える
-  - props: `open`, `onOpenChange`, `originalFile: File`, `relatedJobIds: string[]`, `onSaved?: (stock) => void`, `onRequestManageStocks?: () => void`
+  - props: `open`, `onOpenChange`, `originalFile: File`, `jobIds: string[]`, `onSaved?: (stockId) => void`, `onSaveStart?: () => void`, `onRequestManageStocks?: () => void`
   - 内部状態: `isSaving`, `error`, `isLimitReached`
-  - 「保存する」押下: `POST /api/source-image-stocks` (FormData) → 成功なら `linkSourceImageStockToJobs(stockId, jobIds)`
+  - `public/stock-save-prompt.webp` をモーダル上部に表示し、`originalFile` から作成したプレビュー URL を白カード領域に重ねる。重ねる領域は元画像 1254px 基準で `x=160`, `y=120`, `width=420`, `height=520`, `borderRadius=32`, `rotate=-12deg` を比率変換して使い、画像は `object-fit: contain` と `border-radius: 14%` で縦横比差と角丸表示を吸収する
+  - 「保存する」押下: `onSaveStart` で非同期スクロール開始 → `POST /api/source-image-stocks` (FormData) → 成功なら `linkSourceImageStockToJobs(stockId, jobIds)`
+  - 保存成功時は `coordinate-stock-created` event に `{ stockId }` を載せて dispatch し、`GenerationForm` がストック一覧を再取得する。該当 stock 画像を preload し、一覧に含まれるまで生成画像リストは表示しない
   - エラー時: `error.message` または `errorCode === "SOURCE_IMAGE_LIMIT_REACHED"` なら `isLimitReached` に切り替え、通常エラーはモーダル内に表示
   - 上限到達状態の文言:
     - title: 「ストック画像の上限に達しています」
@@ -365,8 +368,8 @@ flowchart LR
 **ビルド確認**: `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build -- --webpack` 全部通過。
 
 - [ ] `messages/ja.ts` `messages/en.ts`:
-  - `coordinate.saveStockDialogTitle`「元画像をストックに保存しますか？」
-  - `coordinate.saveStockDialogDescription`「保存すると元画像と生成結果を比較できます」
+  - `coordinate.saveStockDialogTitle`「着せ替え前のイラストも保存しますか？」
+  - `coordinate.saveStockDialogDescription`「保存すると、次回以降も探す手間がなくなります♪」
   - `coordinate.saveStockAction`「保存する」
   - `coordinate.saveStockLater`「後で」
   - `coordinate.saveStockSucceeded`「ストックに保存しました」
@@ -410,6 +413,7 @@ flowchart LR
 | `features/generation/lib/form-preferences.ts` | 修正 | image source type / stock id を永続化 |
 | `features/generation/hooks/useCoordinateStocksUnread.ts` | 新規 | バッジ用フック |
 | `features/generation/components/GenerationForm.tsx` | 修正 | localStorage 経路統一、タブにドット、imageSourceType 永続化 |
+| `features/generation/components/StockImageAddButton.tsx` | 新規 | ストック見出し横のプラスアイコン保存導線 |
 | `features/generation/components/GenerationFormContainer.tsx` | 修正 | 元画像ファイルを ref 登録 |
 | `features/generation/context/GenerationStateContext.tsx` | 修正 | pendingSourceImage の get/register とストックタブを開く要求を追加 |
 | `features/generation/lib/coordinate-source-stock-save-prompt-state.ts` | 新規 | 投稿後保存促進モーダルとスマホ下部ナビ赤丸の in-memory 状態 |
@@ -421,6 +425,7 @@ flowchart LR
 | `features/generation/components/ImageModal.tsx` | 修正 | close 時の current image を親へ返す |
 | `features/generation/components/GeneratedImageGallery.tsx` | 修正 | ImageModal close 時と投稿成功時にダイアログを開く |
 | `features/generation/components/SaveSourceImageToStockDialog.tsx` | 新規 | 保存導線モーダル |
+| `public/stock-save-prompt.webp` | 新規 | 保存導線モーダル用イラスト |
 | `messages/ja.ts` `messages/en.ts` | 修正 | 翻訳キー追加 |
 | `tests/...` (E2E + 単体) | 新規 | 上記要件に沿うテスト |
 
@@ -446,6 +451,8 @@ flowchart LR
 | カテゴリ | テスト内容 |
 |----------|-----------|
 | 正常系 | upload → 生成完了 → close → ダイアログ → 保存 → image_jobs.source_image_stock_id が埋まる |
+| 正常系 | close 後ダイアログの「保存する」押下 → 保存処理中にページ先頭へスクロールし、保存成功後にストックタブのドットと最新一覧が反映される |
+| 正常系 | 保存成功後のストック再取得中にストックタブを押す → 再取得完了と新規 stock 画像の preload 完了まで skeleton を表示し、完了後に新規ストック画像を先頭表示する |
 | 正常系 | stock 由来生成では close 後にダイアログが出ない |
 | 永続化 | imageSourceType="stock" + selectedStockId を保存 → リロード後も維持 |
 | フォールバック | localStorage 上の selectedStockId に対応する stock が削除済み → upload に戻る |
@@ -453,7 +460,7 @@ flowchart LR
 | 上限 | 上限到達モーダルの「ストックを整理」→ ストックタブに切り替わり、削除後に再度保存できる |
 | 上限 | 上限到達モーダルの「プランを見る」→ `/credits/purchase?tab=subscription` に遷移する |
 | バッジ | ユーザー B が API 経由で stock 追加（テスト用 fixture）→ ユーザー B が /coordinate 開く → ドット表示 → ストックタブを押す → ドット消える + DB の seen_at が前進 |
-| 自分追加 | ストックタブ上の既存 StockImageUploadCard 経由で自分追加 → 既にストックタブ表示中なので `markSeen()` が走りドットは出ない |
+| 自分追加 | ストックタブ上の `StockImageAddButton` 経由で自分追加 → 既にストックタブ表示中なので `markSeen()` が走りドットは出ない |
 | 認可 | 他ユーザーの jobId を含む link-stock → 当該行は更新されない |
 | 異常系 | link-stock 失敗時もストックは残り、ユーザーには warning 通知 |
 

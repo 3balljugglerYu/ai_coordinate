@@ -29,6 +29,8 @@ interface SaveSourceImageToStockDialogProps {
   jobIds: string[];
   /** ストック作成成功時のコールバック */
   onSaved?: (stockId: string) => void;
+  /** 保存処理開始時のコールバック */
+  onSaveStart?: () => void;
   /** 上限到達時にストック整理導線を選んだ時のコールバック */
   onRequestManageStocks?: () => void;
   /** 上限到達時にサブスク導線を選んだ時のコールバック */
@@ -49,12 +51,57 @@ function isLimitReachedMessage(message: string): boolean {
   return message.includes("上限") || lower.includes("limit");
 }
 
+function SaveStockPromptIllustration({
+  sourceImageUrl,
+  sourceImageAlt,
+}: {
+  sourceImageUrl?: string;
+  sourceImageAlt: string;
+}) {
+  return (
+    <div className="mx-auto mb-2 aspect-square w-52 max-w-[72vw] sm:w-60">
+      <div className="relative h-full w-full">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/stock-save-prompt.webp"
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-contain"
+          draggable={false}
+        />
+        {sourceImageUrl ? (
+          <div
+            className="absolute"
+            style={{
+              left: "12.76%",
+              top: "9.57%",
+              width: "33.49%",
+              height: "41.47%",
+              transform: "rotate(-12deg)",
+              transformOrigin: "center",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={sourceImageUrl}
+              alt={sourceImageAlt}
+              className="h-full w-full rounded-[14%] object-contain"
+              draggable={false}
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function SaveSourceImageToStockDialog({
   open,
   onOpenChange,
   originalFile,
   jobIds,
   onSaved,
+  onSaveStart,
   onRequestManageStocks,
   onRequestSubscriptionPlans,
 }: SaveSourceImageToStockDialogProps) {
@@ -63,6 +110,8 @@ export function SaveSourceImageToStockDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLimitReached, setIsLimitReached] = useState(false);
+  const [sourceImagePreviewUrl, setSourceImagePreviewUrl] =
+    useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -70,10 +119,20 @@ export function SaveSourceImageToStockDialog({
     setIsLimitReached(false);
   }, [open, originalFile, jobIds]);
 
+  useEffect(() => {
+    const previewUrl = URL.createObjectURL(originalFile);
+    setSourceImagePreviewUrl(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [originalFile]);
+
   const handleSave = async () => {
     setError(null);
     setIsLimitReached(false);
     setIsSaving(true);
+    onSaveStart?.();
     try {
       const normalizedFile = await normalizeSourceImage(originalFile, {
         imageLoadFailed: t("imageLoadFailed"),
@@ -113,7 +172,11 @@ export function SaveSourceImageToStockDialog({
 
       // 別タブ / 他コンポーネントへ「ストックが新規追加された」と通知
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event(COORDINATE_STOCK_CREATED_EVENT));
+        window.dispatchEvent(
+          new CustomEvent(COORDINATE_STOCK_CREATED_EVENT, {
+            detail: { stockId: data.id },
+          })
+        );
       }
 
       // 関連 jobId を image_jobs / generated_images に紐づけ（best-effort）
@@ -170,7 +233,11 @@ export function SaveSourceImageToStockDialog({
         }
       }}
     >
-      <DialogContent>
+      <DialogContent className="sm:max-w-[520px]">
+        <SaveStockPromptIllustration
+          sourceImageUrl={sourceImagePreviewUrl ?? undefined}
+          sourceImageAlt={t("sourceImageAlt")}
+        />
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
