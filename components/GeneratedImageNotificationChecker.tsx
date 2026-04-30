@@ -128,6 +128,7 @@ export function GeneratedImageNotificationChecker() {
           className: "cursor-pointer pr-6",
           showCloseButton: false,
           role: "button",
+          tabIndex: 0,
           onClick: () => {
             openGeneratedList();
             dismiss();

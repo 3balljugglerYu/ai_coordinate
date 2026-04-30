@@ -317,6 +317,7 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     will-change: transform;
   }
 
+  /* Keep toast motion in CSS so exit durations, swipe states, and DOM removal timing stay aligned. */
   @keyframes toastSlideInTop {
     from {
       opacity: 0;
