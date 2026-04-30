@@ -564,10 +564,13 @@ export function GenerationForm({
               onClick={() => {
                 setImageSourceType("upload");
                 writePreferredImageSourceType("upload");
-                setSelectedStockId(null);
-                writePreferredSelectedStockId(null);
+                // 生成中はストック選択を保持し、閲覧目的のタブ切替を許可する。
+                // 完了後にユーザーが続けて別生成を行う際の元タブ選択を失わせない。
+                if (!isGenerating) {
+                  setSelectedStockId(null);
+                  writePreferredSelectedStockId(null);
+                }
               }}
-              disabled={isGenerating}
               className="flex-1"
             >
               <Upload className="mr-2 h-4 w-4" />
@@ -579,9 +582,10 @@ export function GenerationForm({
               onClick={() => {
                 setImageSourceType("stock");
                 writePreferredImageSourceType("stock");
-                setUploadedImage(null);
+                if (!isGenerating) {
+                  setUploadedImage(null);
+                }
               }}
-              disabled={isGenerating}
               className="relative flex-1"
             >
               <Folder className="mr-2 h-4 w-4" />

@@ -53,14 +53,34 @@ export function ImageUploader({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // コンポーネントのアンマウント時にpreviewUrlをクリーンアップ
+  // 直前の previewUrl と controlled モード状態を ref で追跡する。
+  // controlled モード（親から value が渡される）では、unmount 時に URL を
+  // revoke すると親が保持する value.previewUrl が無効化され、再 mount 時
+  // （タブ切替等）に画像が壊れて見える。controlled では URL のライフサイクル
+  // は親が所有する想定で、unmount 時の revoke を抑止する。
+  const prevPreviewUrlRef = useRef<string | null>(null);
+  const isControlledRef = useRef(value !== undefined);
+  isControlledRef.current = value !== undefined;
+
+  // previewUrl が差し変わったタイミングで古い URL を revoke（メモリ解放）。
+  useEffect(() => {
+    const currentUrl = uploadedImage?.previewUrl ?? null;
+    const prevUrl = prevPreviewUrlRef.current;
+    if (prevUrl && prevUrl !== currentUrl) {
+      URL.revokeObjectURL(prevUrl);
+    }
+    prevPreviewUrlRef.current = currentUrl;
+  }, [uploadedImage?.previewUrl]);
+
+  // 真の unmount 時のみ呼ばれる cleanup（empty deps）。
+  // controlled モードでは親が URL を所有するので revoke しない。
   useEffect(() => {
     return () => {
-      if (uploadedImage?.previewUrl) {
-        URL.revokeObjectURL(uploadedImage.previewUrl);
+      if (!isControlledRef.current && prevPreviewUrlRef.current) {
+        URL.revokeObjectURL(prevPreviewUrlRef.current);
       }
     };
-  }, [uploadedImage?.previewUrl]);
+  }, []);
 
   const handleFileChange = useCallback(
     async (file: File) => {
