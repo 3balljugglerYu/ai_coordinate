@@ -622,6 +622,7 @@ Main errors:
 | --- | --- | --- | --- |
 | GET | `/api/generation-status/in-progress` | user session | 未完了ジョブ一覧を取得する |
 | GET | `/api/generation-status` | user session | 指定ジョブの状態を取得する |
+| PATCH | `/api/generation-status/link-stock` | user session | 元画像ストックと生成ジョブを後追いで紐付ける |
 
 ### hello
 

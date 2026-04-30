@@ -1902,6 +1902,40 @@ Deno.serve(async () => {
 
               imageRecordId = imageRecord.id;
 
+              const { data: postInsertJob, error: postInsertJobError } = await supabase
+                .from("image_jobs")
+                .select("source_image_stock_id")
+                .eq("id", jobId)
+                .maybeSingle();
+
+              if (postInsertJobError) {
+                console.warn(
+                  `[Worker] failed to post-sync source_image_stock_id for generated image ${imageRecordId}`,
+                  postInsertJobError
+                );
+              }
+
+              const postInsertSourceImageStockId =
+                postInsertJob?.source_image_stock_id ?? null;
+
+              if (
+                postInsertSourceImageStockId &&
+                postInsertSourceImageStockId !== latestSourceImageStockId
+              ) {
+                const { error: syncGeneratedImageError } = await supabase
+                  .from("generated_images")
+                  .update({ source_image_stock_id: postInsertSourceImageStockId })
+                  .eq("id", imageRecordId)
+                  .is("source_image_stock_id", null);
+
+                if (syncGeneratedImageError) {
+                  console.warn(
+                    `[Worker] failed to post-sync generated image ${imageRecordId} with source image stock`,
+                    syncGeneratedImageError
+                  );
+                }
+              }
+
               // ===== フェーズ4-4: 成功時の処理 =====
               // image_jobsテーブルを更新（成功時）
               const successGenerationMetadata = {
