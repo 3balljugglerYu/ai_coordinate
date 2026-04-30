@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
+import { stripLocalePrefix } from "@/i18n/config";
 import {
   COORDINATE_GENERATED_LIST_HASH,
   COORDINATE_GENERATED_LIST_ID,
@@ -23,6 +24,10 @@ const COORDINATE_PATH = "/coordinate";
 const COORDINATE_TOAST_DURATION_MS = 5000;
 /** 初期シード・新規検知の両方で十分な上限（バースト生成時の取りこぼし防止） */
 const COORDINATE_TOAST_QUERY_LIMIT = 50;
+
+function isCoordinatePath(pathname: string | null | undefined) {
+  return stripLocalePrefix(pathname ?? "/").pathname === COORDINATE_PATH;
+}
 
 function maxIsoTimestamps(values: string[]): string | null {
   let best: string | null = null;
@@ -108,7 +113,7 @@ export function GeneratedImageNotificationChecker() {
 
         const tr = tRef.current;
         const openGeneratedList = () => {
-          if (pathnameRef.current === COORDINATE_PATH) {
+          if (isCoordinatePath(pathnameRef.current)) {
             document
               .getElementById(COORDINATE_GENERATED_LIST_ID)
               ?.scrollIntoView({ behavior: "smooth", block: "start" });
