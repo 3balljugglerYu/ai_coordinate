@@ -1925,8 +1925,7 @@ Deno.serve(async () => {
                 const { error: syncGeneratedImageError } = await supabase
                   .from("generated_images")
                   .update({ source_image_stock_id: postInsertSourceImageStockId })
-                  .eq("id", imageRecordId)
-                  .is("source_image_stock_id", null);
+                  .eq("id", imageRecordId);
 
                 if (syncGeneratedImageError) {
                   console.warn(
