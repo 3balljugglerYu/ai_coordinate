@@ -1,6 +1,9 @@
+import { connection } from "next/server";
 import { requireAuth } from "@/lib/auth";
 
 export default async function DashboardPage() {
+  await connection();
+
   // 認証が必要なページ
   await requireAuth();
 

@@ -1,9 +1,12 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { UserSearchClient } from "./UserSearchClient";
 
 export default async function AdminUsersPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

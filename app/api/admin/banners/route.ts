@@ -2,7 +2,7 @@
  * バナー管理API（一覧・作成）
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,6 +17,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
  * GET: バナー一覧（全ステータス、管理用）
  */
 export async function GET() {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

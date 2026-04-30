@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
@@ -7,6 +8,8 @@ import { BannerListClient } from "./BannerListClient";
 import type { Banner } from "@/features/banners/lib/schema";
 
 export default async function AdminBannersPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

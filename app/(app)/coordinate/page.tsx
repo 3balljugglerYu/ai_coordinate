@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getUser } from "@/lib/auth";
@@ -17,6 +18,8 @@ import {
 } from "@/features/generation/components/CoordinateGeneratedListHashScroll";
 
 export default async function CoordinatePage() {
+  await connection();
+
   const t = await getTranslations("coordinate");
   const creditsT = await getTranslations("credits");
   const locale = (await getLocale()) as Locale;

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
@@ -71,6 +71,7 @@ async function findGeneratedImageId(
  * image_jobsテーブルから生成ステータスを取得
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getGenerationRouteCopy(getRouteLocale(request));
 
   try {

@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
 
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getAccountRouteCopy(getRouteLocale(request));
 
   try {

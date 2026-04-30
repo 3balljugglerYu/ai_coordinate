@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
@@ -13,6 +14,8 @@ import { MyPageImageGallerySkeleton } from "@/features/my-page/components/MyPage
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 
 export default async function MyPagePage() {
+  await connection();
+
   const [myPageT, creditsT, localeValue] = await Promise.all([
     getTranslations("myPage"),
     getTranslations("credits"),

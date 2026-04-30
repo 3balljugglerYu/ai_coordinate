@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
@@ -5,6 +6,8 @@ import { getAdminUserIds } from "@/lib/env";
 import { ModerationQueueClient } from "./ModerationQueueClient";
 
 export default async function AdminModerationPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

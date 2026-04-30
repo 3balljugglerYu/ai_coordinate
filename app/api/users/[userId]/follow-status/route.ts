@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -11,6 +11,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  await connection();
   const copy = followRouteCopy[getRouteLocale(request)];
   try {
     const user = await getUser();

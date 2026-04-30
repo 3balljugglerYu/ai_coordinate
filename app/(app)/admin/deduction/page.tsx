@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
@@ -9,6 +10,8 @@ import { DeductionForm } from "./DeductionForm";
  * 管理者が特定ユーザーのペルコインを手動で減算する（Stripe返金・訂正等）
  */
 export default async function AdminDeductionPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { getMyImagesServer } from "@/features/my-page/lib/server-api";
 import { jsonError } from "@/lib/api/json-error";
@@ -9,6 +9,7 @@ import { getMyPageRouteCopy } from "@/features/my-page/lib/route-copy";
  * マイページ画像一覧取得API
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getMyPageRouteCopy(getRouteLocale(request));
 
   try {

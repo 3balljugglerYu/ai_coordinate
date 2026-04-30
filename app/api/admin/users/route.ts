@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -6,6 +6,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
 export async function GET(request: NextRequest) {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

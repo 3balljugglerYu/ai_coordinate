@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import {
@@ -18,6 +18,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await connection();
   const copy = postsRouteCopy[getRouteLocale(request)];
   try {
     const { id } = await params;

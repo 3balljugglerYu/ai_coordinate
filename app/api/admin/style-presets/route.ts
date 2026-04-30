@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { stylePresetStatusSchema } from "@/features/style-presets/lib/schema";
 import {
@@ -14,6 +14,7 @@ import { validateStylePresetImageFile } from "@/features/style-presets/lib/valid
 import { revalidateStylePresets } from "@/features/style-presets/lib/revalidate-style-presets";
 
 export async function GET() {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

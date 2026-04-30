@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
@@ -25,6 +25,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

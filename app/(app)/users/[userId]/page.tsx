@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -115,6 +116,8 @@ export default async function UserProfilePageRoute({
 }: {
   params: Promise<{ userId: string }>;
 }) {
+  await connection();
+
   const { userId } = await params;
   const user = await getUser();
   const viewerUserId = user?.id ?? null;

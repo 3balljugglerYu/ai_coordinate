@@ -317,14 +317,121 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     will-change: transform;
   }
 
+  @keyframes toastSlideInTop {
+    from {
+      opacity: 0;
+      transform: translate3d(0, -100%, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes toastSlideOutTop {
+    from {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      opacity: 0;
+      transform: translate3d(0, -100%, 0);
+    }
+  }
+
+  @keyframes toastSlideInBottom {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 100%, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes toastSlideOutBottom {
+    from {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      opacity: 0;
+      transform: translate3d(0, 100%, 0);
+    }
+  }
+
+  @keyframes toastSwipeOut {
+    from {
+      opacity: 1;
+      transform: translate3d(
+        0,
+        var(--radix-toast-swipe-move-y, 0),
+        0
+      );
+    }
+    to {
+      opacity: 0;
+      transform: translate3d(0, var(--radix-toast-swipe-end-y), 0);
+    }
+  }
+
+  .app-toast-root {
+    will-change: transform, opacity;
+  }
+
+  .app-toast-root[data-state="open"] {
+    animation: toastSlideInTop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .app-toast-root[data-state="closed"] {
+    animation: toastSlideOutTop 180ms ease-in both;
+  }
+
+  .app-toast-root[data-swipe="move"] {
+    animation: none;
+    transform: translate3d(0, var(--radix-toast-swipe-move-y), 0);
+  }
+
+  .app-toast-root[data-swipe="cancel"] {
+    transform: translate3d(0, 0, 0);
+    transition: transform 200ms ease-out;
+  }
+
+  .app-toast-root[data-swipe="end"] {
+    animation: toastSwipeOut 160ms ease-out both;
+  }
+
+  @media (min-width: 640px) {
+    .app-toast-root[data-state="open"] {
+      animation-name: toastSlideInBottom;
+    }
+
+    .app-toast-root[data-state="closed"] {
+      animation-name: toastSlideOutBottom;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .popup-banner-card-enter,
     .popup-banner-panel-enter,
     .reply-panel-mobile-content[data-state="open"],
     .reply-panel-mobile-overlay[data-state="open"],
     .comment-composer-sheet-content[data-state="open"],
-    .comment-composer-sheet-content[data-state="closed"] {
+    .comment-composer-sheet-content[data-state="closed"],
+    .app-toast-root[data-state="open"],
+    .app-toast-root[data-state="closed"],
+    .app-toast-root[data-swipe="end"] {
       animation: none;
+    }
+
+    .app-toast-root[data-swipe="cancel"] {
+      transition: none;
+    }
+
+    .app-toast-root[data-state="closed"],
+    .app-toast-root[data-swipe="end"] {
+      opacity: 0;
     }
   }
 

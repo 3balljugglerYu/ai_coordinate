@@ -2,7 +2,7 @@
  * フリー素材画像管理API（一覧・作成）
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -19,6 +19,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

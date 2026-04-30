@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -58,6 +58,7 @@ async function getStreakStatus(userId: string): Promise<StreakStatus> {
  * POST: 特典付与を実行する
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getStreakRouteCopy(getRouteLocale(request));
 
   try {

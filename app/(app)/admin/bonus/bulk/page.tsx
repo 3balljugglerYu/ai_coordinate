@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
@@ -9,6 +10,8 @@ import { BulkGrantClient } from "./BulkGrantClient";
  * CSVでメールアドレスと付与ペルコイン数を指定し、一括付与する
  */
 export default async function AdminBonusBulkPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

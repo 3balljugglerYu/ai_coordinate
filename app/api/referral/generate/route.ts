@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
@@ -10,6 +10,7 @@ import { getReferralRouteCopy } from "@/features/referral/lib/route-copy";
  * 認証済みユーザーの紹介コードを生成または取得します
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getReferralRouteCopy(getRouteLocale(request));
 
   try {

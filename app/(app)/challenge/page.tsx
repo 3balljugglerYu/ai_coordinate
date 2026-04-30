@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -20,6 +21,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ChallengePage() {
+  await connection();
+
   const t = await getTranslations("challenge");
   const userPromise = requireAuth();
   const baseDefaultsPromise = getPercoinDefaultsForDisplay("free");

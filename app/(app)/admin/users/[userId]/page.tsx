@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -174,6 +175,8 @@ export default async function AdminUserDetailPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

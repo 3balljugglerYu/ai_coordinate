@@ -107,6 +107,17 @@ export function GeneratedImageNotificationChecker() {
           maxIsoTimestamps(pendingCreated) ?? new Date().toISOString();
 
         const tr = tRef.current;
+        const openGeneratedList = () => {
+          if (pathnameRef.current === COORDINATE_PATH) {
+            document
+              .getElementById(COORDINATE_GENERATED_LIST_ID)
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            routerRef.current.push(
+              `${COORDINATE_PATH}${COORDINATE_GENERATED_LIST_HASH}`
+            );
+          }
+        };
         const { dismiss } = toastRef.current({
           title: tr("generatedImageReadyTitle"),
           description:
@@ -114,17 +125,19 @@ export function GeneratedImageNotificationChecker() {
               ? tr("generatedImageReadySingle")
               : tr("generatedImageReadyMultiple", { count: pending.length }),
           duration: COORDINATE_TOAST_DURATION_MS,
-          className: "cursor-pointer",
+          className: "cursor-pointer pr-6",
+          showCloseButton: false,
+          role: "button",
           onClick: () => {
-            if (pathnameRef.current === COORDINATE_PATH) {
-              document
-                .getElementById(COORDINATE_GENERATED_LIST_ID)
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            } else {
-              routerRef.current.push(
-                `${COORDINATE_PATH}${COORDINATE_GENERATED_LIST_HASH}`
-              );
+            openGeneratedList();
+            dismiss();
+          },
+          onKeyDown: (event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
             }
+            event.preventDefault();
+            openGeneratedList();
             dismiss();
           },
         });

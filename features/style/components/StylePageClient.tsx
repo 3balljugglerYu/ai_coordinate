@@ -815,7 +815,7 @@ export function StylePageClient({
       const { id } = toast({
         title: t("resultReadyToastTitle"),
         className: "cursor-pointer",
-        duration: 12000,
+        duration: 5000,
         onClick: () => {
           pendingResultImageRecenterRef.current =
             !resultImageLoadedRef.current;

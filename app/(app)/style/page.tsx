@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
@@ -47,6 +48,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function StylePage({ searchParams }: StylePageProps) {
+  await connection();
+
   const t = await getTranslations("style");
   const presets = await getPublishedStylePresets();
   const user = await getUser();

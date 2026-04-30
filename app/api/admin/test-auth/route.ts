@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 
 /**
@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth";
  * 本番環境では削除するか、アクセスを制限してください
  */
 export async function GET(request: NextRequest) {
+  await connection();
   try {
     // requireAdmin()はthrow NextResponse.json()を使用するため、try-catchが必要
     let admin;

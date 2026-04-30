@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { getPost } from "@/features/posts/lib/server-api";
@@ -118,6 +119,8 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
 
 
 export default async function PostDetailPage({ params }: PostDetailPageProps) {
+  await connection();
+
   const { id } = await params;
 
   // 現在のユーザーIDを取得（サーバーサイド）

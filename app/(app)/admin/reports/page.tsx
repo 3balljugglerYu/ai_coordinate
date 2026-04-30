@@ -1,9 +1,12 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { ReportsClient } from "./ReportsClient";
 
 export default async function AdminReportsPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

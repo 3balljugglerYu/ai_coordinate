@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getUser } from "@/lib/auth";
@@ -127,6 +128,8 @@ async function getCreditsSummary() {
 }
 
 export default async function AdminCreditsSummaryPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

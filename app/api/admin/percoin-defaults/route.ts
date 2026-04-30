@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
@@ -31,6 +31,7 @@ const patchBodySchema = z.object({
  * デフォルト枚数を取得（管理者用）
  */
 export async function GET() {
+  await connection();
   try {
     try {
       await requireAdmin();

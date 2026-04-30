@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
@@ -6,6 +7,8 @@ import { listPopupBanners } from "@/features/popup-banners/lib/popup-banner-repo
 import { PopupBannerListClient } from "./PopupBannerListClient";
 
 export default async function AdminPopupBannersPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

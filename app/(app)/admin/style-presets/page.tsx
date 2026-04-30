@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
@@ -6,6 +7,8 @@ import { listStylePresetsForAdmin } from "@/features/style-presets/lib/style-pre
 import { StylePresetListClient } from "./StylePresetListClient";
 
 export default async function AdminStylePresetsPage() {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 

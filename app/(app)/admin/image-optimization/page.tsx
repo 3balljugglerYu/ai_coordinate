@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -161,6 +162,8 @@ function BatchProcessingCard() {
  * 画像最適化監視ダッシュボードページ
  */
 export default async function ImageOptimizationDashboard() {
+  await connection();
+
   try {
     await requireAdmin();
   } catch {

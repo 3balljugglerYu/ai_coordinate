@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
@@ -15,6 +16,8 @@ interface AnnouncementDetailPageProps {
 export default async function AnnouncementDetailPage({
   params,
 }: AnnouncementDetailPageProps) {
+  await connection();
+
   const { id } = await params;
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;

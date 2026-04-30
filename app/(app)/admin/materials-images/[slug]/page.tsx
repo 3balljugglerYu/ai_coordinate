@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds, getSiteUrl } from "@/lib/env";
@@ -13,6 +14,8 @@ interface AdminMaterialsImagesPageProps {
 export default async function AdminMaterialsImagesPage({
   params,
 }: AdminMaterialsImagesPageProps) {
+  await connection();
+
   const user = await getUser();
   const adminUserIds = getAdminUserIds();
 
