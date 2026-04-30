@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
@@ -9,6 +10,8 @@ import { BonusGrantForm } from "./BonusGrantForm";
  * 管理者が特定ユーザーにペルコインを手動で付与する
  */
 export default async function AdminBonusPage() {
+  await connection();
+
   // 管理者権限チェック
   const user = await getUser();
   const adminUserIds = getAdminUserIds();

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -30,6 +30,7 @@ function isReferralCheckReasonCode(
  * メールアドレス確認完了後の初回ログイン成功時に呼び出される
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getReferralRouteCopy(getRouteLocale(request));
 
   try {

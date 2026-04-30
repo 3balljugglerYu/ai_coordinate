@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
@@ -34,6 +35,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PurchasePage({ searchParams }: PurchasePageProps) {
+  await connection();
+
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const params = await searchParams;

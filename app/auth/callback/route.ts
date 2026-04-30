@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
 
@@ -25,6 +25,7 @@ function isWithinReferralMetadataUpdateWindow(
  * 紹介コードが含まれている場合、新規ユーザーのメタデータに保存します。
  */
 export async function GET(request: Request) {
+  await connection();
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") || "/";

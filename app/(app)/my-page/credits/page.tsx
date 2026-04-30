@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
@@ -6,6 +7,8 @@ import { CachedPercoinPageContent } from "@/features/my-page/components/CachedPe
 import { PercoinPageSkeleton } from "@/features/my-page/components/PercoinPageSkeleton";
 
 export default async function PercoinPage() {
+  await connection();
+
   const creditsT = await getTranslations("credits");
   const user = await requireAuth();
 

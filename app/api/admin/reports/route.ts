@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
@@ -19,6 +19,7 @@ function getSubcategoryLabel(categoryId: string, subcategoryId: string): string 
 }
 
 export async function GET(request: NextRequest) {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

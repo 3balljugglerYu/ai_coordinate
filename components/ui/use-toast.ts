@@ -5,14 +5,15 @@ import * as React from "react";
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
 const TOAST_LIMIT = 1;
-/** Radix 閉じアニメーション後に DOM から外すまでの待ち（ms）。過大だと「消えない」ように感じる */
-const TOAST_REMOVE_DELAY = 1000;
+/** Radix 閉じアニメーション完了後に DOM から外すための待ち（ms）。CSS 側の最長 exit 180ms より少し長くする */
+const TOAST_REMOVE_DELAY = 250;
 
 type ToasterToast = ToastProps & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  showCloseButton?: boolean;
 };
 
 const actionTypes = {
@@ -187,4 +188,3 @@ function useToast() {
 }
 
 export { useToast, toast };
-

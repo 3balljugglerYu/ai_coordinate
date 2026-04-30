@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
@@ -45,6 +45,7 @@ function normalizeSaveInput(input: AnnouncementAdminSaveInput) {
 }
 
 export async function GET() {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

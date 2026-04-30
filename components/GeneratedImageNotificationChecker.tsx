@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
+import { stripLocalePrefix } from "@/i18n/config";
+import {
+  COORDINATE_GENERATED_LIST_HASH,
+  COORDINATE_GENERATED_LIST_ID,
+} from "@/features/generation/components/CoordinateGeneratedListHashScroll";
 import { getCurrentUserId } from "@/features/generation/lib/current-user";
 import {
   getGeneratedImages,
@@ -13,9 +19,15 @@ import {
   setCoordinateToastAckAt,
 } from "@/features/generation/lib/coordinate-toast-ack";
 
+const COORDINATE_PATH = "/coordinate";
+
 const COORDINATE_TOAST_DURATION_MS = 5000;
 /** 初期シード・新規検知の両方で十分な上限（バースト生成時の取りこぼし防止） */
 const COORDINATE_TOAST_QUERY_LIMIT = 50;
+
+function isCoordinatePath(pathname: string | null | undefined) {
+  return stripLocalePrefix(pathname ?? "/").pathname === COORDINATE_PATH;
+}
 
 function maxIsoTimestamps(values: string[]): string | null {
   let best: string | null = null;
@@ -38,10 +50,16 @@ function maxIsoTimestamps(values: string[]): string | null {
 export function GeneratedImageNotificationChecker() {
   const { toast } = useToast();
   const t = useTranslations("notifications");
+  const router = useRouter();
+  const pathname = usePathname();
   const toastRef = useRef(toast);
   const tRef = useRef(t);
+  const routerRef = useRef(router);
+  const pathnameRef = useRef(pathname);
   toastRef.current = toast;
   tRef.current = t;
+  routerRef.current = router;
+  pathnameRef.current = pathname;
 
   const isCheckingRef = useRef(false);
 
@@ -94,13 +112,40 @@ export function GeneratedImageNotificationChecker() {
           maxIsoTimestamps(pendingCreated) ?? new Date().toISOString();
 
         const tr = tRef.current;
-        toastRef.current({
+        const openGeneratedList = () => {
+          if (isCoordinatePath(pathnameRef.current)) {
+            document
+              .getElementById(COORDINATE_GENERATED_LIST_ID)
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            routerRef.current.push(
+              `${COORDINATE_PATH}${COORDINATE_GENERATED_LIST_HASH}`
+            );
+          }
+        };
+        const { dismiss } = toastRef.current({
           title: tr("generatedImageReadyTitle"),
           description:
             pending.length === 1
               ? tr("generatedImageReadySingle")
               : tr("generatedImageReadyMultiple", { count: pending.length }),
           duration: COORDINATE_TOAST_DURATION_MS,
+          className: "cursor-pointer pr-6",
+          showCloseButton: false,
+          role: "button",
+          tabIndex: 0,
+          onClick: () => {
+            openGeneratedList();
+            dismiss();
+          },
+          onKeyDown: (event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+            event.preventDefault();
+            openGeneratedList();
+            dismiss();
+          },
         });
 
         await setCoordinateToastAckAt(userId, nextAck);

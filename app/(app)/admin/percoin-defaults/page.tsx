@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { PercoinDefaultsForm } from "./PercoinDefaultsForm";
@@ -15,6 +16,8 @@ const BONUS_SOURCE_LABELS: Record<string, string> = {
  * アクセス制御は layout で実施
  */
 export default async function AdminPercoinDefaultsPage() {
+  await connection();
+
   const supabase = createAdminClient();
 
   const [bonusResult, streakResult] = await Promise.all([

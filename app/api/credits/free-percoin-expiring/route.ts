@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { FreePercoinBatchExpiring } from "@/features/credits/lib/free-percoin-expiration";
 import { jsonError } from "@/lib/api/json-error";
@@ -10,6 +10,7 @@ import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
  * 認証必須
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getCreditsRouteCopy(getRouteLocale(request));
 
   try {

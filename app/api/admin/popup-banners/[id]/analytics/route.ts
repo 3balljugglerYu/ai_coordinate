@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPopupBannerById } from "@/features/popup-banners/lib/popup-banner-repository";
@@ -92,6 +92,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await connection();
   const copy = getPopupBannersRouteCopy(getRouteLocale(request));
 
   try {

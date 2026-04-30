@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import {
@@ -18,6 +18,7 @@ function parseCheckboxValue(entry: FormDataEntryValue | null): boolean {
 }
 
 export async function GET() {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {

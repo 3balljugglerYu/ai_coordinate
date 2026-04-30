@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
@@ -10,6 +10,7 @@ import { getNotificationsRouteCopy } from "@/features/notifications/lib/route-co
  * 未認証の場合は401を返す（redirectではなく）
  */
 export async function GET(_request: NextRequest) {
+  await connection();
   const copy = getNotificationsRouteCopy(getRouteLocale(_request));
 
   try {

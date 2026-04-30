@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
@@ -11,6 +11,7 @@ import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
  * オプションで最近完了したジョブ（直近5分以内のsucceeded/failed）も取得
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getGenerationRouteCopy(getRouteLocale(request));
 
   try {

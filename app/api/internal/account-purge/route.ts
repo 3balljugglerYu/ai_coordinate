@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -250,6 +250,7 @@ async function runPurge(request: NextRequest, method: "GET" | "POST") {
 }
 
 export async function GET(request: NextRequest) {
+  await connection();
   return runPurge(request, "GET");
 }
 

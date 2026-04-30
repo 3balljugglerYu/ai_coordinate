@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -7,6 +7,7 @@ import { listPublishedAnnouncementsForUser } from "@/features/announcements/lib/
 import { decorateAnnouncementSummary } from "@/features/announcements/lib/presentation";
 
 export async function GET(request: NextRequest) {
+  await connection();
   const locale = getRouteLocale(request);
   const copy = getAnnouncementsRouteCopy(locale);
 

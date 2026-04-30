@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
@@ -10,6 +10,7 @@ import { enrichNotificationsWithDetails } from "@/features/notifications/lib/ser
  * 通知一覧取得API
  */
 export async function GET(request: NextRequest) {
+  await connection();
   const copy = getNotificationsRouteCopy(getRouteLocale(request));
 
   try {

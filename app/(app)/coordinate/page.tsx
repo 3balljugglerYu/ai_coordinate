@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getUser } from "@/lib/auth";
@@ -11,8 +12,14 @@ import { GenerationStateProvider } from "@/features/generation/context/Generatio
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import type { Locale } from "@/i18n/config";
 import { CoordinateGuestLoginCta } from "@/features/generation/components/CoordinateGuestLoginCta";
+import {
+  CoordinateGeneratedListHashScroll,
+  COORDINATE_GENERATED_LIST_ID,
+} from "@/features/generation/components/CoordinateGeneratedListHashScroll";
 
 export default async function CoordinatePage() {
+  await connection();
+
   const t = await getTranslations("coordinate");
   const creditsT = await getTranslations("credits");
   const locale = (await getLocale()) as Locale;
@@ -68,7 +75,8 @@ export default async function CoordinatePage() {
 
             {/* 生成結果一覧 (認証ユーザーのみ。ゲストは GuestResultPreview を見る) */}
             {!isGuest ? (
-              <div className="mt-8">
+              <div id={COORDINATE_GENERATED_LIST_ID} className="mt-8 scroll-mt-20">
+                <CoordinateGeneratedListHashScroll />
                 <h2 className="mb-4 text-xl font-semibold text-gray-900">
                   {t("resultsTitle")}
                 </h2>

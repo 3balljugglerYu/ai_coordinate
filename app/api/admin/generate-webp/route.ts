@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
@@ -180,6 +180,7 @@ export async function POST(request: NextRequest) {
  * 処理対象の画像数を取得
  */
 export async function GET(request: NextRequest) {
+  await connection();
   try {
     try {
       await requireAdmin();

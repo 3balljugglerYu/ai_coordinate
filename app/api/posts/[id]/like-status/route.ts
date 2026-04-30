@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { getUserLikeStatus } from "@/features/posts/lib/server-api";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -11,6 +11,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await connection();
   const copy = postsRouteCopy[getRouteLocale(request)];
   try {
     const user = await getUser();

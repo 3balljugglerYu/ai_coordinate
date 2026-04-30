@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
@@ -16,6 +17,8 @@ interface NotificationsPageProps {
 export default async function NotificationsPage({
   searchParams,
 }: NotificationsPageProps) {
+  await connection();
+
   const paramsPromise: Promise<{ tab?: string | string[] }> =
     searchParams ?? Promise.resolve({});
   const localePromise = getLocale();

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -12,6 +12,7 @@ const PROMO_TYPES = [
 ];
 
 export async function GET(request: NextRequest) {
+  await connection();
   try {
     await requireAdmin();
   } catch (error) {
