@@ -13,11 +13,13 @@ interface PendingSourceImageEntry {
   file: File;
   batchId: string;
   resultImageUrl: string | null;
+  promptShown: boolean;
 }
 
 export interface PendingSourceImageBatch {
   file: File;
   jobIds: string[];
+  promptShown: boolean;
 }
 
 interface GenerationStateContextValue {
@@ -56,6 +58,16 @@ interface GenerationStateContextValue {
     resultImageUrl: string
   ) => PendingSourceImageBatch | null;
   /**
+   * 渡された jobId が属するバッチ全体を read-only で取得する（map から消費しない）。
+   * 3 秒タイマー満了時の表示条件確認に使う。
+   */
+  getPendingSourceImageBatch: (jobId: string) => PendingSourceImageBatch | null;
+  /**
+   * 渡された jobId が属するバッチ内の全 entry の promptShown を true にする。
+   * ダイアログ表示確定時に呼び、同一 batch での二重表示を防ぐ。
+   */
+  markSourceImageBatchPromptShown: (jobId: string) => void;
+  /**
    * 成功した jobId と確定画像URLを紐づける。
    */
   bindPendingSourceImageResult: (
@@ -80,20 +92,34 @@ const GenerationStateContext = createContext<GenerationStateContextValue | null>
 const pendingSourceImageMap = new Map<string, PendingSourceImageEntry>();
 const pendingSourceImageJobIdByResultUrl = new Map<string, string>();
 
-function consumePendingSourceImageBatchByJobId(
+function collectBatchByJobId(
   jobId: string
-): PendingSourceImageBatch | null {
+): { file: File; batchId: string; jobIds: string[]; promptShown: boolean } | null {
   const entry = pendingSourceImageMap.get(jobId);
   if (!entry) return null;
 
   const { file, batchId } = entry;
+  let promptShown = false;
   const jobIds: string[] = [];
   pendingSourceImageMap.forEach((value, key) => {
     if (value.batchId === batchId) {
       jobIds.push(key);
+      if (value.promptShown) {
+        promptShown = true;
+      }
     }
   });
-  jobIds.forEach((id) => {
+
+  return { file, batchId, jobIds, promptShown };
+}
+
+function consumePendingSourceImageBatchByJobId(
+  jobId: string
+): PendingSourceImageBatch | null {
+  const batch = collectBatchByJobId(jobId);
+  if (!batch) return null;
+
+  batch.jobIds.forEach((id) => {
     const current = pendingSourceImageMap.get(id);
     if (current?.resultImageUrl) {
       pendingSourceImageJobIdByResultUrl.delete(current.resultImageUrl);
@@ -101,7 +127,20 @@ function consumePendingSourceImageBatchByJobId(
     pendingSourceImageMap.delete(id);
   });
 
-  return { file, jobIds };
+  return {
+    file: batch.file,
+    jobIds: batch.jobIds,
+    promptShown: batch.promptShown,
+  };
+}
+
+function findExistingBatchIdForFile(file: File): string | null {
+  for (const entry of pendingSourceImageMap.values()) {
+    if (entry.file === file) {
+      return entry.batchId;
+    }
+  }
+  return null;
 }
 
 export function GenerationStateProvider({
@@ -119,14 +158,17 @@ export function GenerationStateProvider({
   const registerPendingSourceImage = useCallback(
     (jobIds: string[], file: File) => {
       if (jobIds.length === 0) return;
-      const batchId = `${Date.now().toString(36)}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`;
+      const existingBatchId = findExistingBatchIdForFile(file);
+      const batchId =
+        existingBatchId ??
+        `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       jobIds.forEach((jobId) => {
+        if (pendingSourceImageMap.has(jobId)) return;
         pendingSourceImageMap.set(jobId, {
           file,
           batchId,
           resultImageUrl: null,
+          promptShown: false,
         });
       });
     },
@@ -175,6 +217,30 @@ export function GenerationStateProvider({
       pendingSourceImageJobIdByResultUrl.delete(entry.resultImageUrl);
     }
     pendingSourceImageMap.delete(jobId);
+  }, []);
+
+  const getPendingSourceImageBatch = useCallback(
+    (jobId: string): PendingSourceImageBatch | null => {
+      const batch = collectBatchByJobId(jobId);
+      if (!batch) return null;
+      return {
+        file: batch.file,
+        jobIds: batch.jobIds,
+        promptShown: batch.promptShown,
+      };
+    },
+    []
+  );
+
+  const markSourceImageBatchPromptShown = useCallback((jobId: string) => {
+    const entry = pendingSourceImageMap.get(jobId);
+    if (!entry) return;
+    const { batchId } = entry;
+    pendingSourceImageMap.forEach((value) => {
+      if (value.batchId === batchId) {
+        value.promptShown = true;
+      }
+    });
   }, []);
 
   const requestOpenStockTab = useCallback(() => {
@@ -235,6 +301,8 @@ export function GenerationStateProvider({
       registerPendingSourceImage,
       consumePendingSourceImageBatch,
       consumePendingSourceImageBatchByResultUrl,
+      getPendingSourceImageBatch,
+      markSourceImageBatchPromptShown,
       bindPendingSourceImageResult,
       dropPendingSourceImageJob,
       requestOpenStockTab,
@@ -248,7 +316,9 @@ export function GenerationStateProvider({
       consumePendingSourceImageBatchByResultUrl,
       dropPendingSourceImageJob,
       generatingCount,
+      getPendingSourceImageBatch,
       isGenerating,
+      markSourceImageBatchPromptShown,
       previewImages,
       registerPendingSourceImage,
       removePreviewImage,

@@ -1,4 +1,5 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { COORDINATE_STOCKS_LINK_MAX_JOBS } from "./coordinate-stocks-constants";
 import type { BackgroundMode, GeminiModel } from "../types";
 
 /**
@@ -523,28 +524,47 @@ export async function markStocksTabSeen(): Promise<void> {
 /**
  * ユーザーがストックに保存した元画像と、そのストック作成より前に走った image_jobs を紐づける。
  * generated_images 側は image_jobs.result_image_url との一致で best-effort 更新する。
+ *
+ * `PATCH /api/generation-status/link-stock` は jobIds の上限が
+ * `COORDINATE_STOCKS_LINK_MAX_JOBS` 件のため、超過する場合は分割して順次呼び出し、
+ * 結果をマージして返す。
  */
 export async function linkSourceImageStockToJobs(
   stockId: string,
   jobIds: string[]
 ): Promise<{ updatedJobIds: string[]; updatedGeneratedImageIds: string[] }> {
-  const response = await fetch("/api/generation-status/link-stock", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ stockId, jobIds }),
-  });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || "ストックの紐づけに失敗しました");
+  if (jobIds.length === 0) {
+    return { updatedJobIds: [], updatedGeneratedImageIds: [] };
   }
 
-  const data = (await response.json()) as {
-    updatedJobIds: string[];
-    updatedGeneratedImageIds: string[];
-  };
-  return {
-    updatedJobIds: data.updatedJobIds ?? [],
-    updatedGeneratedImageIds: data.updatedGeneratedImageIds ?? [],
-  };
+  const updatedJobIds: string[] = [];
+  const updatedGeneratedImageIds: string[] = [];
+
+  for (let i = 0; i < jobIds.length; i += COORDINATE_STOCKS_LINK_MAX_JOBS) {
+    const chunk = jobIds.slice(i, i + COORDINATE_STOCKS_LINK_MAX_JOBS);
+
+    const response = await fetch("/api/generation-status/link-stock", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stockId, jobIds: chunk }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "ストックの紐づけに失敗しました");
+    }
+
+    const data = (await response.json()) as {
+      updatedJobIds?: string[];
+      updatedGeneratedImageIds?: string[];
+    };
+    if (data.updatedJobIds) {
+      updatedJobIds.push(...data.updatedJobIds);
+    }
+    if (data.updatedGeneratedImageIds) {
+      updatedGeneratedImageIds.push(...data.updatedGeneratedImageIds);
+    }
+  }
+
+  return { updatedJobIds, updatedGeneratedImageIds };
 }

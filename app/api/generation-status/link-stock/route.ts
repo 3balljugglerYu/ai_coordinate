@@ -4,10 +4,8 @@ import { getUser } from "@/lib/auth";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getCoordinateStocksRouteCopy } from "@/features/generation/lib/coordinate-stocks-route-copy";
-import {
-  COORDINATE_STOCKS_LINK_MAX_JOBS,
-  linkStockToImageJobsForUser,
-} from "@/features/generation/lib/coordinate-stocks-repository";
+import { COORDINATE_STOCKS_LINK_MAX_JOBS } from "@/features/generation/lib/coordinate-stocks-constants";
+import { linkStockToImageJobsForUser } from "@/features/generation/lib/coordinate-stocks-repository";
 
 const linkStockRequestSchema = z.object({
   stockId: z.string().uuid(),

@@ -44,6 +44,11 @@ import { summarizeJobProgress } from "../lib/job-progress";
 import type { ImageJobProcessingStage } from "../lib/job-types";
 import type { GeneratedImageData } from "../types";
 import { submitGuestCoordinateGeneration } from "../lib/coordinate-guest-api";
+import {
+  getCoordinateSourceStockSavePromptPending,
+  showCoordinateSourceStockSavePrompt,
+} from "../lib/coordinate-source-stock-save-prompt-state";
+import { readCoordinateStockSavePromptDismissed } from "../lib/form-preferences";
 import { GuestResultPreview } from "./GuestResultPreview";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
@@ -196,6 +201,8 @@ export function GenerationFormContainer({
   const completionTimeoutRef = useRef<BrowserTimerId | null>(null);
   const pollingStopFunctionsRef = useRef<Set<() => void>>(new Set());
   const recoveryRequestIdRef = useRef(0);
+  const stockPromptTimerRef = useRef<BrowserTimerId | null>(null);
+  const stockPromptPendingJobIdRef = useRef<string | null>(null);
   const asyncApiMessages = useMemo(
     () => ({
       imageLoadFailed: t("imageLoadFailed"),
@@ -252,6 +259,9 @@ export function GenerationFormContainer({
   const registerPendingSourceImage = ctx?.registerPendingSourceImage;
   const bindPendingSourceImageResult = ctx?.bindPendingSourceImageResult;
   const dropPendingSourceImageJob = ctx?.dropPendingSourceImageJob;
+  const getPendingSourceImageBatch = ctx?.getPendingSourceImageBatch;
+  const markSourceImageBatchPromptShown = ctx?.markSourceImageBatchPromptShown;
+  const consumePendingSourceImageBatch = ctx?.consumePendingSourceImageBatch;
 
   const setProgressCounts = useCallback(
     (nextTotalCount: number, nextCompletedCount: number) => {
@@ -726,8 +736,16 @@ export function GenerationFormContainer({
         window.clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = null;
       }
+      if (stockPromptTimerRef.current) {
+        window.clearTimeout(stockPromptTimerRef.current);
+        stockPromptTimerRef.current = null;
+      }
+      if (stockPromptPendingJobIdRef.current && consumePendingSourceImageBatch) {
+        consumePendingSourceImageBatch(stockPromptPendingJobIdRef.current);
+        stockPromptPendingJobIdRef.current = null;
+      }
     };
-  }, [clearCompletionTimeout]);
+  }, [clearCompletionTimeout, consumePendingSourceImageBatch]);
 
   const handleGenerate = async (data: {
     prompt: string;
@@ -811,6 +829,21 @@ export function GenerationFormContainer({
       refreshTimeoutRef.current = null;
     }
 
+    // 元画像ストック保存案内タイマーの初期化:
+    // 古いタイマーが走っていれば破棄し、未消費の pending batch があれば消費する。
+    // 3 秒の起点は「生成送信時」のため、ここで `performance.now()` を記録する。
+    if (stockPromptTimerRef.current) {
+      window.clearTimeout(stockPromptTimerRef.current);
+      stockPromptTimerRef.current = null;
+    }
+    if (stockPromptPendingJobIdRef.current && consumePendingSourceImageBatch) {
+      consumePendingSourceImageBatch(stockPromptPendingJobIdRef.current);
+      stockPromptPendingJobIdRef.current = null;
+    }
+    const stockPromptSubmittedAt = data.sourceImage
+      ? performance.now()
+      : null;
+
     try {
       const percoinCost = getPercoinCost(data.model);
       const requiredPercoins = allowedCount * percoinCost;
@@ -872,9 +905,81 @@ export function GenerationFormContainer({
       }
 
       // ライブラリタブの upload 由来生成の場合、元画像 File を jobId 群に紐づけて
-      // 保持する。SaveSourceImageToStockDialog が「拡大表示を閉じた直後」に取り出す。
+      // 保持する。3 秒タイマー満了時に SaveSourceImageToStockDialog が取り出す。
       if (data.sourceImage && registerPendingSourceImage) {
         registerPendingSourceImage([...jobIds], data.sourceImage);
+      }
+
+      // 3 秒タイマー: 生成送信時刻から残り時間 setTimeout で表示判定する。
+      // - チュートリアル / 「次回から表示しない」 / 既に別 prompt が pending / batch 表示済み /
+      //   ページ離脱 のいずれかに該当すれば表示せず、pending batch を消費する。
+      if (
+        data.sourceImage &&
+        stockPromptSubmittedAt !== null &&
+        getPendingSourceImageBatch &&
+        markSourceImageBatchPromptShown &&
+        consumePendingSourceImageBatch
+      ) {
+        const triggerJobId = jobIds[0];
+        stockPromptPendingJobIdRef.current = triggerJobId;
+        const elapsed = performance.now() - stockPromptSubmittedAt;
+        const remainingDelay = Math.max(0, 3000 - elapsed);
+
+        stockPromptTimerRef.current = window.setTimeout(() => {
+          stockPromptTimerRef.current = null;
+          const trigger = stockPromptPendingJobIdRef.current;
+          if (!trigger) return;
+
+          const skipAndConsume = () => {
+            stockPromptPendingJobIdRef.current = null;
+            consumePendingSourceImageBatch(trigger);
+          };
+
+          // ページ離脱
+          if (
+            typeof window !== "undefined" &&
+            !window.location.pathname.startsWith("/coordinate")
+          ) {
+            skipAndConsume();
+            return;
+          }
+          // チュートリアル中
+          if (
+            typeof window !== "undefined" &&
+            window.sessionStorage?.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) ===
+              "true"
+          ) {
+            skipAndConsume();
+            return;
+          }
+          // 「次回から表示しない」
+          if (readCoordinateStockSavePromptDismissed()) {
+            skipAndConsume();
+            return;
+          }
+          // 別 prompt が既に pending
+          if (getCoordinateSourceStockSavePromptPending()) {
+            skipAndConsume();
+            return;
+          }
+          // pending batch が消滅 / 既に表示済み
+          const batch = getPendingSourceImageBatch(trigger);
+          if (!batch || batch.promptShown) {
+            skipAndConsume();
+            return;
+          }
+
+          markSourceImageBatchPromptShown(trigger);
+          showCoordinateSourceStockSavePrompt(
+            { file: batch.file, jobIds: batch.jobIds },
+            {
+              onSettled: () => {
+                stockPromptPendingJobIdRef.current = null;
+                consumePendingSourceImageBatch(trigger);
+              },
+            }
+          );
+        }, remainingDelay);
       }
 
       const nextTotalCount = jobIds.length;
