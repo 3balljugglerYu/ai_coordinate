@@ -184,7 +184,7 @@ export function PostCard({
             <div className="flex shrink-0 items-center gap-1">
               <MessageCircle className="h-4 w-4 text-gray-500" />
               {(post.comment_count || 0) > 0 && (
-                <span className="text-xs text-gray-600">
+                <span className="text-xs font-medium tabular-nums text-gray-600">
                   {formatCountEnUS(post.comment_count || 0)}
                 </span>
               )}
@@ -192,7 +192,7 @@ export function PostCard({
             <div className="flex shrink-0 items-center gap-1">
               <Eye className="h-4 w-4 text-gray-500" />
               {(post.view_count || 0) > 0 && (
-                <span className="text-xs text-gray-600">
+                <span className="text-xs font-medium tabular-nums text-gray-600">
                   {formatCountEnUS(post.view_count || 0)}
                 </span>
               )}
