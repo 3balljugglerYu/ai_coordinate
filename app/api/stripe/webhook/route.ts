@@ -109,6 +109,17 @@ function getPlanFromSubscription(
   return getSubscriptionPlanFromStripeSubscription(subscription);
 }
 
+function normalizeRevenueYen(value?: number | null): number | null {
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value)
+  ) {
+    return Math.max(value, 0);
+  }
+
+  return null;
+}
+
 function getSubscriptionIdFromInvoice(
   invoice: Stripe.Invoice
 ): string | null {
@@ -288,17 +299,25 @@ async function grantSubscriptionPercoins(params: {
   plan: SubscriptionPlan;
   billingInterval: SubscriptionBillingInterval | null;
   invoiceId: string;
+  paidAmountYen?: number | null;
 }) {
   const amount = getSubscriptionMonthlyPercoins(params.plan);
   if (amount <= 0) {
     return;
   }
 
+  const revenueYen = normalizeRevenueYen(params.paidAmountYen);
   const supabase = createAdminClient();
   const { error } = await supabase.rpc("grant_subscription_percoins", {
     p_user_id: params.userId,
     p_amount: amount,
     p_invoice_id: params.invoiceId,
+    p_metadata: {
+      plan: params.plan,
+      billingInterval: params.billingInterval,
+      revenueYen,
+      revenueSource: "stripe_subscription",
+    },
   });
 
   if (error) {
@@ -459,6 +478,8 @@ async function handlePercoinCheckoutCompleted(
       checkoutSessionId: session.id,
       customerEmail,
       mode: isStripeTestMode() ? "test" : "live",
+      revenueYen: normalizeRevenueYen(session.amount_total),
+      revenueSource: "stripe_checkout",
     },
     supabaseClient: supabase,
   });
@@ -531,6 +552,7 @@ async function handleSubscriptionCheckoutCompleted(
     plan,
     billingInterval,
     invoiceId,
+    paidAmountYen: session.amount_total,
   });
   await revalidateSubscriptionSurfaces(userId);
 
@@ -630,6 +652,7 @@ async function handleSubscriptionInvoicePaid(
     plan,
     billingInterval,
     invoiceId: invoice.id,
+    paidAmountYen: invoice.amount_paid,
   });
   await revalidateSubscriptionSurfaces(userId);
 

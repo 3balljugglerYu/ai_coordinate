@@ -12,7 +12,7 @@ import {
 } from "./dashboard-range";
 import {
   getPurchaseMode,
-  resolvePurchasePackage,
+  resolveTransactionRevenue,
 } from "./purchase-value";
 import {
   buildOneTapStyleAnalytics,
@@ -207,7 +207,7 @@ function buildTrend(params: {
 }
 
 function buildRevenueTrend(params: {
-  livePurchases: CreditTransactionRow[];
+  revenueTransactions: CreditTransactionRow[];
   currentStart: Date;
   now: Date;
 }): DashboardRevenueTrend {
@@ -236,15 +236,16 @@ function buildRevenueTrend(params: {
   const dynamicSeries = new Map<string, { key: string; label: string; color: string }>();
   const usedSeriesKeys = new Set<string>();
 
-  for (const purchase of params.livePurchases) {
-    const point = pointsMap.get(toJstDateKey(purchase.created_at));
+  for (const transaction of params.revenueTransactions) {
+    const point = pointsMap.get(toJstDateKey(transaction.created_at));
     if (!point) {
       continue;
     }
 
-    const resolvedPackage = resolvePurchasePackage({
-      amount: purchase.amount,
-      metadata: purchase.metadata,
+    const resolvedPackage = resolveTransactionRevenue({
+      amount: transaction.amount,
+      transactionType: transaction.transaction_type,
+      metadata: transaction.metadata,
     });
 
     if (resolvedPackage.yenValue === null) {
@@ -342,7 +343,7 @@ function buildFunnel(params: {
 
 function buildOpsSummary(params: {
   jobs: ImageJobRow[];
-  livePurchases: CreditTransactionRow[];
+  revenueTransactions: CreditTransactionRow[];
   balances: CreditBalanceRow[];
   expiringBatches: FreePercoinBatchRow[];
 }): DashboardOpsSummary {
@@ -363,16 +364,17 @@ function buildOpsSummary(params: {
     (sum, batch) => sum + (batch.remaining_amount ?? 0),
     0
   );
-  const liveRevenueTotal = params.livePurchases.reduce((sum, purchase) => {
-    const { yenValue } = resolvePurchasePackage({
-      amount: purchase.amount,
-      metadata: purchase.metadata,
+  const liveRevenueTotal = params.revenueTransactions.reduce((sum, transaction) => {
+    const { yenValue } = resolveTransactionRevenue({
+      amount: transaction.amount,
+      transactionType: transaction.transaction_type,
+      metadata: transaction.metadata,
     });
 
     return sum + (yenValue ?? 0);
   }, 0);
-  const purchasingUsers = distinctUsers(params.livePurchases).size;
-  const purchaseCount = params.livePurchases.length;
+  const purchasingUsers = distinctUsers(params.revenueTransactions).size;
+  const purchaseCount = params.revenueTransactions.length;
   const averageOrderValueYen =
     purchaseCount > 0
       ? Math.round(liveRevenueTotal / purchaseCount)
@@ -401,8 +403,9 @@ function buildRecentPurchases(params: {
     )
     .slice(0, 8)
     .map((purchase) => {
-      const { label, yenValue } = resolvePurchasePackage({
+      const { label, yenValue } = resolveTransactionRevenue({
         amount: purchase.amount,
+        transactionType: purchase.transaction_type,
         metadata: purchase.metadata,
       });
 
@@ -681,34 +684,42 @@ export async function getAdminDashboardData(
     isWithinDateRange(generation.created_at, previousStart, currentStart)
   );
 
-  const purchaseTransactions = transactions.filter(
-    (transaction) => transaction.transaction_type === "purchase"
+  const revenueTransactions = transactions.filter((transaction) => {
+    if (transaction.transaction_type === "purchase") {
+      return getPurchaseMode(transaction.metadata) === "live";
+    }
+
+    if (transaction.transaction_type === "subscription") {
+      const { yenValue } = resolveTransactionRevenue({
+        amount: transaction.amount,
+        transactionType: transaction.transaction_type,
+        metadata: transaction.metadata,
+      });
+      return yenValue !== null && yenValue > 0;
+    }
+
+    return false;
+  });
+  const currentRevenueTransactions = revenueTransactions.filter((transaction) =>
+    isWithinDateRange(transaction.created_at, currentStart, now)
   );
-  const currentPurchases = purchaseTransactions.filter((purchase) =>
-    isWithinDateRange(purchase.created_at, currentStart, now)
-  );
-  const previousPurchases = purchaseTransactions.filter((purchase) =>
-    isWithinDateRange(purchase.created_at, previousStart, currentStart)
+  const previousRevenueTransactions = revenueTransactions.filter((transaction) =>
+    isWithinDateRange(transaction.created_at, previousStart, currentStart)
   );
 
-  const currentLivePurchases = currentPurchases.filter(
-    (purchase) => getPurchaseMode(purchase.metadata) === "live"
-  );
-  const previousLivePurchases = previousPurchases.filter(
-    (purchase) => getPurchaseMode(purchase.metadata) === "live"
-  );
-
-  const currentLiveRevenue = currentLivePurchases.reduce((sum, purchase) => {
-    const { yenValue } = resolvePurchasePackage({
-      amount: purchase.amount,
-      metadata: purchase.metadata,
+  const currentLiveRevenue = currentRevenueTransactions.reduce((sum, transaction) => {
+    const { yenValue } = resolveTransactionRevenue({
+      amount: transaction.amount,
+      transactionType: transaction.transaction_type,
+      metadata: transaction.metadata,
     });
     return sum + (yenValue ?? 0);
   }, 0);
-  const previousLiveRevenue = previousLivePurchases.reduce((sum, purchase) => {
-    const { yenValue } = resolvePurchasePackage({
-      amount: purchase.amount,
-      metadata: purchase.metadata,
+  const previousLiveRevenue = previousRevenueTransactions.reduce((sum, transaction) => {
+    const { yenValue } = resolveTransactionRevenue({
+      amount: transaction.amount,
+      transactionType: transaction.transaction_type,
+      metadata: transaction.metadata,
     });
     return sum + (yenValue ?? 0);
   }, 0);
@@ -744,7 +755,7 @@ export async function getAdminDashboardData(
       current: currentLiveRevenue,
       previous: previousLiveRevenue,
       formatValue: formatYen,
-      subtext: `購入 ${formatInteger(currentLivePurchases.length)}件`,
+      subtext: `決済 ${formatInteger(currentRevenueTransactions.length)}件`,
     }),
     {
       key: "pendingModeration",
@@ -780,26 +791,26 @@ export async function getAdminDashboardData(
     now: oneTapStyleBounds.now,
   });
   const revenueTrend = buildRevenueTrend({
-    livePurchases: currentLivePurchases,
+    revenueTransactions: currentRevenueTransactions,
     currentStart,
     now,
   });
   const funnel = buildFunnel({
     signups: currentProfiles,
     generations: currentGeneratedImages,
-    purchases: currentPurchases,
+    purchases: currentRevenueTransactions,
   });
   const modelMix = buildModelMix(currentGeneratedImages);
   const opsSummary = buildOpsSummary({
     jobs,
-    livePurchases: currentLivePurchases,
+    revenueTransactions: currentRevenueTransactions,
     balances,
     expiringBatches,
   });
 
   const recentPurchaseUserIds = Array.from(
     new Set(
-      currentPurchases
+      currentRevenueTransactions
         .map((purchase) => purchase.user_id)
         .filter(Boolean) as string[]
     )
@@ -827,7 +838,7 @@ export async function getAdminDashboardData(
   );
 
   const recentPurchases = buildRecentPurchases({
-    purchases: currentPurchases,
+    purchases: currentRevenueTransactions,
     nicknameMap: purchaseNicknameMap,
   });
   const alerts = buildAlerts({
