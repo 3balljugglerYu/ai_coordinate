@@ -30,6 +30,15 @@ export function AnimatedLikeCount({
     setRenderKey((k) => k + 1);
   }
 
+  // 0 のときは数字を描画せずアイコンのみとする仕様。
+  // 親 (PostCardLikeButton) は本コンポーネントを常時マウントしているため、
+  // 0 → 1 への遷移時には previousValue=0 が保持されており、
+  // 上の比較ロジックが direction="up" を立てて slide-up アニメが走る。
+  // 1 → 0 への遷移は直接 null を返すため即時非表示（snap）。
+  if (value === 0) {
+    return null;
+  }
+
   const animationClass =
     direction === "up"
       ? "like-fx-count-up"

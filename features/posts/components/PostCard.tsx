@@ -5,12 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
-import { User } from "lucide-react";
+import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostThumbUrl } from "../lib/utils";
 import type { Post } from "../types";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
-import { cn } from "@/lib/utils";
+import { cn, formatCountEnUS } from "@/lib/utils";
 
 interface PostCardProps {
   post: Post;
@@ -96,18 +96,34 @@ export function PostCard({
           "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-300/70 shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]"
       )}
     >
-      {post.id ? (
-        <Link 
-          href={`/posts/${encodeURIComponent(post.id)}`}
-          prefetch={false}
-          onMouseEnter={handlePreload}
-          onTouchStart={handlePreload}
-        >
-          {imageContent}
-        </Link>
-      ) : (
-        imageContent
-      )}
+      <div className="relative">
+        {post.id ? (
+          <Link
+            href={`/posts/${encodeURIComponent(post.id)}`}
+            prefetch={false}
+            onMouseEnter={handlePreload}
+            onTouchStart={handlePreload}
+          >
+            {imageContent}
+          </Link>
+        ) : (
+          imageContent
+        )}
+        {post.id && (
+          // 三点リーダーは Link の外側（兄弟要素）に置く：
+          // 中に置くと詳細ページに遷移してしまうため。
+          <div className="absolute right-2 top-2 z-10">
+            <PostModerationMenu
+              postId={post.id}
+              authorUserId={post.user_id}
+              currentUserId={currentUserId}
+              onHidden={() => setIsHidden(true)}
+              showShare
+              showBlock={false}
+            />
+          </div>
+        )}
+      </div>
 
       <CardContent className="px-1 pt-0 pb-1">
         <div className="flex items-center gap-1">
@@ -151,25 +167,37 @@ export function PostCard({
             )}
           </div>
 
-          {/* いいねボタン + いいね数 + ビュー数 */}
-          {post.id && (
-            <PostCardLikeButton
-              imageId={post.id}
-              initialLikeCount={post.like_count || 0}
-              initialViewCount={post.view_count || 0}
-              currentUserId={currentUserId}
-            />
-          )}
-          {post.id && (
-            <PostModerationMenu
-              postId={post.id}
-              authorUserId={post.user_id}
-              currentUserId={currentUserId}
-              onHidden={() => setIsHidden(true)}
-              showShare
-              showBlock={false}
-            />
-          )}
+          {/*
+           * いいね → コメント → ビューの順で配置。コメント・ビューは 0 のときアイコンのみ。
+           * 数字の有無にかかわらずアイコン間に視覚的な余白が入るよう、
+           * 3指標だけを内側 flex (gap-2) でまとめる。
+           * 親 (gap-1) は Avatar↔DisplayName 用の詰めた間隔のまま。
+           */}
+          <div className="flex shrink-0 items-center gap-2">
+            {post.id && (
+              <PostCardLikeButton
+                imageId={post.id}
+                initialLikeCount={post.like_count || 0}
+                currentUserId={currentUserId}
+              />
+            )}
+            <div className="flex shrink-0 items-center gap-1">
+              <MessageCircle className="h-4 w-4 text-gray-500" />
+              {(post.comment_count || 0) > 0 && (
+                <span className="text-xs font-medium tabular-nums text-gray-600">
+                  {formatCountEnUS(post.comment_count || 0)}
+                </span>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Eye className="h-4 w-4 text-gray-500" />
+              {(post.view_count || 0) > 0 && (
+                <span className="text-xs font-medium tabular-nums text-gray-600">
+                  {formatCountEnUS(post.view_count || 0)}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
