@@ -36,6 +36,7 @@ export const enMessages = {
     about: "About",
     terms: "Terms",
     privacy: "Privacy Policy",
+    communityGuidelines: "Community Guidelines",
     disclosure: "Commercial Disclosure",
   },
   searchBar: {

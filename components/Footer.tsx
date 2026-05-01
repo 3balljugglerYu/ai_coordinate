@@ -14,6 +14,10 @@ export function Footer() {
 		// { href: "/pricing", label: "料金" },
 		{ href: localizePublicPath("/terms", locale), label: t("terms") },
 		{ href: localizePublicPath("/privacy", locale), label: t("privacy") },
+		{
+			href: localizePublicPath("/community-guidelines", locale),
+			label: t("communityGuidelines"),
+		},
 		{ href: localizePublicPath("/tokushoho", locale), label: t("disclosure") },
 		// { href: "/payment-services-act", label: "資金決済法に基づく表示" },
 	];
