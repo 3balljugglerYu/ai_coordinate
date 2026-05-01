@@ -104,6 +104,9 @@ BEGIN
     FROM public.generated_images AS gi
     WHERE gi.image_job_id = p_job_id
   ) THEN
+    -- This RPC is currently used only by OpenAI batched coordinate jobs.
+    -- Gemini's existing path leaves image_job_id NULL, so it must not be
+    -- switched to this RPC until that path also writes per-job result indexes.
     RAISE EXCEPTION 'generated images already exist for job: %', p_job_id;
   END IF;
 

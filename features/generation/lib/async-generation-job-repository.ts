@@ -21,7 +21,7 @@ export interface AsyncGenerationJobRepository {
   getUserCreditBalance(
     userId: string
   ): Promise<RepositoryResult<{ balance: number }>>;
-  getUserSubscriptionPlan?(
+  getUserSubscriptionPlan(
     userId: string
   ): Promise<RepositoryResult<{ subscription_plan: string | null }>>;
   createImageJob(
@@ -95,11 +95,17 @@ export class SupabaseAsyncGenerationJobRepository
     const { data, error } = await this.supabase
       .from("profiles")
       .select("subscription_plan")
-      .eq("id", userId)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (error) {
       return { data: null, error } as const;
+    }
+
+    if (!data) {
+      console.warn("User profile not found while resolving subscription plan", {
+        userId,
+      });
     }
 
     return {

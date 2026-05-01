@@ -89,11 +89,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       data: { balance: 100 },
       error: null,
     });
-    (
-      jobRepository.getUserSubscriptionPlan as jest.MockedFunction<
-        NonNullable<AsyncGenerationJobRepository["getUserSubscriptionPlan"]>
-      >
-    ).mockResolvedValue({
+    jobRepository.getUserSubscriptionPlan.mockResolvedValue({
       data: { subscription_plan: "standard" },
       error: null,
     });
@@ -236,6 +232,9 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         acceptedImageCount: 4,
         batchMode: "openai_single_job",
       });
+      expect(jobRepository.getUserSubscriptionPlan).toHaveBeenCalledWith(
+        "user-123"
+      );
       expect(jobRepository.createImageJob).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "gpt-image-2-low",

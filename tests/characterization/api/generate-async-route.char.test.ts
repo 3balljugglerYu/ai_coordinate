@@ -254,6 +254,10 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       }
     `);
     expect(supabase.jobsBuilder.insert).not.toHaveBeenCalled();
+    expect(supabase.profilesBuilder.eq).toHaveBeenCalledWith(
+      "user_id",
+      "user-123"
+    );
     expect(supabase.rpc).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });

@@ -209,9 +209,9 @@ export async function postGenerateAsyncRoute(
     let acceptedImageCount = 1;
     if (isOpenAIBatchCandidate) {
       const subscriptionPlanResult =
-        await jobRepository.getUserSubscriptionPlan?.(user.id);
+        await jobRepository.getUserSubscriptionPlan(user.id);
 
-      if (subscriptionPlanResult?.error) {
+      if (subscriptionPlanResult.error || !subscriptionPlanResult.data) {
         console.error(
           "Failed to fetch user subscription plan:",
           subscriptionPlanResult.error
@@ -224,7 +224,7 @@ export async function postGenerateAsyncRoute(
       }
 
       const subscriptionPlan = normalizeSubscriptionPlan(
-        subscriptionPlanResult?.data?.subscription_plan
+        subscriptionPlanResult.data.subscription_plan
       );
       acceptedImageCount = Math.min(
         count,
