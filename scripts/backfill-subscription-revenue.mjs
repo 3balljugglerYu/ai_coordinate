@@ -7,9 +7,9 @@
  *   node --env-file=.env.local scripts/backfill-subscription-revenue.mjs --from 2026-04-30 --to 2026-05-01 --stripe-mode live --apply
  *
  * Default is dry-run. The script updates only subscription transactions that:
- * - do not already have numeric metadata.revenueYen
- * - can be matched to a Stripe invoice or Checkout Session
- * - have JPY currency
+ * - do not already have numeric metadata.revenueYen, or lack plan metadata
+ * - can be matched to a Stripe invoice or Checkout Session when revenue is missing
+ * - have JPY currency when revenue is resolved from Stripe
  */
 
 import Stripe from "stripe";
@@ -160,6 +160,41 @@ function resolveInvoiceRevenue(invoice, source) {
   };
 }
 
+function getMetadataString(metadata, key) {
+  const value = metadata?.[key];
+  return typeof value === "string" ? value : null;
+}
+
+function hasRevenueYen(row) {
+  return (
+    row.metadata &&
+    typeof row.metadata.revenueYen === "number" &&
+    Number.isFinite(row.metadata.revenueYen)
+  );
+}
+
+function getPlanMetadata(subscription) {
+  const plan = subscription?.plan;
+  return plan === "light" || plan === "standard" || plan === "premium"
+    ? plan
+    : null;
+}
+
+function getBillingIntervalMetadata(subscription) {
+  const billingInterval = subscription?.billing_interval;
+  return billingInterval === "month" || billingInterval === "year"
+    ? billingInterval
+    : null;
+}
+
+function needsBackfill(row) {
+  return (
+    !hasRevenueYen(row) ||
+    getMetadataString(row.metadata, "plan") === null ||
+    getMetadataString(row.metadata, "billingInterval") === null
+  );
+}
+
 async function resolveRevenueYen(stripe, row, subscription) {
   const lookupErrors = [];
   const invoiceId = getInvoiceId(row);
@@ -275,12 +310,7 @@ async function main() {
 
   const rows = data ?? [];
   const candidates = rows.filter(
-    (row) =>
-      !(
-        row.metadata &&
-        typeof row.metadata.revenueYen === "number" &&
-        Number.isFinite(row.metadata.revenueYen)
-      )
+    (row) => needsBackfill(row)
   );
   const userIds = [...new Set(candidates.map((row) => row.user_id).filter(Boolean))];
   const subscriptionsByUserId = new Map();
@@ -288,7 +318,7 @@ async function main() {
   if (userIds.length > 0) {
     const { data: subscriptions, error: subscriptionsError } = await supabase
       .from("user_subscriptions")
-      .select("user_id, stripe_subscription_id")
+      .select("user_id, stripe_subscription_id, plan, billing_interval")
       .in("user_id", userIds);
 
     if (subscriptionsError) {
@@ -312,11 +342,20 @@ async function main() {
   let skipped = 0;
 
   for (const row of candidates) {
-    const resolved = await resolveRevenueYen(
-      stripe,
-      row,
-      subscriptionsByUserId.get(row.user_id)
-    );
+    const subscription = subscriptionsByUserId.get(row.user_id);
+    const plan = getPlanMetadata(subscription);
+    const billingInterval = getBillingIntervalMetadata(subscription);
+    const resolved = hasRevenueYen(row)
+      ? {
+          revenueYen: row.metadata.revenueYen,
+          source: getMetadataString(row.metadata, "revenueSource") ?? "existing",
+          currency: getMetadataString(row.metadata, "revenueCurrency") ?? "jpy",
+          stripeObjectId:
+            getMetadataString(row.metadata, "revenueBackfillStripeObjectId") ??
+            getInvoiceId(row) ??
+            getCheckoutSessionId(row),
+        }
+      : await resolveRevenueYen(stripe, row, subscription);
 
     if (resolved.skipped) {
       skipped += 1;
@@ -331,10 +370,12 @@ async function main() {
       revenueCurrency: resolved.currency,
       revenueBackfilledAt: new Date().toISOString(),
       revenueBackfillStripeObjectId: resolved.stripeObjectId,
+      ...(plan ? { plan } : {}),
+      ...(billingInterval ? { billingInterval } : {}),
     };
 
     console.log(
-      `${shouldApply ? "UPDATE" : "WOULD UPDATE"} ${row.id} ${row.created_at}: revenueYen=${resolved.revenueYen} source=${resolved.source}`
+      `${shouldApply ? "UPDATE" : "WOULD UPDATE"} ${row.id} ${row.created_at}: revenueYen=${resolved.revenueYen} source=${resolved.source} plan=${plan ?? "unknown"} billingInterval=${billingInterval ?? "unknown"}`
     );
 
     if (shouldApply) {
