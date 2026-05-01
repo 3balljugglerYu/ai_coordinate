@@ -269,7 +269,6 @@ export function EditableComment({
                 textClassName={
                   isDeleted ? "italic text-gray-500" : "text-gray-900"
                 }
-                inlineToggle
               />
             )}
           </div>
