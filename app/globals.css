@@ -736,22 +736,33 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   }
 
   @media (prefers-reduced-motion: reduce) {
+    /*
+     * ハート本体・カウント数値は reduced-motion でも可視のまま残す必要がある
+     * （ここで opacity:0 をかけるとアイコンが消えてしまう）。
+     * かつ、`animation: none` だと animationend イベントが発火せず
+     * LikeHeartIcon の phase / AnimatedLikeCount の direction ステートが
+     * idle に戻らないため、`animation-duration: 1ms` で keyframes 自体は
+     * 一瞬だけ実行させて animationend を発火させる。
+     * fill-mode: both と最終 keyframe の値で視覚的な変化はほぼ出ない。
+     */
     .like-fx-heart-pop,
     .like-fx-heart-press,
+    .like-fx-count-up,
+    .like-fx-count-down {
+      animation-duration: 1ms;
+    }
+
+    /*
+     * 装飾オーバーレイ（ripple / ray / floatheart / sparkle）は
+     * 親 span に motion-reduce:hidden が付いているのでそもそも表示されないが、
+     * 防御的に animation を止めて opacity も落としておく。
+     */
     .like-fx-ripple,
     .like-fx-ray,
     .like-fx-floatheart,
-    .like-fx-sparkle,
-    .like-fx-count-up,
-    .like-fx-count-down {
+    .like-fx-sparkle {
       animation: none;
       opacity: 0;
-    }
-
-    .like-fx-count-up,
-    .like-fx-count-down {
-      opacity: 1;
-      transform: none;
     }
   }
 
