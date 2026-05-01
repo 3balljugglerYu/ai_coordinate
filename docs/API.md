@@ -314,6 +314,41 @@ Main errors:
 - `401`: 未認証
 - `500`: ジョブ取得失敗
 
+### `PATCH /api/generation-status/link-stock`
+
+ユーザーが元画像をストックに保存した直後、そのストックと該当の `image_jobs` を後追いで紐づけます。生成完了前に保存された場合でも、worker が `generated_images` INSERT 直前に最新の `image_jobs.source_image_stock_id` を再取得するため、結果画像にもストック ID が伝播します。
+
+- Access: `user session`
+- Request body:
+
+```json
+{
+  "stockId": "uuid",
+  "jobIds": ["uuid1", "uuid2"]
+}
+```
+
+- 制約:
+  - `jobIds` は 1 〜 4 件（`COORDINATE_STOCKS_LINK_MAX_JOBS`）
+  - クライアント側 (`linkSourceImageStockToJobs`) は 4 件を超える場合に分割して順次呼び出す
+
+Response:
+
+```json
+{
+  "success": true,
+  "updatedJobIds": ["uuid1"],
+  "updatedGeneratedImageIds": ["uuid"]
+}
+```
+
+Main errors:
+
+- `400`: リクエスト不正 / jobIds 上限超過
+- `401`: 未認証
+- `404`: ストックが見つからない
+- `500`: 紐づけ失敗
+
 ### `POST /api/credits/checkout`
 
 ペルコイン購入用の Stripe Checkout URL を返します。
@@ -587,6 +622,7 @@ Main errors:
 | --- | --- | --- | --- |
 | GET | `/api/generation-status/in-progress` | user session | 未完了ジョブ一覧を取得する |
 | GET | `/api/generation-status` | user session | 指定ジョブの状態を取得する |
+| PATCH | `/api/generation-status/link-stock` | user session | 元画像ストックと生成ジョブを後追いで紐付ける |
 
 ### hello
 

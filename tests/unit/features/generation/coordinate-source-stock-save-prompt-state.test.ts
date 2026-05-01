@@ -104,4 +104,108 @@ describe("coordinate-source-stock-save-prompt-state", () => {
     expect(stateModule.getCoordinateSourceStockSavePromptPending()).toBe(true);
     expect(stateModule.getCoordinateSourceStockSavePromptDot()).toBe(false);
   });
+
+  it("clearCoordinateSourceStockSavePrompt 経由で onSettled が呼ばれる", async () => {
+    const stateModule = await import(
+      "@/features/generation/lib/coordinate-source-stock-save-prompt-state"
+    );
+    const onSettled = jest.fn();
+
+    stateModule.showCoordinateSourceStockSavePrompt(
+      {
+        file: new File(["source"], "source.png", { type: "image/png" }),
+        jobIds: ["job-1"],
+      },
+      { onSettled }
+    );
+    expect(onSettled).not.toHaveBeenCalled();
+
+    stateModule.clearCoordinateSourceStockSavePrompt();
+
+    expect(onSettled).toHaveBeenCalledTimes(1);
+  });
+
+  it("setCoordinateSourceStockSavePromptPending(false) 経由でも onSettled が呼ばれる", async () => {
+    const stateModule = await import(
+      "@/features/generation/lib/coordinate-source-stock-save-prompt-state"
+    );
+    const onSettled = jest.fn();
+
+    stateModule.showCoordinateSourceStockSavePrompt(
+      {
+        file: new File(["source"], "source.png", { type: "image/png" }),
+        jobIds: ["job-2"],
+      },
+      { onSettled }
+    );
+    stateModule.setCoordinateSourceStockSavePromptPending(false);
+
+    expect(onSettled).toHaveBeenCalledTimes(1);
+  });
+
+  it("「次回から表示しない」フラグ ON のときは即座に onSettled が呼ばれ pending にならない", async () => {
+    window.localStorage.setItem(
+      "persta-ai:coordinate-stock-save-prompt-dismissed",
+      "true"
+    );
+
+    const stateModule = await import(
+      "@/features/generation/lib/coordinate-source-stock-save-prompt-state"
+    );
+    const onSettled = jest.fn();
+
+    stateModule.showCoordinateSourceStockSavePrompt(
+      {
+        file: new File(["source"], "source.png", { type: "image/png" }),
+        jobIds: ["job-3"],
+      },
+      { onSettled }
+    );
+
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    expect(stateModule.getCoordinateSourceStockSavePromptPending()).toBe(false);
+  });
+
+  it("onSettled は最大 1 回しか呼ばれない", async () => {
+    const stateModule = await import(
+      "@/features/generation/lib/coordinate-source-stock-save-prompt-state"
+    );
+    const onSettled = jest.fn();
+
+    stateModule.showCoordinateSourceStockSavePrompt(
+      {
+        file: new File(["source"], "source.png", { type: "image/png" }),
+        jobIds: ["job-4"],
+      },
+      { onSettled }
+    );
+    stateModule.clearCoordinateSourceStockSavePrompt();
+    stateModule.setCoordinateSourceStockSavePromptPending(false);
+    stateModule.clearCoordinateSourceStockSavePrompt();
+
+    expect(onSettled).toHaveBeenCalledTimes(1);
+  });
+
+  it("onSettled が例外を投げても他のフローを止めない", async () => {
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
+    const stateModule = await import(
+      "@/features/generation/lib/coordinate-source-stock-save-prompt-state"
+    );
+    const onSettled = jest.fn(() => {
+      throw new Error("settled boom");
+    });
+
+    stateModule.showCoordinateSourceStockSavePrompt(
+      {
+        file: new File(["source"], "source.png", { type: "image/png" }),
+        jobIds: ["job-5"],
+      },
+      { onSettled }
+    );
+
+    expect(() => stateModule.clearCoordinateSourceStockSavePrompt()).not.toThrow();
+    expect(stateModule.getCoordinateSourceStockSavePromptPending()).toBe(false);
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
 });

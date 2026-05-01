@@ -1858,6 +1858,26 @@ Deno.serve(async () => {
                 resultImageUrl: publicUrl,
               });
 
+              // 生成完了直前に source_image_stock_id を再取得する。
+              // 生成中にユーザーがダイアログから元画像をストック保存した場合、
+              // link-stock API が image_jobs.source_image_stock_id を後追いで更新するため、
+              // 起動時にロードした job.source_image_stock_id では古い値（NULL）を保持している可能性がある。
+              const { data: latestJob, error: latestJobError } = await supabase
+                .from("image_jobs")
+                .select("source_image_stock_id")
+                .eq("id", jobId)
+                .maybeSingle();
+
+              if (latestJobError) {
+                console.warn(
+                  `[Worker] failed to refetch source_image_stock_id for job ${jobId}, falling back to initial value`,
+                  latestJobError
+                );
+              }
+
+              const latestSourceImageStockId =
+                latestJob?.source_image_stock_id ?? job.source_image_stock_id;
+
               const { data: imageRecord, error: insertError } = await supabase
                 .from("generated_images")
                 .insert({
@@ -1870,7 +1890,7 @@ Deno.serve(async () => {
                   generation_type: job.generation_type,
                   generation_metadata: job.generation_metadata ?? null,
                   model: dbModel,
-                  source_image_stock_id: job.source_image_stock_id,
+                  source_image_stock_id: latestSourceImageStockId,
                 })
                 .select()
                 .single();
@@ -1881,6 +1901,39 @@ Deno.serve(async () => {
               }
 
               imageRecordId = imageRecord.id;
+
+              const { data: postInsertJob, error: postInsertJobError } = await supabase
+                .from("image_jobs")
+                .select("source_image_stock_id")
+                .eq("id", jobId)
+                .maybeSingle();
+
+              if (postInsertJobError) {
+                console.warn(
+                  `[Worker] failed to post-sync source_image_stock_id for generated image ${imageRecordId}`,
+                  postInsertJobError
+                );
+              }
+
+              const postInsertSourceImageStockId =
+                postInsertJob?.source_image_stock_id ?? null;
+
+              if (
+                postInsertSourceImageStockId &&
+                postInsertSourceImageStockId !== latestSourceImageStockId
+              ) {
+                const { error: syncGeneratedImageError } = await supabase
+                  .from("generated_images")
+                  .update({ source_image_stock_id: postInsertSourceImageStockId })
+                  .eq("id", imageRecordId);
+
+                if (syncGeneratedImageError) {
+                  console.warn(
+                    `[Worker] failed to post-sync generated image ${imageRecordId} with source image stock`,
+                    syncGeneratedImageError
+                  );
+                }
+              }
 
               // ===== フェーズ4-4: 成功時の処理 =====
               // image_jobsテーブルを更新（成功時）

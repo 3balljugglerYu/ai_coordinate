@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { COORDINATE_STOCKS_LINK_MAX_JOBS } from "./coordinate-stocks-constants";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -12,7 +13,7 @@ export interface LinkStockToJobsResult {
   updatedGeneratedImageIds: string[];
 }
 
-const MAX_LINK_JOB_IDS = 4;
+const MAX_LINK_JOB_IDS = COORDINATE_STOCKS_LINK_MAX_JOBS;
 
 function getSupabase(client?: SupabaseClient) {
   return client ?? createAdminClient();
@@ -229,4 +230,4 @@ export async function linkStockToImageJobsForUser(params: {
   };
 }
 
-export const COORDINATE_STOCKS_LINK_MAX_JOBS = MAX_LINK_JOB_IDS;
+export { COORDINATE_STOCKS_LINK_MAX_JOBS } from "./coordinate-stocks-constants";

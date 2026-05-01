@@ -5,6 +5,14 @@ export interface CoordinateSourceStockSavePromptBatch {
   jobIds: string[];
 }
 
+export interface CoordinateSourceStockSavePromptShowOptions {
+  /**
+   * ダイアログが閉じられた（保存・スキップ・他要因）後に呼ばれるコールバック。
+   * pending source image batch を後始末する用途で使う。
+   */
+  onSettled?: () => void;
+}
+
 interface CoordinateSourceStockSavePromptState {
   pending: boolean;
   batch: CoordinateSourceStockSavePromptBatch | null;
@@ -21,7 +29,20 @@ let currentState: CoordinateSourceStockSavePromptState = {
   batch: null,
   coordinateNavDot: false,
 };
+let currentOnSettled: (() => void) | null = null;
 const listeners = new Set<StateChangeListener>();
+
+function consumeOnSettled(): void {
+  if (currentOnSettled) {
+    const cb = currentOnSettled;
+    currentOnSettled = null;
+    try {
+      cb();
+    } catch (error) {
+      console.error("[StockSavePrompt] onSettled callback failed:", error);
+    }
+  }
+}
 
 function getSnapshot(): CoordinateSourceStockSavePromptState {
   return {
@@ -61,10 +82,14 @@ export function setCoordinateSourceStockSavePromptPending(
     batch: pending ? currentState.batch : null,
   };
   emitChange();
+  if (!pending) {
+    consumeOnSettled();
+  }
 }
 
 export function showCoordinateSourceStockSavePrompt(
-  batch: CoordinateSourceStockSavePromptBatch
+  batch: CoordinateSourceStockSavePromptBatch,
+  options: CoordinateSourceStockSavePromptShowOptions = {}
 ): void {
   if (readCoordinateStockSavePromptDismissed()) {
     currentState = {
@@ -73,8 +98,19 @@ export function showCoordinateSourceStockSavePrompt(
       coordinateNavDot: false,
     };
     emitChange();
+    if (options.onSettled) {
+      try {
+        options.onSettled();
+      } catch (error) {
+        console.error("[StockSavePrompt] onSettled callback failed:", error);
+      }
+    }
     return;
   }
+
+  // 既に別 batch が表示中だった場合、新しい onSettled で上書きする前に古い callback を呼ぶ。
+  consumeOnSettled();
+  currentOnSettled = options.onSettled ?? null;
 
   currentState = {
     pending: true,
@@ -98,6 +134,7 @@ export function clearCoordinateSourceStockSavePrompt({
     coordinateNavDot: clearDot ? false : currentState.coordinateNavDot,
   };
   emitChange();
+  consumeOnSettled();
 }
 
 export function markCoordinateSourceStockSavePromptDot(): void {
