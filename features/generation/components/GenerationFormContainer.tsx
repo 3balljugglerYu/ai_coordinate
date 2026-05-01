@@ -42,7 +42,7 @@ import {
 } from "../hooks/useCoordinateGenerationFeedback";
 import { summarizeJobProgress } from "../lib/job-progress";
 import type { ImageJobProcessingStage } from "../lib/job-types";
-import type { GeneratedImageData } from "../types";
+import { isOpenAIImageModel, type GeneratedImageData } from "../types";
 import { submitGuestCoordinateGeneration } from "../lib/coordinate-guest-api";
 import {
   getCoordinateSourceStockSavePromptPending,
@@ -70,6 +70,10 @@ type TrackedGenerationJobStatus = Pick<
   AsyncGenerationStatus,
   "status" | "processingStage"
 >;
+type ProgressUnitSource = Pick<
+  AsyncGenerationStatus,
+  "batchMode" | "requestedImageCount"
+>;
 
 const FALLBACK_PROGRESS_PERCENT = 0;
 const RESULT_REVEAL_DELAY_MS = 5000;
@@ -93,10 +97,15 @@ const COORDINATE_PROGRESS_TRANSITION_MS: Record<
 };
 type BrowserTimerId = number;
 
-function createPreviewImage(jobId: string, imageUrl: string): GeneratedImageData {
+function createPreviewImage(
+  jobId: string,
+  imageUrl: string,
+  resultIndex = 0
+): GeneratedImageData {
+  const previewSuffix = resultIndex > 0 ? `:${resultIndex}` : "";
   return {
-    id: `preview:${jobId}`,
-    galleryKey: `preview:${jobId}`,
+    id: `preview:${jobId}${previewSuffix}`,
+    galleryKey: `preview:${jobId}${previewSuffix}`,
     jobId,
     url: imageUrl,
     is_posted: false,
@@ -143,6 +152,33 @@ function appendUniqueErrorMessage(
   return `${previousMessage}; ${nextMessage}`;
 }
 
+function getProgressUnitCount(source: ProgressUnitSource): number {
+  if (source.batchMode !== "openai_single_job") {
+    return 1;
+  }
+
+  return Math.max(1, source.requestedImageCount ?? 1);
+}
+
+function sumProgressUnits(unitCounts: Iterable<number>): number {
+  let total = 0;
+  for (const count of unitCounts) {
+    total += count;
+  }
+  return total;
+}
+
+function sumCompletedProgressUnits(
+  completedJobIds: Set<string>,
+  progressUnitsByJobId: Map<string, number>
+): number {
+  let total = 0;
+  completedJobIds.forEach((jobId) => {
+    total += progressUnitsByJobId.get(jobId) ?? 1;
+  });
+  return total;
+}
+
 /**
  * クライアントコンポーネント: GenerationFormとその状態管理
  * Suspenseの外に配置して即座に表示される
@@ -183,6 +219,8 @@ export function GenerationFormContainer({
   const [jobStatuses, setJobStatuses] = useState<
     Record<string, TrackedGenerationJobStatus>
   >({});
+  const [isOpenAIBatchGeneration, setIsOpenAIBatchGeneration] =
+    useState(false);
   const [feedbackPhase, setFeedbackPhase] =
     useState<CoordinateGenerationFeedbackPhase>("idle");
 
@@ -274,10 +312,24 @@ export function GenerationFormContainer({
 
   const syncPreviewFromStatus = useCallback(
     (status: AsyncGenerationStatus) => {
+      const resultImages =
+        status.status === "succeeded" && status.resultImages?.length
+          ? status.resultImages
+          : [];
       const previewUrl = status.previewImageUrl ?? status.resultImageUrl;
 
       if (status.status === "failed" || !previewUrl) {
         removePreviewImage(status.id);
+        return;
+      }
+
+      if (resultImages.length > 0) {
+        resultImages.forEach((resultImage, index) => {
+          bindPendingSourceImageResult?.(status.id, resultImage.url, index);
+          upsertPreviewImage(
+            createPreviewImage(status.id, resultImage.url, index)
+          );
+        });
         return;
       }
 
@@ -311,6 +363,7 @@ export function GenerationFormContainer({
     setIsGenerating(false);
     setProgressCounts(0, 0);
     setJobStatuses({});
+    setIsOpenAIBatchGeneration(false);
     clearPreviewImages();
     setFeedbackPhase("idle");
   }, [
@@ -479,13 +532,20 @@ export function GenerationFormContainer({
     isPreparingSubmission
       ? PREPARING_PROGRESS_TRANSITION_MS
       : COORDINATE_PROGRESS_TRANSITION_MS[statusCardStage];
-  const generationStatusTitle =
-    feedbackPhase === "completing"
-      ? t("generationCompletedTitle")
-      : t("generationProgressTitle", {
-          completed: effectiveCompletedCount,
-          total: effectiveTotalCount,
-        });
+  const generationStatusTitle = (() => {
+    if (feedbackPhase === "completing") {
+      return t("generationCompletedTitle");
+    }
+
+    if (isOpenAIBatchGeneration) {
+      return t("generatingStatusTitle");
+    }
+
+    return t("generationProgressTitle", {
+      completed: effectiveCompletedCount,
+      total: effectiveTotalCount,
+    });
+  })();
 
   useEffect(() => {
     // ゲストは async ジョブを持たないため復旧不要
@@ -511,13 +571,22 @@ export function GenerationFormContainer({
           return;
         }
 
-        const nextTotalCount = inProgressJobs.length;
+        const nextJobTotalCount = inProgressJobs.length;
+        const progressUnitsByJobId = new Map(
+          inProgressJobs.map((job) => [job.id, getProgressUnitCount(job)])
+        );
+        const nextProgressTotalCount = sumProgressUnits(
+          progressUnitsByJobId.values()
+        );
         const completedJobIds = new Set<string>();
 
         setIsGenerating(true);
         setFeedbackPhase("running");
         setError(null);
-        setProgressCounts(nextTotalCount, 0);
+        setIsOpenAIBatchGeneration(
+          inProgressJobs.some((job) => job.batchMode === "openai_single_job")
+        );
+        setProgressCounts(nextProgressTotalCount, 0);
         setJobStatuses(
           Object.fromEntries(
             inProgressJobs.map((job) => [
@@ -549,7 +618,10 @@ export function GenerationFormContainer({
 
             if (!completedJobIds.has(status.id)) {
               completedJobIds.add(status.id);
-              setProgressCounts(nextTotalCount, completedJobIds.size);
+              setProgressCounts(
+                nextProgressTotalCount,
+                sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
+              );
             }
 
             if (status.status === "failed" && options?.appendError !== false) {
@@ -614,15 +686,22 @@ export function GenerationFormContainer({
                 id: job.id,
                 status: "queued" as const,
                 processingStage: "queued" as const,
+                requestedImageCount: job.requestedImageCount,
+                batchMode: job.batchMode,
                 previewImageUrl: null,
                 resultImageUrl: null,
+                resultImages: undefined,
                 errorMessage: null,
+                generatedImageId: null,
               };
             }
 
             if (!completedJobIds.has(job.id)) {
               completedJobIds.add(job.id);
-              setProgressCounts(nextTotalCount, completedJobIds.size);
+              setProgressCounts(
+                nextProgressTotalCount,
+                sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
+              );
             }
 
             setError((previous) =>
@@ -656,7 +735,7 @@ export function GenerationFormContainer({
           return errorMessage !== asyncApiMessages.pollingStopped;
         });
 
-        if (failedJobs.length > 0 && failedJobs.length < nextTotalCount) {
+        if (failedJobs.length > 0 && failedJobs.length < nextJobTotalCount) {
           const summaryMessage = formatPartialFailureMessage(
             failedJobs
               .map((result) =>
@@ -666,7 +745,7 @@ export function GenerationFormContainer({
               )
               .filter((message): message is string => message !== null),
             failedJobs.length,
-            nextTotalCount
+            nextJobTotalCount
           );
 
           setError((previous) =>
@@ -813,10 +892,12 @@ export function GenerationFormContainer({
       data.count,
       getMaxGenerationCount(subscriptionPlan)
     );
+    const isOpenAIModel = isOpenAIImageModel(data.model);
 
     setIsGenerating(true);
     clearCompletionTimeout();
     clearPreviewImages();
+    setIsOpenAIBatchGeneration(isOpenAIModel);
     setFeedbackPhase("running");
     setError(null);
     setJobStatuses({});
@@ -863,40 +944,102 @@ export function GenerationFormContainer({
       }
 
       const jobIds: string[] = [];
-      for (let index = 0; index < allowedCount; index += 1) {
+      const progressUnitsByJobId = new Map<string, number>();
+      let submittedImageCount = 0;
+      const submitGenerationJob = async (count: number) => {
+        const response = await generateImageAsync(
+          {
+            prompt: data.prompt,
+            sourceImage: data.sourceImage,
+            sourceImageStockId: data.sourceImageStockId,
+            sourceImageType: data.sourceImageType,
+            backgroundMode: data.backgroundMode,
+            count,
+            generationType: data.generationType || "coordinate",
+            model: data.model,
+          },
+          asyncApiMessages
+        );
+
+        const reportedAcceptedImageCount =
+          typeof response.acceptedImageCount === "number"
+            ? response.acceptedImageCount
+            : null;
+        const hasExplicitAcceptedImageCount =
+          reportedAcceptedImageCount !== null;
+        const acceptedImageCount = Math.max(
+          1,
+          Math.min(
+            count,
+            hasExplicitAcceptedImageCount ? reportedAcceptedImageCount : 1
+          )
+        );
+
+        jobIds.push(response.jobId);
+        submittedImageCount += acceptedImageCount;
+        const usesOpenAIBatch =
+          response.batchMode === "openai_single_job" ||
+          (isOpenAIModel && acceptedImageCount > 1);
+        progressUnitsByJobId.set(
+          response.jobId,
+          usesOpenAIBatch ? acceptedImageCount : 1
+        );
+        if (usesOpenAIBatch) {
+          setIsOpenAIBatchGeneration(true);
+        }
+        updateTrackedJob(response.jobId, {
+          status: response.status as AsyncGenerationStatus["status"],
+          processingStage: "queued",
+        });
+
+        return { acceptedImageCount, hasExplicitAcceptedImageCount };
+      };
+
+      if (isOpenAIModel) {
+        let firstSubmission: Awaited<ReturnType<typeof submitGenerationJob>>;
         try {
-          const response = await generateImageAsync(
-            {
-              prompt: data.prompt,
-              sourceImage: data.sourceImage,
-              sourceImageStockId: data.sourceImageStockId,
-              sourceImageType: data.sourceImageType,
-              backgroundMode: data.backgroundMode,
-              generationType: data.generationType || "coordinate",
-              model: data.model,
-            },
-            asyncApiMessages
-          );
-
-          jobIds.push(response.jobId);
-          updateTrackedJob(response.jobId, {
-            status: response.status as AsyncGenerationStatus["status"],
-            processingStage: "queued",
-          });
+          firstSubmission = await submitGenerationJob(allowedCount);
         } catch (submitError) {
-          if (jobIds.length === 0) {
-            throw submitError;
-          }
+          throw submitError;
+        }
 
-          const errorMessage =
-            submitError instanceof Error
-              ? submitError.message
-              : t("submitJobFailed");
-          setError((previous) =>
-            appendUniqueErrorMessage(previous, errorMessage)
-          );
-          showGenerationErrorToast(errorMessage);
-          break;
+        while (
+          !firstSubmission.hasExplicitAcceptedImageCount &&
+          submittedImageCount < allowedCount
+        ) {
+          try {
+            await submitGenerationJob(1);
+          } catch (submitError) {
+            const errorMessage =
+              submitError instanceof Error
+                ? submitError.message
+                : t("submitJobFailed");
+            setError((previous) =>
+              appendUniqueErrorMessage(previous, errorMessage)
+            );
+            showGenerationErrorToast(errorMessage);
+            break;
+          }
+        }
+      } else {
+        for (let index = 0; index < allowedCount; index += 1) {
+          try {
+            await submitGenerationJob(1);
+          } catch (submitError) {
+            if (jobIds.length === 0) {
+              throw submitError;
+            }
+
+            const errorMessage =
+              submitError instanceof Error
+                ? submitError.message
+                : t("submitJobFailed");
+            setError((previous) =>
+              appendUniqueErrorMessage(previous, errorMessage)
+            );
+            showGenerationErrorToast(errorMessage);
+            break;
+          }
         }
       }
 
@@ -982,9 +1125,12 @@ export function GenerationFormContainer({
         }, remainingDelay);
       }
 
-      const nextTotalCount = jobIds.length;
+      const nextJobTotalCount = jobIds.length;
+      const nextProgressTotalCount = sumProgressUnits(
+        progressUnitsByJobId.values()
+      );
       const completedJobIds = new Set<string>();
-      setProgressCounts(nextTotalCount, 0);
+      setProgressCounts(nextProgressTotalCount, 0);
 
       const pollPromises = jobIds.map(async (jobId) => {
         const markTerminalJob = (
@@ -996,7 +1142,10 @@ export function GenerationFormContainer({
 
           if (!completedJobIds.has(jobId)) {
             completedJobIds.add(jobId);
-            setProgressCounts(nextTotalCount, completedJobIds.size);
+            setProgressCounts(
+              nextProgressTotalCount,
+              sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
+            );
           }
 
           if (status.status === "failed") {
@@ -1019,12 +1168,12 @@ export function GenerationFormContainer({
           messages: asyncApiMessages,
           onStatusUpdate: (status) => {
             updateTrackedJob(jobId, status);
-              syncPreviewFromStatus(status);
-              if (status.status === "succeeded" || status.status === "failed") {
-                markTerminalJob(status);
-              }
-            },
-          });
+            syncPreviewFromStatus(status);
+            if (status.status === "succeeded" || status.status === "failed") {
+              markTerminalJob(status);
+            }
+          },
+        });
 
         pollingStopFunctionsRef.current.add(stop);
 
@@ -1046,15 +1195,25 @@ export function GenerationFormContainer({
               id: jobId,
               status: "queued" as const,
               processingStage: "queued" as const,
+              requestedImageCount: progressUnitsByJobId.get(jobId),
+              batchMode:
+                (progressUnitsByJobId.get(jobId) ?? 1) > 1
+                  ? "openai_single_job"
+                  : "single_job",
               previewImageUrl: null,
               resultImageUrl: null,
+              resultImages: undefined,
               errorMessage: null,
+              generatedImageId: null,
             };
           }
 
           if (!completedJobIds.has(jobId)) {
             completedJobIds.add(jobId);
-            setProgressCounts(nextTotalCount, completedJobIds.size);
+            setProgressCounts(
+              nextProgressTotalCount,
+              sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
+            );
           }
 
           throw pollError;
@@ -1086,14 +1245,14 @@ export function GenerationFormContainer({
           )
           .filter((message): message is string => message !== null);
 
-        if (failedJobs.length === nextTotalCount) {
+        if (failedJobs.length === nextJobTotalCount) {
           throw new Error(errorMessages[0] || t("generationFailedGeneric"));
         }
 
         const summaryMessage = formatPartialFailureMessage(
           errorMessages,
           failedJobs.length,
-          nextTotalCount
+          nextJobTotalCount
         );
         setError(summaryMessage);
         showGenerationErrorToast(summaryMessage);
@@ -1112,8 +1271,8 @@ export function GenerationFormContainer({
         succeededJobs > 0 ? RESULT_REVEAL_DELAY_MS : 0
       );
       track("coordinate_generation_complete", {
-        count: nextTotalCount,
-        succeeded: nextTotalCount - failedJobs.length,
+        count: nextProgressTotalCount,
+        succeeded: nextProgressTotalCount - failedJobs.length,
       });
     } catch (generationError) {
       const errorMessage =

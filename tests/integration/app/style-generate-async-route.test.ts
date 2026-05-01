@@ -69,6 +69,7 @@ function createAsyncGenerationJobRepositoryMock(): jest.Mocked<AsyncGenerationJo
     uploadSourceImage: jest.fn(),
     getSourceImagePublicUrl: jest.fn(),
     getUserCreditBalance: jest.fn(),
+    getUserSubscriptionPlan: jest.fn(),
     createImageJob: jest.fn(),
     markImageJobFailed: jest.fn(),
     sendImageJobQueueMessage: jest.fn(),

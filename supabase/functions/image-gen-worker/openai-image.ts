@@ -30,6 +30,11 @@ export interface OpenAIImageEditResult {
   mimeType: "image/png";
 }
 
+export interface CallOpenAIImageEditBatchParams
+  extends CallOpenAIImageEditParams {
+  n?: number;
+}
+
 /**
  * 画像ヘッダーから width/height を抽出。PNG/JPEG/WebP に対応。
  * 解析できない場合は null。
@@ -149,15 +154,24 @@ export function resolveOpenAITargetSize(
  * - HTTP 400 + content_policy_violation または message に moderation/safety を含む
  *   → SAFETY_POLICY_BLOCKED_ERROR を throw（既存の non-retriable + 返金経路に乗せる）
  * - 他の HTTP 非 2xx → upstream message を Error として throw（既存 retry policy に委譲）
- * - data[0].b64_json が空 → "No images generated"（既存 isNonRetriableGenerationError で即終端 failed）
+ * - data[].b64_json が空 → "No images generated"（既存 isNonRetriableGenerationError で即終端 failed）
  *
  * 戻り値の形は Gemini 経路の `extractImagesFromGeminiResponse` の要素と揃え、
  * 後続の Storage アップロード処理を共有する。
  */
-export async function callOpenAIImageEdit(
-  params: CallOpenAIImageEditParams,
-): Promise<OpenAIImageEditResult> {
+function resolveRequestedImageCount(n: number | undefined): number {
+  const requested = n ?? 1;
+  if (!Number.isInteger(requested) || requested < 1 || requested > 10) {
+    throw new Error("OpenAI image edit n must be an integer between 1 and 10");
+  }
+  return requested;
+}
+
+export async function callOpenAIImageEditBatch(
+  params: CallOpenAIImageEditBatchParams,
+): Promise<OpenAIImageEditResult[]> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
+  const requestedImageCount = resolveRequestedImageCount(params.n);
   if (!apiKey) {
     // 通常は呼び出し側で charging 前にチェック済み。
     // ここまで来た場合も非リトライ（OPENAI_PROVIDER_ERROR）として扱う。
@@ -188,7 +202,7 @@ export async function callOpenAIImageEdit(
   form.append("quality", "low");
   form.append("moderation", "auto");
   form.append("output_format", "png");
-  form.append("n", "1");
+  form.append("n", String(requestedImageCount));
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), params.timeoutMs);
@@ -233,13 +247,33 @@ export async function callOpenAIImageEdit(
       throw new Error(message);
     }
 
-    const json = await response.json();
-    const b64 = json?.data?.[0]?.b64_json;
-    if (typeof b64 !== "string" || b64.length === 0) {
+    const json = await response.json().catch(() => ({}));
+    const results = (json?.data ?? [])
+      .map((item: { b64_json?: unknown }) => item?.b64_json)
+      .filter((b64: unknown): b64 is string =>
+        typeof b64 === "string" && b64.length > 0
+      )
+      .map((b64: string) => ({ data: b64, mimeType: "image/png" as const }));
+
+    if (results.length === 0) {
       throw new Error("No images generated");
     }
-    return { data: b64, mimeType: "image/png" };
+
+    if (results.length !== requestedImageCount) {
+      throw new Error(
+        `OpenAI image edit returned ${results.length} images, expected ${requestedImageCount}`,
+      );
+    }
+
+    return results;
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+export async function callOpenAIImageEdit(
+  params: CallOpenAIImageEditParams,
+): Promise<OpenAIImageEditResult> {
+  const [result] = await callOpenAIImageEditBatch({ ...params, n: 1 });
+  return result;
 }

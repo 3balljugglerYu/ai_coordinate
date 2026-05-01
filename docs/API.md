@@ -173,6 +173,8 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
 
 - `sourceImageStockId` か、`sourceImageBase64 + sourceImageMimeType` のどちらかが必須です。
 - `gpt-image-2-low` は OpenAI gpt-image-2 (`quality=low`) を呼び出す経路。1 枚あたり 10 ペルコイン消費。出力解像度は入力画像のアスペクト比から `1024x1024` / `1024x1536` / `1536x1024` を自動選択。GIF 入力は非対応。
+- `gpt-image-2-low` では `count` を `acceptedImageCount` として受理し、worker が OpenAI Images Edit API に 1 回で `n=acceptedImageCount` を渡します。上限はサブスクプランの生成枚数上限と `1..4` の小さい方です。
+- Gemini 系モデルでは互換性のため、この API 1 回につき 1 job / 1 画像です。複数枚生成はクライアント側が複数 job を投入します。
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
 - `gemini-2.5-flash-image` と `gemini-2.5-flash-image-preview` は後方互換のため受け付けますが、サーバー側で `gemini-3.1-flash-image-preview-512` に正規化されます。
@@ -182,7 +184,9 @@ Success response:
 ```json
 {
   "jobId": "job-id",
-  "status": "queued"
+  "status": "queued",
+  "acceptedImageCount": 4,
+  "batchMode": "openai_single_job"
 }
 ```
 
@@ -192,6 +196,8 @@ Delayed response:
 {
   "jobId": "job-id",
   "status": "queued",
+  "acceptedImageCount": 4,
+  "batchMode": "openai_single_job",
   "warning": "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。"
 }
 ```
@@ -261,8 +267,12 @@ Response:
   "id": "job-id",
   "status": "queued",
   "processingStage": "queued",
+  "requestedImageCount": 1,
+  "batchMode": "single_job",
   "previewImageUrl": null,
   "resultImageUrl": null,
+  "resultImages": [],
+  "generatedImageId": null,
   "errorMessage": null
 }
 ```
@@ -272,6 +282,7 @@ Response:
 - `failed` 時の `errorMessage` は、ユーザー向け文言に正規化される場合があります。
 - `processingStage` は `queued / processing / charging / generating / uploading / persisting / completed / failed` のいずれかです。
 - `previewImageUrl` は生成途中で先行表示できる画像 URL です。`status === "processing"` の間だけ返る場合があります。
+- `requestedImageCount` は job が要求した枚数です。OpenAI バッチでは `batchMode = "openai_single_job"` になり、成功時の `resultImages` に OpenAI レスポンス `data[]` の順序で複数画像が入ります。`resultImageUrl` / `generatedImageId` は後方互換用に先頭画像を返します。
 - `id` は自分のジョブのみ取得できます。
 
 Main errors:
@@ -298,6 +309,8 @@ Response:
       "id": "job-id",
       "status": "processing",
       "processingStage": "generating",
+      "requestedImageCount": 4,
+      "batchMode": "openai_single_job",
       "createdAt": "2026-03-27T10:01:00.000Z"
     }
   ]
@@ -316,7 +329,7 @@ Main errors:
 
 ### `PATCH /api/generation-status/link-stock`
 
-ユーザーが元画像をストックに保存した直後、そのストックと該当の `image_jobs` を後追いで紐づけます。生成完了前に保存された場合でも、worker が `generated_images` INSERT 直前に最新の `image_jobs.source_image_stock_id` を再取得するため、結果画像にもストック ID が伝播します。
+ユーザーが元画像をストックに保存した直後、そのストックと該当の `image_jobs` を後追いで紐づけます。生成完了前に保存された場合でも、worker が `generated_images` INSERT 直前に最新の `image_jobs.source_image_stock_id` を再取得するため、結果画像にもストック ID が伝播します。OpenAI バッチ結果は `generated_images.image_job_id` 経由で 1 job 配下の全画像へ反映し、旧データは `image_url` 一致で best-effort 更新します。
 
 - Access: `user session`
 - Request body:

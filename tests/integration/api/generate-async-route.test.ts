@@ -49,7 +49,9 @@ function createAsyncGenerationJobRepositoryMock(): jest.Mocked<AsyncGenerationJo
     uploadSourceImage: jest.fn(),
     getSourceImagePublicUrl: jest.fn(),
     getUserCreditBalance: jest.fn(),
+    getUserSubscriptionPlan: jest.fn(),
     createImageJob: jest.fn(),
+    markImageJobFailed: jest.fn(),
     sendImageJobQueueMessage: jest.fn(),
   };
 }
@@ -85,6 +87,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
     );
     jobRepository.getUserCreditBalance.mockResolvedValue({
       data: { balance: 100 },
+      error: null,
+    });
+    jobRepository.getUserSubscriptionPlan.mockResolvedValue({
+      data: { subscription_plan: "standard" },
       error: null,
     });
     jobRepository.createImageJob.mockResolvedValue({
@@ -145,6 +151,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
+        acceptedImageCount: 1,
+        batchMode: "openai_single_job",
       });
       expect(jobRepository.createImageJob).toHaveBeenCalledTimes(1);
       expect(jobRepository.createImageJob).toHaveBeenCalledWith({
@@ -158,6 +166,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         background_mode: "keep",
         status: "queued",
         processing_stage: "queued",
+        requested_image_count: 1,
         attempts: 0,
       });
       expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
@@ -189,10 +198,47 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
+        acceptedImageCount: 1,
+        batchMode: "single_job",
       });
       expect(jobRepository.createImageJob).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "gemini-3.1-flash-image-preview-512",
+          requested_image_count: 1,
+        })
+      );
+    });
+
+    test("postGenerateAsyncRoute_OpenAIでcount指定の場合_1ジョブにrequested_image_countを保存する", async () => {
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+        model: "gpt-image-2-low",
+        count: 4,
+      });
+
+      const response = await postGenerateAsyncRoute(request, {
+        getUserFn,
+        jobRepository,
+        invokeImageWorkerFn,
+        supabaseUrl: "https://example.supabase.co",
+      });
+      const body = await readJson(response);
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({
+        jobId: "job-001",
+        status: "queued",
+        acceptedImageCount: 4,
+        batchMode: "openai_single_job",
+      });
+      expect(jobRepository.getUserSubscriptionPlan).toHaveBeenCalledWith(
+        "user-123"
+      );
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "gpt-image-2-low",
+          requested_image_count: 4,
         })
       );
     });
@@ -668,6 +714,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-202",
         status: "queued",
+        acceptedImageCount: 1,
+        batchMode: "openai_single_job",
         warning:
           "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。",
       });
@@ -705,6 +753,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
+        acceptedImageCount: 1,
+        batchMode: "openai_single_job",
       });
       expect(invokeImageWorkerFn).toHaveBeenCalledWith(
         "https://example.supabase.co/functions/v1/image-gen-worker"
@@ -741,6 +791,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
+        acceptedImageCount: 1,
+        batchMode: "openai_single_job",
       });
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });

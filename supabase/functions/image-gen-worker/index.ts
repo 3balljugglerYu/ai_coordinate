@@ -24,7 +24,7 @@ import {
   getOneTapStylePresetMetadata,
   getOneTapStyleReservedAttemptId,
 } from "../../../shared/generation/one-tap-style-metadata.ts";
-import { callOpenAIImageEdit } from "./openai-image.ts";
+import { callOpenAIImageEditBatch } from "./openai-image.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -70,6 +70,11 @@ function extractGeminiFinishReasons(payload: GeminiResponse | null | undefined):
 type InputImageData = {
   base64: string;
   mimeType: string;
+};
+
+type GeneratedImageResult = {
+  mimeType: string;
+  data: string;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -446,6 +451,25 @@ function getPercoinCost(model: string | null): number {
     'gpt-image-2-low': 10,
   };
   return costs[normalized] ?? 20;
+}
+
+function getRequestedImageCount(job: { requested_image_count?: unknown }): number {
+  const requested = Number(job.requested_image_count ?? 1);
+  if (!Number.isInteger(requested) || requested < 1) {
+    return 1;
+  }
+  return Math.min(requested, 4);
+}
+
+function getGenerationPercoinAmount(job: {
+  model: string | null;
+  requested_image_count?: unknown;
+}): number {
+  const normalizedModel = normalizeModelName(job.model);
+  const count = isOpenAIImageModel(normalizedModel)
+    ? getRequestedImageCount(job)
+    : 1;
+  return getPercoinCost(normalizedModel) * count;
 }
 
 /**
@@ -1140,7 +1164,7 @@ Deno.serve(async () => {
                 .maybeSingle();
 
               if (consumptionTx) {
-                const percoinCost = getPercoinCost(job.model);
+                const percoinCost = getGenerationPercoinAmount(job);
                 await refundPercoinsFromGeneration(
                   supabase,
                   job.user_id,
@@ -1265,7 +1289,7 @@ Deno.serve(async () => {
               stageDurationsMs,
               async () => {
                 await updateJobProcessingStage(jobId, "charging");
-                const percoinCost = getPercoinCost(job.model);
+                const percoinCost = getGenerationPercoinAmount(job);
                 await deductPercoinsFromGeneration(
                   supabase,
                   job.user_id,
@@ -1332,7 +1356,7 @@ Deno.serve(async () => {
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         const geminiAttempts: GeminiAttemptMetadata[] = [];
         try {
-          let generatedImage: { mimeType: string; data: string } | null = null;
+          let generatedImages: GeneratedImageResult[] = [];
           currentStage = "generating";
           await measureJobStage(
             jobId,
@@ -1537,21 +1561,23 @@ Deno.serve(async () => {
                 try {
                   // OpenAI 経路は provider 中立な substep 名を使用し、
                   // 運用ログ・タイムラインで Gemini 経路と区別できるようにする。
-                  const result = await measureGeneratingSubstep(
+                  const requestedImageCount = getRequestedImageCount(job);
+                  const results = await measureGeneratingSubstep(
                     jobId,
                     "providerRequest",
                     generatingSubstepDurationsMs,
                     () =>
-                      callOpenAIImageEdit({
+                      callOpenAIImageEditBatch({
                         prompt: basePromptText,
                         inputImage: openAIInputImage,
                         timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                        n: requestedImageCount,
                       }),
                     { attempt: 1 }
                   );
                   attemptHttpOk = true;
                   attemptHttpStatus = 200;
-                  generatedImage = { mimeType: result.mimeType, data: result.data };
+                  generatedImages = results;
                   geminiAttempts.push({
                     attempt: 1,
                     startedAt: new Date(attemptStartedAtMs).toISOString(),
@@ -1559,7 +1585,7 @@ Deno.serve(async () => {
                     httpStatus: attemptHttpStatus,
                     httpOk: attemptHttpOk,
                     finishReasons: [],
-                    hasImage: true,
+                    hasImage: results.length === requestedImageCount,
                     timedOut: false,
                     errorMessage: null,
                     reinforcementApplied: false,
@@ -1596,7 +1622,7 @@ Deno.serve(async () => {
                   steps: buildGeneratingSubstepSummary(generatingSubstepDurationsMs),
                 });
 
-                if (!generatedImage) {
+                if (generatedImages.length === 0) {
                   throw new Error("No images generated");
                 }
                 return;
@@ -1755,7 +1781,7 @@ Deno.serve(async () => {
                 });
 
                 if (nextGeneratedImage) {
-                  generatedImage = nextGeneratedImage;
+                  generatedImages = [nextGeneratedImage];
                   break;
                 }
 
@@ -1773,23 +1799,13 @@ Deno.serve(async () => {
                 steps: buildGeneratingSubstepSummary(generatingSubstepDurationsMs),
               });
 
-              if (!generatedImage) {
+              if (generatedImages.length === 0) {
                 throw new Error("No images generated");
               }
             }
           );
 
-          // 最初の画像を使用（複数生成の場合は1枚目を使用）
-
           // ===== フェーズ4-2: Supabase Storageへの画像保存 =====
-          // Base64をUint8Arrayに変換
-          const base64Data = generatedImage.data;
-          const byteArray = decodeBase64(base64Data);
-
-          // ファイル名を生成（ユーザーID + タイムスタンプ + ランダム文字列）
-          const timestamp = Date.now();
-          const randomStr = Math.random().toString(36).substring(2, 15);
-          
           // MIMEタイプから安全な拡張子を取得（パストラバーサル対策）
           const getSafeExtension = (mimeType: string): string => {
             // 許可されたMIMEタイプのマッピング
@@ -1813,10 +1829,30 @@ Deno.serve(async () => {
             return "png";
           };
 
-          const extension = getSafeExtension(generatedImage.mimeType);
-          const fileName = `${job.user_id}/${timestamp}-${randomStr}.${extension}`;
-          let publicUrl = "";
-          let uploadPath = "";
+          type UploadedGeneratedImage = {
+            publicUrl: string;
+            uploadPath: string;
+            resultIndex: number;
+          };
+
+          const uploadedImages: UploadedGeneratedImage[] = [];
+          const cleanupUploadedImages = async (reason: string) => {
+            const uploadPaths = uploadedImages.map((image) => image.uploadPath);
+            if (uploadPaths.length === 0) {
+              return;
+            }
+
+            const { error: cleanupError } = await supabase.storage
+              .from(STORAGE_BUCKET)
+              .remove(uploadPaths);
+
+            if (cleanupError) {
+              console.warn(
+                `[Worker] failed to cleanup uploaded images after ${reason}`,
+                cleanupError
+              );
+            }
+          };
 
           currentStage = "uploading";
           await measureJobStage(
@@ -1826,28 +1862,51 @@ Deno.serve(async () => {
             async () => {
               await updateJobProcessingStage(jobId, "uploading");
 
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from(STORAGE_BUCKET)
-                .upload(fileName, byteArray, {
-                  contentType: generatedImage.mimeType,
-                  upsert: false,
-                });
+              try {
+                for (const [resultIndex, generatedImage] of generatedImages.entries()) {
+                  const byteArray = decodeBase64(generatedImage.data);
+                  const extension = getSafeExtension(generatedImage.mimeType);
+                  const randomStr = Math.random().toString(36).substring(2, 15);
+                  const fileName = `${job.user_id}/${jobId}-${resultIndex}-${randomStr}.${extension}`;
 
-              if (uploadError) {
-                console.error("Storage upload error:", uploadError);
-                throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
+                  const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from(STORAGE_BUCKET)
+                    .upload(fileName, byteArray, {
+                      contentType: generatedImage.mimeType,
+                      upsert: false,
+                    });
+
+                  if (uploadError) {
+                    console.error("Storage upload error:", uploadError);
+                    throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
+                  }
+
+                  uploadedImages.push({
+                    resultIndex,
+                    uploadPath: uploadData.path,
+                    publicUrl: supabase.storage
+                      .from(STORAGE_BUCKET)
+                      .getPublicUrl(uploadData.path).data.publicUrl,
+                  });
+                }
+              } catch (uploadError) {
+                await cleanupUploadedImages("upload failure");
+                throw uploadError;
               }
-
-              uploadPath = uploadData.path;
-              publicUrl = supabase.storage
-                .from(STORAGE_BUCKET)
-                .getPublicUrl(uploadData.path).data.publicUrl;
             }
           );
 
           // ===== フェーズ4-3: generated_imagesテーブルへの保存 =====
           let shouldSkipAfterPersist = false;
-          let imageRecordId = "";
+          const imageRecordIds: string[] = [];
+          const primaryUploadedImage = uploadedImages[0];
+          if (!primaryUploadedImage) {
+            throw new Error("No uploaded images");
+          }
+          const successGenerationMetadata = {
+            ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
+            geminiAttempts,
+          };
           currentStage = "persisting";
           await measureJobStage(
             jobId,
@@ -1855,8 +1914,47 @@ Deno.serve(async () => {
             stageDurationsMs,
             async () => {
               await updateJobProcessingStage(jobId, "persisting", {
-                resultImageUrl: publicUrl,
+                resultImageUrl: primaryUploadedImage.publicUrl,
               });
+
+              if (isOpenAIImageModel(dbModel)) {
+                const { data: imageRecords, error: completeJobError } = await supabase.rpc(
+                  "complete_image_job_with_generated_images",
+                  {
+                    p_job_id: jobId,
+                    p_images: uploadedImages.map((image) => ({
+                      image_url: image.publicUrl,
+                      storage_path: image.uploadPath,
+                    })),
+                    p_generation_metadata: successGenerationMetadata,
+                    p_result_image_url: primaryUploadedImage.publicUrl,
+                  }
+                );
+
+                if (completeJobError) {
+                  console.error("OpenAI batch completion RPC error:", completeJobError);
+                  await cleanupUploadedImages("persistence failure");
+                  throw new Error(`画像メタデータの保存に失敗しました: ${completeJobError.message}`);
+                }
+
+                const rpcImageRecordIds = Array.isArray(imageRecords)
+                  ? imageRecords
+                      .map((row) =>
+                        typeof row?.id === "string" ? row.id : null
+                      )
+                      .filter((id): id is string => id !== null)
+                  : [];
+
+                if (rpcImageRecordIds.length !== uploadedImages.length) {
+                  console.warn(
+                    `[Worker] OpenAI batch RPC returned ${rpcImageRecordIds.length} image records for ${uploadedImages.length} uploads`,
+                    { jobId }
+                  );
+                }
+
+                imageRecordIds.push(...rpcImageRecordIds);
+                return;
+              }
 
               // 生成完了直前に source_image_stock_id を再取得する。
               // 生成中にユーザーがダイアログから元画像をストック保存した場合、
@@ -1882,8 +1980,8 @@ Deno.serve(async () => {
                 .from("generated_images")
                 .insert({
                   user_id: job.user_id,
-                  image_url: publicUrl,
-                  storage_path: uploadPath,
+                  image_url: primaryUploadedImage.publicUrl,
+                  storage_path: primaryUploadedImage.uploadPath,
                   prompt: job.prompt_text,
                   background_mode: backgroundMode,
                   is_posted: false,
@@ -1900,7 +1998,7 @@ Deno.serve(async () => {
                 throw new Error(`画像メタデータの保存に失敗しました: ${insertError.message}`);
               }
 
-              imageRecordId = imageRecord.id;
+              imageRecordIds.push(imageRecord.id);
 
               const { data: postInsertJob, error: postInsertJobError } = await supabase
                 .from("image_jobs")
@@ -1910,7 +2008,7 @@ Deno.serve(async () => {
 
               if (postInsertJobError) {
                 console.warn(
-                  `[Worker] failed to post-sync source_image_stock_id for generated image ${imageRecordId}`,
+                  `[Worker] failed to post-sync source_image_stock_id for generated image ${imageRecord.id}`,
                   postInsertJobError
                 );
               }
@@ -1925,11 +2023,11 @@ Deno.serve(async () => {
                 const { error: syncGeneratedImageError } = await supabase
                   .from("generated_images")
                   .update({ source_image_stock_id: postInsertSourceImageStockId })
-                  .eq("id", imageRecordId);
+                  .eq("id", imageRecord.id);
 
                 if (syncGeneratedImageError) {
                   console.warn(
-                    `[Worker] failed to post-sync generated image ${imageRecordId} with source image stock`,
+                    `[Worker] failed to post-sync generated image ${imageRecord.id} with source image stock`,
                     syncGeneratedImageError
                   );
                 }
@@ -1937,16 +2035,12 @@ Deno.serve(async () => {
 
               // ===== フェーズ4-4: 成功時の処理 =====
               // image_jobsテーブルを更新（成功時）
-              const successGenerationMetadata = {
-                ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
-                geminiAttempts,
-              };
               const { data: succeededJob, error: successUpdateError } = await supabase
                 .from("image_jobs")
                 .update({
                   status: "succeeded",
                   processing_stage: "completed",
-                  result_image_url: publicUrl,
+                  result_image_url: primaryUploadedImage.publicUrl,
                   error_message: null,
                   completed_at: new Date().toISOString(),
                   generation_metadata: successGenerationMetadata,
@@ -2012,15 +2106,17 @@ Deno.serve(async () => {
 
           const siteUrl = Deno.env.get("SITE_URL");
           const cronSecret = Deno.env.get("CRON_SECRET");
-          if (siteUrl && cronSecret) {
-            scheduleEnsureWebPVariantsNotification(
-              siteUrl,
-              cronSecret,
-              imageRecordId
-            );
+          if (siteUrl && cronSecret && imageRecordIds.length > 0) {
+            imageRecordIds.forEach((imageRecordId) => {
+              scheduleEnsureWebPVariantsNotification(
+                siteUrl,
+                cronSecret,
+                imageRecordId
+              );
+            });
           } else {
             console.warn(
-              "[Job Success] Skipped WebP notification because SITE_URL or CRON_SECRET is not configured"
+              "[Job Success] Skipped WebP notification because SITE_URL, CRON_SECRET, or image records are not configured"
             );
           }
 
@@ -2146,7 +2242,7 @@ Deno.serve(async () => {
               }
             } else {
               try {
-                const percoinCost = getPercoinCost(job.model);
+                const percoinCost = getGenerationPercoinAmount(job);
                 await refundPercoinsFromGeneration(
                   supabase,
                   job.user_id,

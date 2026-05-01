@@ -33,6 +33,8 @@ function setupJobQuery(result: {
     processing_stage: string | null;
     result_image_url: string | null;
     error_message: string | null;
+    requested_image_count?: number;
+    model?: string | null;
   } | null;
   error: { code?: string; message?: string } | null;
 }, generatedImageId: string | null = null) {
@@ -40,23 +42,41 @@ function setupJobQuery(result: {
   const secondEq = jest.fn().mockReturnValue({ single });
   const firstEq = jest.fn().mockReturnValue({ eq: secondEq });
   const select = jest.fn().mockReturnValue({ eq: firstEq });
+  const generatedByJobSecondOrder = jest.fn().mockResolvedValue({
+    data: [],
+    error: null,
+  });
+  const generatedByJobFirstOrder = jest.fn().mockReturnValue({
+    order: generatedByJobSecondOrder,
+  });
+  const generatedByJobSecondEq = jest.fn().mockReturnValue({
+    order: generatedByJobFirstOrder,
+  });
+  const generatedByJobFirstEq = jest.fn().mockReturnValue({
+    eq: generatedByJobSecondEq,
+  });
   const generatedMaybeSingle = jest.fn().mockResolvedValue({
-    data: generatedImageId ? { id: generatedImageId } : null,
+    data: generatedImageId && result.data?.result_image_url
+      ? { id: generatedImageId, image_url: result.data.result_image_url }
+      : null,
     error: null,
   });
   const generatedLimit = jest.fn().mockReturnValue({
     maybeSingle: generatedMaybeSingle,
   });
-  const generatedOrder = jest.fn().mockReturnValue({ limit: generatedLimit });
-  const generatedSecondEq = jest.fn().mockReturnValue({
-    order: generatedOrder,
+  const generatedLegacyOrder = jest.fn().mockReturnValue({
+    limit: generatedLimit,
   });
-  const generatedFirstEq = jest.fn().mockReturnValue({
-    eq: generatedSecondEq,
+  const generatedLegacySecondEq = jest.fn().mockReturnValue({
+    order: generatedLegacyOrder,
   });
-  const generatedSelect = jest.fn().mockReturnValue({
-    eq: generatedFirstEq,
+  const generatedLegacyFirstEq = jest.fn().mockReturnValue({
+    eq: generatedLegacySecondEq,
   });
+  const generatedSelect = jest
+    .fn()
+    .mockReturnValueOnce({ eq: generatedByJobFirstEq })
+    .mockReturnValueOnce({ eq: generatedLegacyFirstEq });
   const from = jest.fn().mockImplementation((table: string) => {
     if (table === "image_jobs") {
       return { select };
@@ -98,8 +118,11 @@ describe("GET /api/generation-status", () => {
       id: string;
       status: string;
       processingStage: string | null;
+      requestedImageCount: number;
+      batchMode: string;
       previewImageUrl: string | null;
       resultImageUrl: string | null;
+      resultImages: Array<{ id: string; url: string }>;
       errorMessage: string | null;
       generatedImageId: string | null;
     };
@@ -109,8 +132,11 @@ describe("GET /api/generation-status", () => {
       id: "job-1",
       status: "failed",
       processingStage: "failed",
+      requestedImageCount: 1,
+      batchMode: "single_job",
       previewImageUrl: null,
       resultImageUrl: null,
+      resultImages: [],
       errorMessage:
         "画像生成に失敗しました。しばらくしてから、もう一度お試しください。",
       generatedImageId: null,
@@ -159,8 +185,11 @@ describe("GET /api/generation-status", () => {
       id: string;
       status: string;
       processingStage: string | null;
+      requestedImageCount: number;
+      batchMode: string;
       previewImageUrl: string | null;
       resultImageUrl: string | null;
+      resultImages: Array<{ id: string; url: string }>;
       errorMessage: string | null;
       generatedImageId: string | null;
     };
@@ -170,8 +199,11 @@ describe("GET /api/generation-status", () => {
       id: "job-3",
       status: "processing",
       processingStage: "persisting",
+      requestedImageCount: 1,
+      batchMode: "single_job",
       previewImageUrl: "https://cdn.example.com/generated.png",
       resultImageUrl: null,
+      resultImages: [],
       errorMessage: null,
       generatedImageId: null,
     });
@@ -196,8 +228,11 @@ describe("GET /api/generation-status", () => {
       id: string;
       status: string;
       processingStage: string | null;
+      requestedImageCount: number;
+      batchMode: string;
       previewImageUrl: string | null;
       resultImageUrl: string | null;
+      resultImages: Array<{ id: string; url: string }>;
       errorMessage: string | null;
       generatedImageId: string | null;
     };
@@ -207,8 +242,16 @@ describe("GET /api/generation-status", () => {
       id: "job-4",
       status: "succeeded",
       processingStage: "completed",
+      requestedImageCount: 1,
+      batchMode: "single_job",
       previewImageUrl: null,
       resultImageUrl: "https://cdn.example.com/generated.png",
+      resultImages: [
+        {
+          id: "generated-image-123",
+          url: "https://cdn.example.com/generated.png",
+        },
+      ],
       errorMessage: null,
       generatedImageId: "generated-image-123",
     });

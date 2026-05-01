@@ -44,6 +44,7 @@ export interface ImageJob {
   background_mode: BackgroundMode;
   status: ImageJobStatus;
   processing_stage: ImageJobProcessingStage | null;
+  requested_image_count: number;
   result_image_url: string | null;
   error_message: string | null;
   attempts: number;
@@ -63,6 +64,7 @@ export type ImageJobCreateInput = Omit<
   | "updated_at"
   | "started_at"
   | "completed_at"
+  | "requested_image_count"
   | "result_image_url"
   | "error_message"
   | "attempts"
@@ -71,6 +73,7 @@ export type ImageJobCreateInput = Omit<
   status?: ImageJobStatus;
   processing_stage?: ImageJobProcessingStage | null;
   attempts?: number;
+  requested_image_count?: number;
 };
 
 /**

@@ -43,6 +43,8 @@ interface AsyncGenerationErrorResponse {
 export interface AsyncGenerationResponse {
   jobId: string;
   status: string;
+  acceptedImageCount?: number;
+  batchMode?: "single_job" | "openai_single_job";
 }
 
 /**
@@ -52,8 +54,11 @@ export interface AsyncGenerationStatus {
   id: string;
   status: "queued" | "processing" | "succeeded" | "failed";
   processingStage: ImageJobProcessingStage | null;
+  requestedImageCount?: number;
+  batchMode?: "single_job" | "openai_single_job";
   previewImageUrl: string | null;
   resultImageUrl: string | null;
+  resultImages?: Array<{ id: string; url: string }>;
   errorMessage: string | null;
   generatedImageId: string | null;
 }
@@ -62,7 +67,7 @@ export interface AsyncGenerationStatus {
  * 非同期画像生成ジョブを投入
  */
 export async function generateImageAsync(
-  request: Omit<GenerationRequest, "count">,
+  request: GenerationRequest,
   messages?: AsyncGenerationApiMessages
 ): Promise<AsyncGenerationResponse> {
   const backgroundMode = resolveBackgroundMode(
@@ -110,6 +115,7 @@ export async function generateImageAsync(
       sourceImageType: request.sourceImageType || "illustration",
       backgroundMode,
       backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
+      count: request.count ?? 1,
       generationType: request.generationType || "coordinate",
       model: request.model || DEFAULT_GENERATION_MODEL,
     }),
@@ -158,8 +164,25 @@ export async function getGenerationStatus(
     id: data.id,
     status: data.status,
     processingStage: data.processingStage || null,
+    requestedImageCount:
+      typeof data.requestedImageCount === "number"
+        ? data.requestedImageCount
+        : undefined,
+    batchMode:
+      data.batchMode === "openai_single_job" || data.batchMode === "single_job"
+        ? data.batchMode
+        : undefined,
     previewImageUrl: data.previewImageUrl || null,
     resultImageUrl: data.resultImageUrl || null,
+    resultImages: Array.isArray(data.resultImages)
+      ? data.resultImages.filter(
+          (item: unknown): item is { id: string; url: string } =>
+            typeof item === "object" &&
+            item !== null &&
+            typeof (item as { id?: unknown }).id === "string" &&
+            typeof (item as { url?: unknown }).url === "string"
+        )
+      : undefined,
     errorMessage: data.errorMessage || null,
     generatedImageId:
       typeof data.generatedImageId === "string" ? data.generatedImageId : null,
@@ -173,6 +196,8 @@ export interface JobStatus {
   id: string;
   status: "queued" | "processing" | "succeeded" | "failed";
   processingStage: ImageJobProcessingStage | null;
+  requestedImageCount?: number;
+  batchMode?: "single_job" | "openai_single_job";
   createdAt: string;
 }
 
