@@ -5,7 +5,6 @@ import { SaveSourceImageToStockDialog } from "./SaveSourceImageToStockDialog";
 import {
   clearCoordinateSourceStockSavePrompt,
   getCoordinateSourceStockSavePromptState,
-  markCoordinateSourceStockSavePromptDot,
   subscribeCoordinateSourceStockSavePromptState,
 } from "../lib/coordinate-source-stock-save-prompt-state";
 import {
@@ -43,7 +42,11 @@ export function CoordinateSourceStockSavePromptDialogHost() {
         });
       }}
       onSaved={(stockId) => {
-        markCoordinateSourceStockSavePromptDot();
+        // ナビバー / サイドバーの赤丸（coordinateNavDot）は意図的に立てない。
+        // このダイアログはコーディネート画面でのみ表示されるため、ユーザーは
+        // 既にコーディネート画面に居る。ストックタブの赤丸（source_image_stocks
+        // の created_at と profiles.coordinate_stocks_tab_seen_at の比較で立つ）
+        // のみで十分。
         writePreferredImageSourceType("stock");
         writePreferredSelectedStockId(stockId);
       }}
