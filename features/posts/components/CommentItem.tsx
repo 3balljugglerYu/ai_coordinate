@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { ParentComment } from "../types";
@@ -30,6 +30,7 @@ export function CommentItem({
 }: CommentItemProps) {
   const t = useTranslations("posts");
   const hasReplies = comment.reply_count > 0;
+  const showMobileReplyButton = !comment.deleted_at || hasReplies;
 
   return (
     <div>
@@ -40,17 +41,20 @@ export function CommentItem({
         onCommentDeleted={onCommentDeleted}
         onCommentSelected={!comment.deleted_at ? onOpenReplyPanel : undefined}
       />
-      {hasReplies && (
+      {showMobileReplyButton && (
         <div className="pb-3 pl-11 md:hidden">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 px-2 text-xs text-gray-600"
+            className="h-8 gap-1.5 px-2 text-xs text-gray-600"
             onClick={onOpenReplyPanel}
           >
-            <span>{t("repliesCount", { count: comment.reply_count })}</span>
-            <ChevronRight className="h-4 w-4" />
+            <MessageCircle className="h-4 w-4" />
+            <span>{t("replyAction")}</span>
+            {hasReplies && (
+              <span className="font-medium">{comment.reply_count}</span>
+            )}
           </Button>
         </div>
       )}

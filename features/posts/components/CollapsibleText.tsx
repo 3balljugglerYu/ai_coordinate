@@ -12,6 +12,7 @@ interface CollapsibleTextProps {
   className?: string;
   textClassName?: string;
   linkify?: boolean;
+  inlineToggle?: boolean;
 }
 
 /**
@@ -24,6 +25,7 @@ export function CollapsibleText({
   className = "",
   textClassName = "text-gray-700",
   linkify = false,
+  inlineToggle = false,
 }: CollapsibleTextProps) {
   const postsT = useTranslations("posts");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -63,25 +65,39 @@ export function CollapsibleText({
     }
   }, [text, maxLines]);
 
+  const showInlineButton = inlineToggle && shouldShowButton && !isExpanded;
+  const showStandardButton = shouldShowButton && (isExpanded || !inlineToggle);
+
   return (
     <div className={className}>
-      <p
-        ref={textRef}
-        className={`text-sm whitespace-pre-wrap break-words ${textClassName}`}
-        style={
-          !isExpanded && shouldShowButton
-            ? {
-                display: "-webkit-box",
-                WebkitLineClamp: maxLines,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }
-            : {}
-        }
-      >
-        {renderedContent}
-      </p>
-      {shouldShowButton && (
+      <div className={showInlineButton ? "relative" : undefined}>
+        <p
+          ref={textRef}
+          className={`text-sm whitespace-pre-wrap break-words ${textClassName}`}
+          style={
+            !isExpanded && shouldShowButton
+              ? {
+                  display: "-webkit-box",
+                  WebkitLineClamp: maxLines,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }
+              : {}
+          }
+        >
+          {renderedContent}
+        </p>
+        {showInlineButton && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="absolute bottom-0 right-0 bg-gradient-to-l from-white from-30% to-white/0 pl-8 text-xs text-gray-500 hover:text-gray-700"
+          >
+            ...{postsT("readMore")}
+          </button>
+        )}
+      </div>
+      {showStandardButton && (
         <Button
           variant="ghost"
           size="sm"

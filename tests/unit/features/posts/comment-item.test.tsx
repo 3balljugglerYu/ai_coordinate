@@ -65,7 +65,7 @@ describe("CommentItem", () => {
     });
   });
 
-  test("返信がない場合は返信数ボタンを表示しない", () => {
+  test("返信が0件でも返信ボタンを常時表示する", () => {
     render(
       <CommentItem
         comment={createComment({ reply_count: 0 })}
@@ -77,7 +77,45 @@ describe("CommentItem", () => {
       />,
     );
 
-    expect(screen.queryByText("0件の返信")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /replyAction/ }),
+    ).toBeInTheDocument();
+  });
+
+  test("返信ボタンに件数が併記される", () => {
+    render(
+      <CommentItem
+        comment={createComment({ reply_count: 3 })}
+        currentUserId="viewer-1"
+        onCommentUpdated={() => undefined}
+        onCommentDeleted={() => undefined}
+        onThreadChanged={() => undefined}
+        onOpenReplyPanel={() => undefined}
+      />,
+    );
+
+    const replyButton = screen.getByRole("button", { name: /replyAction/ });
+    expect(replyButton).toHaveTextContent("replyAction");
+    expect(replyButton).toHaveTextContent("3");
+  });
+
+  test("返信ボタンのクリックで onOpenReplyPanel を呼ぶ", () => {
+    const onOpenReplyPanel = jest.fn();
+
+    render(
+      <CommentItem
+        comment={createComment({ reply_count: 0 })}
+        currentUserId="viewer-1"
+        onCommentUpdated={() => undefined}
+        onCommentDeleted={() => undefined}
+        onThreadChanged={() => undefined}
+        onOpenReplyPanel={onOpenReplyPanel}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /replyAction/ }));
+
+    expect(onOpenReplyPanel).toHaveBeenCalledTimes(1);
   });
 
   test("コメント本体の選択で返信画面を開ける", () => {
@@ -119,6 +157,27 @@ describe("CommentItem", () => {
     fireEvent.click(screen.getByRole("button", { name: "select-comment" }));
 
     expect(onOpenReplyPanel).not.toHaveBeenCalled();
-    expect(screen.getByText("2件の返信")).toBeInTheDocument();
+    const replyButton = screen.getByRole("button", { name: /replyAction/ });
+    expect(replyButton).toHaveTextContent("2");
+  });
+
+  test("削除済みかつ返信が0件の場合は返信ボタンを表示しない", () => {
+    render(
+      <CommentItem
+        comment={createComment({
+          deleted_at: "2026-04-17T00:10:00.000Z",
+          reply_count: 0,
+        })}
+        currentUserId="viewer-1"
+        onCommentUpdated={() => undefined}
+        onCommentDeleted={() => undefined}
+        onThreadChanged={() => undefined}
+        onOpenReplyPanel={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /replyAction/ }),
+    ).not.toBeInTheDocument();
   });
 });
