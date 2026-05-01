@@ -90,11 +90,15 @@ export function NavigationBar() {
   }, [localizedHomePath, user, router]);
 
   useEffect(() => {
-    if (!pendingPathname || !pendingSourcePathRef.current) {
+    if (!pendingPathname) {
       return;
     }
 
-    if (normalizedPathname !== pendingSourcePathRef.current) {
+    // 目的地に到達した時点で pending を解除する。
+    // 「出発地から離れた時点で解除」だと、中間遷移（例: ログインリダイレクト）
+    // で誤発火し、まだ到達していないのに pending が外れて元タブが活性表示される
+    // フリッカが起きるため、到達判定で揃える。
+    if (normalizedPathname === pendingPathname) {
       clearPendingNavigationFromEffect();
     }
   }, [normalizedPathname, pendingPathname]);
@@ -140,11 +144,14 @@ export function NavigationBar() {
     if (pendingResetTimeoutRef.current) {
       clearTimeout(pendingResetTimeoutRef.current);
     }
+    // 安全網タイムアウト: 通常は到達判定で解除されるが、ナビゲーションが
+    // 想定外に失敗・遅延した場合の保険として残す。重い画面の初回遷移でも
+    // フリッカしないよう、当初 2 秒だった値を 10 秒に延長している。
     pendingResetTimeoutRef.current = window.setTimeout(() => {
       pendingResetTimeoutRef.current = null;
       pendingSourcePathRef.current = null;
       setPendingPathname(null);
-    }, 2000);
+    }, 10000);
 
     // startTransitionでナビゲーションを非ブロッキングにする
     startTransition(() => {
