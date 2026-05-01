@@ -57,13 +57,21 @@ async function readJson(response: Response): Promise<JsonRecord> {
   return (await response.json()) as JsonRecord;
 }
 
+type QueryBuilderMock<T> = {
+  select: jest.Mock<QueryBuilderMock<T>, unknown[]>;
+  eq: jest.Mock<QueryBuilderMock<T>, unknown[]>;
+  insert: jest.Mock<QueryBuilderMock<T>, unknown[]>;
+  single: jest.Mock<Promise<QueryResult<T>>, unknown[]>;
+  maybeSingle: jest.Mock<Promise<QueryResult<T>>, unknown[]>;
+};
+
 function createQueryBuilder<T>(singleResult: QueryResult<T>) {
-  const builder = {
-    select: jest.fn(() => builder),
-    eq: jest.fn(() => builder),
-    insert: jest.fn(() => builder),
-    single: jest.fn(async () => singleResult),
-  };
+  const builder = {} as QueryBuilderMock<T>;
+  builder.select = jest.fn(() => builder);
+  builder.eq = jest.fn(() => builder);
+  builder.insert = jest.fn(() => builder);
+  builder.single = jest.fn(async () => singleResult);
+  builder.maybeSingle = jest.fn(async () => singleResult);
 
   return builder;
 }
@@ -83,6 +91,10 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
       error: null,
     }
   );
+  const profilesBuilder = createQueryBuilder<{ subscription_plan: string | null }>({
+    data: { subscription_plan: "standard" },
+    error: null,
+  });
 
   const from = jest.fn((table: string) => {
     if (table === "source_image_stocks") {
@@ -93,6 +105,9 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
     }
     if (table === "image_jobs") {
       return jobsBuilder;
+    }
+    if (table === "profiles") {
+      return profilesBuilder;
     }
     throw new Error(`Unexpected table: ${table}`);
   });
@@ -132,6 +147,7 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
     stockBuilder,
     creditsBuilder,
     jobsBuilder,
+    profilesBuilder,
   };
 }
 
@@ -267,6 +283,8 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     }).toMatchInlineSnapshot(`
       {
         "body": {
+          "acceptedImageCount": 1,
+          "batchMode": "openai_single_job",
           "jobId": "job-001",
           "status": "queued",
           "warning": "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。",
@@ -324,16 +342,23 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       })
     );
     const body = await readJson(response);
+    const insertedJob = (
+      supabase.jobsBuilder.insert.mock.calls[0]?.[0] as
+        | Array<Record<string, unknown>>
+        | undefined
+    )?.[0];
 
     expect({
       status: response.status,
       body,
       uploadCall: supabase.upload.mock.calls[0],
-      insertedJob: supabase.jobsBuilder.insert.mock.calls[0]?.[0]?.[0],
+      insertedJob,
       queueCall: supabase.rpc.mock.calls[0],
     }).toMatchInlineSnapshot(`
       {
         "body": {
+          "acceptedImageCount": 1,
+          "batchMode": "openai_single_job",
           "jobId": "job-xyz",
           "status": "queued",
         },
@@ -345,6 +370,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "model": "gpt-image-2-low",
           "processing_stage": "queued",
           "prompt_text": "linen jacket",
+          "requested_image_count": 1,
           "source_image_stock_id": null,
           "source_image_type": "real",
           "status": "queued",
@@ -415,14 +441,21 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       })
     );
     const body = await readJson(response);
+    const insertedJob = (
+      supabase.jobsBuilder.insert.mock.calls[0]?.[0] as
+        | Array<Record<string, unknown>>
+        | undefined
+    )?.[0];
 
     expect({
       status: response.status,
       body,
-      insertedModel: supabase.jobsBuilder.insert.mock.calls[0]?.[0]?.[0]?.model,
+      insertedModel: insertedJob?.model,
     }).toMatchInlineSnapshot(`
       {
         "body": {
+          "acceptedImageCount": 1,
+          "batchMode": "openai_single_job",
           "jobId": "job-openai-001",
           "status": "queued",
         },

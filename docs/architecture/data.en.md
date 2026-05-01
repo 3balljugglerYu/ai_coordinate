@@ -185,15 +185,15 @@ This matches Supabase/Postgres best practices used in this repo:
    - `sourceImageStockId`, or
    - temporary Base64 upload to Storage
 3. It performs an optimistic balance check from `user_credits`.
-4. It inserts a row in `image_jobs` with `status = queued` and `processing_stage = queued`, plus `generation_metadata` when the flow needs restoreable UI context such as a One-Tap Style preset card.
+4. It inserts a row in `image_jobs` with `status = queued` and `processing_stage = queued`. OpenAI batch generation stores the accepted output count in `requested_image_count`, and flows that need restoreable UI context such as a One-Tap Style preset card store it in `generation_metadata`.
 5. It sends a queue message through `pgmq_send` and also tries to invoke the Edge Function immediately.
 6. The Edge Function:
    - reads queue messages via `pgmq_read`
    - marks the job `status = processing` and `processing_stage = processing`
    - switches to `processing_stage = charging` and calls `deduct_free_percoins` only for paid jobs
-   - switches to `processing_stage = generating` and calls Gemini
-   - switches to `processing_stage = uploading` and uploads the result to Storage
-   - switches to `processing_stage = persisting` and inserts a row in `generated_images`, carrying forward `generation_metadata` when needed by later detail views
+   - switches to `processing_stage = generating` and calls Gemini or the OpenAI Images Edit API. OpenAI batch generation sends `n=requested_image_count` in one upstream API call
+   - switches to `processing_stage = uploading` and uploads the result images to Storage. OpenAI batch results use file names under the same `jobId` with a result index
+   - switches to `processing_stage = persisting` and inserts rows in `generated_images`, carrying forward `generation_metadata` when needed by later detail views. OpenAI batch generation uses the `complete_image_job_with_generated_images` RPC so multiple inserts, the `image_jobs` success update, and legacy `credit_transactions.related_generation_id` backfill happen in one transaction
    - updates `image_jobs` to `status = succeeded` and `processing_stage = completed`
    - backfills `credit_transactions.related_generation_id`
 7. If generation reaches terminal failure, the worker stores `processing_stage = failed` and calls `refund_percoins` exactly once.
@@ -203,6 +203,7 @@ This matches Supabase/Postgres best practices used in this repo:
 - The route handler checks balance early for user feedback
 - The worker owns the real deduction so billing happens close to the external side effect
 - Refund logic is also centralized in SQL to keep allocation bookkeeping consistent
+- OpenAI batch generation is all-or-nothing. A returned image count mismatch or persistence failure marks the job failed and refunds the full amount; partial success is not saved or billed.
 
 ## Core flow 4: Posting, likes, comments, follows, and notifications
 
@@ -269,7 +270,7 @@ These are EARS-inspired summaries for the flows that new developers most often b
 - `ears_ja`: 認証済みユーザーが有効な生成リクエストを送信したとき、システムは `image_jobs` レコードを作成してキュー投入し、そのジョブに対して最終的にただ1つの終端結果を確定しなければならない。
 - `preconditions`: Authenticated session; valid request payload; source image resolved from stock or upload; optimistic balance check passed.
 - `preconditions_ja`: 認証済みセッションであること。リクエストが妥当であること。元画像がストックまたはアップロードから解決できること。事前残高チェックを満たすこと。
-- `postconditions`: On success, `generated_images` is inserted, `image_jobs.status = succeeded`, and the consumption transaction is linked to the generated image. On terminal failure, the job ends in `failed` and refund is attempted once.
+- `postconditions`: On success, one or more `generated_images` rows are inserted, `image_jobs.status = succeeded`, and the consumption transaction is linked to the generated image. For OpenAI batch generation, `generated_images.image_job_id` is the aggregation key. On terminal failure, the job ends in `failed` and refund is attempted once.
 - `postconditions_ja`: 成功時は `generated_images` が追加され、`image_jobs.status = succeeded` となり、消費トランザクションが生成画像に紐づく。終端失敗時はジョブが `failed` で確定し、返金が1回だけ試行される。
 
 ### BILLING-STRIPE-001

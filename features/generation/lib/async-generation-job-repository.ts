@@ -21,6 +21,9 @@ export interface AsyncGenerationJobRepository {
   getUserCreditBalance(
     userId: string
   ): Promise<RepositoryResult<{ balance: number }>>;
+  getUserSubscriptionPlan?(
+    userId: string
+  ): Promise<RepositoryResult<{ subscription_plan: string | null }>>;
   createImageJob(
     jobData: ImageJobCreateInput
   ): Promise<RepositoryResult<{ id: string; status: string }>>;
@@ -86,6 +89,23 @@ export class SupabaseAsyncGenerationJobRepository
     }
 
     return { data, error: null } as const;
+  }
+
+  async getUserSubscriptionPlan(userId: string) {
+    const { data, error } = await this.supabase
+      .from("profiles")
+      .select("subscription_plan")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      return { data: null, error } as const;
+    }
+
+    return {
+      data: { subscription_plan: data?.subscription_plan ?? "free" },
+      error: null,
+    } as const;
   }
 
   async createImageJob(jobData: ImageJobCreateInput) {

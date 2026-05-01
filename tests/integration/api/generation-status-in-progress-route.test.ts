@@ -43,12 +43,16 @@ describe("GET /api/generation-status/in-progress", () => {
           id: "job-queued",
           status: "queued",
           processing_stage: "queued",
+          requested_image_count: 1,
+          model: "gemini-3.1-flash-image-preview-512",
           created_at: "2026-03-27T10:00:00.000Z",
         },
         {
           id: "job-processing",
           status: "processing",
           processing_stage: "generating",
+          requested_image_count: 4,
+          model: "gpt-image-2-low",
           created_at: "2026-03-27T10:01:00.000Z",
         },
       ],
@@ -60,6 +64,8 @@ describe("GET /api/generation-status/in-progress", () => {
           id: "job-succeeded",
           status: "succeeded",
           processing_stage: "completed",
+          requested_image_count: 1,
+          model: "gpt-image-2-low",
           created_at: "2026-03-27T10:02:00.000Z",
         },
       ],
@@ -89,6 +95,8 @@ describe("GET /api/generation-status/in-progress", () => {
         id: string;
         status: string;
         processingStage: string | null;
+        requestedImageCount: number;
+        batchMode: string;
         createdAt: string;
       }>;
     };
@@ -99,18 +107,24 @@ describe("GET /api/generation-status/in-progress", () => {
         id: "job-succeeded",
         status: "succeeded",
         processingStage: "completed",
+        requestedImageCount: 1,
+        batchMode: "single_job",
         createdAt: "2026-03-27T10:02:00.000Z",
       },
       {
         id: "job-processing",
         status: "processing",
         processingStage: "generating",
+        requestedImageCount: 4,
+        batchMode: "openai_single_job",
         createdAt: "2026-03-27T10:01:00.000Z",
       },
       {
         id: "job-queued",
         status: "queued",
         processingStage: "queued",
+        requestedImageCount: 1,
+        batchMode: "single_job",
         createdAt: "2026-03-27T10:00:00.000Z",
       },
     ]);

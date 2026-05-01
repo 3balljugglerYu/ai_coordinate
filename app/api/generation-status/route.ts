@@ -5,6 +5,12 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { normalizeUserFacingGenerationError } from "@/features/generation/lib/normalize-generation-error";
+import { isOpenAIImageModel } from "@/features/generation/types";
+
+type GeneratedImageSummary = {
+  id: string;
+  url: string;
+};
 
 function deriveImageUrls(
   status: string,
@@ -40,18 +46,43 @@ function deriveImageUrls(
   };
 }
 
-async function findGeneratedImageId(
+async function findGeneratedImagesForJob(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  jobId: string
+): Promise<GeneratedImageSummary[]> {
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("id, image_url, image_job_result_index, created_at")
+    .eq("user_id", userId)
+    .eq("image_job_id", jobId)
+    .order("image_job_result_index", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Failed to fetch generated images for job:", error);
+    return [];
+  }
+
+  return (data ?? [])
+    .filter(
+      (row) => typeof row.id === "string" && typeof row.image_url === "string"
+    )
+    .map((row) => ({ id: row.id as string, url: row.image_url as string }));
+}
+
+async function findLegacyGeneratedImage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   resultImageUrl: string | null
-): Promise<string | null> {
+): Promise<GeneratedImageSummary | null> {
   if (!resultImageUrl) {
     return null;
   }
 
   const { data, error } = await supabase
     .from("generated_images")
-    .select("id")
+    .select("id, image_url")
     .eq("user_id", userId)
     .eq("image_url", resultImageUrl)
     .order("created_at", { ascending: false })
@@ -63,7 +94,9 @@ async function findGeneratedImageId(
     return null;
   }
 
-  return typeof data?.id === "string" ? data.id : null;
+  return typeof data?.id === "string" && typeof data?.image_url === "string"
+    ? { id: data.id, url: data.image_url }
+    : null;
 }
 
 /**
@@ -115,20 +148,42 @@ export async function GET(request: NextRequest) {
       copy
     );
     const imageUrls = deriveImageUrls(job.status, job.result_image_url);
-    const generatedImageId =
-      job.status === "succeeded"
-        ? await findGeneratedImageId(supabase, user.id, imageUrls.resultImageUrl)
-        : null;
+    const requestedImageCount =
+      typeof job.requested_image_count === "number"
+        ? job.requested_image_count
+        : 1;
+    const batchMode =
+      requestedImageCount > 1 && isOpenAIImageModel(job.model)
+        ? "openai_single_job"
+        : "single_job";
+    let resultImages: GeneratedImageSummary[] = [];
+    if (job.status === "succeeded") {
+      resultImages = await findGeneratedImagesForJob(supabase, user.id, job.id);
+      if (resultImages.length === 0) {
+        const legacyImage = await findLegacyGeneratedImage(
+          supabase,
+          user.id,
+          imageUrls.resultImageUrl
+        );
+        if (legacyImage) {
+          resultImages = [legacyImage];
+        }
+      }
+    }
+    const firstResultImage = resultImages[0] ?? null;
 
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
       id: job.id,
       status: job.status,
       processingStage: job.processing_stage ?? null,
+      requestedImageCount,
+      batchMode,
       previewImageUrl: imageUrls.previewImageUrl,
-      resultImageUrl: imageUrls.resultImageUrl,
+      resultImageUrl: firstResultImage?.url ?? imageUrls.resultImageUrl,
+      resultImages,
       errorMessage: normalizedErrorMessage,
-      generatedImageId,
+      generatedImageId: firstResultImage?.id ?? null,
     });
   } catch (error) {
     console.error("Status check error:", error);

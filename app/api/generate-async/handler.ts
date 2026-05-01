@@ -5,7 +5,14 @@ import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
-import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
+import {
+  DEFAULT_GENERATION_MODEL,
+  isOpenAIImageModel,
+} from "@/features/generation/types";
+import {
+  getMaxGenerationCount,
+  normalizeSubscriptionPlan,
+} from "@/features/subscription/subscription-config";
 import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
@@ -105,9 +112,12 @@ export async function postGenerateAsyncRoute(
       sourceImageStockId,
       sourceImageType,
       backgroundMode,
+      count,
       generationType,
       model,
     } = validationResult.data;
+    const effectiveModel = model || DEFAULT_GENERATION_MODEL;
+    const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
 
     const jobRepository =
       dependencies.jobRepository ?? createAsyncGenerationJobRepository();
@@ -196,8 +206,39 @@ export async function postGenerateAsyncRoute(
 
     const sourceImageProcessingMs = Date.now() - sourceImageProcessingStartedAt;
 
-    // 1枚分のペルコイン残高チェック
-    const percoinCost = getPercoinCost(model || DEFAULT_GENERATION_MODEL);
+    let acceptedImageCount = 1;
+    if (isOpenAIBatchCandidate) {
+      const subscriptionPlanResult =
+        await jobRepository.getUserSubscriptionPlan?.(user.id);
+
+      if (subscriptionPlanResult?.error) {
+        console.error(
+          "Failed to fetch user subscription plan:",
+          subscriptionPlanResult.error
+        );
+        return jsonError(
+          copy.balanceFetchFailed,
+          "GENERATION_SUBSCRIPTION_PLAN_FETCH_FAILED",
+          500
+        );
+      }
+
+      const subscriptionPlan = normalizeSubscriptionPlan(
+        subscriptionPlanResult?.data?.subscription_plan
+      );
+      acceptedImageCount = Math.min(
+        count,
+        getMaxGenerationCount(subscriptionPlan)
+      );
+    }
+
+    const batchMode = isOpenAIBatchCandidate
+      ? "openai_single_job"
+      : "single_job";
+
+    // ペルコイン残高チェック
+    const percoinCost = getPercoinCost(effectiveModel);
+    const requiredPercoinCost = percoinCost * acceptedImageCount;
 
     // 現在の残高を取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
@@ -213,9 +254,9 @@ export async function postGenerateAsyncRoute(
     const currentBalance = creditData.balance;
 
     // 残高チェック
-    if (currentBalance < percoinCost) {
+    if (currentBalance < requiredPercoinCost) {
       return jsonError(
-        copy.insufficientBalance(percoinCost, currentBalance),
+        copy.insufficientBalance(requiredPercoinCost, currentBalance),
         "GENERATION_INSUFFICIENT_BALANCE",
         400
       );
@@ -230,10 +271,11 @@ export async function postGenerateAsyncRoute(
       source_image_stock_id: stockId,
       source_image_type: sourceImageType,
       generation_type: generationType || "coordinate",
-      model: model || null,
+      model: effectiveModel,
       background_mode: backgroundMode,
       status: "queued",
       processing_stage: "queued",
+      requested_image_count: acceptedImageCount,
       attempts: 0,
     };
 
@@ -285,6 +327,8 @@ export async function postGenerateAsyncRoute(
         {
           jobId: job.id,
           status: job.status,
+          acceptedImageCount,
+          batchMode,
           warning: queueError
             ? copy.queueDelayedWarning
             : undefined,
@@ -305,6 +349,8 @@ export async function postGenerateAsyncRoute(
     return NextResponse.json({
       jobId: job.id,
       status: job.status,
+      acceptedImageCount,
+      batchMode,
     });
   } catch (error) {
     const copy = getUnexpectedGenerateAsyncCopy(request);

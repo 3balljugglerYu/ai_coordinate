@@ -4,6 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
+import { isOpenAIImageModel } from "@/features/generation/types";
+
+function buildBatchMode(
+  requestedImageCount: number,
+  model?: string | null
+): "single_job" | "openai_single_job" {
+  return requestedImageCount > 1 && isOpenAIImageModel(model)
+    ? "openai_single_job"
+    : "single_job";
+}
 
 /**
  * 未完了画像生成ジョブ取得API
@@ -29,7 +39,7 @@ export async function GET(request: NextRequest) {
     // 未完了ジョブを取得
     const { data: inProgressJobs, error: inProgressError } = await supabase
       .from("image_jobs")
-      .select("id, status, processing_stage, created_at")
+      .select("id, status, processing_stage, created_at, requested_image_count, model")
       .eq("user_id", user.id)
       .in("status", ["queued", "processing"])
       .order("created_at", { ascending: false });
@@ -44,13 +54,15 @@ export async function GET(request: NextRequest) {
       id: string;
       status: string;
       processingStage: string | null;
+      requestedImageCount: number;
+      batchMode: "single_job" | "openai_single_job";
       createdAt: string;
     }> = [];
     if (includeRecent) {
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data: completed, error: completedError } = await supabase
         .from("image_jobs")
-        .select("id, status, processing_stage, created_at")
+        .select("id, status, processing_stage, created_at, requested_image_count, model")
         .eq("user_id", user.id)
         .in("status", ["succeeded", "failed"])
         .gte("created_at", fiveMinutesAgo)
@@ -62,6 +74,8 @@ export async function GET(request: NextRequest) {
           id: job.id,
           status: job.status,
           processingStage: job.processing_stage ?? null,
+          requestedImageCount: job.requested_image_count ?? 1,
+          batchMode: buildBatchMode(job.requested_image_count ?? 1, job.model),
           createdAt: job.created_at,
         }));
       }
@@ -73,6 +87,8 @@ export async function GET(request: NextRequest) {
         id: job.id,
         status: job.status,
         processingStage: job.processing_stage ?? null,
+        requestedImageCount: job.requested_image_count ?? 1,
+        batchMode: buildBatchMode(job.requested_image_count ?? 1, job.model),
         createdAt: job.created_at,
       })),
       ...recentCompletedJobs,

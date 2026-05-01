@@ -124,8 +124,8 @@ export async function markCoordinateStocksTabSeenForUser(
 
 /**
  * 指定 stockId を、所有 image_jobs（と紐づく generated_images）の source_image_stock_id に書き戻す。
- * generated_images.job_id は存在しないため、image_jobs.result_image_url と
- * generated_images.image_url が一致する行だけを best-effort で更新する。
+ * OpenAI バッチ結果は generated_images.image_job_id で一括更新し、旧データは
+ * image_jobs.result_image_url と generated_images.image_url の一致で best-effort 更新する。
  */
 export async function linkStockToImageJobsForUser(params: {
   userId: string;
@@ -197,12 +197,35 @@ export async function linkStockToImageJobsForUser(params: {
     throw new Error("ストックの紐づけに失敗しました");
   }
 
-  // 4) generated_images は image_url 一致で best-effort 更新
+  // 4) generated_images は image_job_id 優先で best-effort 更新
   const resultImageUrls = linkableJobs
     .map((row) => row.result_image_url)
     .filter((url): url is string => typeof url === "string" && url.length > 0);
 
   let updatedGeneratedImageIds: string[] = [];
+  const updatedGeneratedImageIdSet = new Set<string>();
+
+  const { data: updatedImagesByJob, error: updateImagesByJobError } =
+    await supabase
+      .from("generated_images")
+      .update({ source_image_stock_id: stockId })
+      .eq("user_id", userId)
+      .in("image_job_id", linkableJobIds)
+      .is("source_image_stock_id", null)
+      .select("id");
+
+  if (updateImagesByJobError) {
+    // ログのみ。stock 自体は維持し、旧 URL フォールバックは継続する。
+    console.warn(
+      "[coordinate-stocks] link stock generated_images by job update warning:",
+      updateImagesByJobError
+    );
+  } else {
+    updatedImagesByJob?.forEach((row) => {
+      updatedGeneratedImageIdSet.add(row.id as string);
+    });
+  }
+
   if (resultImageUrls.length > 0) {
     const { data: updatedImages, error: updateImagesError } = await supabase
       .from("generated_images")
@@ -219,10 +242,13 @@ export async function linkStockToImageJobsForUser(params: {
         updateImagesError
       );
     } else {
-      updatedGeneratedImageIds =
-        updatedImages?.map((row) => row.id as string) ?? [];
+      updatedImages?.forEach((row) => {
+        updatedGeneratedImageIdSet.add(row.id as string);
+      });
     }
   }
+
+  updatedGeneratedImageIds = Array.from(updatedGeneratedImageIdSet);
 
   return {
     updatedJobIds: updatedJobs?.map((row) => row.id as string) ?? [],

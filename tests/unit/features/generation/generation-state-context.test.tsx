@@ -39,6 +39,37 @@ describe("GenerationStateContext", () => {
     expect(ctx.consumePendingSourceImageBatch("job-b")).toBeNull();
   });
 
+  test("同一 jobId に複数 result URL を紐づけて消費できる", () => {
+    const { ctx } = getContext();
+    const file = new File(["source"], "source.png", { type: "image/png" });
+
+    act(() => {
+      ctx.registerPendingSourceImage(["job-batch"], file);
+      ctx.bindPendingSourceImageResult(
+        "job-batch",
+        "https://example.test/result-1.png",
+        0
+      );
+      ctx.bindPendingSourceImageResult(
+        "job-batch",
+        "https://example.test/result-2.png",
+        1
+      );
+    });
+
+    const batch = ctx.consumePendingSourceImageBatchByResultUrl(
+      "https://example.test/result-2.png"
+    );
+
+    expect(batch?.file).toBe(file);
+    expect(batch?.jobIds).toEqual(["job-batch"]);
+    expect(
+      ctx.consumePendingSourceImageBatchByResultUrl(
+        "https://example.test/result-1.png"
+      )
+    ).toBeNull();
+  });
+
   test("provider remount 後も同一タブ内なら result URL から pending batch を消費できる", () => {
     const first = getContext();
     const file = new File(["source"], "source.png", { type: "image/png" });

@@ -42,7 +42,7 @@ import {
 } from "../hooks/useCoordinateGenerationFeedback";
 import { summarizeJobProgress } from "../lib/job-progress";
 import type { ImageJobProcessingStage } from "../lib/job-types";
-import type { GeneratedImageData } from "../types";
+import { isOpenAIImageModel, type GeneratedImageData } from "../types";
 import { submitGuestCoordinateGeneration } from "../lib/coordinate-guest-api";
 import {
   getCoordinateSourceStockSavePromptPending,
@@ -93,10 +93,15 @@ const COORDINATE_PROGRESS_TRANSITION_MS: Record<
 };
 type BrowserTimerId = number;
 
-function createPreviewImage(jobId: string, imageUrl: string): GeneratedImageData {
+function createPreviewImage(
+  jobId: string,
+  imageUrl: string,
+  resultIndex = 0
+): GeneratedImageData {
+  const previewSuffix = resultIndex > 0 ? `:${resultIndex}` : "";
   return {
-    id: `preview:${jobId}`,
-    galleryKey: `preview:${jobId}`,
+    id: `preview:${jobId}${previewSuffix}`,
+    galleryKey: `preview:${jobId}${previewSuffix}`,
     jobId,
     url: imageUrl,
     is_posted: false,
@@ -183,6 +188,8 @@ export function GenerationFormContainer({
   const [jobStatuses, setJobStatuses] = useState<
     Record<string, TrackedGenerationJobStatus>
   >({});
+  const [isOpenAIBatchGeneration, setIsOpenAIBatchGeneration] =
+    useState(false);
   const [feedbackPhase, setFeedbackPhase] =
     useState<CoordinateGenerationFeedbackPhase>("idle");
 
@@ -274,10 +281,24 @@ export function GenerationFormContainer({
 
   const syncPreviewFromStatus = useCallback(
     (status: AsyncGenerationStatus) => {
+      const resultImages =
+        status.status === "succeeded" && status.resultImages?.length
+          ? status.resultImages
+          : [];
       const previewUrl = status.previewImageUrl ?? status.resultImageUrl;
 
       if (status.status === "failed" || !previewUrl) {
         removePreviewImage(status.id);
+        return;
+      }
+
+      if (resultImages.length > 0) {
+        resultImages.forEach((resultImage, index) => {
+          bindPendingSourceImageResult?.(status.id, resultImage.url, index);
+          upsertPreviewImage(
+            createPreviewImage(status.id, resultImage.url, index)
+          );
+        });
         return;
       }
 
@@ -311,6 +332,7 @@ export function GenerationFormContainer({
     setIsGenerating(false);
     setProgressCounts(0, 0);
     setJobStatuses({});
+    setIsOpenAIBatchGeneration(false);
     clearPreviewImages();
     setFeedbackPhase("idle");
   }, [
@@ -482,6 +504,8 @@ export function GenerationFormContainer({
   const generationStatusTitle =
     feedbackPhase === "completing"
       ? t("generationCompletedTitle")
+      : isOpenAIBatchGeneration
+        ? t("generatingStatusTitle")
       : t("generationProgressTitle", {
           completed: effectiveCompletedCount,
           total: effectiveTotalCount,
@@ -517,6 +541,9 @@ export function GenerationFormContainer({
         setIsGenerating(true);
         setFeedbackPhase("running");
         setError(null);
+        setIsOpenAIBatchGeneration(
+          inProgressJobs.some((job) => job.batchMode === "openai_single_job")
+        );
         setProgressCounts(nextTotalCount, 0);
         setJobStatuses(
           Object.fromEntries(
@@ -813,10 +840,12 @@ export function GenerationFormContainer({
       data.count,
       getMaxGenerationCount(subscriptionPlan)
     );
+    const isOpenAIModel = isOpenAIImageModel(data.model);
 
     setIsGenerating(true);
     clearCompletionTimeout();
     clearPreviewImages();
+    setIsOpenAIBatchGeneration(isOpenAIModel);
     setFeedbackPhase("running");
     setError(null);
     setJobStatuses({});
@@ -862,41 +891,100 @@ export function GenerationFormContainer({
         return;
       }
 
+      setIsOpenAIBatchGeneration(isOpenAIModel);
+
       const jobIds: string[] = [];
-      for (let index = 0; index < allowedCount; index += 1) {
+      let submittedImageCount = 0;
+      const submitGenerationJob = async (count: number) => {
+        const response = await generateImageAsync(
+          {
+            prompt: data.prompt,
+            sourceImage: data.sourceImage,
+            sourceImageStockId: data.sourceImageStockId,
+            sourceImageType: data.sourceImageType,
+            backgroundMode: data.backgroundMode,
+            count,
+            generationType: data.generationType || "coordinate",
+            model: data.model,
+          },
+          asyncApiMessages
+        );
+
+        const reportedAcceptedImageCount =
+          typeof response.acceptedImageCount === "number"
+            ? response.acceptedImageCount
+            : null;
+        const hasExplicitAcceptedImageCount =
+          reportedAcceptedImageCount !== null;
+        const acceptedImageCount = Math.max(
+          1,
+          Math.min(
+            count,
+            hasExplicitAcceptedImageCount ? reportedAcceptedImageCount : 1
+          )
+        );
+
+        jobIds.push(response.jobId);
+        submittedImageCount += acceptedImageCount;
+        if (
+          response.batchMode === "openai_single_job" ||
+          (isOpenAIModel && acceptedImageCount > 1)
+        ) {
+          setIsOpenAIBatchGeneration(true);
+        }
+        updateTrackedJob(response.jobId, {
+          status: response.status as AsyncGenerationStatus["status"],
+          processingStage: "queued",
+        });
+
+        return { acceptedImageCount, hasExplicitAcceptedImageCount };
+      };
+
+      if (isOpenAIModel) {
+        let firstSubmission: Awaited<ReturnType<typeof submitGenerationJob>>;
         try {
-          const response = await generateImageAsync(
-            {
-              prompt: data.prompt,
-              sourceImage: data.sourceImage,
-              sourceImageStockId: data.sourceImageStockId,
-              sourceImageType: data.sourceImageType,
-              backgroundMode: data.backgroundMode,
-              generationType: data.generationType || "coordinate",
-              model: data.model,
-            },
-            asyncApiMessages
-          );
-
-          jobIds.push(response.jobId);
-          updateTrackedJob(response.jobId, {
-            status: response.status as AsyncGenerationStatus["status"],
-            processingStage: "queued",
-          });
+          firstSubmission = await submitGenerationJob(allowedCount);
         } catch (submitError) {
-          if (jobIds.length === 0) {
-            throw submitError;
-          }
+          throw submitError;
+        }
 
-          const errorMessage =
-            submitError instanceof Error
-              ? submitError.message
-              : t("submitJobFailed");
-          setError((previous) =>
-            appendUniqueErrorMessage(previous, errorMessage)
-          );
-          showGenerationErrorToast(errorMessage);
-          break;
+        while (
+          !firstSubmission.hasExplicitAcceptedImageCount &&
+          submittedImageCount < allowedCount
+        ) {
+          try {
+            await submitGenerationJob(1);
+          } catch (submitError) {
+            const errorMessage =
+              submitError instanceof Error
+                ? submitError.message
+                : t("submitJobFailed");
+            setError((previous) =>
+              appendUniqueErrorMessage(previous, errorMessage)
+            );
+            showGenerationErrorToast(errorMessage);
+            break;
+          }
+        }
+      } else {
+        for (let index = 0; index < allowedCount; index += 1) {
+          try {
+            await submitGenerationJob(1);
+          } catch (submitError) {
+            if (jobIds.length === 0) {
+              throw submitError;
+            }
+
+            const errorMessage =
+              submitError instanceof Error
+                ? submitError.message
+                : t("submitJobFailed");
+            setError((previous) =>
+              appendUniqueErrorMessage(previous, errorMessage)
+            );
+            showGenerationErrorToast(errorMessage);
+            break;
+          }
         }
       }
 

@@ -123,16 +123,16 @@ alwaysApply: false
 
 #### `image_jobs`
 - 主キー: `id`
-- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `generation_metadata`, `model`, `status`, `processing_stage`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
+- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `generation_metadata`, `model`, `status`, `processing_stage`, `requested_image_count`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
-- 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`source_image_type` は `illustration/real`、`background_mode` は `keep/ai_auto/include_in_prompt`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low` を保持する
+- 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`requested_image_count` は `1..4`（OpenAI batched edit の受理枚数）、`generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`source_image_type` は `illustration/real`、`background_mode` は `keep/ai_auto/include_in_prompt`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low` を保持する
 - RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
 
 #### `generated_images`
 - 主キー: `id`
-- 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `width`, `height`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
-- 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
-- 備考: `generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`moderation_status` は `visible/pending/removed`、`background_mode` は `keep/ai_auto/include_in_prompt`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low` を保持する。`width` / `height` は画像実寸（INT、`> 0` の CHECK 制約、NULL 許容）で、Post 詳細画面のサイズ表示と画像向き判定用に server-api の lazy compute で fetch 時に保存される
+- 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `image_job_id`, `image_job_result_index`, `width`, `height`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
+- 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`, `image_job_id -> image_jobs.id`
+- 備考: `generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`moderation_status` は `visible/pending/removed`、`background_mode` は `keep/ai_auto/include_in_prompt`、`image_job_id` / `image_job_result_index` は OpenAI batched edit の 1 job 複数結果を OpenAI response `data[]` 順で紐づける。`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low` を保持する。`width` / `height` は画像実寸（INT、`> 0` の CHECK 制約、NULL 許容）で、Post 詳細画面のサイズ表示と画像向き判定用に server-api の lazy compute で fetch 時に保存される
 - RLS: 投稿済みかつ `visible` の画像は公開、それ以外は本人のみ。`INSERT/UPDATE/DELETE` は本人のみ
 
 #### `source_image_stocks`
@@ -339,6 +339,8 @@ alwaysApply: false
 - `idx_generated_images_generation_type`
 - `idx_generated_images_user_coord_created`（`generation_type = 'coordinate'` 部分索引、`user_id` + `created_at DESC`）
 - `idx_generated_images_source_stock_id`
+- `idx_generated_images_image_job_id`
+- `idx_generated_images_job_result_unique`（`image_job_id IS NOT NULL AND image_job_result_index IS NOT NULL` の部分 UNIQUE）
 - `idx_generated_images_moderation_approved_at`
 - `idx_generated_images_prompt_trgm`（`prompt` の trigram 検索用）
 - `idx_image_jobs_user_id_status`
@@ -385,6 +387,7 @@ alwaysApply: false
 - 投稿系の参照:
   - `likes.image_id`, `comments.image_id`, `post_reports.post_id`, `moderation_audit_logs.post_id`, `credit_transactions.related_generation_id` -> `generated_images.id`
 - 画像生成ジョブ・消費内訳:
+  - `generated_images.image_job_id` -> `image_jobs.id`
   - `generation_percoin_allocations.job_id` -> `image_jobs.id`
   - `generation_percoin_allocations.consumption_transaction_id/refund_transaction_id` -> `credit_transactions.id`
   - `free_percoin_batches.credit_transaction_id` -> `credit_transactions.id`
@@ -403,7 +406,7 @@ alwaysApply: false
 - コメント削除: `delete_comment_thread`（親に返信が残る場合は tombstone 化し、最後の返信が消えた時点で tombstone 親も物理削除）
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
 - モデレーション: `mark_post_pending_by_report`, `apply_admin_moderation_decision`
-- 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`
+- 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`, `complete_image_job_with_generated_images`
 
 ### trigger / helper / 運用関数
 - 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`

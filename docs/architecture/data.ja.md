@@ -194,15 +194,15 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
    - `sourceImageStockId`
    - Base64 アップロードの一時保存
 3. `user_credits` から事前残高チェックを行う
-4. `image_jobs` に `status = queued`, `processing_stage = queued` の行を入れ、ワンタップスタイルのカード情報など後続UIで復元したい内容は `generation_metadata` に保持する
+4. `image_jobs` に `status = queued`, `processing_stage = queued` の行を入れる。OpenAI バッチ生成では `requested_image_count` に受理枚数を保持し、ワンタップスタイルのカード情報など後続UIで復元したい内容は `generation_metadata` に保持する
 5. `pgmq_send` でキュー投入し、同時に Edge Function の即時起動も試す
 6. Edge Function 側で次を行う
    - `pgmq_read` でキュー取得
    - `image_jobs` を `status = processing`, `processing_stage = processing` に更新
    - `processing_stage = charging` にして、課金が必要なジョブのみ `deduct_free_percoins` を実行
-   - `processing_stage = generating` にして Gemini を呼ぶ
-   - `processing_stage = uploading` にして生成画像を Storage に保存
-   - `processing_stage = persisting` にして `generated_images` を INSERT し、必要に応じて `generation_metadata` も引き継ぐ
+   - `processing_stage = generating` にして Gemini または OpenAI Images Edit API を呼ぶ。OpenAI バッチでは 1 回の API 呼び出しに `n=requested_image_count` を渡す
+   - `processing_stage = uploading` にして生成画像を Storage に保存する。OpenAI バッチでは同一 `jobId` 配下に result index 付きのファイル名で複数保存する
+   - `processing_stage = persisting` にして `generated_images` を INSERT し、必要に応じて `generation_metadata` も引き継ぐ。OpenAI バッチでは `complete_image_job_with_generated_images` RPC が複数行 INSERT、`image_jobs` 成功更新、`credit_transactions.related_generation_id` の legacy backfill を 1 transaction に閉じる
    - `image_jobs` を `status = succeeded`, `processing_stage = completed` に更新
    - `credit_transactions.related_generation_id` を後で埋める
 7. 終端失敗になった場合は `processing_stage = failed` を保存し、`refund_percoins` を 1 回だけ呼ぶ
@@ -212,6 +212,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 - route handler 側の残高チェックは、ユーザーへの早いフィードバックが目的
 - 実際の減算は外部副作用に最も近い worker 側が担う
 - 返金ロジックも SQL に寄せているため、配分の整合性が保たれる
+- OpenAI バッチは all-or-nothing。返却枚数不足や永続化失敗は job 失敗 + 全額返金扱いにし、部分成功の保存・課金はしない
 
 ## 主要フロー 4: 投稿、いいね、コメント、フォロー、通知
 
@@ -276,7 +277,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 
 - `ears`: 認証済みユーザーが有効な生成リクエストを送信したとき、システムは `image_jobs` レコードを作成してキュー投入し、そのジョブに対して最終的にただ1つの終端結果を確定しなければならない。
 - `preconditions`: 認証済みセッションであること。リクエストが妥当であること。元画像がストックまたはアップロードから解決できること。事前残高チェックを満たすこと。
-- `postconditions`: 成功時は `generated_images` が追加され、`image_jobs.status = succeeded` となり、消費トランザクションが生成画像に紐づく。終端失敗時はジョブが `failed` で確定し、返金が1回だけ試行される。
+- `postconditions`: 成功時は `generated_images` が 1 件以上追加され、`image_jobs.status = succeeded` となり、消費トランザクションが生成画像に紐づく。OpenAI バッチでは `generated_images.image_job_id` が集計キーになる。終端失敗時はジョブが `failed` で確定し、返金が1回だけ試行される。
 
 ### BILLING-STRIPE-001
 

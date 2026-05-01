@@ -12,7 +12,7 @@ import type { GeneratedImageData } from "../types";
 interface PendingSourceImageEntry {
   file: File;
   batchId: string;
-  resultImageUrl: string | null;
+  resultImageUrls: string[];
   promptShown: boolean;
 }
 
@@ -72,7 +72,8 @@ interface GenerationStateContextValue {
    */
   bindPendingSourceImageResult: (
     jobId: string,
-    resultImageUrl: string
+    resultImageUrl: string,
+    resultIndex?: number
   ) => void;
   /**
    * 失敗した jobId だけを pending から除外する（成功した jobId は保存促進対象に残す）。
@@ -121,8 +122,10 @@ function consumePendingSourceImageBatchByJobId(
 
   batch.jobIds.forEach((id) => {
     const current = pendingSourceImageMap.get(id);
-    if (current?.resultImageUrl) {
-      pendingSourceImageJobIdByResultUrl.delete(current.resultImageUrl);
+    if (current) {
+      current.resultImageUrls.forEach((resultImageUrl) => {
+        pendingSourceImageJobIdByResultUrl.delete(resultImageUrl);
+      });
     }
     pendingSourceImageMap.delete(id);
   });
@@ -167,7 +170,7 @@ export function GenerationStateProvider({
         pendingSourceImageMap.set(jobId, {
           file,
           batchId,
-          resultImageUrl: null,
+          resultImageUrls: [],
           promptShown: false,
         });
       });
@@ -187,7 +190,7 @@ export function GenerationStateProvider({
       const jobId =
         pendingSourceImageJobIdByResultUrl.get(resultImageUrl) ??
         Array.from(pendingSourceImageMap.entries()).find(
-          ([, entry]) => entry.resultImageUrl === resultImageUrl
+          ([, entry]) => entry.resultImageUrls.includes(resultImageUrl)
         )?.[0];
 
       if (!jobId) return null;
@@ -197,15 +200,29 @@ export function GenerationStateProvider({
   );
 
   const bindPendingSourceImageResult = useCallback(
-    (jobId: string, resultImageUrl: string) => {
+    (jobId: string, resultImageUrl: string, resultIndex?: number) => {
       const entry = pendingSourceImageMap.get(jobId);
       if (!entry) return;
 
-      if (entry.resultImageUrl && entry.resultImageUrl !== resultImageUrl) {
-        pendingSourceImageJobIdByResultUrl.delete(entry.resultImageUrl);
+      if (entry.resultImageUrls.includes(resultImageUrl)) {
+        pendingSourceImageJobIdByResultUrl.set(resultImageUrl, jobId);
+        return;
       }
 
-      entry.resultImageUrl = resultImageUrl;
+      if (
+        typeof resultIndex === "number" &&
+        Number.isInteger(resultIndex) &&
+        resultIndex >= 0 &&
+        entry.resultImageUrls[resultIndex]
+      ) {
+        pendingSourceImageJobIdByResultUrl.delete(
+          entry.resultImageUrls[resultIndex]
+        );
+        entry.resultImageUrls[resultIndex] = resultImageUrl;
+      } else {
+        entry.resultImageUrls.push(resultImageUrl);
+      }
+
       pendingSourceImageJobIdByResultUrl.set(resultImageUrl, jobId);
     },
     []
@@ -213,8 +230,10 @@ export function GenerationStateProvider({
 
   const dropPendingSourceImageJob = useCallback((jobId: string) => {
     const entry = pendingSourceImageMap.get(jobId);
-    if (entry?.resultImageUrl) {
-      pendingSourceImageJobIdByResultUrl.delete(entry.resultImageUrl);
+    if (entry) {
+      entry.resultImageUrls.forEach((resultImageUrl) => {
+        pendingSourceImageJobIdByResultUrl.delete(resultImageUrl);
+      });
     }
     pendingSourceImageMap.delete(jobId);
   }, []);
