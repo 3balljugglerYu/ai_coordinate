@@ -200,7 +200,7 @@ export async function callOpenAIImageEditBatch(
   form.append("image[]", file);
   form.append("size", targetSize);
   form.append("quality", "low");
-  form.append("moderation", "auto");
+  form.append("moderation", "low");
   form.append("output_format", "png");
   form.append("n", String(requestedImageCount));
 
