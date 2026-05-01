@@ -109,6 +109,19 @@ const revenueSeriesColors = [
   "#6EE7B7",
 ] as const;
 
+const subscriptionRevenueSeriesColors: Record<string, string> = {
+  "subscription-light-month": "#D97706",
+  "subscription-light-year": "#D97706",
+  "subscription-standard-month": "#0284C7",
+  "subscription-standard-year": "#0284C7",
+  "subscription-premium-month": "#059669",
+  "subscription-premium-year": "#059669",
+};
+
+function getDynamicRevenueSeriesColor(key: string): string {
+  return subscriptionRevenueSeriesColors[key] ?? "#94A3B8";
+}
+
 function formatInteger(value: number): string {
   return value.toLocaleString("ja-JP");
 }
@@ -257,7 +270,7 @@ function buildRevenueTrend(params: {
       dynamicSeries.set(resolvedPackage.key, {
         key: resolvedPackage.key,
         label: resolvedPackage.label,
-        color: "#94A3B8",
+        color: getDynamicRevenueSeriesColor(resolvedPackage.key),
       });
     }
 
