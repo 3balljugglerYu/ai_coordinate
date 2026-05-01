@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { formatCountEnUS } from "@/lib/utils";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname, useSearchParams } from "next/navigation";
 import { LikeHeartIcon, type LikeHeartPhase } from "./LikeHeartIcon";
@@ -16,7 +14,6 @@ import { AnimatedLikeCount } from "./AnimatedLikeCount";
 interface PostCardLikeButtonProps {
   imageId: string;
   initialLikeCount: number;
-  initialViewCount: number;
   currentUserId?: string | null;
 }
 
@@ -27,7 +24,6 @@ interface PostCardLikeButtonProps {
 export function PostCardLikeButton({
   imageId,
   initialLikeCount,
-  initialViewCount,
   currentUserId,
 }: PostCardLikeButtonProps) {
   const t = useTranslations("posts");
@@ -164,12 +160,6 @@ export function PostCardLikeButton({
           className="text-xs font-medium"
         />
       </Button>
-      {initialViewCount > 0 && (
-        <div className="flex items-center gap-1">
-          <Eye className="h-4 w-4 text-gray-500" />
-          <span className="text-xs text-gray-600">{formatCountEnUS(initialViewCount)}</span>
-        </div>
-      )}
       <AuthModal
         open={showAuthModal && !currentUserId}
         onClose={() => setShowAuthModal(false)}
