@@ -436,6 +436,325 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     }
   }
 
+  /*
+   * いいねボタン アニメーション
+   * - .like-fx-heart-pop: ハート本体のポップ＋収束
+   * - .like-fx-heart-press: いいね取り消し時の押下フィードバック
+   * - .like-fx-ripple: ハート背後の赤いリップル
+   * - .like-fx-ray: 放射線状の光線（--like-ray-angle で角度指定）
+   * - .like-fx-floatheart: 上方向にふわふわ上昇する小さなハート
+   *   （--like-floatheart-x / --like-floatheart-rise / --like-floatheart-drift /
+   *    --like-floatheart-size / --like-floatheart-color で個体差を制御）
+   * - .like-fx-sparkle: ハート上のキラッと光る星
+   * - .like-fx-count-up / .like-fx-count-down: カウント値の上下スライドフェード
+   *
+   * 自分のタップで「未いいね → いいね」になった瞬間にだけ発火させる前提で、
+   * 親コンポーネント側で phase をコントロールする（onAnimationEnd で idle に戻す）。
+   */
+  /*
+   * Heart pop の duration は 1250ms にしている：
+   * バースト直後に発火するフロートハート（delay 300ms + duration 950ms = 1250ms）
+   * が完走するまでオーバーレイを mount し続けるため。視覚上のスケール変化
+   * 自体は元の 800ms 内（120ms ピーク → 800ms で scale(1) 復帰）に収まるよう、
+   * キーフレームの百分率を 1250ms 基準に再マップしてある。64%（≒800ms）以降は
+   * scale(1) を保持し、ハート本体は静止したままフロートハートの完走を待つ。
+   */
+  @keyframes likeFxHeartPop {
+    0% {
+      transform: scale(1);
+    }
+    6% {
+      transform: scale(1);
+    }
+    10% {
+      transform: scale(1.4);
+    }
+    38% {
+      transform: scale(1.35);
+    }
+    64% {
+      transform: scale(1);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes likeFxHeartPress {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes likeFxRipple {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0);
+    }
+    20% {
+      opacity: 0.55;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(11);
+    }
+  }
+
+  @keyframes likeFxRay {
+    0% {
+      opacity: 0;
+      transform: rotate(var(--like-ray-angle, 0deg)) translateY(0) scaleY(0.4);
+    }
+    30% {
+      opacity: 1;
+      transform: rotate(var(--like-ray-angle, 0deg)) translateY(-9px) scaleY(1);
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(var(--like-ray-angle, 0deg)) translateY(-18px) scaleY(0.6);
+    }
+  }
+
+  /*
+   * フロートハートの動きを滑らかにするため：
+   * - 7段階の keyframe で補間粒度を上げる（0/12/25/45/65/85/100%）
+   * - X方向は半周期サインカーブの片道スイングで、方向転換は実質1回のみ
+   *   （drift 比率: 0 → 0.4 → 0.7 → 1.0 → 0.9 → 0.45 → 0）
+   * - Y方向は単調増加（rise 比率: 0 → 0.12 → 0.27 → 0.5 → 0.7 → 0.88 → 1.0）
+   * - 回転も単調（-4° → 4° の片道）
+   * - overall easing は cubic-bezier(0.25, 0.46, 0.45, 0.94)（速度連続性◎）
+   */
+  @keyframes likeFxFloatHeart {
+    0% {
+      opacity: 0;
+      transform: translate(
+          calc(-50% + var(--like-floatheart-x, 0px)),
+          calc(-50% + 0px)
+        )
+        scale(0.5) rotate(-4deg);
+    }
+    12% {
+      opacity: 0.55;
+      transform: translate(
+          calc(
+            -50% + var(--like-floatheart-x, 0px) +
+              var(--like-floatheart-drift, 0px) * 0.4
+          ),
+          calc(-50% + var(--like-floatheart-rise, -42px) * 0.12)
+        )
+        scale(0.85) rotate(-3deg);
+    }
+    25% {
+      opacity: 1;
+      transform: translate(
+          calc(
+            -50% + var(--like-floatheart-x, 0px) +
+              var(--like-floatheart-drift, 0px) * 0.7
+          ),
+          calc(-50% + var(--like-floatheart-rise, -42px) * 0.27)
+        )
+        scale(1) rotate(-2deg);
+    }
+    45% {
+      opacity: 1;
+      transform: translate(
+          calc(
+            -50% + var(--like-floatheart-x, 0px) +
+              var(--like-floatheart-drift, 0px)
+          ),
+          calc(-50% + var(--like-floatheart-rise, -42px) * 0.5)
+        )
+        scale(1) rotate(0deg);
+    }
+    65% {
+      opacity: 1;
+      transform: translate(
+          calc(
+            -50% + var(--like-floatheart-x, 0px) +
+              var(--like-floatheart-drift, 0px) * 0.9
+          ),
+          calc(-50% + var(--like-floatheart-rise, -42px) * 0.7)
+        )
+        scale(1) rotate(2deg);
+    }
+    85% {
+      opacity: 0.6;
+      transform: translate(
+          calc(
+            -50% + var(--like-floatheart-x, 0px) +
+              var(--like-floatheart-drift, 0px) * 0.45
+          ),
+          calc(-50% + var(--like-floatheart-rise, -42px) * 0.88)
+        )
+        scale(0.95) rotate(3deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(
+          calc(-50% + var(--like-floatheart-x, 0px)),
+          calc(-50% + var(--like-floatheart-rise, -42px))
+        )
+        scale(0.8) rotate(4deg);
+    }
+  }
+
+  @keyframes likeFxSparkle {
+    0% {
+      opacity: 0;
+      transform: translate(45%, -55%) scale(0) rotate(0deg);
+    }
+    35% {
+      opacity: 1;
+      transform: translate(45%, -55%) scale(1) rotate(20deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(60%, -75%) scale(1.4) rotate(45deg);
+    }
+  }
+
+  @keyframes likeFxCountUp {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes likeFxCountDown {
+    0% {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .like-fx-heart-pop {
+    animation: likeFxHeartPop 1250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    will-change: transform;
+  }
+
+  .like-fx-heart-press {
+    animation: likeFxHeartPress 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    will-change: transform;
+  }
+
+  .like-fx-ripple {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    margin: 0;
+    border-radius: 9999px;
+    background: rgb(239 68 68);
+    opacity: 0;
+    animation: likeFxRipple 540ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+    pointer-events: none;
+  }
+
+  .like-fx-ray {
+    position: absolute;
+    /*
+     * bottom: 50% で要素の下端をオーバーレイの垂直中心（= ハート中心）に揃え、
+     * transform-origin: 1.5px 100%（要素下端の水平中央）を絶対座標で
+     * ハート中心と一致させる。これにより、各 ray の回転軸が常にハート中心となり、
+     * translateY(-Npx) で外側に伸びる動きが幾何学的に正しい放射になる。
+     * top: 50% だと回転軸がハート中心 + height だけ下にズレるので使わない。
+     */
+    bottom: 50%;
+    left: 50%;
+    width: 3px;
+    height: 10px;
+    margin-left: -1.5px;
+    background: rgb(239 68 68);
+    border-radius: 1.5px;
+    transform-origin: 1.5px 100%;
+    opacity: 0;
+    animation: likeFxRay 400ms cubic-bezier(0.34, 1.56, 0.64, 1) 120ms both;
+    pointer-events: none;
+  }
+
+  .like-fx-floatheart {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--like-floatheart-size, 10px);
+    height: var(--like-floatheart-size, 10px);
+    margin: 0;
+    display: inline-flex;
+    color: var(--like-floatheart-color, rgb(239 68 68));
+    opacity: 0;
+    animation: likeFxFloatHeart 950ms cubic-bezier(0.25, 0.46, 0.45, 0.94) 300ms
+      both;
+    /* GPU 合成を促してコマ送り感を減らす */
+    will-change: transform, opacity;
+    pointer-events: none;
+  }
+
+  .like-fx-sparkle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    background:
+      radial-gradient(
+        circle,
+        rgb(255 255 255) 0%,
+        rgb(255 235 180) 40%,
+        rgba(255, 235, 180, 0) 70%
+      );
+    opacity: 0;
+    animation: likeFxSparkle 480ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+    pointer-events: none;
+  }
+
+  .like-fx-count-up {
+    display: inline-block;
+    animation: likeFxCountUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+  }
+
+  .like-fx-count-down {
+    display: inline-block;
+    animation: likeFxCountDown 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .like-fx-heart-pop,
+    .like-fx-heart-press,
+    .like-fx-ripple,
+    .like-fx-ray,
+    .like-fx-floatheart,
+    .like-fx-sparkle,
+    .like-fx-count-up,
+    .like-fx-count-down {
+      animation: none;
+      opacity: 0;
+    }
+
+    .like-fx-count-up,
+    .like-fx-count-down {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
   /* チュートリアル中: 画像アップロードのキャンセルボタンを非表示 */
   body[data-tour-in-progress="true"] .tour-image-cancel-btn {
     visibility: hidden;

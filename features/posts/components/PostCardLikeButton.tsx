@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Heart, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toggleLikeAPI, getUserLikeStatusAPI } from "../lib/api";
@@ -10,6 +10,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { formatCountEnUS } from "@/lib/utils";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname, useSearchParams } from "next/navigation";
+import { LikeHeartIcon, type LikeHeartPhase } from "./LikeHeartIcon";
+import { AnimatedLikeCount } from "./AnimatedLikeCount";
 
 interface PostCardLikeButtonProps {
   imageId: string;
@@ -34,6 +36,7 @@ export function PostCardLikeButton({
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [animationPhase, setAnimationPhase] = useState<LikeHeartPhase>("idle");
   const { toast } = useToast();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -114,6 +117,10 @@ export function PostCardLikeButton({
     setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
     setIsLoading(true);
 
+    // 自分のタップで「未いいね → いいね」のときだけバースト演出。
+    // 取り消し時は控えめな押下フィードバックのみ。
+    setAnimationPhase(previousIsLiked ? "press" : "burst");
+
     try {
       const newIsLiked = await toggleLikeAPI(imageId, {
         likeToggleFailed: t("likeToggleFailed"),
@@ -141,14 +148,21 @@ export function PostCardLikeButton({
         size="sm"
         onClick={handleToggleLike}
         disabled={isLoading || isLoadingStatus}
-        className="flex items-center gap-1 h-6 !px-0 py-0.5"
+        // disabled:opacity-100 で Button の既定 disabled:opacity-50 を上書きする。
+        // 楽観的更新で赤に切り替わったハートが、API 応答待ち中に半透明化して
+        // 「薄赤」として見えてしまうのを防ぐ。
+        className="flex items-center gap-1 h-6 !px-0 py-0.5 disabled:opacity-100"
       >
-        <Heart
-          className={`h-4 w-4 transition-colors ${
-            isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
-          }`}
+        <LikeHeartIcon
+          liked={isLiked}
+          phase={animationPhase}
+          size="sm"
+          onAnimationEnd={() => setAnimationPhase("idle")}
         />
-        <span className="text-xs font-medium">{formatCountEnUS(likeCount)}</span>
+        <AnimatedLikeCount
+          value={likeCount}
+          className="text-xs font-medium"
+        />
       </Button>
       {initialViewCount > 0 && (
         <div className="flex items-center gap-1">

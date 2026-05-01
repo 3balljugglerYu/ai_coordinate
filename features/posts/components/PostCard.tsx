@@ -58,7 +58,11 @@ export function PostCard({
   };
 
   const imageContent = (
-    <div className="relative w-full overflow-hidden bg-gray-100">
+    // 画像エリアだけ角丸クリップを担う：
+    // Card 側の overflow-hidden を外していいねボタンのバースト演出が
+    // カード外まで描画できるようにしたため、ホバー時の hover:scale-105 を
+    // 画像ラッパーで rounded-t-xl + overflow-hidden に閉じ込める。
+    <div className="relative w-full overflow-hidden rounded-t-xl bg-gray-100">
       {imageUrl ? (
         <Image
           src={imageUrl}
@@ -81,8 +85,13 @@ export function PostCard({
 
   return (
     <Card
+      // overflow-hidden は付けない：
+      // いいねボタンのバースト演出（放射光線・上昇粒子）がカード境界を超えて
+      // 描画されるため。画像の角丸クリップは imageContent 側の rounded-t-xl
+      // + overflow-hidden が担い、Card 自体は rounded-xl の border-radius と
+      // ring/shadow のみで角丸の見た目を維持する。
       className={cn(
-        "overflow-hidden pt-0 pb-0 gap-1 transition-[box-shadow,background-color,border-color] duration-700",
+        "pt-0 pb-0 gap-1 transition-[box-shadow,background-color,border-color] duration-700",
         isHighlighted &&
           "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-300/70 shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]"
       )}
