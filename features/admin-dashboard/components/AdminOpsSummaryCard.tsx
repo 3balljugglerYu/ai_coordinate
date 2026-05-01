@@ -30,21 +30,21 @@ export function AdminOpsSummaryCard({
         opsSummary.averageOrderValueYen === null
           ? "-"
           : `¥${opsSummary.averageOrderValueYen.toLocaleString("ja-JP")}`,
-      description: "平均購入単価",
+      description: "平均決済単価",
       icon: BadgeDollarSign,
       tone: "text-violet-700 bg-violet-100",
     },
     {
-      label: "purchase count",
+      label: "payment count",
       value: `${opsSummary.purchaseCount.toLocaleString("ja-JP")}件`,
-      description: "購入件数",
+      description: "売上対象の決済件数",
       icon: ReceiptText,
       tone: "text-emerald-700 bg-emerald-100",
     },
     {
-      label: "purchasing users",
+      label: "paying users",
       value: `${opsSummary.purchasingUsers.toLocaleString("ja-JP")}人`,
-      description: "購入ユーザー数",
+      description: "決済ユーザー数",
       icon: Users,
       tone: "text-fuchsia-700 bg-fuchsia-100",
     },

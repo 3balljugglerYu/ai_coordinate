@@ -19,7 +19,7 @@ export function AdminRecentPurchasesTable({
 }: AdminRecentPurchasesTableProps) {
   const emptyState = (
     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center text-sm text-slate-500">
-      この期間に購入はありません。
+      この期間に決済はありません。
     </div>
   );
 
@@ -32,7 +32,7 @@ export function AdminRecentPurchasesTable({
             fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
           }}
         >
-          最新購入
+          最新決済
         </CardTitle>
       </CardHeader>
       <CardContent
