@@ -1492,7 +1492,7 @@ Deno.serve(async () => {
                         | "HARM_CATEGORY_HATE_SPEECH"
                         | "HARM_CATEGORY_SEXUALLY_EXPLICIT"
                         | "HARM_CATEGORY_DANGEROUS_CONTENT";
-                      threshold: "BLOCK_ONLY_HIGH";
+                      threshold: "BLOCK_ONLY_HIGH" | "BLOCK_NONE";
                     }>;
                     generationConfig?: {
                       candidateCount?: number;
@@ -1510,7 +1510,7 @@ Deno.serve(async () => {
                     safetySettings: [
                       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
                       { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-                      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                       { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
                     ],
                   };
