@@ -165,6 +165,18 @@ function getMetadataString(metadata, key) {
   return typeof value === "string" ? value : null;
 }
 
+function hasMetadataKey(metadata, key) {
+  return metadata != null && Object.prototype.hasOwnProperty.call(metadata, key);
+}
+
+function getMetadataMode() {
+  if (stripeMode === "live" || stripeMode === "test") {
+    return stripeMode;
+  }
+
+  return null;
+}
+
 function hasRevenueYen(row) {
   return (
     row.metadata &&
@@ -190,6 +202,7 @@ function getBillingIntervalMetadata(subscription) {
 function needsBackfill(row) {
   return (
     !hasRevenueYen(row) ||
+    !hasMetadataKey(row.metadata, "mode") ||
     getMetadataString(row.metadata, "plan") === null ||
     getMetadataString(row.metadata, "billingInterval") === null
   );
@@ -370,6 +383,7 @@ async function main() {
       revenueCurrency: resolved.currency,
       revenueBackfilledAt: new Date().toISOString(),
       revenueBackfillStripeObjectId: resolved.stripeObjectId,
+      mode: getMetadataMode(),
       ...(plan ? { plan } : {}),
       ...(billingInterval ? { billingInterval } : {}),
     };

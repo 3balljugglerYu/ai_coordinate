@@ -317,6 +317,7 @@ async function grantSubscriptionPercoins(params: {
       billingInterval: params.billingInterval,
       revenueYen,
       revenueSource: "stripe_subscription",
+      mode: isStripeTestMode() ? "test" : "live",
     },
   });
 

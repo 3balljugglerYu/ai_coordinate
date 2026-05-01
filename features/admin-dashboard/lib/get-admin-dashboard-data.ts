@@ -698,8 +698,12 @@ export async function getAdminDashboardData(
   );
 
   const revenueTransactions = transactions.filter((transaction) => {
+    if (getPurchaseMode(transaction.metadata) !== "live") {
+      return false;
+    }
+
     if (transaction.transaction_type === "purchase") {
-      return getPurchaseMode(transaction.metadata) === "live";
+      return true;
     }
 
     if (transaction.transaction_type === "subscription") {
@@ -708,7 +712,7 @@ export async function getAdminDashboardData(
         transactionType: transaction.transaction_type,
         metadata: transaction.metadata,
       });
-      return yenValue !== null && yenValue > 0;
+      return yenValue !== null;
     }
 
     return false;

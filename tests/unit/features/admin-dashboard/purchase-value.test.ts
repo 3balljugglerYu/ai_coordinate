@@ -1,4 +1,13 @@
-import { resolveTransactionRevenue } from "@/features/admin-dashboard/lib/purchase-value";
+import {
+  getPurchaseMode,
+  resolveTransactionRevenue,
+} from "@/features/admin-dashboard/lib/purchase-value";
+
+describe("getPurchaseMode", () => {
+  test("metadata に mode がなければ unknown を返す", () => {
+    expect(getPurchaseMode({})).toBe("unknown");
+  });
+});
 
 describe("resolveTransactionRevenue", () => {
   test("単発購入はパッケージ価格を売上として解決する", () => {
@@ -37,6 +46,7 @@ describe("resolveTransactionRevenue", () => {
         amount: 300,
         transactionType: "subscription",
         metadata: {
+          mode: "live",
           plan: "light",
           billingInterval: "month",
           revenueYen: 980,
@@ -55,6 +65,7 @@ describe("resolveTransactionRevenue", () => {
         amount: 2500,
         transactionType: "subscription",
         metadata: {
+          mode: "live",
           plan: "premium",
           billingInterval: "year",
         },
@@ -72,12 +83,27 @@ describe("resolveTransactionRevenue", () => {
         amount: 300,
         transactionType: "subscription",
         metadata: {
+          mode: "live",
           invoice_id: "yearly-monthly:sub_123:20260501000000",
         },
       })
     ).toEqual({
       key: "subscription",
       label: "サブスクリプション",
+      yenValue: null,
+    });
+  });
+
+  test("未知の取引種別は売上対象にしない", () => {
+    expect(
+      resolveTransactionRevenue({
+        amount: 100,
+        transactionType: "bonus",
+        metadata: { mode: "live", revenueYen: 100 },
+      })
+    ).toEqual({
+      key: "bonus",
+      label: "bonus",
       yenValue: null,
     });
   });
