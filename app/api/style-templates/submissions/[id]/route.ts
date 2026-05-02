@@ -85,34 +85,22 @@ export async function DELETE(
   }
 
   if (template.moderation_status === "pending" || template.moderation_status === "visible") {
-    const now = new Date().toISOString();
-    const { error: updateError } = await adminClient
-      .from("user_style_templates")
-      .update({
-        moderation_status: "withdrawn",
-        moderation_updated_at: now,
-      })
-      .eq("id", id)
-      .eq("submitted_by_user_id", user.id);
+    // 状態遷移 + 監査ログを atomic な RPC に委譲（レビュー指摘 #3）
+    const { data: success, error: rpcError } = await adminClient.rpc(
+      "withdraw_user_style_template",
+      {
+        p_template_id: id,
+        p_actor_id: user.id,
+        p_metadata: { source: "api" },
+      }
+    );
 
-    if (updateError) {
-      console.error("[submissions DELETE] db update failed", updateError);
+    if (rpcError) {
+      console.error("[submissions DELETE] RPC failed", rpcError);
       return jsonError(copy.withdrawFailed, "INSPIRE_WITHDRAW_FAILED", 500);
     }
-
-    // 監査ログ（service-role で直 INSERT、テーブル直 INSERT は SECURITY DEFINER のみのはずだが
-    // service-role は RLS バイパスするため可能。authenticated には GRANT していない）
-    const { error: auditError } = await adminClient
-      .from("style_template_audit_logs")
-      .insert({
-        template_id: id,
-        actor_id: user.id,
-        action: "withdraw",
-        metadata: { source: "api", previous_status: template.moderation_status },
-      });
-
-    if (auditError) {
-      console.warn("[submissions DELETE] audit log failed (non-fatal)", auditError);
+    if (!success) {
+      return jsonError(copy.templateNotFound, "INSPIRE_TEMPLATE_NOT_FOUND", 404);
     }
 
     return NextResponse.json({ success: true, action: "withdrawn" });

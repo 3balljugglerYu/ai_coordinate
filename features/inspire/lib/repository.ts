@@ -171,30 +171,8 @@ export async function listStyleTemplatesByStatus(
 }
 
 /**
- * 並び順を更新（admin 用、複数行を 1 トランザクションで上書き）
- *
- * Supabase JS の単一クエリでは複数行を異なる値で UPDATE できないため、
- * 個別 UPDATE を順次発行する。並び順の整合性は呼出側が責任を持つ。
- */
-export async function updateStyleTemplateDisplayOrder(
-  client: SupabaseClient,
-  updates: ReadonlyArray<{ id: string; displayOrder: number }>
-): Promise<{ error: { message: string } | null }> {
-  for (const { id, displayOrder } of updates) {
-    const { error } = await client
-      .from("user_style_templates")
-      .update({ display_order: displayOrder })
-      .eq("id", id);
-    if (error) {
-      return { error: { message: error.message } };
-    }
-  }
-  return { error: null };
-}
-
-/**
  * Storage の内部パス（service-role でのみアクセス可能な private bucket）から
- * 短期署名 URL を発行する。フロント表示・admin 詳細・worker からの取得に使う。
+ * 短期署名 URL を発行する。単発取得用。
  *
  * @param expiresInSeconds 有効期限。デフォルトは 30 分。Cache Components 化する場合は cache TTL より長くすること。
  */
@@ -210,5 +188,50 @@ export async function createStyleTemplateSignedUrl(
   return {
     url: data?.signedUrl ?? null,
     error: error ? { message: error.message } : null,
+  };
+}
+
+/**
+ * 複数の Storage パスから signed URL を一括発行する。
+ *
+ * 行ごとに createSignedUrl を await すると admin 一覧 (limit=200) で 200×3=600 回の
+ * HTTP コールになるため、createSignedUrls を使う（レビュー指摘 #5）。
+ *
+ * 戻り値: 入力 paths と同順の signed URL 配列。失敗したエントリは null。
+ */
+export async function createStyleTemplateSignedUrls(
+  client: SupabaseClient,
+  storagePaths: ReadonlyArray<string>,
+  expiresInSeconds: number = 1800
+): Promise<{
+  urls: Array<string | null>;
+  error: { message: string } | null;
+}> {
+  if (storagePaths.length === 0) {
+    return { urls: [], error: null };
+  }
+  const { data, error } = await client.storage
+    .from("style-templates")
+    .createSignedUrls([...storagePaths], expiresInSeconds);
+
+  if (error || !data) {
+    return {
+      urls: storagePaths.map(() => null),
+      error: error ? { message: error.message } : null,
+    };
+  }
+
+  // createSignedUrls の戻り値は entries の配列（path, signedUrl, error）。
+  // path 順に並ぶ前提で実装されているが、明示的に path -> url のマップを作って
+  // 入力順に合わせて返す（API の保守性のため）。
+  const map = new Map<string, string | null>();
+  for (const entry of data) {
+    if (entry.path) {
+      map.set(entry.path, entry.signedUrl ?? null);
+    }
+  }
+  return {
+    urls: storagePaths.map((p) => map.get(p) ?? null),
+    error: null,
   };
 }

@@ -6,7 +6,7 @@ import { isInspireSubmitterAllowed } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   listOwnStyleTemplates,
-  createStyleTemplateSignedUrl,
+  createStyleTemplateSignedUrls,
 } from "@/features/inspire/lib/repository";
 import { MySubmittedTemplatesCardClient } from "./MySubmittedTemplatesCardClient";
 
@@ -49,29 +49,29 @@ export async function MySubmittedTemplatesCard({
 
   const rows = data ?? [];
 
-  // signed URL を発行（テンプレ画像本体のみ。プレビュー画像は申請者が見るが Phase 4/5 で改善）
-  const items = await Promise.all(
-    rows.map(async (row) => {
-      let signedUrl: string | null = null;
-      if (row.storage_path) {
-        const result = await createStyleTemplateSignedUrl(
-          adminClient,
-          row.storage_path,
-          SIGNED_URL_TTL_SECONDS
-        );
-        signedUrl = result.url;
-      }
-      return {
-        id: row.id,
-        alt: row.alt,
-        moderation_status: row.moderation_status,
-        moderation_reason: row.moderation_reason,
-        moderation_updated_at: row.moderation_updated_at,
-        created_at: row.created_at,
-        image_url: signedUrl,
-      };
-    })
+  // signed URL を一括発行（レビュー指摘 #5）
+  const paths = rows
+    .map((row) => row.storage_path)
+    .filter((p): p is string => typeof p === "string" && p.length > 0);
+  const { urls } = await createStyleTemplateSignedUrls(
+    adminClient,
+    paths,
+    SIGNED_URL_TTL_SECONDS
   );
+  const pathToUrl = new Map<string, string | null>();
+  paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
+
+  const items = rows.map((row) => ({
+    id: row.id,
+    alt: row.alt,
+    moderation_status: row.moderation_status,
+    moderation_reason: row.moderation_reason,
+    moderation_updated_at: row.moderation_updated_at,
+    created_at: row.created_at,
+    image_url: row.storage_path
+      ? pathToUrl.get(row.storage_path) ?? null
+      : null,
+  }));
 
   return (
     <MySubmittedTemplatesCardClient

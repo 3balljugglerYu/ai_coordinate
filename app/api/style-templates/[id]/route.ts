@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isInspireFeatureEnabled } from "@/lib/env";
 import {
-  createStyleTemplateSignedUrl,
+  createStyleTemplateSignedUrls,
   getStyleTemplateById,
 } from "@/features/inspire/lib/repository";
 import { getInspireRouteCopy } from "@/features/inspire/lib/route-copy";
@@ -12,6 +12,13 @@ import { getUser } from "@/lib/auth";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
+/**
+ * GET /api/style-templates/[id]?include_previews=1
+ *
+ * 公開用途では visible のみ返す。owner なら自分の全状態の行も取得可。
+ * ?include_previews=1 のときは owner（または admin）にのみ preview の signed URL も返す
+ * （申請ダイアログの Step 3 表示で利用、レビュー指摘 #8）。
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,6 +34,9 @@ export async function GET(
     return jsonError(copy.invalidRequest, "INSPIRE_INVALID_ID", 400);
   }
 
+  const url = new URL(request.url);
+  const includePreviews = url.searchParams.get("include_previews") === "1";
+
   const adminClient = createAdminClient();
   const { data, error } = await getStyleTemplateById(adminClient, id);
 
@@ -38,39 +48,54 @@ export async function GET(
     return jsonError(copy.templateNotFound, "INSPIRE_TEMPLATE_NOT_FOUND", 404);
   }
 
-  // visible のみ匿名/認証者問わず公開。owner と admin は他状態も見えるが、本 API は公開用途なので
-  // visible 以外は 404 を返す（owner / admin 用は別 API を用意する）。
-  if (data.moderation_status !== "visible") {
-    // owner なら自分の draft / pending / removed / withdrawn 行も返してよい
-    const user = await getUser();
-    if (!user || user.id !== data.submitted_by_user_id) {
-      return jsonError(
-        copy.templateNotVisible,
-        "INSPIRE_TEMPLATE_NOT_VISIBLE",
-        404
-      );
-    }
+  // owner 判定（preview 表示と非 visible アクセスの両方で必要）
+  const user = await getUser();
+  const isOwner = user !== null && user.id === data.submitted_by_user_id;
+
+  // visible 以外は owner のみ閲覧可
+  if (data.moderation_status !== "visible" && !isOwner) {
+    return jsonError(
+      copy.templateNotVisible,
+      "INSPIRE_TEMPLATE_NOT_VISIBLE",
+      404
+    );
   }
 
-  let signedUrl: string | null = null;
-  if (data.storage_path) {
-    const result = await createStyleTemplateSignedUrl(
-      adminClient,
-      data.storage_path,
-      SIGNED_URL_TTL_SECONDS
-    );
-    signedUrl = result.url;
-  }
+  // include_previews は owner のみ許可（preview 画像は外部に出さない）
+  const shouldIncludePreviews = includePreviews && isOwner;
+
+  // signed URL を一括発行
+  const paths = [
+    data.storage_path,
+    shouldIncludePreviews ? data.preview_openai_image_url : null,
+    shouldIncludePreviews ? data.preview_gemini_image_url : null,
+  ].filter((p): p is string => typeof p === "string" && p.length > 0);
+
+  const { urls } = await createStyleTemplateSignedUrls(
+    adminClient,
+    paths,
+    SIGNED_URL_TTL_SECONDS
+  );
+  const pathToUrl = new Map<string, string | null>();
+  paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
+  const sign = (path: string | null) =>
+    path ? pathToUrl.get(path) ?? null : null;
 
   return NextResponse.json({
     template: {
       id: data.id,
       submitted_by_user_id: data.submitted_by_user_id,
       alt: data.alt,
-      image_url: signedUrl,
+      image_url: sign(data.storage_path),
       moderation_status: data.moderation_status,
       display_order: data.display_order,
       created_at: data.created_at,
+      ...(shouldIncludePreviews
+        ? {
+            preview_openai_image_url: sign(data.preview_openai_image_url),
+            preview_gemini_image_url: sign(data.preview_gemini_image_url),
+          }
+        : {}),
     },
     signed_url_ttl_seconds: SIGNED_URL_TTL_SECONDS,
   });

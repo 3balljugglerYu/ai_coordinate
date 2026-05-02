@@ -5,7 +5,7 @@ import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  createStyleTemplateSignedUrl,
+  createStyleTemplateSignedUrls,
   listStyleTemplatesByStatus,
   type UserStyleTemplateRow,
 } from "@/features/inspire/lib/repository";
@@ -31,34 +31,40 @@ export default async function AdminStyleTemplatesPage() {
     listStyleTemplatesByStatus(adminClient, "removed", { limit: 100 }),
   ]);
 
-  const enrichRows = async (rows: UserStyleTemplateRow[]) =>
-    Promise.all(
-      rows.map(async (row) => {
-        const sign = async (path: string | null) => {
-          if (!path) return null;
-          const r = await createStyleTemplateSignedUrl(
-            adminClient,
-            path,
-            SIGNED_URL_TTL_SECONDS
-          );
-          return r.url;
-        };
-        return {
-          id: row.id,
-          submitted_by_user_id: row.submitted_by_user_id,
-          alt: row.alt,
-          moderation_status: row.moderation_status,
-          moderation_reason: row.moderation_reason,
-          moderation_updated_at: row.moderation_updated_at,
-          moderation_decided_by: row.moderation_decided_by,
-          display_order: row.display_order,
-          created_at: row.created_at,
-          image_url: await sign(row.storage_path),
-          preview_openai_image_url: await sign(row.preview_openai_image_url),
-          preview_gemini_image_url: await sign(row.preview_gemini_image_url),
-        };
-      })
+  // signed URL を一括発行（レビュー指摘 #5: tab 単位ではなく全行分まとめて発行）
+  const enrichRows = async (rows: UserStyleTemplateRow[]) => {
+    const paths = rows.flatMap((row) =>
+      [
+        row.storage_path,
+        row.preview_openai_image_url,
+        row.preview_gemini_image_url,
+      ].filter((p): p is string => typeof p === "string" && p.length > 0)
     );
+    const { urls } = await createStyleTemplateSignedUrls(
+      adminClient,
+      paths,
+      SIGNED_URL_TTL_SECONDS
+    );
+    const pathToUrl = new Map<string, string | null>();
+    paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
+    const sign = (path: string | null) =>
+      path ? pathToUrl.get(path) ?? null : null;
+
+    return rows.map((row) => ({
+      id: row.id,
+      submitted_by_user_id: row.submitted_by_user_id,
+      alt: row.alt,
+      moderation_status: row.moderation_status,
+      moderation_reason: row.moderation_reason,
+      moderation_updated_at: row.moderation_updated_at,
+      moderation_decided_by: row.moderation_decided_by,
+      display_order: row.display_order,
+      created_at: row.created_at,
+      image_url: sign(row.storage_path),
+      preview_openai_image_url: sign(row.preview_openai_image_url),
+      preview_gemini_image_url: sign(row.preview_gemini_image_url),
+    }));
+  };
 
   const items = {
     pending: await enrichRows(pending.data ?? []),

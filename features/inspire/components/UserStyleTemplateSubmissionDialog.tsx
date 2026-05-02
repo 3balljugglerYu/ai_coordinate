@@ -134,12 +134,28 @@ export function UserStyleTemplateSubmissionDialog({
 
   const fetchSignedUrl = useCallback(
     async (templateId: string): Promise<{ openai?: string; gemini?: string }> => {
-      // テンプレ詳細 API は visible のみ返すため、preview 用の signed URL は admin 経由が必要。
-      // 申請者本人は user_style_templates RLS で SELECT 可能なので、storage_path から自前で
-      // signed URL を発行する API を別途用意すべきだが、MVP では preview の Storage パスを
-      // そのまま使い、画像は表示しない（Phase 4/5 で改善）。
-      void templateId;
-      return {};
+      // owner-only エンドポイント: ?include_previews=1 で preview の signed URL を取得
+      // （レビュー指摘 #8）。owner 判定は API 側で getUser() してテンプレの
+      // submitted_by_user_id と照合する。
+      try {
+        const response = await fetch(
+          `/api/style-templates/${templateId}?include_previews=1`
+        );
+        if (!response.ok) return {};
+        const json = (await response.json()) as {
+          template?: {
+            preview_openai_image_url?: string | null;
+            preview_gemini_image_url?: string | null;
+          };
+        };
+        return {
+          openai: json.template?.preview_openai_image_url ?? undefined,
+          gemini: json.template?.preview_gemini_image_url ?? undefined,
+        };
+      } catch (err) {
+        console.warn("[submission] preview signed url fetch failed", err);
+        return {};
+      }
     },
     []
   );

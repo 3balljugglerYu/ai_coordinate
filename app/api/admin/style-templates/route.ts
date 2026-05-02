@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  createStyleTemplateSignedUrl,
+  createStyleTemplateSignedUrls,
   listStyleTemplatesByStatus,
   type StyleTemplateModerationStatus,
 } from "@/features/inspire/lib/repository";
@@ -68,35 +68,43 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = data ?? [];
-  const items = await Promise.all(
-    rows.map(async (row) => {
-      const sign = async (path: string | null) => {
-        if (!path) return null;
-        const { url } = await createStyleTemplateSignedUrl(
-          adminClient,
-          path,
-          SIGNED_URL_TTL_SECONDS
-        );
-        return url;
-      };
-      return {
-        id: row.id,
-        submitted_by_user_id: row.submitted_by_user_id,
-        alt: row.alt,
-        moderation_status: row.moderation_status,
-        moderation_reason: row.moderation_reason,
-        moderation_updated_at: row.moderation_updated_at,
-        moderation_approved_at: row.moderation_approved_at,
-        moderation_decided_by: row.moderation_decided_by,
-        copyright_consent_at: row.copyright_consent_at,
-        display_order: row.display_order,
-        created_at: row.created_at,
-        image_url: await sign(row.storage_path),
-        preview_openai_image_url: await sign(row.preview_openai_image_url),
-        preview_gemini_image_url: await sign(row.preview_gemini_image_url),
-      };
-    })
+
+  // signed URL を一括発行（レビュー指摘 #5: 行ごと発行から batch へ）
+  // 1 行につき最大 3 つの Storage パス（template / preview openai / preview gemini）
+  // を 1 回の createSignedUrls で取得する。
+  const paths = rows.flatMap((row) =>
+    [
+      row.storage_path,
+      row.preview_openai_image_url,
+      row.preview_gemini_image_url,
+    ].filter((p): p is string => typeof p === "string" && p.length > 0)
   );
+  const { urls } = await createStyleTemplateSignedUrls(
+    adminClient,
+    paths,
+    SIGNED_URL_TTL_SECONDS
+  );
+  const pathToUrl = new Map<string, string | null>();
+  paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
+  const sign = (path: string | null) =>
+    path ? pathToUrl.get(path) ?? null : null;
+
+  const items = rows.map((row) => ({
+    id: row.id,
+    submitted_by_user_id: row.submitted_by_user_id,
+    alt: row.alt,
+    moderation_status: row.moderation_status,
+    moderation_reason: row.moderation_reason,
+    moderation_updated_at: row.moderation_updated_at,
+    moderation_approved_at: row.moderation_approved_at,
+    moderation_decided_by: row.moderation_decided_by,
+    copyright_consent_at: row.copyright_consent_at,
+    display_order: row.display_order,
+    created_at: row.created_at,
+    image_url: sign(row.storage_path),
+    preview_openai_image_url: sign(row.preview_openai_image_url),
+    preview_gemini_image_url: sign(row.preview_gemini_image_url),
+  }));
 
   return NextResponse.json({
     items,

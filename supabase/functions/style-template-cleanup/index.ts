@@ -26,17 +26,28 @@ interface DraftRow {
 }
 
 /**
- * Supabase Storage の signed URL / public URL から bucket 内のオブジェクトパスを抽出する。
- * 想定フォーマット:
- *   https://<project>.supabase.co/storage/v1/object/sign/<bucket>/<path>?token=...
- *   https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
- *   https://<project>.supabase.co/storage/v1/object/<bucket>/<path>
- * いずれにも該当しない値は null を返す（既に Storage に存在しない可能性あり）。
+ * Supabase Storage のオブジェクトパスを抽出する。
+ *
+ * 入力は 2 形式を想定:
+ *   1. bucket 内の素のパス文字列（例: "userId/preview/draftId-openai.png"）
+ *      preview-generation handler はこちらを書き込んでいる
+ *   2. signed URL / public URL
+ *      （例: "https://<project>.supabase.co/storage/v1/object/sign/<bucket>/<path>?token=..."）
+ *
+ * 1 を URL としてパースしようとすると throw するので、URL スキーマで前置判定して分岐する。
+ * いずれにも該当しない値は null を返す。
  */
-function extractStoragePath(url: string | null, bucket: string): string | null {
-  if (!url) return null;
+function extractStoragePath(value: string | null, bucket: string): string | null {
+  if (!value) return null;
+
+  // 1. bucket 内パス文字列ならそのまま返す（プロトコル無し = URL では無い）
+  if (!/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  // 2. URL（signed URL / public URL）の場合は pathname から bucket 以降を取り出す
   try {
-    const u = new URL(url);
+    const u = new URL(value);
     const segs = u.pathname.split("/").filter(Boolean);
     // segs 例: ["storage","v1","object","sign","style-templates","user/uuid.png"]
     const bucketIdx = segs.findIndex((s) => s === bucket);
