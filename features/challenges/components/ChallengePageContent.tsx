@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Flame,
   CalendarCheck2,
@@ -53,6 +53,11 @@ interface ChallengePageContentProps {
   dailyPostBonusAmount: number;
   baseStreakBonusSchedule: readonly number[];
   streakBonusSchedule: readonly number[];
+  /**
+   * Vercel が自動で設定する VERCEL_ENV ("production" | "preview" | "development" | undefined)。
+   * preview_streak URL パラメータの本番セーフガード判定に使用する。
+   */
+  vercelEnv?: string;
 }
 
 export function ChallengePageContent({
@@ -62,10 +67,12 @@ export function ChallengePageContent({
   dailyPostBonusAmount,
   baseStreakBonusSchedule,
   streakBonusSchedule,
+  vercelEnv,
 }: ChallengePageContentProps) {
   const t = useTranslations("challenge");
   const subscriptionT = useTranslations("subscription");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const {
@@ -215,19 +222,72 @@ export function ChallengePageContent({
     return () => clearInterval(intervalId);
   }, [lastStreakLoginAt]);
 
+  // ===== preview_streak URL パラメータ =====
+  // /challenge?preview_streak=N  (N = 1..14) で UI 演出を擬似再生する開発用モード。
+  // - 表示の streak を N-1 に固定 → ボタン押下で N 日目達成の演出が完走
+  // - チェックイン API は呼ばず、モック結果でアニメだけ流す（DB に影響なし）
+  // - 本番（NODE_ENV=production && VERCEL_ENV=production）では問答無用で無視
+  const previewStreakRaw = searchParams.get("preview_streak");
+  const previewStreak = useMemo<number | null>(() => {
+    if (!previewStreakRaw) return null;
+    const isProduction =
+      process.env.NODE_ENV === "production" && vercelEnv === "production";
+    if (isProduction) return null;
+    const n = Number.parseInt(previewStreakRaw, 10);
+    if (
+      !Number.isInteger(n) ||
+      n < 1 ||
+      n > streakBonusSchedule.length
+    ) {
+      return null;
+    }
+    return n;
+  }, [previewStreakRaw, vercelEnv, streakBonusSchedule.length]);
+  const isPreviewMode = previewStreak !== null;
+
+  // 本番で preview_streak を付けてアクセスされた場合のログ出力（ユーザー要件）
+  useEffect(() => {
+    if (!previewStreakRaw) return;
+    const isProduction =
+      process.env.NODE_ENV === "production" && vercelEnv === "production";
+    if (isProduction) {
+      console.warn(
+        "[challenge] preview_streak parameter is disabled in production environment"
+      );
+    }
+  }, [previewStreakRaw, vercelEnv]);
+
+  // preview_streak の値が変わったら override を必ずリセット（連打 / 値変更時の整合性確保）。
+  // URL パラメータという外部入力への同期なので useEffect が正しい場所
+  // （既存の missionStatus 同期と同じパターン）
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOptimisticOverride(null);
+    apiResolvedRef.current = false;
+    timelineDoneRef.current = false;
+  }, [previewStreak]);
+
+  // preview モードでは「実体の base state」を効果的に上書きする値を用意
+  const effectiveStreakDays = isPreviewMode ? previewStreak - 1 : streakDays;
+  const effectiveIsCheckedInToday = isPreviewMode ? false : isCheckedInToday;
+  const effectiveLastStreakLoginAt = isPreviewMode ? null : lastStreakLoginAt;
+
   // 表示用にマージしたストリーク状態（楽観的演出中は override が優先される）
-  const displayStreakDays = optimisticOverride?.streakDays ?? streakDays;
+  const displayStreakDays = optimisticOverride?.streakDays ?? effectiveStreakDays;
   const displayIsCheckedInToday =
-    optimisticOverride?.isCheckedInToday ?? isCheckedInToday;
+    optimisticOverride?.isCheckedInToday ?? effectiveIsCheckedInToday;
   const justUnlockedDay = optimisticOverride?.justUnlockedDay ?? null;
 
   // タップ時の期待値（API 結果が来る前の楽観的予測）
-  const isStreakBrokenNow = isStreakBroken(lastStreakLoginAt);
-  const expectedNextStreakDay = isCheckedInToday
-    ? streakDays
-    : isStreakBrokenNow || streakDays >= streakBonusSchedule.length
-      ? 1
-      : streakDays + 1;
+  // preview モードでは URL の N をそのまま採用する
+  const isStreakBrokenNow = isStreakBroken(effectiveLastStreakLoginAt);
+  const expectedNextStreakDay = isPreviewMode
+    ? previewStreak
+    : effectiveIsCheckedInToday
+      ? effectiveStreakDays
+      : isStreakBrokenNow || effectiveStreakDays >= streakBonusSchedule.length
+        ? 1
+        : effectiveStreakDays + 1;
   const expectedAmount =
     streakBonusSchedule[Math.max(0, expectedNextStreakDay - 1)] ?? 10;
   const expectedTier: RewardTier =
@@ -238,6 +298,8 @@ export function ChallengePageContent({
         : "normal";
 
   const tryDismissOptimistic = () => {
+    // preview モードでは override を維持し続ける（base state を更新しないため）
+    if (isPreviewMode) return;
     if (apiResolvedRef.current && timelineDoneRef.current) {
       setOptimisticOverride(null);
       apiResolvedRef.current = false;
@@ -245,9 +307,20 @@ export function ChallengePageContent({
     }
   };
 
-  const handleCheckInApi = (): Promise<CheckInStreakBonusResponse> => {
+  const handleCheckInApi = async (): Promise<CheckInStreakBonusResponse> => {
     apiResolvedRef.current = false;
     timelineDoneRef.current = false;
+    if (isPreviewMode) {
+      // モック: 通信なしで成功レスポンスを返す（300ms 待機して "API 風" にする）
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const bonus = streakBonusSchedule[previewStreak - 1] ?? 0;
+      return {
+        bonus_granted: bonus,
+        streak_days: previewStreak,
+        checked_in_today: true,
+        last_streak_login_at: new Date().toISOString(),
+      };
+    }
     return checkInStreakBonus({
       checkInFailed: t("checkInFailedDescription"),
     });
@@ -255,9 +328,11 @@ export function ChallengePageContent({
 
   const handleOptimisticDayPop = () => {
     setOptimisticOverride((prev) => ({
-      streakDays: prev?.streakDays ?? streakDays,
-      isCheckedInToday: prev?.isCheckedInToday ?? isCheckedInToday,
-      lastStreakLoginAt: prev?.lastStreakLoginAt ?? lastStreakLoginAt,
+      streakDays: prev?.streakDays ?? effectiveStreakDays,
+      isCheckedInToday:
+        prev?.isCheckedInToday ?? effectiveIsCheckedInToday,
+      lastStreakLoginAt:
+        prev?.lastStreakLoginAt ?? effectiveLastStreakLoginAt,
       justUnlockedDay: expectedNextStreakDay,
     }));
   };
@@ -272,6 +347,31 @@ export function ChallengePageContent({
   };
 
   const handleCheckInSuccess = async (result: CheckInStreakBonusResponse) => {
+    // preview モードでは base state も副作用 (refresh*) も触らず、トーストのみ
+    if (isPreviewMode) {
+      if (result.bonus_granted > 0) {
+        const streakDayForMessage =
+          result.streak_days ?? expectedNextStreakDay;
+        const description =
+          streakDayForMessage > 0
+            ? t("checkInSuccessWithStreak", {
+                days: streakDayForMessage,
+                bonus: result.bonus_granted,
+              })
+            : t("checkInSuccessWithoutStreak", {
+                bonus: result.bonus_granted,
+              });
+        toast({
+          title: t("checkInSuccessTitle"),
+          description,
+          variant: "default",
+        });
+      }
+      // override は維持（dismiss しない: tryDismissOptimistic も no-op）
+      apiResolvedRef.current = true;
+      return;
+    }
+
     // 実値で base state を正規化
     if (result.streak_days !== null) {
       setStreakDays(result.streak_days);
