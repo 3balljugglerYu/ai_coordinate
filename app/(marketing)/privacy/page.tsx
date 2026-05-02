@@ -39,11 +39,6 @@ export default async function PrivacyPage() {
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
 
-  const draftBanner =
-    locale === "ja"
-      ? "本ページは弁護士レビュー前のドラフトです。最終版とは内容が異なる場合があります。"
-      : "This page is a draft pending legal review. Final wording may differ.";
-
   const copy =
     locale === "ja"
       ? {
@@ -184,9 +179,6 @@ export default async function PrivacyPage() {
 
   return (
     <main className="mx-auto w-full max-w-screen-md px-4 py-6 md:py-10">
-      <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        {draftBanner}
-      </div>
       <div className="mb-6">
         <h1 className="text-xl font-semibold md:text-2xl">{copy.title}</h1>
         <p className="mt-2 text-sm text-gray-600">{copy.description}</p>
