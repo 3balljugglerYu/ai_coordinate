@@ -121,7 +121,11 @@ export function CheckInButton({
       if (typeof result.bonus_granted === "number" && result.bonus_granted > 0) {
         setActualAmount(result.bonus_granted);
       }
-      onSuccess(result);
+      // 意図的に fire-and-forget（void で明示）。
+      // onSuccess 内の refreshUnreadCount / refreshMissionDots など副次 fetch が
+      // 失敗してもチェックイン本体の成功は確定しているため revert すべきではない。
+      // 親側で必要な握り潰し（try/catch やログ）を担う責務とする。
+      void onSuccess(result);
     } catch (error) {
       // 失敗判明: タイムラインを停止し、phase を idle に戻す → 親に通知
       clearTimers();
