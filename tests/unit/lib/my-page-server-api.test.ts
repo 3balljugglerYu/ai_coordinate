@@ -714,11 +714,48 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       expect(supabase.fromCalls.generated_images[0].calls.eq).toEqual([
         ["user_id", "user-1"],
         ["is_posted", true],
+        ["moderation_status", "visible"],
       ]);
       expect(supabase.fromCalls.generated_images[0].calls.order).toEqual([
         ["posted_at", { ascending: false }],
       ]);
       expect(supabase.fromCalls.generated_images[0].calls.range).toEqual([[5, 7]]);
+    });
+
+    test("getUserPostsServer_閲覧者がownerの場合_visibleとpendingを返す", async () => {
+      // Spec: MPSAPI-007（追加: 本人は自分の pending 投稿を閲覧できる）
+      const rows = [
+        createImageRecord({ id: "post-own", moderation_status: "pending" }),
+      ];
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [
+            {
+              rangeResult: {
+                data: rows,
+                error: null,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await getUserPostsServer(
+        "user-1",
+        10,
+        0,
+        supabase.client as never,
+        "user-1"
+      );
+
+      expect(result).toEqual(rows);
+      expect(supabase.fromCalls.generated_images[0].calls.eq).toEqual([
+        ["user_id", "user-1"],
+        ["is_posted", true],
+      ]);
+      expect(supabase.fromCalls.generated_images[0].calls.in).toEqual([
+        ["moderation_status", ["visible", "pending"]],
+      ]);
     });
 
     test("getUserPostsServer_dataがnull相当の場合_空配列を返す", async () => {

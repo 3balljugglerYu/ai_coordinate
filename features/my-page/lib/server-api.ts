@@ -197,22 +197,34 @@ export const getUserStatsServer = cache(async (
 
 /**
  * ユーザーの投稿済み画像一覧を取得（サーバーサイド）
- * 他ユーザーのプロフィール画面用（投稿済みのみ）
+ * プロフィール画面用（投稿済みのみ）。
+ * - 本人が閲覧する場合は visible に加えて自分の pending も返す（フィードから消えていることに気づかせる）。
+ * - 第三者が閲覧する場合は visible のみ。
+ * - removed はどちらの場合も除外する。
  * @param supabaseOverride - use cache 用。指定時は cookies を使わない
+ * @param viewerUserId - 閲覧者のユーザーID。`userId` と一致する場合のみ pending を含める
  */
 export async function getUserPostsServer(
   userId: string,
   limit = 20,
   offset = 0,
-  supabaseOverride?: SupabaseClient
+  supabaseOverride?: SupabaseClient,
+  viewerUserId?: string | null
 ): Promise<GeneratedImageRecord[]> {
   const supabase = supabaseOverride ?? (await createClient());
+  const isOwner = !!viewerUserId && viewerUserId === userId;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("generated_images")
     .select("*")
     .eq("user_id", userId)
-    .eq("is_posted", true)
+    .eq("is_posted", true);
+
+  query = isOwner
+    ? query.in("moderation_status", ["visible", "pending"])
+    : query.eq("moderation_status", "visible");
+
+  const { data, error } = await query
     .order("posted_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
