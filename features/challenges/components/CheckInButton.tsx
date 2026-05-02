@@ -10,29 +10,29 @@ import { RedPulseDot } from "./RedPulseDot";
 import { RewardBurst, type RewardTier } from "./RewardBurst";
 
 /**
- * 設計書「Persta.AI チェックインボタン マイクロインタラクション」のタイムライン:
+ * チェックインボタン マイクロインタラクション（簡略版）。
  *
  *  0ms  : tap                              → phase = "pressed", API 呼び出し開始
- *  120ms: ボタン軽く縮小→戻り 完了        （CSS animation 経由で自動完了）
- *  300ms: 「受け取り中...」表示開始        → phase = "claiming"
- *  550ms: 「チェックイン完了！」表示       → phase = "complete"
+ *  120ms: ボタン軽く縮小→戻り 完了         （CSS animation で自動完了）
+ *  550ms: 「チェックイン完了！」表示        → phase = "complete"
  *  900ms: 「+N ペルコイン獲得！」浮遊表示 → phase = "rewardShown" + RewardBurst 起動
- *  1000ms: Day N 達成済みに変化（DayCard 弾み） → onOptimisticDayPop()
+ *  1000ms: Day N 達成済み（DayCard 弾み）    → onOptimisticDayPop()
  *  1200ms: 連続記録 N-1→N 切り替え           → onOptimisticStreakAdvance()
- *  1500ms: 「本日はチェックイン済み」状態へ   → phase = "done"
+ *  1500ms: タイムライン終了                   → phase = "done" + onTimelineDone()
  *
+ * 完了後は「チェックイン完了！」のまま固定（disabled）。翌日になるまで維持。
  * 楽観的UI: タップ即座にこのタイムラインを開始。API 失敗判明時のみ revert
  *  → 全タイマー clear、phase = "idle"、親に onError() を通知。
+ *
+ * 「受け取り中...」「本日はチェックイン済み」のステップは削除済み。
  */
 type CheckInPhase =
   | "idle"
   | "pressed"
-  | "claiming"
   | "complete"
   | "rewardShown"
   | "done";
 
-const T_CLAIMING_MS = 300;
 const T_COMPLETE_MS = 550;
 const T_REWARD_MS = 900;
 const T_DAY_POP_MS = 1000;
@@ -40,7 +40,7 @@ const T_STREAK_ADVANCE_MS = 1200;
 const T_DONE_MS = 1500;
 
 interface CheckInButtonProps {
-  /** 既にチェックイン済みなら disabled になり「チェックイン済み」表示 */
+  /** 既にチェックイン済みなら disabled になり「チェックイン完了！」表示で固定 */
   isCheckedInToday: boolean;
   /** 楽観的に表示する次回ボーナス額（API 結果が来たら上書き） */
   expectedAmount: number;
@@ -106,7 +106,6 @@ export function CheckInButton({
       const id = setTimeout(fn, delay);
       timersRef.current.push(id);
     };
-    schedule(T_CLAIMING_MS, () => setPhase("claiming"));
     schedule(T_COMPLETE_MS, () => setPhase("complete"));
     schedule(T_REWARD_MS, () => setPhase("rewardShown"));
     schedule(T_DAY_POP_MS, () => onOptimisticDayPop());
@@ -132,26 +131,27 @@ export function CheckInButton({
     }
   };
 
-  // 表示テキストの決定。アニメ中は phase 由来のラベルが親の isCheckedInToday より優先される
-  // （楽観的 advance により親が 1200ms 時点で isCheckedInToday=true を立てても、
-  //  設計書通り「チェックイン完了！」を 1500ms まで保持するため）
-  const isAnimating = phase !== "idle" && phase !== "done";
-  const showLoader = phase === "pressed" || phase === "claiming";
-  const labelText =
-    phase === "claiming"
-      ? t("checkInClaiming")
-      : phase === "complete" || phase === "rewardShown"
-        ? t("checkInComplete")
-        : isCheckedInToday
-          ? t("checkedIn")
-          : t("checkIn");
+  // 表示テキストの決定。
+  // - 既にチェックイン済み（再訪・連続日達成後）: 「チェックイン完了！」で固定
+  // - タイムライン上 complete 以降: 「チェックイン完了！」
+  // - それ以外（idle / pressed の 0〜550ms）: 「チェックイン」
+  const isAnimating = phase !== "idle";
+  const showCompleteLabel =
+    isCheckedInToday ||
+    phase === "complete" ||
+    phase === "rewardShown" ||
+    phase === "done";
+  const labelText = showCompleteLabel
+    ? t("checkInComplete")
+    : t("checkIn");
 
   // 報酬ラベル: API 実値があればそちらを優先、無ければ楽観値
   const rewardAmount = actualAmount ?? expectedAmount;
-  const rewardLabel =
-    expectedTier === "goal"
-      ? t("goalCompleteRewardLabel", { amount: rewardAmount })
-      : t("rewardCoinsLabel", { amount: rewardAmount });
+  const rewardLabel = t("rewardCoinsLabel", { amount: rewardAmount });
+  // 14日目（goal）のときだけ「2週間コンプリート！」見出しを付与し、
+  // RewardBurst で 2 行レイアウトに切り替える
+  const rewardHeadline =
+    expectedTier === "goal" ? t("goalCompleteHeadline") : undefined;
 
   return (
     <span className="relative inline-flex">
@@ -164,7 +164,15 @@ export function CheckInButton({
         onClick={handleClick}
         disabled={isAnimating || isCheckedInToday}
       >
-        {showLoader && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {/*
+          ローディング表示は pressed フェーズ（0–550ms）の間だけスピナーを出す。
+          テキストは「チェックイン」のまま据え置き、視覚的な "処理中" フィードバックのみ提供。
+          550ms で phase = "complete" に遷移し、ラベルが「チェックイン完了！」に変わる
+          のと同時にスピナーは自動的に消える。
+        */}
+        {phase === "pressed" && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+        )}
         <span
           key={labelText}
           className={cn(
@@ -190,6 +198,7 @@ export function CheckInButton({
       <RewardBurst
         show={phase === "rewardShown" || phase === "done"}
         label={rewardLabel}
+        headline={rewardHeadline}
         tier={expectedTier}
       />
 

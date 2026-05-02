@@ -822,43 +822,295 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     }
   }
 
+  /*
+   * 「+N ペルコイン獲得！」浮遊表示。
+   *
+   * カクつき軽減方針:
+   * 1) keyframes を 25 段階に細分化（duration 1100ms / linear で 1 区間 ~44ms = 2.6 frames@60fps）
+   * 2) animation-timing-function は linear。各区間内で余計な加減速を起こさない
+   * 3) translate3d + scale を 1 transform に統合、GPU 合成
+   * 4) 0–20% で出現＋ overshoot peak（16%）→ settle（20%）
+   * 5) 20–100% は alpha = (p - 20) / 80 で settle (-5.5px) → rise を線形補間
+   *    （Y は厳密に単調減少 / 上方向、反転なし）
+   * 6) 80% 以降に opacity と scale で穏やかにフェードアウト
+   */
   @keyframes checkInFxRewardFloat {
     0% {
       opacity: 0;
-      transform: translate(
+      transform: translate3d(
           calc(-50% + var(--check-in-reward-x, 0px)),
-          calc(-50% + 12px)
+          calc(-50% + 14px),
+          0
         )
         scale(0.6);
     }
-    18% {
-      opacity: 1;
-      transform: translate(
+    4% {
+      opacity: 0.2;
+      transform: translate3d(
           calc(-50% + var(--check-in-reward-x, 0px)),
-          calc(-50% - 4px)
+          calc(-50% + 12px),
+          0
+        )
+        scale(0.68);
+    }
+    8% {
+      opacity: 0.5;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% + 8px),
+          0
+        )
+        scale(0.8);
+    }
+    12% {
+      opacity: 0.8;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% + 2.5px),
+          0
+        )
+        scale(0.93);
+    }
+    16% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% - 3px),
+          0
         )
         scale(1.05);
     }
-    35% {
-      transform: translate(
+    20% {
+      opacity: 1;
+      transform: translate3d(
           calc(-50% + var(--check-in-reward-x, 0px)),
-          calc(-50% - 12px)
+          calc(-50% - 5.5px),
+          0
+        )
+        scale(1.02);
+    }
+    24% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 5.225px +
+              var(--check-in-reward-rise, -40px) * 0.05
+          ),
+          0
         )
         scale(1);
     }
-    75% {
+    28% {
       opacity: 1;
-      transform: translate(
+      transform: translate3d(
           calc(-50% + var(--check-in-reward-x, 0px)),
-          calc(-50% + var(--check-in-reward-rise, -36px) * 0.85)
+          calc(
+            -50% - 4.95px +
+              var(--check-in-reward-rise, -40px) * 0.1
+          ),
+          0
         )
         scale(1);
+    }
+    32% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 4.675px +
+              var(--check-in-reward-rise, -40px) * 0.15
+          ),
+          0
+        )
+        scale(1);
+    }
+    36% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 4.4px +
+              var(--check-in-reward-rise, -40px) * 0.2
+          ),
+          0
+        )
+        scale(1);
+    }
+    40% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 4.125px +
+              var(--check-in-reward-rise, -40px) * 0.25
+          ),
+          0
+        )
+        scale(1);
+    }
+    44% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 3.85px +
+              var(--check-in-reward-rise, -40px) * 0.3
+          ),
+          0
+        )
+        scale(1);
+    }
+    48% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 3.575px +
+              var(--check-in-reward-rise, -40px) * 0.35
+          ),
+          0
+        )
+        scale(1);
+    }
+    52% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 3.3px +
+              var(--check-in-reward-rise, -40px) * 0.4
+          ),
+          0
+        )
+        scale(1);
+    }
+    56% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 3.025px +
+              var(--check-in-reward-rise, -40px) * 0.45
+          ),
+          0
+        )
+        scale(1);
+    }
+    60% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 2.75px +
+              var(--check-in-reward-rise, -40px) * 0.5
+          ),
+          0
+        )
+        scale(1);
+    }
+    64% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 2.475px +
+              var(--check-in-reward-rise, -40px) * 0.55
+          ),
+          0
+        )
+        scale(1);
+    }
+    68% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 2.2px +
+              var(--check-in-reward-rise, -40px) * 0.6
+          ),
+          0
+        )
+        scale(1);
+    }
+    72% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 1.925px +
+              var(--check-in-reward-rise, -40px) * 0.65
+          ),
+          0
+        )
+        scale(1);
+    }
+    76% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 1.65px +
+              var(--check-in-reward-rise, -40px) * 0.7
+          ),
+          0
+        )
+        scale(1);
+    }
+    80% {
+      opacity: 0.95;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 1.375px +
+              var(--check-in-reward-rise, -40px) * 0.75
+          ),
+          0
+        )
+        scale(1);
+    }
+    86% {
+      opacity: 0.75;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 0.9625px +
+              var(--check-in-reward-rise, -40px) * 0.825
+          ),
+          0
+        )
+        scale(0.99);
+    }
+    91% {
+      opacity: 0.5;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 0.6188px +
+              var(--check-in-reward-rise, -40px) * 0.8875
+          ),
+          0
+        )
+        scale(0.98);
+    }
+    96% {
+      opacity: 0.2;
+      transform: translate3d(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(
+            -50% - 0.275px +
+              var(--check-in-reward-rise, -40px) * 0.95
+          ),
+          0
+        )
+        scale(0.97);
     }
     100% {
       opacity: 0;
-      transform: translate(
+      transform: translate3d(
           calc(-50% + var(--check-in-reward-x, 0px)),
-          calc(-50% + var(--check-in-reward-rise, -36px))
+          calc(-50% + var(--check-in-reward-rise, -40px)),
+          0
         )
         scale(0.95);
     }
@@ -866,29 +1118,199 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
 
   /*
    * パーティクル: ボタン中心から放射状に散る。
-   * 終端位置は --check-in-particle-x / --check-in-particle-y で個別指定。
+   * 終端位置は --check-in-particle-x / --check-in-particle-y で個別指定（JS 側で
+   * radius を 25% bump して「テキストより少し高く飛ぶ」見た目にしてある）。
+   *
+   * カクつき軽減: duration 1100ms / 19 段階 / linear（1 区間 ~58ms = 3.5 frames@60fps）。
+   * - 距離比率は単調増加 (0 → 0.07 → 0.14 → 0.22 → 0.30 → ... → 0.96 → 0.98 → 1.0)
+   * - 重力 +6px 落下、回転 0→180° は単調
+   * - opacity は 30–58% で full bright、65% 以降に段階的フェード
    */
   @keyframes checkInFxParticle {
     0% {
       opacity: 0;
-      transform: translate(-50%, -50%) scale(0.3)
+      transform: translate3d(-50%, -50%, 0) scale(0.3)
         rotate(var(--check-in-particle-rotate, 0deg));
     }
-    18% {
-      opacity: 1;
-      transform: translate(
-          calc(-50% + var(--check-in-particle-x, 0px) * 0.35),
-          calc(-50% + var(--check-in-particle-y, 0px) * 0.35)
+    4% {
+      opacity: 0.25;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.07),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.07),
+          0
         )
-        scale(1) rotate(calc(var(--check-in-particle-rotate, 0deg) + 60deg));
+        scale(0.55)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 12deg));
+    }
+    8% {
+      opacity: 0.5;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.14),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.14),
+          0
+        )
+        scale(0.85)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 25deg));
+    }
+    13% {
+      opacity: 0.7;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.22),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.22),
+          0
+        )
+        scale(0.95)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 38deg));
+    }
+    18% {
+      opacity: 0.9;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.3),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.3),
+          0
+        )
+        scale(1)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 50deg));
+    }
+    24% {
+      opacity: 0.97;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.38),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.38),
+          0
+        )
+        scale(1)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 62deg));
+    }
+    30% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.46),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.46),
+          0
+        )
+        scale(1)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 75deg));
+    }
+    37% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.53),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.53),
+          0
+        )
+        scale(1)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 87deg));
+    }
+    44% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.6),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.6 + 0.5px),
+          0
+        )
+        scale(1)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 100deg));
+    }
+    51% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.66),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.66 + 1px),
+          0
+        )
+        scale(1)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 113deg));
+    }
+    58% {
+      opacity: 1;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.72),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.72 + 1.5px),
+          0
+        )
+        scale(1)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 125deg));
+    }
+    65% {
+      opacity: 0.97;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.77),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.77 + 2.2px),
+          0
+        )
+        scale(0.99)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 135deg));
+    }
+    72% {
+      opacity: 0.92;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.82),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.82 + 3px),
+          0
+        )
+        scale(0.97)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 145deg));
+    }
+    78% {
+      opacity: 0.82;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.86),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.86 + 3.8px),
+          0
+        )
+        scale(0.93)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 154deg));
+    }
+    84% {
+      opacity: 0.65;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.9),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.9 + 4.5px),
+          0
+        )
+        scale(0.88)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 162deg));
+    }
+    89% {
+      opacity: 0.45;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.93),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.93 + 5px),
+          0
+        )
+        scale(0.83)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 168deg));
+    }
+    93% {
+      opacity: 0.28;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.96),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.96 + 5.4px),
+          0
+        )
+        scale(0.78)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 173deg));
+    }
+    96% {
+      opacity: 0.15;
+      transform: translate3d(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.98),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.98 + 5.7px),
+          0
+        )
+        scale(0.74)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 176deg));
     }
     100% {
       opacity: 0;
-      transform: translate(
+      transform: translate3d(
           calc(-50% + var(--check-in-particle-x, 0px)),
-          calc(-50% + var(--check-in-particle-y, 0px) + 6px)
+          calc(-50% + var(--check-in-particle-y, 0px) + 6px),
+          0
         )
-        scale(0.6) rotate(calc(var(--check-in-particle-rotate, 0deg) + 180deg));
+        scale(0.7)
+        rotate(calc(var(--check-in-particle-rotate, 0deg) + 180deg));
     }
   }
 
@@ -993,8 +1415,17 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     white-space: nowrap;
     pointer-events: none;
     opacity: 0;
-    animation: checkInFxRewardFloat 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    /*
+     * keyframes 自体が曲線形を高精度で定義しているため、ease 関数で
+     * 余計な加速/減速を起こさないよう linear に固定（フレームベース補間）。
+     * duration 1100ms × 25 段階 ≒ 1 区間 44ms（2.6 frames@60fps）でカクつき抑制。
+     */
+    animation: checkInFxRewardFloat 1100ms linear both;
+    /* GPU 合成を最大化（合成レイヤー化＋裏面非描画＋補間アーティファクト軽減） */
     will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
   }
 
   .check-in-fx-particle {
@@ -1008,10 +1439,17 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     background: currentColor;
     border-radius: 9999px;
     opacity: 0;
-    animation: checkInFxParticle 900ms cubic-bezier(0.34, 1.56, 0.64, 1)
+    /*
+     * テキスト浮遊（1100ms）と尺を揃える。19 段階 × linear で 1 区間 ~58ms
+     * （3.5 frames@60fps）。
+     */
+    animation: checkInFxParticle 1100ms linear
       var(--check-in-particle-delay, 0ms) both;
     pointer-events: none;
     will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
   }
 
   .check-in-fx-particle.is-icon {
