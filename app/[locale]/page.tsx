@@ -6,9 +6,11 @@ import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBan
 import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
 import { CachedHomePostListSection } from "@/features/home/components/CachedHomePostListSection";
 import { CachedHomeStylePresetSection } from "@/features/home/components/CachedHomeStylePresetSection";
+import { CachedHomeUserStyleTemplateSection } from "@/features/home/components/CachedHomeUserStyleTemplateSection";
 import { HomeBannerSkeleton } from "@/features/home/components/HomeBannerSkeleton";
 import { HomeHeading } from "@/features/home/components/HomeHeading";
 import { HomeStylePresetCarouselSkeleton } from "@/features/home/components/HomeStylePresetCarouselSkeleton";
+import { HomeUserStyleTemplateCarouselSkeleton } from "@/features/home/components/HomeUserStyleTemplateCarouselSkeleton";
 import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import {
   createLocaleAlternates,
@@ -156,6 +158,17 @@ export default async function LocaleHome({
       <Suspense fallback={<HomeStylePresetCarouselSkeleton />}>
         <CachedHomeStylePresetSection />
       </Suspense>
+      {/*
+        Inspire ホームカルーセル（ADR-013）。
+        env フラグ NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED が 'true' のときのみマウント。
+        MVP リリース時は未設定 = OFF で、ホームには何も追加されない。
+        admin が visible 化したテンプレも露出しないので、UI 設計が固まるまで安全。
+      */}
+      {process.env.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED === "true" && (
+        <Suspense fallback={<HomeUserStyleTemplateCarouselSkeleton />}>
+          <CachedHomeUserStyleTemplateSection />
+        </Suspense>
+      )}
       <Suspense fallback={<PostListSkeleton />}>
         <CachedHomePostListSection />
       </Suspense>

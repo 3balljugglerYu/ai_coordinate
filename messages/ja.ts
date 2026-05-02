@@ -1417,6 +1417,29 @@ export const jaMessages = {
     stylePresetConfirmTitle: "こちらを試着しますか？",
     stylePresetConfirmCancel: "他のコーデをみる",
     stylePresetConfirmAction: "試着する",
+    userStyleTemplateCarouselTitle: "みんなの投稿スタイル",
+    userStyleTemplateConfirmTitle:
+      "このイラストのスタイルを使って生成画面へ移動しますか？",
+    userStyleTemplateConfirmCancel: "他のテンプレを見る",
+    userStyleTemplateConfirmAction: "移動する",
+  },
+  inspirePage: {
+    pageTitle: "投稿スタイルで生成",
+    pageDescription:
+      "選択したスタイルテンプレートに、自分のキャラクター画像を組み合わせて生成します。",
+    formTitle: "キャラクター画像をアップロード",
+    formDescription:
+      "テンプレートのアングル・ポーズ・衣装・背景を維持し、キャラクターだけを差し替えた画像を生成します。",
+    formImageLabel: "キャラ画像（PNG / JPEG / WebP / HEIC、10MB まで）",
+    formCountLabel: "生成枚数",
+    formModelLabel: "モデル",
+    formGenerateButton: "生成する",
+    formGenerating: "生成中...",
+    formImageRequired: "キャラ画像をアップロードしてください",
+    formGenerationFailed: "生成に失敗しました。時間をおいて再試行してください。",
+    templateNotFound: "テンプレートが見つかりません",
+    templateUnavailable: "このテンプレートは現在利用できません",
+    submittedByLabel: "申請者",
   },
   popupBanners: {
     dialogTitle: "お知らせ",

@@ -1486,6 +1486,29 @@ export const enMessages = {
     stylePresetConfirmTitle: "Try this on?",
     stylePresetConfirmCancel: "See other outfits",
     stylePresetConfirmAction: "Try on",
+    userStyleTemplateCarouselTitle: "Community style templates",
+    userStyleTemplateConfirmTitle:
+      "Use this style to generate your own image?",
+    userStyleTemplateConfirmCancel: "See other templates",
+    userStyleTemplateConfirmAction: "Continue",
+  },
+  inspirePage: {
+    pageTitle: "Generate with this style",
+    pageDescription:
+      "Combine the selected style template with your own character image.",
+    formTitle: "Upload your character",
+    formDescription:
+      "We keep the template's angle, pose, outfit, and background intact, swapping only the character for yours.",
+    formImageLabel: "Character image (PNG / JPEG / WebP / HEIC, up to 10MB)",
+    formCountLabel: "Number of images",
+    formModelLabel: "Model",
+    formGenerateButton: "Generate",
+    formGenerating: "Generating...",
+    formImageRequired: "Please upload a character image.",
+    formGenerationFailed: "Generation failed. Please try again later.",
+    templateNotFound: "Template not found.",
+    templateUnavailable: "This template is currently unavailable.",
+    submittedByLabel: "Submitted by",
   },
   popupBanners: {
     dialogTitle: "Announcement",
