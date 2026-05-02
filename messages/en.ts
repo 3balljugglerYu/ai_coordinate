@@ -1019,7 +1019,12 @@ export const enMessages = {
     boostExtraLabel: "+{amount} extra",
     checkedIn: "Checked in",
     checkingIn: "Checking in...",
+    checkInClaiming: "Claiming...",
+    checkInComplete: "Check-in complete!",
     checkIn: "Check in",
+    rewardCoinsLabel: "+{amount} PerCoins earned!",
+    goalCompleteRewardLabel:
+      "2-week streak complete! +{amount} PerCoins earned!",
     resetAtJst: "Resets daily at 00:00 JST",
     streakBoostLabel: "{plan} perks boosted your max reward",
     streakBoostTotalLabel: "14-day total",

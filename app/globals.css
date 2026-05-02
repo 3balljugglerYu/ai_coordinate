@@ -766,6 +766,309 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     }
   }
 
+  /*
+   * ミッション画面 チェックインボタン マイクロインタラクション
+   * - .check-in-fx-button-press: タップ直後の軽い縮小→戻り（120ms）
+   * - .check-in-fx-glow:        通常成功時のボタン背面グロー
+   * - .check-in-fx-glow-strong: ボーナスデー / コンプリート時の強めグロー
+   * - .check-in-fx-label-swap:  ラベル切り替え時のフェード＋スライド
+   * - .check-in-fx-reward-float: 「+N ペルコイン獲得！」浮遊表示
+   *   （--check-in-reward-x / --check-in-reward-rise で位置調整）
+   * - .check-in-fx-particle:    周囲に散るパーティクル
+   *   （--check-in-particle-x / --check-in-particle-y / --check-in-particle-rotate /
+   *    --check-in-particle-color / --check-in-particle-size / --check-in-particle-delay）
+   * - .check-in-fx-day-pop:     Dayカード単一マスの弾みアニメ
+   * - .check-in-fx-check-pop:   弾み内のチェックマーク表示
+   * - .check-in-fx-goal-glow:   14日達成時の GOAL カード金色発光
+   *
+   * 親コンポーネント（CheckInButton）が phase state でクラスを付け外しする想定。
+   * onAnimationEnd でフェーズが進むのではなく、タイムライン管理は setTimeout で行う
+   * （設計書のイベントタイムライン 0/120/300/550/900/1000/1200/1500ms に整合）。
+   */
+  @keyframes checkInFxButtonPress {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(0.94);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes checkInFxGlow {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.6);
+    }
+    30% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1.6);
+    }
+  }
+
+  @keyframes checkInFxLabelSwap {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes checkInFxRewardFloat {
+    0% {
+      opacity: 0;
+      transform: translate(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% + 12px)
+        )
+        scale(0.6);
+    }
+    18% {
+      opacity: 1;
+      transform: translate(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% - 4px)
+        )
+        scale(1.05);
+    }
+    35% {
+      transform: translate(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% - 12px)
+        )
+        scale(1);
+    }
+    75% {
+      opacity: 1;
+      transform: translate(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% + var(--check-in-reward-rise, -36px) * 0.85)
+        )
+        scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(
+          calc(-50% + var(--check-in-reward-x, 0px)),
+          calc(-50% + var(--check-in-reward-rise, -36px))
+        )
+        scale(0.95);
+    }
+  }
+
+  /*
+   * パーティクル: ボタン中心から放射状に散る。
+   * 終端位置は --check-in-particle-x / --check-in-particle-y で個別指定。
+   */
+  @keyframes checkInFxParticle {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.3)
+        rotate(var(--check-in-particle-rotate, 0deg));
+    }
+    18% {
+      opacity: 1;
+      transform: translate(
+          calc(-50% + var(--check-in-particle-x, 0px) * 0.35),
+          calc(-50% + var(--check-in-particle-y, 0px) * 0.35)
+        )
+        scale(1) rotate(calc(var(--check-in-particle-rotate, 0deg) + 60deg));
+    }
+    100% {
+      opacity: 0;
+      transform: translate(
+          calc(-50% + var(--check-in-particle-x, 0px)),
+          calc(-50% + var(--check-in-particle-y, 0px) + 6px)
+        )
+        scale(0.6) rotate(calc(var(--check-in-particle-rotate, 0deg) + 180deg));
+    }
+  }
+
+  @keyframes checkInFxDayPop {
+    0% {
+      transform: scale(1);
+    }
+    35% {
+      transform: scale(1.18);
+    }
+    65% {
+      transform: scale(0.96);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes checkInFxCheckPop {
+    0% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.25);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes checkInFxGoalGlow {
+    0% {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+    25% {
+      opacity: 1;
+    }
+    60% {
+      opacity: 0.7;
+      transform: scale(1.05);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.2);
+    }
+  }
+
+  .check-in-fx-button-press {
+    animation: checkInFxButtonPress 120ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    will-change: transform;
+  }
+
+  .check-in-fx-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 140%;
+    height: 200%;
+    margin: 0;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle,
+      rgba(196, 181, 253, 0.55) 0%,
+      rgba(244, 114, 182, 0.35) 45%,
+      rgba(244, 114, 182, 0) 75%
+    );
+    opacity: 0;
+    animation: checkInFxGlow 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  .check-in-fx-glow-strong {
+    background: radial-gradient(
+      circle,
+      rgba(253, 224, 71, 0.65) 0%,
+      rgba(244, 114, 182, 0.45) 40%,
+      rgba(196, 181, 253, 0.25) 65%,
+      rgba(244, 114, 182, 0) 80%
+    );
+    animation-duration: 1100ms;
+  }
+
+  .check-in-fx-label-swap {
+    display: inline-flex;
+    align-items: center;
+    animation: checkInFxLabelSwap 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+  }
+
+  .check-in-fx-reward-float {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: 0;
+    color: rgb(168 85 247);
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    animation: checkInFxRewardFloat 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: transform, opacity;
+  }
+
+  .check-in-fx-particle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--check-in-particle-size, 8px);
+    height: var(--check-in-particle-size, 8px);
+    margin: 0;
+    color: var(--check-in-particle-color, rgb(244 114 182));
+    background: currentColor;
+    border-radius: 9999px;
+    opacity: 0;
+    animation: checkInFxParticle 900ms cubic-bezier(0.34, 1.56, 0.64, 1)
+      var(--check-in-particle-delay, 0ms) both;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  .check-in-fx-particle.is-icon {
+    background: transparent;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .check-in-fx-day-pop {
+    animation: checkInFxDayPop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    will-change: transform;
+  }
+
+  .check-in-fx-check-pop {
+    animation: checkInFxCheckPop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    will-change: transform, opacity;
+  }
+
+  .check-in-fx-goal-glow {
+    position: absolute;
+    inset: -8%;
+    border-radius: 1rem;
+    background: radial-gradient(
+      circle,
+      rgba(253, 224, 71, 0.8) 0%,
+      rgba(251, 191, 36, 0.45) 45%,
+      rgba(251, 191, 36, 0) 75%
+    );
+    opacity: 0;
+    animation: checkInFxGoalGlow 1400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /*
+     * いいねアニメと同様、フェーズ進行に animationend を使わない実装でも、
+     * 装飾類は完全に止めて opacity:0 にしておく。ボタン本体の押下感は最低限残す。
+     */
+    .check-in-fx-button-press,
+    .check-in-fx-day-pop,
+    .check-in-fx-check-pop,
+    .check-in-fx-label-swap {
+      animation-duration: 1ms;
+    }
+
+    .check-in-fx-glow,
+    .check-in-fx-reward-float,
+    .check-in-fx-particle,
+    .check-in-fx-goal-glow {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
   /* チュートリアル中: 画像アップロードのキャンセルボタンを非表示 */
   body[data-tour-in-progress="true"] .tour-image-cancel-btn {
     visibility: hidden;
