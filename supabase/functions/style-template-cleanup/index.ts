@@ -5,7 +5,10 @@
 // 関連する Storage オブジェクトを削除する。
 //
 // 起動: pg_cron が 1 時間ごとに net.http_post で叩く（migration 20260502120500 参照）。
-// 認可: verify_jwt = false（config.toml）+ 関数内で CRON_SECRET を Authorization ヘッダ照合（ADR-011）。
+// 認可: verify_jwt = false（config.toml）+ 関数内で STYLE_TEMPLATE_CLEANUP_CRON_SECRET を
+//        Authorization ヘッダ照合（ADR-011）。既存 CRON_SECRET (image-gen-worker /
+//        Next.js app の内部 API 認証用) とは独立した secret を使うことで、漏洩時の
+//        被害範囲を本機能のみに限定する（最小権限原則）。
 // 冪等性: Storage 削除 → DB 削除 順。途中失敗時は次回起動時に同じ行を再度拾う。
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -45,8 +48,11 @@ function extractStoragePath(url: string | null, bucket: string): string | null {
 }
 
 Deno.serve(async (req) => {
-  // CRON_SECRET 認証（ADR-011: verify_jwt=false の上に 2 層目）
-  const cronSecret = Deno.env.get("CRON_SECRET");
+  // 認証（ADR-011: verify_jwt=false の上に 2 層目）
+  // 既存の CRON_SECRET (image-gen-worker / Next.js app の内部 API 認証用) と分離するため、
+  // 本関数専用の STYLE_TEMPLATE_CLEANUP_CRON_SECRET を使う。
+  // Vault キー style_template_cleanup_cron_secret と同じ値を Edge Function Secrets に設定すること。
+  const cronSecret = Deno.env.get("STYLE_TEMPLATE_CLEANUP_CRON_SECRET");
   if (cronSecret) {
     const authHeader = req.headers.get("Authorization") || "";
     const expected = `Bearer ${cronSecret}`;
@@ -59,7 +65,7 @@ Deno.serve(async (req) => {
     }
   } else {
     console.warn(
-      "[style-template-cleanup] CRON_SECRET is not set; running without header check (development only)",
+      "[style-template-cleanup] STYLE_TEMPLATE_CLEANUP_CRON_SECRET is not set; running without header check (development only)",
     );
   }
 
