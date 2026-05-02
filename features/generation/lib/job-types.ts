@@ -52,6 +52,10 @@ export interface ImageJob {
   updated_at: string;
   started_at: string | null;
   completed_at: string | null;
+  // Inspire (Phase 1 マイグレで追加された列。NULL 許容、generation_type='inspire' のときのみ NOT NULL)
+  style_template_id?: string | null;
+  style_reference_image_url?: string | null;
+  override_target?: "angle" | "pose" | "outfit" | "background" | null;
 }
 
 /**

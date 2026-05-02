@@ -168,6 +168,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         processing_stage: "queued",
         requested_image_count: 1,
         attempts: 0,
+        // inspire 列は非 inspire 経路では NULL（Phase 1 マイグレ + handler 拡張）
+        style_template_id: null,
+        style_reference_image_url: null,
+        override_target: null,
       });
       expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
         "job-001"

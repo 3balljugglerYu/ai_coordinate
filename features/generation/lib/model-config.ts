@@ -91,3 +91,41 @@ export function getPercoinCost(model: string | null | undefined): number {
   const normalized = normalizeModelName(model);
   return MODEL_PERCOIN_COSTS[normalized as keyof typeof MODEL_PERCOIN_COSTS] ?? 10;
 }
+
+/**
+ * Inspire 機能で利用者が選択できるモデル一覧（1024px 以上のみ許可）。
+ * 2 枚画像入力（user character + style template）を扱うため、低解像度モデルは品質面で除外。
+ *
+ * - gemini-3.1-flash-image-preview-512 は inspire 用途には除外（低解像度）
+ * - プレビュー生成（運営コスト最小化）は別 INSPIRE_PREVIEW_MODELS を使用
+ */
+export const INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
+  'gemini-2.5-flash-image',
+  'gemini-3.1-flash-image-preview-1024',
+  'gemini-3-pro-image-1k',
+  'gemini-3-pro-image-2k',
+  'gemini-3-pro-image-4k',
+  'gpt-image-2-low',
+];
+
+/**
+ * Inspire 申請プレビュー生成で使うモデル（運営コスト最小化のため低解像度に固定）。
+ * 申請者は同期 API でこの 2 モデルから 2 枚を並列生成し、結果を見てから申請を確定する。
+ */
+export const INSPIRE_PREVIEW_MODELS: ReadonlyArray<GeminiModel> = [
+  'gpt-image-2-low',
+  'gemini-3.1-flash-image-preview-512',
+];
+
+/**
+ * canonical model が inspire 利用者の許可リストに含まれるか判定する。
+ * 既に `normalizeModelName()` を通した値を渡すこと。
+ */
+export function isInspireAllowedModel(
+  model: string | null | undefined
+): model is GeminiModel {
+  return (
+    typeof model === 'string' &&
+    (INSPIRE_ALLOWED_MODELS as ReadonlyArray<string>).includes(model)
+  );
+}

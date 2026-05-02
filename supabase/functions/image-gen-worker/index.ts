@@ -6,10 +6,12 @@ import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
 import {
   buildPrompt as buildSharedPrompt,
   buildCoordinateAttemptReinforcementPrefix,
+  buildInspirePrompt,
   resolveBackgroundMode,
 } from "../../../shared/generation/prompt-core.ts";
 import type {
   GenerationType,
+  InspireOverrideTarget,
 } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import {
@@ -24,7 +26,10 @@ import {
   getOneTapStylePresetMetadata,
   getOneTapStyleReservedAttemptId,
 } from "../../../shared/generation/one-tap-style-metadata.ts";
-import { callOpenAIImageEditBatch } from "./openai-image.ts";
+import {
+  callOpenAIImageEditBatch,
+  callOpenAIImageEditMultiInputBatch,
+} from "./openai-image.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -267,6 +272,33 @@ async function downloadInputImageViaStorageFallback(
 
   if (error || !data) {
     throw new Error(`Storage fallback download failed: ${error?.message ?? "Unknown error"}`);
+  }
+
+  const mimeType = data.type || "image/png";
+  const arrayBuffer = await data.arrayBuffer();
+  return {
+    base64: encodeBase64(new Uint8Array(arrayBuffer)),
+    mimeType,
+  };
+}
+
+/**
+ * Inspire 用: style-templates private bucket からテンプレ画像を取得する。
+ * `job.style_reference_image_url` は Storage 内のオブジェクトパス文字列。
+ */
+async function downloadStyleTemplateImage(
+  supabase: ReturnType<typeof createClient>,
+  storagePath: string
+): Promise<InputImageData> {
+  const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+    supabase.storage.from("style-templates").download(storagePath),
+    "Style template download"
+  );
+
+  if (error || !data) {
+    throw new Error(
+      `Style template download failed: ${error?.message ?? "Unknown error"}`
+    );
   }
 
   const mimeType = data.type || "image/png";
@@ -1368,6 +1400,8 @@ Deno.serve(async () => {
               // OpenAI 経路で再利用するため、inputPreparation 内で取得した入力画像を
               // 外側スコープに保持する（Gemini 経路でも parts に inline_data として使うのは同じ）
               let resolvedInputImageData: InputImageData | null = null;
+              // Inspire の image_1（スタイルテンプレ）。OpenAI 経路で多入力に渡す。
+              let resolvedInspireTemplateImage: InputImageData | null = null;
               const requestBody = await measureGeneratingSubstep(
                 jobId,
                 "inputPreparation",
@@ -1463,10 +1497,44 @@ Deno.serve(async () => {
                     });
                   }
 
+                  // ===== Inspire: テンプレ画像を image_1 として追加 =====
+                  // image_0 = ユーザーキャラ（既に push 済）, image_1 = スタイルテンプレ
+                  if (job.generation_type === "inspire") {
+                    const templatePath = job.style_reference_image_url as
+                      | string
+                      | null;
+                    if (!templatePath) {
+                      throw new Error(
+                        "Inspire job missing style_reference_image_url"
+                      );
+                    }
+                    const inspireTemplateImageData =
+                      await downloadStyleTemplateImage(supabase, templatePath);
+                    resolvedInspireTemplateImage = inspireTemplateImageData;
+                    parts.push({
+                      inline_data: {
+                        mime_type: inspireTemplateImageData.mimeType,
+                        data: inspireTemplateImageData.base64,
+                      },
+                    });
+                  }
+
                   const fullPrompt =
                     job.generation_type === "one_tap_style"
                       ? job.prompt_text
-                      : job.input_image_url
+                      : job.generation_type === "inspire"
+                        ? buildInspirePrompt({
+                            overrideTarget:
+                              (job.override_target as
+                                | InspireOverrideTarget
+                                | null
+                                | undefined) ?? null,
+                            sourceImageType:
+                              job.source_image_type === "real"
+                                ? "real"
+                                : "illustration",
+                          })
+                        : job.input_image_url
                         ? buildSharedPrompt({
                             generationType: job.generation_type as GenerationType,
                             outfitDescription: job.prompt_text,
@@ -1553,6 +1621,9 @@ Deno.serve(async () => {
                   throw new Error("OpenAI gpt-image-2 requires an input image");
                 }
                 const openAIInputImage = resolvedInputImageData;
+                const isInspireOpenAI =
+                  job.generation_type === "inspire" &&
+                  resolvedInspireTemplateImage !== null;
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
@@ -1567,12 +1638,24 @@ Deno.serve(async () => {
                     "providerRequest",
                     generatingSubstepDurationsMs,
                     () =>
-                      callOpenAIImageEditBatch({
-                        prompt: basePromptText,
-                        inputImage: openAIInputImage,
-                        timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
-                        n: requestedImageCount,
-                      }),
+                      isInspireOpenAI && resolvedInspireTemplateImage
+                        ? callOpenAIImageEditMultiInputBatch({
+                            prompt: basePromptText,
+                            inputImages: [
+                              openAIInputImage,
+                              resolvedInspireTemplateImage,
+                            ],
+                            // 出力フレームはテンプレ（image_1）の比率に合わせる（ADR-006）
+                            targetSizeBaseIndex: 1,
+                            timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            n: requestedImageCount,
+                          })
+                        : callOpenAIImageEditBatch({
+                            prompt: basePromptText,
+                            inputImage: openAIInputImage,
+                            timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            n: requestedImageCount,
+                          }),
                     { attempt: 1 }
                   );
                   attemptHttpOk = true;

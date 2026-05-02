@@ -35,7 +35,24 @@ export type GenerationType =
   | 'specified_coordinate'
   | 'full_body'
   | 'chibi'
-  | 'one_tap_style';
+  | 'one_tap_style'
+  | 'inspire';
+
+/**
+ * inspire 生成時の override_target。null=keep_all（テンプレ全要素を維持してキャラだけ差し替え）。
+ */
+export type InspireOverrideTarget =
+  | 'angle'
+  | 'pose'
+  | 'outfit'
+  | 'background';
+
+export const INSPIRE_OVERRIDE_TARGETS: ReadonlyArray<InspireOverrideTarget> = [
+  'angle',
+  'pose',
+  'outfit',
+  'background',
+];
 
 // データベース保存用のモデル名型（サイズ情報を含む）
 // 注: 名称は歴史的経緯で GeminiModel のまま。OpenAI モデルも同 union に含めるため

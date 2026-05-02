@@ -2,7 +2,10 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
-import { getAdminUserIds } from "@/lib/env";
+import {
+  getAdminUserIds,
+  getInspireSubmissionAllowedUserIds,
+} from "@/lib/env";
 
 /**
  * 認証ヘルパー関数
@@ -72,4 +75,23 @@ export async function requireAdmin() {
   }
 
   return user;
+}
+
+/**
+ * Inspire 申請者ホワイトリストの判定（ADR-010）
+ *
+ * 既存 requireAdmin と異なり env 空 = 全許可（fail-open / allow-all）。
+ * 段階開放ゲートのための一時的な仕組みであり、最終形は全認証ユーザーへの開放。
+ * env を空にする = 全公開する、という運用フローを成立させるために fail-open。
+ *
+ * 本番デプロイ前チェックリスト: 環境変数 INSPIRE_SUBMISSION_ALLOWED_USER_IDS が
+ * 運営の user_id を含む形で設定済みかを必ず確認すること（意図せぬ全公開を防ぐ）。
+ */
+export function isInspireSubmitterAllowed(userId: string): boolean {
+  const allowed = getInspireSubmissionAllowedUserIds();
+  if (allowed.length === 0) {
+    // env 空 = 全許可（ADR-010 参照、requireAdmin の deny-all とは意図的に逆向き）
+    return true;
+  }
+  return allowed.includes(userId);
 }

@@ -11,7 +11,11 @@ export type AdminAuditAction =
   | "moderation_reject"
   | "announcement_create"
   | "announcement_update"
-  | "announcement_delete";
+  | "announcement_delete"
+  | "style_template_approve"
+  | "style_template_reject"
+  | "style_template_unpublish"
+  | "style_template_order_update";
 
 export interface AdminAuditLogParams {
   adminUserId: string;

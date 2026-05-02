@@ -77,6 +77,7 @@ export const generationRequestSchema = z.object({
       'full_body',
       'chibi',
       'one_tap_style',
+      'inspire',
     ])
     .optional()
     .default('coordinate'),
@@ -87,6 +88,13 @@ export const generationRequestSchema = z.object({
     .optional()
     .default(DEFAULT_GENERATION_MODEL)
     .transform(normalizeModelName), // データベース保存用に正規化
+  // Inspire 専用: 参照するスタイルテンプレ ID と override 対象。
+  // generationType='inspire' のときのみ意味を持つ（superRefine で整合性検証）。
+  styleTemplateId: z.string().uuid().optional(),
+  overrideTarget: z
+    .enum(['angle', 'pose', 'outfit', 'background'])
+    .nullable()
+    .optional(),
 }).superRefine((data, ctx) => {
   const hasSourceImageStockId =
     typeof data.sourceImageStockId === "string" &&
@@ -105,6 +113,33 @@ export const generationRequestSchema = z.object({
       path: ["sourceImageBase64"],
       message: "人物画像をアップロードまたはストック画像を選択してください",
     });
+  }
+
+  // inspire 整合性検証: generationType='inspire' のときのみ styleTemplateId が必須、
+  // それ以外のタイプでは styleTemplateId / overrideTarget を受け付けない。
+  if (data.generationType === 'inspire') {
+    if (!data.styleTemplateId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["styleTemplateId"],
+        message: "スタイルテンプレートを選択してください",
+      });
+    }
+  } else {
+    if (data.styleTemplateId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["styleTemplateId"],
+        message: "styleTemplateId は inspire 生成時のみ指定できます",
+      });
+    }
+    if (data.overrideTarget) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["overrideTarget"],
+        message: "overrideTarget は inspire 生成時のみ指定できます",
+      });
+    }
   }
 }).transform((data) => {
   const backgroundMode = resolveBackgroundMode(
