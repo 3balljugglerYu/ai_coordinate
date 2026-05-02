@@ -11,6 +11,7 @@ import { ProfileHeaderSkeleton } from "@/features/my-page/components/ProfileHead
 import { UserStatsSkeleton } from "@/features/my-page/components/UserStatsSkeleton";
 import { PercoinBalanceSkeleton } from "@/features/my-page/components/PercoinBalanceSkeleton";
 import { MyPageImageGallerySkeleton } from "@/features/my-page/components/MyPageImageGallerySkeleton";
+import { MySubmittedTemplatesCard } from "@/features/inspire/components/MySubmittedTemplatesCard";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 
 export default async function MyPagePage() {
@@ -61,6 +62,15 @@ export default async function MyPagePage() {
               <CachedMyPageImageGallery userId={user.id} />
             </Suspense>
           </div>
+
+          {/*
+            Inspire 申請カード（REQ-S-11 / ADR-010）。
+            isInspireSubmitterAllowed が false のユーザーには null を返す。
+            env をクライアントへ漏らさないため Server Component。
+          */}
+          <Suspense fallback={null}>
+            <MySubmittedTemplatesCard userId={user.id} />
+          </Suspense>
         </div>
       </div>
     </div>

@@ -324,6 +324,76 @@ export const jaMessages = {
     imageNotFound: "画像が見つかりません",
     deleteImageForbidden: "この画像を削除する権限がありません",
     deleteImageFailed: "画像の削除に失敗しました",
+    inspireSectionTitle: "投稿スタイルテンプレート",
+    inspireSectionDescription:
+      "あなたのお気に入りのスタイルを「投稿テンプレート」として申請すると、運営承認後に他のユーザーがこのスタイルを使った画像生成を試せるようになります。",
+    inspireSubmitButton: "新しいテンプレートを申請",
+    inspireEmptyState: "まだ申請したテンプレートはありません。",
+    inspireStatusDraft: "下書き",
+    inspireStatusPending: "審査中",
+    inspireStatusVisible: "公開中",
+    inspireStatusRemoved: "差戻し / 非公開",
+    inspireStatusWithdrawn: "取り下げ済み",
+    inspireWithdrawAction: "取り下げ",
+    inspireWithdrawConfirmTitle: "申請を取り下げますか?",
+    inspireWithdrawConfirmDescriptionDraft:
+      "この下書きと関連画像は完全に削除されます。",
+    inspireWithdrawConfirmDescriptionActive:
+      "公開を取り下げます（完全削除はされませんが、ホームと一覧から消えます）。",
+    inspireWithdrawConfirmAction: "取り下げる",
+    inspireWithdrawCancelAction: "キャンセル",
+    inspireWithdrawSuccess: "取り下げました。",
+    inspireWithdrawFailed: "取り下げに失敗しました。",
+    inspireListFetchFailed: "申請一覧の取得に失敗しました。",
+  },
+  inspireSubmission: {
+    dialogTitle: "スタイルテンプレートを申請",
+    dialogDescription:
+      "お気に入りのイラストをアップロードして、運営審査を通過するとホームに掲載されます。著作権を侵害しない素材のみご利用ください。",
+    step1Title: "Step 1 / 3 — 画像をアップロード",
+    step1Description:
+      "PNG / JPEG / WebP / HEIC（10MB まで）対応。1024px 以上推奨。",
+    step1FileLabel: "ファイルを選択",
+    step1FileHint: "ファイル形式とサイズの上限を超えないようご注意ください。",
+    step1AltLabel: "画像説明（任意）",
+    step1AltPlaceholder: "例: 春らしいパステルピンクの私服",
+    step1NextButton: "プレビュー生成へ進む",
+    step2Title: "Step 2 / 3 — プレビュー生成",
+    step2Description:
+      "アップロードした画像を別のキャラクターに適用したらどう見えるかを 2 つのモデルで生成します。約 60〜90 秒お待ちください。",
+    step2GeneratingMessage: "生成中... 別タブを閉じないでください。",
+    step2PartialNotice:
+      "片方の生成のみ成功しました。問題なければそのまま申請できます。",
+    step2BackButton: "戻る",
+    step2RetryButton: "やり直す",
+    step2NextButton: "結果を確認する",
+    step3Title: "Step 3 / 3 — 申請内容を確認",
+    step3Description:
+      "プレビュー結果を確認し、著作権同意の上で申請してください。",
+    step3PreviewLabel: "プレビュー（OpenAI）",
+    step3PreviewLabelGemini: "プレビュー（Gemini）",
+    step3PreviewMissing: "（このモデルでは生成できませんでした）",
+    step3ConsentLabel:
+      "私はこの画像が自身が著作権を保有するか、適切な権利を取得済みのものであることに同意します。",
+    step3SubmitButton: "申請する",
+    step3BackButton: "戻る",
+    submitting: "申請中...",
+    submitSuccess: "申請を受け付けました。審査が完了すると通知が届きます。",
+    submitFailedGeneric: "申請に失敗しました。時間をおいて再試行してください。",
+    submitFailedConsent: "著作権同意にチェックを入れてください。",
+    submitFailedRateLimit:
+      "プレビュー生成回数の上限に達しました（24h で 10 回まで）。",
+    submitFailedCap:
+      "申請可能なテンプレ数の上限（5 件）を超えています。既存の申請を取り下げてから再試行してください。",
+    submitFailedSafety:
+      "安全性ポリシーによりプレビューを生成できませんでした。別の画像でお試しください。",
+    submitFailedTooLarge:
+      "画像サイズが大きすぎます。10MB 以下に圧縮して再試行してください。",
+    previewFailed: "プレビュー生成に失敗しました。やり直してください。",
+    cancelButton: "キャンセル",
+    featureLockedTitle: "この機能は現在限定公開中です",
+    featureLockedDescription:
+      "運営側で動作確認が完了するまで、申請機能は限定公開しています。",
   },
   profileEdit: {
     title: "プロフィールを編集",

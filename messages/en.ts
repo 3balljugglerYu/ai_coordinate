@@ -331,6 +331,79 @@ export const enMessages = {
     imageNotFound: "Image not found.",
     deleteImageForbidden: "You do not have permission to delete this image.",
     deleteImageFailed: "Failed to delete the image.",
+    inspireSectionTitle: "Submitted style templates",
+    inspireSectionDescription:
+      "Submit your favorite styles as templates. Once approved, other users can try image generation in your style.",
+    inspireSubmitButton: "Submit a new template",
+    inspireEmptyState: "You haven't submitted any templates yet.",
+    inspireStatusDraft: "Draft",
+    inspireStatusPending: "Under review",
+    inspireStatusVisible: "Published",
+    inspireStatusRemoved: "Rejected / Unpublished",
+    inspireStatusWithdrawn: "Withdrawn",
+    inspireWithdrawAction: "Withdraw",
+    inspireWithdrawConfirmTitle: "Withdraw this submission?",
+    inspireWithdrawConfirmDescriptionDraft:
+      "This draft and its images will be permanently deleted.",
+    inspireWithdrawConfirmDescriptionActive:
+      "This will withdraw the publication (the row remains, but it will no longer appear on the home or in lists).",
+    inspireWithdrawConfirmAction: "Withdraw",
+    inspireWithdrawCancelAction: "Cancel",
+    inspireWithdrawSuccess: "Withdrawn.",
+    inspireWithdrawFailed: "Failed to withdraw.",
+    inspireListFetchFailed: "Failed to load your submissions.",
+  },
+  inspireSubmission: {
+    dialogTitle: "Submit a style template",
+    dialogDescription:
+      "Upload a favorite illustration. Once approved, it will be featured on home. Only submit content you have rights to.",
+    step1Title: "Step 1 / 3 — Upload an image",
+    step1Description:
+      "PNG / JPEG / WebP / HEIC up to 10MB. 1024px or larger recommended.",
+    step1FileLabel: "Choose a file",
+    step1FileHint: "Make sure the file size and format are within limits.",
+    step1AltLabel: "Image description (optional)",
+    step1AltPlaceholder: "e.g. springy pastel-pink casual outfit",
+    step1NextButton: "Continue to preview",
+    step2Title: "Step 2 / 3 — Preview generation",
+    step2Description:
+      "We generate two previews (OpenAI + Gemini) to show how your style looks on a different character. Please wait ~60–90 seconds.",
+    step2GeneratingMessage: "Generating... please don't close this tab.",
+    step2PartialNotice:
+      "Only one of the two previews succeeded. You can still submit if the result looks acceptable.",
+    step2BackButton: "Back",
+    step2RetryButton: "Retry",
+    step2NextButton: "Review",
+    step3Title: "Step 3 / 3 — Review and submit",
+    step3Description:
+      "Review the preview results and submit with your copyright consent.",
+    step3PreviewLabel: "Preview (OpenAI)",
+    step3PreviewLabelGemini: "Preview (Gemini)",
+    step3PreviewMissing: "(this model failed to generate)",
+    step3ConsentLabel:
+      "I confirm that I own the copyright of this image, or that I have appropriate rights.",
+    step3SubmitButton: "Submit",
+    step3BackButton: "Back",
+    submitting: "Submitting...",
+    submitSuccess:
+      "Submission received. You'll be notified once review is complete.",
+    submitFailedGeneric:
+      "Submission failed. Please try again later.",
+    submitFailedConsent: "Please confirm copyright consent.",
+    submitFailedRateLimit:
+      "You've reached the preview generation limit (10 per 24h).",
+    submitFailedCap:
+      "You've reached the limit of 5 active submissions. Withdraw an existing one and try again.",
+    submitFailedSafety:
+      "Preview blocked by safety policy. Please try another image.",
+    submitFailedTooLarge:
+      "Image is too large. Compress to 10MB or less and try again.",
+    previewFailed:
+      "Preview generation failed. Please retry.",
+    cancelButton: "Cancel",
+    featureLockedTitle: "This feature is in limited release",
+    featureLockedDescription:
+      "Submissions are limited to allow-listed users while we verify the flow.",
   },
   profileEdit: {
     title: "Edit profile",
