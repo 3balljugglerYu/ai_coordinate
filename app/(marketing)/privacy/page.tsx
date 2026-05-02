@@ -54,11 +54,12 @@ export default async function PrivacyPage() {
                 "メールアドレス（認証用）",
                 "ニックネーム（表示名）",
                 "プロフィール画像（任意）",
-                "生成した画像データ",
+                "生成した画像データ、入力プロンプト、利用したスタイリングカード等の生成パラメータ",
+                "ユーザーが投稿した画像、コメント、いいね等のソーシャル機能上のアクション",
                 "決済情報（Stripe経由、当サービスでは直接保存しません）",
                 "通報した投稿・カテゴリ・詳細内容（通報機能の利用時）",
                 "ブロックしたユーザー・ブロックされたユーザーとの関係（ブロック機能の利用時）",
-                "アクセスログ、IPアドレス、ブラウザ情報等",
+                "アクセスログ、IPアドレス、ブラウザ情報、端末情報、Cookie 等",
               ],
             },
             {
@@ -69,11 +70,22 @@ export default async function PrivacyPage() {
               list: [
                 "当サービスの提供、運営、管理",
                 "ユーザーからのお問い合わせへの対応",
-                "利用規約に違反した行為への対応",
+                "利用規約・コミュニティガイドラインに違反した行為への対応、段階的執行措置の判断",
                 "通報・ブロック・コンテンツ審査の実施（不適切なコンテンツの排除、トラブル防止）",
                 "当サービスの新機能、更新情報、キャンペーン等の案内",
                 "利用状況の分析、サービス改善のための統計データの作成",
-                "不正利用の防止、セキュリティ対策",
+                "不正利用の防止、セキュリティ対策、CSAM 等の重大違反コンテンツの検知・関係当局への通報および証拠保全",
+                "当サービスの安全性・モデレーション精度・出力品質を改善するための、社内に閉じた統計的・機械的解析",
+              ],
+            },
+            {
+              icon: "database",
+              title: "2-2. 生成 AI モデルの学習および当サービスによる二次利用",
+              description: "ユーザーコンテンツの学習・二次利用に関する方針",
+              paragraphs: [
+                "当サービスは、ユーザーが入力したプロンプト、生成画像、投稿画像、その他のユーザーコンテンツを、ユーザーの個別の同意なく、第三者または汎用 AI モデルの学習データとして提供することはありません。",
+                "当サービスは、安全性向上、不正利用検知、モデレーション、品質改善、当サービスのプロモーションに必要な範囲で、ユーザーコンテンツを内部的に解析・保管することがあります。具体的な許諾範囲は利用規約に従います。",
+                "当サービスが将来的に、ユーザーコンテンツを学習用途・第三者提供等の追加目的で利用する場合は、事前にプライバシーポリシーを改定し、必要に応じてユーザーへ通知の上、適切な方法で同意取得またはオプトアウト手段を提供します。",
               ],
             },
             {
@@ -82,6 +94,7 @@ export default async function PrivacyPage() {
               description: "個人情報の安全管理について",
               paragraphs: [
                 "当サービスは、個人情報の漏洩、滅失または毀損の防止その他の個人情報の安全管理のため、必要かつ適切な措置を講じます。個人情報の取扱いに関する責任は、当サービスが負います。",
+                "通報、執行措置、異議申立て等の記録は、モデレーションの一貫性確保および紛争対応のため、合理的な期間内で保持します。",
               ],
             },
             {
@@ -90,13 +103,13 @@ export default async function PrivacyPage() {
               description: "第三者への提供について",
               paragraphs: [
                 "当サービスは、以下の場合を除き、ユーザーの個人情報を第三者に提供することはありません。",
-                "なお、当サービスは、Supabase（認証・データベース・ストレージサービス）およびStripe（決済サービス）を利用しており、これらのサービス提供者に個人情報が提供される場合があります。これらのサービス提供者は、それぞれのプライバシーポリシーに従って個人情報を管理します。",
+                "なお、当サービスは、Supabase（認証・データベース・ストレージサービス）、Stripe（決済サービス）、画像生成 API 提供元（OpenAI、Google 等）、その他のクラウドインフラ事業者を利用しており、これらのサービス提供者に必要な範囲でデータが提供される場合があります。これらのサービス提供者は、それぞれのプライバシーポリシーに従って個人情報を管理します。",
               ],
               list: [
                 "ユーザーの同意がある場合",
                 "法令に基づく場合",
                 "人の生命、身体または財産の保護のために必要がある場合",
-                "公衆衛生の向上または児童の健全な育成の推進のために特に必要がある場合",
+                "公衆衛生の向上または児童の健全な育成の推進のために特に必要がある場合（CSAM の発見時に関係当局へ通報する場合を含みます）",
                 "国の機関もしくは地方公共団体またはその委託を受けた者が法令の定める事務を遂行することに対して協力する必要がある場合",
               ],
             },
@@ -112,6 +125,7 @@ export default async function PrivacyPage() {
               description: "個人情報の開示等の請求について",
               paragraphs: [
                 "ユーザーは、当サービスが保有する自己の個人情報について、開示、訂正、削除を求めることができます。これらの請求は、当サービスが定める方法により、当サービスにご連絡いただくことで対応いたします。",
+                "ただし、不正利用の調査、紛争対応、法令上の保存義務、CSAM の証拠保全等の必要がある場合、削除請求に対しても合理的な範囲で当該データを保持することがあります。",
               ],
             },
             {
@@ -119,13 +133,14 @@ export default async function PrivacyPage() {
               description: "退会手続き時のデータの取扱いについて",
               paragraphs: [
                 "ユーザーが退会手続きを行った場合、退会申請時点で投稿中の画像は投稿取り消し（非公開）となります。また、当サービスは退会申請日から30日間の経過後にアカウントを完全削除します。完全削除時には、当サービス内で当該ユーザーに紐づくデータ（プロフィール情報、生成画像、投稿画像、コメント、いいね、通報履歴、ブロック関係、保有ペルコイン残高等）を削除し、復元できません。",
+                "ただし、不正利用調査、法令上の保存義務、CSAM 等重大違反に関する証拠保全、当サービスの紛争対応に必要な記録については、削除後も合理的な期間保持することがあります。",
               ],
             },
             {
               title: "8. プライバシーポリシーの変更",
               description: "プライバシーポリシーの変更について",
               paragraphs: [
-                "当サービスは、必要に応じて、本プライバシーポリシーを変更することがあります。変更後のプライバシーポリシーは、本ページに掲載した時点で効力を生じるものとします。",
+                "当サービスは、必要に応じて、本プライバシーポリシーを変更することがあります。変更後のプライバシーポリシーは、本ページに掲載した時点で効力を生じるものとします。学習用途・第三者提供等、ユーザー権利に大きな影響を与える変更を行う場合は、合理的な範囲で事前に告知します。",
               ],
             },
             {
@@ -135,103 +150,31 @@ export default async function PrivacyPage() {
                 "本プライバシーポリシーに関するお問い合わせは、以下のメールアドレスまでご連絡ください。",
               ],
             },
-          ] satisfies Section[],
+          ] as Section[],
         }
       : {
           title: "Privacy Policy",
-          description: "This is the Privacy Policy for Persta.AI.",
+          description:
+            "This is the Privacy Policy for Persta.AI. The Japanese version is the authoritative text. This English version is a brief notice while the full translation is being prepared — please consult the Japanese version for binding terms.",
           sections: [
             {
               icon: "shield",
-              title: "1. Information We Collect",
-              description: "Personal information collected by the Service",
-              paragraphs: ["The Service collects the following personal information."],
-              list: [
-                "Email address (for authentication)",
-                "Nickname (display name)",
-                "Profile image (optional)",
-                "Generated image data",
-                "Payment information (via Stripe; the Service does not store it directly)",
-                "Reported posts, categories, and detailed report contents when using the reporting feature",
-                "Relationships involving blocked users when using the blocking feature",
-                "Access logs, IP addresses, browser information, and related usage data",
-              ],
-            },
-            {
-              icon: "eye",
-              title: "2. Purpose of Use",
-              description: "How collected personal information is used",
-              paragraphs: ["The Service uses collected personal information for the following purposes."],
-              list: [
-                "Providing, operating, and managing the Service",
-                "Responding to user inquiries",
-                "Addressing conduct that violates the Terms of Service",
-                "Operating reporting, blocking, and content review processes to remove inappropriate content and prevent trouble",
-                "Announcing new features, updates, and campaigns related to the Service",
-                "Analyzing usage and preparing statistical data to improve the Service",
-                "Preventing abuse and maintaining security",
+              title: "Notice",
+              description: "English translation pending",
+              paragraphs: [
+                "The full English translation of this Privacy Policy is being prepared. For the binding terms, please consult the Japanese version of this page.",
+                "Major topics covered in the Japanese version include: information collected by the Service, purposes of use, the Service's policy on AI training and operator secondary use of user content, security management, provision to third parties (including service providers and emergency disclosure to authorities for CSAM), use of cookies, disclosure/correction/deletion requests, retention on withdrawal, and contact information.",
               ],
             },
             {
               icon: "lock",
-              title: "3. Management of Personal Information",
-              description: "Security management of personal information",
-              paragraphs: [
-                "The Service takes necessary and appropriate measures to prevent leakage, loss, or damage of personal information and to otherwise manage such information securely. The Service is responsible for the handling of personal information.",
-              ],
-            },
-            {
-              icon: "database",
-              title: "4. Provision to Third Parties",
-              description: "Provision to third parties",
-              paragraphs: [
-                "Except in the following cases, the Service will not provide users' personal information to third parties.",
-                "The Service uses Supabase (authentication, database, and storage services) and Stripe (payment services), and personal information may be provided to these providers as necessary. These providers handle personal information in accordance with their respective privacy policies.",
-              ],
-              list: [
-                "When the user has given consent",
-                "When required by laws or regulations",
-                "When necessary to protect a person's life, body, or property",
-                "When especially necessary for improving public health or promoting the sound development of children",
-                "When cooperation is necessary for a national or local government body, or a party entrusted by such a body, to carry out duties prescribed by law",
-              ],
-            },
-            {
-              title: "5. Use of Cookies and Similar Technologies",
-              description: "Use of cookies and similar technologies",
-              paragraphs: [
-                "The Service may use cookies and similar technologies to provide a better experience. Cookies help the Service understand how it is being used by storing identifiers on the user's device. Users can refuse cookies through their browser settings.",
-              ],
-            },
-            {
-              title: "6. Disclosure, Correction, and Deletion",
-              description: "Requests concerning personal information",
-              paragraphs: [
-                "Users may request disclosure, correction, or deletion of their personal information held by the Service. Such requests can be handled by contacting the Service through the method designated by the Service.",
-              ],
-            },
-            {
-              title: "7. Handling on Withdrawal and Account Deletion",
-              description: "How data is handled when a user withdraws",
-              paragraphs: [
-                "If a user completes a withdrawal procedure, any images currently posted by that user will be withdrawn from posting and made private at the time of the request. The Service will permanently delete the account 30 days after the withdrawal request. Upon permanent deletion, data linked to that user within the Service, including profile information, generated images, posted images, comments, likes, report history, block relationships, and Percoin balances, will be deleted and cannot be restored.",
-              ],
-            },
-            {
-              title: "8. Changes to this Privacy Policy",
-              description: "Changes to the Privacy Policy",
-              paragraphs: [
-                "The Service may revise this Privacy Policy as needed. Any revised Privacy Policy becomes effective when posted on this page.",
-              ],
-            },
-            {
-              title: "9. Contact",
+              title: "Contact",
               description: "Questions regarding personal information",
               paragraphs: [
                 "If you have any questions about this Privacy Policy, please contact us at the email address below.",
               ],
             },
-          ] satisfies Section[],
+          ] as Section[],
         };
 
   return (
@@ -267,7 +210,7 @@ export default async function PrivacyPage() {
                     ))}
                   </ul>
                 ) : null}
-                {section.title.endsWith("お問い合わせ窓口") || section.title === "9. Contact" ? (
+                {section.title.endsWith("お問い合わせ窓口") || section.title === "Contact" ? (
                   <p className="mt-2 text-sm text-gray-800">
                     <a href="mailto:yuh.products@gmail.com" className="text-primary underline underline-offset-2">
                       yuh.products@gmail.com

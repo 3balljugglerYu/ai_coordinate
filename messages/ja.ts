@@ -30,6 +30,7 @@ export const jaMessages = {
     about: "サービス紹介",
     terms: "利用規約",
     privacy: "プライバシーポリシー",
+    communityGuidelines: "コミュニティガイドライン",
     disclosure: "商取引に関する開示",
   },
   searchBar: {
