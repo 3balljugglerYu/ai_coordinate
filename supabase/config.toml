@@ -2,3 +2,8 @@
 # Authorization ヘッダーなしでアクセス可能にする必要がある
 [functions.image-gen-worker]
 verify_jwt = false
+
+# style-template-cleanup は pg_cron から呼び出されるため verify_jwt は無効。
+# 関数内で CRON_SECRET を Authorization ヘッダ照合する 2 層防御（ADR-011）。
+[functions.style-template-cleanup]
+verify_jwt = false
