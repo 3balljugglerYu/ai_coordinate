@@ -8,7 +8,18 @@ export type GenerationType =
   | "specified_coordinate"
   | "full_body"
   | "chibi"
-  | "one_tap_style";
+  | "one_tap_style"
+  | "inspire";
+
+/**
+ * Inspire 機能で「テンプレのどの要素を上書き再生成するか」の対象。
+ * null は keep_all を意味し、テンプレの全要素を維持してキャラだけ差し替える。
+ */
+export type InspireOverrideTarget =
+  | "angle"
+  | "pose"
+  | "outfit"
+  | "background";
 
 export const SOURCE_IMAGE_TYPES = ["illustration", "real"] as const;
 export type SourceImageType = (typeof SOURCE_IMAGE_TYPES)[number];
@@ -244,8 +255,115 @@ Keep everything else consistent: face features, hair, pose, expression, lighting
     return sanitizedDescription;
   }
 
+  if (generationType === "inspire") {
+    // Inspire のプロンプトは buildInspirePrompt() で別経路から組み立てる。
+    // この経路に到達したら呼び出し側のバグなので明示的に失敗させる。
+    throw new Error(
+      "Inspire generation must use buildInspirePrompt() instead of buildPrompt()."
+    );
+  }
+
   throw new Error(
-    `API Error - Configuration '${generationType}' not found. Available types: coordinate, specified_coordinate, full_body, chibi, one_tap_style`
+    `API Error - Configuration '${generationType}' not found. Available types: coordinate, specified_coordinate, full_body, chibi, one_tap_style, inspire`
+  );
+}
+
+export interface BuildInspirePromptOptions {
+  /**
+   * テンプレのどの要素を上書き再生成するか。null = keep_all（全要素維持してキャラだけ差し替え）。
+   */
+  overrideTarget: InspireOverrideTarget | null;
+  /**
+   * ユーザーがアップロードしたキャラ画像が「実写」なのか「イラスト」なのか。
+   * Worker は image_jobs.source_image_type から渡す。
+   */
+  sourceImageType?: SourceImageType;
+}
+
+/**
+ * Inspire 生成用のプロンプトを構築する。
+ *
+ * 入力画像の順序は **必ず以下** とする（Worker 側で揃えること）:
+ *   image_0 = ユーザーがアップロードしたキャラ画像
+ *   image_1 = 申請されたスタイルテンプレート画像
+ *
+ * 出力フレームの比率はテンプレ（image_1）に合わせる。これはテンプレートの構図を
+ * 完全に維持するために必須。Worker 側の `resolveOpenAITargetSize` も image_1 を起点に算出する。
+ *
+ * 5 ブランチ:
+ *   - keep_all (overrideTarget=null): テンプレのアングル/ポーズ/衣装/背景を維持してキャラだけ差し替える
+ *   - angle: テンプレのアングルだけを変えて、ポーズ/衣装/背景は維持
+ *   - pose: テンプレのポーズだけを変えて、アングル/衣装/背景は維持
+ *   - outfit: テンプレの衣装だけを変えて、アングル/ポーズ/背景は維持
+ *   - background: テンプレの背景だけを変えて、アングル/ポーズ/衣装は維持
+ */
+export function buildInspirePrompt(options: BuildInspirePromptOptions): string {
+  const { overrideTarget, sourceImageType = "illustration" } = options;
+
+  const styleSuffix =
+    sourceImageType === "real"
+      ? "Generate a photorealistic result. Captured with an 85mm portrait lens. Use realistic lighting consistent with image_1's environment."
+      : "Match the illustration touch and artistic style of image_1 (the style template).";
+
+  const basePrefix = `CRITICAL INSTRUCTION: This is an Image-to-Image task with two reference images:
+- image_0 (User Character): the character (face, hair, identity) to render in the output.
+- image_1 (Style Template): the visual reference for composition, framing, and overall vibe.
+
+You MUST produce a single output image that:
+1. Replaces the character in image_1 with the character from image_0 (preserve image_0's facial features, hair, and identity).
+2. Strictly preserves image_1's aspect ratio, framing, and crop. Do NOT extend or change the canvas.`;
+
+  if (overrideTarget === null) {
+    return [
+      basePrefix,
+      `3. KEEP ALL of the following from image_1: camera angle, pose, outfit, and background. Only the character identity is taken from image_0.`,
+      `4. The output must look as if the character from image_0 stepped into image_1's exact scene with the same pose, outfit, and background.`,
+      styleSuffix,
+    ].join("\n\n");
+  }
+
+  if (overrideTarget === "angle") {
+    return [
+      basePrefix,
+      `3. KEEP from image_1: pose, outfit, and background.`,
+      `4. CHANGE: regenerate the camera angle to a natural alternative (e.g., a different viewpoint of the same scene) while keeping the rest faithful to image_1.`,
+      `5. The character identity must come from image_0.`,
+      styleSuffix,
+    ].join("\n\n");
+  }
+
+  if (overrideTarget === "pose") {
+    return [
+      basePrefix,
+      `3. KEEP from image_1: camera angle, outfit, and background.`,
+      `4. CHANGE: regenerate the pose to a natural alternative that fits the same scene and outfit.`,
+      `5. The character identity must come from image_0.`,
+      styleSuffix,
+    ].join("\n\n");
+  }
+
+  if (overrideTarget === "outfit") {
+    return [
+      basePrefix,
+      `3. KEEP from image_1: camera angle, pose, and background.`,
+      `4. CHANGE: regenerate the outfit to a natural alternative that suits the scene and pose.`,
+      `5. The character identity must come from image_0.`,
+      styleSuffix,
+    ].join("\n\n");
+  }
+
+  if (overrideTarget === "background") {
+    return [
+      basePrefix,
+      `3. KEEP from image_1: camera angle, pose, and outfit.`,
+      `4. CHANGE: regenerate the background to a natural alternative that complements the outfit and pose.`,
+      `5. The character identity must come from image_0.`,
+      styleSuffix,
+    ].join("\n\n");
+  }
+
+  throw new Error(
+    `Unsupported inspire overrideTarget: ${String(overrideTarget)}`
   );
 }
 

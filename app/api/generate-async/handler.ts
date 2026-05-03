@@ -4,11 +4,16 @@ import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/feature
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
 import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
-import { getPercoinCost } from "@/features/generation/lib/model-config";
+import {
+  getPercoinCost,
+  isInspireAllowedModel,
+} from "@/features/generation/lib/model-config";
 import {
   DEFAULT_GENERATION_MODEL,
   isOpenAIImageModel,
 } from "@/features/generation/types";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getStyleTemplateById } from "@/features/inspire/lib/repository";
 import {
   getMaxGenerationCount,
   normalizeSubscriptionPlan,
@@ -115,9 +120,54 @@ export async function postGenerateAsyncRoute(
       count,
       generationType,
       model,
+      styleTemplateId,
+      overrideTarget,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
+    const isInspireRequest = generationType === "inspire";
+
+    // inspire 専用: model whitelist + テンプレ visibility 検証
+    let inspireStyleTemplateImageUrl: string | null = null;
+    if (isInspireRequest) {
+      if (!isInspireAllowedModel(effectiveModel)) {
+        return jsonError(
+          "選択したモデルは Inspire 生成ではご利用いただけません",
+          "GENERATION_INSPIRE_MODEL_NOT_ALLOWED",
+          400
+        );
+      }
+      if (!styleTemplateId) {
+        return jsonError(
+          "スタイルテンプレートが指定されていません",
+          "GENERATION_INSPIRE_TEMPLATE_REQUIRED",
+          400
+        );
+      }
+      // テンプレが visible 状態かを admin client で検証
+      const adminClient = createAdminClient();
+      const { data: template, error: templateError } = await getStyleTemplateById(
+        adminClient,
+        styleTemplateId
+      );
+      if (templateError || !template) {
+        return jsonError(
+          "スタイルテンプレートが見つかりません",
+          "GENERATION_INSPIRE_TEMPLATE_NOT_FOUND",
+          404
+        );
+      }
+      if (template.moderation_status !== "visible") {
+        // 申請者本人のみ自分の draft / pending / removed / withdrawn を使うことは禁止
+        return jsonError(
+          "スタイルテンプレートが現在公開されていません",
+          "GENERATION_INSPIRE_TEMPLATE_NOT_VISIBLE",
+          409
+        );
+      }
+      // image_url は storage_path 文字列（Storage 内部パス）。Worker 側で署名 URL 化して fetch する。
+      inspireStyleTemplateImageUrl = template.storage_path;
+    }
 
     const jobRepository =
       dependencies.jobRepository ?? createAsyncGenerationJobRepository();
@@ -277,6 +327,12 @@ export async function postGenerateAsyncRoute(
       processing_stage: "queued",
       requested_image_count: acceptedImageCount,
       attempts: 0,
+      // inspire 列: 整合性 CHECK は (generation_type='inspire') = (style_template_id IS NOT NULL)
+      style_template_id: isInspireRequest ? styleTemplateId ?? null : null,
+      style_reference_image_url: isInspireRequest
+        ? inspireStyleTemplateImageUrl
+        : null,
+      override_target: isInspireRequest ? overrideTarget ?? null : null,
     };
 
     const { data: job, error: insertError } =

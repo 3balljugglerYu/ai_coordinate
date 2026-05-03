@@ -63,6 +63,19 @@ const envSchema = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   CONTACT_EMAIL: process.env.CONTACT_EMAIL,
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+
+  // Inspire（ユーザー投稿スタイルテンプレート機能）
+  // 機能全体の kill switch
+  NEXT_PUBLIC_INSPIRE_ENABLED: process.env.NEXT_PUBLIC_INSPIRE_ENABLED,
+  // ホームカルーセル個別フラグ（ADR-013）。'true' のときだけホームに露出する
+  NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
+    process.env.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED,
+  // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
+  INSPIRE_TEST_CHARACTER_IMAGE_URL:
+    process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
+  // 申請者ホワイトリスト（カンマ区切り UUID、空 = 全許可、ADR-010 fail-open）
+  INSPIRE_SUBMISSION_ALLOWED_USER_IDS:
+    process.env.INSPIRE_SUBMISSION_ALLOWED_USER_IDS,
 } as const;
 
 /**
@@ -146,6 +159,13 @@ function getEnv() {
     RESEND_API_KEY: envSchema.RESEND_API_KEY || "",
     CONTACT_EMAIL: envSchema.CONTACT_EMAIL || "yuh.products@gmail.com",
     RESEND_FROM_EMAIL: envSchema.RESEND_FROM_EMAIL || "",
+    NEXT_PUBLIC_INSPIRE_ENABLED: envSchema.NEXT_PUBLIC_INSPIRE_ENABLED || "",
+    NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
+      envSchema.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED || "",
+    INSPIRE_TEST_CHARACTER_IMAGE_URL:
+      envSchema.INSPIRE_TEST_CHARACTER_IMAGE_URL || "",
+    INSPIRE_SUBMISSION_ALLOWED_USER_IDS:
+      envSchema.INSPIRE_SUBMISSION_ALLOWED_USER_IDS || "",
   };
 }
 
@@ -245,4 +265,34 @@ export function getAdminUserIds(): string[] {
     .split(",")
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
+}
+
+/**
+ * Inspire 申請者ホワイトリストを取得
+ * 環境変数 INSPIRE_SUBMISSION_ALLOWED_USER_IDS（カンマ区切り UUID）を配列に変換。
+ * 空配列を返す = 全認証ユーザー許可（fail-open、ADR-010）。
+ */
+export function getInspireSubmissionAllowedUserIds(): string[] {
+  const value = env.INSPIRE_SUBMISSION_ALLOWED_USER_IDS;
+  if (!value || value.trim() === "") {
+    return [];
+  }
+  return value
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+}
+
+/**
+ * Inspire 機能全体の有効/無効を判定
+ */
+export function isInspireFeatureEnabled(): boolean {
+  return env.NEXT_PUBLIC_INSPIRE_ENABLED === "true";
+}
+
+/**
+ * Inspire ホームカルーセルの有効/無効を判定（ADR-013）
+ */
+export function isInspireHomeCarouselEnabled(): boolean {
+  return env.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED === "true";
 }

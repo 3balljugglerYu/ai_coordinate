@@ -1,0 +1,117 @@
+import { getTranslations } from "next-intl/server";
+import {
+  env,
+  isInspireFeatureEnabled,
+} from "@/lib/env";
+import { isInspireSubmitterAllowed } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  listOwnStyleTemplates,
+  createStyleTemplateSignedUrls,
+} from "@/features/inspire/lib/repository";
+import { MySubmittedTemplatesCardClient } from "./MySubmittedTemplatesCardClient";
+
+interface MySubmittedTemplatesCardProps {
+  userId: string;
+}
+
+const SIGNED_URL_TTL_SECONDS = 60 * 30;
+
+/**
+ * 申請者ホワイトリストを通過したユーザーにのみ表示される、
+ * 自分のテンプレ申請カード。
+ *
+ * - サーバーコンポーネント: env をクライアントへ漏らさないため
+ * - 非該当ユーザーには null を返す（DOM に出ない、REQ-S-11）
+ * - 申請ダイアログ起動と取り下げは Client サブコンポーネントが担当
+ */
+export async function MySubmittedTemplatesCard({
+  userId,
+}: MySubmittedTemplatesCardProps) {
+  if (!isInspireFeatureEnabled()) return null;
+  if (!isInspireSubmitterAllowed(userId)) return null;
+
+  const t = await getTranslations("myPage");
+  const adminClient = createAdminClient();
+  const { data, error } = await listOwnStyleTemplates(adminClient, userId);
+
+  if (error) {
+    return (
+      <div className="mt-8">
+        <h2 className="mb-4 text-xl font-semibold text-gray-900">
+          {t("inspireSectionTitle")}
+        </h2>
+        <p className="text-sm text-destructive">
+          {t("inspireListFetchFailed")}
+        </p>
+      </div>
+    );
+  }
+
+  const rows = data ?? [];
+
+  // signed URL を一括発行（レビュー指摘 #5）
+  const paths = rows
+    .map((row) => row.storage_path)
+    .filter((p): p is string => typeof p === "string" && p.length > 0);
+  const { urls } = await createStyleTemplateSignedUrls(
+    adminClient,
+    paths,
+    SIGNED_URL_TTL_SECONDS
+  );
+  const pathToUrl = new Map<string, string | null>();
+  paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
+
+  const items = rows.map((row) => ({
+    id: row.id,
+    alt: row.alt,
+    moderation_status: row.moderation_status,
+    moderation_reason: row.moderation_reason,
+    moderation_updated_at: row.moderation_updated_at,
+    created_at: row.created_at,
+    image_url: row.storage_path
+      ? pathToUrl.get(row.storage_path) ?? null
+      : null,
+  }));
+
+  // Step 2 のテストキャラ画像表示用に env URL を Client へ渡す。
+  // env は長期 signed URL を想定（運営側で設定、Method A）。
+  const testCharacterImageUrl = env.INSPIRE_TEST_CHARACTER_IMAGE_URL || null;
+
+  return (
+    <MySubmittedTemplatesCardClient
+      items={items}
+      testCharacterImageUrl={testCharacterImageUrl}
+      copy={{
+        title: t("inspireSectionTitle"),
+        description: t("inspireSectionDescription"),
+        submitButton: t("inspireSubmitButton"),
+        emptyState: t("inspireEmptyState"),
+        statusDraft: t("inspireStatusDraft"),
+        statusPending: t("inspireStatusPending"),
+        statusVisible: t("inspireStatusVisible"),
+        statusRemoved: t("inspireStatusRemoved"),
+        statusWithdrawn: t("inspireStatusWithdrawn"),
+        withdrawAction: t("inspireWithdrawAction"),
+        withdrawConfirmTitle: t("inspireWithdrawConfirmTitle"),
+        withdrawConfirmDescriptionDraft: t(
+          "inspireWithdrawConfirmDescriptionDraft"
+        ),
+        withdrawConfirmDescriptionActive: t(
+          "inspireWithdrawConfirmDescriptionActive"
+        ),
+        withdrawConfirmAction: t("inspireWithdrawConfirmAction"),
+        withdrawCancelAction: t("inspireWithdrawCancelAction"),
+        withdrawSuccess: t("inspireWithdrawSuccess"),
+        withdrawFailed: t("inspireWithdrawFailed"),
+        resubmitAction: t("inspireResubmitAction"),
+        deleteAction: t("inspireDeleteAction"),
+        deleteConfirmTitle: t("inspireDeleteConfirmTitle"),
+        deleteConfirmDescription: t("inspireDeleteConfirmDescription"),
+        deleteConfirmAction: t("inspireDeleteConfirmAction"),
+        deleteSuccess: t("inspireDeleteSuccess"),
+        deleteFailed: t("inspireDeleteFailed"),
+      }}
+    />
+  );
+}

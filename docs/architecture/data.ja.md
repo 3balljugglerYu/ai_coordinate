@@ -143,6 +143,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | モデレーションと管理 | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
 | ホーム訴求バナー | `popup_banners`, `popup_banner_views`, `popup_banner_analytics`, `popup_banner_guest_events` | `record_popup_banner_interaction`, `reorder_popup_banners` | `/api/popup-banners/**`, `/api/admin/popup-banners/**`, `/admin/popup-banners` |
 | 退会と完全削除 | `profiles`, `credit_forfeiture_ledger`, `generated_images`, `source_image_stocks` | `request_account_deletion`, `cancel_account_deletion`, `get_due_deletion_candidates`, `record_forfeiture_ledger` | `/api/account/deactivate`, `/api/account/reactivate`, `/api/internal/account-purge` |
+| Inspire (ユーザー投稿スタイルテンプレ) | `user_style_templates`, `user_style_template_preview_attempts`, `style_template_audit_logs`, `image_jobs` (拡張列), `generated_images` (拡張列), `notifications` (拡張) | `apply_user_style_template_decision`, `promote_user_style_template_draft`, `create_user_style_template_draft`, `enforce_user_style_template_submission_cap` | `/api/style-templates/**`, `/api/admin/style-templates/**`, `/api/generate-async` (inspire 経路), `/inspire/[templateId]`, `/admin/style-templates`, ホーム (env で gate) |
 
 ## 主要フロー 1: 新規登録、初期ボーナス、紹介コード初期化
 
@@ -296,6 +297,18 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 - `ears`: ユーザーが削除予定時刻に到達した場合、システムは内部 purge ジョブによってアカウントを削除し、Auth 削除前にウォレット失効記録を残さなければならない。
 - `preconditions`: Bearer secret 付きの内部リクエストであること。`get_due_deletion_candidates` が候補を返すこと。service role アクセスが利用可能であること。
 - `postconditions`: Storage 資産が削除され、失効台帳が記録され、Auth ユーザーが削除される。失敗はユーザー単位で分離され、バッチレスポンスに報告される。
+
+### INSPIRE-SUBMIT-001
+
+- `ears`: ホワイトリスト済み認証ユーザーが申請プレビューを要求したとき、システムは draft 行を作成し、運営テストキャラ画像と組み合わせて OpenAI と Gemini で並列に 1 枚ずつ生成し、結果を Storage に保存して draft 行を更新しなければならない。
+- `preconditions`: 認証済みかつ `INSPIRE_SUBMISSION_ALLOWED_USER_IDS` 内（ADR-010 の fail-open）。直近 24h で 10 回未満の試行（REQ-S-03）。アップロード画像が PNG/JPEG/WebP/HEIC で 10MB 以下。`INSPIRE_TEST_CHARACTER_IMAGE_URL` が解決可能。
+- `postconditions`: 全失敗時は draft 行と Storage オブジェクトを削除し 4xx/500 を返す。片方成功時は draft を残して `partial`、両方成功時は `success` を返す。preview 画像はすべて private bucket `style-templates` に格納され、`user_style_template_preview_attempts` に試行を記録する。
+
+### INSPIRE-DECISION-001
+
+- `ears`: 管理者が pending または visible のテンプレートに対して approve/reject/unpublish を要求したとき、システムは `apply_user_style_template_decision` RPC で状態と監査ログを atomic に更新し、申請者に対応する `style_template_*` 通知を直 INSERT で発行し、ホームカルーセルの cacheTag を無効化しなければならない。
+- `preconditions`: `requireAdmin()` 通過済（API 層強制、RPC 内部では admin チェックしない既存パターン踏襲）。p_action は `approve|reject|unpublish` のいずれか。
+- `postconditions`: `user_style_templates` の `moderation_status` / `moderation_decided_by` / `moderation_reason` / `moderation_updated_at` が更新され、`style_template_audit_logs` に履歴行が追加され、`admin_audit_log` に admin 横断ログが追加され、`notifications` に直 INSERT で 1 行追加され、`revalidateTag('home-user-style-templates','max')` が呼ばれる。
 
 ## アプリから使う主要 RPC カタログ
 

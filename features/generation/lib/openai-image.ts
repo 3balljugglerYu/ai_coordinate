@@ -43,6 +43,28 @@ export interface CallOpenAIImageEditParams {
   apiKey?: string;
 }
 
+/**
+ * 多枚画像入力版（inspire 機能、ADR-006）。
+ *
+ * `image[]` フィールドに複数 append する。配列順で送信され、出力フレームのアスペクト比は
+ * `targetSizeBaseIndex` で指定された画像（既定 = 0）を起点に算出される。
+ *
+ * inspire 経路では targetSizeBaseIndex=1 を渡してテンプレ画像（image_1）の比率に揃える。
+ */
+export interface CallOpenAIImageEditMultiInputParams {
+  prompt: string;
+  inputImages: ReadonlyArray<OpenAIImageInput>;
+  timeoutMs: number;
+  /**
+   * 出力フレーム比率の起点とする入力画像のインデックス。既定は 0（先頭画像）。
+   * inspire 経路では 1（テンプレ画像）を指定する。
+   */
+  targetSizeBaseIndex?: number;
+  fetchFn?: typeof fetch;
+  apiKey?: string;
+  n?: number;
+}
+
 export interface OpenAIImageEditResult {
   data: string;
   mimeType: "image/png";
@@ -295,4 +317,123 @@ export async function callOpenAIImageEdit(
 ): Promise<OpenAIImageEditResult> {
   const [result] = await callOpenAIImageEditBatch({ ...params, n: 1 });
   return result;
+}
+
+/**
+ * 多枚画像入力版の呼び出し（inspire 機能、ADR-006）。
+ *
+ * - inputImages を `image[]` フィールドに順番に append する
+ * - 出力フレーム比率は targetSizeBaseIndex（既定 0）を起点に算出
+ * - その他の挙動（GIF 拒否、エラー分類、レスポンス形）は単数版と同等
+ */
+export async function callOpenAIImageEditMultiInput(
+  params: CallOpenAIImageEditMultiInputParams
+): Promise<OpenAIImageEditResult[]> {
+  const apiKey = params.apiKey ?? process.env.OPENAI_API_KEY;
+  const requestedImageCount = resolveRequestedImageCount(params.n);
+  if (!apiKey) {
+    throw new Error(
+      `${OPENAI_PROVIDER_ERROR}: OPENAI_API_KEY is not configured`
+    );
+  }
+
+  if (params.inputImages.length === 0) {
+    throw new Error("inputImages must not be empty");
+  }
+
+  for (const img of params.inputImages) {
+    if (img.mimeType.toLowerCase() === "image/gif") {
+      throw new Error(
+        `${OPENAI_PROVIDER_ERROR}: GIF images are not supported by gpt-image-2; please upload PNG, JPEG, or WebP`
+      );
+    }
+  }
+
+  const baseIndex = params.targetSizeBaseIndex ?? 0;
+  const baseImage =
+    params.inputImages[baseIndex] ?? params.inputImages[0];
+  const targetSize = resolveOpenAITargetSize(baseImage);
+
+  const form = new FormData();
+  form.append("model", "gpt-image-2");
+  form.append("prompt", params.prompt);
+  for (let idx = 0; idx < params.inputImages.length; idx++) {
+    const img = params.inputImages[idx];
+    const bytes = decodeBase64(img.base64);
+    const file = new File(
+      [bytes.buffer as ArrayBuffer],
+      `input_${idx}.png`,
+      { type: img.mimeType }
+    );
+    form.append("image[]", file);
+  }
+  form.append("size", targetSize);
+  form.append("quality", "low");
+  form.append("moderation", "low");
+  form.append("output_format", "png");
+  form.append("n", String(requestedImageCount));
+
+  const fetchImpl = params.fetchFn ?? fetch;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), params.timeoutMs);
+  try {
+    const response = await fetchImpl(OPENAI_IMAGES_EDITS_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorPayload = (await response.json().catch(() => null)) as
+        | { error?: { code?: string; message?: string } }
+        | null;
+      const code = errorPayload?.error?.code ?? "";
+      const message =
+        errorPayload?.error?.message ?? `OpenAI HTTP ${response.status}`;
+      if (
+        response.status === 400 &&
+        (code === "content_policy_violation" ||
+          /moderation|safety/i.test(message))
+      ) {
+        throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+      }
+      const isAuthFailure = response.status === 401 || response.status === 403;
+      const isInvalidApiKey =
+        code === "invalid_api_key" || /incorrect api key/i.test(message);
+      const isInsufficientQuota = code === "insufficient_quota";
+      const isUnverifiedOrg = /must be verified/i.test(message);
+      if (
+        isAuthFailure ||
+        isInvalidApiKey ||
+        isInsufficientQuota ||
+        isUnverifiedOrg
+      ) {
+        throw new Error(`${OPENAI_PROVIDER_ERROR}: ${message}`);
+      }
+      throw new Error(message);
+    }
+
+    const json = (await response.json().catch(() => ({}))) as {
+      data?: Array<{ b64_json?: string }>;
+    };
+    const results = (json?.data ?? [])
+      .map((item) => item?.b64_json)
+      .filter((b64): b64 is string => typeof b64 === "string" && b64.length > 0)
+      .map((b64) => ({ data: b64, mimeType: "image/png" as const }));
+
+    if (results.length === 0) {
+      throw new Error("No images generated");
+    }
+
+    if (results.length !== requestedImageCount) {
+      throw new Error(
+        `OpenAI image edit returned ${results.length} images, expected ${requestedImageCount}`
+      );
+    }
+
+    return results;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

@@ -104,6 +104,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "image",
   },
   {
+    path: "/admin/style-templates",
+    label: "スタイルテンプレート審査",
+    description: "ユーザー投稿テンプレを審査・管理",
+    iconKey: "shield-check",
+  },
+  {
     path: "/admin/announcements",
     label: "運営お知らせ",
     description: "運営からのお知らせを作成・公開",

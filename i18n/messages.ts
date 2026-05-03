@@ -40,6 +40,9 @@ const clientNamespaces = [
   "popupBanners",
   "tutorial",
   "home",
+  "inspireSubmission",
+  "inspirePage",
+  "adminStyleTemplates",
 ] as const satisfies readonly ClientMessageNamespace[];
 
 type NamespaceSelection<TMessages, TNamespaces extends readonly (keyof TMessages)[]> = {
