@@ -53,3 +53,32 @@ Turbopack ビルドはサンドボックス環境で stall することがある
 
 このファイルや AGENTS.md、参照先ドキュメントに書かれていない判断が必要な場合、
 自己判断で進めず必ずユーザーに質問してください。
+
+## Supabase 操作の許可範囲
+
+エージェントは、調査・実装・デプロイを目的として、以下の Supabase 操作を行って良い。
+
+### 許可される操作
+- **マイグレーション適用**：`supabase migration up`、`supabase db push`
+- **Edge Functions デプロイ**：`supabase functions deploy <function-name>`
+- **DBクエリ実行（参照系）**：`supabase db remote query "..."`、`psql` での読み取り
+- **バケット操作**：必要に応じて `supabase storage` コマンド
+
+### 許可される認証情報の取得元
+以下のいずれかから認証情報を取得して使って良い：
+- 環境変数：`SUPABASE_DB_PASSWORD`、`SUPABASE_ACCESS_TOKEN`、`SUPABASE_PROJECT_REF`
+- `.env.local` の Supabase 関連キーのみ：`SUPABASE_DB_PASSWORD`、`SUPABASE_ACCESS_TOKEN`、`NEXT_PUBLIC_SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`（必要時のみ）
+- `supabase` CLI が既にログイン済みの場合のセッション
+
+### 引き続き禁止される操作
+- `.env` 内のSupabase以外の秘密情報（Stripe、OpenAI、Gemini、Resend 等）を読み取ること
+- 認証情報をチャット出力やコミットメッセージ、ファイルに含めること
+- 本番DBへの**破壊的操作**（DROP, TRUNCATE, DELETE without WHERE 等）はユーザー承認なしに実行しないこと
+- マイグレーションの **rollback / down** をユーザー承認なしに実行しないこと
+- Edge Function の **削除** をユーザー承認なしに実行しないこと
+
+### 推奨される運用フロー
+1. マイグレーション適用前：差分を `supabase db diff` で確認、ユーザーに見せる
+2. デプロイ前：影響範囲（既存呼び出し、依存関数）をチェック
+3. 本番適用前：可能な限りステージング/ローカルで先に検証
+4. 適用後：影響を確認するクエリを実行して結果を報告
