@@ -74,7 +74,9 @@ export function PostDetailStatic({
 
   // imageUrlはpropsから取得（重複定義を避けるため）
   const displayImageUrl = imageUrl || getPostImageUrl(post) || undefined;
-  // Before（生成元）画像。投稿時に opt-in されたときのみ存在する。
+  // Before（生成元）画像。生成完了時に worker がバックグラウンドで永続化する。
+  // 永続化完了までの間は image_jobs.input_image_url を使った楽観表示でつなぐ
+  // （getPostBeforeImageUrl が永続パス→fallback→null の順で解決）。
   const beforeImageUrl = getPostBeforeImageUrl(post);
   const displayName =
     post.user?.nickname ||

@@ -1,6 +1,10 @@
 -- ===============================================
--- pg_cron: temp/ 配下の 7 日経過画像を毎日削除
+-- pg_cron: temp/ 配下の 24h 経過画像を毎日削除（orphan 安全網）
 -- ===============================================
+-- 通常時は image-gen-worker が Before 永続化に成功した瞬間に temp/ ファイルを
+-- 同期削除するため、temp/ にはほぼ何も残らない。本 cron は worker 側で
+-- 削除に失敗したケースの自動リカバリ（β: 24h TTL の安全網）。
+--
 -- pg_net で /functions/v1/cleanup-temp-images を 1 日 1 回（18:00 UTC = 03:00 JST）叩く。
 -- ADR-003 / 計画書 §Phase 5 を参照。
 -- 既存 style-template-cleanup-cron（20260502120500）と同じ Vault 経由 secret パターン。

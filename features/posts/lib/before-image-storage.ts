@@ -5,8 +5,9 @@
  * 呼び出され、image_jobs.input_image_url の画像を WebP に変換して
  * `{user_id}/pre-generation/{generated_image_id}_display.webp` に保存する。
  *
- * 入力 URL は generated-images バケット配下の公開 URL（temp/ アップロード由来 or
- * {user_id}/stocks/ ストック由来）のみを受理する。それ以外は SSRF 防止のため拒否。
+ * 入力 URL は `generated-images` バケット配下の公開 URL のうち、
+ * `temp/...` または `{uuid}/stocks/...` プレフィックスのみを受理する
+ * （`isAllowedInputImageUrl` 参照）。それ以外は SSRF / 任意 URL 注入防止のため拒否。
  *
  * 失敗してもログのみで投稿などの上流フローは止めない設計。
  */
@@ -16,10 +17,16 @@ import { generateDisplayWebP } from "@/features/generation/lib/webp-converter";
 
 const STORAGE_BUCKET = "generated-images";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * 入力 URL を受理するか判定する。
- * `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generated-images/...` のみ通す。
- * 同バケット内なら temp/ もストック画像も受理する。
+ * `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generated-images/...` のうち、
+ * 後続パスが以下のいずれかであるものだけ通す:
+ *   - `temp/...`（生成リクエスト時のユーザーアップロード）
+ *   - `{uuid}/stocks/...`（ストック画像由来）
+ * それ以外（生成済み画像本体や pre-generation/ 配下など）は SSRF / 任意 URL 注入防止のため拒否。
  */
 export function isAllowedInputImageUrl(rawUrl: string): boolean {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -27,7 +34,19 @@ export function isAllowedInputImageUrl(rawUrl: string): boolean {
     return false;
   }
   const expectedPrefix = `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${STORAGE_BUCKET}/`;
-  return rawUrl.startsWith(expectedPrefix);
+  if (!rawUrl.startsWith(expectedPrefix)) {
+    return false;
+  }
+  const objectPath = rawUrl.slice(expectedPrefix.length);
+  if (objectPath.startsWith("temp/")) {
+    return true;
+  }
+  // ストック画像: 第 1 階層が UUID（user_id）で第 2 階層が `stocks`
+  const segments = objectPath.split("/");
+  if (segments.length >= 3 && UUID_RE.test(segments[0]) && segments[1] === "stocks") {
+    return true;
+  }
+  return false;
 }
 
 /**

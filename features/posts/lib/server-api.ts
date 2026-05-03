@@ -16,6 +16,7 @@ import type {
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
 import { getImageDimensions, getPostImageUrl } from "./utils";
+import { isAllowedInputImageUrl } from "./before-image-storage";
 import {
   ensureImageDimensions,
   type ImageRowSubset,
@@ -824,6 +825,8 @@ export const getPost = cache(async (
 
   // Before 画像の楽観表示用：pre_generation_storage_path が未設定の場合、
   // 関連する image_jobs.input_image_url を取得して暫定表示に使う。
+  // 任意 URL を <img src> に通さないため、永続化ヘルパーと同じ
+  // ホワイトリスト（`temp/...` または `{uuid}/stocks/...`）でガードする。
   let inputImageUrlFallback: string | null = null;
   if (!data.pre_generation_storage_path && data.image_job_id) {
     const { data: jobRow, error: jobError } = await supabase
@@ -834,7 +837,15 @@ export const getPost = cache(async (
     if (jobError) {
       console.warn("Failed to fetch image_jobs.input_image_url for fallback:", jobError);
     } else {
-      inputImageUrlFallback = jobRow?.input_image_url ?? null;
+      const candidate = jobRow?.input_image_url ?? null;
+      if (candidate && isAllowedInputImageUrl(candidate)) {
+        inputImageUrlFallback = candidate;
+      } else if (candidate) {
+        console.warn(
+          "Skipping input_image_url fallback because it failed allow-list check:",
+          candidate
+        );
+      }
     }
   }
 
