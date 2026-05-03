@@ -214,7 +214,7 @@ export function MySubmittedTemplatesCardClient({
                     {statusLabel(item.moderation_status)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(item.created_at).toLocaleDateString()}
+                    {item.created_at.slice(0, 10)}
                   </span>
                 </div>
                 {item.alt && (

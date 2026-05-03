@@ -188,7 +188,7 @@ export function AdminStyleTemplatesClient({
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">{item.moderation_status}</Badge>
                   <span className="text-muted-foreground">
-                    {new Date(item.created_at).toLocaleDateString()}
+                    {item.created_at.slice(0, 10)}
                   </span>
                 </div>
                 <p className="line-clamp-1 text-muted-foreground">
@@ -315,7 +315,7 @@ export function AdminStyleTemplatesClient({
 
               <p className="text-xs text-muted-foreground">
                 <strong>{copy.submittedAt}:</strong>{" "}
-                {new Date(openItem.created_at).toLocaleString()}
+                {`${openItem.created_at.slice(0, 10)} ${openItem.created_at.slice(11, 16)} UTC`}
               </p>
 
               {openItem.alt && (
