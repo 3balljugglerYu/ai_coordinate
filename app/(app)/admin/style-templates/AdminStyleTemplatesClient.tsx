@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ExternalLink, User as UserIcon } from "lucide-react";
 import {
   Tabs,
   TabsContent,
@@ -9,6 +11,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +36,10 @@ export interface AdminStyleTemplateItem {
   image_url: string | null;
   preview_openai_image_url: string | null;
   preview_gemini_image_url: string | null;
+  submitter_profile: {
+    nickname: string | null;
+    avatar_url: string | null;
+  };
 }
 
 interface Copy {
@@ -41,6 +48,9 @@ interface Copy {
   tabRemoved: string;
   submittedAt: string;
   submitterId: string;
+  submitterLabel: string;
+  submitterAnonymous: string;
+  submitterViewProfile: string;
   moderationReason: string;
   actionApprove: string;
   actionReject: string;
@@ -269,16 +279,44 @@ export function AdminStyleTemplatesClient({
 
           {openItem && (
             <div className="mt-4 space-y-4">
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <p>
-                  <strong>{copy.submittedAt}:</strong>{" "}
-                  {new Date(openItem.created_at).toLocaleString()}
-                </p>
-                <p className="col-span-2 truncate">
-                  <strong>{copy.submitterId}:</strong>{" "}
-                  {openItem.submitted_by_user_id}
-                </p>
-              </div>
+              {/* 申請者カード: Avatar + nickname + ID をクリックで /admin/users/[id] へ */}
+              <Link
+                href={`/admin/users/${openItem.submitted_by_user_id}`}
+                aria-label={copy.submitterViewProfile}
+                className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <Avatar className="size-10">
+                  {openItem.submitter_profile.avatar_url ? (
+                    <AvatarImage
+                      src={openItem.submitter_profile.avatar_url}
+                      alt=""
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    <UserIcon className="size-5" aria-hidden="true" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">
+                    {copy.submitterLabel}
+                  </p>
+                  <p className="truncate text-sm font-medium">
+                    {openItem.submitter_profile.nickname ?? copy.submitterAnonymous}
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {openItem.submitted_by_user_id}
+                  </p>
+                </div>
+                <ExternalLink
+                  className="size-4 text-muted-foreground transition group-hover:text-foreground"
+                  aria-hidden="true"
+                />
+              </Link>
+
+              <p className="text-xs text-muted-foreground">
+                <strong>{copy.submittedAt}:</strong>{" "}
+                {new Date(openItem.created_at).toLocaleString()}
+              </p>
 
               {openItem.alt && (
                 <p className="text-sm text-muted-foreground">{openItem.alt}</p>

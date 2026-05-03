@@ -66,10 +66,49 @@ export default async function AdminStyleTemplatesPage() {
     }));
   };
 
+  const enrichedPending = await enrichRows(pending.data ?? []);
+  const enrichedVisible = await enrichRows(visible.data ?? []);
+  const enrichedRemoved = await enrichRows(removed.data ?? []);
+
+  // 申請者プロフィールを一括取得（重複排除した user_id 集合で 1 クエリ）
+  const submitterIds = Array.from(
+    new Set(
+      [...enrichedPending, ...enrichedVisible, ...enrichedRemoved].map(
+        (row) => row.submitted_by_user_id
+      )
+    )
+  );
+
+  const profileMap = new Map<
+    string,
+    { nickname: string | null; avatar_url: string | null }
+  >();
+  if (submitterIds.length > 0) {
+    const { data: profiles } = await adminClient
+      .from("profiles")
+      .select("user_id, nickname, avatar_url")
+      .in("user_id", submitterIds);
+    for (const p of profiles ?? []) {
+      profileMap.set(p.user_id, {
+        nickname: p.nickname,
+        avatar_url: p.avatar_url,
+      });
+    }
+  }
+
+  const attachProfile = <T extends { submitted_by_user_id: string }>(rows: T[]) =>
+    rows.map((row) => ({
+      ...row,
+      submitter_profile: profileMap.get(row.submitted_by_user_id) ?? {
+        nickname: null,
+        avatar_url: null,
+      },
+    }));
+
   const items = {
-    pending: await enrichRows(pending.data ?? []),
-    visible: await enrichRows(visible.data ?? []),
-    removed: await enrichRows(removed.data ?? []),
+    pending: attachProfile(enrichedPending),
+    visible: attachProfile(enrichedVisible),
+    removed: attachProfile(enrichedRemoved),
   };
 
   return (
@@ -94,6 +133,9 @@ export default async function AdminStyleTemplatesPage() {
           tabRemoved: t("tabRemoved"),
           submittedAt: t("submittedAt"),
           submitterId: t("submitterId"),
+          submitterLabel: t("submitterLabel"),
+          submitterAnonymous: t("submitterAnonymous"),
+          submitterViewProfile: t("submitterViewProfile"),
           moderationReason: t("moderationReason"),
           actionApprove: t("actionApprove"),
           actionReject: t("actionReject"),

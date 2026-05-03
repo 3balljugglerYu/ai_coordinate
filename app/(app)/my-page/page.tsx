@@ -54,15 +54,6 @@ export default async function MyPagePage() {
             />
           </Suspense>
 
-          <div className="mt-8">
-            <h2 className="mb-4 text-xl font-semibold text-gray-900">
-              {myPageT("generatedImagesTitle")}
-            </h2>
-            <Suspense fallback={<MyPageImageGallerySkeleton />}>
-              <CachedMyPageImageGallery userId={user.id} />
-            </Suspense>
-          </div>
-
           {/*
             Inspire 申請カード（REQ-S-11 / ADR-010）。
             isInspireSubmitterAllowed が false のユーザーには null を返す。
@@ -71,6 +62,15 @@ export default async function MyPagePage() {
           <Suspense fallback={null}>
             <MySubmittedTemplatesCard userId={user.id} />
           </Suspense>
+
+          <div className="mt-8">
+            <h2 className="mb-4 text-xl font-semibold text-gray-900">
+              {myPageT("generatedImagesTitle")}
+            </h2>
+            <Suspense fallback={<MyPageImageGallerySkeleton />}>
+              <CachedMyPageImageGallery userId={user.id} />
+            </Suspense>
+          </div>
         </div>
       </div>
     </div>

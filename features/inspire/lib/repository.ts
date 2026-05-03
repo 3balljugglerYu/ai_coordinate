@@ -121,7 +121,11 @@ export async function countActiveSubmissionsForUser(
 }
 
 /**
- * 申請者本人の自分のテンプレート一覧（全状態）
+ * 申請者本人の自分のテンプレート一覧（draft を除く）
+ *
+ * draft は内部的な最適化のための一時状態であり、ユーザー UI には出さない方針
+ * （キャンセル時にダイアログ側で即座に削除するため、通常は draft が残らない。
+ *  万が一 crash 等で残った場合は 24h cleanup cron が回収する）。
  */
 export async function listOwnStyleTemplates(
   client: SupabaseClient,
@@ -134,6 +138,7 @@ export async function listOwnStyleTemplates(
     .from("user_style_templates")
     .select(TEMPLATE_BASE_FIELDS)
     .eq("submitted_by_user_id", userId)
+    .neq("moderation_status", "draft")
     .order("created_at", { ascending: false });
 
   return {

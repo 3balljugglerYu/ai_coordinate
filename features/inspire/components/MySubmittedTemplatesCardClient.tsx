@@ -52,23 +52,41 @@ interface Copy {
   withdrawCancelAction: string;
   withdrawSuccess: string;
   withdrawFailed: string;
+  resubmitAction: string;
+  deleteAction: string;
+  deleteConfirmTitle: string;
+  deleteConfirmDescription: string;
+  deleteConfirmAction: string;
+  deleteSuccess: string;
+  deleteFailed: string;
 }
 
 interface MySubmittedTemplatesCardClientProps {
   items: MySubmittedTemplate[];
+  testCharacterImageUrl: string | null;
   copy: Copy;
 }
 
 export function MySubmittedTemplatesCardClient({
   items,
+  testCharacterImageUrl,
   copy,
 }: MySubmittedTemplatesCardClientProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  // 「再申請」で開かれたとき、上書き対象となる古い rejected/withdrawn 行の ID。
+  // submit 成功時にこの ID の行が自動削除される（上書き挙動）。
+  const [replaceTemplateId, setReplaceTemplateId] = useState<string | null>(
+    null
+  );
   const [pendingWithdraw, setPendingWithdraw] =
     useState<MySubmittedTemplate | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
+  // 完全削除（removed/withdrawn のレコード）の確認 + 実行用 state
+  const [pendingDelete, setPendingDelete] =
+    useState<MySubmittedTemplate | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const statusLabel = useCallback(
     (status: ModerationStatus): string => {
@@ -120,8 +138,38 @@ export function MySubmittedTemplatesCardClient({
     }
   }, [copy, pendingWithdraw, router, toast]);
 
-  const isActionable = (status: ModerationStatus) =>
+  // removed / withdrawn のレコードを完全削除する。API DELETE は state によって
+  // 完全削除 / 取り下げを切り替えるため呼び出しは同じエンドポイント。
+  const handleDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(
+        `/api/style-templates/submissions/${pendingDelete.id}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok) {
+        toast({
+          title: copy.deleteFailed,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: copy.deleteSuccess });
+      setPendingDelete(null);
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }, [copy, pendingDelete, router, toast]);
+
+  // 取り下げボタン: draft / pending / visible
+  const canWithdraw = (status: ModerationStatus) =>
     status === "draft" || status === "pending" || status === "visible";
+
+  // 再申請 / 削除ボタン: removed / withdrawn
+  const canResubmitOrDelete = (status: ModerationStatus) =>
+    status === "removed" || status === "withdrawn";
 
   return (
     <div className="mt-8">
@@ -181,7 +229,7 @@ export function MySubmittedTemplatesCardClient({
                       {item.moderation_reason}
                     </p>
                   )}
-                {isActionable(item.moderation_status) && (
+                {canWithdraw(item.moderation_status) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -191,6 +239,29 @@ export function MySubmittedTemplatesCardClient({
                     {copy.withdrawAction}
                   </Button>
                 )}
+                {canResubmitOrDelete(item.moderation_status) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // 再申請: submit 成功時にこの行（古い rejected/withdrawn）を上書き削除する
+                        setReplaceTemplateId(item.id);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      {copy.resubmitAction}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPendingDelete(item)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      {copy.deleteAction}
+                    </Button>
+                  </div>
+                )}
               </div>
             </li>
           ))}
@@ -199,8 +270,14 @@ export function MySubmittedTemplatesCardClient({
 
       <UserStyleTemplateSubmissionDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(next) => {
+          setDialogOpen(next);
+          // dialog が閉じたら replace 対象もリセット（cancel 時は上書きしない）
+          if (!next) setReplaceTemplateId(null);
+        }}
         onSubmissionSucceeded={() => router.refresh()}
+        testCharacterImageUrl={testCharacterImageUrl}
+        replaceTemplateId={replaceTemplateId}
       />
 
       <AlertDialog
@@ -227,6 +304,35 @@ export function MySubmittedTemplatesCardClient({
               disabled={withdrawing}
             >
               {copy.withdrawConfirmAction}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 完全削除確認（removed / withdrawn のレコード） */}
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{copy.deleteConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {copy.deleteConfirmDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              {copy.withdrawCancelAction}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {copy.deleteConfirmAction}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

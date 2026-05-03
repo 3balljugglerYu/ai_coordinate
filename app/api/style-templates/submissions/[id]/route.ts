@@ -10,13 +10,45 @@ import { getStyleTemplateById } from "@/features/inspire/lib/repository";
 /**
  * DELETE /api/style-templates/submissions/[id]
  *
- * 申請者が自分のテンプレートを取り下げる。
- * - draft → 完全削除（行 + Storage オブジェクト）
- * - pending / visible → moderation_status = 'withdrawn' に変更（行は残す）
+ * 申請者が自分のテンプレートを操作する。状態によって挙動が変わる:
+ * - draft                → 完全削除（行 + Storage オブジェクト）
+ * - pending / visible    → moderation_status = 'withdrawn' に変更（行は残す、取り下げ）
+ * - removed / withdrawn  → 完全削除（行 + Storage オブジェクト）
+ *                          リジェクト済み or 取り下げ済みのレコードを永続的に消す
  *
  * REQ-S-09 参照。
- * 申請者ホワイトリスト判定はかけない（取り下げは常に可能、計画 §5 Phase 2 の方針）。
+ * 申請者ホワイトリスト判定はかけない（取り下げ・削除は常に可能、計画 §5 Phase 2 の方針）。
  */
+
+/**
+ * テンプレートに紐づく Storage オブジェクト（テンプレ画像 + プレビュー 2 枚）を一括削除する。
+ * Storage 失敗は次回 cleanup cron が拾うため fatal にしない。
+ */
+async function removeTemplateStorageObjects(
+  adminClient: ReturnType<typeof createAdminClient>,
+  template: {
+    storage_path: string | null;
+    preview_openai_image_url: string | null;
+    preview_gemini_image_url: string | null;
+  }
+): Promise<void> {
+  const paths = [
+    template.storage_path,
+    template.preview_openai_image_url,
+    template.preview_gemini_image_url,
+  ].filter((p): p is string => typeof p === "string" && p.length > 0);
+
+  if (paths.length === 0) return;
+
+  const { error } = await adminClient.storage.from("style-templates").remove(paths);
+  if (error) {
+    console.warn(
+      "[submissions DELETE] storage remove failed (non-fatal)",
+      { error: error.message, paths }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -54,21 +86,13 @@ export async function DELETE(
     return jsonError(copy.withdrawNotOwner, "INSPIRE_WITHDRAW_NOT_OWNER", 403);
   }
 
-  if (template.moderation_status === "draft") {
-    // Storage を先に消し、DB を後で消す（途中失敗は次回 cleanup cron が回収）
-    const storagePathsToRemove = [
-      template.storage_path,
-      // preview URL は signed URL の場合があるが、storage_path 形式の場合のみ削除
-    ].filter((p): p is string => typeof p === "string" && p.length > 0);
-
-    if (storagePathsToRemove.length > 0) {
-      const { error: removeError } = await adminClient.storage
-        .from("style-templates")
-        .remove(storagePathsToRemove);
-      if (removeError) {
-        console.warn("[submissions DELETE] storage remove failed (non-fatal)", removeError);
-      }
-    }
+  // draft / removed / withdrawn は完全削除（行 + Storage）
+  if (
+    template.moderation_status === "draft" ||
+    template.moderation_status === "removed" ||
+    template.moderation_status === "withdrawn"
+  ) {
+    await removeTemplateStorageObjects(adminClient, template);
 
     const { error: deleteError } = await adminClient
       .from("user_style_templates")
@@ -84,8 +108,11 @@ export async function DELETE(
     return NextResponse.json({ success: true, action: "deleted" });
   }
 
-  if (template.moderation_status === "pending" || template.moderation_status === "visible") {
-    // 状態遷移 + 監査ログを atomic な RPC に委譲（レビュー指摘 #3）
+  // pending / visible は取り下げ（withdrawn に状態変更、行は残す）
+  if (
+    template.moderation_status === "pending" ||
+    template.moderation_status === "visible"
+  ) {
     const { data: success, error: rpcError } = await adminClient.rpc(
       "withdraw_user_style_template",
       {
@@ -106,6 +133,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, action: "withdrawn" });
   }
 
-  // removed / withdrawn には何もしない（既に終端状態）
+  // 未知の状態（CHECK 制約上ここには来ないが防御）
   return jsonError(copy.withdrawFailed, "INSPIRE_TEMPLATE_TERMINAL_STATE", 409);
 }

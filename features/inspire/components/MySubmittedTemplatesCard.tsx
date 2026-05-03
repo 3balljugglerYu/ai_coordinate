@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import {
+  env,
   isInspireFeatureEnabled,
 } from "@/lib/env";
 import { isInspireSubmitterAllowed } from "@/lib/auth";
@@ -73,9 +74,14 @@ export async function MySubmittedTemplatesCard({
       : null,
   }));
 
+  // Step 2 のテストキャラ画像表示用に env URL を Client へ渡す。
+  // env は長期 signed URL を想定（運営側で設定、Method A）。
+  const testCharacterImageUrl = env.INSPIRE_TEST_CHARACTER_IMAGE_URL || null;
+
   return (
     <MySubmittedTemplatesCardClient
       items={items}
+      testCharacterImageUrl={testCharacterImageUrl}
       copy={{
         title: t("inspireSectionTitle"),
         description: t("inspireSectionDescription"),
@@ -98,6 +104,13 @@ export async function MySubmittedTemplatesCard({
         withdrawCancelAction: t("inspireWithdrawCancelAction"),
         withdrawSuccess: t("inspireWithdrawSuccess"),
         withdrawFailed: t("inspireWithdrawFailed"),
+        resubmitAction: t("inspireResubmitAction"),
+        deleteAction: t("inspireDeleteAction"),
+        deleteConfirmTitle: t("inspireDeleteConfirmTitle"),
+        deleteConfirmDescription: t("inspireDeleteConfirmDescription"),
+        deleteConfirmAction: t("inspireDeleteConfirmAction"),
+        deleteSuccess: t("inspireDeleteSuccess"),
+        deleteFailed: t("inspireDeleteFailed"),
       }}
     />
   );
