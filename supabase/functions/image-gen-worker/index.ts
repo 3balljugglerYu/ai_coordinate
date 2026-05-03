@@ -2059,6 +2059,9 @@ Deno.serve(async () => {
               const latestSourceImageStockId =
                 latestJob?.source_image_stock_id ?? job.source_image_stock_id;
 
+              // inspire 用: generated_images_inspire_template_consistency_check
+              // (generation_type='inspire' ⇔ style_template_id IS NOT NULL) を満たすため、
+              // image_jobs から style_template_id / override_target を継承する。
               const { data: imageRecord, error: insertError } = await supabase
                 .from("generated_images")
                 .insert({
@@ -2072,6 +2075,8 @@ Deno.serve(async () => {
                   generation_metadata: job.generation_metadata ?? null,
                   model: dbModel,
                   source_image_stock_id: latestSourceImageStockId,
+                  style_template_id: job.style_template_id ?? null,
+                  override_target: job.override_target ?? null,
                 })
                 .select()
                 .single();

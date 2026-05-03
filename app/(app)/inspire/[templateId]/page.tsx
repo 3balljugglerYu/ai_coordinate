@@ -33,7 +33,6 @@ export default async function InspirePage({ params }: InspirePageProps) {
     notFound();
   }
 
-  // 公開行のみ利用可能（owner / admin の閲覧は別 UI で対応、REQ-G-01）
   if (template.moderation_status !== "visible") {
     notFound();
   }
@@ -50,35 +49,71 @@ export default async function InspirePage({ params }: InspirePageProps) {
     templateImageUrl = result.url;
   }
 
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <div className="mb-6 space-y-1">
-        <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
-          {t("pageTitle")}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t("pageDescription")}</p>
-      </div>
+  // 申請者のプロフィール情報（admin Sheet と同じパターンで一括取得）
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("user_id, nickname, avatar_url")
+    .eq("user_id", template.submitted_by_user_id)
+    .maybeSingle();
 
-      <InspirePageClient
-        template={{
-          id: template.id,
-          alt: template.alt,
-          image_url: templateImageUrl,
-          submitted_by_user_id: template.submitted_by_user_id,
-        }}
-        copy={{
-          formTitle: t("formTitle"),
-          formDescription: t("formDescription"),
-          formImageLabel: t("formImageLabel"),
-          formCountLabel: t("formCountLabel"),
-          formModelLabel: t("formModelLabel"),
-          formGenerateButton: t("formGenerateButton"),
-          formGenerating: t("formGenerating"),
-          formImageRequired: t("formImageRequired"),
-          formGenerationFailed: t("formGenerationFailed"),
-          submittedByLabel: t("submittedByLabel"),
-        }}
-      />
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
+        <div className="mx-auto max-w-3xl space-y-8">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-gray-900">
+              {t("pageTitle")}
+            </h1>
+            <p className="text-sm font-medium text-gray-700">
+              {t("pageDescription")}
+            </p>
+          </div>
+
+          <InspirePageClient
+            template={{
+              id: template.id,
+              alt: template.alt,
+              image_url: templateImageUrl,
+              submitted_by_user_id: template.submitted_by_user_id,
+            }}
+            submitter={{
+              nickname: profile?.nickname ?? null,
+              avatar_url: profile?.avatar_url ?? null,
+            }}
+            copy={{
+              formTitle: t("formTitle"),
+              formDescription: t("formDescription"),
+              formImageLabel: t("formImageLabel"),
+              formCountLabel: t("formCountLabel"),
+              formModelLabel: t("formModelLabel"),
+              formGenerateButton: t("formGenerateButton"),
+              formGenerating: t("formGenerating"),
+              formImageRequired: t("formImageRequired"),
+              formGenerationFailed: t("formGenerationFailed"),
+              submittedByLabel: t("submittedByLabel"),
+              submitterAnonymous: t("submitterAnonymous"),
+              submitterViewProfile: t("submitterViewProfile"),
+              selectedTemplateLabel: t("selectedTemplateLabel"),
+              formGenerateAria: t("formGenerateAria"),
+              formCharacterUploadHint: t("formCharacterUploadHint"),
+              formUploadLabel: t("formUploadLabel"),
+              formAddImageAction: t("formAddImageAction"),
+              overrideLabel: t("overrideLabel"),
+              overrideHint: t("overrideHint"),
+              overrideKeepAll: t("overrideKeepAll"),
+              overrideAngle: t("overrideAngle"),
+              overridePose: t("overridePose"),
+              overrideOutfit: t("overrideOutfit"),
+              overrideBackground: t("overrideBackground"),
+              statusFailed: t("statusFailed"),
+              statusFailedDescription: t("statusFailedDescription"),
+              resultsTitle: t("resultsTitle"),
+              resultsPlaceholder: t("resultsPlaceholder"),
+              resultImageAlt: t("resultImageAlt"),
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

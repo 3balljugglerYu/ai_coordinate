@@ -1567,6 +1567,28 @@ export const enMessages = {
     templateNotFound: "Template not found.",
     templateUnavailable: "This template is currently unavailable.",
     submittedByLabel: "Submitted by",
+    submitterAnonymous: "Anonymous user",
+    submitterViewProfile: "Open user profile",
+    selectedTemplateLabel: "Selected style",
+    formGenerateAria: "Generate with the selected style",
+    formCharacterUploadHint:
+      "PNG / JPEG / WebP / HEIC up to 10MB. 1024px or larger recommended.",
+    formUploadLabel: "My Character",
+    formAddImageAction: "Add image",
+    overrideLabel: "Element to change",
+    overrideHint:
+      "Choose 'Keep all' to preserve the template's angle, pose, outfit, and background, swapping only the character. Pick a single element to regenerate just that one.",
+    overrideKeepAll: "Keep all (character only)",
+    overrideAngle: "Change angle",
+    overridePose: "Change pose",
+    overrideOutfit: "Change outfit",
+    overrideBackground: "Change background",
+    statusFailed: "Generation failed",
+    statusFailedDescription:
+      "Please try again later or use a different image.",
+    resultsTitle: "Result",
+    resultsPlaceholder: "Generated images will appear here.",
+    resultImageAlt: "Generated image",
   },
   popupBanners: {
     dialogTitle: "Announcement",
