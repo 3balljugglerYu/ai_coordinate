@@ -294,6 +294,31 @@ function toSqlInList(values: string[]): string {
   return `(${values.map((value) => `"${value.replace(/"/g, "")}"`).join(",")})`;
 }
 
+// Supabase `.or()` は PostgREST 構文の文字列を直接埋め込むため、
+// SQL の prepared statement 相当のパラメータ化 API は SDK 側に存在しない。
+// その代わり `currentUserId` を以下の正規表現で厳格に検証してから補間する：
+// - 16進数とハイフンのみで構成された RFC 4122 形式
+// - PostgREST 構文を破壊し得る `,` `(` `)` `.` 等を一切許容しない閉じた文字クラス
+// この検証を緩めると `.or()` 注入の窓が開くため、UUID_RE は変更しないこと。
+// 既存の `getVisibilityExclusions` も auth 由来の UUID を同様に補間しており、本実装はそのパターンを踏襲している。
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * フィードクエリに使う moderation_status の OR フィルタ式を組み立てる。
+ * - 本人: visible 全件 + 自分の pending（removed は除外）
+ * - その他: visible のみ
+ * `null` を返した場合、呼び出し側で `.eq("moderation_status", "visible")` を使う。
+ *
+ * セキュリティ: `currentUserId` は UUID_RE で検証済みのときだけ補間する。検証失敗時は
+ * `null` を返し、呼び出し側で安全な visible-only フィルタにフォールバックする。
+ */
+function buildOwnerVisibleOrFilter(currentUserId: string | null): string | null {
+  if (currentUserId && UUID_RE.test(currentUserId)) {
+    return `moderation_status.eq.visible,and(moderation_status.eq.pending,user_id.eq.${currentUserId})`;
+  }
+  return null;
+}
+
 /**
  * 投稿データにユーザー情報・いいね数・コメント数を付与するヘルパー関数
  * @param postsData 投稿データの配列
@@ -452,8 +477,12 @@ export const getPosts = cache(async (
       .from("generated_images")
       .select("*")
       .eq("is_posted", true)
-      .eq("moderation_status", "visible")
       .in("user_id", followedUserIds);
+
+    const followingOwnerOr = buildOwnerVisibleOrFilter(currentUserId);
+    followingQuery = followingOwnerOr
+      ? followingQuery.or(followingOwnerOr)
+      : followingQuery.eq("moderation_status", "visible");
 
     if (blockedUserIds.length > 0) {
       followingQuery = followingQuery.not("user_id", "in", toSqlInList(blockedUserIds));
@@ -485,8 +514,12 @@ export const getPosts = cache(async (
   let postsQuery = supabase
     .from("generated_images")
     .select("*")
-    .eq("is_posted", true)
-    .eq("moderation_status", "visible");
+    .eq("is_posted", true);
+
+  const ownerOr = buildOwnerVisibleOrFilter(currentUserId);
+  postsQuery = ownerOr
+    ? postsQuery.or(ownerOr)
+    : postsQuery.eq("moderation_status", "visible");
 
   if (blockedUserIds.length > 0) {
     postsQuery = postsQuery.not("user_id", "in", toSqlInList(blockedUserIds));
@@ -681,10 +714,15 @@ export const getPost = cache(async (
     data.is_posted &&
     data.moderation_status &&
     data.moderation_status !== "visible" &&
-    !isPostOwner &&
     !isAdminViewer
   ) {
-    return null;
+    // 投稿者本人は自分の pending 投稿を閲覧できる（フィードから消えていることに気づかせる）。
+    // ただし removed は本人にも表示しない。
+    const isOwnerPending =
+      isPostOwner && data.moderation_status === "pending";
+    if (!isOwnerPending) {
+      return null;
+    }
   }
 
   if (currentUserId && data.user_id && !isAdminViewer) {

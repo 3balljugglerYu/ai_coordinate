@@ -3,6 +3,7 @@ import { getUserPostsServer } from "@/features/my-page/lib/server-api";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUserRouteCopy } from "@/features/users/lib/route-copy";
+import { getUser } from "@/lib/auth";
 
 /**
  * ユーザーの投稿一覧取得API（GET）
@@ -25,7 +26,8 @@ export async function GET(
     const offset = parseInt(searchParams.get("offset") || "0", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
-    const posts = await getUserPostsServer(userId, limit, offset);
+    const viewer = await getUser();
+    const posts = await getUserPostsServer(userId, limit, offset, undefined, viewer?.id ?? null);
 
     return NextResponse.json(posts);
   } catch (error) {

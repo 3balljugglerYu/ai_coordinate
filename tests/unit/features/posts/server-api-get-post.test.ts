@@ -227,4 +227,42 @@ describe("getPost", () => {
       }),
     );
   });
+
+  it("returns the post when the owner views their own pending post", async () => {
+    const { supabase } = createSupabaseMock({
+      moderation_status: "pending",
+    } as never);
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", "author-1", true);
+
+    expect(post).toEqual(
+      expect.objectContaining({
+        id: "post-1",
+        moderation_status: "pending",
+      }),
+    );
+  });
+
+  it("returns null when a non-owner views a pending post", async () => {
+    const { supabase } = createSupabaseMock({
+      moderation_status: "pending",
+    } as never);
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", "viewer-1", true);
+
+    expect(post).toBeNull();
+  });
+
+  it("returns null when the owner views their own removed post", async () => {
+    const { supabase } = createSupabaseMock({
+      moderation_status: "removed",
+    } as never);
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", "author-1", true);
+
+    expect(post).toBeNull();
+  });
 });

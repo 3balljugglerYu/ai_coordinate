@@ -6,6 +6,7 @@ import { reportPostSchema } from "@/features/moderation/lib/schemas";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getModerationRouteCopy } from "@/features/moderation/lib/route-copy";
+import { getAdminUserIds } from "@/lib/env";
 
 const REPORT_LIMIT_PER_10_MINUTES = 10;
 const REPORT_LIMIT_PER_24_HOURS = 50;
@@ -28,6 +29,8 @@ function calculateReporterWeight(accountCreatedAt?: string | null, postedCount =
   return Math.min(1.5, Math.max(0.5, baseWeight));
 }
 
+type PendingMode = "primary" | "admin_immediate";
+
 interface PendingContext {
   postId: string;
   actorId: string;
@@ -36,6 +39,7 @@ interface PendingContext {
   recentCount: number;
   activeUsers: number;
   baselineTime: string;
+  mode: PendingMode;
 }
 
 interface PendingMetrics {
@@ -107,17 +111,20 @@ async function setPendingWithRpc(
   supabase: Awaited<ReturnType<typeof createClient>>,
   context: PendingContext
 ): Promise<{ ok: boolean; reason: string }> {
+  const reasonCode =
+    context.mode === "admin_immediate" ? "admin_immediate" : "report_threshold";
+
   const { data, error } = await supabase.rpc("mark_post_pending_by_report", {
     p_post_id: context.postId,
     p_actor_id: context.actorId,
-    p_reason: "report_threshold",
+    p_reason: reasonCode,
     p_metadata: {
       weightedScore: context.weightedScore,
       threshold: context.threshold,
       recentCount: context.recentCount,
       activeUsers: context.activeUsers,
       baselineTime: context.baselineTime,
-      mode: "primary",
+      mode: context.mode,
     },
   });
 
@@ -166,6 +173,8 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return jsonError(copy.authRequired, "REPORT_AUTH_REQUIRED", 401);
     }
+
+    const isReporterAdmin = getAdminUserIds().includes(user.id);
 
     const payload = reportPostSchema.safeParse(await request.json());
     if (!payload.success) {
@@ -272,22 +281,35 @@ export async function POST(request: NextRequest) {
 
     let metrics: PendingMetrics;
     let postModerationStatus: "visible" | "pending" | "removed" = post.moderation_status || "visible";
-    try {
-      const adminClient = createAdminClient();
-      metrics = await calculatePendingMetrics(adminClient, postId, baselineTime);
+    const pendingMode: PendingMode = isReporterAdmin ? "admin_immediate" : "primary";
 
-      // 並行通報で集計タイミングが競合した場合に取りこぼしやすいため、短時間だけ再評価する
-      if (!metrics.shouldSetPending && postModerationStatus === "visible") {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        try {
-          metrics = await calculatePendingMetrics(adminClient, postId, baselineTime);
-        } catch (aggregateError) {
-          console.error("Pending metrics re-calculation error:", aggregateError);
+    if (isReporterAdmin) {
+      // admin による通報は閾値判定をスキップして即時 pending 化する
+      metrics = {
+        weightedScore: 0,
+        recentCount: 0,
+        activeUsers: 0,
+        threshold: 0,
+        shouldSetPending: true,
+      };
+    } else {
+      try {
+        const adminClient = createAdminClient();
+        metrics = await calculatePendingMetrics(adminClient, postId, baselineTime);
+
+        // 並行通報で集計タイミングが競合した場合に取りこぼしやすいため、短時間だけ再評価する
+        if (!metrics.shouldSetPending && postModerationStatus === "visible") {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          try {
+            metrics = await calculatePendingMetrics(adminClient, postId, baselineTime);
+          } catch (aggregateError) {
+            console.error("Pending metrics re-calculation error:", aggregateError);
+          }
         }
+      } catch (aggregateError) {
+        console.error("Pending metrics calculation error:", aggregateError);
+        return jsonError(copy.reportAggregationFailed, "REPORT_AGGREGATION_FAILED", 500);
       }
-    } catch (aggregateError) {
-      console.error("Pending metrics calculation error:", aggregateError);
-      return jsonError(copy.reportAggregationFailed, "REPORT_AGGREGATION_FAILED", 500);
     }
 
     const { weightedScore, threshold, recentCount, activeUsers, shouldSetPending } = metrics;
@@ -301,6 +323,7 @@ export async function POST(request: NextRequest) {
         recentCount,
         activeUsers,
         baselineTime,
+        mode: pendingMode,
       };
 
       const rpcResult = await setPendingWithRpc(supabase, context);

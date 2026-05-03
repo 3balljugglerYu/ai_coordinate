@@ -90,10 +90,11 @@ export async function generateMetadata({
 }
 
 async function UserProfileData({ userId }: { userId: string }) {
+  // この分岐は own profile 専用なので、本人として pending 投稿も含めて取得する。
   const [profile, stats, posts] = await Promise.all([
     getUserProfileServer(userId),
     getUserStatsServer(userId),
-    getUserPostsServer(userId, 20, 0),
+    getUserPostsServer(userId, 20, 0, undefined, userId),
   ]);
 
   // プロフィールが存在しない場合は404を返す
