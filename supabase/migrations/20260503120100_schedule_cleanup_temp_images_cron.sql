@@ -5,6 +5,14 @@
 -- 同期削除するため、temp/ にはほぼ何も残らない。本 cron は worker 側で
 -- 削除に失敗したケースの自動リカバリ（β: 24h TTL の安全網）。
 --
+-- 運用ポリシー（2026-05-05〜）:
+--   Before/After 機能リリース前（〜2026-05-04）に生成された投稿には
+--   `pre_generation_storage_path` が無く、Before 表示は `temp/` に残っている
+--   入力画像にフォールバックしている。これらを失わないため、本 cron は
+--   登録するが `active = false` で停止状態にする。
+--   再有効化したくなったら:
+--     UPDATE cron.job SET active = true WHERE jobname = 'cleanup_temp_images_daily';
+--
 -- pg_net で /functions/v1/cleanup-temp-images を 1 日 1 回（18:00 UTC = 03:00 JST）叩く。
 -- ADR-003 / 計画書 §Phase 5 を参照。
 -- 既存 style-template-cleanup-cron（20260502120500）と同じ Vault 経由 secret パターン。
@@ -31,6 +39,7 @@
 DO $do$
 DECLARE
   v_existing_job_id BIGINT;
+  v_new_job_id BIGINT;
   v_function_url TEXT := 'https://hnrccaxrvhtbuihfvitc.supabase.co/functions/v1/cleanup-temp-images';
   v_cron_secret TEXT;
   v_headers JSONB;
@@ -81,11 +90,17 @@ BEGIN
     v_headers::text
   );
 
-  PERFORM cron.schedule(
+  v_new_job_id := cron.schedule(
     'cleanup_temp_images_daily',
     '0 18 * * *',
     v_command
   );
+
+  -- 上記運用ポリシーに従い、登録直後に inactive 化する。
+  -- 再 apply で active が true に戻ることがないよう、本マイグレーション内で常に false に戻す。
+  -- cron.job への直接 UPDATE は supabase_admin にも許可されないため、公式 API の
+  -- cron.alter_job(jobid, active := boolean) を使う（pg_cron 1.4+）。
+  PERFORM cron.alter_job(job_id := v_new_job_id, active := false);
 END;
 $do$;
 
