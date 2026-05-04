@@ -131,6 +131,31 @@ describe("Posts cache invalidation routes", () => {
     expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-1");
   });
 
+  test("POST /api/posts/post_show_before_imageをbooleanのままpostImageServerへ渡す", async () => {
+    mockPostImageServer.mockResolvedValue({
+      id: "post-1",
+      user_id: "user-1",
+      is_posted: true,
+      caption: "fresh caption",
+      posted_at: "2026-03-16T00:00:00.000Z",
+    } as never);
+
+    const response = await postRoute(
+      createRequest("POST", {
+        id: "post-1",
+        caption: "fresh caption",
+        show_before_image: false,
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPostImageServer).toHaveBeenCalledWith(
+      "post-1",
+      "fresh caption",
+      false
+    );
+  });
+
   test("PUT /api/posts/update_詳細系タグを即時失効する", async () => {
     // Spec: PCIR-002
     mockPostImageServer.mockResolvedValue({
@@ -166,6 +191,31 @@ describe("Posts cache invalidation routes", () => {
     });
     expect(mockAfter).toHaveBeenCalledTimes(1);
     expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-2");
+  });
+
+  test("PUT /api/posts/update_show_before_imageをbooleanのままpostImageServerへ渡す", async () => {
+    mockPostImageServer.mockResolvedValue({
+      id: "post-2",
+      user_id: "user-1",
+      is_posted: true,
+      caption: "updated caption",
+      posted_at: "2026-03-16T00:00:00.000Z",
+    } as never);
+
+    const response = await updateRoute(
+      createRequest("PUT", {
+        id: "post-2",
+        caption: "updated caption",
+        show_before_image: false,
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPostImageServer).toHaveBeenCalledWith(
+      "post-2",
+      "updated caption",
+      false
+    );
   });
 
   test("DELETE /api/posts/[id]_詳細系とマイページ画像タグを即時失効する", async () => {

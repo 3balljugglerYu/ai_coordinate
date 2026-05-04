@@ -56,9 +56,16 @@ function createSupabaseMock(
   postOverrides: Partial<{
     image_url: string | null;
     storage_path: string | null;
+    pre_generation_storage_path: string | null;
+    image_job_id: string | null;
+    show_before_image: boolean;
     width: number | null;
     height: number | null;
   }> = {},
+  jobResult: {
+    data: { input_image_url: string | null } | null;
+    error: { message: string } | null;
+  } = { data: null, error: null },
 ) {
   const updateGeneratedImage = jest.fn();
   const postRow = {
@@ -66,6 +73,9 @@ function createSupabaseMock(
     user_id: "author-1",
     image_url: null,
     storage_path: "generated/path.png",
+    pre_generation_storage_path: null,
+    image_job_id: null,
+    show_before_image: true,
     prompt: "prompt",
     is_posted: true,
     moderation_status: "visible",
@@ -118,7 +128,12 @@ function createSupabaseMock(
       }
       return { data: null, error: null };
     });
-    builder.maybeSingle = jest.fn(async () => ({ data: null, error: null }));
+    builder.maybeSingle = jest.fn(async () => {
+      if (table === "image_jobs") {
+        return jobResult;
+      }
+      return { data: null, error: null };
+    });
     builder.update = jest.fn((updates: Record<string, unknown>) => {
       updating = true;
       updateGeneratedImage(updates);
@@ -264,5 +279,86 @@ describe("getPost", () => {
     const post = await getPost("post-1", "author-1", true);
 
     expect(post).toBeNull();
+  });
+
+  it("uses an allowed image_jobs input_image_url as the before-image fallback", async () => {
+    const fallbackUrl =
+      "https://supabase.example/storage/v1/object/public/generated-images/temp/user-1/input.png";
+    const { supabase } = createSupabaseMock(
+      {
+        pre_generation_storage_path: null,
+        image_job_id: "job-1",
+      },
+      {
+        data: { input_image_url: fallbackUrl },
+        error: null,
+      }
+    );
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", null, true);
+
+    expect(post).toEqual(
+      expect.objectContaining({
+        input_image_url_fallback: fallbackUrl,
+      })
+    );
+  });
+
+  it("does not expose a disallowed image_jobs input_image_url fallback", async () => {
+    const consoleWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { supabase } = createSupabaseMock(
+      {
+        pre_generation_storage_path: null,
+        image_job_id: "job-1",
+      },
+      {
+        data: { input_image_url: "https://attacker.example/input.png" },
+        error: null,
+      }
+    );
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", null, true);
+
+    expect(post).toEqual(
+      expect.objectContaining({
+        input_image_url_fallback: null,
+      })
+    );
+    expect(consoleWarn).toHaveBeenCalledWith(
+      "Skipping input_image_url fallback because it failed allow-list check:",
+      "https://attacker.example/input.png"
+    );
+    consoleWarn.mockRestore();
+  });
+
+  it("keeps the fallback null when image_jobs lookup fails", async () => {
+    const consoleWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const jobError = { message: "job lookup failed" };
+    const { supabase } = createSupabaseMock(
+      {
+        pre_generation_storage_path: null,
+        image_job_id: "job-1",
+      },
+      {
+        data: null,
+        error: jobError,
+      }
+    );
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", null, true);
+
+    expect(post).toEqual(
+      expect.objectContaining({
+        input_image_url_fallback: null,
+      })
+    );
+    expect(consoleWarn).toHaveBeenCalledWith(
+      "Failed to fetch image_jobs.input_image_url for fallback:",
+      jobError
+    );
+    consoleWarn.mockRestore();
   });
 });
