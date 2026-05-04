@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { PostDetailStatsContent } from "./PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
@@ -71,6 +71,10 @@ export function PostDetailStatic({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postModalOpen, setPostModalOpen] = useState(false);
+  const afterImageFrameRef = useRef<HTMLDivElement | null>(null);
+  const [beforeMaxHeightPx, setBeforeMaxHeightPx] = useState<number | null>(
+    null
+  );
   const { toast } = useToast();
 
   // imageUrlはpropsから取得（重複定義を避けるため）
@@ -144,6 +148,41 @@ export function PostDetailStatic({
 
   const maskedPrompt = hasVisiblePrompt ? "*".repeat(visiblePrompt.length) : "";
 
+  useEffect(() => {
+    if (!beforeImageUrl || !afterImageFrameRef.current) {
+      return;
+    }
+
+    const afterFrame = afterImageFrameRef.current;
+    const updateBeforeHeight = () => {
+      const height = afterFrame.getBoundingClientRect().height;
+      setBeforeMaxHeightPx(height > 0 ? Math.round(height * 0.5) : null);
+    };
+
+    const initialMeasure = window.requestAnimationFrame(updateBeforeHeight);
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateBeforeHeight);
+      return () => {
+        window.cancelAnimationFrame(initialMeasure);
+        window.removeEventListener("resize", updateBeforeHeight);
+      };
+    }
+
+    const observer = new ResizeObserver(updateBeforeHeight);
+    observer.observe(afterFrame);
+
+    return () => {
+      window.cancelAnimationFrame(initialMeasure);
+      observer.disconnect();
+    };
+  }, [beforeImageUrl, displayImageUrl]);
+
+  const beforeMeasuredMaxHeightStyle =
+    beforeMaxHeightPx !== null
+      ? { maxHeight: `${beforeMaxHeightPx}px` }
+      : undefined;
+
   if (isHidden) {
     return (
       <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -161,10 +200,11 @@ export function PostDetailStatic({
         {beforeImageUrl ? (
           /* Before あり時は portrait/landscape 共通で After:Before = 2:1（66vw : 33vw）
              に揃え、合計を ≒ 100vw にして横方向の余白をほぼゼロにする。
-             縦長でも横方向に張り付くよう max-h は緩めの 80vh / 40vh まで許容。
+             Before の高さは After の実表示高さを測定して 50% に揃える。
              下端揃え + 隙間ゼロ + ラベル右下密着。 */
           <div className="relative flex w-full items-end justify-center bg-white">
             <div
+              ref={afterImageFrameRef}
               className="relative max-h-[80vh] max-w-[66vw] cursor-pointer"
               onClick={() => {
                 setFullscreenInitialIndex(0);
@@ -192,6 +232,7 @@ export function PostDetailStatic({
             </div>
             <div
               className="relative max-h-[40vh] max-w-[33vw] cursor-pointer"
+              style={beforeMeasuredMaxHeightStyle}
               onClick={() => {
                 setFullscreenInitialIndex(1);
                 setIsFullscreenOpen(true);
@@ -203,6 +244,7 @@ export function PostDetailStatic({
                 width={400}
                 height={400}
                 className="block max-h-[40vh] max-w-[33vw] w-auto h-auto object-contain"
+                style={beforeMeasuredMaxHeightStyle}
                 sizes="(max-width: 768px) 33vw, 33vw"
               />
               <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
