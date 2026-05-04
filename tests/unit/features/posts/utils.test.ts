@@ -4,6 +4,7 @@ import {
   deriveAspectRatioFromDimensions,
   getPostBeforeImageUrl,
   getPostImageUrl,
+  getPostOriginalUrl,
 } from "@/features/posts/lib/utils";
 
 describe("posts utils", () => {
@@ -102,6 +103,19 @@ describe("posts utils", () => {
           input_image_url_fallback: null,
         }),
       ).toBeNull();
+    });
+  });
+
+  describe("getPostOriginalUrl", () => {
+    it("uses the shared post image URL resolver", () => {
+      expect(
+        getPostOriginalUrl({
+          image_url: null,
+          storage_path: "generated/original.png",
+        }),
+      ).toBe(
+        "https://supabase.example/storage/v1/object/public/generated-images/generated/original.png",
+      );
     });
   });
 
