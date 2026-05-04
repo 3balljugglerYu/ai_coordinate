@@ -7,6 +7,9 @@ import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 export interface PostImageRequest {
   id: string;
   caption?: string;
+  // 投稿モーダル / 編集モーダルで「生成前の画像も表示する」を切り替える。
+  // 未指定なら API 側で更新しない（後方互換）。
+  show_before_image?: boolean;
 }
 
 export interface PostImageResponse {

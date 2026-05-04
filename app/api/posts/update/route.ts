@@ -22,6 +22,10 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const { id, caption } = body;
+    const showBeforeImage =
+      typeof body?.show_before_image === "boolean"
+        ? body.show_before_image
+        : undefined;
 
     if (!id) {
       return NextResponse.json(
@@ -30,8 +34,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // キャプション更新処理
-    const result = await postImageServer(id, caption);
+    // キャプションと show_before_image の更新処理
+    const result = await postImageServer(id, caption, showBeforeImage);
 
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません

@@ -52,6 +52,7 @@ export const enMessages = {
     afterImageLabel: "After",
     beforeImageAlt: "Source image",
     afterImageAlt: "Generated image",
+    showBeforeImageLabel: "Also display the before image",
     hiddenMessage: "This post is hidden based on your display settings.",
     prompt: "Prompt",
     metaModelLabel: "Generation model",

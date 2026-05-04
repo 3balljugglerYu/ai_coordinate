@@ -40,6 +40,7 @@ jest.mock("@/components/ui/use-toast", () => ({
 
 jest.mock("@/features/posts/lib/utils", () => ({
   getPostImageUrl: (...args: unknown[]) => mockGetPostImageUrl(...args),
+  getPostBeforeImageUrl: () => null,
 }));
 
 jest.mock("@/features/posts/components/CollapsibleText", () => ({

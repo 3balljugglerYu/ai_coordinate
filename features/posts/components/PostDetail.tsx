@@ -20,7 +20,7 @@ import { PostActions } from "./PostActions";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
 import { PostMetaLine } from "./PostMetaLine";
-import { getPostImageUrl } from "../lib/utils";
+import { getPostImageUrl, getPostBeforeImageUrl } from "../lib/utils";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
@@ -51,6 +51,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
   const commentListRef = useRef<CommentListRef>(null);
 
   const imageUrl = getPostImageUrl(post);
+  const beforeImageUrl = getPostBeforeImageUrl(post);
 
   // 画像の縦横比を判定
   useEffect(() => {
@@ -368,6 +369,9 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
           onOpenChange={setEditModalOpen}
           imageId={post.id}
           currentCaption={post.caption}
+          currentShowBeforeImage={post.show_before_image}
+          afterImageUrl={imageUrl}
+          beforeImageUrl={beforeImageUrl}
         />
       )}
 
@@ -389,6 +393,8 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
           onOpenChange={setPostModalOpen}
           imageId={post.id}
           currentCaption={post.caption || undefined}
+          afterImageUrl={imageUrl}
+          beforeImageUrl={beforeImageUrl}
         />
       )}
     </div>

@@ -92,6 +92,9 @@ export function getPostOriginalUrl(post: {
 /**
  * Before（生成元）画像の表示用 URL を返す。
  *
+ * `show_before_image === false` のときはユーザーが「表示しない」を選択しているので
+ * 永続パスや fallback があっても null を返す（Storage オブジェクトは残置）。
+ *
  * 優先順位:
  *   1. `pre_generation_storage_path` の永続 WebP（生成完了後にバックグラウンド永続化）
  *   2. `input_image_url_fallback`（楽観表示用：永続化が完了するまでの間 image_jobs.input_image_url を表示）
@@ -100,7 +103,11 @@ export function getPostOriginalUrl(post: {
 export function getPostBeforeImageUrl(post: {
   pre_generation_storage_path?: string | null;
   input_image_url_fallback?: string | null;
+  show_before_image?: boolean;
 }): string | null {
+  if (post.show_before_image === false) {
+    return null;
+  }
   if (post.pre_generation_storage_path) {
     const url = getImageUrlFromStoragePath(post.pre_generation_storage_path);
     if (url) return url;

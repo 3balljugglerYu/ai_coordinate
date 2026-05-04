@@ -46,6 +46,7 @@ export const jaMessages = {
     afterImageLabel: "After",
     beforeImageAlt: "生成元画像",
     afterImageAlt: "生成済み画像",
+    showBeforeImageLabel: "生成前の画像も表示する",
     hiddenMessage: "この投稿はあなたの表示設定により非表示になりました。",
     prompt: "プロンプト",
     metaModelLabel: "生成モデル",

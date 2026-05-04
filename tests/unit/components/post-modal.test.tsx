@@ -15,6 +15,7 @@ jest.mock("next-intl", () => ({
 
 jest.mock("@/features/posts/lib/api", () => ({
   postImageAPI: jest.fn(),
+  fetchBeforeSourceUrl: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock("@/features/notifications/components/UnreadNotificationProvider", () => ({
@@ -152,6 +153,7 @@ describe("PostModal", () => {
         {
           id: "image-1",
           caption: "after",
+          show_before_image: true,
         },
         {
           postFailed: "投稿に失敗しました",

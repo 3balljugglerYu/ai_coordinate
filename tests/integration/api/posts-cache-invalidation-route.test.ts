@@ -106,7 +106,11 @@ describe("Posts cache invalidation routes", () => {
 
     expect(response.status).toBe(200);
     expect(body.id).toBe("post-1");
-    expect(mockPostImageServer).toHaveBeenCalledWith("post-1", "fresh caption");
+    expect(mockPostImageServer).toHaveBeenCalledWith(
+      "post-1",
+      "fresh caption",
+      undefined
+    );
     expect(mockRevalidateTag).toHaveBeenCalledWith("home-posts", "max");
     expect(mockRevalidateTag).toHaveBeenCalledWith("home-posts-week", "max");
     expect(mockRevalidateTag).toHaveBeenCalledWith("search-posts", "max");
@@ -145,7 +149,11 @@ describe("Posts cache invalidation routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockPostImageServer).toHaveBeenCalledWith("post-2", "updated caption");
+    expect(mockPostImageServer).toHaveBeenCalledWith(
+      "post-2",
+      "updated caption",
+      undefined
+    );
     expect(mockRevalidateTag).toHaveBeenCalledWith("home-posts", "max");
     expect(mockRevalidateTag).toHaveBeenCalledWith("home-posts-week", "max");
     expect(mockRevalidateTag).toHaveBeenCalledWith("search-posts", "max");

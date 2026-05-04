@@ -53,6 +53,7 @@ export async function postImageAPI(
 
 /**
  * キャプションを更新
+ * show_before_image が含まれていれば一緒に更新する。
  */
 export async function updatePostCaption(
   request: PostImageRequest,
@@ -72,6 +73,28 @@ export async function updatePostCaption(
   }
 
   return response.json();
+}
+
+/**
+ * 投稿対象の生成画像に紐づく Before 画像 URL を取得する。
+ * 永続パス未生成のときは image_jobs.input_image_url にフォールバック。
+ * 取得できない / show_before_image=false のときは null。
+ * 認可は server 側 RLS で担保（本人以外は 404）。
+ */
+export async function fetchBeforeSourceUrl(
+  imageId: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`/api/posts/${imageId}/before-source`);
+    if (!response.ok) {
+      return null;
+    }
+    const data = (await response.json()) as { before_image_url?: string | null };
+    return data.before_image_url ?? null;
+  } catch (error) {
+    console.warn("Failed to fetch before-source URL:", error);
+    return null;
+  }
 }
 
 /**

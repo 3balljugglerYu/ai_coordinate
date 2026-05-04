@@ -482,6 +482,9 @@ export function PostDetailStatic({
           onOpenChange={setEditModalOpen}
           imageId={post.id}
           currentCaption={post.caption}
+          currentShowBeforeImage={post.show_before_image}
+          afterImageUrl={displayImageUrl}
+          beforeImageUrl={beforeImageUrl}
         />
       )}
 
@@ -503,6 +506,8 @@ export function PostDetailStatic({
           onOpenChange={setPostModalOpen}
           imageId={post.id}
           currentCaption={post.caption || undefined}
+          afterImageUrl={displayImageUrl}
+          beforeImageUrl={beforeImageUrl}
         />
       )}
     </div>
