@@ -14,6 +14,8 @@ jest.mock("@/features/generation/lib/webp-converter", () => ({
 }));
 
 import {
+  deleteTempInputImageIfExists,
+  extractStoragePathFromPublicUrl,
   isAllowedInputImageUrl,
   persistBeforeImageForGeneratedImage,
 } from "@/features/posts/lib/before-image-storage";
@@ -259,5 +261,83 @@ describe("persistBeforeImageForGeneratedImage", () => {
     expect(result.status).toBe("persisted");
     expect(mock.uploadFn).toHaveBeenCalled();
     expect(mock.removeFn).not.toHaveBeenCalled();
+  });
+});
+
+describe("extractStoragePathFromPublicUrl", () => {
+  test("generated-images バケット配下の URL から object path を抜き出す", () => {
+    expect(extractStoragePathFromPublicUrl(TEMP_URL)).toBe(
+      "temp/u1/123-abc.png"
+    );
+    expect(extractStoragePathFromPublicUrl(STOCK_URL)).toBe(
+      "3f2504e0-4f89-11d3-9a0c-0305e82c3301/stocks/foo.png"
+    );
+  });
+
+  test("別バケット / 別ホストの URL は null を返す", () => {
+    expect(
+      extractStoragePathFromPublicUrl(
+        `${PROJECT_URL}/storage/v1/object/public/other-bucket/foo.png`
+      )
+    ).toBeNull();
+    expect(
+      extractStoragePathFromPublicUrl(
+        "https://attacker.example/storage/v1/object/public/generated-images/temp/foo.png"
+      )
+    ).toBeNull();
+  });
+});
+
+describe("deleteTempInputImageIfExists", () => {
+  function buildStorageOnlyMock(removeResult: {
+    data: unknown;
+    error: { message: string } | null;
+  }) {
+    const removeFn = jest.fn().mockResolvedValue(removeResult);
+    const storageFrom = jest.fn(() => ({ remove: removeFn }));
+    return {
+      client: { storage: { from: storageFrom } },
+      removeFn,
+    };
+  }
+
+  test("temp/ 配下の URL なら storage.remove が呼ばれる", async () => {
+    const mock = buildStorageOnlyMock({ data: [], error: null });
+    createAdminClientMock.mockReturnValue(mock.client);
+
+    await deleteTempInputImageIfExists(TEMP_URL);
+
+    expect(mock.removeFn).toHaveBeenCalledWith(["temp/u1/123-abc.png"]);
+  });
+
+  test("stocks/ 由来 (temp/ 配下でない) の URL では remove を呼ばない", async () => {
+    const mock = buildStorageOnlyMock({ data: [], error: null });
+    createAdminClientMock.mockReturnValue(mock.client);
+
+    await deleteTempInputImageIfExists(STOCK_URL);
+
+    expect(mock.removeFn).not.toHaveBeenCalled();
+  });
+
+  test("generated-images バケット外の URL では remove を呼ばない (no-op)", async () => {
+    const mock = buildStorageOnlyMock({ data: [], error: null });
+    createAdminClientMock.mockReturnValue(mock.client);
+
+    await deleteTempInputImageIfExists(
+      "https://attacker.example/storage/v1/object/public/other/foo.png"
+    );
+
+    expect(mock.removeFn).not.toHaveBeenCalled();
+  });
+
+  test("Storage の削除エラーは握りつぶす（例外を投げない）", async () => {
+    const mock = buildStorageOnlyMock({
+      data: null,
+      error: { message: "boom" },
+    });
+    createAdminClientMock.mockReturnValue(mock.client);
+
+    await expect(deleteTempInputImageIfExists(TEMP_URL)).resolves.toBeUndefined();
+    expect(mock.removeFn).toHaveBeenCalled();
   });
 });

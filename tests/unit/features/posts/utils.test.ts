@@ -2,6 +2,7 @@
 
 import {
   deriveAspectRatioFromDimensions,
+  getPostBeforeImageUrl,
   getPostImageUrl,
 } from "@/features/posts/lib/utils";
 
@@ -43,6 +44,47 @@ describe("posts utils", () => {
 
     it("returns an empty string when no image source exists", () => {
       expect(getPostImageUrl({ image_url: null, storage_path: null })).toBe("");
+    });
+  });
+
+  describe("getPostBeforeImageUrl", () => {
+    it("returns null when show_before_image is explicitly false", () => {
+      expect(
+        getPostBeforeImageUrl({
+          show_before_image: false,
+          pre_generation_storage_path: "user-1/pre-generation/img-1_display.webp",
+          input_image_url_fallback: "https://supabase.example/foo.png",
+        }),
+      ).toBeNull();
+    });
+
+    it("prefers the persisted pre_generation_storage_path", () => {
+      expect(
+        getPostBeforeImageUrl({
+          pre_generation_storage_path: "user-1/pre-generation/img-1_display.webp",
+          input_image_url_fallback: "https://supabase.example/temp/foo.png",
+        }),
+      ).toBe(
+        "https://supabase.example/storage/v1/object/public/generated-images/user-1/pre-generation/img-1_display.webp",
+      );
+    });
+
+    it("falls back to input_image_url_fallback when persisted path is missing", () => {
+      expect(
+        getPostBeforeImageUrl({
+          pre_generation_storage_path: null,
+          input_image_url_fallback: "https://supabase.example/temp/foo.png",
+        }),
+      ).toBe("https://supabase.example/temp/foo.png");
+    });
+
+    it("returns null when neither persisted path nor fallback is available", () => {
+      expect(
+        getPostBeforeImageUrl({
+          pre_generation_storage_path: null,
+          input_image_url_fallback: null,
+        }),
+      ).toBeNull();
     });
   });
 
