@@ -66,6 +66,7 @@ export function PostDetailStatic({
 }: PostDetailStaticProps) {
   const postsT = useTranslations("posts");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+  const [fullscreenInitialIndex, setFullscreenInitialIndex] = useState(0);
   const [isPromptCopied, setIsPromptCopied] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -157,24 +158,94 @@ export function PostDetailStatic({
     <div className="bg-white">
       <div className="container mx-auto max-w-4xl bg-white">
         {/* 画像セクション */}
-        <div className="relative w-full overflow-hidden bg-white">
-          {beforeImageUrl && (
-            <div className="relative w-full overflow-hidden bg-white">
-              <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+        {beforeImageUrl ? (
+          /* Before があるときは After 本体 + 右側に Before（After の 1/6 高さ）。
+             各画像枠は natural size に追従するので、ラベルは画像の左上に密着、
+             After/Before は中央で直接隣接して隙間ゼロになる。 */
+          <div className="relative flex w-full items-end justify-center bg-white">
+            <div
+              className="relative max-h-[50vh] max-w-[50vw] cursor-pointer"
+              onClick={() => {
+                setFullscreenInitialIndex(0);
+                setIsFullscreenOpen(true);
+              }}
+            >
+              {displayImageUrl ? (
+                <Image
+                  src={displayImageUrl}
+                  alt={postsT("afterImageAlt")}
+                  width={1200}
+                  height={1200}
+                  className="block max-h-[50vh] max-w-[50vw] w-auto h-auto object-contain"
+                  sizes="(max-width: 768px) 50vw, 50vw"
+                  priority
+                />
+              ) : (
+                <div className="flex h-full min-h-[50vh] w-[50vh] items-center justify-center text-gray-400">
+                  {postsT("noImage")}
+                </div>
+              )}
+              <div className="absolute bottom-2 right-2 z-10 rounded bg-black/60 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                {postsT("afterImageLabel")}
+              </div>
+            </div>
+            {/* Before のサイズ制約は After の 1/2 比率を保つ:
+                portrait: After 高さ 50vh → Before max-h-[25vh]
+                landscape: After 幅 50vw → Before max-w-[25vw]
+                square / null: 高さ基準で安全側
+                合計幅は約 75vw（余白 25vw）になる。 */}
+            <div
+              className={`relative cursor-pointer ${
+                imageAspectRatio === "landscape"
+                  ? "max-w-[25vw]"
+                  : "max-h-[25vh]"
+              }`}
+              onClick={() => {
+                setFullscreenInitialIndex(1);
+                setIsFullscreenOpen(true);
+              }}
+            >
+              <Image
+                src={beforeImageUrl}
+                alt={postsT("beforeImageAlt")}
+                width={400}
+                height={400}
+                className={`block w-auto h-auto object-contain ${
+                  imageAspectRatio === "landscape"
+                    ? "max-w-[25vw]"
+                    : "max-h-[25vh]"
+                }`}
+                sizes={
+                  imageAspectRatio === "landscape"
+                    ? "(max-width: 768px) 25vw, 25vw"
+                    : "(max-width: 768px) 35vw, 25vw"
+                }
+              />
+              <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 {postsT("beforeImageLabel")}
               </div>
-              <div
-                className={`relative w-full overflow-hidden bg-white ${
-                  imageAspectRatio === "portrait"
-                    ? "max-h-[50vh]"
-                    : imageAspectRatio === "landscape"
-                    ? "max-h-[50vh]"
-                    : "aspect-square"
-                }`}
-              >
+            </div>
+          </div>
+        ) : (
+          /* Before なしは既存どおり After 単独表示 */
+          <div className="relative w-full overflow-hidden bg-white">
+            <div
+              className={`relative w-full overflow-hidden bg-white cursor-pointer ${
+                imageAspectRatio === "portrait"
+                  ? "max-h-[50vh]"
+                  : imageAspectRatio === "landscape"
+                  ? "max-h-[50vh]"
+                  : "aspect-square"
+              }`}
+              onClick={() => {
+                setFullscreenInitialIndex(0);
+                setIsFullscreenOpen(true);
+              }}
+            >
+              {displayImageUrl ? (
                 <Image
-                  src={beforeImageUrl}
-                  alt={postsT("beforeImageAlt")}
+                  src={displayImageUrl}
+                  alt={post.caption || postsT("postImageAlt")}
                   width={1200}
                   height={1200}
                   className={`w-full h-auto object-contain ${
@@ -183,52 +254,16 @@ export function PostDetailStatic({
                       : ""
                   }`}
                   sizes="(max-width: 768px) 100vw, 80vw"
+                  priority
                 />
-              </div>
+              ) : (
+                <div className="flex h-full items-center justify-center text-gray-400">
+                  {postsT("noImage")}
+                </div>
+              )}
             </div>
-          )}
-
-          {beforeImageUrl && (
-            <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wide text-gray-500">
-              {postsT("afterImageLabel")}
-            </div>
-          )}
-
-          <div
-            className={`relative w-full overflow-hidden bg-white cursor-pointer ${
-              imageAspectRatio === "portrait"
-                ? "max-h-[50vh]"
-                : imageAspectRatio === "landscape"
-                ? "max-h-[50vh]"
-                : "aspect-square"
-            }`}
-            onClick={() => setIsFullscreenOpen(true)}
-          >
-            {displayImageUrl ? (
-              <Image
-                src={displayImageUrl}
-                alt={
-                  beforeImageUrl
-                    ? postsT("afterImageAlt")
-                    : post.caption || postsT("postImageAlt")
-                }
-                width={1200}
-                height={1200}
-                className={`w-full h-auto object-contain ${
-                  imageAspectRatio === "portrait" || imageAspectRatio === "landscape"
-                    ? "max-h-[50vh]"
-                    : ""
-                }`}
-                sizes="(max-width: 768px) 100vw, 80vw"
-                priority
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-gray-400">
-                {postsT("noImage")}
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
         {/* ユーザー情報セクション */}
         <div className="border-t border-gray-200 bg-white px-4 py-3">
@@ -407,12 +442,33 @@ export function PostDetailStatic({
         ) : null}
       </div>
 
-      {/* 全画面表示 */}
+      {/* 全画面表示。initialIndex 切替時は key で再 mount して初期化する。 */}
       {displayImageUrl && (
         <Suspense fallback={null}>
           <ImageFullscreen
-            imageUrl={displayImageUrl}
-            alt={post.caption || postsT("postImageAlt")}
+            key={`${isFullscreenOpen}-${fullscreenInitialIndex}`}
+            images={
+              beforeImageUrl
+                ? [
+                    {
+                      url: displayImageUrl,
+                      alt: postsT("afterImageAlt"),
+                      label: postsT("afterImageLabel"),
+                    },
+                    {
+                      url: beforeImageUrl,
+                      alt: postsT("beforeImageAlt"),
+                      label: postsT("beforeImageLabel"),
+                    },
+                  ]
+                : [
+                    {
+                      url: displayImageUrl,
+                      alt: post.caption || postsT("postImageAlt"),
+                    },
+                  ]
+            }
+            initialIndex={fullscreenInitialIndex}
             isOpen={isFullscreenOpen}
             onClose={() => setIsFullscreenOpen(false)}
           />
