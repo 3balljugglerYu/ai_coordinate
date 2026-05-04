@@ -38,6 +38,9 @@ export interface GeneratedImageRecord {
   // Phase 2-1で追加されたカラム（optional）
   storage_path_display?: string | null;
   storage_path_thumb?: string | null;
+  // Before/After 表示機能で追加されたカラム（optional）
+  // 形式: {user_id}/pre-generation/{generated_image_id}_display.webp
+  pre_generation_storage_path?: string | null;
   moderation_status?: "visible" | "pending" | "removed";
   moderation_reason?: string | null;
   moderation_updated_at?: string;

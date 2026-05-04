@@ -279,7 +279,7 @@ export async function deleteMyImage(
   // 画像情報を取得してStorageパスを確認
   const { data: image, error: fetchError } = await supabase
     .from("generated_images")
-    .select("storage_path, user_id")
+    .select("storage_path, user_id, pre_generation_storage_path")
     .eq("id", imageId)
     .single();
 
@@ -293,10 +293,14 @@ export async function deleteMyImage(
     );
   }
 
-  // Storageから削除
+  // Storage から削除（生成画像本体 + Before（あれば））
+  const pathsToRemove = [image.storage_path];
+  if (image.pre_generation_storage_path) {
+    pathsToRemove.push(image.pre_generation_storage_path);
+  }
   const { error: storageError } = await supabase.storage
     .from("generated-images")
-    .remove([image.storage_path]);
+    .remove(pathsToRemove);
 
   if (storageError) {
     console.error("Storage delete error:", storageError);

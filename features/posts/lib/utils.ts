@@ -81,12 +81,34 @@ export function getPostDisplayUrl(post: {
 /**
  * 投稿の元画像URLを取得（ダウンロード用、PNG/JPEG）
  */
-export function getPostOriginalUrl(post: { 
-  storage_path?: string | null; 
-  image_url?: string | null; 
+export function getPostOriginalUrl(post: {
+  storage_path?: string | null;
+  image_url?: string | null;
 }): string {
   // 既存のロジックを使用（元画像は常にPNG/JPEG）
   return getPostImageUrl(post);
+}
+
+/**
+ * Before（生成元）画像の表示用 URL を返す。
+ *
+ * 優先順位:
+ *   1. `pre_generation_storage_path` の永続 WebP（生成完了後にバックグラウンド永続化）
+ *   2. `input_image_url_fallback`（楽観表示用：永続化が完了するまでの間 image_jobs.input_image_url を表示）
+ *   3. なし（null）
+ */
+export function getPostBeforeImageUrl(post: {
+  pre_generation_storage_path?: string | null;
+  input_image_url_fallback?: string | null;
+}): string | null {
+  if (post.pre_generation_storage_path) {
+    const url = getImageUrlFromStoragePath(post.pre_generation_storage_path);
+    if (url) return url;
+  }
+  if (post.input_image_url_fallback) {
+    return post.input_image_url_fallback;
+  }
+  return null;
 }
 
 export interface ImageDimensions {

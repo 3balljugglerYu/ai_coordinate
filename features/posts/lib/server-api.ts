@@ -822,6 +822,22 @@ export const getPost = cache(async (
     }
   }
 
+  // Before 画像の楽観表示用：pre_generation_storage_path が未設定の場合、
+  // 関連する image_jobs.input_image_url を取得して暫定表示に使う。
+  let inputImageUrlFallback: string | null = null;
+  if (!data.pre_generation_storage_path && data.image_job_id) {
+    const { data: jobRow, error: jobError } = await supabase
+      .from("image_jobs")
+      .select("input_image_url")
+      .eq("id", data.image_job_id)
+      .maybeSingle();
+    if (jobError) {
+      console.warn("Failed to fetch image_jobs.input_image_url for fallback:", jobError);
+    } else {
+      inputImageUrlFallback = jobRow?.input_image_url ?? null;
+    }
+  }
+
   return redactSensitivePrompt({
     ...data,
     user: data.user_id
@@ -838,6 +854,7 @@ export const getPost = cache(async (
     view_count: updatedViewCount,
     width,
     height,
+    input_image_url_fallback: inputImageUrlFallback,
   });
 });
 

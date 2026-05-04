@@ -19,7 +19,7 @@ import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
 import { PostModal } from "./PostModal";
 import { PostMetaLine } from "./PostMetaLine";
-import { getPostImageUrl } from "../lib/utils";
+import { getPostImageUrl, getPostBeforeImageUrl } from "../lib/utils";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
@@ -74,6 +74,8 @@ export function PostDetailStatic({
 
   // imageUrlはpropsから取得（重複定義を避けるため）
   const displayImageUrl = imageUrl || getPostImageUrl(post) || undefined;
+  // Before（生成元）画像。投稿時に opt-in されたときのみ存在する。
+  const beforeImageUrl = getPostBeforeImageUrl(post);
   const displayName =
     post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
@@ -154,6 +156,42 @@ export function PostDetailStatic({
       <div className="container mx-auto max-w-4xl bg-white">
         {/* 画像セクション */}
         <div className="relative w-full overflow-hidden bg-white">
+          {beforeImageUrl && (
+            <div className="relative w-full overflow-hidden bg-white">
+              <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+                {postsT("beforeImageLabel")}
+              </div>
+              <div
+                className={`relative w-full overflow-hidden bg-white ${
+                  imageAspectRatio === "portrait"
+                    ? "max-h-[50vh]"
+                    : imageAspectRatio === "landscape"
+                    ? "max-h-[50vh]"
+                    : "aspect-square"
+                }`}
+              >
+                <Image
+                  src={beforeImageUrl}
+                  alt={postsT("beforeImageAlt")}
+                  width={1200}
+                  height={1200}
+                  className={`w-full h-auto object-contain ${
+                    imageAspectRatio === "portrait" || imageAspectRatio === "landscape"
+                      ? "max-h-[50vh]"
+                      : ""
+                  }`}
+                  sizes="(max-width: 768px) 100vw, 80vw"
+                />
+              </div>
+            </div>
+          )}
+
+          {beforeImageUrl && (
+            <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+              {postsT("afterImageLabel")}
+            </div>
+          )}
+
           <div
             className={`relative w-full overflow-hidden bg-white cursor-pointer ${
               imageAspectRatio === "portrait"
@@ -167,7 +205,11 @@ export function PostDetailStatic({
             {displayImageUrl ? (
               <Image
                 src={displayImageUrl}
-                alt={post.caption || postsT("postImageAlt")}
+                alt={
+                  beforeImageUrl
+                    ? postsT("afterImageAlt")
+                    : post.caption || postsT("postImageAlt")
+                }
                 width={1200}
                 height={1200}
                 className={`w-full h-auto object-contain ${
