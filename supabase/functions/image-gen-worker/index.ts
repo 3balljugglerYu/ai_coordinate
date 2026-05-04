@@ -2125,6 +2125,8 @@ Deno.serve(async () => {
                   generation_metadata: job.generation_metadata ?? null,
                   model: dbModel,
                   source_image_stock_id: latestSourceImageStockId,
+                  image_job_id: jobId,
+                  image_job_result_index: 0,
                   style_template_id: job.style_template_id ?? null,
                   override_target: job.override_target ?? null,
                 })
