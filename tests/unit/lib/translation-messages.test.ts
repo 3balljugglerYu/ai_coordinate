@@ -4,6 +4,7 @@ import { jaMessages } from "@/messages/ja";
 
 const expectedClientNamespaces = [
   "accountManagement",
+  "adminStyleTemplates",
   "avatarUpload",
   "auth",
   "challenge",
@@ -11,6 +12,8 @@ const expectedClientNamespaces = [
   "coordinate",
   "contact",
   "credits",
+  "inspirePage",
+  "inspireSubmission",
   "moderation",
   "nav",
   "footer",
