@@ -39,6 +39,7 @@
 DO $do$
 DECLARE
   v_existing_job_id BIGINT;
+  v_new_job_id BIGINT;
   v_function_url TEXT := 'https://hnrccaxrvhtbuihfvitc.supabase.co/functions/v1/cleanup-temp-images';
   v_cron_secret TEXT;
   v_headers JSONB;
@@ -89,7 +90,7 @@ BEGIN
     v_headers::text
   );
 
-  PERFORM cron.schedule(
+  v_new_job_id := cron.schedule(
     'cleanup_temp_images_daily',
     '0 18 * * *',
     v_command
@@ -97,9 +98,9 @@ BEGIN
 
   -- 上記運用ポリシーに従い、登録直後に inactive 化する。
   -- 再 apply で active が true に戻ることがないよう、本マイグレーション内で常に false に戻す。
-  UPDATE cron.job
-     SET active = false
-   WHERE jobname = 'cleanup_temp_images_daily';
+  -- cron.job への直接 UPDATE は supabase_admin にも許可されないため、公式 API の
+  -- cron.alter_job(jobid, active := boolean) を使う（pg_cron 1.4+）。
+  PERFORM cron.alter_job(job_id := v_new_job_id, active := false);
 END;
 $do$;
 
