@@ -159,12 +159,13 @@ export function PostDetailStatic({
       <div className="container mx-auto max-w-4xl bg-white">
         {/* 画像セクション */}
         {beforeImageUrl ? (
-          /* Before があるときは After 本体 + 右側に Before（After の 1/6 高さ）。
-             各画像枠は natural size に追従するので、ラベルは画像の左上に密着、
-             After/Before は中央で直接隣接して隙間ゼロになる。 */
+          /* Before あり時は portrait/landscape 共通で After:Before = 2:1（66vw : 33vw）
+             に揃え、合計を ≒ 100vw にして横方向の余白をほぼゼロにする。
+             縦長でも横方向に張り付くよう max-h は緩めの 80vh / 40vh まで許容。
+             下端揃え + 隙間ゼロ + ラベル右下密着。 */
           <div className="relative flex w-full items-end justify-center bg-white">
             <div
-              className="relative max-h-[50vh] max-w-[50vw] cursor-pointer"
+              className="relative max-h-[80vh] max-w-[66vw] cursor-pointer"
               onClick={() => {
                 setFullscreenInitialIndex(0);
                 setIsFullscreenOpen(true);
@@ -176,8 +177,8 @@ export function PostDetailStatic({
                   alt={postsT("afterImageAlt")}
                   width={1200}
                   height={1200}
-                  className="block max-h-[50vh] max-w-[50vw] w-auto h-auto object-contain"
-                  sizes="(max-width: 768px) 50vw, 50vw"
+                  className="block max-h-[80vh] max-w-[66vw] w-auto h-auto object-contain"
+                  sizes="(max-width: 768px) 66vw, 66vw"
                   priority
                 />
               ) : (
@@ -189,17 +190,8 @@ export function PostDetailStatic({
                 {postsT("afterImageLabel")}
               </div>
             </div>
-            {/* Before のサイズ制約は After の 1/2 比率を保つ:
-                portrait: After 高さ 50vh → Before max-h-[25vh]
-                landscape: After 幅 50vw → Before max-w-[25vw]
-                square / null: 高さ基準で安全側
-                合計幅は約 75vw（余白 25vw）になる。 */}
             <div
-              className={`relative cursor-pointer ${
-                imageAspectRatio === "landscape"
-                  ? "max-w-[25vw]"
-                  : "max-h-[25vh]"
-              }`}
+              className="relative max-h-[40vh] max-w-[33vw] cursor-pointer"
               onClick={() => {
                 setFullscreenInitialIndex(1);
                 setIsFullscreenOpen(true);
@@ -210,16 +202,8 @@ export function PostDetailStatic({
                 alt={postsT("beforeImageAlt")}
                 width={400}
                 height={400}
-                className={`block w-auto h-auto object-contain ${
-                  imageAspectRatio === "landscape"
-                    ? "max-w-[25vw]"
-                    : "max-h-[25vh]"
-                }`}
-                sizes={
-                  imageAspectRatio === "landscape"
-                    ? "(max-width: 768px) 25vw, 25vw"
-                    : "(max-width: 768px) 35vw, 25vw"
-                }
+                className="block max-h-[40vh] max-w-[33vw] w-auto h-auto object-contain"
+                sizes="(max-width: 768px) 33vw, 33vw"
               />
               <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 {postsT("beforeImageLabel")}
