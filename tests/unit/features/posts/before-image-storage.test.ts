@@ -173,6 +173,25 @@ describe("getInputImageContextForGeneratedImage", () => {
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
   });
+
+  test("image_jobs が存在しなければ userId と null URL を返す", async () => {
+    createAdminClientMock.mockReturnValue(
+      buildLookupMock({
+        generatedImageResult: {
+          data: { user_id: "u1", image_job_id: "job-1" },
+          error: null,
+        },
+        imageJobResult: {
+          data: null,
+          error: null,
+        },
+      })
+    );
+
+    await expect(
+      getInputImageContextForGeneratedImage("img-1")
+    ).resolves.toEqual({ userId: "u1", inputImageUrl: null });
+  });
 });
 
 describe("persistBeforeImageFromUrl", () => {
@@ -603,6 +622,23 @@ describe("persistBeforeImageForGeneratedImage error boundaries", () => {
     ).resolves.toEqual({
       status: "failed",
       reason: "client unavailable",
+    });
+
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  test("Error 以外の例外は unknown-error に丸める", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    createAdminClientMock.mockImplementation(() => {
+      throw "plain failure";
+    });
+
+    await expect(
+      persistBeforeImageForGeneratedImage("img-1")
+    ).resolves.toEqual({
+      status: "failed",
+      reason: "unknown-error",
     });
 
     expect(consoleError).toHaveBeenCalled();

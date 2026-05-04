@@ -78,6 +78,23 @@ describe("posts utils", () => {
       ).toBe("https://supabase.example/temp/foo.png");
     });
 
+    it("falls back when persisted path cannot be converted to a public URL", () => {
+      const consoleWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      expect(
+        getPostBeforeImageUrl({
+          pre_generation_storage_path: "user-1/pre-generation/img-1_display.webp",
+          input_image_url_fallback: "https://supabase.example/temp/foo.png",
+        }),
+      ).toBe("https://supabase.example/temp/foo.png");
+
+      expect(consoleWarn).toHaveBeenCalledWith(
+        "NEXT_PUBLIC_SUPABASE_URL is not set"
+      );
+      consoleWarn.mockRestore();
+    });
+
     it("returns null when neither persisted path nor fallback is available", () => {
       expect(
         getPostBeforeImageUrl({

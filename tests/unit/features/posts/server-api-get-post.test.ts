@@ -361,4 +361,26 @@ describe("getPost", () => {
     );
     consoleWarn.mockRestore();
   });
+
+  it("keeps the fallback null when image_jobs has no input_image_url", async () => {
+    const { supabase } = createSupabaseMock(
+      {
+        pre_generation_storage_path: null,
+        image_job_id: "job-1",
+      },
+      {
+        data: { input_image_url: null },
+        error: null,
+      }
+    );
+    createClientMock.mockResolvedValue(supabase);
+
+    const post = await getPost("post-1", null, true);
+
+    expect(post).toEqual(
+      expect.objectContaining({
+        input_image_url_fallback: null,
+      })
+    );
+  });
 });
