@@ -171,12 +171,10 @@ export function PostDetailStatic({
 
     const observer = new ResizeObserver(updateBeforeHeight);
     observer.observe(afterFrame);
-    window.addEventListener("resize", updateBeforeHeight);
 
     return () => {
       window.cancelAnimationFrame(initialMeasure);
       observer.disconnect();
-      window.removeEventListener("resize", updateBeforeHeight);
     };
   }, [beforeImageUrl, displayImageUrl]);
 
