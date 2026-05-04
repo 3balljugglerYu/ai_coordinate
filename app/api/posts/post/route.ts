@@ -95,6 +95,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { id, caption } = body;
+    const showBeforeImage =
+      typeof body?.show_before_image === "boolean"
+        ? body.show_before_image
+        : undefined;
 
     if (!id) {
       return NextResponse.json(
@@ -104,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 投稿処理
-    const result = await postImageServer(id, caption);
+    const result = await postImageServer(id, caption, showBeforeImage);
 
     // デイリー投稿特典の付与（エラーが発生しても投稿は成功させる）
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます

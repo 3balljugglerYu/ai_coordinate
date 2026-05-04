@@ -7,6 +7,9 @@ import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 export interface PostImageRequest {
   id: string;
   caption?: string;
+  // 投稿モーダル / 編集モーダルで「生成前の画像も表示する」を切り替える。
+  // 未指定なら API 側で更新しない（後方互換）。
+  show_before_image?: boolean;
 }
 
 export interface PostImageResponse {
@@ -31,6 +34,10 @@ export interface Post extends GeneratedImageRecord {
   comment_count?: number;
   view_count?: number;
   moderation_status?: "visible" | "pending" | "removed";
+  // Before 画像の楽観表示用フォールバック。
+  // pre_generation_storage_path が無い間（生成完了直後の永続化処理中など）に
+  // image_jobs.input_image_url で代替表示する。永続化完了後は null になる。
+  input_image_url_fallback?: string | null;
 }
 
 export interface CommentProfile {

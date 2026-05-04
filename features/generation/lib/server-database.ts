@@ -111,20 +111,29 @@ export const getGeneratedImagesServer = cache(async (
 
 /**
  * サーバーサイドで画像を投稿
+ *
+ * @param showBeforeImage - 未指定なら show_before_image 列は更新しない（既存値維持）。
+ *                          true / false が指定されたときだけ DB に反映する。
  */
 export async function postImageServer(
   id: string,
-  caption?: string
+  caption?: string,
+  showBeforeImage?: boolean
 ): Promise<GeneratedImageRecord> {
   const supabase = await createClient();
 
+  const updates: Record<string, unknown> = {
+    is_posted: true,
+    caption: caption || null,
+    posted_at: new Date().toISOString(),
+  };
+  if (typeof showBeforeImage === "boolean") {
+    updates.show_before_image = showBeforeImage;
+  }
+
   const { data, error } = await supabase
     .from("generated_images")
-    .update({
-      is_posted: true,
-      caption: caption || null,
-      posted_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();

@@ -327,6 +327,7 @@ export function GeneratedImageGallery({
             if (!open) setPostModalImage(null);
           }}
           imageId={postModalImage.id}
+          afterImageUrl={postModalImage.url}
         />
       )}
 

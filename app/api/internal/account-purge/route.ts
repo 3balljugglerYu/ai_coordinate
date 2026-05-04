@@ -63,7 +63,9 @@ async function collectStoragePathsForUser(
   const [generatedResult, stockResult, profileResult] = await Promise.all([
     admin
       .from("generated_images")
-      .select("storage_path, storage_path_display, storage_path_thumb")
+      .select(
+        "storage_path, storage_path_display, storage_path_thumb, pre_generation_storage_path"
+      )
       .eq("user_id", userId),
     admin
       .from("source_image_stocks")
@@ -90,6 +92,7 @@ async function collectStoragePathsForUser(
     if (row.storage_path) paths.add(row.storage_path);
     if (row.storage_path_display) paths.add(row.storage_path_display);
     if (row.storage_path_thumb) paths.add(row.storage_path_thumb);
+    if (row.pre_generation_storage_path) paths.add(row.pre_generation_storage_path);
   }
 
   for (const row of stockResult.data ?? []) {

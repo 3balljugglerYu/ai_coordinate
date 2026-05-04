@@ -18,6 +18,10 @@ import {
   getVisiblePrompt,
 } from "@/features/generation/lib/prompt-visibility";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
+import {
+  getPostBeforeImageUrl,
+  getPostImageUrl,
+} from "@/features/posts/lib/utils";
 
 interface ImageDetailPageClientProps {
   image: GeneratedImageRecord;
@@ -46,6 +50,8 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const backgroundMode = resolveBackgroundMode(image);
   const oneTapStylePreset = getOneTapStylePresetMetadata(image);
+  const afterImageUrl = getPostImageUrl(image) || null;
+  const beforeImageUrl = getPostBeforeImageUrl(image);
   const visiblePrompt = getVisiblePrompt(image);
   const showPrompt = visiblePrompt.trim().length > 0;
   const backgroundModeLabel =
@@ -110,12 +116,17 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
           onOpenChange={setPostModalOpen}
           imageId={image.id!}
           currentCaption={image.caption}
+          afterImageUrl={afterImageUrl}
+          beforeImageUrl={beforeImageUrl}
         />
         <EditPostModal
           open={editModalOpen}
           onOpenChange={setEditModalOpen}
           imageId={image.id!}
           currentCaption={image.caption}
+          currentShowBeforeImage={image.show_before_image}
+          afterImageUrl={afterImageUrl}
+          beforeImageUrl={beforeImageUrl}
         />
         <DeletePostDialog
           open={deleteDialogOpen}

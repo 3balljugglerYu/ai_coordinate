@@ -136,6 +136,56 @@ function scheduleEnsureWebPVariantsNotification(
   void task;
 }
 
+async function notifyPersistBeforeImage(
+  siteUrl: string,
+  cronSecret: string,
+  generatedImageId: string
+): Promise<void> {
+  try {
+    const endpoint = new URL(
+      "/api/internal/generated-images/persist-before-image",
+      siteUrl
+    ).toString();
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cronSecret}`,
+      },
+      body: JSON.stringify({ generatedImageId }),
+    });
+
+    if (!response.ok) {
+      console.error("[Job Success] Failed to notify Before image persistence", {
+        generatedImageId,
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
+  } catch (error) {
+    console.error("[Job Success] Failed to notify Before image persistence", {
+      generatedImageId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+function schedulePersistBeforeImageNotification(
+  siteUrl: string,
+  cronSecret: string,
+  generatedImageId: string
+): void {
+  const task = notifyPersistBeforeImage(siteUrl, cronSecret, generatedImageId);
+
+  if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
+    EdgeRuntime.waitUntil(task);
+    return;
+  }
+
+  void task;
+}
+
 function isRetryableFetchStatus(status: number): boolean {
   return INPUT_IMAGE_FETCH_RETRYABLE_STATUS.has(status);
 }
@@ -2201,10 +2251,15 @@ Deno.serve(async () => {
                 cronSecret,
                 imageRecordId
               );
+              schedulePersistBeforeImageNotification(
+                siteUrl,
+                cronSecret,
+                imageRecordId
+              );
             });
           } else {
             console.warn(
-              "[Job Success] Skipped WebP notification because SITE_URL, CRON_SECRET, or image records are not configured"
+              "[Job Success] Skipped WebP / Before persistence notifications because SITE_URL, CRON_SECRET, or image records are not configured"
             );
           }
 
