@@ -13,6 +13,7 @@ import { DeletePostDialog } from "@/features/posts/components/DeletePostDialog";
 import type { BackgroundMode } from "@/features/generation/types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { OneTapStyleDetailCard } from "@/features/style/components/OneTapStyleDetailCard";
+import { CollapsibleText } from "@/features/posts/components/CollapsibleText";
 import {
   getPromptSafeAltText,
   getVisiblePrompt,
@@ -195,7 +196,14 @@ export function ImageDetailPageClient({ image }: ImageDetailPageClientProps) {
                 <p className="text-sm font-medium text-gray-700">
                   {myPageT("detailCaptionLabel")}
                 </p>
-                <p className="mt-1 text-sm text-gray-600">{image.caption}</p>
+                <div className="mt-1">
+                  <CollapsibleText
+                    text={image.caption}
+                    maxLines={3}
+                    textClassName="text-sm text-gray-600"
+                    linkify
+                  />
+                </div>
               </div>
             )}
 

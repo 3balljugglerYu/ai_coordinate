@@ -420,7 +420,7 @@ export function PostDetailStatic({
         {/* キャプション */}
         {post.caption && (
           <div className="bg-white px-4 py-3">
-            <CollapsibleText text={post.caption} maxLines={3} />
+            <CollapsibleText text={post.caption} maxLines={3} linkify />
           </div>
         )}
 
