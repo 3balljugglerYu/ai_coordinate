@@ -132,10 +132,10 @@ export function GeneratedImageList({
         Array.from({ length: generatingCount }).map((_, i) => (
           <Card
             key={`list-skeleton-${i}`}
-            className="flex gap-3 p-3 sm:gap-4 sm:p-4"
+            className="flex flex-row gap-3 p-3 sm:gap-4 sm:p-4"
           >
             <div className="h-24 w-24 flex-shrink-0 animate-pulse rounded-lg bg-gray-200 sm:h-32 sm:w-32" />
-            <div className="flex-1 space-y-2">
+            <div className="min-w-0 flex-1 space-y-2">
               <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
               <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
               <div className="h-3 w-3/4 animate-pulse rounded bg-gray-200" />
@@ -154,10 +154,10 @@ export function GeneratedImageList({
         return (
           <Card
             key={image.galleryKey ?? image.id}
-            className="flex flex-col gap-3 p-3 sm:flex-row sm:gap-4 sm:p-4"
+            className="flex flex-row gap-3 p-3 sm:gap-4 sm:p-4"
           >
             {/* 左: サムネイル + メタ */}
-            <div className="flex flex-shrink-0 flex-row gap-3 sm:flex-col sm:gap-2">
+            <div className="flex flex-shrink-0 flex-col gap-2">
               <div className="relative h-24 w-24 overflow-hidden rounded-lg border bg-gray-100 sm:h-32 sm:w-32">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -199,10 +199,10 @@ export function GeneratedImageList({
                   onClick={() => handleDownload(image)}
                   disabled={disablePostAndDownload}
                   aria-label={t("downloadAction")}
-                  className="h-8 px-3"
+                  className="h-8 px-2 sm:px-3"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  <span className="ml-1.5 text-xs">
+                  <span className="ml-1.5 hidden text-xs sm:inline">
                     {t("downloadAction")}
                   </span>
                 </Button>
