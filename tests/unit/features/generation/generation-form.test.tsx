@@ -477,6 +477,202 @@ describe("GenerationForm", () => {
     consoleErrorSpy.mockRestore();
   });
 
+  test("履歴画像適用イベント_imageUrlが無い場合は何もしない", async () => {
+    const fetchMock = jest.fn();
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {},
+        }),
+      );
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("履歴画像適用イベント_メタデータ欠落時は既定値でファイル化する", async () => {
+    const onSubmit = jest.fn();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: jest
+        .fn()
+        .mockResolvedValue(new Blob(["history"], { type: "application" })),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+    class ZeroSizeImage {
+      onload: ((event: Event) => void) | null = null;
+      naturalWidth = 0;
+      naturalHeight = 0;
+
+      set src(_value: string) {
+        window.setTimeout(() => {
+          this.onload?.(new Event("load"));
+        }, 0);
+      }
+    }
+    Object.defineProperty(window, "Image", {
+      configurable: true,
+      writable: true,
+      value: ZeroSizeImage,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/history",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(getSubmitButton()).toBeEnabled();
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceImage: expect.objectContaining({
+          name: "coordinate-history.png",
+          type: "application",
+        }),
+      }),
+    );
+  });
+
+  test("履歴画像適用イベント_MIMEタイプが空の場合はpngとして扱う", async () => {
+    const onSubmit = jest.fn();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: jest.fn().mockResolvedValue(new Blob(["history"])),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/no-content-type",
+            fileNameHint: "no-content-type",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(getSubmitButton()).toBeEnabled();
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceImage: expect.objectContaining({
+          name: "no-content-type.png",
+          type: "image/png",
+        }),
+      }),
+    );
+  });
+
+  test("履歴画像適用イベント_画像読み込み失敗時はobject URLを解放する", async () => {
+    const revokeObjectURLMock = jest.fn();
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectURLMock,
+    });
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: jest
+        .fn()
+        .mockResolvedValue(new Blob(["history"], { type: "image/png" })),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+    class ErrorImage {
+      onload: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+
+      set src(_value: string) {
+        window.setTimeout(() => {
+          this.onerror?.(new Event("error"));
+        }, 0);
+      }
+    }
+    Object.defineProperty(window, "Image", {
+      configurable: true,
+      writable: true,
+      value: ErrorImage,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/broken.png",
+            fileNameHint: "broken-image",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:mock-history");
+    });
+    expect(getSubmitButton()).toBeDisabled();
+  });
+
   test("表示_既定モデルと必要ペルコインがChatGPT Images 2.0になる", async () => {
     await act(async () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
