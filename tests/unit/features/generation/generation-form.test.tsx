@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useTranslations } from "next-intl";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
 import { COORDINATE_STOCK_CREATED_EVENT } from "@/features/generation/hooks/useCoordinateStocksUnread";
+import { COORDINATE_APPLY_FROM_HISTORY_EVENT } from "@/features/generation/lib/apply-from-history-event";
 import {
   getSourceImageStocks,
   getStockImageLimit,
@@ -146,6 +147,7 @@ const messages: Record<string, string> = {
   promptHint:
     "Describe the outfit you want as specifically as possible in up to {max} characters.",
   promptCharacterCount: "{current}/{max} characters",
+  promptClear: "Clear",
   promptTooLong: "Enter an outfit description within {max} characters.",
   backgroundLabel: "Background",
   backgroundAiAutoLabel: "Let AI decide",
@@ -208,6 +210,8 @@ describe("GenerationForm", () => {
     class MockImage {
       onload: ((event: Event) => void) | null = null;
       onerror: ((event: Event) => void) | null = null;
+      naturalWidth = 640;
+      naturalHeight = 480;
 
       set src(_value: string) {
         window.setTimeout(() => {
@@ -229,6 +233,14 @@ describe("GenerationForm", () => {
     getSourceImageStocksMock.mockResolvedValue([]);
     getStockImageLimitMock.mockResolvedValue(0);
     window.alert = jest.fn();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: jest.fn(() => "blob:mock-history"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: jest.fn(),
+    });
     localStorage.clear();
   });
 
@@ -346,6 +358,319 @@ describe("GenerationForm", () => {
       count: 1,
       model: "gpt-image-2-low",
     });
+  });
+
+  test("入力_プロンプトクリアボタンで入力内容を消す", async () => {
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "remove this prompt" } });
+
+    const clearButton = screen.getByRole("button", { name: "Clear" });
+    expect(clearButton).toBeEnabled();
+
+    fireEvent.click(clearButton);
+
+    expect(textarea).toHaveValue("");
+    expect(clearButton).toBeDisabled();
+  });
+
+  test("履歴画像適用イベント_画像をアップロード欄に差し込み送信できる", async () => {
+    const onSubmit = jest.fn();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: jest
+        .fn()
+        .mockResolvedValue(new Blob(["history"], { type: "image/webp" })),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/history.webp",
+            fileNameHint: "history-image",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("https://example.com/history.webp");
+    });
+    await waitFor(() => {
+      expect(getSubmitButton()).toBeEnabled();
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceImage: expect.objectContaining({
+          name: "history-image.webp",
+          type: "image/webp",
+        }),
+        sourceImageStockId: undefined,
+      }),
+    );
+  });
+
+  test("履歴画像適用イベント_画像取得に失敗した場合は入力状態を変えない", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      blob: jest.fn(),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/missing.png",
+            fileNameHint: "missing-image",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[apply-from-history] 画像取得に失敗:",
+        expect.any(Error),
+      );
+    });
+    expect(getSubmitButton()).toBeDisabled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("履歴画像適用イベント_imageUrlが無い場合は何もしない", async () => {
+    const fetchMock = jest.fn();
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {},
+        }),
+      );
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("履歴画像適用イベント_メタデータ欠落時は既定値でファイル化する", async () => {
+    const onSubmit = jest.fn();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: jest
+        .fn()
+        .mockResolvedValue(new Blob(["history"], { type: "application" })),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+    class ZeroSizeImage {
+      onload: ((event: Event) => void) | null = null;
+      naturalWidth = 0;
+      naturalHeight = 0;
+
+      set src(_value: string) {
+        window.setTimeout(() => {
+          this.onload?.(new Event("load"));
+        }, 0);
+      }
+    }
+    Object.defineProperty(window, "Image", {
+      configurable: true,
+      writable: true,
+      value: ZeroSizeImage,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/history",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(getSubmitButton()).toBeEnabled();
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceImage: expect.objectContaining({
+          name: "coordinate-history.png",
+          type: "application",
+        }),
+      }),
+    );
+  });
+
+  test("履歴画像適用イベント_MIMEタイプが空の場合はpngとして扱う", async () => {
+    const onSubmit = jest.fn();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: jest.fn().mockResolvedValue(new Blob(["history"])),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/no-content-type",
+            fileNameHint: "no-content-type",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(getSubmitButton()).toBeEnabled();
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceImage: expect.objectContaining({
+          name: "no-content-type.png",
+          type: "image/png",
+        }),
+      }),
+    );
+  });
+
+  test("履歴画像適用イベント_画像読み込み失敗時はobject URLを解放する", async () => {
+    const revokeObjectURLMock = jest.fn();
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectURLMock,
+    });
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: jest
+        .fn()
+        .mockResolvedValue(new Blob(["history"], { type: "image/png" })),
+    });
+    Object.defineProperty(global, "fetch", {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+    class ErrorImage {
+      onload: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+
+      set src(_value: string) {
+        window.setTimeout(() => {
+          this.onerror?.(new Event("error"));
+        }, 0);
+      }
+    }
+    Object.defineProperty(window, "Image", {
+      configurable: true,
+      writable: true,
+      value: ErrorImage,
+    });
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "reuse previous coordinate" },
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+          detail: {
+            imageUrl: "https://example.com/broken.png",
+            fileNameHint: "broken-image",
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:mock-history");
+    });
+    expect(getSubmitButton()).toBeDisabled();
   });
 
   test("表示_既定モデルと必要ペルコインがChatGPT Images 2.0になる", async () => {

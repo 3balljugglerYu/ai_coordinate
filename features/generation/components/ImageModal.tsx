@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { X, ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Plus,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GeneratedImageData } from "../types";
 import { determineFileName } from "@/lib/utils";
+import { fetchBeforeSourceUrl } from "@/features/posts/lib/api";
+import { useFullscreenImageGestures } from "../hooks/useFullscreenImageGestures";
 
 interface ImageModalProps {
   images: GeneratedImageData[];
@@ -32,11 +41,67 @@ export function ImageModal({
 }: ImageModalProps) {
   const t = useTranslations("coordinate");
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [showBefore, setShowBefore] = useState(false);
+  const [beforeImageUrl, setBeforeImageUrl] = useState<string | null>(null);
 
   const currentImage = images[currentIndex];
   const hasMultipleImages = images.length > 1;
+  const displayedImageUrl =
+    showBefore && beforeImageUrl ? beforeImageUrl : currentImage?.url;
+
+  const handlePrevious = useCallback(() => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  }, [images.length]);
+
+  const handleNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  }, [images.length]);
+
+  // 全画面ビューワー共通のジェスチャ（ピンチ・ドラッグパン・ダブルタップ・
+  // ホイール・横スワイプ・下スワイプで閉じる）を hook で適用する。
+  // /posts/[id] の ImageFullscreen と同じ挙動。
+  const { imageStyle, containerHandlers, reset: resetGestures } =
+    useFullscreenImageGestures({
+      hasMultiple: hasMultipleImages,
+      onClose: () => onClose(currentImage),
+      onSwipePrev: handlePrevious,
+      onSwipeNext: handleNext,
+    });
+
+  // 画像を切り替える際は拡大状態をリセットして元のサイズで表示する
+  const goToIndex = useCallback(
+    (newIndex: number) => {
+      setCurrentIndex(newIndex);
+      resetGestures();
+    },
+    [resetGestures],
+  );
+
+  // モーダル表示中は背景（コーディネート画面）のスクロールを無効化する。
+  // 元の overflow を保存して復元することで、他モーダルとの干渉を避ける。
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
+  // 表示画像が切り替わるたびに Before/After を After にリセットし、
+  // 該当画像の Before 画像 URL を取得する（取得不可の場合はトグル非表示）。
+  useEffect(() => {
+    setShowBefore(false);
+    setBeforeImageUrl(null);
+    if (!currentImage?.id || currentImage.isPreview) return;
+    let cancelled = false;
+    fetchBeforeSourceUrl(currentImage.id).then((url) => {
+      if (!cancelled) setBeforeImageUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentImage?.id, currentImage?.isPreview]);
 
   const isMobile = () => {
     if (typeof navigator === "undefined") return false;
@@ -50,46 +115,16 @@ export function ImageModal({
         onClose(currentImage);
       } else if (e.key === "ArrowLeft" && hasMultipleImages) {
         handlePrevious();
+        resetGestures();
       } else if (e.key === "ArrowRight" && hasMultipleImages) {
         handleNext();
+        resetGestures();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentImage, currentIndex, hasMultipleImages]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
-  };
-
-  // タッチイベント（スワイプ）
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0]?.clientX ?? null);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0]?.clientX ?? null);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd || !hasMultipleImages) return;
-
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) {
-      handleNext();
-    } else if (isRightSwipe) {
-      handlePrevious();
-    }
-  };
+  }, [currentImage, currentIndex, hasMultipleImages, handlePrevious, handleNext, resetGestures, onClose]);
 
   const handleDownload = async () => {
     if (onDownload) {
@@ -219,13 +254,30 @@ export function ImageModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      {...containerHandlers}
+    >
       {/* ヘッダー */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4">
-        <div className="text-sm font-medium text-white">
-          {currentIndex + 1} / {images.length}
-        </div>
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-end p-4">
         <div className="flex items-center gap-2">
+          {beforeImageUrl && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-white hover:bg-white/20"
+              onClick={() => {
+                setShowBefore((prev) => !prev);
+                resetGestures();
+              }}
+              aria-pressed={showBefore}
+            >
+              <ArrowLeftRight className="h-5 w-5" />
+              <span className="ml-1">
+                {showBefore ? t("modalBeforeLabel") : t("modalAfterLabel")}
+              </span>
+            </Button>
+          )}
           {onPost && !currentImage.is_posted && !currentImage.isPreview && (
             <Button
               size="sm"
@@ -275,17 +327,16 @@ export function ImageModal({
 
       {/* 画像 */}
       <div
-        className="relative h-full w-full"
+        className="relative flex h-full w-full items-center justify-center"
         data-tour="tour-modal-content"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={currentImage.url}
+          src={displayedImageUrl}
           alt={t("generatedImageAltIndexed", { index: currentIndex + 1 })}
           className="h-full w-full object-contain p-4"
+          style={{ ...imageStyle, userSelect: "none" }}
+          draggable={false}
         />
       </div>
 
@@ -296,7 +347,11 @@ export function ImageModal({
             size="icon"
             variant="ghost"
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-            onClick={handlePrevious}
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrevious();
+              resetGestures();
+            }}
           >
             <ChevronLeft className="h-8 w-8" />
           </Button>
@@ -304,7 +359,11 @@ export function ImageModal({
             size="icon"
             variant="ghost"
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-            onClick={handleNext}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNext();
+              resetGestures();
+            }}
           >
             <ChevronRight className="h-8 w-8" />
           </Button>
@@ -322,7 +381,10 @@ export function ImageModal({
                   ? "w-6 bg-white"
                   : "bg-white/50 hover:bg-white/75"
               }`}
-              onClick={() => setCurrentIndex(index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                goToIndex(index);
+              }}
               aria-label={t("goToImage", { index: index + 1 })}
             />
           ))}

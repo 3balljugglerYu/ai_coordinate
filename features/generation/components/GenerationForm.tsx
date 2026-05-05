@@ -61,6 +61,10 @@ import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
 import { useGenerationState } from "../context/GenerationStateContext";
 import { clearCoordinateSourceStockSavePromptDot } from "../lib/coordinate-source-stock-save-prompt-state";
+import {
+  COORDINATE_APPLY_FROM_HISTORY_EVENT,
+  type CoordinateApplyFromHistoryDetail,
+} from "../lib/apply-from-history-event";
 
 interface GenerationFormProps {
   subscriptionPlan: SubscriptionPlan;
@@ -472,6 +476,50 @@ export function GenerationForm({
     return () => document.removeEventListener("tutorial:set-prompt", handler);
   }, []);
 
+  // 生成結果一覧（リスト表示）の「次の生成に使う」: 生成済み画像を
+  // 人物アップロード欄に差し込み、upload タブに切り替える。
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent<CoordinateApplyFromHistoryDetail>).detail;
+      if (!detail?.imageUrl) return;
+      try {
+        const res = await fetch(detail.imageUrl);
+        if (!res.ok) {
+          throw new Error(`fetch failed: ${res.status}`);
+        }
+        const blob = await res.blob();
+        const mimeType = blob.type || "image/png";
+        const ext = mimeType.split("/")[1]?.split("+")[0] ?? "png";
+        const fileName = `${detail.fileNameHint ?? "coordinate-history"}.${ext}`;
+        const file = new File([blob], fileName, { type: mimeType });
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          handleImageUpload({
+            file,
+            previewUrl: objectUrl,
+            width: img.naturalWidth || 1024,
+            height: img.naturalHeight || 1024,
+          });
+          setImageSourceType("upload");
+          writePreferredImageSourceType("upload");
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+        };
+        img.src = objectUrl;
+      } catch (err) {
+        console.error("[apply-from-history] 画像取得に失敗:", err);
+      }
+    };
+    document.addEventListener(COORDINATE_APPLY_FROM_HISTORY_EVENT, handler);
+    return () =>
+      document.removeEventListener(
+        COORDINATE_APPLY_FROM_HISTORY_EVENT,
+        handler,
+      );
+  }, [handleImageUpload]);
+
   // チュートリアルモード: 背景設定をセット（step5のonHighlightedで自動セット）
   useEffect(() => {
     const handler = (e: Event) => {
@@ -744,9 +792,24 @@ export function GenerationForm({
 
         {/* 着せ替え内容入力 */}
         <div data-tour="tour-prompt-input">
-          <Label htmlFor="prompt" className="text-base font-medium">
-            {t("promptLabel")}
-          </Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="prompt" className="text-base font-medium">
+              {t("promptLabel")}
+            </Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900"
+              onClick={() => setPrompt("")}
+              disabled={
+                !prompt.length || isGenerating || isTutorialInProgress
+              }
+              aria-label={t("promptClear")}
+            >
+              {t("promptClear")}
+            </Button>
+          </div>
           <Textarea
             id="prompt"
             placeholder={t("promptPlaceholder")}

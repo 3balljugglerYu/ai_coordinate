@@ -236,6 +236,14 @@ export interface GeneratedImageData {
   galleryKey?: string;
   jobId?: string;
   isPreview?: boolean;
+  // リスト表示で使用する追加情報。グリッド表示では参照されないため optional。
+  prompt?: string;
+  createdAt?: string;
+  model?: GeminiModel | null;
+  width?: number | null;
+  height?: number | null;
+  // 元画像がストック由来かどうか（リスト表示でバッジを出すために使用）
+  fromStock?: boolean;
 }
 
 /**

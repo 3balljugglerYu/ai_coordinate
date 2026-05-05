@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useFullscreenImageGestures } from "@/features/generation/hooks/useFullscreenImageGestures";
 
 export interface FullscreenImageItem {
   url: string;
@@ -23,13 +24,14 @@ interface ImageFullscreenProps {
   onClose: () => void;
 }
 
-const SWIPE_THRESHOLD_PX = 50;
-
 /**
  * 画像の全画面表示コンポーネント
  * - 単一画像（imageUrl + alt）または複数画像（images）に対応
  * - 複数枚のときは左右矢印 / 横スワイプで切替
  * - ピンチズームとダブルタップズーム対応
+ *
+ * ジェスチャ系の実装は `useFullscreenImageGestures` に統合され、
+ * /coordinate のリスト/グリッド表示で使われる `ImageModal` と共有している。
  */
 export function ImageFullscreen({
   imageUrl,
@@ -56,22 +58,20 @@ export function ImageFullscreen({
     Math.max(items.length - 1, 0)
   );
   const [index, setIndex] = useState(safeInitialIndex);
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(
-    null
-  );
-  const [lastDoubleTapTime, setLastDoubleTapTime] = useState(0);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+
+  const hasMultiple = items.length > 1;
+
+  const { imageStyle, containerHandlers, reset } = useFullscreenImageGestures({
+    hasMultiple,
+    onClose,
+    onSwipePrev: () => goTo((index - 1 + items.length) % items.length),
+    onSwipeNext: () => goTo((index + 1) % items.length),
+  });
 
   // 拡大状態をリセットして指定 index に移動するヘルパー
   const goTo = (newIndex: number) => {
     setIndex(newIndex);
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
+    reset();
   };
 
   // キーボード矢印で切替（PC 操作補助）
@@ -88,144 +88,17 @@ export function ImageFullscreen({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, items.length, index, onClose]);
+  }, [isOpen, items.length, index, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isOpen || items.length === 0) return null;
 
   const current = items[Math.min(index, items.length - 1)];
-  const hasMultiple = items.length > 1;
 
   const goPrev = () => {
     goTo((index - 1 + items.length) % items.length);
   };
   const goNext = () => {
     goTo((index + 1) % items.length);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      // シングルタッチ：ドラッグ開始 + スワイプ起点
-      setIsDragging(true);
-      setDragStart({
-        x: e.touches[0].clientX - position.x,
-        y: e.touches[0].clientY - position.y,
-      });
-      // 拡大していないときだけスワイプ判定の起点を覚える
-      if (scale === 1) {
-        setTouchStartX(e.touches[0].clientX);
-        setTouchStartY(e.touches[0].clientY);
-      }
-
-      // ダブルタップ検知
-      const now = Date.now();
-      if (now - lastDoubleTapTime < 300) {
-        if (scale === 1) {
-          setScale(2);
-        } else {
-          setScale(1);
-          setPosition({ x: 0, y: 0 });
-        }
-      }
-      setLastDoubleTapTime(now);
-    } else if (e.touches.length === 2) {
-      // ピンチズーム開始
-      setIsDragging(false);
-      setTouchStartX(null);
-      setTouchStartY(null);
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
-      setLastTouchDistance(distance);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 1 && isDragging && scale > 1) {
-      // 拡大中のドラッグ（位置移動）
-      setPosition({
-        x: e.touches[0].clientX - dragStart.x,
-        y: e.touches[0].clientY - dragStart.y,
-      });
-    } else if (e.touches.length === 2 && lastTouchDistance !== null) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
-      const scaleChange = distance / lastTouchDistance;
-      const newScale = Math.max(1, Math.min(scale * scaleChange, 5));
-      setScale(newScale);
-      setLastTouchDistance(distance);
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    setIsDragging(false);
-    setLastTouchDistance(null);
-
-    // スワイプ判定（拡大していないときのみ）
-    if (scale === 1 && touchStartX !== null && touchStartY !== null) {
-      const endTouch = e.changedTouches[0];
-      if (endTouch) {
-        const dx = endTouch.clientX - touchStartX;
-        const dy = endTouch.clientY - touchStartY;
-        const absDx = Math.abs(dx);
-        const absDy = Math.abs(dy);
-
-        // 縦下方向のスワイプが優勢かつ閾値を超えたら閉じる
-        if (dy > SWIPE_THRESHOLD_PX && absDy > absDx) {
-          onClose();
-        }
-        // 横方向のスワイプが優勢かつ閾値を超えたら左右切替（複数画像時のみ）
-        else if (
-          hasMultiple &&
-          absDx > SWIPE_THRESHOLD_PX &&
-          absDx > absDy
-        ) {
-          if (dx > 0) {
-            goPrev();
-          } else {
-            goNext();
-          }
-        }
-      }
-    }
-    setTouchStartX(null);
-    setTouchStartY(null);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
-      });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging && scale > 1) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(1, Math.min(scale * delta, 5));
-    setScale(newScale);
   };
 
   return (
@@ -236,14 +109,7 @@ export function ImageFullscreen({
           onClose();
         }
       }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onWheel={handleWheel}
+      {...containerHandlers}
     >
       {/* 閉じるボタン */}
       <Button
@@ -261,14 +127,7 @@ export function ImageFullscreen({
           inline-block + max-h/max-w で <Image> の表示サイズと一致させる。 */}
       <div className="relative inline-block max-h-[calc(100vh-5rem)] max-w-[calc(100vw-2rem)]">
         {/* 画像本体（拡大ズーム適用） */}
-        <div
-          className="relative"
-          style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transition:
-              isDragging || lastTouchDistance !== null ? "none" : "transform 0.2s",
-          }}
-        >
+        <div className="relative" style={imageStyle}>
           <Image
             src={current.url}
             alt={current.alt}

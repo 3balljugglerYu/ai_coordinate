@@ -2,10 +2,7 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
-import {
-  redactSensitivePrompt,
-  redactSensitivePrompts,
-} from "@/features/generation/lib/prompt-visibility";
+import { redactSensitivePrompts } from "@/features/generation/lib/prompt-visibility";
 
 export interface PercoinTransaction {
   id: string;
@@ -289,31 +286,6 @@ export const getMyImagesServer = cache(async (
     throw new Error(`画像の取得に失敗しました: ${err instanceof Error ? err.message : "Unknown error"}`);
   }
 });
-
-/**
- * 画像詳細を取得（サーバーサイド）
- * @param supabaseOverride - use cache 用。指定時は cookies を使わない
- */
-export async function getImageDetailServer(
-  userId: string,
-  imageId: string,
-  supabaseOverride?: SupabaseClient
-): Promise<GeneratedImageRecord | null> {
-  const supabase = supabaseOverride ?? (await createClient());
-
-  const { data, error } = await supabase
-    .from("generated_images")
-    .select("*")
-    .eq("id", imageId)
-    .eq("user_id", userId)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return redactSensitivePrompt(data);
-}
 
 /**
  * ユーザーのペルコイン残高を取得（サーバーサイド）
