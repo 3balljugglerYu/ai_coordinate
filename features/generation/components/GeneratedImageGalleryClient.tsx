@@ -3,10 +3,17 @@
 import { useState, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
+import { GeneratedImageList } from "./GeneratedImageList";
+import { GalleryViewToggle } from "./GalleryViewToggle";
 import type { GeneratedImageData } from "../types";
 import { getCurrentUserId } from "../lib/current-user";
 import { getGeneratedImages } from "../lib/database";
 import { useGenerationState } from "../context/GenerationStateContext";
+import {
+  readPreferredGalleryView,
+  writePreferredGalleryView,
+  type CoordinateGalleryView,
+} from "../lib/gallery-view-preference";
 
 const PAGE_SIZE = 4;
 
@@ -23,6 +30,18 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
   const [offset, setOffset] = useState(initialImages.length);
   const [hasMore, setHasMore] = useState(initialImages.length === PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<CoordinateGalleryView>("grid");
+
+  // localStorage に保存された前回の表示モードを復元（初回マウント時）。
+  // SSR の HTML と一致させるため、初期値は "grid" 固定で起動して useEffect で上書きする。
+  useEffect(() => {
+    setViewMode(readPreferredGalleryView());
+  }, []);
+
+  const handleViewChange = (next: CoordinateGalleryView) => {
+    setViewMode(next);
+    writePreferredGalleryView(next);
+  };
 
   const { ref: loadMoreRef, inView } = useInView({
     rootMargin: "200px",
@@ -76,6 +95,12 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
               id: record.id,
               url: record.image_url,
               is_posted: record.is_posted ?? false,
+              prompt: record.prompt ?? "",
+              createdAt: record.created_at,
+              model: record.model ?? null,
+              width: record.width ?? null,
+              height: record.height ?? null,
+              fromStock: Boolean(record.source_image_stock_id),
             } as GeneratedImageData;
           })
           .filter((img): img is GeneratedImageData => img !== null);
@@ -131,11 +156,22 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
   return (
     <>
-      <GeneratedImageGallery
-        images={galleryImages}
-        isGenerating={genState?.isGenerating ?? false}
-        generatingCount={genState?.generatingCount ?? 0}
-      />
+      <div className="mb-3 flex justify-end">
+        <GalleryViewToggle value={viewMode} onChange={handleViewChange} />
+      </div>
+      {viewMode === "grid" ? (
+        <GeneratedImageGallery
+          images={galleryImages}
+          isGenerating={genState?.isGenerating ?? false}
+          generatingCount={genState?.generatingCount ?? 0}
+        />
+      ) : (
+        <GeneratedImageList
+          images={galleryImages}
+          isGenerating={genState?.isGenerating ?? false}
+          generatingCount={genState?.generatingCount ?? 0}
+        />
+      )}
       {/* 無限スクロール用トリガー */}
       {hasMore && (
         <div ref={loadMoreRef} className="h-8 w-full" />

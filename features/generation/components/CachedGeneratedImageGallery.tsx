@@ -36,6 +36,12 @@ export async function CachedGeneratedImageGallery({
         id: record.id,
         url: record.image_url,
         is_posted: record.is_posted ?? false,
+        prompt: record.prompt ?? "",
+        createdAt: record.created_at,
+        model: record.model ?? null,
+        width: record.width ?? null,
+        height: record.height ?? null,
+        fromStock: Boolean(record.source_image_stock_id),
       } as GeneratedImageData;
     })
     .filter((img): img is GeneratedImageData => img !== null);
