@@ -16,7 +16,6 @@ import { createClient } from "@/lib/supabase/server";
 import {
   PERCOIN_TRANSACTIONS_PER_PAGE,
   getFreePercoinBatchesExpiringServer,
-  getImageDetailServer,
   getMyImagesServer,
   getPercoinBalanceBreakdownServer,
   getPercoinBalanceServer,
@@ -1006,107 +1005,6 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "[getMyImagesServer] Unexpected error:",
         "boom"
-      );
-    });
-  });
-
-  describe("MPSAPI-011 getImageDetailServer", () => {
-    test("getImageDetailServer_userとimageIdが一致する場合_画像レコードを返す", async () => {
-      // Spec: MPSAPI-011
-      const row = createImageRecord({ id: "image-99", user_id: "user-9" });
-      const supabase = createSupabaseMock({
-        from: {
-          generated_images: [
-            {
-              singleResult: {
-                data: row,
-                error: null,
-              },
-            },
-          ],
-        },
-      });
-
-      const result = await getImageDetailServer(
-        "user-9",
-        "image-99",
-        supabase.client as never
-      );
-
-      expect(result).toEqual(row);
-      expect(supabase.fromCalls.generated_images[0].calls.eq).toEqual([
-        ["id", "image-99"],
-        ["user_id", "user-9"],
-      ]);
-      expect(supabase.fromCalls.generated_images[0].calls.single).toBe(1);
-    });
-
-    test("getImageDetailServer_行なしまたはエラーの場合_nullを返す", async () => {
-      // Spec: MPSAPI-011
-      const missingSupabase = createSupabaseMock({
-        from: {
-          generated_images: [
-            {
-              singleResult: {
-                data: null,
-                error: null,
-              },
-            },
-          ],
-        },
-      });
-      const errorSupabase = createSupabaseMock({
-        from: {
-          generated_images: [
-            {
-              singleResult: {
-                data: null,
-                error: { message: "not found" },
-              },
-            },
-          ],
-        },
-      });
-
-      await expect(
-        getImageDetailServer("user-1", "image-1", missingSupabase.client as never)
-      ).resolves.toBeNull();
-      await expect(
-        getImageDetailServer("user-1", "image-1", errorSupabase.client as never)
-      ).resolves.toBeNull();
-    });
-
-    test("getImageDetailServer_one_tap_styleのpromptは空文字にする", async () => {
-      const supabase = createSupabaseMock({
-        from: {
-          generated_images: [
-            {
-              singleResult: {
-                data: createImageRecord({
-                  id: "style-detail",
-                  user_id: "user-7",
-                  generation_type: "one_tap_style",
-                  prompt: "high value secret prompt",
-                }),
-                error: null,
-              },
-            },
-          ],
-        },
-      });
-
-      const result = await getImageDetailServer(
-        "user-7",
-        "style-detail",
-        supabase.client as never
-      );
-
-      expect(result).toEqual(
-        expect.objectContaining({
-          id: "style-detail",
-          generation_type: "one_tap_style",
-          prompt: "",
-        })
       );
     });
   });

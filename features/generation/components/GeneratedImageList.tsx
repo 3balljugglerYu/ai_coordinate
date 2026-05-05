@@ -154,14 +154,14 @@ export function GeneratedImageList({
 
         const badges = (
           <>
-            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
+            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium leading-tight text-purple-700 sm:text-sm">
               {display.displayName}
             </span>
-            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
+            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium leading-tight text-purple-700 sm:text-sm">
               {sizeLabel}
             </span>
             {image.fromStock && (
-              <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
+              <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium leading-tight text-emerald-700 sm:text-sm">
                 {t("listFromStockBadge")}
               </span>
             )}
@@ -169,7 +169,7 @@ export function GeneratedImageList({
         );
 
         const dateAndDownload = (
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-start justify-between gap-2">
             <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
               <Calendar className="h-3.5 w-3.5" />
               {t("listGeneratedAt", { date: createdAtLabel })}
@@ -180,7 +180,7 @@ export function GeneratedImageList({
               onClick={() => handleDownload(image)}
               disabled={disablePostAndDownload}
               aria-label={t("downloadAction")}
-              className="h-8 px-2 sm:px-3"
+              className="h-7 px-2 sm:h-8 sm:px-3"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="ml-1.5 hidden text-xs sm:inline">
@@ -239,7 +239,9 @@ export function GeneratedImageList({
             )}
             {image.id && !image.isPreview && (
               <Button size="sm" variant="outline" asChild>
-                <Link href={`/my-page/${encodeURIComponent(image.id)}`}>
+                <Link
+                  href={`/posts/${encodeURIComponent(image.id)}?from=coordinate`}
+                >
                   {t("listGoToDetail")}
                 </Link>
               </Button>
@@ -250,7 +252,7 @@ export function GeneratedImageList({
         return (
           <Card
             key={image.galleryKey ?? image.id}
-            className="p-3 sm:p-4"
+            className="gap-0 p-3 sm:p-4"
           >
             <div className="flex flex-row gap-3 sm:gap-4">
               {/* サムネイル */}
@@ -275,11 +277,12 @@ export function GeneratedImageList({
               </div>
 
               {/* サムネ右側: 生成日時 + DL（モバイル/PC 共通）。
-                  モバイル時のみ、下にバッジを縦積み。
+                  モバイル時はバッジを日時直下に詰めて配置し、サムネ高さを
+                  超えないようにする（カードの p-3 余白と整合させるため）。
                   PC 時のみ、下にプロンプト・アクションボタンを表示。 */}
-              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:gap-3">
+              <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-3">
                 {dateAndDownload}
-                <div className="flex flex-col gap-1 text-xs sm:hidden">
+                <div className="flex flex-col gap-0.5 sm:hidden">
                   {badges}
                 </div>
                 <div className="hidden sm:block">{promptBlock}</div>
@@ -287,7 +290,9 @@ export function GeneratedImageList({
               </div>
             </div>
 
-            {/* モバイルのみ: サムネ行の下にプロンプト → アクションボタン */}
+            {/* モバイルのみ: サムネ行の下にプロンプト → アクションボタン。
+                サムネイル上端〜カード外側と同じ余白（mobile: p-3=12px / PC: p-4=16px）に
+                揃えるため mt-3 sm:mt-4 を使用。 */}
             <div className="mt-3 flex flex-col gap-3 sm:hidden">
               {promptBlock}
               {actionButtons}

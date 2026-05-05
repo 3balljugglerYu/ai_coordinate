@@ -1063,7 +1063,7 @@ export const enMessages = {
     listPromptCopied: "Prompt copied to clipboard.",
     listPromptCopyFailed: "Failed to copy the prompt.",
     listPromptEmpty: "No prompt information available.",
-    listApplyForNext: "Use for next generation",
+    listApplyForNext: "Generate from this image",
     listApplyForNextSuccess: "Image has been set to the upload field.",
     listGoToDetail: "Go to details",
     listFromStockBadge: "From stock",

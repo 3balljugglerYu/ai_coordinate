@@ -1008,7 +1008,7 @@ export const jaMessages = {
     listPromptCopied: "プロンプトをコピーしました",
     listPromptCopyFailed: "プロンプトのコピーに失敗しました",
     listPromptEmpty: "プロンプト情報がありません",
-    listApplyForNext: "次の生成に使う",
+    listApplyForNext: "このイラストで生成",
     listApplyForNextSuccess: "アップロード欄に画像をセットしました",
     listGoToDetail: "詳細画面へ",
     listFromStockBadge: "ストックから生成",
