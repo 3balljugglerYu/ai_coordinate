@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import localFont from "next/font/local";
 import "./globals.css";
+// 拡大表示用 Lightbox の CSS はルート遷移と独立して常にロードされる必要があるため、
+// コンポーネント単位ではなく root layout でグローバル import する。
+// （コンポーネント単位 import だと App Router の CSS チャンク切替で
+//   2 回目のオープン時にアイコンが描画されない不具合が出ることがある。）
+import "yet-another-react-lightbox/styles.css";
 import { LocaleShell } from "@/components/LocaleShell";
 import { getSiteUrl } from "@/lib/env";
 import { DEFAULT_LOCALE } from "@/i18n/config";
