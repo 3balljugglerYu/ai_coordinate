@@ -131,7 +131,12 @@ export function GeneratedImageList({
       `[data-coordinate-list-image-id="${CSS.escape(storedId)}"]`,
     );
     if (target instanceof HTMLElement) {
-      target.scrollIntoView({ behavior: "auto", block: "center" });
+      const prefersReducedMotion =
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      target.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "center",
+      });
       try {
         window.sessionStorage.removeItem(RETURN_TO_IMAGE_ID_STORAGE_KEY);
       } catch {
