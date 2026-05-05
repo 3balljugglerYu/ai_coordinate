@@ -77,9 +77,6 @@ export default async function CoordinatePage() {
             {!isGuest ? (
               <div id={COORDINATE_GENERATED_LIST_ID} className="mt-8 scroll-mt-20">
                 <CoordinateGeneratedListHashScroll />
-                <h2 className="mb-4 text-xl font-semibold text-gray-900">
-                  {t("resultsTitle")}
-                </h2>
                 <Suspense fallback={<GeneratedImageGallerySkeleton />}>
                   <CachedGeneratedImageGallery userId={user.id} />
                 </Suspense>

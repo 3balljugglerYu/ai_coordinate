@@ -14,9 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { PostModal } from "@/features/posts/components/PostModal";
 import type { GeneratedImageData } from "../types";
 import { downloadGeneratedImage } from "../lib/download-image";
+import { ImageModal } from "./ImageModal";
 import {
   COORDINATE_APPLY_FROM_HISTORY_EVENT,
   type CoordinateApplyFromHistoryDetail,
@@ -33,6 +35,12 @@ interface GeneratedImageListProps {
 }
 
 const SCROLL_TO_FORM_SELECTOR = '[data-tour="tour-prompt-input"]';
+
+/**
+ * 「詳細画面へ」で /posts/{id} に遷移した後、戻るボタンで /coordinate に
+ * 戻った時に元のカード位置までスクロール復帰させるための sessionStorage キー。
+ */
+const RETURN_TO_IMAGE_ID_STORAGE_KEY = "persta-ai:coordinate-return-to-image-id";
 
 function formatGeneratedAt(iso: string | undefined): string {
   if (!iso) return "";
@@ -55,6 +63,8 @@ export function GeneratedImageList({
   const { toast } = useToast();
   const [postModalImage, setPostModalImage] =
     useState<GeneratedImageData | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] =
+    useState<number | null>(null);
 
   const [disablePostAndDownload, setDisablePostAndDownload] = useState(false);
   useEffect(() => {
@@ -94,7 +104,7 @@ export function GeneratedImageList({
   const handleCopyPrompt = async (prompt: string | undefined) => {
     if (!prompt) return;
     try {
-      await navigator.clipboard.writeText(prompt);
+      await copyTextToClipboard(prompt);
       toast({ title: t("listPromptCopied") });
     } catch (error) {
       console.error("プロンプトコピー失敗:", error);
@@ -102,6 +112,40 @@ export function GeneratedImageList({
         title: t("listPromptCopyFailed"),
         variant: "destructive",
       });
+    }
+  };
+
+  // /posts/{id} から戻ってきた時、元のカード位置にスクロール復帰する。
+  // images が更新されるたび（無限スクロール後など）に存在を確認し、
+  // 見つかったら復帰してキーを消費する。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let storedId: string | null = null;
+    try {
+      storedId = window.sessionStorage.getItem(RETURN_TO_IMAGE_ID_STORAGE_KEY);
+    } catch {
+      return;
+    }
+    if (!storedId) return;
+    const target = document.querySelector(
+      `[data-coordinate-list-image-id="${CSS.escape(storedId)}"]`,
+    );
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: "auto", block: "center" });
+      try {
+        window.sessionStorage.removeItem(RETURN_TO_IMAGE_ID_STORAGE_KEY);
+      } catch {
+        // sessionStorage 書き込み不可は無視
+      }
+    }
+  }, [images]);
+
+  const handleDetailLinkClick = (imageId: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(RETURN_TO_IMAGE_ID_STORAGE_KEY, imageId);
+    } catch {
+      // sessionStorage 書き込み不可は無視
     }
   };
 
@@ -143,7 +187,7 @@ export function GeneratedImageList({
           </Card>
         ))}
 
-      {images.map((image) => {
+      {images.map((image, index) => {
         const display = getModelDisplayInfo(image.model);
         const sizeLabel = formatImageSize(
           image.width,
@@ -226,21 +270,28 @@ export function GeneratedImageList({
               <Wand2 className="h-3.5 w-3.5" />
               <span className="ml-1.5">{t("listApplyForNext")}</span>
             </Button>
-            {!image.is_posted && !image.isPreview && (
-              <Button
-                size="sm"
-                onClick={() => setPostModalImage(image)}
-                disabled={disablePostAndDownload}
-                className="bg-emerald-500 text-white hover:bg-emerald-600"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span className="ml-1.5">{t("postAction")}</span>
-              </Button>
+            {image.is_posted ? (
+              <span className="inline-flex h-9 items-center rounded-md border border-emerald-500 bg-emerald-50 px-3 text-sm font-medium text-emerald-700">
+                {t("postedBadge")}
+              </span>
+            ) : (
+              !image.isPreview && (
+                <Button
+                  size="sm"
+                  onClick={() => setPostModalImage(image)}
+                  disabled={disablePostAndDownload}
+                  className="bg-emerald-500 text-white hover:bg-emerald-600"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="ml-1.5">{t("postAction")}</span>
+                </Button>
+              )
             )}
             {image.id && !image.isPreview && (
               <Button size="sm" variant="outline" asChild>
                 <Link
                   href={`/posts/${encodeURIComponent(image.id)}?from=coordinate`}
+                  onClick={() => handleDetailLinkClick(image.id)}
                 >
                   {t("listGoToDetail")}
                 </Link>
@@ -252,24 +303,25 @@ export function GeneratedImageList({
         return (
           <Card
             key={image.galleryKey ?? image.id}
+            data-coordinate-list-image-id={image.id}
             className="gap-0 p-3 sm:p-4"
           >
             <div className="flex flex-row gap-3 sm:gap-4">
               {/* サムネイル */}
               <div className="flex flex-shrink-0 flex-col gap-2">
-                <div className="relative h-24 w-24 overflow-hidden rounded-lg border bg-gray-100 sm:h-32 sm:w-32">
+                <button
+                  type="button"
+                  onClick={() => setSelectedImageIndex(index)}
+                  aria-label={t("previewAction")}
+                  className="relative h-24 w-24 overflow-hidden rounded-lg border bg-gray-100 sm:h-32 sm:w-32"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.url}
                     alt={t("listThumbnailAlt")}
                     className="h-full w-full object-cover"
                   />
-                  {image.is_posted && (
-                    <div className="absolute right-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-white">
-                      {t("postedBadge")}
-                    </div>
-                  )}
-                </div>
+                </button>
                 {/* PC のみ: サムネイル下にバッジ群 */}
                 <div className="hidden flex-col gap-1 text-xs sm:flex">
                   {badges}
@@ -307,6 +359,23 @@ export function GeneratedImageList({
             {t("generatedGalleryEmpty")}
           </p>
         </Card>
+      )}
+
+      {selectedImageIndex !== null && (
+        <ImageModal
+          images={images}
+          initialIndex={selectedImageIndex}
+          onClose={() => setSelectedImageIndex(null)}
+          onDownload={handleDownload}
+          onPost={(image) => {
+            if (image.isPreview) {
+              return;
+            }
+            setPostModalImage(image);
+            setSelectedImageIndex(null);
+          }}
+          disablePostAndDownload={disablePostAndDownload}
+        />
       )}
 
       {postModalImage && (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
+import { useTranslations } from "next-intl";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import { GeneratedImageList } from "./GeneratedImageList";
 import { GalleryViewToggle } from "./GalleryViewToggle";
@@ -25,6 +26,7 @@ interface GeneratedImageGalleryClientProps {
  * クライアントコンポーネント: 生成結果一覧の表示と無限スクロール
  */
 export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGalleryClientProps) {
+  const t = useTranslations("coordinate");
   const genState = useGenerationState();
   const [images, setImages] = useState<GeneratedImageData[]>(initialImages);
   const [offset, setOffset] = useState(initialImages.length);
@@ -156,7 +158,10 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
 
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold text-gray-900">
+          {t("resultsTitle")}
+        </h2>
         <GalleryViewToggle value={viewMode} onChange={handleViewChange} />
       </div>
       {viewMode === "grid" ? (
