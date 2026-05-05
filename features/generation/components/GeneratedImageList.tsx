@@ -151,119 +151,146 @@ export function GeneratedImageList({
           display.defaultSize,
         );
         const createdAtLabel = formatGeneratedAt(image.createdAt);
+
+        const badges = (
+          <>
+            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
+              {display.displayName}
+            </span>
+            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
+              {sizeLabel}
+            </span>
+            {image.fromStock && (
+              <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
+                {t("listFromStockBadge")}
+              </span>
+            )}
+          </>
+        );
+
+        const dateAndDownload = (
+          <div className="flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
+              <Calendar className="h-3.5 w-3.5" />
+              {t("listGeneratedAt", { date: createdAtLabel })}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleDownload(image)}
+              disabled={disablePostAndDownload}
+              aria-label={t("downloadAction")}
+              className="h-8 px-2 sm:px-3"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="ml-1.5 hidden text-xs sm:inline">
+                {t("downloadAction")}
+              </span>
+            </Button>
+          </div>
+        );
+
+        const promptBlock = (
+          <div className="rounded-lg bg-gray-50 p-2.5">
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t("listUsedPromptLabel")}
+              </span>
+              {image.prompt ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => handleCopyPrompt(image.prompt)}
+                  aria-label={t("listCopyPrompt")}
+                >
+                  <Copy className="h-3 w-3" />
+                  <span className="ml-1">{t("listCopyPrompt")}</span>
+                </Button>
+              ) : null}
+            </div>
+            <p className="line-clamp-4 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-700">
+              {image.prompt || t("listPromptEmpty")}
+            </p>
+          </div>
+        );
+
+        const actionButtons = (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => handleApplyForNextGeneration(image)}
+              className="bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600"
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              <span className="ml-1.5">{t("listApplyForNext")}</span>
+            </Button>
+            {!image.is_posted && !image.isPreview && (
+              <Button
+                size="sm"
+                onClick={() => setPostModalImage(image)}
+                disabled={disablePostAndDownload}
+                className="bg-emerald-500 text-white hover:bg-emerald-600"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="ml-1.5">{t("postAction")}</span>
+              </Button>
+            )}
+            {image.id && !image.isPreview && (
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/my-page/${encodeURIComponent(image.id)}`}>
+                  {t("listGoToDetail")}
+                </Link>
+              </Button>
+            )}
+          </div>
+        );
+
         return (
           <Card
             key={image.galleryKey ?? image.id}
-            className="flex flex-row gap-3 p-3 sm:gap-4 sm:p-4"
+            className="p-3 sm:p-4"
           >
-            {/* 左: サムネイル + メタ */}
-            <div className="flex flex-shrink-0 flex-col gap-2">
-              <div className="relative h-24 w-24 overflow-hidden rounded-lg border bg-gray-100 sm:h-32 sm:w-32">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={image.url}
-                  alt={t("listThumbnailAlt")}
-                  className="h-full w-full object-cover"
-                />
-                {image.is_posted && (
-                  <div className="absolute right-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-white">
-                    {t("postedBadge")}
-                  </div>
-                )}
+            <div className="flex flex-row gap-3 sm:gap-4">
+              {/* サムネイル */}
+              <div className="flex flex-shrink-0 flex-col gap-2">
+                <div className="relative h-24 w-24 overflow-hidden rounded-lg border bg-gray-100 sm:h-32 sm:w-32">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image.url}
+                    alt={t("listThumbnailAlt")}
+                    className="h-full w-full object-cover"
+                  />
+                  {image.is_posted && (
+                    <div className="absolute right-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-white">
+                      {t("postedBadge")}
+                    </div>
+                  )}
+                </div>
+                {/* PC のみ: サムネイル下にバッジ群 */}
+                <div className="hidden flex-col gap-1 text-xs sm:flex">
+                  {badges}
+                </div>
               </div>
-              <div className="flex flex-col gap-1 text-xs">
-                <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
-                  {display.displayName}
-                </span>
-                <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
-                  {sizeLabel}
-                </span>
-                {image.fromStock && (
-                  <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
-                    {t("listFromStockBadge")}
-                  </span>
-                )}
+
+              {/* サムネ右側: 生成日時 + DL（モバイル/PC 共通）。
+                  モバイル時のみ、下にバッジを縦積み。
+                  PC 時のみ、下にプロンプト・アクションボタンを表示。 */}
+              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:gap-3">
+                {dateAndDownload}
+                <div className="flex flex-col gap-1 text-xs sm:hidden">
+                  {badges}
+                </div>
+                <div className="hidden sm:block">{promptBlock}</div>
+                <div className="hidden sm:block">{actionButtons}</div>
               </div>
             </div>
 
-            {/* 右: 情報・アクション */}
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {t("listGeneratedAt", { date: createdAtLabel })}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDownload(image)}
-                  disabled={disablePostAndDownload}
-                  aria-label={t("downloadAction")}
-                  className="h-8 px-2 sm:px-3"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span className="ml-1.5 hidden text-xs sm:inline">
-                    {t("downloadAction")}
-                  </span>
-                </Button>
-              </div>
-
-              <div className="rounded-lg bg-gray-50 p-2.5">
-                <div className="mb-1.5 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {t("listUsedPromptLabel")}
-                  </span>
-                  {image.prompt ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => handleCopyPrompt(image.prompt)}
-                      aria-label={t("listCopyPrompt")}
-                    >
-                      <Copy className="h-3 w-3" />
-                      <span className="ml-1">{t("listCopyPrompt")}</span>
-                    </Button>
-                  ) : null}
-                </div>
-                <p className="line-clamp-4 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-700">
-                  {image.prompt || t("listPromptEmpty")}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleApplyForNextGeneration(image)}
-                  className="bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600"
-                >
-                  <Wand2 className="h-3.5 w-3.5" />
-                  <span className="ml-1.5">{t("listApplyForNext")}</span>
-                </Button>
-                {!image.is_posted && !image.isPreview && (
-                  <Button
-                    size="sm"
-                    onClick={() => setPostModalImage(image)}
-                    disabled={disablePostAndDownload}
-                    className="bg-emerald-500 text-white hover:bg-emerald-600"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span className="ml-1.5">{t("postAction")}</span>
-                  </Button>
-                )}
-                {image.id && !image.isPreview && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    asChild
-                  >
-                    <Link href={`/my-page/${encodeURIComponent(image.id)}`}>
-                      {t("listGoToDetail")}
-                    </Link>
-                  </Button>
-                )}
-              </div>
+            {/* モバイルのみ: サムネ行の下にプロンプト → アクションボタン */}
+            <div className="mt-3 flex flex-col gap-3 sm:hidden">
+              {promptBlock}
+              {actionButtons}
             </div>
           </Card>
         );
