@@ -1012,6 +1012,8 @@ export const jaMessages = {
     listApplyForNextSuccess: "アップロード欄に画像をセットしました",
     listGoToDetail: "詳細画面へ",
     listFromStockBadge: "ストックから生成",
+    modalAfterLabel: "After",
+    modalBeforeLabel: "Before",
     submitJobFailed: "画像生成ジョブの投入に失敗しました",
     requestIdLabel: "リクエストID",
     fetchStatusFailed: "ステータスの取得に失敗しました",

@@ -1067,6 +1067,8 @@ export const enMessages = {
     listApplyForNextSuccess: "Image has been set to the upload field.",
     listGoToDetail: "Go to details",
     listFromStockBadge: "From stock",
+    modalAfterLabel: "After",
+    modalBeforeLabel: "Before",
     submitJobFailed: "Failed to submit the image generation job.",
     requestIdLabel: "Request ID",
     fetchStatusFailed: "Failed to fetch the generation status.",
