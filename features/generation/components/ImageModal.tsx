@@ -16,6 +16,10 @@ import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import type { GeneratedImageData } from "../types";
 import { determineFileName } from "@/lib/utils";
 import { fetchBeforeSourceUrl } from "@/features/posts/lib/api";
+import {
+  cacheBeforeImageUrl,
+  resolveBeforeImageUrlSync,
+} from "@/features/posts/lib/before-image-cache";
 
 interface ImageModalProps {
   images: GeneratedImageData[];
@@ -59,22 +63,44 @@ export function ImageModal({
   const t = useTranslations("coordinate");
   const currentImage = images[initialIndex];
 
-  const [beforeImageUrl, setBeforeImageUrl] = useState<string | null>(null);
+  // Before 画像 URL の解決順:
+  //   1) DB レコード由来の preGenerationStoragePath から同期導出 → 即時表示で flicker 無し
+  //   2) module-level cache hit（過去に API 取得済み） → 同期表示
+  //   3) いずれも該当しない場合のみ API fallback（旧データなど）
+  const initialBeforeUrl = useMemo<string | null>(() => {
+    const synced = resolveBeforeImageUrlSync(currentImage);
+    return synced ?? null;
+  }, [currentImage]);
+
+  const [beforeImageUrl, setBeforeImageUrl] = useState<string | null>(
+    initialBeforeUrl,
+  );
   const [slideIndex, setSlideIndex] = useState(0);
 
-  // 該当画像の Before 画像 URL を取得（取得不可の場合はトグル非表示）
+  // 同期解決できなかった場合のみ API へ fallback。結果はキャッシュへ保存。
   useEffect(() => {
-    setBeforeImageUrl(null);
     setSlideIndex(0);
-    if (!currentImage?.id || currentImage.isPreview) return;
+    const synced = resolveBeforeImageUrlSync(currentImage);
+    if (synced !== undefined) {
+      setBeforeImageUrl(synced);
+      return;
+    }
+    if (!currentImage?.id) {
+      setBeforeImageUrl(null);
+      return;
+    }
     let cancelled = false;
     fetchBeforeSourceUrl(currentImage.id).then((url) => {
-      if (!cancelled) setBeforeImageUrl(url);
+      if (cancelled) return;
+      if (currentImage.id) {
+        cacheBeforeImageUrl(currentImage.id, url);
+      }
+      setBeforeImageUrl(url);
     });
     return () => {
       cancelled = true;
     };
-  }, [currentImage?.id, currentImage?.isPreview]);
+  }, [currentImage]);
 
   const slides = useMemo<Slide[]>(() => {
     if (!currentImage) return [];

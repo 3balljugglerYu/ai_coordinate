@@ -18,6 +18,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
 import {
+  beforeImageUrlCache,
+  cacheBeforeImageUrl,
+} from "../lib/before-image-cache";
+import {
   notifyPendingHomePostRefresh,
   persistPendingHomePostRefresh,
 } from "../lib/home-post-refresh";
@@ -57,10 +61,15 @@ export function PostModal({
   const [showBeforeImage, setShowBeforeImage] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 呼び出し元から beforeImageUrl が渡されていない場合に自動取得した URL
+  // 呼び出し元から beforeImageUrl が渡されていない場合に自動取得した URL。
+  // ImageModal が事前に取得済みの値を共有 cache から同期取得することで、
+  // モーダルが開いた瞬間に Before 画像が表示できるようにする。
   const [autoFetchedBeforeUrl, setAutoFetchedBeforeUrl] = useState<
     string | null
-  >(null);
+  >(() => {
+    if (!imageId) return null;
+    return beforeImageUrlCache.get(imageId) ?? null;
+  });
 
   // モーダル open 時、beforeImageUrl が未指定なら imageId から自動 fetch
   useEffect(() => {

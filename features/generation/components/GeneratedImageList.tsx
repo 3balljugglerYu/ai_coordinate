@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { PostModal } from "@/features/posts/components/PostModal";
+import { resolveBeforeImageUrlSync } from "@/features/posts/lib/before-image-cache";
 import type { GeneratedImageData } from "../types";
 import { downloadGeneratedImage } from "../lib/download-image";
 import { ImageModal } from "./ImageModal";
@@ -391,6 +392,9 @@ export function GeneratedImageList({
           }}
           imageId={postModalImage.id}
           afterImageUrl={postModalImage.url}
+          // Before 画像 URL を同期解決できれば PostModal 側の遅延を回避できる。
+          // 解決不可（undefined）の場合は PostModal 側で API fallback。
+          beforeImageUrl={resolveBeforeImageUrlSync(postModalImage) ?? undefined}
         />
       )}
     </div>

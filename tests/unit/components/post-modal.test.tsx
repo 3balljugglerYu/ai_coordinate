@@ -6,6 +6,7 @@ import {
   fetchBeforeSourceUrl,
   postImageAPI,
 } from "@/features/posts/lib/api";
+import { beforeImageUrlCache } from "@/features/posts/lib/before-image-cache";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import {
   notifyPendingHomePostRefresh,
@@ -121,6 +122,8 @@ describe("PostModal", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Before 画像 URL の module-level cache をテスト間でクリア
+    beforeImageUrlCache.clear();
     fetchMock = jest.fn().mockResolvedValue({ ok: true });
     refreshUnreadCountMock = jest.fn().mockResolvedValue(undefined);
 
