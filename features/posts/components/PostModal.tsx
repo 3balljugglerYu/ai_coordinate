@@ -84,11 +84,16 @@ export function PostModal({
     if (!imageId) {
       return;
     }
+    if (beforeImageUrlCache.has(imageId)) {
+      // ImageModal などが先行取得済みの値を再利用
+      setAutoFetchedBeforeUrl(beforeImageUrlCache.get(imageId) ?? null);
+      return;
+    }
     let cancelled = false;
     fetchBeforeSourceUrl(imageId).then((url) => {
-      if (!cancelled) {
-        setAutoFetchedBeforeUrl(url);
-      }
+      if (cancelled) return;
+      cacheBeforeImageUrl(imageId, url);
+      setAutoFetchedBeforeUrl(url);
     });
     return () => {
       cancelled = true;
@@ -170,7 +175,7 @@ export function PostModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
+      <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto px-3 py-6 sm:max-w-[500px] sm:px-6">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t("postModalTitle")}</DialogTitle>
@@ -180,18 +185,22 @@ export function PostModal({
           </DialogHeader>
 
           <div className="py-4 space-y-4">
-            {/* 画像プレビュー（After 左 / Before 右、下端揃え、隙間ゼロ）*/}
+            {/* 画像プレビュー（After 左 / Before 右、下端揃え、隙間ゼロ）。
+                各画像は Dialog コンテナ幅に対する % で制限し、横長画像も
+                必ず収まるようにする（vw ベースだと sm:max-w-[500px] を超えうる）。*/}
             {afterImageUrl && (
-              <div className="flex w-full items-end justify-center bg-white">
-                <div className="relative max-h-[30vh] max-w-full">
+              <div className="flex w-full min-w-0 items-end justify-center bg-white">
+                <div
+                  className={`relative min-w-0 ${
+                    showBeforeInPreview ? "max-w-[66%]" : "max-w-full"
+                  }`}
+                >
                   <Image
                     src={afterImageUrl}
                     alt={t("afterImageAlt")}
                     width={1200}
                     height={1200}
-                    className={`block max-h-[30vh] w-auto h-auto object-contain ${
-                      showBeforeInPreview ? "max-w-[60vw]" : "max-w-full"
-                    }`}
+                    className="block h-auto max-h-[30vh] w-auto max-w-full object-contain"
                     sizes="(max-width: 768px) 60vw, 320px"
                   />
                   <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
@@ -199,13 +208,13 @@ export function PostModal({
                   </div>
                 </div>
                 {showBeforeInPreview && effectiveBeforeImageUrl && (
-                  <div className="relative max-h-[15vh]">
+                  <div className="relative min-w-0 max-w-[34%]">
                     <Image
                       src={effectiveBeforeImageUrl}
                       alt={t("beforeImageAlt")}
                       width={400}
                       height={400}
-                      className="block max-h-[15vh] w-auto h-auto max-w-[30vw] object-contain"
+                      className="block h-auto max-h-[15vh] w-auto max-w-full object-contain"
                       sizes="(max-width: 768px) 30vw, 160px"
                     />
                     <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
