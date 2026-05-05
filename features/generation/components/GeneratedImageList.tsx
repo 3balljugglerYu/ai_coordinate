@@ -198,10 +198,10 @@ export function GeneratedImageList({
 
         const badges = (
           <>
-            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium leading-tight text-purple-700 sm:text-sm">
+            <span className="inline-flex w-fit items-center rounded-full bg-[#FFF9F4] px-2 py-0.5 text-xs font-medium leading-tight text-[#F084A2] sm:text-sm">
               {display.displayName}
             </span>
-            <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium leading-tight text-purple-700 sm:text-sm">
+            <span className="inline-flex w-fit items-center rounded-full bg-[#FFF9F4] px-2 py-0.5 text-xs font-medium leading-tight text-[#F084A2] sm:text-sm">
               {sizeLabel}
             </span>
             {image.fromStock && (
@@ -237,7 +237,7 @@ export function GeneratedImageList({
         const promptBlock = (
           <div className="rounded-lg bg-gray-50 p-2.5">
             <div className="mb-1.5 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t("listUsedPromptLabel")}
               </span>
@@ -245,11 +245,11 @@ export function GeneratedImageList({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 px-2 text-xs"
+                  className="h-6 px-2 text-xs text-gray-600 hover:text-gray-600"
                   onClick={() => handleCopyPrompt(image.prompt)}
                   aria-label={t("listCopyPrompt")}
                 >
-                  <Copy className="h-3 w-3" />
+                  <Copy className="h-3 w-3 text-gray-600" />
                   <span className="ml-1">{t("listCopyPrompt")}</span>
                 </Button>
               ) : null}
@@ -265,7 +265,7 @@ export function GeneratedImageList({
             <Button
               size="sm"
               onClick={() => handleApplyForNextGeneration(image)}
-              className="bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600"
+              className="bg-gradient-to-r from-[#FF7B8A] to-[#FF9A3D] text-white hover:opacity-90"
             >
               <Wand2 className="h-3.5 w-3.5" />
               <span className="ml-1.5">{t("listApplyForNext")}</span>
@@ -278,9 +278,9 @@ export function GeneratedImageList({
               !image.isPreview && (
                 <Button
                   size="sm"
+                  variant="outline"
                   onClick={() => setPostModalImage(image)}
                   disabled={disablePostAndDownload}
-                  className="bg-emerald-500 text-white hover:bg-emerald-600"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span className="ml-1.5">{t("postAction")}</span>

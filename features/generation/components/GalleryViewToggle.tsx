@@ -36,7 +36,7 @@ export function GalleryViewToggle({
         className={cn(
           "h-7 px-2",
           value === "grid"
-            ? "bg-purple-100 text-purple-700 hover:bg-purple-100"
+            ? "bg-[#FBDCEC] text-[#F084A2] hover:bg-[#FBDCEC] hover:text-[#F084A2]"
             : "text-gray-600",
         )}
       >
@@ -53,7 +53,7 @@ export function GalleryViewToggle({
         className={cn(
           "h-7 px-2",
           value === "list"
-            ? "bg-purple-100 text-purple-700 hover:bg-purple-100"
+            ? "bg-[#FBDCEC] text-[#F084A2] hover:bg-[#FBDCEC] hover:text-[#F084A2]"
             : "text-gray-600",
         )}
       >
