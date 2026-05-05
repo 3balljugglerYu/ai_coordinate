@@ -244,6 +244,12 @@ export interface GeneratedImageData {
   height?: number | null;
   // 元画像がストック由来かどうか（リスト表示でバッジを出すために使用）
   fromStock?: boolean;
+  // Before 画像の永続化パス。拡大表示モーダルで Before/After トグルを
+  // 同期的に判定するために伝播する（API 呼び出しを省略するため optional フィールド）。
+  preGenerationStoragePath?: string | null;
+  // ユーザーが「Before 画像を表示しない」を選択しているかどうか。
+  // false のとき Before/After トグルは出さない。
+  showBeforeImage?: boolean;
 }
 
 /**

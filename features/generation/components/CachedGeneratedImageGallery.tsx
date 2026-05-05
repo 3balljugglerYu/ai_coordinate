@@ -42,6 +42,8 @@ export async function CachedGeneratedImageGallery({
         width: record.width ?? null,
         height: record.height ?? null,
         fromStock: Boolean(record.source_image_stock_id),
+        preGenerationStoragePath: record.pre_generation_storage_path ?? null,
+        showBeforeImage: record.show_before_image ?? true,
       } as GeneratedImageData;
     })
     .filter((img): img is GeneratedImageData => img !== null);
