@@ -1325,10 +1325,18 @@ export function StylePageClient({
       setGenerationPhase("completing");
       refreshRateLimitStatus();
       void refreshPercoinBalance();
-      // 生成結果一覧（use cache）を最新化
-      void fetch("/api/revalidate/style", { method: "POST" }).catch(() => {
-        // 無効化失敗は致命的ではないため UX を阻害しない
-      });
+      // 生成結果一覧（use cache）を最新化。/coordinate と同じく
+      // revalidate API → router.refresh() の順で叩いて、現在マウント中の
+      // ページの RSC ペイロードを再フェッチさせる（router.refresh が無いと
+      // 生成完了後にスケルトンが出っぱなしになる）。
+      void (async () => {
+        try {
+          await fetch("/api/revalidate/style", { method: "POST" });
+        } catch {
+          // 無効化失敗時も refresh は継続する
+        }
+        router.refresh();
+      })();
       void recordStyleUsageClientEvent({
         eventType: "generate",
         styleId: selectedPreset.id,
