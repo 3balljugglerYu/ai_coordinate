@@ -12,6 +12,7 @@ import {
   getCoordinateSourceStockSavePromptPending,
   showCoordinateSourceStockSavePrompt,
 } from "@/features/generation/lib/coordinate-source-stock-save-prompt-state";
+import { submitGuestCoordinateGeneration } from "@/features/generation/lib/coordinate-guest-api";
 import { COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
@@ -75,11 +76,39 @@ jest.mock("@/features/generation/components/GenerationForm", () => ({
 }));
 
 jest.mock("@/features/generation/components/GenerationStatusCard", () => ({
-  GenerationStatusCard: () => <div data-testid="generation-status-card" />,
+  GenerationStatusCard: ({
+    isComplete,
+    progress,
+    progressTransitionDurationMs,
+    title,
+  }: {
+    isComplete: boolean;
+    progress: number;
+    progressTransitionDurationMs: number;
+    title: string;
+  }) => (
+    <div
+      data-complete={String(isComplete)}
+      data-progress={String(progress)}
+      data-transition-ms={String(progressTransitionDurationMs)}
+      data-testid="generation-status-card"
+    >
+      {title}
+    </div>
+  ),
 }));
 
 jest.mock("@/features/generation/components/GuestResultPreview", () => ({
-  GuestResultPreview: () => null,
+  GuestResultPreview: ({
+    result,
+  }: {
+    result: { url: string; mimeType: string } | null;
+  }) =>
+    result ? (
+      <div data-mime-type={result.mimeType} data-testid="guest-result-preview">
+        {result.url}
+      </div>
+    ) : null,
 }));
 
 jest.mock("@/features/auth/components/AuthModal", () => ({
@@ -149,6 +178,10 @@ const getPromptPendingMock =
 const showPromptMock = showCoordinateSourceStockSavePrompt as jest.MockedFunction<
   typeof showCoordinateSourceStockSavePrompt
 >;
+const submitGuestCoordinateGenerationMock =
+  submitGuestCoordinateGeneration as jest.MockedFunction<
+    typeof submitGuestCoordinateGeneration
+  >;
 
 type ScheduledTimeout = {
   id: number;
@@ -272,6 +305,11 @@ describe("GenerationFormContainer stock prompt timer", () => {
       promise: new Promise<never>(() => undefined),
       stop: jest.fn(),
     });
+    submitGuestCoordinateGenerationMock.mockResolvedValue({
+      kind: "success",
+      imageDataUrl: "data:image/png;base64,guest-result",
+      mimeType: "image/png",
+    });
     getPromptPendingMock.mockReturnValue(false);
   });
 
@@ -354,5 +392,54 @@ describe("GenerationFormContainer stock prompt timer", () => {
     );
 
     expect(showPromptMock).not.toHaveBeenCalled();
+  });
+
+  test("ゲスト生成は同期APIを呼び出し結果プレビューを表示する", async () => {
+    render(
+      <GenerationStateProvider>
+        <GenerationFormContainer subscriptionPlan="free" authState="guest" />
+      </GenerationStateProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-coordinate"));
+      await flushSubmitWork();
+    });
+
+    expect(submitGuestCoordinateGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "blue jacket",
+        generationType: "coordinate",
+        model: "gpt-image-2-low",
+      })
+    );
+    expect(generateImageAsyncMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId("guest-result-preview")).toHaveTextContent(
+      "data:image/png;base64,guest-result"
+    );
+  });
+
+  test("ゲスト生成中は擬似プログレス用のステータスカードを表示する", async () => {
+    submitGuestCoordinateGenerationMock.mockReturnValue(
+      new Promise<never>(() => undefined)
+    );
+
+    render(
+      <GenerationStateProvider>
+        <GenerationFormContainer subscriptionPlan="free" authState="guest" />
+      </GenerationStateProvider>
+    );
+
+    fireEvent.click(screen.getByTestId("submit-coordinate"));
+    await flushSubmitWork();
+
+    expect(screen.getByTestId("generation-status-card")).toHaveAttribute(
+      "data-progress",
+      "6"
+    );
+    expect(screen.getByTestId("generation-status-card")).toHaveAttribute(
+      "data-transition-ms",
+      "200"
+    );
   });
 });
