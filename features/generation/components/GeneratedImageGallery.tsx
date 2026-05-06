@@ -11,7 +11,7 @@ import { PostModal } from "@/features/posts/components/PostModal";
 import { resolveBeforeImageUrlSync } from "@/features/posts/lib/before-image-cache";
 import type { GeneratedImageData } from "../types";
 import { ImageModal } from "./ImageModal";
-import { determineFileName } from "@/lib/utils";
+import { shareOrDownloadGeneratedImage } from "../lib/download-image";
 
 interface GeneratedImageGalleryProps {
   images: GeneratedImageData[];
@@ -83,53 +83,10 @@ export function GeneratedImageGallery({
     }
 
     try {
-      // 画像をfetchで取得
-      const response = await fetch(image.url);
-
-      // 認証エラーのハンドリング（401/403）
-      if (response.status === 401 || response.status === 403) {
-        throw new Error(t("imageAccessDenied"));
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          t("imageFetchFailed", { statusText: response.statusText })
-        );
-      }
-
-      // Blobに変換（MIMEタイプを保持）
-      const blob = await response.blob();
-
-      // MIMEタイプの取得順序: blob.type を優先、次にContent-Typeヘッダー、最後にデフォルト
-      // blob.typeはBlobオブジェクトが持つMIMEタイプで、より信頼性が高い
-      const mimeType =
-        blob.type || response.headers.get("content-type") || "image/png";
-
-      // ファイル名を決定（共通ロジックを使用）
-      const downloadFileName = determineFileName(
-        response,
-        image.url,
-        image.id,
-        mimeType
-      );
-
-      // ObjectURLを作成
-      const objectUrl = URL.createObjectURL(blob);
-
-      // ダウンロードリンクを作成
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = downloadFileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // メモリリークを防ぐためにObjectURLを解放
-      // requestAnimationFrameを使用して、ブラウザの描画サイクル後に確実に解放
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          URL.revokeObjectURL(objectUrl);
-        }, 100);
+      await shareOrDownloadGeneratedImage(image, {
+        accessDenied: t("imageAccessDenied"),
+        fetchFailed: (statusText) =>
+          t("imageFetchFailed", { statusText }),
       });
     } catch (error) {
       console.error("ダウンロードエラー:", error);
