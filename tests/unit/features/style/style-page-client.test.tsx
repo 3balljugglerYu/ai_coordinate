@@ -1001,7 +1001,7 @@ describe("StylePageClient", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("style-result-shell").style.aspectRatio).toBe(
+      expect(screen.getByTestId("generation-result-shell").style.aspectRatio).toBe(
         String(1024 / 768)
       );
     });
@@ -1067,11 +1067,11 @@ describe("StylePageClient", () => {
       "src",
       "data:image/png;base64,generated-image-base64"
     );
-    expect(screen.getByTestId("style-result-card")).toHaveClass(
+    expect(screen.getByTestId("generation-result-card")).toHaveClass(
       "max-w-[340px]",
       "sm:max-w-[420px]"
     );
-    expect(screen.getByTestId("style-result-card")).not.toHaveClass(
+    expect(screen.getByTestId("generation-result-card")).not.toHaveClass(
       "mx-auto"
     );
     expect(

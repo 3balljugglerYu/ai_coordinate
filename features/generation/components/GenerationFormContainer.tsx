@@ -37,6 +37,10 @@ import {
   buildCoordinateStageCopy,
 } from "../lib/coordinate-stage-copy";
 import {
+  PSEUDO_INITIAL_PROGRESS,
+  calculatePseudoProgress,
+} from "../lib/pseudo-progress";
+import {
   useCoordinateGenerationFeedback,
   type CoordinateGenerationFeedbackPhase,
 } from "../hooks/useCoordinateGenerationFeedback";
@@ -522,14 +526,46 @@ export function GenerationFormContainer({
   );
   const isStatusCardVisible = feedbackPhase !== "idle";
   const isFormBusy = isGenerating || feedbackPhase === "completing";
-  const displayedProgressPercent =
-    feedbackPhase === "completing"
+
+  // ゲストは同期 API を叩くだけでジョブ進捗を取得できないため、
+  // /style と同じく経過時間ベースの擬似プログレスを使う。
+  const [guestPseudoProgress, setGuestPseudoProgress] = useState(0);
+  useEffect(() => {
+    if (!isGuest) return;
+    if (feedbackPhase === "idle") {
+      setGuestPseudoProgress(0);
+      return;
+    }
+    if (feedbackPhase === "completing") {
+      setGuestPseudoProgress(100);
+      return;
+    }
+    // running
+    setGuestPseudoProgress(PSEUDO_INITIAL_PROGRESS);
+    const startTime = Date.now();
+    const intervalId = window.setInterval(() => {
+      const elapsedMs = Date.now() - startTime;
+      setGuestPseudoProgress((previous) =>
+        Math.max(previous, calculatePseudoProgress(elapsedMs)),
+      );
+    }, 160);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isGuest, feedbackPhase]);
+
+  const displayedProgressPercent = isGuest
+    ? feedbackPhase === "completing"
+      ? 100
+      : guestPseudoProgress
+    : feedbackPhase === "completing"
       ? 100
       : isPreparingSubmission
         ? PREPARING_PROGRESS_PERCENT
         : progressPercent;
-  const progressTransitionDurationMs =
-    isPreparingSubmission
+  const progressTransitionDurationMs = isGuest
+    ? 200
+    : isPreparingSubmission
       ? PREPARING_PROGRESS_TRANSITION_MS
       : COORDINATE_PROGRESS_TRANSITION_MS[statusCardStage];
   const generationStatusTitle = (() => {
@@ -854,6 +890,11 @@ export function GenerationFormContainer({
       setGuestResult(null);
       setIsGenerating(true);
       setFeedbackPhase("running");
+      // ゲストは job 単位の進捗を持たないため、ステータスカードに
+      // 「準備中」表示を出すために totalCount=1 をセットする。
+      // （effectiveTotalCount > 0 + progressSummary.totalCount === 0 で
+      //   isPreparingSubmission が true になる）
+      setProgressCounts(1, 0);
       try {
         const result = await submitGuestCoordinateGeneration({
           prompt: data.prompt,
@@ -865,7 +906,9 @@ export function GenerationFormContainer({
         });
         if (result.kind === "success") {
           setGuestResult({ url: result.imageDataUrl, mimeType: result.mimeType });
-          setFeedbackPhase("idle");
+          // /style と同じく、生成完了直後に running → completing → idle と
+          // 遷移させ、ステータスカードを RESULT_REVEAL_DELAY_MS ぶん残す。
+          startCompletionReveal();
         } else {
           // signupCta が立っていれば「保存はログイン」CTA で代替できるので、
           // メッセージはそのまま表示しトーストでも通知。
@@ -883,6 +926,8 @@ export function GenerationFormContainer({
         setFeedbackPhase("idle");
       } finally {
         setIsGenerating(false);
+        // ステータスカードの「準備中」表示用カウントをリセット
+        setProgressCounts(0, 0);
       }
       return;
     }
@@ -1326,22 +1371,13 @@ export function GenerationFormContainer({
         </div>
       ) : null}
 
-      {isGuest ? (
-        <GuestResultPreview
-          result={guestResult}
-          onLoginCtaClick={handleRequestSignIn}
-        />
-      ) : null}
-
-      {isGuest && !onRequestSignIn ? (
-        <AuthModal
-          open={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          redirectTo={currentUrl}
-        />
-      ) : null}
-
-      {!isGuest && isStatusCardVisible ? (
+      {/*
+        ゲストもログインユーザーも、生成中はステータスカードを表示する。
+        /style 画面と同じく、フォーム直下に置き、結果パネルより前に並べる。
+        ゲストの場合は同期 API（submitGuestCoordinateGeneration）の進行に
+        合わせて feedbackPhase が running → idle と遷移する。
+      */}
+      {isStatusCardVisible ? (
         <div data-tour="tour-generating">
           <GenerationStatusCard
             title={generationStatusTitle}
@@ -1355,6 +1391,21 @@ export function GenerationFormContainer({
             prefersReducedMotion={prefersReducedMotion}
           />
         </div>
+      ) : null}
+
+      {isGuest ? (
+        <GuestResultPreview
+          result={guestResult}
+          onLoginCtaClick={handleRequestSignIn}
+        />
+      ) : null}
+
+      {isGuest && !onRequestSignIn ? (
+        <AuthModal
+          open={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          redirectTo={currentUrl}
+        />
       ) : null}
     </div>
   );

@@ -7,6 +7,7 @@ import { StylePageShareButton } from "@/features/style/components/StylePageShare
 import { GuestGenerationTrialCta } from "@/features/generation/components/GuestGenerationTrialCta";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
+import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { getTotalStyleGenerateCount } from "@/features/style/lib/style-usage-stats";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
@@ -102,28 +103,39 @@ export default async function StylePage({ searchParams }: StylePageProps) {
             />
           ) : null}
 
-          <StylePageClient
-            presets={presets}
-            initialAuthState={user ? "authenticated" : "guest"}
-            initialSelectedPresetId={params.style ?? null}
-          />
+          {/*
+            StylePageClient と生成結果一覧を GenerationStateProvider で
+            包むことで、/coordinate と同じく生成中はリスト側にスケルトンが
+            出る。StylePageClient 内部で setIsGenerating / setGeneratingCount を
+            呼ぶことでギャラリーが状態を購読する。
+          */}
+          <GenerationStateProvider>
+            <StylePageClient
+              presets={presets}
+              initialAuthState={user ? "authenticated" : "guest"}
+              initialSelectedPresetId={params.style ?? null}
+              // ログインユーザーは生成結果一覧（下に並ぶ <CachedGeneratedImageGallery>）
+              // が結果表示を担うため、即時結果パネルは非表示にする。
+              showResultPanel={!user}
+            />
 
-          {/* 生成結果一覧（認証ユーザーのみ）。/coordinate と同じ UI を再利用。 */}
-          {user ? (
-            <div className="mt-8 scroll-mt-20">
-              <Suspense fallback={<GeneratedImageGallerySkeleton />}>
-                <CachedGeneratedImageGallery
-                  userId={user.id}
-                  generationType="one_tap_style"
-                  cacheTag={`style-${user.id}`}
-                  title={coordinateT("resultsTitle")}
-                  detailFromParam="style"
-                  returnToImageIdKey="persta-ai:style-return-to-image-id"
-                  applyActionMode="navigate-coordinate"
-                />
-              </Suspense>
-            </div>
-          ) : null}
+            {/* 生成結果一覧（認証ユーザーのみ）。/coordinate と同じ UI を再利用。 */}
+            {user ? (
+              <div className="mt-8 scroll-mt-20">
+                <Suspense fallback={<GeneratedImageGallerySkeleton />}>
+                  <CachedGeneratedImageGallery
+                    userId={user.id}
+                    generationType="one_tap_style"
+                    cacheTag={`style-${user.id}`}
+                    title={coordinateT("resultsTitle")}
+                    detailFromParam="style"
+                    returnToImageIdKey="persta-ai:style-return-to-image-id"
+                    applyActionMode="navigate-coordinate"
+                  />
+                </Suspense>
+              </div>
+            ) : null}
+          </GenerationStateProvider>
         </div>
       </div>
     </div>

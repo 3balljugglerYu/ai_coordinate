@@ -809,9 +809,11 @@ export const enMessages = {
     modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
     // Phase 6: guest UI
     guestResultAlt: "Guest preview result",
+    guestResultTitle: "Result",
+    guestResultPlaceholder: "Your generated image will appear here.",
     guestResultSaveHint:
-      "This preview disappears when you leave the page. Sign in to save it.",
-    guestResultLoginCta: "Sign in to save",
+      "This preview disappears when you leave the page.",
+    guestResultLoginCta: "Sign in / Sign up",
     guestLoginCtaTitle: "Try without signing in",
     guestLoginCtaDescription:
       "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
