@@ -25,7 +25,10 @@ jest.mock("@/features/style/lib/style-usage-client", () => ({
   },
 }));
 
-const mockToast = jest.fn(() => ({ id: "toast-id" }));
+const mockToast = jest.fn((options?: unknown) => {
+  void options;
+  return { id: "toast-id" };
+});
 const mockDismissToast = jest.fn();
 
 jest.mock("@/components/ui/use-toast", () => ({
@@ -453,6 +456,19 @@ describe("StylePageClient", () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: scrollIntoViewMock,
+    });
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: jest.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      })),
     });
     Object.defineProperty(window.navigator, "userAgent", {
       configurable: true,
@@ -888,6 +904,35 @@ describe("StylePageClient", () => {
     expect(screen.getByRole("button", { name: "Start Styling" })).toBeEnabled();
   });
 
+  test("reduced motion が有効な場合は生成ステータスへのスクロールを即時にする", async () => {
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: jest.fn().mockImplementation((query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      })),
+    });
+
+    generateResponseQueue = [new Promise<Response>(() => {})];
+
+    render(<StylePageClient presets={presets} />);
+
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: "auto",
+      block: "center",
+    });
+  });
+
   test("生成完了の2秒後に完了トーストを表示し_選択時に結果エリアへ移動する", async () => {
     jest.useFakeTimers();
 
@@ -1001,7 +1046,7 @@ describe("StylePageClient", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("style-result-shell").style.aspectRatio).toBe(
+      expect(screen.getByTestId("generation-result-shell").style.aspectRatio).toBe(
         String(1024 / 768)
       );
     });
@@ -1067,11 +1112,11 @@ describe("StylePageClient", () => {
       "src",
       "data:image/png;base64,generated-image-base64"
     );
-    expect(screen.getByTestId("style-result-card")).toHaveClass(
+    expect(screen.getByTestId("generation-result-card")).toHaveClass(
       "max-w-[340px]",
       "sm:max-w-[420px]"
     );
-    expect(screen.getByTestId("style-result-card")).not.toHaveClass(
+    expect(screen.getByTestId("generation-result-card")).not.toHaveClass(
       "mx-auto"
     );
     expect(

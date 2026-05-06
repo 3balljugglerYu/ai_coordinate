@@ -9,7 +9,10 @@ import {
   getStockImageLimit,
 } from "@/features/generation/lib/database";
 import { getCurrentUserId } from "@/features/generation/lib/current-user";
-import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
+import {
+  BACKGROUND_MODE_STORAGE_KEY,
+  SELECTED_MODEL_STORAGE_KEY,
+} from "@/features/generation/lib/form-preferences";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
 jest.mock("next-intl", () => ({
@@ -358,6 +361,37 @@ describe("GenerationForm", () => {
       count: 1,
       model: "gpt-image-2-low",
     });
+  });
+
+  test("送信_画像種別と背景設定の選択を反映し背景設定を保存する", async () => {
+    const onSubmit = jest.fn();
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
+    });
+
+    fireEvent.click(screen.getByLabelText("Photoreal"));
+    fireEvent.click(screen.getByLabelText("Include it in the prompt"));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "city jacket" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-add-upload"));
+    });
+
+    await act(async () => {
+      fireEvent.click(getSubmitButton());
+    });
+
+    expect(window.localStorage.getItem(BACKGROUND_MODE_STORAGE_KEY)).toBe(
+      "include_in_prompt"
+    );
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceImageType: "real",
+        backgroundMode: "include_in_prompt",
+      })
+    );
   });
 
   test("入力_プロンプトクリアボタンで入力内容を消す", async () => {

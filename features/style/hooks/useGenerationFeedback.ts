@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  PSEUDO_INITIAL_PROGRESS as INITIAL_PROGRESS,
+  PSEUDO_LONG_WAIT_THRESHOLD_MS as LONG_WAIT_THRESHOLD_MS,
+  calculatePseudoProgress,
+} from "@/features/generation/lib/pseudo-progress";
 
 const STATUS_ROTATION_MS = 3200;
 const TYPING_INTERVAL_MS = 28;
-const LONG_WAIT_THRESHOLD_MS = 20000;
-const INITIAL_PROGRESS = 6;
 
 export type GenerationFeedbackPhase = "idle" | "running" | "completing";
 
@@ -19,29 +22,6 @@ function pickNextRandomIndex(previousIndex: number, count: number): number {
     nextIndex = Math.floor(Math.random() * count);
   }
   return nextIndex;
-}
-
-function calculatePseudoProgress(elapsedMs: number): number {
-  if (elapsedMs <= 0) {
-    return INITIAL_PROGRESS;
-  }
-
-  if (elapsedMs < 6000) {
-    const phaseProgress = elapsedMs / 6000;
-    return INITIAL_PROGRESS + (64 - INITIAL_PROGRESS) * (1 - (1 - phaseProgress) ** 2);
-  }
-
-  if (elapsedMs < 15000) {
-    const phaseProgress = (elapsedMs - 6000) / 9000;
-    return 64 + (88 - 64) * (1 - (1 - phaseProgress) ** 2);
-  }
-
-  if (elapsedMs < 30000) {
-    const phaseProgress = (elapsedMs - 15000) / 15000;
-    return 88 + (94 - 88) * phaseProgress;
-  }
-
-  return 94;
 }
 
 function usePrefersReducedMotion(): boolean {

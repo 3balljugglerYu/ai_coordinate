@@ -8,9 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
-  type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
 import { Download, Maximize2, Minimize2, Share2, Sparkles } from "lucide-react";
@@ -32,6 +30,8 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
+import { GenerationResultPanel } from "@/features/generation/components/GenerationResultPanel";
+import { useGenerationState } from "@/features/generation/context/GenerationStateContext";
 import {
   getGenerationStatus,
   pollGenerationStatus,
@@ -84,6 +84,13 @@ interface StylePageClientProps {
   presets: readonly StylePresetPublicSummary[];
   initialAuthState?: "authenticated" | "guest";
   initialSelectedPresetId?: string | null;
+  /**
+   * 生成直後の結果プレビュー（StyleResultPanel）を表示するかどうか。
+   * 未指定 (true) のときは表示。ログインユーザー向けには
+   * 生成結果一覧が同じ役割を担うため、ページ側から false を渡して
+   * 非表示にする。
+   */
+  showResultPanel?: boolean;
 }
 
 interface StyleErrorState {
@@ -211,75 +218,8 @@ function StyleReferencePanel({
   );
 }
 
-function StyleResultPanel({
-  title,
-  placeholder,
-  resultImageUrl,
-  resultImageAlt,
-  aspectRatio,
-  action,
-  onResultImageLoad,
-}: {
-  title: string;
-  placeholder: string;
-  resultImageUrl: string | null;
-  resultImageAlt: string;
-  aspectRatio: number;
-  action?: ReactNode;
-  onResultImageLoad?: (imageAspectRatio: number | null) => void;
-}) {
-  const desktopMaxWidthPx = Math.min(460, Math.round(550 * aspectRatio));
-
-  return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-        {action ?? null}
-      </div>
-      <Card
-        data-testid="style-result-card"
-        className="w-full max-w-[340px] overflow-hidden p-0 sm:max-w-[420px] md:max-w-[var(--style-result-desktop-max-width)]"
-        style={
-          {
-            "--style-result-desktop-max-width": `${desktopMaxWidthPx}px`,
-          } as CSSProperties
-        }
-      >
-        <div
-          data-testid="style-result-shell"
-          className="relative w-full bg-slate-100"
-          style={{ aspectRatio: String(aspectRatio) }}
-        >
-          {resultImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resultImageUrl}
-              alt={resultImageAlt}
-              className="absolute inset-0 h-full w-full object-contain"
-              onLoad={(event) => {
-                const imageAspectRatio =
-                  event.currentTarget.naturalWidth > 0 &&
-                  event.currentTarget.naturalHeight > 0
-                    ? event.currentTarget.naturalWidth /
-                      event.currentTarget.naturalHeight
-                    : null;
-
-                onResultImageLoad?.(imageAspectRatio);
-              }}
-            />
-          ) : null}
-          {!resultImageUrl ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="px-4 text-center text-sm text-slate-500">
-                {placeholder}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </Card>
-    </section>
-  );
-}
+// 旧 StyleResultPanel は features/generation/components/GenerationResultPanel.tsx
+// に抽出した。
 
 function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") {
@@ -487,6 +427,7 @@ export function StylePageClient({
   presets,
   initialAuthState,
   initialSelectedPresetId,
+  showResultPanel = true,
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -510,6 +451,10 @@ export function StylePageClient({
   );
   const [showAuthModal, setShowAuthModal] = useState(false);
   const currentUrl = useCurrentUrlForRedirect();
+  // /style ページが GenerationStateProvider でラップされているとき、
+  // 生成結果一覧が isGenerating / generatingCount を購読してスケルトン表示する。
+  // ラップされていない（ゲストモード等）場合は null。
+  const generationStateContext = useGenerationState();
   const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
   const [queuedResultImageUrl, setQueuedResultImageUrl] = useState<string | null>(null);
@@ -702,8 +647,10 @@ export function StylePageClient({
       return;
     }
 
+    const prefersReducedMotion =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     section.scrollIntoView({
-      behavior: "smooth",
+      behavior: prefersReducedMotion ? "auto" : "smooth",
       block: "center",
     });
   };
@@ -779,6 +726,41 @@ export function StylePageClient({
     setSelectedModel(next);
     writePreferredModel(next);
   }, []);
+
+  // 生成結果一覧（GenerationStateProvider 配下）が skeleton を表示できるよう、
+  // ローカルの generationPhase を context にも反映する。
+  // 注意: 依存に generationStateContext 全体を入れると、setIsGenerating 呼出で
+  //       context value（useMemo の戻り値）が再生成 → effect 再実行 → 無限ループ
+  //       になる。useState setter / useCallback 関数は stable なので、それらを
+  //       destructure して依存に並べる。
+  const ctxSetIsGenerating = generationStateContext?.setIsGenerating;
+  const ctxSetGeneratingCount = generationStateContext?.setGeneratingCount;
+  const ctxSetTotalCount = generationStateContext?.setTotalCount;
+  const ctxClearPreviewImages = generationStateContext?.clearPreviewImages;
+  useEffect(() => {
+    if (
+      !ctxSetIsGenerating ||
+      !ctxSetGeneratingCount ||
+      !ctxSetTotalCount ||
+      !ctxClearPreviewImages
+    ) {
+      return;
+    }
+    const isActive =
+      generationPhase === "running" || generationPhase === "completing";
+    ctxSetIsGenerating(isActive);
+    ctxSetGeneratingCount(isActive ? 1 : 0);
+    ctxSetTotalCount(isActive ? 1 : 0);
+    if (!isActive) {
+      ctxClearPreviewImages();
+    }
+  }, [
+    generationPhase,
+    ctxSetIsGenerating,
+    ctxSetGeneratingCount,
+    ctxSetTotalCount,
+    ctxClearPreviewImages,
+  ]);
 
   useEffect(() => {
     if (generationPhase !== "completing" || !queuedResultImageUrl) {
@@ -1345,6 +1327,18 @@ export function StylePageClient({
       setGenerationPhase("completing");
       refreshRateLimitStatus();
       void refreshPercoinBalance();
+      // 生成結果一覧（use cache）を最新化。/coordinate と同じく
+      // revalidate API → router.refresh() の順で叩いて、現在マウント中の
+      // ページの RSC ペイロードを再フェッチさせる（router.refresh が無いと
+      // 生成完了後にスケルトンが出っぱなしになる）。
+      void (async () => {
+        try {
+          await fetch("/api/revalidate/style", { method: "POST" });
+        } catch {
+          // 無効化失敗時も refresh は継続する
+        }
+        router.refresh();
+      })();
       void recordStyleUsageClientEvent({
         eventType: "generate",
         styleId: selectedPreset.id,
@@ -1786,46 +1780,57 @@ export function StylePageClient({
         />
       ) : null}
 
-      <div ref={resultSectionRef}>
-        <StyleResultPanel
-          title={t("resultsTitle")}
-      placeholder={t("resultPlaceholder")}
-      resultImageUrl={displayedResultImageUrl}
-      resultImageAlt={t("resultImageAlt")}
-      aspectRatio={resultShellAspectRatio}
-      onResultImageLoad={handleResultImageLoad}
-      action={
-            displayedResultImageUrl ? (
-              <div className="flex items-center gap-2">
-                <StyleResultDownloadButton
-                  imageUrl={resultImageUrl ?? displayedResultImageUrl}
-                  styleId={selectedPreset?.id ?? "unknown"}
-                  label={t("downloadAction")}
-                  ariaLabel={t("downloadAriaLabel")}
-                  successTitle={t("downloadSuccessTitle")}
-                  successDescription={t("downloadSuccessDescription")}
-                  failedMessage={t("downloadFailed")}
-                />
-                {canPostGeneratedResult ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsPostModalOpen(true)}
-                    className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
-                  >
-                    <Share2 className="h-4 w-4" />
-                    <span>{postsT("postSubmit")}</span>
-                  </Button>
-                ) : null}
-              </div>
-            ) : null
-          }
-        />
-      </div>
-      <p className="text-xs leading-5 text-slate-500">
-        {t("resultSaveHint")}
-      </p>
+      {/*
+        即時結果表示パネルは未ログインユーザー向け（履歴 DB が無いため）。
+        ログインユーザーは生成結果一覧（GenerationStateProvider 配下の
+        スケルトン → 生成完了で画像差替え）が同じ役割を担うため、
+        ページ側 (app/(app)/style/page.tsx) から showResultPanel=false で
+        非表示にする。デフォルトは表示で、テストや単体利用時の挙動を維持。
+      */}
+      {showResultPanel ? (
+        <div ref={resultSectionRef}>
+          <GenerationResultPanel
+            title={t("resultsTitle")}
+            placeholder={t("resultPlaceholder")}
+            resultImageUrl={displayedResultImageUrl}
+            resultImageAlt={t("resultImageAlt")}
+            aspectRatio={resultShellAspectRatio}
+            onResultImageLoad={handleResultImageLoad}
+            action={
+              displayedResultImageUrl ? (
+                <div className="flex items-center gap-2">
+                  <StyleResultDownloadButton
+                    imageUrl={resultImageUrl ?? displayedResultImageUrl}
+                    styleId={selectedPreset?.id ?? "unknown"}
+                    label={t("downloadAction")}
+                    ariaLabel={t("downloadAriaLabel")}
+                    successTitle={t("downloadSuccessTitle")}
+                    successDescription={t("downloadSuccessDescription")}
+                    failedMessage={t("downloadFailed")}
+                  />
+                  {canPostGeneratedResult ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsPostModalOpen(true)}
+                      className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      <span>{postsT("postSubmit")}</span>
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null
+            }
+            footer={
+              <p className="text-xs leading-5 text-slate-500">
+                {t("resultSaveHint")}
+              </p>
+            }
+          />
+        </div>
+      ) : null}
 
       <AlertDialog
         open={isResultResetDialogOpen}

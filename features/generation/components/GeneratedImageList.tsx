@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   Calendar,
@@ -11,6 +12,16 @@ import {
   Sparkles,
   Wand2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -18,30 +29,48 @@ import { copyTextToClipboard } from "@/lib/clipboard";
 import { PostModal } from "@/features/posts/components/PostModal";
 import { resolveBeforeImageUrlSync } from "@/features/posts/lib/before-image-cache";
 import type { GeneratedImageData } from "../types";
-import { downloadGeneratedImage } from "../lib/download-image";
+import { shareOrDownloadGeneratedImage } from "../lib/download-image";
 import { ImageModal } from "./ImageModal";
 import {
   COORDINATE_APPLY_FROM_HISTORY_EVENT,
+  COORDINATE_PENDING_SOURCE_IMAGE_KEY,
   type CoordinateApplyFromHistoryDetail,
 } from "../lib/apply-from-history-event";
 import {
   formatImageSize,
   getModelDisplayInfo,
 } from "../lib/model-display";
+import type { GalleryGenerationType } from "./CachedGeneratedImageGallery";
 
 interface GeneratedImageListProps {
   images: GeneratedImageData[];
   isGenerating?: boolean;
   generatingCount?: number;
+  /**
+   * 「詳細画面へ」リンクの ?from= に付ける値（戻るボタンの遷移先制御）。
+   * StickyHeader の対応値: "coordinate" | "style" 等。
+   */
+  detailFromParam: string;
+  /**
+   * 詳細画面復帰用 sessionStorage キー（ページごとに固有）。
+   * 例: "persta-ai:coordinate-return-to-image-id" / "persta-ai:style-return-to-image-id"
+   */
+  returnToImageIdKey: string;
+  /**
+   * 「このイラストで生成」ボタンの挙動制御。
+   *   - "dispatch-event": 同一ページ上の GenerationForm へ apply イベントを発火（/coordinate）
+   *   - "navigate-coordinate": 確認ダイアログを出して /coordinate へ遷移し、画像を持ち越す（/style）
+   */
+  applyActionMode: "dispatch-event" | "navigate-coordinate";
+  /**
+   * 元データの generation_type。one_tap_style はプロンプトを運営側で
+   * 機密扱いにしているため、空 prompt 時の表示文言とコピーボタン表示を分岐する。
+   */
+  generationType: GalleryGenerationType;
 }
 
 const SCROLL_TO_FORM_SELECTOR = '[data-tour="tour-prompt-input"]';
 
-/**
- * 「詳細画面へ」で /posts/{id} に遷移した後、戻るボタンで /coordinate に
- * 戻った時に元のカード位置までスクロール復帰させるための sessionStorage キー。
- */
-const RETURN_TO_IMAGE_ID_STORAGE_KEY = "persta-ai:coordinate-return-to-image-id";
 
 function formatGeneratedAt(iso: string | undefined): string {
   if (!iso) return "";
@@ -59,13 +88,21 @@ export function GeneratedImageList({
   images,
   isGenerating = false,
   generatingCount = 0,
+  detailFromParam,
+  returnToImageIdKey,
+  applyActionMode,
+  generationType,
 }: GeneratedImageListProps) {
+  const isOneTapStyle = generationType === "one_tap_style";
+  const router = useRouter();
   const t = useTranslations("coordinate");
   const { toast } = useToast();
   const [postModalImage, setPostModalImage] =
     useState<GeneratedImageData | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] =
     useState<number | null>(null);
+  const [navigateConfirmImage, setNavigateConfirmImage] =
+    useState<GeneratedImageData | null>(null);
 
   const [disablePostAndDownload, setDisablePostAndDownload] = useState(false);
   useEffect(() => {
@@ -88,7 +125,9 @@ export function GeneratedImageList({
 
   const handleDownload = async (image: GeneratedImageData) => {
     try {
-      await downloadGeneratedImage(image, {
+      // 拡大表示モーダルと同じく、モバイルではシェアシートを優先しデスクトップは
+      // 通常ダウンロード。動線間で挙動を統一するため共通ヘルパを使う。
+      await shareOrDownloadGeneratedImage(image, {
         accessDenied: t("imageAccessDenied"),
         fetchFailed: (statusText) =>
           t("imageFetchFailed", { statusText }),
@@ -123,7 +162,7 @@ export function GeneratedImageList({
     if (typeof window === "undefined") return;
     let storedId: string | null = null;
     try {
-      storedId = window.sessionStorage.getItem(RETURN_TO_IMAGE_ID_STORAGE_KEY);
+      storedId = window.sessionStorage.getItem(returnToImageIdKey);
     } catch {
       return;
     }
@@ -139,23 +178,29 @@ export function GeneratedImageList({
         block: "center",
       });
       try {
-        window.sessionStorage.removeItem(RETURN_TO_IMAGE_ID_STORAGE_KEY);
+        window.sessionStorage.removeItem(returnToImageIdKey);
       } catch {
         // sessionStorage 書き込み不可は無視
       }
     }
-  }, [images]);
+  }, [images, returnToImageIdKey]);
 
   const handleDetailLinkClick = (imageId: string) => {
     if (typeof window === "undefined") return;
     try {
-      window.sessionStorage.setItem(RETURN_TO_IMAGE_ID_STORAGE_KEY, imageId);
+      window.sessionStorage.setItem(returnToImageIdKey, imageId);
     } catch {
       // sessionStorage 書き込み不可は無視
     }
   };
 
   const handleApplyForNextGeneration = (image: GeneratedImageData) => {
+    if (applyActionMode === "navigate-coordinate") {
+      // /style 等: 確認ダイアログを出して /coordinate へ遷移
+      setNavigateConfirmImage(image);
+      return;
+    }
+    // /coordinate: 同一ページの GenerationForm へイベント発火
     const detail: CoordinateApplyFromHistoryDetail = {
       imageUrl: image.url,
       fileNameHint: image.id,
@@ -172,6 +217,23 @@ export function GeneratedImageList({
       }
     }
     toast({ title: t("listApplyForNextSuccess") });
+  };
+
+  const handleConfirmNavigateToCoordinate = () => {
+    const image = navigateConfirmImage;
+    if (!image) return;
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(
+          COORDINATE_PENDING_SOURCE_IMAGE_KEY,
+          image.url,
+        );
+      } catch {
+        // sessionStorage 書き込み不可は遷移だけ実行
+      }
+      router.push("/coordinate");
+    }
+    setNavigateConfirmImage(null);
   };
 
   return (
@@ -240,6 +302,14 @@ export function GeneratedImageList({
           </div>
         );
 
+        // one_tap_style はプリセット保護のため prompt が常に redact される。
+        // 「One-Tap Styleで生成した為、ありません」と専用文言を表示し、
+        // コピーボタンも表示しない（コピー対象が無いだけでなく方針として隠す）。
+        const promptText = isOneTapStyle
+          ? t("listPromptOneTapStyleEmpty")
+          : image.prompt || t("listPromptEmpty");
+        const showCopyButton = !isOneTapStyle && Boolean(image.prompt);
+
         const promptBlock = (
           <div className="rounded-lg bg-gray-50 p-2.5">
             <div className="mb-1.5 flex items-center gap-2">
@@ -247,7 +317,7 @@ export function GeneratedImageList({
                 <Sparkles className="h-3.5 w-3.5" />
                 {t("listUsedPromptLabel")}
               </span>
-              {image.prompt ? (
+              {showCopyButton ? (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -261,7 +331,7 @@ export function GeneratedImageList({
               ) : null}
             </div>
             <p className="line-clamp-4 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-700">
-              {image.prompt || t("listPromptEmpty")}
+              {promptText}
             </p>
           </div>
         );
@@ -296,7 +366,7 @@ export function GeneratedImageList({
             {image.id && !image.isPreview && (
               <Button size="sm" variant="outline" asChild>
                 <Link
-                  href={`/posts/${encodeURIComponent(image.id)}?from=coordinate`}
+                  href={`/posts/${encodeURIComponent(image.id)}?from=${encodeURIComponent(detailFromParam)}`}
                   onClick={() => handleDetailLinkClick(image.id)}
                 >
                   {t("listGoToDetail")}
@@ -397,6 +467,32 @@ export function GeneratedImageList({
           beforeImageUrl={resolveBeforeImageUrlSync(postModalImage) ?? undefined}
         />
       )}
+
+      <AlertDialog
+        open={!!navigateConfirmImage}
+        onOpenChange={(open) => {
+          if (!open) setNavigateConfirmImage(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("listApplyForNextConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("listApplyForNextConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("listApplyForNextConfirmCancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmNavigateToCoordinate}>
+              {t("listApplyForNextConfirmOk")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

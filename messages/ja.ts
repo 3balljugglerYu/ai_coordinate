@@ -778,9 +778,10 @@ export const jaMessages = {
     modelGptImage2Low: "軽量モデル： ChatGPT Images 2.0 （10ペルコイン/ 枚）",
     // Phase 6: ゲスト用 UI
     guestResultAlt: "お試し生成結果",
-    guestResultSaveHint:
-      "結果はこのページを離れると消えます。保存するにはログイン / 新規登録してください。",
-    guestResultLoginCta: "ログインして保存する",
+    guestResultTitle: "生成結果",
+    guestResultPlaceholder: "ここに生成結果が表示されます",
+    guestResultSaveHint: "結果はこのページを離れると消えます。",
+    guestResultLoginCta: "ログイン / 新規登録",
     guestLoginCtaTitle: "未ログインでお試しいただけます",
     guestLoginCtaDescription:
       "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。保存はされません。",
@@ -1008,8 +1009,13 @@ export const jaMessages = {
     listPromptCopied: "プロンプトをコピーしました",
     listPromptCopyFailed: "プロンプトのコピーに失敗しました",
     listPromptEmpty: "プロンプト情報がありません",
+    listPromptOneTapStyleEmpty: "One-Tap Styleで生成した為、ありません",
     listApplyForNext: "このイラストで生成",
     listApplyForNextSuccess: "アップロード欄に画像をセットしました",
+    listApplyForNextConfirmTitle: "コーディネートに移動します",
+    listApplyForNextConfirmDescription: "よろしいですか？",
+    listApplyForNextConfirmCancel: "キャンセル",
+    listApplyForNextConfirmOk: "移動する",
     listGoToDetail: "詳細画面へ",
     listFromStockBadge: "ストックから生成",
     modalAfterLabel: "After",

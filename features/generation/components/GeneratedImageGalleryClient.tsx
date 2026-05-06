@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
-import { useTranslations } from "next-intl";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import { GeneratedImageList } from "./GeneratedImageList";
 import { GalleryViewToggle } from "./GalleryViewToggle";
@@ -15,18 +14,30 @@ import {
   writePreferredGalleryView,
   type CoordinateGalleryView,
 } from "../lib/gallery-view-preference";
+import type { GalleryGenerationType } from "./CachedGeneratedImageGallery";
 
 const PAGE_SIZE = 4;
 
 interface GeneratedImageGalleryClientProps {
   initialImages: GeneratedImageData[];
+  generationType: GalleryGenerationType;
+  title: string;
+  detailFromParam: string;
+  returnToImageIdKey: string;
+  applyActionMode: "dispatch-event" | "navigate-coordinate";
 }
 
 /**
  * クライアントコンポーネント: 生成結果一覧の表示と無限スクロール
  */
-export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGalleryClientProps) {
-  const t = useTranslations("coordinate");
+export function GeneratedImageGalleryClient({
+  initialImages,
+  generationType,
+  title,
+  detailFromParam,
+  returnToImageIdKey,
+  applyActionMode,
+}: GeneratedImageGalleryClientProps) {
   const genState = useGenerationState();
   const [images, setImages] = useState<GeneratedImageData[]>(initialImages);
   const [offset, setOffset] = useState(initialImages.length);
@@ -87,7 +98,7 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
           userId,
           PAGE_SIZE,
           offset,
-          "coordinate"
+          generationType
         );
 
         const converted: GeneratedImageData[] = records
@@ -130,7 +141,7 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
     };
 
     void fetchMore();
-  }, [inView, isLoading, hasMore, offset]);
+  }, [inView, isLoading, hasMore, offset, generationType]);
 
   const previewImages = genState?.previewImages ?? [];
   const previewImagesByUrl = new Map(
@@ -162,9 +173,7 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
   return (
     <>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-gray-900">
-          {t("resultsTitle")}
-        </h2>
+        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
         <GalleryViewToggle value={viewMode} onChange={handleViewChange} />
       </div>
       {viewMode === "grid" ? (
@@ -178,6 +187,10 @@ export function GeneratedImageGalleryClient({ initialImages }: GeneratedImageGal
           images={galleryImages}
           isGenerating={genState?.isGenerating ?? false}
           generatingCount={genState?.generatingCount ?? 0}
+          detailFromParam={detailFromParam}
+          returnToImageIdKey={returnToImageIdKey}
+          applyActionMode={applyActionMode}
+          generationType={generationType}
         />
       )}
       {/* 無限スクロール用トリガー */}
