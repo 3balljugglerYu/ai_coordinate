@@ -647,8 +647,10 @@ export function StylePageClient({
       return;
     }
 
+    const prefersReducedMotion =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     section.scrollIntoView({
-      behavior: "smooth",
+      behavior: prefersReducedMotion ? "auto" : "smooth",
       block: "center",
     });
   };

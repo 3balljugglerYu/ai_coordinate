@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   Calendar,
@@ -93,6 +94,7 @@ export function GeneratedImageList({
   generationType,
 }: GeneratedImageListProps) {
   const isOneTapStyle = generationType === "one_tap_style";
+  const router = useRouter();
   const t = useTranslations("coordinate");
   const { toast } = useToast();
   const [postModalImage, setPostModalImage] =
@@ -229,7 +231,7 @@ export function GeneratedImageList({
       } catch {
         // sessionStorage 書き込み不可は遷移だけ実行
       }
-      window.location.href = "/coordinate";
+      router.push("/coordinate");
     }
     setNavigateConfirmImage(null);
   };

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return jsonError(copy.authRequired, "REVALIDATE_AUTH_REQUIRED", 401);
     }
 
-    revalidateTag(`style-${user.id}`, "max");
+    revalidateTag(`style-${user.id}`, { expire: 0 });
     revalidatePath("/style");
     return NextResponse.json({ success: true });
   } catch (error) {
