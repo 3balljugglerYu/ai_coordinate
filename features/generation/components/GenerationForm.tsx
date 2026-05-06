@@ -63,6 +63,7 @@ import { useGenerationState } from "../context/GenerationStateContext";
 import { clearCoordinateSourceStockSavePromptDot } from "../lib/coordinate-source-stock-save-prompt-state";
 import {
   COORDINATE_APPLY_FROM_HISTORY_EVENT,
+  COORDINATE_PENDING_SOURCE_IMAGE_KEY,
   type CoordinateApplyFromHistoryDetail,
 } from "../lib/apply-from-history-event";
 
@@ -519,6 +520,32 @@ export function GenerationForm({
         handler,
       );
   }, [handleImageUpload]);
+
+  // /style → 「このイラストで生成」 → 確認 → /coordinate 遷移時に
+  // sessionStorage に画像 URL が積まれていれば、フォーム mount 時に
+  // 既存の apply-from-history イベントへ流し込んで自動セットする。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let pendingUrl: string | null = null;
+    try {
+      pendingUrl = window.sessionStorage.getItem(
+        COORDINATE_PENDING_SOURCE_IMAGE_KEY,
+      );
+    } catch {
+      return;
+    }
+    if (!pendingUrl) return;
+    try {
+      window.sessionStorage.removeItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY);
+    } catch {
+      // 書き込み不可は無視（次回も同じ値を読むだけ）
+    }
+    document.dispatchEvent(
+      new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
+        detail: { imageUrl: pendingUrl, fileNameHint: "style-history" },
+      }),
+    );
+  }, []);
 
   // チュートリアルモード: 背景設定をセット（step5のonHighlightedで自動セット）
   useEffect(() => {

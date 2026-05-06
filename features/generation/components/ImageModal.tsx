@@ -14,12 +14,12 @@ import Lightbox, { type Slide } from "yet-another-react-lightbox";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 // styles.css は app/layout.tsx でグローバル import 済み。
 import type { GeneratedImageData } from "../types";
-import { determineFileName } from "@/lib/utils";
 import { fetchBeforeSourceUrl } from "@/features/posts/lib/api";
 import {
   cacheBeforeImageUrl,
   resolveBeforeImageUrlSync,
 } from "@/features/posts/lib/before-image-cache";
+import { shareOrDownloadGeneratedImage } from "../lib/download-image";
 
 interface ImageModalProps {
   images: GeneratedImageData[];
@@ -33,11 +33,6 @@ interface ImageModalProps {
   onPost?: (image: GeneratedImageData) => void;
   /** チュートリアルStep11（PC）時に投稿・ダウンロードを無効化 */
   disablePostAndDownload?: boolean;
-}
-
-function isMobileUserAgent(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 /**
@@ -123,95 +118,25 @@ export function ImageModal({
     onClose(currentImage);
   }, [currentImage, onClose]);
 
-  const handleDownload = useCallback(async () => {
+  const handleSaveImage = useCallback(async () => {
     if (!currentImage) return;
     if (onDownload) {
       onDownload(currentImage);
       return;
     }
-
     try {
-      const response = await fetch(currentImage.url);
-      if (response.status === 401 || response.status === 403) {
-        throw new Error(t("imageAccessDenied"));
-      }
-      if (!response.ok) {
-        throw new Error(
-          t("imageFetchFailed", { statusText: response.statusText }),
-        );
-      }
-      const blob = await response.blob();
-      const mimeType =
-        blob.type || response.headers.get("content-type") || "image/png";
-      const fileName = determineFileName(
-        response,
-        currentImage.url,
-        currentImage.id,
-        mimeType,
-      );
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      requestAnimationFrame(() => {
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
+      // モバイルでは Web Share API を優先、デスクトップは通常ダウンロード。
+      // リスト・グリッド側の Download ボタンと同じヘルパで挙動を統一する。
+      await shareOrDownloadGeneratedImage(currentImage, {
+        accessDenied: t("imageAccessDenied"),
+        fetchFailed: (statusText) =>
+          t("imageFetchFailed", { statusText }),
       });
     } catch (error) {
       console.error("ダウンロードエラー:", error);
       alert(error instanceof Error ? error.message : t("imageDownloadFailed"));
     }
   }, [currentImage, onDownload, t]);
-
-  // モバイル: Web Share API（Files）が使える場合はシェアシートを開く。
-  // フォールバックは通常のダウンロード。
-  const handleShareMobile = useCallback(async () => {
-    if (!currentImage) return;
-    try {
-      const res = await fetch(currentImage.url, { mode: "cors" });
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(t("imageAccessDenied"));
-      }
-      if (!res.ok) {
-        throw new Error(
-          t("imageFetchFailed", { statusText: res.statusText }),
-        );
-      }
-      const blob = await res.blob();
-      const mimeType =
-        blob.type || res.headers.get("content-type") || "image/png";
-      const fileName = determineFileName(
-        res,
-        currentImage.url,
-        currentImage.id,
-        mimeType,
-      );
-      const file = new File([blob], fileName, { type: mimeType });
-      if (
-        typeof navigator !== "undefined" &&
-        navigator.canShare &&
-        navigator.canShare({ files: [file] })
-      ) {
-        await navigator.share({ files: [file], title: "Persta.AI" });
-        return;
-      }
-      await handleDownload();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message.toLowerCase() : "";
-      if (
-        (error instanceof DOMException && error.name === "AbortError") ||
-        message.includes("user gesture") ||
-        message.includes("share request")
-      ) {
-        return;
-      }
-      console.error("Share Sheet失敗:", error);
-      await handleDownload();
-    }
-  }, [currentImage, handleDownload, t]);
 
   if (!currentImage) return null;
 
@@ -273,11 +198,7 @@ export function ImageModal({
       className="yarl__button"
       disabled={disablePostAndDownload}
       onClick={() => {
-        if (isMobileUserAgent()) {
-          void handleShareMobile();
-        } else {
-          void handleDownload();
-        }
+        void handleSaveImage();
       }}
       aria-label={t("downloadAction")}
     >

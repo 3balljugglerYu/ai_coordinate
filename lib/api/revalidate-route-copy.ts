@@ -6,12 +6,14 @@ export const revalidateRouteCopy = {
     homeFailed: "ホーム画面の更新に失敗しました",
     coordinateFailed: "コーディネート画面の更新に失敗しました",
     myPageFailed: "マイページの更新に失敗しました",
+    styleFailed: "スタイル画面の更新に失敗しました",
   },
   en: {
     authRequired: "You need to be logged in.",
     homeFailed: "Failed to refresh the home feed.",
     coordinateFailed: "Failed to refresh the coordinate screen.",
     myPageFailed: "Failed to refresh my page.",
+    styleFailed: "Failed to refresh the style screen.",
   },
 } as const satisfies Record<Locale, Record<string, string>>;
 

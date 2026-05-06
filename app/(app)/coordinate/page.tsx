@@ -78,7 +78,15 @@ export default async function CoordinatePage() {
               <div id={COORDINATE_GENERATED_LIST_ID} className="mt-8 scroll-mt-20">
                 <CoordinateGeneratedListHashScroll />
                 <Suspense fallback={<GeneratedImageGallerySkeleton />}>
-                  <CachedGeneratedImageGallery userId={user.id} />
+                  <CachedGeneratedImageGallery
+                    userId={user.id}
+                    generationType="coordinate"
+                    cacheTag={`coordinate-${user.id}`}
+                    title={t("resultsTitle")}
+                    detailFromParam="coordinate"
+                    returnToImageIdKey="persta-ai:coordinate-return-to-image-id"
+                    applyActionMode="dispatch-event"
+                  />
                 </Suspense>
               </div>
             ) : null}

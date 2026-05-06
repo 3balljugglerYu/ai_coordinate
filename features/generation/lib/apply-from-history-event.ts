@@ -15,3 +15,12 @@ export interface CoordinateApplyFromHistoryDetail {
   /** ファイル名のヒント（拡張子推測用）。なくても動く。 */
   fileNameHint?: string;
 }
+
+/**
+ * /style の「このイラストで生成」確認後 → /coordinate 遷移時に、
+ * 画像 URL を持ち越すための sessionStorage キー。
+ * /coordinate ページの GenerationForm が mount 時に値を取り出し、
+ * `coordinate:apply-from-history` イベントを発火する。
+ */
+export const COORDINATE_PENDING_SOURCE_IMAGE_KEY =
+  "persta-ai:coordinate-pending-source-image-url";

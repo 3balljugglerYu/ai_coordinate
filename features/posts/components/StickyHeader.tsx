@@ -90,9 +90,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
         ? "/notifications"
         : fromParam === "coordinate"
           ? ROUTES.COORDINATE
-          : isMyPageSubPath
-            ? ROUTES.MY_PAGE
-            : localizedHomePath;
+          : fromParam === "style"
+            ? ROUTES.STYLE
+            : isMyPageSubPath
+              ? ROUTES.MY_PAGE
+              : localizedHomePath;
 
   useEffect(() => {
     const updateHeaderHeight = () => {
