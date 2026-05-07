@@ -12,6 +12,8 @@ interface PostDetailStatsProps {
   isPosted?: boolean;
   caption?: string | null;
   imageUrl?: string | null;
+  /** ダウンロード用の元画像 URL（PNG/JPEG）。`<DownloadButton>` まで流す */
+  originalImageUrl?: string | null;
   onPostClick?: () => void;
 }
 
@@ -29,6 +31,7 @@ export function PostDetailStats({
   isPosted = true,
   caption,
   imageUrl,
+  originalImageUrl,
   onPostClick,
 }: PostDetailStatsProps) {
   return (
@@ -42,6 +45,7 @@ export function PostDetailStats({
       isPosted={isPosted}
       caption={caption}
       imageUrl={imageUrl}
+      originalImageUrl={originalImageUrl}
       onPostClick={onPostClick}
     />
   );

@@ -5,19 +5,35 @@ import { ImageDownloadButton } from "@/features/generation/components/ImageDownl
 
 interface DownloadButtonProps {
   postId: string;
+  /** 表示用 URL（WebP の可能性あり）。`originalImageUrl` が無いときの fallback */
   imageUrl?: string | null;
+  /**
+   * ダウンロード用の元画像 URL（PNG/JPEG）。
+   * `getPostOriginalUrl(post)` で取得した値を渡す想定。
+   * 指定があれば DL 時はこちらを優先し、ユーザーには元画像（高画質）を保存させる。
+   */
+  originalImageUrl?: string | null;
 }
 
 /**
  * 投稿詳細用ダウンロードボタン。共通の `<ImageDownloadButton variant="ghost">`
  * に i18n 文言を流し込むだけの薄いラッパー。
+ *
+ * 表示用は WebP（軽量）、ダウンロード用は元の PNG/JPEG という二段構成にするため、
+ * `originalImageUrl` を優先し、未指定なら `imageUrl` に fallback する。
  */
-export function DownloadButton({ postId, imageUrl }: DownloadButtonProps) {
+export function DownloadButton({
+  postId,
+  imageUrl,
+  originalImageUrl,
+}: DownloadButtonProps) {
   const t = useTranslations("posts");
 
   return (
     <ImageDownloadButton
-      imageUrl={imageUrl}
+      // `getPostOriginalUrl` は画像欠損時に空文字を返すため、空文字も
+      // imageUrl にフォールバックする必要がある。`??` ではなく `||` を使う。
+      imageUrl={originalImageUrl || imageUrl}
       id={postId}
       variant="ghost"
       ariaLabel={t("downloadAriaLabel")}
