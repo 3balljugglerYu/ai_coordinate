@@ -782,6 +782,11 @@ export const jaMessages = {
     guestResultPlaceholder: "ここに生成結果が表示されます",
     guestResultSaveHint: "結果はこのページを離れると消えます。",
     guestResultLoginCta: "ログイン / 新規登録",
+    guestResultDownloadAction: "ダウンロード",
+    guestResultDownloadAriaLabel: "生成結果をダウンロード",
+    guestResultDownloadSuccessTitle: "ダウンロードしました",
+    guestResultDownloadSuccessDescription: "画像を保存しました。",
+    guestResultDownloadFailed: "画像のダウンロードに失敗しました。もう一度お試しください。",
     guestLoginCtaTitle: "未ログインでお試しいただけます",
     guestLoginCtaDescription:
       "ChatGPT Image 2.0 と Nano Banana 2 (0.5K) を 1 日 1 回までお試しいただけます。保存はされません。",
