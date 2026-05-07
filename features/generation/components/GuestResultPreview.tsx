@@ -4,6 +4,18 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 import { GenerationResultPanel } from "./GenerationResultPanel";
+import { ImageDownloadButton } from "./ImageDownloadButton";
+
+/**
+ * ゲスト DL のファイル名規則。`determineFileName` がこの ID を fallback
+ * として使う。連続 DL 時の重複は OS 側の連番付与（"... (1).png" 等）に任せる。
+ *
+ * 当初は `coordinate-guest-{timestamp}` で結果ごとにユニークにする計画だったが、
+ * React Compiler ルールが render/effect 中の `Date.now()` 呼び出しを禁止して
+ * いるため固定 ID に変更した。実害（同名ファイルの上書き）は OS の連番付与で
+ * 回避される。
+ */
+const GUEST_DOWNLOAD_ID = "coordinate-guest";
 
 export interface GuestResultPreviewImage {
   url: string;
@@ -29,9 +41,9 @@ export interface GuestResultPreviewProps {
  * - DB 保存しない data URL を直接表示する
  * - リロードで消える（state が消えるため）
  * - 結果が無い間は placeholder 文言（/style と同じ panel シェル）
- * - 結果がある時は「保存するにはログイン」 CTA をパネル下に表示
+ * - 結果がある時はパネル右上にダウンロードボタン、footer に「ログインで履歴に残せる」CTA
  *
- * UCL-017 / 計画書 Phase 6
+ * UCL-017 / 計画書 Phase 6 / Step 3 (ゲスト DL 追加)
  */
 export function GuestResultPreview({
   result,
@@ -46,6 +58,24 @@ export function GuestResultPreview({
       resultImageUrl={result?.url ?? null}
       resultImageAlt={t("guestResultAlt")}
       aspectRatio={1}
+      action={
+        result ? (
+          <ImageDownloadButton
+            imageUrl={result.url}
+            id={GUEST_DOWNLOAD_ID}
+            variant="outline"
+            label={t("guestResultDownloadAction")}
+            ariaLabel={t("guestResultDownloadAriaLabel")}
+            messages={{
+              accessDenied: t("guestResultDownloadFailed"),
+              fetchFailed: () => t("guestResultDownloadFailed"),
+              failedFallback: t("guestResultDownloadFailed"),
+              successTitle: t("guestResultDownloadSuccessTitle"),
+              successDescription: t("guestResultDownloadSuccessDescription"),
+            }}
+          />
+        ) : null
+      }
       footer={
         result ? (
           <div

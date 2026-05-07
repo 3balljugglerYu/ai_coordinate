@@ -814,6 +814,12 @@ export const enMessages = {
     guestResultSaveHint:
       "This preview disappears when you leave the page.",
     guestResultLoginCta: "Sign in / Sign up",
+    guestResultDownloadAction: "Download",
+    guestResultDownloadAriaLabel: "Download generated result",
+    guestResultDownloadSuccessTitle: "Downloaded",
+    guestResultDownloadSuccessDescription: "Image saved.",
+    guestResultDownloadFailed:
+      "Failed to download the image. Please try again.",
     guestLoginCtaTitle: "Try without signing in",
     guestLoginCtaDescription:
       "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
