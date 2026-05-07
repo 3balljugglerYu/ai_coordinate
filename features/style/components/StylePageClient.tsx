@@ -11,7 +11,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useTranslations } from "next-intl";
-import { Download, Maximize2, Minimize2, Share2, Sparkles } from "lucide-react";
+import { Maximize2, Minimize2, Share2, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -66,7 +66,7 @@ import {
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
-import { shareOrDownloadGeneratedImage } from "@/features/generation/lib/download-image";
+import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -271,9 +271,6 @@ function StyleResultDownloadButton({
   successDescription: string;
   failedMessage: string;
 }) {
-  const [isDownloading, setIsDownloading] = useState(false);
-  const { toast } = useToast();
-
   const trackDownloadUsage = () => {
     void recordStyleUsageClientEvent({
       eventType: "download",
@@ -283,60 +280,27 @@ function StyleResultDownloadButton({
     });
   };
 
-  const handleClick = async () => {
-    if (isDownloading) {
-      return;
-    }
-
-    setIsDownloading(true);
-    try {
-      await shareOrDownloadGeneratedImage(
-        { id: styleId, url: imageUrl },
-        {
-          accessDenied: failedMessage,
-          fetchFailed: () => failedMessage,
-        },
-        {
-          // モバイルの Web Share 成功時は OS シェアシートで完結するため、
-          // 画面側のトーストは出さず usage tracking のみ実行する（既存挙動）。
-          onShareSuccess: () => {
-            trackDownloadUsage();
-          },
-          onDownloadSuccess: () => {
-            toast({
-              title: successTitle,
-              description: successDescription,
-            });
-            trackDownloadUsage();
-          },
-        },
-      );
-    } catch (error) {
-      console.error("Style result download error:", error);
-      toast({
-        title: error instanceof Error ? error.message : failedMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   return (
-    <Button
-      type="button"
+    <ImageDownloadButton
+      imageUrl={imageUrl}
+      id={styleId}
       variant="outline"
-      size="sm"
-      onClick={() => {
-        void handleClick();
+      label={label}
+      ariaLabel={ariaLabel}
+      messages={{
+        accessDenied: failedMessage,
+        fetchFailed: () => failedMessage,
+        // errorTitle を渡さないことで、失敗時のトーストは title=詳細メッセージ
+        // のみ（既存挙動と同じ）になる。
+        failedFallback: failedMessage,
+        successTitle,
+        successDescription,
       }}
-      disabled={isDownloading}
-      className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
-      aria-label={ariaLabel}
-    >
-      <Download className="h-4 w-4" />
-      <span>{label}</span>
-    </Button>
+      callbacks={{
+        onShareSuccess: trackDownloadUsage,
+        onDownloadSuccess: trackDownloadUsage,
+      }}
+    />
   );
 }
 
