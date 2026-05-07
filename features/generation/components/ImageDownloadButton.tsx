@@ -68,10 +68,10 @@ export function ImageDownloadButton({
     if (isLoading) return;
 
     if (!imageUrl) {
-      if (messages.errorTitle && messages.noImage) {
+      if (messages.noImage) {
         toast({
-          title: messages.errorTitle,
-          description: messages.noImage,
+          title: messages.errorTitle ?? messages.noImage,
+          description: messages.errorTitle ? messages.noImage : undefined,
           variant: "destructive",
         });
       }
@@ -118,6 +118,7 @@ export function ImageDownloadButton({
   if (variant === "ghost") {
     return (
       <Button
+        type="button"
         variant="ghost"
         size="sm"
         onClick={() => {

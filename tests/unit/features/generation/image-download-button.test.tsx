@@ -232,6 +232,34 @@ describe("ImageDownloadButton", () => {
     expect(mockShareOrDownload).not.toHaveBeenCalled();
   });
 
+  test("imageUrl が null で noImage 単独指定の場合は title=noImage の destructive トースト", async () => {
+    render(
+      <ImageDownloadButton
+        imageUrl={null}
+        id="style-1"
+        variant="outline"
+        label="DL"
+        ariaLabel="Download"
+        messages={{ ...baseMessages, noImage: "no-image" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "no-image",
+          variant: "destructive",
+        }),
+      );
+    });
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.not.objectContaining({ description: expect.anything() }),
+    );
+    expect(mockShareOrDownload).not.toHaveBeenCalled();
+  });
+
   test("imageUrl が null で noImage が未指定なら何も起こらない", async () => {
     render(
       <ImageDownloadButton
@@ -250,5 +278,77 @@ describe("ImageDownloadButton", () => {
     await Promise.resolve();
     expect(mockToast).not.toHaveBeenCalled();
     expect(mockShareOrDownload).not.toHaveBeenCalled();
+  });
+
+  test("非 Error 値で reject されたとき failedFallback を title に出す", async () => {
+    mockShareOrDownload.mockRejectedValueOnce("string-thrown");
+
+    render(
+      <ImageDownloadButton
+        imageUrl="https://example.com/x.png"
+        id="style-1"
+        variant="outline"
+        label="DL"
+        ariaLabel="Download"
+        messages={baseMessages}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "failed-fallback",
+          variant: "destructive",
+        }),
+      );
+    });
+  });
+
+  test("variant=outline で label 未指定なら span を描画しない", () => {
+    render(
+      <ImageDownloadButton
+        imageUrl="https://example.com/x.png"
+        id="style-1"
+        variant="outline"
+        ariaLabel="Download"
+        messages={baseMessages}
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: "Download" });
+    expect(button.querySelector("span")).toBeNull();
+  });
+
+  test("ghost variant も outline variant も Button は type=\"button\" を持つ", () => {
+    const { rerender } = render(
+      <ImageDownloadButton
+        imageUrl="https://example.com/x.png"
+        id="post-1"
+        variant="ghost"
+        ariaLabel="Download"
+        messages={baseMessages}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Download" })).toHaveAttribute(
+      "type",
+      "button",
+    );
+
+    rerender(
+      <ImageDownloadButton
+        imageUrl="https://example.com/x.png"
+        id="style-1"
+        variant="outline"
+        label="DL"
+        ariaLabel="Download"
+        messages={baseMessages}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Download" })).toHaveAttribute(
+      "type",
+      "button",
+    );
   });
 });
