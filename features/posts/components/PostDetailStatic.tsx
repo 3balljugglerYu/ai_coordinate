@@ -43,6 +43,8 @@ interface PostDetailStaticProps {
   initialViewCount: number;
   ownerId?: string | null;
   imageUrl?: string | null;
+  /** ダウンロード用の元画像 URL（PNG/JPEG）。`<DownloadButton>` まで流す */
+  originalImageUrl?: string | null;
   isHidden?: boolean;
   onHidden?: () => void;
 }
@@ -61,6 +63,7 @@ export function PostDetailStatic({
   initialViewCount,
   ownerId,
   imageUrl,
+  originalImageUrl,
   isHidden = false,
   onHidden,
 }: PostDetailStaticProps) {
@@ -411,6 +414,7 @@ export function PostDetailStatic({
                 isPosted={post.is_posted || false}
                 caption={post.caption}
                 imageUrl={imageUrl}
+                originalImageUrl={originalImageUrl}
                 onPostClick={!post.is_posted ? () => setPostModalOpen(true) : undefined}
               />
             </Suspense>

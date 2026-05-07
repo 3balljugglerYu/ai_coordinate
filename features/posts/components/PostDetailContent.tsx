@@ -18,6 +18,8 @@ interface PostDetailContentProps {
   initialViewCount: number;
   ownerId?: string | null;
   imageUrl?: string | null;
+  /** ダウンロード用の元画像 URL（PNG/JPEG）。`<DownloadButton>` まで流す */
+  originalImageUrl?: string | null;
 }
 
 export function PostDetailContent({
@@ -30,6 +32,7 @@ export function PostDetailContent({
   initialViewCount,
   ownerId,
   imageUrl,
+  originalImageUrl,
 }: PostDetailContentProps) {
   const [hiddenPostId, setHiddenPostId] = useState<string | null>(null);
   const router = useRouter();
@@ -72,6 +75,7 @@ export function PostDetailContent({
         initialViewCount={initialViewCount}
         ownerId={ownerId}
         imageUrl={imageUrl}
+        originalImageUrl={originalImageUrl}
         isHidden={isHidden}
         onHidden={() => setHiddenPostId(postId)}
       />

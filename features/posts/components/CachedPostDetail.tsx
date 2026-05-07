@@ -5,6 +5,7 @@ import {
   deriveAspectRatioFromDimensions,
   getImageAspectRatio,
   getPostDisplayUrl,
+  getPostOriginalUrl,
 } from "../lib/utils";
 import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -39,6 +40,10 @@ export async function CachedPostDetail({
   }
 
   const imageUrl = getPostDisplayUrl(post);
+  // 表示は WebP（軽量）、ダウンロードは元の PNG/JPEG（高画質）。
+  // この経路だけ二段構成にし、`<DownloadButton>` の挙動を `/coordinate` や
+  // `/style` と揃える（生成直後の data URL と同じく拡張子で保存される）。
+  const originalImageUrl = getPostOriginalUrl(post);
   // 1) width/height が揃っていれば派生で済ませる
   // 2) それが無理なら画像をフェッチして判定（最後のフォールバック）
   let imageAspectRatio: "portrait" | "landscape" | null =
@@ -58,6 +63,7 @@ export async function CachedPostDetail({
       initialViewCount={post.view_count || 0}
       ownerId={post.user_id}
       imageUrl={imageUrl}
+      originalImageUrl={originalImageUrl}
     />
   );
 }

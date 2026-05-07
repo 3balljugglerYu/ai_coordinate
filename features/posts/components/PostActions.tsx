@@ -19,6 +19,11 @@ interface PostActionsProps {
   isPosted?: boolean;
   caption?: string | null;
   imageUrl?: string | null;
+  /**
+   * ダウンロード用の元画像 URL（PNG/JPEG）。表示用 WebP と分離するため、
+   * オーナー DL 動線では `imageUrl` ではなくこちらが優先される。
+   */
+  originalImageUrl?: string | null;
   onPostClick?: () => void;
 }
 
@@ -36,6 +41,7 @@ export function PostActions({
   isPosted = true,
   caption,
   imageUrl,
+  originalImageUrl,
   onPostClick,
 }: PostActionsProps) {
   const t = useTranslations("posts");
@@ -56,6 +62,7 @@ export function PostActions({
           <DownloadButton
             postId={postId}
             imageUrl={imageUrl}
+            originalImageUrl={originalImageUrl}
           />
         )}
         {/* シェアボタン（投稿済みの場合のみ表示） */}
