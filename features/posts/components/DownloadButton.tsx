@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { shareOrDownloadGeneratedImage } from "@/features/generation/lib/download-image";
+import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
 
 interface DownloadButtonProps {
   postId: string;
@@ -13,74 +9,28 @@ interface DownloadButtonProps {
 }
 
 /**
- * ダウンロードボタンコンポーネント
- * オーナーが自分の画像をダウンロードするために使用
+ * 投稿詳細用ダウンロードボタン。共通の `<ImageDownloadButton variant="ghost">`
+ * に i18n 文言を流し込むだけの薄いラッパー。
  */
-export function DownloadButton({
-  postId,
-  imageUrl,
-}: DownloadButtonProps) {
+export function DownloadButton({ postId, imageUrl }: DownloadButtonProps) {
   const t = useTranslations("posts");
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
-  const handleClick = async () => {
-    if (isLoading) return;
-
-    if (!imageUrl) {
-      toast({
-        title: t("errorTitle"),
-        description: t("downloadNoImage"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await shareOrDownloadGeneratedImage(
-        { id: postId, url: imageUrl },
-        {
-          accessDenied: t("downloadUnauthorized"),
-          fetchFailed: (statusText) =>
-            t("downloadFetchFailed", { statusText }),
-        },
-        {
-          // モバイルの Web Share 成功時は OS シェアシートで完結するため、
-          // 画面側のトーストは出さない（既存挙動を踏襲）。
-          onDownloadSuccess: () => {
-            toast({
-              title: t("downloadSuccessTitle"),
-              description: t("downloadSuccessDescription"),
-            });
-          },
-        },
-      );
-    } catch (error) {
-      console.error("Download error:", error);
-      toast({
-        title: t("errorTitle"),
-        description:
-          error instanceof Error ? error.message : t("downloadFailed"),
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
-    <Button
+    <ImageDownloadButton
+      imageUrl={imageUrl}
+      id={postId}
       variant="ghost"
-      size="sm"
-      onClick={() => {
-        void handleClick();
+      ariaLabel={t("downloadAriaLabel")}
+      messages={{
+        accessDenied: t("downloadUnauthorized"),
+        fetchFailed: (statusText) =>
+          t("downloadFetchFailed", { statusText }),
+        errorTitle: t("errorTitle"),
+        failedFallback: t("downloadFailed"),
+        successTitle: t("downloadSuccessTitle"),
+        successDescription: t("downloadSuccessDescription"),
+        noImage: t("downloadNoImage"),
       }}
-      disabled={isLoading}
-      className="flex items-center gap-1.5 px-2 py-1 h-auto"
-      aria-label={t("downloadAriaLabel")}
-    >
-      <Download className="h-5 w-5 text-gray-600" />
-    </Button>
+    />
   );
 }
