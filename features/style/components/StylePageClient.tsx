@@ -66,7 +66,7 @@ import {
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
-import { determineFileName } from "@/lib/utils";
+import { shareOrDownloadGeneratedImage } from "@/features/generation/lib/download-image";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -221,14 +221,6 @@ function StyleReferencePanel({
 // 旧 StyleResultPanel は features/generation/components/GenerationResultPanel.tsx
 // に抽出した。
 
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-
-  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
 async function fetchStyleRateLimitStatus(): Promise<StyleRateLimitStatusState | null> {
   const response = await fetch("/style/rate-limit-status", {
     method: "GET",
@@ -282,57 +274,43 @@ function StyleResultDownloadButton({
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
-  const downloadResponse = async () => {
-    const response = await fetch(imageUrl, { mode: "cors" });
-    if (response.status === 401 || response.status === 403) {
-      throw new Error(failedMessage);
-    }
-
-    if (!response.ok) {
-      throw new Error(failedMessage);
-    }
-
-    return response;
+  const trackDownloadUsage = () => {
+    void recordStyleUsageClientEvent({
+      eventType: "download",
+      styleId,
+    }).catch(() => {
+      // Usage tracking must not block the successful download/share flow.
+    });
   };
 
-  const triggerDownload = (blob: Blob, fileName: string) => {
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = objectUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => {
-      URL.revokeObjectURL(objectUrl);
-    }, 100);
-  };
-
-  const handleDownload = async () => {
+  const handleClick = async () => {
     if (isDownloading) {
       return;
     }
 
     setIsDownloading(true);
     try {
-      const response = await downloadResponse();
-      const blob = await response.blob();
-      const mimeType =
-        blob.type || response.headers.get("content-type") || "image/png";
-      const fileName = determineFileName(response, imageUrl, styleId, mimeType);
-
-      triggerDownload(blob, fileName);
-      toast({
-        title: successTitle,
-        description: successDescription,
-      });
-      void recordStyleUsageClientEvent({
-        eventType: "download",
-        styleId,
-      }).catch(() => {
-        // Usage tracking must not block the successful download flow.
-      });
+      await shareOrDownloadGeneratedImage(
+        { id: styleId, url: imageUrl },
+        {
+          accessDenied: failedMessage,
+          fetchFailed: () => failedMessage,
+        },
+        {
+          // モバイルの Web Share 成功時は OS シェアシートで完結するため、
+          // 画面側のトーストは出さず usage tracking のみ実行する（既存挙動）。
+          onShareSuccess: () => {
+            trackDownloadUsage();
+          },
+          onDownloadSuccess: () => {
+            toast({
+              title: successTitle,
+              description: successDescription,
+            });
+            trackDownloadUsage();
+          },
+        },
+      );
     } catch (error) {
       console.error("Style result download error:", error);
       toast({
@@ -344,74 +322,13 @@ function StyleResultDownloadButton({
     }
   };
 
-  const handleDownloadMobile = async () => {
-    if (isDownloading) {
-      return;
-    }
-
-    setIsDownloading(true);
-    try {
-      const response = await downloadResponse();
-      const blob = await response.blob();
-      const mimeType =
-        blob.type || response.headers.get("content-type") || "image/png";
-      const fileName = determineFileName(response, imageUrl, styleId, mimeType);
-      const file = new File([blob], fileName, { type: mimeType });
-
-      if (
-        typeof navigator !== "undefined" &&
-        navigator.canShare &&
-        navigator.canShare({ files: [file] })
-      ) {
-        await navigator.share({
-          files: [file],
-          title: "Persta.AI",
-        });
-        void recordStyleUsageClientEvent({
-          eventType: "download",
-          styleId,
-        }).catch(() => {
-          // Usage tracking must not block the successful share flow.
-        });
-        return;
-      }
-
-      await handleDownload();
-    } catch (error) {
-      const message = error instanceof Error ? error.message.toLowerCase() : "";
-      if (
-        (error instanceof DOMException && error.name === "AbortError") ||
-        message.includes("user gesture") ||
-        message.includes("share request")
-      ) {
-        setIsDownloading(false);
-        return;
-      }
-
-      console.error("Style share sheet error:", error);
-
-      try {
-        await handleDownload();
-      } catch {
-        // handleDownload already reports any fallback error.
-      }
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
       onClick={() => {
-        if (isMobileDevice()) {
-          void handleDownloadMobile();
-          return;
-        }
-
-        void handleDownload();
+        void handleClick();
       }}
       disabled={isDownloading}
       className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
