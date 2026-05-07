@@ -1,9 +1,32 @@
 import { determineFileName } from "@/lib/utils";
-import type { GeneratedImageData } from "../types";
+
+/**
+ * ダウンロード対象画像の最小インターフェース。
+ * `GeneratedImageData` もこの形を満たすため、生成結果系の呼び出し側は
+ * 既存どおりそのまま渡せる。投稿詳細やスタイル画面のように `id` を
+ * 別の意味（postId / styleId）で使う場合もこの型に束ねて渡す。
+ */
+export interface DownloadableImage {
+  id: string;
+  url: string;
+}
 
 interface DownloadMessages {
   accessDenied: string;
   fetchFailed: (statusText: string) => string;
+}
+
+/**
+ * 成功パスごとに呼び出し側が任意の処理（成功トーストや usage tracking など）を
+ * 差し込めるようにするコールバック。
+ *
+ * - `onShareSuccess`: モバイルの Web Share API でシェアシートが完了した直後。
+ *   OS シェアシート側で完結するため、画面トーストは出さない呼び出し側が多い。
+ * - `onDownloadSuccess`: ブラウザダウンロード（PC、または Web Share fallback）成功時。
+ */
+export interface DownloadCallbacks {
+  onShareSuccess?: () => void;
+  onDownloadSuccess?: () => void;
 }
 
 interface FetchedImagePayload {
@@ -18,7 +41,7 @@ function isMobileUserAgent(): boolean {
 }
 
 async function fetchImagePayload(
-  image: GeneratedImageData,
+  image: DownloadableImage,
   messages: DownloadMessages,
   init?: RequestInit,
 ): Promise<FetchedImagePayload> {
@@ -56,11 +79,13 @@ function triggerBrowserDownload(payload: FetchedImagePayload): void {
  * 失敗時は呼び出し側でハンドリングできるよう例外を投げる。
  */
 export async function downloadGeneratedImage(
-  image: GeneratedImageData,
+  image: DownloadableImage,
   messages: DownloadMessages,
+  callbacks?: DownloadCallbacks,
 ): Promise<void> {
   const payload = await fetchImagePayload(image, messages);
   triggerBrowserDownload(payload);
+  callbacks?.onDownloadSuccess?.();
 }
 
 /**
@@ -71,14 +96,16 @@ export async function downloadGeneratedImage(
  *   通常のブラウザダウンロードへ fallback。
  * デスクトップ: 通常のブラウザダウンロード。
  *
- * グリッド／リスト／拡大表示モーダルの全ダウンロード動線をこの関数に統一する。
+ * 生成結果のグリッド／リスト／拡大表示モーダルに加え、投稿詳細とスタイル画面の
+ * ダウンロード動線もこの関数に統一する。
  */
 export async function shareOrDownloadGeneratedImage(
-  image: GeneratedImageData,
+  image: DownloadableImage,
   messages: DownloadMessages,
+  callbacks?: DownloadCallbacks,
 ): Promise<void> {
   if (!isMobileUserAgent()) {
-    await downloadGeneratedImage(image, messages);
+    await downloadGeneratedImage(image, messages, callbacks);
     return;
   }
 
@@ -102,6 +129,7 @@ export async function shareOrDownloadGeneratedImage(
   ) {
     try {
       await navigator.share({ files: [file], title: "Persta.AI" });
+      callbacks?.onShareSuccess?.();
       return;
     } catch (error) {
       const message =
@@ -119,4 +147,5 @@ export async function shareOrDownloadGeneratedImage(
   }
 
   triggerBrowserDownload(payload);
+  callbacks?.onDownloadSuccess?.();
 }

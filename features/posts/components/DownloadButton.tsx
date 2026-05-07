@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { determineFileName } from "@/lib/utils";
+import { shareOrDownloadGeneratedImage } from "@/features/generation/lib/download-image";
 
 interface DownloadButtonProps {
   postId: string;
@@ -24,12 +24,7 @@ export function DownloadButton({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const isMobile = () => {
-    if (typeof navigator === "undefined") return false;
-    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  };
-
-  const handleDownload = async () => {
+  const handleClick = async () => {
     if (isLoading) return;
 
     if (!imageUrl) {
@@ -43,54 +38,24 @@ export function DownloadButton({
 
     setIsLoading(true);
     try {
-      // 画像をfetchで取得
-      const response = await fetch(imageUrl);
-      
-      // 認証エラーのハンドリング（401/403）
-      if (response.status === 401 || response.status === 403) {
-        throw new Error(t("downloadUnauthorized"));
-      }
-      
-      if (!response.ok) {
-        throw new Error(
-          t("downloadFetchFailed", { statusText: response.statusText })
-        );
-      }
-      
-      // Blobに変換（MIMEタイプを保持）
-      const blob = await response.blob();
-      
-      // MIMEタイプの取得順序: blob.type を優先、次にContent-Typeヘッダー、最後にデフォルト
-      const mimeType = blob.type || response.headers.get('content-type') || 'image/png';
-      
-      // ファイル名を決定（共通ロジックを使用）
-      const downloadFileName = determineFileName(
-        response,
-        imageUrl,
-        postId,
-        mimeType
+      await shareOrDownloadGeneratedImage(
+        { id: postId, url: imageUrl },
+        {
+          accessDenied: t("downloadUnauthorized"),
+          fetchFailed: (statusText) =>
+            t("downloadFetchFailed", { statusText }),
+        },
+        {
+          // モバイルの Web Share 成功時は OS シェアシートで完結するため、
+          // 画面側のトーストは出さない（既存挙動を踏襲）。
+          onDownloadSuccess: () => {
+            toast({
+              title: t("downloadSuccessTitle"),
+              description: t("downloadSuccessDescription"),
+            });
+          },
+        },
       );
-      
-      // ObjectURLを作成
-      const objectUrl = URL.createObjectURL(blob);
-      
-      // ダウンロードリンクを作成
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = downloadFileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // メモリリークを防ぐためにObjectURLを解放
-      setTimeout(() => {
-        URL.revokeObjectURL(objectUrl);
-      }, 100);
-      
-      toast({
-        title: t("downloadSuccessTitle"),
-        description: t("downloadSuccessDescription"),
-      });
     } catch (error) {
       console.error("Download error:", error);
       toast({
@@ -104,107 +69,12 @@ export function DownloadButton({
     }
   };
 
-  const handleDownloadMobile = async () => {
-    if (isLoading) return;
-
-    if (!imageUrl) {
-      toast({
-        title: t("errorTitle"),
-        description: t("downloadNoImage"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // 画像をfetch（CORS対応）
-      const res = await fetch(imageUrl, { mode: "cors" });
-      
-      // 認証エラーのハンドリング（401/403）
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(t("downloadUnauthorized"));
-      }
-      
-      if (!res.ok) {
-        throw new Error(
-          t("downloadFetchFailed", { statusText: res.statusText })
-        );
-      }
-      
-      // Blobに変換
-      const blob = await res.blob();
-      
-      // MIMEタイプの取得（handleDownloadと同じロジック）
-      const mimeType = blob.type || res.headers.get('content-type') || 'image/png';
-      
-      // ファイル名を決定（共通ロジックを使用）
-      const fileName = determineFileName(
-        res,
-        imageUrl,
-        postId,
-        mimeType
-      );
-      
-      // Fileオブジェクトを作成
-      const file = new File(
-        [blob],
-        fileName,
-        { type: mimeType }
-      );
-      
-      // Web Share API Level 2（files）のサポート確認
-      if (
-        typeof navigator !== "undefined" &&
-        navigator.canShare &&
-        navigator.canShare({ files: [file] })
-      ) {
-        await navigator.share({
-          files: [file],
-          title: "Persta.AI",
-        });
-        return;
-      }
-      
-      // フォールバック: 通常のダウンロード
-      await handleDownload();
-      // handleDownloadのfinallyでisLoadingはfalseになる
-    } catch (error) {
-      const message = error instanceof Error ? error.message.toLowerCase() : "";
-      // キャンセルやジェスチャー不足は無視
-      if (
-        (error instanceof DOMException && error.name === "AbortError") ||
-        message.includes("user gesture") ||
-        message.includes("share request")
-      ) {
-        setIsLoading(false);
-        return;
-      }
-      console.error("Share Sheet error:", error);
-      // エラー時もダウンロードにフォールバック
-      try {
-        await handleDownload();
-      } catch {
-        // handleDownloadのエラーは既にhandleDownload内で処理される
-        // ここでは何もしない
-      }
-    } finally {
-      // handleDownloadが呼ばれた場合は、そのfinallyでisLoadingがfalseになる
-      // 呼ばれなかった場合（早期リターンなど）のみここで設定
-      setIsLoading(false);
-    }
-  };
-
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={() => {
-        if (isMobile()) {
-          handleDownloadMobile();
-        } else {
-          handleDownload();
-        }
+        void handleClick();
       }}
       disabled={isLoading}
       className="flex items-center gap-1.5 px-2 py-1 h-auto"
