@@ -117,4 +117,22 @@ describe("DownloadButton (posts)", () => {
     const [target] = mockShareOrDownload.mock.calls[0];
     expect(target.url).toBe("https://cdn.example.com/x.png");
   });
+
+  test("originalImageUrl が空文字のときも imageUrl に fallback する（getPostOriginalUrl 画像欠損時の挙動）", async () => {
+    render(
+      <DownloadButton
+        postId="post-1"
+        imageUrl="https://cdn.example.com/x_display.webp"
+        originalImageUrl=""
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => {
+      expect(mockShareOrDownload).toHaveBeenCalledTimes(1);
+    });
+    const [target] = mockShareOrDownload.mock.calls[0];
+    expect(target.url).toBe("https://cdn.example.com/x_display.webp");
+  });
 });

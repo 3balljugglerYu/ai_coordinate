@@ -31,7 +31,9 @@ export function DownloadButton({
 
   return (
     <ImageDownloadButton
-      imageUrl={originalImageUrl ?? imageUrl}
+      // `getPostOriginalUrl` は画像欠損時に空文字を返すため、空文字も
+      // imageUrl にフォールバックする必要がある。`??` ではなく `||` を使う。
+      imageUrl={originalImageUrl || imageUrl}
       id={postId}
       variant="ghost"
       ariaLabel={t("downloadAriaLabel")}
