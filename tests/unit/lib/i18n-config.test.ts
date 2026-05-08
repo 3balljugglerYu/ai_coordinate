@@ -1,6 +1,7 @@
 import {
   appendSearchAndHash,
   getLocaleCookieMaxAge,
+  getLocaleDir,
   getLocaleLabel,
   isLocale,
   isPublicPath,
@@ -39,6 +40,17 @@ describe("I18nConfig unit tests from EARS specs", () => {
   describe("I18N-003 getLocaleCookieMaxAge", () => {
     test("getLocaleCookieMaxAge_呼び出された場合_1年相当の秒数を返す", () => {
       expect(getLocaleCookieMaxAge()).toBe(60 * 60 * 24 * 365);
+    });
+  });
+
+  describe("I18N-003A getLocaleDir", () => {
+    test("getLocaleDir_arの場合_rtlを返す", () => {
+      expect(getLocaleDir("ar")).toBe("rtl");
+    });
+
+    test("getLocaleDir_ar以外の場合_ltrを返す", () => {
+      expect(getLocaleDir("ja")).toBe("ltr");
+      expect(getLocaleDir("en")).toBe("ltr");
     });
   });
 
