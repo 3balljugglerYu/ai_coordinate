@@ -82,6 +82,422 @@ const authErrorCopy = {
     deactivateFailed: "Failed to request account deletion.",
     reactivateFailed: "Failed to restore the account.",
   },
+  ko: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  "zh-CN": {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  "zh-TW": {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  es: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  pt: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  fr: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  de: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  it: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  id: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  th: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  vi: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  hi: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
+  ar: {
+    invalidCredentials: "Incorrect email address or password.",
+    sessionMissing:
+      "No authentication session was found. Your password reset link may have expired. Please request a new reset email.",
+    linkExpired:
+      "This link has expired. Please request a new password reset email.",
+    invalidLink:
+      "This link is invalid. Please request a new password reset email.",
+    passwordMustDiffer:
+      "Your new password must be different from your current password.",
+    passwordBlocked:
+      "For security reasons, this password cannot be used.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    passwordWeak:
+      "This password is too weak. Please choose a stronger password.",
+    emailNotConfirmed:
+      "Your email address has not been confirmed yet. Please check your inbox.",
+    emailNotConfirmedDetailed:
+      "Your email address has not been confirmed yet. Please check your inbox. If you don't see the email, try requesting it again.",
+    networkError:
+      "A network error occurred. Please check your internet connection.",
+    securityRetrySeconds:
+      "For security reasons, please try again in {seconds} seconds.",
+    securityRetryGeneric:
+      "For security reasons, please wait a little before trying again.",
+    tooManyRequests:
+      "Too many requests. Please wait a little before trying again.",
+    signUpFailed: "Failed to sign up.",
+    signInFailed: "Failed to log in.",
+    deactivateFailed: "Failed to request account deletion.",
+    reactivateFailed: "Failed to restore the account.",
+  },
 } as const satisfies Record<Locale, Record<string, string>>;
 
 function resolveClientLocale(): Locale {
