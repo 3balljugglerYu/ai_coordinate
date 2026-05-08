@@ -287,8 +287,11 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       createServerClientMock.mockReturnValue(
         supabase.client as ReturnType<typeof createServerClient>
       );
+      // Phase 1 で en が有効になり cookie 値が ja → en に変わるため、
+      // 未サポートタグ "xx-XX,xx;q=0.9" に置換しテストの意図 (cookie が ja に
+      // フォールバック) を維持。
       const request = createRequest("http://localhost/login?redirect=/challenge", {
-        acceptLanguage: "en-US,en;q=0.9",
+        acceptLanguage: "xx-XX,xx;q=0.9",
       });
 
       // ============================================================
@@ -403,8 +406,10 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       createServerClientMock.mockReturnValue(
         supabase.client as ReturnType<typeof createServerClient>
       );
+      // Phase 1 で en が有効になり cookie 値が ja → en に変わるため、
+      // 未サポートタグ "xx-XX,xx;q=0.9" に置換。
       const request = createRequest("http://localhost/challenge", {
-        acceptLanguage: "en-US,en;q=0.9",
+        acceptLanguage: "xx-XX,xx;q=0.9",
       });
 
       // ============================================================
@@ -536,8 +541,10 @@ describe("LocaleProxyRoute integration tests from EARS specs", () => {
       // ============================================================
       // Arrange
       // ============================================================
+      // Phase 1 で en が有効になり cookie 値が ja → en に変わるため、
+      // 未サポートタグ "xx-XX,xx;q=0.9" に置換。
       const request = createRequest("http://localhost/about", {
-        acceptLanguage: "en-US,en;q=0.9",
+        acceptLanguage: "xx-XX,xx;q=0.9",
       });
 
       // ============================================================

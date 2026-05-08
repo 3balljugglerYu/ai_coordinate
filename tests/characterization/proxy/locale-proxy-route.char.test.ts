@@ -230,9 +230,11 @@ describe("Characterization: LocaleProxyRoute", () => {
       supabase.client as ReturnType<typeof createServerClient>
     );
 
+    // Phase 1 で en が有効になり cookie 値が ja → en に変わるため、
+    // 未サポートタグ "xx-XX,xx;q=0.9" に置換。
     const response = await proxy(
       createRequest("http://localhost/login", {
-        acceptLanguage: "en-US,en;q=0.9",
+        acceptLanguage: "xx-XX,xx;q=0.9",
       })
     );
 
@@ -290,9 +292,11 @@ describe("Characterization: LocaleProxyRoute", () => {
       supabase.client as ReturnType<typeof createServerClient>
     );
 
+    // Phase 1 で fr が有効になり cookie 値が ja → fr に変わるため、
+    // 未サポートタグ "xx-XX,xx;q=0.9" に置換。
     const response = await proxy(
       createRequest("http://localhost/challenge", {
-        acceptLanguage: "fr-FR,fr;q=0.9",
+        acceptLanguage: "xx-XX,xx;q=0.9",
       })
     );
 
