@@ -35,7 +35,44 @@ interface LanguageSettingsMenuProps {
   onSelect?: () => void;
 }
 
-const localeOptions: Locale[] = ["ja", "en"];
+const localeOptions: Locale[] = [
+  "ja",
+  "en",
+  "ko",
+  "zh-CN",
+  "zh-TW",
+  "es",
+  "pt",
+  "fr",
+  "de",
+  "it",
+  "id",
+  "th",
+  "vi",
+  "hi",
+  "ar",
+];
+
+// Locale ↔ messages.common.localeXx の i18n キー対応。
+// 全言語ファイルで「ネイティブ表記」（例: "한국어"、"中文 (简体)"）に統一済みのため、
+// 表示文字列はアクティブロケールに依らず常にネイティブ。
+const LOCALE_LABEL_KEYS = {
+  ja: "localeJa",
+  en: "localeEn",
+  ko: "localeKo",
+  "zh-CN": "localeZhCn",
+  "zh-TW": "localeZhTw",
+  es: "localeEs",
+  pt: "localePt",
+  fr: "localeFr",
+  de: "localeDe",
+  it: "localeIt",
+  id: "localeId",
+  th: "localeTh",
+  vi: "localeVi",
+  hi: "localeHi",
+  ar: "localeAr",
+} as const satisfies Record<Locale, string>;
 
 export function LanguageSettingsMenu({
   variant,
@@ -154,17 +191,15 @@ export function LanguageSettingsMenu({
     setIsSidebarMenuOpen(false);
   }, [pathname]);
 
-  const currentLocaleLabel =
-    locale === "ja" ? commonT("localeJa") : commonT("localeEn");
+  const currentLocaleLabel = commonT(LOCALE_LABEL_KEYS[locale]);
 
   const localeOptionsContent = (
     <DropdownMenuRadioGroup value={locale} onValueChange={handleLocaleChange}>
-      <DropdownMenuRadioItem value="ja">
-        {commonT("localeJa")}
-      </DropdownMenuRadioItem>
-      <DropdownMenuRadioItem value="en">
-        {commonT("localeEn")}
-      </DropdownMenuRadioItem>
+      {localeOptions.map((option) => (
+        <DropdownMenuRadioItem key={option} value={option}>
+          {commonT(LOCALE_LABEL_KEYS[option])}
+        </DropdownMenuRadioItem>
+      ))}
     </DropdownMenuRadioGroup>
   );
 
@@ -219,8 +254,7 @@ export function LanguageSettingsMenu({
                 <div className="space-y-1">
                   {localeOptions.map((option) => {
                     const isActive = option === locale;
-                    const optionLabel =
-                      option === "ja" ? commonT("localeJa") : commonT("localeEn");
+                    const optionLabel = commonT(LOCALE_LABEL_KEYS[option]);
                     return (
                       <button
                         key={option}

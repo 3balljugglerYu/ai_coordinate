@@ -1,6 +1,19 @@
 import {cache} from "react";
 import {enMessages} from "@/messages/en";
 import {jaMessages} from "@/messages/ja";
+import {koMessages} from "@/messages/ko";
+import {zhCnMessages} from "@/messages/zh-CN";
+import {zhTwMessages} from "@/messages/zh-TW";
+import {esMessages} from "@/messages/es";
+import {ptMessages} from "@/messages/pt";
+import {frMessages} from "@/messages/fr";
+import {deMessages} from "@/messages/de";
+import {itMessages} from "@/messages/it";
+import {idMessages} from "@/messages/id";
+import {thMessages} from "@/messages/th";
+import {viMessages} from "@/messages/vi";
+import {hiMessages} from "@/messages/hi";
+import {arMessages} from "@/messages/ar";
 import type {Locale} from "@/i18n/config";
 
 type DeepReplaceStrings<T> = T extends string
@@ -10,8 +23,21 @@ type DeepReplaceStrings<T> = T extends string
 export type AppMessages = DeepReplaceStrings<typeof jaMessages>;
 
 const allMessages = {
-  en: enMessages,
   ja: jaMessages,
+  en: enMessages,
+  ko: koMessages,
+  "zh-CN": zhCnMessages,
+  "zh-TW": zhTwMessages,
+  es: esMessages,
+  pt: ptMessages,
+  fr: frMessages,
+  de: deMessages,
+  it: itMessages,
+  id: idMessages,
+  th: thMessages,
+  vi: viMessages,
+  hi: hiMessages,
+  ar: arMessages,
 } as const satisfies Record<Locale, AppMessages>;
 export type ClientMessageNamespace = keyof AppMessages;
 
