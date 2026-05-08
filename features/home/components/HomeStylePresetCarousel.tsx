@@ -226,7 +226,8 @@ export function HomeStylePresetCarousel({
       <h2 className="mb-3 px-4 text-lg font-semibold text-gray-900 sm:px-0">
         {tHome("stylePresetCarouselTitle")}
       </h2>
-      <div className="-mx-4 px-4">
+      {/* Swiper's RTL mode flips translate semantics; this image rail is animated with LTR math. */}
+      <div className="-mx-4 px-4" dir="ltr">
         <Swiper
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
