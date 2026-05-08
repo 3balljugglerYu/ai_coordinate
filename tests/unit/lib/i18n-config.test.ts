@@ -132,6 +132,15 @@ describe("I18nConfig unit tests from EARS specs", () => {
       ).toBe("ja");
     });
 
+    test("resolveLocaleFromAcceptLanguage_中国語スクリプト付きタグの場合_繁体と簡体を区別する", () => {
+      expect(resolveLocaleFromAcceptLanguage("zh-Hant-TW,en;q=0.8")).toBe(
+        "zh-TW"
+      );
+      expect(resolveLocaleFromAcceptLanguage("zh-Hans-SG,en;q=0.8")).toBe(
+        "zh-CN"
+      );
+    });
+
     test("resolveLocaleFromAcceptLanguage_ja系以外のみの場合_DEFAULT_LOCALEを返す", () => {
       // Phase 1 で fr/de/en などが有効になったため、未サポート言語タグに置換。
       expect(resolveLocaleFromAcceptLanguage("xx,qq;q=0.8,zz;q=0.7")).toBe("ja");

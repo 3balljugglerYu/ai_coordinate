@@ -1,8 +1,5 @@
 import {jaMessages} from "./ja";
-
-type DeepReplaceStrings<T> = T extends string
-  ? string
-  : { [K in keyof T]: DeepReplaceStrings<T[K]> };
+import type {DeepReplaceStrings} from "./types";
 
 export const frMessages = {
   common: {

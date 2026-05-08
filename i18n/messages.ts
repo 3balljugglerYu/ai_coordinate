@@ -15,10 +15,7 @@ import {viMessages} from "@/messages/vi";
 import {hiMessages} from "@/messages/hi";
 import {arMessages} from "@/messages/ar";
 import type {Locale} from "@/i18n/config";
-
-type DeepReplaceStrings<T> = T extends string
-  ? string
-  : { [K in keyof T]: DeepReplaceStrings<T[K]> };
+import type {DeepReplaceStrings} from "@/messages/types";
 
 export type AppMessages = DeepReplaceStrings<typeof jaMessages>;
 

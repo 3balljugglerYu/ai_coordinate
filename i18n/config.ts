@@ -156,14 +156,22 @@ const ACCEPT_LANGUAGE_EXACT_MAP: Record<string, Locale> = {
 };
 
 function matchAcceptLanguageTag(tag: string): Locale | null {
-  const normalized = tag.toLowerCase();
-  if (normalized in ACCEPT_LANGUAGE_EXACT_MAP) {
-    return ACCEPT_LANGUAGE_EXACT_MAP[normalized];
+  let current = tag.toLowerCase();
+
+  while (current) {
+    if (
+      Object.prototype.hasOwnProperty.call(ACCEPT_LANGUAGE_EXACT_MAP, current)
+    ) {
+      return ACCEPT_LANGUAGE_EXACT_MAP[current];
+    }
+
+    const lastDashIndex = current.lastIndexOf("-");
+    if (lastDashIndex === -1) {
+      break;
+    }
+    current = current.slice(0, lastDashIndex);
   }
-  const primary = normalized.split("-")[0];
-  if (primary && primary in ACCEPT_LANGUAGE_EXACT_MAP) {
-    return ACCEPT_LANGUAGE_EXACT_MAP[primary];
-  }
+
   return null;
 }
 

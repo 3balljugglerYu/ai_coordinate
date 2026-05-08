@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useLayoutEffect, useRef, useState, useTransition} from "react";
+import {useLayoutEffect, useRef, useState, useTransition} from "react";
 import {createPortal} from "react-dom";
 import {useLocale, useTranslations} from "next-intl";
 import {usePathname, useRouter, useSearchParams} from "next/navigation";
@@ -26,6 +26,7 @@ import {
   isPublicPath,
   localizePublicPath,
   LOCALE_COOKIE,
+  locales,
   stripLocalePrefix,
   type Locale,
 } from "@/i18n/config";
@@ -35,23 +36,7 @@ interface LanguageSettingsMenuProps {
   onSelect?: () => void;
 }
 
-const localeOptions: Locale[] = [
-  "ja",
-  "en",
-  "ko",
-  "zh-CN",
-  "zh-TW",
-  "es",
-  "pt",
-  "fr",
-  "de",
-  "it",
-  "id",
-  "th",
-  "vi",
-  "hi",
-  "ar",
-];
+const localeOptions: Locale[] = [...locales];
 
 // Locale ↔ messages.common.localeXx の i18n キー対応。
 // 全言語ファイルで「ネイティブ表記」（例: "한국어"、"中文 (简体)"）に統一済みのため、
@@ -84,7 +69,11 @@ export function LanguageSettingsMenu({
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const commonT = useTranslations("common");
-  const [isSidebarMenuOpen, setIsSidebarMenuOpen] = useState(false);
+  const currentPathname = pathname ?? "/";
+  const [openSidebarPathname, setOpenSidebarPathname] = useState<string | null>(
+    null
+  );
+  const isSidebarMenuOpen = openSidebarPathname === currentPathname;
   const sidebarMenuRef = useRef<HTMLDivElement | null>(null);
   const sidebarTriggerRef = useRef<HTMLButtonElement | null>(null);
   const sidebarPanelRef = useRef<HTMLDivElement | null>(null);
@@ -132,7 +121,6 @@ export function LanguageSettingsMenu({
     document.cookie = `${LOCALE_COOKIE}=${nextLocaleValue}; path=/; max-age=${getLocaleCookieMaxAge()}; samesite=lax`;
     onSelect?.();
 
-    const currentPathname = pathname ?? "/";
     const normalizedPathname = stripLocalePrefix(currentPathname).pathname;
     const search = searchParams.toString();
     const hash = typeof window === "undefined" ? "" : window.location.hash;
@@ -171,7 +159,7 @@ export function LanguageSettingsMenu({
         !sidebarMenuRef.current?.contains(target) &&
         !sidebarPanelRef.current?.contains(target)
       ) {
-        setIsSidebarMenuOpen(false);
+        setOpenSidebarPathname(null);
       }
     };
 
@@ -186,10 +174,6 @@ export function LanguageSettingsMenu({
       document.removeEventListener("mousedown", handlePointerDown);
     };
   }, [isSidebarMenuOpen, variant]);
-
-  useEffect(() => {
-    setIsSidebarMenuOpen(false);
-  }, [pathname]);
 
   const currentLocaleLabel = commonT(LOCALE_LABEL_KEYS[locale]);
 
@@ -216,7 +200,9 @@ export function LanguageSettingsMenu({
             if (!isSidebarMenuOpen) {
               updateSidebarFlyoutPosition();
             }
-            setIsSidebarMenuOpen((open) => !open);
+            setOpenSidebarPathname((openPathname) =>
+              openPathname === currentPathname ? null : currentPathname
+            );
           }}
           className={cn(
             "group flex w-full items-center py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100",
@@ -267,7 +253,7 @@ export function LanguageSettingsMenu({
                             : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                         )}
                         onClick={() => {
-                          setIsSidebarMenuOpen(false);
+                          setOpenSidebarPathname(null);
                           handleLocaleChange(option);
                         }}
                       >
