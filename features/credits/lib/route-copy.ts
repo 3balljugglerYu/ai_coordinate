@@ -59,6 +59,383 @@ export const creditsRouteCopy = {
     checkoutLoginRequired: "You need to be logged in.",
     checkoutUrlFailed: "Failed to create the checkout URL.",
   },
+  ko: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  "zh-CN": {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  "zh-TW": {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  es: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  pt: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  fr: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  de: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  it: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  id: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  th: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  vi: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  hi: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
+  ar: {
+    authRequired: "You need to be logged in.",
+    packageIdRequired: "A packageId is required.",
+    invalidPackage: "The selected package could not be found.",
+    mockPurchaseFailed: "Failed to complete the mock purchase.",
+    invalidConsumeRequest:
+      "generationId and a positive percoin amount are required.",
+    imageNotFound: "The image could not be found.",
+    forbidden: "You do not have permission to access this image.",
+    insufficientBalance: "You do not have enough Percoins.",
+    consumeFailed: "Failed to consume Percoins.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    expiringBatchesFetchFailed: "Failed to load expiring free Percoin batches.",
+    expiringCountFetchFailed: "Failed to load this month's expiring free Percoin count.",
+    unexpectedError: "An unexpected error occurred.",
+    checkoutPrepareFailed:
+      "Something went wrong while preparing checkout. Please try again in a little while.",
+    checkoutInvalidRequest: "The request parameters are invalid.",
+    checkoutConfigError: "There is a problem with the payment configuration.",
+    checkoutRateLimited:
+      "Too many requests were sent. Please try again in a little while.",
+    checkoutServiceUnavailable:
+      "The payment service is currently unavailable. Please try again in a little while.",
+    checkoutPermissionDenied: "This action is not allowed.",
+    checkoutDuplicateRequest:
+      "This request appears to be duplicated. Refresh the page and try again.",
+    checkoutLoginRequired: "You need to be logged in.",
+    checkoutUrlFailed: "Failed to create the checkout URL.",
+  },
 } as const satisfies Record<Locale, Record<string, string>>;
 
 export function getCreditsRouteCopy(locale: Locale) {

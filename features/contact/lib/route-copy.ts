@@ -25,6 +25,162 @@ export const contactRouteCopy = {
     unknownError:
       "Something went wrong. Please try again in a little while.",
   },
+  ko: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  "zh-CN": {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  "zh-TW": {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  es: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  pt: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  fr: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  de: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  it: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  id: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  th: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  vi: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  hi: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
+  ar: {
+    authRequired: "You need to be logged in.",
+    invalidEmail: "Enter a valid email address.",
+    invalidSubject: "Enter a subject.",
+    invalidMessage: "Enter your message.",
+    invalidInput: "Please review the form fields.",
+    emailNotConfigured: "Email delivery is not configured yet.",
+    sendFailed:
+      "Failed to send the email. Please try again in a little while.",
+    unknownError:
+      "Something went wrong. Please try again in a little while.",
+  },
 } as const satisfies Record<Locale, Record<string, string>>;
 
 export function getContactRouteCopy(locale: Locale) {

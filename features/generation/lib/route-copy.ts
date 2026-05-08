@@ -92,6 +92,591 @@ export const generationRouteCopy = {
     guestSafetyBlocked:
       "The request was blocked by the safety policy. Please revise the content and try again.",
   },
+  ko: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  "zh-CN": {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  "zh-TW": {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  es: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  pt: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  fr: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  de: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  it: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  id: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  th: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  vi: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  hi: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
+  ar: {
+    authRequired: "You need to be logged in.",
+    invalidRequest: "The request is invalid.",
+    sourceStockNotFound: "The stock image could not be found.",
+    sourceStockFetchFailed: "Failed to load the stock image.",
+    sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
+    heicConversionFailed: "Failed to convert the HEIC image.",
+    sourceUploadFailed: "Failed to upload the source image. Please try again.",
+    sourceProcessFailed: "Something went wrong while processing the source image. Please try again.",
+    balanceFetchFailed: "Failed to load the Percoin balance.",
+    insufficientBalance: (cost: number, balance: number) =>
+      `You need ${cost} Percoins to generate this image, but your current balance is ${balance}.`,
+    jobCreateFailed: "Failed to create the generation job.",
+    queueDelayedWarning:
+      "The job was created, but processing may start with a delay. Please check again in a few seconds.",
+    generateAsyncFailed: "Failed to create the image generation job.",
+    jobIdRequired: "A Job ID is required.",
+    jobNotFound: "The job could not be found.",
+    statusFetchFailed: "Failed to load the generation status.",
+    inProgressFetchFailed: "Failed to load in-progress jobs.",
+    noImagesGenerated: "No image could be generated.",
+    safetyBlocked:
+      "The request was blocked by the safety policy.\nPlease revise the content and try again.",
+    genericGenerationFailed:
+      "Image generation failed. Please try again in a little while.",
+    webpMissingParams: "imageUrl, imageId, and storagePath are required.",
+    webpFailed: "Failed to generate WebP assets.",
+    // Guest sync route (/api/coordinate-generate-guest)
+    guestRouteAuthForbidden:
+      "You are signed in, so this guest preview endpoint is unavailable. Please use the regular generate flow on the coordinate page.",
+    guestModelNotAllowed:
+      "The selected model is not available in the guest preview.",
+    guestImageMissing: "Please upload an image.",
+    guestPromptMissing: "Please enter coordinate details.",
+    guestGifNotSupportedByOpenAI:
+      "ChatGPT Image 2.0 does not support GIF images. Please upload a PNG, JPEG, or WebP image instead.",
+    guestRateLimitDaily:
+      "You have reached today's free trial limit (1 per day). Sign up to continue using the service.",
+    guestIdentifierUnavailable:
+      "Could not identify your client. Please enable cookies and try again.",
+    guestUpstreamUnavailable:
+      "The image generation service is temporarily unavailable. Please try again in a few moments.",
+    guestSafetyBlocked:
+      "The request was blocked by the safety policy. Please revise the content and try again.",
+  },
 } as const satisfies Record<
   Locale,
   {

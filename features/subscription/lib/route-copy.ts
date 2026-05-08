@@ -77,6 +77,357 @@ const COPY: Record<Locale, SubscriptionRouteCopy> = {
     portalSessionFailed: "Failed to prepare the customer portal.",
     customerNotFound: "Stripe customer was not found.",
   },
+  ko: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  "zh-CN": {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  "zh-TW": {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  es: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  pt: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  fr: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  de: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  it: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  id: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  th: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  vi: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  hi: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
+  ar: {
+    authRequired: "Login is required.",
+    activeSubscriptionExists:
+      "You already have a subscription that requires action. Please use the plan change flow or review your billing status.",
+    activeSubscriptionNotFound:
+      "No active subscription was found for plan changes.",
+    invalidPlan: "Invalid subscription plan.",
+    invalidBillingInterval: "Invalid billing interval.",
+    noChangeRequested: "This matches your current plan.",
+    intervalConfirmationRequired:
+      "Changing the billing interval requires confirmation.",
+    checkoutUnavailable:
+      "Subscription billing is not configured yet. Please check the Stripe prices.",
+    checkoutUrlFailed: "Failed to get the Checkout URL.",
+    checkoutPrepareFailed: "Failed to prepare the subscription checkout.",
+    previewPrepareFailed: "Failed to prepare the change preview.",
+    changePrepareFailed: "Failed to change the subscription.",
+    changePaymentFailed:
+      "The payment did not complete, so the subscription was not changed.",
+    scheduledChangeNotFound: "No scheduled plan change was found to cancel.",
+    scheduledChangeCancelFailed: "Failed to cancel the scheduled plan change.",
+    pendingCancellationNotFound: "No pending cancellation was found.",
+    resumeCancellationFailed: "Failed to resume the subscription.",
+    portalUnavailable: "No subscription record was found.",
+    portalSessionFailed: "Failed to prepare the customer portal.",
+    customerNotFound: "Stripe customer was not found.",
+  },
 };
 
 export function getSubscriptionRouteCopy(locale: Locale): SubscriptionRouteCopy {

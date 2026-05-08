@@ -75,6 +75,487 @@ export const inspireRouteCopy = {
     testCharacterMissing:
       "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
   },
+  ko: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  "zh-CN": {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  "zh-TW": {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  es: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  pt: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  fr: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  de: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  it: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  id: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  th: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  vi: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  hi: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
+  ar: {
+    authRequired: "You need to be logged in.",
+    submitterNotAllowed:
+      "This feature is currently in limited release. Only allow-listed users can submit templates.",
+    invalidRequest: "The request is invalid.",
+    consentRequired: "Copyright consent is required.",
+    rateLimitDaily:
+      "Preview generation is limited to 10 attempts per 24 hours. Please try again tomorrow.",
+    capExceeded:
+      "You have reached the limit of 5 active template submissions. Withdraw an existing one to submit a new template.",
+    templateNotFound: "Template not found.",
+    templateNotVisible: "Template is not currently visible.",
+    templateGenerationFailed:
+      "Preview generation failed. Please try again later.",
+    templatePartialPreview:
+      "Only one of the two preview models succeeded. You can still submit if you are okay with the result.",
+    safetyBlocked:
+      "Preview blocked by safety policy. Please try a different image.",
+    sourceImageMissing: "Please upload a template image.",
+    sourceImageTooLarge:
+      "The image is too large. Compress it to 10MB or smaller and try again.",
+    sourceImageInvalidFormat:
+      "Unsupported image format. Please use PNG / JPEG / WebP / HEIC.",
+    promotionFailed: "Failed to submit the template.",
+    promotionMissingImage:
+      "Template image upload has not completed.",
+    withdrawFailed: "Failed to withdraw the submission.",
+    withdrawNotOwner: "You cannot withdraw another user's submission.",
+    decisionInvalidAction: "Invalid action.",
+    decisionFailed: "Failed to apply the moderation decision.",
+    decisionUnauthorized: "Admin permission required.",
+    orderUpdateFailed: "Failed to update display order.",
+    listFetchFailed: "Failed to load templates.",
+    notConfigured: "Inspire feature is not enabled.",
+    testCharacterMissing:
+      "INSPIRE_TEST_CHARACTER_IMAGE_URL is not configured. Preview generation is unavailable.",
+  },
 } as const;
 
 export type InspireRouteCopy = (typeof inspireRouteCopy)["ja"];
