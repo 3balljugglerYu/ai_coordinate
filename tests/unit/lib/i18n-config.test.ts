@@ -18,7 +18,8 @@ describe("I18nConfig unit tests from EARS specs", () => {
     });
 
     test("isLocale_未対応またはnullishの値の場合_falseを返す", () => {
-      expect(isLocale("fr")).toBe(false);
+      // Phase 1 で fr/de 等が有効になったため、未サポート言語タグ "xx" に置換。
+      expect(isLocale("xx")).toBe(false);
       expect(isLocale("")).toBe(false);
       expect(isLocale(undefined)).toBe(false);
       expect(isLocale(null)).toBe(false);
@@ -120,17 +121,21 @@ describe("I18nConfig unit tests from EARS specs", () => {
     });
 
     test("resolveLocaleFromAcceptLanguage_ja系候補がある場合_jaを返す", () => {
+      // Phase 1 で fr/de/en などが有効になったため、未サポート言語タグ
+      // "xx-XX" / "xx" / "qq" に置換。テストの意図（高品質候補が未対応で
+      // ja に落ちる）は維持。
       expect(
-        resolveLocaleFromAcceptLanguage("fr-CH,ja;q=0.5,en;q=0.9")
+        resolveLocaleFromAcceptLanguage("xx-XX,ja;q=0.5,qq;q=0.9")
       ).toBe("ja");
       expect(
-        resolveLocaleFromAcceptLanguage("en-US,en;q=0.8,ja-JP;q=0.1")
+        resolveLocaleFromAcceptLanguage("xx-XX,xx;q=0.8,ja-JP;q=0.1")
       ).toBe("ja");
     });
 
     test("resolveLocaleFromAcceptLanguage_ja系以外のみの場合_DEFAULT_LOCALEを返す", () => {
-      expect(resolveLocaleFromAcceptLanguage("fr,de;q=0.8,en;q=0.7")).toBe("ja");
-      expect(resolveLocaleFromAcceptLanguage("en-US,en;q=0.8")).toBe("ja");
+      // Phase 1 で fr/de/en などが有効になったため、未サポート言語タグに置換。
+      expect(resolveLocaleFromAcceptLanguage("xx,qq;q=0.8,zz;q=0.7")).toBe("ja");
+      expect(resolveLocaleFromAcceptLanguage("xx-XX,xx;q=0.8")).toBe("ja");
     });
 
     test("resolveLocaleFromAcceptLanguage_quality値が不正な場合_既定qualityで扱う", () => {
@@ -160,11 +165,12 @@ describe("I18nConfig unit tests from EARS specs", () => {
     });
 
     test("resolveRequestLocale_pathnameにlocaleがなくcookieが無効な場合_DEFAULT_LOCALEへフォールバックする", () => {
+      // Phase 1 で fr/de が有効になったため、未サポート言語タグ "xx" / "qq" に置換。
       expect(
         resolveRequestLocale({
           pathname: "/about",
-          cookieLocale: "fr",
-          acceptLanguage: "de,en;q=0.8",
+          cookieLocale: "xx",
+          acceptLanguage: "xx,qq;q=0.8",
         })
       ).toBe("ja");
     });
