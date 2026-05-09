@@ -121,6 +121,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -166,6 +168,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -211,6 +215,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -256,6 +262,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -301,6 +309,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -346,6 +356,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -391,6 +403,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -436,6 +450,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -481,6 +497,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -526,6 +544,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -571,6 +591,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -616,6 +638,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -661,6 +685,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)

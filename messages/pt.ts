@@ -1279,6 +1279,8 @@ export const ptMessages = {
     collapseReferenceCardTitle: "Recolher",
     modelLabel: "Modelo de geração",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "O modelo de geração selecionado não está disponível no momento. Escolha outro modelo.",
     generateHint: "A geração geralmente leva entre 20 e 30 segundos.",
     generateRetryHint:
       "Se o resultado não ficar bom, tente de novo. Se ainda assim falhar, nos avise.",

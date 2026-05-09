@@ -1279,6 +1279,8 @@ export const deMessages = {
     collapseReferenceCardTitle: "Einklappen",
     modelLabel: "Generierungsmodell",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "Das ausgewählte Generierungsmodell ist derzeit nicht verfügbar. Bitte wähle ein anderes Modell.",
     generateHint: "Die Generierung dauert in der Regel etwa 20 bis 30 Sekunden.",
     generateRetryHint:
       "Wenn das Ergebnis nicht überzeugt, versuche es erneut. Klappt es weiterhin nicht, sag uns Bescheid.",

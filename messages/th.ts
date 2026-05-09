@@ -1279,6 +1279,8 @@ export const thMessages = {
     collapseReferenceCardTitle: "ย่อ",
     modelLabel: "โมเดลสำหรับสร้าง",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "โมเดลสำหรับสร้างที่เลือกไม่สามารถใช้งานได้ในขณะนี้ กรุณาเลือกโมเดลอื่น",
     generateHint: "การสร้างมักใช้เวลาประมาณ 20-30 วินาที",
     generateRetryHint:
       "หากผลไม่น่าพอใจ ลองอีกครั้ง หากยังไม่ได้ โปรดแจ้งเรา",

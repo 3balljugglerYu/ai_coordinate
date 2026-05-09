@@ -1279,6 +1279,8 @@ export const frMessages = {
     collapseReferenceCardTitle: "Réduire",
     modelLabel: "Modèle de génération",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "Le modèle de génération sélectionné est actuellement indisponible. Veuillez choisir un autre modèle.",
     generateHint: "La génération prend généralement 20 à 30 secondes.",
     generateRetryHint:
       "Si le résultat ne convient pas, réessayez. Si cela échoue encore, faites-nous signe.",

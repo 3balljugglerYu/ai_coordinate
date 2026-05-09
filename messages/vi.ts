@@ -1279,6 +1279,8 @@ export const viMessages = {
     collapseReferenceCardTitle: "Thu gọn",
     modelLabel: "Mô hình tạo",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "Mô hình tạo đã chọn hiện không khả dụng. Vui lòng chọn mô hình khác.",
     generateHint: "Việc tạo thường mất khoảng 20 đến 30 giây.",
     generateRetryHint:
       "Nếu kết quả không như ý, hãy thử lại. Nếu vẫn thất bại, hãy báo cho chúng tôi.",

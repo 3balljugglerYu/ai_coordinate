@@ -1279,6 +1279,8 @@ export const esMessages = {
     collapseReferenceCardTitle: "Contraer",
     modelLabel: "Modelo de generación",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "El modelo de generación seleccionado no está disponible en este momento. Selecciona otro modelo.",
     generateHint: "La generación suele tardar entre 20 y 30 segundos.",
     generateRetryHint:
       "Si el resultado no convence, vuelve a intentarlo. Si sigue fallando, escríbenos.",

@@ -1279,6 +1279,8 @@ export const arMessages = {
     collapseReferenceCardTitle: "طي",
     modelLabel: "نموذج التوليد",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "نموذج التوليد المحدد غير متاح حاليًا. يُرجى اختيار نموذج آخر.",
     generateHint: "يستغرق التوليد عادةً نحو 20 إلى 30 ثانية.",
     generateRetryHint:
       "إذا لم تكن النتيجة جيدة، حاول مرة أخرى. إذا فشل مجددًا، يُرجى إخبارنا.",

@@ -1279,6 +1279,8 @@ export const idMessages = {
     collapseReferenceCardTitle: "Tutup",
     modelLabel: "Model generasi",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "Model generasi yang dipilih saat ini tidak tersedia. Silakan pilih model lain.",
     generateHint: "Pembuatan biasanya butuh sekitar 20 hingga 30 detik.",
     generateRetryHint:
       "Jika hasilnya kurang memuaskan, coba lagi. Jika tetap gagal, beri tahu kami.",

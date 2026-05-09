@@ -1279,6 +1279,8 @@ export const koMessages = {
     collapseReferenceCardTitle: "접기",
     modelLabel: "생성 모델",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "선택한 생성 모델은 현재 사용할 수 없습니다. 다른 모델을 선택해 주세요.",
     generateHint: "생성에는 보통 20~30초 정도 걸립니다.",
     generateRetryHint:
       "결과가 마음에 들지 않으면 다시 시도해 보세요. 그래도 잘 안 되면 알려주세요.",

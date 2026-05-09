@@ -1279,6 +1279,8 @@ export const hiMessages = {
     collapseReferenceCardTitle: "संक्षिप्त करें",
     modelLabel: "जनरेशन मॉडल",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "चयनित जनरेशन मॉडल इस समय उपलब्ध नहीं है। कृपया कोई अन्य मॉडल चुनें।",
     generateHint: "जनरेशन में आमतौर पर लगभग 20 से 30 सेकंड लगते हैं।",
     generateRetryHint:
       "यदि परिणाम अच्छा नहीं आता है, तो फिर से प्रयास करें। यदि यह अभी भी विफल होता है, तो कृपया हमें बताएँ।",

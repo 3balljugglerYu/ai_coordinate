@@ -1279,6 +1279,7 @@ export const zhTwMessages = {
     collapseReferenceCardTitle: "收合",
     modelLabel: "生成模型",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable: "所選生成模型目前無法使用。請選擇其他模型。",
     generateHint: "生成通常需要 20–30 秒左右。",
     generateRetryHint:
       "若結果不理想，可再次嘗試。如仍不順利，請告訴我們。",
