@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getUser } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
@@ -10,12 +11,26 @@ import { CachedCoordinatePercoinBalance } from "@/features/credits/components/Ca
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
-import type { Locale } from "@/i18n/config";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 import { CoordinateGuestLoginCta } from "@/features/generation/components/CoordinateGuestLoginCta";
 import {
   CoordinateGeneratedListHashScroll,
   COORDINATE_GENERATED_LIST_ID,
 } from "@/features/generation/components/CoordinateGeneratedListHashScroll";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const t = await getTranslations("coordinate");
+
+  return createMarketingPageMetadata({
+    title: t("pageTitle"),
+    description: t("pageDescription"),
+    path: "/coordinate",
+    locale,
+  });
+}
 
 export default async function CoordinatePage() {
   await connection();

@@ -216,7 +216,7 @@ export function EditableComment({
                 </span>
               )}
               <span className="text-xs text-gray-500">
-                {new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
+                {new Intl.DateTimeFormat(locale, {
                   month: "short",
                   day: "numeric",
                   hour: "2-digit",

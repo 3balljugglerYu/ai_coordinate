@@ -1,10 +1,26 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { CachedPercoinPageContent } from "@/features/my-page/components/CachedPercoinPageContent";
 import { PercoinPageSkeleton } from "@/features/my-page/components/PercoinPageSkeleton";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createMarketingPageMetadata } from "@/lib/metadata";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const t = await getTranslations("credits");
+
+  return createMarketingPageMetadata({
+    title: t("managementTitle"),
+    description: t("managementDescription"),
+    path: "/my-page/credits",
+    locale,
+  });
+}
 
 export default async function PercoinPage() {
   await connection();

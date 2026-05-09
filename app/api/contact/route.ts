@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const formatDate = (d: string | null | undefined) =>
       d
-        ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
+        ? new Intl.DateTimeFormat(locale, {
             dateStyle: "medium",
             timeStyle: "short",
           }).format(new Date(d))

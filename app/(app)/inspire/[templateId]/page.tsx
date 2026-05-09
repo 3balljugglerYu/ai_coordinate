@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import { isInspireFeatureEnabled } from "@/lib/env";
 import { requireAuth } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -8,11 +9,29 @@ import {
   getStyleTemplateById,
 } from "@/features/inspire/lib/repository";
 import { InspirePageClient } from "@/features/inspire/components/InspirePageClient";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
 interface InspirePageProps {
   params: Promise<{ templateId: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: InspirePageProps): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const t = await getTranslations("inspirePage");
+  const { templateId } = await params;
+
+  return createMarketingPageMetadata({
+    title: t("pageTitle"),
+    description: t("pageDescription"),
+    path: `/inspire/${templateId}`,
+    locale,
+  });
 }
 
 export default async function InspirePage({ params }: InspirePageProps) {
