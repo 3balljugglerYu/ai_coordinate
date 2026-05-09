@@ -9,7 +9,7 @@ import "./globals.css";
 import "yet-another-react-lightbox/styles.css";
 import { LocaleShell } from "@/components/LocaleShell";
 import { getSiteUrl } from "@/lib/env";
-import { DEFAULT_LOCALE } from "@/i18n/config";
+import { DEFAULT_LOCALE, getLocaleDir, locales } from "@/i18n/config";
 import { getSiteCopy } from "@/i18n/page-copy";
 
 const geistSans = localFont({
@@ -26,6 +26,17 @@ const geistMono = localFont({
 
 const siteUrl = getSiteUrl() || "https://persta.ai";
 const defaultSiteCopy = getSiteCopy(DEFAULT_LOCALE);
+const localeCookiePattern = locales.join("|");
+const rtlLocales = locales.filter((locale) => getLocaleDir(locale) === "rtl");
+const localeBootstrapScript = `(() => {
+  var d = document.documentElement;
+  var m = document.cookie.match(/(?:^|; )NEXT_LOCALE=(${localeCookiePattern})(?:;|$)/);
+  if (m) {
+    d.lang = m[1];
+    d.dir = ${JSON.stringify(rtlLocales)}.indexOf(m[1]) === -1 ? "ltr" : "rtl";
+  }
+  d.classList.add("ppr-locale-ready");
+})();`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -65,6 +76,7 @@ export default async function RootLayout({
   return (
     <html
       lang={DEFAULT_LOCALE}
+      dir={getLocaleDir(DEFAULT_LOCALE)}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
@@ -74,12 +86,7 @@ export default async function RootLayout({
       >
         <script
           dangerouslySetInnerHTML={{
-            __html: `(() => {
-  var d = document.documentElement;
-  var m = document.cookie.match(/(?:^|; )NEXT_LOCALE=(ja|en)/);
-  if (m) d.lang = m[1];
-  d.classList.add("ppr-locale-ready");
-})();`,
+            __html: localeBootstrapScript,
           }}
         />
         <Suspense fallback={<div className="min-h-screen" />}>

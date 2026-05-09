@@ -1,6 +1,7 @@
 import {
   appendSearchAndHash,
   getLocaleCookieMaxAge,
+  getLocaleDir,
   getLocaleLabel,
   isLocale,
   isPublicPath,
@@ -18,7 +19,8 @@ describe("I18nConfig unit tests from EARS specs", () => {
     });
 
     test("isLocale_未対応またはnullishの値の場合_falseを返す", () => {
-      expect(isLocale("fr")).toBe(false);
+      // Phase 1 で fr/de 等が有効になったため、未サポート言語タグ "xx" に置換。
+      expect(isLocale("xx")).toBe(false);
       expect(isLocale("")).toBe(false);
       expect(isLocale(undefined)).toBe(false);
       expect(isLocale(null)).toBe(false);
@@ -38,6 +40,17 @@ describe("I18nConfig unit tests from EARS specs", () => {
   describe("I18N-003 getLocaleCookieMaxAge", () => {
     test("getLocaleCookieMaxAge_呼び出された場合_1年相当の秒数を返す", () => {
       expect(getLocaleCookieMaxAge()).toBe(60 * 60 * 24 * 365);
+    });
+  });
+
+  describe("I18N-003A getLocaleDir", () => {
+    test("getLocaleDir_arの場合_rtlを返す", () => {
+      expect(getLocaleDir("ar")).toBe("rtl");
+    });
+
+    test("getLocaleDir_ar以外の場合_ltrを返す", () => {
+      expect(getLocaleDir("ja")).toBe("ltr");
+      expect(getLocaleDir("en")).toBe("ltr");
     });
   });
 
@@ -120,17 +133,30 @@ describe("I18nConfig unit tests from EARS specs", () => {
     });
 
     test("resolveLocaleFromAcceptLanguage_ja系候補がある場合_jaを返す", () => {
+      // Phase 1 で fr/de/en などが有効になったため、未サポート言語タグ
+      // "xx-XX" / "xx" / "qq" に置換。テストの意図（高品質候補が未対応で
+      // ja に落ちる）は維持。
       expect(
-        resolveLocaleFromAcceptLanguage("fr-CH,ja;q=0.5,en;q=0.9")
+        resolveLocaleFromAcceptLanguage("xx-XX,ja;q=0.5,qq;q=0.9")
       ).toBe("ja");
       expect(
-        resolveLocaleFromAcceptLanguage("en-US,en;q=0.8,ja-JP;q=0.1")
+        resolveLocaleFromAcceptLanguage("xx-XX,xx;q=0.8,ja-JP;q=0.1")
       ).toBe("ja");
     });
 
+    test("resolveLocaleFromAcceptLanguage_中国語スクリプト付きタグの場合_繁体と簡体を区別する", () => {
+      expect(resolveLocaleFromAcceptLanguage("zh-Hant-TW,en;q=0.8")).toBe(
+        "zh-TW"
+      );
+      expect(resolveLocaleFromAcceptLanguage("zh-Hans-SG,en;q=0.8")).toBe(
+        "zh-CN"
+      );
+    });
+
     test("resolveLocaleFromAcceptLanguage_ja系以外のみの場合_DEFAULT_LOCALEを返す", () => {
-      expect(resolveLocaleFromAcceptLanguage("fr,de;q=0.8,en;q=0.7")).toBe("ja");
-      expect(resolveLocaleFromAcceptLanguage("en-US,en;q=0.8")).toBe("ja");
+      // Phase 1 で fr/de/en などが有効になったため、未サポート言語タグに置換。
+      expect(resolveLocaleFromAcceptLanguage("xx,qq;q=0.8,zz;q=0.7")).toBe("ja");
+      expect(resolveLocaleFromAcceptLanguage("xx-XX,xx;q=0.8")).toBe("ja");
     });
 
     test("resolveLocaleFromAcceptLanguage_quality値が不正な場合_既定qualityで扱う", () => {
@@ -160,11 +186,12 @@ describe("I18nConfig unit tests from EARS specs", () => {
     });
 
     test("resolveRequestLocale_pathnameにlocaleがなくcookieが無効な場合_DEFAULT_LOCALEへフォールバックする", () => {
+      // Phase 1 で fr/de が有効になったため、未サポート言語タグ "xx" / "qq" に置換。
       expect(
         resolveRequestLocale({
           pathname: "/about",
-          cookieLocale: "fr",
-          acceptLanguage: "de,en;q=0.8",
+          cookieLocale: "xx",
+          acceptLanguage: "xx,qq;q=0.8",
         })
       ).toBe("ja");
     });

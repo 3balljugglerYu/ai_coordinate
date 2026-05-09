@@ -1,4 +1,30 @@
-export const locales = ["ja", "en"] as const;
+export const locales = [
+  "ja",
+  "en",
+  "ko",
+  "zh-CN",
+  "zh-TW",
+  "es",
+  "pt",
+  "fr",
+  "de",
+  "it",
+  "id",
+  "th",
+  "vi",
+  "hi",
+  "ar",
+] as const;
+
+const RTL_LOCALES: ReadonlySet<Locale> = new Set(["ar"]);
+
+export function isRtlLocale(locale: Locale): boolean {
+  return RTL_LOCALES.has(locale);
+}
+
+export function getLocaleDir(locale: Locale): "rtl" | "ltr" {
+  return isRtlLocale(locale) ? "rtl" : "ltr";
+}
 
 export type Locale = (typeof locales)[number];
 
@@ -28,8 +54,26 @@ export function isLocale(value: string | undefined | null): value is Locale {
   return locales.includes(value as Locale);
 }
 
+const LOCALE_LABELS: Record<Locale, string> = {
+  ja: "日本語",
+  en: "English",
+  ko: "한국어",
+  "zh-CN": "中文 (简体)",
+  "zh-TW": "中文 (繁體)",
+  es: "Español",
+  pt: "Português",
+  fr: "Français",
+  de: "Deutsch",
+  it: "Italiano",
+  id: "Bahasa Indonesia",
+  th: "ภาษาไทย",
+  vi: "Tiếng Việt",
+  hi: "हिन्दी",
+  ar: "العربية",
+};
+
 export function getLocaleLabel(locale: Locale): string {
-  return locale === "ja" ? "日本語" : "English";
+  return LOCALE_LABELS[locale];
 }
 
 export function getLocaleCookieMaxAge() {
@@ -83,6 +127,54 @@ export function appendSearchAndHash(
   return `${pathname}${searchPart}${hashPart}`;
 }
 
+// Accept-Language の生 BCP47 タグ（小文字化済み）から、サポート Locale にマッチさせる。
+// 完全一致 → スクリプト変種別名（zh-Hans/zh-Hant）→ プライマリ言語タグ（en-US → en）の順。
+const ACCEPT_LANGUAGE_EXACT_MAP: Record<string, Locale> = {
+  ja: "ja",
+  en: "en",
+  ko: "ko",
+  "zh-cn": "zh-CN",
+  "zh-tw": "zh-TW",
+  "zh-hans": "zh-CN",
+  "zh-hant": "zh-TW",
+  "zh-sg": "zh-CN",
+  "zh-hk": "zh-TW",
+  "zh-mo": "zh-TW",
+  zh: "zh-CN",
+  es: "es",
+  pt: "pt",
+  "pt-br": "pt",
+  "pt-pt": "pt",
+  fr: "fr",
+  de: "de",
+  it: "it",
+  id: "id",
+  th: "th",
+  vi: "vi",
+  hi: "hi",
+  ar: "ar",
+};
+
+function matchAcceptLanguageTag(tag: string): Locale | null {
+  let current = tag.toLowerCase();
+
+  while (current) {
+    if (
+      Object.prototype.hasOwnProperty.call(ACCEPT_LANGUAGE_EXACT_MAP, current)
+    ) {
+      return ACCEPT_LANGUAGE_EXACT_MAP[current];
+    }
+
+    const lastDashIndex = current.lastIndexOf("-");
+    if (lastDashIndex === -1) {
+      break;
+    }
+    current = current.slice(0, lastDashIndex);
+  }
+
+  return null;
+}
+
 export function resolveLocaleFromAcceptLanguage(
   acceptLanguage: string | null | undefined
 ): Locale {
@@ -102,13 +194,15 @@ export function resolveLocaleFromAcceptLanguage(
         quality: Number.isFinite(quality) ? quality : 1,
       };
     })
-    .filter((entry) => entry.tag.length > 0 && entry.quality > 0);
+    .filter((entry) => entry.tag.length > 0 && entry.quality > 0)
+    .sort((a, b) => b.quality - a.quality);
 
-  const requestedJapanese = candidates.some(
-    (candidate) => candidate.tag === "ja" || candidate.tag.startsWith("ja-")
-  );
+  for (const candidate of candidates) {
+    const matched = matchAcceptLanguageTag(candidate.tag);
+    if (matched) return matched;
+  }
 
-  return requestedJapanese ? "ja" : DEFAULT_LOCALE;
+  return DEFAULT_LOCALE;
 }
 
 export function resolveRequestLocale({

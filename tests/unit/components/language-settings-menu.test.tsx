@@ -203,7 +203,8 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
     });
 
     test("render_dropdown指定で未対応localeの場合_DEFAULT_LOCALEのshortcutにフォールバックする", () => {
-      currentLocale = "fr";
+      // Phase 1 で fr が有効になったため、未サポートタグ "xx" に置換。
+      currentLocale = "xx";
 
       renderMenu({ variant: "dropdown" });
 
@@ -247,7 +248,8 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
     });
 
     test("render_header指定で未対応localeの場合_DEFAULT_LOCALEにフォールバックする", () => {
-      currentLocale = "fr";
+      // Phase 1 で fr が有効になったため、未サポートタグ "xx" に置換。
+      currentLocale = "xx";
 
       renderMenu({ variant: "header" });
 
@@ -264,7 +266,8 @@ describe("LanguageSettingsMenu unit tests from EARS specs", () => {
       const onSelect = jest.fn();
       renderMenu({ variant: "dropdown", onSelect });
 
-      mockDropdownOnValueChange?.("fr");
+      // Phase 1 で fr が有効になったため、未サポートタグ "xx" に置換。
+      mockDropdownOnValueChange?.("xx");
 
       await waitFor(() => {
         expect(onSelect).not.toHaveBeenCalled();

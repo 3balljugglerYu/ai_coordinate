@@ -1,11 +1,27 @@
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ContactForm } from "@/features/contact/components/ContactForm";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createMarketingPageMetadata } from "@/lib/metadata";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const t = await getTranslations("contact");
+
+  return createMarketingPageMetadata({
+    title: t("pageTitle"),
+    description: t("pageDescription"),
+    path: "/my-page/contact",
+    locale,
+  });
+}
 
 export default async function ContactPage() {
   await connection();

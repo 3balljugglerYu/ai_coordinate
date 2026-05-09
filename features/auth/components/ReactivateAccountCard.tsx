@@ -20,9 +20,7 @@ export function ReactivateAccountCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formattedDeletionDate = deletionScheduledAt
-    ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US").format(
-        new Date(deletionScheduledAt)
-      )
+    ? new Intl.DateTimeFormat(locale).format(new Date(deletionScheduledAt))
     : null;
 
   const handleReactivate = async () => {

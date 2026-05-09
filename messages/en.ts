@@ -1,8 +1,5 @@
 import {jaMessages} from "./ja";
-
-type DeepReplaceStrings<T> = T extends string
-  ? string
-  : { [K in keyof T]: DeepReplaceStrings<T[K]> };
+import type {DeepReplaceStrings} from "./types";
 
 export const enMessages = {
   common: {
@@ -13,8 +10,21 @@ export const enMessages = {
     userAlt: "User",
     tagline: "From what you want to wear to who you want to be. An AI styling platform.",
     localeLabel: "Language settings",
-    localeJa: "Japanese",
+    localeJa: "日本語",
     localeEn: "English",
+    localeKo: "한국어",
+    localeZhCn: "中文 (简体)",
+    localeZhTw: "中文 (繁體)",
+    localeEs: "Español",
+    localePt: "Português",
+    localeFr: "Français",
+    localeDe: "Deutsch",
+    localeIt: "Italiano",
+    localeId: "Bahasa Indonesia",
+    localeTh: "ภาษาไทย",
+    localeVi: "Tiếng Việt",
+    localeHi: "हिन्दी",
+    localeAr: "العربية",
   },
   nav: {
     home: "Home",

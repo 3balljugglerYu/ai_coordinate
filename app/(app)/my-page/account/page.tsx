@@ -1,8 +1,24 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import { MessageCircle } from "lucide-react";
 import { AccountManagementPage } from "@/features/account/components/AccountManagementPage";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createMarketingPageMetadata } from "@/lib/metadata";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const t = await getTranslations("myPage");
+
+  return createMarketingPageMetadata({
+    title: t("accountTitle"),
+    description: t("accountDescription"),
+    path: "/my-page/account",
+    locale,
+  });
+}
 
 export default async function MyPageAccountPage() {
   const myPageT = await getTranslations("myPage");

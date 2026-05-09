@@ -92,9 +92,7 @@ export function DeactivateAccountDialog({
       });
 
       const scheduleText = result.scheduled_for
-        ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US").format(
-            new Date(result.scheduled_for)
-          )
+        ? new Intl.DateTimeFormat(locale).format(new Date(result.scheduled_for))
         : t("deactivateFallbackDate");
 
       toast({

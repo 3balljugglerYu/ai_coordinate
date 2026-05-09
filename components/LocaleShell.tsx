@@ -10,6 +10,7 @@ import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAn
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
+import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
 
 export async function LocaleShell({
   children,
@@ -27,6 +28,7 @@ export async function LocaleShell({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
+      <LocaleDocumentAttributes />
       <UnreadNotificationProvider>
         <MissionDotProvider>{appContent}</MissionDotProvider>
       </UnreadNotificationProvider>

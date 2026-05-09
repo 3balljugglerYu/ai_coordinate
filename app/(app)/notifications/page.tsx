@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { CachedAnnouncementList } from "@/features/announcements/components/CachedAnnouncementList";
@@ -7,11 +8,25 @@ import { CachedNotificationList } from "@/features/notifications/components/Cach
 import { NotificationsPageTabs } from "@/features/notifications/components/NotificationsPageTabs";
 import { parseNotificationTab } from "@/features/notifications/lib/notification-tab";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
 interface NotificationsPageProps {
   searchParams?: Promise<{
     tab?: string | string[];
   }>;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const t = await getTranslations("notifications");
+
+  return createMarketingPageMetadata({
+    title: t("pageTitle"),
+    description: t("pageTitle"),
+    path: "/notifications",
+    locale,
+  });
 }
 
 export default async function NotificationsPage({

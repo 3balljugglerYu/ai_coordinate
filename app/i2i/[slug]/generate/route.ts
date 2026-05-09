@@ -78,6 +78,227 @@ const i2iRouteCopy = {
     imageTooLarge: (label: string) =>
       `${label} must be 10MB or smaller.`,
   },
+  ko: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  "zh-CN": {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  "zh-TW": {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  es: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  pt: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  fr: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  de: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  it: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  id: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  th: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  vi: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  hi: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
+  ar: {
+    missingImages: "Both the base image and character image are required.",
+    totalImageTooLarge:
+      "The total image size exceeds 20MB. Compress the images and try again.",
+    requestTimedOut: "The image generation request timed out. Please try again.",
+    safetyBlocked:
+      "The request was blocked for safety reasons. Adjust the images or instructions and try again.",
+    noImageGenerated:
+      "No image was generated{finishReasonText}. Try again with different instructions.",
+    generationFailed: "Failed to generate the image. Try again with different instructions.",
+    internalError:
+      "An internal server error occurred. Please try again in a little while.",
+    supportedFormatsOnly: (label: string) =>
+      `${label} supports only PNG / JPG / WebP.`,
+    imageTooLarge: (label: string) =>
+      `${label} must be 10MB or smaller.`,
+  },
 } as const satisfies Record<
   Locale,
   {

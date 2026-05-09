@@ -43,10 +43,12 @@ test.describe("LocaleBootstrapE2E from EARS specs", () => {
   });
 
   test.describe("LBE-002 bootstrap", () => {
+    // Phase 1 で fr 等が有効になったため、未サポート言語タグ "xx-XX" に置換。
+    // テストの意図（未対応ブラウザは Accept-Language の en に落ちて英語ホームを描画）は維持。
     test.use({
-      locale: "fr-FR",
+      locale: "xx-XX",
       extraHTTPHeaders: {
-        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+        "Accept-Language": "xx-XX,xx;q=0.9,en;q=0.8",
       },
     });
 
@@ -121,10 +123,12 @@ test.describe("LocaleBootstrapE2E from EARS specs", () => {
   });
 
   test.describe("LBE-004 bootstrap", () => {
+    // Phase 1 で de 等が有効になったため、未サポート言語タグ "xx-XX" に置換。
+    // テストの意図（未対応ブラウザでも公開マーケティングURLは locale 付きでリダイレクト）は維持。
     test.use({
-      locale: "de-DE",
+      locale: "xx-XX",
       extraHTTPHeaders: {
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+        "Accept-Language": "xx-XX,xx;q=0.9,en;q=0.8",
       },
     });
 
