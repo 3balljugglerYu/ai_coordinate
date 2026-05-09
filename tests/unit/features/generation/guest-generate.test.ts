@@ -36,14 +36,14 @@ describe("guest-generate", () => {
   });
 
   describe("parseGuestModelInput", () => {
-    test("許可モデルは canonical を返す", () => {
+    test("Gemini 停止中の許可モデル (OpenAI) は canonical を返す", () => {
       expect(parseGuestModelInput("gpt-image-2-low")).toBe("gpt-image-2-low");
-      expect(
-        parseGuestModelInput("gemini-3.1-flash-image-preview-512")
-      ).toBe("gemini-3.1-flash-image-preview-512");
     });
 
-    test("許可外モデル / 未知 / null は null", () => {
+    test("停止中の Gemini / 許可外モデル / 未知 / null は null", () => {
+      expect(
+        parseGuestModelInput("gemini-3.1-flash-image-preview-512")
+      ).toBeNull();
       expect(parseGuestModelInput("gemini-3-pro-image-1k")).toBeNull();
       expect(parseGuestModelInput("dall-e-3")).toBeNull();
       expect(parseGuestModelInput(null)).toBeNull();
