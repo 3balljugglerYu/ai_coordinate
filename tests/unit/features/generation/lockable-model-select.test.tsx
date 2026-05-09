@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import { useTranslations } from "next-intl";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
 
 jest.mock("next-intl", () => ({

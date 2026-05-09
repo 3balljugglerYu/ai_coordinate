@@ -15,12 +15,16 @@ import type {
 } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import {
+  GEMINI_DISABLED_MESSAGE,
+  GEMINI_PROVIDER_ERROR,
   MALFORMED_GEMINI_PARTS_ERROR,
   isInvalidGeminiArgumentErrorMessage,
+  isGeminiProviderErrorMessage,
   isMalformedGeminiPartsErrorMessage,
   SAFETY_POLICY_BLOCKED_ERROR,
   isSafetyPolicyBlockedErrorMessage,
   isOpenAIProviderErrorMessage,
+  sanitizeProviderErrorMessage,
 } from "../../../shared/generation/errors.ts";
 import {
   getOneTapStylePresetMetadata,
@@ -48,6 +52,8 @@ const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
 const OPENAI_REQUEST_TIMEOUT_MS = 90_000;
+const GEMINI_GENERATION_ENABLED =
+  Deno.env.get("GEMINI_GENERATION_ENABLED") === "true";
 
 type GeminiAttemptMetadata = {
   attempt: number;
@@ -562,6 +568,7 @@ function isNonRetriableGenerationError(errorMessage: string): boolean {
     errorMessage === "No images generated" ||
     isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
+    isGeminiProviderErrorMessage(errorMessage) ||
     isSafetyPolicyBlockedErrorMessage(errorMessage) ||
     isOpenAIProviderErrorMessage(errorMessage)
   );
@@ -1330,6 +1337,30 @@ Deno.serve(async () => {
 
         // ===== Provider 別 API key 検証（charging 前・再試行不可） =====
         const requiresOpenAIKey = isOpenAIImageModel(dbModel);
+        if (!requiresOpenAIKey && !GEMINI_GENERATION_ENABLED) {
+          const disabledMessage = `${GEMINI_PROVIDER_ERROR}: ${GEMINI_DISABLED_MESSAGE}`;
+          console.warn("[Job Processing] Gemini generation is disabled", {
+            jobId,
+            model: dbModel,
+          });
+          await supabase
+            .from("image_jobs")
+            .update({
+              status: "failed",
+              processing_stage: "failed",
+              result_image_url: null,
+              error_message: disabledMessage,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", jobId)
+            .eq("status", "processing");
+          await supabase.rpc("pgmq_delete", {
+            p_queue_name: QUEUE_NAME,
+            p_msg_id: msgId,
+          });
+          skippedCount++;
+          continue;
+        }
         const missingProviderKey = requiresOpenAIKey
           ? !openaiApiKey
           : !geminiApiKey;
@@ -1835,9 +1866,12 @@ Deno.serve(async () => {
                           const errorData = await geminiResponse
                             .json()
                             .catch(() => null);
+                          const geminiErrorMessage =
+                            typeof errorData?.error?.message === "string"
+                              ? sanitizeProviderErrorMessage(errorData.error.message)
+                              : `Gemini API error: ${geminiResponse.status}`;
                           throw new Error(
-                            errorData?.error?.message ||
-                              `Gemini API error: ${geminiResponse.status}`
+                            `${GEMINI_PROVIDER_ERROR}: ${geminiErrorMessage}`
                           );
                         }
 
@@ -1886,7 +1920,12 @@ Deno.serve(async () => {
                     }
 
                     if (geminiData.error) {
-                      throw new Error(geminiData.error.message || "Gemini API error");
+                      const geminiErrorMessage = geminiData.error.message
+                        ? sanitizeProviderErrorMessage(geminiData.error.message)
+                        : "Gemini API error";
+                      throw new Error(
+                        `${GEMINI_PROVIDER_ERROR}: ${geminiErrorMessage}`
+                      );
                     }
 
                     if (isGeminiSafetyBlocked(geminiData)) {
@@ -2289,8 +2328,15 @@ Deno.serve(async () => {
           processedCount++;
         } catch (error) {
           // ===== フェーズ4-4: 失敗時の処理 =====
-          console.error("[Job Processing] Generation error:", error);
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          const errorMessage = sanitizeProviderErrorMessage(
+            error instanceof Error ? error.message : "Unknown error"
+          );
+          console.error("[Job Processing] Generation error:", {
+            message: errorMessage,
+            stack: error instanceof Error
+              ? sanitizeProviderErrorMessage(error.stack ?? "")
+              : undefined,
+          });
           const failedAtMs = Date.now();
           const totalDurationMs =
             createdAtMs !== null && !Number.isNaN(createdAtMs)

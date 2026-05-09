@@ -5,11 +5,38 @@
 import {
   DEFAULT_GENERATION_MODEL,
   isKnownModelInput,
+  isOpenAIImageModel,
   normalizeModelName,
   type GeminiModel,
 } from "../types";
 
 export { DEFAULT_GENERATION_MODEL };
+
+/**
+ * Google Cloud プロジェクト停止中の一時的な kill switch。
+ *
+ * Gemini を再開するときは Next.js 側で `NEXT_PUBLIC_GEMINI_GENERATION_ENABLED=true`
+ * を設定して再デプロイし、Supabase Edge Function 側も `GEMINI_GENERATION_ENABLED=true`
+ * に揃える。
+ */
+export const GEMINI_GENERATION_ENABLED =
+  process.env.NEXT_PUBLIC_GEMINI_GENERATION_ENABLED === "true";
+
+export function isGeminiImageModel(model: string | null | undefined): boolean {
+  return typeof model === "string" && !isOpenAIImageModel(model);
+}
+
+export function isModelAvailableForGeneration(
+  model: string | null | undefined
+): boolean {
+  if (!isKnownModelInput(model)) {
+    return false;
+  }
+  const canonical = normalizeModelName(model);
+  return (
+    !isGeminiImageModel(canonical) || GEMINI_GENERATION_ENABLED
+  );
+}
 
 /**
  * モデルごとのペルコイン消費量
@@ -31,10 +58,13 @@ export const MODEL_PERCOIN_COSTS = {
  * 注意: ここに含まれるのは canonical model（DB に保存される正規化済みの値）。
  * クライアントから受け取った生の入力に対しては `parseGuestRequestedModel()` を使うこと。
  */
-export const GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
+const BASE_GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   'gpt-image-2-low',
   'gemini-3.1-flash-image-preview-512',
 ];
+
+export const GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> =
+  BASE_GUEST_ALLOWED_MODELS.filter(isModelAvailableForGeneration);
 
 /**
  * canonical model がゲスト許可リストに含まれるか判定する。
@@ -78,6 +108,9 @@ export function resolveEffectiveModelForAuthState(
   model: GeminiModel,
   authState: "guest" | "authenticated"
 ): GeminiModel {
+  if (!isModelAvailableForGeneration(model)) {
+    return DEFAULT_GENERATION_MODEL;
+  }
   if (authState === "guest" && !isCanonicalGuestAllowedModel(model)) {
     return DEFAULT_GENERATION_MODEL;
   }
@@ -99,7 +132,7 @@ export function getPercoinCost(model: string | null | undefined): number {
  * - gemini-3.1-flash-image-preview-512 は inspire 用途には除外（低解像度）
  * - プレビュー生成（運営コスト最小化）は別 INSPIRE_PREVIEW_MODELS を使用
  */
-export const INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
+const BASE_INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   'gemini-2.5-flash-image',
   'gemini-3.1-flash-image-preview-1024',
   'gemini-3-pro-image-1k',
@@ -108,14 +141,20 @@ export const INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   'gpt-image-2-low',
 ];
 
+export const INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> =
+  BASE_INSPIRE_ALLOWED_MODELS.filter(isModelAvailableForGeneration);
+
 /**
  * Inspire 申請プレビュー生成で使うモデル（運営コスト最小化のため低解像度に固定）。
  * 申請者は同期 API でこの 2 モデルから 2 枚を並列生成し、結果を見てから申請を確定する。
  */
-export const INSPIRE_PREVIEW_MODELS: ReadonlyArray<GeminiModel> = [
+const BASE_INSPIRE_PREVIEW_MODELS: ReadonlyArray<GeminiModel> = [
   'gpt-image-2-low',
   'gemini-3.1-flash-image-preview-512',
 ];
+
+export const INSPIRE_PREVIEW_MODELS: ReadonlyArray<GeminiModel> =
+  BASE_INSPIRE_PREVIEW_MODELS.filter(isModelAvailableForGeneration);
 
 /**
  * canonical model が inspire 利用者の許可リストに含まれるか判定する。

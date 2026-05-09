@@ -3,10 +3,12 @@
 import { normalizeUserFacingGenerationError } from "@/features/generation/lib/normalize-generation-error";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import {
+  GEMINI_DISABLED_MESSAGE,
   OPENAI_PROVIDER_ERROR,
   SAFETY_POLICY_BLOCKED_ERROR,
   MALFORMED_GEMINI_PARTS_ERROR,
   INVALID_GEMINI_ARGUMENT_ERROR,
+  GEMINI_PROVIDER_ERROR,
 } from "@/shared/generation/errors";
 
 const copy = getGenerationRouteCopy("ja");
@@ -89,6 +91,36 @@ describe("normalizeUserFacingGenerationError", () => {
         copy,
       ),
     ).toBe(copy.genericGenerationFailed);
+  });
+
+  it("maps Gemini provider errors containing an API key to copy.genericGenerationFailed", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        `${GEMINI_PROVIDER_ERROR}: Permission denied: Consumer 'api_key:[REDACTED_FOR_TEST]' has been suspended.`,
+        copy,
+      ),
+    ).toBe(copy.genericGenerationFailed);
+  });
+
+  it("maps Gemini kill switch messages to copy.modelTemporarilyUnavailable", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        `${GEMINI_PROVIDER_ERROR}: ${GEMINI_DISABLED_MESSAGE}`,
+        copy,
+      ),
+    ).toBe(copy.modelTemporarilyUnavailable);
+  });
+
+  it("maps bare GEMINI_DISABLED_MESSAGE (no prefix) to copy.modelTemporarilyUnavailable", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        GEMINI_DISABLED_MESSAGE,
+        copy,
+      ),
+    ).toBe(copy.modelTemporarilyUnavailable);
   });
 
   it("passes through unknown failed messages unchanged", () => {

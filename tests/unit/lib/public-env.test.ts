@@ -17,7 +17,6 @@ describe("Public env helpers", () => {
     process.env.NODE_ENV = "development";
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    delete process.env.NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY;
     delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
     await import("@/lib/public-env");

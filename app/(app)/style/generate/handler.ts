@@ -5,6 +5,7 @@ import {
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
+import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import {
   buildStyleAttemptReinforcementPrefix,
   buildStyleGenerationPrompt,
@@ -28,6 +29,7 @@ import {
   callOpenAIImageEdit,
 } from "@/features/generation/lib/openai-image";
 import {
+  DEFAULT_GENERATION_MODEL,
   isOpenAIImageModel,
   normalizeModelName,
   type GeminiModel,
@@ -221,7 +223,7 @@ export async function postStyleGenerateRoute(
     }
 
     // model は Phase 5 でフロントから明示的に送られるようになる。それまでは未送信が多数。
-    // - 未送信 → STYLE_GENERATION_MODEL の正規化結果（gemini-3.1-flash-image-preview-512）
+    // - 未送信 → 現在利用可能な既定モデル
     // - 送信あり → guest 許可 whitelist で検証。許可外なら 400。
     const modelEntry = formData.get("model");
     let model: GeminiModel;
@@ -236,7 +238,9 @@ export async function postStyleGenerateRoute(
       }
       model = parsed;
     } else {
-      model = normalizeModelName(STYLE_GENERATION_MODEL);
+      model = GEMINI_GENERATION_ENABLED
+        ? normalizeModelName(STYLE_GENERATION_MODEL)
+        : DEFAULT_GENERATION_MODEL;
     }
 
     const preset = await getPublishedStylePresetForGenerationFn(styleId);
@@ -434,9 +438,10 @@ export async function postStyleGenerateRoute(
         if (dispatchResult.status >= 500) {
           await releaseReservedAttempt("upstream_error");
         }
-        return NextResponse.json(
-          { error: dispatchResult.message },
-          { status: dispatchResult.status }
+        return jsonError(
+          copy.guestUpstreamUnavailable,
+          "STYLE_UPSTREAM_UNAVAILABLE",
+          dispatchResult.status >= 500 ? 502 : dispatchResult.status
         );
       }
 

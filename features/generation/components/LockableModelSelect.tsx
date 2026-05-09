@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import {
   isCanonicalGuestAllowedModel,
+  isModelAvailableForGeneration,
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import type { GeminiModel } from "@/features/generation/types";
@@ -48,6 +49,10 @@ const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
   { value: "gemini-3-pro-image-4k", labelKey: "modelPro4k" },
 ];
 
+const AVAILABLE_MODEL_OPTIONS = MODEL_OPTIONS.filter((option) =>
+  isModelAvailableForGeneration(option.value)
+);
+
 /**
  * /style と /coordinate で共有するモデル選択 UI。
  *
@@ -72,6 +77,9 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
 
   const handleValueChange = (next: string) => {
     const nextModel = next as GeminiModel;
+    if (!isModelAvailableForGeneration(nextModel)) {
+      return;
+    }
     if (isGuest && !isCanonicalGuestAllowedModel(nextModel)) {
       // ロック行クリック: 値は変えず、AuthModal を呼ぶだけ
       props.onLockedClick();
@@ -84,13 +92,13 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
     <Select
       value={displayValue}
       onValueChange={handleValueChange}
-      disabled={props.disabled}
+      disabled={props.disabled || AVAILABLE_MODEL_OPTIONS.length <= 1}
     >
       <SelectTrigger className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {MODEL_OPTIONS.map((option) => {
+        {AVAILABLE_MODEL_OPTIONS.map((option) => {
           const isLocked = isGuest && !isCanonicalGuestAllowedModel(option.value);
           if (isLocked) {
             return (

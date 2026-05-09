@@ -1,5 +1,36 @@
 /** @jest-environment node */
 
+jest.mock("@/features/generation/lib/model-config", () => {
+  const guestAllowedModels = [
+    "gpt-image-2-low",
+    "gemini-3.1-flash-image-preview-512",
+  ];
+
+  return {
+    ...jest.requireActual("@/features/generation/lib/model-config"),
+    GEMINI_GENERATION_ENABLED: true,
+    GUEST_ALLOWED_MODELS: guestAllowedModels,
+    isModelAvailableForGeneration: jest.fn((model?: string | null) =>
+      typeof model === "string"
+    ),
+    isCanonicalGuestAllowedModel: jest.fn((model?: string | null) =>
+      guestAllowedModels.includes(model ?? "")
+    ),
+    parseGuestRequestedModel: jest.fn((raw?: string | null) => {
+      if (raw === "gpt-image-2-low") return "gpt-image-2-low";
+      if (
+        raw === "gemini-3.1-flash-image-preview-512" ||
+        raw === "gemini-3.1-flash-image-preview" ||
+        raw === "gemini-2.5-flash-image" ||
+        raw === "gemini-2.5-flash-image-preview"
+      ) {
+        return "gemini-3.1-flash-image-preview-512";
+      }
+      return null;
+    }),
+  };
+});
+
 import { NextRequest } from "next/server";
 import { postStyleGenerateRoute } from "@/app/(app)/style/generate/handler";
 import type {
@@ -786,7 +817,7 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
-  test("postStyleGenerateRoute_upstream5xx時_releaseして同じstatusを返す", async () => {
+  test("postStyleGenerateRoute_upstream5xx時_releaseして汎用エラーを返す", async () => {
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({
       allowed: true,
       reservation: {
@@ -825,8 +856,10 @@ describe("StyleGenerateRoute integration tests", () => {
     });
     const body = await readJson(response);
 
-    expect(response.status).toBe(503);
-    expect(body.error).toBe("upstream overloaded");
+    expect(response.status).toBe(502);
+    expect(body.error).toBe(
+      "画像生成サービスが一時的に利用できません。少し時間をおいて再試行してください。"
+    );
     expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
       reservation: {
         authState: "guest",

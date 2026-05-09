@@ -8,6 +8,30 @@ jest.mock("@/features/generation/lib/heic-converter", () => {
   };
 });
 
+jest.mock("@/features/generation/lib/model-config", () => {
+  const actual = jest.requireActual("@/features/generation/lib/model-config");
+  const inspireAllowedModels = [
+    "gemini-2.5-flash-image",
+    "gemini-3.1-flash-image-preview-1024",
+    "gemini-3-pro-image-1k",
+    "gemini-3-pro-image-2k",
+    "gemini-3-pro-image-4k",
+    "gpt-image-2-low",
+  ];
+
+  return {
+    ...actual,
+    GEMINI_GENERATION_ENABLED: true,
+    INSPIRE_ALLOWED_MODELS: inspireAllowedModels,
+    isModelAvailableForGeneration: jest.fn((model?: string | null) =>
+      typeof model === "string"
+    ),
+    isInspireAllowedModel: jest.fn((model?: string | null) =>
+      inspireAllowedModels.includes(model ?? "")
+    ),
+  };
+});
+
 import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/generate-async/route";
 import {

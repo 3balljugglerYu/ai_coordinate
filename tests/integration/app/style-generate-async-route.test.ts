@@ -1,5 +1,13 @@
 /** @jest-environment node */
 
+jest.mock("@/features/generation/lib/model-config", () => ({
+  ...jest.requireActual("@/features/generation/lib/model-config"),
+  GEMINI_GENERATION_ENABLED: true,
+  isModelAvailableForGeneration: jest.fn((model?: string | null) =>
+    typeof model === "string"
+  ),
+}));
+
 import { NextRequest } from "next/server";
 import { postStyleGenerateAsyncRoute } from "@/app/(app)/style/generate-async/handler";
 import type { AsyncGenerationJobRepository } from "@/features/generation/lib/async-generation-job-repository";

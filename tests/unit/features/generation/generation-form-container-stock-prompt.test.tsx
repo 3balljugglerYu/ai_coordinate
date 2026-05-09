@@ -145,6 +145,13 @@ jest.mock("@/features/credits/lib/urls", () => ({
 
 jest.mock("@/features/generation/lib/model-config", () => ({
   getPercoinCost: jest.fn(() => 10),
+  isCanonicalGuestAllowedModel: jest.fn((model?: string | null) =>
+    model === "gpt-image-2-low"
+  ),
+  isModelAvailableForGeneration: jest.fn((model?: string | null) =>
+    model === "gpt-image-2-low"
+  ),
+  resolveEffectiveModelForAuthState: jest.fn(() => "gpt-image-2-low"),
 }));
 
 jest.mock("@/features/generation/lib/coordinate-guest-api", () => ({
