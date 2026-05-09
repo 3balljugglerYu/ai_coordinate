@@ -14,6 +14,13 @@ export const INVALID_GEMINI_ARGUMENT_ERROR = "request contains an invalid argume
  */
 export const GEMINI_PROVIDER_ERROR = "gemini_provider_error";
 /**
+ * Gemini kill switch（GEMINI_GENERATION_ENABLED=false）が ON のときに
+ * worker / API ハンドラから投げる固定メッセージ。worker と Next.js 側の
+ * 双方が同じ文字列で判定するため、normalizer が「モデル一時利用不可」
+ * 文言に差し替えられる。GEMINI_PROVIDER_ERROR の suffix として組み合わせて使う。
+ */
+export const GEMINI_DISABLED_MESSAGE = "Gemini generation is temporarily disabled";
+/**
  * OpenAI 側の構成不備に起因する非リトライ系エラー。
  * 例: 組織未検証 / API key 不正 / 残高不足 / 401 / 403 等。
  * 実際の upstream メッセージはこのプレフィックスの後に付与する。

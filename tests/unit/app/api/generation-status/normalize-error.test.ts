@@ -3,6 +3,7 @@
 import { normalizeUserFacingGenerationError } from "@/features/generation/lib/normalize-generation-error";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import {
+  GEMINI_DISABLED_MESSAGE,
   OPENAI_PROVIDER_ERROR,
   SAFETY_POLICY_BLOCKED_ERROR,
   MALFORMED_GEMINI_PARTS_ERROR,
@@ -100,6 +101,26 @@ describe("normalizeUserFacingGenerationError", () => {
         copy,
       ),
     ).toBe(copy.genericGenerationFailed);
+  });
+
+  it("maps Gemini kill switch messages to copy.modelTemporarilyUnavailable", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        `${GEMINI_PROVIDER_ERROR}: ${GEMINI_DISABLED_MESSAGE}`,
+        copy,
+      ),
+    ).toBe(copy.modelTemporarilyUnavailable);
+  });
+
+  it("maps bare GEMINI_DISABLED_MESSAGE (no prefix) to copy.modelTemporarilyUnavailable", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        GEMINI_DISABLED_MESSAGE,
+        copy,
+      ),
+    ).toBe(copy.modelTemporarilyUnavailable);
   });
 
   it("passes through unknown failed messages unchanged", () => {

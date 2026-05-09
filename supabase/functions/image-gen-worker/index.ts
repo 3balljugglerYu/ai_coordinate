@@ -15,6 +15,7 @@ import type {
 } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import {
+  GEMINI_DISABLED_MESSAGE,
   GEMINI_PROVIDER_ERROR,
   MALFORMED_GEMINI_PARTS_ERROR,
   isInvalidGeminiArgumentErrorMessage,
@@ -1337,7 +1338,7 @@ Deno.serve(async () => {
         // ===== Provider 別 API key 検証（charging 前・再試行不可） =====
         const requiresOpenAIKey = isOpenAIImageModel(dbModel);
         if (!requiresOpenAIKey && !GEMINI_GENERATION_ENABLED) {
-          const disabledMessage = `${GEMINI_PROVIDER_ERROR}: Gemini generation is temporarily disabled`;
+          const disabledMessage = `${GEMINI_PROVIDER_ERROR}: ${GEMINI_DISABLED_MESSAGE}`;
           console.warn("[Job Processing] Gemini generation is disabled", {
             jobId,
             model: dbModel,

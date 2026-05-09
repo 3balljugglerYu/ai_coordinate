@@ -38,6 +38,7 @@ import { createNanobananaClient } from "@/features/generation/lib/nanobanana-cli
 import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import { buildInspirePrompt } from "@/shared/generation/prompt-core";
 import {
+  GEMINI_DISABLED_MESSAGE,
   SAFETY_POLICY_BLOCKED_ERROR,
   sanitizeProviderErrorMessage,
 } from "@/shared/generation/errors";
@@ -325,7 +326,7 @@ export async function handlePreviewGeneration(
       if (!GEMINI_GENERATION_ENABLED) {
         return {
           provider: "gemini",
-          errorMessage: "Gemini generation is temporarily disabled",
+          errorMessage: GEMINI_DISABLED_MESSAGE,
           isSafetyBlocked: false,
         };
       }

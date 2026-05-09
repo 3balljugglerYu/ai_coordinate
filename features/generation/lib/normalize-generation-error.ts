@@ -1,5 +1,6 @@
 import {
   containsCredentialReference,
+  GEMINI_DISABLED_MESSAGE,
   isInvalidGeminiArgumentErrorMessage,
   isGeminiProviderErrorMessage,
   isMalformedGeminiPartsErrorMessage,
@@ -38,6 +39,13 @@ export function normalizeUserFacingGenerationError(
 
   if (isInvalidGeminiArgumentErrorMessage(errorMessage)) {
     return copy.genericGenerationFailed;
+  }
+
+  // kill switch による Gemini 停止は「別モデルを選んでください」と案内する
+  // （`gemini_provider_error: ...` プレフィックスを共有するため、必ず
+  // isGeminiProviderErrorMessage 判定より前に評価する）。
+  if (errorMessage.includes(GEMINI_DISABLED_MESSAGE)) {
+    return copy.modelTemporarilyUnavailable;
   }
 
   if (
