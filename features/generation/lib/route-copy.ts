@@ -27,6 +27,8 @@ export const generationRouteCopy = {
       "安全性ポリシーにより生成できませんでした。\n内容を変更して再試行してください。",
     genericGenerationFailed:
       "画像生成に失敗しました。しばらくしてから、もう一度お試しください。",
+    modelTemporarilyUnavailable:
+      "選択した生成モデルは現在ご利用いただけません。別のモデルを選択してください。",
     webpMissingParams: "imageUrl, imageId, storagePath が必要です",
     webpFailed: "WebP生成に失敗しました",
     // ゲスト sync 経路（/api/coordinate-generate-guest）用
@@ -72,6 +74,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
     webpFailed: "Failed to generate WebP assets.",
     // Guest sync route (/api/coordinate-generate-guest)
@@ -115,6 +119,7 @@ export const generationRouteCopy = {
     noImagesGenerated: string;
     safetyBlocked: string;
     genericGenerationFailed: string;
+    modelTemporarilyUnavailable: string;
     webpMissingParams: string;
     webpFailed: string;
     guestRouteAuthForbidden: string;

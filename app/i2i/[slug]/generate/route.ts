@@ -7,6 +7,7 @@ import {
   extractImagesFromGeminiResponse,
   type GeminiResponse,
 } from "@/features/generation/lib/nanobanana";
+import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import {
   ALLOWED_IMAGE_MIME_TYPE_SET,
   MAX_IMAGE_BYTES,
@@ -248,6 +249,13 @@ export async function POST(request: NextRequest, context: GenerateRouteContext) 
     if (!config || slug !== config.slug) {
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
+    if (!GEMINI_GENERATION_ENABLED) {
+      return jsonError(
+        copy.generationFailed,
+        "I2I_POC_GEMINI_TEMPORARILY_UNAVAILABLE",
+        503
+      );
+    }
 
     const supabase = await createClient();
     const {
@@ -408,9 +416,13 @@ export async function POST(request: NextRequest, context: GenerateRouteContext) 
           );
         }
 
-        return NextResponse.json(
-          { error: apiErrorMessage },
-          { status: response.status }
+        console.error("I2I generate route: Gemini upstream error", {
+          status: response.status,
+        });
+        return jsonError(
+          copy.generationFailed,
+          "I2I_POC_UPSTREAM_ERROR",
+          response.status >= 500 ? 502 : response.status
         );
       }
 

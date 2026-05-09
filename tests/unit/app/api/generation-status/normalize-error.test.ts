@@ -7,6 +7,7 @@ import {
   SAFETY_POLICY_BLOCKED_ERROR,
   MALFORMED_GEMINI_PARTS_ERROR,
   INVALID_GEMINI_ARGUMENT_ERROR,
+  GEMINI_PROVIDER_ERROR,
 } from "@/shared/generation/errors";
 
 const copy = getGenerationRouteCopy("ja");
@@ -86,6 +87,16 @@ describe("normalizeUserFacingGenerationError", () => {
       normalizeUserFacingGenerationError(
         "failed",
         `${OPENAI_PROVIDER_ERROR}: OPENAI_API_KEY is not configured`,
+        copy,
+      ),
+    ).toBe(copy.genericGenerationFailed);
+  });
+
+  it("maps Gemini provider errors containing an API key to copy.genericGenerationFailed", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        `${GEMINI_PROVIDER_ERROR}: Permission denied: Consumer 'api_key:[REDACTED_FOR_TEST]' has been suspended.`,
         copy,
       ),
     ).toBe(copy.genericGenerationFailed);

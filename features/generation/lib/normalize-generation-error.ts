@@ -1,5 +1,7 @@
 import {
+  containsCredentialReference,
   isInvalidGeminiArgumentErrorMessage,
+  isGeminiProviderErrorMessage,
   isMalformedGeminiPartsErrorMessage,
   isOpenAIProviderErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
@@ -35,6 +37,13 @@ export function normalizeUserFacingGenerationError(
   }
 
   if (isInvalidGeminiArgumentErrorMessage(errorMessage)) {
+    return copy.genericGenerationFailed;
+  }
+
+  if (
+    isGeminiProviderErrorMessage(errorMessage) ||
+    containsCredentialReference(errorMessage)
+  ) {
     return copy.genericGenerationFailed;
   }
 

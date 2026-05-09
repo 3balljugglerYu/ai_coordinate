@@ -2,7 +2,7 @@
  * POST /api/style-templates/preview-generation
  *
  * 申請者がアップロードしたテンプレ画像を受け取り、運営テストキャラ画像と組み合わせて
- * OpenAI gpt-image-2-low 1 枚 + Gemini 0.5K 1 枚を並列同期生成し、結果を返す。
+ * OpenAI gpt-image-2-low 1 枚 + Gemini 0.5K 1 枚（Gemini 有効時）を並列同期生成し、結果を返す。
  *
  * REQ-S-01〜S-05 / REQ-S-11 / ADR-003 / ADR-004 / ADR-009 参照。
  *
@@ -12,7 +12,7 @@
  *   3. テンプレ画像を受け取り（base64）→ Storage アップロード
  *   4. draft 行を RPC で作成、image_url / storage_path を更新
  *   5. テストキャラ画像を env から取得（fetch して base64 化）
- *   6. OpenAI / Gemini を並列起動（Promise.allSettled）
+ *   6. OpenAI / Gemini（有効時）を並列起動（Promise.allSettled）
  *   7. 各成功プレビューを Storage にアップロードし、draft 行に URL を設定
  *   8. preview_attempts に試行ログを記録
  *   9. 結果を返却（partial 成功時は partial フラグ付き）
@@ -35,8 +35,12 @@ import {
 import { getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { callOpenAIImageEditMultiInput } from "@/features/generation/lib/openai-image";
 import { createNanobananaClient } from "@/features/generation/lib/nanobanana-client";
+import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import { buildInspirePrompt } from "@/shared/generation/prompt-core";
-import { SAFETY_POLICY_BLOCKED_ERROR } from "@/shared/generation/errors";
+import {
+  SAFETY_POLICY_BLOCKED_ERROR,
+  sanitizeProviderErrorMessage,
+} from "@/shared/generation/errors";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 const RATE_LIMIT_WINDOW_HOURS = 24;
@@ -318,6 +322,13 @@ export async function handlePreviewGeneration(
 
   const geminiPromise: Promise<PreviewOutcome> = (async () => {
     try {
+      if (!GEMINI_GENERATION_ENABLED) {
+        return {
+          provider: "gemini",
+          errorMessage: "Gemini generation is temporarily disabled",
+          isSafetyBlocked: false,
+        };
+      }
       if (!env.GEMINI_API_KEY) {
         return {
           provider: "gemini",
@@ -358,9 +369,10 @@ export async function handlePreviewGeneration(
       });
       if (!response.ok) {
         const text = await response.text();
+        const sanitizedText = sanitizeProviderErrorMessage(text);
         return {
           provider: "gemini",
-          errorMessage: `Gemini HTTP ${response.status}: ${text.slice(0, 300)}`,
+          errorMessage: `Gemini HTTP ${response.status}: ${sanitizedText.slice(0, 300)}`,
           isSafetyBlocked: /safety/i.test(text),
         };
       }
@@ -407,7 +419,9 @@ export async function handlePreviewGeneration(
       }
       return { provider: "gemini", storagePath: previewPath };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = sanitizeProviderErrorMessage(
+        err instanceof Error ? err.message : String(err)
+      );
       return {
         provider: "gemini",
         errorMessage: message,

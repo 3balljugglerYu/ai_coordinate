@@ -14,26 +14,14 @@ describe("Inspire model config", () => {
       ).toBe(false);
     });
 
-    test("1024 / 2K / 4K 以上の高解像度モデルと OpenAI を含む", () => {
-      expect(INSPIRE_ALLOWED_MODELS).toEqual(
-        expect.arrayContaining([
-          "gemini-2.5-flash-image",
-          "gemini-3.1-flash-image-preview-1024",
-          "gemini-3-pro-image-1k",
-          "gemini-3-pro-image-2k",
-          "gemini-3-pro-image-4k",
-          "gpt-image-2-low",
-        ])
-      );
+    test("Gemini 停止中は OpenAI のみを含む", () => {
+      expect(INSPIRE_ALLOWED_MODELS).toEqual(["gpt-image-2-low"]);
     });
   });
 
   describe("INSPIRE_PREVIEW_MODELS", () => {
-    test("運営コスト最小化のため OpenAI low + Gemini 0.5K の 2 モデルに限定", () => {
-      expect(INSPIRE_PREVIEW_MODELS).toEqual([
-        "gpt-image-2-low",
-        "gemini-3.1-flash-image-preview-512",
-      ]);
+    test("Gemini 停止中は OpenAI low のみ", () => {
+      expect(INSPIRE_PREVIEW_MODELS).toEqual(["gpt-image-2-low"]);
     });
   });
 
@@ -41,7 +29,7 @@ describe("Inspire model config", () => {
     test("許可リスト内のモデルで true を返す", () => {
       expect(isInspireAllowedModel("gpt-image-2-low")).toBe(true);
       expect(isInspireAllowedModel("gemini-3.1-flash-image-preview-1024")).toBe(
-        true
+        false
       );
     });
 

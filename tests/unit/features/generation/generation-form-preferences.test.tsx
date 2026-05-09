@@ -158,8 +158,14 @@ jest.mock("@/features/generation/lib/model-config", () => ({
   isCanonicalGuestAllowedModel: jest.fn((model: string) =>
     ["gpt-image-2-low", "gemini-3.1-flash-image-preview-512"].includes(model),
   ),
+  isModelAvailableForGeneration: jest.fn((model: string) =>
+    model === "gpt-image-2-low"
+  ),
   resolveEffectiveModelForAuthState: jest.fn(
     (model: string, authState: "guest" | "authenticated") => {
+      if (model !== "gpt-image-2-low") {
+        return "gpt-image-2-low";
+      }
       if (
         authState === "guest" &&
         !["gpt-image-2-low", "gemini-3.1-flash-image-preview-512"].includes(
@@ -268,19 +274,15 @@ describe("GenerationForm persisted preferences", () => {
     );
   });
 
-  it("persists model and background changes made by the user", async () => {
+  it("Gemini 停止中はモデル変更を出さず、背景変更だけ保存する", async () => {
     await act(async () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
-    fireEvent.change(screen.getByTestId("model-select"), {
-      target: { value: "gemini-3-pro-image-4k" },
-    });
+    expect(screen.getByTestId("model-select")).toBeDisabled();
     fireEvent.click(screen.getByLabelText("Include it in the prompt"));
 
-    expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
-      "gemini-3-pro-image-4k",
-    );
+    expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBeNull();
     expect(localStorage.getItem(BACKGROUND_MODE_STORAGE_KEY)).toBe(
       "include_in_prompt",
     );

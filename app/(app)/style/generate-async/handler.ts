@@ -22,7 +22,10 @@ import {
   isKnownModelInput,
   normalizeModelName,
 } from "@/features/generation/types";
-import { getPercoinCost } from "@/features/generation/lib/model-config";
+import {
+  getPercoinCost,
+  isModelAvailableForGeneration,
+} from "@/features/generation/lib/model-config";
 import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
@@ -150,6 +153,13 @@ export async function postStyleGenerateAsyncRoute(
     const model = rawModel && isKnownModelInput(rawModel)
       ? normalizeModelName(rawModel)
       : DEFAULT_GENERATION_MODEL;
+    if (!isModelAvailableForGeneration(model)) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "STYLE_MODEL_TEMPORARILY_UNAVAILABLE",
+        400
+      );
+    }
 
     const preset = await getPublishedStylePresetForGenerationFn(styleId);
     if (!preset) {

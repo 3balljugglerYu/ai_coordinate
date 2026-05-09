@@ -822,7 +822,7 @@ export const enMessages = {
       "Failed to download the image. Please try again.",
     guestLoginCtaTitle: "Try without signing in",
     guestLoginCtaDescription:
-      "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
+      "You can try ChatGPT Image 2.0 once per day. Results are not saved.",
     guestLoginCtaAction: "Sign in / Sign up",
     guestSubmitFailed: "Generation failed. Please try again in a few moments.",
     guestRateLimitDailyMessage:
@@ -1269,12 +1269,14 @@ export const enMessages = {
     collapseReferenceCardTitle: "Collapse",
     modelLabel: "Generation model",
     modelFixedOption: "Nano Banana 2 / 0.5K",
+    modelTemporarilyUnavailable:
+      "The selected generation model is currently unavailable. Please choose another model.",
     generateHint: "Generation usually takes around 20 to 30 seconds.",
     generateRetryHint:
       "If the result does not come out well, try again. If it still fails, please let us know.",
     guestLoginCtaTitle: "Try without signing in",
     guestLoginCtaDescription:
-      "You can try ChatGPT Image 2.0 and Nano Banana 2 (0.5K) once per day. Results are not saved.",
+      "You can try ChatGPT Image 2.0 once per day. Results are not saved.",
     guestLoginCtaAction: "Sign in / Sign up",
     generateButton: "Start Styling",
     generatingButton: "Generating...",

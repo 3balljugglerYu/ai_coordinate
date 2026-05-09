@@ -26,6 +26,7 @@ import {
 import {
   isOpenAIProviderErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
+  sanitizeProviderErrorMessage,
 } from "@/shared/generation/errors";
 
 /**
@@ -264,7 +265,9 @@ async function dispatchOpenAI(
     if (error instanceof Error && error.name === "AbortError") {
       return { kind: "timeout" };
     }
-    const message = error instanceof Error ? error.message : String(error);
+    const message = sanitizeProviderErrorMessage(
+      error instanceof Error ? error.message : String(error)
+    );
     if (isSafetyPolicyBlockedErrorMessage(message)) {
       return { kind: "safety_blocked" };
     }
@@ -318,7 +321,9 @@ async function dispatchGemini(
     if (error instanceof Error && error.name === "AbortError") {
       return { kind: "timeout" };
     }
-    const message = error instanceof Error ? error.message : String(error);
+    const message = sanitizeProviderErrorMessage(
+      error instanceof Error ? error.message : String(error)
+    );
     return { kind: "upstream_error", message, status: 502 };
   } finally {
     clearTimeout(timeoutId);
@@ -336,7 +341,7 @@ async function dispatchGemini(
       typeof payload === "object" &&
       "error" in payload &&
       typeof payload.error?.message === "string"
-        ? payload.error.message
+        ? sanitizeProviderErrorMessage(payload.error.message)
         : `Gemini API request failed (HTTP ${response.status})`;
     if (
       isSafetyBlockedResponse(geminiPayload) ||
