@@ -108,8 +108,14 @@ jest.mock("@/features/generation/lib/model-config", () => ({
     model === "gpt-image-2-low" ||
     model === "gemini-3.1-flash-image-preview-512"
   ),
+  isModelAvailableForGeneration: jest.fn((model?: string | null) =>
+    model === "gpt-image-2-low"
+  ),
   resolveEffectiveModelForAuthState: jest.fn(
     (model: string, authState: "guest" | "authenticated") => {
+      if (model !== "gpt-image-2-low") {
+        return "gpt-image-2-low";
+      }
       if (
         authState === "guest" &&
         model !== "gpt-image-2-low" &&

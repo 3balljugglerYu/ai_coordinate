@@ -2,6 +2,7 @@ import {
   getPercoinCost,
   GUEST_ALLOWED_MODELS,
   isCanonicalGuestAllowedModel,
+  isModelAvailableForGeneration,
   parseGuestRequestedModel,
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
@@ -54,17 +55,15 @@ describe("model-config / model identification helpers", () => {
   });
 
   describe("GUEST_ALLOWED_MODELS / isCanonicalGuestAllowedModel", () => {
-    it("ChatGPT Image 2.0 と Nano Banana 2 0.5K の 2 モデルのみ", () => {
-      expect([...GUEST_ALLOWED_MODELS].sort()).toEqual(
-        ["gemini-3.1-flash-image-preview-512", "gpt-image-2-low"].sort()
-      );
+    it("Gemini 停止中は ChatGPT Image 2.0 のみ", () => {
+      expect(GUEST_ALLOWED_MODELS).toEqual(["gpt-image-2-low"]);
     });
 
     it("canonical な許可モデルだけ true", () => {
       expect(isCanonicalGuestAllowedModel("gpt-image-2-low")).toBe(true);
       expect(
         isCanonicalGuestAllowedModel("gemini-3.1-flash-image-preview-512")
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it("canonical でない許可外モデル / エイリアス / 未知 / null は false", () => {
@@ -90,21 +89,17 @@ describe("model-config / model identification helpers", () => {
       expect(parseGuestRequestedModel("gpt-image-2-low")).toBe("gpt-image-2-low");
       expect(
         parseGuestRequestedModel("gemini-3.1-flash-image-preview-512")
-      ).toBe("gemini-3.1-flash-image-preview-512");
+      ).toBeNull();
     });
 
-    it("許可モデルへ正規化されるエイリアスも受理する", () => {
+    it("Gemini 停止中は許可モデルへ正規化されるエイリアスも null", () => {
       // gemini-3.1-flash-image-preview → gemini-3.1-flash-image-preview-512
       expect(
         parseGuestRequestedModel("gemini-3.1-flash-image-preview")
-      ).toBe("gemini-3.1-flash-image-preview-512");
+      ).toBeNull();
       // gemini-2.5-flash-image → gemini-3.1-flash-image-preview-512
-      expect(parseGuestRequestedModel("gemini-2.5-flash-image")).toBe(
-        "gemini-3.1-flash-image-preview-512"
-      );
-      expect(parseGuestRequestedModel("gemini-2.5-flash-image-preview")).toBe(
-        "gemini-3.1-flash-image-preview-512"
-      );
+      expect(parseGuestRequestedModel("gemini-2.5-flash-image")).toBeNull();
+      expect(parseGuestRequestedModel("gemini-2.5-flash-image-preview")).toBeNull();
     });
 
     it("許可外モデルは null", () => {
@@ -126,25 +121,41 @@ describe("model-config / model identification helpers", () => {
   });
 
   describe("resolveEffectiveModelForAuthState", () => {
-    it("ゲストの許可外モデルは DEFAULT_GENERATION_MODEL に丸める", () => {
+    it("ゲストの許可外モデルと停止中 Gemini は DEFAULT_GENERATION_MODEL に丸める", () => {
       expect(
         resolveEffectiveModelForAuthState("gemini-3-pro-image-4k", "guest")
       ).toBe("gpt-image-2-low");
-    });
-
-    it("ゲストの許可モデルと認証ユーザーの選択はそのまま返す", () => {
       expect(
         resolveEffectiveModelForAuthState(
           "gemini-3.1-flash-image-preview-512",
           "guest"
         )
-      ).toBe("gemini-3.1-flash-image-preview-512");
+      ).toBe("gpt-image-2-low");
+    });
+
+    it("利用可能モデルはそのまま返し、認証ユーザーの停止中 Gemini は丸める", () => {
+      expect(
+        resolveEffectiveModelForAuthState(
+          "gpt-image-2-low",
+          "guest"
+        )
+      ).toBe("gpt-image-2-low");
       expect(
         resolveEffectiveModelForAuthState(
           "gemini-3-pro-image-4k",
           "authenticated"
         )
-      ).toBe("gemini-3-pro-image-4k");
+      ).toBe("gpt-image-2-low");
+    });
+  });
+
+  describe("isModelAvailableForGeneration", () => {
+    it("Gemini 停止中は OpenAI のみ利用可能", () => {
+      expect(isModelAvailableForGeneration("gpt-image-2-low")).toBe(true);
+      expect(
+        isModelAvailableForGeneration("gemini-3.1-flash-image-preview-512")
+      ).toBe(false);
+      expect(isModelAvailableForGeneration("unknown-model")).toBe(false);
     });
   });
 });

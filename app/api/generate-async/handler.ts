@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import {
   getPercoinCost,
+  isModelAvailableForGeneration,
   isInspireAllowedModel,
 } from "@/features/generation/lib/model-config";
 import {
@@ -124,6 +125,13 @@ export async function postGenerateAsyncRoute(
       overrideTarget,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
+    if (!isModelAvailableForGeneration(effectiveModel)) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "GENERATION_MODEL_TEMPORARILY_UNAVAILABLE",
+        400
+      );
+    }
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
     const isInspireRequest = generationType === "inspire";
 

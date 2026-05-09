@@ -48,7 +48,8 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY=
+# Google Cloud プロジェクト停止中は未設定/false のままにする
+NEXT_PUBLIC_GEMINI_GENERATION_ENABLED=false
 GEMINI_API_KEY=
 # OpenAI gpt-image-2 (quality=low) 用。Edge Function secrets にも同名で登録すること
 OPENAI_API_KEY=
@@ -218,8 +219,7 @@ Codecov 連携も有効化しているため、GitHub 上で diff coverage や P
 
 ### AI 生成
 
-- `NEXT_PUBLIC_GOOGLE_AI_STUDIO_API_KEY`
-- `NEXT_PUBLIC_NANOBANANA_API_KEY`
+- `NEXT_PUBLIC_GEMINI_GENERATION_ENABLED`（Gemini 生成を再開する場合のみ `true`）
 - `GEMINI_API_KEY`
 - `OPENAI_API_KEY`（OpenAI gpt-image-2 用、Edge Function secrets にも同名で登録）
 

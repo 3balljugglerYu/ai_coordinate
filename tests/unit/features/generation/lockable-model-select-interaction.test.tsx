@@ -76,7 +76,7 @@ afterEach(() => {
 });
 
 describe("LockableModelSelect interactions", () => {
-  test("guest のロックモデルは鍵アイコンをラベルの左側に表示する", () => {
+  test("Gemini 停止中は Gemini 系モデルを表示しない", () => {
     render(
       <LockableModelSelect
         value="gpt-image-2-low"
@@ -86,16 +86,15 @@ describe("LockableModelSelect interactions", () => {
       />
     );
 
-    const lockedButton = screen.getByRole("button", {
-      name: /Nano Banana Pro 1K/,
-    });
-    const row = lockedButton.firstElementChild;
-
-    expect(row?.children.item(0)?.tagName.toLowerCase()).toBe("svg");
-    expect(row?.children.item(1)).toHaveTextContent("Nano Banana Pro 1K");
+    expect(
+      screen.queryByRole("button", { name: /Nano Banana/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ChatGPT Images 2.0" })
+    ).toBeInTheDocument();
   });
 
-  test("guest がロックモデルを選ぶと onLockedClick だけを呼ぶ", () => {
+  test("Gemini 停止中はゲストのロッククリック導線を出さない", () => {
     const onChange = jest.fn();
     const onLockedClick = jest.fn();
     render(
@@ -107,9 +106,11 @@ describe("LockableModelSelect interactions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Nano Banana Pro 1K/ }));
+    expect(
+      screen.queryByRole("button", { name: /Nano Banana Pro 1K/ })
+    ).not.toBeInTheDocument();
 
-    expect(onLockedClick).toHaveBeenCalledTimes(1);
+    expect(onLockedClick).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -125,9 +126,9 @@ describe("LockableModelSelect interactions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Nano Banana 2 0.5K" }));
+    fireEvent.click(screen.getByRole("button", { name: "ChatGPT Images 2.0" }));
 
-    expect(onChange).toHaveBeenCalledWith("gemini-3.1-flash-image-preview-512");
+    expect(onChange).toHaveBeenCalledWith("gpt-image-2-low");
     expect(onLockedClick).not.toHaveBeenCalled();
   });
 });
