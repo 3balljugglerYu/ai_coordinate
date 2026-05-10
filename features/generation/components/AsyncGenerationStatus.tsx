@@ -61,7 +61,7 @@ export function AsyncGenerationStatus({
         // タイムアウトとエラーハンドリングはpollGenerationStatus内で処理される
         const { promise, stop } = pollGenerationStatus(jobId, {
           interval: pollingInterval,
-          timeout: 300000, // 5分でタイムアウト
+          timeout: 600000, // 10分でタイムアウト
           messages: asyncApiMessages,
           onStatusUpdate: (status) => {
             if (!isMounted) return;

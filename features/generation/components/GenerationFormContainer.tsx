@@ -690,7 +690,7 @@ export function GenerationFormContainer({
 
           const { promise, stop } = pollGenerationStatus(job.id, {
             interval: getStatusPollingIntervalMs,
-            timeout: 300000,
+            timeout: 600000,
             messages: asyncApiMessages,
             onStatusUpdate: (status) => {
               updateTrackedJob(status.id, status);
@@ -1209,7 +1209,7 @@ export function GenerationFormContainer({
 
         const { promise, stop } = pollGenerationStatus(jobId, {
           interval: getStatusPollingIntervalMs,
-          timeout: 300000,
+          timeout: 600000,
           messages: asyncApiMessages,
           onStatusUpdate: (status) => {
             updateTrackedJob(jobId, status);
