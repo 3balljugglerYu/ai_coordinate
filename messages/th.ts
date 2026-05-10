@@ -816,7 +816,16 @@ export const thMessages = {
       "โมเดลความเที่ยงสูง: Nano Banana Pro | 2K (80 Percoin / รูป)",
     modelPro4k:
       "โมเดลความเที่ยงสูง: Nano Banana Pro | 4K (100 Percoin / รูป)",
-    modelGptImage2Low: "โมเดลเบา: ChatGPT Images 2.0 (10 Percoin / รูป)",
+    modelGptImage2Low: "โมเดลเบา: ChatGPT Images 2.0 Low (เริ่มต้น 10 Percoins / รูป)",
+    modelGptImage2Medium: "โมเดลมาตรฐาน: ChatGPT Images 2.0 Medium (เริ่มต้น 20 Percoins / รูป)",
+    modelGptImage2High: "โมเดลความละเอียดสูง: ChatGPT Images 2.0 High (เริ่มต้น 50 Percoins / รูป)",
+    gptImage2SizeLabel: "ขนาดเอาต์พุต",
+    gptImage2SizeDescription:
+      "ขนาดจริงจะถูกปรับอัตโนมัติตามแนวภาพ ค่า Percoin จะเปลี่ยนตามขนาดเอาต์พุต",
+    gptImage2Size1k: "มาตรฐาน (เทียบเท่า 1K)",
+    gptImage2Size2k: "ความละเอียดสูง (เทียบเท่า 2K)",
+    gptImage2Size4k: "ความละเอียดสูงสุด (เทียบเท่า 4K, เบต้า)",
+    gptImage2SizePricePerImage: "{cost} Percoins / รูป",
     // Phase 6: guest UI
     guestResultAlt: "ผลตัวอย่างสำหรับผู้เยี่ยมชม",
     guestResultTitle: "ผลลัพธ์",
@@ -1224,6 +1233,9 @@ export const thMessages = {
     stepBackgroundTitle: "การตั้งค่าพื้นหลัง",
     stepBackgroundDescription:
       "เลือกที่นี่ว่าจะจัดการพื้นหลังอย่างไร สำหรับบทเรียนนี้ ใช้ \"ให้ AI ตัดสินใจ\" ต่อไป",
+    stepSizeTitle: "ตรวจสอบขนาดเอาต์พุต",
+    stepSizeDescription:
+      "ChatGPT Images 2.0 ให้คุณเลือกขนาดเอาต์พุตได้ ในบทช่วยสอนนี้เราจะใช้ขนาดมาตรฐาน",
     stepGenerateTitle: "เริ่มสร้าง",
     stepGenerateDescription:
       "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม Percoin ของคุณจะถูกคืนหลังบทเรียน จึงดำเนินการต่อได้อย่างสบายใจ",

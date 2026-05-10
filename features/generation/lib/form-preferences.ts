@@ -20,6 +20,9 @@ import {
 } from "@/shared/generation/prompt-core";
 import {
   DEFAULT_GENERATION_MODEL,
+  GPT_IMAGE_2_CANONICAL_MODELS,
+  GPT_IMAGE_2_LEGACY_LOW_MODEL,
+  normalizeModelName,
   type GeminiModel,
 } from "@/features/generation/types";
 
@@ -58,7 +61,7 @@ const PERSISTABLE_MODELS: ReadonlyArray<GeminiModel> = [
   "gemini-3-pro-image-1k",
   "gemini-3-pro-image-2k",
   "gemini-3-pro-image-4k",
-  "gpt-image-2-low",
+  ...GPT_IMAGE_2_CANONICAL_MODELS,
 ];
 
 function safeReadLocalStorage(key: string): string | null {
@@ -90,6 +93,11 @@ function safeRemoveLocalStorage(key: string): void {
 
 export function readPreferredModel(): GeminiModel {
   const stored = safeReadLocalStorage(SELECTED_MODEL_STORAGE_KEY);
+  if (stored === GPT_IMAGE_2_LEGACY_LOW_MODEL) {
+    const migrated = normalizeModelName(stored);
+    safeWriteLocalStorage(SELECTED_MODEL_STORAGE_KEY, migrated);
+    return migrated;
+  }
   if (stored && (PERSISTABLE_MODELS as ReadonlyArray<string>).includes(stored)) {
     return stored as GeminiModel;
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import {
@@ -14,7 +15,13 @@ import {
   isModelAvailableForGeneration,
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
-import type { GeminiModel } from "@/features/generation/types";
+import {
+  composeGptImage2Model,
+  parseGptImage2Model,
+  type GeminiModel,
+  type GptImage2Quality,
+  type GptImage2SizeTier,
+} from "@/features/generation/types";
 
 export type ModelSelectAuthState = "guest" | "authenticated";
 
@@ -27,13 +34,17 @@ export interface LockableModelSelectProps {
   onLockedClick: () => void;
   authState: ModelSelectAuthState;
   disabled?: boolean;
+  isModelSelectable?: (model: GeminiModel) => boolean;
 }
 
 interface ModelOption {
-  value: GeminiModel;
+  value: string;
+  gptImage2Quality?: GptImage2Quality;
   labelKey:
     | "modelLight05k"
     | "modelGptImage2Low"
+    | "modelGptImage2Medium"
+    | "modelGptImage2High"
     | "modelStandard1k"
     | "modelPro1k"
     | "modelPro2k"
@@ -41,7 +52,21 @@ interface ModelOption {
 }
 
 const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
-  { value: "gpt-image-2-low", labelKey: "modelGptImage2Low" },
+  {
+    value: "gpt-image-2-low-row",
+    gptImage2Quality: "low",
+    labelKey: "modelGptImage2Low",
+  },
+  {
+    value: "gpt-image-2-medium-row",
+    gptImage2Quality: "medium",
+    labelKey: "modelGptImage2Medium",
+  },
+  {
+    value: "gpt-image-2-high-row",
+    gptImage2Quality: "high",
+    labelKey: "modelGptImage2High",
+  },
   { value: "gemini-3.1-flash-image-preview-512", labelKey: "modelLight05k" },
   { value: "gemini-3.1-flash-image-preview-1024", labelKey: "modelStandard1k" },
   { value: "gemini-3-pro-image-1k", labelKey: "modelPro1k" },
@@ -49,14 +74,20 @@ const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
   { value: "gemini-3-pro-image-4k", labelKey: "modelPro4k" },
 ];
 
-const AVAILABLE_MODEL_OPTIONS = MODEL_OPTIONS.filter((option) =>
-  isModelAvailableForGeneration(option.value)
-);
+function toOptionCanonicalValue(
+  option: ModelOption,
+  currentSizeTier: GptImage2SizeTier
+): GeminiModel {
+  if (option.gptImage2Quality) {
+    return composeGptImage2Model(option.gptImage2Quality, currentSizeTier);
+  }
+  return option.value as GeminiModel;
+}
 
 /**
  * /style と /coordinate で共有するモデル選択 UI。
  *
- * - 全 6 モデルを Select で並べる（コーディネート画面と完全に同じ並び）
+ * - GPT Image 2 の品質 3 行と Gemini 5 行を Select で並べる
  * - `authState='guest'` のとき、`GUEST_ALLOWED_MODELS` 以外には南京錠アイコンを付ける
  * - ロックモデルをクリックしても `value` は変えず、`onLockedClick` を呼ぶ
  *   （AuthModal を開くハンドラを親が渡す）
@@ -68,16 +99,40 @@ const AVAILABLE_MODEL_OPTIONS = MODEL_OPTIONS.filter((option) =>
 export function LockableModelSelect(props: LockableModelSelectProps) {
   const t = useTranslations("coordinate");
   const isGuest = props.authState === "guest";
+  const isModelSelectable = props.isModelSelectable;
 
   // 表示値の clamp: ゲストのまま許可外モデルが渡されたら表示上は既定モデル扱い
-  const displayValue = resolveEffectiveModelForAuthState(
+  const displayModel = resolveEffectiveModelForAuthState(
     props.value,
     props.authState
   );
+  const parsedGptImage2 = parseGptImage2Model(displayModel);
+  const currentSizeTier = parsedGptImage2?.sizeTier ?? "1k";
+  const displayValue = parsedGptImage2
+    ? `gpt-image-2-${parsedGptImage2.quality}-row`
+    : displayModel;
+  const availableModelOptions = useMemo(
+    () =>
+      MODEL_OPTIONS.filter((option) => {
+        const canonical = toOptionCanonicalValue(option, currentSizeTier);
+        return (
+          isModelAvailableForGeneration(canonical) &&
+          (isModelSelectable?.(canonical) ?? true)
+        );
+      }),
+    [currentSizeTier, isModelSelectable]
+  );
 
   const handleValueChange = (next: string) => {
-    const nextModel = next as GeminiModel;
+    const option = availableModelOptions.find((item) => item.value === next);
+    if (!option) {
+      return;
+    }
+    const nextModel = toOptionCanonicalValue(option, currentSizeTier);
     if (!isModelAvailableForGeneration(nextModel)) {
+      return;
+    }
+    if (!(isModelSelectable?.(nextModel) ?? true)) {
       return;
     }
     if (isGuest && !isCanonicalGuestAllowedModel(nextModel)) {
@@ -92,14 +147,15 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
     <Select
       value={displayValue}
       onValueChange={handleValueChange}
-      disabled={props.disabled || AVAILABLE_MODEL_OPTIONS.length <= 1}
+      disabled={props.disabled || availableModelOptions.length <= 1}
     >
       <SelectTrigger className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {AVAILABLE_MODEL_OPTIONS.map((option) => {
-          const isLocked = isGuest && !isCanonicalGuestAllowedModel(option.value);
+        {availableModelOptions.map((option) => {
+          const optionModel = toOptionCanonicalValue(option, currentSizeTier);
+          const isLocked = isGuest && !isCanonicalGuestAllowedModel(optionModel);
           if (isLocked) {
             return (
               <SelectItem

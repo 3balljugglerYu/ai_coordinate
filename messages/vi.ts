@@ -816,7 +816,16 @@ export const viMessages = {
       "Mô hình độ trung thực cao: Nano Banana Pro | 2K (80 Percoin / hình)",
     modelPro4k:
       "Mô hình độ trung thực cao: Nano Banana Pro | 4K (100 Percoin / hình)",
-    modelGptImage2Low: "Mô hình nhẹ: ChatGPT Images 2.0 (10 Percoin / hình)",
+    modelGptImage2Low: "Mô hình nhẹ: ChatGPT Images 2.0 Low (từ 10 Percoins / hình)",
+    modelGptImage2Medium: "Mô hình tiêu chuẩn: ChatGPT Images 2.0 Medium (từ 20 Percoins / hình)",
+    modelGptImage2High: "Mô hình độ trung thực cao: ChatGPT Images 2.0 High (từ 50 Percoins / hình)",
+    gptImage2SizeLabel: "Kích thước đầu ra",
+    gptImage2SizeDescription:
+      "Kích thước thực tế được tự động điều chỉnh theo hướng ảnh. Chi phí Percoin thay đổi theo kích thước đầu ra.",
+    gptImage2Size1k: "Tiêu chuẩn (tương đương 1K)",
+    gptImage2Size2k: "Độ phân giải cao (tương đương 2K)",
+    gptImage2Size4k: "Độ phân giải tối đa (tương đương 4K, beta)",
+    gptImage2SizePricePerImage: "{cost} Percoins / hình",
     // Phase 6: guest UI
     guestResultAlt: "Kết quả xem trước cho khách",
     guestResultTitle: "Kết quả",
@@ -1224,6 +1233,9 @@ export const viMessages = {
     stepBackgroundTitle: "Cài đặt nền",
     stepBackgroundDescription:
       "Chọn ở đây cách xử lý nền. Trong hướng dẫn này, hãy tiếp tục với \"Để AI quyết định\".",
+    stepSizeTitle: "Kiểm tra kích thước đầu ra",
+    stepSizeDescription:
+      "ChatGPT Images 2.0 cho phép bạn chọn kích thước đầu ra. Trong hướng dẫn này, chúng ta sẽ giữ kích thước tiêu chuẩn.",
     stepGenerateTitle: "Bắt đầu tạo",
     stepGenerateDescription:
       "Chọn \"Bắt đầu styling\" để bắt đầu. Percoin của bạn sẽ được hoàn lại sau hướng dẫn, nên bạn có thể tiếp tục an tâm.",

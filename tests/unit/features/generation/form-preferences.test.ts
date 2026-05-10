@@ -11,6 +11,7 @@ import {
   writePreferredBackgroundMode,
   writePreferredModel,
 } from "@/features/generation/lib/form-preferences";
+import { GPT_IMAGE_2_LEGACY_LOW_MODEL } from "@/features/generation/types";
 
 describe("form-preferences", () => {
   beforeEach(() => {
@@ -19,12 +20,42 @@ describe("form-preferences", () => {
 
   describe("readPreferredModel", () => {
     it("returns default when nothing is stored", () => {
-      expect(readPreferredModel()).toBe("gpt-image-2-low");
+      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
     });
 
     it("returns the stored value when it is a known persistable model", () => {
-      window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gpt-image-2-low");
-      expect(readPreferredModel()).toBe("gpt-image-2-low");
+      window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gpt-image-2-low-1k");
+      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+    });
+
+    it("migrates the legacy GPT Image 2 low value to the 1k canonical", () => {
+      window.localStorage.setItem(
+        SELECTED_MODEL_STORAGE_KEY,
+        GPT_IMAGE_2_LEGACY_LOW_MODEL
+      );
+
+      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+      expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
+        "gpt-image-2-low-1k"
+      );
+    });
+
+    it("returns the stored value for each GPT Image 2 size/quality option", () => {
+      const options = [
+        "gpt-image-2-low-1k",
+        "gpt-image-2-low-2k",
+        "gpt-image-2-low-4k",
+        "gpt-image-2-medium-1k",
+        "gpt-image-2-medium-2k",
+        "gpt-image-2-medium-4k",
+        "gpt-image-2-high-1k",
+        "gpt-image-2-high-2k",
+        "gpt-image-2-high-4k",
+      ] as const;
+      for (const value of options) {
+        window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, value);
+        expect(readPreferredModel()).toBe(value);
+      }
     });
 
     it("returns the stored value for each visible Gemini option", () => {
@@ -43,25 +74,25 @@ describe("form-preferences", () => {
 
     it("falls back to default for unknown / legacy / empty values", () => {
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "dall-e-3");
-      expect(readPreferredModel()).toBe("gpt-image-2-low");
+      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
 
       // legacy ID (not in dropdown) も default に丸める
       window.localStorage.setItem(
         SELECTED_MODEL_STORAGE_KEY,
         "gemini-2.5-flash-image",
       );
-      expect(readPreferredModel()).toBe("gpt-image-2-low");
+      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
 
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "");
-      expect(readPreferredModel()).toBe("gpt-image-2-low");
+      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
     });
   });
 
   describe("writePreferredModel", () => {
     it("persists known persistable models", () => {
-      writePreferredModel("gpt-image-2-low");
+      writePreferredModel("gpt-image-2-low-1k");
       expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
-        "gpt-image-2-low",
+        "gpt-image-2-low-1k",
       );
     });
 
@@ -148,7 +179,7 @@ describe("form-preferences", () => {
         throw new Error("QuotaExceededError");
       });
       try {
-        expect(() => writePreferredModel("gpt-image-2-low")).not.toThrow();
+        expect(() => writePreferredModel("gpt-image-2-low-1k")).not.toThrow();
         expect(() => writePreferredBackgroundMode("ai_auto")).not.toThrow();
       } finally {
         window.localStorage.setItem = original;
@@ -163,7 +194,7 @@ describe("form-preferences", () => {
         throw new Error("SecurityError");
       });
       try {
-        expect(readPreferredModel()).toBe("gpt-image-2-low");
+        expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
         expect(readPreferredBackgroundMode()).toBe("keep");
       } finally {
         getItemSpy.mockRestore();
@@ -178,9 +209,9 @@ describe("form-preferences", () => {
       });
 
       try {
-        expect(readPreferredModel()).toBe("gpt-image-2-low");
+        expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
         expect(readPreferredBackgroundMode()).toBe("keep");
-        expect(() => writePreferredModel("gpt-image-2-low")).not.toThrow();
+        expect(() => writePreferredModel("gpt-image-2-low-1k")).not.toThrow();
         expect(() => writePreferredBackgroundMode("ai_auto")).not.toThrow();
       } finally {
         Object.defineProperty(globalThis, "window", {

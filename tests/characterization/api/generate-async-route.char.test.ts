@@ -371,7 +371,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "background_mode": "keep",
           "generation_type": "coordinate",
           "input_image_url": "https://cdn.example.com/temp/uploaded.png",
-          "model": "gpt-image-2-low",
+          "model": "gpt-image-2-low-1k",
           "override_target": null,
           "processing_stage": "queued",
           "prompt_text": "linen jacket",
@@ -427,7 +427,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     );
   });
 
-  test("CHAR-GENERATE-ASYNC-006: gpt-image-2-low job records 10 percoin cost and uses provider model id", async () => {
+  test("CHAR-GENERATE-ASYNC-006: gpt-image-2-low-1k job records 10 percoin cost and uses provider model id", async () => {
     const supabase = createSupabaseMock({
       creditBalance: 30,
       jobResult: {
@@ -444,7 +444,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
         prompt: "monochrome trench coat",
         sourceImageBase64: SAMPLE_SOURCE_IMAGE_BASE64,
         sourceImageMimeType: "image/png",
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
       })
     );
     const body = await readJson(response);
@@ -466,7 +466,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "jobId": "job-openai-001",
           "status": "queued",
         },
-        "insertedModel": "gpt-image-2-low",
+        "insertedModel": "gpt-image-2-low-1k",
         "status": 200,
       }
     `);
@@ -477,7 +477,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     );
   });
 
-  test("CHAR-GENERATE-ASYNC-007: gpt-image-2-low rejects insufficient balance below 10 percoin", async () => {
+  test("CHAR-GENERATE-ASYNC-007: gpt-image-2-low-1k rejects insufficient balance below 10 percoin", async () => {
     const supabase = createSupabaseMock({
       creditBalance: 5,
     });
@@ -490,7 +490,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
         prompt: "monochrome trench coat",
         sourceImageBase64: SAMPLE_SOURCE_IMAGE_BASE64,
         sourceImageMimeType: "image/png",
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
       })
     );
     const body = await readJson(response);

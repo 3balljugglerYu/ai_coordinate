@@ -816,7 +816,16 @@ export const deMessages = {
       "Hochauflösendes Modell: Nano Banana Pro | 2K (80 Percoins / Bild)",
     modelPro4k:
       "Hochauflösendes Modell: Nano Banana Pro | 4K (100 Percoins / Bild)",
-    modelGptImage2Low: "Light-Modell: ChatGPT Images 2.0 (10 Percoins / Bild)",
+    modelGptImage2Low: "Light-Modell: ChatGPT Images 2.0 Low (ab 10 Percoins / Bild)",
+    modelGptImage2Medium: "Standardmodell: ChatGPT Images 2.0 Medium (ab 20 Percoins / Bild)",
+    modelGptImage2High: "Hochauflösendes Modell: ChatGPT Images 2.0 High (ab 50 Percoins / Bild)",
+    gptImage2SizeLabel: "Ausgabegröße",
+    gptImage2SizeDescription:
+      "Die tatsächlichen Abmessungen werden automatisch an die Bildausrichtung angepasst. Die Percoin-Kosten ändern sich je nach Ausgabegröße.",
+    gptImage2Size1k: "Standard (entspricht 1K)",
+    gptImage2Size2k: "Hohe Auflösung (entspricht 2K)",
+    gptImage2Size4k: "Maximale Auflösung (entspricht 4K, Beta)",
+    gptImage2SizePricePerImage: "{cost} Percoins / Bild",
     // Phase 6: guest UI
     guestResultAlt: "Gastvorschau-Ergebnis",
     guestResultTitle: "Ergebnis",
@@ -1224,6 +1233,9 @@ export const deMessages = {
     stepBackgroundTitle: "Hintergrund-Einstellungen",
     stepBackgroundDescription:
       "Wähle hier, wie der Hintergrund behandelt wird. Für dieses Tutorial bleiben wir bei \"KI entscheiden lassen\".",
+    stepSizeTitle: "Ausgabegröße prüfen",
+    stepSizeDescription:
+      "Mit ChatGPT Images 2.0 kannst du die Ausgabegröße wählen. Für dieses Tutorial bleibt die Standardgröße eingestellt.",
     stepGenerateTitle: "Generierung starten",
     stepGenerateDescription:
       "Wähle \"Styling starten\", um zu beginnen. Deine Percoins werden nach dem Tutorial wieder gutgeschrieben.",

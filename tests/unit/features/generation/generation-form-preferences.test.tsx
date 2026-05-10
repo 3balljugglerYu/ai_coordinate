@@ -14,6 +14,7 @@ jest.mock("next-intl", () => ({
 }));
 
 jest.mock("@/components/ui/select", () => ({
+  __esModule: true,
   Select: ({
     value,
     onValueChange,
@@ -41,7 +42,22 @@ jest.mock("@/components/ui/select", () => ({
   }: {
     value: string;
     children: React.ReactNode;
-  }) => <option value={value}>{children}</option>,
+  }) => {
+    const toText = (node: React.ReactNode): string =>
+      React.Children.toArray(node)
+        .map((child) => {
+          if (typeof child === "string" || typeof child === "number") {
+            return String(child);
+          }
+          if (React.isValidElement<{ children?: React.ReactNode }>(child)) {
+            return toText(child.props.children);
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(" ");
+    return <option value={value}>{toText(children)}</option>;
+  },
   SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SelectValue: () => null,
 }));
@@ -137,6 +153,11 @@ jest.mock("@/features/generation/components/GeneratedImagesFromSource", () => ({
 jest.mock("@/features/generation/lib/database", () => ({
   getSourceImageStocks: jest.fn(),
   getStockImageLimit: jest.fn(),
+  getStocksTabUnreadState: jest.fn().mockResolvedValue({
+    hasDot: false,
+    latestStockCreatedAt: null,
+  }),
+  markStocksTabSeen: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("@/features/generation/lib/current-user", () => ({
@@ -151,28 +172,37 @@ jest.mock("@/features/generation/lib/model-config", () => ({
       "gemini-3-pro-image-1k": 50,
       "gemini-3-pro-image-2k": 80,
       "gemini-3-pro-image-4k": 100,
-      "gpt-image-2-low": 10,
+      "gpt-image-2-low-1k": 10,
+      "gpt-image-2-low-2k": 20,
+      "gpt-image-2-low-4k": 40,
+      "gpt-image-2-medium-1k": 20,
+      "gpt-image-2-medium-2k": 50,
+      "gpt-image-2-medium-4k": 80,
+      "gpt-image-2-high-1k": 50,
+      "gpt-image-2-high-2k": 80,
+      "gpt-image-2-high-4k": 130,
     };
     return costs[model ?? ""] ?? 10;
   }),
   isCanonicalGuestAllowedModel: jest.fn((model: string) =>
-    ["gpt-image-2-low", "gemini-3.1-flash-image-preview-512"].includes(model),
+    ["gpt-image-2-low-1k", "gemini-3.1-flash-image-preview-512"].includes(model),
   ),
   isModelAvailableForGeneration: jest.fn((model: string) =>
-    model === "gpt-image-2-low"
+    typeof model === "string" && model.startsWith("gpt-image-2-")
   ),
   resolveEffectiveModelForAuthState: jest.fn(
     (model: string, authState: "guest" | "authenticated") => {
-      if (model !== "gpt-image-2-low") {
-        return "gpt-image-2-low";
+      const isGptImage2 = model.startsWith("gpt-image-2-");
+      if (!isGptImage2) {
+        return "gpt-image-2-low-1k";
       }
       if (
         authState === "guest" &&
-        !["gpt-image-2-low", "gemini-3.1-flash-image-preview-512"].includes(
+        !["gpt-image-2-low-1k", "gemini-3.1-flash-image-preview-512"].includes(
           model,
         )
       ) {
-        return "gpt-image-2-low";
+        return "gpt-image-2-low-1k";
       }
       return model;
     },
@@ -209,6 +239,14 @@ const messages: Record<string, string> = {
   modelPro2k: "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
   modelPro4k: "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
   modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
+  modelGptImage2Medium: "Standard model: ChatGPT Images 2.0 Medium",
+  modelGptImage2High: "High model: ChatGPT Images 2.0 High",
+  gptImage2SizeLabel: "Output size",
+  gptImage2SizeDescription: "Choose the GPT Image 2 output size.",
+  gptImage2Size1k: "1K",
+  gptImage2Size2k: "2K",
+  gptImage2Size4k: "4K",
+  gptImage2SizePricePerImage: "{cost} Percoins / image",
   countLabel: "Count",
   countSingle: "1 image",
   countMultiple: "{count} images",
@@ -248,7 +286,7 @@ describe("GenerationForm persisted preferences", () => {
   });
 
   it("restores persisted model and background mode for submit payloads", async () => {
-    localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gpt-image-2-low");
+    localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gpt-image-2-low-1k");
     localStorage.setItem(BACKGROUND_MODE_STORAGE_KEY, "ai_auto");
     const onSubmit = jest.fn();
 
@@ -269,17 +307,17 @@ describe("GenerationForm persisted preferences", () => {
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         backgroundMode: "ai_auto",
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
       }),
     );
   });
 
-  it("Gemini 停止中はモデル変更を出さず、背景変更だけ保存する", async () => {
+  it("Gemini 停止中も GPT Image 2 品質行は選べる状態で、背景変更だけ保存する", async () => {
     await act(async () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
-    expect(screen.getByTestId("model-select")).toBeDisabled();
+    expect(screen.getAllByTestId("model-select")[0]).not.toBeDisabled();
     fireEvent.click(screen.getByLabelText("Include it in the prompt"));
 
     expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBeNull();

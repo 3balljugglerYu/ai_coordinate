@@ -761,7 +761,7 @@ describe("StylePageClient", () => {
     const [, init] = generateCall!;
     const formData = init?.body as FormData;
 
-    expect(formData.get("model")).toBe("gpt-image-2-low");
+    expect(formData.get("model")).toBe("gpt-image-2-low-1k");
     expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
       "gemini-3-pro-image-4k"
     );

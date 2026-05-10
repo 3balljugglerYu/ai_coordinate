@@ -26,6 +26,11 @@ const PNG_1024x1024_HEADER = (() => {
 
 const PNG_1024x1024_BASE64 = PNG_1024x1024_HEADER.toString("base64");
 
+const DEFAULT_OPENAI_EDIT_PARAMS = {
+  quality: "low" as const,
+  sizeTier: "1k" as const,
+};
+
 function createPngHeader(width: number, height: number): Buffer {
   const buf = Buffer.alloc(24);
   buf.writeUInt32BE(0x89504e47, 0);
@@ -196,6 +201,30 @@ describe("openai-image (Node port)", () => {
         })
       ).toBe("1024x1024");
     });
+
+    test("2k は入力アスペクト比に応じた 16 の倍数サイズを返す", () => {
+      expect(
+        resolveOpenAITargetSize(
+          {
+            base64: createPngHeader(512, 1024).toString("base64"),
+            mimeType: "image/png",
+          },
+          "2k"
+        )
+      ).toBe("1664x2496");
+    });
+
+    test("4k 正方形は pixel budget 内の 2880x2880 にクランプする", () => {
+      expect(
+        resolveOpenAITargetSize(
+          {
+            base64: PNG_1024x1024_BASE64,
+            mimeType: "image/png",
+          },
+          "4k"
+        )
+      ).toBe("2880x2880");
+    });
   });
 
   describe("callOpenAIImageEdit", () => {
@@ -203,6 +232,7 @@ describe("openai-image (Node port)", () => {
       const fetchFn = jest.fn();
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
           timeoutMs: 1000,
@@ -217,6 +247,7 @@ describe("openai-image (Node port)", () => {
       const fetchFn = jest.fn();
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: "AA==", mimeType: "image/gif" },
           timeoutMs: 1000,
@@ -237,6 +268,9 @@ describe("openai-image (Node port)", () => {
         )
       );
       const result = await callOpenAIImageEdit({
+        ...DEFAULT_OPENAI_EDIT_PARAMS,
+        quality: "medium",
+        sizeTier: "4k",
         prompt: "test",
         inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
         timeoutMs: 1000,
@@ -248,6 +282,13 @@ describe("openai-image (Node port)", () => {
         "https://api.openai.com/v1/images/edits",
         expect.objectContaining({ method: "POST" })
       );
+      const requestBody = (
+        fetchFn.mock.calls[0][1] as RequestInit
+      ).body as FormData;
+      expect(requestBody.get("model")).toBe("gpt-image-2");
+      expect(requestBody.get("quality")).toBe("medium");
+      expect(requestBody.get("size")).toBe("2880x2880");
+      expect(requestBody.get("n")).toBe("1");
     });
 
     test("HTTP 400 + content_policy_violation は SAFETY_POLICY_BLOCKED_ERROR で throw", async () => {
@@ -261,6 +302,7 @@ describe("openai-image (Node port)", () => {
       );
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
           timeoutMs: 1000,
@@ -281,6 +323,7 @@ describe("openai-image (Node port)", () => {
       );
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
           timeoutMs: 1000,
@@ -301,6 +344,7 @@ describe("openai-image (Node port)", () => {
       );
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
           timeoutMs: 1000,
@@ -308,6 +352,50 @@ describe("openai-image (Node port)", () => {
           apiKey: "test-key",
         })
       ).rejects.toThrow(new RegExp(OPENAI_PROVIDER_ERROR));
+    });
+
+    test("HTTP 429 rate limit は Retry-After 後に新しい FormData/File で再試行する", async () => {
+      const fetchFn = jest
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              error: { code: "rate_limit_exceeded", message: "slow down" },
+            }),
+            {
+              status: 429,
+              headers: {
+                "Content-Type": "application/json",
+                "Retry-After": "0",
+              },
+            }
+          )
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: [{ b64_json: "RESULT_BASE64" }] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+
+      await expect(
+        callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
+          prompt: "test",
+          inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+          timeoutMs: 1000,
+          fetchFn: fetchFn as unknown as typeof fetch,
+          apiKey: "test-key",
+        })
+      ).resolves.toEqual({ data: "RESULT_BASE64", mimeType: "image/png" });
+
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      const firstBody = (fetchFn.mock.calls[0][1] as RequestInit)
+        .body as FormData;
+      const secondBody = (fetchFn.mock.calls[1][1] as RequestInit)
+        .body as FormData;
+      expect(firstBody).not.toBe(secondBody);
+      expect(firstBody.get("image[]")).not.toBe(secondBody.get("image[]"));
     });
 
     test("HTTP 500 で JSON を読めない場合は status 由来のメッセージを throw", async () => {
@@ -319,6 +407,7 @@ describe("openai-image (Node port)", () => {
       );
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
           timeoutMs: 1000,
@@ -337,6 +426,7 @@ describe("openai-image (Node port)", () => {
       );
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
           timeoutMs: 1000,
@@ -355,6 +445,7 @@ describe("openai-image (Node port)", () => {
       );
       await expect(
         callOpenAIImageEdit({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
           prompt: "test",
           inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
           timeoutMs: 1000,

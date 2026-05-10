@@ -816,7 +816,16 @@ export const zhCnMessages = {
       "高保真模型: Nano Banana Pro | 2K (80 Percoin / 张)",
     modelPro4k:
       "高保真模型: Nano Banana Pro | 4K (100 Percoin / 张)",
-    modelGptImage2Low: "轻量模型: ChatGPT Images 2.0 (10 Percoin / 张)",
+    modelGptImage2Low: "轻量模型: ChatGPT Images 2.0 Low（10 Percoins / 张起）",
+    modelGptImage2Medium: "标准模型: ChatGPT Images 2.0 Medium（20 Percoins / 张起）",
+    modelGptImage2High: "高保真模型: ChatGPT Images 2.0 High（50 Percoins / 张起）",
+    gptImage2SizeLabel: "输出尺寸",
+    gptImage2SizeDescription:
+      "实际尺寸会根据图片方向自动调整。Percoin 消耗会随输出尺寸变化。",
+    gptImage2Size1k: "标准（约 1K）",
+    gptImage2Size2k: "高分辨率（约 2K）",
+    gptImage2Size4k: "最高分辨率（约 4K，测试版）",
+    gptImage2SizePricePerImage: "{cost} Percoins / 张",
     // Phase 6: guest UI
     guestResultAlt: "访客预览结果",
     guestResultTitle: "结果",
@@ -1224,6 +1233,9 @@ export const zhCnMessages = {
     stepBackgroundTitle: "背景设置",
     stepBackgroundDescription:
       "在这里选择如何处理背景。本教程将使用 “交给 AI 处理” 继续。",
+    stepSizeTitle: "确认输出尺寸",
+    stepSizeDescription:
+      "ChatGPT Images 2.0 可以选择输出尺寸。本教程将保持标准尺寸。",
     stepGenerateTitle: "开始生成",
     stepGenerateDescription:
       "选择 “开始造型” 即可开始。教程结束后将退还使用的 Percoin，请放心继续。",

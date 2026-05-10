@@ -16,7 +16,7 @@ jest.mock("@/features/generation/lib/model-config", () => {
     "gemini-3-pro-image-1k",
     "gemini-3-pro-image-2k",
     "gemini-3-pro-image-4k",
-    "gpt-image-2-low",
+    "gpt-image-2-low-1k",
   ];
 
   return {
@@ -186,7 +186,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         source_image_stock_id: VALID_SOURCE_IMAGE_STOCK_ID,
         source_image_type: "illustration",
         generation_type: "coordinate",
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         background_mode: "keep",
         status: "queued",
         processing_stage: "queued",
@@ -241,7 +241,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       const request = createRequest({
         prompt: "linen jacket",
         sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         count: 4,
       });
 
@@ -265,7 +265,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
       expect(jobRepository.createImageJob).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: "gpt-image-2-low",
+          model: "gpt-image-2-low-1k",
           requested_image_count: 4,
         })
       );

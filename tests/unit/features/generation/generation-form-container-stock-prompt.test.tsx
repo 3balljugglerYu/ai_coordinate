@@ -49,7 +49,7 @@ jest.mock("@/features/generation/components/GenerationForm", () => ({
       sourceImageType: "illustration";
       backgroundMode: "keep";
       count: number;
-      model: "gpt-image-2-low";
+      model: "gpt-image-2-low-1k";
       generationType: "coordinate";
     }) => void;
     isGenerating: boolean;
@@ -65,7 +65,7 @@ jest.mock("@/features/generation/components/GenerationForm", () => ({
           sourceImageType: "illustration",
           backgroundMode: "keep",
           count: 1,
-          model: "gpt-image-2-low",
+          model: "gpt-image-2-low-1k",
           generationType: "coordinate",
         });
       }}
@@ -146,12 +146,12 @@ jest.mock("@/features/credits/lib/urls", () => ({
 jest.mock("@/features/generation/lib/model-config", () => ({
   getPercoinCost: jest.fn(() => 10),
   isCanonicalGuestAllowedModel: jest.fn((model?: string | null) =>
-    model === "gpt-image-2-low"
+    model === "gpt-image-2-low-1k"
   ),
   isModelAvailableForGeneration: jest.fn((model?: string | null) =>
-    model === "gpt-image-2-low"
+    model === "gpt-image-2-low-1k"
   ),
-  resolveEffectiveModelForAuthState: jest.fn(() => "gpt-image-2-low"),
+  resolveEffectiveModelForAuthState: jest.fn(() => "gpt-image-2-low-1k"),
 }));
 
 jest.mock("@/features/generation/lib/coordinate-guest-api", () => ({
@@ -417,7 +417,7 @@ describe("GenerationFormContainer stock prompt timer", () => {
       expect.objectContaining({
         prompt: "blue jacket",
         generationType: "coordinate",
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
       })
     );
     expect(generateImageAsyncMock).not.toHaveBeenCalled();

@@ -1,0 +1,158 @@
+/** @jest-environment jsdom */
+
+import { useTranslations } from "next-intl";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
+
+jest.mock("next-intl", () => ({
+  useTranslations: jest.fn(),
+}));
+
+jest.mock("@/components/ui/select", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  const SelectContext = React.createContext<{
+    onValueChange?: (value: string) => void;
+  }>({});
+
+  return {
+    Select: ({
+      onValueChange,
+      children,
+    }: {
+      onValueChange?: (value: string) => void;
+      children: React.ReactNode;
+    }) => (
+      <SelectContext.Provider value={{ onValueChange }}>
+        <div>{children}</div>
+      </SelectContext.Provider>
+    ),
+    SelectContent: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    SelectItem: ({
+      value,
+      children,
+    }: {
+      value: string;
+      children: React.ReactNode;
+    }) => {
+      const context = React.useContext(SelectContext);
+      return (
+        <button type="button" onClick={() => context.onValueChange?.(value)}>
+          {children}
+        </button>
+      );
+    },
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+      <button type="button">{children}</button>
+    ),
+    SelectValue: () => <span data-testid="select-value" />,
+  };
+});
+
+const useTranslationsMock = useTranslations as jest.MockedFunction<
+  typeof useTranslations
+>;
+
+const labels: Record<string, string> = {
+  gptImage2SizeLabel: "Output size",
+  gptImage2SizeDescription: "Choose the GPT Image 2 output size.",
+  gptImage2Size1k: "1K",
+  gptImage2Size2k: "2K",
+  gptImage2Size4k: "4K",
+  gptImage2SizePricePerImage: "{cost} Percoins / image",
+};
+
+beforeEach(() => {
+  useTranslationsMock.mockImplementation(() => {
+    return ((key: string, values?: Record<string, unknown>) => {
+      const template = labels[key] ?? key;
+      return template.replace("{cost}", String(values?.cost ?? "{cost}"));
+    }) as ReturnType<typeof useTranslations>;
+  });
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+});
+
+describe("GptImage2SizeSelector", () => {
+  test("GPT Image 2 以外では表示しない", () => {
+    const { container } = render(
+      <GptImage2SizeSelector
+        value="gemini-3-pro-image-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  test("authenticated は quality を保持したまま size tier を合成する", () => {
+    const onChange = jest.fn();
+    render(
+      <GptImage2SizeSelector
+        value="gpt-image-2-medium-1k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /4K/ }));
+
+    expect(onChange).toHaveBeenCalledWith("gpt-image-2-medium-4k");
+  });
+
+  test("size tier ごとの percoin cost を表示する", () => {
+    render(
+      <GptImage2SizeSelector
+        value="gpt-image-2-high-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /1K.*50 Percoins/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2K.*80 Percoins/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /4K.*130 Percoins/ })).toBeInTheDocument();
+  });
+
+  test("guest が 1k 以外を選ぶと変更せずロック導線を呼ぶ", () => {
+    const onChange = jest.fn();
+    const onLockedClick = jest.fn();
+    render(
+      <GptImage2SizeSelector
+        value="gpt-image-2-low-1k"
+        authState="guest"
+        onChange={onChange}
+        onLockedClick={onLockedClick}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /2K/ }));
+
+    expect(onLockedClick).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test("追加の許可判定で不許可の size tier は変更しない", () => {
+    const onChange = jest.fn();
+    render(
+      <GptImage2SizeSelector
+        value="gpt-image-2-high-1k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={jest.fn()}
+        isModelSelectable={(model) => model !== "gpt-image-2-high-4k"}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /4K/ }));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

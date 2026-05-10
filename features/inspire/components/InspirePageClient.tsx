@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
+import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
+import { isInspireAllowedModel } from "@/features/generation/lib/model-config";
 import {
   DEFAULT_GENERATION_MODEL,
   type GeminiModel,
@@ -262,8 +264,19 @@ export function InspirePageClient({
                 }}
                 authState="authenticated"
                 disabled={submitting}
+                isModelSelectable={isInspireAllowedModel}
               />
             </div>
+            <GptImage2SizeSelector
+              value={selectedModel}
+              onChange={setSelectedModel}
+              onLockedClick={() => {
+                /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
+              }}
+              authState="authenticated"
+              disabled={submitting}
+              isModelSelectable={isInspireAllowedModel}
+            />
             <div className="space-y-3">
               <p className="text-base font-medium">{copy.formCountLabel}</p>
               <CountSelector

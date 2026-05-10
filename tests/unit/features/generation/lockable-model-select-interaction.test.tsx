@@ -56,7 +56,9 @@ const useTranslationsMock = useTranslations as jest.MockedFunction<
 
 const labels: Record<string, string> = {
   modelLight05k: "Nano Banana 2 0.5K",
-  modelGptImage2Low: "ChatGPT Images 2.0",
+  modelGptImage2Low: "ChatGPT Images 2.0 Low",
+  modelGptImage2Medium: "ChatGPT Images 2.0 Medium",
+  modelGptImage2High: "ChatGPT Images 2.0 High",
   modelStandard1k: "Nano Banana 2 1K",
   modelPro1k: "Nano Banana Pro 1K",
   modelPro2k: "Nano Banana Pro 2K",
@@ -76,10 +78,10 @@ afterEach(() => {
 });
 
 describe("LockableModelSelect interactions", () => {
-  test("Gemini 停止中は Gemini 系モデルを表示しない", () => {
+  test("Gemini 停止中は OpenAI 品質行のみ表示し、Gemini 系モデルを表示しない", () => {
     render(
       <LockableModelSelect
-        value="gpt-image-2-low"
+        value="gpt-image-2-low-1k"
         authState="guest"
         onChange={jest.fn()}
         onLockedClick={jest.fn()}
@@ -90,16 +92,22 @@ describe("LockableModelSelect interactions", () => {
       screen.queryByRole("button", { name: /Nano Banana/ })
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "ChatGPT Images 2.0" })
+      screen.getByRole("button", { name: "ChatGPT Images 2.0 Low" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ChatGPT Images 2.0 Medium" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ChatGPT Images 2.0 High" })
     ).toBeInTheDocument();
   });
 
-  test("Gemini 停止中はゲストのロッククリック導線を出さない", () => {
+  test("Gemini 停止中でもゲストの高品質 OpenAI 行はロッククリック導線になる", () => {
     const onChange = jest.fn();
     const onLockedClick = jest.fn();
     render(
       <LockableModelSelect
-        value="gpt-image-2-low"
+        value="gpt-image-2-low-1k"
         authState="guest"
         onChange={onChange}
         onLockedClick={onLockedClick}
@@ -110,7 +118,11 @@ describe("LockableModelSelect interactions", () => {
       screen.queryByRole("button", { name: /Nano Banana Pro 1K/ })
     ).not.toBeInTheDocument();
 
-    expect(onLockedClick).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: /ChatGPT Images 2.0 Medium/ })
+    );
+
+    expect(onLockedClick).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -119,16 +131,52 @@ describe("LockableModelSelect interactions", () => {
     const onLockedClick = jest.fn();
     render(
       <LockableModelSelect
-        value="gpt-image-2-low"
+        value="gpt-image-2-low-1k"
         authState="guest"
         onChange={onChange}
         onLockedClick={onLockedClick}
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "ChatGPT Images 2.0" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "ChatGPT Images 2.0 Low" })
+    );
 
-    expect(onChange).toHaveBeenCalledWith("gpt-image-2-low");
+    expect(onChange).toHaveBeenCalledWith("gpt-image-2-low-1k");
     expect(onLockedClick).not.toHaveBeenCalled();
+  });
+
+  test("authenticated が品質を変えると現在の size tier を保持する", () => {
+    const onChange = jest.fn();
+    render(
+      <LockableModelSelect
+        value="gpt-image-2-low-4k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "ChatGPT Images 2.0 High" })
+    );
+
+    expect(onChange).toHaveBeenCalledWith("gpt-image-2-high-4k");
+  });
+
+  test("追加の許可判定で不許可の品質行を表示しない", () => {
+    render(
+      <LockableModelSelect
+        value="gpt-image-2-low-4k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+        isModelSelectable={(model) => model !== "gpt-image-2-high-4k"}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "ChatGPT Images 2.0 High" })
+    ).not.toBeInTheDocument();
   });
 });

@@ -31,6 +31,13 @@ import {
   getOneTapStyleReservedAttemptId,
 } from "../../../shared/generation/one-tap-style-metadata.ts";
 import {
+  GPT_IMAGE_2_PERCOIN_COSTS,
+  isGptImage2CanonicalModel,
+  normalizeLegacyGptImage2Model,
+  parseGptImage2Model,
+} from "../../../shared/generation/openai-image-model.ts";
+import type { GptImage2CanonicalModel } from "../../../shared/generation/openai-image-model.ts";
+import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
 } from "./openai-image.ts";
@@ -419,12 +426,13 @@ type GeminiModel =
   | "gemini-3-pro-image-1k"
   | "gemini-3-pro-image-2k"
   | "gemini-3-pro-image-4k"
-  | "gpt-image-2-low";
+  | GptImage2CanonicalModel;
 type GeminiApiModel =
   | "gemini-2.5-flash-image"
   | "gemini-3.1-flash-image-preview"
   | "gemini-3-pro-image-preview";
 type GeminiImageSize = "512" | "1K" | "2K" | "4K";
+const WORKER_UNKNOWN_MODEL_FALLBACK: GeminiModel = "gemini-2.5-flash-image";
 
 /**
  * モデル ID が OpenAI 系 (gpt-image-*) かを判定
@@ -473,10 +481,14 @@ interface GeminiResponse {
  */
 function normalizeModelName(model: string | null): GeminiModel {
   if (!model) {
-    return "gemini-2.5-flash-image";
+    return WORKER_UNKNOWN_MODEL_FALLBACK;
+  }
+  const normalizedGptImage2 = normalizeLegacyGptImage2Model(model);
+  if (isGptImage2CanonicalModel(normalizedGptImage2)) {
+    return normalizedGptImage2;
   }
   if (model === "gemini-2.5-flash-image-preview" || model === "gemini-2.5-flash-image") {
-    return "gemini-2.5-flash-image";
+    return "gemini-3.1-flash-image-preview-512";
   }
   if (model === "gemini-3.1-flash-image-preview") {
     return "gemini-3.1-flash-image-preview-512";
@@ -493,10 +505,8 @@ function normalizeModelName(model: string | null): GeminiModel {
   if (model === "gemini-3-pro-image-1k" || model === "gemini-3-pro-image-2k" || model === "gemini-3-pro-image-4k") {
     return model as GeminiModel;
   }
-  if (model === "gpt-image-2-low") {
-    return model as GeminiModel;
-  }
-  return "gemini-2.5-flash-image";
+  console.warn("[image-gen-worker] unknown model received:", model);
+  return WORKER_UNKNOWN_MODEL_FALLBACK;
 }
 
 /**
@@ -536,7 +546,7 @@ function getPercoinCost(model: string | null): number {
     'gemini-3-pro-image-1k': 50,
     'gemini-3-pro-image-2k': 80,
     'gemini-3-pro-image-4k': 100,
-    'gpt-image-2-low': 10,
+    ...GPT_IMAGE_2_PERCOIN_COSTS,
   };
   return costs[normalized] ?? 20;
 }
@@ -1705,6 +1715,10 @@ Deno.serve(async () => {
                 const isInspireOpenAI =
                   job.generation_type === "inspire" &&
                   resolvedInspireTemplateImage !== null;
+                const gptImage2 = parseGptImage2Model(dbModel);
+                if (!gptImage2) {
+                  throw new Error(`Invalid GPT Image 2 model: ${dbModel}`);
+                }
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
@@ -1729,12 +1743,16 @@ Deno.serve(async () => {
                             // 出力フレームはテンプレ（image_1）の比率に合わせる（ADR-006）
                             targetSizeBaseIndex: 1,
                             timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            quality: gptImage2.quality,
+                            sizeTier: gptImage2.sizeTier,
                             n: requestedImageCount,
                           })
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,
                             inputImage: openAIInputImage,
                             timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            quality: gptImage2.quality,
+                            sizeTier: gptImage2.sizeTier,
                             n: requestedImageCount,
                           }),
                     { attempt: 1 }

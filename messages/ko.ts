@@ -816,7 +816,16 @@ export const koMessages = {
       "고화질 모델: Nano Banana Pro | 2K (80 Percoin / 장)",
     modelPro4k:
       "고화질 모델: Nano Banana Pro | 4K (100 Percoin / 장)",
-    modelGptImage2Low: "라이트 모델: ChatGPT Images 2.0 (10 Percoin / 장)",
+    modelGptImage2Low: "라이트 모델: ChatGPT Images 2.0 Low (10 Percoins / 장부터)",
+    modelGptImage2Medium: "표준 모델: ChatGPT Images 2.0 Medium (20 Percoins / 장부터)",
+    modelGptImage2High: "고정밀 모델: ChatGPT Images 2.0 High (50 Percoins / 장부터)",
+    gptImage2SizeLabel: "출력 크기",
+    gptImage2SizeDescription:
+      "실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다. 출력 크기에 따라 Percoin 비용이 달라집니다.",
+    gptImage2Size1k: "표준 (1K 상당)",
+    gptImage2Size2k: "고해상도 (2K 상당)",
+    gptImage2Size4k: "최대 해상도 (4K 상당, 베타)",
+    gptImage2SizePricePerImage: "{cost} Percoins / 장",
     // Phase 6: guest UI
     guestResultAlt: "게스트 미리보기 결과",
     guestResultTitle: "결과",
@@ -1224,6 +1233,9 @@ export const koMessages = {
     stepBackgroundTitle: "배경 설정",
     stepBackgroundDescription:
       "여기서 배경 처리 방식을 선택할 수 있습니다. 이 튜토리얼에서는 “AI에게 맡기기”로 진행합니다.",
+    stepSizeTitle: "출력 크기 확인",
+    stepSizeDescription:
+      "ChatGPT Images 2.0에서는 출력 크기를 선택할 수 있습니다. 이 튜토리얼에서는 표준 크기를 유지합니다.",
     stepGenerateTitle: "생성 시작",
     stepGenerateDescription:
       "“스타일링 시작”을 선택해 시작해 주세요. 튜토리얼이 끝나면 사용한 Percoin은 돌려드리니 안심하고 진행하셔도 됩니다.",

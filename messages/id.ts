@@ -816,7 +816,16 @@ export const idMessages = {
       "Model fidelitas tinggi: Nano Banana Pro | 2K (80 Percoin / gambar)",
     modelPro4k:
       "Model fidelitas tinggi: Nano Banana Pro | 4K (100 Percoin / gambar)",
-    modelGptImage2Low: "Model ringan: ChatGPT Images 2.0 (10 Percoin / gambar)",
+    modelGptImage2Low: "Model ringan: ChatGPT Images 2.0 Low (mulai 10 Percoins / gambar)",
+    modelGptImage2Medium: "Model standar: ChatGPT Images 2.0 Medium (mulai 20 Percoins / gambar)",
+    modelGptImage2High: "Model fidelitas tinggi: ChatGPT Images 2.0 High (mulai 50 Percoins / gambar)",
+    gptImage2SizeLabel: "Ukuran output",
+    gptImage2SizeDescription:
+      "Dimensi sebenarnya disesuaikan otomatis dengan orientasi gambar. Biaya Percoin berubah sesuai ukuran output.",
+    gptImage2Size1k: "Standar (setara 1K)",
+    gptImage2Size2k: "Resolusi tinggi (setara 2K)",
+    gptImage2Size4k: "Resolusi maksimum (setara 4K, beta)",
+    gptImage2SizePricePerImage: "{cost} Percoins / gambar",
     // Phase 6: guest UI
     guestResultAlt: "Hasil pratinjau tamu",
     guestResultTitle: "Hasil",
@@ -1224,6 +1233,9 @@ export const idMessages = {
     stepBackgroundTitle: "Pengaturan latar belakang",
     stepBackgroundDescription:
       "Pilih di sini cara menangani latar belakang. Untuk tutorial ini, lanjut dengan \"Biarkan AI memutuskan\".",
+    stepSizeTitle: "Periksa ukuran output",
+    stepSizeDescription:
+      "ChatGPT Images 2.0 memungkinkan Anda memilih ukuran output. Untuk tutorial ini, kita akan tetap memakai ukuran standar.",
     stepGenerateTitle: "Mulai pembuatan",
     stepGenerateDescription:
       "Pilih \"Mulai styling\" untuk memulai. Percoinmu akan dikembalikan setelah tutorial, jadi tenang saja lanjutkan.",

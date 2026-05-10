@@ -2,7 +2,7 @@
 
 jest.mock("@/features/generation/lib/model-config", () => {
   const guestAllowedModels = [
-    "gpt-image-2-low",
+    "gpt-image-2-low-1k",
     "gemini-3.1-flash-image-preview-512",
   ];
 
@@ -17,7 +17,7 @@ jest.mock("@/features/generation/lib/model-config", () => {
       guestAllowedModels.includes(model ?? "")
     ),
     parseGuestRequestedModel: jest.fn((raw?: string | null) => {
-      if (raw === "gpt-image-2-low") return "gpt-image-2-low";
+      if (raw === "gpt-image-2-low-1k") return "gpt-image-2-low-1k";
       if (
         raw === "gemini-3.1-flash-image-preview-512" ||
         raw === "gemini-3.1-flash-image-preview" ||
@@ -397,7 +397,7 @@ describe("StyleGenerateRoute integration tests", () => {
     }) as jest.MockedFunction<StyleOpenAIClient>;
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
-    formData.set("model", "gpt-image-2-low");
+    formData.set("model", "gpt-image-2-low-1k");
     formData.set("uploadImage", createUploadImage());
 
     const response = await postStyleGenerateRoute(createRequest(formData), {

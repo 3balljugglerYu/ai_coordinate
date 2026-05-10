@@ -159,6 +159,8 @@ export function TutorialTourProvider() {
       promptDescription: t("stepPromptDescription"),
       backgroundTitle: t("stepBackgroundTitle"),
       backgroundDescription: t("stepBackgroundDescription"),
+      sizeTitle: t("stepSizeTitle"),
+      sizeDescription: t("stepSizeDescription"),
       generateTitle: t("stepGenerateTitle"),
       generateDescription: t("stepGenerateDescription"),
       generatingTitle: t("stepGeneratingTitle"),
@@ -234,6 +236,8 @@ export function TutorialTourProvider() {
       promptDescription: t("stepPromptDescription"),
       backgroundTitle: t("stepBackgroundTitle"),
       backgroundDescription: t("stepBackgroundDescription"),
+      sizeTitle: t("stepSizeTitle"),
+      sizeDescription: t("stepSizeDescription"),
       generateTitle: t("stepGenerateTitle"),
       generateDescription: t("stepGenerateDescription"),
       generatingTitle: t("stepGeneratingTitle"),
@@ -257,11 +261,17 @@ export function TutorialTourProvider() {
         return;
       }
 
+      document.dispatchEvent(
+        new CustomEvent("tutorial:set-gpt-image-2-default-model", {
+          bubbles: true,
+        })
+      );
+
       const baseSteps = [...tourSteps];
       const lastIndex = baseSteps.length - 1;
 
-      // 生成開始（index 4）までは中断可能
-      const INTERRUPTIBLE_UNTIL_INDEX = 4;
+      // 生成開始（index 5）までは中断可能
+      const INTERRUPTIBLE_UNTIL_INDEX = 5;
 
       // ③画像アップロード説明のステップでデモ画像を自動セット
       // ④着せ替え内容入力のステップでプロンプトを自動セット（日本時間の現在月を基準）
@@ -358,7 +368,7 @@ export function TutorialTourProvider() {
             },
           };
         }
-        if (idx === 7) {
+        if (idx === 8) {
           return {
             ...mergedStep,
             onHighlighted: (element: Element | undefined) => {
@@ -447,9 +457,9 @@ export function TutorialTourProvider() {
           runTransitionFlow(d, prevIndex, () => d.movePrevious());
         },
         onHighlighted: (element) => {
-          // Step11以外では投稿/ダウンロード無効化を解除
+          // 生成結果ハイライト以外では投稿/ダウンロード無効化を解除
           const idx = driverRef.current?.getActiveIndex();
-          if (idx !== 7) {
+          if (idx !== 8) {
             document.body.removeAttribute("data-tour-step-first-image");
             document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
           }

@@ -816,7 +816,16 @@ export const arMessages = {
       "نموذج عالي الدقة: Nano Banana Pro | 2K (80 Percoin / صورة)",
     modelPro4k:
       "نموذج عالي الدقة: Nano Banana Pro | 4K (100 Percoin / صورة)",
-    modelGptImage2Low: "نموذج خفيف: ChatGPT Images 2.0 (10 Percoin / صورة)",
+    modelGptImage2Low: "نموذج خفيف: ChatGPT Images 2.0 Low (ابتداءً من 10 Percoins / صورة)",
+    modelGptImage2Medium: "نموذج قياسي: ChatGPT Images 2.0 Medium (ابتداءً من 20 Percoins / صورة)",
+    modelGptImage2High: "نموذج عالي الدقة: ChatGPT Images 2.0 High (ابتداءً من 50 Percoins / صورة)",
+    gptImage2SizeLabel: "حجم الإخراج",
+    gptImage2SizeDescription:
+      "تُضبط الأبعاد الفعلية تلقائيًا حسب اتجاه الصورة. تختلف تكلفة Percoin حسب حجم الإخراج.",
+    gptImage2Size1k: "قياسي (يعادل 1K)",
+    gptImage2Size2k: "دقة عالية (يعادل 2K)",
+    gptImage2Size4k: "أعلى دقة (يعادل 4K، تجريبي)",
+    gptImage2SizePricePerImage: "{cost} Percoins / صورة",
     // Phase 6: guest UI
     guestResultAlt: "نتيجة معاينة الضيف",
     guestResultTitle: "النتيجة",
@@ -1224,6 +1233,9 @@ export const arMessages = {
     stepBackgroundTitle: "إعدادات الخلفية",
     stepBackgroundDescription:
       "اختر هنا كيفية التعامل مع الخلفية. لهذا الدليل، لنتابع بـ \"اترك الأمر للذكاء الاصطناعي\".",
+    stepSizeTitle: "تحقق من حجم الإخراج",
+    stepSizeDescription:
+      "يتيح لك ChatGPT Images 2.0 اختيار حجم الإخراج. سنبقي الحجم القياسي في هذا الدليل.",
     stepGenerateTitle: "بدء التوليد",
     stepGenerateDescription:
       "اختر \"بدء التنسيق\" للبدء. ستُعاد لك Percoin بعد الدليل، فلا تتردد في المتابعة.",

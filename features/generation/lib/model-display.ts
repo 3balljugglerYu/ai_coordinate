@@ -41,8 +41,44 @@ export interface ModelDisplayInfo {
 
 const MODEL_LIST_DISPLAY_MAP: Record<string, ModelDisplayInfo> = {
   "gpt-image-2-low": {
-    displayName: "ChatGPT Images 2.0",
+    displayName: "ChatGPT Images 2.0 | Low 1K",
     defaultSize: { width: 1024, height: 1024 },
+  },
+  "gpt-image-2-low-1k": {
+    displayName: "ChatGPT Images 2.0 | Low 1K",
+    defaultSize: { width: 1024, height: 1024 },
+  },
+  "gpt-image-2-low-2k": {
+    displayName: "ChatGPT Images 2.0 | Low 2K",
+    defaultSize: { width: 2048, height: 2048 },
+  },
+  "gpt-image-2-low-4k": {
+    displayName: "ChatGPT Images 2.0 | Low 4K",
+    defaultSize: { width: 2880, height: 2880 },
+  },
+  "gpt-image-2-medium-1k": {
+    displayName: "ChatGPT Images 2.0 | Medium 1K",
+    defaultSize: { width: 1024, height: 1024 },
+  },
+  "gpt-image-2-medium-2k": {
+    displayName: "ChatGPT Images 2.0 | Medium 2K",
+    defaultSize: { width: 2048, height: 2048 },
+  },
+  "gpt-image-2-medium-4k": {
+    displayName: "ChatGPT Images 2.0 | Medium 4K",
+    defaultSize: { width: 2880, height: 2880 },
+  },
+  "gpt-image-2-high-1k": {
+    displayName: "ChatGPT Images 2.0 | High 1K",
+    defaultSize: { width: 1024, height: 1024 },
+  },
+  "gpt-image-2-high-2k": {
+    displayName: "ChatGPT Images 2.0 | High 2K",
+    defaultSize: { width: 2048, height: 2048 },
+  },
+  "gpt-image-2-high-4k": {
+    displayName: "ChatGPT Images 2.0 | High 4K",
+    defaultSize: { width: 2880, height: 2880 },
   },
   "gemini-2.5-flash-image": {
     displayName: "Nano Banana 2",

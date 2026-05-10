@@ -9,6 +9,7 @@ import {
   normalizeModelName,
   type GeminiModel,
 } from "../types";
+import { GPT_IMAGE_2_PERCOIN_COSTS } from "@/shared/generation/openai-image-model";
 
 export { DEFAULT_GENERATION_MODEL };
 
@@ -48,7 +49,7 @@ export const MODEL_PERCOIN_COSTS = {
   'gemini-3-pro-image-1k': 50,
   'gemini-3-pro-image-2k': 80,
   'gemini-3-pro-image-4k': 100,
-  'gpt-image-2-low': 10,
+  ...GPT_IMAGE_2_PERCOIN_COSTS,
 } as const;
 
 /**
@@ -59,7 +60,7 @@ export const MODEL_PERCOIN_COSTS = {
  * クライアントから受け取った生の入力に対しては `parseGuestRequestedModel()` を使うこと。
  */
 const BASE_GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
-  'gpt-image-2-low',
+  'gpt-image-2-low-1k',
   'gemini-3.1-flash-image-preview-512',
 ];
 
@@ -138,7 +139,14 @@ const BASE_INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   'gemini-3-pro-image-1k',
   'gemini-3-pro-image-2k',
   'gemini-3-pro-image-4k',
-  'gpt-image-2-low',
+  'gpt-image-2-low-1k',
+  'gpt-image-2-low-2k',
+  'gpt-image-2-low-4k',
+  'gpt-image-2-medium-1k',
+  'gpt-image-2-medium-2k',
+  'gpt-image-2-medium-4k',
+  // High の 2k/4k は利用コストが重いため、inspire では当面 high-1k に限定する。
+  'gpt-image-2-high-1k',
 ];
 
 export const INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> =
@@ -149,7 +157,7 @@ export const INSPIRE_ALLOWED_MODELS: ReadonlyArray<GeminiModel> =
  * 申請者は同期 API でこの 2 モデルから 2 枚を並列生成し、結果を見てから申請を確定する。
  */
 const BASE_INSPIRE_PREVIEW_MODELS: ReadonlyArray<GeminiModel> = [
-  'gpt-image-2-low',
+  'gpt-image-2-low-1k',
   'gemini-3.1-flash-image-preview-512',
 ];
 

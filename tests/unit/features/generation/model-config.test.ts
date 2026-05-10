@@ -13,8 +13,16 @@ import {
 
 describe("model-config / model identification helpers", () => {
   describe("getPercoinCost", () => {
-    it("returns 10 for gpt-image-2-low", () => {
-      expect(getPercoinCost("gpt-image-2-low")).toBe(10);
+    it("returns the GPT Image 2 percoin matrix", () => {
+      expect(getPercoinCost("gpt-image-2-low-1k")).toBe(10);
+      expect(getPercoinCost("gpt-image-2-low-2k")).toBe(20);
+      expect(getPercoinCost("gpt-image-2-low-4k")).toBe(40);
+      expect(getPercoinCost("gpt-image-2-medium-1k")).toBe(20);
+      expect(getPercoinCost("gpt-image-2-medium-2k")).toBe(50);
+      expect(getPercoinCost("gpt-image-2-medium-4k")).toBe(80);
+      expect(getPercoinCost("gpt-image-2-high-1k")).toBe(50);
+      expect(getPercoinCost("gpt-image-2-high-2k")).toBe(80);
+      expect(getPercoinCost("gpt-image-2-high-4k")).toBe(130);
     });
 
     it("keeps existing Gemini cost mapping intact", () => {
@@ -24,8 +32,12 @@ describe("model-config / model identification helpers", () => {
   });
 
   describe("normalizeModelName", () => {
-    it("passes gpt-image-2-low through unchanged", () => {
-      expect(normalizeModelName("gpt-image-2-low")).toBe("gpt-image-2-low");
+    it("passes gpt-image-2-low-1k through unchanged", () => {
+      expect(normalizeModelName("gpt-image-2-low-1k")).toBe("gpt-image-2-low-1k");
+    });
+
+    it("normalizes the legacy GPT Image 2 low id to the 1k canonical", () => {
+      expect(normalizeModelName("gpt-image-2-low")).toBe("gpt-image-2-low-1k");
     });
 
     it("still normalizes legacy Gemini ids", () => {
@@ -37,7 +49,7 @@ describe("model-config / model identification helpers", () => {
 
   describe("isOpenAIImageModel", () => {
     it("recognizes OpenAI gpt-image-* models", () => {
-      expect(isOpenAIImageModel("gpt-image-2-low")).toBe(true);
+      expect(isOpenAIImageModel("gpt-image-2-low-1k")).toBe(true);
     });
 
     it("returns false for Gemini models", () => {
@@ -56,11 +68,11 @@ describe("model-config / model identification helpers", () => {
 
   describe("GUEST_ALLOWED_MODELS / isCanonicalGuestAllowedModel", () => {
     it("Gemini 停止中は ChatGPT Image 2.0 のみ", () => {
-      expect(GUEST_ALLOWED_MODELS).toEqual(["gpt-image-2-low"]);
+      expect(GUEST_ALLOWED_MODELS).toEqual(["gpt-image-2-low-1k"]);
     });
 
     it("canonical な許可モデルだけ true", () => {
-      expect(isCanonicalGuestAllowedModel("gpt-image-2-low")).toBe(true);
+      expect(isCanonicalGuestAllowedModel("gpt-image-2-low-1k")).toBe(true);
       expect(
         isCanonicalGuestAllowedModel("gemini-3.1-flash-image-preview-512")
       ).toBe(false);
@@ -86,10 +98,16 @@ describe("model-config / model identification helpers", () => {
 
   describe("parseGuestRequestedModel", () => {
     it("canonical な許可モデルはそのまま返す", () => {
-      expect(parseGuestRequestedModel("gpt-image-2-low")).toBe("gpt-image-2-low");
+      expect(parseGuestRequestedModel("gpt-image-2-low-1k")).toBe("gpt-image-2-low-1k");
       expect(
         parseGuestRequestedModel("gemini-3.1-flash-image-preview-512")
       ).toBeNull();
+    });
+
+    it("legacy GPT Image 2 low は canonical に正規化して許可する", () => {
+      expect(parseGuestRequestedModel("gpt-image-2-low")).toBe(
+        "gpt-image-2-low-1k"
+      );
     });
 
     it("Gemini 停止中は許可モデルへ正規化されるエイリアスも null", () => {
@@ -110,6 +128,9 @@ describe("model-config / model identification helpers", () => {
       expect(parseGuestRequestedModel("gemini-3-pro-image-2k")).toBeNull();
       expect(parseGuestRequestedModel("gemini-3-pro-image-4k")).toBeNull();
       expect(parseGuestRequestedModel("gemini-3-pro-image-preview")).toBeNull();
+      expect(parseGuestRequestedModel("gpt-image-2-low-2k")).toBeNull();
+      expect(parseGuestRequestedModel("gpt-image-2-medium-1k")).toBeNull();
+      expect(parseGuestRequestedModel("gpt-image-2-high-1k")).toBeNull();
     });
 
     it("未知の値や null は null（normalize の fallback で許可されない）", () => {
@@ -124,34 +145,34 @@ describe("model-config / model identification helpers", () => {
     it("ゲストの許可外モデルと停止中 Gemini は DEFAULT_GENERATION_MODEL に丸める", () => {
       expect(
         resolveEffectiveModelForAuthState("gemini-3-pro-image-4k", "guest")
-      ).toBe("gpt-image-2-low");
+      ).toBe("gpt-image-2-low-1k");
       expect(
         resolveEffectiveModelForAuthState(
           "gemini-3.1-flash-image-preview-512",
           "guest"
         )
-      ).toBe("gpt-image-2-low");
+      ).toBe("gpt-image-2-low-1k");
     });
 
     it("利用可能モデルはそのまま返し、認証ユーザーの停止中 Gemini は丸める", () => {
       expect(
         resolveEffectiveModelForAuthState(
-          "gpt-image-2-low",
+          "gpt-image-2-low-1k",
           "guest"
         )
-      ).toBe("gpt-image-2-low");
+      ).toBe("gpt-image-2-low-1k");
       expect(
         resolveEffectiveModelForAuthState(
           "gemini-3-pro-image-4k",
           "authenticated"
         )
-      ).toBe("gpt-image-2-low");
+      ).toBe("gpt-image-2-low-1k");
     });
   });
 
   describe("isModelAvailableForGeneration", () => {
     it("Gemini 停止中は OpenAI のみ利用可能", () => {
-      expect(isModelAvailableForGeneration("gpt-image-2-low")).toBe(true);
+      expect(isModelAvailableForGeneration("gpt-image-2-low-1k")).toBe(true);
       expect(
         isModelAvailableForGeneration("gemini-3.1-flash-image-preview-512")
       ).toBe(false);

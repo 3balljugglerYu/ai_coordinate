@@ -193,7 +193,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
-    formData.set("model", "gpt-image-2-low");
+    formData.set("model", "gpt-image-2-low-1k");
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
@@ -209,7 +209,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     // dependencies 引数自体に存在しないため、テストは「存在しないこと」をシグネチャで保証。
     expect(jobRepository.createImageJob).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         generation_metadata: expect.objectContaining({
           oneTapStyle: expect.objectContaining({ billingMode: "paid" }),
         }),
@@ -272,7 +272,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     expect(body.error).toMatch(/50ペルコイン/);
   });
 
-  test("未送信 model は DEFAULT_GENERATION_MODEL (gpt-image-2-low) として扱う", async () => {
+  test("未送信 model は DEFAULT_GENERATION_MODEL (gpt-image-2-low-1k) として扱う", async () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
@@ -289,7 +289,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
     expect(response.status).toBe(200);
     expect(jobRepository.createImageJob).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-image-2-low" })
+      expect.objectContaining({ model: "gpt-image-2-low-1k" })
     );
   });
 
@@ -302,7 +302,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
-    formData.set("model", "gpt-image-2-low");
+    formData.set("model", "gpt-image-2-low-1k");
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
@@ -327,7 +327,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
-    formData.set("model", "gpt-image-2-low");
+    formData.set("model", "gpt-image-2-low-1k");
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,

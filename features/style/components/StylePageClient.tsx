@@ -69,6 +69,7 @@ import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
+import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import {
   readPreferredModel,
@@ -1500,6 +1501,14 @@ export function StylePageClient({
                 disabled={isGenerating}
               />
             </div>
+
+            <GptImage2SizeSelector
+              value={effectiveSelectedModel}
+              onChange={handleSelectedModelChange}
+              onLockedClick={() => setShowAuthModal(true)}
+              authState={modelAuthState}
+              disabled={isGenerating}
+            />
 
             <Button
               type="button"

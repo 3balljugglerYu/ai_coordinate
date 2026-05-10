@@ -7,7 +7,7 @@ import {
 describe("getModelBrandName", () => {
   describe("ChatGPT Images 2.0", () => {
     it("returns 'ChatGPT Images 2.0' for gpt-image-* prefix", () => {
-      expect(getModelBrandName("gpt-image-2-low")).toBe("ChatGPT Images 2.0");
+      expect(getModelBrandName("gpt-image-2-low-1k")).toBe("ChatGPT Images 2.0");
       expect(getModelBrandName("gpt-image-2-high")).toBe("ChatGPT Images 2.0");
       expect(getModelBrandName("gpt-image-3-something-future")).toBe(
         "ChatGPT Images 2.0",
@@ -60,9 +60,17 @@ describe("getModelBrandName", () => {
 
 describe("getModelDisplayInfo", () => {
   it("returns the list display name and default size for known models", () => {
-    expect(getModelDisplayInfo("gpt-image-2-low")).toEqual({
-      displayName: "ChatGPT Images 2.0",
+    expect(getModelDisplayInfo("gpt-image-2-low-1k")).toEqual({
+      displayName: "ChatGPT Images 2.0 | Low 1K",
       defaultSize: { width: 1024, height: 1024 },
+    });
+    expect(getModelDisplayInfo("gpt-image-2-medium-2k")).toEqual({
+      displayName: "ChatGPT Images 2.0 | Medium 2K",
+      defaultSize: { width: 2048, height: 2048 },
+    });
+    expect(getModelDisplayInfo("gpt-image-2-high-4k")).toEqual({
+      displayName: "ChatGPT Images 2.0 | High 4K",
+      defaultSize: { width: 2880, height: 2880 },
     });
     expect(
       getModelDisplayInfo("gemini-3.1-flash-image-preview-512"),

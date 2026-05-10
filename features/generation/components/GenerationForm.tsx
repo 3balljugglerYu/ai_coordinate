@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { LockableModelSelect } from "./LockableModelSelect";
+import { GptImage2SizeSelector } from "./GptImage2SizeSelector";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
@@ -564,6 +565,19 @@ export function GenerationForm({
       document.removeEventListener("tutorial:set-background-mode", handler);
   }, []);
 
+  // チュートリアル中は Size step の対象を必ず表示するため、GPT Image 2 の既定モデルへ寄せる。
+  useEffect(() => {
+    const handler = () => {
+      setSelectedModel(DEFAULT_GENERATION_MODEL);
+    };
+    document.addEventListener("tutorial:set-gpt-image-2-default-model", handler);
+    return () =>
+      document.removeEventListener(
+        "tutorial:set-gpt-image-2-default-model",
+        handler
+      );
+  }, []);
+
   // チュートリアル中断時: フォームを初期状態にクリア（デモ画像・プロンプト・背景設定等をリセット）
   useEffect(() => {
     const handler = () => {
@@ -913,6 +927,14 @@ export function GenerationForm({
             disabled={isGenerating || isTutorialInProgress}
           />
         </div>
+
+        <GptImage2SizeSelector
+          value={effectiveSelectedModel}
+          onChange={handleSelectedModelChange}
+          onLockedClick={() => setShowAuthModal(true)}
+          authState={authState}
+          disabled={isGenerating || isTutorialInProgress}
+        />
 
         {/* 生成枚数選択 */}
         <div data-tour="tour-count-select">

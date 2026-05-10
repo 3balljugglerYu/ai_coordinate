@@ -816,7 +816,16 @@ export const hiMessages = {
       "उच्च-निष्ठा मॉडल: Nano Banana Pro | 2K (80 Percoin / छवि)",
     modelPro4k:
       "उच्च-निष्ठा मॉडल: Nano Banana Pro | 4K (100 Percoin / छवि)",
-    modelGptImage2Low: "लाइट मॉडल: ChatGPT Images 2.0 (10 Percoin / छवि)",
+    modelGptImage2Low: "लाइट मॉडल: ChatGPT Images 2.0 Low (10 Percoins / छवि से)",
+    modelGptImage2Medium: "स्टैंडर्ड मॉडल: ChatGPT Images 2.0 Medium (20 Percoins / छवि से)",
+    modelGptImage2High: "हाई-फिडेलिटी मॉडल: ChatGPT Images 2.0 High (50 Percoins / छवि से)",
+    gptImage2SizeLabel: "आउटपुट आकार",
+    gptImage2SizeDescription:
+      "वास्तविक आयाम छवि की दिशा के अनुसार अपने-आप समायोजित होते हैं। आउटपुट आकार के अनुसार Percoin लागत बदलती है।",
+    gptImage2Size1k: "स्टैंडर्ड (1K के बराबर)",
+    gptImage2Size2k: "हाई रिज़ॉल्यूशन (2K के बराबर)",
+    gptImage2Size4k: "अधिकतम रिज़ॉल्यूशन (4K के बराबर, बीटा)",
+    gptImage2SizePricePerImage: "{cost} Percoins / छवि",
     // Phase 6: guest UI
     guestResultAlt: "अतिथि पूर्वावलोकन परिणाम",
     guestResultTitle: "परिणाम",
@@ -1224,6 +1233,9 @@ export const hiMessages = {
     stepBackgroundTitle: "पृष्ठभूमि सेटिंग्स",
     stepBackgroundDescription:
       "यहाँ चुनें कि पृष्ठभूमि को कैसे संभालना है। इस ट्यूटोरियल के लिए, चलिए \"AI को तय करने दें\" के साथ जारी रखते हैं।",
+    stepSizeTitle: "आउटपुट आकार जांचें",
+    stepSizeDescription:
+      "ChatGPT Images 2.0 में आप आउटपुट आकार चुन सकते हैं। इस ट्यूटोरियल में हम स्टैंडर्ड आकार रखेंगे।",
     stepGenerateTitle: "जनरेट करना शुरू करें",
     stepGenerateDescription:
       "शुरू करने के लिए \"स्टाइलिंग शुरू करें\" चुनें। ट्यूटोरियल के बाद आपके Percoin पुनः बहाल हो जाएँगे, इसलिए बेझिझक जारी रखें।",

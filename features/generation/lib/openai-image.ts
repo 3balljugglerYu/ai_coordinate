@@ -1,13 +1,13 @@
 import "server-only";
 
 /**
- * OpenAI gpt-image-2 (quality=low) の Node ランタイム向けクライアント。
+ * OpenAI gpt-image-2 の Node ランタイム向けクライアント。
  *
  * 同等の Deno 実装が `supabase/functions/image-gen-worker/openai-image.ts` にあり、
  * Edge Function ワーカーで使われている。本ファイルは新設の guest sync ルート
  * (`features/generation/lib/guest-generate.ts`) から呼ぶための Node 版。
  *
- * 互換性: 戻り値の形 / エラー文言 / GIF 拒否 / アスペクト比から `1024x*` 解決 等は
+ * 互換性: 戻り値の形 / エラー文言 / GIF 拒否 / アスペクト比からの size 解決 等は
  * Deno 版とビット同等にする（変更時は両方を同期させること）。共有エラー定数は
  * `shared/generation/errors.ts` を参照する。
  *
@@ -18,10 +18,23 @@ import {
   OPENAI_PROVIDER_ERROR,
   SAFETY_POLICY_BLOCKED_ERROR,
 } from "@/shared/generation/errors";
+import {
+  getGptImage2TargetSize,
+} from "@/shared/generation/openai-image-model";
+import type {
+  GptImage2Quality,
+  GptImage2SizeTier,
+  GptImage2TargetSize,
+} from "@/shared/generation/openai-image-model";
 
 const OPENAI_IMAGES_EDITS_URL = "https://api.openai.com/v1/images/edits";
+const OPENAI_MAX_ATTEMPTS = 3;
+const OPENAI_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const OPENAI_BASE_RETRY_DELAY_MS = 1000;
+// UI/API の request timeout 内に収めるため、Retry-After が長くても 30 秒で打ち切る。
+const OPENAI_MAX_RETRY_AFTER_MS = 30_000;
 
-export type OpenAITargetSize = "1024x1024" | "1024x1536" | "1536x1024";
+export type OpenAITargetSize = GptImage2TargetSize;
 
 export interface OpenAIImageInput {
   base64: string;
@@ -32,6 +45,8 @@ export interface CallOpenAIImageEditParams {
   prompt: string;
   inputImage: OpenAIImageInput;
   timeoutMs: number;
+  quality: GptImage2Quality;
+  sizeTier: GptImage2SizeTier;
   /**
    * fetch 実装の差し替え用（テストでモック注入する）。
    * 既定では Node の global fetch を使う。
@@ -55,6 +70,8 @@ export interface CallOpenAIImageEditMultiInputParams {
   prompt: string;
   inputImages: ReadonlyArray<OpenAIImageInput>;
   timeoutMs: number;
+  quality: GptImage2Quality;
+  sizeTier: GptImage2SizeTier;
   /**
    * 出力フレーム比率の起点とする入力画像のインデックス。既定は 0（先頭画像）。
    * inspire 経路では 1（テンプレ画像）を指定する。
@@ -80,6 +97,69 @@ export interface CallOpenAIImageEditBatchParams
  */
 function decodeBase64(value: string): Uint8Array {
   return new Uint8Array(Buffer.from(value, "base64"));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveRetryAfterMs(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1000, OPENAI_MAX_RETRY_AFTER_MS);
+    }
+    const dateMs = Date.parse(retryAfter);
+    if (!Number.isNaN(dateMs)) {
+      return Math.min(
+        Math.max(dateMs - Date.now(), 0),
+        OPENAI_MAX_RETRY_AFTER_MS
+      );
+    }
+  }
+  return Math.min(OPENAI_BASE_RETRY_DELAY_MS * 2 ** (attempt - 1), 8000);
+}
+
+async function readOpenAIErrorPayload(response: Response): Promise<{
+  code: string;
+  message: string;
+}> {
+  const errorPayload = (await response.json().catch(() => null)) as
+    | { error?: { code?: string; message?: string } }
+    | null;
+  return {
+    code: errorPayload?.error?.code ?? "",
+    message: errorPayload?.error?.message ?? `OpenAI HTTP ${response.status}`,
+  };
+}
+
+function throwOpenAIResponseError(
+  status: number,
+  code: string,
+  message: string
+): never {
+  if (
+    status === 400 &&
+    (code === "content_policy_violation" ||
+      /moderation|safety/i.test(message))
+  ) {
+    throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+  }
+  const isAuthFailure = status === 401 || status === 403;
+  const isInvalidApiKey =
+    code === "invalid_api_key" || /incorrect api key/i.test(message);
+  const isInsufficientQuota = code === "insufficient_quota";
+  const isUnverifiedOrg = /must be verified/i.test(message);
+  if (
+    isAuthFailure ||
+    isInvalidApiKey ||
+    isInsufficientQuota ||
+    isUnverifiedOrg
+  ) {
+    throw new Error(`${OPENAI_PROVIDER_ERROR}: ${message}`);
+  }
+  throw new Error(message);
 }
 
 /**
@@ -174,26 +254,21 @@ export function parseImageDimensions(
  * 解析失敗時は 1024x1024 にフォールバック。
  */
 export function resolveOpenAITargetSize(
-  input: OpenAIImageInput
+  input: OpenAIImageInput,
+  sizeTier: GptImage2SizeTier = "1k"
 ): OpenAITargetSize {
   const lower = input.mimeType.toLowerCase();
   if (lower === "image/gif") {
     // GIF は呼び出し側で拒否されるはずだが、フォールバックとして正方形を返す
-    return "1024x1024";
+    return getGptImage2TargetSize(sizeTier, null);
   }
   const bytes = decodeBase64(input.base64);
   const dims = parseImageDimensions(bytes, input.mimeType);
-  if (!dims) {
-    return "1024x1024";
-  }
-  const aspect = dims.width / dims.height;
-  if (aspect < 0.85) return "1024x1536";
-  if (aspect > 1.18) return "1536x1024";
-  return "1024x1024";
+  return getGptImage2TargetSize(sizeTier, dims);
 }
 
 /**
- * OpenAI gpt-image-2 (quality=low) を呼び出して画像編集を実行する Node 版。
+ * OpenAI gpt-image-2 を呼び出して画像編集を実行する Node 版。
  *
  * Deno 版と同じ振る舞い:
  * - GIF 入力は再試行不可エラーで早期失敗（OPENAI_PROVIDER_ERROR プレフィックス付き）
@@ -228,88 +303,79 @@ export async function callOpenAIImageEditBatch(
     );
   }
 
-  const targetSize = resolveOpenAITargetSize(params.inputImage);
+  const targetSize = resolveOpenAITargetSize(params.inputImage, params.sizeTier);
   const bytes = decodeBase64(params.inputImage.base64);
-  // BlobPart 型に合わせるため ArrayBuffer に変換（Uint8Array 直渡しは TS が拒否する）
-  const file = new File([bytes.buffer as ArrayBuffer], "input.png", {
-    type: params.inputImage.mimeType,
-  });
 
-  const form = new FormData();
-  form.append("model", "gpt-image-2");
-  form.append("prompt", params.prompt);
-  form.append("image[]", file);
-  form.append("size", targetSize);
-  form.append("quality", "low");
-  form.append("moderation", "low");
-  form.append("output_format", "png");
-  form.append("n", String(requestedImageCount));
+  const buildForm = () => {
+    // BlobPart 型に合わせるため ArrayBuffer に変換（Uint8Array 直渡しは TS が拒否する）
+    const file = new File([bytes.buffer as ArrayBuffer], "input.png", {
+      type: params.inputImage.mimeType,
+    });
+    const form = new FormData();
+    form.append("model", "gpt-image-2");
+    form.append("prompt", params.prompt);
+    form.append("image[]", file);
+    form.append("size", targetSize);
+    form.append("quality", params.quality);
+    form.append("moderation", "low");
+    form.append("output_format", "png");
+    form.append("n", String(requestedImageCount));
+    return form;
+  };
 
   const fetchImpl = params.fetchFn ?? fetch;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), params.timeoutMs);
-  try {
-    const response = await fetchImpl(OPENAI_IMAGES_EDITS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: form,
-      signal: controller.signal,
-    });
+  for (let attempt = 1; attempt <= OPENAI_MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), params.timeoutMs);
+    try {
+      const response = await fetchImpl(OPENAI_IMAGES_EDITS_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: buildForm(),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const errorPayload = (await response.json().catch(() => null)) as
-        | { error?: { code?: string; message?: string } }
-        | null;
-      const code = errorPayload?.error?.code ?? "";
-      const message =
-        errorPayload?.error?.message ?? `OpenAI HTTP ${response.status}`;
-      if (
-        response.status === 400 &&
-        (code === "content_policy_violation" ||
-          /moderation|safety/i.test(message))
-      ) {
-        throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+      if (!response.ok) {
+        const { code, message } = await readOpenAIErrorPayload(response);
+        if (code === "insufficient_quota") {
+          throwOpenAIResponseError(response.status, code, message);
+        }
+        if (
+          attempt < OPENAI_MAX_ATTEMPTS &&
+          OPENAI_RETRYABLE_STATUS.has(response.status)
+        ) {
+          await sleep(resolveRetryAfterMs(response, attempt));
+          continue;
+        }
+        throwOpenAIResponseError(response.status, code, message);
       }
-      const isAuthFailure = response.status === 401 || response.status === 403;
-      const isInvalidApiKey =
-        code === "invalid_api_key" || /incorrect api key/i.test(message);
-      const isInsufficientQuota = code === "insufficient_quota";
-      const isUnverifiedOrg = /must be verified/i.test(message);
-      if (
-        isAuthFailure ||
-        isInvalidApiKey ||
-        isInsufficientQuota ||
-        isUnverifiedOrg
-      ) {
-        throw new Error(`${OPENAI_PROVIDER_ERROR}: ${message}`);
+
+      const json = (await response.json().catch(() => ({}))) as {
+        data?: Array<{ b64_json?: string }>;
+      };
+      const results = (json?.data ?? [])
+        .map((item) => item?.b64_json)
+        .filter((b64): b64 is string => typeof b64 === "string" && b64.length > 0)
+        .map((b64) => ({ data: b64, mimeType: "image/png" as const }));
+
+      if (results.length === 0) {
+        throw new Error("No images generated");
       }
-      throw new Error(message);
+
+      if (results.length !== requestedImageCount) {
+        throw new Error(
+          `OpenAI image edit returned ${results.length} images, expected ${requestedImageCount}`
+        );
+      }
+
+      return results;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const json = (await response.json().catch(() => ({}))) as {
-      data?: Array<{ b64_json?: string }>;
-    };
-    const results = (json?.data ?? [])
-      .map((item) => item?.b64_json)
-      .filter((b64): b64 is string => typeof b64 === "string" && b64.length > 0)
-      .map((b64) => ({ data: b64, mimeType: "image/png" as const }));
-
-    if (results.length === 0) {
-      throw new Error("No images generated");
-    }
-
-    if (results.length !== requestedImageCount) {
-      throw new Error(
-        `OpenAI image edit returned ${results.length} images, expected ${requestedImageCount}`
-      );
-    }
-
-    return results;
-  } finally {
-    clearTimeout(timeoutId);
   }
+  throw new Error("OpenAI image edit failed after retries");
 }
 
 export async function callOpenAIImageEdit(
@@ -352,88 +418,79 @@ export async function callOpenAIImageEditMultiInput(
   const baseIndex = params.targetSizeBaseIndex ?? 0;
   const baseImage =
     params.inputImages[baseIndex] ?? params.inputImages[0];
-  const targetSize = resolveOpenAITargetSize(baseImage);
+  const targetSize = resolveOpenAITargetSize(baseImage, params.sizeTier);
 
-  const form = new FormData();
-  form.append("model", "gpt-image-2");
-  form.append("prompt", params.prompt);
-  for (let idx = 0; idx < params.inputImages.length; idx++) {
-    const img = params.inputImages[idx];
-    const bytes = decodeBase64(img.base64);
-    const file = new File(
-      [bytes.buffer as ArrayBuffer],
-      `input_${idx}.png`,
-      { type: img.mimeType }
-    );
-    form.append("image[]", file);
-  }
-  form.append("size", targetSize);
-  form.append("quality", "low");
-  form.append("moderation", "low");
-  form.append("output_format", "png");
-  form.append("n", String(requestedImageCount));
+  const buildForm = () => {
+    const form = new FormData();
+    form.append("model", "gpt-image-2");
+    form.append("prompt", params.prompt);
+    for (let idx = 0; idx < params.inputImages.length; idx++) {
+      const img = params.inputImages[idx];
+      const bytes = decodeBase64(img.base64);
+      const file = new File(
+        [bytes.buffer as ArrayBuffer],
+        `input_${idx}.png`,
+        { type: img.mimeType }
+      );
+      form.append("image[]", file);
+    }
+    form.append("size", targetSize);
+    form.append("quality", params.quality);
+    form.append("moderation", "low");
+    form.append("output_format", "png");
+    form.append("n", String(requestedImageCount));
+    return form;
+  };
 
   const fetchImpl = params.fetchFn ?? fetch;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), params.timeoutMs);
-  try {
-    const response = await fetchImpl(OPENAI_IMAGES_EDITS_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: form,
-      signal: controller.signal,
-    });
+  for (let attempt = 1; attempt <= OPENAI_MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), params.timeoutMs);
+    try {
+      const response = await fetchImpl(OPENAI_IMAGES_EDITS_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: buildForm(),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const errorPayload = (await response.json().catch(() => null)) as
-        | { error?: { code?: string; message?: string } }
-        | null;
-      const code = errorPayload?.error?.code ?? "";
-      const message =
-        errorPayload?.error?.message ?? `OpenAI HTTP ${response.status}`;
-      if (
-        response.status === 400 &&
-        (code === "content_policy_violation" ||
-          /moderation|safety/i.test(message))
-      ) {
-        throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+      if (!response.ok) {
+        const { code, message } = await readOpenAIErrorPayload(response);
+        if (code === "insufficient_quota") {
+          throwOpenAIResponseError(response.status, code, message);
+        }
+        if (
+          attempt < OPENAI_MAX_ATTEMPTS &&
+          OPENAI_RETRYABLE_STATUS.has(response.status)
+        ) {
+          await sleep(resolveRetryAfterMs(response, attempt));
+          continue;
+        }
+        throwOpenAIResponseError(response.status, code, message);
       }
-      const isAuthFailure = response.status === 401 || response.status === 403;
-      const isInvalidApiKey =
-        code === "invalid_api_key" || /incorrect api key/i.test(message);
-      const isInsufficientQuota = code === "insufficient_quota";
-      const isUnverifiedOrg = /must be verified/i.test(message);
-      if (
-        isAuthFailure ||
-        isInvalidApiKey ||
-        isInsufficientQuota ||
-        isUnverifiedOrg
-      ) {
-        throw new Error(`${OPENAI_PROVIDER_ERROR}: ${message}`);
+
+      const json = (await response.json().catch(() => ({}))) as {
+        data?: Array<{ b64_json?: string }>;
+      };
+      const results = (json?.data ?? [])
+        .map((item) => item?.b64_json)
+        .filter((b64): b64 is string => typeof b64 === "string" && b64.length > 0)
+        .map((b64) => ({ data: b64, mimeType: "image/png" as const }));
+
+      if (results.length === 0) {
+        throw new Error("No images generated");
       }
-      throw new Error(message);
+
+      if (results.length !== requestedImageCount) {
+        throw new Error(
+          `OpenAI image edit returned ${results.length} images, expected ${requestedImageCount}`
+        );
+      }
+
+      return results;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const json = (await response.json().catch(() => ({}))) as {
-      data?: Array<{ b64_json?: string }>;
-    };
-    const results = (json?.data ?? [])
-      .map((item) => item?.b64_json)
-      .filter((b64): b64 is string => typeof b64 === "string" && b64.length > 0)
-      .map((b64) => ({ data: b64, mimeType: "image/png" as const }));
-
-    if (results.length === 0) {
-      throw new Error("No images generated");
-    }
-
-    if (results.length !== requestedImageCount) {
-      throw new Error(
-        `OpenAI image edit returned ${results.length} images, expected ${requestedImageCount}`
-      );
-    }
-
-    return results;
-  } finally {
-    clearTimeout(timeoutId);
   }
+  throw new Error("OpenAI image edit failed after retries");
 }

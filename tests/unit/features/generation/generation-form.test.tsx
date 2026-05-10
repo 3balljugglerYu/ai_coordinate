@@ -100,28 +100,37 @@ jest.mock("@/features/generation/lib/model-config", () => ({
       "gemini-3-pro-image-1k": 50,
       "gemini-3-pro-image-2k": 80,
       "gemini-3-pro-image-4k": 100,
-      "gpt-image-2-low": 10,
+      "gpt-image-2-low-1k": 10,
+      "gpt-image-2-low-2k": 20,
+      "gpt-image-2-low-4k": 40,
+      "gpt-image-2-medium-1k": 20,
+      "gpt-image-2-medium-2k": 50,
+      "gpt-image-2-medium-4k": 80,
+      "gpt-image-2-high-1k": 50,
+      "gpt-image-2-high-2k": 80,
+      "gpt-image-2-high-4k": 130,
     };
     return costs[model ?? ""] ?? 10;
   }),
   isCanonicalGuestAllowedModel: jest.fn((model?: string | null) =>
-    model === "gpt-image-2-low" ||
+    model === "gpt-image-2-low-1k" ||
     model === "gemini-3.1-flash-image-preview-512"
   ),
   isModelAvailableForGeneration: jest.fn((model?: string | null) =>
-    model === "gpt-image-2-low"
+    typeof model === "string" && model.startsWith("gpt-image-2-")
   ),
   resolveEffectiveModelForAuthState: jest.fn(
     (model: string, authState: "guest" | "authenticated") => {
-      if (model !== "gpt-image-2-low") {
-        return "gpt-image-2-low";
+      const isGptImage2 = model.startsWith("gpt-image-2-");
+      if (!isGptImage2) {
+        return "gpt-image-2-low-1k";
       }
       if (
         authState === "guest" &&
-        model !== "gpt-image-2-low" &&
+        model !== "gpt-image-2-low-1k" &&
         model !== "gemini-3.1-flash-image-preview-512"
       ) {
-        return "gpt-image-2-low";
+        return "gpt-image-2-low-1k";
       }
       return model;
     }
@@ -172,6 +181,14 @@ const messages: Record<string, string> = {
   modelPro2k: "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
   modelPro4k: "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
   modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
+  modelGptImage2Medium: "Standard model: ChatGPT Images 2.0 Medium",
+  modelGptImage2High: "High model: ChatGPT Images 2.0 High",
+  gptImage2SizeLabel: "Output size",
+  gptImage2SizeDescription: "Choose the GPT Image 2 output size.",
+  gptImage2Size1k: "1K",
+  gptImage2Size2k: "2K",
+  gptImage2Size4k: "4K",
+  gptImage2SizePricePerImage: "{cost} Percoins / image",
   countLabel: "Count",
   countSingle: "1 image",
   countMultiple: "{count} images",
@@ -365,7 +382,7 @@ describe("GenerationForm", () => {
       sourceImageType: "illustration",
       backgroundMode: "keep",
       count: 1,
-      model: "gpt-image-2-low",
+      model: "gpt-image-2-low-1k",
     });
   });
 
@@ -754,7 +771,7 @@ describe("GenerationForm", () => {
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
       })
     );
     expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(

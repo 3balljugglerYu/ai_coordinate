@@ -816,7 +816,16 @@ export const esMessages = {
       "Modelo de alta fidelidad: Nano Banana Pro | 2K (80 Percoins / imagen)",
     modelPro4k:
       "Modelo de alta fidelidad: Nano Banana Pro | 4K (100 Percoins / imagen)",
-    modelGptImage2Low: "Modelo ligero: ChatGPT Images 2.0 (10 Percoins / imagen)",
+    modelGptImage2Low: "Modelo ligero: ChatGPT Images 2.0 Low (desde 10 Percoins / imagen)",
+    modelGptImage2Medium: "Modelo estándar: ChatGPT Images 2.0 Medium (desde 20 Percoins / imagen)",
+    modelGptImage2High: "Modelo de alta fidelidad: ChatGPT Images 2.0 High (desde 50 Percoins / imagen)",
+    gptImage2SizeLabel: "Tamaño de salida",
+    gptImage2SizeDescription:
+      "Las dimensiones exactas se ajustan automáticamente a la orientación de la imagen. El coste en Percoins cambia según el tamaño de salida.",
+    gptImage2Size1k: "Estándar (equivalente a 1K)",
+    gptImage2Size2k: "Alta resolución (equivalente a 2K)",
+    gptImage2Size4k: "Resolución máxima (equivalente a 4K, beta)",
+    gptImage2SizePricePerImage: "{cost} Percoins / imagen",
     // Phase 6: guest UI
     guestResultAlt: "Resultado de previsualización para invitados",
     guestResultTitle: "Resultado",
@@ -1224,6 +1233,9 @@ export const esMessages = {
     stepBackgroundTitle: "Configuración del fondo",
     stepBackgroundDescription:
       "Elige aquí cómo gestionar el fondo. Para este tutorial, sigamos con \"Que decida la IA\".",
+    stepSizeTitle: "Comprueba el tamaño de salida",
+    stepSizeDescription:
+      "ChatGPT Images 2.0 te permite elegir el tamaño de salida. En este tutorial mantendremos el tamaño estándar.",
     stepGenerateTitle: "Empieza a generar",
     stepGenerateDescription:
       "Selecciona \"Empezar styling\" para empezar. Tus Percoins se restituirán tras el tutorial, así que sigue sin preocupaciones.",

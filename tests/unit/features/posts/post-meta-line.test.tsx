@@ -14,7 +14,7 @@ import { PostMetaLine } from "@/features/posts/components/PostMetaLine";
 
 describe("PostMetaLine", () => {
   it("renders brand name and dimensions when both model and width/height are present", () => {
-    render(<PostMetaLine model="gpt-image-2-low" width={1024} height={1536} />);
+    render(<PostMetaLine model="gpt-image-2-low-1k" width={1024} height={1536} />);
     const node = screen.getByTestId("post-meta-line");
     expect(node.textContent).toBe("ChatGPT Images 2.0 / 1024×1536");
     expect(node.getAttribute("aria-label")).toBe(

@@ -788,7 +788,16 @@ export const jaMessages = {
     modelPro1k: "高精細モデル：Nano Banana Pro | 1K（50ペルコイン/枚）",
     modelPro2k: "高精細モデル：Nano Banana Pro | 2K（80ペルコイン/枚）",
     modelPro4k: "高精細モデル：Nano Banana Pro | 4K（100ペルコイン/枚）",
-    modelGptImage2Low: "軽量モデル： ChatGPT Images 2.0 （10ペルコイン/ 枚）",
+    modelGptImage2Low: "軽量モデル：ChatGPT Images 2.0 Low（10ペルコイン/枚〜）",
+    modelGptImage2Medium: "標準モデル：ChatGPT Images 2.0 Medium（20ペルコイン/枚〜）",
+    modelGptImage2High: "高精細モデル：ChatGPT Images 2.0 High（50ペルコイン/枚〜）",
+    gptImage2SizeLabel: "出力サイズを選択",
+    gptImage2SizeDescription:
+      "画像の向きに合わせて実サイズは自動調整されます。サイズにより消費ペルコインが変わります。",
+    gptImage2Size1k: "標準（1K相当）",
+    gptImage2Size2k: "高解像度（2K相当）",
+    gptImage2Size4k: "最高解像度（4K相当・β）",
+    gptImage2SizePricePerImage: "{cost}ペルコイン/枚",
     // Phase 6: ゲスト用 UI
     guestResultAlt: "お試し生成結果",
     guestResultTitle: "生成結果",
@@ -1167,6 +1176,9 @@ export const jaMessages = {
     stepBackgroundTitle: "背景設定",
     stepBackgroundDescription:
       "ここでは背景の扱いを選べます。今回は「AIに依頼」を選択して進めてみましょう！",
+    stepSizeTitle: "出力サイズを確認",
+    stepSizeDescription:
+      "ChatGPT Images 2.0 ではサイズを選べます。今回は標準サイズのまま進めます。",
     stepGenerateTitle: "生成開始！",
     stepGenerateDescription:
       "「コーデスタート」ボタンを選択して、開始しましょう！ ※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",

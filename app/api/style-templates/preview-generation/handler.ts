@@ -2,7 +2,7 @@
  * POST /api/style-templates/preview-generation
  *
  * 申請者がアップロードしたテンプレ画像を受け取り、運営テストキャラ画像と組み合わせて
- * OpenAI gpt-image-2-low 1 枚 + Gemini 0.5K 1 枚（Gemini 有効時）を並列同期生成し、結果を返す。
+ * OpenAI GPT Image 2 Low 1K 1 枚 + Gemini 0.5K 1 枚（Gemini 有効時）を並列同期生成し、結果を返す。
  *
  * REQ-S-01〜S-05 / REQ-S-11 / ADR-003 / ADR-004 / ADR-009 参照。
  *
@@ -291,6 +291,8 @@ export async function handlePreviewGeneration(
           { base64: testCharacter.base64, mimeType: testCharacter.mimeType },
           { base64: templateBase64, mimeType: templateMimeType },
         ],
+        quality: "low",
+        sizeTier: "1k",
         targetSizeBaseIndex: 1,
         timeoutMs: OPENAI_TIMEOUT_MS,
         n: 1,

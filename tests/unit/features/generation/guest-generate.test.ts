@@ -37,7 +37,13 @@ describe("guest-generate", () => {
 
   describe("parseGuestModelInput", () => {
     test("Gemini 停止中の許可モデル (OpenAI) は canonical を返す", () => {
-      expect(parseGuestModelInput("gpt-image-2-low")).toBe("gpt-image-2-low");
+      expect(parseGuestModelInput("gpt-image-2-low-1k")).toBe("gpt-image-2-low-1k");
+    });
+
+    test("legacy GPT Image 2 low は 1k canonical に正規化する", () => {
+      expect(parseGuestModelInput("gpt-image-2-low")).toBe(
+        "gpt-image-2-low-1k"
+      );
     });
 
     test("停止中の Gemini / 許可外モデル / 未知 / null は null", () => {
@@ -54,7 +60,7 @@ describe("guest-generate", () => {
     test("PNG + 許可モデルは ok", () => {
       const result = validateGuestImageInput({
         uploadImage: createPngFile(),
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         ...COPY,
       });
       expect(result.kind).toBe("ok");
@@ -64,7 +70,7 @@ describe("guest-generate", () => {
       const gif = new File([new Uint8Array(16)], "x.gif", { type: "image/gif" });
       const result = validateGuestImageInput({
         uploadImage: gif,
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         ...COPY,
       });
       expect(result).toEqual({
@@ -395,7 +401,7 @@ describe("guest-generate", () => {
         mimeType: "image/png",
       });
       const result = await dispatchGuestImageGeneration({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         promptText: "x",
         uploadImage: createPngFile(),
         geminiApiKey: "(unused)",
@@ -408,7 +414,11 @@ describe("guest-generate", () => {
         mimeType: "image/png",
       });
       expect(openaiClient).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: "openai-key" })
+        expect.objectContaining({
+          apiKey: "openai-key",
+          quality: "low",
+          sizeTier: "1k",
+        })
       );
     });
 
@@ -417,7 +427,7 @@ describe("guest-generate", () => {
         new Error("safety_policy_blocked")
       );
       const result = await dispatchGuestImageGeneration({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         promptText: "x",
         uploadImage: createPngFile(),
         geminiApiKey: "(unused)",
@@ -432,7 +442,7 @@ describe("guest-generate", () => {
         new Error("openai_provider_error: incorrect api key")
       );
       const result = (await dispatchGuestImageGeneration({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         promptText: "x",
         uploadImage: createPngFile(),
         geminiApiKey: "(unused)",
@@ -448,7 +458,7 @@ describe("guest-generate", () => {
         new Error("No images generated")
       );
       const result = await dispatchGuestImageGeneration({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         promptText: "x",
         uploadImage: createPngFile(),
         geminiApiKey: "(unused)",
@@ -463,7 +473,7 @@ describe("guest-generate", () => {
         Object.assign(new Error("aborted"), { name: "AbortError" })
       );
       const result = await dispatchGuestImageGeneration({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         promptText: "x",
         uploadImage: createPngFile(),
         geminiApiKey: "(unused)",
@@ -476,7 +486,7 @@ describe("guest-generate", () => {
     test("openaiClient の一般エラーは upstream_error", async () => {
       const openaiClient = jest.fn().mockRejectedValue(new Error("server busy"));
       const result = (await dispatchGuestImageGeneration({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         promptText: "x",
         uploadImage: createPngFile(),
         geminiApiKey: "(unused)",

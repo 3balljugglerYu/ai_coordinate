@@ -1,6 +1,6 @@
 # マネタイズ戦略
 
-- Last updated: `2026-04-11`
+- Last updated: `2026-05-10`
 - Audience: Developers, product owners, and business stakeholders
 - Role: Canonical business and monetization reference for Persta.AI
 
@@ -40,6 +40,21 @@
   - **高精度モデル_1K（gemini-3-pro-image-1k）**: 50ペルコイン/枚
   - **高精度モデル_2K（gemini-3-pro-image-2k）**: 80ペルコイン/枚
   - **高精度モデル_4K（gemini-3-pro-image-4k）**: 100ペルコイン/枚
+- **ChatGPT Images 2.0（GPT Image 2）**:
+  - Size 表示はユーザー向けに **標準（1K相当） / 高解像度（2K相当） / 最高解像度（4K相当・β）** とする
+  - 実サイズは画像の向きに応じて自動調整し、`2K` は約 4.2MP、`4K` は約 8.3MP 以内のピクセル予算 tier として扱う
+
+| Quality \ Size | 標準（1K相当） | 高解像度（2K相当） | 最高解像度（4K相当・β） |
+| --- | ---: | ---: | ---: |
+| Low | 10 | 20 | 40 |
+| Medium | 20 | 50 | 80 |
+| High | 50 | 80 | 130 |
+
+- **GPT Image 2 原価前提**:
+  - OpenAI pricing は per-image 固定表ではなく token pricing / calculator 前提で評価する
+  - 2026-05-10 時点の確認では `gpt-image-2` は image input / text input / image output の token 課金。edit 経路では入力画像 token も原価に含める
+  - `2880×2880` の output token 参考値（Low 659 / Medium 5,930 / High 23,719）では、High 4K の output 原価は約 ¥110（$1=¥155, image output $30/M tokens）
+  - 単一入力画像を含めた High 4K は 130ペルコインで概ね粗利率 70% 以上を狙える。multi-input で High 4K を開放する場合は 140ペルコイン以上を再検討する
 - **新規登録特典**: アカウント登録時に50ペルコインを無償付与
 
 **注**: 本書のコーディネート画面向け消費量はビジネス上の決定値です。コード定義も `features/generation/lib/model-config.ts` などで同値に揃えます。
