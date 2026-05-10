@@ -11,6 +11,7 @@ import { getTourSteps } from "../lib/tour-steps";
 import { getJapanMonth } from "../lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "../types";
 import { stripLocalePrefix } from "@/i18n/config";
+import { writePreferredGalleryView } from "@/features/generation/lib/gallery-view-preference";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
@@ -198,6 +199,7 @@ export function TutorialTourProvider() {
           ...originalPopover,
           showButtons: [],
           onNextClick: (_element: Element | undefined, _step: unknown, options: { driver: Driver }) => {
+            writePreferredGalleryView("grid");
             router.push("/coordinate");
             options.driver.destroy();
           },
@@ -255,6 +257,7 @@ export function TutorialTourProvider() {
 
     // DOM の準備を待つ
     const startFromStep = () => {
+      writePreferredGalleryView("grid");
       document.dispatchEvent(
         new CustomEvent("tutorial:prepare-coordinate-state", {
           bubbles: true,
