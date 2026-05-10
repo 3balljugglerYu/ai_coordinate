@@ -60,14 +60,18 @@ const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
 const OPENAI_REQUEST_TIMEOUT_MS = 90_000;
-// high quality × 4k tier は OpenAI 側の処理が長いため個別に拡張する
-const OPENAI_REQUEST_TIMEOUT_HIGH_4K_MS = 300_000;
+// quality ティアごとに OpenAI 側の処理時間が大きく異なるため個別に拡張する
+const OPENAI_REQUEST_TIMEOUT_HIGH_MS = 300_000;
+const OPENAI_REQUEST_TIMEOUT_MEDIUM_MS = 180_000;
 
 function resolveOpenAIRequestTimeoutMs(
   parsed: NonNullable<ReturnType<typeof parseGptImage2Model>>
 ): number {
-  if (parsed.quality === "high" && parsed.sizeTier === "4k") {
-    return OPENAI_REQUEST_TIMEOUT_HIGH_4K_MS;
+  if (parsed.quality === "high") {
+    return OPENAI_REQUEST_TIMEOUT_HIGH_MS;
+  }
+  if (parsed.quality === "medium") {
+    return OPENAI_REQUEST_TIMEOUT_MEDIUM_MS;
   }
   return OPENAI_REQUEST_TIMEOUT_MS;
 }
