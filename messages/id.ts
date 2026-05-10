@@ -1233,9 +1233,12 @@ export const idMessages = {
     stepBackgroundTitle: "Pengaturan latar belakang",
     stepBackgroundDescription:
       "Pilih di sini cara menangani latar belakang. Untuk tutorial ini, lanjut dengan \"Biarkan AI memutuskan\".",
+    stepModelTitle: "Pilih model pembuatan",
+    stepModelDescription:
+      "Untuk tutorial ini, kita akan memakai ChatGPT Images 2.0 Low. Jika model lain sedang dipilih, model akan otomatis diganti di sini.",
     stepSizeTitle: "Periksa ukuran output",
     stepSizeDescription:
-      "ChatGPT Images 2.0 memungkinkan Anda memilih ukuran output. Untuk tutorial ini, kita akan tetap memakai ukuran standar.",
+      "Ukuran output akan tetap Standard. Dimensi sebenarnya akan disesuaikan otomatis dengan orientasi gambar.",
     stepGenerateTitle: "Mulai pembuatan",
     stepGenerateDescription:
       "Pilih \"Mulai styling\" untuk memulai. Percoinmu akan dikembalikan setelah tutorial, jadi tenang saja lanjutkan.",

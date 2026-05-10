@@ -51,6 +51,16 @@ export function GeneratedImageGalleryClient({
     setViewMode(readPreferredGalleryView());
   }, []);
 
+  useEffect(() => {
+    const handler = () => {
+      setViewMode("grid");
+      writePreferredGalleryView("grid");
+    };
+    document.addEventListener("tutorial:set-gallery-grid", handler);
+    return () =>
+      document.removeEventListener("tutorial:set-gallery-grid", handler);
+  }, []);
+
   const handleViewChange = (next: CoordinateGalleryView) => {
     setViewMode(next);
     writePreferredGalleryView(next);

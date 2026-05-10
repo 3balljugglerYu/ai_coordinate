@@ -159,6 +159,8 @@ export function TutorialTourProvider() {
       promptDescription: t("stepPromptDescription"),
       backgroundTitle: t("stepBackgroundTitle"),
       backgroundDescription: t("stepBackgroundDescription"),
+      modelTitle: t("stepModelTitle"),
+      modelDescription: t("stepModelDescription"),
       sizeTitle: t("stepSizeTitle"),
       sizeDescription: t("stepSizeDescription"),
       generateTitle: t("stepGenerateTitle"),
@@ -236,6 +238,8 @@ export function TutorialTourProvider() {
       promptDescription: t("stepPromptDescription"),
       backgroundTitle: t("stepBackgroundTitle"),
       backgroundDescription: t("stepBackgroundDescription"),
+      modelTitle: t("stepModelTitle"),
+      modelDescription: t("stepModelDescription"),
       sizeTitle: t("stepSizeTitle"),
       sizeDescription: t("stepSizeDescription"),
       generateTitle: t("stepGenerateTitle"),
@@ -251,9 +255,22 @@ export function TutorialTourProvider() {
 
     // DOM の準備を待つ
     const startFromStep = () => {
+      document.dispatchEvent(
+        new CustomEvent("tutorial:prepare-coordinate-state", {
+          bubbles: true,
+        })
+      );
+      document.dispatchEvent(
+        new CustomEvent("tutorial:set-gallery-grid", {
+          bubbles: true,
+        })
+      );
+
       const hasRequiredElements = [
         '[data-tour="tour-image-upload"]',
         '[data-tour="tour-prompt-input"]',
+        '[data-tour="tour-model-select"]',
+        '[data-tour="tour-gpt-image-2-size"]',
       ].every((sel) => document.querySelector(sel));
 
       if (!hasRequiredElements) {
@@ -270,8 +287,8 @@ export function TutorialTourProvider() {
       const baseSteps = [...tourSteps];
       const lastIndex = baseSteps.length - 1;
 
-      // 生成開始（index 5）までは中断可能
-      const INTERRUPTIBLE_UNTIL_INDEX = 5;
+      // 生成開始（index 6）までは中断可能
+      const INTERRUPTIBLE_UNTIL_INDEX = 6;
 
       // ③画像アップロード説明のステップでデモ画像を自動セット
       // ④着せ替え内容入力のステップでプロンプトを自動セット（日本時間の現在月を基準）
@@ -368,7 +385,28 @@ export function TutorialTourProvider() {
             },
           };
         }
-        if (idx === 8) {
+        if (idx === 4 || idx === 5) {
+          return {
+            ...mergedStep,
+            onHighlighted: (element: Element | undefined) => {
+              document.dispatchEvent(
+                new CustomEvent("tutorial:set-gpt-image-2-default-model", {
+                  bubbles: true,
+                })
+              );
+              if (element && element !== document.body) {
+                requestAnimationFrame(() => {
+                  element.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                    inline: "nearest",
+                  });
+                });
+              }
+            },
+          };
+        }
+        if (idx === 9) {
           return {
             ...mergedStep,
             onHighlighted: (element: Element | undefined) => {
@@ -459,7 +497,7 @@ export function TutorialTourProvider() {
         onHighlighted: (element) => {
           // 生成結果ハイライト以外では投稿/ダウンロード無効化を解除
           const idx = driverRef.current?.getActiveIndex();
-          if (idx !== 8) {
+          if (idx !== 9) {
             document.body.removeAttribute("data-tour-step-first-image");
             document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
           }
@@ -518,7 +556,7 @@ export function TutorialTourProvider() {
     }
   };
 
-  // コーデスタート押下で1秒後にStep8へ進む（生成中...をハイライト）
+  // コーデスタート押下で1秒後に生成中ステップへ進む
   useEffect(() => {
     const handler = () => {
       setTimeout(() => {

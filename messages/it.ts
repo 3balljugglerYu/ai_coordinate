@@ -1233,9 +1233,12 @@ export const itMessages = {
     stepBackgroundTitle: "Impostazioni dello sfondo",
     stepBackgroundDescription:
       "Scegli qui come gestire lo sfondo. Per questo tutorial proseguiamo con \"Lascia decidere all'IA\".",
+    stepModelTitle: "Seleziona il modello di generazione",
+    stepModelDescription:
+      "Per questo tutorial useremo ChatGPT Images 2.0 Low. Se era selezionato un altro modello, qui verrà cambiato automaticamente.",
     stepSizeTitle: "Controlla la dimensione output",
     stepSizeDescription:
-      "ChatGPT Images 2.0 ti permette di scegliere la dimensione di output. In questo tutorial manterremo la dimensione standard.",
+      "Terremo la dimensione di output su Standard. Le dimensioni effettive vengono regolate automaticamente in base all'orientamento dell'immagine.",
     stepGenerateTitle: "Avvia la generazione",
     stepGenerateDescription:
       "Seleziona \"Avvia styling\" per iniziare. I tuoi Percoin verranno restituiti dopo il tutorial, quindi prosegui senza preoccupazioni.",

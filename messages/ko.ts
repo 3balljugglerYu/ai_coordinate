@@ -1233,9 +1233,12 @@ export const koMessages = {
     stepBackgroundTitle: "배경 설정",
     stepBackgroundDescription:
       "여기서 배경 처리 방식을 선택할 수 있습니다. 이 튜토리얼에서는 “AI에게 맡기기”로 진행합니다.",
+    stepModelTitle: "생성 모델 선택",
+    stepModelDescription:
+      "이 튜토리얼에서는 ChatGPT Images 2.0 Low를 사용합니다. 다른 모델이 선택되어 있어도 여기서 자동으로 전환됩니다.",
     stepSizeTitle: "출력 크기 확인",
     stepSizeDescription:
-      "ChatGPT Images 2.0에서는 출력 크기를 선택할 수 있습니다. 이 튜토리얼에서는 표준 크기를 유지합니다.",
+      "출력 크기는 표준으로 유지합니다. 실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다.",
     stepGenerateTitle: "생성 시작",
     stepGenerateDescription:
       "“스타일링 시작”을 선택해 시작해 주세요. 튜토리얼이 끝나면 사용한 Percoin은 돌려드리니 안심하고 진행하셔도 됩니다.",

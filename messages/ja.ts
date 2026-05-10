@@ -1176,9 +1176,12 @@ export const jaMessages = {
     stepBackgroundTitle: "背景設定",
     stepBackgroundDescription:
       "ここでは背景の扱いを選べます。今回は「AIに依頼」を選択して進めてみましょう！",
+    stepModelTitle: "生成モデルを選択",
+    stepModelDescription:
+      "チュートリアルでは ChatGPT Images 2.0 Low を使います。別のモデルが選択されていても自動的に切り替わります。",
     stepSizeTitle: "出力サイズを確認",
     stepSizeDescription:
-      "ChatGPT Images 2.0 ではサイズを選べます。今回は標準サイズのまま進めます。",
+      "出力サイズは「標準」のまま進めます。画像の向きに合わせて実サイズは自動調整されます。",
     stepGenerateTitle: "生成開始！",
     stepGenerateDescription:
       "「コーデスタート」ボタンを選択して、開始しましょう！ ※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",

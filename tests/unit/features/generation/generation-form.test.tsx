@@ -11,7 +11,9 @@ import {
 import { getCurrentUserId } from "@/features/generation/lib/current-user";
 import {
   BACKGROUND_MODE_STORAGE_KEY,
+  IMAGE_SOURCE_TYPE_STORAGE_KEY,
   SELECTED_MODEL_STORAGE_KEY,
+  SELECTED_STOCK_ID_STORAGE_KEY,
 } from "@/features/generation/lib/form-preferences";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
@@ -777,6 +779,30 @@ describe("GenerationForm", () => {
     expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
       "gemini-3-pro-image-4k"
     );
+  });
+
+  test("チュートリアル準備イベント_ストックタブと高解像度モデルをライブラリと標準モデルへ戻す", async () => {
+    const stockId = "11111111-1111-4111-8111-111111111111";
+    localStorage.setItem(IMAGE_SOURCE_TYPE_STORAGE_KEY, "stock");
+    localStorage.setItem(SELECTED_STOCK_ID_STORAGE_KEY, stockId);
+    localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gpt-image-2-high-4k");
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent("tutorial:prepare-coordinate-state")
+      );
+    });
+
+    expect(screen.getByTestId("mock-add-upload")).toBeInTheDocument();
+    expect(localStorage.getItem(IMAGE_SOURCE_TYPE_STORAGE_KEY)).toBe("upload");
+    expect(localStorage.getItem(SELECTED_STOCK_ID_STORAGE_KEY)).toBeNull();
+    expect(
+      screen.getByText("1 images require 10 Percoins")
+    ).toBeInTheDocument();
   });
 
   test("表示_生成中は送信ボタン無効", async () => {

@@ -1233,9 +1233,12 @@ export const arMessages = {
     stepBackgroundTitle: "إعدادات الخلفية",
     stepBackgroundDescription:
       "اختر هنا كيفية التعامل مع الخلفية. لهذا الدليل، لنتابع بـ \"اترك الأمر للذكاء الاصطناعي\".",
+    stepModelTitle: "اختر نموذج التوليد",
+    stepModelDescription:
+      "سنستخدم في هذا الدليل ChatGPT Images 2.0 Low. إذا كان نموذج آخر محددًا، فسيتم التبديل إليه تلقائيًا هنا.",
     stepSizeTitle: "تحقق من حجم الإخراج",
     stepSizeDescription:
-      "يتيح لك ChatGPT Images 2.0 اختيار حجم الإخراج. سنبقي الحجم القياسي في هذا الدليل.",
+      "سنبقي حجم الإخراج على القياسي. يتم ضبط الأبعاد الفعلية تلقائيًا حسب اتجاه الصورة.",
     stepGenerateTitle: "بدء التوليد",
     stepGenerateDescription:
       "اختر \"بدء التنسيق\" للبدء. ستُعاد لك Percoin بعد الدليل، فلا تتردد في المتابعة.",

@@ -1233,9 +1233,12 @@ export const viMessages = {
     stepBackgroundTitle: "Cài đặt nền",
     stepBackgroundDescription:
       "Chọn ở đây cách xử lý nền. Trong hướng dẫn này, hãy tiếp tục với \"Để AI quyết định\".",
+    stepModelTitle: "Chọn mô hình tạo ảnh",
+    stepModelDescription:
+      "Trong hướng dẫn này, chúng ta sẽ dùng ChatGPT Images 2.0 Low. Nếu đang chọn mô hình khác, hệ thống sẽ tự động chuyển tại đây.",
     stepSizeTitle: "Kiểm tra kích thước đầu ra",
     stepSizeDescription:
-      "ChatGPT Images 2.0 cho phép bạn chọn kích thước đầu ra. Trong hướng dẫn này, chúng ta sẽ giữ kích thước tiêu chuẩn.",
+      "Chúng ta sẽ giữ kích thước đầu ra ở mức Tiêu chuẩn. Kích thước thực tế sẽ tự động điều chỉnh theo hướng của ảnh.",
     stepGenerateTitle: "Bắt đầu tạo",
     stepGenerateDescription:
       "Chọn \"Bắt đầu styling\" để bắt đầu. Percoin của bạn sẽ được hoàn lại sau hướng dẫn, nên bạn có thể tiếp tục an tâm.",

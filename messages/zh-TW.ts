@@ -1233,9 +1233,12 @@ export const zhTwMessages = {
     stepBackgroundTitle: "背景設定",
     stepBackgroundDescription:
       "在這裡選擇如何處理背景。本教學將使用 “交給 AI” 繼續。",
+    stepModelTitle: "選擇生成模型",
+    stepModelDescription:
+      "本教學將使用 ChatGPT Images 2.0 Low。即使已選擇其他模型，也會在這裡自動切換。",
     stepSizeTitle: "確認輸出尺寸",
     stepSizeDescription:
-      "ChatGPT Images 2.0 可以選擇輸出尺寸。本教學將保持標準尺寸。",
+      "輸出尺寸將保持為標準。實際尺寸會依照圖片方向自動調整。",
     stepGenerateTitle: "開始生成",
     stepGenerateDescription:
       "選擇 “開始造型” 即可開始。教學結束後會退還使用的 Percoin，請放心繼續。",

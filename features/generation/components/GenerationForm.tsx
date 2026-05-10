@@ -565,6 +565,20 @@ export function GenerationForm({
       document.removeEventListener("tutorial:set-background-mode", handler);
   }, []);
 
+  // チュートリアル開始時は、前回の保存状態に関係なく Library / GPT Image 2 Low / 標準サイズに寄せる。
+  useEffect(() => {
+    const handler = () => {
+      setImageSourceType("upload");
+      setSelectedStockId(null);
+      setSelectedModel(DEFAULT_GENERATION_MODEL);
+      writePreferredImageSourceType("upload");
+      writePreferredSelectedStockId(null);
+    };
+    document.addEventListener("tutorial:prepare-coordinate-state", handler);
+    return () =>
+      document.removeEventListener("tutorial:prepare-coordinate-state", handler);
+  }, []);
+
   // チュートリアル中は Size step の対象を必ず表示するため、GPT Image 2 の既定モデルへ寄せる。
   useEffect(() => {
     const handler = () => {

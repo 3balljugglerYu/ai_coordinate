@@ -1233,9 +1233,12 @@ export const deMessages = {
     stepBackgroundTitle: "Hintergrund-Einstellungen",
     stepBackgroundDescription:
       "Wähle hier, wie der Hintergrund behandelt wird. Für dieses Tutorial bleiben wir bei \"KI entscheiden lassen\".",
+    stepModelTitle: "Generierungsmodell auswählen",
+    stepModelDescription:
+      "Für dieses Tutorial verwenden wir ChatGPT Images 2.0 Low. Wenn ein anderes Modell ausgewählt war, wird es hier automatisch umgestellt.",
     stepSizeTitle: "Ausgabegröße prüfen",
     stepSizeDescription:
-      "Mit ChatGPT Images 2.0 kannst du die Ausgabegröße wählen. Für dieses Tutorial bleibt die Standardgröße eingestellt.",
+      "Die Ausgabegröße bleibt auf Standard. Die tatsächlichen Abmessungen werden automatisch an die Bildausrichtung angepasst.",
     stepGenerateTitle: "Generierung starten",
     stepGenerateDescription:
       "Wähle \"Styling starten\", um zu beginnen. Deine Percoins werden nach dem Tutorial wieder gutgeschrieben.",

@@ -1233,9 +1233,12 @@ export const frMessages = {
     stepBackgroundTitle: "Paramètres d'arrière-plan",
     stepBackgroundDescription:
       "Choisissez ici comment gérer l'arrière-plan. Pour ce tutoriel, continuons avec « Laisser l'IA décider ».",
+    stepModelTitle: "Sélectionner le modèle de génération",
+    stepModelDescription:
+      "Pour ce tutoriel, nous utiliserons ChatGPT Images 2.0 Low. Si un autre modèle était sélectionné, il sera remplacé automatiquement ici.",
     stepSizeTitle: "Vérifier la taille de sortie",
     stepSizeDescription:
-      "ChatGPT Images 2.0 vous permet de choisir la taille de sortie. Nous garderons la taille standard pour ce tutoriel.",
+      "Nous garderons la taille de sortie sur Standard. Les dimensions exactes sont ajustées automatiquement selon l'orientation de l'image.",
     stepGenerateTitle: "Lancer la génération",
     stepGenerateDescription:
       "Sélectionnez « Démarrer le styling ». Vos Percoins seront restitués à la fin du tutoriel, n'hésitez pas à continuer.",
