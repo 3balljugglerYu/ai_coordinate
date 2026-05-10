@@ -40,6 +40,7 @@ import type { GptImage2CanonicalModel } from "../../../shared/generation/openai-
 import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
+  parseImageDimensions,
 } from "./openai-image.ts";
 
 /**
@@ -2023,6 +2024,8 @@ Deno.serve(async () => {
             publicUrl: string;
             uploadPath: string;
             resultIndex: number;
+            width: number | null;
+            height: number | null;
           };
 
           const uploadedImages: UploadedGeneratedImage[] = [];
@@ -2055,6 +2058,10 @@ Deno.serve(async () => {
               try {
                 for (const [resultIndex, generatedImage] of generatedImages.entries()) {
                   const byteArray = decodeBase64(generatedImage.data);
+                  const dimensions = parseImageDimensions(
+                    byteArray,
+                    generatedImage.mimeType
+                  );
                   const extension = getSafeExtension(generatedImage.mimeType);
                   const randomStr = Math.random().toString(36).substring(2, 15);
                   const fileName = `${job.user_id}/${jobId}-${resultIndex}-${randomStr}.${extension}`;
@@ -2077,6 +2084,8 @@ Deno.serve(async () => {
                     publicUrl: supabase.storage
                       .from(STORAGE_BUCKET)
                       .getPublicUrl(uploadData.path).data.publicUrl,
+                    width: dimensions?.width ?? null,
+                    height: dimensions?.height ?? null,
                   });
                 }
               } catch (uploadError) {
@@ -2115,6 +2124,8 @@ Deno.serve(async () => {
                     p_images: uploadedImages.map((image) => ({
                       image_url: image.publicUrl,
                       storage_path: image.uploadPath,
+                      width: image.width,
+                      height: image.height,
                     })),
                     p_generation_metadata: successGenerationMetadata,
                     p_result_image_url: primaryUploadedImage.publicUrl,
@@ -2184,6 +2195,8 @@ Deno.serve(async () => {
                   source_image_stock_id: latestSourceImageStockId,
                   image_job_id: jobId,
                   image_job_result_index: 0,
+                  width: primaryUploadedImage.width,
+                  height: primaryUploadedImage.height,
                   style_template_id: job.style_template_id ?? null,
                   override_target: job.override_target ?? null,
                 })
