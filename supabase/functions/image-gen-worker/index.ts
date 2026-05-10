@@ -1202,7 +1202,7 @@ Deno.serve(async () => {
 
           // processingが長時間継続しているジョブは、通常の失敗判定フローに合流
           const newAttempts = (job.attempts || 0) + 1;
-          const shouldMarkAsFailed = newAttempts >= 3;
+          const shouldMarkAsFailed = newAttempts >= 2;
           const staleErrorMessage = "処理がタイムアウトしました。入力画像サイズを下げて再試行してください。";
           const { data: staleUpdatedJob, error: staleUpdateError } = await supabase
             .from("image_jobs")
@@ -2416,7 +2416,7 @@ Deno.serve(async () => {
 
           const newAttempts = (currentJob?.attempts || 0) + 1;
           const isNonRetriable = isNonRetriableGenerationError(errorMessage);
-          const shouldMarkAsFailed = isNonRetriable || newAttempts >= 3;
+          const shouldMarkAsFailed = isNonRetriable || newAttempts >= 2;
 
           // image_jobsテーブルを更新（失敗時）
           const failureGenerationMetadata = {
@@ -2496,7 +2496,7 @@ Deno.serve(async () => {
             }
           }
 
-          // メッセージの削除/アーカイブ（即時失敗またはattempts >= 3の場合）
+          // メッセージの削除/アーカイブ（即時失敗またはattempts >= 2の場合）
           if (shouldMarkAsFailed) {
             await supabase.rpc("pgmq_delete", {
               p_queue_name: QUEUE_NAME,
