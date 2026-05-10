@@ -1,12 +1,6 @@
 -- ===============================================
 -- create_user_style_template_draft RPC
 -- ===============================================
--- /api/style-templates/preview-generation から呼ぶ SECURITY DEFINER RPC。
--- draft 行を作成し、所有者をサーバ側で固定する（クライアントから user_id を受け取らない）。
---
--- このフェーズで draft を INSERT する唯一の経路。
--- 後続の Storage アップロード・プレビュー生成・URL 更新は API ハンドラ側で
--- 通常の UPDATE（service-role / 所有者）で行う。
 
 CREATE OR REPLACE FUNCTION public.create_user_style_template_draft(
   p_actor_id UUID,
@@ -44,8 +38,3 @@ GRANT EXECUTE ON FUNCTION public.create_user_style_template_draft(UUID, TEXT) TO
 
 COMMENT ON FUNCTION public.create_user_style_template_draft(UUID, TEXT)
   IS 'プレビュー API から呼ぶ draft 作成 RPC。所有者はサーバ側で p_actor_id に固定する。';
-
--- ===============================================
--- DOWN:
--- DROP FUNCTION IF EXISTS public.create_user_style_template_draft(UUID, TEXT);
--- ===============================================

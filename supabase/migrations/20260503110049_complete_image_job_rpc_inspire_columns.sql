@@ -1,13 +1,3 @@
--- complete_image_job_with_generated_images が generated_images へ INSERT する際、
--- inspire (generation_type='inspire') のとき style_template_id / override_target を
--- image_jobs から継承しないと、generated_images_inspire_template_consistency_check
--- (generation_type='inspire' ⇔ style_template_id IS NOT NULL) に違反して
--- 「画像メタデータの保存に失敗しました: new row for relation "generated_images" violates check constraint」
--- が発生する。
---
--- 修正: INSERT に style_template_id / override_target を追加し、image_jobs から COPY する。
--- 関数 signature・引数・RETURNS は不変。CREATE OR REPLACE で置換のみ。
-
 CREATE OR REPLACE FUNCTION public.complete_image_job_with_generated_images(
   p_job_id uuid,
   p_images jsonb,
