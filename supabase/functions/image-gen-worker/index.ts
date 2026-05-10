@@ -60,6 +60,17 @@ const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
 const OPENAI_REQUEST_TIMEOUT_MS = 90_000;
+// high quality × 4k tier は OpenAI 側の処理が長いため個別に拡張する
+const OPENAI_REQUEST_TIMEOUT_HIGH_4K_MS = 300_000;
+
+function resolveOpenAIRequestTimeoutMs(
+  parsed: NonNullable<ReturnType<typeof parseGptImage2Model>>
+): number {
+  if (parsed.quality === "high" && parsed.sizeTier === "4k") {
+    return OPENAI_REQUEST_TIMEOUT_HIGH_4K_MS;
+  }
+  return OPENAI_REQUEST_TIMEOUT_MS;
+}
 const GEMINI_GENERATION_ENABLED =
   Deno.env.get("GEMINI_GENERATION_ENABLED") === "true";
 
@@ -1720,6 +1731,8 @@ Deno.serve(async () => {
                 if (!gptImage2) {
                   throw new Error(`Invalid GPT Image 2 model: ${dbModel}`);
                 }
+                const openAIRequestTimeoutMs =
+                  resolveOpenAIRequestTimeoutMs(gptImage2);
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
@@ -1743,7 +1756,7 @@ Deno.serve(async () => {
                             ],
                             // 出力フレームはテンプレ（image_1）の比率に合わせる（ADR-006）
                             targetSizeBaseIndex: 1,
-                            timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            timeoutMs: openAIRequestTimeoutMs,
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
                             n: requestedImageCount,
@@ -1751,7 +1764,7 @@ Deno.serve(async () => {
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,
                             inputImage: openAIInputImage,
-                            timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            timeoutMs: openAIRequestTimeoutMs,
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
                             n: requestedImageCount,
@@ -1784,7 +1797,7 @@ Deno.serve(async () => {
                       /aborted/i.test(attemptErrorMessage))
                   ) {
                     attemptTimedOut = true;
-                    attemptErrorMessage = `OpenAI request timed out after ${OPENAI_REQUEST_TIMEOUT_MS}ms`;
+                    attemptErrorMessage = `OpenAI request timed out after ${openAIRequestTimeoutMs}ms`;
                   }
                   geminiAttempts.push({
                     attempt: 1,
