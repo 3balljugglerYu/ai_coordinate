@@ -754,64 +754,74 @@ export const getPost = cache(async (
     }
   }
 
-  // プロフィール情報を取得（別クエリ）
+  // プロフィール情報・いいね数・コメント数・実寸・Before 画像フォールバックを並列取得する。
+  // いずれも先頭の generated_images 取得結果（data）にのみ依存し、相互依存はない。
+  // 直列に await すると毎回 4 往復ぶん待たされていたため、1 回の Promise.all にまとめて
+  // 詳細ページのサーバーレンダリングのレイテンシを削減する。
+  const [profileResult, [likeCount, commentCount], dimensions, jobRowResult] =
+    await Promise.all([
+      // プロフィール情報（別クエリ）
+      data.user_id
+        ? supabase
+            .from("profiles")
+            .select("user_id,nickname,avatar_url,subscription_plan")
+            .eq("user_id", data.user_id)
+            .single()
+        : Promise.resolve(null),
+      // いいね数・コメント数
+      useCache
+        ? Promise.all([
+            getLikeCountsBatch([id], supabase).then((m) => m[id] ?? 0),
+            getCommentCountsBatch([id], supabase).then((m) => m[id] ?? 0),
+          ])
+        : Promise.all([getLikeCount(id), getCommentCount(id)]),
+      // 実寸が未計算の場合は lazy compute で算出して DB に書き戻す。
+      // 詳細は features/posts/lib/ensure-image-dimensions.ts。
+      ensureImageDimensions({
+        data: data as ImageRowSubset,
+        useCache,
+        fetchDimensions: getImageDimensions,
+        resolveImageUrl: (row) => getPostImageUrl(row) || null,
+        updateRow: async (updates) => {
+          await supabase.from("generated_images").update(updates).eq("id", id);
+        },
+      }),
+      // Before 画像の楽観表示用：pre_generation_storage_path が未設定の場合、
+      // 関連する image_jobs.input_image_url を取得して暫定表示に使う。
+      !data.pre_generation_storage_path && data.image_job_id
+        ? supabase
+            .from("image_jobs")
+            .select("input_image_url")
+            .eq("id", data.image_job_id)
+            .maybeSingle()
+        : Promise.resolve(null),
+    ]);
+
   let profile: {
     nickname: string | null;
     avatar_url: string | null;
     subscription_plan: "free" | "light" | "standard" | "premium";
   } | null = null;
-  if (data.user_id) {
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("user_id,nickname,avatar_url,subscription_plan")
-      .eq("user_id", data.user_id)
-      .single();
-
-    if (!profileError && profileData) {
-      profile = {
-        nickname: profileData.nickname,
-        avatar_url: profileData.avatar_url,
-        subscription_plan: profileData.subscription_plan ?? "free",
-      };
-    }
+  if (profileResult && !profileResult.error && profileResult.data) {
+    profile = {
+      nickname: profileResult.data.nickname,
+      avatar_url: profileResult.data.avatar_url,
+      subscription_plan: profileResult.data.subscription_plan ?? "free",
+    };
   }
 
-  // いいね数・コメント数を取得
-  const [likeCount, commentCount] = useCache
-    ? await Promise.all([
-        getLikeCountsBatch([id], supabase).then((m) => m[id] ?? 0),
-        getCommentCountsBatch([id], supabase).then((m) => m[id] ?? 0),
-      ])
-    : await Promise.all([
-        getLikeCount(id),
-        getCommentCount(id),
-      ]);
-
-  // 実寸が未計算の場合は lazy compute で算出して DB に書き戻す。
-  // 詳細は features/posts/lib/ensure-image-dimensions.ts。
-  const { width, height } = await ensureImageDimensions({
-    data: data as ImageRowSubset,
-    useCache,
-    fetchDimensions: getImageDimensions,
-    resolveImageUrl: (row) => getPostImageUrl(row) || null,
-    updateRow: async (updates) => {
-      await supabase
-        .from("generated_images")
-        .update(updates)
-        .eq("id", id);
-    },
-  });
+  const { width, height } = dimensions;
 
   // 閲覧数をインクリメント（重複カウント）
   // skipViewCountがtrue、またはuse cache時はカウントをスキップ
   const currentViewCount = data.view_count || 0;
   let updatedViewCount = currentViewCount;
-  
+
   if (!skipViewCount && !useCache) {
     try {
       // オプティミスティック更新: 現在の閲覧数+1を使用（RPC関数の戻り値取得を待たない）
       await incrementViewCount(id);
-      
+
       // 更新後の閲覧数を取得（オプティミスティック更新のため、実際の値ではなく現在の値+1を使用）
       // 注意: 実際の値が必要な場合は、RPC関数を修正して戻り値を返すようにする
       updatedViewCount = currentViewCount + 1;
@@ -823,21 +833,18 @@ export const getPost = cache(async (
     }
   }
 
-  // Before 画像の楽観表示用：pre_generation_storage_path が未設定の場合、
-  // 関連する image_jobs.input_image_url を取得して暫定表示に使う。
+  // Before 画像フォールバック URL の組み立て。
   // 任意 URL を <img src> に通さないため、永続化ヘルパーと同じ
   // ホワイトリスト（`temp/...` または `{uuid}/stocks/...`）でガードする。
   let inputImageUrlFallback: string | null = null;
-  if (!data.pre_generation_storage_path && data.image_job_id) {
-    const { data: jobRow, error: jobError } = await supabase
-      .from("image_jobs")
-      .select("input_image_url")
-      .eq("id", data.image_job_id)
-      .maybeSingle();
-    if (jobError) {
-      console.warn("Failed to fetch image_jobs.input_image_url for fallback:", jobError);
+  if (jobRowResult) {
+    if (jobRowResult.error) {
+      console.warn(
+        "Failed to fetch image_jobs.input_image_url for fallback:",
+        jobRowResult.error
+      );
     } else {
-      const candidate = jobRow?.input_image_url ?? null;
+      const candidate = jobRowResult.data?.input_image_url ?? null;
       if (candidate && isAllowedInputImageUrl(candidate)) {
         inputImageUrlFallback = candidate;
       } else if (candidate) {
