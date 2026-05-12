@@ -64,12 +64,16 @@ fi
 mkdir -p "${WT_PARENT}"
 
 # --- worktree 作成 ---------------------------------------------------------
-if git show-ref --verify --quiet "refs/heads/${BRANCH}"; then
+# リモートにのみ存在するブランチも拾えるよう、先に fetch を試みる。
+git fetch origin --quiet || echo "  (git fetch に失敗: オフラインのまま続行)"
+
+if git show-ref --verify --quiet "refs/heads/${BRANCH}" || \
+   git show-ref --verify --quiet "refs/remotes/origin/${BRANCH}"; then
   echo "▶ 既存ブランチ '${BRANCH}' を ${WT_DIR} にチェックアウト"
+  # ローカルに無くリモートにある場合、git が追跡ブランチを張ってチェックアウトする。
   git worktree add "${WT_DIR}" "${BRANCH}"
 else
   echo "▶ '${BASE}' を基点に新規ブランチ '${BRANCH}' を ${WT_DIR} に作成"
-  git fetch origin --quiet || echo "  (git fetch に失敗: オフラインのまま続行)"
   git worktree add -b "${BRANCH}" "${WT_DIR}" "${BASE}"
 fi
 
@@ -88,9 +92,13 @@ fi
 if [[ -d "${MAIN_ROOT}/node_modules" ]]; then
   echo "▶ node_modules をコピー中..."
   # macOS APFS: `cp -c` は clonefile(2) を使い一瞬で完了。COW なので main を壊さない。
-  # APFS でない / GNU coreutils 環境では通常コピーにフォールバック。
-  if ! cp -cR "${MAIN_ROOT}/node_modules" "${WT_DIR}/node_modules" 2>/dev/null; then
-    echo "  (clonefile が使えないため通常コピー)"
+  # Linux (Btrfs/XFS): `cp --reflink=auto` で reflink コピー。いずれも不可なら通常コピー。
+  if cp -cR "${MAIN_ROOT}/node_modules" "${WT_DIR}/node_modules" 2>/dev/null; then
+    : # macOS APFS clonefile 成功
+  elif cp -R --reflink=auto "${MAIN_ROOT}/node_modules" "${WT_DIR}/node_modules" 2>/dev/null; then
+    : # Linux reflink 成功
+  else
+    echo "  (clonefile/reflink が使えないため通常コピー)"
     cp -R "${MAIN_ROOT}/node_modules" "${WT_DIR}/node_modules"
   fi
   echo "✔ node_modules をコピーしました"
