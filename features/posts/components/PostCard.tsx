@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostThumbUrl } from "../lib/utils";
 import type { Post } from "../types";
+import type { Locale } from "@/i18n/config";
+import { getPostDetailLocalizedPath } from "@/lib/url-utils";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 import { cn, formatCountEnUS } from "@/lib/utils";
 
@@ -26,6 +28,7 @@ export function PostCard({
   prioritizeImage = false,
 }: PostCardProps) {
   const t = useTranslations("posts");
+  const locale = useLocale() as Locale;
   const [isHidden, setIsHidden] = useState(false);
   // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
   const imageUrl = getPostThumbUrl(post);
@@ -39,23 +42,10 @@ export function PostCard({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     post.user?.avatar_url ?? null
   );
-  const preloadLinkRef = useRef<HTMLLinkElement | null>(null);
 
   if (isHidden) {
     return null;
   }
-
-  // 画像のプリロード処理（onMouseEnter/onTouchStart）
-  const handlePreload = () => {
-    if (!imageUrl) return;
-    
-    // 既にプリロード済みの場合はスキップ
-    if (preloadLinkRef.current) return;
-
-    // Next.jsのImageコンポーネントは既に最適化されているため、
-    // 詳細ページへの遷移時に画像が再利用される
-    // ここでは、Linkのprefetchで詳細ページ自体をプリフェッチする
-  };
 
   const imageContent = (
     // 画像エリアだけ角丸クリップを担う：
@@ -98,11 +88,20 @@ export function PostCard({
     >
       <div className="relative">
         {post.id ? (
+          // prefetch を有効化して詳細ページへの遷移を高速化する。
+          // ロケール付きパス（/ja/posts/xxx 等）を直接指定し、proxy の
+          // ロケールリダイレクト 1 ホップを省く。
+          //
+          // 閲覧数カウントは詳細ページのサーバーレンダーでは行わず
+          // （CachedPostDetail は skipViewCount=true）、クライアント側の
+          // useEffect → POST /api/posts/[id]/view でのみ加算する。
+          // そのため prefetch（= RSC ペイロードの先読みのみ）が走っても
+          // 閲覧数は増えない。過去の「閲覧数が異常に増える」不具合は
+          // サーバーレンダー中にカウントしていた旧実装が原因であり、
+          // 現行構成では prefetch を有効化しても再発しない。
           <Link
-            href={`/posts/${encodeURIComponent(post.id)}`}
-            prefetch={false}
-            onMouseEnter={handlePreload}
-            onTouchStart={handlePreload}
+            href={getPostDetailLocalizedPath(post.id, locale)}
+            prefetch
           >
             {imageContent}
           </Link>
