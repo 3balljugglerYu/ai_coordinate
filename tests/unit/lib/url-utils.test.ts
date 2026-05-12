@@ -5,7 +5,11 @@ jest.mock("@/lib/public-env", () => ({
 }));
 
 import { getSiteUrlForClient } from "@/lib/public-env";
-import { getPostDetailPath, getPostDetailUrl } from "@/lib/url-utils";
+import {
+  getPostDetailLocalizedPath,
+  getPostDetailPath,
+  getPostDetailUrl,
+} from "@/lib/url-utils";
 
 const mockGetSiteUrlForClient = getSiteUrlForClient as jest.MockedFunction<
   typeof getSiteUrlForClient
@@ -77,6 +81,25 @@ describe("UrlUtils unit tests from EARS specs", () => {
       mockGetSiteUrlForClient.mockReturnValue("");
 
       expect(getPostDetailUrl("post-1", "ja")).toBe("/ja/posts/post-1");
+    });
+  });
+
+  describe("URLUTIL-005 getPostDetailLocalizedPath", () => {
+    test("getPostDetailLocalizedPath_localeを指定した場合_ロケールプレフィックス付き相対パスを返す", () => {
+      expect(getPostDetailLocalizedPath("post-1", "ja")).toBe("/ja/posts/post-1");
+      expect(getPostDetailLocalizedPath("post-1", "en")).toBe("/en/posts/post-1");
+    });
+
+    test("getPostDetailLocalizedPath_予約文字を含むpostIdの場合_エンコードしてからロケールを付与する", () => {
+      expect(getPostDetailLocalizedPath("abc/def?x=1", "ja")).toBe(
+        "/ja/posts/abc%2Fdef%3Fx%3D1"
+      );
+    });
+
+    test("getPostDetailLocalizedPath_baseUrlに依存しない_getSiteUrlForClientを呼ばない", () => {
+      getPostDetailLocalizedPath("post-1", "ja");
+
+      expect(mockGetSiteUrlForClient).not.toHaveBeenCalled();
     });
   });
 });

@@ -768,13 +768,10 @@ export const getPost = cache(async (
             .eq("user_id", data.user_id)
             .single()
         : Promise.resolve(null),
-      // いいね数・コメント数
-      useCache
-        ? Promise.all([
-            getLikeCountsBatch([id], supabase).then((m) => m[id] ?? 0),
-            getCommentCountsBatch([id], supabase).then((m) => m[id] ?? 0),
-          ])
-        : Promise.all([getLikeCount(id), getCommentCount(id)]),
+      // いいね数・コメント数。単一投稿なので count(head) クエリ（行転送なし）の
+      // getLikeCount / getCommentCount を使い、いずれも getPost が既に持っている
+      // supabase クライアントを再利用して createClient() の往復を増やさない。
+      Promise.all([getLikeCount(id, supabase), getCommentCount(id, supabase)]),
       // 実寸が未計算の場合は lazy compute で算出して DB に書き戻す。
       // 詳細は features/posts/lib/ensure-image-dimensions.ts。
       ensureImageDimensions({
@@ -878,9 +875,13 @@ export const getPost = cache(async (
 
 /**
  * いいね数を取得（単一）
+ * @param supabaseOverride - 既存クライアントの再利用用。指定時は createClient() を呼ばない
  */
-export async function getLikeCount(imageId: string): Promise<number> {
-  const supabase = await createClient();
+export async function getLikeCount(
+  imageId: string,
+  supabaseOverride?: SupabaseClient
+): Promise<number> {
+  const supabase = supabaseOverride ?? (await createClient());
 
   const { count, error } = await supabase
     .from("likes")
@@ -1161,9 +1162,13 @@ export async function getLikeCountInRange(
 
 /**
  * コメント数を取得（単一）
+ * @param supabaseOverride - 既存クライアントの再利用用。指定時は createClient() を呼ばない
  */
-export async function getCommentCount(imageId: string): Promise<number> {
-  const supabase = await createClient();
+export async function getCommentCount(
+  imageId: string,
+  supabaseOverride?: SupabaseClient
+): Promise<number> {
+  const supabase = supabaseOverride ?? (await createClient());
 
   const { count, error } = await supabase
     .from("comments")
