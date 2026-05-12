@@ -281,6 +281,16 @@ export interface BuildInspirePromptOptions {
 }
 
 /**
+ * 体型を image_1 に引きずられないための否定指示（全ブランチ末尾に付ける）。
+ *
+ * 「体格・肌色・手足の太さ・胸の大きさが image_1 に寄せられて変わる」という報告への対応。
+ * 安全フィルタ（OpenAI / Gemini）を誘発しやすい `chest size` のような明示は避け、
+ * `torso proportions` / `overall body silhouette` などの中立的な語で胴体全体を指す。
+ */
+const INSPIRE_BODY_PRESERVATION_GUARD =
+  "Do NOT alter the character's body type to match image_1. Do NOT make the arms or legs thinner, thicker, longer, or shorter than image_0. Do NOT change the skin tone. Do NOT change the shoulder width, waist shape, torso proportions, or overall body silhouette from image_0.";
+
+/**
  * Inspire 生成用のプロンプトを構築する。
  *
  * 入力画像の順序は **必ず以下** とする（Worker 側で揃えること）:
@@ -289,6 +299,11 @@ export interface BuildInspirePromptOptions {
  *
  * 出力フレームの比率はテンプレ（image_1）に合わせる。これはテンプレートの構図を
  * 完全に維持するために必須。Worker 側の `resolveOpenAITargetSize` も image_1 を起点に算出する。
+ *
+ * 体型保持について:
+ *   image_0 の体格・肌色・四肢の太さ・全体シルエットは image_1 に寄せず維持する。
+ *   保持指示（image_0 の説明 + item 1）と否定指示（`INSPIRE_BODY_PRESERVATION_GUARD`）と
+ *   styleSuffix の補強文を全 5 ブランチ・実写/イラスト両バリアントに共通で入れる。
  *
  * 5 ブランチ:
  *   - keep_all (overrideTarget=null): テンプレのアングル/ポーズ/衣装/背景を維持してキャラだけ差し替える
@@ -302,22 +317,23 @@ export function buildInspirePrompt(options: BuildInspirePromptOptions): string {
 
   const styleSuffix =
     sourceImageType === "real"
-      ? "Generate a photorealistic result. Captured with an 85mm portrait lens. Use realistic lighting consistent with image_1's environment."
-      : "Match the illustration touch and artistic style of image_1 (the style template).";
+      ? "Generate a photorealistic result. Captured with an 85mm portrait lens. Use realistic lighting consistent with image_1's environment. Even in this photorealistic style, keep image_0's original body proportions, limb thickness, shoulder width, waist shape, torso proportions, and overall body silhouette — do not reshape the body to match image_1."
+      : "Match the illustration touch and artistic style of image_1 (the style template). Even when matching the art style, keep image_0's original body proportions, limb thickness, shoulder width, waist shape, torso proportions, and overall body silhouette — do not reshape the body to match image_1.";
 
   const basePrefix = `CRITICAL INSTRUCTION: This is an Image-to-Image task with two reference images:
-- image_0 (User Character): the character (face, hair, identity) to render in the output.
-- image_1 (Style Template): the visual reference for composition, framing, and overall vibe.
+- image_0 (User Character): the character identity to render in the output, including face, hair, skin tone, body proportions, limb thickness, arm and leg length, shoulder width, waist shape, and overall body silhouette.
+- image_1 (Style Template): the visual reference for composition, framing, camera angle, pose, outfit, background, and overall vibe.
 
 You MUST produce a single output image that:
-1. Replaces the character in image_1 with the character from image_0 (preserve image_0's facial features, hair, and identity).
+1. Replaces the character in image_1 with the character from image_0. Preserve image_0's facial features, hair, identity, skin tone, body proportions, arm and leg thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette.
 2. Strictly preserves image_1's aspect ratio, framing, and crop. Do NOT extend or change the canvas.`;
 
   if (overrideTarget === null) {
     return [
       basePrefix,
-      `3. KEEP ALL of the following from image_1: camera angle, pose, outfit, and background. Only the character identity is taken from image_0.`,
-      `4. The output must look as if the character from image_0 stepped into image_1's exact scene with the same pose, outfit, and background.`,
+      `3. KEEP ALL of the following from image_1: camera angle, pose, outfit, and background. Only the character identity and body come from image_0.`,
+      `4. The output must look as if the character from image_0 stepped into image_1's exact scene with the same camera angle, pose, outfit, and background, while keeping image_0's original body proportions and physical characteristics.`,
+      `5. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
       styleSuffix,
     ].join("\n\n");
   }
@@ -327,7 +343,8 @@ You MUST produce a single output image that:
       basePrefix,
       `3. KEEP from image_1: pose, outfit, and background.`,
       `4. CHANGE: regenerate the camera angle to a natural alternative (e.g., a different viewpoint of the same scene) while keeping the rest faithful to image_1.`,
-      `5. The character identity must come from image_0.`,
+      `5. The character identity and body come from image_0.`,
+      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
       styleSuffix,
     ].join("\n\n");
   }
@@ -337,7 +354,8 @@ You MUST produce a single output image that:
       basePrefix,
       `3. KEEP from image_1: camera angle, outfit, and background.`,
       `4. CHANGE: regenerate the pose to a natural alternative that fits the same scene and outfit.`,
-      `5. The character identity must come from image_0.`,
+      `5. The character identity and body come from image_0.`,
+      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
       styleSuffix,
     ].join("\n\n");
   }
@@ -347,7 +365,8 @@ You MUST produce a single output image that:
       basePrefix,
       `3. KEEP from image_1: camera angle, pose, and background.`,
       `4. CHANGE: regenerate the outfit to a natural alternative that suits the scene and pose.`,
-      `5. The character identity must come from image_0.`,
+      `5. The character identity and body come from image_0.`,
+      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
       styleSuffix,
     ].join("\n\n");
   }
@@ -357,7 +376,8 @@ You MUST produce a single output image that:
       basePrefix,
       `3. KEEP from image_1: camera angle, pose, and outfit.`,
       `4. CHANGE: regenerate the background to a natural alternative that complements the outfit and pose.`,
-      `5. The character identity must come from image_0.`,
+      `5. The character identity and body come from image_0.`,
+      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
       styleSuffix,
     ].join("\n\n");
   }
