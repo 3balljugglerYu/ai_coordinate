@@ -281,14 +281,23 @@ export interface BuildInspirePromptOptions {
 }
 
 /**
- * 体型を image_1 に引きずられないための否定指示（全ブランチ末尾に付ける）。
+ * Inspire 生成で image_0 から保持すべき身体属性の正典リスト（英語の列挙文）。
  *
- * 「体格・肌色・手足の太さ・胸の大きさが image_1 に寄せられて変わる」という報告への対応。
- * 安全フィルタ（OpenAI / Gemini）を誘発しやすい `chest size` のような明示は避け、
- * `torso proportions` / `overall body silhouette` などの中立的な語で胴体全体を指す。
+ * 「体格・肌色・手足の太さ・胸の大きさが image_1 に寄せられて変わる」という報告への対応で、
+ * image_0 の説明 / item 1 の保持指示 / 否定ガード / styleSuffix の補強文を **すべてこの 1 つの
+ * 文字列から組み立てる**。こうしてリスト間のドリフト（片方だけ更新し忘れる）を構造的に防ぐ。
+ *
+ * 注:
+ *   - この shared モジュールは Next.js（API/Client）と Supabase Deno Worker の両方から import する。
+ *     共有定数はここ（shared/）に置く。lib/ には移さない（Worker から lib/ を import できないため）。
+ *   - 安全フィルタ（OpenAI / Gemini）を誘発しやすい `chest size` のような明示は含めず、
+ *     `torso proportions` / `overall body silhouette` で胴体全体を中立的に指す。
  */
-const INSPIRE_BODY_PRESERVATION_GUARD =
-  "Do NOT alter the character's body type to match image_1. Do NOT make the arms or legs thinner, thicker, longer, or shorter than image_0. Do NOT change the skin tone. Do NOT change the shoulder width, waist shape, torso proportions, or overall body silhouette from image_0.";
+const INSPIRE_BODY_ATTRIBUTES =
+  "skin tone, body proportions, limb thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette";
+
+/** 体型を image_1 に引きずられないための否定指示（全ブランチ末尾に付ける）。 */
+const INSPIRE_BODY_PRESERVATION_GUARD = `Do NOT alter the character's body type to match image_1. Keep image_0's ${INSPIRE_BODY_ATTRIBUTES}. Do NOT change the skin tone. Do NOT slim, enlarge, lengthen, shorten, or otherwise reshape any part of the body to match image_1.`;
 
 /**
  * Inspire 生成用のプロンプトを構築する。
@@ -303,7 +312,8 @@ const INSPIRE_BODY_PRESERVATION_GUARD =
  * 体型保持について:
  *   image_0 の体格・肌色・四肢の太さ・全体シルエットは image_1 に寄せず維持する。
  *   保持指示（image_0 の説明 + item 1）と否定指示（`INSPIRE_BODY_PRESERVATION_GUARD`）と
- *   styleSuffix の補強文を全 5 ブランチ・実写/イラスト両バリアントに共通で入れる。
+ *   styleSuffix の補強文を全 5 ブランチ・実写/イラスト両バリアントに共通で入れ、
+ *   保持属性のリストはすべて `INSPIRE_BODY_ATTRIBUTES` 1 箇所に集約している。
  *
  * 5 ブランチ:
  *   - keep_all (overrideTarget=null): テンプレのアングル/ポーズ/衣装/背景を維持してキャラだけ差し替える
@@ -315,17 +325,24 @@ const INSPIRE_BODY_PRESERVATION_GUARD =
 export function buildInspirePrompt(options: BuildInspirePromptOptions): string {
   const { overrideTarget, sourceImageType = "illustration" } = options;
 
-  const styleSuffix =
+  const styleBodyReinforcement = ` Even ${
     sourceImageType === "real"
-      ? "Generate a photorealistic result. Captured with an 85mm portrait lens. Use realistic lighting consistent with image_1's environment. Even in this photorealistic style, keep image_0's original body proportions, limb thickness, shoulder width, waist shape, torso proportions, and overall body silhouette — do not reshape the body to match image_1."
-      : "Match the illustration touch and artistic style of image_1 (the style template). Even when matching the art style, keep image_0's original body proportions, limb thickness, shoulder width, waist shape, torso proportions, and overall body silhouette — do not reshape the body to match image_1.";
+      ? "in this photorealistic style"
+      : "when matching the art style"
+  }, keep image_0's ${INSPIRE_BODY_ATTRIBUTES} — do not reshape the body to match image_1.`;
+
+  const styleSuffix =
+    (sourceImageType === "real"
+      ? "Generate a photorealistic result. Captured with an 85mm portrait lens. Use realistic lighting consistent with image_1's environment."
+      : "Match the illustration touch and artistic style of image_1 (the style template).") +
+    styleBodyReinforcement;
 
   const basePrefix = `CRITICAL INSTRUCTION: This is an Image-to-Image task with two reference images:
-- image_0 (User Character): the character identity to render in the output, including face, hair, skin tone, body proportions, limb thickness, arm and leg length, shoulder width, waist shape, and overall body silhouette.
+- image_0 (User Character): the character identity to render in the output, including face, hair, ${INSPIRE_BODY_ATTRIBUTES}.
 - image_1 (Style Template): the visual reference for composition, framing, camera angle, pose, outfit, background, and overall vibe.
 
 You MUST produce a single output image that:
-1. Replaces the character in image_1 with the character from image_0. Preserve image_0's facial features, hair, identity, skin tone, body proportions, arm and leg thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette.
+1. Replaces the character in image_1 with the character from image_0. Preserve image_0's facial features, hair, identity, ${INSPIRE_BODY_ATTRIBUTES}.
 2. Strictly preserves image_1's aspect ratio, framing, and crop. Do NOT extend or change the canvas.`;
 
   if (overrideTarget === null) {

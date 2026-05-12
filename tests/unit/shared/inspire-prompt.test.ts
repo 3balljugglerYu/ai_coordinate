@@ -127,5 +127,24 @@ describe("buildInspirePrompt", () => {
         "Do NOT alter the character's body type to match image_1"
       );
     });
+
+    // 保持属性リストは INSPIRE_BODY_ATTRIBUTES 1 箇所に集約しているので、
+    // image_0 の説明 / item 1 / 否定ガード / styleSuffix 補強文に同じ列挙文が複数回現れる。
+    // ここを変えたらこのテストも更新する（= リストのドリフトに気づける）。
+    test("身体属性の正典リストが全分岐 × 実写/イラストで複数箇所に現れる", () => {
+      const phrase =
+        "skin tone, body proportions, limb thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette";
+      for (const target of targets) {
+        for (const sourceImageType of sources) {
+          const prompt = buildInspirePrompt({
+            overrideTarget: target,
+            sourceImageType,
+          });
+          const occurrences = prompt.split(phrase).length - 1;
+          // image_0 の説明 + item 1 + 否定ガード + styleSuffix 補強文 = 4 箇所以上
+          expect(occurrences).toBeGreaterThanOrEqual(4);
+        }
+      }
+    });
   });
 });
