@@ -21,18 +21,18 @@
 
 Do **not** perform the following without an explicit user request or confirmation in the current session. When in doubt, ask before acting.
 
-- **Filesystem deletion** outside regenerable build artifacts. `rm -rf` / `find ... -delete` is forbidden against source, tests, configs, `.env*`, dotfiles, and any path outside common throwaway directories (`.next/`, `node_modules/`, `dist/`, `coverage/`, `/tmp/...`).
+- **Filesystem deletion** outside regenerable build artifacts. `rm -rf` / `find ... -delete` / `git clean -f` / `git clean -fd` is forbidden against source, tests, configs, `.env*`, dotfiles, untracked working files, and any path outside common throwaway directories (`.next/`, `node_modules/`, `dist/`, `coverage/`, `/tmp/...`).
 - **Git history rewriting**: `git reset --hard`, `git push --force` / `--force-with-lease`, `git rebase` against pushed branches, `git commit --amend` after push, `git filter-branch` / `git filter-repo`.
 - **Branch / tag / worktree destruction**: `git branch -D`, deleting remote branches (`git push origin --delete`, `git push origin :ref`), deleting tags, `git worktree remove --force`, `git stash drop` / `git stash clear`.
 - **Direct writes to `main` / `master`**: never push, merge, or rebase directly to the default branch. PRs only.
 - **Process termination beyond your own**: `kill -9`, `pkill`, `killall` against processes you did not start in the current session. Stopping a server you started yourself is fine; killing the user's editor, package manager, or unrelated dev servers is not.
-- **Lockfile / generated-config overwrites you did not intend**: do not commit incidental `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `Cargo.lock` churn produced by routine installs. Either revert the churn or call it out and ask before committing.
+- **Lockfile / generated-config overwrites you did not intend**: do not commit incidental `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `Cargo.lock` churn produced by routine installs. A lockfile-only diff with no accompanying `package.json` (or equivalent manifest) change is almost always incidental — revert it; do not commit lockfile changes unless they are a deliberate, in-scope part of the task. Otherwise call it out and ask before committing.
 - **Dependency surgery**: do not add, remove, or upgrade dependencies, or modify `package.json` scripts, outside the explicit scope of the task. See also CLAUDE.md.
 - **External service destructive calls**: Stripe refunds / subscription cancellations / customer deletion, Resend bulk sends, OpenAI / Gemini billing-relevant batch jobs, any account-deletion or data-purge endpoint. Read-only inspection is fine; writes that move money, send mail to real users, or delete records require confirmation.
 - **Supabase destructive operations** (re-stated from CLAUDE.md): `DROP`, `TRUNCATE`, `DELETE` without `WHERE` against production, migration `rollback` / `down`, Edge Function deletion. Read-only queries, applying forward migrations, and deploying Edge Functions are allowed per CLAUDE.md.
 - **Secrets**: never read `.env*` keys beyond the Supabase-scoped allowlist in CLAUDE.md, never print secret values to chat / commits / files, never paste them into external services.
 
-Regenerable build outputs (`.next/`, `node_modules/`, `coverage/`, build caches) may be removed freely as part of normal work.
+Regenerable build outputs and temporary paths (`.next/`, `node_modules/`, `dist/`, `coverage/`, `/tmp/...`, build caches) may be removed freely as part of normal work.
 
 ## UI Verification Workflow
 
