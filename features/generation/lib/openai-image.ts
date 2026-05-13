@@ -1,7 +1,10 @@
 import "server-only";
 
 /**
- * OpenAI gpt-image-2 (quality=low) の Node ランタイム向けクライアント。
+ * OpenAI gpt-image-2 の Node ランタイム向けクライアント。
+ *
+ * `quality` は呼び出し側から渡せる（既定 "low"）。inspire のように難度の高い
+ * 合成タスクは "medium" を指定して品質を引き上げる。
  *
  * 同等の Deno 実装が `supabase/functions/image-gen-worker/openai-image.ts` にあり、
  * Edge Function ワーカーで使われている。本ファイルは新設の guest sync ルート
@@ -23,6 +26,13 @@ const OPENAI_IMAGES_EDITS_URL = "https://api.openai.com/v1/images/edits";
 
 export type OpenAITargetSize = "1024x1024" | "1024x1536" | "1536x1024";
 
+/**
+ * OpenAI gpt-image-2 の `quality` パラメータ。
+ * "low" は最も高速・低コスト、"high" は最も高品質・高コスト。
+ * 既定は "low"。
+ */
+export type OpenAIImageQuality = "low" | "medium" | "high" | "auto";
+
 export interface OpenAIImageInput {
   base64: string;
   mimeType: string;
@@ -41,6 +51,10 @@ export interface CallOpenAIImageEditParams {
    * API キーの差し替え用。既定では `process.env.OPENAI_API_KEY` を読む。
    */
   apiKey?: string;
+  /**
+   * 生成品質。省略時は "low"。inspire のように合成難度が高い経路では "medium" を指定する。
+   */
+  quality?: OpenAIImageQuality;
 }
 
 /**
@@ -63,6 +77,10 @@ export interface CallOpenAIImageEditMultiInputParams {
   fetchFn?: typeof fetch;
   apiKey?: string;
   n?: number;
+  /**
+   * 生成品質。省略時は "low"。inspire のように合成難度が高い経路では "medium" を指定する。
+   */
+  quality?: OpenAIImageQuality;
 }
 
 export interface OpenAIImageEditResult {
@@ -193,7 +211,8 @@ export function resolveOpenAITargetSize(
 }
 
 /**
- * OpenAI gpt-image-2 (quality=low) を呼び出して画像編集を実行する Node 版。
+ * OpenAI gpt-image-2 を呼び出して画像編集を実行する Node 版。
+ * `quality` は呼び出し側から指定可能（省略時は "low"）。
  *
  * Deno 版と同じ振る舞い:
  * - GIF 入力は再試行不可エラーで早期失敗（OPENAI_PROVIDER_ERROR プレフィックス付き）
@@ -240,7 +259,7 @@ export async function callOpenAIImageEditBatch(
   form.append("prompt", params.prompt);
   form.append("image[]", file);
   form.append("size", targetSize);
-  form.append("quality", "low");
+  form.append("quality", params.quality ?? "low");
   form.append("moderation", "low");
   form.append("output_format", "png");
   form.append("n", String(requestedImageCount));
@@ -368,7 +387,7 @@ export async function callOpenAIImageEditMultiInput(
     form.append("image[]", file);
   }
   form.append("size", targetSize);
-  form.append("quality", "low");
+  form.append("quality", params.quality ?? "low");
   form.append("moderation", "low");
   form.append("output_format", "png");
   form.append("n", String(requestedImageCount));

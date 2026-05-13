@@ -294,6 +294,9 @@ export async function handlePreviewGeneration(
         targetSizeBaseIndex: 1,
         timeoutMs: OPENAI_TIMEOUT_MS,
         n: 1,
+        // inspire はキャラ識別 × テンプレ構図の合成で難度が高いため
+        // OpenAI の品質ティアを medium に引き上げる（既定の low は細部が崩れやすい）。
+        quality: "medium",
       });
       const result = results[0];
       const previewPath = `${user.id}/preview/${draftId}-openai.png`;

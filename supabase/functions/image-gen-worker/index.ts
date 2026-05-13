@@ -1730,6 +1730,9 @@ Deno.serve(async () => {
                             targetSizeBaseIndex: 1,
                             timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
                             n: requestedImageCount,
+                            // inspire はキャラ識別 × テンプレ構図の合成で難度が高いため
+                            // OpenAI の品質ティアを medium に引き上げる（既定の low は細部が崩れやすい）。
+                            quality: "medium",
                           })
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,

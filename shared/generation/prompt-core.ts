@@ -296,8 +296,16 @@ export interface BuildInspirePromptOptions {
 const INSPIRE_BODY_ATTRIBUTES =
   "skin tone, body proportions, limb thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette";
 
-/** 体型を image_1 に引きずられないための否定指示（全ブランチ末尾に付ける）。 */
-const INSPIRE_BODY_PRESERVATION_GUARD = `Do NOT alter the character's body type to match image_1. Keep image_0's ${INSPIRE_BODY_ATTRIBUTES}. Do NOT change the skin tone. Do NOT slim, enlarge, lengthen, shorten, or otherwise reshape any part of the body to match image_1.`;
+/**
+ * 体型を image_1 に引きずられないための否定指示（全ブランチ末尾に付ける）。
+ *
+ * 最後の一文は「image_0 が上半身のみ × image_1 が全身ポーズ」のケースへの配慮:
+ * このとき image_0 には下半身の参照が無いため model は補完するしかないが、
+ * 補完元として image_1 を流用しつつ image_0 の頭サイズだけ据え置く → 頭身が崩れる、
+ * という典型的なアーティファクトを避けるよう、頭身比の一貫性を明示的に要求する。
+ * ソース画像の指定（上半身 / 全身）を制限せず prompt 側で対応する方針。
+ */
+const INSPIRE_BODY_PRESERVATION_GUARD = `Do NOT alter the character's body type to match image_1. Keep image_0's ${INSPIRE_BODY_ATTRIBUTES}. Do NOT change the skin tone. Do NOT slim, enlarge, lengthen, shorten, or otherwise reshape any part of the body to match image_1. If image_0 shows only the upper body but image_1's framing requires the lower body to be drawn, extrapolate the missing parts naturally from image_0's visible proportions (head-to-shoulder ratio, torso width) and keep a realistic, consistent head-to-body ratio across the whole figure; do not leave the head oversized or undersized relative to the generated body.`;
 
 /**
  * Inspire 生成用のプロンプトを構築する。
