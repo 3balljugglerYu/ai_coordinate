@@ -10,16 +10,11 @@ import {
   OPENAI_PROVIDER_ERROR,
   SAFETY_POLICY_BLOCKED_ERROR,
 } from "../../../shared/generation/errors.ts";
+import type { OpenAIImageQuality } from "../../../shared/generation/openai-types.ts";
 
 const OPENAI_IMAGES_EDITS_URL = "https://api.openai.com/v1/images/edits";
 
 export type OpenAITargetSize = "1024x1024" | "1024x1536" | "1536x1024";
-
-/**
- * OpenAI gpt-image-2 の `quality` パラメータ。省略時は "low"。
- * inspire のように合成難度が高い経路では "medium" を指定する。
- */
-export type OpenAIImageQuality = "low" | "medium" | "high" | "auto";
 
 export interface OpenAIImageInput {
   base64: string;
