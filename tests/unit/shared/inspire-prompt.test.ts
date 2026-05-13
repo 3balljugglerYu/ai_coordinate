@@ -71,4 +71,80 @@ describe("buildInspirePrompt", () => {
       );
     }
   });
+
+  // 「体格・肌色・手足の太さ・胸の大きさが image_1 に寄せられて変わる」報告への対応。
+  // 体型保持の指示が全 5 ブランチ・実写/イラスト両バリアントに入っていることを確認する。
+  describe("body preservation", () => {
+    const targets = [null, "angle", "pose", "outfit", "background"] as const;
+    const sources = ["illustration", "real"] as const;
+
+    test("全分岐 × 実写/イラストで image_0 の体型保持指示と否定指示を含む", () => {
+      for (const target of targets) {
+        for (const sourceImageType of sources) {
+          const prompt = buildInspirePrompt({
+            overrideTarget: target,
+            sourceImageType,
+          });
+          // image_0 の説明 / item 1 の保持指示
+          expect(prompt).toContain("skin tone");
+          expect(prompt).toContain("limb");
+          expect(prompt).toContain("shoulder width");
+          expect(prompt).toContain("overall body silhouette");
+          // 否定指示ブロック
+          expect(prompt).toContain(
+            "Do NOT alter the character's body type to match image_1"
+          );
+          expect(prompt).toContain("Do NOT change the skin tone");
+          // styleSuffix 側の補強文
+          expect(prompt).toContain("do not reshape the body to match image_1");
+        }
+      }
+    });
+
+    test("安全フィルタを誘発しやすい文言（chest / breast）を含まない", () => {
+      for (const target of targets) {
+        for (const sourceImageType of sources) {
+          const prompt = buildInspirePrompt({
+            overrideTarget: target,
+            sourceImageType,
+          }).toLowerCase();
+          expect(prompt).not.toContain("chest");
+          expect(prompt).not.toContain("breast");
+        }
+      }
+    });
+
+    test("override 系でも item 4 の上書き指示と body 専用の否定指示が両立する", () => {
+      const outfit = buildInspirePrompt({ overrideTarget: "outfit" });
+      expect(outfit).toContain("CHANGE: regenerate the outfit");
+      expect(outfit).toContain(
+        "Do NOT alter the character's body type to match image_1"
+      );
+
+      const pose = buildInspirePrompt({ overrideTarget: "pose" });
+      expect(pose).toContain("CHANGE: regenerate the pose");
+      expect(pose).toContain(
+        "Do NOT alter the character's body type to match image_1"
+      );
+    });
+
+    // 保持属性リストは INSPIRE_BODY_ATTRIBUTES 1 箇所に集約しているので、
+    // image_0 の説明 / item 1 / 否定ガード / styleSuffix 補強文に同じ列挙文が複数回現れる。
+    // ここを変えたらこのテストも更新する（= リストのドリフトに気づける）。
+    test("身体属性の正典リストが全分岐 × 実写/イラストで複数箇所に現れる", () => {
+      const phrase =
+        "skin tone, body proportions, limb thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette";
+      for (const target of targets) {
+        for (const sourceImageType of sources) {
+          const prompt = buildInspirePrompt({
+            overrideTarget: target,
+            sourceImageType,
+          });
+          const occurrences = prompt.split(phrase).length - 1;
+          // image_0 の説明 + item 1 + 否定ガード + styleSuffix 補強文 = 4 箇所以上
+          expect(occurrences).toBeGreaterThanOrEqual(4);
+        }
+      }
+    });
+  });
 });
