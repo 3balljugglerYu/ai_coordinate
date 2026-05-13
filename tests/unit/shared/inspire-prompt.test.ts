@@ -146,5 +146,22 @@ describe("buildInspirePrompt", () => {
         }
       }
     });
+
+    // 「image_0 が上半身のみ × image_1 が全身」のときに頭でっかちになる
+    // アーティファクトを抑えるための頭身比保持指示が含まれること。
+    test("頭身比を一貫させる指示が全分岐 × 実写/イラストに含まれる", () => {
+      for (const target of targets) {
+        for (const sourceImageType of sources) {
+          const prompt = buildInspirePrompt({
+            overrideTarget: target,
+            sourceImageType,
+          });
+          expect(prompt).toContain(
+            "If image_0 shows only the upper body but image_1's framing requires the lower body to be drawn"
+          );
+          expect(prompt).toContain("head-to-body ratio");
+        }
+      }
+    });
   });
 });

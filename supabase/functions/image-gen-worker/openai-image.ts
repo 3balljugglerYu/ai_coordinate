@@ -1,6 +1,7 @@
-// OpenAI gpt-image-2 (quality=low) クライアント
+// OpenAI gpt-image-2 クライアント
 // - POST https://api.openai.com/v1/images/edits を multipart/form-data で叩く
 // - 入力画像のアスペクト比から 1024x1024 / 1024x1536 / 1536x1024 を選択
+// - `quality` は呼び出し側から指定可能（省略時は "low"）。inspire 経路では "medium" を使う。
 // - moderation/safety 系のエラーは SAFETY_POLICY_BLOCKED_ERROR に統一
 // - GIF 入力は OpenAI 経路では非対応（呼び出し側で再試行不可エラーとして扱う）
 
@@ -9,6 +10,7 @@ import {
   OPENAI_PROVIDER_ERROR,
   SAFETY_POLICY_BLOCKED_ERROR,
 } from "../../../shared/generation/errors.ts";
+import type { OpenAIImageQuality } from "../../../shared/generation/openai-types.ts";
 
 const OPENAI_IMAGES_EDITS_URL = "https://api.openai.com/v1/images/edits";
 
@@ -23,6 +25,7 @@ export interface CallOpenAIImageEditParams {
   prompt: string;
   inputImage: OpenAIImageInput;
   timeoutMs: number;
+  quality?: OpenAIImageQuality;
 }
 
 export interface OpenAIImageEditResult {
@@ -148,7 +151,7 @@ export function resolveOpenAITargetSize(
 }
 
 /**
- * OpenAI gpt-image-2 (quality=low) を呼び出して画像編集を実行。
+ * OpenAI gpt-image-2 を呼び出して画像編集を実行（`quality` は呼び出し側指定、省略時 "low"）。
  *
  * - GIF 入力は再試行不可エラーで早期失敗
  * - HTTP 400 + content_policy_violation または message に moderation/safety を含む
@@ -199,7 +202,7 @@ export async function callOpenAIImageEditBatch(
   form.append("prompt", params.prompt);
   form.append("image[]", file);
   form.append("size", targetSize);
-  form.append("quality", "low");
+  form.append("quality", params.quality ?? "low");
   form.append("moderation", "low");
   form.append("output_format", "png");
   form.append("n", String(requestedImageCount));
@@ -289,6 +292,7 @@ export interface CallOpenAIImageEditMultiInputParams {
   timeoutMs: number;
   targetSizeBaseIndex?: number;
   n?: number;
+  quality?: OpenAIImageQuality;
 }
 
 export async function callOpenAIImageEditMultiInputBatch(
@@ -329,7 +333,7 @@ export async function callOpenAIImageEditMultiInputBatch(
     form.append("image[]", file);
   }
   form.append("size", targetSize);
-  form.append("quality", "low");
+  form.append("quality", params.quality ?? "low");
   form.append("moderation", "low");
   form.append("output_format", "png");
   form.append("n", String(requestedImageCount));
