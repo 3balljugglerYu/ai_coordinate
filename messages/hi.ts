@@ -811,6 +811,9 @@ export const hiMessages = {
     modelTooltipAria: "मॉडलों के बीच अंतर दिखाएँ",
     modelTooltipContent: "💡 जितना High के क़रीब, चेहरे और कपड़ों की बारीकियाँ उतनी कम बिगड़ती हैं।\nLow: तेज़ी से बनाता है। लगभग 30 सेकंड।\nMedium: संतुलित। लगभग 70 सेकंड।\nHigh: डिटेल स्थिर। लगभग 180 सेकंड।",
     gptImage2QualityLabel: "जनरेशन प्रकार चुनें",
+    gptImage2QualityLow: "तेज़ी से बनाएँ",
+    gptImage2QualityMedium: "संतुलित बनाएँ",
+    gptImage2QualityHigh: "सावधानी से बनाएँ",
     modelLight05k: "लाइट मॉडल: Nano Banana 2 | 0.5K (10 Percoin / छवि)",
     modelStandard1k: "मानक मॉडल: Nano Banana 2 | 1K (20 Percoin / छवि)",
     modelPro1k:

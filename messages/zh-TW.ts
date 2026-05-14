@@ -811,6 +811,9 @@ export const zhTwMessages = {
     modelTooltipAria: "顯示生成模型的差異",
     modelTooltipContent: "💡 越接近 High，臉部和服裝的細節越不容易崩壞。\nLow：生成快。約 30 秒。\nMedium：均衡。約 70 秒。\nHigh：細節不易崩壞。約 180 秒。",
     gptImage2QualityLabel: "選擇生成類型",
+    gptImage2QualityLow: "快速生成",
+    gptImage2QualityMedium: "均衡生成",
+    gptImage2QualityHigh: "精細生成",
     modelLight05k: "輕量模型: Nano Banana 2 | 0.5K (10 Percoin / 張)",
     modelStandard1k: "標準模型: Nano Banana 2 | 1K (20 Percoin / 張)",
     modelPro1k:

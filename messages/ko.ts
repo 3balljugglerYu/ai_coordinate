@@ -811,6 +811,9 @@ export const koMessages = {
     modelTooltipAria: "생성 모델 차이 표시",
     modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성. 약 30초.\nMedium: 균형 중시. 약 70초.\nHigh: 디테일이 잘 깨지지 않음. 약 180초.",
     gptImage2QualityLabel: "생성 타입 선택",
+    gptImage2QualityLow: "빠르게 생성",
+    gptImage2QualityMedium: "균형 있게 생성",
+    gptImage2QualityHigh: "정성껏 생성",
     modelLight05k: "라이트 모델: Nano Banana 2 | 0.5K (10 Percoin / 장)",
     modelStandard1k: "스탠다드 모델: Nano Banana 2 | 1K (20 Percoin / 장)",
     modelPro1k:

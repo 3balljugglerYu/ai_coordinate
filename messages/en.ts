@@ -811,6 +811,9 @@ export const enMessages = {
     modelTooltipAria: "Show how the generation models differ",
     modelTooltipContent: "💡 The higher the quality, the less faces and clothing details break.\nLow: generates quickly. ~30 sec.\nMedium: balanced. ~70 sec.\nHigh: details stay intact. ~180 sec.",
     gptImage2QualityLabel: "Select generation type",
+    gptImage2QualityLow: "Generate quickly",
+    gptImage2QualityMedium: "Generate balanced",
+    gptImage2QualityHigh: "Generate carefully",
     modelLight05k: "Light model: Nano Banana 2 | 0.5K (10 Percoins / image)",
     modelStandard1k: "Standard model: Nano Banana 2 | 1K (20 Percoins / image)",
     modelPro1k:

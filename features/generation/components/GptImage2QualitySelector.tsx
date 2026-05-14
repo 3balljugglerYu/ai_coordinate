@@ -40,18 +40,21 @@ interface GptImage2QualitySelectorProps {
 
 interface QualityOption {
   value: GptImage2Quality;
-  labelKey: "modelTagTierLight" | "modelTagTierBalanced" | "modelTagTierQuality";
+  labelKey:
+    | "gptImage2QualityLow"
+    | "gptImage2QualityMedium"
+    | "gptImage2QualityHigh";
   tierTag: ModelTagKey;
 }
 
 const QUALITY_OPTIONS: ReadonlyArray<QualityOption> = [
-  { value: "low", labelKey: "modelTagTierLight", tierTag: "tierLight" },
+  { value: "low", labelKey: "gptImage2QualityLow", tierTag: "tierLight" },
   {
     value: "medium",
-    labelKey: "modelTagTierBalanced",
+    labelKey: "gptImage2QualityMedium",
     tierTag: "tierBalanced",
   },
-  { value: "high", labelKey: "modelTagTierQuality", tierTag: "tierQuality" },
+  { value: "high", labelKey: "gptImage2QualityHigh", tierTag: "tierQuality" },
 ];
 
 /**

@@ -811,6 +811,9 @@ export const arMessages = {
     modelTooltipAria: "عرض الفروق بين النماذج",
     modelTooltipContent: "💡 كلما اقتربت من High، قلّت تشوّهات الوجه والملابس.\nLow: توليد سريع، حوالي 30 ثانية.\nMedium: متوازن، حوالي 70 ثانية.\nHigh: تفاصيل ثابتة، حوالي 180 ثانية.",
     gptImage2QualityLabel: "اختر نوع التوليد",
+    gptImage2QualityLow: "توليد سريع",
+    gptImage2QualityMedium: "توليد متوازن",
+    gptImage2QualityHigh: "توليد دقيق",
     modelLight05k: "نموذج خفيف: Nano Banana 2 | 0.5K (10 Percoin / صورة)",
     modelStandard1k: "نموذج قياسي: Nano Banana 2 | 1K (20 Percoin / صورة)",
     modelPro1k:

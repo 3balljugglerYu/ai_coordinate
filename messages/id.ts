@@ -811,6 +811,9 @@ export const idMessages = {
     modelTooltipAria: "Tampilkan perbedaan model",
     modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",
     gptImage2QualityLabel: "Pilih tipe generasi",
+    gptImage2QualityLow: "Hasilkan cepat",
+    gptImage2QualityMedium: "Hasilkan seimbang",
+    gptImage2QualityHigh: "Hasilkan dengan teliti",
     modelLight05k: "Model ringan: Nano Banana 2 | 0.5K (10 Percoin / gambar)",
     modelStandard1k: "Model standar: Nano Banana 2 | 1K (20 Percoin / gambar)",
     modelPro1k:

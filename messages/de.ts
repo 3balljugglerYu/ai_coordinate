@@ -811,6 +811,9 @@ export const deMessages = {
     modelTooltipAria: "Modellunterschiede anzeigen",
     modelTooltipContent: "💡 Je höher, desto weniger werden Gesicht und Kleidung verzerrt.\nLow: schnelle Generierung. ca. 30 s.\nMedium: ausgewogen. ca. 70 s.\nHigh: stabile Details. ca. 180 s.",
     gptImage2QualityLabel: "Generierungstyp auswählen",
+    gptImage2QualityLow: "Schnell generieren",
+    gptImage2QualityMedium: "Ausgewogen generieren",
+    gptImage2QualityHigh: "Sorgfältig generieren",
     modelLight05k: "Light-Modell: Nano Banana 2 | 0.5K (10 Percoins / Bild)",
     modelStandard1k: "Standard-Modell: Nano Banana 2 | 1K (20 Percoins / Bild)",
     modelPro1k:

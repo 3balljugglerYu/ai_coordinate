@@ -38,12 +38,12 @@ export const MODEL_TAG_DISPLAY: Record<ModelTagKey, ModelTagDisplay> = {
   engineOpenai: {
     messageKey: "modelTagEngineOpenai",
     className:
-      "border-slate-300 bg-transparent text-slate-700 dark:border-slate-600 dark:text-slate-300",
+      "border-slate-300 bg-transparent text-foreground dark:border-slate-600",
   },
   engineGemini: {
     messageKey: "modelTagEngineGemini",
     className:
-      "border-sky-300 bg-transparent text-sky-700 dark:border-sky-700 dark:text-sky-300",
+      "border-slate-300 bg-transparent text-foreground dark:border-slate-600",
   },
   tierLight: {
     messageKey: "modelTagTierLight",

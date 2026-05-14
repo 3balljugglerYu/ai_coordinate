@@ -811,6 +811,9 @@ export const thMessages = {
     modelTooltipAria: "แสดงความแตกต่างของโมเดล",
     modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว ประมาณ 30 วินาที\nMedium: สมดุล ประมาณ 70 วินาที\nHigh: รายละเอียดคงที่ ประมาณ 180 วินาที",
     gptImage2QualityLabel: "เลือกประเภทการสร้าง",
+    gptImage2QualityLow: "สร้างอย่างรวดเร็ว",
+    gptImage2QualityMedium: "สร้างอย่างสมดุล",
+    gptImage2QualityHigh: "สร้างอย่างประณีต",
     modelLight05k: "โมเดลเบา: Nano Banana 2 | 0.5K (10 Percoin / รูป)",
     modelStandard1k: "โมเดลมาตรฐาน: Nano Banana 2 | 1K (20 Percoin / รูป)",
     modelPro1k:
