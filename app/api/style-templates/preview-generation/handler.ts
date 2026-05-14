@@ -291,7 +291,9 @@ export async function handlePreviewGeneration(
           { base64: testCharacter.base64, mimeType: testCharacter.mimeType },
           { base64: templateBase64, mimeType: templateMimeType },
         ],
-        quality: "low",
+        // inspire はキャラ識別 × テンプレ構図の合成で難度が高いため
+        // OpenAI の品質ティアを medium に引き上げる（既定の low は細部が崩れやすい）。
+        quality: "medium",
         sizeTier: "1k",
         targetSizeBaseIndex: 1,
         timeoutMs: OPENAI_TIMEOUT_MS,
