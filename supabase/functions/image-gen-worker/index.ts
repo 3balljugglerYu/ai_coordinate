@@ -1764,6 +1764,9 @@ Deno.serve(async () => {
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
                             n: requestedImageCount,
+                            // inspire はキャラ識別 × テンプレ構図の合成で難度が高いため
+                            // OpenAI の品質ティアを medium に引き上げる（既定の low は細部が崩れやすい）。
+                            quality: "medium",
                           })
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,

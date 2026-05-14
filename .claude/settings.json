@@ -1,4 +1,7 @@
 {
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true
+  },
   "permissions": {
     "allow": [
       "WebSearch",
@@ -39,7 +42,8 @@
       "mcp__plugin_playwright_playwright__browser_console_messages",
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
-      "Bash(git worktree *)"
+      "Bash(git worktree *)",
+      "Bash(bash scripts/worktree-add.sh *)"
     ]
   }
 }

@@ -3,6 +3,9 @@ import "server-only";
 /**
  * OpenAI gpt-image-2 の Node ランタイム向けクライアント。
  *
+ * `quality` (low/medium/high) と `sizeTier` (1k/2k/4k) は呼び出し側から必須で渡す。
+ * inspire のように合成難度が高い経路では `quality: "medium"` を指定して品質を引き上げる。
+ *
  * 同等の Deno 実装が `supabase/functions/image-gen-worker/openai-image.ts` にあり、
  * Edge Function ワーカーで使われている。本ファイルは新設の guest sync ルート
  * (`features/generation/lib/guest-generate.ts`) から呼ぶための Node 版。

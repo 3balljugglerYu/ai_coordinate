@@ -1,6 +1,7 @@
 // OpenAI gpt-image-2 クライアント
 // - POST https://api.openai.com/v1/images/edits を multipart/form-data で叩く
-// - 入力画像のアスペクト比と size tier から出力サイズを選択
+// - 入力画像のアスペクト比と size tier (1k/2k/4k) から出力サイズを選択
+// - `quality` (low/medium/high) は呼び出し側から必須で渡す。inspire 経路では "medium" を使う。
 // - moderation/safety 系のエラーは SAFETY_POLICY_BLOCKED_ERROR に統一
 // - GIF 入力は OpenAI 経路では非対応（呼び出し側で再試行不可エラーとして扱う）
 
@@ -219,7 +220,7 @@ export function resolveOpenAITargetSize(
 }
 
 /**
- * OpenAI gpt-image-2 (quality=low) を呼び出して画像編集を実行。
+ * OpenAI gpt-image-2 を呼び出して画像編集を実行（`quality` は呼び出し側指定、省略時 "low"）。
  *
  * - GIF 入力は再試行不可エラーで早期失敗
  * - HTTP 400 + content_policy_violation または message に moderation/safety を含む
