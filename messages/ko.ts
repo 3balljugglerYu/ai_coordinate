@@ -808,6 +808,8 @@ export const koMessages = {
     backgroundKeepLabel: "현재 배경 유지",
     backgroundKeepDescription: "현재 배경을 그대로 유지합니다.",
     modelLabel: "생성 모델 선택",
+    modelTooltipAria: "생성 모델 차이 표시",
+    modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성. 약 30초.\nMedium: 균형 중시. 약 70초.\nHigh: 디테일이 잘 깨지지 않음. 약 180초.",
     modelLight05k: "라이트 모델: Nano Banana 2 | 0.5K (10 Percoin / 장)",
     modelStandard1k: "스탠다드 모델: Nano Banana 2 | 1K (20 Percoin / 장)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const koMessages = {
       "고화질 모델: Nano Banana Pro | 2K (80 Percoin / 장)",
     modelPro4k:
       "고화질 모델: Nano Banana Pro | 4K (100 Percoin / 장)",
-    modelGptImage2Low: "라이트 모델: ChatGPT Images 2.0 Low (10 Percoins / 장부터)",
-    modelGptImage2Medium: "표준 모델: ChatGPT Images 2.0 Medium (20 Percoins / 장부터)",
-    modelGptImage2High: "고정밀 모델: ChatGPT Images 2.0 High (50 Percoins / 장부터)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "출력 크기",
     gptImage2SizeDescription:
       "실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다. 출력 크기에 따라 Percoin 비용이 달라집니다.",

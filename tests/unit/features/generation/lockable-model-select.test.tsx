@@ -21,6 +21,9 @@ const labels: Record<string, string> = {
   modelPro1k: "Nano Banana Pro 1K",
   modelPro2k: "Nano Banana Pro 2K",
   modelPro4k: "Nano Banana Pro 4K",
+  modelTagTierLight: "Low",
+  modelTagTierBalanced: "Medium",
+  modelTagTierQuality: "High",
 };
 
 beforeEach(() => {
@@ -74,6 +77,20 @@ describe("LockableModelSelect", () => {
     // disabled でも displayValue のラベルは描画される
     expect(screen.getByText("ChatGPT Images 2.0 Low")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeDisabled();
+  });
+
+  test("trigger に選択中モデルの色付き Low / Medium / High チップを表示する", () => {
+    render(
+      <LockableModelSelect
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+    const trigger = screen.getByRole("combobox");
+    expect(trigger).toHaveTextContent("ChatGPT Images 2.0 Low");
+    expect(trigger).toHaveTextContent("Low");
   });
 
   // 注: dropdown を開いて行をクリックする統合テストは Radix Select の pointer 動作が

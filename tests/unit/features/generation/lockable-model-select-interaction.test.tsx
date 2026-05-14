@@ -63,6 +63,9 @@ const labels: Record<string, string> = {
   modelPro1k: "Nano Banana Pro 1K",
   modelPro2k: "Nano Banana Pro 2K",
   modelPro4k: "Nano Banana Pro 4K",
+  modelTagTierLight: "Low",
+  modelTagTierBalanced: "Medium",
+  modelTagTierQuality: "High",
 };
 
 beforeEach(() => {
@@ -92,13 +95,13 @@ describe("LockableModelSelect interactions", () => {
       screen.queryByRole("button", { name: /Nano Banana/ })
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "ChatGPT Images 2.0 Low" })
+      screen.getByRole("button", { name: /ChatGPT Images 2\.0 Low/ })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "ChatGPT Images 2.0 Medium" })
+      screen.getByRole("button", { name: /ChatGPT Images 2\.0 Medium/ })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "ChatGPT Images 2.0 High" })
+      screen.getByRole("button", { name: /ChatGPT Images 2\.0 High/ })
     ).toBeInTheDocument();
   });
 
@@ -139,7 +142,7 @@ describe("LockableModelSelect interactions", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "ChatGPT Images 2.0 Low" })
+      screen.getByRole("button", { name: /ChatGPT Images 2\.0 Low/ })
     );
 
     expect(onChange).toHaveBeenCalledWith("gpt-image-2-low-1k");
@@ -158,7 +161,7 @@ describe("LockableModelSelect interactions", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "ChatGPT Images 2.0 High" })
+      screen.getByRole("button", { name: /ChatGPT Images 2\.0 High/ })
     );
 
     expect(onChange).toHaveBeenCalledWith("gpt-image-2-high-4k");
@@ -176,7 +179,33 @@ describe("LockableModelSelect interactions", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: "ChatGPT Images 2.0 High" })
+      screen.queryByRole("button", { name: /ChatGPT Images 2\.0 High/ })
     ).not.toBeInTheDocument();
+  });
+
+  test("各モデル行に Low / Medium / High の色付きチップを表示する", () => {
+    render(
+      <LockableModelSelect
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    const lowRow = screen.getByRole("button", {
+      name: /ChatGPT Images 2\.0 Low/,
+    });
+    expect(lowRow).toHaveTextContent("Low");
+
+    const mediumRow = screen.getByRole("button", {
+      name: /ChatGPT Images 2\.0 Medium/,
+    });
+    expect(mediumRow).toHaveTextContent("Medium");
+
+    const highRow = screen.getByRole("button", {
+      name: /ChatGPT Images 2\.0 High/,
+    });
+    expect(highRow).toHaveTextContent("High");
   });
 });

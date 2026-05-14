@@ -808,6 +808,8 @@ export const viMessages = {
     backgroundKeepLabel: "Giữ nền hiện tại",
     backgroundKeepDescription: "Giữ nguyên nền hiện tại.",
     modelLabel: "Chọn mô hình tạo",
+    modelTooltipAria: "Hiển thị sự khác biệt giữa các mô hình",
+    modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh. khoảng 30 giây.\nMedium: cân bằng. khoảng 70 giây.\nHigh: chi tiết ổn định. khoảng 180 giây.",
     modelLight05k: "Mô hình nhẹ: Nano Banana 2 | 0.5K (10 Percoin / hình)",
     modelStandard1k: "Mô hình tiêu chuẩn: Nano Banana 2 | 1K (20 Percoin / hình)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const viMessages = {
       "Mô hình độ trung thực cao: Nano Banana Pro | 2K (80 Percoin / hình)",
     modelPro4k:
       "Mô hình độ trung thực cao: Nano Banana Pro | 4K (100 Percoin / hình)",
-    modelGptImage2Low: "Mô hình nhẹ: ChatGPT Images 2.0 Low (từ 10 Percoins / hình)",
-    modelGptImage2Medium: "Mô hình tiêu chuẩn: ChatGPT Images 2.0 Medium (từ 20 Percoins / hình)",
-    modelGptImage2High: "Mô hình độ trung thực cao: ChatGPT Images 2.0 High (từ 50 Percoins / hình)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "Kích thước đầu ra",
     gptImage2SizeDescription:
       "Kích thước thực tế được tự động điều chỉnh theo hướng ảnh. Chi phí Percoin thay đổi theo kích thước đầu ra.",

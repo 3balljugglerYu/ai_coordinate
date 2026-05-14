@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -930,8 +931,17 @@ export function GenerationForm({
 
         {/* モデル選択 */}
         <div data-tour="tour-model-select">
-          <Label className="text-base font-medium mb-3 block">
-            {t("modelLabel")}
+          <Label className="text-base font-medium mb-3 flex items-center gap-2">
+            <span>{t("modelLabel")}</span>
+            <LabelInfoTooltip
+              ariaLabel={t("modelTooltipAria")}
+              content={
+                <span className="whitespace-pre-line">
+                  {t("modelTooltipContent")}
+                </span>
+              }
+              contentClassName="max-w-[18rem] text-[11px]"
+            />
           </Label>
           <LockableModelSelect
             value={effectiveSelectedModel}

@@ -808,6 +808,8 @@ export const thMessages = {
     backgroundKeepLabel: "คงพื้นหลังปัจจุบัน",
     backgroundKeepDescription: "คงพื้นหลังปัจจุบันโดยไม่เปลี่ยน",
     modelLabel: "เลือกโมเดลสำหรับสร้าง",
+    modelTooltipAria: "แสดงความแตกต่างของโมเดล",
+    modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว ประมาณ 30 วินาที\nMedium: สมดุล ประมาณ 70 วินาที\nHigh: รายละเอียดคงที่ ประมาณ 180 วินาที",
     modelLight05k: "โมเดลเบา: Nano Banana 2 | 0.5K (10 Percoin / รูป)",
     modelStandard1k: "โมเดลมาตรฐาน: Nano Banana 2 | 1K (20 Percoin / รูป)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const thMessages = {
       "โมเดลความเที่ยงสูง: Nano Banana Pro | 2K (80 Percoin / รูป)",
     modelPro4k:
       "โมเดลความเที่ยงสูง: Nano Banana Pro | 4K (100 Percoin / รูป)",
-    modelGptImage2Low: "โมเดลเบา: ChatGPT Images 2.0 Low (เริ่มต้น 10 Percoins / รูป)",
-    modelGptImage2Medium: "โมเดลมาตรฐาน: ChatGPT Images 2.0 Medium (เริ่มต้น 20 Percoins / รูป)",
-    modelGptImage2High: "โมเดลความละเอียดสูง: ChatGPT Images 2.0 High (เริ่มต้น 50 Percoins / รูป)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "ขนาดเอาต์พุต",
     gptImage2SizeDescription:
       "ขนาดจริงจะถูกปรับอัตโนมัติตามแนวภาพ ค่า Percoin จะเปลี่ยนตามขนาดเอาต์พุต",

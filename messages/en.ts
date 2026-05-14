@@ -808,6 +808,8 @@ export const enMessages = {
     backgroundKeepLabel: "Keep current background",
     backgroundKeepDescription: "Keep the current background unchanged.",
     modelLabel: "Select a generation model",
+    modelTooltipAria: "Show how the generation models differ",
+    modelTooltipContent: "💡 The higher the quality, the less faces and clothing details break.\nLow: generates quickly. ~30 sec.\nMedium: balanced. ~70 sec.\nHigh: details stay intact. ~180 sec.",
     modelLight05k: "Light model: Nano Banana 2 | 0.5K (10 Percoins / image)",
     modelStandard1k: "Standard model: Nano Banana 2 | 1K (20 Percoins / image)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const enMessages = {
       "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
     modelPro4k:
       "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
-    modelGptImage2Low: "Light model: ChatGPT Images 2.0 Low (from 10 Percoins / image)",
-    modelGptImage2Medium: "Standard model: ChatGPT Images 2.0 Medium (from 20 Percoins / image)",
-    modelGptImage2High: "High-fidelity model: ChatGPT Images 2.0 High (from 50 Percoins / image)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "Output size",
     gptImage2SizeDescription:
       "The exact dimensions are adjusted automatically to match the image orientation. Percoin cost changes by output size.",

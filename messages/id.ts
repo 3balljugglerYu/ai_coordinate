@@ -808,6 +808,8 @@ export const idMessages = {
     backgroundKeepLabel: "Pertahankan latar belakang saat ini",
     backgroundKeepDescription: "Pertahankan latar belakang saat ini tanpa perubahan.",
     modelLabel: "Pilih model generasi",
+    modelTooltipAria: "Tampilkan perbedaan model",
+    modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",
     modelLight05k: "Model ringan: Nano Banana 2 | 0.5K (10 Percoin / gambar)",
     modelStandard1k: "Model standar: Nano Banana 2 | 1K (20 Percoin / gambar)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const idMessages = {
       "Model fidelitas tinggi: Nano Banana Pro | 2K (80 Percoin / gambar)",
     modelPro4k:
       "Model fidelitas tinggi: Nano Banana Pro | 4K (100 Percoin / gambar)",
-    modelGptImage2Low: "Model ringan: ChatGPT Images 2.0 Low (mulai 10 Percoins / gambar)",
-    modelGptImage2Medium: "Model standar: ChatGPT Images 2.0 Medium (mulai 20 Percoins / gambar)",
-    modelGptImage2High: "Model fidelitas tinggi: ChatGPT Images 2.0 High (mulai 50 Percoins / gambar)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "Ukuran output",
     gptImage2SizeDescription:
       "Dimensi sebenarnya disesuaikan otomatis dengan orientasi gambar. Biaya Percoin berubah sesuai ukuran output.",

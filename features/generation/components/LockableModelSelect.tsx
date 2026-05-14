@@ -10,11 +10,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   isCanonicalGuestAllowedModel,
   isModelAvailableForGeneration,
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
+import {
+  MODEL_TAG_DISPLAY,
+  getModelTagsForCanonicalModel,
+} from "@/features/generation/lib/model-tags";
 import {
   composeGptImage2Model,
   parseGptImage2Model,
@@ -143,6 +149,42 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
     props.onChange(nextModel);
   };
 
+  /**
+   * モデル行の表示内容。モデル名（i18n ラベル）はそのままに、エンジン / 価格・品質
+   * ポジションを示す小さなチップを後ろに添える。トリガー（SelectValue）にも
+   * 同じ内容が複製表示されるが、shadcn の select-value は flex 行を想定しているので問題ない。
+   * 単一の `<span>` でラベルテキストを包んでいるため、`getByText("...モデル名")` でも拾える。
+   */
+  const renderModelOptionContent = (
+    option: ModelOption,
+    canonicalModel: GeminiModel,
+    { withLockIcon = false }: { withLockIcon?: boolean } = {}
+  ) => {
+    const tags = getModelTagsForCanonicalModel(canonicalModel);
+    return (
+      <span className="flex flex-wrap items-center gap-1.5">
+        {withLockIcon ? (
+          <Lock className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
+        ) : null}
+        <span>{t(option.labelKey)}</span>
+        {tags.map((tag) => {
+          const display = MODEL_TAG_DISPLAY[tag];
+          return (
+            <Badge
+              key={tag}
+              className={cn(
+                "px-1.5 py-0 text-[10px] leading-4 font-medium",
+                display.className
+              )}
+            >
+              {t(display.messageKey)}
+            </Badge>
+          );
+        })}
+      </span>
+    );
+  };
+
   return (
     <Select
       value={displayValue}
@@ -165,21 +207,15 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
                 aria-haspopup="dialog"
                 data-locked
               >
-                <span className="flex items-center gap-2">
-                  <Lock
-                    className="h-3.5 w-3.5 text-gray-500"
-                    aria-hidden="true"
-                  />
-                  <span>{t(option.labelKey)}</span>
-                </span>
+                {renderModelOptionContent(option, optionModel, {
+                  withLockIcon: true,
+                })}
               </SelectItem>
             );
           }
-          // 非ロック行はシンプルにテキストだけ。SelectValue 表示時の textContent も
-          // テキストノード単一になり、testing-library の getByText でも拾える。
           return (
             <SelectItem key={option.value} value={option.value}>
-              {t(option.labelKey)}
+              {renderModelOptionContent(option, optionModel)}
             </SelectItem>
           );
         })}

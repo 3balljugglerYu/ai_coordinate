@@ -808,6 +808,8 @@ export const frMessages = {
     backgroundKeepLabel: "Conserver l'arrière-plan actuel",
     backgroundKeepDescription: "Conservez l'arrière-plan actuel sans modification.",
     modelLabel: "Sélectionnez un modèle de génération",
+    modelTooltipAria: "Afficher les différences entre les modèles",
+    modelTooltipContent: "💡 Plus c'est élevé, moins les visages et vêtements se déforment.\nLow : génération rapide. ~30 s.\nMedium : équilibré. ~70 s.\nHigh : détails stables. ~180 s.",
     modelLight05k: "Modèle léger : Nano Banana 2 | 0.5K (10 Percoins / image)",
     modelStandard1k: "Modèle standard : Nano Banana 2 | 1K (20 Percoins / image)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const frMessages = {
       "Modèle haute fidélité : Nano Banana Pro | 2K (80 Percoins / image)",
     modelPro4k:
       "Modèle haute fidélité : Nano Banana Pro | 4K (100 Percoins / image)",
-    modelGptImage2Low: "Modèle léger : ChatGPT Images 2.0 Low (à partir de 10 Percoins / image)",
-    modelGptImage2Medium: "Modèle standard : ChatGPT Images 2.0 Medium (à partir de 20 Percoins / image)",
-    modelGptImage2High: "Modèle haute fidélité : ChatGPT Images 2.0 High (à partir de 50 Percoins / image)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "Taille de sortie",
     gptImage2SizeDescription:
       "Les dimensions exactes sont ajustées automatiquement selon l’orientation de l’image. Le coût en Percoins varie selon la taille de sortie.",

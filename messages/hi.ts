@@ -808,6 +808,8 @@ export const hiMessages = {
     backgroundKeepLabel: "वर्तमान पृष्ठभूमि रखें",
     backgroundKeepDescription: "वर्तमान पृष्ठभूमि को अपरिवर्तित रखें।",
     modelLabel: "एक जनरेशन मॉडल चुनें",
+    modelTooltipAria: "मॉडलों के बीच अंतर दिखाएँ",
+    modelTooltipContent: "💡 जितना High के क़रीब, चेहरे और कपड़ों की बारीकियाँ उतनी कम बिगड़ती हैं।\nLow: तेज़ी से बनाता है। लगभग 30 सेकंड।\nMedium: संतुलित। लगभग 70 सेकंड।\nHigh: डिटेल स्थिर। लगभग 180 सेकंड।",
     modelLight05k: "लाइट मॉडल: Nano Banana 2 | 0.5K (10 Percoin / छवि)",
     modelStandard1k: "मानक मॉडल: Nano Banana 2 | 1K (20 Percoin / छवि)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const hiMessages = {
       "उच्च-निष्ठा मॉडल: Nano Banana Pro | 2K (80 Percoin / छवि)",
     modelPro4k:
       "उच्च-निष्ठा मॉडल: Nano Banana Pro | 4K (100 Percoin / छवि)",
-    modelGptImage2Low: "लाइट मॉडल: ChatGPT Images 2.0 Low (10 Percoins / छवि से)",
-    modelGptImage2Medium: "स्टैंडर्ड मॉडल: ChatGPT Images 2.0 Medium (20 Percoins / छवि से)",
-    modelGptImage2High: "हाई-फिडेलिटी मॉडल: ChatGPT Images 2.0 High (50 Percoins / छवि से)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "आउटपुट आकार",
     gptImage2SizeDescription:
       "वास्तविक आयाम छवि की दिशा के अनुसार अपने-आप समायोजित होते हैं। आउटपुट आकार के अनुसार Percoin लागत बदलती है।",

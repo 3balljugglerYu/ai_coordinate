@@ -808,6 +808,8 @@ export const arMessages = {
     backgroundKeepLabel: "الإبقاء على الخلفية الحالية",
     backgroundKeepDescription: "اترك الخلفية الحالية دون تغيير.",
     modelLabel: "اختر نموذج التوليد",
+    modelTooltipAria: "عرض الفروق بين النماذج",
+    modelTooltipContent: "💡 كلما اقتربت من High، قلّت تشوّهات الوجه والملابس.\nLow: توليد سريع، حوالي 30 ثانية.\nMedium: متوازن، حوالي 70 ثانية.\nHigh: تفاصيل ثابتة، حوالي 180 ثانية.",
     modelLight05k: "نموذج خفيف: Nano Banana 2 | 0.5K (10 Percoin / صورة)",
     modelStandard1k: "نموذج قياسي: Nano Banana 2 | 1K (20 Percoin / صورة)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const arMessages = {
       "نموذج عالي الدقة: Nano Banana Pro | 2K (80 Percoin / صورة)",
     modelPro4k:
       "نموذج عالي الدقة: Nano Banana Pro | 4K (100 Percoin / صورة)",
-    modelGptImage2Low: "نموذج خفيف: ChatGPT Images 2.0 Low (ابتداءً من 10 Percoins / صورة)",
-    modelGptImage2Medium: "نموذج قياسي: ChatGPT Images 2.0 Medium (ابتداءً من 20 Percoins / صورة)",
-    modelGptImage2High: "نموذج عالي الدقة: ChatGPT Images 2.0 High (ابتداءً من 50 Percoins / صورة)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "حجم الإخراج",
     gptImage2SizeDescription:
       "تُضبط الأبعاد الفعلية تلقائيًا حسب اتجاه الصورة. تختلف تكلفة Percoin حسب حجم الإخراج.",

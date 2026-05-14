@@ -808,6 +808,8 @@ export const zhCnMessages = {
     backgroundKeepLabel: "保留当前背景",
     backgroundKeepDescription: "保持当前背景不变。",
     modelLabel: "选择生成模型",
+    modelTooltipAria: "显示生成模型的差异",
+    modelTooltipContent: "💡 越接近 High，脸部和服装的细节越不容易崩坏。\nLow：生成快。约 30 秒。\nMedium：均衡。约 70 秒。\nHigh：细节不易崩坏。约 180 秒。",
     modelLight05k: "轻量模型: Nano Banana 2 | 0.5K (10 Percoin / 张)",
     modelStandard1k: "标准模型: Nano Banana 2 | 1K (20 Percoin / 张)",
     modelPro1k:
@@ -816,9 +818,12 @@ export const zhCnMessages = {
       "高保真模型: Nano Banana Pro | 2K (80 Percoin / 张)",
     modelPro4k:
       "高保真模型: Nano Banana Pro | 4K (100 Percoin / 张)",
-    modelGptImage2Low: "轻量模型: ChatGPT Images 2.0 Low（10 Percoins / 张起）",
-    modelGptImage2Medium: "标准模型: ChatGPT Images 2.0 Medium（20 Percoins / 张起）",
-    modelGptImage2High: "高保真模型: ChatGPT Images 2.0 High（50 Percoins / 张起）",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
     gptImage2SizeLabel: "输出尺寸",
     gptImage2SizeDescription:
       "实际尺寸会根据图片方向自动调整。Percoin 消耗会随输出尺寸变化。",
