@@ -138,6 +138,23 @@ export type {
   GptImage2SizeTier,
 } from "@/shared/generation/openai-image-model";
 
+export {
+  GEMINI_BANANA_FAMILIES,
+  GEMINI_BANANA_2_SIZE_TIERS,
+  GEMINI_BANANA_PRO_SIZE_TIERS,
+  composeGeminiBananaModel,
+  parseGeminiBananaModel,
+  getDefaultCanonicalForFamily,
+  getSizeTiersForFamily,
+} from "@/shared/generation/gemini-banana-model";
+export type {
+  GeminiBananaFamily,
+  GeminiBananaSizeTier,
+  GeminiBanana2SizeTier,
+  GeminiBananaProSizeTier,
+  GeminiBananaCanonicalModel,
+} from "@/shared/generation/gemini-banana-model";
+
 // APIエンドポイント用のモデル名型
 export type GeminiApiModel =
   | 'gemini-2.5-flash-image'

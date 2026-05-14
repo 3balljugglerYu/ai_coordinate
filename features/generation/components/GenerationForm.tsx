@@ -14,6 +14,7 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { LockableModelSelect } from "./LockableModelSelect";
 import { GptImage2SizeSelector } from "./GptImage2SizeSelector";
+import { GeminiBananaSizeSelector } from "./GeminiBananaSizeSelector";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
@@ -953,6 +954,14 @@ export function GenerationForm({
         </div>
 
         <GptImage2SizeSelector
+          value={effectiveSelectedModel}
+          onChange={handleSelectedModelChange}
+          onLockedClick={() => setShowAuthModal(true)}
+          authState={authState}
+          disabled={isGenerating || isTutorialInProgress}
+        />
+
+        <GeminiBananaSizeSelector
           value={effectiveSelectedModel}
           onChange={handleSelectedModelChange}
           onLockedClick={() => setShowAuthModal(true)}
