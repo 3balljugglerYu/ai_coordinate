@@ -10,6 +10,7 @@ import {
   isOpenAIImageModel,
   normalizeModelName,
 } from "@/features/generation/types";
+import { loadConfigWithGemini } from "@/tests/helpers/load-config-with-gemini";
 
 describe("model-config / model identification helpers", () => {
   describe("getPercoinCost", () => {
@@ -156,6 +157,90 @@ describe("model-config / model identification helpers", () => {
         isModelAvailableForGeneration("gemini-3.1-flash-image-preview-512")
       ).toBe(false);
       expect(isModelAvailableForGeneration("unknown-model")).toBe(false);
+    });
+  });
+
+  // 以下は kill switch を ON にしたときの挙動を回帰テストする。
+  // 上の既存ブロックは OFF（停止中）状態の本番デフォルトを担保し、
+  // 下のブロックは将来 Gemini を再開した時のリグレッションを担保する。
+  describe("kill switch ON (Gemini 有効) 時", () => {
+    it("GUEST_ALLOWED_MODELS にはゲスト用 Gemini preview-512 も含まれる", () => {
+      const { GUEST_ALLOWED_MODELS } = loadConfigWithGemini(true);
+      expect(GUEST_ALLOWED_MODELS).toEqual([
+        "gpt-image-2-low",
+        "gemini-3.1-flash-image-preview-512",
+      ]);
+    });
+
+    it("isCanonicalGuestAllowedModel: 許可リストの Gemini も true、許可外 Gemini は false", () => {
+      const { isCanonicalGuestAllowedModel } = loadConfigWithGemini(true);
+      expect(isCanonicalGuestAllowedModel("gpt-image-2-low")).toBe(true);
+      expect(
+        isCanonicalGuestAllowedModel("gemini-3.1-flash-image-preview-512")
+      ).toBe(true);
+      expect(
+        isCanonicalGuestAllowedModel("gemini-3.1-flash-image-preview-1024")
+      ).toBe(false);
+      expect(isCanonicalGuestAllowedModel("gemini-3-pro-image-1k")).toBe(false);
+    });
+
+    it("parseGuestRequestedModel: ゲスト許可 Gemini はそのまま返り、許可外は null", () => {
+      const { parseGuestRequestedModel } = loadConfigWithGemini(true);
+      expect(parseGuestRequestedModel("gpt-image-2-low")).toBe("gpt-image-2-low");
+      expect(
+        parseGuestRequestedModel("gemini-3.1-flash-image-preview-512")
+      ).toBe("gemini-3.1-flash-image-preview-512");
+      // エイリアス（preview, 2.5-flash-image）は normalize 後に preview-512 へ正規化される
+      expect(parseGuestRequestedModel("gemini-3.1-flash-image-preview")).toBe(
+        "gemini-3.1-flash-image-preview-512"
+      );
+      expect(parseGuestRequestedModel("gemini-2.5-flash-image")).toBe(
+        "gemini-3.1-flash-image-preview-512"
+      );
+      // 許可外 Gemini は null
+      expect(
+        parseGuestRequestedModel("gemini-3.1-flash-image-preview-1024")
+      ).toBeNull();
+      expect(parseGuestRequestedModel("gemini-3-pro-image-4k")).toBeNull();
+    });
+
+    it("isModelAvailableForGeneration: Gemini 系も全部利用可能（未知モデルは引き続き不許可）", () => {
+      const { isModelAvailableForGeneration } = loadConfigWithGemini(true);
+      expect(isModelAvailableForGeneration("gpt-image-2-low")).toBe(true);
+      expect(
+        isModelAvailableForGeneration("gemini-3.1-flash-image-preview-512")
+      ).toBe(true);
+      expect(
+        isModelAvailableForGeneration("gemini-3.1-flash-image-preview-1024")
+      ).toBe(true);
+      expect(isModelAvailableForGeneration("gemini-3-pro-image-1k")).toBe(true);
+      expect(isModelAvailableForGeneration("gemini-3-pro-image-4k")).toBe(true);
+      expect(isModelAvailableForGeneration("gemini-2.5-flash-image")).toBe(true);
+      expect(isModelAvailableForGeneration("unknown-model")).toBe(false);
+    });
+
+    it("resolveEffectiveModelForAuthState: 認証ユーザーの Gemini はそのまま、ゲストは許可リストに照らして丸める", () => {
+      const { resolveEffectiveModelForAuthState } = loadConfigWithGemini(true);
+      // 認証ユーザーはどの Gemini もそのまま使える
+      expect(
+        resolveEffectiveModelForAuthState("gemini-3-pro-image-4k", "authenticated")
+      ).toBe("gemini-3-pro-image-4k");
+      expect(
+        resolveEffectiveModelForAuthState(
+          "gemini-3.1-flash-image-preview-1024",
+          "authenticated"
+        )
+      ).toBe("gemini-3.1-flash-image-preview-1024");
+      // ゲストは preview-512 のみ許可、それ以外の Gemini は default (gpt-image-2-low) に丸める
+      expect(
+        resolveEffectiveModelForAuthState(
+          "gemini-3.1-flash-image-preview-512",
+          "guest"
+        )
+      ).toBe("gemini-3.1-flash-image-preview-512");
+      expect(
+        resolveEffectiveModelForAuthState("gemini-3-pro-image-4k", "guest")
+      ).toBe("gpt-image-2-low");
     });
   });
 });

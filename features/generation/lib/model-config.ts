@@ -13,11 +13,21 @@ import {
 export { DEFAULT_GENERATION_MODEL };
 
 /**
- * Google Cloud プロジェクト停止中の一時的な kill switch。
+ * Gemini 画像生成の kill switch。
  *
- * Gemini を再開するときは Next.js 側で `NEXT_PUBLIC_GEMINI_GENERATION_ENABLED=true`
- * を設定して再デプロイし、Supabase Edge Function 側も `GEMINI_GENERATION_ENABLED=true`
- * に揃える。
+ * 何らかの理由で Gemini を全画面で一時停止したいとき（Google Cloud プロジェクト停止・
+ * モデル不調・コスト問題など）に env を未設定 / `false` にして、全画面の Gemini 系
+ * モデルを `isModelAvailableForGeneration()` でフィルタアウトする。
+ *
+ * 切替手順（必ず両方を揃えること）:
+ *   - Next.js 側: Vercel の env に `NEXT_PUBLIC_GEMINI_GENERATION_ENABLED=true` を
+ *     設定して再デプロイ（`NEXT_PUBLIC_*` はビルド時に bake-in される）。
+ *   - Supabase Edge Function 側: `supabase secrets set GEMINI_GENERATION_ENABLED=true`
+ *     のあと `supabase functions deploy image-gen-worker` を実行。
+ *
+ * テスト: kill ON / OFF 双方の挙動は `tests/unit/features/generation/inspire-model-config.test.ts`
+ * で担保している。integration テストでも `jest.mock` で `GEMINI_GENERATION_ENABLED: true`
+ * を上書きして enabled 経路を検証している。
  */
 export const GEMINI_GENERATION_ENABLED =
   process.env.NEXT_PUBLIC_GEMINI_GENERATION_ENABLED === "true";
