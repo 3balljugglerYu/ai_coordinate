@@ -8,6 +8,7 @@ import {
   buildCoordinateAttemptReinforcementPrefix,
   buildInspirePrompt,
   resolveBackgroundMode,
+  resolveInspireTargetSizeBaseIndex,
 } from "../../../shared/generation/prompt-core.ts";
 import type {
   GenerationType,
@@ -1606,10 +1607,12 @@ Deno.serve(async () => {
                       : job.generation_type === "inspire"
                         ? buildInspirePrompt({
                             overrideTarget:
+                              // `||` を使って空文字列も null に丸める。`??` だと "" のときに
+                              // 「未知のオーバーライド対象」として default 節で throw する。
                               (job.override_target as
                                 | InspireOverrideTarget
                                 | null
-                                | undefined) ?? null,
+                                | undefined) || null,
                             sourceImageType:
                               job.source_image_type === "real"
                                 ? "real"
@@ -1726,8 +1729,19 @@ Deno.serve(async () => {
                               openAIInputImage,
                               resolvedInspireTemplateImage,
                             ],
-                            // 出力フレームはテンプレ（image_1）の比率に合わせる（ADR-006）
-                            targetSizeBaseIndex: 1,
+                            // 出力フレームの起点画像はブランチ依存（resolveInspireTargetSizeBaseIndex）。
+                            // null (keep_all): image_1 のシーンへ置換 → image_1 基準
+                            // angle / pose / outfit / background: image_0 を編集 → image_0 基準
+                            // プロンプト側の保持節（image_0 / image_1 のどちらのフレーミングを
+                            // 保つか）と一致させる。
+                            // `||` で空文字列も null に丸める（上の buildInspirePrompt 呼び出しと統一）。
+                            targetSizeBaseIndex:
+                              resolveInspireTargetSizeBaseIndex(
+                                (job.override_target as
+                                  | InspireOverrideTarget
+                                  | null
+                                  | undefined) || null,
+                              ),
                             timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
                             n: requestedImageCount,
                             // inspire はキャラ識別 × テンプレ構図の合成で難度が高いため
