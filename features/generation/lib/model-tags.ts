@@ -1,17 +1,26 @@
 /**
  * モデル選択 UI に添える「チップ（バッジ）」の定義。
  *
- * モデル名そのものは変えず、「コスト / 品質ポジション」を一目で伝えるための
- * 小さな色付きラベル（Low / Medium / High）を添える。Gemini 系を表に出すときも、
- * `getModelTagsForCanonicalModel` に分岐を 1 行足すだけで対応できる設計にしている。
+ * 2 系統のチップを扱う:
+ *   - engine: 「どの生成エンジンか」を表す（OpenAI / Gemini）。
+ *     生成モデルの 1 段目セレクター（ChatGPT / Nano Banana 2 / Nano Banana Pro）に添える。
+ *   - tier: 「コスト / 品質のどの位置づけか」を表す（Low / Medium / High）。
+ *     ChatGPT を選んだときに出る「生成タイプ」セレクターの行に添える。
  *
  * 表示色などのスタイルは `MODEL_TAG_DISPLAY` に集約。i18n キーは `coordinate` 名前空間。
  */
 
-export type ModelTagKey = "tierLight" | "tierBalanced" | "tierQuality";
+export type ModelTagKey =
+  | "engineOpenai"
+  | "engineGemini"
+  | "tierLight"
+  | "tierBalanced"
+  | "tierQuality";
 
 /** `messages.<locale>.coordinate` の中の、チップ用ラベルキー */
 export type ModelTagMessageKey =
+  | "modelTagEngineOpenai"
+  | "modelTagEngineGemini"
   | "modelTagTierLight"
   | "modelTagTierBalanced"
   | "modelTagTierQuality";
@@ -26,6 +35,16 @@ export interface ModelTagDisplay {
 }
 
 export const MODEL_TAG_DISPLAY: Record<ModelTagKey, ModelTagDisplay> = {
+  engineOpenai: {
+    messageKey: "modelTagEngineOpenai",
+    className:
+      "border-slate-300 bg-transparent text-slate-700 dark:border-slate-600 dark:text-slate-300",
+  },
+  engineGemini: {
+    messageKey: "modelTagEngineGemini",
+    className:
+      "border-sky-300 bg-transparent text-sky-700 dark:border-sky-700 dark:text-sky-300",
+  },
   tierLight: {
     messageKey: "modelTagTierLight",
     className:
@@ -44,10 +63,11 @@ export const MODEL_TAG_DISPLAY: Record<ModelTagKey, ModelTagDisplay> = {
 };
 
 /**
- * 正規モデル ID（DB 保存値 / 生成リクエスト値）から、表示すべきチップ一覧を返す。
- * 未知 ID では空配列。チップは「コスト・品質ポジション」の 1 個（Low / Medium / High）。
+ * 正規モデル ID から「品質ポジション」用の tier チップを返す（最大 1 個）。
+ * 生成タイプセレクター（Low/Medium/High）や、生成結果一覧の品質表示に使う。
  *
- * 判定はより具体的なプレフィックスを先に書くこと（順序依存）。
+ * 注意: 1 段目の生成モデルセレクター（ChatGPT / Nano Banana 2 / Nano Banana Pro）には
+ * tier ではなく engine チップを添える。それぞれのチップは UI 側で固定値として渡す。
  */
 export function getModelTagsForCanonicalModel(
   model: string | null | undefined,
@@ -55,7 +75,6 @@ export function getModelTagsForCanonicalModel(
   if (typeof model !== "string" || model.length === 0) {
     return [];
   }
-  // OpenAI: ChatGPT Images 2.0 — quality でポジションが決まる（size tier は無関係）
   if (model.startsWith("gpt-image-2-low")) {
     return ["tierLight"];
   }
@@ -65,7 +84,6 @@ export function getModelTagsForCanonicalModel(
   if (model.startsWith("gpt-image-2-high")) {
     return ["tierQuality"];
   }
-  // Google (現在は非表示): Nano Banana Pro は高精細、flash 系は解像度で軽量 / 標準
   if (model.startsWith("gemini-3-pro-image-")) {
     return ["tierQuality"];
   }

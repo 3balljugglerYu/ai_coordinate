@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { LockableModelSelect } from "./LockableModelSelect";
+import { GptImage2QualitySelector } from "./GptImage2QualitySelector";
 import { GptImage2SizeSelector } from "./GptImage2SizeSelector";
 import { GeminiBananaSizeSelector } from "./GeminiBananaSizeSelector";
 import { StockImageListClient } from "./StockImageListClient";
@@ -930,19 +930,10 @@ export function GenerationForm({
           </RadioGroup>
         </div>
 
-        {/* モデル選択 */}
+        {/* 1段目: 生成モデル（ChatGPT Images 2.0 / Nano Banana 2 / Nano Banana Pro） */}
         <div data-tour="tour-model-select">
-          <Label className="text-base font-medium mb-3 flex items-center gap-2">
-            <span>{t("modelLabel")}</span>
-            <LabelInfoTooltip
-              ariaLabel={t("modelTooltipAria")}
-              content={
-                <span className="whitespace-pre-line">
-                  {t("modelTooltipContent")}
-                </span>
-              }
-              contentClassName="max-w-[18rem] text-[11px]"
-            />
+          <Label className="text-base font-medium mb-3 block">
+            {t("modelLabel")}
           </Label>
           <LockableModelSelect
             value={effectiveSelectedModel}
@@ -953,6 +944,16 @@ export function GenerationForm({
           />
         </div>
 
+        {/* 2段目: 生成タイプ（ChatGPT 選択時のみ表示）— 内部で ChatGPT 以外なら null を返す */}
+        <GptImage2QualitySelector
+          value={effectiveSelectedModel}
+          onChange={handleSelectedModelChange}
+          onLockedClick={() => setShowAuthModal(true)}
+          authState={authState}
+          disabled={isGenerating || isTutorialInProgress}
+        />
+
+        {/* 3段目: 出力サイズ（モデルファミリーに応じて片方だけ描画される） */}
         <GptImage2SizeSelector
           value={effectiveSelectedModel}
           onChange={handleSelectedModelChange}

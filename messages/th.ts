@@ -810,6 +810,7 @@ export const thMessages = {
     modelLabel: "เลือกโมเดลสำหรับสร้าง",
     modelTooltipAria: "แสดงความแตกต่างของโมเดล",
     modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว ประมาณ 30 วินาที\nMedium: สมดุล ประมาณ 70 วินาที\nHigh: รายละเอียดคงที่ ประมาณ 180 วินาที",
+    gptImage2QualityLabel: "เลือกประเภทการสร้าง",
     modelLight05k: "โมเดลเบา: Nano Banana 2 | 0.5K (10 Percoin / รูป)",
     modelStandard1k: "โมเดลมาตรฐาน: Nano Banana 2 | 1K (20 Percoin / รูป)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const thMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",

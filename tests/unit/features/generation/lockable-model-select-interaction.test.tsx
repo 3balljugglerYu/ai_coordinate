@@ -55,14 +55,11 @@ const useTranslationsMock = useTranslations as jest.MockedFunction<
 >;
 
 const labels: Record<string, string> = {
-  modelLight05k: "Nano Banana 2 0.5K",
-  modelGptImage2Low: "ChatGPT Images 2.0 Low",
-  modelGptImage2Medium: "ChatGPT Images 2.0 Medium",
-  modelGptImage2High: "ChatGPT Images 2.0 High",
-  modelStandard1k: "Nano Banana 2 1K",
-  modelPro1k: "Nano Banana Pro 1K",
-  modelPro2k: "Nano Banana Pro 2K",
-  modelPro4k: "Nano Banana Pro 4K",
+  modelChatGptImages: "ChatGPT Images 2.0",
+  modelNanoBanana2: "Nano Banana 2",
+  modelNanoBananaPro: "Nano Banana Pro",
+  modelTagEngineOpenai: "OpenAI",
+  modelTagEngineGemini: "Gemini",
   modelTagTierLight: "Low",
   modelTagTierBalanced: "Medium",
   modelTagTierQuality: "High",
@@ -81,7 +78,7 @@ afterEach(() => {
 });
 
 describe("LockableModelSelect interactions", () => {
-  test("Gemini 停止中は OpenAI 品質行のみ表示し、Gemini 系モデルを表示しない", () => {
+  test("Gemini 停止中は ChatGPT Images 2.0 の 1 行のみ表示する", () => {
     render(
       <LockableModelSelect
         value="gpt-image-2-low-1k"
@@ -95,41 +92,11 @@ describe("LockableModelSelect interactions", () => {
       screen.queryByRole("button", { name: /Nano Banana/ })
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /ChatGPT Images 2\.0 Low/ })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /ChatGPT Images 2\.0 Medium/ })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /ChatGPT Images 2\.0 High/ })
+      screen.getByRole("button", { name: /ChatGPT Images 2\.0/ })
     ).toBeInTheDocument();
   });
 
-  test("Gemini 停止中でもゲストの高品質 OpenAI 行はロッククリック導線になる", () => {
-    const onChange = jest.fn();
-    const onLockedClick = jest.fn();
-    render(
-      <LockableModelSelect
-        value="gpt-image-2-low-1k"
-        authState="guest"
-        onChange={onChange}
-        onLockedClick={onLockedClick}
-      />
-    );
-
-    expect(
-      screen.queryByRole("button", { name: /Nano Banana Pro 1K/ })
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: /ChatGPT Images 2.0 Medium/ })
-    );
-
-    expect(onLockedClick).toHaveBeenCalledTimes(1);
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  test("guest が許可モデルを選ぶと onChange を呼ぶ", () => {
+  test("guest が ChatGPT 行をクリックすると現在の canonical を維持して onChange を呼ぶ", () => {
     const onChange = jest.fn();
     const onLockedClick = jest.fn();
     render(
@@ -142,48 +109,31 @@ describe("LockableModelSelect interactions", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: /ChatGPT Images 2\.0 Low/ })
+      screen.getByRole("button", { name: /ChatGPT Images 2\.0/ })
     );
 
+    // 同じファミリー（gpt-image-2）の行クリックは canonical を維持する
     expect(onChange).toHaveBeenCalledWith("gpt-image-2-low-1k");
     expect(onLockedClick).not.toHaveBeenCalled();
   });
 
-  test("authenticated が品質を変えると現在の size tier を保持する", () => {
-    const onChange = jest.fn();
+  test("isModelSelectable で ChatGPT も除外すると行が消える", () => {
     render(
       <LockableModelSelect
-        value="gpt-image-2-low-4k"
-        authState="authenticated"
-        onChange={onChange}
-        onLockedClick={jest.fn()}
-      />
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", { name: /ChatGPT Images 2\.0 High/ })
-    );
-
-    expect(onChange).toHaveBeenCalledWith("gpt-image-2-high-4k");
-  });
-
-  test("追加の許可判定で不許可の品質行を表示しない", () => {
-    render(
-      <LockableModelSelect
-        value="gpt-image-2-low-4k"
+        value="gpt-image-2-low-1k"
         authState="authenticated"
         onChange={jest.fn()}
         onLockedClick={jest.fn()}
-        isModelSelectable={(model) => model !== "gpt-image-2-high-4k"}
+        isModelSelectable={() => false}
       />
     );
 
     expect(
-      screen.queryByRole("button", { name: /ChatGPT Images 2\.0 High/ })
+      screen.queryByRole("button", { name: /ChatGPT Images 2\.0/ })
     ).not.toBeInTheDocument();
   });
 
-  test("各モデル行に Low / Medium / High の色付きチップを表示する", () => {
+  test("ChatGPT 行に [OpenAI] エンジンチップを表示する", () => {
     render(
       <LockableModelSelect
         value="gpt-image-2-low-1k"
@@ -193,19 +143,7 @@ describe("LockableModelSelect interactions", () => {
       />
     );
 
-    const lowRow = screen.getByRole("button", {
-      name: /ChatGPT Images 2\.0 Low/,
-    });
-    expect(lowRow).toHaveTextContent("Low");
-
-    const mediumRow = screen.getByRole("button", {
-      name: /ChatGPT Images 2\.0 Medium/,
-    });
-    expect(mediumRow).toHaveTextContent("Medium");
-
-    const highRow = screen.getByRole("button", {
-      name: /ChatGPT Images 2\.0 High/,
-    });
-    expect(highRow).toHaveTextContent("High");
+    const row = screen.getByRole("button", { name: /ChatGPT Images 2\.0/ });
+    expect(row).toHaveTextContent("OpenAI");
   });
 });

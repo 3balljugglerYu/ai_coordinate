@@ -810,6 +810,7 @@ export const deMessages = {
     modelLabel: "Wähle ein Generierungsmodell",
     modelTooltipAria: "Modellunterschiede anzeigen",
     modelTooltipContent: "💡 Je höher, desto weniger werden Gesicht und Kleidung verzerrt.\nLow: schnelle Generierung. ca. 30 s.\nMedium: ausgewogen. ca. 70 s.\nHigh: stabile Details. ca. 180 s.",
+    gptImage2QualityLabel: "Generierungstyp auswählen",
     modelLight05k: "Light-Modell: Nano Banana 2 | 0.5K (10 Percoins / Bild)",
     modelStandard1k: "Standard-Modell: Nano Banana 2 | 1K (20 Percoins / Bild)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const deMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",

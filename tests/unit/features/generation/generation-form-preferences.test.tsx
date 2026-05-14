@@ -241,6 +241,11 @@ const messages: Record<string, string> = {
   modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
   modelGptImage2Medium: "Standard model: ChatGPT Images 2.0 Medium",
   modelGptImage2High: "High model: ChatGPT Images 2.0 High",
+  modelChatGptImages: "ChatGPT Images 2.0",
+  modelNanoBanana2: "Nano Banana 2",
+  modelNanoBananaPro: "Nano Banana Pro",
+  modelTagEngineOpenai: "OpenAI",
+  modelTagEngineGemini: "Gemini",
   gptImage2SizeLabel: "Output size",
   gptImage2SizeDescription: "Choose the GPT Image 2 output size.",
   gptImage2Size1k: "1K",
@@ -317,7 +322,9 @@ describe("GenerationForm persisted preferences", () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
-    expect(screen.getAllByTestId("model-select")[0]).not.toBeDisabled();
+    // 1段目「生成モデル」は Gemini OFF だと選択肢が ChatGPT 1 行のみで disabled。
+    // 「品質行は選べる」のは 2段目 GptImage2QualitySelector（生成タイプ）の方。
+    expect(screen.getAllByTestId("model-select")[1]).not.toBeDisabled();
     fireEvent.click(screen.getByLabelText("Include it in the prompt"));
 
     expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBeNull();

@@ -810,6 +810,7 @@ export const hiMessages = {
     modelLabel: "एक जनरेशन मॉडल चुनें",
     modelTooltipAria: "मॉडलों के बीच अंतर दिखाएँ",
     modelTooltipContent: "💡 जितना High के क़रीब, चेहरे और कपड़ों की बारीकियाँ उतनी कम बिगड़ती हैं।\nLow: तेज़ी से बनाता है। लगभग 30 सेकंड।\nMedium: संतुलित। लगभग 70 सेकंड।\nHigh: डिटेल स्थिर। लगभग 180 सेकंड।",
+    gptImage2QualityLabel: "जनरेशन प्रकार चुनें",
     modelLight05k: "लाइट मॉडल: Nano Banana 2 | 0.5K (10 Percoin / छवि)",
     modelStandard1k: "मानक मॉडल: Nano Banana 2 | 1K (20 Percoin / छवि)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const hiMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",

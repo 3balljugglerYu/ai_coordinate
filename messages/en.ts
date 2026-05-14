@@ -810,6 +810,7 @@ export const enMessages = {
     modelLabel: "Select a generation model",
     modelTooltipAria: "Show how the generation models differ",
     modelTooltipContent: "💡 The higher the quality, the less faces and clothing details break.\nLow: generates quickly. ~30 sec.\nMedium: balanced. ~70 sec.\nHigh: details stay intact. ~180 sec.",
+    gptImage2QualityLabel: "Select generation type",
     modelLight05k: "Light model: Nano Banana 2 | 0.5K (10 Percoins / image)",
     modelStandard1k: "Standard model: Nano Banana 2 | 1K (20 Percoins / image)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const enMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",

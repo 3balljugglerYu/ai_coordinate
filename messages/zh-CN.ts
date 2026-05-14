@@ -810,6 +810,7 @@ export const zhCnMessages = {
     modelLabel: "选择生成模型",
     modelTooltipAria: "显示生成模型的差异",
     modelTooltipContent: "💡 越接近 High，脸部和服装的细节越不容易崩坏。\nLow：生成快。约 30 秒。\nMedium：均衡。约 70 秒。\nHigh：细节不易崩坏。约 180 秒。",
+    gptImage2QualityLabel: "选择生成类型",
     modelLight05k: "轻量模型: Nano Banana 2 | 0.5K (10 Percoin / 张)",
     modelStandard1k: "标准模型: Nano Banana 2 | 1K (20 Percoin / 张)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const zhCnMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",

@@ -13,17 +13,11 @@ const useTranslationsMock = useTranslations as jest.MockedFunction<
 >;
 
 const labels: Record<string, string> = {
-  modelLight05k: "Nano Banana 2 0.5K",
-  modelGptImage2Low: "ChatGPT Images 2.0 Low",
-  modelGptImage2Medium: "ChatGPT Images 2.0 Medium",
-  modelGptImage2High: "ChatGPT Images 2.0 High",
-  modelStandard1k: "Nano Banana 2 1K",
-  modelPro1k: "Nano Banana Pro 1K",
-  modelPro2k: "Nano Banana Pro 2K",
-  modelPro4k: "Nano Banana Pro 4K",
-  modelTagTierLight: "Low",
-  modelTagTierBalanced: "Medium",
-  modelTagTierQuality: "High",
+  modelChatGptImages: "ChatGPT Images 2.0",
+  modelNanoBanana2: "Nano Banana 2",
+  modelNanoBananaPro: "Nano Banana Pro",
+  modelTagEngineOpenai: "OpenAI",
+  modelTagEngineGemini: "Gemini",
 };
 
 beforeEach(() => {
@@ -39,7 +33,7 @@ afterEach(() => {
 });
 
 describe("LockableModelSelect", () => {
-  test("authenticated 時は trigger に選択中モデルのラベルを表示する", () => {
+  test("authenticated 時は trigger に選択中ファミリーのラベル（ChatGPT Images 2.0）を表示する", () => {
     render(
       <LockableModelSelect
         value="gpt-image-2-low-1k"
@@ -48,10 +42,10 @@ describe("LockableModelSelect", () => {
         onLockedClick={jest.fn()}
       />
     );
-    expect(screen.getByText("ChatGPT Images 2.0 Low")).toBeInTheDocument();
+    expect(screen.getByText("ChatGPT Images 2.0")).toBeInTheDocument();
   });
 
-  test("guest 時に許可外モデルが渡されても表示は DEFAULT_GENERATION_MODEL に丸める", () => {
+  test("guest 時に許可外モデルが渡されても表示は DEFAULT_GENERATION_MODEL のファミリーに丸める", () => {
     render(
       <LockableModelSelect
         value="gemini-3-pro-image-2k"
@@ -60,8 +54,8 @@ describe("LockableModelSelect", () => {
         onLockedClick={jest.fn()}
       />
     );
-    // 表示は ChatGPT Images 2.0 Low（DEFAULT_GENERATION_MODEL）
-    expect(screen.getByText("ChatGPT Images 2.0 Low")).toBeInTheDocument();
+    // 表示は ChatGPT Images 2.0（DEFAULT_GENERATION_MODEL のファミリー）
+    expect(screen.getByText("ChatGPT Images 2.0")).toBeInTheDocument();
   });
 
   test("guest 時の disabled でも trigger は表示される", () => {
@@ -74,12 +68,11 @@ describe("LockableModelSelect", () => {
         disabled
       />
     );
-    // disabled でも displayValue のラベルは描画される
-    expect(screen.getByText("ChatGPT Images 2.0 Low")).toBeInTheDocument();
+    expect(screen.getByText("ChatGPT Images 2.0")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeDisabled();
   });
 
-  test("trigger に選択中モデルの色付き Low / Medium / High チップを表示する", () => {
+  test("trigger に選択中ファミリーのエンジンチップ（[OpenAI]）を表示する", () => {
     render(
       <LockableModelSelect
         value="gpt-image-2-low-1k"
@@ -89,8 +82,8 @@ describe("LockableModelSelect", () => {
       />
     );
     const trigger = screen.getByRole("combobox");
-    expect(trigger).toHaveTextContent("ChatGPT Images 2.0 Low");
-    expect(trigger).toHaveTextContent("Low");
+    expect(trigger).toHaveTextContent("ChatGPT Images 2.0");
+    expect(trigger).toHaveTextContent("OpenAI");
   });
 
   // 注: dropdown を開いて行をクリックする統合テストは Radix Select の pointer 動作が

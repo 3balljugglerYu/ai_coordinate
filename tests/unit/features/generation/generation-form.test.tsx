@@ -185,6 +185,11 @@ const messages: Record<string, string> = {
   modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
   modelGptImage2Medium: "Standard model: ChatGPT Images 2.0 Medium",
   modelGptImage2High: "High model: ChatGPT Images 2.0 High",
+  modelChatGptImages: "ChatGPT Images 2.0",
+  modelNanoBanana2: "Nano Banana 2",
+  modelNanoBananaPro: "Nano Banana Pro",
+  modelTagEngineOpenai: "OpenAI",
+  modelTagEngineGemini: "Gemini",
   gptImage2SizeLabel: "Output size",
   gptImage2SizeDescription: "Choose the GPT Image 2 output size.",
   gptImage2Size1k: "1K",
@@ -737,9 +742,8 @@ describe("GenerationForm", () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
-    expect(
-      screen.getByText("Light model: ChatGPT Images 2.0 (10 Percoins / image)")
-    ).toBeInTheDocument();
+    // 1 段目「生成モデル」セレクターはブランド名のみを表示する。
+    expect(screen.getByText("ChatGPT Images 2.0")).toBeInTheDocument();
     expect(
       screen.getByText("1 images require 10 Percoins")
     ).toBeInTheDocument();

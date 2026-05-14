@@ -810,6 +810,7 @@ export const arMessages = {
     modelLabel: "اختر نموذج التوليد",
     modelTooltipAria: "عرض الفروق بين النماذج",
     modelTooltipContent: "💡 كلما اقتربت من High، قلّت تشوّهات الوجه والملابس.\nLow: توليد سريع، حوالي 30 ثانية.\nMedium: متوازن، حوالي 70 ثانية.\nHigh: تفاصيل ثابتة، حوالي 180 ثانية.",
+    gptImage2QualityLabel: "اختر نوع التوليد",
     modelLight05k: "نموذج خفيف: Nano Banana 2 | 0.5K (10 Percoin / صورة)",
     modelStandard1k: "نموذج قياسي: Nano Banana 2 | 1K (20 Percoin / صورة)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const arMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",

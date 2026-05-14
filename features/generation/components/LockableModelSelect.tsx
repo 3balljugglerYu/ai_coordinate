@@ -22,15 +22,17 @@ import {
   type ModelTagKey,
 } from "@/features/generation/lib/model-tags";
 import {
+  GEMINI_BANANA_2_SIZE_TIERS,
+  GEMINI_BANANA_PRO_SIZE_TIERS,
+  GPT_IMAGE_2_SIZE_TIERS,
   composeGeminiBananaModel,
   composeGptImage2Model,
-  getDefaultCanonicalForFamily,
   parseGeminiBananaModel,
   parseGptImage2Model,
-  type GeminiBananaFamily,
+  type GeminiBanana2SizeTier,
+  type GeminiBananaProSizeTier,
   type GeminiBananaSizeTier,
   type GeminiModel,
-  type GptImage2Quality,
   type GptImage2SizeTier,
 } from "@/features/generation/types";
 
@@ -48,135 +50,139 @@ export interface LockableModelSelectProps {
   isModelSelectable?: (model: GeminiModel) => boolean;
 }
 
+type ModelRowValue =
+  | "gpt-image-2-row"
+  | "nano-banana-2-row"
+  | "nano-banana-pro-row";
+
 interface ModelOption {
-  value: string;
-  /** OpenAI 系: ChatGPT Images 2.0 の quality */
-  gptImage2Quality?: GptImage2Quality;
-  /** Gemini 系: Nano Banana 2 / Pro の family */
-  geminiBananaFamily?: GeminiBananaFamily;
-  labelKey:
-    | "modelGptImage2Low"
-    | "modelGptImage2Medium"
-    | "modelGptImage2High"
-    | "modelNanoBanana2"
-    | "modelNanoBananaPro";
-  /** チップ表示で使う固定 tier。family レベルの目安なので size には依存させない。 */
-  tierTag: ModelTagKey;
+  value: ModelRowValue;
+  labelKey: "modelChatGptImages" | "modelNanoBanana2" | "modelNanoBananaPro";
+  /** 行に添えるエンジンチップ */
+  engineTag: ModelTagKey;
 }
 
 const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
   {
-    value: "gpt-image-2-low-row",
-    gptImage2Quality: "low",
-    labelKey: "modelGptImage2Low",
-    tierTag: "tierLight",
-  },
-  {
-    value: "gpt-image-2-medium-row",
-    gptImage2Quality: "medium",
-    labelKey: "modelGptImage2Medium",
-    tierTag: "tierBalanced",
-  },
-  {
-    value: "gpt-image-2-high-row",
-    gptImage2Quality: "high",
-    labelKey: "modelGptImage2High",
-    tierTag: "tierQuality",
+    value: "gpt-image-2-row",
+    labelKey: "modelChatGptImages",
+    engineTag: "engineOpenai",
   },
   {
     value: "nano-banana-2-row",
-    geminiBananaFamily: "nano-2",
     labelKey: "modelNanoBanana2",
-    tierTag: "tierLight",
+    engineTag: "engineGemini",
   },
   {
     value: "nano-banana-pro-row",
-    geminiBananaFamily: "nano-pro",
     labelKey: "modelNanoBananaPro",
-    tierTag: "tierQuality",
+    engineTag: "engineGemini",
   },
 ];
 
-/**
- * モデル行（value）から、現在の size tier 状態を踏まえた canonical モデル ID を導出する。
- *
- * - OpenAI: `quality` × `currentGptImage2SizeTier` → `composeGptImage2Model`
- * - Gemini: `family` × `currentGeminiBananaSizeTier`。family と size の組み合わせが
- *   無効（例: Nano Banana Pro × 0.5K）の場合は family の既定 canonical に丸める。
- */
-function toOptionCanonicalValue(
-  option: ModelOption,
-  currentGptImage2SizeTier: GptImage2SizeTier,
-  currentGeminiBananaSizeTier: GeminiBananaSizeTier
-): GeminiModel {
-  if (option.gptImage2Quality) {
-    return composeGptImage2Model(
-      option.gptImage2Quality,
-      currentGptImage2SizeTier
-    );
-  }
-  if (option.geminiBananaFamily) {
-    const composed = composeGeminiBananaModel(
-      option.geminiBananaFamily,
-      currentGeminiBananaSizeTier
-    );
-    return (composed ??
-      getDefaultCanonicalForFamily(option.geminiBananaFamily)) as GeminiModel;
-  }
-  return option.value as GeminiModel;
+function isGptImage2Size(
+  size: string | null | undefined
+): size is GptImage2SizeTier {
+  return (
+    typeof size === "string" &&
+    (GPT_IMAGE_2_SIZE_TIERS as ReadonlyArray<string>).includes(size)
+  );
+}
+
+function isGeminiBanana2Size(
+  size: string | null | undefined
+): size is GeminiBanana2SizeTier {
+  return (
+    typeof size === "string" &&
+    (GEMINI_BANANA_2_SIZE_TIERS as ReadonlyArray<string>).includes(size)
+  );
+}
+
+function isGeminiBananaProSize(
+  size: string | null | undefined
+): size is GeminiBananaProSizeTier {
+  return (
+    typeof size === "string" &&
+    (GEMINI_BANANA_PRO_SIZE_TIERS as ReadonlyArray<string>).includes(size)
+  );
 }
 
 /**
- * /style と /coordinate で共有するモデル選択 UI。
+ * 行クリック時の遷移ルール:
+ *   - 同じファミリーをクリック: 現在のモデルをそのまま返す（quality / size を維持）
+ *   - 別ファミリーをクリック: 現在の size が新ファミリーで有効なら維持、無効なら 1K
+ *     にフォールバック。新ファミリーの quality は既定（OpenAI なら low）
+ */
+function toOptionCanonicalValue(
+  option: ModelOption,
+  currentModel: GeminiModel
+): GeminiModel {
+  const parsedGptImage2 = parseGptImage2Model(currentModel);
+  const parsedGeminiBanana = parseGeminiBananaModel(currentModel);
+  const currentSize: GptImage2SizeTier | GeminiBananaSizeTier =
+    parsedGptImage2?.sizeTier ?? parsedGeminiBanana?.sizeTier ?? "1k";
+
+  if (option.value === "gpt-image-2-row") {
+    if (parsedGptImage2) return currentModel;
+    const size = isGptImage2Size(currentSize) ? currentSize : "1k";
+    return composeGptImage2Model("low", size);
+  }
+  if (option.value === "nano-banana-2-row") {
+    if (parsedGeminiBanana?.family === "nano-2") return currentModel;
+    const size = isGeminiBanana2Size(currentSize) ? currentSize : "1k";
+    const composed = composeGeminiBananaModel("nano-2", size);
+    return (composed ?? "gemini-3.1-flash-image-preview-1024") as GeminiModel;
+  }
+  // nano-banana-pro-row
+  if (parsedGeminiBanana?.family === "nano-pro") return currentModel;
+  const size = isGeminiBananaProSize(currentSize) ? currentSize : "1k";
+  const composed = composeGeminiBananaModel("nano-pro", size);
+  return (composed ?? "gemini-3-pro-image-1k") as GeminiModel;
+}
+
+/**
+ * canonical モデルから「今選択中の 1 段目行」を導出する。
+ */
+function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
+  if (parseGptImage2Model(model)) return "gpt-image-2-row";
+  const parsed = parseGeminiBananaModel(model);
+  if (parsed?.family === "nano-2") return "nano-banana-2-row";
+  if (parsed?.family === "nano-pro") return "nano-banana-pro-row";
+  return null;
+}
+
+/**
+ * /style と /coordinate で共有する 1 段目の「生成モデル」セレクター。
  *
- * - ChatGPT Images 2.0 (Low/Medium/High) と Nano Banana 2 / Pro の合計 5 行を並べる
- * - 解像度（size tier）は別カードの size selector（OpenAI 用 / Gemini 用）で選ぶ
- * - `authState='guest'` のとき、`GUEST_ALLOWED_MODELS` 以外には南京錠アイコンを付ける
- * - ロックモデルをクリックしても `value` は変えず、`onLockedClick` を呼ぶ
- *   （AuthModal を開くハンドラを親が渡す）
- * - localStorage に保存された値が許可外でも表示値は `DEFAULT_GENERATION_MODEL` に丸める
+ * 3 行（ChatGPT Images 2.0 / Nano Banana 2 / Nano Banana Pro）でファミリーを切り替える。
+ * 行クリック時、現在の size が新ファミリーで有効なら維持、無効なら 1K へフォールバック。
+ * Quality（Low/Medium/High）は別カードの `GptImage2QualitySelector` で、size は
+ * `GptImage2SizeSelector` / `GeminiBananaSizeSelector` でそれぞれ選ぶ。
  *
- * 関連: 計画書 ADR-006 / Phase 4
+ * `authState='guest'` のとき `GUEST_ALLOWED_MODELS` 以外には南京錠アイコンを付ける。
  */
 export function LockableModelSelect(props: LockableModelSelectProps) {
   const t = useTranslations("coordinate");
   const isGuest = props.authState === "guest";
   const isModelSelectable = props.isModelSelectable;
 
-  // 表示値の clamp: ゲストのまま許可外モデルが渡されたら表示上は既定モデル扱い
   const displayModel = resolveEffectiveModelForAuthState(
     props.value,
     props.authState
   );
-  const parsedGptImage2 = parseGptImage2Model(displayModel);
-  const parsedGeminiBanana = parseGeminiBananaModel(displayModel);
-  const currentGptImage2SizeTier: GptImage2SizeTier =
-    parsedGptImage2?.sizeTier ?? "1k";
-  const currentGeminiBananaSizeTier: GeminiBananaSizeTier =
-    parsedGeminiBanana?.sizeTier ?? "1k";
-
-  const displayValue = parsedGptImage2
-    ? `gpt-image-2-${parsedGptImage2.quality}-row`
-    : parsedGeminiBanana
-      ? parsedGeminiBanana.family === "nano-2"
-        ? "nano-banana-2-row"
-        : "nano-banana-pro-row"
-      : displayModel;
+  const displayValue: ModelRowValue | string =
+    getCurrentRowValue(displayModel) ?? displayModel;
 
   const availableModelOptions = useMemo(
     () =>
       MODEL_OPTIONS.filter((option) => {
-        const canonical = toOptionCanonicalValue(
-          option,
-          currentGptImage2SizeTier,
-          currentGeminiBananaSizeTier
-        );
+        const canonical = toOptionCanonicalValue(option, displayModel);
         return (
           isModelAvailableForGeneration(canonical) &&
           (isModelSelectable?.(canonical) ?? true)
         );
       }),
-    [currentGptImage2SizeTier, currentGeminiBananaSizeTier, isModelSelectable]
+    [displayModel, isModelSelectable]
   );
 
   const handleValueChange = (next: string) => {
@@ -184,11 +190,7 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
     if (!option) {
       return;
     }
-    const nextModel = toOptionCanonicalValue(
-      option,
-      currentGptImage2SizeTier,
-      currentGeminiBananaSizeTier
-    );
+    const nextModel = toOptionCanonicalValue(option, displayModel);
     if (!isModelAvailableForGeneration(nextModel)) {
       return;
     }
@@ -196,7 +198,6 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
       return;
     }
     if (isGuest && !isCanonicalGuestAllowedModel(nextModel)) {
-      // ロック行クリック: 値は変えず、AuthModal を呼ぶだけ
       props.onLockedClick();
       return;
     }
@@ -204,9 +205,7 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
   };
 
   /**
-   * モデル行の表示内容。モデル名（i18n ラベル）はそのままに、品質ポジションを
-   * 示す色付きチップ（Low/Medium/High）を後ろに添える。チップは行固有の `tierTag`
-   * を使い、現在の size tier では変化しない（行の意味＝family/quality 自体は変わらないため）。
+   * モデル行の表示内容。モデル名 + エンジンチップ（OpenAI / Gemini）。
    * トリガー（SelectValue）にも同じ内容が複製表示されるが、shadcn の select-value は
    * flex 行を想定しているので問題ない。単一の `<span>` でラベルテキストを包んでいるため、
    * `getByText("...モデル名")` でも拾える。
@@ -215,7 +214,7 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
     option: ModelOption,
     { withLockIcon = false }: { withLockIcon?: boolean } = {}
   ) => {
-    const display = MODEL_TAG_DISPLAY[option.tierTag];
+    const display = MODEL_TAG_DISPLAY[option.engineTag];
     return (
       <span className="flex flex-wrap items-center gap-1.5">
         {withLockIcon ? (
@@ -245,11 +244,7 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
       </SelectTrigger>
       <SelectContent>
         {availableModelOptions.map((option) => {
-          const optionModel = toOptionCanonicalValue(
-            option,
-            currentGptImage2SizeTier,
-            currentGeminiBananaSizeTier
-          );
+          const optionModel = toOptionCanonicalValue(option, displayModel);
           const isLocked = isGuest && !isCanonicalGuestAllowedModel(optionModel);
           if (isLocked) {
             return (

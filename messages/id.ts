@@ -810,6 +810,7 @@ export const idMessages = {
     modelLabel: "Pilih model generasi",
     modelTooltipAria: "Tampilkan perbedaan model",
     modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",
+    gptImage2QualityLabel: "Pilih tipe generasi",
     modelLight05k: "Model ringan: Nano Banana 2 | 0.5K (10 Percoin / gambar)",
     modelStandard1k: "Model standar: Nano Banana 2 | 1K (20 Percoin / gambar)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const idMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",

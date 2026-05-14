@@ -810,6 +810,7 @@ export const viMessages = {
     modelLabel: "Chọn mô hình tạo",
     modelTooltipAria: "Hiển thị sự khác biệt giữa các mô hình",
     modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh. khoảng 30 giây.\nMedium: cân bằng. khoảng 70 giây.\nHigh: chi tiết ổn định. khoảng 180 giây.",
+    gptImage2QualityLabel: "Chọn loại tạo",
     modelLight05k: "Mô hình nhẹ: Nano Banana 2 | 0.5K (10 Percoin / hình)",
     modelStandard1k: "Mô hình tiêu chuẩn: Nano Banana 2 | 1K (20 Percoin / hình)",
     modelPro1k:
@@ -821,6 +822,9 @@ export const viMessages = {
     modelGptImage2Low: "ChatGPT Images 2.0",
     modelGptImage2Medium: "ChatGPT Images 2.0",
     modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
     modelNanoBananaPro: "Nano Banana Pro",
     modelTagTierLight: "Low",
