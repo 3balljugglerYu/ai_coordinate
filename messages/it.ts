@@ -1087,6 +1087,8 @@ export const itMessages = {
     listPromptCopyFailed: "Impossibile copiare il prompt.",
     listPromptEmpty: "Nessuna informazione sul prompt disponibile.",
     listPromptOneTapStyleEmpty: "Non disponibile perché questa immagine è stata generata con One-Tap Style.",
+    listPromptInspireEmpty:
+      "Non disponibile perché questa immagine è stata generata con un modello di stile della community.",
     listApplyForNext: "Genera a partire da questa immagine",
     listApplyForNextSuccess: "L'immagine è stata impostata nel campo di caricamento.",
     listApplyForNextConfirmTitle: "Sto andando alla pagina Coordina",

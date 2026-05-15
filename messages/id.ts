@@ -1087,6 +1087,8 @@ export const idMessages = {
     listPromptCopyFailed: "Gagal menyalin prompt.",
     listPromptEmpty: "Tidak ada informasi prompt.",
     listPromptOneTapStyleEmpty: "Tidak tersedia karena gambar ini dibuat dengan One-Tap Style.",
+    listPromptInspireEmpty:
+      "Tidak tersedia karena gambar ini dibuat dengan template gaya kiriman komunitas.",
     listApplyForNext: "Hasilkan dari gambar ini",
     listApplyForNextSuccess: "Gambar telah disetel ke kolom unggah.",
     listApplyForNextConfirmTitle: "Menuju halaman Koordinat",

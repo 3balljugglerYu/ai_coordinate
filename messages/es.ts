@@ -1087,6 +1087,8 @@ export const esMessages = {
     listPromptCopyFailed: "No se pudo copiar el prompt.",
     listPromptEmpty: "No hay información del prompt.",
     listPromptOneTapStyleEmpty: "No disponible porque esta imagen se generó con One-Tap Style.",
+    listPromptInspireEmpty:
+      "No disponible porque esta imagen se generó con una plantilla de estilo comunitaria.",
     listApplyForNext: "Generar a partir de esta imagen",
     listApplyForNextSuccess: "La imagen se ha establecido en el campo de subida.",
     listApplyForNextConfirmTitle: "Yendo a la página Coordinar",

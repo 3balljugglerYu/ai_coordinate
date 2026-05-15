@@ -1087,6 +1087,8 @@ export const ptMessages = {
     listPromptCopyFailed: "Não foi possível copiar o prompt.",
     listPromptEmpty: "Sem informações de prompt.",
     listPromptOneTapStyleEmpty: "Indisponível porque esta imagem foi gerada com One-Tap Style.",
+    listPromptInspireEmpty:
+      "Indisponível porque esta imagem foi gerada com um template de estilo da comunidade.",
     listApplyForNext: "Gerar a partir desta imagem",
     listApplyForNextSuccess: "A imagem foi colocada no campo de upload.",
     listApplyForNextConfirmTitle: "Indo para a página Coordenar",

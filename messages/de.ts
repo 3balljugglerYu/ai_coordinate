@@ -1087,6 +1087,8 @@ export const deMessages = {
     listPromptCopyFailed: "Prompt konnte nicht kopiert werden.",
     listPromptEmpty: "Keine Prompt-Informationen verfügbar.",
     listPromptOneTapStyleEmpty: "Nicht verfügbar, da dieses Bild mit One-Tap Style generiert wurde.",
+    listPromptInspireEmpty:
+      "Nicht verfügbar, da dieses Bild mit einer Community-Stilvorlage generiert wurde.",
     listApplyForNext: "Aus diesem Bild generieren",
     listApplyForNextSuccess: "Bild wurde im Upload-Feld eingestellt.",
     listApplyForNextConfirmTitle: "Zur Koordinieren-Seite gehen",

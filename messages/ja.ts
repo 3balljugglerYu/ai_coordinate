@@ -1032,6 +1032,7 @@ export const jaMessages = {
     listPromptCopyFailed: "プロンプトのコピーに失敗しました",
     listPromptEmpty: "プロンプト情報がありません",
     listPromptOneTapStyleEmpty: "One-Tap Styleで生成した為、ありません",
+    listPromptInspireEmpty: "投稿スタイルで生成した為、ありません",
     listApplyForNext: "このイラストで生成",
     listApplyForNextSuccess: "アップロード欄に画像をセットしました",
     listApplyForNextConfirmTitle: "コーディネートに移動します",

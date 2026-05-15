@@ -1085,6 +1085,7 @@ export const zhTwMessages = {
     listPromptCopyFailed: "複製提示詞失敗。",
     listPromptEmpty: "沒有提示詞資訊。",
     listPromptOneTapStyleEmpty: "因此圖片是以一鍵造型生成，無法顯示。",
+    listPromptInspireEmpty: "因此圖片是以投稿樣式範本生成，無法顯示。",
     listApplyForNext: "用此圖片再次生成",
     listApplyForNextSuccess: "已將圖片設定到上傳欄。",
     listApplyForNextConfirmTitle: "前往穿搭頁面",

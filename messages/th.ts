@@ -1086,6 +1086,7 @@ export const thMessages = {
     listPromptCopyFailed: "คัดลอกพรอมป์ไม่สำเร็จ",
     listPromptEmpty: "ไม่มีข้อมูลพรอมป์",
     listPromptOneTapStyleEmpty: "ไม่สามารถแสดงได้เพราะรูปนี้ถูกสร้างด้วย One-Tap Style",
+    listPromptInspireEmpty: "ไม่สามารถแสดงได้เพราะรูปนี้ถูกสร้างด้วยเทมเพลตสไตล์ที่ผู้ใช้ส่งเข้ามา",
     listApplyForNext: "สร้างจากรูปนี้",
     listApplyForNextSuccess: "ตั้งรูปไว้ในช่องอัปโหลดแล้ว",
     listApplyForNextConfirmTitle: "กำลังไปหน้าจัดเซ็ต",

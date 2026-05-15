@@ -1086,6 +1086,7 @@ export const koMessages = {
     listPromptCopyFailed: "프롬프트 복사에 실패했습니다.",
     listPromptEmpty: "프롬프트 정보가 없습니다.",
     listPromptOneTapStyleEmpty: "원탭 스타일로 생성된 이미지라 표시할 수 없습니다.",
+    listPromptInspireEmpty: "투고 스타일 템플릿으로 생성된 이미지라 표시할 수 없습니다.",
     listApplyForNext: "이 이미지로 다시 생성",
     listApplyForNextSuccess: "업로드 칸에 이미지를 설정했습니다.",
     listApplyForNextConfirmTitle: "코디 페이지로 이동합니다",

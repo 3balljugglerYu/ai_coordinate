@@ -1087,6 +1087,8 @@ export const frMessages = {
     listPromptCopyFailed: "Impossible de copier le prompt.",
     listPromptEmpty: "Aucune information de prompt.",
     listPromptOneTapStyleEmpty: "Indisponible : cette image a été générée avec One-Tap Style.",
+    listPromptInspireEmpty:
+      "Indisponible : cette image a été générée avec un modèle de style communautaire.",
     listApplyForNext: "Générer à partir de cette image",
     listApplyForNextSuccess: "L'image a été placée dans le champ d'envoi.",
     listApplyForNextConfirmTitle: "Aller à la page Coordonner",

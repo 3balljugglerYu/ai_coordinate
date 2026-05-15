@@ -1086,6 +1086,8 @@ export const arMessages = {
     listPromptCopyFailed: "فشل نسخ النص الموجِّه.",
     listPromptEmpty: "لا توجد معلومات عن النص الموجِّه.",
     listPromptOneTapStyleEmpty: "غير متاح لأن هذه الصورة أُنشئت بـ One-Tap Style.",
+    listPromptInspireEmpty:
+      "غير متاح لأن هذه الصورة أُنشئت بقالب نمط من مساهمات المجتمع.",
     listApplyForNext: "توليد من هذه الصورة",
     listApplyForNextSuccess: "تم تعيين الصورة في حقل الرفع.",
     listApplyForNextConfirmTitle: "الانتقال إلى صفحة التنسيق",

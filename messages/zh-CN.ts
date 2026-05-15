@@ -1085,6 +1085,7 @@ export const zhCnMessages = {
     listPromptCopyFailed: "复制提示词失败。",
     listPromptEmpty: "暂无提示词信息。",
     listPromptOneTapStyleEmpty: "由于此图片是通过一键造型生成的，无法显示。",
+    listPromptInspireEmpty: "由于此图片是通过投稿样式模板生成的，无法显示。",
     listApplyForNext: "用此图片再次生成",
     listApplyForNextSuccess: "已将图片设置到上传栏。",
     listApplyForNextConfirmTitle: "前往搭配页面",

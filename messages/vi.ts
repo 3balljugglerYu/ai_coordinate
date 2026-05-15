@@ -1086,6 +1086,8 @@ export const viMessages = {
     listPromptCopyFailed: "Sao chép prompt thất bại.",
     listPromptEmpty: "Không có thông tin prompt.",
     listPromptOneTapStyleEmpty: "Không khả dụng vì hình này được tạo bằng One-Tap Style.",
+    listPromptInspireEmpty:
+      "Không khả dụng vì hình này được tạo bằng mẫu phong cách do người dùng đóng góp.",
     listApplyForNext: "Tạo từ hình này",
     listApplyForNextSuccess: "Đã đặt hình vào ô tải lên.",
     listApplyForNextConfirmTitle: "Đang đến trang Phối đồ",

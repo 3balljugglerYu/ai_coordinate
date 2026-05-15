@@ -69,7 +69,11 @@ interface InspireGenerationFlowCopy {
 }
 
 interface InspireGenerationFlowProps {
-  jobId: string;
+  /**
+   * 非同期ジョブの ID。fetch 中はまだ jobId が無いので null を渡すと
+   * polling せずに「準備中」のステータスバーだけが表示される（/style と同等）。
+   */
+  jobId: string | null;
   /** テンプレ画像のアスペクト比（結果カードのサイズ計算用） */
   aspectRatio: number;
   copy: InspireGenerationFlowCopy;
@@ -179,8 +183,17 @@ export function InspireGenerationFlow({
     };
   }, [phase]);
 
+  // /style と同じく祝福フェーズ (completing → idle) を抜けてからコンテナへ通知する。
+  // これによりステータスバーが 5 秒残り、その後 setActiveJobId(null) 等で unmount される。
+  useEffect(() => {
+    if (phase === "idle" && status?.status === "succeeded") {
+      onCompleteRef.current?.(status);
+    }
+  }, [phase, status]);
+
   // job poll（adaptive interval は /style と同じ）
   useEffect(() => {
+    if (!jobId) return;
     let isMounted = true;
     const { promise, stop } = pollGenerationStatus(jobId, {
       interval: getStatusPollingIntervalMs,
@@ -199,9 +212,13 @@ export function InspireGenerationFlow({
         if (!isMounted) return;
         setStatus(finalStatus);
         if (finalStatus.status === "succeeded") {
+          // 成功時の onComplete は completing → idle 遷移後の useEffect で呼ぶ
+          // （祝福フェーズの 5 秒を待ってから unmount するため）。
           setPhase((prev) => (prev === "running" ? "completing" : prev));
+        } else {
+          // 失敗時は即座にコンテナへ通知（祝福フェーズには入らない）。
+          onCompleteRef.current?.(finalStatus);
         }
-        onCompleteRef.current?.(finalStatus);
       })
       .catch((err: unknown) => {
         if (!isMounted) return;

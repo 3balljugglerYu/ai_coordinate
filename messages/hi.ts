@@ -1086,6 +1086,8 @@ export const hiMessages = {
     listPromptCopyFailed: "प्रॉम्प्ट कॉपी करने में विफल।",
     listPromptEmpty: "कोई प्रॉम्प्ट जानकारी उपलब्ध नहीं है।",
     listPromptOneTapStyleEmpty: "उपलब्ध नहीं क्योंकि यह छवि One-Tap Style से उत्पन्न की गई थी।",
+    listPromptInspireEmpty:
+      "उपलब्ध नहीं क्योंकि यह छवि कम्युनिटी स्टाइल टेम्पलेट से उत्पन्न की गई थी।",
     listApplyForNext: "इस छवि से उत्पन्न करें",
     listApplyForNextSuccess: "अपलोड फ़ील्ड में छवि सेट कर दी गई है।",
     listApplyForNextConfirmTitle: "कोऑर्डिनेट पेज पर जा रहे हैं",

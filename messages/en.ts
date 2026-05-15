@@ -1086,6 +1086,7 @@ export const enMessages = {
     listPromptCopyFailed: "Failed to copy the prompt.",
     listPromptEmpty: "No prompt information available.",
     listPromptOneTapStyleEmpty: "Not available because this image was generated with One-Tap Style.",
+    listPromptInspireEmpty: "Not available because this image was generated with a community style template.",
     listApplyForNext: "Generate from this image",
     listApplyForNextSuccess: "Image has been set to the upload field.",
     listApplyForNextConfirmTitle: "Going to the coordinate page",
