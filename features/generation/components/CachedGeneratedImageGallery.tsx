@@ -18,7 +18,8 @@ export type GalleryGenerationType =
   | "specified_coordinate"
   | "full_body"
   | "chibi"
-  | "one_tap_style";
+  | "one_tap_style"
+  | "inspire";
 
 interface CachedGeneratedImageGalleryProps {
   userId: string;

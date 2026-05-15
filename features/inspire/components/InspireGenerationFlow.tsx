@@ -74,6 +74,12 @@ interface InspireGenerationFlowProps {
   aspectRatio: number;
   copy: InspireGenerationFlowCopy;
   onComplete?: (status: AsyncGenerationStatus) => void;
+  /**
+   * 完了後の結果セクションを表示するか。
+   * 下に CachedGeneratedImageGallery を別途置く構成では false にする
+   * （二重表示の回避用）。
+   */
+  showResultPanel?: boolean;
 }
 
 // /inspire 用の生成中ステータスカード + 結果表示。
@@ -85,6 +91,7 @@ export function InspireGenerationFlow({
   aspectRatio,
   copy,
   onComplete,
+  showResultPanel = true,
 }: InspireGenerationFlowProps) {
   const t = useTranslations("coordinate");
   const [status, setStatus] = useState<AsyncGenerationStatus | null>(null);
@@ -258,7 +265,7 @@ export function InspireGenerationFlow({
       )}
 
       {/* 結果セクション（completing の 5 秒祝福ステートを抜けて idle になってから表示） */}
-      {isRevealed && (
+      {showResultPanel && isRevealed && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-gray-900">
             {copy.resultsTitle}

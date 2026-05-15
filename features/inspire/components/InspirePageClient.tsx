@@ -297,6 +297,9 @@ export function InspirePageClient({
           jobId={activeJobId}
           aspectRatio={templateAspectRatio}
           onComplete={() => router.refresh()}
+          // 結果は下の CachedGeneratedImageGallery 側で表示するため、
+          // ここでは進捗カード／失敗カードのみ描画して二重表示を避ける。
+          showResultPanel={false}
           copy={{
             statusFailed: copy.statusFailed,
             statusFailedDescription: copy.statusFailedDescription,
