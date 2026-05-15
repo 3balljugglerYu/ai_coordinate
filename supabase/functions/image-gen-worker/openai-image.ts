@@ -1,7 +1,7 @@
 // OpenAI gpt-image-2 クライアント
 // - POST https://api.openai.com/v1/images/edits を multipart/form-data で叩く
 // - 入力画像のアスペクト比から 1024x1024 / 1024x1536 / 1536x1024 を選択
-// - `quality` は呼び出し側から指定可能（省略時は "low"）。inspire 経路では "medium" を使う。
+// - `quality` は呼び出し側から指定可能（省略時は "low"）。
 // - moderation/safety 系のエラーは SAFETY_POLICY_BLOCKED_ERROR に統一
 // - GIF 入力は OpenAI 経路では非対応（呼び出し側で再試行不可エラーとして扱う）
 
