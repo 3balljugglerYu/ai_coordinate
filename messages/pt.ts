@@ -375,6 +375,8 @@ export const ptMessages = {
     inspireDeleteConfirmAction: "Excluir",
     inspireDeleteSuccess: "Excluído.",
     inspireDeleteFailed: "Não foi possível excluir.",
+    inspireOpenForGenerationAria:
+      "Abrir a página de geração com este template",
   },
   inspireSubmission: {
     dialogTitle: "Enviar modelo de estilo",
@@ -395,6 +397,9 @@ export const ptMessages = {
     step2TestCharacterLabel: "Personagem de teste",
     step2GeneratingMessage: "Gerando... não feche esta aba.",
     step2GeneratingInline: "Gerando…",
+    step2GeneratingCardTitle: "Gerando a simulação de prova",
+    step2GeneratingCardFooter:
+      "Por favor, não feche esta aba. Termina em cerca de 60–90 segundos.",
     step2PartialNotice:
       "Apenas um dos dois previews foi gerado com sucesso. Você ainda pode enviar se o resultado estiver aceitável.",
     step2BackButton: "Voltar",
@@ -1082,6 +1087,8 @@ export const ptMessages = {
     listPromptCopyFailed: "Não foi possível copiar o prompt.",
     listPromptEmpty: "Sem informações de prompt.",
     listPromptOneTapStyleEmpty: "Indisponível porque esta imagem foi gerada com One-Tap Style.",
+    listPromptInspireEmpty:
+      "Indisponível porque esta imagem foi gerada com um template de estilo da comunidade.",
     listApplyForNext: "Gerar a partir desta imagem",
     listApplyForNextSuccess: "A imagem foi colocada no campo de upload.",
     listApplyForNextConfirmTitle: "Indo para a página Coordenar",
@@ -1596,6 +1603,8 @@ export const ptMessages = {
     detailTemplate: "Imagem do modelo",
     detailPreviewOpenAI: "Preview (OpenAI)",
     detailPreviewGemini: "Preview (Gemini)",
+    detailEnlargedPrev: "Imagem anterior",
+    detailEnlargedNext: "Próxima imagem",
   },
   inspirePage: {
     pageTitle: "Gerar com este estilo",

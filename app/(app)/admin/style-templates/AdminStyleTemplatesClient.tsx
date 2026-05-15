@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ExternalLink, User as UserIcon } from "lucide-react";
+import {
+  ImageLightboxDialog,
+  type ImageLightboxSlide,
+} from "@/features/inspire/components/ImageLightboxDialog";
 import {
   Tabs,
   TabsContent,
@@ -73,6 +77,8 @@ interface Copy {
   detailTemplate: string;
   detailPreviewOpenAI: string;
   detailPreviewGemini: string;
+  detailEnlargedPrev: string;
+  detailEnlargedNext: string;
 }
 
 interface AdminStyleTemplatesClientProps {
@@ -95,6 +101,43 @@ export function AdminStyleTemplatesClient({
   const [openItem, setOpenItem] = useState<AdminStyleTemplateItem | null>(null);
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState<DecisionAction | null>(null);
+  const [enlargedIndex, setEnlargedIndex] = useState<number | null>(null);
+
+  // 詳細パネルの 3 つの画像（テンプレ → OpenAI → Gemini）。URL が無いものは除外。
+  const lightboxSlides = useMemo<ImageLightboxSlide[]>(() => {
+    if (!openItem) return [];
+    const slides: ImageLightboxSlide[] = [];
+    if (openItem.image_url) {
+      slides.push({ url: openItem.image_url, label: copy.detailTemplate });
+    }
+    if (openItem.preview_openai_image_url) {
+      slides.push({
+        url: openItem.preview_openai_image_url,
+        label: copy.detailPreviewOpenAI,
+      });
+    }
+    if (openItem.preview_gemini_image_url) {
+      slides.push({
+        url: openItem.preview_gemini_image_url,
+        label: copy.detailPreviewGemini,
+      });
+    }
+    return slides;
+  }, [openItem, copy.detailTemplate, copy.detailPreviewOpenAI, copy.detailPreviewGemini]);
+
+  const openLightbox = useCallback(
+    (url: string) => {
+      const idx = lightboxSlides.findIndex((s) => s.url === url);
+      if (idx >= 0) setEnlargedIndex(idx);
+    },
+    [lightboxSlides]
+  );
+
+  const closeDetail = useCallback(() => {
+    setOpenItem(null);
+    setReason("");
+    setEnlargedIndex(null);
+  }, []);
 
   const handleDecision = useCallback(
     async (action: DecisionAction) => {
@@ -114,14 +157,13 @@ export function AdminStyleTemplatesClient({
           return;
         }
         toast({ title: copy.decisionSuccess });
-        setOpenItem(null);
-        setReason("");
+        closeDetail();
         router.refresh();
       } finally {
         setSubmitting(null);
       }
     },
-    [copy, openItem, reason, router, toast]
+    [closeDetail, copy, openItem, reason, router, toast]
   );
 
   const handleOrderUpdate = useCallback(
@@ -263,10 +305,7 @@ export function AdminStyleTemplatesClient({
       <Sheet
         open={openItem !== null}
         onOpenChange={(next) => {
-          if (!next) {
-            setOpenItem(null);
-            setReason("");
-          }
+          if (!next) closeDetail();
         }}
       >
         <SheetContent
@@ -327,46 +366,71 @@ export function AdminStyleTemplatesClient({
                   <figcaption className="text-xs font-medium">
                     {copy.detailTemplate}
                   </figcaption>
-                  <div className="aspect-square w-full overflow-hidden rounded-md border bg-muted">
-                    {openItem.image_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
+                  {openItem.image_url ? (
+                    <button
+                      type="button"
+                      onClick={() => openLightbox(openItem.image_url!)}
+                      className="block aspect-square w-full overflow-hidden rounded-md border bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      aria-label={copy.detailTemplate}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={openItem.image_url}
                         alt=""
                         className="h-full w-full object-cover"
                       />
-                    ) : null}
-                  </div>
+                    </button>
+                  ) : (
+                    <div className="aspect-square w-full overflow-hidden rounded-md border bg-muted" />
+                  )}
                 </figure>
                 <figure className="space-y-1">
                   <figcaption className="text-xs font-medium">
                     {copy.detailPreviewOpenAI}
                   </figcaption>
-                  <div className="aspect-square w-full overflow-hidden rounded-md border bg-muted">
-                    {openItem.preview_openai_image_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
+                  {openItem.preview_openai_image_url ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openLightbox(openItem.preview_openai_image_url!)
+                      }
+                      className="block aspect-square w-full overflow-hidden rounded-md border bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      aria-label={copy.detailPreviewOpenAI}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={openItem.preview_openai_image_url}
                         alt=""
                         className="h-full w-full object-cover"
                       />
-                    ) : null}
-                  </div>
+                    </button>
+                  ) : (
+                    <div className="aspect-square w-full overflow-hidden rounded-md border bg-muted" />
+                  )}
                 </figure>
                 <figure className="space-y-1">
                   <figcaption className="text-xs font-medium">
                     {copy.detailPreviewGemini}
                   </figcaption>
-                  <div className="aspect-square w-full overflow-hidden rounded-md border bg-muted">
-                    {openItem.preview_gemini_image_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
+                  {openItem.preview_gemini_image_url ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openLightbox(openItem.preview_gemini_image_url!)
+                      }
+                      className="block aspect-square w-full overflow-hidden rounded-md border bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      aria-label={copy.detailPreviewGemini}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={openItem.preview_gemini_image_url}
                         alt=""
                         className="h-full w-full object-cover"
                       />
-                    ) : null}
-                  </div>
+                    </button>
+                  ) : (
+                    <div className="aspect-square w-full overflow-hidden rounded-md border bg-muted" />
+                  )}
                 </figure>
               </div>
 
@@ -410,7 +474,7 @@ export function AdminStyleTemplatesClient({
                 )}
                 <Button
                   variant="ghost"
-                  onClick={() => setOpenItem(null)}
+                  onClick={closeDetail}
                   disabled={submitting !== null}
                 >
                   {copy.detailClose}
@@ -420,6 +484,14 @@ export function AdminStyleTemplatesClient({
           )}
         </SheetContent>
       </Sheet>
+
+      <ImageLightboxDialog
+        slides={lightboxSlides}
+        index={enlargedIndex}
+        onIndexChange={setEnlargedIndex}
+        prevLabel={copy.detailEnlargedPrev}
+        nextLabel={copy.detailEnlargedNext}
+      />
     </>
   );
 }

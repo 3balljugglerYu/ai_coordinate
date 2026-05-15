@@ -375,6 +375,7 @@ export const thMessages = {
     inspireDeleteConfirmAction: "ลบ",
     inspireDeleteSuccess: "ลบแล้ว",
     inspireDeleteFailed: "ลบไม่สำเร็จ",
+    inspireOpenForGenerationAria: "เปิดหน้าสร้างด้วยเทมเพลตนี้",
   },
   inspireSubmission: {
     dialogTitle: "ส่งเทมเพลตสไตล์",
@@ -395,6 +396,9 @@ export const thMessages = {
     step2TestCharacterLabel: "ตัวละครทดสอบ",
     step2GeneratingMessage: "กำลังสร้าง... โปรดอย่าปิดแท็บนี้",
     step2GeneratingInline: "กำลังสร้าง…",
+    step2GeneratingCardTitle: "กำลังสร้างการจำลองการลอง",
+    step2GeneratingCardFooter:
+      "โปรดอย่าปิดแท็บนี้ ใช้เวลาประมาณ 60–90 วินาที",
     step2PartialNotice:
       "ตัวอย่างหนึ่งในสองรายการสำเร็จเท่านั้น คุณยังส่งได้หากผลลัพธ์ดูพอใช้ได้",
     step2BackButton: "ย้อนกลับ",
@@ -1082,6 +1086,7 @@ export const thMessages = {
     listPromptCopyFailed: "คัดลอกพรอมป์ไม่สำเร็จ",
     listPromptEmpty: "ไม่มีข้อมูลพรอมป์",
     listPromptOneTapStyleEmpty: "ไม่สามารถแสดงได้เพราะรูปนี้ถูกสร้างด้วย One-Tap Style",
+    listPromptInspireEmpty: "ไม่สามารถแสดงได้เพราะรูปนี้ถูกสร้างด้วยเทมเพลตสไตล์ที่ผู้ใช้ส่งเข้ามา",
     listApplyForNext: "สร้างจากรูปนี้",
     listApplyForNextSuccess: "ตั้งรูปไว้ในช่องอัปโหลดแล้ว",
     listApplyForNextConfirmTitle: "กำลังไปหน้าจัดเซ็ต",
@@ -1596,6 +1601,8 @@ export const thMessages = {
     detailTemplate: "รูปเทมเพลต",
     detailPreviewOpenAI: "ตัวอย่าง (OpenAI)",
     detailPreviewGemini: "ตัวอย่าง (Gemini)",
+    detailEnlargedPrev: "ภาพก่อนหน้า",
+    detailEnlargedNext: "ภาพถัดไป",
   },
   inspirePage: {
     pageTitle: "สร้างด้วยสไตล์นี้",

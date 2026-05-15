@@ -375,6 +375,7 @@ export const zhTwMessages = {
     inspireDeleteConfirmAction: "刪除",
     inspireDeleteSuccess: "已刪除。",
     inspireDeleteFailed: "刪除失敗。",
+    inspireOpenForGenerationAria: "用此範本開啟生成頁面",
   },
   inspireSubmission: {
     dialogTitle: "投稿造型範本",
@@ -395,6 +396,8 @@ export const zhTwMessages = {
     step2TestCharacterLabel: "測試角色",
     step2GeneratingMessage: "生成中...請不要關閉此分頁。",
     step2GeneratingInline: "生成中…",
+    step2GeneratingCardTitle: "正在生成試穿模擬",
+    step2GeneratingCardFooter: "請不要關閉此分頁。約 60〜90 秒後完成。",
     step2PartialNotice:
       "兩個預覽中只有一個成功。如果結果可接受，仍可投稿。",
     step2BackButton: "返回",
@@ -1082,6 +1085,7 @@ export const zhTwMessages = {
     listPromptCopyFailed: "複製提示詞失敗。",
     listPromptEmpty: "沒有提示詞資訊。",
     listPromptOneTapStyleEmpty: "因此圖片是以一鍵造型生成，無法顯示。",
+    listPromptInspireEmpty: "因此圖片是以投稿樣式範本生成，無法顯示。",
     listApplyForNext: "用此圖片再次生成",
     listApplyForNextSuccess: "已將圖片設定到上傳欄。",
     listApplyForNextConfirmTitle: "前往穿搭頁面",
@@ -1595,6 +1599,8 @@ export const zhTwMessages = {
     detailTemplate: "範本圖片",
     detailPreviewOpenAI: "預覽 (OpenAI)",
     detailPreviewGemini: "預覽 (Gemini)",
+    detailEnlargedPrev: "上一張",
+    detailEnlargedNext: "下一張",
   },
   inspirePage: {
     pageTitle: "用此造型生成",

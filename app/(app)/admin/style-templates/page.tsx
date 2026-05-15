@@ -158,6 +158,8 @@ export default async function AdminStyleTemplatesPage() {
           detailTemplate: t("detailTemplate"),
           detailPreviewOpenAI: t("detailPreviewOpenAI"),
           detailPreviewGemini: t("detailPreviewGemini"),
+          detailEnlargedPrev: t("detailEnlargedPrev"),
+          detailEnlargedNext: t("detailEnlargedNext"),
         }}
       />
     </div>

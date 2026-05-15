@@ -94,6 +94,9 @@ export function GeneratedImageList({
   generationType,
 }: GeneratedImageListProps) {
   const isOneTapStyle = generationType === "one_tap_style";
+  // inspire はテンプレ提供者のプロンプト保護のため、one_tap_style と同様に
+  // 使用プロンプトを非表示・コピー不可とする。
+  const isPromptHidden = isOneTapStyle || generationType === "inspire";
   const router = useRouter();
   const t = useTranslations("coordinate");
   const { toast } = useToast();
@@ -302,13 +305,14 @@ export function GeneratedImageList({
           </div>
         );
 
-        // one_tap_style はプリセット保護のため prompt が常に redact される。
-        // 「One-Tap Styleで生成した為、ありません」と専用文言を表示し、
-        // コピーボタンも表示しない（コピー対象が無いだけでなく方針として隠す）。
-        const promptText = isOneTapStyle
-          ? t("listPromptOneTapStyleEmpty")
+        // one_tap_style / inspire はプリセット or テンプレ提供者保護のため prompt を非表示にする。
+        // 専用文言を表示し、コピーボタンも出さない。
+        const promptText = isPromptHidden
+          ? isOneTapStyle
+            ? t("listPromptOneTapStyleEmpty")
+            : t("listPromptInspireEmpty")
           : image.prompt || t("listPromptEmpty");
-        const showCopyButton = !isOneTapStyle && Boolean(image.prompt);
+        const showCopyButton = !isPromptHidden && Boolean(image.prompt);
 
         const promptBlock = (
           <div className="rounded-lg bg-gray-50 p-2.5">

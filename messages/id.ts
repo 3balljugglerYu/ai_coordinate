@@ -375,6 +375,8 @@ export const idMessages = {
     inspireDeleteConfirmAction: "Hapus",
     inspireDeleteSuccess: "Terhapus.",
     inspireDeleteFailed: "Gagal menghapus.",
+    inspireOpenForGenerationAria:
+      "Buka halaman pembuatan dengan template ini",
   },
   inspireSubmission: {
     dialogTitle: "Kirim template gaya",
@@ -395,6 +397,9 @@ export const idMessages = {
     step2TestCharacterLabel: "Karakter uji",
     step2GeneratingMessage: "Menghasilkan... jangan tutup tab ini.",
     step2GeneratingInline: "Menghasilkan…",
+    step2GeneratingCardTitle: "Membuat simulasi coba pakai",
+    step2GeneratingCardFooter:
+      "Mohon jangan tutup tab ini. Selesai dalam sekitar 60–90 detik.",
     step2PartialNotice:
       "Hanya satu dari dua pratinjau berhasil. Kamu tetap bisa mengirim jika hasilnya bisa diterima.",
     step2BackButton: "Kembali",
@@ -1082,6 +1087,8 @@ export const idMessages = {
     listPromptCopyFailed: "Gagal menyalin prompt.",
     listPromptEmpty: "Tidak ada informasi prompt.",
     listPromptOneTapStyleEmpty: "Tidak tersedia karena gambar ini dibuat dengan One-Tap Style.",
+    listPromptInspireEmpty:
+      "Tidak tersedia karena gambar ini dibuat dengan template gaya kiriman komunitas.",
     listApplyForNext: "Hasilkan dari gambar ini",
     listApplyForNextSuccess: "Gambar telah disetel ke kolom unggah.",
     listApplyForNextConfirmTitle: "Menuju halaman Koordinat",
@@ -1596,6 +1603,8 @@ export const idMessages = {
     detailTemplate: "Gambar template",
     detailPreviewOpenAI: "Pratinjau (OpenAI)",
     detailPreviewGemini: "Pratinjau (Gemini)",
+    detailEnlargedPrev: "Gambar sebelumnya",
+    detailEnlargedNext: "Gambar berikutnya",
   },
   inspirePage: {
     pageTitle: "Hasilkan dengan gaya ini",

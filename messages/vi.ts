@@ -375,6 +375,7 @@ export const viMessages = {
     inspireDeleteConfirmAction: "Xóa",
     inspireDeleteSuccess: "Đã xóa.",
     inspireDeleteFailed: "Xóa thất bại.",
+    inspireOpenForGenerationAria: "Mở trang tạo với mẫu này",
   },
   inspireSubmission: {
     dialogTitle: "Gửi mẫu phong cách",
@@ -395,6 +396,9 @@ export const viMessages = {
     step2TestCharacterLabel: "Nhân vật thử nghiệm",
     step2GeneratingMessage: "Đang tạo... vui lòng không đóng tab này.",
     step2GeneratingInline: "Đang tạo…",
+    step2GeneratingCardTitle: "Đang tạo mô phỏng thử đồ",
+    step2GeneratingCardFooter:
+      "Vui lòng không đóng tab này. Hoàn tất trong khoảng 60–90 giây.",
     step2PartialNotice:
       "Chỉ một trong hai bản xem trước thành công. Bạn vẫn có thể gửi nếu kết quả chấp nhận được.",
     step2BackButton: "Quay lại",
@@ -1082,6 +1086,8 @@ export const viMessages = {
     listPromptCopyFailed: "Sao chép prompt thất bại.",
     listPromptEmpty: "Không có thông tin prompt.",
     listPromptOneTapStyleEmpty: "Không khả dụng vì hình này được tạo bằng One-Tap Style.",
+    listPromptInspireEmpty:
+      "Không khả dụng vì hình này được tạo bằng mẫu phong cách do người dùng đóng góp.",
     listApplyForNext: "Tạo từ hình này",
     listApplyForNextSuccess: "Đã đặt hình vào ô tải lên.",
     listApplyForNextConfirmTitle: "Đang đến trang Phối đồ",
@@ -1596,6 +1602,8 @@ export const viMessages = {
     detailTemplate: "Hình mẫu",
     detailPreviewOpenAI: "Xem trước (OpenAI)",
     detailPreviewGemini: "Xem trước (Gemini)",
+    detailEnlargedPrev: "Ảnh trước",
+    detailEnlargedNext: "Ảnh tiếp theo",
   },
   inspirePage: {
     pageTitle: "Tạo bằng phong cách này",

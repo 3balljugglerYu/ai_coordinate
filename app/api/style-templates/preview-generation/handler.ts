@@ -294,9 +294,7 @@ export async function handlePreviewGeneration(
         targetSizeBaseIndex: 1,
         timeoutMs: OPENAI_TIMEOUT_MS,
         n: 1,
-        // inspire はキャラ識別 × テンプレ構図の合成で難度が高いため
-        // OpenAI の品質ティアを medium に引き上げる（既定の low は細部が崩れやすい）。
-        quality: "medium",
+        quality: "low",
       });
       const result = results[0];
       const previewPath = `${user.id}/preview/${draftId}-openai.png`;
@@ -446,6 +444,23 @@ export async function handlePreviewGeneration(
 
   // 全失敗 → draft + Storage オブジェクトを削除して 500
   if (successes.length === 0) {
+    console.error("[preview-generation] all providers failed", {
+      draftId,
+      userId: user.id,
+      openai: !isSuccess(openaiOutcome)
+        ? {
+            errorMessage: openaiOutcome.errorMessage,
+            isSafetyBlocked: openaiOutcome.isSafetyBlocked,
+          }
+        : null,
+      gemini: !isSuccess(geminiOutcome)
+        ? {
+            errorMessage: geminiOutcome.errorMessage,
+            isSafetyBlocked: geminiOutcome.isSafetyBlocked,
+          }
+        : null,
+    });
+
     await adminClient.storage
       .from("style-templates")
       .remove([templateStoragePath]);
@@ -463,6 +478,27 @@ export async function handlePreviewGeneration(
       isSafety ? "INSPIRE_SAFETY_BLOCKED" : "INSPIRE_PREVIEW_FAILED",
       isSafety ? 400 : 500
     );
+  }
+
+  // partial（片方失敗）でも失敗側の詳細をログに残す。
+  // 全失敗はこのブロックの手前で return 済みのため、ここに来た時点で 1 つ以上は成功している。
+  if (successes.length < 2) {
+    if (!isSuccess(openaiOutcome)) {
+      console.warn("[preview-generation] openai failed (partial)", {
+        draftId,
+        userId: user.id,
+        errorMessage: openaiOutcome.errorMessage,
+        isSafetyBlocked: openaiOutcome.isSafetyBlocked,
+      });
+    }
+    if (!isSuccess(geminiOutcome)) {
+      console.warn("[preview-generation] gemini failed (partial)", {
+        draftId,
+        userId: user.id,
+        errorMessage: geminiOutcome.errorMessage,
+        isSafetyBlocked: geminiOutcome.isSafetyBlocked,
+      });
+    }
   }
 
   // draft 行に preview URL を設定

@@ -375,6 +375,8 @@ export const deMessages = {
     inspireDeleteConfirmAction: "Löschen",
     inspireDeleteSuccess: "Gelöscht.",
     inspireDeleteFailed: "Löschen fehlgeschlagen.",
+    inspireOpenForGenerationAria:
+      "Generierungsseite mit dieser Vorlage öffnen",
   },
   inspireSubmission: {
     dialogTitle: "Stilvorlage einreichen",
@@ -395,6 +397,9 @@ export const deMessages = {
     step2TestCharacterLabel: "Test-Charakter",
     step2GeneratingMessage: "Generierung läuft... bitte diesen Tab nicht schließen.",
     step2GeneratingInline: "Wird generiert…",
+    step2GeneratingCardTitle: "Anprobe-Simulation wird erstellt",
+    step2GeneratingCardFooter:
+      "Bitte diesen Tab nicht schließen. Dauert etwa 60–90 Sekunden.",
     step2PartialNotice:
       "Nur eine der beiden Vorschauen war erfolgreich. Du kannst trotzdem einreichen, wenn das Ergebnis akzeptabel ist.",
     step2BackButton: "Zurück",
@@ -1082,6 +1087,8 @@ export const deMessages = {
     listPromptCopyFailed: "Prompt konnte nicht kopiert werden.",
     listPromptEmpty: "Keine Prompt-Informationen verfügbar.",
     listPromptOneTapStyleEmpty: "Nicht verfügbar, da dieses Bild mit One-Tap Style generiert wurde.",
+    listPromptInspireEmpty:
+      "Nicht verfügbar, da dieses Bild mit einer Community-Stilvorlage generiert wurde.",
     listApplyForNext: "Aus diesem Bild generieren",
     listApplyForNextSuccess: "Bild wurde im Upload-Feld eingestellt.",
     listApplyForNextConfirmTitle: "Zur Koordinieren-Seite gehen",
@@ -1596,6 +1603,8 @@ export const deMessages = {
     detailTemplate: "Vorlagenbild",
     detailPreviewOpenAI: "Vorschau (OpenAI)",
     detailPreviewGemini: "Vorschau (Gemini)",
+    detailEnlargedPrev: "Vorheriges Bild",
+    detailEnlargedNext: "Nächstes Bild",
   },
   inspirePage: {
     pageTitle: "Mit diesem Stil generieren",

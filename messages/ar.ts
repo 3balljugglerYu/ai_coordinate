@@ -375,6 +375,7 @@ export const arMessages = {
     inspireDeleteConfirmAction: "حذف",
     inspireDeleteSuccess: "تم الحذف.",
     inspireDeleteFailed: "فشل الحذف.",
+    inspireOpenForGenerationAria: "افتح صفحة التوليد بهذا القالب",
   },
   inspireSubmission: {
     dialogTitle: "إرسال قالب تنسيق",
@@ -395,6 +396,9 @@ export const arMessages = {
     step2TestCharacterLabel: "شخصية الاختبار",
     step2GeneratingMessage: "جارٍ التوليد... يُرجى عدم إغلاق هذه التبويبة.",
     step2GeneratingInline: "جارٍ التوليد…",
+    step2GeneratingCardTitle: "جارٍ توليد محاكاة التجربة",
+    step2GeneratingCardFooter:
+      "يُرجى عدم إغلاق هذه التبويبة. ينتهي خلال 60 إلى 90 ثانية تقريبًا.",
     step2PartialNotice:
       "نجحت معاينة واحدة فقط من الاثنتين. يمكنك مع ذلك إرسالها إذا كانت النتيجة مقبولة.",
     step2BackButton: "رجوع",
@@ -1082,6 +1086,8 @@ export const arMessages = {
     listPromptCopyFailed: "فشل نسخ النص الموجِّه.",
     listPromptEmpty: "لا توجد معلومات عن النص الموجِّه.",
     listPromptOneTapStyleEmpty: "غير متاح لأن هذه الصورة أُنشئت بـ One-Tap Style.",
+    listPromptInspireEmpty:
+      "غير متاح لأن هذه الصورة أُنشئت بقالب نمط من مساهمات المجتمع.",
     listApplyForNext: "توليد من هذه الصورة",
     listApplyForNextSuccess: "تم تعيين الصورة في حقل الرفع.",
     listApplyForNextConfirmTitle: "الانتقال إلى صفحة التنسيق",
@@ -1596,6 +1602,8 @@ export const arMessages = {
     detailTemplate: "صورة القالب",
     detailPreviewOpenAI: "معاينة (OpenAI)",
     detailPreviewGemini: "معاينة (Gemini)",
+    detailEnlargedPrev: "الصورة السابقة",
+    detailEnlargedNext: "الصورة التالية",
   },
   inspirePage: {
     pageTitle: "توليد بهذا الأسلوب",

@@ -375,6 +375,7 @@ export const koMessages = {
     inspireDeleteConfirmAction: "삭제",
     inspireDeleteSuccess: "삭제했습니다.",
     inspireDeleteFailed: "삭제에 실패했습니다.",
+    inspireOpenForGenerationAria: "이 템플릿으로 생성 화면 열기",
   },
   inspireSubmission: {
     dialogTitle: "스타일 템플릿 투고",
@@ -395,6 +396,9 @@ export const koMessages = {
     step2TestCharacterLabel: "테스트 캐릭터",
     step2GeneratingMessage: "생성 중입니다... 탭을 닫지 말아 주세요.",
     step2GeneratingInline: "생성 중…",
+    step2GeneratingCardTitle: "트라이온 시뮬레이션 생성 중",
+    step2GeneratingCardFooter:
+      "이 탭을 닫지 말아 주세요. 약 60~90초 후 완료됩니다.",
     step2PartialNotice:
       "두 미리보기 중 하나만 성공했습니다. 결과가 만족스럽다면 그대로 투고할 수 있습니다.",
     step2BackButton: "뒤로",
@@ -1082,6 +1086,7 @@ export const koMessages = {
     listPromptCopyFailed: "프롬프트 복사에 실패했습니다.",
     listPromptEmpty: "프롬프트 정보가 없습니다.",
     listPromptOneTapStyleEmpty: "원탭 스타일로 생성된 이미지라 표시할 수 없습니다.",
+    listPromptInspireEmpty: "투고 스타일 템플릿으로 생성된 이미지라 표시할 수 없습니다.",
     listApplyForNext: "이 이미지로 다시 생성",
     listApplyForNextSuccess: "업로드 칸에 이미지를 설정했습니다.",
     listApplyForNextConfirmTitle: "코디 페이지로 이동합니다",
@@ -1596,6 +1601,8 @@ export const koMessages = {
     detailTemplate: "템플릿 이미지",
     detailPreviewOpenAI: "미리보기 (OpenAI)",
     detailPreviewGemini: "미리보기 (Gemini)",
+    detailEnlargedPrev: "이전 이미지",
+    detailEnlargedNext: "다음 이미지",
   },
   inspirePage: {
     pageTitle: "이 스타일로 생성",

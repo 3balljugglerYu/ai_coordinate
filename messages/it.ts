@@ -375,6 +375,8 @@ export const itMessages = {
     inspireDeleteConfirmAction: "Elimina",
     inspireDeleteSuccess: "Eliminato.",
     inspireDeleteFailed: "Impossibile eliminare.",
+    inspireOpenForGenerationAria:
+      "Apri la pagina di generazione con questo modello",
   },
   inspireSubmission: {
     dialogTitle: "Invia un modello di stile",
@@ -395,6 +397,9 @@ export const itMessages = {
     step2TestCharacterLabel: "Personaggio di prova",
     step2GeneratingMessage: "Generazione in corso... non chiudere questa scheda.",
     step2GeneratingInline: "Generazione…",
+    step2GeneratingCardTitle: "Generazione della simulazione di prova",
+    step2GeneratingCardFooter:
+      "Non chiudere questa scheda. Termina in circa 60–90 secondi.",
     step2PartialNotice:
       "Solo una delle due anteprime è andata a buon fine. Puoi comunque inviare se il risultato ti sembra accettabile.",
     step2BackButton: "Indietro",
@@ -1082,6 +1087,8 @@ export const itMessages = {
     listPromptCopyFailed: "Impossibile copiare il prompt.",
     listPromptEmpty: "Nessuna informazione sul prompt disponibile.",
     listPromptOneTapStyleEmpty: "Non disponibile perché questa immagine è stata generata con One-Tap Style.",
+    listPromptInspireEmpty:
+      "Non disponibile perché questa immagine è stata generata con un modello di stile della community.",
     listApplyForNext: "Genera a partire da questa immagine",
     listApplyForNextSuccess: "L'immagine è stata impostata nel campo di caricamento.",
     listApplyForNextConfirmTitle: "Sto andando alla pagina Coordina",
@@ -1596,6 +1603,8 @@ export const itMessages = {
     detailTemplate: "Immagine del modello",
     detailPreviewOpenAI: "Anteprima (OpenAI)",
     detailPreviewGemini: "Anteprima (Gemini)",
+    detailEnlargedPrev: "Immagine precedente",
+    detailEnlargedNext: "Immagine successiva",
   },
   inspirePage: {
     pageTitle: "Genera con questo stile",

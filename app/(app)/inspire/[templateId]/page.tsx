@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -9,6 +10,9 @@ import {
   getStyleTemplateById,
 } from "@/features/inspire/lib/repository";
 import { InspirePageClient } from "@/features/inspire/components/InspirePageClient";
+import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
+import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
+import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
@@ -40,7 +44,7 @@ export default async function InspirePage({ params }: InspirePageProps) {
   }
 
   const { templateId } = await params;
-  await requireAuth();
+  const user = await requireAuth();
 
   const adminClient = createAdminClient();
   const { data: template, error } = await getStyleTemplateById(
@@ -88,18 +92,19 @@ export default async function InspirePage({ params }: InspirePageProps) {
             </p>
           </div>
 
-          <InspirePageClient
-            template={{
-              id: template.id,
-              alt: template.alt,
-              image_url: templateImageUrl,
-              submitted_by_user_id: template.submitted_by_user_id,
-            }}
-            submitter={{
-              nickname: profile?.nickname ?? null,
-              avatar_url: profile?.avatar_url ?? null,
-            }}
-            copy={{
+          <GenerationStateProvider>
+            <InspirePageClient
+              template={{
+                id: template.id,
+                alt: template.alt,
+                image_url: templateImageUrl,
+                submitted_by_user_id: template.submitted_by_user_id,
+              }}
+              submitter={{
+                nickname: profile?.nickname ?? null,
+                avatar_url: profile?.avatar_url ?? null,
+              }}
+              copy={{
               formTitle: t("formTitle"),
               formDescription: t("formDescription"),
               formImageLabel: t("formImageLabel"),
@@ -130,7 +135,22 @@ export default async function InspirePage({ params }: InspirePageProps) {
               resultsPlaceholder: t("resultsPlaceholder"),
               resultImageAlt: t("resultImageAlt"),
             }}
-          />
+            />
+
+            <div className="mt-8">
+              <Suspense fallback={<GeneratedImageGallerySkeleton />}>
+                <CachedGeneratedImageGallery
+                  userId={user.id}
+                  generationType="inspire"
+                  cacheTag={`inspire-${user.id}`}
+                  title={t("resultsTitle")}
+                  detailFromParam="coordinate"
+                  returnToImageIdKey="persta-ai:inspire-return-to-image-id"
+                  applyActionMode="navigate-coordinate"
+                />
+              </Suspense>
+            </div>
+          </GenerationStateProvider>
         </div>
       </div>
     </div>

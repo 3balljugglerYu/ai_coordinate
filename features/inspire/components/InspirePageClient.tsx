@@ -95,11 +95,15 @@ export function InspirePageClient({
   const { toast } = useToast();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // 生成中（fetch 中 + ジョブ進行中）はフォームを操作不可にする。
+  // /style と同じく単一ジョブ運用なので polling 終了 (onComplete) で activeJobId を null に戻し再生成可能とする。
+  const isGenerating = submitting || activeJobId !== null;
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
-  const [count, setCount] = useState<number>(1);
+  // /style と同じく生成枚数は常に 1 固定（UI なし）。
+  const COUNT = 1;
   const [overrideTarget, setOverrideTarget] =
     useState<InspireOverrideValue>("keep_all");
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +129,7 @@ export function InspirePageClient({
           sourceImageMimeType: uploadedImage.file.type,
           generationType: "inspire",
           model: selectedModel,
-          count,
+          count: COUNT,
           styleTemplateId: template.id,
           overrideTarget: toApiOverrideTarget(overrideTarget),
         }),
@@ -161,7 +165,7 @@ export function InspirePageClient({
             value={uploadedImage}
             label={copy.formUploadLabel}
             addImageLabel={copy.formAddImageAction}
-            disabled={submitting}
+            disabled={isGenerating}
             aspectRatio={templateAspectRatio}
             filledPreviewMode="natural"
           />
@@ -251,27 +255,17 @@ export function InspirePageClient({
       {/* モデル + 枚数 + 生成ボタン */}
       <Card className="p-6">
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div className="space-y-3">
-              <p className="text-base font-medium">{copy.formModelLabel}</p>
-              <LockableModelSelect
-                value={selectedModel}
-                onChange={setSelectedModel}
-                onLockedClick={() => {
-                  /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
-                }}
-                authState="authenticated"
-                disabled={submitting}
-              />
-            </div>
-            <div className="space-y-3">
-              <p className="text-base font-medium">{copy.formCountLabel}</p>
-              <CountSelector
-                value={count}
-                onChange={setCount}
-                disabled={submitting}
-              />
-            </div>
+          <div className="space-y-3">
+            <p className="text-base font-medium">{copy.formModelLabel}</p>
+            <LockableModelSelect
+              value={selectedModel}
+              onChange={setSelectedModel}
+              onLockedClick={() => {
+                /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
+              }}
+              authState="authenticated"
+              disabled={isGenerating}
+            />
           </div>
 
           {error ? (
@@ -282,21 +276,33 @@ export function InspirePageClient({
             type="button"
             className="w-full"
             size="lg"
-            disabled={!uploadedImage || submitting}
+            disabled={!uploadedImage || isGenerating}
             onClick={handleGenerate}
             aria-label={copy.formGenerateAria}
           >
             <Sparkles className="mr-2 h-5 w-5" aria-hidden="true" />
-            {submitting ? copy.formGenerating : copy.formGenerateButton}
+            {isGenerating ? copy.formGenerating : copy.formGenerateButton}
           </Button>
         </div>
       </Card>
 
-      {activeJobId && (
+      {/*
+        /style と同じく「生成する」ボタン押下直後（fetch 中で jobId 未取得）から
+        ステータスバーを表示するため、isGenerating の間ずっとマウントする。
+        jobId が null の間は polling せず「準備中」表示のみになる。
+      */}
+      {isGenerating && (
         <InspireGenerationFlow
           jobId={activeJobId}
           aspectRatio={templateAspectRatio}
-          onComplete={() => router.refresh()}
+          onComplete={() => {
+            // ジョブ完了で再度フォーム操作可能にし、router.refresh() で Gallery を更新。
+            setActiveJobId(null);
+            router.refresh();
+          }}
+          // 結果は下の CachedGeneratedImageGallery 側で表示するため、
+          // ここでは進捗カード／失敗カードのみ描画して二重表示を避ける。
+          showResultPanel={false}
           copy={{
             statusFailed: copy.statusFailed,
             statusFailedDescription: copy.statusFailedDescription,
@@ -310,36 +316,3 @@ export function InspirePageClient({
   );
 }
 
-function CountSelector({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: number;
-  onChange: (next: number) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-4 gap-2">
-      {[1, 2, 3, 4].map((n) => {
-        const isSelected = value === n;
-        return (
-          <button
-            key={n}
-            type="button"
-            onClick={() => onChange(n)}
-            disabled={disabled}
-            aria-pressed={isSelected}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
-              isSelected
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-input bg-background hover:bg-accent"
-            }`}
-          >
-            {n}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
