@@ -1599,6 +1599,8 @@ export const ptMessages = {
     detailTemplate: "Imagem do modelo",
     detailPreviewOpenAI: "Preview (OpenAI)",
     detailPreviewGemini: "Preview (Gemini)",
+    detailEnlargedPrev: "Imagem anterior",
+    detailEnlargedNext: "Próxima imagem",
   },
   inspirePage: {
     pageTitle: "Gerar com este estilo",

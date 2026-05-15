@@ -1599,6 +1599,8 @@ export const esMessages = {
     detailTemplate: "Imagen de la plantilla",
     detailPreviewOpenAI: "Vista previa (OpenAI)",
     detailPreviewGemini: "Vista previa (Gemini)",
+    detailEnlargedPrev: "Imagen anterior",
+    detailEnlargedNext: "Imagen siguiente",
   },
   inspirePage: {
     pageTitle: "Generar con este estilo",

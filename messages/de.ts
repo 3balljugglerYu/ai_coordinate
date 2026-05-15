@@ -1599,6 +1599,8 @@ export const deMessages = {
     detailTemplate: "Vorlagenbild",
     detailPreviewOpenAI: "Vorschau (OpenAI)",
     detailPreviewGemini: "Vorschau (Gemini)",
+    detailEnlargedPrev: "Vorheriges Bild",
+    detailEnlargedNext: "Nächstes Bild",
   },
   inspirePage: {
     pageTitle: "Mit diesem Stil generieren",

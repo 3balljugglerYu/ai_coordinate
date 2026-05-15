@@ -1599,6 +1599,8 @@ export const viMessages = {
     detailTemplate: "Hình mẫu",
     detailPreviewOpenAI: "Xem trước (OpenAI)",
     detailPreviewGemini: "Xem trước (Gemini)",
+    detailEnlargedPrev: "Ảnh trước",
+    detailEnlargedNext: "Ảnh tiếp theo",
   },
   inspirePage: {
     pageTitle: "Tạo bằng phong cách này",

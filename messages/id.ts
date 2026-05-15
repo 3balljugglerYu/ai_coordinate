@@ -1599,6 +1599,8 @@ export const idMessages = {
     detailTemplate: "Gambar template",
     detailPreviewOpenAI: "Pratinjau (OpenAI)",
     detailPreviewGemini: "Pratinjau (Gemini)",
+    detailEnlargedPrev: "Gambar sebelumnya",
+    detailEnlargedNext: "Gambar berikutnya",
   },
   inspirePage: {
     pageTitle: "Hasilkan dengan gaya ini",

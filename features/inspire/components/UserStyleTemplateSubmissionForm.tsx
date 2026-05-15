@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
 import {
   PSEUDO_INITIAL_PROGRESS,
   calculatePseudoProgress,
 } from "@/features/generation/lib/pseudo-progress";
+import { ImageLightboxDialog } from "@/features/inspire/components/ImageLightboxDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -246,38 +246,6 @@ export function UserStyleTemplateSubmissionForm({
     },
     [enlargeableSlides]
   );
-
-  const goPrev = useCallback(() => {
-    setEnlargedIndex((current) => {
-      if (current === null) return null;
-      if (enlargeableSlides.length === 0) return null;
-      return (current - 1 + enlargeableSlides.length) % enlargeableSlides.length;
-    });
-  }, [enlargeableSlides.length]);
-
-  const goNext = useCallback(() => {
-    setEnlargedIndex((current) => {
-      if (current === null) return null;
-      if (enlargeableSlides.length === 0) return null;
-      return (current + 1) % enlargeableSlides.length;
-    });
-  }, [enlargeableSlides.length]);
-
-  // キーボードナビ: 拡大表示中の ← / →
-  useEffect(() => {
-    if (enlargedIndex === null) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        goPrev();
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        goNext();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [enlargedIndex, goPrev, goNext]);
 
   // ObjectURL を unmount 時にも掃除する（旧 Dialog では reset() で掃除していた）。
   useEffect(() => {
@@ -750,66 +718,13 @@ export function UserStyleTemplateSubmissionForm({
       </AlertDialog>
 
       {/* 画像拡大表示（lightbox、prev/next ナビ付き） */}
-      <Dialog
-        open={enlargedIndex !== null}
-        onOpenChange={(next) => {
-          if (!next) setEnlargedIndex(null);
-        }}
-      >
-        <DialogContent className="max-w-4xl bg-black/95 p-2 sm:p-4">
-          {enlargedIndex !== null && enlargeableSlides[enlargedIndex] && (
-            <div className="relative flex max-h-[85vh] flex-col items-center justify-center">
-              {/* prev/next ボタン（slide が 2 枚以上のときだけ表示） */}
-              {enlargeableSlides.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={goPrev}
-                    aria-label={t("enlargedPrev")}
-                    className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white shadow-md transition hover:bg-white/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-3"
-                  >
-                    <ChevronLeft aria-hidden="true" className="size-6 sm:size-8" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goNext}
-                    aria-label={t("enlargedNext")}
-                    className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white shadow-md transition hover:bg-white/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-3"
-                  >
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="size-6 sm:size-8"
-                    />
-                  </button>
-                </>
-              )}
-
-              {/* 画像本体 */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={enlargeableSlides[enlargedIndex].url}
-                alt={enlargeableSlides[enlargedIndex].label}
-                className="max-h-[80vh] w-auto max-w-full object-contain"
-              />
-
-              {/* 下部にラベル + ページ番号 */}
-              <div className="mt-2 flex items-center justify-center gap-3 text-xs text-white/80">
-                <span className="font-medium">
-                  {enlargeableSlides[enlargedIndex].label}
-                </span>
-                {enlargeableSlides.length > 1 && (
-                  <span aria-hidden="true">·</span>
-                )}
-                {enlargeableSlides.length > 1 && (
-                  <span className="tabular-nums">
-                    {enlargedIndex + 1} / {enlargeableSlides.length}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImageLightboxDialog
+        slides={enlargeableSlides}
+        index={enlargedIndex}
+        onIndexChange={setEnlargedIndex}
+        prevLabel={t("enlargedPrev")}
+        nextLabel={t("enlargedNext")}
+      />
     </>
   );
 }

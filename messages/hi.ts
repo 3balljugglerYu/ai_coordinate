@@ -1599,6 +1599,8 @@ export const hiMessages = {
     detailTemplate: "टेम्पलेट छवि",
     detailPreviewOpenAI: "पूर्वावलोकन (OpenAI)",
     detailPreviewGemini: "पूर्वावलोकन (Gemini)",
+    detailEnlargedPrev: "पिछली छवि",
+    detailEnlargedNext: "अगली छवि",
   },
   inspirePage: {
     pageTitle: "इस स्टाइल से उत्पन्न करें",

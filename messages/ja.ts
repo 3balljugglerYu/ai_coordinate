@@ -1531,6 +1531,8 @@ export const jaMessages = {
     detailTemplate: "テンプレート画像",
     detailPreviewOpenAI: "プレビュー（OpenAI）",
     detailPreviewGemini: "プレビュー（Gemini）",
+    detailEnlargedPrev: "前の画像",
+    detailEnlargedNext: "次の画像",
   },
   inspirePage: {
     pageTitle: "投稿スタイルで生成",

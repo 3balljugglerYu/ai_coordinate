@@ -1599,6 +1599,8 @@ export const koMessages = {
     detailTemplate: "템플릿 이미지",
     detailPreviewOpenAI: "미리보기 (OpenAI)",
     detailPreviewGemini: "미리보기 (Gemini)",
+    detailEnlargedPrev: "이전 이미지",
+    detailEnlargedNext: "다음 이미지",
   },
   inspirePage: {
     pageTitle: "이 스타일로 생성",

@@ -1599,6 +1599,8 @@ export const arMessages = {
     detailTemplate: "صورة القالب",
     detailPreviewOpenAI: "معاينة (OpenAI)",
     detailPreviewGemini: "معاينة (Gemini)",
+    detailEnlargedPrev: "الصورة السابقة",
+    detailEnlargedNext: "الصورة التالية",
   },
   inspirePage: {
     pageTitle: "توليد بهذا الأسلوب",

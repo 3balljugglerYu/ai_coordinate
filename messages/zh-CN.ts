@@ -1597,6 +1597,8 @@ export const zhCnMessages = {
     detailTemplate: "模板图片",
     detailPreviewOpenAI: "预览 (OpenAI)",
     detailPreviewGemini: "预览 (Gemini)",
+    detailEnlargedPrev: "上一张",
+    detailEnlargedNext: "下一张",
   },
   inspirePage: {
     pageTitle: "用此造型生成",

@@ -1597,6 +1597,8 @@ export const zhTwMessages = {
     detailTemplate: "範本圖片",
     detailPreviewOpenAI: "預覽 (OpenAI)",
     detailPreviewGemini: "預覽 (Gemini)",
+    detailEnlargedPrev: "上一張",
+    detailEnlargedNext: "下一張",
   },
   inspirePage: {
     pageTitle: "用此造型生成",

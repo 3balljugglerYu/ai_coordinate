@@ -1599,6 +1599,8 @@ export const frMessages = {
     detailTemplate: "Image du modèle",
     detailPreviewOpenAI: "Aperçu (OpenAI)",
     detailPreviewGemini: "Aperçu (Gemini)",
+    detailEnlargedPrev: "Image précédente",
+    detailEnlargedNext: "Image suivante",
   },
   inspirePage: {
     pageTitle: "Générer avec ce style",

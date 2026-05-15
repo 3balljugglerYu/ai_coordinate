@@ -1599,6 +1599,8 @@ export const thMessages = {
     detailTemplate: "รูปเทมเพลต",
     detailPreviewOpenAI: "ตัวอย่าง (OpenAI)",
     detailPreviewGemini: "ตัวอย่าง (Gemini)",
+    detailEnlargedPrev: "ภาพก่อนหน้า",
+    detailEnlargedNext: "ภาพถัดไป",
   },
   inspirePage: {
     pageTitle: "สร้างด้วยสไตล์นี้",
