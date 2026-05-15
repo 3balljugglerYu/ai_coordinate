@@ -50,8 +50,12 @@ export default async function InspireSubmitPage({
   }
 
   const { replace } = await searchParams;
+  // 後続で /api/style-templates/submissions/{id} 等の path に直接埋め込むので
+  // UUID v1-v5 の形に合致するときのみ採用する（不正値は null に丸めて pass-through）。
+  const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const replaceTemplateId =
-    typeof replace === "string" && replace.length > 0 ? replace : null;
+    typeof replace === "string" && UUID_RE.test(replace) ? replace : null;
 
   const testCharacterImageUrl = env.INSPIRE_TEST_CHARACTER_IMAGE_URL || null;
 

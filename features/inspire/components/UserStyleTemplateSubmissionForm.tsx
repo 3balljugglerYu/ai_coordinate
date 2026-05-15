@@ -530,10 +530,14 @@ export function UserStyleTemplateSubmissionForm({
             )}
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-              <Button variant="ghost" onClick={requestLeave}>
+              <Button type="button" variant="ghost" onClick={requestLeave}>
                 {t("cancelButton")}
               </Button>
-              <Button onClick={() => setStep(2)} disabled={!file || !consent}>
+              <Button
+                type="button"
+                onClick={() => setStep(2)}
+                disabled={!file || !consent}
+              >
                 {t("step1NextButton")}
               </Button>
             </div>
@@ -588,6 +592,7 @@ export function UserStyleTemplateSubmissionForm({
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
               <Button
+                type="button"
                 variant="ghost"
                 onClick={() => setStep(1)}
                 disabled={generating}
@@ -595,6 +600,7 @@ export function UserStyleTemplateSubmissionForm({
                 {t("step2BackButton")}
               </Button>
               <Button
+                type="button"
                 onClick={handleGeneratePreview}
                 disabled={!file || generating}
                 className="cursor-pointer"
@@ -680,13 +686,18 @@ export function UserStyleTemplateSubmissionForm({
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
               <Button
+                type="button"
                 variant="ghost"
                 onClick={() => setStep(2)}
                 disabled={submitting}
               >
                 {t("step3BackButton")}
               </Button>
-              <Button onClick={handleSubmit} disabled={!consent || submitting}>
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!consent || submitting}
+              >
                 {submitting ? t("submitting") : t("step3SubmitButton")}
               </Button>
             </div>
@@ -706,6 +717,7 @@ export function UserStyleTemplateSubmissionForm({
           <AlertDialogFooter>
             <AlertDialogCancel>{t("closeConfirmCancel")}</AlertDialogCancel>
             <AlertDialogAction
+              type="button"
               onClick={() => {
                 setCloseConfirmOpen(false);
                 leaveNow();
