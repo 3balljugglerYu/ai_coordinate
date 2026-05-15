@@ -375,6 +375,8 @@ export const itMessages = {
     inspireDeleteConfirmAction: "Elimina",
     inspireDeleteSuccess: "Eliminato.",
     inspireDeleteFailed: "Impossibile eliminare.",
+    inspireOpenForGenerationAria:
+      "Apri la pagina di generazione con questo modello",
   },
   inspireSubmission: {
     dialogTitle: "Invia un modello di stile",

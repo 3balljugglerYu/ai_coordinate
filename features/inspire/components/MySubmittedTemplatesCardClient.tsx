@@ -59,6 +59,7 @@ interface Copy {
   deleteConfirmAction: string;
   deleteSuccess: string;
   deleteFailed: string;
+  openForGenerationAria: string;
 }
 
 interface MySubmittedTemplatesCardClientProps {
@@ -188,20 +189,35 @@ export function MySubmittedTemplatesCardClient({
               key={item.id}
               className="overflow-hidden rounded-md border bg-card"
             >
-              <div className="flex aspect-square items-center justify-center bg-muted">
-                {item.image_url ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
+              {item.moderation_status === "visible" && item.image_url ? (
+                <Link
+                  href={`/inspire/${item.id}`}
+                  aria-label={copy.openForGenerationAria}
+                  className="flex aspect-square items-center justify-center bg-muted transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item.image_url}
                     alt={item.alt ?? ""}
                     className="h-full w-full object-cover"
                   />
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    no image
-                  </span>
-                )}
-              </div>
+                </Link>
+              ) : (
+                <div className="flex aspect-square items-center justify-center bg-muted">
+                  {item.image_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={item.image_url}
+                      alt={item.alt ?? ""}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      no image
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="space-y-2 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant={statusVariant(item.moderation_status)}>

@@ -375,6 +375,8 @@ export const esMessages = {
     inspireDeleteConfirmAction: "Eliminar",
     inspireDeleteSuccess: "Eliminada.",
     inspireDeleteFailed: "No se pudo eliminar.",
+    inspireOpenForGenerationAria:
+      "Abrir la página de generación con esta plantilla",
   },
   inspireSubmission: {
     dialogTitle: "Enviar plantilla de estilo",

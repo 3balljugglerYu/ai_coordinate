@@ -375,6 +375,7 @@ export const zhTwMessages = {
     inspireDeleteConfirmAction: "刪除",
     inspireDeleteSuccess: "已刪除。",
     inspireDeleteFailed: "刪除失敗。",
+    inspireOpenForGenerationAria: "用此範本開啟生成頁面",
   },
   inspireSubmission: {
     dialogTitle: "投稿造型範本",

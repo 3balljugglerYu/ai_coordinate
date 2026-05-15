@@ -375,6 +375,7 @@ export const hiMessages = {
     inspireDeleteConfirmAction: "हटाएँ",
     inspireDeleteSuccess: "हटा दिया गया।",
     inspireDeleteFailed: "हटाने में विफल।",
+    inspireOpenForGenerationAria: "इस टेम्पलेट से जनरेशन पेज खोलें",
   },
   inspireSubmission: {
     dialogTitle: "स्टाइल टेम्पलेट जमा करें",

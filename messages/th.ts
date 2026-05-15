@@ -375,6 +375,7 @@ export const thMessages = {
     inspireDeleteConfirmAction: "ลบ",
     inspireDeleteSuccess: "ลบแล้ว",
     inspireDeleteFailed: "ลบไม่สำเร็จ",
+    inspireOpenForGenerationAria: "เปิดหน้าสร้างด้วยเทมเพลตนี้",
   },
   inspireSubmission: {
     dialogTitle: "ส่งเทมเพลตสไตล์",

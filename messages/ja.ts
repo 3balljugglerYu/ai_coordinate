@@ -371,6 +371,7 @@ export const jaMessages = {
     inspireDeleteConfirmAction: "削除する",
     inspireDeleteSuccess: "削除しました。",
     inspireDeleteFailed: "削除に失敗しました。",
+    inspireOpenForGenerationAria: "このテンプレートで生成画面を開く",
   },
   inspireSubmission: {
     dialogTitle: "スタイルテンプレートを申請",

@@ -375,6 +375,8 @@ export const deMessages = {
     inspireDeleteConfirmAction: "Löschen",
     inspireDeleteSuccess: "Gelöscht.",
     inspireDeleteFailed: "Löschen fehlgeschlagen.",
+    inspireOpenForGenerationAria:
+      "Generierungsseite mit dieser Vorlage öffnen",
   },
   inspireSubmission: {
     dialogTitle: "Stilvorlage einreichen",

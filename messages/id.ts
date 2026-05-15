@@ -375,6 +375,8 @@ export const idMessages = {
     inspireDeleteConfirmAction: "Hapus",
     inspireDeleteSuccess: "Terhapus.",
     inspireDeleteFailed: "Gagal menghapus.",
+    inspireOpenForGenerationAria:
+      "Buka halaman pembuatan dengan template ini",
   },
   inspireSubmission: {
     dialogTitle: "Kirim template gaya",

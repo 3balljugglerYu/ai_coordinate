@@ -375,6 +375,7 @@ export const arMessages = {
     inspireDeleteConfirmAction: "حذف",
     inspireDeleteSuccess: "تم الحذف.",
     inspireDeleteFailed: "فشل الحذف.",
+    inspireOpenForGenerationAria: "افتح صفحة التوليد بهذا القالب",
   },
   inspireSubmission: {
     dialogTitle: "إرسال قالب تنسيق",

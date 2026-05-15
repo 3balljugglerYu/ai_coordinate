@@ -375,6 +375,7 @@ export const viMessages = {
     inspireDeleteConfirmAction: "Xóa",
     inspireDeleteSuccess: "Đã xóa.",
     inspireDeleteFailed: "Xóa thất bại.",
+    inspireOpenForGenerationAria: "Mở trang tạo với mẫu này",
   },
   inspireSubmission: {
     dialogTitle: "Gửi mẫu phong cách",

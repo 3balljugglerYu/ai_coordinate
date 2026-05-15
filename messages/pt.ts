@@ -375,6 +375,8 @@ export const ptMessages = {
     inspireDeleteConfirmAction: "Excluir",
     inspireDeleteSuccess: "Excluído.",
     inspireDeleteFailed: "Não foi possível excluir.",
+    inspireOpenForGenerationAria:
+      "Abrir a página de geração com este template",
   },
   inspireSubmission: {
     dialogTitle: "Enviar modelo de estilo",

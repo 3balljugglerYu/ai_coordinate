@@ -375,6 +375,7 @@ export const zhCnMessages = {
     inspireDeleteConfirmAction: "删除",
     inspireDeleteSuccess: "已删除。",
     inspireDeleteFailed: "删除失败。",
+    inspireOpenForGenerationAria: "用此模板打开生成页面",
   },
   inspireSubmission: {
     dialogTitle: "投稿造型模板",

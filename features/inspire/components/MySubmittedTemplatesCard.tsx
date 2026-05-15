@@ -107,6 +107,7 @@ export async function MySubmittedTemplatesCard({
         deleteConfirmAction: t("inspireDeleteConfirmAction"),
         deleteSuccess: t("inspireDeleteSuccess"),
         deleteFailed: t("inspireDeleteFailed"),
+        openForGenerationAria: t("inspireOpenForGenerationAria"),
       }}
     />
   );

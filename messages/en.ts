@@ -375,6 +375,7 @@ export const enMessages = {
     inspireDeleteConfirmAction: "Delete",
     inspireDeleteSuccess: "Deleted.",
     inspireDeleteFailed: "Failed to delete.",
+    inspireOpenForGenerationAria: "Open the generation page with this template",
   },
   inspireSubmission: {
     dialogTitle: "Submit a style template",

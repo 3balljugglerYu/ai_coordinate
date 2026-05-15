@@ -375,6 +375,7 @@ export const koMessages = {
     inspireDeleteConfirmAction: "삭제",
     inspireDeleteSuccess: "삭제했습니다.",
     inspireDeleteFailed: "삭제에 실패했습니다.",
+    inspireOpenForGenerationAria: "이 템플릿으로 생성 화면 열기",
   },
   inspireSubmission: {
     dialogTitle: "스타일 템플릿 투고",
