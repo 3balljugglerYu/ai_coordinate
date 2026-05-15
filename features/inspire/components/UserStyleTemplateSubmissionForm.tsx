@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import {
@@ -15,14 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,10 +34,7 @@ interface PreviewGenerationResponse {
   previews: PreviewSummary[];
 }
 
-interface UserStyleTemplateSubmissionDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmissionSucceeded?: () => void;
+interface UserStyleTemplateSubmissionFormProps {
   /**
    * Step 2 で「試着するキャラ」として表示する画像 URL。
    * 運営が env (INSPIRE_TEST_CHARACTER_IMAGE_URL) で設定した長期 signed URL。
@@ -84,7 +75,7 @@ async function readFileAsBase64(file: File): Promise<string> {
 }
 
 /**
- * 上部の Step indicator (1 / 2 / 3 ドット + 接続線 + ラベル)
+ * 上部の Step indicator (1 / 2 / 3 ドット + 接続線)
  */
 function StepIndicator({ current }: { current: Step }) {
   const steps: Step[] = [1, 2, 3];
@@ -183,15 +174,22 @@ function MediaCell({
   );
 }
 
-export function UserStyleTemplateSubmissionDialog({
-  open,
-  onOpenChange,
-  onSubmissionSucceeded,
+/**
+ * 申請フォーム（旧 `UserStyleTemplateSubmissionDialog` の中身を専用ページに移植したもの）。
+ *
+ * モーダルから 1 画面構成に変更したのに伴い、
+ * - 外側の `<Dialog>` は削除し、`<section>` ベースの page layout に
+ * - 旧「× / 背景クリック / Esc で閉じる」は「キャンセル / 戻るボタンで /my-page へ戻る」に
+ * - dirty な状態で離脱しようとしたら AlertDialog で確認（draft の cleanup は変わらず）
+ * - 申請成功後は `router.push("/my-page")` で戻る
+ */
+export function UserStyleTemplateSubmissionForm({
   testCharacterImageUrl,
   replaceTemplateId,
-}: UserStyleTemplateSubmissionDialogProps) {
+}: UserStyleTemplateSubmissionFormProps) {
   const t = useTranslations("inspireSubmission");
   const { toast } = useToast();
+  const router = useRouter();
 
   const [step, setStep] = useState<Step>(1);
   const [file, setFile] = useState<File | null>(null);
@@ -211,21 +209,6 @@ export function UserStyleTemplateSubmissionDialog({
   // 拡大表示している画像のインデックス（null = 表示なし）。
   // インデックスは下記 enlargeableSlides 配列上の位置を指す。
   const [enlargedIndex, setEnlargedIndex] = useState<number | null>(null);
-
-  const reset = useCallback(() => {
-    setStep(1);
-    setFile(null);
-    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-    setFilePreviewUrl(null);
-    setAlt("");
-    setGenerating(false);
-    setSubmitting(false);
-    setPreviewResult(null);
-    setPreviewSignedUrls({});
-    setConsent(false);
-    setErrorMessage(null);
-    setEnlargedIndex(null);
-  }, [filePreviewUrl]);
 
   // Step 3 で拡大可能な画像の集合（左右ナビ用）。
   // テンプレ → OpenAI → Gemini の順。URL が存在しないものは除外する。
@@ -289,13 +272,20 @@ export function UserStyleTemplateSubmissionDialog({
     return () => window.removeEventListener("keydown", handler);
   }, [enlargedIndex, goPrev, goNext]);
 
+  // ObjectURL を unmount 時にも掃除する（旧 Dialog では reset() で掃除していた）。
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
+
   /**
-   * ダイアログを閉じる。
+   * 画面を閉じる（= マイページに戻る）。
    * @param options.deleteDraft - true の場合、draft 行が DB にあればバックグラウンドで削除する。
-   *   ユーザーが取り消した場合（× / キャンセル / ESC / 背景クリック）= true
+   *   ユーザーが取り消した場合（キャンセル / 戻る）= true
    *   申請が成功して閉じる場合 = false（既に pending に昇格済みなので消さない）
    */
-  const closeNow = useCallback(
+  const leaveNow = useCallback(
     (options: { deleteDraft: boolean } = { deleteDraft: true }) => {
       const draftId = previewResult?.template_id;
       if (options.deleteDraft && draftId) {
@@ -306,24 +296,20 @@ export function UserStyleTemplateSubmissionDialog({
           console.warn("[submission] background draft delete failed", err);
         });
       }
-      reset();
-      onOpenChange(false);
+      router.push("/my-page");
     },
-    [onOpenChange, previewResult, reset]
+    [previewResult, router]
   );
 
-  const requestClose = useCallback(() => {
+  const requestLeave = useCallback(() => {
     const hasInput =
-      file !== null ||
-      alt.length > 0 ||
-      previewResult !== null ||
-      consent;
+      file !== null || alt.length > 0 || previewResult !== null || consent;
     if (!hasInput) {
-      closeNow();
+      leaveNow();
       return;
     }
     setCloseConfirmOpen(true);
-  }, [alt, closeNow, consent, file, previewResult]);
+  }, [alt, consent, file, leaveNow, previewResult]);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -462,296 +448,249 @@ export function UserStyleTemplateSubmissionDialog({
           console.warn("[submission] replace target delete failed", err);
         });
       }
-      onSubmissionSucceeded?.();
       // 申請成功時は新しい draft → pending へ昇格済み。新しい行を DELETE してはいけない。
-      closeNow({ deleteDraft: false });
+      leaveNow({ deleteDraft: false });
     } catch (err) {
       console.error("[submission] submit failed", err);
       setErrorMessage(t("submitFailedGeneric"));
     } finally {
       setSubmitting(false);
     }
-  }, [
-    closeNow,
-    consent,
-    onSubmissionSucceeded,
-    previewResult,
-    replaceTemplateId,
-    t,
-    toast,
-  ]);
+  }, [consent, leaveNow, previewResult, replaceTemplateId, t, toast]);
 
   return (
     <>
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (!next) {
-            requestClose();
-            return;
-          }
-          onOpenChange(next);
-        }}
-      >
-        <DialogContent
-          className="max-w-2xl max-h-[90vh] overflow-y-auto"
-          onPointerDownOutside={(e) => {
-            e.preventDefault();
-            requestClose();
-          }}
-          onEscapeKeyDown={(e) => {
-            e.preventDefault();
-            requestClose();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>{t("dialogTitle")}</DialogTitle>
-            <DialogDescription>{t("dialogDescription")}</DialogDescription>
-          </DialogHeader>
+      <section className="mx-auto max-w-2xl space-y-6">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-bold text-gray-900">{t("dialogTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("dialogDescription")}</p>
+        </header>
 
-          <StepIndicator current={step} />
+        <StepIndicator current={step} />
 
-          {step === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold">{t("step1Title")}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("step1Description")}
-              </p>
+        {step === 1 && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold">{t("step1Title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("step1Description")}</p>
 
-              <div className="space-y-2">
-                <Label htmlFor="inspire-file">{t("step1FileLabel")}</Label>
-                <Input
-                  id="inspire-file"
-                  type="file"
-                  accept={ACCEPTED_MIME.join(",")}
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("step1FileHint")}
-                </p>
-              </div>
-
-              {filePreviewUrl && (
-                <div className="overflow-hidden rounded-lg border bg-muted shadow-sm">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={filePreviewUrl}
-                    alt="upload preview"
-                    className="max-h-64 w-full object-contain"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="inspire-alt">{t("step1AltLabel")}</Label>
-                <Textarea
-                  id="inspire-alt"
-                  value={alt}
-                  onChange={(e) => setAlt(e.target.value)}
-                  placeholder={t("step1AltPlaceholder")}
-                  maxLength={200}
-                  rows={2}
-                />
-              </div>
-
-              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
-                <Checkbox
-                  id="inspire-consent"
-                  checked={consent}
-                  onCheckedChange={(v) => setConsent(v === true)}
-                  className="mt-0.5 cursor-pointer"
-                />
-                <Label
-                  htmlFor="inspire-consent"
-                  className="cursor-pointer text-xs leading-snug"
-                >
-                  {t("step3ConsentLabel")}
-                </Label>
-              </div>
-
-              {errorMessage && (
-                <p className="text-sm text-destructive">{errorMessage}</p>
-              )}
-
-              <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                <Button variant="ghost" onClick={requestClose}>
-                  {t("cancelButton")}
-                </Button>
-                <Button
-                  onClick={() => setStep(2)}
-                  disabled={!file || !consent}
-                >
-                  {t("step1NextButton")}
-                </Button>
-              </DialogFooter>
+            <div className="space-y-2">
+              <Label htmlFor="inspire-file">{t("step1FileLabel")}</Label>
+              <Input
+                id="inspire-file"
+                type="file"
+                accept={ACCEPTED_MIME.join(",")}
+                onChange={handleFileChange}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-muted-foreground">{t("step1FileHint")}</p>
             </div>
-          )}
 
-          {step === 2 && (
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold">{t("step2Title")}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("step2Description")}
-              </p>
-
-              {/*
-                「あなたのテンプレ + テストキャラ」の Before 構造。
-                生成中は中央/下部に「生成中…」を別途表示し、placeholder の 3 枚目は出さない。
-              */}
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <MediaCell
+            {filePreviewUrl && (
+              <div className="overflow-hidden rounded-lg border bg-muted shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={filePreviewUrl}
-                  alt="your template"
-                  label={t("step2YourTemplateLabel")}
+                  alt="upload preview"
+                  className="max-h-64 w-full object-contain"
                 />
-                <div
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="inspire-alt">{t("step1AltLabel")}</Label>
+              <Textarea
+                id="inspire-alt"
+                value={alt}
+                onChange={(e) => setAlt(e.target.value)}
+                placeholder={t("step1AltPlaceholder")}
+                maxLength={200}
+                rows={2}
+              />
+            </div>
+
+            <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+              <Checkbox
+                id="inspire-consent"
+                checked={consent}
+                onCheckedChange={(v) => setConsent(v === true)}
+                className="mt-0.5 cursor-pointer"
+              />
+              <Label
+                htmlFor="inspire-consent"
+                className="cursor-pointer text-xs leading-snug"
+              >
+                {t("step3ConsentLabel")}
+              </Label>
+            </div>
+
+            {errorMessage && (
+              <p className="text-sm text-destructive">{errorMessage}</p>
+            )}
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <Button variant="ghost" onClick={requestLeave}>
+                {t("cancelButton")}
+              </Button>
+              <Button onClick={() => setStep(2)} disabled={!file || !consent}>
+                {t("step1NextButton")}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold">{t("step2Title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("step2Description")}</p>
+
+            {/*
+              「あなたのテンプレ + テストキャラ」の Before 構造。
+              生成中は中央/下部に「生成中…」を別途表示し、placeholder の 3 枚目は出さない。
+            */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <MediaCell
+                src={filePreviewUrl}
+                alt="your template"
+                label={t("step2YourTemplateLabel")}
+              />
+              <div
+                aria-hidden="true"
+                className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              >
+                <Plus className="size-5" />
+              </div>
+              <MediaCell
+                src={testCharacterImageUrl}
+                alt="test character"
+                label={t("step2TestCharacterLabel")}
+                placeholderText="—"
+              />
+            </div>
+
+            {generating && (
+              <div className="flex items-center justify-center gap-2 rounded-lg bg-muted/50 py-3 text-sm text-muted-foreground">
+                <Loader2
+                  className="size-4 motion-safe:animate-spin"
                   aria-hidden="true"
-                  className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                >
-                  <Plus className="size-5" />
-                </div>
-                <MediaCell
-                  src={testCharacterImageUrl}
-                  alt="test character"
-                  label={t("step2TestCharacterLabel")}
-                  placeholderText="—"
                 />
+                <span>{t("step2GeneratingMessage")}</span>
               </div>
+            )}
 
-              {generating && (
-                <div className="flex items-center justify-center gap-2 rounded-lg bg-muted/50 py-3 text-sm text-muted-foreground">
-                  <Loader2
-                    className="size-4 motion-safe:animate-spin"
-                    aria-hidden="true"
-                  />
-                  <span>{t("step2GeneratingMessage")}</span>
-                </div>
-              )}
+            {errorMessage && (
+              <p className="text-sm text-destructive">{errorMessage}</p>
+            )}
 
-              {errorMessage && (
-                <p className="text-sm text-destructive">{errorMessage}</p>
-              )}
-
-              <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                <Button
-                  variant="ghost"
-                  onClick={() => setStep(1)}
-                  disabled={generating}
-                >
-                  {t("step2BackButton")}
-                </Button>
-                <Button
-                  onClick={handleGeneratePreview}
-                  disabled={!file || generating}
-                  className="cursor-pointer"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2
-                        className="mr-1.5 size-4 motion-safe:animate-spin"
-                        aria-hidden="true"
-                      />
-                      {t("step2GeneratingInline")}
-                    </>
-                  ) : (
-                    t("step2NextButton")
-                  )}
-                </Button>
-              </DialogFooter>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <Button
+                variant="ghost"
+                onClick={() => setStep(1)}
+                disabled={generating}
+              >
+                {t("step2BackButton")}
+              </Button>
+              <Button
+                onClick={handleGeneratePreview}
+                disabled={!file || generating}
+                className="cursor-pointer"
+              >
+                {generating ? (
+                  <>
+                    <Loader2
+                      className="mr-1.5 size-4 motion-safe:animate-spin"
+                      aria-hidden="true"
+                    />
+                    {t("step2GeneratingInline")}
+                  </>
+                ) : (
+                  t("step2NextButton")
+                )}
+              </Button>
             </div>
-          )}
+          </div>
+        )}
 
-          {step === 3 && previewResult && (
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold">{t("step3Title")}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("step3Description")}
+        {step === 3 && previewResult && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold">{t("step3Title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("step3Description")}</p>
+
+            {previewResult.outcome === "partial" && (
+              <p
+                role="status"
+                className="rounded-lg border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900"
+              >
+                {t("step2PartialNotice")}
               </p>
+            )}
 
-              {previewResult.outcome === "partial" && (
-                <p
-                  role="status"
-                  className="rounded-lg border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900"
-                >
-                  {t("step2PartialNotice")}
-                </p>
-              )}
-
-              {/* 3-up grid: あなたのテンプレ + OpenAI + Gemini （すべてクリックで拡大） */}
-              <div className="grid grid-cols-3 gap-3">
-                <MediaCell
-                  src={filePreviewUrl}
-                  alt="your template"
-                  label={t("step3TemplateLabel")}
-                  onClick={
-                    filePreviewUrl ? () => openEnlarged(filePreviewUrl) : undefined
-                  }
-                  ariaLabel={t("enlargeImageAriaLabel")}
-                />
-                <MediaCell
-                  src={previewSignedUrls.openai ?? null}
-                  alt="openai preview"
-                  label={t("step3PreviewLabel")}
-                  onClick={
-                    previewSignedUrls.openai
-                      ? () => openEnlarged(previewSignedUrls.openai!)
-                      : undefined
-                  }
-                  ariaLabel={t("enlargeImageAriaLabel")}
-                  placeholderText={
-                    previewResult.previews.find((p) => p.provider === "openai")
-                      ? "(preview saved)"
-                      : t("step3PreviewMissing")
-                  }
-                />
-                <MediaCell
-                  src={previewSignedUrls.gemini ?? null}
-                  alt="gemini preview"
-                  label={t("step3PreviewLabelGemini")}
-                  onClick={
-                    previewSignedUrls.gemini
-                      ? () => openEnlarged(previewSignedUrls.gemini!)
-                      : undefined
-                  }
-                  ariaLabel={t("enlargeImageAriaLabel")}
-                  placeholderText={
-                    previewResult.previews.find((p) => p.provider === "gemini")
-                      ? "(preview saved)"
-                      : t("step3PreviewMissing")
-                  }
-                />
-              </div>
-
-              {errorMessage && (
-                <p className="text-sm text-destructive">{errorMessage}</p>
-              )}
-
-              <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                <Button
-                  variant="ghost"
-                  onClick={() => setStep(2)}
-                  disabled={submitting}
-                >
-                  {t("step3BackButton")}
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!consent || submitting}
-                >
-                  {submitting ? t("submitting") : t("step3SubmitButton")}
-                </Button>
-              </DialogFooter>
+            {/* 3-up grid: あなたのテンプレ + OpenAI + Gemini （すべてクリックで拡大） */}
+            <div className="grid grid-cols-3 gap-3">
+              <MediaCell
+                src={filePreviewUrl}
+                alt="your template"
+                label={t("step3TemplateLabel")}
+                onClick={
+                  filePreviewUrl ? () => openEnlarged(filePreviewUrl) : undefined
+                }
+                ariaLabel={t("enlargeImageAriaLabel")}
+              />
+              <MediaCell
+                src={previewSignedUrls.openai ?? null}
+                alt="openai preview"
+                label={t("step3PreviewLabel")}
+                onClick={
+                  previewSignedUrls.openai
+                    ? () => openEnlarged(previewSignedUrls.openai!)
+                    : undefined
+                }
+                ariaLabel={t("enlargeImageAriaLabel")}
+                placeholderText={
+                  previewResult.previews.find((p) => p.provider === "openai")
+                    ? "(preview saved)"
+                    : t("step3PreviewMissing")
+                }
+              />
+              <MediaCell
+                src={previewSignedUrls.gemini ?? null}
+                alt="gemini preview"
+                label={t("step3PreviewLabelGemini")}
+                onClick={
+                  previewSignedUrls.gemini
+                    ? () => openEnlarged(previewSignedUrls.gemini!)
+                    : undefined
+                }
+                ariaLabel={t("enlargeImageAriaLabel")}
+                placeholderText={
+                  previewResult.previews.find((p) => p.provider === "gemini")
+                    ? "(preview saved)"
+                    : t("step3PreviewMissing")
+                }
+              />
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
-      {/* 閉じる確認ダイアログ */}
-      <AlertDialog
-        open={closeConfirmOpen}
-        onOpenChange={setCloseConfirmOpen}
-      >
+            {errorMessage && (
+              <p className="text-sm text-destructive">{errorMessage}</p>
+            )}
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <Button
+                variant="ghost"
+                onClick={() => setStep(2)}
+                disabled={submitting}
+              >
+                {t("step3BackButton")}
+              </Button>
+              <Button onClick={handleSubmit} disabled={!consent || submitting}>
+                {submitting ? t("submitting") : t("step3SubmitButton")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 離脱確認（dirty な状態でキャンセル/戻るしたとき） */}
+      <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("closeConfirmTitle")}</AlertDialogTitle>
@@ -764,7 +703,7 @@ export function UserStyleTemplateSubmissionDialog({
             <AlertDialogAction
               onClick={() => {
                 setCloseConfirmOpen(false);
-                closeNow();
+                leaveNow();
               }}
             >
               {t("closeConfirmAction")}
@@ -792,10 +731,7 @@ export function UserStyleTemplateSubmissionDialog({
                     aria-label={t("enlargedPrev")}
                     className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white shadow-md transition hover:bg-white/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-3"
                   >
-                    <ChevronLeft
-                      aria-hidden="true"
-                      className="size-6 sm:size-8"
-                    />
+                    <ChevronLeft aria-hidden="true" className="size-6 sm:size-8" />
                   </button>
                   <button
                     type="button"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertDialog,
@@ -15,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { UserStyleTemplateSubmissionDialog } from "./UserStyleTemplateSubmissionDialog";
 
 type ModerationStatus =
   | "draft"
@@ -63,23 +63,15 @@ interface Copy {
 
 interface MySubmittedTemplatesCardClientProps {
   items: MySubmittedTemplate[];
-  testCharacterImageUrl: string | null;
   copy: Copy;
 }
 
 export function MySubmittedTemplatesCardClient({
   items,
-  testCharacterImageUrl,
   copy,
 }: MySubmittedTemplatesCardClientProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  // 「再申請」で開かれたとき、上書き対象となる古い rejected/withdrawn 行の ID。
-  // submit 成功時にこの ID の行が自動削除される（上書き挙動）。
-  const [replaceTemplateId, setReplaceTemplateId] = useState<string | null>(
-    null
-  );
   const [pendingWithdraw, setPendingWithdraw] =
     useState<MySubmittedTemplate | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -180,7 +172,9 @@ export function MySubmittedTemplatesCardClient({
             {copy.description}
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>{copy.submitButton}</Button>
+        <Button asChild>
+          <Link href="/inspire/submit">{copy.submitButton}</Link>
+        </Button>
       </div>
 
       {items.length === 0 ? (
@@ -241,16 +235,14 @@ export function MySubmittedTemplatesCardClient({
                 )}
                 {canResubmitOrDelete(item.moderation_status) && (
                   <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        // 再申請: submit 成功時にこの行（古い rejected/withdrawn）を上書き削除する
-                        setReplaceTemplateId(item.id);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      {copy.resubmitAction}
+                    <Button asChild variant="outline" size="sm">
+                      {/* 再申請: submit 成功時にこの行（古い rejected/withdrawn）を
+                          上書き削除するため、`?replace=<id>` でページに渡す */}
+                      <Link
+                        href={`/inspire/submit?replace=${encodeURIComponent(item.id)}`}
+                      >
+                        {copy.resubmitAction}
+                      </Link>
                     </Button>
                     <Button
                       variant="ghost"
@@ -267,18 +259,6 @@ export function MySubmittedTemplatesCardClient({
           ))}
         </ul>
       )}
-
-      <UserStyleTemplateSubmissionDialog
-        open={dialogOpen}
-        onOpenChange={(next) => {
-          setDialogOpen(next);
-          // dialog が閉じたら replace 対象もリセット（cancel 時は上書きしない）
-          if (!next) setReplaceTemplateId(null);
-        }}
-        onSubmissionSucceeded={() => router.refresh()}
-        testCharacterImageUrl={testCharacterImageUrl}
-        replaceTemplateId={replaceTemplateId}
-      />
 
       <AlertDialog
         open={pendingWithdraw !== null}
