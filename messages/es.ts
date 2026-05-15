@@ -395,6 +395,9 @@ export const esMessages = {
     step2TestCharacterLabel: "Personaje de prueba",
     step2GeneratingMessage: "Generando... no cierres esta pestaña.",
     step2GeneratingInline: "Generando…",
+    step2GeneratingCardTitle: "Generando la simulación de prueba",
+    step2GeneratingCardFooter:
+      "No cierres esta pestaña. Termina en unos 60–90 segundos.",
     step2PartialNotice:
       "Solo una de las dos previsualizaciones se generó correctamente. Aun así puedes enviarla si el resultado te parece aceptable.",
     step2BackButton: "Atrás",

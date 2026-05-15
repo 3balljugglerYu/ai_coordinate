@@ -395,6 +395,8 @@ export const zhCnMessages = {
     step2TestCharacterLabel: "测试角色",
     step2GeneratingMessage: "生成中...请不要关闭此页面。",
     step2GeneratingInline: "生成中…",
+    step2GeneratingCardTitle: "正在生成试穿模拟",
+    step2GeneratingCardFooter: "请不要关闭此页面。约 60〜90 秒后完成。",
     step2PartialNotice:
       "两个预览中只有一个生成成功。如果结果可以接受，仍然可以投稿。",
     step2BackButton: "返回",

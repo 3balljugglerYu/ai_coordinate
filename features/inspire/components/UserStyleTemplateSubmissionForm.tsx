@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
+import {
+  PSEUDO_INITIAL_PROGRESS,
+  calculatePseudoProgress,
+} from "@/features/generation/lib/pseudo-progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -196,6 +201,8 @@ export function UserStyleTemplateSubmissionForm({
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [alt, setAlt] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [pseudoProgress, setPseudoProgress] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [previewResult, setPreviewResult] =
     useState<PreviewGenerationResponse | null>(null);
@@ -278,6 +285,33 @@ export function UserStyleTemplateSubmissionForm({
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
     };
   }, [filePreviewUrl]);
+
+  // prefers-reduced-motion を検知（StatusCard のアニメ抑制用）。
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mql.matches);
+    const onChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  // 生成中は経過時間ベースで擬似プログレスを進める。idle 時は 0 に戻す。
+  useEffect(() => {
+    if (!generating) {
+      setPseudoProgress(0);
+      return;
+    }
+    setPseudoProgress(PSEUDO_INITIAL_PROGRESS);
+    const startTime = Date.now();
+    const intervalId = window.setInterval(() => {
+      const elapsedMs = Date.now() - startTime;
+      setPseudoProgress((previous) =>
+        Math.max(previous, calculatePseudoProgress(elapsedMs))
+      );
+    }, 160);
+    return () => window.clearInterval(intervalId);
+  }, [generating]);
 
   /**
    * 画面を閉じる（= マイページに戻る）。
@@ -568,13 +602,16 @@ export function UserStyleTemplateSubmissionForm({
             </div>
 
             {generating && (
-              <div className="flex items-center justify-center gap-2 rounded-lg bg-muted/50 py-3 text-sm text-muted-foreground">
-                <Loader2
-                  className="size-4 motion-safe:animate-spin"
-                  aria-hidden="true"
-                />
-                <span>{t("step2GeneratingMessage")}</span>
-              </div>
+              <GenerationStatusCard
+                title={t("step2GeneratingCardTitle")}
+                message={t("step2GeneratingInline")}
+                liveMessage={t("step2GeneratingMessage")}
+                footerText={t("step2GeneratingCardFooter")}
+                progress={pseudoProgress}
+                animateFromZeroOnMount
+                isComplete={false}
+                prefersReducedMotion={prefersReducedMotion}
+              />
             )}
 
             {errorMessage && (

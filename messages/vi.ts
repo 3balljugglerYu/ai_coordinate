@@ -395,6 +395,9 @@ export const viMessages = {
     step2TestCharacterLabel: "Nhân vật thử nghiệm",
     step2GeneratingMessage: "Đang tạo... vui lòng không đóng tab này.",
     step2GeneratingInline: "Đang tạo…",
+    step2GeneratingCardTitle: "Đang tạo mô phỏng thử đồ",
+    step2GeneratingCardFooter:
+      "Vui lòng không đóng tab này. Hoàn tất trong khoảng 60–90 giây.",
     step2PartialNotice:
       "Chỉ một trong hai bản xem trước thành công. Bạn vẫn có thể gửi nếu kết quả chấp nhận được.",
     step2BackButton: "Quay lại",

@@ -395,6 +395,9 @@ export const koMessages = {
     step2TestCharacterLabel: "테스트 캐릭터",
     step2GeneratingMessage: "생성 중입니다... 탭을 닫지 말아 주세요.",
     step2GeneratingInline: "생성 중…",
+    step2GeneratingCardTitle: "트라이온 시뮬레이션 생성 중",
+    step2GeneratingCardFooter:
+      "이 탭을 닫지 말아 주세요. 약 60~90초 후 완료됩니다.",
     step2PartialNotice:
       "두 미리보기 중 하나만 성공했습니다. 결과가 만족스럽다면 그대로 투고할 수 있습니다.",
     step2BackButton: "뒤로",

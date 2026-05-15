@@ -395,6 +395,9 @@ export const idMessages = {
     step2TestCharacterLabel: "Karakter uji",
     step2GeneratingMessage: "Menghasilkan... jangan tutup tab ini.",
     step2GeneratingInline: "Menghasilkan…",
+    step2GeneratingCardTitle: "Membuat simulasi coba pakai",
+    step2GeneratingCardFooter:
+      "Mohon jangan tutup tab ini. Selesai dalam sekitar 60–90 detik.",
     step2PartialNotice:
       "Hanya satu dari dua pratinjau berhasil. Kamu tetap bisa mengirim jika hasilnya bisa diterima.",
     step2BackButton: "Kembali",

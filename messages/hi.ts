@@ -395,6 +395,9 @@ export const hiMessages = {
     step2TestCharacterLabel: "टेस्ट कैरेक्टर",
     step2GeneratingMessage: "उत्पन्न हो रहा है... कृपया यह टैब बंद न करें।",
     step2GeneratingInline: "उत्पन्न हो रहा है…",
+    step2GeneratingCardTitle: "ट्राई-ऑन सिमुलेशन बनाया जा रहा है",
+    step2GeneratingCardFooter:
+      "कृपया यह टैब बंद न करें। लगभग 60–90 सेकंड में पूरा होगा।",
     step2PartialNotice:
       "दो में से केवल एक पूर्वावलोकन सफल रहा। अगर परिणाम स्वीकार्य है तो आप फिर भी जमा कर सकते हैं।",
     step2BackButton: "वापस",

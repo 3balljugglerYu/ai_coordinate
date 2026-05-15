@@ -395,6 +395,9 @@ export const ptMessages = {
     step2TestCharacterLabel: "Personagem de teste",
     step2GeneratingMessage: "Gerando... não feche esta aba.",
     step2GeneratingInline: "Gerando…",
+    step2GeneratingCardTitle: "Gerando a simulação de prova",
+    step2GeneratingCardFooter:
+      "Por favor, não feche esta aba. Termina em cerca de 60–90 segundos.",
     step2PartialNotice:
       "Apenas um dos dois previews foi gerado com sucesso. Você ainda pode enviar se o resultado estiver aceitável.",
     step2BackButton: "Voltar",

@@ -395,6 +395,9 @@ export const enMessages = {
     step2TestCharacterLabel: "Test character",
     step2GeneratingMessage: "Generating... please don't close this tab.",
     step2GeneratingInline: "Generating…",
+    step2GeneratingCardTitle: "Generating the try-on simulation",
+    step2GeneratingCardFooter:
+      "Please keep this tab open. Finishes in about 60–90 seconds.",
     step2PartialNotice:
       "Only one of the two previews succeeded. You can still submit if the result looks acceptable.",
     step2BackButton: "Back",

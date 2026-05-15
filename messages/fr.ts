@@ -395,6 +395,9 @@ export const frMessages = {
     step2TestCharacterLabel: "Personnage de test",
     step2GeneratingMessage: "Génération en cours... ne fermez pas cet onglet.",
     step2GeneratingInline: "Génération…",
+    step2GeneratingCardTitle: "Génération de la simulation d'essayage",
+    step2GeneratingCardFooter:
+      "Veuillez ne pas fermer cet onglet. Termine en 60 à 90 secondes environ.",
     step2PartialNotice:
       "Un seul des deux aperçus a abouti. Vous pouvez quand même soumettre si le résultat vous convient.",
     step2BackButton: "Retour",

@@ -395,6 +395,9 @@ export const thMessages = {
     step2TestCharacterLabel: "ตัวละครทดสอบ",
     step2GeneratingMessage: "กำลังสร้าง... โปรดอย่าปิดแท็บนี้",
     step2GeneratingInline: "กำลังสร้าง…",
+    step2GeneratingCardTitle: "กำลังสร้างการจำลองการลอง",
+    step2GeneratingCardFooter:
+      "โปรดอย่าปิดแท็บนี้ ใช้เวลาประมาณ 60–90 วินาที",
     step2PartialNotice:
       "ตัวอย่างหนึ่งในสองรายการสำเร็จเท่านั้น คุณยังส่งได้หากผลลัพธ์ดูพอใช้ได้",
     step2BackButton: "ย้อนกลับ",

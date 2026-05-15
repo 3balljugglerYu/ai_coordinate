@@ -391,6 +391,9 @@ export const jaMessages = {
     step2TestCharacterLabel: "試着するキャラ",
     step2GeneratingMessage: "生成中... 別タブを閉じないでください。",
     step2GeneratingInline: "生成中…",
+    step2GeneratingCardTitle: "試着シミュレーションを生成中",
+    step2GeneratingCardFooter:
+      "別タブを閉じずにお待ちください。完了まで約 60〜90 秒です。",
     step2PartialNotice:
       "片方の生成のみ成功しました。問題なければそのまま申請できます。",
     step2BackButton: "戻る",

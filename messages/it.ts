@@ -395,6 +395,9 @@ export const itMessages = {
     step2TestCharacterLabel: "Personaggio di prova",
     step2GeneratingMessage: "Generazione in corso... non chiudere questa scheda.",
     step2GeneratingInline: "Generazione…",
+    step2GeneratingCardTitle: "Generazione della simulazione di prova",
+    step2GeneratingCardFooter:
+      "Non chiudere questa scheda. Termina in circa 60–90 secondi.",
     step2PartialNotice:
       "Solo una delle due anteprime è andata a buon fine. Puoi comunque inviare se il risultato ti sembra accettabile.",
     step2BackButton: "Indietro",

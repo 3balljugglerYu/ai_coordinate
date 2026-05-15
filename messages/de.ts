@@ -395,6 +395,9 @@ export const deMessages = {
     step2TestCharacterLabel: "Test-Charakter",
     step2GeneratingMessage: "Generierung läuft... bitte diesen Tab nicht schließen.",
     step2GeneratingInline: "Wird generiert…",
+    step2GeneratingCardTitle: "Anprobe-Simulation wird erstellt",
+    step2GeneratingCardFooter:
+      "Bitte diesen Tab nicht schließen. Dauert etwa 60–90 Sekunden.",
     step2PartialNotice:
       "Nur eine der beiden Vorschauen war erfolgreich. Du kannst trotzdem einreichen, wenn das Ergebnis akzeptabel ist.",
     step2BackButton: "Zurück",

@@ -395,6 +395,9 @@ export const arMessages = {
     step2TestCharacterLabel: "شخصية الاختبار",
     step2GeneratingMessage: "جارٍ التوليد... يُرجى عدم إغلاق هذه التبويبة.",
     step2GeneratingInline: "جارٍ التوليد…",
+    step2GeneratingCardTitle: "جارٍ توليد محاكاة التجربة",
+    step2GeneratingCardFooter:
+      "يُرجى عدم إغلاق هذه التبويبة. ينتهي خلال 60 إلى 90 ثانية تقريبًا.",
     step2PartialNotice:
       "نجحت معاينة واحدة فقط من الاثنتين. يمكنك مع ذلك إرسالها إذا كانت النتيجة مقبولة.",
     step2BackButton: "رجوع",
