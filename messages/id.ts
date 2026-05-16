@@ -1633,12 +1633,11 @@ export const idMessages = {
     formAddImageAction: "Tambah gambar",
     overrideLabel: "Elemen yang akan diubah",
     overrideHint:
-      "Pilih \"Pertahankan semua\" untuk mempertahankan sudut, pose, outfit, dan latar template, hanya mengganti karakter. Pilih satu elemen untuk menghasilkan ulang elemen itu saja.",
-    overrideKeepAll: "Pertahankan semua (hanya karakter)",
-    overrideAngle: "Ubah sudut",
-    overridePose: "Ubah pose",
-    overrideOutfit: "Ubah outfit",
-    overrideBackground: "Ubah latar belakang",
+      "Hanya elemen yang dicentang yang akan diterapkan ke karakter Anda dari template gaya. Centang semua untuk «pertahankan semua». Minimal satu wajib dicentang.",
+    overrideOutfit: "Coba pakai outfit",
+    overrideAngle: "Terapkan sudut kamera",
+    overridePose: "Samakan pose",
+    overrideBackground: "Terapkan latar belakang",
     statusFailed: "Pembuatan gagal",
     statusFailedDescription:
       "Coba lagi nanti atau gunakan gambar lain.",

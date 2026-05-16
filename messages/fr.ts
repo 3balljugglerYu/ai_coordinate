@@ -1633,12 +1633,11 @@ export const frMessages = {
     formAddImageAction: "Ajouter une image",
     overrideLabel: "Élément à modifier",
     overrideHint:
-      "Choisissez « Tout conserver » pour garder l'angle, la pose, la tenue et l'arrière-plan du modèle, en ne remplaçant que le personnage. Choisissez un seul élément pour ne régénérer que celui-ci.",
-    overrideKeepAll: "Tout conserver (personnage seul)",
-    overrideAngle: "Changer l'angle",
-    overridePose: "Changer la pose",
-    overrideOutfit: "Changer la tenue",
-    overrideBackground: "Changer l'arrière-plan",
+      "Seuls les éléments cochés sont appliqués à votre personnage depuis le modèle. Tout cocher pour « tout conserver ». Au moins un est requis.",
+    overrideOutfit: "Essayer la tenue",
+    overrideAngle: "Appliquer l'angle de caméra",
+    overridePose: "Reproduire la pose",
+    overrideBackground: "Appliquer l'arrière-plan",
     statusFailed: "Échec de la génération",
     statusFailedDescription:
       "Veuillez réessayer plus tard ou utiliser une autre image.",

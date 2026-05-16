@@ -1632,12 +1632,11 @@ export const viMessages = {
     formAddImageAction: "Thêm hình",
     overrideLabel: "Yếu tố cần đổi",
     overrideHint:
-      "Chọn \"Giữ tất cả\" để giữ góc, tư thế, trang phục và nền của mẫu, chỉ thay nhân vật. Chọn một yếu tố duy nhất để chỉ tạo lại yếu tố đó.",
-    overrideKeepAll: "Giữ tất cả (chỉ nhân vật)",
-    overrideAngle: "Đổi góc",
-    overridePose: "Đổi tư thế",
-    overrideOutfit: "Đổi trang phục",
-    overrideBackground: "Đổi nền",
+      "Chỉ những yếu tố được chọn sẽ được áp dụng từ mẫu phong cách lên nhân vật của bạn. Chọn tất cả cho «giữ toàn bộ». Cần chọn ít nhất 1.",
+    overrideOutfit: "Thử trang phục",
+    overrideAngle: "Áp dụng góc máy",
+    overridePose: "Lấy theo tư thế",
+    overrideBackground: "Áp dụng nền",
     statusFailed: "Tạo thất bại",
     statusFailedDescription:
       "Vui lòng thử lại sau hoặc dùng hình khác.",

@@ -39,20 +39,19 @@ export type GenerationType =
   | 'inspire';
 
 /**
- * inspire 生成時の override_target。null=keep_all（テンプレ全要素を維持してキャラだけ差し替え）。
+ * inspire 生成時の override 組み合わせ。4 つすべて true は「すべて維持」と等価。
+ * shared/generation/prompt-core.ts の InspireOverrides を再エクスポート。
  */
-export type InspireOverrideTarget =
-  | 'angle'
-  | 'pose'
-  | 'outfit'
-  | 'background';
+export type { InspireOverrides } from '@/shared/generation/prompt-core';
 
-export const INSPIRE_OVERRIDE_TARGETS: ReadonlyArray<InspireOverrideTarget> = [
+/** override に取り得るキー一覧（UI とバリデーション用）。 */
+export const INSPIRE_OVERRIDE_KEYS = [
+  'outfit',
   'angle',
   'pose',
-  'outfit',
   'background',
-];
+] as const;
+export type InspireOverrideKey = (typeof INSPIRE_OVERRIDE_KEYS)[number];
 
 // データベース保存用のモデル名型（サイズ情報を含む）
 // 注: 名称は歴史的経緯で GeminiModel のまま。OpenAI モデルも同 union に含めるため

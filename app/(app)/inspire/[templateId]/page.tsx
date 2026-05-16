@@ -124,7 +124,6 @@ export default async function InspirePage({ params }: InspirePageProps) {
               formAddImageAction: t("formAddImageAction"),
               overrideLabel: t("overrideLabel"),
               overrideHint: t("overrideHint"),
-              overrideKeepAll: t("overrideKeepAll"),
               overrideAngle: t("overrideAngle"),
               overridePose: t("overridePose"),
               overrideOutfit: t("overrideOutfit"),

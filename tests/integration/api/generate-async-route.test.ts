@@ -195,7 +195,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         // inspire 列は非 inspire 経路では NULL（Phase 1 マイグレ + handler 拡張）
         style_template_id: null,
         style_reference_image_url: null,
-        override_target: null,
+        override_outfit: null,
+        override_angle: null,
+        override_pose: null,
+        override_background: null,
       });
       expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
         "job-001"

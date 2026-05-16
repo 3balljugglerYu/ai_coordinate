@@ -1629,12 +1629,11 @@ export const zhTwMessages = {
     formAddImageAction: "新增圖片",
     overrideLabel: "要更換的元素",
     overrideHint:
-      "選擇 “保留全部” 時會保留範本的角度、姿勢、服裝與背景，僅替換角色。選擇單一元素時則只重新生成該元素。",
-    overrideKeepAll: "保留全部 (僅替換角色)",
-    overrideAngle: "更換角度",
-    overridePose: "更換姿勢",
-    overrideOutfit: "更換服裝",
-    overrideBackground: "更換背景",
+      "僅勾選的元素會從樣式範本套用到您的角色。全部勾選即「保留全部」狀態。至少需勾選 1 項。",
+    overrideOutfit: "試穿服裝",
+    overrideAngle: "套用攝影機角度",
+    overridePose: "套用相同姿勢",
+    overrideBackground: "套用背景",
     statusFailed: "生成失敗",
     statusFailedDescription:
       "請稍後再試或更換圖片。",

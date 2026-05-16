@@ -1631,12 +1631,11 @@ export const enMessages = {
     formAddImageAction: "Add image",
     overrideLabel: "Element to change",
     overrideHint:
-      "Choose 'Keep all' to preserve the template's angle, pose, outfit, and background, swapping only the character. Pick a single element to regenerate just that one.",
-    overrideKeepAll: "Keep all (character only)",
-    overrideAngle: "Change angle",
-    overridePose: "Change pose",
-    overrideOutfit: "Change outfit",
-    overrideBackground: "Change background",
+      "Only the checked elements are applied to your character from the style template. Check all for 'keep everything'. At least one is required.",
+    overrideOutfit: "Try on the outfit",
+    overrideAngle: "Apply the camera angle",
+    overridePose: "Match the pose",
+    overrideBackground: "Apply the background",
     statusFailed: "Generation failed",
     statusFailedDescription:
       "Please try again later or use a different image.",

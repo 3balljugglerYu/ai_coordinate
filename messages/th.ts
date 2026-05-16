@@ -1631,12 +1631,11 @@ export const thMessages = {
     formAddImageAction: "เพิ่มรูป",
     overrideLabel: "องค์ประกอบที่จะเปลี่ยน",
     overrideHint:
-      "เลือก \"คงทั้งหมด\" เพื่อคงมุม ท่าทาง ชุด และพื้นหลังของเทมเพลต โดยเปลี่ยนแค่ตัวละคร เลือกองค์ประกอบเดียวเพื่อสร้างเฉพาะส่วนนั้นใหม่",
-    overrideKeepAll: "คงทั้งหมด (เฉพาะตัวละคร)",
-    overrideAngle: "เปลี่ยนมุม",
-    overridePose: "เปลี่ยนท่าทาง",
-    overrideOutfit: "เปลี่ยนชุด",
-    overrideBackground: "เปลี่ยนพื้นหลัง",
+      "เฉพาะองค์ประกอบที่เลือกจะถูกใช้กับตัวละครจากเทมเพลตสไตล์ เลือกทั้งหมดเพื่อ「คงทั้งหมด」ต้องเลือกอย่างน้อย 1 รายการ",
+    overrideOutfit: "ทดลองชุด",
+    overrideAngle: "ใช้มุมกล้อง",
+    overridePose: "ทำท่าเดียวกัน",
+    overrideBackground: "ใช้พื้นหลัง",
     statusFailed: "สร้างไม่สำเร็จ",
     statusFailedDescription:
       "โปรดลองอีกครั้งภายหลังหรือใช้รูปอื่น",

@@ -16,11 +16,11 @@ import {
   type UploadedImage,
 } from "@/features/generation/types";
 import { InspireGenerationFlow } from "./InspireGenerationFlow";
+import { InspireOverrideCheckbox } from "./InspireOverrideCheckbox";
 import {
-  InspireOverrideRadio,
-  toApiOverrideTarget,
-  type InspireOverrideValue,
-} from "./InspireOverrideRadio";
+  hasAnyInspireOverride,
+  type InspireOverrides,
+} from "@/shared/generation/prompt-core";
 
 interface InspireTemplate {
   id: string;
@@ -54,10 +54,9 @@ interface InspirePageClientCopy {
   formAddImageAction: string;
   overrideLabel: string;
   overrideHint: string;
-  overrideKeepAll: string;
+  overrideOutfit: string;
   overrideAngle: string;
   overridePose: string;
-  overrideOutfit: string;
   overrideBackground: string;
   // 生成中ステータスは /coordinate と同じ coordinate namespace を使うため、
   // ここでは inspire 固有の「失敗」「結果」コピーのみ受け取る。
@@ -104,8 +103,14 @@ export function InspirePageClient({
   );
   // /style と同じく生成枚数は常に 1 固定（UI なし）。
   const COUNT = 1;
-  const [overrideTarget, setOverrideTarget] =
-    useState<InspireOverrideValue>("keep_all");
+  // 「すべて維持」状態（4 つすべてチェック済み）で初期化。
+  // 1 つもチェックがない場合は生成ボタン disabled（hasAnyInspireOverride で判定）。
+  const [overrides, setOverrides] = useState<InspireOverrides>({
+    outfit: true,
+    angle: true,
+    pose: true,
+    background: true,
+  });
   const [error, setError] = useState<string | null>(null);
   // テンプレ画像が読み込まれた時点で natural サイズから aspect ratio を計算する。
   // /style と同等の見た目にするため、ImageUploader にも同じ aspectRatio を渡す。
@@ -131,7 +136,7 @@ export function InspirePageClient({
           model: selectedModel,
           count: COUNT,
           styleTemplateId: template.id,
-          overrideTarget: toApiOverrideTarget(overrideTarget),
+          overrides,
         }),
       });
       if (!response.ok) {
@@ -234,19 +239,18 @@ export function InspirePageClient({
         </div>
       </section>
 
-      {/* 変更したい要素（Override Radio） */}
+      {/* image_1 から image_0 に適用したい要素（複数選択可）。 */}
       <Card className="p-6">
-        <InspireOverrideRadio
-          value={overrideTarget}
-          onChange={setOverrideTarget}
-          disabled={submitting}
+        <InspireOverrideCheckbox
+          value={overrides}
+          onChange={setOverrides}
+          disabled={isGenerating}
           copy={{
             label: copy.overrideLabel,
             hint: copy.overrideHint,
-            keepAll: copy.overrideKeepAll,
+            outfit: copy.overrideOutfit,
             angle: copy.overrideAngle,
             pose: copy.overridePose,
-            outfit: copy.overrideOutfit,
             background: copy.overrideBackground,
           }}
         />
@@ -276,7 +280,9 @@ export function InspirePageClient({
             type="button"
             className="w-full"
             size="lg"
-            disabled={!uploadedImage || isGenerating}
+            disabled={
+              !uploadedImage || isGenerating || !hasAnyInspireOverride(overrides)
+            }
             onClick={handleGenerate}
             aria-label={copy.formGenerateAria}
           >

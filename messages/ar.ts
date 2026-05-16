@@ -1632,12 +1632,11 @@ export const arMessages = {
     formAddImageAction: "إضافة صورة",
     overrideLabel: "العنصر المراد تغييره",
     overrideHint:
-      "اختر \"الإبقاء على الكل\" للاحتفاظ بزاوية القالب ووضعيته وإطلالته وخلفيته، مع تبديل الشخصية فقط. اختر عنصرًا واحدًا لإعادة توليد ذلك العنصر فقط.",
-    overrideKeepAll: "الإبقاء على الكل (الشخصية فقط)",
-    overrideAngle: "تغيير الزاوية",
-    overridePose: "تغيير الوضعية",
-    overrideOutfit: "تغيير الإطلالة",
-    overrideBackground: "تغيير الخلفية",
+      "العناصر المحددة فقط ستُطبَّق من قالب النمط على شخصيتك. حدد الكل للحفاظ على الكل. الحد الأدنى عنصر واحد.",
+    overrideOutfit: "تجربة الإطلالة",
+    overrideAngle: "تطبيق زاوية الكاميرا",
+    overridePose: "مطابقة الوضعية",
+    overrideBackground: "تطبيق الخلفية",
     statusFailed: "فشل التوليد",
     statusFailedDescription:
       "يُرجى المحاولة لاحقًا أو استخدام صورة أخرى.",
