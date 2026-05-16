@@ -1629,12 +1629,11 @@ export const zhCnMessages = {
     formAddImageAction: "添加图片",
     overrideLabel: "要更改的元素",
     overrideHint:
-      "选择 “保持全部” 时会保留模板的角度、姿势、服装与背景，只替换角色。选择单个元素时仅重新生成该元素。",
-    overrideKeepAll: "保持全部 (仅替换角色)",
-    overrideAngle: "更改角度",
-    overridePose: "更改姿势",
-    overrideOutfit: "更换服装",
-    overrideBackground: "更换背景",
+      "仅勾选的元素会从样式模板应用到您的角色。全部勾选则为「保持全部」状态。至少需勾选 1 项。",
+    overrideOutfit: "试穿服装",
+    overrideAngle: "应用相机角度",
+    overridePose: "匹配姿势",
+    overrideBackground: "应用背景",
     statusFailed: "生成失败",
     statusFailedDescription:
       "请稍后重试或更换图片。",

@@ -1633,12 +1633,11 @@ export const esMessages = {
     formAddImageAction: "Añadir imagen",
     overrideLabel: "Elemento que cambiar",
     overrideHint:
-      "Elige \"Mantener todo\" para conservar el ángulo, la pose, el conjunto y el fondo de la plantilla y solo cambiar el personaje. Elige un único elemento para regenerar solo ese.",
-    overrideKeepAll: "Mantener todo (solo personaje)",
-    overrideAngle: "Cambiar ángulo",
-    overridePose: "Cambiar pose",
-    overrideOutfit: "Cambiar conjunto",
-    overrideBackground: "Cambiar fondo",
+      "Solo los elementos marcados se aplican desde la plantilla a tu personaje. Marca todos para «mantener todo». Se requiere al menos uno.",
+    overrideOutfit: "Probar el atuendo",
+    overrideAngle: "Aplicar el ángulo de cámara",
+    overridePose: "Adoptar la pose",
+    overrideBackground: "Aplicar el fondo",
     statusFailed: "La generación falló",
     statusFailedDescription:
       "Inténtalo de nuevo más tarde o usa otra imagen.",

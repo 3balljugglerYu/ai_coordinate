@@ -122,7 +122,7 @@ export async function postGenerateAsyncRoute(
       generationType,
       model,
       styleTemplateId,
-      overrideTarget,
+      overrides,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
     if (!isModelAvailableForGeneration(effectiveModel)) {
@@ -340,7 +340,12 @@ export async function postGenerateAsyncRoute(
       style_reference_image_url: isInspireRequest
         ? inspireStyleTemplateImageUrl
         : null,
-      override_target: isInspireRequest ? overrideTarget ?? null : null,
+      // Inspire override の 4 bool。未指定時は「すべて維持」のデフォルトを入れる。
+      // 整合性は schema 側の superRefine で「1 つ以上 true」をバリデーション済み。
+      override_outfit: isInspireRequest ? overrides?.outfit ?? true : null,
+      override_angle: isInspireRequest ? overrides?.angle ?? true : null,
+      override_pose: isInspireRequest ? overrides?.pose ?? true : null,
+      override_background: isInspireRequest ? overrides?.background ?? true : null,
     };
 
     const { data: job, error: insertError } =

@@ -1631,12 +1631,11 @@ export const koMessages = {
     formAddImageAction: "이미지 추가",
     overrideLabel: "변경할 요소",
     overrideHint:
-      "‘모두 유지’를 선택하면 템플릿의 앵글, 포즈, 의상, 배경을 그대로 두고 캐릭터만 교체합니다. 단일 요소를 선택하면 그 요소만 다시 생성합니다.",
-    overrideKeepAll: "모두 유지(캐릭터만)",
-    overrideAngle: "앵글 변경",
-    overridePose: "포즈 변경",
-    overrideOutfit: "의상 변경",
-    overrideBackground: "배경 변경",
+      "체크한 요소만 스타일 템플릿에서 당신의 캐릭터에 적용됩니다. 모두 체크하면 「모두 유지」와 동일합니다. 최소 1 개 체크가 필요합니다.",
+    overrideOutfit: "의상을 입혀보기",
+    overrideAngle: "카메라 앵글 적용",
+    overridePose: "포즈에 맞추기",
+    overrideBackground: "배경 적용",
     statusFailed: "생성 실패",
     statusFailedDescription:
       "잠시 후 다시 시도하거나 다른 이미지를 사용해 주세요.",

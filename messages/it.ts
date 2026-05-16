@@ -1633,12 +1633,11 @@ export const itMessages = {
     formAddImageAction: "Aggiungi immagine",
     overrideLabel: "Elemento da modificare",
     overrideHint:
-      "Scegli \"Mantieni tutto\" per conservare l'angolazione, la posa, l'outfit e lo sfondo del modello, sostituendo solo il personaggio. Scegli un singolo elemento per rigenerare solo quello.",
-    overrideKeepAll: "Mantieni tutto (solo personaggio)",
-    overrideAngle: "Cambia angolazione",
-    overridePose: "Cambia posa",
-    overrideOutfit: "Cambia outfit",
-    overrideBackground: "Cambia sfondo",
+      "Solo gli elementi selezionati vengono applicati al tuo personaggio dal modello. Seleziona tutti per «mantieni tutto». È richiesto almeno uno.",
+    overrideOutfit: "Provare l'outfit",
+    overrideAngle: "Applicare l'angolazione",
+    overridePose: "Imitare la posa",
+    overrideBackground: "Applicare lo sfondo",
     statusFailed: "Generazione non riuscita",
     statusFailedDescription:
       "Riprova più tardi o usa un'altra immagine.",

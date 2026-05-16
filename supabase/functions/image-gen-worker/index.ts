@@ -10,10 +10,7 @@ import {
   resolveBackgroundMode,
   resolveInspireTargetSizeBaseIndex,
 } from "../../../shared/generation/prompt-core.ts";
-import type {
-  GenerationType,
-  InspireOverrideTarget,
-} from "../../../shared/generation/prompt-core.ts";
+import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import {
   GEMINI_DISABLED_MESSAGE,
@@ -1606,17 +1603,14 @@ Deno.serve(async () => {
                       ? job.prompt_text
                       : job.generation_type === "inspire"
                         ? buildInspirePrompt({
-                            overrideTarget:
-                              // `||` を使って空文字列も null に丸める。`??` だと "" のときに
-                              // 「未知のオーバーライド対象」として default 節で throw する。
-                              (job.override_target as
-                                | InspireOverrideTarget
-                                | null
-                                | undefined) || null,
-                            sourceImageType:
-                              job.source_image_type === "real"
-                                ? "real"
-                                : "illustration",
+                            // 新仕様: 4 bool カラム。inspire ジョブは migration で必ず値が入る。
+                            // 万一 NULL の場合は「すべて維持」で fallback する。
+                            overrides: {
+                              outfit: job.override_outfit ?? true,
+                              angle: job.override_angle ?? true,
+                              pose: job.override_pose ?? true,
+                              background: job.override_background ?? true,
+                            },
                           })
                         : job.input_image_url
                         ? buildSharedPrompt({
@@ -1729,19 +1723,17 @@ Deno.serve(async () => {
                               openAIInputImage,
                               resolvedInspireTemplateImage,
                             ],
-                            // 出力フレームの起点画像はブランチ依存（resolveInspireTargetSizeBaseIndex）。
-                            // null (keep_all): image_1 のシーンへ置換 → image_1 基準
-                            // angle / pose / outfit / background: image_0 を編集 → image_0 基準
-                            // プロンプト側の保持節（image_0 / image_1 のどちらのフレーミングを
-                            // 保つか）と一致させる。
-                            // `||` で空文字列も null に丸める（上の buildInspirePrompt 呼び出しと統一）。
+                            // 出力フレームの起点画像はチェック組み合わせ依存（resolveInspireTargetSizeBaseIndex）。
+                            // すべて維持（4 つ true）: image_1 のシーンへ置換 → image_1 基準
+                            // 部分上書き: image_0 を編集 → image_0 基準
+                            // プロンプト側のフレーミング指示と一致させる。
                             targetSizeBaseIndex:
-                              resolveInspireTargetSizeBaseIndex(
-                                (job.override_target as
-                                  | InspireOverrideTarget
-                                  | null
-                                  | undefined) || null,
-                              ),
+                              resolveInspireTargetSizeBaseIndex({
+                                outfit: job.override_outfit ?? true,
+                                angle: job.override_angle ?? true,
+                                pose: job.override_pose ?? true,
+                                background: job.override_background ?? true,
+                              }),
                             timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
                             n: requestedImageCount,
                             quality: "low",
@@ -2165,7 +2157,8 @@ Deno.serve(async () => {
 
               // inspire 用: generated_images_inspire_template_consistency_check
               // (generation_type='inspire' ⇔ style_template_id IS NOT NULL) を満たすため、
-              // image_jobs から style_template_id / override_target を継承する。
+              // image_jobs から style_template_id / override_* を継承する。
+              const isInspireRecord = job.generation_type === "inspire";
               const { data: imageRecord, error: insertError } = await supabase
                 .from("generated_images")
                 .insert({
@@ -2183,6 +2176,10 @@ Deno.serve(async () => {
                   image_job_result_index: 0,
                   style_template_id: job.style_template_id ?? null,
                   override_target: job.override_target ?? null,
+                  override_outfit: isInspireRecord ? (job.override_outfit ?? true) : null,
+                  override_angle: isInspireRecord ? (job.override_angle ?? true) : null,
+                  override_pose: isInspireRecord ? (job.override_pose ?? true) : null,
+                  override_background: isInspireRecord ? (job.override_background ?? true) : null,
                 })
                 .select()
                 .single();

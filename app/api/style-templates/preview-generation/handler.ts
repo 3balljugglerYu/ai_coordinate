@@ -277,10 +277,10 @@ export async function handlePreviewGeneration(
     })
     .eq("id", draftId);
 
-  // OpenAI と Gemini を並列起動
+  // OpenAI と Gemini を並列起動。
+  // Step 2 プレビューは「すべて維持」相当（テンプレ全体を image_0 に適用）のプロンプトで生成する。
   const inspirePrompt = buildInspirePrompt({
-    overrideTarget: null,
-    sourceImageType: "illustration",
+    overrides: { outfit: true, angle: true, pose: true, background: true },
   });
 
   const openaiPromise: Promise<PreviewOutcome> = (async () => {

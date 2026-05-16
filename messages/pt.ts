@@ -1633,12 +1633,11 @@ export const ptMessages = {
     formAddImageAction: "Adicionar imagem",
     overrideLabel: "Elemento a alterar",
     overrideHint:
-      "Escolha \"Manter tudo\" para preservar o ângulo, a pose, a roupa e o fundo do modelo, trocando apenas o personagem. Escolha um único elemento para regerar somente ele.",
-    overrideKeepAll: "Manter tudo (apenas personagem)",
-    overrideAngle: "Mudar ângulo",
-    overridePose: "Mudar pose",
-    overrideOutfit: "Mudar roupa",
-    overrideBackground: "Mudar fundo",
+      "Apenas os elementos marcados são aplicados ao seu personagem a partir do template. Marque todos para «manter tudo». Pelo menos um é necessário.",
+    overrideOutfit: "Provar a roupa",
+    overrideAngle: "Aplicar o ângulo da câmera",
+    overridePose: "Reproduzir a pose",
+    overrideBackground: "Aplicar o fundo",
     statusFailed: "Falha na geração",
     statusFailedDescription:
       "Tente de novo mais tarde ou use outra imagem.",

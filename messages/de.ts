@@ -1633,12 +1633,11 @@ export const deMessages = {
     formAddImageAction: "Bild hinzufügen",
     overrideLabel: "Zu änderndes Element",
     overrideHint:
-      "Wähle \"Alles beibehalten\", um Winkel, Pose, Outfit und Hintergrund der Vorlage zu erhalten und nur den Charakter zu tauschen. Wähle ein einzelnes Element, um nur dieses neu zu generieren.",
-    overrideKeepAll: "Alles beibehalten (nur Charakter)",
-    overrideAngle: "Winkel ändern",
-    overridePose: "Pose ändern",
-    overrideOutfit: "Outfit ändern",
-    overrideBackground: "Hintergrund ändern",
+      "Nur die angekreuzten Elemente werden aus der Vorlage auf deinen Charakter angewendet. Alle ankreuzen für „alles beibehalten\". Mindestens eines erforderlich.",
+    overrideOutfit: "Outfit anprobieren",
+    overrideAngle: "Kamerawinkel anwenden",
+    overridePose: "Pose übernehmen",
+    overrideBackground: "Hintergrund anwenden",
     statusFailed: "Generierung fehlgeschlagen",
     statusFailedDescription:
       "Bitte später erneut versuchen oder ein anderes Bild verwenden.",

@@ -88,12 +88,16 @@ export const generationRequestSchema = z.object({
     .optional()
     .default(DEFAULT_GENERATION_MODEL)
     .transform(normalizeModelName), // データベース保存用に正規化
-  // Inspire 専用: 参照するスタイルテンプレ ID と override 対象。
+  // Inspire 専用: 参照するスタイルテンプレ ID と override 組み合わせ。
   // generationType='inspire' のときのみ意味を持つ（superRefine で整合性検証）。
   styleTemplateId: z.string().uuid().optional(),
-  overrideTarget: z
-    .enum(['angle', 'pose', 'outfit', 'background'])
-    .nullable()
+  overrides: z
+    .object({
+      outfit: z.boolean(),
+      angle: z.boolean(),
+      pose: z.boolean(),
+      background: z.boolean(),
+    })
     .optional(),
 }).superRefine((data, ctx) => {
   const hasSourceImageStockId =
@@ -116,7 +120,7 @@ export const generationRequestSchema = z.object({
   }
 
   // inspire 整合性検証: generationType='inspire' のときのみ styleTemplateId が必須、
-  // それ以外のタイプでは styleTemplateId / overrideTarget を受け付けない。
+  // それ以外のタイプでは styleTemplateId / overrides を受け付けない。
   if (data.generationType === 'inspire') {
     if (!data.styleTemplateId) {
       ctx.addIssue({
@@ -124,6 +128,20 @@ export const generationRequestSchema = z.object({
         path: ["styleTemplateId"],
         message: "スタイルテンプレートを選択してください",
       });
+    }
+    if (data.overrides) {
+      const anyChecked =
+        data.overrides.outfit ||
+        data.overrides.angle ||
+        data.overrides.pose ||
+        data.overrides.background;
+      if (!anyChecked) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["overrides"],
+          message: "変更したい要素を 1 つ以上選択してください",
+        });
+      }
     }
   } else {
     if (data.styleTemplateId) {
@@ -133,11 +151,11 @@ export const generationRequestSchema = z.object({
         message: "styleTemplateId は inspire 生成時のみ指定できます",
       });
     }
-    if (data.overrideTarget) {
+    if (data.overrides) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["overrideTarget"],
-        message: "overrideTarget は inspire 生成時のみ指定できます",
+        path: ["overrides"],
+        message: "overrides は inspire 生成時のみ指定できます",
       });
     }
   }
