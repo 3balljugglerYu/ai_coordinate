@@ -58,11 +58,15 @@ export function InspireOverrideCheckbox({
             <label
               key={key}
               htmlFor={id}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+              } ${
                 isChecked
                   ? "border-primary bg-primary/5"
-                  : "border-input bg-background hover:bg-accent"
-              } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+                  : disabled
+                    ? "border-input bg-background"
+                    : "border-input bg-background hover:bg-accent"
+              }`}
             >
               <Checkbox
                 id={id}

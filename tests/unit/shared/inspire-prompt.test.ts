@@ -105,70 +105,70 @@ describe("buildInspirePrompt", () => {
   describe("各 override の ON / OFF に対応するアクション文", () => {
     test("outfit=true なら ON 文、false なら OFF 文", () => {
       const on = buildInspirePrompt({ overrides: ONLY_OUTFIT });
-      expect(on).toContain("image_1の服をimage_0に着せて下さい。");
+      expect(on).toContain("image_1の服をimage_0に着せてください。");
       expect(on).not.toContain("image_0の衣装は変えないでください。");
 
       const off = buildInspirePrompt({ overrides: ONLY_ANGLE });
       expect(off).toContain("image_0の衣装は変えないでください。");
-      expect(off).not.toContain("image_1の服をimage_0に着せて下さい。");
+      expect(off).not.toContain("image_1の服をimage_0に着せてください。");
     });
 
     test("angle=true なら ON 文、false なら OFF 文", () => {
       const on = buildInspirePrompt({ overrides: ONLY_ANGLE });
       expect(on).toContain(
-        "image_1のカメラアングル同じカメラアングルをimage_0に適用させてください。"
+        "image_1と同じカメラアングルをimage_0に適用してください。"
       );
       expect(on).not.toContain("image_0のカメラアングルは変えないでください。");
 
       const off = buildInspirePrompt({ overrides: ONLY_OUTFIT });
       expect(off).toContain("image_0のカメラアングルは変えないでください。");
       expect(off).not.toContain(
-        "image_1のカメラアングル同じカメラアングルをimage_0に適用させてください。"
+        "image_1と同じカメラアングルをimage_0に適用してください。"
       );
     });
 
     test("pose=true なら ON 文、false なら OFF 文", () => {
       const on = buildInspirePrompt({ overrides: ONLY_POSE });
       expect(on).toContain(
-        "image_1のポーズと似たようなポーズをimage_0に適用して下さい。"
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
       );
       expect(on).not.toContain("image_0のポーズは変えないでください。");
 
       const off = buildInspirePrompt({ overrides: ONLY_OUTFIT });
       expect(off).toContain("image_0のポーズは変えないでください。");
       expect(off).not.toContain(
-        "image_1のポーズと似たようなポーズをimage_0に適用して下さい。"
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
       );
     });
 
     test("background=true なら ON 文、false なら OFF 文", () => {
       const on = buildInspirePrompt({ overrides: ONLY_BACKGROUND });
-      expect(on).toContain("image_1の背景と同じ背景をimage_0に適用して下さい。");
+      expect(on).toContain("image_1の背景と同じ背景をimage_0に適用してください。");
       expect(on).not.toContain("image_0の背景は変えないでください。");
 
       const off = buildInspirePrompt({ overrides: ONLY_OUTFIT });
       expect(off).toContain("image_0の背景は変えないでください。");
       expect(off).not.toContain(
-        "image_1の背景と同じ背景をimage_0に適用して下さい。"
+        "image_1の背景と同じ背景をimage_0に適用してください。"
       );
     });
 
     test("すべて維持なら 4 つの ON 文すべてを含み、OFF 文は含まない", () => {
       const prompt = buildInspirePrompt({ overrides: KEEP_ALL });
-      expect(prompt).toContain("image_1の服をimage_0に着せて下さい。");
+      expect(prompt).toContain("image_1の服をimage_0に着せてください。");
       expect(prompt).toContain(
-        "image_1のカメラアングル同じカメラアングルをimage_0に適用させてください。"
+        "image_1と同じカメラアングルをimage_0に適用してください。"
       );
       expect(prompt).toContain(
-        "image_1のポーズと似たようなポーズをimage_0に適用して下さい。"
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
       );
-      expect(prompt).toContain("image_1の背景と同じ背景をimage_0に適用して下さい。");
+      expect(prompt).toContain("image_1の背景と同じ背景をimage_0に適用してください。");
       expect(prompt).not.toContain("変えないでください。");
     });
 
     test("単一 ON の場合、ON 文 1 つと OFF 文 3 つを含む", () => {
       const prompt = buildInspirePrompt({ overrides: ONLY_OUTFIT });
-      expect(prompt).toContain("image_1の服をimage_0に着せて下さい。");
+      expect(prompt).toContain("image_1の服をimage_0に着せてください。");
       expect(prompt).toContain("image_0のカメラアングルは変えないでください。");
       expect(prompt).toContain("image_0のポーズは変えないでください。");
       expect(prompt).toContain("image_0の背景は変えないでください。");
@@ -176,15 +176,15 @@ describe("buildInspirePrompt", () => {
 
     test("アクション文の順序は outfit → angle → pose → background", () => {
       const prompt = buildInspirePrompt({ overrides: KEEP_ALL });
-      const outfitIdx = prompt.indexOf("image_1の服をimage_0に着せて下さい。");
+      const outfitIdx = prompt.indexOf("image_1の服をimage_0に着せてください。");
       const angleIdx = prompt.indexOf(
-        "image_1のカメラアングル同じカメラアングルをimage_0に適用させてください。"
+        "image_1と同じカメラアングルをimage_0に適用してください。"
       );
       const poseIdx = prompt.indexOf(
-        "image_1のポーズと似たようなポーズをimage_0に適用して下さい。"
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
       );
       const backgroundIdx = prompt.indexOf(
-        "image_1の背景と同じ背景をimage_0に適用して下さい。"
+        "image_1の背景と同じ背景をimage_0に適用してください。"
       );
       expect(outfitIdx).toBeLessThan(angleIdx);
       expect(angleIdx).toBeLessThan(poseIdx);

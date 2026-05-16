@@ -315,19 +315,19 @@ const INSPIRE_PROMPT_PREAMBLE =
  */
 const INSPIRE_ACTION_SENTENCES = {
   outfit: {
-    on: "image_1の服をimage_0に着せて下さい。",
+    on: "image_1の服をimage_0に着せてください。",
     off: "image_0の衣装は変えないでください。",
   },
   angle: {
-    on: "image_1のカメラアングル同じカメラアングルをimage_0に適用させてください。",
+    on: "image_1と同じカメラアングルをimage_0に適用してください。",
     off: "image_0のカメラアングルは変えないでください。",
   },
   pose: {
-    on: "image_1のポーズと似たようなポーズをimage_0に適用して下さい。",
+    on: "image_1のポーズと似たようなポーズをimage_0に適用してください。",
     off: "image_0のポーズは変えないでください。",
   },
   background: {
-    on: "image_1の背景と同じ背景をimage_0に適用して下さい。",
+    on: "image_1の背景と同じ背景をimage_0に適用してください。",
     off: "image_0の背景は変えないでください。",
   },
 } as const satisfies Record<keyof InspireOverrides, { on: string; off: string }>;
