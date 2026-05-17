@@ -11,10 +11,7 @@ import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
-import { LockableModelSelect } from "./LockableModelSelect";
-import { GptImage2QualitySelector } from "./GptImage2QualitySelector";
-import { GptImage2SizeSelector } from "./GptImage2SizeSelector";
-import { GeminiBananaSizeSelector } from "./GeminiBananaSizeSelector";
+import { GenerationModelControls } from "./GenerationModelControls";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
@@ -194,6 +191,10 @@ export function GenerationForm({
   );
   const totalPercoinCost =
     selectedCount * getPercoinCost(effectiveSelectedModel);
+  const generateButtonLabel =
+    authState === "authenticated"
+      ? t("generatingButtonWithCost", { amount: totalPercoinCost })
+      : t("generatingButton");
 
   useEffect(() => {
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
@@ -932,43 +933,12 @@ export function GenerationForm({
           </RadioGroup>
         </div>
 
-        {/* 1段目: 生成モデル（ChatGPT Images 2.0 / Nano Banana 2 / Nano Banana Pro） */}
-        <div data-tour="tour-model-select">
-          <Label className="text-base font-medium mb-3 block">
-            {t("modelLabel")}
-          </Label>
-          <LockableModelSelect
-            value={effectiveSelectedModel}
-            onChange={handleSelectedModelChange}
-            onLockedClick={() => setShowAuthModal(true)}
-            authState={authState}
-            disabled={isGenerating || isTutorialInProgress}
-          />
-        </div>
-
-        {/* 2段目: 生成タイプ（ChatGPT 選択時のみ表示）— 内部で ChatGPT 以外なら null を返す */}
-        <GptImage2QualitySelector
+        <GenerationModelControls
           value={effectiveSelectedModel}
           onChange={handleSelectedModelChange}
           onLockedClick={() => setShowAuthModal(true)}
           authState={authState}
-          disabled={isGenerating || isTutorialInProgress}
-        />
-
-        {/* 3段目: 出力サイズ（モデルファミリーに応じて片方だけ描画される） */}
-        <GptImage2SizeSelector
-          value={effectiveSelectedModel}
-          onChange={handleSelectedModelChange}
-          onLockedClick={() => setShowAuthModal(true)}
-          authState={authState}
-          disabled={isGenerating || isTutorialInProgress}
-        />
-
-        <GeminiBananaSizeSelector
-          value={effectiveSelectedModel}
-          onChange={handleSelectedModelChange}
-          onLockedClick={() => setShowAuthModal(true)}
-          authState={authState}
+          modelLabel={t("modelLabel")}
           disabled={isGenerating || isTutorialInProgress}
         />
 
@@ -1037,7 +1007,7 @@ export function GenerationForm({
           ) : (
             <>
               <Sparkles className="mr-2 h-5 w-5" />
-              {t("generatingButtonWithCost", { amount: totalPercoinCost })}
+              {generateButtonLabel}
             </>
           )}
         </Button>

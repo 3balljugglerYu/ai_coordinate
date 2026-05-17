@@ -68,10 +68,7 @@ import {
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
-import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
-import { GptImage2QualitySelector } from "@/features/generation/components/GptImage2QualitySelector";
-import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
-import { GeminiBananaSizeSelector } from "@/features/generation/components/GeminiBananaSizeSelector";
+import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import {
   readPreferredModel,
@@ -1284,7 +1281,7 @@ export function StylePageClient({
     : t("generationStatusHint");
   const generateButtonLabel = isGenerating
     ? t("generatingButton")
-    : isAuthenticatedPaidOnlyMode
+    : effectiveAuthState === "authenticated"
       ? t("paidGenerateButton", {
           cost: selectedModelPercoinCost,
         })
@@ -1491,40 +1488,12 @@ export function StylePageClient({
               </div>
             </div>
 
-            <div>
-              <Label className="text-base font-medium mb-3 block">
-                {t("modelLabel")}
-              </Label>
-              <LockableModelSelect
-                value={effectiveSelectedModel}
-                onChange={handleSelectedModelChange}
-                onLockedClick={() => setShowAuthModal(true)}
-                authState={modelAuthState}
-                disabled={isGenerating}
-              />
-            </div>
-
-            <GptImage2QualitySelector
+            <GenerationModelControls
               value={effectiveSelectedModel}
               onChange={handleSelectedModelChange}
               onLockedClick={() => setShowAuthModal(true)}
               authState={modelAuthState}
-              disabled={isGenerating}
-            />
-
-            <GptImage2SizeSelector
-              value={effectiveSelectedModel}
-              onChange={handleSelectedModelChange}
-              onLockedClick={() => setShowAuthModal(true)}
-              authState={modelAuthState}
-              disabled={isGenerating}
-            />
-
-            <GeminiBananaSizeSelector
-              value={effectiveSelectedModel}
-              onChange={handleSelectedModelChange}
-              onLockedClick={() => setShowAuthModal(true)}
-              authState={modelAuthState}
+              modelLabel={t("modelLabel")}
               disabled={isGenerating}
             />
 

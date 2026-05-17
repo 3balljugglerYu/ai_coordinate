@@ -852,7 +852,7 @@ export const jaMessages = {
     countSingle: "1枚",
     countMultiple: "{count}枚",
     countCostDescription: "{count}枚の生成には {amount} ペルコインが必要です",
-    generatingButton: "コーデスタート",
+    generatingButton: "コーデ開始！",
     generatingButtonWithCost: "コーデ開始！（消費：{amount}）",
     generatingButtonLoading: "生成中...",
     missingPrompt: "着せ替え内容を入力してください",
@@ -1280,7 +1280,7 @@ export const jaMessages = {
     guestLoginCtaDescription:
       "ChatGPT Image 2.0 を 1 日 1 回までお試しいただけます。保存はされません。",
     guestLoginCtaAction: "ログイン / 新規登録",
-    generateButton: "Start Styling",
+    generateButton: "コーデ開始！",
     generatingButton: "生成中...",
     // ステータスカードの見出し
     generationStatusTitle: "スタイリング中です",
@@ -1327,7 +1327,7 @@ export const jaMessages = {
     resultResetConfirmActionAuthenticated: "変更する",
     resultReplaceConfirmTitle: "現在の生成結果を上書きします",
     resultReplaceConfirmDescription:
-      "Start Styling を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
+      "コーデ開始！を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
     resultReplaceConfirmAction: "再生成する",
     resultReplaceConfirmTitleAuthenticated: "現在の生成結果を上書きします",
     resultReplaceConfirmDescriptionAuthenticated:
@@ -1590,8 +1590,8 @@ export const jaMessages = {
     formImageLabel: "キャラ画像（PNG / JPEG / WebP / HEIC、10MB まで）",
     formCountLabel: "生成枚数",
     formModelLabel: "モデル",
-    formGenerateButton: "生成する",
-    formGenerateButtonWithCost: "生成開始！（消費：%amount%）",
+    formGenerateButton: "コーデ開始！",
+    formGenerateButtonWithCost: "コーデ開始！（消費：%amount%）",
     formGenerating: "生成中...",
     formImageRequired: "キャラ画像をアップロードしてください",
     formGenerationFailed: "生成に失敗しました。時間をおいて再試行してください。",

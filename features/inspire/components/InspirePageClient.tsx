@@ -9,10 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
-import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
-import { GptImage2QualitySelector } from "@/features/generation/components/GptImage2QualitySelector";
-import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
-import { GeminiBananaSizeSelector } from "@/features/generation/components/GeminiBananaSizeSelector";
+import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
 import {
   DEFAULT_GENERATION_MODEL,
@@ -268,46 +265,14 @@ export function InspirePageClient({
       {/* モデル + 枚数 + 生成ボタン */}
       <Card className="p-6">
         <div className="space-y-6">
-          <div className="space-y-3">
-            <p className="text-base font-medium">{copy.formModelLabel}</p>
-            <LockableModelSelect
-              value={selectedModel}
-              onChange={setSelectedModel}
-              onLockedClick={() => {
-                /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
-              }}
-              authState="authenticated"
-              disabled={isGenerating}
-            />
-          </div>
-
-          <GptImage2QualitySelector
+          <GenerationModelControls
             value={selectedModel}
             onChange={setSelectedModel}
             onLockedClick={() => {
               /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
             }}
             authState="authenticated"
-            disabled={isGenerating}
-          />
-
-          <GptImage2SizeSelector
-            value={selectedModel}
-            onChange={setSelectedModel}
-            onLockedClick={() => {
-              /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
-            }}
-            authState="authenticated"
-            disabled={isGenerating}
-          />
-
-          <GeminiBananaSizeSelector
-            value={selectedModel}
-            onChange={setSelectedModel}
-            onLockedClick={() => {
-              /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
-            }}
-            authState="authenticated"
+            modelLabel={copy.formModelLabel}
             disabled={isGenerating}
           />
 
