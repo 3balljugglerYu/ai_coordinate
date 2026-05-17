@@ -108,7 +108,7 @@ export function GptImage2QualitySelector({
               {t("modelTooltipContent")}
             </span>
           }
-          contentClassName="max-w-[18rem] text-[11px]"
+          contentClassName="max-w-[24rem] px-3 py-2 text-sm leading-6"
         />
       </Label>
       <Select
