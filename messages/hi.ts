@@ -707,6 +707,7 @@ export const hiMessages = {
     maxGenerationCount: "प्रति जनरेशन {count} छवियों तक",
     stockImageLimit: "स्टॉक छवि सीमा: {count}",
     bonusMultiplier: "पोस्ट/लॉगिन बोनस: {multiplier}x",
+    fullModelAccess: "जनरेट करते समय किसी भी मॉडल, गुणवत्ता स्तर और आउटपुट साइज़ का उपयोग करें",
     subscribeAction: "यह प्लान चुनें",
     currentPlanAction: "वर्तमान प्लान",
     scheduledPlanAction: "निर्धारित",

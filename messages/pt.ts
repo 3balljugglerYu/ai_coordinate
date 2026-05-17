@@ -708,6 +708,7 @@ export const ptMessages = {
     maxGenerationCount: "Até {count} imagens por geração",
     stockImageLimit: "Limite de imagens em stock: {count}",
     bonusMultiplier: "Bônus de publicação/login: {multiplier}x",
+    fullModelAccess: "Use qualquer modelo, nível de qualidade e tamanho de saída ao gerar",
     subscribeAction: "Escolher este plano",
     currentPlanAction: "Plano atual",
     scheduledPlanAction: "Agendado",

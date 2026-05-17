@@ -707,6 +707,7 @@ export const thMessages = {
     maxGenerationCount: "สร้างได้สูงสุด {count} ภาพต่อครั้ง",
     stockImageLimit: "ขีดจำกัดรูปสต็อก: {count}",
     bonusMultiplier: "โบนัสโพสต์/เข้าสู่ระบบ: {multiplier}x",
+    fullModelAccess: "ใช้โมเดล ระดับคุณภาพ และขนาดภาพใดก็ได้เมื่อสร้าง",
     subscribeAction: "เลือกแพ็กเกจนี้",
     currentPlanAction: "แพ็กเกจปัจจุบัน",
     scheduledPlanAction: "ตั้งเวลาแล้ว",

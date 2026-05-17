@@ -457,6 +457,10 @@ export function PricingPlans({ subscription }: PricingPlansProps) {
               <div className="mt-6 space-y-3 text-sm text-gray-700">
                 <div className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 text-emerald-600" />
+                  <span>{t("fullModelAccess")}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-4 w-4 text-emerald-600" />
                   <span>
                     {t("monthlyPercoins", {
                       amount: config.monthlyPercoins,

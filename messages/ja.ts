@@ -690,6 +690,7 @@ export const jaMessages = {
     maxGenerationCount: "1回の最大生成枚数: {count}枚",
     stockImageLimit: "ストック画像上限: {count}枚",
     bonusMultiplier: "投稿・ログイン特典: {multiplier}倍",
+    fullModelAccess: "生成時に、すべてのモデル・品質・出力サイズを利用可能",
     subscribeAction: "このプランにする",
     currentPlanAction: "現在のプラン",
     scheduledPlanAction: "反映予約中",

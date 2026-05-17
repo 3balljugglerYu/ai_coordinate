@@ -708,6 +708,7 @@ export const frMessages = {
     maxGenerationCount: "Jusqu'à {count} images par génération",
     stockImageLimit: "Limite d'images en stock : {count}",
     bonusMultiplier: "Bonus publication/connexion : {multiplier}x",
+    fullModelAccess: "Utilisez n'importe quel modèle, niveau de qualité et taille de sortie lors de la génération",
     subscribeAction: "Choisir ce forfait",
     currentPlanAction: "Forfait actuel",
     scheduledPlanAction: "Programmé",

@@ -707,6 +707,7 @@ export const enMessages = {
     maxGenerationCount: "Up to {count} images per generation",
     stockImageLimit: "Stock image limit: {count}",
     bonusMultiplier: "Post/login bonus: {multiplier}x",
+    fullModelAccess: "Use any model, quality level, and output size when generating",
     subscribeAction: "Choose this plan",
     currentPlanAction: "Current plan",
     scheduledPlanAction: "Scheduled",

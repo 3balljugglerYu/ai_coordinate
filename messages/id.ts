@@ -708,6 +708,7 @@ export const idMessages = {
     maxGenerationCount: "Hingga {count} gambar per generasi",
     stockImageLimit: "Batas gambar stock: {count}",
     bonusMultiplier: "Bonus posting/login: {multiplier}x",
+    fullModelAccess: "Gunakan model, tingkat kualitas, dan ukuran output apa pun saat membuat",
     subscribeAction: "Pilih paket ini",
     currentPlanAction: "Paket saat ini",
     scheduledPlanAction: "Terjadwal",

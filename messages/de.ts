@@ -708,6 +708,7 @@ export const deMessages = {
     maxGenerationCount: "Bis zu {count} Bilder pro Generierung",
     stockImageLimit: "Stock-Bilder-Limit: {count}",
     bonusMultiplier: "Beitrags-/Login-Bonus: {multiplier}x",
+    fullModelAccess: "Nutze beim Generieren alle Modelle, Qualitätsstufen und Ausgabegrößen",
     subscribeAction: "Diesen Plan wählen",
     currentPlanAction: "Aktueller Plan",
     scheduledPlanAction: "Geplant",

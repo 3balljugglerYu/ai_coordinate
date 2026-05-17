@@ -707,6 +707,7 @@ export const koMessages = {
     maxGenerationCount: "1회 생성당 최대 {count}장",
     stockImageLimit: "스톡 이미지 한도: {count}",
     bonusMultiplier: "게시·로그인 보너스: {multiplier}배",
+    fullModelAccess: "생성 시 모든 모델·품질·출력 크기 사용 가능",
     subscribeAction: "이 플랜 선택",
     currentPlanAction: "현재 플랜",
     scheduledPlanAction: "예정",

@@ -706,6 +706,7 @@ export const zhTwMessages = {
     maxGenerationCount: "每次生成最多 {count} 張",
     stockImageLimit: "素材上限: {count}",
     bonusMultiplier: "發佈/登入獎勵: {multiplier} 倍",
+    fullModelAccess: "生成時可使用全部模型、畫質和輸出尺寸",
     subscribeAction: "選擇此方案",
     currentPlanAction: "目前方案",
     scheduledPlanAction: "已預約",

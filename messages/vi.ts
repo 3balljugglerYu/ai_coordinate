@@ -707,6 +707,7 @@ export const viMessages = {
     maxGenerationCount: "Tối đa {count} hình mỗi lần tạo",
     stockImageLimit: "Giới hạn hình stock: {count}",
     bonusMultiplier: "Thưởng đăng/đăng nhập: x{multiplier}",
+    fullModelAccess: "Dùng mọi mô hình, mức chất lượng và kích thước đầu ra khi tạo",
     subscribeAction: "Chọn gói này",
     currentPlanAction: "Gói hiện tại",
     scheduledPlanAction: "Đã lên lịch",

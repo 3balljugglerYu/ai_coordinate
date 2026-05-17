@@ -707,6 +707,7 @@ export const arMessages = {
     maxGenerationCount: "حتى {count} صورة لكل عملية توليد",
     stockImageLimit: "حد صور المخزون: {count}",
     bonusMultiplier: "مكافأة النشر/تسجيل الدخول: x{multiplier}",
+    fullModelAccess: "استخدم أي نموذج ومستوى جودة وحجم إخراج عند الإنشاء",
     subscribeAction: "اختيار هذه الباقة",
     currentPlanAction: "الباقة الحالية",
     scheduledPlanAction: "مُجدوَلة",

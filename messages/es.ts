@@ -708,6 +708,7 @@ export const esMessages = {
     maxGenerationCount: "Hasta {count} imágenes por generación",
     stockImageLimit: "Límite de imágenes en stock: {count}",
     bonusMultiplier: "Bonificación de publicación/inicio de sesión: {multiplier}x",
+    fullModelAccess: "Usa cualquier modelo, nivel de calidad y tamaño de salida al generar",
     subscribeAction: "Elegir este plan",
     currentPlanAction: "Plan actual",
     scheduledPlanAction: "Programado",
