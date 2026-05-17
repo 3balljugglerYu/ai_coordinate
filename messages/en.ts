@@ -773,11 +773,9 @@ export const enMessages = {
       yearly_to_monthly: "Switch to monthly at renewal",
       no_change: "No change",
     },
-    upsellTitle: "This image count requires a paid plan",
+    upsellTitle: "This feature requires a paid plan",
     upsellDescription:
-      "Upgrade your plan to increase per-generation image count and stock image capacity.",
-    upsellPlanSummary:
-      "Up to {count} images at once, {stock} stock images, {amount} Percoins every month",
+      "Upgrade your plan to unlock more models, output sizes, and generation counts.",
     laterAction: "Later",
     seePlansAction: "See pricing",
     generationLimitHint:

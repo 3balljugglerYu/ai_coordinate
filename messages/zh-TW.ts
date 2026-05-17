@@ -772,11 +772,9 @@ export const zhTwMessages = {
       yearly_to_monthly: "續訂時切換為月方案",
       no_change: "不變",
     },
-    upsellTitle: "此生成數量需要付費方案",
+    upsellTitle: "此功能僅限付費方案",
     upsellDescription:
-      "升級方案以提升每次生成的張數與素材容量。",
-    upsellPlanSummary:
-      "一次最多 {count} 張，{stock} 張素材，每月 {amount} Percoin",
+      "升級方案後，可使用更多模型、輸出尺寸與生成數量。",
     laterAction: "稍後再說",
     seePlansAction: "查看價格",
     generationLimitHint:

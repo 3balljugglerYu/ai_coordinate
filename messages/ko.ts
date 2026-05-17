@@ -773,11 +773,9 @@ export const koMessages = {
       yearly_to_monthly: "갱신 시 월간으로 변경",
       no_change: "변경 없음",
     },
-    upsellTitle: "이 이미지 수는 유료 플랜이 필요합니다",
+    upsellTitle: "이 기능은 유료 플랜 전용입니다",
     upsellDescription:
-      "1회 생성 이미지 수와 스톡 이미지 한도를 늘리려면 플랜을 업그레이드해 주세요.",
-    upsellPlanSummary:
-      "한 번에 최대 {count}장, 스톡 이미지 {stock}장, 매달 {amount} Percoin",
+      "플랜을 업그레이드하면 더 다양한 모델·출력 크기·생성 매수를 선택할 수 있습니다.",
     laterAction: "나중에",
     seePlansAction: "요금제 보기",
     generationLimitHint:

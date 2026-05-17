@@ -773,11 +773,9 @@ export const viMessages = {
       yearly_to_monthly: "Chuyển sang hàng tháng khi gia hạn",
       no_change: "Không đổi",
     },
-    upsellTitle: "Số lượng hình này yêu cầu gói trả phí",
+    upsellTitle: "Tính năng này yêu cầu gói trả phí",
     upsellDescription:
-      "Nâng cấp gói để tăng số hình mỗi lần tạo và dung lượng hình stock.",
-    upsellPlanSummary:
-      "Tối đa {count} hình mỗi lần, {stock} hình stock, {amount} Percoin mỗi tháng",
+      "Nâng cấp gói để mở khóa thêm mô hình, kích thước đầu ra và số lượng tạo.",
     laterAction: "Để sau",
     seePlansAction: "Xem giá",
     generationLimitHint:

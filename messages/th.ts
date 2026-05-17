@@ -773,11 +773,9 @@ export const thMessages = {
       yearly_to_monthly: "เปลี่ยนเป็นรายเดือนเมื่อต่ออายุ",
       no_change: "ไม่เปลี่ยน",
     },
-    upsellTitle: "จำนวนภาพนี้ต้องใช้แพ็กเกจแบบเสียเงิน",
+    upsellTitle: "ฟีเจอร์นี้ต้องใช้แผนแบบชำระเงิน",
     upsellDescription:
-      "อัปเกรดแพ็กเกจเพื่อเพิ่มจำนวนภาพต่อการสร้างและความจุของรูปสต็อก",
-    upsellPlanSummary:
-      "สูงสุด {count} ภาพต่อครั้ง รูปสต็อก {stock} รูป Percoin {amount} ต่อเดือน",
+      "อัปเกรดแพ็กเกจเพื่อปลดล็อกโมเดล ขนาดภาพ และจำนวนการสร้างที่มากขึ้น",
     laterAction: "ภายหลัง",
     seePlansAction: "ดูราคา",
     generationLimitHint:

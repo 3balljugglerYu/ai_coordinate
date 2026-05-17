@@ -773,11 +773,9 @@ export const arMessages = {
       yearly_to_monthly: "التحول إلى الشهري عند التجديد",
       no_change: "لا تغيير",
     },
-    upsellTitle: "هذا العدد من الصور يتطلب باقة مدفوعة",
+    upsellTitle: "تتطلب هذه الميزة باقة مدفوعة",
     upsellDescription:
-      "رقِّ باقتك لزيادة عدد الصور لكل عملية توليد وسعة صور المخزون.",
-    upsellPlanSummary:
-      "حتى {count} صورة في المرة، {stock} صورة مخزون، {amount} Percoin كل شهر",
+      "قم بترقية باقتك لفتح المزيد من النماذج وأحجام الإخراج وأعداد الإنشاء.",
     laterAction: "لاحقًا",
     seePlansAction: "عرض الأسعار",
     generationLimitHint:

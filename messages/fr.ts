@@ -774,11 +774,9 @@ export const frMessages = {
       yearly_to_monthly: "Passer au mensuel au renouvellement",
       no_change: "Aucun changement",
     },
-    upsellTitle: "Ce nombre d'images nécessite un forfait payant",
+    upsellTitle: "Cette fonctionnalité nécessite un forfait payant",
     upsellDescription:
-      "Mettez à niveau votre forfait pour augmenter le nombre d'images par génération et la capacité d'images en stock.",
-    upsellPlanSummary:
-      "Jusqu'à {count} images en une fois, {stock} images en stock, {amount} Percoins par mois",
+      "Mettez à niveau votre forfait pour débloquer plus de modèles, tailles de sortie et quantités de génération.",
     laterAction: "Plus tard",
     seePlansAction: "Voir les tarifs",
     generationLimitHint:

@@ -774,11 +774,9 @@ export const esMessages = {
       yearly_to_monthly: "Cambiar a mensual en la renovación",
       no_change: "Sin cambios",
     },
-    upsellTitle: "Esta cantidad de imágenes requiere un plan de pago",
+    upsellTitle: "Esta función requiere un plan de pago",
     upsellDescription:
-      "Mejora tu plan para aumentar las imágenes por generación y la capacidad de imágenes en stock.",
-    upsellPlanSummary:
-      "Hasta {count} imágenes a la vez, {stock} imágenes en stock, {amount} Percoins cada mes",
+      "Mejora tu plan para desbloquear más modelos, tamaños de salida y cantidades de generación.",
     laterAction: "Más tarde",
     seePlansAction: "Ver precios",
     generationLimitHint:

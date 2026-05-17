@@ -774,11 +774,9 @@ export const deMessages = {
       yearly_to_monthly: "Bei Verlängerung auf Monats-Abo wechseln",
       no_change: "Keine Änderung",
     },
-    upsellTitle: "Diese Bildanzahl erfordert einen kostenpflichtigen Plan",
+    upsellTitle: "Diese Funktion erfordert einen kostenpflichtigen Plan",
     upsellDescription:
-      "Upgrade deinen Plan, um die Anzahl der Bilder pro Generierung und die Stock-Kapazität zu erhöhen.",
-    upsellPlanSummary:
-      "Bis zu {count} Bilder gleichzeitig, {stock} Stock-Bilder, {amount} Percoins jeden Monat",
+      "Upgrade deinen Plan, um mehr Modelle, Ausgabegrößen und Generierungsanzahlen freizuschalten.",
     laterAction: "Später",
     seePlansAction: "Preise ansehen",
     generationLimitHint:

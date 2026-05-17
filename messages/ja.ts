@@ -751,11 +751,9 @@ export const jaMessages = {
       yearly_to_monthly: "次回更新から月額プランへ切り替える",
       no_change: "変更なし",
     },
-    upsellTitle: "この枚数は有料プラン限定です",
+    upsellTitle: "この機能は有料プラン限定です",
     upsellDescription:
-      "プランをアップグレードすると、1回で生成できる枚数とストック画像の上限が増えます。",
-    upsellPlanSummary:
-      "1回最大{count}枚、ストック{stock}枚、毎月{amount}ペルコイン",
+      "プランをアップグレードすると、より多くのモデル・出力サイズ・生成枚数を選べるようになります。",
     laterAction: "あとで",
     seePlansAction: "料金プランを見る",
     generationLimitHint:

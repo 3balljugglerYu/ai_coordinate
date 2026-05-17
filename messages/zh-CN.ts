@@ -772,11 +772,9 @@ export const zhCnMessages = {
       yearly_to_monthly: "续订时切换为月度",
       no_change: "不变",
     },
-    upsellTitle: "此生成数量需要付费方案",
+    upsellTitle: "此功能仅限付费方案",
     upsellDescription:
-      "升级方案以提升每次生成的图片数量与素材库容量。",
-    upsellPlanSummary:
-      "一次最多 {count} 张，{stock} 张素材，每月 {amount} Percoin",
+      "升级方案后，可使用更多模型、输出尺寸与生成数量。",
     laterAction: "稍后再说",
     seePlansAction: "查看价格",
     generationLimitHint:

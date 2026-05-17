@@ -774,11 +774,9 @@ export const idMessages = {
       yearly_to_monthly: "Beralih ke bulanan saat perpanjangan",
       no_change: "Tidak ada perubahan",
     },
-    upsellTitle: "Jumlah gambar ini memerlukan paket berbayar",
+    upsellTitle: "Fitur ini memerlukan paket berbayar",
     upsellDescription:
-      "Tingkatkan paketmu untuk menambah jumlah gambar per generasi dan kapasitas gambar stock.",
-    upsellPlanSummary:
-      "Hingga {count} gambar sekaligus, {stock} gambar stock, {amount} Percoin setiap bulan",
+      "Tingkatkan paketmu untuk membuka lebih banyak model, ukuran output, dan jumlah generasi.",
     laterAction: "Nanti",
     seePlansAction: "Lihat harga",
     generationLimitHint:

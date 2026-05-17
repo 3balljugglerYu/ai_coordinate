@@ -773,11 +773,9 @@ export const hiMessages = {
       yearly_to_monthly: "नवीनीकरण पर मासिक पर स्विच करें",
       no_change: "कोई परिवर्तन नहीं",
     },
-    upsellTitle: "इस छवि गिनती के लिए सशुल्क प्लान आवश्यक है",
+    upsellTitle: "इस सुविधा के लिए सशुल्क योजना आवश्यक है",
     upsellDescription:
-      "प्रति-जनरेशन छवि गिनती और स्टॉक छवि क्षमता बढ़ाने के लिए अपना प्लान अपग्रेड करें।",
-    upsellPlanSummary:
-      "एक बार में {count} छवियों तक, {stock} स्टॉक छवियाँ, हर महीने {amount} Percoin",
+      "अधिक मॉडल, आउटपुट साइज़, और जनरेशन गिनती के लिए अपनी योजना अपग्रेड करें।",
     laterAction: "बाद में",
     seePlansAction: "मूल्य देखें",
     generationLimitHint:
