@@ -840,12 +840,20 @@ export const hiMessages = {
     gptImage2SizeLabel: "आउटपुट आकार",
     gptImage2SizeDescription:
       "वास्तविक आयाम छवि की दिशा के अनुसार अपने-आप समायोजित होते हैं। आउटपुट आकार के अनुसार Percoin लागत बदलती है।",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output size changes automatically based on the image orientation.\n\n- Standard -\nSquare: 1024 x 1024 px\nPortrait: 1024 x 1536 px\nLandscape: 1536 x 1024 px\n\n- High resolution -\nSquare: 2048 x 2048 px\nPortrait: 1664 x 2496 px\nLandscape: 2496 x 1664 px\n\n- Maximum resolution -\nSquare: 2880 x 2880 px\nPortrait: 2352 x 3520 px\nLandscape: 3520 x 2352 px\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     gptImage2Size1k: "स्टैंडर्ड (1K के बराबर)",
     gptImage2Size2k: "हाई रिज़ॉल्यूशन (2K के बराबर)",
-    gptImage2Size4k: "अधिकतम रिज़ॉल्यूशन (4K के बराबर, बीटा)",
+    gptImage2Size4k: "Maximum resolution: up to 3520 px",
     gptImage2SizePricePerImage: "{cost} Percoins / छवि",
     geminiBananaSizeLabel: "आउटपुट साइज़",
     geminiBananaSizeDescription: "रिज़ॉल्यूशन जितना ज़्यादा, उतने ज़्यादा Percoin लगते हैं।",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2.\n\n- 0.5K -\nApprox. 512 x 512 px. Useful for lightweight trials.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\n- 2K -\nApprox. 2048 x 2048 px. Larger and easier to inspect in detail.\n\n- 4K -\nApprox. 4096 x 4096 px. A high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     geminiBananaSize05k: "0.5K",
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
@@ -875,6 +883,7 @@ export const hiMessages = {
     countMultiple: "{count} छवियाँ",
     countCostDescription: "{count} छवियों के लिए {amount} Percoin चाहिए",
     generatingButton: "स्टाइलिंग शुरू करें",
+    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "उत्पन्न हो रहा है...",
     missingPrompt: "आउटफ़िट विवरण दर्ज करें।",
     missingUploadedImage: "एक मूल छवि अपलोड करें।",

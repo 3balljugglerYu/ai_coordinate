@@ -192,6 +192,8 @@ export function GenerationForm({
     selectedModel,
     authState
   );
+  const totalPercoinCost =
+    selectedCount * getPercoinCost(effectiveSelectedModel);
 
   useEffect(() => {
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
@@ -1017,12 +1019,6 @@ export function GenerationForm({
               })}
             </p>
           ) : null}
-          <p className="mt-2 text-xs text-gray-500">
-            {t("countCostDescription", {
-              count: selectedCount,
-              amount: selectedCount * getPercoinCost(effectiveSelectedModel),
-            })}
-          </p>
         </div>
 
         {/* 生成ボタン */}
@@ -1041,7 +1037,7 @@ export function GenerationForm({
           ) : (
             <>
               <Sparkles className="mr-2 h-5 w-5" />
-              {t("generatingButton")}
+              {t("generatingButtonWithCost", { amount: totalPercoinCost })}
             </>
           )}
         </Button>

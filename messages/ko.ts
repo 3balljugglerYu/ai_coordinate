@@ -840,12 +840,20 @@ export const koMessages = {
     gptImage2SizeLabel: "출력 크기",
     gptImage2SizeDescription:
       "실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다. 출력 크기에 따라 Percoin 비용이 달라집니다.",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output size changes automatically based on the image orientation.\n\n- Standard -\nSquare: 1024 x 1024 px\nPortrait: 1024 x 1536 px\nLandscape: 1536 x 1024 px\n\n- High resolution -\nSquare: 2048 x 2048 px\nPortrait: 1664 x 2496 px\nLandscape: 2496 x 1664 px\n\n- Maximum resolution -\nSquare: 2880 x 2880 px\nPortrait: 2352 x 3520 px\nLandscape: 3520 x 2352 px\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     gptImage2Size1k: "표준 (1K 상당)",
     gptImage2Size2k: "고해상도 (2K 상당)",
-    gptImage2Size4k: "최대 해상도 (4K 상당, 베타)",
+    gptImage2Size4k: "Maximum resolution: up to 3520 px",
     gptImage2SizePricePerImage: "{cost} Percoins / 장",
     geminiBananaSizeLabel: "출력 크기",
     geminiBananaSizeDescription: "해상도가 클수록 Percoin 소비가 늘어납니다.",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2.\n\n- 0.5K -\nApprox. 512 x 512 px. Useful for lightweight trials.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\n- 2K -\nApprox. 2048 x 2048 px. Larger and easier to inspect in detail.\n\n- 4K -\nApprox. 4096 x 4096 px. A high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     geminiBananaSize05k: "0.5K",
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
@@ -875,6 +883,7 @@ export const koMessages = {
     countMultiple: "{count}장",
     countCostDescription: "{count}장 생성에 {amount} Percoin이 필요합니다",
     generatingButton: "스타일링 시작",
+    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "생성 중...",
     missingPrompt: "코디 설명을 입력해 주세요.",
     missingUploadedImage: "원본 이미지를 업로드해 주세요.",

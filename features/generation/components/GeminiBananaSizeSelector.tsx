@@ -3,6 +3,7 @@
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
+import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,6 @@ import {
 import {
   isCanonicalGuestAllowedModel,
   isModelAvailableForGeneration,
-  getPercoinCost,
 } from "@/features/generation/lib/model-config";
 import {
   composeGeminiBananaModel,
@@ -65,6 +65,10 @@ export function GeminiBananaSizeSelector({
 
   const isGuest = authState === "guest";
   const sizeTiers = getSizeTiersForFamily(parsed.family);
+  const tooltipContentKey =
+    parsed.family === "nano-2"
+      ? "geminiBanana2SizeTooltipContent"
+      : "geminiBananaProSizeTooltipContent";
 
   const handleValueChange = (next: string) => {
     const nextSizeTier = next as GeminiBananaSizeTier;
@@ -88,8 +92,17 @@ export function GeminiBananaSizeSelector({
   return (
     <div className="space-y-3" data-tour="tour-gemini-banana-size">
       <div className="space-y-1">
-        <Label className="text-base font-medium block">
-          {t("geminiBananaSizeLabel")}
+        <Label className="mb-1 flex items-center gap-2 text-base font-medium">
+          <span>{t("geminiBananaSizeLabel")}</span>
+          <LabelInfoTooltip
+            ariaLabel={t("geminiBananaSizeTooltipAria")}
+            content={
+              <span className="whitespace-pre-line">
+                {t(tooltipContentKey)}
+              </span>
+            }
+            contentClassName="max-w-[24rem] px-3 py-2 text-sm leading-6"
+          />
         </Label>
         <p className="text-xs leading-5 text-gray-500">
           {t("geminiBananaSizeDescription")}
@@ -117,13 +130,9 @@ export function GeminiBananaSizeSelector({
             const isLocked = isGuest && !isCanonicalGuestAllowedModel(optionModel);
             const isDisabled = !(isModelSelectable?.(optionModel) ?? true);
             const label = t(SIZE_LABEL_KEYS[sizeTier]);
-            const price = t("gptImage2SizePricePerImage", {
-              cost: getPercoinCost(optionModel),
-            });
             const optionContent = (
-              <span className="flex w-full items-center justify-between gap-3">
+              <span className="flex w-full items-center">
                 <span>{label}</span>
-                <span className="text-xs text-gray-500">{price}</span>
               </span>
             );
             return (

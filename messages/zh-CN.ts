@@ -839,12 +839,20 @@ export const zhCnMessages = {
     gptImage2SizeLabel: "输出尺寸",
     gptImage2SizeDescription:
       "实际尺寸会根据图片方向自动调整。Percoin 消耗会随输出尺寸变化。",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output size changes automatically based on the image orientation.\n\n- Standard -\nSquare: 1024 x 1024 px\nPortrait: 1024 x 1536 px\nLandscape: 1536 x 1024 px\n\n- High resolution -\nSquare: 2048 x 2048 px\nPortrait: 1664 x 2496 px\nLandscape: 2496 x 1664 px\n\n- Maximum resolution -\nSquare: 2880 x 2880 px\nPortrait: 2352 x 3520 px\nLandscape: 3520 x 2352 px\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     gptImage2Size1k: "标准（约 1K）",
     gptImage2Size2k: "高分辨率（约 2K）",
-    gptImage2Size4k: "最高分辨率（约 4K，测试版）",
+    gptImage2Size4k: "Maximum resolution: up to 3520 px",
     gptImage2SizePricePerImage: "{cost} Percoins / 张",
     geminiBananaSizeLabel: "输出尺寸",
     geminiBananaSizeDescription: "分辨率越大，消耗的 Percoin 越多。",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2.\n\n- 0.5K -\nApprox. 512 x 512 px. Useful for lightweight trials.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\n- 2K -\nApprox. 2048 x 2048 px. Larger and easier to inspect in detail.\n\n- 4K -\nApprox. 4096 x 4096 px. A high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     geminiBananaSize05k: "0.5K",
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
@@ -874,6 +882,7 @@ export const zhCnMessages = {
     countMultiple: "{count} 张",
     countCostDescription: "{count} 张图片需要 {amount} Percoin",
     generatingButton: "开始造型",
+    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "生成中...",
     missingPrompt: "请输入搭配描述。",
     missingUploadedImage: "请上传原始图片。",

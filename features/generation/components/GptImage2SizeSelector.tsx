@@ -3,6 +3,7 @@
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
+import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,6 @@ import {
 import {
   isCanonicalGuestAllowedModel,
   isModelAvailableForGeneration,
-  getPercoinCost,
 } from "@/features/generation/lib/model-config";
 import {
   composeGptImage2Model,
@@ -79,8 +79,17 @@ export function GptImage2SizeSelector({
   return (
     <div className="space-y-3" data-tour="tour-gpt-image-2-size">
       <div className="space-y-1">
-        <Label className="text-base font-medium block">
-          {t("gptImage2SizeLabel")}
+        <Label className="mb-1 flex items-center gap-2 text-base font-medium">
+          <span>{t("gptImage2SizeLabel")}</span>
+          <LabelInfoTooltip
+            ariaLabel={t("gptImage2SizeTooltipAria")}
+            content={
+              <span className="whitespace-pre-line">
+                {t("gptImage2SizeTooltipContent")}
+              </span>
+            }
+            contentClassName="max-w-[24rem] px-3 py-2 text-sm leading-6"
+          />
         </Label>
         <p className="text-xs leading-5 text-gray-500">
           {t("gptImage2SizeDescription")}
@@ -103,13 +112,9 @@ export function GptImage2SizeSelector({
             const isLocked = isGuest && !isCanonicalGuestAllowedModel(optionModel);
             const isDisabled = !(isModelSelectable?.(optionModel) ?? true);
             const label = t(option.labelKey);
-            const price = t("gptImage2SizePricePerImage", {
-              cost: getPercoinCost(optionModel),
-            });
             const optionContent = (
-              <span className="flex w-full items-center justify-between gap-3">
+              <span className="flex w-full items-center">
                 <span>{label}</span>
-                <span className="text-xs text-gray-500">{price}</span>
               </span>
             );
             return (
