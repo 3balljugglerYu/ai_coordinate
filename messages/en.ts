@@ -1659,6 +1659,7 @@ export const enMessages = {
     formCountLabel: "Number of images",
     formModelLabel: "Model",
     formGenerateButton: "Generate",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Generating...",
     formImageRequired: "Please upload a character image.",
     formGenerationFailed: "Generation failed. Please try again later.",

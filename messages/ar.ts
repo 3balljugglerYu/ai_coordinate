@@ -1660,6 +1660,7 @@ export const arMessages = {
     formCountLabel: "عدد الصور",
     formModelLabel: "النموذج",
     formGenerateButton: "توليد",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "جارٍ التوليد...",
     formImageRequired: "يُرجى رفع صورة شخصية.",
     formGenerationFailed: "فشل التوليد. يُرجى المحاولة لاحقًا.",

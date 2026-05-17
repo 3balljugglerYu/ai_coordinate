@@ -1661,6 +1661,7 @@ export const frMessages = {
     formCountLabel: "Nombre d'images",
     formModelLabel: "Modèle",
     formGenerateButton: "Générer",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Génération...",
     formImageRequired: "Veuillez téléverser une image de personnage.",
     formGenerationFailed: "La génération a échoué. Veuillez réessayer plus tard.",

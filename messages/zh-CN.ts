@@ -1657,6 +1657,7 @@ export const zhCnMessages = {
     formCountLabel: "生成数量",
     formModelLabel: "模型",
     formGenerateButton: "生成",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "生成中...",
     formImageRequired: "请上传角色图片。",
     formGenerationFailed: "生成失败，请稍后重试。",

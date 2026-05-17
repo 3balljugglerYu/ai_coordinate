@@ -1661,6 +1661,7 @@ export const idMessages = {
     formCountLabel: "Jumlah gambar",
     formModelLabel: "Model",
     formGenerateButton: "Hasilkan",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Menghasilkan...",
     formImageRequired: "Mohon unggah gambar karakter.",
     formGenerationFailed: "Pembuatan gagal. Silakan coba lagi nanti.",

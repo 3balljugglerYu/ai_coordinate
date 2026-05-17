@@ -1657,6 +1657,7 @@ export const zhTwMessages = {
     formCountLabel: "生成張數",
     formModelLabel: "模型",
     formGenerateButton: "生成",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "生成中...",
     formImageRequired: "請上傳角色圖片。",
     formGenerationFailed: "生成失敗，請稍後再試。",

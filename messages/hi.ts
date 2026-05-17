@@ -1660,6 +1660,7 @@ export const hiMessages = {
     formCountLabel: "छवियों की संख्या",
     formModelLabel: "मॉडल",
     formGenerateButton: "उत्पन्न करें",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "उत्पन्न हो रहा है...",
     formImageRequired: "कृपया एक कैरेक्टर छवि अपलोड करें।",
     formGenerationFailed: "जनरेशन विफल। कृपया बाद में फिर से प्रयास करें।",

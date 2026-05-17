@@ -1661,6 +1661,7 @@ export const ptMessages = {
     formCountLabel: "Número de imagens",
     formModelLabel: "Modelo",
     formGenerateButton: "Gerar",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Gerando...",
     formImageRequired: "Faça upload de uma imagem do personagem.",
     formGenerationFailed: "Falha na geração. Tente novamente mais tarde.",

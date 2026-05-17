@@ -1661,6 +1661,7 @@ export const esMessages = {
     formCountLabel: "Número de imágenes",
     formModelLabel: "Modelo",
     formGenerateButton: "Generar",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Generando...",
     formImageRequired: "Sube una imagen del personaje.",
     formGenerationFailed: "La generación falló. Inténtalo de nuevo más tarde.",

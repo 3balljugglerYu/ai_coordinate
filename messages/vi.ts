@@ -1660,6 +1660,7 @@ export const viMessages = {
     formCountLabel: "Số lượng hình",
     formModelLabel: "Mô hình",
     formGenerateButton: "Tạo",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Đang tạo...",
     formImageRequired: "Hãy tải lên hình nhân vật.",
     formGenerationFailed: "Tạo thất bại. Vui lòng thử lại sau.",

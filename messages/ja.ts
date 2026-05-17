@@ -1356,7 +1356,7 @@ export const jaMessages = {
     guestRateLimitSignupHint:
       "新規登録すると、このまま続きをお試しいただけます。",
     guestRateLimitSignupAction: "新規登録して続ける",
-    paidGenerateButton: "{cost}ペルコインで続ける",
+    paidGenerateButton: "コーデ開始！（消費：{cost}）",
     percoinBalanceLabel: "現在のペルコイン残高",
     percoinBalanceLoading: "ペルコイン残高を確認しています...",
     percoinBalanceUnavailable: "残高を確認できませんでした",
@@ -1591,6 +1591,7 @@ export const jaMessages = {
     formCountLabel: "生成枚数",
     formModelLabel: "モデル",
     formGenerateButton: "生成する",
+    formGenerateButtonWithCost: "生成開始！（消費：%amount%）",
     formGenerating: "生成中...",
     formImageRequired: "キャラ画像をアップロードしてください",
     formGenerationFailed: "生成に失敗しました。時間をおいて再試行してください。",

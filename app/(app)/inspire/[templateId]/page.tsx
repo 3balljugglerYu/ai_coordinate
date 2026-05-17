@@ -111,6 +111,7 @@ export default async function InspirePage({ params }: InspirePageProps) {
               formCountLabel: t("formCountLabel"),
               formModelLabel: t("formModelLabel"),
               formGenerateButton: t("formGenerateButton"),
+              formGenerateButtonWithCost: t("formGenerateButtonWithCost"),
               formGenerating: t("formGenerating"),
               formImageRequired: t("formImageRequired"),
               formGenerationFailed: t("formGenerationFailed"),

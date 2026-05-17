@@ -13,6 +13,7 @@ import { LockableModelSelect } from "@/features/generation/components/LockableMo
 import { GptImage2QualitySelector } from "@/features/generation/components/GptImage2QualitySelector";
 import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
 import { GeminiBananaSizeSelector } from "@/features/generation/components/GeminiBananaSizeSelector";
+import { getPercoinCost } from "@/features/generation/lib/model-config";
 import {
   DEFAULT_GENERATION_MODEL,
   type GeminiModel,
@@ -44,6 +45,7 @@ interface InspirePageClientCopy {
   formCountLabel: string;
   formModelLabel: string;
   formGenerateButton: string;
+  formGenerateButtonWithCost: string;
   formGenerating: string;
   formImageRequired: string;
   formGenerationFailed: string;
@@ -117,6 +119,11 @@ export function InspirePageClient({
   // テンプレ画像が読み込まれた時点で natural サイズから aspect ratio を計算する。
   // /style と同等の見た目にするため、ImageUploader にも同じ aspectRatio を渡す。
   const [templateAspectRatio, setTemplateAspectRatio] = useState<number>(1);
+  const totalPercoinCost = getPercoinCost(selectedModel) * count;
+  const generateButtonLabel = copy.formGenerateButtonWithCost.replace(
+    "%amount%",
+    String(totalPercoinCost)
+  );
 
   const handleGenerate = async (): Promise<void> => {
     if (!uploadedImage) {
@@ -328,7 +335,7 @@ export function InspirePageClient({
             aria-label={copy.formGenerateAria}
           >
             <Sparkles className="mr-2 h-5 w-5" aria-hidden="true" />
-            {isGenerating ? copy.formGenerating : copy.formGenerateButton}
+            {isGenerating ? copy.formGenerating : generateButtonLabel}
           </Button>
         </div>
       </Card>

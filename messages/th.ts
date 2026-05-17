@@ -1659,6 +1659,7 @@ export const thMessages = {
     formCountLabel: "จำนวนรูป",
     formModelLabel: "โมเดล",
     formGenerateButton: "สร้าง",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "กำลังสร้าง...",
     formImageRequired: "โปรดอัปโหลดรูปตัวละคร",
     formGenerationFailed: "สร้างไม่สำเร็จ โปรดลองอีกครั้งภายหลัง",

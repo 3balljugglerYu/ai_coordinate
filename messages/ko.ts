@@ -1659,6 +1659,7 @@ export const koMessages = {
     formCountLabel: "생성 매수",
     formModelLabel: "모델",
     formGenerateButton: "생성",
+    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "생성 중...",
     formImageRequired: "캐릭터 이미지를 업로드해 주세요.",
     formGenerationFailed: "생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
