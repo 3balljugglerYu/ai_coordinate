@@ -649,19 +649,19 @@ export const esMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoins",
     package110Description:
-      "Pack de prueba\nPara probar algunas generaciones primero\n\nGeneraciones estimadas\nNano Banana 2 0.5K: unas 11\nNano Banana 2 1K: unas 5\nPro 1K: unas 2",
+      "Pack de prueba\nPara probar algunas generaciones primero\n\nGeneraciones por modelo\nChatGPT Low 1K: unas 11\nNano Banana 2 0.5K: unas 11\nNano Banana 2 1K: unas 5\nPro 1K: unas 2",
     package240Name: "240 Percoins",
     package240Description:
-      "Pack ligero\nPara un uso ocasional\n\nGeneraciones estimadas\nNano Banana 2 0.5K: unas 24\nNano Banana 2 1K: unas 12\nPro 1K: unas 4",
+      "Pack ligero\nPara un uso ocasional\n\nGeneraciones por modelo\nChatGPT Low 1K: unas 24\nNano Banana 2 0.5K: unas 24\nNano Banana 2 1K: unas 12\nPro 1K: unas 4",
     package960Name: "960 Percoins",
     package960Description:
-      "Pack básico\nPara probar más a fondo\n\nGeneraciones estimadas\nNano Banana 2 0.5K: unas 96\nNano Banana 2 1K: unas 48\nPro 1K: unas 19",
+      "Pack básico\nPara probar más a fondo\n\nGeneraciones por modelo\nChatGPT Low 1K: unas 96\nNano Banana 2 0.5K: unas 96\nNano Banana 2 1K: unas 48\nPro 1K: unas 19",
     package1900Name: "1.900 Percoins",
     package1900Description:
-      "Pack valor\nGran equilibrio entre precio y volumen\n\nGeneraciones estimadas\nNano Banana 2 0.5K: unas 190\nNano Banana 2 1K: unas 95\nPro 1K: unas 38",
+      "Pack valor\nGran equilibrio entre precio y volumen\n\nGeneraciones por modelo\nChatGPT Low 1K: unas 190\nNano Banana 2 0.5K: unas 190\nNano Banana 2 1K: unas 95\nPro 1K: unas 38",
     package4800Name: "4.800 Percoins",
     package4800Description:
-      "Mejor relación calidad-precio\nCoste por moneda más bajo\n\nGeneraciones estimadas\nNano Banana 2 0.5K: unas 480\nNano Banana 2 1K: unas 240\nPro 1K: unas 96",
+      "Mejor relación calidad-precio\nCoste por moneda más bajo\n\nGeneraciones por modelo\nChatGPT Low 1K: unas 480\nNano Banana 2 0.5K: unas 480\nNano Banana 2 1K: unas 240\nPro 1K: unas 96",
     packageBadgeTrial: "Ideal para probar",
     packageBadgePopular: "Más popular",
     packageBadgeBestValue: "Mejor valor",

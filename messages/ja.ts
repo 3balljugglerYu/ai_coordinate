@@ -631,19 +631,19 @@ export const jaMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110ペルコイン",
     package110Description:
-      "お試しパック\nまず数枚だけ生成したい方へ\n\n生成枚数\nNano Banana 2 0.5K：約11枚\nNano Banana 2 1K：約5枚\nPro 1K：約2枚",
+      "お試しパック\nまず数枚だけ生成したい方へ\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約11枚\nNano Banana 2 0.5K：約11枚\nNano Banana 2 1K：約5枚\nPro 1K：約2枚",
     package240Name: "240ペルコイン",
     package240Description:
-      "ライトパック\n気軽に遊びたい方へ\n\n生成枚数\nNano Banana 2 0.5K：約24枚\nNano Banana 2 1K：約12枚\nPro 1K：約4枚",
+      "ライトパック\n気軽に遊びたい方へ\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約24枚\nNano Banana 2 0.5K：約24枚\nNano Banana 2 1K：約12枚\nPro 1K：約4枚",
     package960Name: "960ペルコイン",
     package960Description:
-      "ベーシックパック\nしっかり試したい方へ\n\n生成枚数\nNano Banana 2 0.5K：約96枚\nNano Banana 2 1K：約48枚\nPro 1K：約19枚",
+      "ベーシックパック\nしっかり試したい方へ\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約96枚\nNano Banana 2 0.5K：約96枚\nNano Banana 2 1K：約48枚\nPro 1K：約19枚",
     package1900Name: "1,900ペルコイン",
     package1900Description:
-      "お得パック\n迷ったらこれ・コスパ◎\n\n生成枚数\nNano Banana 2 0.5K：約190枚\nNano Banana 2 1K：約95枚\nPro 1K：約38枚",
+      "お得パック\n迷ったらこれ・コスパ◎\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約190枚\nNano Banana 2 0.5K：約190枚\nNano Banana 2 1K：約95枚\nPro 1K：約38枚",
     package4800Name: "4,800ペルコイン",
     package4800Description:
-      "最大お得パック\n1コイン単価が最安\n\n生成枚数\nNano Banana 2 0.5K：約480枚\nNano Banana 2 1K：約240枚\nPro 1K：約96枚",
+      "最大お得パック\n1コイン単価が最安\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約480枚\nNano Banana 2 0.5K：約480枚\nNano Banana 2 1K：約240枚\nPro 1K：約96枚",
     packageBadgeTrial: "まずはお試し！",
     packageBadgePopular: "一番人気",
     packageBadgeBestValue: "もっともお得！",

@@ -648,19 +648,19 @@ export const koMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "체험 팩\n먼저 몇 번 생성해 보고 싶을 때\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 11회\nNano Banana 2 1K: 약 5회\nPro 1K: 약 2회",
+      "체험 팩\n먼저 몇 번 생성해 보고 싶을 때\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 11회\nNano Banana 2 0.5K: 약 11회\nNano Banana 2 1K: 약 5회\nPro 1K: 약 2회",
     package240Name: "240 Percoin",
     package240Description:
-      "라이트 팩\n가볍게 사용하고 싶을 때\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 24회\nNano Banana 2 1K: 약 12회\nPro 1K: 약 4회",
+      "라이트 팩\n가볍게 사용하고 싶을 때\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 24회\nNano Banana 2 0.5K: 약 24회\nNano Banana 2 1K: 약 12회\nPro 1K: 약 4회",
     package960Name: "960 Percoin",
     package960Description:
-      "베이직 팩\n좀 더 충분히 사용하고 싶을 때\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 96회\nNano Banana 2 1K: 약 48회\nPro 1K: 약 19회",
+      "베이직 팩\n좀 더 충분히 사용하고 싶을 때\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 96회\nNano Banana 2 0.5K: 약 96회\nNano Banana 2 1K: 약 48회\nPro 1K: 약 19회",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "밸류 팩\n가격과 양의 균형이 좋은 패키지\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 190회\nNano Banana 2 1K: 약 95회\nPro 1K: 약 38회",
+      "밸류 팩\n가격과 양의 균형이 좋은 패키지\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 190회\nNano Banana 2 0.5K: 약 190회\nNano Banana 2 1K: 약 95회\nPro 1K: 약 38회",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "베스트 밸류 팩\n코인당 가격이 가장 저렴\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 480회\nNano Banana 2 1K: 약 240회\nPro 1K: 약 96회",
+      "베스트 밸류 팩\n코인당 가격이 가장 저렴\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 480회\nNano Banana 2 0.5K: 약 480회\nNano Banana 2 1K: 약 240회\nPro 1K: 약 96회",
     packageBadgeTrial: "체험에 추천",
     packageBadgePopular: "가장 인기",
     packageBadgeBestValue: "최고 가성비",

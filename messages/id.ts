@@ -649,19 +649,19 @@ export const idMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "Paket coba\nUntuk mencoba beberapa generasi terlebih dahulu\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 11\nNano Banana 2 1K: sekitar 5\nPro 1K: sekitar 2",
+      "Paket coba\nUntuk mencoba beberapa generasi terlebih dahulu\n\nGenerasi per model\nChatGPT Low 1K: sekitar 11\nNano Banana 2 0.5K: sekitar 11\nNano Banana 2 1K: sekitar 5\nPro 1K: sekitar 2",
     package240Name: "240 Percoin",
     package240Description:
-      "Paket ringan\nUntuk pemakaian santai\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 24\nNano Banana 2 1K: sekitar 12\nPro 1K: sekitar 4",
+      "Paket ringan\nUntuk pemakaian santai\n\nGenerasi per model\nChatGPT Low 1K: sekitar 24\nNano Banana 2 0.5K: sekitar 24\nNano Banana 2 1K: sekitar 12\nPro 1K: sekitar 4",
     package960Name: "960 Percoin",
     package960Description:
-      "Paket dasar\nUntuk eksplorasi lebih dalam\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 96\nNano Banana 2 1K: sekitar 48\nPro 1K: sekitar 19",
+      "Paket dasar\nUntuk eksplorasi lebih dalam\n\nGenerasi per model\nChatGPT Low 1K: sekitar 96\nNano Banana 2 0.5K: sekitar 96\nNano Banana 2 1K: sekitar 48\nPro 1K: sekitar 19",
     package1900Name: "1.900 Percoin",
     package1900Description:
-      "Paket nilai\nKeseimbangan harga dan jumlah yang baik\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 190\nNano Banana 2 1K: sekitar 95\nPro 1K: sekitar 38",
+      "Paket nilai\nKeseimbangan harga dan jumlah yang baik\n\nGenerasi per model\nChatGPT Low 1K: sekitar 190\nNano Banana 2 0.5K: sekitar 190\nNano Banana 2 1K: sekitar 95\nPro 1K: sekitar 38",
     package4800Name: "4.800 Percoin",
     package4800Description:
-      "Paket terhemat\nBiaya per koin paling rendah\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 480\nNano Banana 2 1K: sekitar 240\nPro 1K: sekitar 96",
+      "Paket terhemat\nBiaya per koin paling rendah\n\nGenerasi per model\nChatGPT Low 1K: sekitar 480\nNano Banana 2 0.5K: sekitar 480\nNano Banana 2 1K: sekitar 240\nPro 1K: sekitar 96",
     packageBadgeTrial: "Cocok untuk mencoba",
     packageBadgePopular: "Paling populer",
     packageBadgeBestValue: "Nilai terbaik",

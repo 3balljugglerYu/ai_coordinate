@@ -647,19 +647,19 @@ export const zhCnMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "体验包\n先尝试几次生成\n\n预计可生成次数\nNano Banana 2 0.5K: 约 11 次\nNano Banana 2 1K: 约 5 次\nPro 1K: 约 2 次",
+      "体验包\n先尝试几次生成\n\n各模型可生成次数\nChatGPT Low 1K: 约 11 次\nNano Banana 2 0.5K: 约 11 次\nNano Banana 2 1K: 约 5 次\nPro 1K: 约 2 次",
     package240Name: "240 Percoin",
     package240Description:
-      "轻量包\n适合轻度使用\n\n预计可生成次数\nNano Banana 2 0.5K: 约 24 次\nNano Banana 2 1K: 约 12 次\nPro 1K: 约 4 次",
+      "轻量包\n适合轻度使用\n\n各模型可生成次数\nChatGPT Low 1K: 约 24 次\nNano Banana 2 0.5K: 约 24 次\nNano Banana 2 1K: 约 12 次\nPro 1K: 约 4 次",
     package960Name: "960 Percoin",
     package960Description:
-      "基础包\n适合更深入的体验\n\n预计可生成次数\nNano Banana 2 0.5K: 约 96 次\nNano Banana 2 1K: 约 48 次\nPro 1K: 约 19 次",
+      "基础包\n适合更深入的体验\n\n各模型可生成次数\nChatGPT Low 1K: 约 96 次\nNano Banana 2 0.5K: 约 96 次\nNano Banana 2 1K: 约 48 次\nPro 1K: 约 19 次",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "实惠包\n价格与数量平衡良好\n\n预计可生成次数\nNano Banana 2 0.5K: 约 190 次\nNano Banana 2 1K: 约 95 次\nPro 1K: 约 38 次",
+      "实惠包\n价格与数量平衡良好\n\n各模型可生成次数\nChatGPT Low 1K: 约 190 次\nNano Banana 2 0.5K: 约 190 次\nNano Banana 2 1K: 约 95 次\nPro 1K: 约 38 次",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "至尊实惠包\n单价最低\n\n预计可生成次数\nNano Banana 2 0.5K: 约 480 次\nNano Banana 2 1K: 约 240 次\nPro 1K: 约 96 次",
+      "至尊实惠包\n单价最低\n\n各模型可生成次数\nChatGPT Low 1K: 约 480 次\nNano Banana 2 0.5K: 约 480 次\nNano Banana 2 1K: 约 240 次\nPro 1K: 约 96 次",
     packageBadgeTrial: "适合体验",
     packageBadgePopular: "最受欢迎",
     packageBadgeBestValue: "最划算",

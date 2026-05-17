@@ -649,19 +649,19 @@ export const deMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoins",
     package110Description:
-      "Probierpaket\nFür ein paar erste Generierungen\n\nGeschätzte Generierungen\nNano Banana 2 0.5K: ca. 11\nNano Banana 2 1K: ca. 5\nPro 1K: ca. 2",
+      "Probierpaket\nFür ein paar erste Generierungen\n\nGenerierungen pro Modell\nChatGPT Low 1K: ca. 11\nNano Banana 2 0.5K: ca. 11\nNano Banana 2 1K: ca. 5\nPro 1K: ca. 2",
     package240Name: "240 Percoins",
     package240Description:
-      "Light-Paket\nFür gelegentliche Nutzung\n\nGeschätzte Generierungen\nNano Banana 2 0.5K: ca. 24\nNano Banana 2 1K: ca. 12\nPro 1K: ca. 4",
+      "Light-Paket\nFür gelegentliche Nutzung\n\nGenerierungen pro Modell\nChatGPT Low 1K: ca. 24\nNano Banana 2 0.5K: ca. 24\nNano Banana 2 1K: ca. 12\nPro 1K: ca. 4",
     package960Name: "960 Percoins",
     package960Description:
-      "Basis-Paket\nFür intensiveres Ausprobieren\n\nGeschätzte Generierungen\nNano Banana 2 0.5K: ca. 96\nNano Banana 2 1K: ca. 48\nPro 1K: ca. 19",
+      "Basis-Paket\nFür intensiveres Ausprobieren\n\nGenerierungen pro Modell\nChatGPT Low 1K: ca. 96\nNano Banana 2 0.5K: ca. 96\nNano Banana 2 1K: ca. 48\nPro 1K: ca. 19",
     package1900Name: "1.900 Percoins",
     package1900Description:
-      "Vorteilspaket\nGutes Verhältnis von Preis und Volumen\n\nGeschätzte Generierungen\nNano Banana 2 0.5K: ca. 190\nNano Banana 2 1K: ca. 95\nPro 1K: ca. 38",
+      "Vorteilspaket\nGutes Verhältnis von Preis und Volumen\n\nGenerierungen pro Modell\nChatGPT Low 1K: ca. 190\nNano Banana 2 0.5K: ca. 190\nNano Banana 2 1K: ca. 95\nPro 1K: ca. 38",
     package4800Name: "4.800 Percoins",
     package4800Description:
-      "Bestpreis-Paket\nNiedrigster Preis pro Coin\n\nGeschätzte Generierungen\nNano Banana 2 0.5K: ca. 480\nNano Banana 2 1K: ca. 240\nPro 1K: ca. 96",
+      "Bestpreis-Paket\nNiedrigster Preis pro Coin\n\nGenerierungen pro Modell\nChatGPT Low 1K: ca. 480\nNano Banana 2 0.5K: ca. 480\nNano Banana 2 1K: ca. 240\nPro 1K: ca. 96",
     packageBadgeTrial: "Gut zum Ausprobieren",
     packageBadgePopular: "Am beliebtesten",
     packageBadgeBestValue: "Bestes Preis-Leistungs-Verhältnis",

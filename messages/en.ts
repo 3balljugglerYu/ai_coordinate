@@ -648,19 +648,19 @@ export const enMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoins",
     package110Description:
-      "Trial pack\nFor trying a few generations first\n\nEstimated generations\nNano Banana 2 0.5K: about 11\nNano Banana 2 1K: about 5\nPro 1K: about 2",
+      "Trial pack\nFor trying a few generations first\n\nGenerations per model\nChatGPT Low 1K: about 11\nNano Banana 2 0.5K: about 11\nNano Banana 2 1K: about 5\nPro 1K: about 2",
     package240Name: "240 Percoins",
     package240Description:
-      "Light pack\nFor casual use\n\nEstimated generations\nNano Banana 2 0.5K: about 24\nNano Banana 2 1K: about 12\nPro 1K: about 4",
+      "Light pack\nFor casual use\n\nGenerations per model\nChatGPT Low 1K: about 24\nNano Banana 2 0.5K: about 24\nNano Banana 2 1K: about 12\nPro 1K: about 4",
     package960Name: "960 Percoins",
     package960Description:
-      "Basic pack\nFor deeper testing\n\nEstimated generations\nNano Banana 2 0.5K: about 96\nNano Banana 2 1K: about 48\nPro 1K: about 19",
+      "Basic pack\nFor deeper testing\n\nGenerations per model\nChatGPT Low 1K: about 96\nNano Banana 2 0.5K: about 96\nNano Banana 2 1K: about 48\nPro 1K: about 19",
     package1900Name: "1,900 Percoins",
     package1900Description:
-      "Value pack\nGreat balance of price and volume\n\nEstimated generations\nNano Banana 2 0.5K: about 190\nNano Banana 2 1K: about 95\nPro 1K: about 38",
+      "Value pack\nGreat balance of price and volume\n\nGenerations per model\nChatGPT Low 1K: about 190\nNano Banana 2 0.5K: about 190\nNano Banana 2 1K: about 95\nPro 1K: about 38",
     package4800Name: "4,800 Percoins",
     package4800Description:
-      "Best value pack\nLowest cost per coin\n\nEstimated generations\nNano Banana 2 0.5K: about 480\nNano Banana 2 1K: about 240\nPro 1K: about 96",
+      "Best value pack\nLowest cost per coin\n\nGenerations per model\nChatGPT Low 1K: about 480\nNano Banana 2 0.5K: about 480\nNano Banana 2 1K: about 240\nPro 1K: about 96",
     packageBadgeTrial: "Good for trying",
     packageBadgePopular: "Most popular",
     packageBadgeBestValue: "Best value",

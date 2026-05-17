@@ -649,19 +649,19 @@ export const ptMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoins",
     package110Description:
-      "Pacote de teste\nPara experimentar algumas gerações primeiro\n\nGerações estimadas\nNano Banana 2 0.5K: cerca de 11\nNano Banana 2 1K: cerca de 5\nPro 1K: cerca de 2",
+      "Pacote de teste\nPara experimentar algumas gerações primeiro\n\nGerações por modelo\nChatGPT Low 1K: cerca de 11\nNano Banana 2 0.5K: cerca de 11\nNano Banana 2 1K: cerca de 5\nPro 1K: cerca de 2",
     package240Name: "240 Percoins",
     package240Description:
-      "Pacote leve\nPara uso casual\n\nGerações estimadas\nNano Banana 2 0.5K: cerca de 24\nNano Banana 2 1K: cerca de 12\nPro 1K: cerca de 4",
+      "Pacote leve\nPara uso casual\n\nGerações por modelo\nChatGPT Low 1K: cerca de 24\nNano Banana 2 0.5K: cerca de 24\nNano Banana 2 1K: cerca de 12\nPro 1K: cerca de 4",
     package960Name: "960 Percoins",
     package960Description:
-      "Pacote básico\nPara experimentação mais aprofundada\n\nGerações estimadas\nNano Banana 2 0.5K: cerca de 96\nNano Banana 2 1K: cerca de 48\nPro 1K: cerca de 19",
+      "Pacote básico\nPara experimentação mais aprofundada\n\nGerações por modelo\nChatGPT Low 1K: cerca de 96\nNano Banana 2 0.5K: cerca de 96\nNano Banana 2 1K: cerca de 48\nPro 1K: cerca de 19",
     package1900Name: "1.900 Percoins",
     package1900Description:
-      "Pacote vantajoso\nÓtimo equilíbrio entre preço e volume\n\nGerações estimadas\nNano Banana 2 0.5K: cerca de 190\nNano Banana 2 1K: cerca de 95\nPro 1K: cerca de 38",
+      "Pacote vantajoso\nÓtimo equilíbrio entre preço e volume\n\nGerações por modelo\nChatGPT Low 1K: cerca de 190\nNano Banana 2 0.5K: cerca de 190\nNano Banana 2 1K: cerca de 95\nPro 1K: cerca de 38",
     package4800Name: "4.800 Percoins",
     package4800Description:
-      "Melhor custo-benefício\nMenor custo por moeda\n\nGerações estimadas\nNano Banana 2 0.5K: cerca de 480\nNano Banana 2 1K: cerca de 240\nPro 1K: cerca de 96",
+      "Melhor custo-benefício\nMenor custo por moeda\n\nGerações por modelo\nChatGPT Low 1K: cerca de 480\nNano Banana 2 0.5K: cerca de 480\nNano Banana 2 1K: cerca de 240\nPro 1K: cerca de 96",
     packageBadgeTrial: "Bom para experimentar",
     packageBadgePopular: "Mais popular",
     packageBadgeBestValue: "Melhor custo-benefício",

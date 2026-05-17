@@ -648,19 +648,19 @@ export const arMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "باقة تجريبية\nلتجربة بضع عمليات توليد أولًا\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 11\nNano Banana 2 1K: حوالي 5\nPro 1K: حوالي 2",
+      "باقة تجريبية\nلتجربة بضع عمليات توليد أولًا\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 11\nNano Banana 2 0.5K: حوالي 11\nNano Banana 2 1K: حوالي 5\nPro 1K: حوالي 2",
     package240Name: "240 Percoin",
     package240Description:
-      "باقة خفيفة\nللاستخدام العادي\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 24\nNano Banana 2 1K: حوالي 12\nPro 1K: حوالي 4",
+      "باقة خفيفة\nللاستخدام العادي\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 24\nNano Banana 2 0.5K: حوالي 24\nNano Banana 2 1K: حوالي 12\nPro 1K: حوالي 4",
     package960Name: "960 Percoin",
     package960Description:
-      "باقة أساسية\nلتجربة أعمق\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 96\nNano Banana 2 1K: حوالي 48\nPro 1K: حوالي 19",
+      "باقة أساسية\nلتجربة أعمق\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 96\nNano Banana 2 0.5K: حوالي 96\nNano Banana 2 1K: حوالي 48\nPro 1K: حوالي 19",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "باقة قيمة\nتوازن جيد بين السعر والكمية\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 190\nNano Banana 2 1K: حوالي 95\nPro 1K: حوالي 38",
+      "باقة قيمة\nتوازن جيد بين السعر والكمية\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 190\nNano Banana 2 0.5K: حوالي 190\nNano Banana 2 1K: حوالي 95\nPro 1K: حوالي 38",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "أفضل قيمة\nأقل تكلفة لكل عملة\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 480\nNano Banana 2 1K: حوالي 240\nPro 1K: حوالي 96",
+      "أفضل قيمة\nأقل تكلفة لكل عملة\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 480\nNano Banana 2 0.5K: حوالي 480\nNano Banana 2 1K: حوالي 240\nPro 1K: حوالي 96",
     packageBadgeTrial: "مناسبة للتجربة",
     packageBadgePopular: "الأكثر شعبية",
     packageBadgeBestValue: "أفضل قيمة",

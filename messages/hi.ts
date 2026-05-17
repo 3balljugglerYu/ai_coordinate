@@ -648,19 +648,19 @@ export const hiMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "ट्रायल पैक\nपहले कुछ जनरेशन आज़माने के लिए\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 11\nNano Banana 2 1K: लगभग 5\nPro 1K: लगभग 2",
+      "ट्रायल पैक\nपहले कुछ जनरेशन आज़माने के लिए\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 11\nNano Banana 2 0.5K: लगभग 11\nNano Banana 2 1K: लगभग 5\nPro 1K: लगभग 2",
     package240Name: "240 Percoin",
     package240Description:
-      "लाइट पैक\nहल्के उपयोग के लिए\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 24\nNano Banana 2 1K: लगभग 12\nPro 1K: लगभग 4",
+      "लाइट पैक\nहल्के उपयोग के लिए\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 24\nNano Banana 2 0.5K: लगभग 24\nNano Banana 2 1K: लगभग 12\nPro 1K: लगभग 4",
     package960Name: "960 Percoin",
     package960Description:
-      "बेसिक पैक\nगहरे परीक्षण के लिए\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 96\nNano Banana 2 1K: लगभग 48\nPro 1K: लगभग 19",
+      "बेसिक पैक\nगहरे परीक्षण के लिए\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 96\nNano Banana 2 0.5K: लगभग 96\nNano Banana 2 1K: लगभग 48\nPro 1K: लगभग 19",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "वैल्यू पैक\nकीमत और मात्रा का अच्छा संतुलन\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 190\nNano Banana 2 1K: लगभग 95\nPro 1K: लगभग 38",
+      "वैल्यू पैक\nकीमत और मात्रा का अच्छा संतुलन\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 190\nNano Banana 2 0.5K: लगभग 190\nNano Banana 2 1K: लगभग 95\nPro 1K: लगभग 38",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "बेस्ट वैल्यू पैक\nप्रति सिक्का सबसे कम लागत\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 480\nNano Banana 2 1K: लगभग 240\nPro 1K: लगभग 96",
+      "बेस्ट वैल्यू पैक\nप्रति सिक्का सबसे कम लागत\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 480\nNano Banana 2 0.5K: लगभग 480\nNano Banana 2 1K: लगभग 240\nPro 1K: लगभग 96",
     packageBadgeTrial: "आज़माने के लिए अच्छा",
     packageBadgePopular: "सबसे लोकप्रिय",
     packageBadgeBestValue: "सबसे अच्छी कीमत",

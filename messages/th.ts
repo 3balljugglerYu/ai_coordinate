@@ -648,19 +648,19 @@ export const thMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "แพ็กเริ่มต้น\nสำหรับลองสร้างไม่กี่ครั้งก่อน\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 11\nNano Banana 2 1K: ราว 5\nPro 1K: ราว 2",
+      "แพ็กเริ่มต้น\nสำหรับลองสร้างไม่กี่ครั้งก่อน\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 11\nNano Banana 2 0.5K: ราว 11\nNano Banana 2 1K: ราว 5\nPro 1K: ราว 2",
     package240Name: "240 Percoin",
     package240Description:
-      "แพ็กเล็ก\nสำหรับใช้พอเป็นบางครั้ง\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 24\nNano Banana 2 1K: ราว 12\nPro 1K: ราว 4",
+      "แพ็กเล็ก\nสำหรับใช้พอเป็นบางครั้ง\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 24\nNano Banana 2 0.5K: ราว 24\nNano Banana 2 1K: ราว 12\nPro 1K: ราว 4",
     package960Name: "960 Percoin",
     package960Description:
-      "แพ็กพื้นฐาน\nสำหรับลองให้ลึกขึ้น\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 96\nNano Banana 2 1K: ราว 48\nPro 1K: ราว 19",
+      "แพ็กพื้นฐาน\nสำหรับลองให้ลึกขึ้น\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 96\nNano Banana 2 0.5K: ราว 96\nNano Banana 2 1K: ราว 48\nPro 1K: ราว 19",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "แพ็กคุ้มค่า\nสมดุลระหว่างราคาและปริมาณดี\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 190\nNano Banana 2 1K: ราว 95\nPro 1K: ราว 38",
+      "แพ็กคุ้มค่า\nสมดุลระหว่างราคาและปริมาณดี\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 190\nNano Banana 2 0.5K: ราว 190\nNano Banana 2 1K: ราว 95\nPro 1K: ราว 38",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "แพ็กคุ้มที่สุด\nต้นทุนต่อเหรียญต่ำที่สุด\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 480\nNano Banana 2 1K: ราว 240\nPro 1K: ราว 96",
+      "แพ็กคุ้มที่สุด\nต้นทุนต่อเหรียญต่ำที่สุด\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 480\nNano Banana 2 0.5K: ราว 480\nNano Banana 2 1K: ราว 240\nPro 1K: ราว 96",
     packageBadgeTrial: "เหมาะสำหรับลอง",
     packageBadgePopular: "ได้รับความนิยมที่สุด",
     packageBadgeBestValue: "คุ้มที่สุด",

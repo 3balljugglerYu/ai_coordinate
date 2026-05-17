@@ -648,19 +648,19 @@ export const viMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "Gói dùng thử\nĐể tạo thử vài lần\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 11\nNano Banana 2 1K: khoảng 5\nPro 1K: khoảng 2",
+      "Gói dùng thử\nĐể tạo thử vài lần\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 11\nNano Banana 2 0.5K: khoảng 11\nNano Banana 2 1K: khoảng 5\nPro 1K: khoảng 2",
     package240Name: "240 Percoin",
     package240Description:
-      "Gói nhẹ\nDành cho sử dụng thường thức\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 24\nNano Banana 2 1K: khoảng 12\nPro 1K: khoảng 4",
+      "Gói nhẹ\nDành cho sử dụng thường thức\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 24\nNano Banana 2 0.5K: khoảng 24\nNano Banana 2 1K: khoảng 12\nPro 1K: khoảng 4",
     package960Name: "960 Percoin",
     package960Description:
-      "Gói cơ bản\nĐể trải nghiệm sâu hơn\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 96\nNano Banana 2 1K: khoảng 48\nPro 1K: khoảng 19",
+      "Gói cơ bản\nĐể trải nghiệm sâu hơn\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 96\nNano Banana 2 0.5K: khoảng 96\nNano Banana 2 1K: khoảng 48\nPro 1K: khoảng 19",
     package1900Name: "1.900 Percoin",
     package1900Description:
-      "Gói tiết kiệm\nCân bằng tốt giữa giá và số lượng\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 190\nNano Banana 2 1K: khoảng 95\nPro 1K: khoảng 38",
+      "Gói tiết kiệm\nCân bằng tốt giữa giá và số lượng\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 190\nNano Banana 2 0.5K: khoảng 190\nNano Banana 2 1K: khoảng 95\nPro 1K: khoảng 38",
     package4800Name: "4.800 Percoin",
     package4800Description:
-      "Gói tiết kiệm nhất\nGiá trên mỗi đồng thấp nhất\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 480\nNano Banana 2 1K: khoảng 240\nPro 1K: khoảng 96",
+      "Gói tiết kiệm nhất\nGiá trên mỗi đồng thấp nhất\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 480\nNano Banana 2 0.5K: khoảng 480\nNano Banana 2 1K: khoảng 240\nPro 1K: khoảng 96",
     packageBadgeTrial: "Tốt để dùng thử",
     packageBadgePopular: "Phổ biến nhất",
     packageBadgeBestValue: "Đáng giá nhất",
