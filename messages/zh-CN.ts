@@ -375,6 +375,7 @@ export const zhCnMessages = {
     inspireDeleteConfirmAction: "删除",
     inspireDeleteSuccess: "已删除。",
     inspireDeleteFailed: "删除失败。",
+    inspireOpenForGenerationAria: "用此模板打开生成页面",
   },
   inspireSubmission: {
     dialogTitle: "投稿造型模板",
@@ -395,6 +396,8 @@ export const zhCnMessages = {
     step2TestCharacterLabel: "测试角色",
     step2GeneratingMessage: "生成中...请不要关闭此页面。",
     step2GeneratingInline: "生成中…",
+    step2GeneratingCardTitle: "正在生成试穿模拟",
+    step2GeneratingCardFooter: "请不要关闭此页面。约 60〜90 秒后完成。",
     step2PartialNotice:
       "两个预览中只有一个生成成功。如果结果可以接受，仍然可以投稿。",
     step2BackButton: "返回",
@@ -1111,6 +1114,7 @@ export const zhCnMessages = {
     listPromptCopyFailed: "复制提示词失败。",
     listPromptEmpty: "暂无提示词信息。",
     listPromptOneTapStyleEmpty: "由于此图片是通过一键造型生成的，无法显示。",
+    listPromptInspireEmpty: "由于此图片是通过投稿样式模板生成的，无法显示。",
     listApplyForNext: "用此图片再次生成",
     listApplyForNextSuccess: "已将图片设置到上传栏。",
     listApplyForNextConfirmTitle: "前往搭配页面",
@@ -1630,6 +1634,8 @@ export const zhCnMessages = {
     detailTemplate: "模板图片",
     detailPreviewOpenAI: "预览 (OpenAI)",
     detailPreviewGemini: "预览 (Gemini)",
+    detailEnlargedPrev: "上一张",
+    detailEnlargedNext: "下一张",
   },
   inspirePage: {
     pageTitle: "用此造型生成",
@@ -1658,12 +1664,11 @@ export const zhCnMessages = {
     formAddImageAction: "添加图片",
     overrideLabel: "要更改的元素",
     overrideHint:
-      "选择 “保持全部” 时会保留模板的角度、姿势、服装与背景，只替换角色。选择单个元素时仅重新生成该元素。",
-    overrideKeepAll: "保持全部 (仅替换角色)",
-    overrideAngle: "更改角度",
-    overridePose: "更改姿势",
-    overrideOutfit: "更换服装",
-    overrideBackground: "更换背景",
+      "仅勾选的元素会从样式模板应用到您的角色。全部勾选则为「保持全部」状态。至少需勾选 1 项。",
+    overrideOutfit: "试穿服装",
+    overrideAngle: "应用相机角度",
+    overridePose: "匹配姿势",
+    overrideBackground: "应用背景",
     statusFailed: "生成失败",
     statusFailedDescription:
       "请稍后重试或更换图片。",

@@ -55,7 +55,12 @@ export interface ImageJob {
   // Inspire (Phase 1 マイグレで追加された列。NULL 許容、generation_type='inspire' のときのみ NOT NULL)
   style_template_id?: string | null;
   style_reference_image_url?: string | null;
-  override_target?: "angle" | "pose" | "outfit" | "background" | null;
+  // Inspire override 個別フラグ（チェックボックス UI 対応の Phase 2 マイグレで追加）。
+  // generation_type='inspire' のときに利用。1 つ以上 true である必要がある。
+  override_outfit?: boolean | null;
+  override_angle?: boolean | null;
+  override_pose?: boolean | null;
+  override_background?: boolean | null;
 }
 
 /**

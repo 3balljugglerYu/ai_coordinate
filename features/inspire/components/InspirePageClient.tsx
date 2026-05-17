@@ -10,19 +10,20 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
+import { GptImage2QualitySelector } from "@/features/generation/components/GptImage2QualitySelector";
 import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
-import { isInspireAllowedModel } from "@/features/generation/lib/model-config";
+import { GeminiBananaSizeSelector } from "@/features/generation/components/GeminiBananaSizeSelector";
 import {
   DEFAULT_GENERATION_MODEL,
   type GeminiModel,
   type UploadedImage,
 } from "@/features/generation/types";
 import { InspireGenerationFlow } from "./InspireGenerationFlow";
+import { InspireOverrideCheckbox } from "./InspireOverrideCheckbox";
 import {
-  InspireOverrideRadio,
-  toApiOverrideTarget,
-  type InspireOverrideValue,
-} from "./InspireOverrideRadio";
+  hasAnyInspireOverride,
+  type InspireOverrides,
+} from "@/shared/generation/prompt-core";
 
 interface InspireTemplate {
   id: string;
@@ -56,10 +57,9 @@ interface InspirePageClientCopy {
   formAddImageAction: string;
   overrideLabel: string;
   overrideHint: string;
-  overrideKeepAll: string;
+  overrideOutfit: string;
   overrideAngle: string;
   overridePose: string;
-  overrideOutfit: string;
   overrideBackground: string;
   // 生成中ステータスは /coordinate と同じ coordinate namespace を使うため、
   // ここでは inspire 固有の「失敗」「結果」コピーのみ受け取る。
@@ -97,13 +97,22 @@ export function InspirePageClient({
   const { toast } = useToast();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // 生成中（fetch 中 + ジョブ進行中）はフォームを操作不可にする。
+  // polling 終了 (onComplete) で activeJobId を null に戻し再生成可能とする。
+  const isGenerating = submitting || activeJobId !== null;
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
   const [count, setCount] = useState<number>(1);
-  const [overrideTarget, setOverrideTarget] =
-    useState<InspireOverrideValue>("keep_all");
+  // 「すべて維持」状態（4 つすべてチェック済み）で初期化。
+  // 1 つもチェックがない場合は生成ボタン disabled（hasAnyInspireOverride で判定）。
+  const [overrides, setOverrides] = useState<InspireOverrides>({
+    outfit: true,
+    angle: true,
+    pose: true,
+    background: true,
+  });
   const [error, setError] = useState<string | null>(null);
   // テンプレ画像が読み込まれた時点で natural サイズから aspect ratio を計算する。
   // /style と同等の見た目にするため、ImageUploader にも同じ aspectRatio を渡す。
@@ -129,7 +138,7 @@ export function InspirePageClient({
           model: selectedModel,
           count,
           styleTemplateId: template.id,
-          overrideTarget: toApiOverrideTarget(overrideTarget),
+          overrides,
         }),
       });
       if (!response.ok) {
@@ -163,7 +172,7 @@ export function InspirePageClient({
             value={uploadedImage}
             label={copy.formUploadLabel}
             addImageLabel={copy.formAddImageAction}
-            disabled={submitting}
+            disabled={isGenerating}
             aspectRatio={templateAspectRatio}
             filledPreviewMode="natural"
           />
@@ -232,19 +241,18 @@ export function InspirePageClient({
         </div>
       </section>
 
-      {/* 変更したい要素（Override Radio） */}
+      {/* image_1 から image_0 に適用したい要素（複数選択可）。 */}
       <Card className="p-6">
-        <InspireOverrideRadio
-          value={overrideTarget}
-          onChange={setOverrideTarget}
-          disabled={submitting}
+        <InspireOverrideCheckbox
+          value={overrides}
+          onChange={setOverrides}
+          disabled={isGenerating}
           copy={{
             label: copy.overrideLabel,
             hint: copy.overrideHint,
-            keepAll: copy.overrideKeepAll,
+            outfit: copy.overrideOutfit,
             angle: copy.overrideAngle,
             pose: copy.overridePose,
-            outfit: copy.overrideOutfit,
             background: copy.overrideBackground,
           }}
         />
@@ -253,38 +261,56 @@ export function InspirePageClient({
       {/* モデル + 枚数 + 生成ボタン */}
       <Card className="p-6">
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div className="space-y-3">
-              <p className="text-base font-medium">{copy.formModelLabel}</p>
-              <LockableModelSelect
-                value={selectedModel}
-                onChange={setSelectedModel}
-                onLockedClick={() => {
-                  /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
-                }}
-                authState="authenticated"
-                disabled={submitting}
-                isModelSelectable={isInspireAllowedModel}
-              />
-            </div>
-            <GptImage2SizeSelector
+          <div className="space-y-3">
+            <p className="text-base font-medium">{copy.formModelLabel}</p>
+            <LockableModelSelect
               value={selectedModel}
               onChange={setSelectedModel}
               onLockedClick={() => {
                 /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
               }}
               authState="authenticated"
-              disabled={submitting}
-              isModelSelectable={isInspireAllowedModel}
+              disabled={isGenerating}
             />
-            <div className="space-y-3">
-              <p className="text-base font-medium">{copy.formCountLabel}</p>
-              <CountSelector
-                value={count}
-                onChange={setCount}
-                disabled={submitting}
-              />
-            </div>
+          </div>
+
+          <GptImage2QualitySelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+            onLockedClick={() => {
+              /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
+            }}
+            authState="authenticated"
+            disabled={isGenerating}
+          />
+
+          <GptImage2SizeSelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+            onLockedClick={() => {
+              /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
+            }}
+            authState="authenticated"
+            disabled={isGenerating}
+          />
+
+          <GeminiBananaSizeSelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+            onLockedClick={() => {
+              /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
+            }}
+            authState="authenticated"
+            disabled={isGenerating}
+          />
+
+          <div className="space-y-3">
+            <p className="text-base font-medium">{copy.formCountLabel}</p>
+            <CountSelector
+              value={count}
+              onChange={setCount}
+              disabled={isGenerating}
+            />
           </div>
 
           {error ? (
@@ -295,21 +321,35 @@ export function InspirePageClient({
             type="button"
             className="w-full"
             size="lg"
-            disabled={!uploadedImage || submitting}
+            disabled={
+              !uploadedImage || isGenerating || !hasAnyInspireOverride(overrides)
+            }
             onClick={handleGenerate}
             aria-label={copy.formGenerateAria}
           >
             <Sparkles className="mr-2 h-5 w-5" aria-hidden="true" />
-            {submitting ? copy.formGenerating : copy.formGenerateButton}
+            {isGenerating ? copy.formGenerating : copy.formGenerateButton}
           </Button>
         </div>
       </Card>
 
-      {activeJobId && (
+      {/*
+        /style と同じく「生成する」ボタン押下直後（fetch 中で jobId 未取得）から
+        ステータスバーを表示するため、isGenerating の間ずっとマウントする。
+        jobId が null の間は polling せず「準備中」表示のみになる。
+      */}
+      {isGenerating && (
         <InspireGenerationFlow
           jobId={activeJobId}
           aspectRatio={templateAspectRatio}
-          onComplete={() => router.refresh()}
+          onComplete={() => {
+            // ジョブ完了で再度フォーム操作可能にし、router.refresh() で Gallery を更新。
+            setActiveJobId(null);
+            router.refresh();
+          }}
+          // 結果は下の CachedGeneratedImageGallery 側で表示するため、
+          // ここでは進捗カード／失敗カードのみ描画して二重表示を避ける。
+          showResultPanel={false}
           copy={{
             statusFailed: copy.statusFailed,
             statusFailedDescription: copy.statusFailedDescription,

@@ -371,6 +371,7 @@ export const jaMessages = {
     inspireDeleteConfirmAction: "削除する",
     inspireDeleteSuccess: "削除しました。",
     inspireDeleteFailed: "削除に失敗しました。",
+    inspireOpenForGenerationAria: "このテンプレートで生成画面を開く",
   },
   inspireSubmission: {
     dialogTitle: "スタイルテンプレートを申請",
@@ -391,6 +392,9 @@ export const jaMessages = {
     step2TestCharacterLabel: "試着するキャラ",
     step2GeneratingMessage: "生成中... 別タブを閉じないでください。",
     step2GeneratingInline: "生成中…",
+    step2GeneratingCardTitle: "試着シミュレーションを生成中",
+    step2GeneratingCardFooter:
+      "別タブを閉じずにお待ちください。完了まで約 60〜90 秒です。",
     step2PartialNotice:
       "片方の生成のみ成功しました。問題なければそのまま申請できます。",
     step2BackButton: "戻る",
@@ -1057,6 +1061,7 @@ export const jaMessages = {
     listPromptCopyFailed: "プロンプトのコピーに失敗しました",
     listPromptEmpty: "プロンプト情報がありません",
     listPromptOneTapStyleEmpty: "One-Tap Styleで生成した為、ありません",
+    listPromptInspireEmpty: "投稿スタイルで生成した為、ありません",
     listApplyForNext: "このイラストで生成",
     listApplyForNextSuccess: "アップロード欄に画像をセットしました",
     listApplyForNextConfirmTitle: "コーディネートに移動します",
@@ -1563,6 +1568,8 @@ export const jaMessages = {
     detailTemplate: "テンプレート画像",
     detailPreviewOpenAI: "プレビュー（OpenAI）",
     detailPreviewGemini: "プレビュー（Gemini）",
+    detailEnlargedPrev: "前の画像",
+    detailEnlargedNext: "次の画像",
   },
   inspirePage: {
     pageTitle: "投稿スタイルで生成",
@@ -1591,12 +1598,11 @@ export const jaMessages = {
     formAddImageAction: "画像を追加",
     overrideLabel: "変更したい要素",
     overrideHint:
-      "「すべて維持」を選ぶと、テンプレのアングル・ポーズ・衣装・背景を維持してキャラクターだけが差し替わります。個別を選ぶと、その 1 要素だけが新たに生成されます。",
-    overrideKeepAll: "すべて維持（キャラのみ）",
-    overrideAngle: "アングルを変える",
-    overridePose: "ポーズを変える",
-    overrideOutfit: "衣装を変える",
-    overrideBackground: "背景を変える",
+      "チェックした要素だけがスタイルテンプレから自分のキャラクターに適用されます。すべてチェックすると「すべて維持」状態になります。最低 1 つチェックが必要です。",
+    overrideOutfit: "衣装を試着する",
+    overrideAngle: "カメラアングルを適用する",
+    overridePose: "ポージングを合わせる",
+    overrideBackground: "背景を適用する",
     statusFailed: "生成に失敗しました",
     statusFailedDescription: "時間をおいて再試行するか、別の画像で試してください。",
     resultsTitle: "生成結果",

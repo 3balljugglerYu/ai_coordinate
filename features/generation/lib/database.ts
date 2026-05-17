@@ -25,6 +25,7 @@ export interface GeneratedImageRecord {
     | 'full_body'
     | 'chibi'
     | 'one_tap_style'
+    | 'inspire'
     | null;
   input_images?: Record<string, unknown> | null;
   generation_metadata?: Record<string, unknown> | null;
@@ -124,6 +125,7 @@ export async function getGeneratedImages(
     | "full_body"
     | "chibi"
     | "one_tap_style"
+    | "inspire"
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
 

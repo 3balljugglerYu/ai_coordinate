@@ -375,6 +375,7 @@ export const hiMessages = {
     inspireDeleteConfirmAction: "हटाएँ",
     inspireDeleteSuccess: "हटा दिया गया।",
     inspireDeleteFailed: "हटाने में विफल।",
+    inspireOpenForGenerationAria: "इस टेम्पलेट से जनरेशन पेज खोलें",
   },
   inspireSubmission: {
     dialogTitle: "स्टाइल टेम्पलेट जमा करें",
@@ -395,6 +396,9 @@ export const hiMessages = {
     step2TestCharacterLabel: "टेस्ट कैरेक्टर",
     step2GeneratingMessage: "उत्पन्न हो रहा है... कृपया यह टैब बंद न करें।",
     step2GeneratingInline: "उत्पन्न हो रहा है…",
+    step2GeneratingCardTitle: "ट्राई-ऑन सिमुलेशन बनाया जा रहा है",
+    step2GeneratingCardFooter:
+      "कृपया यह टैब बंद न करें। लगभग 60–90 सेकंड में पूरा होगा।",
     step2PartialNotice:
       "दो में से केवल एक पूर्वावलोकन सफल रहा। अगर परिणाम स्वीकार्य है तो आप फिर भी जमा कर सकते हैं।",
     step2BackButton: "वापस",
@@ -1111,6 +1115,8 @@ export const hiMessages = {
     listPromptCopyFailed: "प्रॉम्प्ट कॉपी करने में विफल।",
     listPromptEmpty: "कोई प्रॉम्प्ट जानकारी उपलब्ध नहीं है।",
     listPromptOneTapStyleEmpty: "उपलब्ध नहीं क्योंकि यह छवि One-Tap Style से उत्पन्न की गई थी।",
+    listPromptInspireEmpty:
+      "उपलब्ध नहीं क्योंकि यह छवि कम्युनिटी स्टाइल टेम्पलेट से उत्पन्न की गई थी।",
     listApplyForNext: "इस छवि से उत्पन्न करें",
     listApplyForNextSuccess: "अपलोड फ़ील्ड में छवि सेट कर दी गई है।",
     listApplyForNextConfirmTitle: "कोऑर्डिनेट पेज पर जा रहे हैं",
@@ -1631,6 +1637,8 @@ export const hiMessages = {
     detailTemplate: "टेम्पलेट छवि",
     detailPreviewOpenAI: "पूर्वावलोकन (OpenAI)",
     detailPreviewGemini: "पूर्वावलोकन (Gemini)",
+    detailEnlargedPrev: "पिछली छवि",
+    detailEnlargedNext: "अगली छवि",
   },
   inspirePage: {
     pageTitle: "इस स्टाइल से उत्पन्न करें",
@@ -1659,12 +1667,11 @@ export const hiMessages = {
     formAddImageAction: "छवि जोड़ें",
     overrideLabel: "बदलने के लिए तत्व",
     overrideHint:
-      "टेम्पलेट के कोण, मुद्रा, आउटफ़िट और पृष्ठभूमि को संरक्षित करने के लिए \"सब रखें\" चुनें, केवल कैरेक्टर को स्वैप करते हुए। केवल उसी को फिर से उत्पन्न करने के लिए एक तत्व चुनें।",
-    overrideKeepAll: "सब रखें (केवल कैरेक्टर)",
-    overrideAngle: "कोण बदलें",
-    overridePose: "मुद्रा बदलें",
-    overrideOutfit: "आउटफ़िट बदलें",
-    overrideBackground: "पृष्ठभूमि बदलें",
+      "केवल चयनित तत्व ही स्टाइल टेम्पलेट से आपके कैरेक्टर पर लागू होंगे। «सब रखें» के लिए सभी का चयन करें। न्यूनतम एक आवश्यक है।",
+    overrideOutfit: "आउटफ़िट ट्राई करें",
+    overrideAngle: "कैमरा कोण लागू करें",
+    overridePose: "मुद्रा से मिलाएं",
+    overrideBackground: "पृष्ठभूमि लागू करें",
     statusFailed: "जनरेशन विफल",
     statusFailedDescription:
       "कृपया बाद में फिर से प्रयास करें या एक अलग छवि का उपयोग करें।",
