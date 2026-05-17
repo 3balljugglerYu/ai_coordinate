@@ -12,6 +12,7 @@ import { getPublishedStylePresets } from "@/features/style-presets/lib/get-publi
 import { getTotalStyleGenerateCount } from "@/features/style/lib/style-usage-stats";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getUser } from "@/lib/auth";
+import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
 interface StylePageProps {
@@ -58,6 +59,7 @@ export default async function StylePage({ searchParams }: StylePageProps) {
   const coordinateT = await getTranslations("coordinate");
   const presets = await getPublishedStylePresets();
   const user = await getUser();
+  const profile = user ? await getUserProfileServer(user.id) : null;
   const params = (await searchParams) ?? {};
   const totalGenerationCount = await getTotalStyleGenerateCount().catch(
     () => null
@@ -117,6 +119,7 @@ export default async function StylePage({ searchParams }: StylePageProps) {
               // ログインユーザーは生成結果一覧（下に並ぶ <CachedGeneratedImageGallery>）
               // が結果表示を担うため、即時結果パネルは非表示にする。
               showResultPanel={!user}
+              subscriptionPlan={profile?.subscription_plan ?? "free"}
             />
 
             {/* 生成結果一覧（認証ユーザーのみ）。/coordinate と同じ UI を再利用。 */}

@@ -33,6 +33,7 @@ import {
 } from "../hooks/useCoordinateStocksUnread";
 import {
   getPercoinCost,
+  isFreePlanAllowedModel,
   resolveEffectiveModelForAuthState,
 } from "../lib/model-config";
 import {
@@ -934,10 +935,21 @@ export function GenerationForm({
         <GenerationModelControls
           value={effectiveSelectedModel}
           onChange={handleSelectedModelChange}
-          onLockedClick={() => setShowAuthModal(true)}
+          onLockedClick={() => {
+            if (authState === "guest") {
+              setShowAuthModal(true);
+            } else if (subscriptionPlan === "free") {
+              setIsUpsellOpen(true);
+            }
+          }}
           authState={authState}
           modelLabel={t("modelLabel")}
           disabled={isGenerating || isTutorialInProgress}
+          isModelSelectable={
+            authState === "authenticated" && subscriptionPlan === "free"
+              ? isFreePlanAllowedModel
+              : undefined
+          }
         />
 
         {/* 生成枚数選択 */}

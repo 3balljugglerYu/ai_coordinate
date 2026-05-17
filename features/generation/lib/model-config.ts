@@ -92,6 +92,43 @@ export function isCanonicalGuestAllowedModel(
 }
 
 /**
+ * ログイン済み「free」プランユーザーが選択可能な canonical モデル一覧。
+ * UI で南京錠を出すかどうかの正本（クリック時は SubscriptionUpsellDialog を開く）。
+ *
+ * 内訳:
+ * - ChatGPT: Low × 1k（標準）のみ
+ * - Nano Banana Pro: 1k（標準）のみ
+ * - Nano Banana 2 ファミリー: 全 SKU 許可
+ *
+ * light / standard / premium プランは制限なし（このリストは無関係）。
+ * ゲスト経路は GUEST_ALLOWED_MODELS で別途制限される。
+ */
+const BASE_FREE_PLAN_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
+  'gpt-image-2-low-1k',
+  'gemini-2.5-flash-image',
+  'gemini-3.1-flash-image-preview-512',
+  'gemini-3.1-flash-image-preview-1024',
+  'gemini-3-pro-image-1k',
+];
+
+export const FREE_PLAN_ALLOWED_MODELS: ReadonlyArray<GeminiModel> =
+  BASE_FREE_PLAN_ALLOWED_MODELS.filter(isModelAvailableForGeneration);
+
+/**
+ * canonical model が free プラン許可リストに含まれるか判定する。
+ * 認証済み free プランの `isModelSelectable` として LockableModelSelect / Quality /
+ * Size セレクターに渡す。`null` / `undefined` / 未知文字列は false（ロック扱い）。
+ */
+export function isFreePlanAllowedModel(
+  model: string | null | undefined
+): model is GeminiModel {
+  return (
+    typeof model === 'string' &&
+    (FREE_PLAN_ALLOWED_MODELS as ReadonlyArray<string>).includes(model)
+  );
+}
+
+/**
  * クライアントから受け取った生の `model` 文字列をゲスト経路で安全に解釈する。
  *
  * - 既知のモデル入力（`KNOWN_MODEL_INPUTS`、エイリアス含む）に該当しない場合は `null`

@@ -10,7 +10,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
-import { getPercoinCost } from "@/features/generation/lib/model-config";
+import {
+  getPercoinCost,
+  isFreePlanAllowedModel,
+} from "@/features/generation/lib/model-config";
+import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
+import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import {
   DEFAULT_GENERATION_MODEL,
   type GeminiModel,
@@ -72,6 +77,7 @@ interface InspirePageClientProps {
   template: InspireTemplate;
   submitter: InspireSubmitter;
   copy: InspirePageClientCopy;
+  subscriptionPlan: SubscriptionPlan;
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -90,9 +96,11 @@ export function InspirePageClient({
   template,
   submitter,
   copy,
+  subscriptionPlan,
 }: InspirePageClientProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // 生成中（fetch 中 + ジョブ進行中）はフォームを操作不可にする。
@@ -264,11 +272,16 @@ export function InspirePageClient({
             value={selectedModel}
             onChange={setSelectedModel}
             onLockedClick={() => {
-              /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
+              if (subscriptionPlan === "free") {
+                setIsUpsellOpen(true);
+              }
             }}
             authState="authenticated"
             modelLabel={copy.formModelLabel}
             disabled={isGenerating}
+            isModelSelectable={
+              subscriptionPlan === "free" ? isFreePlanAllowedModel : undefined
+            }
           />
 
           <div className="space-y-3">
@@ -324,6 +337,11 @@ export function InspirePageClient({
           }}
         />
       )}
+
+      <SubscriptionUpsellDialog
+        open={isUpsellOpen}
+        onOpenChange={setIsUpsellOpen}
+      />
     </div>
   );
 }

@@ -87,10 +87,10 @@ export function GptImage2QualitySelector({
     if (!isModelAvailableForGeneration(nextModel)) {
       return;
     }
-    if (!(isModelSelectable?.(nextModel) ?? true)) {
-      return;
-    }
-    if (isGuest && !isCanonicalGuestAllowedModel(nextModel)) {
+    const isGuestLocked =
+      isGuest && !isCanonicalGuestAllowedModel(nextModel);
+    const isPlanLocked = !(isModelSelectable?.(nextModel) ?? true);
+    if (isGuestLocked || isPlanLocked) {
       onLockedClick();
       return;
     }
@@ -125,9 +125,10 @@ export function GptImage2QualitySelector({
               option.value,
               parsed.sizeTier
             );
-            const isLocked =
+            const isGuestLocked =
               isGuest && !isCanonicalGuestAllowedModel(optionModel);
-            const isDisabled = !(isModelSelectable?.(optionModel) ?? true);
+            const isPlanLocked = !(isModelSelectable?.(optionModel) ?? true);
+            const isLocked = isGuestLocked || isPlanLocked;
             const tagDisplay = MODEL_TAG_DISPLAY[option.tierTag];
             const optionContent = (
               <span className="flex items-center gap-2">
@@ -146,10 +147,9 @@ export function GptImage2QualitySelector({
               <SelectItem
                 key={option.value}
                 value={option.value}
-                aria-disabled={isLocked || isDisabled || undefined}
+                aria-disabled={isLocked || undefined}
                 aria-haspopup={isLocked ? "dialog" : undefined}
                 data-locked={isLocked || undefined}
-                disabled={isDisabled || undefined}
               >
                 {isLocked ? (
                   <span className="flex items-center gap-2">

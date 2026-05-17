@@ -117,20 +117,29 @@ describe("LockableModelSelect interactions", () => {
     expect(onLockedClick).not.toHaveBeenCalled();
   });
 
-  test("isModelSelectable で ChatGPT も除外すると行が消える", () => {
+  test("isModelSelectable で除外された行も表示されるが、クリックすると onLockedClick が呼ばれる", () => {
+    // 旧仕様では除外して行を消していたが、free プランの南京錠 UX を伝えるため
+    // 行は表示したまま、クリックで onLockedClick（= アップセルダイアログ）に飛ばす。
+    const onChange = jest.fn();
+    const onLockedClick = jest.fn();
     render(
       <LockableModelSelect
         value="gpt-image-2-low-1k"
         authState="authenticated"
-        onChange={jest.fn()}
-        onLockedClick={jest.fn()}
+        onChange={onChange}
+        onLockedClick={onLockedClick}
         isModelSelectable={() => false}
       />
     );
 
-    expect(
-      screen.queryByRole("button", { name: /ChatGPT Images 2\.0/ })
-    ).not.toBeInTheDocument();
+    const chatGptRow = screen.getByRole("button", {
+      name: /ChatGPT Images 2\.0/,
+    });
+    expect(chatGptRow).toBeInTheDocument();
+
+    fireEvent.click(chatGptRow);
+    expect(onLockedClick).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test("ChatGPT 行に [OpenAI] エンジンチップを表示する", () => {

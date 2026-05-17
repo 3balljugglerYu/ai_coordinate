@@ -66,10 +66,10 @@ export function GptImage2SizeSelector({
     if (!isModelAvailableForGeneration(nextModel)) {
       return;
     }
-    if (!(isModelSelectable?.(nextModel) ?? true)) {
-      return;
-    }
-    if (isGuest && !isCanonicalGuestAllowedModel(nextModel)) {
+    const isGuestLocked =
+      isGuest && !isCanonicalGuestAllowedModel(nextModel);
+    const isPlanLocked = !(isModelSelectable?.(nextModel) ?? true);
+    if (isGuestLocked || isPlanLocked) {
       onLockedClick();
       return;
     }
@@ -109,8 +109,10 @@ export function GptImage2SizeSelector({
               parsed.quality,
               option.value
             );
-            const isLocked = isGuest && !isCanonicalGuestAllowedModel(optionModel);
-            const isDisabled = !(isModelSelectable?.(optionModel) ?? true);
+            const isGuestLocked =
+              isGuest && !isCanonicalGuestAllowedModel(optionModel);
+            const isPlanLocked = !(isModelSelectable?.(optionModel) ?? true);
+            const isLocked = isGuestLocked || isPlanLocked;
             const label = t(option.labelKey);
             const optionContent = (
               <span className="flex w-full items-center">
@@ -121,10 +123,9 @@ export function GptImage2SizeSelector({
               <SelectItem
                 key={option.value}
                 value={option.value}
-                aria-disabled={isLocked || isDisabled || undefined}
+                aria-disabled={isLocked || undefined}
                 aria-haspopup={isLocked ? "dialog" : undefined}
                 data-locked={isLocked || undefined}
-                disabled={isDisabled || undefined}
               >
                 {isLocked ? (
                   <span className="flex items-center gap-2">

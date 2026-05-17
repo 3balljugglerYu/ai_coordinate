@@ -173,16 +173,16 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
   const displayValue: ModelRowValue | string =
     getCurrentRowValue(displayModel) ?? displayModel;
 
+  // free プランで isModelSelectable が false のオプションも候補に残し、
+  // 南京錠表示＋クリックで onLockedClick を発火させる。kill switch 等で
+  // 完全に利用不能なモデル（isModelAvailableForGeneration === false）だけは除外する。
   const availableModelOptions = useMemo(
     () =>
       MODEL_OPTIONS.filter((option) => {
         const canonical = toOptionCanonicalValue(option, displayModel);
-        return (
-          isModelAvailableForGeneration(canonical) &&
-          (isModelSelectable?.(canonical) ?? true)
-        );
+        return isModelAvailableForGeneration(canonical);
       }),
-    [displayModel, isModelSelectable]
+    [displayModel]
   );
 
   const handleValueChange = (next: string) => {
@@ -194,10 +194,9 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
     if (!isModelAvailableForGeneration(nextModel)) {
       return;
     }
-    if (!(isModelSelectable?.(nextModel) ?? true)) {
-      return;
-    }
-    if (isGuest && !isCanonicalGuestAllowedModel(nextModel)) {
+    const isGuestLocked = isGuest && !isCanonicalGuestAllowedModel(nextModel);
+    const isPlanLocked = !(isModelSelectable?.(nextModel) ?? true);
+    if (isGuestLocked || isPlanLocked) {
       props.onLockedClick();
       return;
     }
@@ -245,7 +244,10 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
       <SelectContent>
         {availableModelOptions.map((option) => {
           const optionModel = toOptionCanonicalValue(option, displayModel);
-          const isLocked = isGuest && !isCanonicalGuestAllowedModel(optionModel);
+          const isGuestLocked =
+            isGuest && !isCanonicalGuestAllowedModel(optionModel);
+          const isPlanLocked = !(isModelSelectable?.(optionModel) ?? true);
+          const isLocked = isGuestLocked || isPlanLocked;
           if (isLocked) {
             return (
               <SelectItem

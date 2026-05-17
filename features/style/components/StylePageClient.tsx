@@ -63,6 +63,7 @@ import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import {
   getPercoinCost,
+  isFreePlanAllowedModel,
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
@@ -70,6 +71,8 @@ import { ImageDownloadButton } from "@/features/generation/components/ImageDownl
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
+import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
+import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import {
   readPreferredModel,
@@ -92,6 +95,11 @@ interface StylePageClientProps {
    * 非表示にする。
    */
   showResultPanel?: boolean;
+  /**
+   * 認証ユーザーのサブスクリプションプラン。未ログイン時は "free" を渡しても良いが
+   * モデル選択ロックには影響しない（ゲストロジック側で処理される）。
+   */
+  subscriptionPlan?: SubscriptionPlan;
 }
 
 interface StyleErrorState {
@@ -310,6 +318,7 @@ export function StylePageClient({
   initialAuthState,
   initialSelectedPresetId,
   showResultPanel = true,
+  subscriptionPlan = "free",
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -332,6 +341,7 @@ export function StylePageClient({
     DEFAULT_GENERATION_MODEL
   );
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const currentUrl = useCurrentUrlForRedirect();
   // /style ページが GenerationStateProvider でラップされているとき、
   // 生成結果一覧が isGenerating / generatingCount を購読してスケルトン表示する。
@@ -1486,10 +1496,22 @@ export function StylePageClient({
             <GenerationModelControls
               value={effectiveSelectedModel}
               onChange={handleSelectedModelChange}
-              onLockedClick={() => setShowAuthModal(true)}
+              onLockedClick={() => {
+                if (modelAuthState === "guest") {
+                  setShowAuthModal(true);
+                } else if (subscriptionPlan === "free") {
+                  setIsUpsellOpen(true);
+                }
+              }}
               authState={modelAuthState}
               modelLabel={t("modelLabel")}
               disabled={isGenerating}
+              isModelSelectable={
+                modelAuthState === "authenticated" &&
+                subscriptionPlan === "free"
+                  ? isFreePlanAllowedModel
+                  : undefined
+              }
             />
 
             <GenerationSubmitButton
@@ -1749,6 +1771,11 @@ export function StylePageClient({
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         redirectTo={currentUrl}
+      />
+
+      <SubscriptionUpsellDialog
+        open={isUpsellOpen}
+        onOpenChange={setIsUpsellOpen}
       />
     </div>
   );
