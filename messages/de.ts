@@ -25,6 +25,7 @@ export const deMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(Kosten: {amount} Percoin)",
   },
   nav: {
     home: "Startseite",
@@ -884,7 +885,6 @@ export const deMessages = {
     countMultiple: "{count} Bilder",
     countCostDescription: "{count} Bilder benötigen {amount} Percoins",
     generatingButton: "Styling starten",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "Wird generiert...",
     missingPrompt: "Gib eine Outfit-Beschreibung ein.",
     missingUploadedImage: "Lade ein Quellbild hoch.",
@@ -1421,7 +1421,6 @@ export const deMessages = {
     guestRateLimitSignupHint:
       "Erstelle ein Konto, um direkt weiterzumachen.",
     guestRateLimitSignupAction: "Registrieren, um fortzufahren",
-    paidGenerateButton: "Für {cost} Percoins fortfahren",
     percoinBalanceLabel: "Aktuelles Percoin-Guthaben",
     percoinBalanceLoading: "Percoin-Guthaben wird geprüft...",
     percoinBalanceUnavailable: "Wir konnten dein Guthaben nicht laden.",
@@ -1661,7 +1660,6 @@ export const deMessages = {
     formCountLabel: "Anzahl der Bilder",
     formModelLabel: "Modell",
     formGenerateButton: "Generieren",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Wird generiert...",
     formImageRequired: "Bitte lade ein Charakterbild hoch.",
     formGenerationFailed: "Generierung fehlgeschlagen. Bitte später erneut versuchen.",

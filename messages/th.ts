@@ -25,6 +25,7 @@ export const thMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(ค่าใช้จ่าย: {amount} Percoin)",
   },
   nav: {
     home: "หน้าแรก",
@@ -883,7 +884,6 @@ export const thMessages = {
     countMultiple: "{count} รูป",
     countCostDescription: "{count} รูปต้องใช้ {amount} Percoin",
     generatingButton: "เริ่มจัดสไตล์",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "กำลังสร้าง...",
     missingPrompt: "กรอกคำอธิบายชุด",
     missingUploadedImage: "อัปโหลดรูปต้นฉบับ",
@@ -1419,7 +1419,6 @@ export const thMessages = {
     guestRateLimitSignupHint:
       "สร้างบัญชีเพื่อใช้ต่อได้ทันที",
     guestRateLimitSignupAction: "สมัครสมาชิกเพื่อดำเนินการต่อ",
-    paidGenerateButton: "ดำเนินการต่อด้วย {cost} Percoin",
     percoinBalanceLabel: "ยอด Percoin ปัจจุบัน",
     percoinBalanceLoading: "กำลังตรวจยอด Percoin ของคุณ...",
     percoinBalanceUnavailable: "ไม่สามารถโหลดยอดของคุณ",
@@ -1659,7 +1658,6 @@ export const thMessages = {
     formCountLabel: "จำนวนรูป",
     formModelLabel: "โมเดล",
     formGenerateButton: "สร้าง",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "กำลังสร้าง...",
     formImageRequired: "โปรดอัปโหลดรูปตัวละคร",
     formGenerationFailed: "สร้างไม่สำเร็จ โปรดลองอีกครั้งภายหลัง",

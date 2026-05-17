@@ -207,16 +207,24 @@ const messages: Record<string, string> = {
   missingStockImage: "Select a stock image.",
 };
 
+const commonMessages: Record<string, string> = {
+  generationCostSuffix: "(cost: {amount} Percoins)",
+};
+
 function translate(
   namespace: string | undefined,
   key: string,
   values?: Record<string, string | number>,
 ) {
-  if (namespace !== "coordinate") {
+  let template: string;
+  if (namespace === "coordinate") {
+    template = messages[key] ?? key;
+  } else if (namespace === "common") {
+    template = commonMessages[key] ?? key;
+  } else {
     return key;
   }
 
-  const template = messages[key] ?? key;
   if (!values) {
     return template;
   }

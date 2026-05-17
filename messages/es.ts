@@ -25,6 +25,7 @@ export const esMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(coste: {amount} Percoins)",
   },
   nav: {
     home: "Inicio",
@@ -884,7 +885,6 @@ export const esMessages = {
     countMultiple: "{count} imágenes",
     countCostDescription: "{count} imágenes requieren {amount} Percoins",
     generatingButton: "Empezar styling",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "Generando...",
     missingPrompt: "Introduce una descripción del conjunto.",
     missingUploadedImage: "Sube una imagen de origen.",
@@ -1421,7 +1421,6 @@ export const esMessages = {
     guestRateLimitSignupHint:
       "Crea una cuenta para seguir al instante.",
     guestRateLimitSignupAction: "Regístrate para continuar",
-    paidGenerateButton: "Continuar por {cost} Percoins",
     percoinBalanceLabel: "Saldo actual de Percoins",
     percoinBalanceLoading: "Comprobando tu saldo de Percoins...",
     percoinBalanceUnavailable: "No pudimos cargar tu saldo.",
@@ -1661,7 +1660,6 @@ export const esMessages = {
     formCountLabel: "Número de imágenes",
     formModelLabel: "Modelo",
     formGenerateButton: "Generar",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Generando...",
     formImageRequired: "Sube una imagen del personaje.",
     formGenerationFailed: "La generación falló. Inténtalo de nuevo más tarde.",

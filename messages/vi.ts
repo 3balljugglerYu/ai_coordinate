@@ -25,6 +25,7 @@ export const viMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(chi phí: {amount} Percoin)",
   },
   nav: {
     home: "Trang chủ",
@@ -883,7 +884,6 @@ export const viMessages = {
     countMultiple: "{count} hình",
     countCostDescription: "{count} hình cần {amount} Percoin",
     generatingButton: "Bắt đầu styling",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "Đang tạo...",
     missingPrompt: "Hãy nhập mô tả trang phục.",
     missingUploadedImage: "Hãy tải hình nguồn lên.",
@@ -1420,7 +1420,6 @@ export const viMessages = {
     guestRateLimitSignupHint:
       "Tạo tài khoản để tiếp tục ngay.",
     guestRateLimitSignupAction: "Đăng ký để tiếp tục",
-    paidGenerateButton: "Tiếp tục với {cost} Percoin",
     percoinBalanceLabel: "Số dư Percoin hiện tại",
     percoinBalanceLoading: "Đang kiểm tra số dư Percoin của bạn...",
     percoinBalanceUnavailable: "Không tải được số dư của bạn.",
@@ -1660,7 +1659,6 @@ export const viMessages = {
     formCountLabel: "Số lượng hình",
     formModelLabel: "Mô hình",
     formGenerateButton: "Tạo",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Đang tạo...",
     formImageRequired: "Hãy tải lên hình nhân vật.",
     formGenerationFailed: "Tạo thất bại. Vui lòng thử lại sau.",

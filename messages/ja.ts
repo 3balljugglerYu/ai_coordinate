@@ -22,6 +22,7 @@ export const jaMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "（消費：{amount}ペルコイン）",
   },
   nav: {
     home: "ホーム",
@@ -853,7 +854,6 @@ export const jaMessages = {
     countMultiple: "{count}枚",
     countCostDescription: "{count}枚の生成には {amount} ペルコインが必要です",
     generatingButton: "コーデ開始！",
-    generatingButtonWithCost: "コーデ開始！（消費：{amount}）",
     generatingButtonLoading: "生成中...",
     missingPrompt: "着せ替え内容を入力してください",
     missingUploadedImage: "人物画像をアップロードしてください",
@@ -1356,7 +1356,6 @@ export const jaMessages = {
     guestRateLimitSignupHint:
       "新規登録すると、このまま続きをお試しいただけます。",
     guestRateLimitSignupAction: "新規登録して続ける",
-    paidGenerateButton: "コーデ開始！（消費：{cost}）",
     percoinBalanceLabel: "現在のペルコイン残高",
     percoinBalanceLoading: "ペルコイン残高を確認しています...",
     percoinBalanceUnavailable: "残高を確認できませんでした",
@@ -1591,7 +1590,6 @@ export const jaMessages = {
     formCountLabel: "生成枚数",
     formModelLabel: "モデル",
     formGenerateButton: "コーデ開始！",
-    formGenerateButtonWithCost: "コーデ開始！（消費：%amount%）",
     formGenerating: "生成中...",
     formImageRequired: "キャラ画像をアップロードしてください",
     formGenerationFailed: "生成に失敗しました。時間をおいて再試行してください。",

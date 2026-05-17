@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, User as UserIcon } from "lucide-react";
+import { User as UserIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
+import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
 import { getPercoinCost } from "@/features/generation/lib/model-config";
 import {
   DEFAULT_GENERATION_MODEL,
@@ -42,7 +42,6 @@ interface InspirePageClientCopy {
   formCountLabel: string;
   formModelLabel: string;
   formGenerateButton: string;
-  formGenerateButtonWithCost: string;
   formGenerating: string;
   formImageRequired: string;
   formGenerationFailed: string;
@@ -117,10 +116,6 @@ export function InspirePageClient({
   // /style と同等の見た目にするため、ImageUploader にも同じ aspectRatio を渡す。
   const [templateAspectRatio, setTemplateAspectRatio] = useState<number>(1);
   const totalPercoinCost = getPercoinCost(selectedModel) * count;
-  const generateButtonLabel = copy.formGenerateButtonWithCost.replace(
-    "%amount%",
-    String(totalPercoinCost)
-  );
 
   const handleGenerate = async (): Promise<void> => {
     if (!uploadedImage) {
@@ -289,19 +284,17 @@ export function InspirePageClient({
             <p className="text-sm text-destructive">{error}</p>
           ) : null}
 
-          <Button
-            type="button"
-            className="w-full"
-            size="lg"
+          <GenerationSubmitButton
+            onClick={handleGenerate}
             disabled={
               !uploadedImage || isGenerating || !hasAnyInspireOverride(overrides)
             }
-            onClick={handleGenerate}
-            aria-label={copy.formGenerateAria}
-          >
-            <Sparkles className="mr-2 h-5 w-5" aria-hidden="true" />
-            {isGenerating ? copy.formGenerating : generateButtonLabel}
-          </Button>
+            isGenerating={isGenerating}
+            generateLabel={copy.formGenerateButton}
+            generatingLabel={copy.formGenerating}
+            costAmount={totalPercoinCost}
+            ariaLabel={copy.formGenerateAria}
+          />
         </div>
       </Card>
 

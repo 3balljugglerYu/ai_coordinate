@@ -25,6 +25,7 @@ export const idMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(biaya: {amount} Percoin)",
   },
   nav: {
     home: "Beranda",
@@ -884,7 +885,6 @@ export const idMessages = {
     countMultiple: "{count} gambar",
     countCostDescription: "{count} gambar memerlukan {amount} Percoin",
     generatingButton: "Mulai styling",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "Menghasilkan...",
     missingPrompt: "Masukkan deskripsi outfit.",
     missingUploadedImage: "Unggah gambar sumber.",
@@ -1421,7 +1421,6 @@ export const idMessages = {
     guestRateLimitSignupHint:
       "Buat akun untuk melanjutkan langsung.",
     guestRateLimitSignupAction: "Daftar untuk melanjutkan",
-    paidGenerateButton: "Lanjutkan dengan {cost} Percoin",
     percoinBalanceLabel: "Saldo Percoin saat ini",
     percoinBalanceLoading: "Memeriksa saldo Percoinmu...",
     percoinBalanceUnavailable: "Tidak bisa memuat saldomu.",
@@ -1661,7 +1660,6 @@ export const idMessages = {
     formCountLabel: "Jumlah gambar",
     formModelLabel: "Model",
     formGenerateButton: "Hasilkan",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Menghasilkan...",
     formImageRequired: "Mohon unggah gambar karakter.",
     formGenerationFailed: "Pembuatan gagal. Silakan coba lagi nanti.",

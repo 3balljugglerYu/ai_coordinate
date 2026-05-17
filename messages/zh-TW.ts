@@ -25,6 +25,7 @@ export const zhTwMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "（消耗：{amount} Percoin）",
   },
   nav: {
     home: "首頁",
@@ -882,7 +883,6 @@ export const zhTwMessages = {
     countMultiple: "{count} 張",
     countCostDescription: "{count} 張需要 {amount} Percoin",
     generatingButton: "開始造型",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "生成中...",
     missingPrompt: "請輸入穿搭描述。",
     missingUploadedImage: "請上傳原始圖片。",
@@ -1417,7 +1417,6 @@ export const zhTwMessages = {
     guestRateLimitSignupHint:
       "註冊後即可立即繼續使用。",
     guestRateLimitSignupAction: "註冊以繼續",
-    paidGenerateButton: "用 {cost} Percoin 繼續",
     percoinBalanceLabel: "目前 Percoin 餘額",
     percoinBalanceLoading: "查詢 Percoin 餘額中...",
     percoinBalanceUnavailable: "無法載入餘額。",
@@ -1657,7 +1656,6 @@ export const zhTwMessages = {
     formCountLabel: "生成張數",
     formModelLabel: "模型",
     formGenerateButton: "生成",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "生成中...",
     formImageRequired: "請上傳角色圖片。",
     formGenerationFailed: "生成失敗，請稍後再試。",

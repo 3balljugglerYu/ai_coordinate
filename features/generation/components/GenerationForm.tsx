@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { Lock, Sparkles, Upload, Folder } from "lucide-react";
+import { Lock, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { GenerationModelControls } from "./GenerationModelControls";
+import { GenerationSubmitButton } from "./GenerationSubmitButton";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
@@ -191,10 +192,7 @@ export function GenerationForm({
   );
   const totalPercoinCost =
     selectedCount * getPercoinCost(effectiveSelectedModel);
-  const generateButtonLabel =
-    authState === "authenticated"
-      ? t("generatingButtonWithCost", { amount: totalPercoinCost })
-      : t("generatingButton");
+  const showCost = authState === "authenticated";
 
   useEffect(() => {
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
@@ -992,25 +990,16 @@ export function GenerationForm({
         </div>
 
         {/* 生成ボタン */}
-        <Button
-          className="w-full"
-          size="lg"
+        <GenerationSubmitButton
           onClick={handleSubmit}
           disabled={isSubmitDisabled}
-          data-tour="tour-generate-btn"
-        >
-          {isGenerating ? (
-            <>
-              <Sparkles className="mr-2 h-5 w-5 animate-pulse" />
-              {t("generatingButtonLoading")}
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2 h-5 w-5" />
-              {generateButtonLabel}
-            </>
-          )}
-        </Button>
+          isGenerating={isGenerating}
+          generateLabel={t("generatingButton")}
+          generatingLabel={t("generatingButtonLoading")}
+          costAmount={showCost ? totalPercoinCost : null}
+          dataTour="tour-generate-btn"
+          pulseIconWhenGenerating
+        />
 
         <SubscriptionUpsellDialog
           open={isUpsellOpen}

@@ -11,7 +11,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useTranslations } from "next-intl";
-import { Maximize2, Minimize2, Share2, Sparkles } from "lucide-react";
+import { Maximize2, Minimize2, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -69,6 +69,7 @@ import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
+import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import {
   readPreferredModel,
@@ -1279,13 +1280,7 @@ export function StylePageClient({
   const generationStatusHint = isCompletingGeneration
     ? t("generationStatusCompleteHint")
     : t("generationStatusHint");
-  const generateButtonLabel = isGenerating
-    ? t("generatingButton")
-    : effectiveAuthState === "authenticated"
-      ? t("paidGenerateButton", {
-          cost: selectedModelPercoinCost,
-        })
-      : t("generateButton");
+  const showGenerateCost = effectiveAuthState === "authenticated";
 
   useEffect(() => {
     if (!selectedPreset || hasTrackedVisitRef.current) {
@@ -1497,16 +1492,14 @@ export function StylePageClient({
               disabled={isGenerating}
             />
 
-            <Button
-              type="button"
-              className="w-full"
-              size="lg"
-              disabled={isGenerateDisabled}
+            <GenerationSubmitButton
               onClick={handleGenerate}
-            >
-              <Sparkles className="mr-2 h-5 w-5" />
-              {generateButtonLabel}
-            </Button>
+              disabled={isGenerateDisabled}
+              isGenerating={isGenerating}
+              generateLabel={t("generateButton")}
+              generatingLabel={t("generatingButton")}
+              costAmount={showGenerateCost ? selectedModelPercoinCost : null}
+            />
             <div className="space-y-1 text-xs leading-5 text-slate-500">
               <p>{t("generateHint")}</p>
               <p>{t("generateRetryHint")}</p>

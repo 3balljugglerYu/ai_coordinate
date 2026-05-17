@@ -25,6 +25,7 @@ export const koMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(소비: {amount} Percoin)",
   },
   nav: {
     home: "홈",
@@ -883,7 +884,6 @@ export const koMessages = {
     countMultiple: "{count}장",
     countCostDescription: "{count}장 생성에 {amount} Percoin이 필요합니다",
     generatingButton: "스타일링 시작",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "생성 중...",
     missingPrompt: "코디 설명을 입력해 주세요.",
     missingUploadedImage: "원본 이미지를 업로드해 주세요.",
@@ -1419,7 +1419,6 @@ export const koMessages = {
     guestRateLimitSignupHint:
       "회원가입하면 바로 이어서 사용할 수 있습니다.",
     guestRateLimitSignupAction: "회원가입하고 계속",
-    paidGenerateButton: "{cost} Percoin으로 계속",
     percoinBalanceLabel: "현재 Percoin 잔액",
     percoinBalanceLoading: "Percoin 잔액을 확인하는 중...",
     percoinBalanceUnavailable: "잔액을 불러오지 못했습니다.",
@@ -1659,7 +1658,6 @@ export const koMessages = {
     formCountLabel: "생성 매수",
     formModelLabel: "모델",
     formGenerateButton: "생성",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "생성 중...",
     formImageRequired: "캐릭터 이미지를 업로드해 주세요.",
     formGenerationFailed: "생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",

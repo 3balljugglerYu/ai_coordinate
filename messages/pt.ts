@@ -25,6 +25,7 @@ export const ptMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(custo: {amount} Percoins)",
   },
   nav: {
     home: "Início",
@@ -884,7 +885,6 @@ export const ptMessages = {
     countMultiple: "{count} imagens",
     countCostDescription: "{count} imagens consomem {amount} Percoins",
     generatingButton: "Iniciar styling",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "Gerando...",
     missingPrompt: "Digite a descrição do look.",
     missingUploadedImage: "Faça upload de uma imagem de origem.",
@@ -1421,7 +1421,6 @@ export const ptMessages = {
     guestRateLimitSignupHint:
       "Crie uma conta para continuar agora mesmo.",
     guestRateLimitSignupAction: "Cadastre-se para continuar",
-    paidGenerateButton: "Continuar por {cost} Percoins",
     percoinBalanceLabel: "Saldo atual de Percoins",
     percoinBalanceLoading: "Verificando seu saldo de Percoins...",
     percoinBalanceUnavailable: "Não foi possível carregar seu saldo.",
@@ -1661,7 +1660,6 @@ export const ptMessages = {
     formCountLabel: "Número de imagens",
     formModelLabel: "Modelo",
     formGenerateButton: "Gerar",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "Gerando...",
     formImageRequired: "Faça upload de uma imagem do personagem.",
     formGenerationFailed: "Falha na geração. Tente novamente mais tarde.",

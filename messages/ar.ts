@@ -25,6 +25,7 @@ export const arMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(التكلفة: {amount} Percoin)",
   },
   nav: {
     home: "الرئيسية",
@@ -883,7 +884,6 @@ export const arMessages = {
     countMultiple: "{count} صور",
     countCostDescription: "{count} صور تتطلب {amount} Percoin",
     generatingButton: "بدء التنسيق",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "جارٍ التوليد...",
     missingPrompt: "أدخل وصف الإطلالة.",
     missingUploadedImage: "ارفع صورة مصدر.",
@@ -1420,7 +1420,6 @@ export const arMessages = {
     guestRateLimitSignupHint:
       "أنشئ حسابًا للمتابعة فورًا.",
     guestRateLimitSignupAction: "سجّل للمتابعة",
-    paidGenerateButton: "متابعة بـ {cost} Percoin",
     percoinBalanceLabel: "رصيد Percoin الحالي",
     percoinBalanceLoading: "جارٍ التحقق من رصيد Percoin...",
     percoinBalanceUnavailable: "تعذّر تحميل رصيدك.",
@@ -1660,7 +1659,6 @@ export const arMessages = {
     formCountLabel: "عدد الصور",
     formModelLabel: "النموذج",
     formGenerateButton: "توليد",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "جارٍ التوليد...",
     formImageRequired: "يُرجى رفع صورة شخصية.",
     formGenerationFailed: "فشل التوليد. يُرجى المحاولة لاحقًا.",

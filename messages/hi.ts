@@ -25,6 +25,7 @@ export const hiMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(लागत: {amount} Percoin)",
   },
   nav: {
     home: "होम",
@@ -883,7 +884,6 @@ export const hiMessages = {
     countMultiple: "{count} छवियाँ",
     countCostDescription: "{count} छवियों के लिए {amount} Percoin चाहिए",
     generatingButton: "स्टाइलिंग शुरू करें",
-    generatingButtonWithCost: "Start styling! (cost: {amount})",
     generatingButtonLoading: "उत्पन्न हो रहा है...",
     missingPrompt: "आउटफ़िट विवरण दर्ज करें।",
     missingUploadedImage: "एक मूल छवि अपलोड करें।",
@@ -1420,7 +1420,6 @@ export const hiMessages = {
     guestRateLimitSignupHint:
       "तुरंत जारी रखने के लिए एक खाता बनाएँ।",
     guestRateLimitSignupAction: "जारी रखने के लिए साइन अप करें",
-    paidGenerateButton: "{cost} Percoin के लिए जारी रखें",
     percoinBalanceLabel: "वर्तमान Percoin बैलेंस",
     percoinBalanceLoading: "आपका Percoin बैलेंस जाँच रहे हैं...",
     percoinBalanceUnavailable: "हम आपका बैलेंस लोड नहीं कर सके।",
@@ -1660,7 +1659,6 @@ export const hiMessages = {
     formCountLabel: "छवियों की संख्या",
     formModelLabel: "मॉडल",
     formGenerateButton: "उत्पन्न करें",
-    formGenerateButtonWithCost: "Start generation! (cost: %amount%)",
     formGenerating: "उत्पन्न हो रहा है...",
     formImageRequired: "कृपया एक कैरेक्टर छवि अपलोड करें।",
     formGenerationFailed: "जनरेशन विफल। कृपया बाद में फिर से प्रयास करें।",
