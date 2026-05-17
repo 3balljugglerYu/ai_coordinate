@@ -5,7 +5,7 @@
  *   - engine: 「どの生成エンジンか」を表す（OpenAI / Gemini）。
  *     生成モデルの 1 段目セレクター（ChatGPT / Nano Banana 2 / Nano Banana Pro）に添える。
  *   - tier: 「コスト / 品質のどの位置づけか」を表す（Low / Medium / High）。
- *     ChatGPT を選んだときに出る「生成タイプ」セレクターの行に添える。
+ *     ChatGPT を選んだときに出る「レンダリング品質」セレクターの行に添える。
  *
  * 表示色などのスタイルは `MODEL_TAG_DISPLAY` に集約。i18n キーは `coordinate` 名前空間。
  */
@@ -64,7 +64,7 @@ export const MODEL_TAG_DISPLAY: Record<ModelTagKey, ModelTagDisplay> = {
 
 /**
  * 正規モデル ID から「品質ポジション」用の tier チップを返す（最大 1 個）。
- * 生成タイプセレクター（Low/Medium/High）や、生成結果一覧の品質表示に使う。
+ * レンダリング品質セレクター（Low/Medium/High）や、生成結果一覧の品質表示に使う。
  *
  * 注意: 1 段目の生成モデルセレクター（ChatGPT / Nano Banana 2 / Nano Banana Pro）には
  * tier ではなく engine チップを添える。それぞれのチップは UI 側で固定値として渡す。

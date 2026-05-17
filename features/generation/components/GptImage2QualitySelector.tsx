@@ -58,7 +58,7 @@ const QUALITY_OPTIONS: ReadonlyArray<QualityOption> = [
 ];
 
 /**
- * ChatGPT Images 2.0 を選択中のときに表示される「生成タイプ（Low/Medium/High）」セレクター。
+ * ChatGPT Images 2.0 を選択中のときに表示される「レンダリング品質（Low/Medium/High）」セレクター。
  * 行ごとに色付きの tier チップを添える。`GptImage2SizeSelector` と組み合わせて
  * quality × sizeTier の 2 軸を独立に選べるようにする。
  *
