@@ -375,6 +375,8 @@ export const frMessages = {
     inspireDeleteConfirmAction: "Supprimer",
     inspireDeleteSuccess: "Supprimée.",
     inspireDeleteFailed: "Impossible de supprimer.",
+    inspireOpenForGenerationAria:
+      "Ouvrir la page de génération avec ce modèle",
   },
   inspireSubmission: {
     dialogTitle: "Soumettre un modèle de style",
@@ -395,6 +397,9 @@ export const frMessages = {
     step2TestCharacterLabel: "Personnage de test",
     step2GeneratingMessage: "Génération en cours... ne fermez pas cet onglet.",
     step2GeneratingInline: "Génération…",
+    step2GeneratingCardTitle: "Génération de la simulation d'essayage",
+    step2GeneratingCardFooter:
+      "Veuillez ne pas fermer cet onglet. Termine en 60 à 90 secondes environ.",
     step2PartialNotice:
       "Un seul des deux aperçus a abouti. Vous pouvez quand même soumettre si le résultat vous convient.",
     step2BackButton: "Retour",
@@ -1111,6 +1116,8 @@ export const frMessages = {
     listPromptCopyFailed: "Impossible de copier le prompt.",
     listPromptEmpty: "Aucune information de prompt.",
     listPromptOneTapStyleEmpty: "Indisponible : cette image a été générée avec One-Tap Style.",
+    listPromptInspireEmpty:
+      "Indisponible : cette image a été générée avec un modèle de style communautaire.",
     listApplyForNext: "Générer à partir de cette image",
     listApplyForNextSuccess: "L'image a été placée dans le champ d'envoi.",
     listApplyForNextConfirmTitle: "Aller à la page Coordonner",
@@ -1631,6 +1638,8 @@ export const frMessages = {
     detailTemplate: "Image du modèle",
     detailPreviewOpenAI: "Aperçu (OpenAI)",
     detailPreviewGemini: "Aperçu (Gemini)",
+    detailEnlargedPrev: "Image précédente",
+    detailEnlargedNext: "Image suivante",
   },
   inspirePage: {
     pageTitle: "Générer avec ce style",
@@ -1659,12 +1668,11 @@ export const frMessages = {
     formAddImageAction: "Ajouter une image",
     overrideLabel: "Élément à modifier",
     overrideHint:
-      "Choisissez « Tout conserver » pour garder l'angle, la pose, la tenue et l'arrière-plan du modèle, en ne remplaçant que le personnage. Choisissez un seul élément pour ne régénérer que celui-ci.",
-    overrideKeepAll: "Tout conserver (personnage seul)",
-    overrideAngle: "Changer l'angle",
-    overridePose: "Changer la pose",
-    overrideOutfit: "Changer la tenue",
-    overrideBackground: "Changer l'arrière-plan",
+      "Seuls les éléments cochés sont appliqués à votre personnage depuis le modèle. Tout cocher pour « tout conserver ». Au moins un est requis.",
+    overrideOutfit: "Essayer la tenue",
+    overrideAngle: "Appliquer l'angle de caméra",
+    overridePose: "Reproduire la pose",
+    overrideBackground: "Appliquer l'arrière-plan",
     statusFailed: "Échec de la génération",
     statusFailedDescription:
       "Veuillez réessayer plus tard ou utiliser une autre image.",

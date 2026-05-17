@@ -82,7 +82,8 @@ export const getGeneratedImagesServer = cache(async (
     | "specified_coordinate"
     | "full_body"
     | "chibi"
-    | "one_tap_style",
+    | "one_tap_style"
+    | "inspire",
   supabaseOverride?: SupabaseClient
 ): Promise<GeneratedImageRecord[]> => {
   const supabase = supabaseOverride ?? (await createClient());

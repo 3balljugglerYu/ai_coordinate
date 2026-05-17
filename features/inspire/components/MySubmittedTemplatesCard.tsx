@@ -1,8 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import {
-  env,
-  isInspireFeatureEnabled,
-} from "@/lib/env";
+import { isInspireFeatureEnabled } from "@/lib/env";
 import { isInspireSubmitterAllowed } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -74,14 +71,13 @@ export async function MySubmittedTemplatesCard({
       : null,
   }));
 
-  // Step 2 のテストキャラ画像表示用に env URL を Client へ渡す。
-  // env は長期 signed URL を想定（運営側で設定、Method A）。
-  const testCharacterImageUrl = env.INSPIRE_TEST_CHARACTER_IMAGE_URL || null;
+  // テストキャラ画像 URL は申請ページ（app/(app)/inspire/submit/page.tsx）側で env から
+  // 読み出すため、ここからは渡さない。マイページ Card 自体は申請モーダルを持たない構成に
+  // 変更（モーダル廃止、申請は専用ページへ遷移）。
 
   return (
     <MySubmittedTemplatesCardClient
       items={items}
-      testCharacterImageUrl={testCharacterImageUrl}
       copy={{
         title: t("inspireSectionTitle"),
         description: t("inspireSectionDescription"),
@@ -111,6 +107,7 @@ export async function MySubmittedTemplatesCard({
         deleteConfirmAction: t("inspireDeleteConfirmAction"),
         deleteSuccess: t("inspireDeleteSuccess"),
         deleteFailed: t("inspireDeleteFailed"),
+        openForGenerationAria: t("inspireOpenForGenerationAria"),
       }}
     />
   );

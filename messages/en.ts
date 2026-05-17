@@ -375,6 +375,7 @@ export const enMessages = {
     inspireDeleteConfirmAction: "Delete",
     inspireDeleteSuccess: "Deleted.",
     inspireDeleteFailed: "Failed to delete.",
+    inspireOpenForGenerationAria: "Open the generation page with this template",
   },
   inspireSubmission: {
     dialogTitle: "Submit a style template",
@@ -395,6 +396,9 @@ export const enMessages = {
     step2TestCharacterLabel: "Test character",
     step2GeneratingMessage: "Generating... please don't close this tab.",
     step2GeneratingInline: "Generating…",
+    step2GeneratingCardTitle: "Generating the try-on simulation",
+    step2GeneratingCardFooter:
+      "Please keep this tab open. Finishes in about 60–90 seconds.",
     step2PartialNotice:
       "Only one of the two previews succeeded. You can still submit if the result looks acceptable.",
     step2BackButton: "Back",
@@ -1111,6 +1115,7 @@ export const enMessages = {
     listPromptCopyFailed: "Failed to copy the prompt.",
     listPromptEmpty: "No prompt information available.",
     listPromptOneTapStyleEmpty: "Not available because this image was generated with One-Tap Style.",
+    listPromptInspireEmpty: "Not available because this image was generated with a community style template.",
     listApplyForNext: "Generate from this image",
     listApplyForNextSuccess: "Image has been set to the upload field.",
     listApplyForNextConfirmTitle: "Going to the coordinate page",
@@ -1631,6 +1636,8 @@ export const enMessages = {
     detailTemplate: "Template image",
     detailPreviewOpenAI: "Preview (OpenAI)",
     detailPreviewGemini: "Preview (Gemini)",
+    detailEnlargedPrev: "Previous image",
+    detailEnlargedNext: "Next image",
   },
   inspirePage: {
     pageTitle: "Generate with this style",
@@ -1659,12 +1666,11 @@ export const enMessages = {
     formAddImageAction: "Add image",
     overrideLabel: "Element to change",
     overrideHint:
-      "Choose 'Keep all' to preserve the template's angle, pose, outfit, and background, swapping only the character. Pick a single element to regenerate just that one.",
-    overrideKeepAll: "Keep all (character only)",
-    overrideAngle: "Change angle",
-    overridePose: "Change pose",
-    overrideOutfit: "Change outfit",
-    overrideBackground: "Change background",
+      "Only the checked elements are applied to your character from the style template. Check all for 'keep everything'. At least one is required.",
+    overrideOutfit: "Try on the outfit",
+    overrideAngle: "Apply the camera angle",
+    overridePose: "Match the pose",
+    overrideBackground: "Apply the background",
     statusFailed: "Generation failed",
     statusFailedDescription:
       "Please try again later or use a different image.",

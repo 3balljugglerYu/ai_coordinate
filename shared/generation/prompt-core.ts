@@ -12,14 +12,32 @@ export type GenerationType =
   | "inspire";
 
 /**
- * Inspire 機能で「テンプレのどの要素を上書き再生成するか」の対象。
- * null は keep_all を意味し、テンプレの全要素を維持してキャラだけ差し替える。
+ * Inspire 機能で「テンプレのどの要素を image_0 に適用するか」の組み合わせ。
+ *
+ * - 4 つすべて true: 「すべて維持」と等価で、image_1 のシーンを丸ごと採用
+ * - 個別に true: チェックされた属性だけを image_1 から image_0 に移植
+ * - 4 つすべて false: API 側で 400 エラー（UI 側でも生成ボタン disabled）
  */
-export type InspireOverrideTarget =
-  | "angle"
-  | "pose"
-  | "outfit"
-  | "background";
+export interface InspireOverrides {
+  outfit: boolean;
+  angle: boolean;
+  pose: boolean;
+  background: boolean;
+}
+
+/** 4 つすべて true（=「すべて維持」）かどうかを判定するヘルパ。 */
+export function isInspireKeepAll(overrides: InspireOverrides): boolean {
+  return (
+    overrides.outfit && overrides.angle && overrides.pose && overrides.background
+  );
+}
+
+/** 少なくとも 1 つチェックされているかを判定するヘルパ（バリデーション用）。 */
+export function hasAnyInspireOverride(overrides: InspireOverrides): boolean {
+  return (
+    overrides.outfit || overrides.angle || overrides.pose || overrides.background
+  );
+}
 
 export const SOURCE_IMAGE_TYPES = ["illustration", "real"] as const;
 export type SourceImageType = (typeof SOURCE_IMAGE_TYPES)[number];
@@ -270,146 +288,105 @@ Keep everything else consistent: face features, hair, pose, expression, lighting
 
 export interface BuildInspirePromptOptions {
   /**
-   * テンプレのどの要素を上書き再生成するか。null = keep_all（全要素維持してキャラだけ差し替え）。
+   * 画像 1 (スタイルテンプレ) から image_0 (ユーザーキャラ) に適用する属性の組み合わせ。
+   * 4 つすべて true は「すべて維持」と等価（image_1 のシーンに丸ごとキャラを置く）。
    */
-  overrideTarget: InspireOverrideTarget | null;
-  /**
-   * ユーザーがアップロードしたキャラ画像が「実写」なのか「イラスト」なのか。
-   * Worker は image_jobs.source_image_type から渡す。
-   */
-  sourceImageType?: SourceImageType;
+  overrides: InspireOverrides;
 }
 
 /**
- * Inspire 生成で image_0 から保持すべき身体属性の正典リスト（英語の列挙文）。
+ * プロンプト前文（全パターン共通・必ず先頭に置く）。
+ * モデルに「キャラクター体型を絶対に保持」させるための強い指示。
  *
- * 「体格・肌色・手足の太さ・胸の大きさが image_1 に寄せられて変わる」という報告への対応で、
- * image_0 の説明 / item 1 の保持指示 / 否定ガード / styleSuffix の補強文を **すべてこの 1 つの
- * 文字列から組み立てる**。こうしてリスト間のドリフト（片方だけ更新し忘れる）を構造的に防ぐ。
- *
- * 注:
- *   - この shared モジュールは Next.js（API/Client）と Supabase Deno Worker の両方から import する。
- *     共有定数はここ（shared/）に置く。lib/ には移さない（Worker から lib/ を import できないため）。
- *   - 安全フィルタ（OpenAI / Gemini）を誘発しやすい `chest size` のような明示は含めず、
- *     `torso proportions` / `overall body silhouette` で胴体全体を中立的に指す。
+ * 注: この shared モジュールは Next.js（API/Client）と Supabase Deno Worker の両方から import する。
+ * 共有定数はここ（shared/）に置く（lib/ には移さない — Worker から import できないため）。
  */
-const INSPIRE_BODY_ATTRIBUTES =
-  "skin tone, body proportions, limb thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette";
+const INSPIRE_PROMPT_PREAMBLE =
+  "絶対に守ること：必ずimage_0のキャラクターの体型は完全に保持してください。";
 
 /**
- * 体型を image_1 に引きずられないための否定指示（全ブランチ末尾に付ける）。
+ * 各 override（チェックボックス）の ON / OFF に対応するアクション文（日本語）。
  *
- * 最後の一文は「image_0 が上半身のみ × image_1 が全身ポーズ」のケースへの配慮:
- * このとき image_0 には下半身の参照が無いため model は補完するしかないが、
- * 補完元として image_1 を流用しつつ image_0 の頭サイズだけ据え置く → 頭身が崩れる、
- * という典型的なアーティファクトを避けるよう、頭身比の一貫性を明示的に要求する。
- * ソース画像の指定（上半身 / 全身）を制限せず prompt 側で対応する方針。
+ * - ON: image_1 から該当属性を image_0 に適用する指示
+ * - OFF: image_0 の該当属性を変えない指示
+ *
+ * 設計指針: 長文や属性列挙はモデルの解釈を散らかして drift を生むため、各属性 1 文で短く。
+ * 「キャラ本体の完全保持」は冒頭の前文で強く宣言済みなので、ここでは個別属性だけ書く。
  */
-const INSPIRE_BODY_PRESERVATION_GUARD = `Do NOT alter the character's body type to match image_1. Keep image_0's ${INSPIRE_BODY_ATTRIBUTES}. Do NOT change the skin tone. Do NOT slim, enlarge, lengthen, shorten, or otherwise reshape any part of the body to match image_1. If image_0 shows only the upper body but image_1's framing requires the lower body to be drawn, extrapolate the missing parts naturally from image_0's visible proportions (head-to-shoulder ratio, torso width) and keep a realistic, consistent head-to-body ratio across the whole figure; do not leave the head oversized or undersized relative to the generated body.`;
+const INSPIRE_ACTION_SENTENCES = {
+  outfit: {
+    on: "image_1の服をimage_0に着せてください。",
+    off: "image_0の衣装は変えないでください。",
+  },
+  angle: {
+    on: "image_1と同じカメラアングルをimage_0に適用してください。",
+    off: "image_0のカメラアングルは変えないでください。",
+  },
+  pose: {
+    on: "image_1のポーズと似たようなポーズをimage_0に適用してください。",
+    off: "image_0のポーズは変えないでください。",
+  },
+  background: {
+    on: "image_1の背景と同じ背景をimage_0に適用してください。",
+    off: "image_0の背景は変えないでください。",
+  },
+} as const satisfies Record<keyof InspireOverrides, { on: string; off: string }>;
+
+/**
+ * outfit → angle → pose → background の順に、各 override が ON なら ON 文、
+ * OFF なら OFF 文を返す（4 文必ず生成）。
+ */
+function getInspireActionSentences(overrides: InspireOverrides): string[] {
+  const order: ReadonlyArray<keyof InspireOverrides> = [
+    "outfit",
+    "angle",
+    "pose",
+    "background",
+  ];
+  return order.map((key) =>
+    overrides[key]
+      ? INSPIRE_ACTION_SENTENCES[key].on
+      : INSPIRE_ACTION_SENTENCES[key].off
+  );
+}
 
 /**
  * Inspire 生成用のプロンプトを構築する。
  *
- * 入力画像の順序は **必ず以下** とする（Worker 側で揃えること）:
+ * 入力画像の順序は **必ず以下** とする（Worker / Next.js handler 側で揃えること）:
  *   image_0 = ユーザーがアップロードしたキャラ画像
  *   image_1 = 申請されたスタイルテンプレート画像
  *
- * 出力フレームの比率はテンプレ（image_1）に合わせる。これはテンプレートの構図を
- * 完全に維持するために必須。Worker 側の `resolveOpenAITargetSize` も image_1 を起点に算出する。
+ * 出力フレーム比率の起点画像は `resolveInspireTargetSizeBaseIndex(overrides)` で
+ * 決まる（4 つすべて true だけ image_1 基準、他は image_0 基準）。両側を同じ overrides で
+ * 揃えること。
  *
- * 体型保持について:
- *   image_0 の体格・肌色・四肢の太さ・全体シルエットは image_1 に寄せず維持する。
- *   保持指示（image_0 の説明 + item 1）と否定指示（`INSPIRE_BODY_PRESERVATION_GUARD`）と
- *   styleSuffix の補強文を全 5 ブランチ・実写/イラスト両バリアントに共通で入れ、
- *   保持属性のリストはすべて `INSPIRE_BODY_ATTRIBUTES` 1 箇所に集約している。
+ * 構造:
+ *   1. 前文（体型保持の絶対指示）
+ *   2. チェックされた各 override のアクション文（日本語短文）
  *
- * 5 ブランチ:
- *   - keep_all (overrideTarget=null): テンプレのアングル/ポーズ/衣装/背景を維持してキャラだけ差し替える
- *   - angle: テンプレのアングルだけを変えて、ポーズ/衣装/背景は維持
- *   - pose: テンプレのポーズだけを変えて、アングル/衣装/背景は維持
- *   - outfit: テンプレの衣装だけを変えて、アングル/ポーズ/背景は維持
- *   - background: テンプレの背景だけを変えて、アングル/ポーズ/衣装は維持
+ * 少なくとも 1 つ override がチェックされている前提（事前に hasAnyInspireOverride で検証する）。
+ * チェックなしで呼ぶと action 文が 0 件になり、生成意図不明のプロンプトになる。
  */
 export function buildInspirePrompt(options: BuildInspirePromptOptions): string {
-  const { overrideTarget, sourceImageType = "illustration" } = options;
+  const { overrides } = options;
+  const actions = getInspireActionSentences(overrides);
+  return [INSPIRE_PROMPT_PREAMBLE, ...actions].join("\n\n");
+}
 
-  const styleBodyReinforcement = ` Even ${
-    sourceImageType === "real"
-      ? "in this photorealistic style"
-      : "when matching the art style"
-  }, keep image_0's ${INSPIRE_BODY_ATTRIBUTES} — do not reshape the body to match image_1.`;
-
-  const styleSuffix =
-    (sourceImageType === "real"
-      ? "Generate a photorealistic result. Captured with an 85mm portrait lens. Use realistic lighting consistent with image_1's environment."
-      : "Match the illustration touch and artistic style of image_1 (the style template).") +
-    styleBodyReinforcement;
-
-  const basePrefix = `CRITICAL INSTRUCTION: This is an Image-to-Image task with two reference images:
-- image_0 (User Character): the character identity to render in the output, including face, hair, ${INSPIRE_BODY_ATTRIBUTES}.
-- image_1 (Style Template): the visual reference for composition, framing, camera angle, pose, outfit, background, and overall vibe.
-
-You MUST produce a single output image that:
-1. Replaces the character in image_1 with the character from image_0. Preserve image_0's facial features, hair, identity, ${INSPIRE_BODY_ATTRIBUTES}.
-2. Strictly preserves image_1's aspect ratio, framing, and crop. Do NOT extend or change the canvas.`;
-
-  if (overrideTarget === null) {
-    return [
-      basePrefix,
-      `3. KEEP ALL of the following from image_1: camera angle, pose, outfit, and background. Only the character identity and body come from image_0.`,
-      `4. The output must look as if the character from image_0 stepped into image_1's exact scene with the same camera angle, pose, outfit, and background, while keeping image_0's original body proportions and physical characteristics.`,
-      `5. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
-      styleSuffix,
-    ].join("\n\n");
-  }
-
-  if (overrideTarget === "angle") {
-    return [
-      basePrefix,
-      `3. KEEP from image_1: pose, outfit, and background.`,
-      `4. CHANGE: regenerate the camera angle to a natural alternative (e.g., a different viewpoint of the same scene) while keeping the rest faithful to image_1.`,
-      `5. The character identity and body come from image_0.`,
-      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
-      styleSuffix,
-    ].join("\n\n");
-  }
-
-  if (overrideTarget === "pose") {
-    return [
-      basePrefix,
-      `3. KEEP from image_1: camera angle, outfit, and background.`,
-      `4. CHANGE: regenerate the pose to a natural alternative that fits the same scene and outfit.`,
-      `5. The character identity and body come from image_0.`,
-      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
-      styleSuffix,
-    ].join("\n\n");
-  }
-
-  if (overrideTarget === "outfit") {
-    return [
-      basePrefix,
-      `3. KEEP from image_1: camera angle, pose, and background.`,
-      `4. CHANGE: regenerate the outfit to a natural alternative that suits the scene and pose.`,
-      `5. The character identity and body come from image_0.`,
-      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
-      styleSuffix,
-    ].join("\n\n");
-  }
-
-  if (overrideTarget === "background") {
-    return [
-      basePrefix,
-      `3. KEEP from image_1: camera angle, pose, and outfit.`,
-      `4. CHANGE: regenerate the background to a natural alternative that complements the outfit and pose.`,
-      `5. The character identity and body come from image_0.`,
-      `6. ${INSPIRE_BODY_PRESERVATION_GUARD}`,
-      styleSuffix,
-    ].join("\n\n");
-  }
-
-  throw new Error(
-    `Unsupported inspire overrideTarget: ${String(overrideTarget)}`
-  );
+/**
+ * Inspire 生成で OpenAI helper に渡す `targetSizeBaseIndex` を解決する。
+ *
+ * - すべて維持（4 つ true）: image_1 のシーンに置き換える → image_1 のアスペクト比基準（→ 1）
+ * - 部分上書き: image_0 を編集する → image_0 のアスペクト比基準（→ 0）
+ *
+ * caller（preview-generation handler / image-gen-worker）は `callOpenAIImageEditMultiInput*`
+ * の `targetSizeBaseIndex` にこの値を渡すこと。プロンプト側のフレーミング指示と一致させる必要がある。
+ */
+export function resolveInspireTargetSizeBaseIndex(
+  overrides: InspireOverrides,
+): 0 | 1 {
+  return isInspireKeepAll(overrides) ? 1 : 0;
 }
 
 /**

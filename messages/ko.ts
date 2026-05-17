@@ -375,6 +375,7 @@ export const koMessages = {
     inspireDeleteConfirmAction: "삭제",
     inspireDeleteSuccess: "삭제했습니다.",
     inspireDeleteFailed: "삭제에 실패했습니다.",
+    inspireOpenForGenerationAria: "이 템플릿으로 생성 화면 열기",
   },
   inspireSubmission: {
     dialogTitle: "스타일 템플릿 투고",
@@ -395,6 +396,9 @@ export const koMessages = {
     step2TestCharacterLabel: "테스트 캐릭터",
     step2GeneratingMessage: "생성 중입니다... 탭을 닫지 말아 주세요.",
     step2GeneratingInline: "생성 중…",
+    step2GeneratingCardTitle: "트라이온 시뮬레이션 생성 중",
+    step2GeneratingCardFooter:
+      "이 탭을 닫지 말아 주세요. 약 60~90초 후 완료됩니다.",
     step2PartialNotice:
       "두 미리보기 중 하나만 성공했습니다. 결과가 만족스럽다면 그대로 투고할 수 있습니다.",
     step2BackButton: "뒤로",
@@ -1111,6 +1115,7 @@ export const koMessages = {
     listPromptCopyFailed: "프롬프트 복사에 실패했습니다.",
     listPromptEmpty: "프롬프트 정보가 없습니다.",
     listPromptOneTapStyleEmpty: "원탭 스타일로 생성된 이미지라 표시할 수 없습니다.",
+    listPromptInspireEmpty: "투고 스타일 템플릿으로 생성된 이미지라 표시할 수 없습니다.",
     listApplyForNext: "이 이미지로 다시 생성",
     listApplyForNextSuccess: "업로드 칸에 이미지를 설정했습니다.",
     listApplyForNextConfirmTitle: "코디 페이지로 이동합니다",
@@ -1631,6 +1636,8 @@ export const koMessages = {
     detailTemplate: "템플릿 이미지",
     detailPreviewOpenAI: "미리보기 (OpenAI)",
     detailPreviewGemini: "미리보기 (Gemini)",
+    detailEnlargedPrev: "이전 이미지",
+    detailEnlargedNext: "다음 이미지",
   },
   inspirePage: {
     pageTitle: "이 스타일로 생성",
@@ -1659,12 +1666,11 @@ export const koMessages = {
     formAddImageAction: "이미지 추가",
     overrideLabel: "변경할 요소",
     overrideHint:
-      "‘모두 유지’를 선택하면 템플릿의 앵글, 포즈, 의상, 배경을 그대로 두고 캐릭터만 교체합니다. 단일 요소를 선택하면 그 요소만 다시 생성합니다.",
-    overrideKeepAll: "모두 유지(캐릭터만)",
-    overrideAngle: "앵글 변경",
-    overridePose: "포즈 변경",
-    overrideOutfit: "의상 변경",
-    overrideBackground: "배경 변경",
+      "체크한 요소만 스타일 템플릿에서 당신의 캐릭터에 적용됩니다. 모두 체크하면 「모두 유지」와 동일합니다. 최소 1 개 체크가 필요합니다.",
+    overrideOutfit: "의상을 입혀보기",
+    overrideAngle: "카메라 앵글 적용",
+    overridePose: "포즈에 맞추기",
+    overrideBackground: "배경 적용",
     statusFailed: "생성 실패",
     statusFailedDescription:
       "잠시 후 다시 시도하거나 다른 이미지를 사용해 주세요.",

@@ -10,24 +10,11 @@ jest.mock("@/features/generation/lib/heic-converter", () => {
 
 jest.mock("@/features/generation/lib/model-config", () => {
   const actual = jest.requireActual("@/features/generation/lib/model-config");
-  const inspireAllowedModels = [
-    "gemini-2.5-flash-image",
-    "gemini-3.1-flash-image-preview-1024",
-    "gemini-3-pro-image-1k",
-    "gemini-3-pro-image-2k",
-    "gemini-3-pro-image-4k",
-    "gpt-image-2-low-1k",
-  ];
-
   return {
     ...actual,
     GEMINI_GENERATION_ENABLED: true,
-    INSPIRE_ALLOWED_MODELS: inspireAllowedModels,
     isModelAvailableForGeneration: jest.fn((model?: string | null) =>
       typeof model === "string"
-    ),
-    isInspireAllowedModel: jest.fn((model?: string | null) =>
-      inspireAllowedModels.includes(model ?? "")
     ),
   };
 });
@@ -195,7 +182,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         // inspire 列は非 inspire 経路では NULL（Phase 1 マイグレ + handler 拡張）
         style_template_id: null,
         style_reference_image_url: null,
-        override_target: null,
+        override_outfit: null,
+        override_angle: null,
+        override_pose: null,
+        override_background: null,
       });
       expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
         "job-001"

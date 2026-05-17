@@ -1,167 +1,230 @@
-import { buildInspirePrompt } from "@/shared/generation/prompt-core";
+import {
+  buildInspirePrompt,
+  hasAnyInspireOverride,
+  isInspireKeepAll,
+  resolveInspireTargetSizeBaseIndex,
+  type InspireOverrides,
+} from "@/shared/generation/prompt-core";
 
-describe("buildInspirePrompt", () => {
-  test("keep_all (overrideTarget=null) はテンプレ全要素維持を指示する", () => {
-    const prompt = buildInspirePrompt({ overrideTarget: null });
-    expect(prompt).toContain("KEEP ALL of the following from image_1");
-    expect(prompt).toContain("camera angle, pose, outfit, and background");
+const KEEP_ALL: InspireOverrides = {
+  outfit: true,
+  angle: true,
+  pose: true,
+  background: true,
+};
+
+const ONLY_OUTFIT: InspireOverrides = {
+  outfit: true,
+  angle: false,
+  pose: false,
+  background: false,
+};
+
+const ONLY_ANGLE: InspireOverrides = {
+  outfit: false,
+  angle: true,
+  pose: false,
+  background: false,
+};
+
+const ONLY_POSE: InspireOverrides = {
+  outfit: false,
+  angle: false,
+  pose: true,
+  background: false,
+};
+
+const ONLY_BACKGROUND: InspireOverrides = {
+  outfit: false,
+  angle: false,
+  pose: false,
+  background: true,
+};
+
+const NONE: InspireOverrides = {
+  outfit: false,
+  angle: false,
+  pose: false,
+  background: false,
+};
+
+const SINGLES: ReadonlyArray<InspireOverrides> = [
+  ONLY_OUTFIT,
+  ONLY_ANGLE,
+  ONLY_POSE,
+  ONLY_BACKGROUND,
+];
+
+describe("isInspireKeepAll", () => {
+  test("4 つすべて true で true", () => {
+    expect(isInspireKeepAll(KEEP_ALL)).toBe(true);
   });
 
-  test("angle はカメラアングルだけを変更", () => {
-    const prompt = buildInspirePrompt({ overrideTarget: "angle" });
-    expect(prompt).toContain("KEEP from image_1: pose, outfit, and background");
-    expect(prompt).toContain("CHANGE: regenerate the camera angle");
+  test("1 つでも false なら false", () => {
+    for (const overrides of SINGLES) {
+      expect(isInspireKeepAll(overrides)).toBe(false);
+    }
+    expect(isInspireKeepAll(NONE)).toBe(false);
   });
+});
 
-  test("pose はポーズだけを変更", () => {
-    const prompt = buildInspirePrompt({ overrideTarget: "pose" });
-    expect(prompt).toContain(
-      "KEEP from image_1: camera angle, outfit, and background"
-    );
-    expect(prompt).toContain("CHANGE: regenerate the pose");
-  });
-
-  test("outfit は衣装だけを変更", () => {
-    const prompt = buildInspirePrompt({ overrideTarget: "outfit" });
-    expect(prompt).toContain(
-      "KEEP from image_1: camera angle, pose, and background"
-    );
-    expect(prompt).toContain("CHANGE: regenerate the outfit");
-  });
-
-  test("background は背景だけを変更", () => {
-    const prompt = buildInspirePrompt({ overrideTarget: "background" });
-    expect(prompt).toContain(
-      "KEEP from image_1: camera angle, pose, and outfit"
-    );
-    expect(prompt).toContain("CHANGE: regenerate the background");
-  });
-
-  test("デフォルトは illustration スタイル指示", () => {
-    const prompt = buildInspirePrompt({ overrideTarget: null });
-    expect(prompt).toContain("Match the illustration touch");
-  });
-
-  test('sourceImageType="real" のときは photorealistic 指示', () => {
-    const prompt = buildInspirePrompt({
-      overrideTarget: null,
-      sourceImageType: "real",
-    });
-    expect(prompt).toContain("photorealistic");
-    expect(prompt).toContain("85mm portrait lens");
-  });
-
-  test("不明な overrideTarget は throw する", () => {
-    expect(() =>
-      buildInspirePrompt({
-        // 型を意図的にバイパスして runtime エラーパスを検証
-        overrideTarget: "unknown" as never,
-      })
-    ).toThrow(/Unsupported inspire overrideTarget/);
-  });
-
-  test("全分岐に共通の image_0/image_1 指示を含む", () => {
-    const targets = [null, "angle", "pose", "outfit", "background"] as const;
-    for (const target of targets) {
-      const prompt = buildInspirePrompt({ overrideTarget: target });
-      expect(prompt).toContain("image_0 (User Character)");
-      expect(prompt).toContain("image_1 (Style Template)");
-      expect(prompt).toContain(
-        "Strictly preserves image_1's aspect ratio, framing, and crop"
-      );
+describe("hasAnyInspireOverride", () => {
+  test("1 つでも true なら true", () => {
+    expect(hasAnyInspireOverride(KEEP_ALL)).toBe(true);
+    for (const overrides of SINGLES) {
+      expect(hasAnyInspireOverride(overrides)).toBe(true);
     }
   });
 
-  // 「体格・肌色・手足の太さ・胸の大きさが image_1 に寄せられて変わる」報告への対応。
-  // 体型保持の指示が全 5 ブランチ・実写/イラスト両バリアントに入っていることを確認する。
-  describe("body preservation", () => {
-    const targets = [null, "angle", "pose", "outfit", "background"] as const;
-    const sources = ["illustration", "real"] as const;
+  test("すべて false なら false", () => {
+    expect(hasAnyInspireOverride(NONE)).toBe(false);
+  });
+});
 
-    test("全分岐 × 実写/イラストで image_0 の体型保持指示と否定指示を含む", () => {
-      for (const target of targets) {
-        for (const sourceImageType of sources) {
-          const prompt = buildInspirePrompt({
-            overrideTarget: target,
-            sourceImageType,
-          });
-          // image_0 の説明 / item 1 の保持指示
-          expect(prompt).toContain("skin tone");
-          expect(prompt).toContain("limb");
-          expect(prompt).toContain("shoulder width");
-          expect(prompt).toContain("overall body silhouette");
-          // 否定指示ブロック
-          expect(prompt).toContain(
-            "Do NOT alter the character's body type to match image_1"
-          );
-          expect(prompt).toContain("Do NOT change the skin tone");
-          // styleSuffix 側の補強文
-          expect(prompt).toContain("do not reshape the body to match image_1");
-        }
+describe("buildInspirePrompt", () => {
+  describe("前文（必ず先頭に置く）", () => {
+    test("全パターンで「絶対に守ること...」を必ず含む", () => {
+      for (const overrides of [KEEP_ALL, ...SINGLES]) {
+        const prompt = buildInspirePrompt({ overrides });
+        expect(prompt).toContain(
+          "絶対に守ること：必ずimage_0のキャラクターの体型は完全に保持してください。"
+        );
       }
     });
 
+    test("前文は必ずプロンプトの先頭にある", () => {
+      const prompt = buildInspirePrompt({ overrides: KEEP_ALL });
+      expect(
+        prompt.startsWith(
+          "絶対に守ること：必ずimage_0のキャラクターの体型は完全に保持してください。"
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe("各 override の ON / OFF に対応するアクション文", () => {
+    test("outfit=true なら ON 文、false なら OFF 文", () => {
+      const on = buildInspirePrompt({ overrides: ONLY_OUTFIT });
+      expect(on).toContain("image_1の服をimage_0に着せてください。");
+      expect(on).not.toContain("image_0の衣装は変えないでください。");
+
+      const off = buildInspirePrompt({ overrides: ONLY_ANGLE });
+      expect(off).toContain("image_0の衣装は変えないでください。");
+      expect(off).not.toContain("image_1の服をimage_0に着せてください。");
+    });
+
+    test("angle=true なら ON 文、false なら OFF 文", () => {
+      const on = buildInspirePrompt({ overrides: ONLY_ANGLE });
+      expect(on).toContain(
+        "image_1と同じカメラアングルをimage_0に適用してください。"
+      );
+      expect(on).not.toContain("image_0のカメラアングルは変えないでください。");
+
+      const off = buildInspirePrompt({ overrides: ONLY_OUTFIT });
+      expect(off).toContain("image_0のカメラアングルは変えないでください。");
+      expect(off).not.toContain(
+        "image_1と同じカメラアングルをimage_0に適用してください。"
+      );
+    });
+
+    test("pose=true なら ON 文、false なら OFF 文", () => {
+      const on = buildInspirePrompt({ overrides: ONLY_POSE });
+      expect(on).toContain(
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
+      );
+      expect(on).not.toContain("image_0のポーズは変えないでください。");
+
+      const off = buildInspirePrompt({ overrides: ONLY_OUTFIT });
+      expect(off).toContain("image_0のポーズは変えないでください。");
+      expect(off).not.toContain(
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
+      );
+    });
+
+    test("background=true なら ON 文、false なら OFF 文", () => {
+      const on = buildInspirePrompt({ overrides: ONLY_BACKGROUND });
+      expect(on).toContain("image_1の背景と同じ背景をimage_0に適用してください。");
+      expect(on).not.toContain("image_0の背景は変えないでください。");
+
+      const off = buildInspirePrompt({ overrides: ONLY_OUTFIT });
+      expect(off).toContain("image_0の背景は変えないでください。");
+      expect(off).not.toContain(
+        "image_1の背景と同じ背景をimage_0に適用してください。"
+      );
+    });
+
+    test("すべて維持なら 4 つの ON 文すべてを含み、OFF 文は含まない", () => {
+      const prompt = buildInspirePrompt({ overrides: KEEP_ALL });
+      expect(prompt).toContain("image_1の服をimage_0に着せてください。");
+      expect(prompt).toContain(
+        "image_1と同じカメラアングルをimage_0に適用してください。"
+      );
+      expect(prompt).toContain(
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
+      );
+      expect(prompt).toContain("image_1の背景と同じ背景をimage_0に適用してください。");
+      expect(prompt).not.toContain("変えないでください。");
+    });
+
+    test("単一 ON の場合、ON 文 1 つと OFF 文 3 つを含む", () => {
+      const prompt = buildInspirePrompt({ overrides: ONLY_OUTFIT });
+      expect(prompt).toContain("image_1の服をimage_0に着せてください。");
+      expect(prompt).toContain("image_0のカメラアングルは変えないでください。");
+      expect(prompt).toContain("image_0のポーズは変えないでください。");
+      expect(prompt).toContain("image_0の背景は変えないでください。");
+    });
+
+    test("アクション文の順序は outfit → angle → pose → background", () => {
+      const prompt = buildInspirePrompt({ overrides: KEEP_ALL });
+      const outfitIdx = prompt.indexOf("image_1の服をimage_0に着せてください。");
+      const angleIdx = prompt.indexOf(
+        "image_1と同じカメラアングルをimage_0に適用してください。"
+      );
+      const poseIdx = prompt.indexOf(
+        "image_1のポーズと似たようなポーズをimage_0に適用してください。"
+      );
+      const backgroundIdx = prompt.indexOf(
+        "image_1の背景と同じ背景をimage_0に適用してください。"
+      );
+      expect(outfitIdx).toBeLessThan(angleIdx);
+      expect(angleIdx).toBeLessThan(poseIdx);
+      expect(poseIdx).toBeLessThan(backgroundIdx);
+    });
+  });
+
+  describe("プロンプトの簡潔さ", () => {
+    test("フレーミング指示・スタイル suffix・役割宣言を含まない（短文志向）", () => {
+      for (const overrides of [KEEP_ALL, ...SINGLES]) {
+        const prompt = buildInspirePrompt({ overrides });
+        // 過去に持っていた装飾的な節が残っていないこと
+        expect(prompt).not.toContain("アスペクト比");
+        expect(prompt).not.toContain("キャンバスを拡張");
+        expect(prompt).not.toContain("イラスト調");
+        expect(prompt).not.toContain("写実的");
+        expect(prompt).not.toContain("参照画像があります");
+      }
+    });
+  });
+
+  describe("安全性", () => {
     test("安全フィルタを誘発しやすい文言（chest / breast）を含まない", () => {
-      for (const target of targets) {
-        for (const sourceImageType of sources) {
-          const prompt = buildInspirePrompt({
-            overrideTarget: target,
-            sourceImageType,
-          }).toLowerCase();
-          expect(prompt).not.toContain("chest");
-          expect(prompt).not.toContain("breast");
-        }
+      for (const overrides of [KEEP_ALL, ...SINGLES]) {
+        const prompt = buildInspirePrompt({ overrides }).toLowerCase();
+        expect(prompt).not.toContain("chest");
+        expect(prompt).not.toContain("breast");
       }
     });
+  });
+});
 
-    test("override 系でも item 4 の上書き指示と body 専用の否定指示が両立する", () => {
-      const outfit = buildInspirePrompt({ overrideTarget: "outfit" });
-      expect(outfit).toContain("CHANGE: regenerate the outfit");
-      expect(outfit).toContain(
-        "Do NOT alter the character's body type to match image_1"
-      );
+describe("resolveInspireTargetSizeBaseIndex", () => {
+  test("すべて維持なら image_1 基準（1）", () => {
+    expect(resolveInspireTargetSizeBaseIndex(KEEP_ALL)).toBe(1);
+  });
 
-      const pose = buildInspirePrompt({ overrideTarget: "pose" });
-      expect(pose).toContain("CHANGE: regenerate the pose");
-      expect(pose).toContain(
-        "Do NOT alter the character's body type to match image_1"
-      );
-    });
-
-    // 保持属性リストは INSPIRE_BODY_ATTRIBUTES 1 箇所に集約しているので、
-    // image_0 の説明 / item 1 / 否定ガード / styleSuffix 補強文に同じ列挙文が複数回現れる。
-    // ここを変えたらこのテストも更新する（= リストのドリフトに気づける）。
-    test("身体属性の正典リストが全分岐 × 実写/イラストで複数箇所に現れる", () => {
-      const phrase =
-        "skin tone, body proportions, limb thickness, limb length, shoulder width, waist shape, torso proportions, and overall body silhouette";
-      for (const target of targets) {
-        for (const sourceImageType of sources) {
-          const prompt = buildInspirePrompt({
-            overrideTarget: target,
-            sourceImageType,
-          });
-          const occurrences = prompt.split(phrase).length - 1;
-          // image_0 の説明 + item 1 + 否定ガード + styleSuffix 補強文 = 4 箇所以上
-          expect(occurrences).toBeGreaterThanOrEqual(4);
-        }
-      }
-    });
-
-    // 「image_0 が上半身のみ × image_1 が全身」のときに頭でっかちになる
-    // アーティファクトを抑えるための頭身比保持指示が含まれること。
-    test("頭身比を一貫させる指示が全分岐 × 実写/イラストに含まれる", () => {
-      for (const target of targets) {
-        for (const sourceImageType of sources) {
-          const prompt = buildInspirePrompt({
-            overrideTarget: target,
-            sourceImageType,
-          });
-          expect(prompt).toContain(
-            "If image_0 shows only the upper body but image_1's framing requires the lower body to be drawn"
-          );
-          expect(prompt).toContain("head-to-body ratio");
-        }
-      }
-    });
+  test("1 つでも false なら image_0 基準（0）", () => {
+    for (const overrides of SINGLES) {
+      expect(resolveInspireTargetSizeBaseIndex(overrides)).toBe(0);
+    }
   });
 });
