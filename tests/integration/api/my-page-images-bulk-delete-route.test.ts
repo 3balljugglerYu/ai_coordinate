@@ -19,8 +19,11 @@ const mockGetRouteLocale = getRouteLocale as jest.MockedFunction<
 
 interface FakeRow {
   id: string;
-  is_posted: boolean;
+  // 旧テストの便宜上残しているが、DB 側で is_posted=false で絞られるため、
+  // ルートに返却される rows は必ず is_posted=false の前提。
+  is_posted?: boolean;
   storage_path: string | null;
+  storage_path_thumb?: string | null;
   pre_generation_storage_path: string | null;
 }
 
@@ -35,11 +38,17 @@ function buildSupabase(opts: {
     .mockResolvedValue({ error: opts.storageError ?? null });
   const storageFrom = jest.fn().mockReturnValue({ remove: storageRemove });
 
-  // fetch builder: from("generated_images").select(...).eq("user_id", ...).in("id", ids)
+  // fetch builder:
+  //   from("generated_images")
+  //     .select(...)
+  //     .eq("user_id", ...)
+  //     .eq("is_posted", false)
+  //     .in("id", ids)
   const fetchIn = jest
     .fn()
     .mockResolvedValue({ data: opts.rows, error: opts.fetchError ?? null });
-  const fetchEqUser = jest.fn().mockReturnValue({ in: fetchIn });
+  const fetchEqIsPosted = jest.fn().mockReturnValue({ in: fetchIn });
+  const fetchEqUser = jest.fn().mockReturnValue({ eq: fetchEqIsPosted });
   const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEqUser });
 
   // delete builder: from("generated_images").delete().in("id", ids).eq("user_id", ...)
@@ -150,18 +159,13 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
   });
 
   test("投稿済みが混在する場合_投稿済みは failed に、未投稿のみ削除される", async () => {
+    // DB 側で is_posted=false に絞り込むため、投稿済みは rows から返ってこない前提。
+    // initialFailed が rows に居ない ID を拾うので、UUID_B は failed として扱われる。
     const { supabase, deleteIn } = buildSupabase({
       rows: [
         {
           id: UUID_A,
-          is_posted: false,
           storage_path: "user-1/a.png",
-          pre_generation_storage_path: null,
-        },
-        {
-          id: UUID_B,
-          is_posted: true, // 投稿済み → failed
-          storage_path: "user-1/b.png",
           pre_generation_storage_path: null,
         },
       ],
@@ -337,9 +341,11 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
 
   test("Supabase が data:null を返す場合も _rows ?? [] フォールバックで全 ID が failed に積まれる", async () => {
     // PostgREST は通常 [] を返すが、防御的フォールバック (`rows ?? []`) を担保するため
-    // 明示的に data:null のケースもテストする。
+    // 明示的に data:null のケースもテストする。チェーン:
+    //   from(...).select(...).eq("user_id", ...).eq("is_posted", false).in("id", ids)
     const fetchIn = jest.fn().mockResolvedValue({ data: null, error: null });
-    const fetchEqUser = jest.fn().mockReturnValue({ in: fetchIn });
+    const fetchEqIsPosted = jest.fn().mockReturnValue({ in: fetchIn });
+    const fetchEqUser = jest.fn().mockReturnValue({ eq: fetchEqIsPosted });
     const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEqUser });
     const deleteBuilder = jest.fn();
     const supabase = {
