@@ -121,65 +121,46 @@ export const getUserStatsServer = cache(async (
     : (await supabase.auth.getUser()).data.user?.id === userId;
 
   // 累計生成数: 削除に左右されないよう image_jobs（生成ジョブログ）から集計する。
-  // - 1 ジョブが requested_image_count 枚を生成する（OpenAI バッチ等で N>1）
+  // PostgREST の 1000 行返却上限を避けるため Postgres 側の RPC で合計済みの値を取得する。
   // - 成功したジョブのみを対象（失敗は数えない）
-  // - generated_images.image_job_id → image_jobs は ON DELETE SET NULL なので、画像削除しても
-  //   image_jobs は残る → 削除しても累計は減らない
+  // - requested_image_count NULL の旧ジョブは 1 として加算（RPC 側で coalesce）
   // - image_jobs 導入（2026-01-15）以前の生成は count されない既知の制約あり
   let generatedCount: number;
   if (isOwnProfile) {
-    const { data: jobs, error: jobsError } = await supabase
-      .from("image_jobs")
-      .select("requested_image_count")
-      .eq("user_id", userId)
-      .eq("status", "succeeded");
+    const { data: generatedCountData, error: jobsError } = await supabase
+      .rpc("get_user_generated_count", { p_user_id: userId });
     if (jobsError) {
       console.error("Generated count fetch error:", jobsError);
       generatedCount = 0;
     } else {
-      generatedCount = (jobs ?? []).reduce(
-        (sum, row) => sum + (Number(row.requested_image_count) || 1),
-        0,
-      );
+      generatedCount = Number(generatedCountData) || 0;
     }
   } else {
     // 他ユーザー: 生成数はRLSで非公開（未投稿画像は参照不可）
     generatedCount = 0; // UIでは generatedCountPublic=false のとき "-" を表示
   }
 
-  // いいね総数の集計（likesテーブルとgenerated_imagesテーブルをJOIN）
-  // まず、ユーザーの投稿済み画像IDを取得
-  const { data: postedImages } = await supabase
-    .from("generated_images")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_posted", true);
-
-  const postedImageIds = postedImages?.map((img) => img.id) || [];
-
+  // いいね総数の集計: PostgREST の 1000 行返却上限を避けるため
+  // Postgres 側の RPC で likes と generated_images を JOIN して集計済みの値を取得する。
+  const { data: likeCountData, error: likeCountError } = await supabase
+    .rpc("get_user_like_count", { p_user_id: userId });
   let likeCount = 0;
-  if (postedImageIds.length > 0) {
-    // 投稿済み画像に対するいいね数を集計
-    // likesテーブルはimage_idカラムを使用（post_idではない）
-    const { count } = await supabase
-      .from("likes")
-      .select("*", { count: "exact", head: true })
-      .in("image_id", postedImageIds);
-    likeCount = count || 0;
+  if (likeCountError) {
+    console.error("Like count fetch error:", likeCountError);
+  } else {
+    likeCount = Number(likeCountData) || 0;
   }
 
-  // ビュー総数の集計（generated_imagesテーブルのview_countを合計）
-  const { data: postedImagesWithViews } = await supabase
-    .from("generated_images")
-    .select("view_count")
-    .eq("user_id", userId)
-    .eq("is_posted", true);
-
-  const viewCount =
-    postedImagesWithViews?.reduce(
-      (sum, img) => sum + (img.view_count || 0),
-      0
-    ) || 0;
+  // ビュー総数の集計: PostgREST の 1000 行返却上限を避けるため
+  // Postgres 側の RPC で合計済みの値を取得する（投稿済み generated_images.view_count の合計）。
+  const { data: viewCountData, error: viewCountError } = await supabase
+    .rpc("get_user_view_count", { p_user_id: userId });
+  let viewCount = 0;
+  if (viewCountError) {
+    console.error("View count fetch error:", viewCountError);
+  } else {
+    viewCount = Number(viewCountData) || 0;
+  }
 
   // フォロー数・フォロワー数を1回のRPCコールで取得
   const { data: followCounts, error: followCountsError } = await supabase
