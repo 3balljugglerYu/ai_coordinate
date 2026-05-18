@@ -7,7 +7,10 @@ import {
   getCachedCampaignBySlug,
   getCachedPublicEntriesByCampaign,
 } from "@/features/catalog/lib/get-public-catalog";
-import { createCatalogSignedUrls } from "@/features/catalog/lib/repository";
+import {
+  createCatalogSignedUrl,
+  createCatalogSignedUrls,
+} from "@/features/catalog/lib/repository";
 import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
@@ -24,6 +27,18 @@ export async function generateMetadata({
   if (campaign == null) {
     return { title: "絵師カタログ | Persta.AI" };
   }
+
+  let coverImageUrl: string | null = null;
+  if (campaign.cover_storage_path) {
+    const adminClient = createAdminClient();
+    const { url } = await createCatalogSignedUrl(
+      adminClient,
+      campaign.cover_storage_path,
+      SIGNED_URL_TTL_SECONDS,
+    );
+    coverImageUrl = url;
+  }
+
   return {
     title: `${campaign.title} | 絵師カタログ | Persta.AI`,
     description:
@@ -33,6 +48,7 @@ export async function generateMetadata({
       title: campaign.title,
       description: campaign.description ?? undefined,
       type: "website",
+      images: coverImageUrl ? [{ url: coverImageUrl }] : undefined,
     },
   };
 }

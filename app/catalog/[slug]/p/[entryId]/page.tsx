@@ -8,7 +8,10 @@ import {
   getCachedPublicEntriesByCampaign,
   getCachedPublicEntryById,
 } from "@/features/catalog/lib/get-public-catalog";
-import { createCatalogSignedUrls } from "@/features/catalog/lib/repository";
+import {
+  createCatalogSignedUrl,
+  createCatalogSignedUrls,
+} from "@/features/catalog/lib/repository";
 import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
@@ -32,6 +35,14 @@ export async function generateMetadata({
   const description =
     entry.alt ??
     `${campaign.title} に投稿された ${entry.display_name} さんの作品です。`;
+
+  const adminClient = createAdminClient();
+  const { url: ogImageUrl } = await createCatalogSignedUrl(
+    adminClient,
+    entry.image_storage_path,
+    SIGNED_URL_TTL_SECONDS,
+  );
+
   return {
     title,
     description,
@@ -39,6 +50,7 @@ export async function generateMetadata({
       title,
       description,
       type: "article",
+      images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
     },
   };
 }
