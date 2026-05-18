@@ -55,3 +55,22 @@ description: Execute commit -> push -> PR creation safely in this repository. Us
 - `main` / `master` へ直接 push しない
 - 認証情報は追跡ファイルに書かない
 - リポジトリ不一致時は停止する
+
+## マージ方式（merge strategy）
+
+PR を **作成する**段階での既定は変わらず draft の有無のみ。**マージ時の方式**は PR の性質に応じて使い分け、ユーザーには本文末尾にどの方式を推奨するか明記する。
+
+| PR 種別 | 推奨マージ方式 | 理由 |
+|---|---|---|
+| 短命の feature / fix → `main` | Squash and merge | 履歴がシンプルになる |
+| **長命ブランチ同期**（`main` → `feature-model` などの sync PR） | **Create a merge commit（Squash 禁止）** | Squash すると merge commit の 2 親リンクが失われ、main の祖先関係が認識されなくなる。次回の sync で同じコンフリクトが再発する |
+| **長命ブランチ → `main` の大規模リリース PR** | **Create a merge commit（Squash 禁止）** | 長命ブランチ内の merge commit ・履歴・blame が保たれる |
+
+CLI で merge するときは `gh pr merge --merge` を使う（`--squash` ではなく）。GitHub UI からマージするときは「**Create a merge commit**」ボタンを選ぶ。
+
+sync / リリース系 PR を作る場合は PR 本文末尾に以下のフッターを必ず付ける：
+
+```
+> ⚠️ このPRは Squash ではなく **Create a merge commit** でマージしてください。
+> Squash すると親リンクが失われ、次回 `main` を取り込むときに同じファイルが再衝突します。
+```
