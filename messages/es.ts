@@ -843,10 +843,10 @@ export const esMessages = {
       "Las dimensiones exactas se ajustan automáticamente a la orientación de la imagen. El coste en Percoins cambia según el tamaño de salida.",
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
-      "Output size changes automatically based on the image orientation.\n\n- Standard -\nSquare: 1024 x 1024 px\nPortrait: 1024 x 1536 px\nLandscape: 1536 x 1024 px\n\n- High resolution -\nSquare: 2048 x 2048 px\nPortrait: 1664 x 2496 px\nLandscape: 2496 x 1664 px\n\n- Maximum resolution -\nSquare: 2880 x 2880 px\nPortrait: 2352 x 3520 px\nLandscape: 3520 x 2352 px\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+      "Output size changes automatically based on the image orientation.\n\n- Standard -\nSquare: 1024 x 1024 px\nPortrait: 1024 x 1536 px\nLandscape: 1536 x 1024 px\n\n- High resolution -\nSquare: 2048 x 2048 px\nPortrait: 1664 x 2496 px\nLandscape: 2496 x 1664 px\n\n- Maximum resolution -\nSquare: 2880 x 2880 px\nPortrait: 2160 x 3840 px\nLandscape: 3840 x 2160 px\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     gptImage2Size1k: "Estándar (equivalente a 1K)",
     gptImage2Size2k: "Alta resolución (equivalente a 2K)",
-    gptImage2Size4k: "Maximum resolution: up to 3520 px",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
     gptImage2SizePricePerImage: "{cost} Percoins / imagen",
     geminiBananaSizeLabel: "Tamaño de salida",
     geminiBananaSizeDescription: "Una mayor resolución consume más Percoins.",
@@ -854,7 +854,7 @@ export const esMessages = {
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2.\n\n- 0.5K -\nApprox. 512 x 512 px. Useful for lightweight trials.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     geminiBananaProSizeTooltipContent:
-      "Output sizes available for Nano Banana Pro.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\n- 2K -\nApprox. 2048 x 2048 px. Larger and easier to inspect in detail.\n\n- 4K -\nApprox. 4096 x 4096 px. A high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+      "Output sizes available for Nano Banana Pro.\n\n- 1K -\nApprox. 1024 x 1024 px. A practical size for checks and posts.\n\n- 2K -\nApprox. 2048 x 2048 px. Larger and easier to inspect in detail.\n\n- 4K -\n4096 x 4096 px to 5504 x 3072 px. A high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
     geminiBananaSize05k: "0.5K",
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",

@@ -814,10 +814,10 @@ export const jaMessages = {
       "画像の向きに合わせて実サイズは自動調整されます。",
     gptImage2SizeTooltipAria: "ChatGPT Images 2.0 の出力サイズ詳細を表示",
     gptImage2SizeTooltipContent:
-      "出力サイズは画像の向きに合わせて自動で変わります。\n\n─ 標準 ─\n正方形：1024 × 1024px\n縦長：1024 × 1536px\n横長：1536 × 1024px\n\n─ 高解像度 ─\n正方形：2048 × 2048px\n縦長：1664 × 2496px\n横長：2496 × 1664px\n\n─ 最高解像度 ─\n正方形：2880 × 2880px\n縦長：2352 × 3520px\n横長：3520 × 2352px\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
+      "出力サイズは画像の向きに合わせて自動で変わります。\n\n─ 標準 ─\n正方形：1024 × 1024px\n縦長：1024 × 1536px\n横長：1536 × 1024px\n\n─ 高解像度 ─\n正方形：2048 × 2048px\n縦長：1664 × 2496px\n横長：2496 × 1664px\n\n─ 最高解像度 ─\n正方形：2880 × 2880px\n縦長：2160 × 3840px\n横長：3840 × 2160px\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
     gptImage2Size1k: "標準：最大1536px",
     gptImage2Size2k: "高解像度：最大2496px",
-    gptImage2Size4k: "最高解像度：最大3520px",
+    gptImage2Size4k: "最高解像度：最大3840px",
     gptImage2SizePricePerImage: "{cost}ペルコイン/枚",
     geminiBananaSizeLabel: "出力サイズを選択",
     geminiBananaSizeDescription: "モデルにより選べるサイズが変わります。",
@@ -825,11 +825,11 @@ export const jaMessages = {
     geminiBanana2SizeTooltipContent:
       "Nano Banana 2 で選べる出力サイズです。\n\n─ 0.5K ─\n512 × 512px 目安。軽く試したい時におすすめ。\n\n─ 1K ─\n1024 × 1024px 目安。通常の確認や投稿に使いやすいサイズです。\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
     geminiBananaProSizeTooltipContent:
-      "Nano Banana Pro で選べる出力サイズです。\n\n─ 1K ─\n1024 × 1024px 目安。通常の確認や投稿に使いやすいサイズです。\n\n─ 2K ─\n2048 × 2048px 目安。より大きく、細部を見やすいサイズです。\n\n─ 4K ─\n4096 × 4096px 目安。仕上げ向きの高精細サイズです。\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
+      "Nano Banana Pro で選べる出力サイズです。\n\n─ 1K ─\n1024 × 1024px 目安。通常の確認や投稿に使いやすいサイズです。\n\n─ 2K ─\n2048 × 2048px 目安。より大きく、細部を見やすいサイズです。\n\n─ 4K ─\n4096×4096px〜5504×3072px。仕上げ向きの高精細サイズです。\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
     geminiBananaSize05k: "軽量：512px目安",
     geminiBananaSize1k: "標準：1024px目安",
     geminiBananaSize2k: "高解像度：2048px目安",
-    geminiBananaSize4k: "最高解像度：4096px目安",
+    geminiBananaSize4k: "最高解像度：最大5504px",
     // Phase 6: ゲスト用 UI
     guestResultAlt: "お試し生成結果",
     guestResultTitle: "生成結果",

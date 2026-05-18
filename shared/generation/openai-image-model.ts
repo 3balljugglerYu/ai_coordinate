@@ -109,9 +109,12 @@ export const GPT_IMAGE_2_TARGET_SIZES = {
     landscape: "2496x1664",
   },
   "4k": {
+    // OpenAI gpt-image-2 の総ピクセル上限 8,294,400 と長辺 3840 の制約に
+    // 合わせた最大サイズ。square は 2880×2880 が 1:1 での物理上限（8.29M）。
+    // portrait / landscape は 16:9（9:16）= 真の 4K UHD（3840×2160）。
     square: "2880x2880",
-    portrait: "2352x3520",
-    landscape: "3520x2352",
+    portrait: "2160x3840",
+    landscape: "3840x2160",
   },
 } as const satisfies Record<
   GptImage2SizeTier,
