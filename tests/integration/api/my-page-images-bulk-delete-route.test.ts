@@ -268,6 +268,86 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
     expect(deleteIn).toHaveBeenCalledWith("id", [UUID_A]);
   });
 
+  test("imageIds が配列でない場合_400 を返す", async () => {
+    const res = await DELETE(createRequest({ imageIds: "not-an-array" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.errorCode).toBe("MY_PAGE_BULK_DELETE_INVALID_INPUT");
+  });
+
+  test("body の JSON parse に失敗した場合_400 を返す", async () => {
+    const request = new Request("http://localhost/api/my-page/images", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: "not-json",
+    });
+    const reqWithExtra = Object.assign(request, {
+      nextUrl: new URL(request.url),
+      cookies: { get: () => undefined },
+    }) as never;
+
+    const res = await DELETE(reqWithExtra);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.errorCode).toBe("MY_PAGE_BULK_DELETE_INVALID_INPUT");
+  });
+
+  test("DB 取得エラー時_500 で MY_PAGE_BULK_DELETE_FAILED を返す", async () => {
+    const { supabase } = buildSupabase({
+      rows: [],
+      fetchError: { message: "db unreachable" },
+    });
+    mockCreateClient.mockResolvedValue(supabase as never);
+
+    const res = await DELETE(createRequest({ imageIds: [UUID_A] }));
+    const body = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(body.errorCode).toBe("MY_PAGE_BULK_DELETE_FAILED");
+  });
+
+  test("全 ID が DB に存在しない場合_200 で全 ID が failed に積まれ DB 削除は呼ばれない", async () => {
+    const { supabase, deleteBuilder } = buildSupabase({ rows: [] });
+    mockCreateClient.mockResolvedValue(supabase as never);
+
+    const res = await DELETE(
+      createRequest({ imageIds: [UUID_A, UUID_B] }),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.deleted).toEqual([]);
+    expect(body.failed).toEqual([UUID_A, UUID_B]);
+    expect(deleteBuilder).not.toHaveBeenCalled();
+  });
+
+  test("Supabase が data:null を返す場合も _rows ?? [] フォールバックで全 ID が failed に積まれる", async () => {
+    // PostgREST は通常 [] を返すが、防御的フォールバック (`rows ?? []`) を担保するため
+    // 明示的に data:null のケースもテストする。
+    const fetchIn = jest.fn().mockResolvedValue({ data: null, error: null });
+    const fetchEqUser = jest.fn().mockReturnValue({ in: fetchIn });
+    const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEqUser });
+    const deleteBuilder = jest.fn();
+    const supabase = {
+      from: jest.fn().mockReturnValue({
+        select: fetchSelect,
+        delete: deleteBuilder,
+      }),
+      storage: { from: jest.fn() },
+    };
+    mockCreateClient.mockResolvedValue(supabase as never);
+
+    const res = await DELETE(createRequest({ imageIds: [UUID_A] }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.deleted).toEqual([]);
+    expect(body.failed).toEqual([UUID_A]);
+    expect(deleteBuilder).not.toHaveBeenCalled();
+  });
+
   test("DB 削除エラー時_全 eligible ID が failed に積まれる", async () => {
     const { supabase } = buildSupabase({
       rows: [

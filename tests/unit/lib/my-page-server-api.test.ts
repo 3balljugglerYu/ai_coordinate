@@ -599,6 +599,40 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       );
     });
 
+    test("getUserStatsServer_image_jobsがnullを返した場合_generatedCountは0になる", async () => {
+      // Spec: MPSAPI-004
+      // PostgREST は通常 [] を返すが、安全策の `jobs ?? []` フォールバックが効くことを確認する。
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [
+            { result: { data: null, error: null, count: 0 } },
+            { result: { data: [], error: null } },
+            { result: { data: [], error: null } },
+          ],
+          image_jobs: [{ result: { data: null, error: null } }],
+        },
+        rpc: {
+          get_follow_counts: [
+            {
+              singleResult: {
+                data: { following_count: 0, follower_count: 0 },
+                error: null,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await getUserStatsServer(
+        "user-3",
+        supabase.client as never,
+        { isOwnProfile: true },
+      );
+
+      expect(result.generatedCount).toBe(0);
+      expect(result.generatedCountPublic).toBe(true);
+    });
+
     test("getUserStatsServer_requested_image_countがnullの行は1枚としてカウントする", async () => {
       // Spec: MPSAPI-004
       // 古い行や旧スキーマで requested_image_count が NULL のジョブも、
