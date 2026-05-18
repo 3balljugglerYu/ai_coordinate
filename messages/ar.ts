@@ -25,6 +25,7 @@ export const arMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(التكلفة: {amount} Percoin)",
   },
   nav: {
     home: "الرئيسية",
@@ -665,19 +666,19 @@ export const arMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "باقة تجريبية\nلتجربة بضع عمليات توليد أولًا\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 11\nNano Banana 2 1K: حوالي 5\nPro 1K: حوالي 2",
+      "باقة تجريبية\nلتجربة بضع عمليات توليد أولًا\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 11\nNano Banana 2 0.5K: حوالي 11\nNano Banana 2 1K: حوالي 5\nPro 1K: حوالي 2",
     package240Name: "240 Percoin",
     package240Description:
-      "باقة خفيفة\nللاستخدام العادي\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 24\nNano Banana 2 1K: حوالي 12\nPro 1K: حوالي 4",
+      "باقة خفيفة\nللاستخدام العادي\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 24\nNano Banana 2 0.5K: حوالي 24\nNano Banana 2 1K: حوالي 12\nPro 1K: حوالي 4",
     package960Name: "960 Percoin",
     package960Description:
-      "باقة أساسية\nلتجربة أعمق\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 96\nNano Banana 2 1K: حوالي 48\nPro 1K: حوالي 19",
+      "باقة أساسية\nلتجربة أعمق\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 96\nNano Banana 2 0.5K: حوالي 96\nNano Banana 2 1K: حوالي 48\nPro 1K: حوالي 19",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "باقة قيمة\nتوازن جيد بين السعر والكمية\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 190\nNano Banana 2 1K: حوالي 95\nPro 1K: حوالي 38",
+      "باقة قيمة\nتوازن جيد بين السعر والكمية\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 190\nNano Banana 2 0.5K: حوالي 190\nNano Banana 2 1K: حوالي 95\nPro 1K: حوالي 38",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "أفضل قيمة\nأقل تكلفة لكل عملة\n\nالعمليات المُقدَّرة\nNano Banana 2 0.5K: حوالي 480\nNano Banana 2 1K: حوالي 240\nPro 1K: حوالي 96",
+      "أفضل قيمة\nأقل تكلفة لكل عملة\n\nالعمليات حسب النموذج\nChatGPT Low 1K: حوالي 480\nNano Banana 2 0.5K: حوالي 480\nNano Banana 2 1K: حوالي 240\nPro 1K: حوالي 96",
     packageBadgeTrial: "مناسبة للتجربة",
     packageBadgePopular: "الأكثر شعبية",
     packageBadgeBestValue: "أفضل قيمة",
@@ -724,6 +725,7 @@ export const arMessages = {
     maxGenerationCount: "حتى {count} صورة لكل عملية توليد",
     stockImageLimit: "حد صور المخزون: {count}",
     bonusMultiplier: "مكافأة النشر/تسجيل الدخول: x{multiplier}",
+    fullModelAccess: "استخدم أي نموذج ومستوى جودة وحجم إخراج عند الإنشاء",
     subscribeAction: "اختيار هذه الباقة",
     currentPlanAction: "الباقة الحالية",
     scheduledPlanAction: "مُجدوَلة",
@@ -790,11 +792,9 @@ export const arMessages = {
       yearly_to_monthly: "التحول إلى الشهري عند التجديد",
       no_change: "لا تغيير",
     },
-    upsellTitle: "هذا العدد من الصور يتطلب باقة مدفوعة",
+    upsellTitle: "تتطلب هذه الميزة باقة مدفوعة",
     upsellDescription:
-      "رقِّ باقتك لزيادة عدد الصور لكل عملية توليد وسعة صور المخزون.",
-    upsellPlanSummary:
-      "حتى {count} صورة في المرة، {stock} صورة مخزون، {amount} Percoin كل شهر",
+      "قم بترقية باقتك لفتح المزيد من النماذج وأحجام الإخراج وأعداد الإنشاء.",
     laterAction: "لاحقًا",
     seePlansAction: "عرض الأسعار",
     generationLimitHint:
@@ -830,6 +830,12 @@ export const arMessages = {
     backgroundKeepLabel: "الإبقاء على الخلفية الحالية",
     backgroundKeepDescription: "اترك الخلفية الحالية دون تغيير.",
     modelLabel: "اختر نموذج التوليد",
+    modelTooltipAria: "عرض الفروق في جودة العرض",
+    modelTooltipContent: "💡 كلما اقتربت من High، قلّت تشوّهات الوجه والملابس.\nLow: توليد سريع، حوالي 30 ثانية.\nMedium: متوازن، حوالي 70 ثانية.\nHigh: تفاصيل ثابتة، حوالي 180 ثانية.",
+    gptImage2QualityLabel: "جودة العرض",
+    gptImage2QualityLow: "توليد سريع",
+    gptImage2QualityMedium: "توليد متوازن",
+    gptImage2QualityHigh: "توليد دقيق",
     modelLight05k: "نموذج خفيف: Nano Banana 2 | 0.5K (10 Percoin / صورة)",
     modelStandard1k: "نموذج قياسي: Nano Banana 2 | 1K (20 Percoin / صورة)",
     modelPro1k:
@@ -838,7 +844,38 @@ export const arMessages = {
       "نموذج عالي الدقة: Nano Banana Pro | 2K (80 Percoin / صورة)",
     modelPro4k:
       "نموذج عالي الدقة: Nano Banana Pro | 4K (100 Percoin / صورة)",
-    modelGptImage2Low: "نموذج خفيف: ChatGPT Images 2.0 (10 Percoin / صورة)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "حجم الإخراج",
+    gptImage2SizeDescription:
+      "تُضبط الأبعاد الفعلية تلقائيًا حسب اتجاه الصورة. تختلف تكلفة Percoin حسب حجم الإخراج.",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "قياسي (يعادل 1K)",
+    gptImage2Size2k: "دقة عالية (يعادل 2K)",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / صورة",
+    geminiBananaSizeLabel: "حجم الإخراج",
+    geminiBananaSizeDescription: "كلما زادت الدقة، زاد استهلاك Percoin.",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "نتيجة معاينة الضيف",
     guestResultTitle: "النتيجة",
@@ -1248,6 +1285,12 @@ export const arMessages = {
     stepBackgroundTitle: "إعدادات الخلفية",
     stepBackgroundDescription:
       "اختر هنا كيفية التعامل مع الخلفية. لهذا الدليل، لنتابع بـ \"اترك الأمر للذكاء الاصطناعي\".",
+    stepModelTitle: "اختر نموذج التوليد",
+    stepModelDescription:
+      "سنستخدم في هذا الدليل ChatGPT Images 2.0 Low. إذا كان نموذج آخر محددًا، فسيتم التبديل إليه تلقائيًا هنا.",
+    stepSizeTitle: "تحقق من حجم الإخراج",
+    stepSizeDescription:
+      "سنبقي حجم الإخراج على القياسي. يتم ضبط الأبعاد الفعلية تلقائيًا حسب اتجاه الصورة.",
     stepGenerateTitle: "بدء التوليد",
     stepGenerateDescription:
       "اختر \"بدء التنسيق\" للبدء. ستُعاد لك Percoin بعد الدليل، فلا تتردد في المتابعة.",
@@ -1394,7 +1437,6 @@ export const arMessages = {
     guestRateLimitSignupHint:
       "أنشئ حسابًا للمتابعة فورًا.",
     guestRateLimitSignupAction: "سجّل للمتابعة",
-    paidGenerateButton: "متابعة بـ {cost} Percoin",
     percoinBalanceLabel: "رصيد Percoin الحالي",
     percoinBalanceLoading: "جارٍ التحقق من رصيد Percoin...",
     percoinBalanceUnavailable: "تعذّر تحميل رصيدك.",

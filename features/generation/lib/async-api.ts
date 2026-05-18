@@ -247,12 +247,12 @@ export function pollGenerationStatus(
     interval?:
       | number
       | ((status: AsyncGenerationStatus) => number); // ポーリング間隔（ミリ秒、デフォルト: 2000）
-    timeout?: number; // タイムアウト（ミリ秒、デフォルト: 300000 = 5分）
+    timeout?: number; // タイムアウト（ミリ秒、デフォルト: 600000 = 10分）
     onStatusUpdate?: (status: AsyncGenerationStatus) => void; // ステータス更新時のコールバック
     messages?: AsyncGenerationApiMessages;
   } = {}
 ): PollGenerationStatusResult {
-  const { interval = 2000, timeout = 300000, onStatusUpdate, messages } = options;
+  const { interval = 2000, timeout = 600000, onStatusUpdate, messages } = options;
   const startTime = Date.now();
   let timeoutId: number | null = null;
   let isStopped = false;

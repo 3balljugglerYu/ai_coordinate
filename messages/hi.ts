@@ -25,6 +25,7 @@ export const hiMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(लागत: {amount} Percoin)",
   },
   nav: {
     home: "होम",
@@ -666,19 +667,19 @@ export const hiMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "ट्रायल पैक\nपहले कुछ जनरेशन आज़माने के लिए\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 11\nNano Banana 2 1K: लगभग 5\nPro 1K: लगभग 2",
+      "ट्रायल पैक\nपहले कुछ जनरेशन आज़माने के लिए\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 11\nNano Banana 2 0.5K: लगभग 11\nNano Banana 2 1K: लगभग 5\nPro 1K: लगभग 2",
     package240Name: "240 Percoin",
     package240Description:
-      "लाइट पैक\nहल्के उपयोग के लिए\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 24\nNano Banana 2 1K: लगभग 12\nPro 1K: लगभग 4",
+      "लाइट पैक\nहल्के उपयोग के लिए\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 24\nNano Banana 2 0.5K: लगभग 24\nNano Banana 2 1K: लगभग 12\nPro 1K: लगभग 4",
     package960Name: "960 Percoin",
     package960Description:
-      "बेसिक पैक\nगहरे परीक्षण के लिए\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 96\nNano Banana 2 1K: लगभग 48\nPro 1K: लगभग 19",
+      "बेसिक पैक\nगहरे परीक्षण के लिए\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 96\nNano Banana 2 0.5K: लगभग 96\nNano Banana 2 1K: लगभग 48\nPro 1K: लगभग 19",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "वैल्यू पैक\nकीमत और मात्रा का अच्छा संतुलन\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 190\nNano Banana 2 1K: लगभग 95\nPro 1K: लगभग 38",
+      "वैल्यू पैक\nकीमत और मात्रा का अच्छा संतुलन\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 190\nNano Banana 2 0.5K: लगभग 190\nNano Banana 2 1K: लगभग 95\nPro 1K: लगभग 38",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "बेस्ट वैल्यू पैक\nप्रति सिक्का सबसे कम लागत\n\nअनुमानित जनरेशन\nNano Banana 2 0.5K: लगभग 480\nNano Banana 2 1K: लगभग 240\nPro 1K: लगभग 96",
+      "बेस्ट वैल्यू पैक\nप्रति सिक्का सबसे कम लागत\n\nमॉडल के अनुसार जनरेशन संख्या\nChatGPT Low 1K: लगभग 480\nNano Banana 2 0.5K: लगभग 480\nNano Banana 2 1K: लगभग 240\nPro 1K: लगभग 96",
     packageBadgeTrial: "आज़माने के लिए अच्छा",
     packageBadgePopular: "सबसे लोकप्रिय",
     packageBadgeBestValue: "सबसे अच्छी कीमत",
@@ -725,6 +726,7 @@ export const hiMessages = {
     maxGenerationCount: "प्रति जनरेशन {count} छवियों तक",
     stockImageLimit: "स्टॉक छवि सीमा: {count}",
     bonusMultiplier: "पोस्ट/लॉगिन बोनस: {multiplier}x",
+    fullModelAccess: "जनरेट करते समय किसी भी मॉडल, गुणवत्ता स्तर और आउटपुट साइज़ का उपयोग करें",
     subscribeAction: "यह प्लान चुनें",
     currentPlanAction: "वर्तमान प्लान",
     scheduledPlanAction: "निर्धारित",
@@ -791,11 +793,9 @@ export const hiMessages = {
       yearly_to_monthly: "नवीनीकरण पर मासिक पर स्विच करें",
       no_change: "कोई परिवर्तन नहीं",
     },
-    upsellTitle: "इस छवि गिनती के लिए सशुल्क प्लान आवश्यक है",
+    upsellTitle: "इस सुविधा के लिए सशुल्क योजना आवश्यक है",
     upsellDescription:
-      "प्रति-जनरेशन छवि गिनती और स्टॉक छवि क्षमता बढ़ाने के लिए अपना प्लान अपग्रेड करें।",
-    upsellPlanSummary:
-      "एक बार में {count} छवियों तक, {stock} स्टॉक छवियाँ, हर महीने {amount} Percoin",
+      "अधिक मॉडल, आउटपुट साइज़, और जनरेशन गिनती के लिए अपनी योजना अपग्रेड करें।",
     laterAction: "बाद में",
     seePlansAction: "मूल्य देखें",
     generationLimitHint:
@@ -831,6 +831,12 @@ export const hiMessages = {
     backgroundKeepLabel: "वर्तमान पृष्ठभूमि रखें",
     backgroundKeepDescription: "वर्तमान पृष्ठभूमि को अपरिवर्तित रखें।",
     modelLabel: "एक जनरेशन मॉडल चुनें",
+    modelTooltipAria: "रेंडरिंग गुणवत्ता का अंतर दिखाएँ",
+    modelTooltipContent: "💡 जितना High के क़रीब, चेहरे और कपड़ों की बारीकियाँ उतनी कम बिगड़ती हैं।\nLow: तेज़ी से बनाता है। लगभग 30 सेकंड।\nMedium: संतुलित। लगभग 70 सेकंड।\nHigh: डिटेल स्थिर। लगभग 180 सेकंड।",
+    gptImage2QualityLabel: "रेंडरिंग गुणवत्ता",
+    gptImage2QualityLow: "तेज़ी से बनाएँ",
+    gptImage2QualityMedium: "संतुलित बनाएँ",
+    gptImage2QualityHigh: "सावधानी से बनाएँ",
     modelLight05k: "लाइट मॉडल: Nano Banana 2 | 0.5K (10 Percoin / छवि)",
     modelStandard1k: "मानक मॉडल: Nano Banana 2 | 1K (20 Percoin / छवि)",
     modelPro1k:
@@ -839,7 +845,38 @@ export const hiMessages = {
       "उच्च-निष्ठा मॉडल: Nano Banana Pro | 2K (80 Percoin / छवि)",
     modelPro4k:
       "उच्च-निष्ठा मॉडल: Nano Banana Pro | 4K (100 Percoin / छवि)",
-    modelGptImage2Low: "लाइट मॉडल: ChatGPT Images 2.0 (10 Percoin / छवि)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "आउटपुट आकार",
+    gptImage2SizeDescription:
+      "वास्तविक आयाम छवि की दिशा के अनुसार अपने-आप समायोजित होते हैं। आउटपुट आकार के अनुसार Percoin लागत बदलती है।",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "स्टैंडर्ड (1K के बराबर)",
+    gptImage2Size2k: "हाई रिज़ॉल्यूशन (2K के बराबर)",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / छवि",
+    geminiBananaSizeLabel: "आउटपुट साइज़",
+    geminiBananaSizeDescription: "रिज़ॉल्यूशन जितना ज़्यादा, उतने ज़्यादा Percoin लगते हैं।",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "अतिथि पूर्वावलोकन परिणाम",
     guestResultTitle: "परिणाम",
@@ -1249,6 +1286,12 @@ export const hiMessages = {
     stepBackgroundTitle: "पृष्ठभूमि सेटिंग्स",
     stepBackgroundDescription:
       "यहाँ चुनें कि पृष्ठभूमि को कैसे संभालना है। इस ट्यूटोरियल के लिए, चलिए \"AI को तय करने दें\" के साथ जारी रखते हैं।",
+    stepModelTitle: "जनरेशन मॉडल चुनें",
+    stepModelDescription:
+      "इस ट्यूटोरियल में हम ChatGPT Images 2.0 Low का उपयोग करेंगे। यदि कोई दूसरा मॉडल चुना हुआ है, तो यहाँ वह अपने आप बदल जाएगा।",
+    stepSizeTitle: "आउटपुट आकार जांचें",
+    stepSizeDescription:
+      "हम आउटपुट आकार को स्टैंडर्ड पर रखेंगे। वास्तविक आयाम छवि की दिशा के अनुसार अपने आप समायोजित होते हैं।",
     stepGenerateTitle: "जनरेट करना शुरू करें",
     stepGenerateDescription:
       "शुरू करने के लिए \"स्टाइलिंग शुरू करें\" चुनें। ट्यूटोरियल के बाद आपके Percoin पुनः बहाल हो जाएँगे, इसलिए बेझिझक जारी रखें।",
@@ -1395,7 +1438,6 @@ export const hiMessages = {
     guestRateLimitSignupHint:
       "तुरंत जारी रखने के लिए एक खाता बनाएँ।",
     guestRateLimitSignupAction: "जारी रखने के लिए साइन अप करें",
-    paidGenerateButton: "{cost} Percoin के लिए जारी रखें",
     percoinBalanceLabel: "वर्तमान Percoin बैलेंस",
     percoinBalanceLoading: "आपका Percoin बैलेंस जाँच रहे हैं...",
     percoinBalanceUnavailable: "हम आपका बैलेंस लोड नहीं कर सके।",

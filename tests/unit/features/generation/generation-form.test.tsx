@@ -11,7 +11,9 @@ import {
 import { getCurrentUserId } from "@/features/generation/lib/current-user";
 import {
   BACKGROUND_MODE_STORAGE_KEY,
+  IMAGE_SOURCE_TYPE_STORAGE_KEY,
   SELECTED_MODEL_STORAGE_KEY,
+  SELECTED_STOCK_ID_STORAGE_KEY,
 } from "@/features/generation/lib/form-preferences";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
@@ -100,28 +102,37 @@ jest.mock("@/features/generation/lib/model-config", () => ({
       "gemini-3-pro-image-1k": 50,
       "gemini-3-pro-image-2k": 80,
       "gemini-3-pro-image-4k": 100,
-      "gpt-image-2-low": 10,
+      "gpt-image-2-low-1k": 10,
+      "gpt-image-2-low-2k": 20,
+      "gpt-image-2-low-4k": 40,
+      "gpt-image-2-medium-1k": 20,
+      "gpt-image-2-medium-2k": 50,
+      "gpt-image-2-medium-4k": 80,
+      "gpt-image-2-high-1k": 50,
+      "gpt-image-2-high-2k": 80,
+      "gpt-image-2-high-4k": 130,
     };
     return costs[model ?? ""] ?? 10;
   }),
   isCanonicalGuestAllowedModel: jest.fn((model?: string | null) =>
-    model === "gpt-image-2-low" ||
+    model === "gpt-image-2-low-1k" ||
     model === "gemini-3.1-flash-image-preview-512"
   ),
   isModelAvailableForGeneration: jest.fn((model?: string | null) =>
-    model === "gpt-image-2-low"
+    typeof model === "string" && model.startsWith("gpt-image-2-")
   ),
   resolveEffectiveModelForAuthState: jest.fn(
     (model: string, authState: "guest" | "authenticated") => {
-      if (model !== "gpt-image-2-low") {
-        return "gpt-image-2-low";
+      const isGptImage2 = model.startsWith("gpt-image-2-");
+      if (!isGptImage2) {
+        return "gpt-image-2-low-1k";
       }
       if (
         authState === "guest" &&
-        model !== "gpt-image-2-low" &&
+        model !== "gpt-image-2-low-1k" &&
         model !== "gemini-3.1-flash-image-preview-512"
       ) {
-        return "gpt-image-2-low";
+        return "gpt-image-2-low-1k";
       }
       return model;
     }
@@ -172,6 +183,19 @@ const messages: Record<string, string> = {
   modelPro2k: "High-fidelity model: Nano Banana Pro | 2K (80 Percoins / image)",
   modelPro4k: "High-fidelity model: Nano Banana Pro | 4K (100 Percoins / image)",
   modelGptImage2Low: "Light model: ChatGPT Images 2.0 (10 Percoins / image)",
+  modelGptImage2Medium: "Standard model: ChatGPT Images 2.0 Medium",
+  modelGptImage2High: "High model: ChatGPT Images 2.0 High",
+  modelChatGptImages: "ChatGPT Images 2.0",
+  modelNanoBanana2: "Nano Banana 2",
+  modelNanoBananaPro: "Nano Banana Pro",
+  modelTagEngineOpenai: "OpenAI",
+  modelTagEngineGemini: "Gemini",
+  gptImage2SizeLabel: "Output size",
+  gptImage2SizeDescription: "Choose the GPT Image 2 output size.",
+  gptImage2Size1k: "1K",
+  gptImage2Size2k: "2K",
+  gptImage2Size4k: "4K",
+  gptImage2SizePricePerImage: "{cost} Percoins / image",
   countLabel: "Count",
   countSingle: "1 image",
   countMultiple: "{count} images",
@@ -183,16 +207,24 @@ const messages: Record<string, string> = {
   missingStockImage: "Select a stock image.",
 };
 
+const commonMessages: Record<string, string> = {
+  generationCostSuffix: "(cost: {amount} Percoins)",
+};
+
 function translate(
   namespace: string | undefined,
   key: string,
   values?: Record<string, string | number>,
 ) {
-  if (namespace !== "coordinate") {
+  let template: string;
+  if (namespace === "coordinate") {
+    template = messages[key] ?? key;
+  } else if (namespace === "common") {
+    template = commonMessages[key] ?? key;
+  } else {
     return key;
   }
 
-  const template = messages[key] ?? key;
   if (!values) {
     return template;
   }
@@ -365,7 +397,7 @@ describe("GenerationForm", () => {
       sourceImageType: "illustration",
       backgroundMode: "keep",
       count: 1,
-      model: "gpt-image-2-low",
+      model: "gpt-image-2-low-1k",
     });
   });
 
@@ -718,11 +750,12 @@ describe("GenerationForm", () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
     });
 
+    // 1 段目「生成モデル」セレクターはブランド名のみを表示する。
+    expect(screen.getByText("ChatGPT Images 2.0")).toBeInTheDocument();
+    // 旧 UI の "{count} images require {amount} Percoins" 行は廃止され、
+    // 価格情報は GenerationSubmitButton のコストサフィックスに集約された。
     expect(
-      screen.getByText("Light model: ChatGPT Images 2.0 (10 Percoins / image)")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("1 images require 10 Percoins")
+      screen.getByText("(cost: 10 Percoins)")
     ).toBeInTheDocument();
   });
 
@@ -754,12 +787,38 @@ describe("GenerationForm", () => {
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
       })
     );
     expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
       "gemini-3-pro-image-4k"
     );
+  });
+
+  test("チュートリアル準備イベント_ストックタブと高解像度モデルをライブラリと標準モデルへ戻す", async () => {
+    const stockId = "11111111-1111-4111-8111-111111111111";
+    localStorage.setItem(IMAGE_SOURCE_TYPE_STORAGE_KEY, "stock");
+    localStorage.setItem(SELECTED_STOCK_ID_STORAGE_KEY, stockId);
+    localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gpt-image-2-high-4k");
+
+    await act(async () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={jest.fn()} />);
+    });
+
+    await act(async () => {
+      document.dispatchEvent(
+        new CustomEvent("tutorial:prepare-coordinate-state")
+      );
+    });
+
+    expect(screen.getByTestId("mock-add-upload")).toBeInTheDocument();
+    expect(localStorage.getItem(IMAGE_SOURCE_TYPE_STORAGE_KEY)).toBe("upload");
+    expect(localStorage.getItem(SELECTED_STOCK_ID_STORAGE_KEY)).toBeNull();
+    // 旧 UI の "{count} images require {amount} Percoins" 行は廃止され、
+    // 価格情報は GenerationSubmitButton のコストサフィックスに集約された。
+    expect(
+      screen.getByText("(cost: 10 Percoins)")
+    ).toBeInTheDocument();
   });
 
   test("表示_生成中は送信ボタン無効", async () => {

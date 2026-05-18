@@ -11,7 +11,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useTranslations } from "next-intl";
-import { Maximize2, Minimize2, Share2, Sparkles } from "lucide-react";
+import { Maximize2, Minimize2, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -63,12 +63,16 @@ import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import {
   getPercoinCost,
+  isFreePlanAllowedModel,
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
-import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
+import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
+import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
+import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
+import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import {
   readPreferredModel,
@@ -91,6 +95,11 @@ interface StylePageClientProps {
    * 非表示にする。
    */
   showResultPanel?: boolean;
+  /**
+   * 認証ユーザーのサブスクリプションプラン。未ログイン時は "free" を渡しても良いが
+   * モデル選択ロックには影響しない（ゲストロジック側で処理される）。
+   */
+  subscriptionPlan?: SubscriptionPlan;
 }
 
 interface StyleErrorState {
@@ -309,6 +318,7 @@ export function StylePageClient({
   initialAuthState,
   initialSelectedPresetId,
   showResultPanel = true,
+  subscriptionPlan = "free",
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -331,6 +341,7 @@ export function StylePageClient({
     DEFAULT_GENERATION_MODEL
   );
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const currentUrl = useCurrentUrlForRedirect();
   // /style ページが GenerationStateProvider でラップされているとき、
   // 生成結果一覧が isGenerating / generatingCount を購読してスケルトン表示する。
@@ -1279,13 +1290,7 @@ export function StylePageClient({
   const generationStatusHint = isCompletingGeneration
     ? t("generationStatusCompleteHint")
     : t("generationStatusHint");
-  const generateButtonLabel = isGenerating
-    ? t("generatingButton")
-    : isAuthenticatedPaidOnlyMode
-      ? t("paidGenerateButton", {
-          cost: selectedModelPercoinCost,
-        })
-      : t("generateButton");
+  const showGenerateCost = effectiveAuthState === "authenticated";
 
   useEffect(() => {
     if (!selectedPreset || hasTrackedVisitRef.current) {
@@ -1488,29 +1493,35 @@ export function StylePageClient({
               </div>
             </div>
 
-            <div>
-              <Label className="text-base font-medium mb-3 block">
-                {t("modelLabel")}
-              </Label>
-              <LockableModelSelect
-                value={effectiveSelectedModel}
-                onChange={handleSelectedModelChange}
-                onLockedClick={() => setShowAuthModal(true)}
-                authState={modelAuthState}
-                disabled={isGenerating}
-              />
-            </div>
+            <GenerationModelControls
+              value={effectiveSelectedModel}
+              onChange={handleSelectedModelChange}
+              onLockedClick={() => {
+                if (modelAuthState === "guest") {
+                  setShowAuthModal(true);
+                } else if (subscriptionPlan === "free") {
+                  setIsUpsellOpen(true);
+                }
+              }}
+              authState={modelAuthState}
+              modelLabel={t("modelLabel")}
+              disabled={isGenerating}
+              isModelSelectable={
+                modelAuthState === "authenticated" &&
+                subscriptionPlan === "free"
+                  ? isFreePlanAllowedModel
+                  : undefined
+              }
+            />
 
-            <Button
-              type="button"
-              className="w-full"
-              size="lg"
-              disabled={isGenerateDisabled}
+            <GenerationSubmitButton
               onClick={handleGenerate}
-            >
-              <Sparkles className="mr-2 h-5 w-5" />
-              {generateButtonLabel}
-            </Button>
+              disabled={isGenerateDisabled}
+              isGenerating={isGenerating}
+              generateLabel={t("generateButton")}
+              generatingLabel={t("generatingButton")}
+              costAmount={showGenerateCost ? selectedModelPercoinCost : null}
+            />
             <div className="space-y-1 text-xs leading-5 text-slate-500">
               <p>{t("generateHint")}</p>
               <p>{t("generateRetryHint")}</p>
@@ -1760,6 +1771,11 @@ export function StylePageClient({
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         redirectTo={currentUrl}
+      />
+
+      <SubscriptionUpsellDialog
+        open={isUpsellOpen}
+        onOpenChange={setIsUpsellOpen}
       />
     </div>
   );

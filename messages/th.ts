@@ -25,6 +25,7 @@ export const thMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(ค่าใช้จ่าย: {amount} Percoin)",
   },
   nav: {
     home: "หน้าแรก",
@@ -665,19 +666,19 @@ export const thMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "แพ็กเริ่มต้น\nสำหรับลองสร้างไม่กี่ครั้งก่อน\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 11\nNano Banana 2 1K: ราว 5\nPro 1K: ราว 2",
+      "แพ็กเริ่มต้น\nสำหรับลองสร้างไม่กี่ครั้งก่อน\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 11\nNano Banana 2 0.5K: ราว 11\nNano Banana 2 1K: ราว 5\nPro 1K: ราว 2",
     package240Name: "240 Percoin",
     package240Description:
-      "แพ็กเล็ก\nสำหรับใช้พอเป็นบางครั้ง\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 24\nNano Banana 2 1K: ราว 12\nPro 1K: ราว 4",
+      "แพ็กเล็ก\nสำหรับใช้พอเป็นบางครั้ง\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 24\nNano Banana 2 0.5K: ราว 24\nNano Banana 2 1K: ราว 12\nPro 1K: ราว 4",
     package960Name: "960 Percoin",
     package960Description:
-      "แพ็กพื้นฐาน\nสำหรับลองให้ลึกขึ้น\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 96\nNano Banana 2 1K: ราว 48\nPro 1K: ราว 19",
+      "แพ็กพื้นฐาน\nสำหรับลองให้ลึกขึ้น\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 96\nNano Banana 2 0.5K: ราว 96\nNano Banana 2 1K: ราว 48\nPro 1K: ราว 19",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "แพ็กคุ้มค่า\nสมดุลระหว่างราคาและปริมาณดี\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 190\nNano Banana 2 1K: ราว 95\nPro 1K: ราว 38",
+      "แพ็กคุ้มค่า\nสมดุลระหว่างราคาและปริมาณดี\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 190\nNano Banana 2 0.5K: ราว 190\nNano Banana 2 1K: ราว 95\nPro 1K: ราว 38",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "แพ็กคุ้มที่สุด\nต้นทุนต่อเหรียญต่ำที่สุด\n\nจำนวนการสร้างโดยประมาณ\nNano Banana 2 0.5K: ราว 480\nNano Banana 2 1K: ราว 240\nPro 1K: ราว 96",
+      "แพ็กคุ้มที่สุด\nต้นทุนต่อเหรียญต่ำที่สุด\n\nจำนวนการสร้างต่อโมเดล\nChatGPT Low 1K: ราว 480\nNano Banana 2 0.5K: ราว 480\nNano Banana 2 1K: ราว 240\nPro 1K: ราว 96",
     packageBadgeTrial: "เหมาะสำหรับลอง",
     packageBadgePopular: "ได้รับความนิยมที่สุด",
     packageBadgeBestValue: "คุ้มที่สุด",
@@ -724,6 +725,7 @@ export const thMessages = {
     maxGenerationCount: "สร้างได้สูงสุด {count} ภาพต่อครั้ง",
     stockImageLimit: "ขีดจำกัดรูปสต็อก: {count}",
     bonusMultiplier: "โบนัสโพสต์/เข้าสู่ระบบ: {multiplier}x",
+    fullModelAccess: "ใช้โมเดล ระดับคุณภาพ และขนาดภาพใดก็ได้เมื่อสร้าง",
     subscribeAction: "เลือกแพ็กเกจนี้",
     currentPlanAction: "แพ็กเกจปัจจุบัน",
     scheduledPlanAction: "ตั้งเวลาแล้ว",
@@ -790,11 +792,9 @@ export const thMessages = {
       yearly_to_monthly: "เปลี่ยนเป็นรายเดือนเมื่อต่ออายุ",
       no_change: "ไม่เปลี่ยน",
     },
-    upsellTitle: "จำนวนภาพนี้ต้องใช้แพ็กเกจแบบเสียเงิน",
+    upsellTitle: "ฟีเจอร์นี้ต้องใช้แผนแบบชำระเงิน",
     upsellDescription:
-      "อัปเกรดแพ็กเกจเพื่อเพิ่มจำนวนภาพต่อการสร้างและความจุของรูปสต็อก",
-    upsellPlanSummary:
-      "สูงสุด {count} ภาพต่อครั้ง รูปสต็อก {stock} รูป Percoin {amount} ต่อเดือน",
+      "อัปเกรดแพ็กเกจเพื่อปลดล็อกโมเดล ขนาดภาพ และจำนวนการสร้างที่มากขึ้น",
     laterAction: "ภายหลัง",
     seePlansAction: "ดูราคา",
     generationLimitHint:
@@ -830,6 +830,12 @@ export const thMessages = {
     backgroundKeepLabel: "คงพื้นหลังปัจจุบัน",
     backgroundKeepDescription: "คงพื้นหลังปัจจุบันโดยไม่เปลี่ยน",
     modelLabel: "เลือกโมเดลสำหรับสร้าง",
+    modelTooltipAria: "แสดงความแตกต่างของคุณภาพการเรนเดอร์",
+    modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว ประมาณ 30 วินาที\nMedium: สมดุล ประมาณ 70 วินาที\nHigh: รายละเอียดคงที่ ประมาณ 180 วินาที",
+    gptImage2QualityLabel: "คุณภาพการเรนเดอร์",
+    gptImage2QualityLow: "สร้างอย่างรวดเร็ว",
+    gptImage2QualityMedium: "สร้างอย่างสมดุล",
+    gptImage2QualityHigh: "สร้างอย่างประณีต",
     modelLight05k: "โมเดลเบา: Nano Banana 2 | 0.5K (10 Percoin / รูป)",
     modelStandard1k: "โมเดลมาตรฐาน: Nano Banana 2 | 1K (20 Percoin / รูป)",
     modelPro1k:
@@ -838,7 +844,38 @@ export const thMessages = {
       "โมเดลความเที่ยงสูง: Nano Banana Pro | 2K (80 Percoin / รูป)",
     modelPro4k:
       "โมเดลความเที่ยงสูง: Nano Banana Pro | 4K (100 Percoin / รูป)",
-    modelGptImage2Low: "โมเดลเบา: ChatGPT Images 2.0 (10 Percoin / รูป)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "ขนาดเอาต์พุต",
+    gptImage2SizeDescription:
+      "ขนาดจริงจะถูกปรับอัตโนมัติตามแนวภาพ ค่า Percoin จะเปลี่ยนตามขนาดเอาต์พุต",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "มาตรฐาน (เทียบเท่า 1K)",
+    gptImage2Size2k: "ความละเอียดสูง (เทียบเท่า 2K)",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / รูป",
+    geminiBananaSizeLabel: "ขนาดผลลัพธ์",
+    geminiBananaSizeDescription: "ความละเอียดยิ่งสูง ยิ่งใช้ Percoin มากขึ้น",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "ผลตัวอย่างสำหรับผู้เยี่ยมชม",
     guestResultTitle: "ผลลัพธ์",
@@ -1247,6 +1284,12 @@ export const thMessages = {
     stepBackgroundTitle: "การตั้งค่าพื้นหลัง",
     stepBackgroundDescription:
       "เลือกที่นี่ว่าจะจัดการพื้นหลังอย่างไร สำหรับบทเรียนนี้ ใช้ \"ให้ AI ตัดสินใจ\" ต่อไป",
+    stepModelTitle: "เลือกโมเดลสร้างภาพ",
+    stepModelDescription:
+      "บทเรียนนี้จะใช้ ChatGPT Images 2.0 Low หากเลือกโมเดลอื่นไว้ ระบบจะเปลี่ยนเป็นโมเดลนี้โดยอัตโนมัติ",
+    stepSizeTitle: "ตรวจสอบขนาดเอาต์พุต",
+    stepSizeDescription:
+      "เราจะใช้ขนาดเอาต์พุตมาตรฐาน ขนาดจริงจะปรับโดยอัตโนมัติตามแนวภาพ",
     stepGenerateTitle: "เริ่มสร้าง",
     stepGenerateDescription:
       "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม Percoin ของคุณจะถูกคืนหลังบทเรียน จึงดำเนินการต่อได้อย่างสบายใจ",
@@ -1393,7 +1436,6 @@ export const thMessages = {
     guestRateLimitSignupHint:
       "สร้างบัญชีเพื่อใช้ต่อได้ทันที",
     guestRateLimitSignupAction: "สมัครสมาชิกเพื่อดำเนินการต่อ",
-    paidGenerateButton: "ดำเนินการต่อด้วย {cost} Percoin",
     percoinBalanceLabel: "ยอด Percoin ปัจจุบัน",
     percoinBalanceLoading: "กำลังตรวจยอด Percoin ของคุณ...",
     percoinBalanceUnavailable: "ไม่สามารถโหลดยอดของคุณ",

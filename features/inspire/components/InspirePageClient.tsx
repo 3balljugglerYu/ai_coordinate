@@ -3,13 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, User as UserIcon } from "lucide-react";
+import { User as UserIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
-import { LockableModelSelect } from "@/features/generation/components/LockableModelSelect";
+import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
+import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
+import {
+  getPercoinCost,
+  isFreePlanAllowedModel,
+} from "@/features/generation/lib/model-config";
+import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
+import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import {
   DEFAULT_GENERATION_MODEL,
   type GeminiModel,
@@ -71,6 +77,7 @@ interface InspirePageClientProps {
   template: InspireTemplate;
   submitter: InspireSubmitter;
   copy: InspirePageClientCopy;
+  subscriptionPlan: SubscriptionPlan;
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -89,20 +96,21 @@ export function InspirePageClient({
   template,
   submitter,
   copy,
+  subscriptionPlan,
 }: InspirePageClientProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // 生成中（fetch 中 + ジョブ進行中）はフォームを操作不可にする。
-  // /style と同じく単一ジョブ運用なので polling 終了 (onComplete) で activeJobId を null に戻し再生成可能とする。
+  // polling 終了 (onComplete) で activeJobId を null に戻し再生成可能とする。
   const isGenerating = submitting || activeJobId !== null;
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
-  // /style と同じく生成枚数は常に 1 固定（UI なし）。
-  const COUNT = 1;
+  const [count, setCount] = useState<number>(1);
   // 「すべて維持」状態（4 つすべてチェック済み）で初期化。
   // 1 つもチェックがない場合は生成ボタン disabled（hasAnyInspireOverride で判定）。
   const [overrides, setOverrides] = useState<InspireOverrides>({
@@ -115,6 +123,7 @@ export function InspirePageClient({
   // テンプレ画像が読み込まれた時点で natural サイズから aspect ratio を計算する。
   // /style と同等の見た目にするため、ImageUploader にも同じ aspectRatio を渡す。
   const [templateAspectRatio, setTemplateAspectRatio] = useState<number>(1);
+  const totalPercoinCost = getPercoinCost(selectedModel) * count;
 
   const handleGenerate = async (): Promise<void> => {
     if (!uploadedImage) {
@@ -134,7 +143,7 @@ export function InspirePageClient({
           sourceImageMimeType: uploadedImage.file.type,
           generationType: "inspire",
           model: selectedModel,
-          count: COUNT,
+          count,
           styleTemplateId: template.id,
           overrides,
         }),
@@ -259,15 +268,27 @@ export function InspirePageClient({
       {/* モデル + 枚数 + 生成ボタン */}
       <Card className="p-6">
         <div className="space-y-6">
+          <GenerationModelControls
+            value={selectedModel}
+            onChange={setSelectedModel}
+            onLockedClick={() => {
+              if (subscriptionPlan === "free") {
+                setIsUpsellOpen(true);
+              }
+            }}
+            authState="authenticated"
+            modelLabel={copy.formModelLabel}
+            disabled={isGenerating}
+            isModelSelectable={
+              subscriptionPlan === "free" ? isFreePlanAllowedModel : undefined
+            }
+          />
+
           <div className="space-y-3">
-            <p className="text-base font-medium">{copy.formModelLabel}</p>
-            <LockableModelSelect
-              value={selectedModel}
-              onChange={setSelectedModel}
-              onLockedClick={() => {
-                /* 認証必須ページなのでロックは発火しない（guard 用 placeholder） */
-              }}
-              authState="authenticated"
+            <p className="text-base font-medium">{copy.formCountLabel}</p>
+            <CountSelector
+              value={count}
+              onChange={setCount}
               disabled={isGenerating}
             />
           </div>
@@ -276,19 +297,17 @@ export function InspirePageClient({
             <p className="text-sm text-destructive">{error}</p>
           ) : null}
 
-          <Button
-            type="button"
-            className="w-full"
-            size="lg"
+          <GenerationSubmitButton
+            onClick={handleGenerate}
             disabled={
               !uploadedImage || isGenerating || !hasAnyInspireOverride(overrides)
             }
-            onClick={handleGenerate}
-            aria-label={copy.formGenerateAria}
-          >
-            <Sparkles className="mr-2 h-5 w-5" aria-hidden="true" />
-            {isGenerating ? copy.formGenerating : copy.formGenerateButton}
-          </Button>
+            isGenerating={isGenerating}
+            generateLabel={copy.formGenerateButton}
+            generatingLabel={copy.formGenerating}
+            costAmount={totalPercoinCost}
+            ariaLabel={copy.formGenerateAria}
+          />
         </div>
       </Card>
 
@@ -318,7 +337,45 @@ export function InspirePageClient({
           }}
         />
       )}
+
+      <SubscriptionUpsellDialog
+        open={isUpsellOpen}
+        onOpenChange={setIsUpsellOpen}
+      />
     </div>
   );
 }
 
+function CountSelector({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {[1, 2, 3, 4].map((n) => {
+        const isSelected = value === n;
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            disabled={disabled}
+            aria-pressed={isSelected}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-input bg-background hover:bg-accent"
+            }`}
+          >
+            {n}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

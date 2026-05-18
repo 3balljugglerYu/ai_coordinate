@@ -2,7 +2,7 @@
 
 jest.mock("@/features/generation/lib/model-config", () => {
   const guestAllowedModels = [
-    "gpt-image-2-low",
+    "gpt-image-2-low-1k",
     "gemini-3.1-flash-image-preview-512",
   ];
 
@@ -17,7 +17,7 @@ jest.mock("@/features/generation/lib/model-config", () => {
       guestAllowedModels.includes(model ?? "")
     ),
     parseGuestRequestedModel: jest.fn((raw?: string | null) => {
-      if (raw === "gpt-image-2-low") return "gpt-image-2-low";
+      if (raw === "gpt-image-2-low-1k") return "gpt-image-2-low-1k";
       if (
         raw === "gemini-3.1-flash-image-preview-512" ||
         raw === "gemini-3.1-flash-image-preview" ||
@@ -128,7 +128,7 @@ describe("CoordinateGenerateGuest integration", () => {
     }> = {}
   ) {
     const fd = new FormData();
-    fd.set("model", overrides.model ?? "gpt-image-2-low");
+    fd.set("model", overrides.model ?? "gpt-image-2-low-1k");
     fd.set("prompt", overrides.prompt ?? "ピンクのドレス");
     fd.set("uploadImage", overrides.uploadImage ?? createPngImage());
     fd.set("sourceImageType", overrides.sourceImageType ?? "illustration");
@@ -138,7 +138,7 @@ describe("CoordinateGenerateGuest integration", () => {
   }
 
   test("UCL-001 + UCL-003: 許可モデルで成功時に data URL を返し DB 保存しない", async () => {
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",
@@ -245,7 +245,7 @@ describe("CoordinateGenerateGuest integration", () => {
   test("UCL-011c: GIF を OpenAI に投げると reserve 前に 400 で拒否", async () => {
     const gif = new File([new Uint8Array(16)], "x.gif", { type: "image/gif" });
     const fd = buildBaseFormData({
-      model: "gpt-image-2-low",
+      model: "gpt-image-2-low-1k",
       uploadImage: gif,
     });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
@@ -316,7 +316,7 @@ describe("CoordinateGenerateGuest integration", () => {
     openaiClient.mockRejectedValueOnce(
       Object.assign(new Error("aborted"), { name: "AbortError" })
     );
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",
@@ -336,7 +336,7 @@ describe("CoordinateGenerateGuest integration", () => {
 
   test("UCL-011b: safety/policy block は release しない (試行を消費)", async () => {
     openaiClient.mockRejectedValueOnce(new Error("safety_policy_blocked"));
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",
@@ -357,7 +357,7 @@ describe("CoordinateGenerateGuest integration", () => {
     openaiClient.mockRejectedValueOnce(
       new Error("openai_provider_error: incorrect api key")
     );
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",
@@ -414,7 +414,7 @@ describe("CoordinateGenerateGuest integration", () => {
 
   test("uploadImage が無いと 400 GUEST_IMAGE_MISSING", async () => {
     const fd = new FormData();
-    fd.set("model", "gpt-image-2-low");
+    fd.set("model", "gpt-image-2-low-1k");
     fd.set("prompt", "ピンクのドレス");
     // uploadImage を意図的にセットしない
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
@@ -432,7 +432,7 @@ describe("CoordinateGenerateGuest integration", () => {
   });
 
   test("OpenAI モデルで OpenAI API key が無い場合は reserve 前に 500", async () => {
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",
@@ -471,7 +471,7 @@ describe("CoordinateGenerateGuest integration", () => {
 
   test("UCL-011a: no_image は release して 502 を返す", async () => {
     openaiClient.mockRejectedValueOnce(new Error("No images generated"));
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",
@@ -497,7 +497,7 @@ describe("CoordinateGenerateGuest integration", () => {
       reservation: null,
     });
     openaiClient.mockRejectedValueOnce(new Error("No images generated"));
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",
@@ -515,7 +515,7 @@ describe("CoordinateGenerateGuest integration", () => {
   test("release 失敗はログに残して元の upstream 応答を返す", async () => {
     openaiClient.mockRejectedValueOnce(new Error("No images generated"));
     releaseRateLimitAttemptFn.mockRejectedValueOnce(new Error("release failed"));
-    const fd = buildBaseFormData({ model: "gpt-image-2-low" });
+    const fd = buildBaseFormData({ model: "gpt-image-2-low-1k" });
     const response = await postCoordinateGenerateGuestRoute(createRequest(fd), {
       getUserFn,
       geminiApiKey: "gemini-key",

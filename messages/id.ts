@@ -25,6 +25,7 @@ export const idMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(biaya: {amount} Percoin)",
   },
   nav: {
     home: "Beranda",
@@ -667,19 +668,19 @@ export const idMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "Paket coba\nUntuk mencoba beberapa generasi terlebih dahulu\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 11\nNano Banana 2 1K: sekitar 5\nPro 1K: sekitar 2",
+      "Paket coba\nUntuk mencoba beberapa generasi terlebih dahulu\n\nGenerasi per model\nChatGPT Low 1K: sekitar 11\nNano Banana 2 0.5K: sekitar 11\nNano Banana 2 1K: sekitar 5\nPro 1K: sekitar 2",
     package240Name: "240 Percoin",
     package240Description:
-      "Paket ringan\nUntuk pemakaian santai\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 24\nNano Banana 2 1K: sekitar 12\nPro 1K: sekitar 4",
+      "Paket ringan\nUntuk pemakaian santai\n\nGenerasi per model\nChatGPT Low 1K: sekitar 24\nNano Banana 2 0.5K: sekitar 24\nNano Banana 2 1K: sekitar 12\nPro 1K: sekitar 4",
     package960Name: "960 Percoin",
     package960Description:
-      "Paket dasar\nUntuk eksplorasi lebih dalam\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 96\nNano Banana 2 1K: sekitar 48\nPro 1K: sekitar 19",
+      "Paket dasar\nUntuk eksplorasi lebih dalam\n\nGenerasi per model\nChatGPT Low 1K: sekitar 96\nNano Banana 2 0.5K: sekitar 96\nNano Banana 2 1K: sekitar 48\nPro 1K: sekitar 19",
     package1900Name: "1.900 Percoin",
     package1900Description:
-      "Paket nilai\nKeseimbangan harga dan jumlah yang baik\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 190\nNano Banana 2 1K: sekitar 95\nPro 1K: sekitar 38",
+      "Paket nilai\nKeseimbangan harga dan jumlah yang baik\n\nGenerasi per model\nChatGPT Low 1K: sekitar 190\nNano Banana 2 0.5K: sekitar 190\nNano Banana 2 1K: sekitar 95\nPro 1K: sekitar 38",
     package4800Name: "4.800 Percoin",
     package4800Description:
-      "Paket terhemat\nBiaya per koin paling rendah\n\nPerkiraan generasi\nNano Banana 2 0.5K: sekitar 480\nNano Banana 2 1K: sekitar 240\nPro 1K: sekitar 96",
+      "Paket terhemat\nBiaya per koin paling rendah\n\nGenerasi per model\nChatGPT Low 1K: sekitar 480\nNano Banana 2 0.5K: sekitar 480\nNano Banana 2 1K: sekitar 240\nPro 1K: sekitar 96",
     packageBadgeTrial: "Cocok untuk mencoba",
     packageBadgePopular: "Paling populer",
     packageBadgeBestValue: "Nilai terbaik",
@@ -726,6 +727,7 @@ export const idMessages = {
     maxGenerationCount: "Hingga {count} gambar per generasi",
     stockImageLimit: "Batas gambar stock: {count}",
     bonusMultiplier: "Bonus posting/login: {multiplier}x",
+    fullModelAccess: "Gunakan model, tingkat kualitas, dan ukuran output apa pun saat membuat",
     subscribeAction: "Pilih paket ini",
     currentPlanAction: "Paket saat ini",
     scheduledPlanAction: "Terjadwal",
@@ -792,11 +794,9 @@ export const idMessages = {
       yearly_to_monthly: "Beralih ke bulanan saat perpanjangan",
       no_change: "Tidak ada perubahan",
     },
-    upsellTitle: "Jumlah gambar ini memerlukan paket berbayar",
+    upsellTitle: "Fitur ini memerlukan paket berbayar",
     upsellDescription:
-      "Tingkatkan paketmu untuk menambah jumlah gambar per generasi dan kapasitas gambar stock.",
-    upsellPlanSummary:
-      "Hingga {count} gambar sekaligus, {stock} gambar stock, {amount} Percoin setiap bulan",
+      "Tingkatkan paketmu untuk membuka lebih banyak model, ukuran output, dan jumlah generasi.",
     laterAction: "Nanti",
     seePlansAction: "Lihat harga",
     generationLimitHint:
@@ -832,6 +832,12 @@ export const idMessages = {
     backgroundKeepLabel: "Pertahankan latar belakang saat ini",
     backgroundKeepDescription: "Pertahankan latar belakang saat ini tanpa perubahan.",
     modelLabel: "Pilih model generasi",
+    modelTooltipAria: "Tampilkan perbedaan kualitas rendering",
+    modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",
+    gptImage2QualityLabel: "Kualitas rendering",
+    gptImage2QualityLow: "Hasilkan cepat",
+    gptImage2QualityMedium: "Hasilkan seimbang",
+    gptImage2QualityHigh: "Hasilkan dengan teliti",
     modelLight05k: "Model ringan: Nano Banana 2 | 0.5K (10 Percoin / gambar)",
     modelStandard1k: "Model standar: Nano Banana 2 | 1K (20 Percoin / gambar)",
     modelPro1k:
@@ -840,7 +846,38 @@ export const idMessages = {
       "Model fidelitas tinggi: Nano Banana Pro | 2K (80 Percoin / gambar)",
     modelPro4k:
       "Model fidelitas tinggi: Nano Banana Pro | 4K (100 Percoin / gambar)",
-    modelGptImage2Low: "Model ringan: ChatGPT Images 2.0 (10 Percoin / gambar)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "Ukuran output",
+    gptImage2SizeDescription:
+      "Dimensi sebenarnya disesuaikan otomatis dengan orientasi gambar. Biaya Percoin berubah sesuai ukuran output.",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "Standar (setara 1K)",
+    gptImage2Size2k: "Resolusi tinggi (setara 2K)",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / gambar",
+    geminiBananaSizeLabel: "Ukuran output",
+    geminiBananaSizeDescription: "Resolusi lebih tinggi mengonsumsi lebih banyak Percoin.",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Hasil pratinjau tamu",
     guestResultTitle: "Hasil",
@@ -1250,6 +1287,12 @@ export const idMessages = {
     stepBackgroundTitle: "Pengaturan latar belakang",
     stepBackgroundDescription:
       "Pilih di sini cara menangani latar belakang. Untuk tutorial ini, lanjut dengan \"Biarkan AI memutuskan\".",
+    stepModelTitle: "Pilih model pembuatan",
+    stepModelDescription:
+      "Untuk tutorial ini, kita akan memakai ChatGPT Images 2.0 Low. Jika model lain sedang dipilih, model akan otomatis diganti di sini.",
+    stepSizeTitle: "Periksa ukuran output",
+    stepSizeDescription:
+      "Ukuran output akan tetap Standard. Dimensi sebenarnya akan disesuaikan otomatis dengan orientasi gambar.",
     stepGenerateTitle: "Mulai pembuatan",
     stepGenerateDescription:
       "Pilih \"Mulai styling\" untuk memulai. Percoinmu akan dikembalikan setelah tutorial, jadi tenang saja lanjutkan.",
@@ -1396,7 +1439,6 @@ export const idMessages = {
     guestRateLimitSignupHint:
       "Buat akun untuk melanjutkan langsung.",
     guestRateLimitSignupAction: "Daftar untuk melanjutkan",
-    paidGenerateButton: "Lanjutkan dengan {cost} Percoin",
     percoinBalanceLabel: "Saldo Percoin saat ini",
     percoinBalanceLoading: "Memeriksa saldo Percoinmu...",
     percoinBalanceUnavailable: "Tidak bisa memuat saldomu.",

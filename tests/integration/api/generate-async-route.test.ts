@@ -10,27 +10,22 @@ jest.mock("@/features/generation/lib/heic-converter", () => {
 
 jest.mock("@/features/generation/lib/model-config", () => {
   const actual = jest.requireActual("@/features/generation/lib/model-config");
-  const inspireAllowedModels = [
-    "gemini-2.5-flash-image",
-    "gemini-3.1-flash-image-preview-1024",
-    "gemini-3-pro-image-1k",
-    "gemini-3-pro-image-2k",
-    "gemini-3-pro-image-4k",
-    "gpt-image-2-low",
-  ];
-
   return {
     ...actual,
     GEMINI_GENERATION_ENABLED: true,
-    INSPIRE_ALLOWED_MODELS: inspireAllowedModels,
     isModelAvailableForGeneration: jest.fn((model?: string | null) =>
       typeof model === "string"
     ),
-    isInspireAllowedModel: jest.fn((model?: string | null) =>
-      inspireAllowedModels.includes(model ?? "")
-    ),
   };
 });
+
+jest.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: jest.fn(),
+}));
+
+jest.mock("@/features/inspire/lib/repository", () => ({
+  getStyleTemplateById: jest.fn(),
+}));
 
 import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/generate-async/route";
@@ -41,9 +36,34 @@ import {
 import type { AsyncGenerationJobRepository } from "@/features/generation/lib/async-generation-job-repository";
 import { convertHeicBase64ToJpeg } from "@/features/generation/lib/heic-converter";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
+import {
+  getStyleTemplateById,
+  type UserStyleTemplateRow,
+} from "@/features/inspire/lib/repository";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type JsonRecord = Record<string, unknown>;
 const VALID_SOURCE_IMAGE_STOCK_ID = "11111111-1111-4111-8111-111111111111";
+const VALID_STYLE_TEMPLATE_ID = "22222222-2222-4222-8222-222222222222";
+const VISIBLE_STYLE_TEMPLATE: UserStyleTemplateRow = {
+  id: VALID_STYLE_TEMPLATE_ID,
+  submitted_by_user_id: "template-owner-123",
+  image_url: "https://cdn.example.com/style-template.png",
+  storage_path: "style-templates/visible-template.png",
+  alt: "visible style template",
+  moderation_status: "visible",
+  moderation_reason: null,
+  moderation_updated_at: null,
+  moderation_approved_at: "2026-01-01T00:00:00.000Z",
+  moderation_decided_by: "admin-123",
+  copyright_consent_at: "2026-01-01T00:00:00.000Z",
+  preview_openai_image_url: null,
+  preview_gemini_image_url: null,
+  preview_generated_at: null,
+  display_order: 1,
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
+};
 
 function createRequest(body: unknown): NextRequest {
   const request = new Request("http://localhost/api/generate-async", {
@@ -89,11 +109,29 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
   let convertHeicBase64ToJpegMock: jest.MockedFunction<
     typeof convertHeicBase64ToJpeg
   >;
+  let getStyleTemplateByIdMock: jest.MockedFunction<
+    typeof getStyleTemplateById
+  >;
+  let createAdminClientMock: jest.MockedFunction<typeof createAdminClient>;
 
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
     jobRepository = createAsyncGenerationJobRepositoryMock();
     invokeImageWorkerFn = jest.fn();
+    createAdminClientMock = createAdminClient as jest.MockedFunction<
+      typeof createAdminClient
+    >;
+    getStyleTemplateByIdMock =
+      getStyleTemplateById as jest.MockedFunction<typeof getStyleTemplateById>;
+    createAdminClientMock.mockReset();
+    createAdminClientMock.mockReturnValue(
+      {} as ReturnType<typeof createAdminClient>
+    );
+    getStyleTemplateByIdMock.mockReset();
+    getStyleTemplateByIdMock.mockResolvedValue({
+      data: VISIBLE_STYLE_TEMPLATE,
+      error: null,
+    });
 
     jobRepository.findSourceImageStock.mockResolvedValue({
       data: {
@@ -186,7 +224,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         source_image_stock_id: VALID_SOURCE_IMAGE_STOCK_ID,
         source_image_type: "illustration",
         generation_type: "coordinate",
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         background_mode: "keep",
         status: "queued",
         processing_stage: "queued",
@@ -207,6 +245,75 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         "https://example.supabase.co/functions/v1/image-gen-worker"
       );
     });
+
+    test.each([
+      {
+        label: "overrides未指定",
+        requestOverrides: undefined,
+        expectedOverrides: {
+          override_outfit: true,
+          override_angle: true,
+          override_pose: true,
+          override_background: true,
+        },
+      },
+      {
+        label: "overrides明示",
+        requestOverrides: {
+          outfit: false,
+          angle: true,
+          pose: false,
+          background: true,
+        },
+        expectedOverrides: {
+          override_outfit: false,
+          override_angle: true,
+          override_pose: false,
+          override_background: true,
+        },
+      },
+    ])(
+      "postGenerateAsyncRoute_inspireで$labelの場合_override列を保存する",
+      async ({ requestOverrides, expectedOverrides }) => {
+        const response = await postGenerateAsyncRoute(
+          createRequest({
+            prompt: "apply style template",
+            sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+            generationType: "inspire",
+            styleTemplateId: VALID_STYLE_TEMPLATE_ID,
+            model: "gpt-image-2-low-1k",
+            ...(requestOverrides ? { overrides: requestOverrides } : {}),
+          }),
+          {
+            getUserFn,
+            jobRepository,
+            invokeImageWorkerFn,
+            supabaseUrl: "https://example.supabase.co",
+          }
+        );
+        const body = await readJson(response);
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+          jobId: "job-001",
+          status: "queued",
+          acceptedImageCount: 1,
+          batchMode: "openai_single_job",
+        });
+        expect(getStyleTemplateByIdMock).toHaveBeenCalledWith(
+          expect.anything(),
+          VALID_STYLE_TEMPLATE_ID
+        );
+        expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+          expect.objectContaining({
+            generation_type: "inspire",
+            style_template_id: VALID_STYLE_TEMPLATE_ID,
+            style_reference_image_url: "style-templates/visible-template.png",
+            ...expectedOverrides,
+          })
+        );
+      }
+    );
   });
 
   describe("GASYNC-002 postGenerateAsyncRoute", () => {
@@ -244,7 +351,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       const request = createRequest({
         prompt: "linen jacket",
         sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
-        model: "gpt-image-2-low",
+        model: "gpt-image-2-low-1k",
         count: 4,
       });
 
@@ -268,7 +375,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
       expect(jobRepository.createImageJob).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: "gpt-image-2-low",
+          model: "gpt-image-2-low-1k",
           requested_image_count: 4,
         })
       );

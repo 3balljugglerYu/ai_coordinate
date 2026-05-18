@@ -3,6 +3,8 @@ import {
   extractImageSize,
   isKnownModelInput,
   KNOWN_MODEL_INPUTS,
+  composeGptImage2Model,
+  parseGptImage2Model,
   toApiModelName,
 } from "@/features/generation/types";
 
@@ -16,8 +18,8 @@ describe("generation types", () => {
   });
 
   describe("DEFAULT_GENERATION_MODEL", () => {
-    test("既定モデルは ChatGPT Image 2.0 (gpt-image-2-low)", () => {
-      expect(DEFAULT_GENERATION_MODEL).toBe("gpt-image-2-low");
+    test("既定モデルは ChatGPT Image 2.0 (gpt-image-2-low-1k)", () => {
+      expect(DEFAULT_GENERATION_MODEL).toBe("gpt-image-2-low-1k");
     });
   });
 
@@ -34,6 +36,28 @@ describe("generation types", () => {
       expect(isKnownModelInput(null)).toBe(false);
       expect(isKnownModelInput(undefined)).toBe(false);
       expect(isKnownModelInput(123)).toBe(false);
+    });
+  });
+
+  describe("GPT Image 2 canonical helpers", () => {
+    test("quality と size tier から canonical model を合成する", () => {
+      expect(composeGptImage2Model("medium", "2k")).toBe(
+        "gpt-image-2-medium-2k"
+      );
+    });
+
+    test("canonical model と legacy low を分解する", () => {
+      expect(parseGptImage2Model("gpt-image-2-high-4k")).toEqual({
+        canonical: "gpt-image-2-high-4k",
+        quality: "high",
+        sizeTier: "4k",
+      });
+      expect(parseGptImage2Model("gpt-image-2-low")).toEqual({
+        canonical: "gpt-image-2-low-1k",
+        quality: "low",
+        sizeTier: "1k",
+      });
+      expect(parseGptImage2Model("gemini-3-pro-image-1k")).toBeNull();
     });
   });
 
@@ -59,7 +83,7 @@ describe("generation types", () => {
     test("OpenAI 系を渡したらランタイム例外", () => {
       expect(() =>
         // 型上は GeminiOnlyModel に絞られているが、unknown 経由の誤投入を防ぐためのガード
-        toApiModelName("gpt-image-2-low" as never)
+        toApiModelName("gpt-image-2-low-1k" as never)
       ).toThrow(/OpenAI image models are not Gemini-routable/);
     });
   });

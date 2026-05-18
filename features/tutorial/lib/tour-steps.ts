@@ -9,6 +9,10 @@ export interface TutorialTourCopy {
   promptDescription: string;
   backgroundTitle: string;
   backgroundDescription: string;
+  modelTitle: string;
+  modelDescription: string;
+  sizeTitle: string;
+  sizeDescription: string;
   generateTitle: string;
   generateDescription: string;
   generatingTitle: string;
@@ -56,6 +60,24 @@ export function getTourSteps(copy: TutorialTourCopy): DriveStep[] {
         description: copy.backgroundDescription,
         side: "right",
         align: "center",
+      },
+    },
+    {
+      element: '[data-tour="tour-model-select"]',
+      popover: {
+        title: copy.modelTitle,
+        description: copy.modelDescription,
+        side: "top",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="tour-gpt-image-2-size"]',
+      popover: {
+        title: copy.sizeTitle,
+        description: copy.sizeDescription,
+        side: "top",
+        align: "start",
       },
     },
     {

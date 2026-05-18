@@ -29,8 +29,16 @@ import {
   getOneTapStyleReservedAttemptId,
 } from "../../../shared/generation/one-tap-style-metadata.ts";
 import {
+  GPT_IMAGE_2_PERCOIN_COSTS,
+  isGptImage2CanonicalModel,
+  normalizeLegacyGptImage2Model,
+  parseGptImage2Model,
+} from "../../../shared/generation/openai-image-model.ts";
+import type { GptImage2CanonicalModel } from "../../../shared/generation/openai-image-model.ts";
+import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
+  parseImageDimensions,
 } from "./openai-image.ts";
 
 /**
@@ -48,8 +56,43 @@ const INPUT_IMAGE_FETCH_MAX_ATTEMPTS = 3;
 const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
-const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
 const OPENAI_REQUEST_TIMEOUT_MS = 90_000;
+// quality ティアごとに OpenAI 側の処理時間が大きく異なるため個別に拡張する
+const OPENAI_REQUEST_TIMEOUT_HIGH_MS = 300_000;
+const OPENAI_REQUEST_TIMEOUT_MEDIUM_MS = 180_000;
+
+function resolveOpenAIRequestTimeoutMs(
+  parsed: NonNullable<ReturnType<typeof parseGptImage2Model>>
+): number {
+  if (parsed.quality === "high") {
+    return OPENAI_REQUEST_TIMEOUT_HIGH_MS;
+  }
+  if (parsed.quality === "medium") {
+    return OPENAI_REQUEST_TIMEOUT_MEDIUM_MS;
+  }
+  return OPENAI_REQUEST_TIMEOUT_MS;
+}
+
+// Gemini 側も SKU ごとに処理時間が大きく異なるため、canonical model ID から
+// タイムアウトを引く。特に Nano Banana Pro 4K は数分かかるため余裕を持たせる。
+const GEMINI_REQUEST_TIMEOUT_DEFAULT_MS = 60_000;
+
+function resolveGeminiRequestTimeoutMs(dbModel: string): number {
+  switch (dbModel) {
+    case "gemini-3.1-flash-image-preview-512":
+      return 60_000;
+    case "gemini-2.5-flash-image":
+    case "gemini-3.1-flash-image-preview-1024":
+    case "gemini-3-pro-image-1k":
+      return 90_000;
+    case "gemini-3-pro-image-2k":
+      return 180_000;
+    case "gemini-3-pro-image-4k":
+      return 300_000;
+    default:
+      return GEMINI_REQUEST_TIMEOUT_DEFAULT_MS;
+  }
+}
 const GEMINI_GENERATION_ENABLED =
   Deno.env.get("GEMINI_GENERATION_ENABLED") === "true";
 
@@ -417,12 +460,13 @@ type GeminiModel =
   | "gemini-3-pro-image-1k"
   | "gemini-3-pro-image-2k"
   | "gemini-3-pro-image-4k"
-  | "gpt-image-2-low";
+  | GptImage2CanonicalModel;
 type GeminiApiModel =
   | "gemini-2.5-flash-image"
   | "gemini-3.1-flash-image-preview"
   | "gemini-3-pro-image-preview";
 type GeminiImageSize = "512" | "1K" | "2K" | "4K";
+const WORKER_UNKNOWN_MODEL_FALLBACK: GeminiModel = "gemini-2.5-flash-image";
 
 /**
  * モデル ID が OpenAI 系 (gpt-image-*) かを判定
@@ -471,10 +515,17 @@ interface GeminiResponse {
  */
 function normalizeModelName(model: string | null): GeminiModel {
   if (!model) {
-    return "gemini-2.5-flash-image";
+    return WORKER_UNKNOWN_MODEL_FALLBACK;
+  }
+  const normalizedGptImage2 = normalizeLegacyGptImage2Model(model);
+  if (isGptImage2CanonicalModel(normalizedGptImage2)) {
+    return normalizedGptImage2;
+  }
+  if (isOpenAIImageModel(model)) {
+    throw new Error(`Invalid GPT Image 2 model: ${model}`);
   }
   if (model === "gemini-2.5-flash-image-preview" || model === "gemini-2.5-flash-image") {
-    return "gemini-2.5-flash-image";
+    return "gemini-3.1-flash-image-preview-512";
   }
   if (model === "gemini-3.1-flash-image-preview") {
     return "gemini-3.1-flash-image-preview-512";
@@ -491,10 +542,8 @@ function normalizeModelName(model: string | null): GeminiModel {
   if (model === "gemini-3-pro-image-1k" || model === "gemini-3-pro-image-2k" || model === "gemini-3-pro-image-4k") {
     return model as GeminiModel;
   }
-  if (model === "gpt-image-2-low") {
-    return model as GeminiModel;
-  }
-  return "gemini-2.5-flash-image";
+  console.warn("[image-gen-worker] unknown model received:", model);
+  return WORKER_UNKNOWN_MODEL_FALLBACK;
 }
 
 /**
@@ -534,7 +583,7 @@ function getPercoinCost(model: string | null): number {
     'gemini-3-pro-image-1k': 50,
     'gemini-3-pro-image-2k': 80,
     'gemini-3-pro-image-4k': 100,
-    'gpt-image-2-low': 10,
+    ...GPT_IMAGE_2_PERCOIN_COSTS,
   };
   return costs[normalized] ?? 20;
 }
@@ -1174,7 +1223,7 @@ Deno.serve(async () => {
 
           // processingが長時間継続しているジョブは、通常の失敗判定フローに合流
           const newAttempts = (job.attempts || 0) + 1;
-          const shouldMarkAsFailed = newAttempts >= 3;
+          const shouldMarkAsFailed = newAttempts >= 2;
           const staleErrorMessage = "処理がタイムアウトしました。入力画像サイズを下げて再試行してください。";
           const { data: staleUpdatedJob, error: staleUpdateError } = await supabase
             .from("image_jobs")
@@ -1702,6 +1751,12 @@ Deno.serve(async () => {
                 const isInspireOpenAI =
                   job.generation_type === "inspire" &&
                   resolvedInspireTemplateImage !== null;
+                const gptImage2 = parseGptImage2Model(dbModel);
+                if (!gptImage2) {
+                  throw new Error(`Invalid GPT Image 2 model: ${dbModel}`);
+                }
+                const openAIRequestTimeoutMs =
+                  resolveOpenAIRequestTimeoutMs(gptImage2);
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
@@ -1734,14 +1789,17 @@ Deno.serve(async () => {
                                 pose: job.override_pose ?? true,
                                 background: job.override_background ?? true,
                               }),
-                            timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            timeoutMs: openAIRequestTimeoutMs,
+                            quality: gptImage2.quality,
+                            sizeTier: gptImage2.sizeTier,
                             n: requestedImageCount,
-                            quality: "low",
                           })
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,
                             inputImage: openAIInputImage,
-                            timeoutMs: OPENAI_REQUEST_TIMEOUT_MS,
+                            timeoutMs: openAIRequestTimeoutMs,
+                            quality: gptImage2.quality,
+                            sizeTier: gptImage2.sizeTier,
                             n: requestedImageCount,
                           }),
                     { attempt: 1 }
@@ -1772,7 +1830,7 @@ Deno.serve(async () => {
                       /aborted/i.test(attemptErrorMessage))
                   ) {
                     attemptTimedOut = true;
-                    attemptErrorMessage = `OpenAI request timed out after ${OPENAI_REQUEST_TIMEOUT_MS}ms`;
+                    attemptErrorMessage = `OpenAI request timed out after ${openAIRequestTimeoutMs}ms`;
                   }
                   geminiAttempts.push({
                     attempt: 1,
@@ -1850,10 +1908,12 @@ Deno.serve(async () => {
                     "geminiRequest",
                     generatingSubstepDurationsMs,
                     async () => {
+                      const geminiTimeoutMs =
+                        resolveGeminiRequestTimeoutMs(dbModel);
                       const abortController = new AbortController();
                       const timeoutId = setTimeout(
                         () => abortController.abort(),
-                        GEMINI_REQUEST_TIMEOUT_MS
+                        geminiTimeoutMs
                       );
                       try {
                         const geminiResponse = await fetch(apiUrl, {
@@ -1900,7 +1960,7 @@ Deno.serve(async () => {
                       /aborted/i.test(attemptErrorMessage))
                   ) {
                     attemptTimedOut = true;
-                    attemptErrorMessage = `Gemini request timed out after ${GEMINI_REQUEST_TIMEOUT_MS}ms`;
+                    attemptErrorMessage = `Gemini request timed out after ${resolveGeminiRequestTimeoutMs(dbModel)}ms`;
                   }
                   geminiAttempts.push({
                     attempt,
@@ -2012,6 +2072,8 @@ Deno.serve(async () => {
             publicUrl: string;
             uploadPath: string;
             resultIndex: number;
+            width: number | null;
+            height: number | null;
           };
 
           const uploadedImages: UploadedGeneratedImage[] = [];
@@ -2044,6 +2106,10 @@ Deno.serve(async () => {
               try {
                 for (const [resultIndex, generatedImage] of generatedImages.entries()) {
                   const byteArray = decodeBase64(generatedImage.data);
+                  const dimensions = parseImageDimensions(
+                    byteArray,
+                    generatedImage.mimeType
+                  );
                   const extension = getSafeExtension(generatedImage.mimeType);
                   const randomStr = Math.random().toString(36).substring(2, 15);
                   const fileName = `${job.user_id}/${jobId}-${resultIndex}-${randomStr}.${extension}`;
@@ -2066,6 +2132,8 @@ Deno.serve(async () => {
                     publicUrl: supabase.storage
                       .from(STORAGE_BUCKET)
                       .getPublicUrl(uploadData.path).data.publicUrl,
+                    width: dimensions?.width ?? null,
+                    height: dimensions?.height ?? null,
                   });
                 }
               } catch (uploadError) {
@@ -2104,6 +2172,8 @@ Deno.serve(async () => {
                     p_images: uploadedImages.map((image) => ({
                       image_url: image.publicUrl,
                       storage_path: image.uploadPath,
+                      width: image.width,
+                      height: image.height,
                     })),
                     p_generation_metadata: successGenerationMetadata,
                     p_result_image_url: primaryUploadedImage.publicUrl,
@@ -2174,6 +2244,8 @@ Deno.serve(async () => {
                   source_image_stock_id: latestSourceImageStockId,
                   image_job_id: jobId,
                   image_job_result_index: 0,
+                  width: primaryUploadedImage.width,
+                  height: primaryUploadedImage.height,
                   style_template_id: job.style_template_id ?? null,
                   override_target: job.override_target ?? null,
                   override_outfit: isInspireRecord ? (job.override_outfit ?? true) : null,
@@ -2380,7 +2452,7 @@ Deno.serve(async () => {
 
           const newAttempts = (currentJob?.attempts || 0) + 1;
           const isNonRetriable = isNonRetriableGenerationError(errorMessage);
-          const shouldMarkAsFailed = isNonRetriable || newAttempts >= 3;
+          const shouldMarkAsFailed = isNonRetriable || newAttempts >= 2;
 
           // image_jobsテーブルを更新（失敗時）
           const failureGenerationMetadata = {
@@ -2460,7 +2532,7 @@ Deno.serve(async () => {
             }
           }
 
-          // メッセージの削除/アーカイブ（即時失敗またはattempts >= 3の場合）
+          // メッセージの削除/アーカイブ（即時失敗またはattempts >= 2の場合）
           if (shouldMarkAsFailed) {
             await supabase.rpc("pgmq_delete", {
               p_queue_name: QUEUE_NAME,

@@ -7,7 +7,6 @@ import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import {
   getPercoinCost,
   isModelAvailableForGeneration,
-  isInspireAllowedModel,
 } from "@/features/generation/lib/model-config";
 import {
   DEFAULT_GENERATION_MODEL,
@@ -135,16 +134,9 @@ export async function postGenerateAsyncRoute(
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
     const isInspireRequest = generationType === "inspire";
 
-    // inspire 専用: model whitelist + テンプレ visibility 検証
+    // inspire 専用: テンプレ visibility 検証
     let inspireStyleTemplateImageUrl: string | null = null;
     if (isInspireRequest) {
-      if (!isInspireAllowedModel(effectiveModel)) {
-        return jsonError(
-          "選択したモデルは Inspire 生成ではご利用いただけません",
-          "GENERATION_INSPIRE_MODEL_NOT_ALLOWED",
-          400
-        );
-      }
       if (!styleTemplateId) {
         return jsonError(
           "スタイルテンプレートが指定されていません",

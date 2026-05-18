@@ -25,6 +25,7 @@ export const zhCnMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "（消耗：{amount} Percoin）",
   },
   nav: {
     home: "首页",
@@ -664,19 +665,19 @@ export const zhCnMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "体验包\n先尝试几次生成\n\n预计可生成次数\nNano Banana 2 0.5K: 约 11 次\nNano Banana 2 1K: 约 5 次\nPro 1K: 约 2 次",
+      "体验包\n先尝试几次生成\n\n各模型可生成次数\nChatGPT Low 1K: 约 11 次\nNano Banana 2 0.5K: 约 11 次\nNano Banana 2 1K: 约 5 次\nPro 1K: 约 2 次",
     package240Name: "240 Percoin",
     package240Description:
-      "轻量包\n适合轻度使用\n\n预计可生成次数\nNano Banana 2 0.5K: 约 24 次\nNano Banana 2 1K: 约 12 次\nPro 1K: 约 4 次",
+      "轻量包\n适合轻度使用\n\n各模型可生成次数\nChatGPT Low 1K: 约 24 次\nNano Banana 2 0.5K: 约 24 次\nNano Banana 2 1K: 约 12 次\nPro 1K: 约 4 次",
     package960Name: "960 Percoin",
     package960Description:
-      "基础包\n适合更深入的体验\n\n预计可生成次数\nNano Banana 2 0.5K: 约 96 次\nNano Banana 2 1K: 约 48 次\nPro 1K: 约 19 次",
+      "基础包\n适合更深入的体验\n\n各模型可生成次数\nChatGPT Low 1K: 约 96 次\nNano Banana 2 0.5K: 约 96 次\nNano Banana 2 1K: 约 48 次\nPro 1K: 约 19 次",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "实惠包\n价格与数量平衡良好\n\n预计可生成次数\nNano Banana 2 0.5K: 约 190 次\nNano Banana 2 1K: 约 95 次\nPro 1K: 约 38 次",
+      "实惠包\n价格与数量平衡良好\n\n各模型可生成次数\nChatGPT Low 1K: 约 190 次\nNano Banana 2 0.5K: 约 190 次\nNano Banana 2 1K: 约 95 次\nPro 1K: 约 38 次",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "至尊实惠包\n单价最低\n\n预计可生成次数\nNano Banana 2 0.5K: 约 480 次\nNano Banana 2 1K: 约 240 次\nPro 1K: 约 96 次",
+      "至尊实惠包\n单价最低\n\n各模型可生成次数\nChatGPT Low 1K: 约 480 次\nNano Banana 2 0.5K: 约 480 次\nNano Banana 2 1K: 约 240 次\nPro 1K: 约 96 次",
     packageBadgeTrial: "适合体验",
     packageBadgePopular: "最受欢迎",
     packageBadgeBestValue: "最划算",
@@ -723,6 +724,7 @@ export const zhCnMessages = {
     maxGenerationCount: "每次生成最多 {count} 张",
     stockImageLimit: "素材库上限: {count}",
     bonusMultiplier: "发布/登录奖励: {multiplier} 倍",
+    fullModelAccess: "生成时可使用全部模型、画质和输出尺寸",
     subscribeAction: "选择此方案",
     currentPlanAction: "当前方案",
     scheduledPlanAction: "已预约",
@@ -789,11 +791,9 @@ export const zhCnMessages = {
       yearly_to_monthly: "续订时切换为月度",
       no_change: "不变",
     },
-    upsellTitle: "此生成数量需要付费方案",
+    upsellTitle: "此功能仅限付费方案",
     upsellDescription:
-      "升级方案以提升每次生成的图片数量与素材库容量。",
-    upsellPlanSummary:
-      "一次最多 {count} 张，{stock} 张素材，每月 {amount} Percoin",
+      "升级方案后，可使用更多模型、输出尺寸与生成数量。",
     laterAction: "稍后再说",
     seePlansAction: "查看价格",
     generationLimitHint:
@@ -829,6 +829,12 @@ export const zhCnMessages = {
     backgroundKeepLabel: "保留当前背景",
     backgroundKeepDescription: "保持当前背景不变。",
     modelLabel: "选择生成模型",
+    modelTooltipAria: "显示渲染质量的差异",
+    modelTooltipContent: "💡 越接近 High，脸部和服装的细节越不容易崩坏。\nLow：生成快。约 30 秒。\nMedium：均衡。约 70 秒。\nHigh：细节不易崩坏。约 180 秒。",
+    gptImage2QualityLabel: "渲染质量",
+    gptImage2QualityLow: "快速生成",
+    gptImage2QualityMedium: "均衡生成",
+    gptImage2QualityHigh: "精细生成",
     modelLight05k: "轻量模型: Nano Banana 2 | 0.5K (10 Percoin / 张)",
     modelStandard1k: "标准模型: Nano Banana 2 | 1K (20 Percoin / 张)",
     modelPro1k:
@@ -837,7 +843,38 @@ export const zhCnMessages = {
       "高保真模型: Nano Banana Pro | 2K (80 Percoin / 张)",
     modelPro4k:
       "高保真模型: Nano Banana Pro | 4K (100 Percoin / 张)",
-    modelGptImage2Low: "轻量模型: ChatGPT Images 2.0 (10 Percoin / 张)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "输出尺寸",
+    gptImage2SizeDescription:
+      "实际尺寸会根据图片方向自动调整。Percoin 消耗会随输出尺寸变化。",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "标准（约 1K）",
+    gptImage2Size2k: "高分辨率（约 2K）",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / 张",
+    geminiBananaSizeLabel: "输出尺寸",
+    geminiBananaSizeDescription: "分辨率越大，消耗的 Percoin 越多。",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "访客预览结果",
     guestResultTitle: "结果",
@@ -1246,6 +1283,12 @@ export const zhCnMessages = {
     stepBackgroundTitle: "背景设置",
     stepBackgroundDescription:
       "在这里选择如何处理背景。本教程将使用 “交给 AI 处理” 继续。",
+    stepModelTitle: "选择生成模型",
+    stepModelDescription:
+      "本教程将使用 ChatGPT Images 2.0 Low。即使已选择其他模型，也会在这里自动切换。",
+    stepSizeTitle: "确认输出尺寸",
+    stepSizeDescription:
+      "输出尺寸将保持为标准。实际尺寸会根据图片方向自动调整。",
     stepGenerateTitle: "开始生成",
     stepGenerateDescription:
       "选择 “开始造型” 即可开始。教程结束后将退还使用的 Percoin，请放心继续。",
@@ -1391,7 +1434,6 @@ export const zhCnMessages = {
     guestRateLimitSignupHint:
       "注册账户即可立即继续使用。",
     guestRateLimitSignupAction: "注册以继续",
-    paidGenerateButton: "使用 {cost} Percoin 继续",
     percoinBalanceLabel: "当前 Percoin 余额",
     percoinBalanceLoading: "查询 Percoin 余额中...",
     percoinBalanceUnavailable: "无法加载余额。",

@@ -9,6 +9,7 @@ import {
   normalizeModelName,
   type GeminiModel,
 } from "../types";
+import { GPT_IMAGE_2_PERCOIN_COSTS } from "@/shared/generation/openai-image-model";
 
 export { DEFAULT_GENERATION_MODEL };
 
@@ -58,7 +59,7 @@ export const MODEL_PERCOIN_COSTS = {
   'gemini-3-pro-image-1k': 50,
   'gemini-3-pro-image-2k': 80,
   'gemini-3-pro-image-4k': 100,
-  'gpt-image-2-low': 10,
+  ...GPT_IMAGE_2_PERCOIN_COSTS,
 } as const;
 
 /**
@@ -69,7 +70,7 @@ export const MODEL_PERCOIN_COSTS = {
  * クライアントから受け取った生の入力に対しては `parseGuestRequestedModel()` を使うこと。
  */
 const BASE_GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
-  'gpt-image-2-low',
+  'gpt-image-2-low-1k',
   'gemini-3.1-flash-image-preview-512',
 ];
 
@@ -87,6 +88,43 @@ export function isCanonicalGuestAllowedModel(
   return (
     typeof model === 'string' &&
     (GUEST_ALLOWED_MODELS as ReadonlyArray<string>).includes(model)
+  );
+}
+
+/**
+ * ログイン済み「free」プランユーザーが選択可能な canonical モデル一覧。
+ * UI で南京錠を出すかどうかの正本（クリック時は SubscriptionUpsellDialog を開く）。
+ *
+ * 内訳:
+ * - ChatGPT: Low × 1k（標準）のみ
+ * - Nano Banana Pro: 1k（標準）のみ
+ * - Nano Banana 2 ファミリー: 全 SKU 許可
+ *
+ * light / standard / premium プランは制限なし（このリストは無関係）。
+ * ゲスト経路は GUEST_ALLOWED_MODELS で別途制限される。
+ */
+const BASE_FREE_PLAN_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
+  'gpt-image-2-low-1k',
+  'gemini-2.5-flash-image',
+  'gemini-3.1-flash-image-preview-512',
+  'gemini-3.1-flash-image-preview-1024',
+  'gemini-3-pro-image-1k',
+];
+
+export const FREE_PLAN_ALLOWED_MODELS: ReadonlyArray<GeminiModel> =
+  BASE_FREE_PLAN_ALLOWED_MODELS.filter(isModelAvailableForGeneration);
+
+/**
+ * canonical model が free プラン許可リストに含まれるか判定する。
+ * 認証済み free プランの `isModelSelectable` として LockableModelSelect / Quality /
+ * Size セレクターに渡す。`null` / `undefined` / 未知文字列は false（ロック扱い）。
+ */
+export function isFreePlanAllowedModel(
+  model: string | null | undefined
+): model is GeminiModel {
+  return (
+    typeof model === 'string' &&
+    (FREE_PLAN_ALLOWED_MODELS as ReadonlyArray<string>).includes(model)
   );
 }
 
@@ -140,22 +178,9 @@ export function getPercoinCost(model: string | null | undefined): number {
  * 申請者は同期 API でこの 2 モデルから 2 枚を並列生成し、結果を見てから申請を確定する。
  */
 const BASE_INSPIRE_PREVIEW_MODELS: ReadonlyArray<GeminiModel> = [
-  'gpt-image-2-low',
+  'gpt-image-2-low-1k',
   'gemini-3.1-flash-image-preview-512',
 ];
 
 export const INSPIRE_PREVIEW_MODELS: ReadonlyArray<GeminiModel> =
   BASE_INSPIRE_PREVIEW_MODELS.filter(isModelAvailableForGeneration);
-
-/**
- * Inspire 生成で利用者が選択できるモデル判定。
- *
- * 設計方針: coordinate / style 画面と同じモデル一覧をそのまま使う（運営側の解像度フィルタは設けない）。
- * 利用者は LockableModelSelect から好みのモデルを選べる。`isModelAvailableForGeneration`
- * （Gemini kill switch 含む）と同じ判定を再利用する。
- */
-export function isInspireAllowedModel(
-  model: string | null | undefined
-): model is GeminiModel {
-  return isModelAvailableForGeneration(model);
-}

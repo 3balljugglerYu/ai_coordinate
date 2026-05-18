@@ -229,7 +229,6 @@ const styleMessages = {
     "Your balance is too low. Prepare at least {cost} Percoins to continue.",
   guestRateLimitSignupHint: "Create an account to keep going right away.",
   guestRateLimitSignupAction: "Sign up to continue",
-  paidGenerateButton: "Continue for {cost} Percoins",
   percoinBalanceLabel: "Current Percoin balance",
   percoinBalanceLoading: "Checking your Percoin balance...",
   percoinBalanceUnavailable: "We could not load your balance.",
@@ -266,6 +265,22 @@ const postsMessages = {
   postSubmitting: "Posting...",
 };
 
+const commonMessages = {
+  generationCostSuffix: "(cost: {amount} Percoins)",
+};
+
+function interpolate(
+  template: string,
+  values?: Record<string, string | number>
+): string {
+  if (!values) {
+    return template;
+  }
+  return Object.entries(values).reduce((message, [token, value]) => {
+    return message.replace(`{${token}}`, String(value));
+  }, template);
+}
+
 function translate(
   namespace: string | undefined,
   key: string,
@@ -276,28 +291,27 @@ function translate(
   }
 
   if (namespace === "posts") {
-    const template = postsMessages[key as keyof typeof postsMessages] ?? key;
-    if (!values) {
-      return template;
-    }
+    return interpolate(
+      postsMessages[key as keyof typeof postsMessages] ?? key,
+      values
+    );
+  }
 
-    return Object.entries(values).reduce((message, [token, value]) => {
-      return message.replace(`{${token}}`, String(value));
-    }, template);
+  if (namespace === "common") {
+    return interpolate(
+      commonMessages[key as keyof typeof commonMessages] ?? key,
+      values
+    );
   }
 
   if (namespace !== "style") {
     return key;
   }
 
-  const template = styleMessages[key as keyof typeof styleMessages] ?? key;
-  if (!values) {
-    return template;
-  }
-
-  return Object.entries(values).reduce((message, [token, value]) => {
-    return message.replace(`{${token}}`, String(value));
-  }, template);
+  return interpolate(
+    styleMessages[key as keyof typeof styleMessages] ?? key,
+    values
+  );
 }
 
 const presets: readonly StylePresetPublicSummary[] = [
@@ -371,7 +385,7 @@ describe("StylePageClient", () => {
       await flushReactScheduler();
     });
     expect(
-      screen.getByRole("button", { name: "Start Styling" })
+      screen.getByRole("button", { name: /Start Styling/ })
     ).toBeEnabled();
   };
 
@@ -389,7 +403,7 @@ describe("StylePageClient", () => {
 
   const startStylingAndWaitForRequest = async () => {
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await flushReactScheduler();
     });
     expect(hasStyleGenerateRequest()).toBe(true);
@@ -697,7 +711,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     const generateButton = screen.getByRole("button", {
-      name: "Start Styling",
+      name: /Start Styling/,
     });
     expect(generateButton).toBeDisabled();
 
@@ -761,7 +775,7 @@ describe("StylePageClient", () => {
     const [, init] = generateCall!;
     const formData = init?.body as FormData;
 
-    expect(formData.get("model")).toBe("gpt-image-2-low");
+    expect(formData.get("model")).toBe("gpt-image-2-low-1k");
     expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
       "gemini-3-pro-image-4k"
     );
@@ -901,7 +915,7 @@ describe("StylePageClient", () => {
       jest.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByRole("button", { name: "Start Styling" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Start Styling/ })).toBeEnabled();
   });
 
   test("reduced motion が有効な場合は生成ステータスへのスクロールを即時にする", async () => {
@@ -941,7 +955,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -992,7 +1006,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1142,7 +1156,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1220,7 +1234,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1256,7 +1270,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1384,7 +1398,7 @@ describe("StylePageClient", () => {
       "data:image/png;base64,generated-image-base64"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
 
     expect(
       screen.getByText("This will replace the current result")
@@ -1426,7 +1440,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1471,7 +1485,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1491,7 +1505,7 @@ describe("StylePageClient", () => {
       "https://cdn.example.com/generated-style-result.png"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
 
     expect(
       screen.getByText("This will replace the result shown on this screen")
@@ -1615,7 +1629,7 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
 
     await act(async () => {
       await Promise.resolve();
@@ -1656,7 +1670,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     expect(
-      screen.getByRole("button", { name: "Start Styling" })
+      screen.getByRole("button", { name: /Start Styling/ })
     ).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Sign up to continue" }));
@@ -1698,7 +1712,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     expect(
-      screen.getByRole("button", { name: "Continue for 10 Percoins" })
+      screen.getByRole("button", { name: /Start Styling.*cost: 10 Percoins/ })
     ).toBeEnabled();
   });
 
@@ -1728,7 +1742,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     expect(
-      screen.getByRole("button", { name: "Continue for 10 Percoins" })
+      screen.getByRole("button", { name: /Start Styling.*cost: 10 Percoins/ })
     ).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Buy Percoins" }));

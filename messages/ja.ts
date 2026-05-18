@@ -22,6 +22,7 @@ export const jaMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "（消費：{amount}ペルコイン）",
   },
   nav: {
     home: "ホーム",
@@ -648,19 +649,19 @@ export const jaMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110ペルコイン",
     package110Description:
-      "お試しパック\nまず数枚だけ生成したい方へ\n\n生成枚数\nNano Banana 2 0.5K：約11枚\nNano Banana 2 1K：約5枚\nPro 1K：約2枚",
+      "お試しパック\nまず数枚だけ生成したい方へ\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約11枚\nNano Banana 2 0.5K：約11枚\nNano Banana 2 1K：約5枚\nPro 1K：約2枚",
     package240Name: "240ペルコイン",
     package240Description:
-      "ライトパック\n気軽に遊びたい方へ\n\n生成枚数\nNano Banana 2 0.5K：約24枚\nNano Banana 2 1K：約12枚\nPro 1K：約4枚",
+      "ライトパック\n気軽に遊びたい方へ\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約24枚\nNano Banana 2 0.5K：約24枚\nNano Banana 2 1K：約12枚\nPro 1K：約4枚",
     package960Name: "960ペルコイン",
     package960Description:
-      "ベーシックパック\nしっかり試したい方へ\n\n生成枚数\nNano Banana 2 0.5K：約96枚\nNano Banana 2 1K：約48枚\nPro 1K：約19枚",
+      "ベーシックパック\nしっかり試したい方へ\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約96枚\nNano Banana 2 0.5K：約96枚\nNano Banana 2 1K：約48枚\nPro 1K：約19枚",
     package1900Name: "1,900ペルコイン",
     package1900Description:
-      "お得パック\n迷ったらこれ・コスパ◎\n\n生成枚数\nNano Banana 2 0.5K：約190枚\nNano Banana 2 1K：約95枚\nPro 1K：約38枚",
+      "お得パック\n迷ったらこれ・コスパ◎\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約190枚\nNano Banana 2 0.5K：約190枚\nNano Banana 2 1K：約95枚\nPro 1K：約38枚",
     package4800Name: "4,800ペルコイン",
     package4800Description:
-      "最大お得パック\n1コイン単価が最安\n\n生成枚数\nNano Banana 2 0.5K：約480枚\nNano Banana 2 1K：約240枚\nPro 1K：約96枚",
+      "最大お得パック\n1コイン単価が最安\n\nモデルごとの生成可能枚数\nChatGPT Low 1K：約480枚\nNano Banana 2 0.5K：約480枚\nNano Banana 2 1K：約240枚\nPro 1K：約96枚",
     packageBadgeTrial: "まずはお試し！",
     packageBadgePopular: "一番人気",
     packageBadgeBestValue: "もっともお得！",
@@ -707,6 +708,7 @@ export const jaMessages = {
     maxGenerationCount: "1回の最大生成枚数: {count}枚",
     stockImageLimit: "ストック画像上限: {count}枚",
     bonusMultiplier: "投稿・ログイン特典: {multiplier}倍",
+    fullModelAccess: "生成時に、すべてのモデル・品質・出力サイズを利用可能",
     subscribeAction: "このプランにする",
     currentPlanAction: "現在のプラン",
     scheduledPlanAction: "反映予約中",
@@ -768,11 +770,9 @@ export const jaMessages = {
       yearly_to_monthly: "次回更新から月額プランへ切り替える",
       no_change: "変更なし",
     },
-    upsellTitle: "この枚数は有料プラン限定です",
+    upsellTitle: "この機能は有料プラン限定です",
     upsellDescription:
-      "プランをアップグレードすると、1回で生成できる枚数とストック画像の上限が増えます。",
-    upsellPlanSummary:
-      "1回最大{count}枚、ストック{stock}枚、毎月{amount}ペルコイン",
+      "プランをアップグレードすると、より多くのモデル・出力サイズ・生成枚数を選べるようになります。",
     laterAction: "あとで",
     seePlansAction: "料金プランを見る",
     generationLimitHint:
@@ -805,12 +805,49 @@ export const jaMessages = {
     backgroundKeepLabel: "背景は変更しない",
     backgroundKeepDescription: "現在の背景を維持します",
     modelLabel: "生成モデルを選択",
+    modelTooltipAria: "レンダリング品質の違いを表示",
+    modelTooltipContent: "─ Low ─\n服の方向性や雰囲気を早く確認する時に利用。細かい装飾・素材感・小物・顔や手の安定性は弱くなりやすい。\n\n─ Medium ─\n通常用途。キャラクターの印象を保ちつつ、服の形・色・全体バランスを比較的安定して反映しやすい。\n\n─ High ─\n仕上げ向き。衣装の細部、柄、素材感、レイヤー、アクセサリー、光や影などをより細かく描き込みやすい。\n\nレンダリング品質を上げると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
+    gptImage2QualityLabel: "レンダリング品質",
+    gptImage2QualityLow: "素早く生成：30秒程度で生成",
+    gptImage2QualityMedium: "バランス良く生成：70秒程度で生成",
+    gptImage2QualityHigh: "丁寧に生成：180秒程度で生成",
     modelLight05k: "軽量モデル：Nano Banana 2 | 0.5K（10ペルコイン/枚）",
     modelStandard1k: "標準モデル：Nano Banana 2 | 1K（20ペルコイン/枚）",
     modelPro1k: "高精細モデル：Nano Banana Pro | 1K（50ペルコイン/枚）",
     modelPro2k: "高精細モデル：Nano Banana Pro | 2K（80ペルコイン/枚）",
     modelPro4k: "高精細モデル：Nano Banana Pro | 4K（100ペルコイン/枚）",
-    modelGptImage2Low: "軽量モデル： ChatGPT Images 2.0 （10ペルコイン/ 枚）",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "出力サイズを選択",
+    gptImage2SizeDescription:
+      "画像の向きに合わせて実サイズは自動調整されます。",
+    gptImage2SizeTooltipAria: "ChatGPT Images 2.0 の出力サイズ詳細を表示",
+    gptImage2SizeTooltipContent:
+      "入力画像のアスペクト比を保ったまま、選んだサイズの上限内で最大の解像度で生成します。\n\n─ 標準 ─\n総ピクセル目安：約 1.6M（長辺 ≤ 1536px）\n例：1:1 → 1248×1248、2:3 → 1024×1536、16:9 → 1536×864\n\n─ 高解像度 ─\n総ピクセル目安：約 4.2M（長辺 ≤ 2496px）\n例：1:1 → 2048×2048、2:3 → 1664×2496、16:9 → 2496×1408\n\n─ 最高解像度 ─\n総ピクセル目安：約 8.3M（長辺 ≤ 3840px）\n例：1:1 → 2880×2880、2:3 → 2352×3520、16:9 → 3840×2160\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
+    gptImage2Size1k: "標準：最大1536px",
+    gptImage2Size2k: "高解像度：最大2496px",
+    gptImage2Size4k: "最高解像度：最大3840px",
+    gptImage2SizePricePerImage: "{cost}ペルコイン/枚",
+    geminiBananaSizeLabel: "出力サイズを選択",
+    geminiBananaSizeDescription: "モデルにより選べるサイズが変わります。",
+    geminiBananaSizeTooltipAria: "Nano Banana の出力サイズ詳細を表示",
+    geminiBanana2SizeTooltipContent:
+      "Nano Banana 2 で選べる出力サイズです。入力画像のアスペクト比にできる限り合わせ、選んだサイズの上限内で最大の解像度で生成します。\n\n─ 0.5K ─\n正方形（1:1）：512 × 512px\n軽く試したい時におすすめ。\n\n─ 1K ─\n正方形（1:1）：1024 × 1024px\n縦長（9:16）：768 × 1376px\n横長（16:9）：1376 × 768px\n通常の確認や投稿に使いやすいサイズです。\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
+    geminiBananaProSizeTooltipContent:
+      "Nano Banana Pro で選べる出力サイズです。入力画像のアスペクト比にできる限り合わせ、選んだサイズの上限内で最大の解像度で生成します。\n\n─ 1K ─\n正方形（1:1）：1024 × 1024px\n縦長（9:16）：768 × 1376px\n横長（16:9）：1376 × 768px\n通常の確認や投稿に使いやすいサイズです。\n\n─ 2K ─\n正方形（1:1）：2048 × 2048px\n縦長（9:16）：1536 × 2752px\n横長（16:9）：2752 × 1536px\nより大きく、細部を見やすいサイズです。\n\n─ 4K ─\n正方形（1:1）：4096 × 4096px\n縦長（9:16）：3072 × 5504px\n横長（16:9）：5504 × 3072px\n仕上げ向きの高精細サイズです。\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
+    geminiBananaSize05k: "軽量：512px目安",
+    geminiBananaSize1k: "標準：1024px目安",
+    geminiBananaSize2k: "高解像度：2048px目安",
+    geminiBananaSize4k: "最高解像度：最大5504px",
     // Phase 6: ゲスト用 UI
     guestResultAlt: "お試し生成結果",
     guestResultTitle: "生成結果",
@@ -833,7 +870,7 @@ export const jaMessages = {
     countSingle: "1枚",
     countMultiple: "{count}枚",
     countCostDescription: "{count}枚の生成には {amount} ペルコインが必要です",
-    generatingButton: "コーデスタート",
+    generatingButton: "コーデ開始！",
     generatingButtonLoading: "生成中...",
     missingPrompt: "着せ替え内容を入力してください",
     missingUploadedImage: "人物画像をアップロードしてください",
@@ -1190,6 +1227,12 @@ export const jaMessages = {
     stepBackgroundTitle: "背景設定",
     stepBackgroundDescription:
       "ここでは背景の扱いを選べます。今回は「AIに依頼」を選択して進めてみましょう！",
+    stepModelTitle: "生成モデルを選択",
+    stepModelDescription:
+      "ここで、ChatGPTまたはGeminiのモデルを選ぶことができます。今回はChatGPTを選択します。",
+    stepSizeTitle: "出力サイズを確認",
+    stepSizeDescription:
+      "ここで、画像サイズを選択することができます。今回は、標準の1Kサイズで進めます。",
     stepGenerateTitle: "生成開始！",
     stepGenerateDescription:
       "「コーデスタート」ボタンを選択して、開始しましょう！ ※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",
@@ -1254,7 +1297,7 @@ export const jaMessages = {
     guestLoginCtaDescription:
       "ChatGPT Image 2.0 を 1 日 1 回までお試しいただけます。保存はされません。",
     guestLoginCtaAction: "ログイン / 新規登録",
-    generateButton: "Start Styling",
+    generateButton: "コーデ開始！",
     generatingButton: "生成中...",
     // ステータスカードの見出し
     generationStatusTitle: "スタイリング中です",
@@ -1301,7 +1344,7 @@ export const jaMessages = {
     resultResetConfirmActionAuthenticated: "変更する",
     resultReplaceConfirmTitle: "現在の生成結果を上書きします",
     resultReplaceConfirmDescription:
-      "Start Styling を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
+      "コーデ開始！を実行すると、現在の生成結果は新しい画像で上書きされます。このまま続けますか？",
     resultReplaceConfirmAction: "再生成する",
     resultReplaceConfirmTitleAuthenticated: "現在の生成結果を上書きします",
     resultReplaceConfirmDescriptionAuthenticated:
@@ -1330,7 +1373,6 @@ export const jaMessages = {
     guestRateLimitSignupHint:
       "新規登録すると、このまま続きをお試しいただけます。",
     guestRateLimitSignupAction: "新規登録して続ける",
-    paidGenerateButton: "{cost}ペルコインで続ける",
     percoinBalanceLabel: "現在のペルコイン残高",
     percoinBalanceLoading: "ペルコイン残高を確認しています...",
     percoinBalanceUnavailable: "残高を確認できませんでした",
@@ -1564,7 +1606,7 @@ export const jaMessages = {
     formImageLabel: "キャラ画像（PNG / JPEG / WebP / HEIC、10MB まで）",
     formCountLabel: "生成枚数",
     formModelLabel: "モデル",
-    formGenerateButton: "生成する",
+    formGenerateButton: "コーデ開始！",
     formGenerating: "生成中...",
     formImageRequired: "キャラ画像をアップロードしてください",
     formGenerationFailed: "生成に失敗しました。時間をおいて再試行してください。",

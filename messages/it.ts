@@ -25,6 +25,7 @@ export const itMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(costo: {amount} Percoin)",
   },
   nav: {
     home: "Home",
@@ -668,19 +669,19 @@ export const itMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "Pacchetto prova\nPer provare alcune generazioni\n\nGenerazioni stimate\nNano Banana 2 0.5K: circa 11\nNano Banana 2 1K: circa 5\nPro 1K: circa 2",
+      "Pacchetto prova\nPer provare alcune generazioni\n\nGenerazioni per modello\nChatGPT Low 1K: circa 11\nNano Banana 2 0.5K: circa 11\nNano Banana 2 1K: circa 5\nPro 1K: circa 2",
     package240Name: "240 Percoin",
     package240Description:
-      "Pacchetto leggero\nPer un uso occasionale\n\nGenerazioni stimate\nNano Banana 2 0.5K: circa 24\nNano Banana 2 1K: circa 12\nPro 1K: circa 4",
+      "Pacchetto leggero\nPer un uso occasionale\n\nGenerazioni per modello\nChatGPT Low 1K: circa 24\nNano Banana 2 0.5K: circa 24\nNano Banana 2 1K: circa 12\nPro 1K: circa 4",
     package960Name: "960 Percoin",
     package960Description:
-      "Pacchetto base\nPer un test più approfondito\n\nGenerazioni stimate\nNano Banana 2 0.5K: circa 96\nNano Banana 2 1K: circa 48\nPro 1K: circa 19",
+      "Pacchetto base\nPer un test più approfondito\n\nGenerazioni per modello\nChatGPT Low 1K: circa 96\nNano Banana 2 0.5K: circa 96\nNano Banana 2 1K: circa 48\nPro 1K: circa 19",
     package1900Name: "1.900 Percoin",
     package1900Description:
-      "Pacchetto vantaggio\nOttimo equilibrio tra prezzo e volume\n\nGenerazioni stimate\nNano Banana 2 0.5K: circa 190\nNano Banana 2 1K: circa 95\nPro 1K: circa 38",
+      "Pacchetto vantaggio\nOttimo equilibrio tra prezzo e volume\n\nGenerazioni per modello\nChatGPT Low 1K: circa 190\nNano Banana 2 0.5K: circa 190\nNano Banana 2 1K: circa 95\nPro 1K: circa 38",
     package4800Name: "4.800 Percoin",
     package4800Description:
-      "Pacchetto miglior valore\nCosto per moneta più basso\n\nGenerazioni stimate\nNano Banana 2 0.5K: circa 480\nNano Banana 2 1K: circa 240\nPro 1K: circa 96",
+      "Pacchetto miglior valore\nCosto per moneta più basso\n\nGenerazioni per modello\nChatGPT Low 1K: circa 480\nNano Banana 2 0.5K: circa 480\nNano Banana 2 1K: circa 240\nPro 1K: circa 96",
     packageBadgeTrial: "Ottimo per provare",
     packageBadgePopular: "Più popolare",
     packageBadgeBestValue: "Miglior valore",
@@ -727,6 +728,7 @@ export const itMessages = {
     maxGenerationCount: "Fino a {count} immagini per generazione",
     stockImageLimit: "Limite immagini in stock: {count}",
     bonusMultiplier: "Bonus pubblicazione/login: {multiplier}x",
+    fullModelAccess: "Usa qualsiasi modello, livello di qualità e dimensione di output durante la generazione",
     subscribeAction: "Scegli questo piano",
     currentPlanAction: "Piano attuale",
     scheduledPlanAction: "Programmato",
@@ -793,11 +795,9 @@ export const itMessages = {
       yearly_to_monthly: "Passa a mensile al rinnovo",
       no_change: "Nessun cambio",
     },
-    upsellTitle: "Questa quantità di immagini richiede un piano a pagamento",
+    upsellTitle: "Questa funzione richiede un piano a pagamento",
     upsellDescription:
-      "Aggiorna il tuo piano per aumentare il numero di immagini per generazione e la capacità delle immagini in stock.",
-    upsellPlanSummary:
-      "Fino a {count} immagini per volta, {stock} immagini in stock, {amount} Percoin ogni mese",
+      "Aggiorna il tuo piano per sbloccare più modelli, dimensioni di output e quantità di generazione.",
     laterAction: "Più tardi",
     seePlansAction: "Vedi i prezzi",
     generationLimitHint:
@@ -833,6 +833,12 @@ export const itMessages = {
     backgroundKeepLabel: "Mantieni lo sfondo attuale",
     backgroundKeepDescription: "Mantieni lo sfondo attuale invariato.",
     modelLabel: "Seleziona un modello di generazione",
+    modelTooltipAria: "Mostra le differenze nella qualità di rendering",
+    modelTooltipContent: "💡 Più alto è, meno volti e abiti si rompono.\nLow: generazione veloce. ~30 s.\nMedium: bilanciato. ~70 s.\nHigh: dettagli stabili. ~180 s.",
+    gptImage2QualityLabel: "Qualità di rendering",
+    gptImage2QualityLow: "Genera rapidamente",
+    gptImage2QualityMedium: "Genera in modo bilanciato",
+    gptImage2QualityHigh: "Genera accuratamente",
     modelLight05k: "Modello light: Nano Banana 2 | 0.5K (10 Percoin / immagine)",
     modelStandard1k: "Modello standard: Nano Banana 2 | 1K (20 Percoin / immagine)",
     modelPro1k:
@@ -841,7 +847,38 @@ export const itMessages = {
       "Modello ad alta fedeltà: Nano Banana Pro | 2K (80 Percoin / immagine)",
     modelPro4k:
       "Modello ad alta fedeltà: Nano Banana Pro | 4K (100 Percoin / immagine)",
-    modelGptImage2Low: "Modello light: ChatGPT Images 2.0 (10 Percoin / immagine)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "Dimensione output",
+    gptImage2SizeDescription:
+      "Le dimensioni effettive vengono adattate automaticamente all’orientamento dell’immagine. Il costo in Percoins cambia in base alla dimensione di output.",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "Standard (equivalente 1K)",
+    gptImage2Size2k: "Alta risoluzione (equivalente 2K)",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / immagine",
+    geminiBananaSizeLabel: "Dimensione di output",
+    geminiBananaSizeDescription: "Una risoluzione maggiore consuma più Percoin.",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Risultato anteprima ospite",
     guestResultTitle: "Risultato",
@@ -1251,6 +1288,12 @@ export const itMessages = {
     stepBackgroundTitle: "Impostazioni dello sfondo",
     stepBackgroundDescription:
       "Scegli qui come gestire lo sfondo. Per questo tutorial proseguiamo con \"Lascia decidere all'IA\".",
+    stepModelTitle: "Seleziona il modello di generazione",
+    stepModelDescription:
+      "Per questo tutorial useremo ChatGPT Images 2.0 Low. Se era selezionato un altro modello, qui verrà cambiato automaticamente.",
+    stepSizeTitle: "Controlla la dimensione output",
+    stepSizeDescription:
+      "Terremo la dimensione di output su Standard. Le dimensioni effettive vengono regolate automaticamente in base all'orientamento dell'immagine.",
     stepGenerateTitle: "Avvia la generazione",
     stepGenerateDescription:
       "Seleziona \"Avvia styling\" per iniziare. I tuoi Percoin verranno restituiti dopo il tutorial, quindi prosegui senza preoccupazioni.",
@@ -1397,7 +1440,6 @@ export const itMessages = {
     guestRateLimitSignupHint:
       "Crea un account per continuare subito.",
     guestRateLimitSignupAction: "Registrati per continuare",
-    paidGenerateButton: "Continua per {cost} Percoin",
     percoinBalanceLabel: "Saldo Percoin attuale",
     percoinBalanceLoading: "Sto verificando il tuo saldo Percoin...",
     percoinBalanceUnavailable: "Impossibile caricare il saldo.",

@@ -166,8 +166,9 @@ paths:
                   format: binary
                 model:
                   type: string
-                  description: Only the two guest-allowed models are accepted.
+                  description: Only guest-allowed models are accepted. Legacy gpt-image-2-low is normalized to gpt-image-2-low-1k.
                   enum:
+                    - gpt-image-2-low-1k
                     - gpt-image-2-low
                     - gemini-3.1-flash-image-preview-512
                 sourceImageType:
@@ -2309,11 +2310,20 @@ components:
             - gemini-3-pro-image-1k
             - gemini-3-pro-image-2k
             - gemini-3-pro-image-4k
+            - gpt-image-2-low-1k
+            - gpt-image-2-low-2k
+            - gpt-image-2-low-4k
+            - gpt-image-2-medium-1k
+            - gpt-image-2-medium-2k
+            - gpt-image-2-medium-4k
+            - gpt-image-2-high-1k
+            - gpt-image-2-high-2k
+            - gpt-image-2-high-4k
             - gpt-image-2-low
             - gemini-2.5-flash-image-preview
             - gemini-3-pro-image-preview
             - gemini-3-pro-image
-          default: gpt-image-2-low
+          default: gpt-image-2-low-1k
       additionalProperties: false
     GenerateAsyncQueuedResponse:
       type: object

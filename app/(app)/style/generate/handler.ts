@@ -51,7 +51,7 @@ interface StyleGenerateRouteDependencies {
   geminiApiKey?: string;
   openaiApiKey?: string;
   /**
-   * テスト用 OpenAI クライアント差し替え (gpt-image-2-low が選ばれた場合のみ呼ばれる)
+   * テスト用 OpenAI クライアント差し替え (GPT Image 2 が選ばれた場合のみ呼ばれる)
    */
   openaiClient?: typeof callOpenAIImageEdit;
   getUserFn?: typeof getUser;

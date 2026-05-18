@@ -25,6 +25,7 @@ export const viMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(chi phí: {amount} Percoin)",
   },
   nav: {
     home: "Trang chủ",
@@ -665,19 +666,19 @@ export const viMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "Gói dùng thử\nĐể tạo thử vài lần\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 11\nNano Banana 2 1K: khoảng 5\nPro 1K: khoảng 2",
+      "Gói dùng thử\nĐể tạo thử vài lần\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 11\nNano Banana 2 0.5K: khoảng 11\nNano Banana 2 1K: khoảng 5\nPro 1K: khoảng 2",
     package240Name: "240 Percoin",
     package240Description:
-      "Gói nhẹ\nDành cho sử dụng thường thức\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 24\nNano Banana 2 1K: khoảng 12\nPro 1K: khoảng 4",
+      "Gói nhẹ\nDành cho sử dụng thường thức\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 24\nNano Banana 2 0.5K: khoảng 24\nNano Banana 2 1K: khoảng 12\nPro 1K: khoảng 4",
     package960Name: "960 Percoin",
     package960Description:
-      "Gói cơ bản\nĐể trải nghiệm sâu hơn\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 96\nNano Banana 2 1K: khoảng 48\nPro 1K: khoảng 19",
+      "Gói cơ bản\nĐể trải nghiệm sâu hơn\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 96\nNano Banana 2 0.5K: khoảng 96\nNano Banana 2 1K: khoảng 48\nPro 1K: khoảng 19",
     package1900Name: "1.900 Percoin",
     package1900Description:
-      "Gói tiết kiệm\nCân bằng tốt giữa giá và số lượng\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 190\nNano Banana 2 1K: khoảng 95\nPro 1K: khoảng 38",
+      "Gói tiết kiệm\nCân bằng tốt giữa giá và số lượng\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 190\nNano Banana 2 0.5K: khoảng 190\nNano Banana 2 1K: khoảng 95\nPro 1K: khoảng 38",
     package4800Name: "4.800 Percoin",
     package4800Description:
-      "Gói tiết kiệm nhất\nGiá trên mỗi đồng thấp nhất\n\nSố lần tạo dự kiến\nNano Banana 2 0.5K: khoảng 480\nNano Banana 2 1K: khoảng 240\nPro 1K: khoảng 96",
+      "Gói tiết kiệm nhất\nGiá trên mỗi đồng thấp nhất\n\nSố lần tạo theo từng mô hình\nChatGPT Low 1K: khoảng 480\nNano Banana 2 0.5K: khoảng 480\nNano Banana 2 1K: khoảng 240\nPro 1K: khoảng 96",
     packageBadgeTrial: "Tốt để dùng thử",
     packageBadgePopular: "Phổ biến nhất",
     packageBadgeBestValue: "Đáng giá nhất",
@@ -724,6 +725,7 @@ export const viMessages = {
     maxGenerationCount: "Tối đa {count} hình mỗi lần tạo",
     stockImageLimit: "Giới hạn hình stock: {count}",
     bonusMultiplier: "Thưởng đăng/đăng nhập: x{multiplier}",
+    fullModelAccess: "Dùng mọi mô hình, mức chất lượng và kích thước đầu ra khi tạo",
     subscribeAction: "Chọn gói này",
     currentPlanAction: "Gói hiện tại",
     scheduledPlanAction: "Đã lên lịch",
@@ -790,11 +792,9 @@ export const viMessages = {
       yearly_to_monthly: "Chuyển sang hàng tháng khi gia hạn",
       no_change: "Không đổi",
     },
-    upsellTitle: "Số lượng hình này yêu cầu gói trả phí",
+    upsellTitle: "Tính năng này yêu cầu gói trả phí",
     upsellDescription:
-      "Nâng cấp gói để tăng số hình mỗi lần tạo và dung lượng hình stock.",
-    upsellPlanSummary:
-      "Tối đa {count} hình mỗi lần, {stock} hình stock, {amount} Percoin mỗi tháng",
+      "Nâng cấp gói để mở khóa thêm mô hình, kích thước đầu ra và số lượng tạo.",
     laterAction: "Để sau",
     seePlansAction: "Xem giá",
     generationLimitHint:
@@ -830,6 +830,12 @@ export const viMessages = {
     backgroundKeepLabel: "Giữ nền hiện tại",
     backgroundKeepDescription: "Giữ nguyên nền hiện tại.",
     modelLabel: "Chọn mô hình tạo",
+    modelTooltipAria: "Hiển thị sự khác biệt về chất lượng kết xuất",
+    modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh. khoảng 30 giây.\nMedium: cân bằng. khoảng 70 giây.\nHigh: chi tiết ổn định. khoảng 180 giây.",
+    gptImage2QualityLabel: "Chất lượng kết xuất",
+    gptImage2QualityLow: "Tạo nhanh",
+    gptImage2QualityMedium: "Tạo cân bằng",
+    gptImage2QualityHigh: "Tạo kỹ lưỡng",
     modelLight05k: "Mô hình nhẹ: Nano Banana 2 | 0.5K (10 Percoin / hình)",
     modelStandard1k: "Mô hình tiêu chuẩn: Nano Banana 2 | 1K (20 Percoin / hình)",
     modelPro1k:
@@ -838,7 +844,38 @@ export const viMessages = {
       "Mô hình độ trung thực cao: Nano Banana Pro | 2K (80 Percoin / hình)",
     modelPro4k:
       "Mô hình độ trung thực cao: Nano Banana Pro | 4K (100 Percoin / hình)",
-    modelGptImage2Low: "Mô hình nhẹ: ChatGPT Images 2.0 (10 Percoin / hình)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "Kích thước đầu ra",
+    gptImage2SizeDescription:
+      "Kích thước thực tế được tự động điều chỉnh theo hướng ảnh. Chi phí Percoin thay đổi theo kích thước đầu ra.",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "Tiêu chuẩn (tương đương 1K)",
+    gptImage2Size2k: "Độ phân giải cao (tương đương 2K)",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / hình",
+    geminiBananaSizeLabel: "Kích thước đầu ra",
+    geminiBananaSizeDescription: "Độ phân giải càng cao, tiêu thụ càng nhiều Percoin.",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Kết quả xem trước cho khách",
     guestResultTitle: "Kết quả",
@@ -1248,6 +1285,12 @@ export const viMessages = {
     stepBackgroundTitle: "Cài đặt nền",
     stepBackgroundDescription:
       "Chọn ở đây cách xử lý nền. Trong hướng dẫn này, hãy tiếp tục với \"Để AI quyết định\".",
+    stepModelTitle: "Chọn mô hình tạo ảnh",
+    stepModelDescription:
+      "Trong hướng dẫn này, chúng ta sẽ dùng ChatGPT Images 2.0 Low. Nếu đang chọn mô hình khác, hệ thống sẽ tự động chuyển tại đây.",
+    stepSizeTitle: "Kiểm tra kích thước đầu ra",
+    stepSizeDescription:
+      "Chúng ta sẽ giữ kích thước đầu ra ở mức Tiêu chuẩn. Kích thước thực tế sẽ tự động điều chỉnh theo hướng của ảnh.",
     stepGenerateTitle: "Bắt đầu tạo",
     stepGenerateDescription:
       "Chọn \"Bắt đầu styling\" để bắt đầu. Percoin của bạn sẽ được hoàn lại sau hướng dẫn, nên bạn có thể tiếp tục an tâm.",
@@ -1394,7 +1437,6 @@ export const viMessages = {
     guestRateLimitSignupHint:
       "Tạo tài khoản để tiếp tục ngay.",
     guestRateLimitSignupAction: "Đăng ký để tiếp tục",
-    paidGenerateButton: "Tiếp tục với {cost} Percoin",
     percoinBalanceLabel: "Số dư Percoin hiện tại",
     percoinBalanceLoading: "Đang kiểm tra số dư Percoin của bạn...",
     percoinBalanceUnavailable: "Không tải được số dư của bạn.",

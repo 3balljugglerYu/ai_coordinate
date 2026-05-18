@@ -17,6 +17,23 @@
 - Pull request titles and bodies must always be written in Japanese in this repository.
 - Conventional Commit messages may remain in English, but PR-facing text must include Japanese.
 
+### Merge strategy
+
+Choose the merge method based on what the PR represents. **Do not default to Squash.**
+
+| PR type | Required merge strategy |
+| --- | --- |
+| Short-lived feature / fix branch into `main` | Squash and merge OK |
+| Long-lived branch ↔ `main` sync (e.g. `main` → `feature-model`) | **Create a merge commit** (Squash forbidden) |
+| Large release PR from a long-lived branch (e.g. `feature-model` → `main`) | **Create a merge commit** (Squash forbidden) |
+
+Why: Squash merge produces a single commit with one parent, so Git cannot see the
+incoming branch's commits as ancestors. For sync / release PRs that bridge two
+long-lived branches, this destroys the merge-base linkage and forces the same
+conflicts to recur on every subsequent main update. Use `gh pr merge --merge`
+(not `--squash`) or click **Create a merge commit** in the GitHub UI for these
+PR types.
+
 ## Destructive Operations
 
 Do **not** perform the following without an explicit user request or confirmation in the current session. When in doubt, ask before acting.

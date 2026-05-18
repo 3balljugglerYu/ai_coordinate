@@ -10,6 +10,7 @@ import {
   getStyleTemplateById,
 } from "@/features/inspire/lib/repository";
 import { InspirePageClient } from "@/features/inspire/components/InspirePageClient";
+import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
@@ -79,6 +80,9 @@ export default async function InspirePage({ params }: InspirePageProps) {
     .eq("user_id", template.submitted_by_user_id)
     .maybeSingle();
 
+  // 閲覧中ユーザー本人のサブスクリプションプラン（モデル選択ロック判定に使う）。
+  const viewerProfile = await getUserProfileServer(user.id);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
@@ -134,6 +138,7 @@ export default async function InspirePage({ params }: InspirePageProps) {
               resultsPlaceholder: t("resultsPlaceholder"),
               resultImageAlt: t("resultImageAlt"),
             }}
+              subscriptionPlan={viewerProfile?.subscription_plan ?? "free"}
             />
 
             <div className="mt-8">

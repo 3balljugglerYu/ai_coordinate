@@ -94,11 +94,16 @@ export async function DELETE(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // 対象画像をまとめて取得（RLS により本人レコードのみ返る前提で user_id も明示）
+  // 対象画像をまとめて取得（RLS により本人レコードのみ返る前提で user_id も明示）。
+  // is_posted=false の絞り込みは DB 側で行う（in-memory フィルタ削減）。
+  // storage_path_thumb も SELECT に含めて、後の Storage 削除で孤立サムネを残さない。
   const { data: rows, error: fetchError } = await supabase
     .from("generated_images")
-    .select("id, is_posted, storage_path, pre_generation_storage_path")
+    .select(
+      "id, storage_path, storage_path_thumb, pre_generation_storage_path",
+    )
     .eq("user_id", user.id)
+    .eq("is_posted", false)
     .in("id", imageIds);
 
   if (fetchError) {
@@ -110,7 +115,7 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  const eligibleRows = (rows ?? []).filter((row) => row.is_posted === false);
+  const eligibleRows = rows ?? [];
   const eligibleIds = eligibleRows.map((row) => row.id);
   const eligibleIdSet = new Set(eligibleIds);
 
@@ -141,9 +146,11 @@ export async function DELETE(request: NextRequest) {
   }
 
   // Storage 削除（DB 成功後に実行。失敗しても孤立ファイルが残るのみなのでログだけ残して継続）
+  // 本体 / サムネ / 生成前画像のすべてを対象に集める。
   const storagePaths = eligibleRows.flatMap((row) => {
     const paths: string[] = [];
     if (row.storage_path) paths.push(row.storage_path);
+    if (row.storage_path_thumb) paths.push(row.storage_path_thumb);
     if (row.pre_generation_storage_path) {
       paths.push(row.pre_generation_storage_path);
     }

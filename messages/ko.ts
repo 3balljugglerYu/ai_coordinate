@@ -25,6 +25,7 @@ export const koMessages = {
     localeVi: "Tiếng Việt",
     localeHi: "हिन्दी",
     localeAr: "العربية",
+    generationCostSuffix: "(소비: {amount} Percoin)",
   },
   nav: {
     home: "홈",
@@ -665,19 +666,19 @@ export const koMessages = {
     packageCreditsCaption: "{count} {unit}",
     package110Name: "110 Percoin",
     package110Description:
-      "체험 팩\n먼저 몇 번 생성해 보고 싶을 때\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 11회\nNano Banana 2 1K: 약 5회\nPro 1K: 약 2회",
+      "체험 팩\n먼저 몇 번 생성해 보고 싶을 때\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 11회\nNano Banana 2 0.5K: 약 11회\nNano Banana 2 1K: 약 5회\nPro 1K: 약 2회",
     package240Name: "240 Percoin",
     package240Description:
-      "라이트 팩\n가볍게 사용하고 싶을 때\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 24회\nNano Banana 2 1K: 약 12회\nPro 1K: 약 4회",
+      "라이트 팩\n가볍게 사용하고 싶을 때\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 24회\nNano Banana 2 0.5K: 약 24회\nNano Banana 2 1K: 약 12회\nPro 1K: 약 4회",
     package960Name: "960 Percoin",
     package960Description:
-      "베이직 팩\n좀 더 충분히 사용하고 싶을 때\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 96회\nNano Banana 2 1K: 약 48회\nPro 1K: 약 19회",
+      "베이직 팩\n좀 더 충분히 사용하고 싶을 때\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 96회\nNano Banana 2 0.5K: 약 96회\nNano Banana 2 1K: 약 48회\nPro 1K: 약 19회",
     package1900Name: "1,900 Percoin",
     package1900Description:
-      "밸류 팩\n가격과 양의 균형이 좋은 패키지\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 190회\nNano Banana 2 1K: 약 95회\nPro 1K: 약 38회",
+      "밸류 팩\n가격과 양의 균형이 좋은 패키지\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 190회\nNano Banana 2 0.5K: 약 190회\nNano Banana 2 1K: 약 95회\nPro 1K: 약 38회",
     package4800Name: "4,800 Percoin",
     package4800Description:
-      "베스트 밸류 팩\n코인당 가격이 가장 저렴\n\n예상 생성 횟수\nNano Banana 2 0.5K: 약 480회\nNano Banana 2 1K: 약 240회\nPro 1K: 약 96회",
+      "베스트 밸류 팩\n코인당 가격이 가장 저렴\n\n모델별 생성 가능 횟수\nChatGPT Low 1K: 약 480회\nNano Banana 2 0.5K: 약 480회\nNano Banana 2 1K: 약 240회\nPro 1K: 약 96회",
     packageBadgeTrial: "체험에 추천",
     packageBadgePopular: "가장 인기",
     packageBadgeBestValue: "최고 가성비",
@@ -724,6 +725,7 @@ export const koMessages = {
     maxGenerationCount: "1회 생성당 최대 {count}장",
     stockImageLimit: "스톡 이미지 한도: {count}",
     bonusMultiplier: "게시·로그인 보너스: {multiplier}배",
+    fullModelAccess: "생성 시 모든 모델·품질·출력 크기 사용 가능",
     subscribeAction: "이 플랜 선택",
     currentPlanAction: "현재 플랜",
     scheduledPlanAction: "예정",
@@ -790,11 +792,9 @@ export const koMessages = {
       yearly_to_monthly: "갱신 시 월간으로 변경",
       no_change: "변경 없음",
     },
-    upsellTitle: "이 이미지 수는 유료 플랜이 필요합니다",
+    upsellTitle: "이 기능은 유료 플랜 전용입니다",
     upsellDescription:
-      "1회 생성 이미지 수와 스톡 이미지 한도를 늘리려면 플랜을 업그레이드해 주세요.",
-    upsellPlanSummary:
-      "한 번에 최대 {count}장, 스톡 이미지 {stock}장, 매달 {amount} Percoin",
+      "플랜을 업그레이드하면 더 다양한 모델·출력 크기·생성 매수를 선택할 수 있습니다.",
     laterAction: "나중에",
     seePlansAction: "요금제 보기",
     generationLimitHint:
@@ -830,6 +830,12 @@ export const koMessages = {
     backgroundKeepLabel: "현재 배경 유지",
     backgroundKeepDescription: "현재 배경을 그대로 유지합니다.",
     modelLabel: "생성 모델 선택",
+    modelTooltipAria: "렌더링 품질 차이 표시",
+    modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성. 약 30초.\nMedium: 균형 중시. 약 70초.\nHigh: 디테일이 잘 깨지지 않음. 약 180초.",
+    gptImage2QualityLabel: "렌더링 품질",
+    gptImage2QualityLow: "빠르게 생성",
+    gptImage2QualityMedium: "균형 있게 생성",
+    gptImage2QualityHigh: "정성껏 생성",
     modelLight05k: "라이트 모델: Nano Banana 2 | 0.5K (10 Percoin / 장)",
     modelStandard1k: "스탠다드 모델: Nano Banana 2 | 1K (20 Percoin / 장)",
     modelPro1k:
@@ -838,7 +844,38 @@ export const koMessages = {
       "고화질 모델: Nano Banana Pro | 2K (80 Percoin / 장)",
     modelPro4k:
       "고화질 모델: Nano Banana Pro | 4K (100 Percoin / 장)",
-    modelGptImage2Low: "라이트 모델: ChatGPT Images 2.0 (10 Percoin / 장)",
+    modelGptImage2Low: "ChatGPT Images 2.0",
+    modelGptImage2Medium: "ChatGPT Images 2.0",
+    modelGptImage2High: "ChatGPT Images 2.0",
+    modelChatGptImages: "ChatGPT Images 2.0",
+    modelTagEngineOpenai: "OpenAI",
+    modelTagEngineGemini: "Gemini",
+    modelNanoBanana2: "Nano Banana 2",
+    modelNanoBananaPro: "Nano Banana Pro",
+    modelTagTierLight: "Low",
+    modelTagTierBalanced: "Medium",
+    modelTagTierQuality: "High",
+    gptImage2SizeLabel: "출력 크기",
+    gptImage2SizeDescription:
+      "실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다. 출력 크기에 따라 Percoin 비용이 달라집니다.",
+    gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
+    gptImage2SizeTooltipContent:
+      "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    gptImage2Size1k: "표준 (1K 상당)",
+    gptImage2Size2k: "고해상도 (2K 상당)",
+    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2SizePricePerImage: "{cost} Percoins / 장",
+    geminiBananaSizeLabel: "출력 크기",
+    geminiBananaSizeDescription: "해상도가 클수록 Percoin 소비가 늘어납니다.",
+    geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
+    geminiBanana2SizeTooltipContent:
+      "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaProSizeTooltipContent:
+      "Output sizes available for Nano Banana Pro. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\n- 2K -\nSquare (1:1): 2048 x 2048 px\nPortrait (9:16): 1536 x 2752 px\nLandscape (16:9): 2752 x 1536 px\nLarger and easier to inspect in detail.\n\n- 4K -\nSquare (1:1): 4096 x 4096 px\nPortrait (9:16): 3072 x 5504 px\nLandscape (16:9): 5504 x 3072 px\nA high-fidelity size for final output.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
+    geminiBananaSize05k: "0.5K",
+    geminiBananaSize1k: "1K",
+    geminiBananaSize2k: "2K",
+    geminiBananaSize4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "게스트 미리보기 결과",
     guestResultTitle: "결과",
@@ -1247,6 +1284,12 @@ export const koMessages = {
     stepBackgroundTitle: "배경 설정",
     stepBackgroundDescription:
       "여기서 배경 처리 방식을 선택할 수 있습니다. 이 튜토리얼에서는 “AI에게 맡기기”로 진행합니다.",
+    stepModelTitle: "생성 모델 선택",
+    stepModelDescription:
+      "이 튜토리얼에서는 ChatGPT Images 2.0 Low를 사용합니다. 다른 모델이 선택되어 있어도 여기서 자동으로 전환됩니다.",
+    stepSizeTitle: "출력 크기 확인",
+    stepSizeDescription:
+      "출력 크기는 표준으로 유지합니다. 실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다.",
     stepGenerateTitle: "생성 시작",
     stepGenerateDescription:
       "“스타일링 시작”을 선택해 시작해 주세요. 튜토리얼이 끝나면 사용한 Percoin은 돌려드리니 안심하고 진행하셔도 됩니다.",
@@ -1393,7 +1436,6 @@ export const koMessages = {
     guestRateLimitSignupHint:
       "회원가입하면 바로 이어서 사용할 수 있습니다.",
     guestRateLimitSignupAction: "회원가입하고 계속",
-    paidGenerateButton: "{cost} Percoin으로 계속",
     percoinBalanceLabel: "현재 Percoin 잔액",
     percoinBalanceLoading: "Percoin 잔액을 확인하는 중...",
     percoinBalanceUnavailable: "잔액을 불러오지 못했습니다.",

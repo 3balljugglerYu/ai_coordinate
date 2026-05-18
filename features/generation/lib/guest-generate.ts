@@ -11,6 +11,7 @@ import {
 import {
   extractImageSize,
   isOpenAIImageModel,
+  parseGptImage2Model,
   toApiModelName,
   type GeminiModel,
   type GeminiOnlyModel,
@@ -103,7 +104,7 @@ export type GuestImageInputValidationResult =
  * UCL-011c: reserve に到達する前に弾くべき入力エラー。
  *
  * - 未対応 MIME / 上限サイズ超過 → GUEST_INVALID_IMAGE
- * - GIF を gpt-image-2-low に投げようとしている → GUEST_INVALID_MODEL_FOR_IMAGE
+ * - GIF を GPT Image 2 に投げようとしている → GUEST_INVALID_MODEL_FOR_IMAGE
  *   （OpenAI 側で reject されると "ユーザー側起因の失敗" として release 扱いに
  *    なる前に明示で弾くため、reserve 前に検出する）
  */
@@ -249,11 +250,20 @@ async function dispatchOpenAI(
   const arrayBuffer = await input.uploadImage.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString("base64");
   const openaiClient = input.openaiClient ?? callOpenAIImageEdit;
+  const gptImage2 = parseGptImage2Model(input.model);
+  if (!gptImage2) {
+    return {
+      kind: "openai_provider_error",
+      message: `Invalid GPT Image 2 model: ${input.model}`,
+    };
+  }
   try {
     const result: OpenAIImageEditResult = await openaiClient({
       prompt: input.promptText,
       inputImage: { base64, mimeType: input.uploadImage.type },
       timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
+      quality: gptImage2.quality,
+      sizeTier: gptImage2.sizeTier,
       apiKey: input.openaiApiKey,
     });
     return {

@@ -165,15 +165,16 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
   "backgroundMode": "enum, optional",
   "count": "1..4, optional",
   "generationType": "coordinate | specified_coordinate | full_body | chibi",
-  "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-low"
+  "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-{low|medium|high}-{1k|2k|4k}"
 }
 ```
 
 補足:
 
 - `sourceImageStockId` か、`sourceImageBase64 + sourceImageMimeType` のどちらかが必須です。
-- `gpt-image-2-low` は OpenAI gpt-image-2 (`quality=low`) を呼び出す経路。1 枚あたり 10 ペルコイン消費。出力解像度は入力画像のアスペクト比から `1024x1024` / `1024x1536` / `1536x1024` を自動選択。GIF 入力は非対応。
-- `gpt-image-2-low` では `count` を `acceptedImageCount` として受理し、worker が OpenAI Images Edit API に 1 回で `n=acceptedImageCount` を渡します。上限はサブスクプランの生成枚数上限と `1..4` の小さい方です。
+- GPT Image 2 は `gpt-image-2-{quality}-{sizeTier}` の canonical model を使います。`quality` は `low | medium | high`、`sizeTier` は `1k | 2k | 4k` です。旧 `gpt-image-2-low` は後方互換で `gpt-image-2-low-1k` に正規化されます。
+- GPT Image 2 の出力サイズは入力画像のアスペクト比から自動選択されます。`1k`: `1024x1024` / `1024x1536` / `1536x1024`、`2k`: `2048x2048` / `1664x2496` / `2496x1664`、`4k`: `2880x2880` / `2352x3520` / `3520x2352`。GIF 入力は非対応です。
+- GPT Image 2 では `count` を `acceptedImageCount` として受理し、worker が OpenAI Images Edit API に 1 回で `n=acceptedImageCount` を渡します。上限はサブスクプランの生成枚数上限と `1..4` の小さい方です。
 - Gemini 系モデルでは互換性のため、この API 1 回につき 1 job / 1 画像です。複数枚生成はクライアント側が複数 job を投入します。
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
@@ -218,8 +219,8 @@ Main errors:
 - Access: `guest only` (認証ユーザーは `403 GUEST_ROUTE_AUTHENTICATED_FORBIDDEN` で拒否、UCL-014)
 - Request body: `multipart/form-data`
   - `prompt`: 必須、最大 2000 文字
-  - `uploadImage`: 必須 (PNG / JPEG / WebP / GIF。`gpt-image-2-low` モデルのみ GIF 非対応)
-  - `model`: 必須、`gpt-image-2-low` か `gemini-3.1-flash-image-preview-512` のみ許可 (UCL-001)
+  - `uploadImage`: 必須 (PNG / JPEG / WebP / GIF。GPT Image 2 モデルのみ GIF 非対応)
+  - `model`: 必須、`gpt-image-2-low-1k`（旧 `gpt-image-2-low` も互換受理）か `gemini-3.1-flash-image-preview-512` のみ許可 (UCL-001)
   - `sourceImageType`: 任意、`illustration` (default) / `real`
   - `backgroundMode`: 任意、`keep` (default) / `ai_auto` / `include_in_prompt`
   - `generationType`: 任意、`coordinate` (default) / `specified_coordinate` / `full_body` / `chibi`

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { Lock, Sparkles, Upload, Folder } from "lucide-react";
+import { Lock, Upload, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
-import { LockableModelSelect } from "./LockableModelSelect";
+import { GenerationModelControls } from "./GenerationModelControls";
+import { GenerationSubmitButton } from "./GenerationSubmitButton";
 import { StockImageListClient } from "./StockImageListClient";
 import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
@@ -32,6 +33,7 @@ import {
 } from "../hooks/useCoordinateStocksUnread";
 import {
   getPercoinCost,
+  isFreePlanAllowedModel,
   resolveEffectiveModelForAuthState,
 } from "../lib/model-config";
 import {
@@ -189,6 +191,9 @@ export function GenerationForm({
     selectedModel,
     authState
   );
+  const totalPercoinCost =
+    selectedCount * getPercoinCost(effectiveSelectedModel);
+  const showCost = authState === "authenticated";
 
   useEffect(() => {
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
@@ -564,6 +569,33 @@ export function GenerationForm({
       document.removeEventListener("tutorial:set-background-mode", handler);
   }, []);
 
+  // チュートリアル開始時は、前回の保存状態に関係なく Library / GPT Image 2 Low / 標準サイズに寄せる。
+  useEffect(() => {
+    const handler = () => {
+      setImageSourceType("upload");
+      setSelectedStockId(null);
+      setSelectedModel(DEFAULT_GENERATION_MODEL);
+      writePreferredImageSourceType("upload");
+      writePreferredSelectedStockId(null);
+    };
+    document.addEventListener("tutorial:prepare-coordinate-state", handler);
+    return () =>
+      document.removeEventListener("tutorial:prepare-coordinate-state", handler);
+  }, []);
+
+  // チュートリアル中は Size step の対象を必ず表示するため、GPT Image 2 の既定モデルへ寄せる。
+  useEffect(() => {
+    const handler = () => {
+      setSelectedModel(DEFAULT_GENERATION_MODEL);
+    };
+    document.addEventListener("tutorial:set-gpt-image-2-default-model", handler);
+    return () =>
+      document.removeEventListener(
+        "tutorial:set-gpt-image-2-default-model",
+        handler
+      );
+  }, []);
+
   // チュートリアル中断時: フォームを初期状態にクリア（デモ画像・プロンプト・背景設定等をリセット）
   useEffect(() => {
     const handler = () => {
@@ -900,19 +932,25 @@ export function GenerationForm({
           </RadioGroup>
         </div>
 
-        {/* モデル選択 */}
-        <div data-tour="tour-model-select">
-          <Label className="text-base font-medium mb-3 block">
-            {t("modelLabel")}
-          </Label>
-          <LockableModelSelect
-            value={effectiveSelectedModel}
-            onChange={handleSelectedModelChange}
-            onLockedClick={() => setShowAuthModal(true)}
-            authState={authState}
-            disabled={isGenerating || isTutorialInProgress}
-          />
-        </div>
+        <GenerationModelControls
+          value={effectiveSelectedModel}
+          onChange={handleSelectedModelChange}
+          onLockedClick={() => {
+            if (authState === "guest") {
+              setShowAuthModal(true);
+            } else if (subscriptionPlan === "free") {
+              setIsUpsellOpen(true);
+            }
+          }}
+          authState={authState}
+          modelLabel={t("modelLabel")}
+          disabled={isGenerating || isTutorialInProgress}
+          isModelSelectable={
+            authState === "authenticated" && subscriptionPlan === "free"
+              ? isFreePlanAllowedModel
+              : undefined
+          }
+        />
 
         {/* 生成枚数選択 */}
         <div data-tour="tour-count-select">
@@ -961,34 +999,19 @@ export function GenerationForm({
               })}
             </p>
           ) : null}
-          <p className="mt-2 text-xs text-gray-500">
-            {t("countCostDescription", {
-              count: selectedCount,
-              amount: selectedCount * getPercoinCost(effectiveSelectedModel),
-            })}
-          </p>
         </div>
 
         {/* 生成ボタン */}
-        <Button
-          className="w-full"
-          size="lg"
+        <GenerationSubmitButton
           onClick={handleSubmit}
           disabled={isSubmitDisabled}
-          data-tour="tour-generate-btn"
-        >
-          {isGenerating ? (
-            <>
-              <Sparkles className="mr-2 h-5 w-5 animate-pulse" />
-              {t("generatingButtonLoading")}
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2 h-5 w-5" />
-              {t("generatingButton")}
-            </>
-          )}
-        </Button>
+          isGenerating={isGenerating}
+          generateLabel={t("generatingButton")}
+          generatingLabel={t("generatingButtonLoading")}
+          costAmount={showCost ? totalPercoinCost : null}
+          dataTour="tour-generate-btn"
+          pulseIconWhenGenerating
+        />
 
         <SubscriptionUpsellDialog
           open={isUpsellOpen}
