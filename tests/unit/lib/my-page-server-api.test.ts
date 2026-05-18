@@ -426,23 +426,17 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
   describe("MPSAPI-004 getUserStatsServer", () => {
     test("getUserStatsServer_authで自分のプロフィールの場合_全カウンタを集計してgeneratedCountを公開する", async () => {
       // Spec: MPSAPI-004
-      // 累計生成数は get_user_generated_count RPC が返した値をそのまま使う（PostgREST 1000 行制限回避）
+      // 累計生成数・累計いいね数・累計ビュー数はすべて RPC が返した値をそのまま使う（PostgREST 1000 行制限回避）
       const supabase = createSupabaseMock({
         authUser: { id: "user-1" },
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 4 } },
-            {
-              result: {
-                data: [{ id: "img-1" }, { id: "img-2" }],
-                error: null,
-              },
-            },
           ],
-          likes: [{ result: { data: null, error: null, count: 6 } }],
         },
         rpc: {
           get_user_generated_count: [{ result: { data: 9, error: null } }],
+          get_user_like_count: [{ result: { data: 6, error: null } }],
           get_user_view_count: [{ result: { data: 10, error: null } }],
           get_follow_counts: [
             {
@@ -468,52 +462,46 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         followingCount: 5,
       });
       expect(supabase.getUser).toHaveBeenCalledTimes(1);
-      expect(supabase.fromCalls.generated_images).toHaveLength(2);
+      expect(supabase.fromCalls.generated_images).toHaveLength(1);
       expect(supabase.fromCalls.generated_images[0].calls.eq).toEqual([
         ["user_id", "user-1"],
         ["is_posted", true],
       ]);
       expect(supabase.fromCalls.image_jobs).toBeUndefined();
-      expect(supabase.fromCalls.likes[0].calls.in).toEqual([
-        ["image_id", ["img-1", "img-2"]],
-      ]);
+      expect(supabase.fromCalls.likes).toBeUndefined();
       const rpcNames = supabase.rpcCalls.map((c) => c.name);
       expect(rpcNames).toEqual(
         expect.arrayContaining([
           "get_user_generated_count",
+          "get_user_like_count",
           "get_user_view_count",
           "get_follow_counts",
         ]),
       );
-      expect(
-        supabase.rpcCalls.find((c) => c.name === "get_user_generated_count"),
-      ).toMatchObject({ params: { p_user_id: "user-1" } });
-      expect(
-        supabase.rpcCalls.find((c) => c.name === "get_user_view_count"),
-      ).toMatchObject({ params: { p_user_id: "user-1" } });
-      expect(
-        supabase.rpcCalls.find((c) => c.name === "get_follow_counts"),
-      ).toMatchObject({ params: { p_user_id: "user-1" } });
+      for (const name of [
+        "get_user_generated_count",
+        "get_user_like_count",
+        "get_user_view_count",
+        "get_follow_counts",
+      ]) {
+        expect(supabase.rpcCalls.find((c) => c.name === name)).toMatchObject({
+          params: { p_user_id: "user-1" },
+        });
+      }
     });
 
     test("getUserStatsServer_supabaseOverrideで自分のプロフィールの場合_auth参照なしで集計する", async () => {
       // Spec: MPSAPI-004
-      // 累計生成数・累計ビュー数は RPC が合計済みの値を返す
+      // 累計生成数・累計いいね数・累計ビュー数は RPC が合計済みの値を返す
       const supabase = createSupabaseMock({
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 2 } },
-            {
-              result: {
-                data: [{ id: "img-10" }],
-                error: null,
-              },
-            },
           ],
-          likes: [{ result: { data: null, error: null, count: 3 } }],
         },
         rpc: {
           get_user_generated_count: [{ result: { data: 5, error: null } }],
+          get_user_like_count: [{ result: { data: 3, error: null } }],
           get_user_view_count: [{ result: { data: 4, error: null } }],
           get_follow_counts: [
             {
@@ -546,14 +534,13 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 1 } },
-            { result: { data: [{ id: "img-50" }], error: null } },
           ],
-          likes: [{ result: { data: null, error: null, count: 0 } }],
         },
         rpc: {
           get_user_generated_count: [
             { result: { data: null, error: rpcError } },
           ],
+          get_user_like_count: [{ result: { data: 0, error: null } }],
           get_user_view_count: [{ result: { data: 9, error: null } }],
           get_follow_counts: [
             {
@@ -580,6 +567,45 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       );
     });
 
+    test("getUserStatsServer_likeCountRpcエラー時_likeCountを0にフォールバックしconsole.errorに出力する", async () => {
+      // Spec: MPSAPI-004
+      // get_user_like_count RPC がエラーを返した場合の安全側挙動を担保する。
+      const rpcError = { message: "like rpc unreachable" };
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [
+            { result: { data: null, error: null, count: 1 } },
+          ],
+        },
+        rpc: {
+          get_user_generated_count: [{ result: { data: 3, error: null } }],
+          get_user_like_count: [{ result: { data: null, error: rpcError } }],
+          get_user_view_count: [{ result: { data: 0, error: null } }],
+          get_follow_counts: [
+            {
+              singleResult: {
+                data: { following_count: 0, follower_count: 0 },
+                error: null,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await getUserStatsServer(
+        "user-1",
+        supabase.client as never,
+        { isOwnProfile: true },
+      );
+
+      expect(result.likeCount).toBe(0);
+      expect(result.generatedCount).toBe(3);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Like count fetch error:",
+        rpcError,
+      );
+    });
+
     test("getUserStatsServer_viewCountRpcエラー時_viewCountを0にフォールバックしconsole.errorに出力する", async () => {
       // Spec: MPSAPI-004
       // get_user_view_count RPC がエラーを返した場合の安全側挙動を担保する。
@@ -588,12 +614,11 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 1 } },
-            { result: { data: [{ id: "img-60" }], error: null } },
           ],
-          likes: [{ result: { data: null, error: null, count: 0 } }],
         },
         rpc: {
           get_user_generated_count: [{ result: { data: 3, error: null } }],
+          get_user_like_count: [{ result: { data: 0, error: null } }],
           get_user_view_count: [{ result: { data: null, error: rpcError } }],
           get_follow_counts: [
             {
@@ -627,11 +652,11 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 0 } },
-            { result: { data: [], error: null } },
           ],
         },
         rpc: {
           get_user_generated_count: [{ result: { data: null, error: null } }],
+          get_user_like_count: [{ result: { data: null, error: null } }],
           get_user_view_count: [{ result: { data: null, error: null } }],
           get_follow_counts: [
             {
@@ -660,22 +685,16 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
     test("getUserStatsServer_他人のプロフィールの場合_generatedCountを隠しつつ公開集計を返す", async () => {
       // Spec: MPSAPI-005
       // 他人プロフィール時は get_user_generated_count を呼ばずに 0 を返すが、
-      // viewCount は公開情報なので RPC が返す合計値を使う。
+      // likeCount / viewCount は公開情報なので RPC が返す合計値を使う。
       const supabase = createSupabaseMock({
         authUser: { id: "viewer-1" },
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 2 } },
-            {
-              result: {
-                data: [{ id: "img-20" }, { id: "img-21" }],
-                error: null,
-              },
-            },
           ],
-          likes: [{ result: { data: null, error: null, count: 4 } }],
         },
         rpc: {
+          get_user_like_count: [{ result: { data: 4, error: null } }],
           get_user_view_count: [{ result: { data: 4, error: null } }],
           get_follow_counts: [
             {
@@ -700,29 +719,30 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         followerCount: 7,
         followingCount: 9,
       });
-      expect(supabase.fromCalls.generated_images).toHaveLength(2);
-      expect(supabase.fromCalls.likes).toHaveLength(1);
+      expect(supabase.fromCalls.generated_images).toHaveLength(1);
+      expect(supabase.fromCalls.likes).toBeUndefined();
       // get_user_generated_count は他人プロフィールでは呼ばれない
       expect(
         supabase.rpcCalls.find((c) => c.name === "get_user_generated_count"),
       ).toBeUndefined();
+      // likeCount / viewCount は他人プロフィールでも RPC で取得される
+      expect(
+        supabase.rpcCalls.find((c) => c.name === "get_user_like_count"),
+      ).toMatchObject({ params: { p_user_id: "user-2" } });
     });
 
     test("getUserStatsServer_他人のプロフィールで投稿済み画像なしの場合_likeCountを0に保つ", async () => {
       // Spec: MPSAPI-005
+      // 投稿が 0 件のとき RPC は 0 を返す。client 側で短絡せず RPC が値を返す前提に変わったため、
+      // likes テーブルへの from() 呼び出しは発生しないことを担保する。
       const supabase = createSupabaseMock({
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 0 } },
-            {
-              result: {
-                data: [],
-                error: null,
-              },
-            },
           ],
         },
         rpc: {
+          get_user_like_count: [{ result: { data: 0, error: null } }],
           get_user_view_count: [{ result: { data: 0, error: null } }],
           get_follow_counts: [
             {
@@ -757,17 +777,11 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 1 } },
-            {
-              result: {
-                data: [{ id: "img-30" }],
-                error: null,
-              },
-            },
           ],
-          likes: [{ result: { data: null, error: null, count: 5 } }],
         },
         rpc: {
           get_user_generated_count: [{ result: { data: 2, error: null } }],
+          get_user_like_count: [{ result: { data: 5, error: null } }],
           get_user_view_count: [{ result: { data: 11, error: null } }],
           get_follow_counts: [
             {

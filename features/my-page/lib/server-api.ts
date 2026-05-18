@@ -140,25 +140,15 @@ export const getUserStatsServer = cache(async (
     generatedCount = 0; // UIでは generatedCountPublic=false のとき "-" を表示
   }
 
-  // いいね総数の集計（likesテーブルとgenerated_imagesテーブルをJOIN）
-  // まず、ユーザーの投稿済み画像IDを取得
-  const { data: postedImages } = await supabase
-    .from("generated_images")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_posted", true);
-
-  const postedImageIds = postedImages?.map((img) => img.id) || [];
-
+  // いいね総数の集計: PostgREST の 1000 行返却上限を避けるため
+  // Postgres 側の RPC で likes と generated_images を JOIN して集計済みの値を取得する。
+  const { data: likeCountData, error: likeCountError } = await supabase
+    .rpc("get_user_like_count", { p_user_id: userId });
   let likeCount = 0;
-  if (postedImageIds.length > 0) {
-    // 投稿済み画像に対するいいね数を集計
-    // likesテーブルはimage_idカラムを使用（post_idではない）
-    const { count } = await supabase
-      .from("likes")
-      .select("*", { count: "exact", head: true })
-      .in("image_id", postedImageIds);
-    likeCount = count || 0;
+  if (likeCountError) {
+    console.error("Like count fetch error:", likeCountError);
+  } else {
+    likeCount = Number(likeCountData) || 0;
   }
 
   // ビュー総数の集計: PostgREST の 1000 行返却上限を避けるため
