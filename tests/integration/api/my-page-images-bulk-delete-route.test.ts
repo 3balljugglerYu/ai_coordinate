@@ -100,7 +100,8 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
     } as never);
   });
 
-  test("未投稿のみ含む場合_DBとStorageを削除し全 ID が deleted で返る", async () => {
+  test("未投稿のみ含む場合_DB を先に削除し続けて Storage 本体/Before を削除する", async () => {
+    const callOrder: string[] = [];
     const { supabase, storageRemove, deleteIn, deleteEq } = buildSupabase({
       rows: [
         {
@@ -117,6 +118,14 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
         },
       ],
     });
+    deleteEq.mockImplementation(async (...args: unknown[]) => {
+      callOrder.push("db_delete");
+      return { error: null, args };
+    });
+    storageRemove.mockImplementation(async (...args: unknown[]) => {
+      callOrder.push("storage_remove");
+      return { error: null, args };
+    });
     mockCreateClient.mockResolvedValue(supabase as never);
 
     const res = await DELETE(createRequest({ imageIds: [UUID_A, UUID_B] }));
@@ -124,6 +133,9 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
 
     expect(res.status).toBe(200);
     expect(body).toEqual({ deleted: [UUID_A, UUID_B], failed: [] });
+
+    // 削除順は DB → Storage（壊れた DB レコードを残さないため）
+    expect(callOrder).toEqual(["db_delete", "storage_remove"]);
 
     // Storage は本体 + Before を含めて remove される
     expect(storageRemove).toHaveBeenCalledWith([
@@ -246,7 +258,7 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
     expect(deleteIn).toHaveBeenCalledWith("id", [UUID_A]);
   });
 
-  test("Storage 削除エラーは握り潰されて DB 削除は実行される", async () => {
+  test("Storage 削除エラーは握り潰されて 200 を返す（DB 削除済み・孤立ファイルが残るのみ）", async () => {
     const { supabase, deleteIn } = buildSupabase({
       rows: [
         {
@@ -348,8 +360,8 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
     expect(deleteBuilder).not.toHaveBeenCalled();
   });
 
-  test("DB 削除エラー時_全 eligible ID が failed に積まれる", async () => {
-    const { supabase } = buildSupabase({
+  test("DB 削除エラー時_500 で MY_PAGE_BULK_DELETE_DB_FAILED を返し Storage 削除は呼ばれない", async () => {
+    const { supabase, storageRemove } = buildSupabase({
       rows: [
         {
           id: UUID_A,
@@ -357,24 +369,17 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
           storage_path: "user-1/a.png",
           pre_generation_storage_path: null,
         },
-        {
-          id: UUID_B,
-          is_posted: false,
-          storage_path: "user-1/b.png",
-          pre_generation_storage_path: null,
-        },
       ],
       deleteError: { message: "db down" },
     });
     mockCreateClient.mockResolvedValue(supabase as never);
 
-    const res = await DELETE(
-      createRequest({ imageIds: [UUID_A, UUID_B] }),
-    );
+    const res = await DELETE(createRequest({ imageIds: [UUID_A] }));
     const body = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(body.deleted).toEqual([]);
-    expect(body.failed).toEqual([UUID_A, UUID_B]);
+    expect(res.status).toBe(500);
+    expect(body.errorCode).toBe("MY_PAGE_BULK_DELETE_DB_FAILED");
+    // DB 削除失敗時は Storage に手を付けない（順序を逆転させた本来の意図）
+    expect(storageRemove).not.toHaveBeenCalled();
   });
 });

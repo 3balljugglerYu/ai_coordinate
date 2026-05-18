@@ -121,7 +121,26 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ deleted: [], failed: initialFailed });
   }
 
-  // Storage 削除（失敗してもログのみで継続。既存単一削除と同じ挙動）
+  // DB 削除を先に実行する。
+  // Storage を先に消すと、DB 削除が失敗した場合に「DB レコードはあるが実体ファイルがない」
+  // という壊れた状態が残る。DB を真実とし、Storage は後追いで消すことで、
+  // 最悪でも「孤立ファイル」が残るだけになり、後続の掃除ジョブで回収できる。
+  const { error: deleteError } = await supabase
+    .from("generated_images")
+    .delete()
+    .in("id", eligibleIds)
+    .eq("user_id", user.id);
+
+  if (deleteError) {
+    console.error("Bulk delete db error:", deleteError);
+    return jsonError(
+      copy.bulkDeleteFailed,
+      "MY_PAGE_BULK_DELETE_DB_FAILED",
+      500,
+    );
+  }
+
+  // Storage 削除（DB 成功後に実行。失敗しても孤立ファイルが残るのみなのでログだけ残して継続）
   const storagePaths = eligibleRows.flatMap((row) => {
     const paths: string[] = [];
     if (row.storage_path) paths.push(row.storage_path);
@@ -138,21 +157,6 @@ export async function DELETE(request: NextRequest) {
     if (storageError) {
       console.error("Bulk delete storage error:", storageError);
     }
-  }
-
-  // DB 削除
-  const { error: deleteError } = await supabase
-    .from("generated_images")
-    .delete()
-    .in("id", eligibleIds)
-    .eq("user_id", user.id);
-
-  if (deleteError) {
-    console.error("Bulk delete db error:", deleteError);
-    return NextResponse.json({
-      deleted: [],
-      failed: [...initialFailed, ...eligibleIds],
-    });
   }
 
   return NextResponse.json({

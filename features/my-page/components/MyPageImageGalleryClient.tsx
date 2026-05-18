@@ -329,6 +329,11 @@ export function MyPageImageGalleryClient({
     setIsDeleting(true);
     setPendingDeletionIds(new Set(targetIds));
 
+    // 後続の finally で使う「次の選択状態」。デフォルトは全クリア＋選択モード終了。
+    // 失敗があれば失敗 ID だけ残して選択モードを維持し、ユーザーが再試行しやすくする。
+    let nextSelectedIds: Set<string> = new Set();
+    let stayInSelectionMode = false;
+
     try {
       const result = await bulkDeleteMyImages(targetIds, {
         bulkDeleteFailed: t("bulkDeleteFailureTitle"),
@@ -341,6 +346,12 @@ export function MyPageImageGalleryClient({
           for (const id of result.deleted) next.add(id);
           return next;
         });
+      }
+
+      if (result.failed.length > 0) {
+        // 失敗した ID のみを選択状態として残し、選択モードを継続する
+        nextSelectedIds = new Set(result.failed);
+        stayInSelectionMode = true;
       }
 
       // 成功した分の通知
@@ -377,6 +388,9 @@ export function MyPageImageGalleryClient({
       }
     } catch (err) {
       console.error("Bulk delete failed:", err);
+      // 例外時は元の選択をそのまま残し、ユーザーが同じ集合を再試行できるようにする
+      nextSelectedIds = new Set(targetIds);
+      stayInSelectionMode = true;
       toast({
         variant: "destructive",
         title: t("bulkDeleteFailureTitle"),
@@ -389,8 +403,8 @@ export function MyPageImageGalleryClient({
       setIsDeleting(false);
       setPendingDeletionIds(new Set());
       setConfirmOpen(false);
-      setSelectionMode(false);
-      setSelectedIds(new Set());
+      setSelectionMode(stayInSelectionMode);
+      setSelectedIds(nextSelectedIds);
     }
   }, [selectedIds, t, toast]);
 
