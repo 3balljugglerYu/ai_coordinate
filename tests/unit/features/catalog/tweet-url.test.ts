@@ -1,0 +1,91 @@
+/** @jest-environment node */
+
+import {
+  parseTweetUrl,
+  parseXAccountUrl,
+} from "@/features/catalog/lib/tweet-url";
+
+describe("parseTweetUrl", () => {
+  test("x.com 正規 URL", () => {
+    expect(parseTweetUrl("https://x.com/foo/status/123")).toEqual({
+      normalized: "https://x.com/foo/status/123",
+      handle: "foo",
+      statusId: "123",
+    });
+  });
+
+  test("twitter.com を x.com に正規化", () => {
+    expect(parseTweetUrl("https://twitter.com/foo/status/456"))
+      .toEqual({
+        normalized: "https://x.com/foo/status/456",
+        handle: "foo",
+        statusId: "456",
+      });
+  });
+
+  test("mobile.twitter.com のサブドメインも受け入れる", () => {
+    expect(
+      parseTweetUrl("https://mobile.twitter.com/foo/status/789?lang=ja"),
+    ).toEqual({
+      normalized: "https://x.com/foo/status/789",
+      handle: "foo",
+      statusId: "789",
+    });
+  });
+
+  test("URL に末尾のクエリやフラグメントがあっても statusId だけ取る", () => {
+    expect(parseTweetUrl("https://x.com/foo/status/123/photo/1")).toEqual({
+      normalized: "https://x.com/foo/status/123",
+      handle: "foo",
+      statusId: "123",
+    });
+  });
+
+  test("ホストが別ドメインだと null", () => {
+    expect(parseTweetUrl("https://example.com/foo/status/123")).toBeNull();
+  });
+
+  test("status パスでない場合は null", () => {
+    expect(parseTweetUrl("https://x.com/foo")).toBeNull();
+  });
+
+  test("空文字や null も null", () => {
+    expect(parseTweetUrl("")).toBeNull();
+    expect(parseTweetUrl(null)).toBeNull();
+    expect(parseTweetUrl(undefined)).toBeNull();
+  });
+
+  test("不正な URL は null", () => {
+    expect(parseTweetUrl("not a url")).toBeNull();
+  });
+});
+
+describe("parseXAccountUrl", () => {
+  test("シンプルな X プロフィール URL", () => {
+    expect(parseXAccountUrl("https://x.com/foo")).toEqual({
+      normalized: "https://x.com/foo",
+      handle: "foo",
+    });
+  });
+
+  test("twitter.com を x.com に正規化", () => {
+    expect(parseXAccountUrl("https://twitter.com/foo/?lang=ja")).toEqual({
+      normalized: "https://x.com/foo",
+      handle: "foo",
+    });
+  });
+
+  test("status パスを含む URL はアカウント URL ではないため null", () => {
+    expect(parseXAccountUrl("https://x.com/foo/status/123")).toBeNull();
+  });
+
+  test("ハンドル長が 15 超は null", () => {
+    expect(
+      parseXAccountUrl("https://x.com/abcdefghijklmnopqrst"),
+    ).toBeNull();
+  });
+
+  test("空文字は null", () => {
+    expect(parseXAccountUrl("")).toBeNull();
+  });
+});
