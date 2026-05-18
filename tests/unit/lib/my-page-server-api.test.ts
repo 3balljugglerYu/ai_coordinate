@@ -558,6 +558,92 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
       expect(result.likeCount).toBe(3);
       expect(result.viewCount).toBe(4);
     });
+
+    test("getUserStatsServer_image_jobs取得エラー時_generatedCountを0にフォールバックしconsole.errorに出力する", async () => {
+      // Spec: MPSAPI-004
+      // 累計生成数の集計クエリ（image_jobs）がエラーを返した場合の安全側挙動を担保する。
+      const jobsError = { message: "image_jobs unreachable" };
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [
+            { result: { data: null, error: null, count: 1 } },
+            { result: { data: [{ id: "img-50" }], error: null } },
+            { result: { data: [{ view_count: 9 }], error: null } },
+          ],
+          image_jobs: [{ result: { data: null, error: jobsError } }],
+          likes: [{ result: { data: null, error: null, count: 0 } }],
+        },
+        rpc: {
+          get_follow_counts: [
+            {
+              singleResult: {
+                data: { following_count: 0, follower_count: 0 },
+                error: null,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await getUserStatsServer(
+        "user-1",
+        supabase.client as never,
+        { isOwnProfile: true },
+      );
+
+      expect(result.generatedCount).toBe(0);
+      expect(result.generatedCountPublic).toBe(true);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Generated count fetch error:",
+        jobsError,
+      );
+    });
+
+    test("getUserStatsServer_requested_image_countがnullの行は1枚としてカウントする", async () => {
+      // Spec: MPSAPI-004
+      // 古い行や旧スキーマで requested_image_count が NULL のジョブも、
+      // 最低 1 枚生成された前提で人生通算カウントに含める。
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [
+            { result: { data: null, error: null, count: 0 } },
+            { result: { data: [], error: null } },
+            { result: { data: [], error: null } },
+          ],
+          image_jobs: [
+            {
+              result: {
+                data: [
+                  { requested_image_count: null },
+                  { requested_image_count: 2 },
+                  { requested_image_count: undefined },
+                ],
+                error: null,
+              },
+            },
+          ],
+        },
+        rpc: {
+          get_follow_counts: [
+            {
+              singleResult: {
+                data: { following_count: 0, follower_count: 0 },
+                error: null,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await getUserStatsServer(
+        "user-2",
+        supabase.client as never,
+        { isOwnProfile: true },
+      );
+
+      // null → 1, 2 → 2, undefined → 1。合計 4。
+      expect(result.generatedCount).toBe(4);
+    });
   });
 
   describe("MPSAPI-005 getUserStatsServer", () => {
