@@ -347,6 +347,26 @@ export const itMessages = {
     imageNotFound: "Immagine non trovata.",
     deleteImageForbidden: "Non hai il permesso di eliminare questa immagine.",
     deleteImageFailed: "Impossibile eliminare l'immagine.",
+    bulkDeleteStart: "Eliminazione multipla",
+    bulkDeleteCancel: "Annulla",
+    bulkDeleteUnpostedOnlyNote:
+      "Solo le immagini non pubblicate possono essere eliminate.",
+    bulkDeleteSelectedCount: "{count} selezionate",
+    bulkDeleteActionWithCount: "Elimina ({count})",
+    bulkDeleteEmptyAction: "Elimina",
+    bulkDeleteConfirmTitle: "Eliminare le immagini selezionate?",
+    bulkDeleteConfirmDescription:
+      "Verranno eliminate definitivamente {count} immagini. Questa azione non può essere annullata.",
+    bulkDeleteConfirmAction: "Elimina",
+    bulkDeleteInProgress: "Eliminazione in corso...",
+    bulkDeleteSuccessTitle: "Eliminazione completata",
+    bulkDeleteSuccessDescription: "{count} immagini eliminate.",
+    bulkDeletePartialFailureTitle:
+      "Alcune immagini non sono state eliminate",
+    bulkDeletePartialFailureDescription: "{count} non riuscite.",
+    bulkDeleteFailureTitle: "Eliminazione non riuscita",
+    bulkDeleteFailureDescription: "Riprova.",
+    bulkDeleteSelectImageAria: "Seleziona immagine",
     inspireSectionTitle: "Modelli di stile inviati",
     inspireSectionDescription:
       "Invia i tuoi stili preferiti come modelli. Una volta approvati, altri utenti potranno generare immagini nel tuo stile.",

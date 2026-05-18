@@ -158,7 +158,9 @@ describe("GeminiBananaSizeSelector", () => {
     expect(onChange).toHaveBeenCalledWith("gemini-3-pro-image-4k");
   });
 
-  test("size tier ごとの percoin cost を表示する（nano-pro）", () => {
+  test("size tier ラベルを並べる（nano-pro）", () => {
+    // per-option の percoin cost 表示はツールチップに集約され、セレクタ自体は
+    // tier ラベルのみを描画する。価格情報は tooltip 経由で参照する。
     render(
       <GeminiBananaSizeSelector
         value="gemini-3-pro-image-1k"
@@ -167,15 +169,9 @@ describe("GeminiBananaSizeSelector", () => {
         onLockedClick={jest.fn()}
       />
     );
-    expect(
-      screen.getByRole("button", { name: /1K.*50 Percoins/ })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /2K.*80 Percoins/ })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /4K.*100 Percoins/ })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^1K$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^2K$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^4K$/ })).toBeInTheDocument();
   });
 
   test("guest が許可されていない size を選ぶと onLockedClick を呼び、onChange は呼ばない", () => {

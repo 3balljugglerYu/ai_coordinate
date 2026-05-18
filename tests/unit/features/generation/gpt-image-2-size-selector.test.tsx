@@ -124,7 +124,9 @@ describe("GptImage2SizeSelector", () => {
     expect(onChange).toHaveBeenCalledWith("gpt-image-2-medium-4k");
   });
 
-  test("size tier ごとの percoin cost を表示する", () => {
+  test("size tier ラベル（1K / 2K / 4K）が並ぶ", () => {
+    // 759e2ab で per-option の percoin cost 表示はツールチップに移動され、
+    // セレクタ自体は tier ラベルのみを描画する。価格情報は tooltip 経由で参照する。
     render(
       <GptImage2SizeSelector
         value="gpt-image-2-high-1k"
@@ -134,9 +136,9 @@ describe("GptImage2SizeSelector", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: /1K.*50 Percoins/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /2K.*80 Percoins/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /4K.*130 Percoins/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^1K$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^2K$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^4K$/ })).toBeInTheDocument();
   });
 
   test("guest が 1k 以外を選ぶと変更せずロック導線を呼ぶ", () => {

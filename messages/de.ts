@@ -347,6 +347,26 @@ export const deMessages = {
     imageNotFound: "Bild nicht gefunden.",
     deleteImageForbidden: "Du hast keine Berechtigung, dieses Bild zu löschen.",
     deleteImageFailed: "Bild konnte nicht gelöscht werden.",
+    bulkDeleteStart: "Mehrere löschen",
+    bulkDeleteCancel: "Abbrechen",
+    bulkDeleteUnpostedOnlyNote:
+      "Nur nicht veröffentlichte Bilder können gelöscht werden.",
+    bulkDeleteSelectedCount: "{count} ausgewählt",
+    bulkDeleteActionWithCount: "Löschen ({count})",
+    bulkDeleteEmptyAction: "Löschen",
+    bulkDeleteConfirmTitle: "Ausgewählte Bilder löschen?",
+    bulkDeleteConfirmDescription:
+      "{count} Bilder werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    bulkDeleteConfirmAction: "Löschen",
+    bulkDeleteInProgress: "Löschen...",
+    bulkDeleteSuccessTitle: "Löschen abgeschlossen",
+    bulkDeleteSuccessDescription: "{count} Bilder gelöscht.",
+    bulkDeletePartialFailureTitle:
+      "Einige Bilder konnten nicht gelöscht werden",
+    bulkDeletePartialFailureDescription: "{count} fehlgeschlagen.",
+    bulkDeleteFailureTitle: "Löschen fehlgeschlagen",
+    bulkDeleteFailureDescription: "Bitte erneut versuchen.",
+    bulkDeleteSelectImageAria: "Bild auswählen",
     inspireSectionTitle: "Eingereichte Stilvorlagen",
     inspireSectionDescription:
       "Reiche deine Lieblingsstile als Vorlage ein. Nach Freigabe können andere Bilder in deinem Stil generieren.",

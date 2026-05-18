@@ -752,8 +752,10 @@ describe("GenerationForm", () => {
 
     // 1 段目「生成モデル」セレクターはブランド名のみを表示する。
     expect(screen.getByText("ChatGPT Images 2.0")).toBeInTheDocument();
+    // 旧 UI の "{count} images require {amount} Percoins" 行は廃止され、
+    // 価格情報は GenerationSubmitButton のコストサフィックスに集約された。
     expect(
-      screen.getByText("1 images require 10 Percoins")
+      screen.getByText("(cost: 10 Percoins)")
     ).toBeInTheDocument();
   });
 
@@ -812,8 +814,10 @@ describe("GenerationForm", () => {
     expect(screen.getByTestId("mock-add-upload")).toBeInTheDocument();
     expect(localStorage.getItem(IMAGE_SOURCE_TYPE_STORAGE_KEY)).toBe("upload");
     expect(localStorage.getItem(SELECTED_STOCK_ID_STORAGE_KEY)).toBeNull();
+    // 旧 UI の "{count} images require {amount} Percoins" 行は廃止され、
+    // 価格情報は GenerationSubmitButton のコストサフィックスに集約された。
     expect(
-      screen.getByText("1 images require 10 Percoins")
+      screen.getByText("(cost: 10 Percoins)")
     ).toBeInTheDocument();
   });
 

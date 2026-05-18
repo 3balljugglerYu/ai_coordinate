@@ -120,13 +120,28 @@ export const getUserStatsServer = cache(async (
     ? (options?.isOwnProfile === true)
     : (await supabase.auth.getUser()).data.user?.id === userId;
 
+  // 累計生成数: 削除に左右されないよう image_jobs（生成ジョブログ）から集計する。
+  // - 1 ジョブが requested_image_count 枚を生成する（OpenAI バッチ等で N>1）
+  // - 成功したジョブのみを対象（失敗は数えない）
+  // - generated_images.image_job_id → image_jobs は ON DELETE SET NULL なので、画像削除しても
+  //   image_jobs は残る → 削除しても累計は減らない
+  // - image_jobs 導入（2026-01-15）以前の生成は count されない既知の制約あり
   let generatedCount: number;
   if (isOwnProfile) {
-    const { count } = await supabase
-      .from("generated_images")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
-    generatedCount = count ?? 0;
+    const { data: jobs, error: jobsError } = await supabase
+      .from("image_jobs")
+      .select("requested_image_count")
+      .eq("user_id", userId)
+      .eq("status", "succeeded");
+    if (jobsError) {
+      console.error("Generated count fetch error:", jobsError);
+      generatedCount = 0;
+    } else {
+      generatedCount = (jobs ?? []).reduce(
+        (sum, row) => sum + (Number(row.requested_image_count) || 1),
+        0,
+      );
+    }
   } else {
     // 他ユーザー: 生成数はRLSで非公開（未投稿画像は参照不可）
     generatedCount = 0; // UIでは generatedCountPublic=false のとき "-" を表示
