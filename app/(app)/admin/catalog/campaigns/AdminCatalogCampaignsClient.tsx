@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import type { CatalogCampaignRow } from "@/features/catalog/lib/repository";
 
+interface AdminCampaign extends CatalogCampaignRow {
+  /** SSR で解決済みの signed URL。アップロード後は client 側で別途 router.refresh する */
+  cover_image_url: string | null;
+}
+
 interface Props {
-  initialCampaigns: CatalogCampaignRow[];
+  initialCampaigns: AdminCampaign[];
 }
 
 interface FormState {
@@ -30,19 +35,22 @@ const EMPTY_FORM: FormState = {
 };
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const COVER_MAX_BYTES = 10 * 1024 * 1024;
+const COVER_ACCEPT = "image/png,image/jpeg,image/jpg,image/webp";
 
 /**
  * 絵師カタログの企画管理画面 (admin)。
- * MVP では新規作成・公開状態の切り替え・削除のみ提供。
- * カバー画像のアップロード UI は Phase 6 以降で追加予定。
+ * 新規作成・公開状態の切替・削除・カバー画像のアップロード/差替/削除を行う。
  */
 export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const [campaigns, setCampaigns] =
-    useState<CatalogCampaignRow[]>(initialCampaigns);
+    useState<AdminCampaign[]>(initialCampaigns);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [coverUploadingId, setCoverUploadingId] = useState<string | null>(null);
+  const coverInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const handleCreate = useCallback(async () => {
     if (!SLUG_PATTERN.test(form.slug)) {
@@ -81,7 +89,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
       const { campaign } = (await response.json()) as {
         campaign: CatalogCampaignRow;
       };
-      setCampaigns((prev) => [campaign, ...prev]);
+      setCampaigns((prev) => [{ ...campaign, cover_image_url: null }, ...prev]);
       setForm(EMPTY_FORM);
       toast({ title: "企画を作成しました" });
     } catch (err) {
@@ -96,8 +104,9 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
   }, [form, toast]);
 
   const handleToggleStatus = useCallback(
-    async (campaign: CatalogCampaignRow) => {
-      const nextStatus = campaign.status === "published" ? "draft" : "published";
+    async (campaign: AdminCampaign) => {
+      const nextStatus =
+        campaign.status === "published" ? "draft" : "published";
       try {
         const response = await fetch(
           `/api/admin/catalog/campaigns/${campaign.id}`,
@@ -117,7 +126,11 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
           campaign: CatalogCampaignRow;
         };
         setCampaigns((prev) =>
-          prev.map((c) => (c.id === updated.id ? updated : c)),
+          prev.map((c) =>
+            c.id === updated.id
+              ? { ...updated, cover_image_url: c.cover_image_url }
+              : c,
+          ),
         );
         toast({
           title:
@@ -136,7 +149,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
   );
 
   const handleDelete = useCallback(
-    async (campaign: CatalogCampaignRow) => {
+    async (campaign: AdminCampaign) => {
       if (
         !window.confirm(
           `企画「${campaign.title}」を削除しますか? 関連するエントリーもすべて削除されます。`,
@@ -166,6 +179,88 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
       }
     },
     [toast],
+  );
+
+  const handleCoverUpload = useCallback(
+    async (campaign: AdminCampaign, file: File) => {
+      if (file.size > COVER_MAX_BYTES) {
+        toast({
+          variant: "destructive",
+          title: "画像サイズが大きすぎます",
+          description: "10MB 以下に圧縮してください。",
+        });
+        return;
+      }
+      const formData = new FormData();
+      formData.set("image", file);
+
+      setCoverUploadingId(campaign.id);
+      try {
+        const response = await fetch(
+          `/api/admin/catalog/campaigns/${campaign.id}/cover`,
+          { method: "POST", body: formData },
+        );
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as
+            | { error?: string }
+            | null;
+          throw new Error(body?.error ?? "アップロードに失敗しました");
+        }
+        toast({ title: "カバー画像をアップロードしました" });
+        // signed URL は server 側で発行する必要があるので router.refresh で再フェッチ
+        router.refresh();
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "アップロードに失敗しました",
+          description: err instanceof Error ? err.message : undefined,
+        });
+      } finally {
+        setCoverUploadingId(null);
+        const input = coverInputRefs.current[campaign.id];
+        if (input) input.value = "";
+      }
+    },
+    [router, toast],
+  );
+
+  const handleCoverRemove = useCallback(
+    async (campaign: AdminCampaign) => {
+      if (!campaign.cover_storage_path) return;
+      if (!window.confirm("カバー画像を外しますか?")) return;
+
+      setCoverUploadingId(campaign.id);
+      try {
+        const response = await fetch(
+          `/api/admin/catalog/campaigns/${campaign.id}/cover`,
+          { method: "DELETE" },
+        );
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as
+            | { error?: string }
+            | null;
+          throw new Error(body?.error ?? "削除に失敗しました");
+        }
+        setCampaigns((prev) =>
+          prev.map((c) =>
+            c.id === campaign.id
+              ? { ...c, cover_storage_path: null, cover_image_url: null }
+              : c,
+          ),
+        );
+        toast({ title: "カバー画像を外しました" });
+        router.refresh();
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "削除に失敗しました",
+          description: err instanceof Error ? err.message : undefined,
+        });
+      } finally {
+        setCoverUploadingId(null);
+      }
+    },
+    [router, toast],
   );
 
   return (
@@ -230,6 +325,9 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
             />
           </div>
         </div>
+        <p className="mt-3 text-xs text-slate-500">
+          ※ カバー画像は作成後に下の一覧からアップロードできます。
+        </p>
         <div className="mt-4 flex justify-end">
           <Button onClick={handleCreate} disabled={isSubmitting}>
             {isSubmitting ? "作成中..." : "企画を作成"}
@@ -245,53 +343,120 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-slate-200">
-            {campaigns.map((campaign) => (
-              <li
-                key={campaign.id}
-                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-900">
-                      {campaign.title}
-                    </span>
-                    <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      /catalog/{campaign.slug}
-                    </code>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        campaign.status === "published"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {campaign.status === "published" ? "公開中" : "下書き"}
-                    </span>
+            {campaigns.map((campaign) => {
+              const isUploadingCover = coverUploadingId === campaign.id;
+              return (
+                <li
+                  key={campaign.id}
+                  className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="flex min-w-0 flex-1 gap-4">
+                    {/* カバー画像プレビュー */}
+                    <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                      {campaign.cover_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={campaign.cover_image_url}
+                          alt={`${campaign.title} のカバー画像`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
+                          画像なし
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-slate-900">
+                          {campaign.title}
+                        </span>
+                        <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                          /catalog/{campaign.slug}
+                        </code>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            campaign.status === "published"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {campaign.status === "published"
+                            ? "公開中"
+                            : "下書き"}
+                        </span>
+                      </div>
+                      {campaign.description ? (
+                        <p className="mt-1 text-sm text-slate-600">
+                          {campaign.description}
+                        </p>
+                      ) : null}
+
+                      {/* カバー画像のアクション */}
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                        <input
+                          ref={(el) => {
+                            coverInputRefs.current[campaign.id] = el;
+                          }}
+                          type="file"
+                          accept={COVER_ACCEPT}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleCoverUpload(campaign, file);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            coverInputRefs.current[campaign.id]?.click()
+                          }
+                          disabled={isUploadingCover}
+                        >
+                          {campaign.cover_storage_path
+                            ? "カバー画像を差し替え"
+                            : "カバー画像をアップロード"}
+                        </Button>
+                        {campaign.cover_storage_path ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCoverRemove(campaign)}
+                            disabled={isUploadingCover}
+                          >
+                            画像を外す
+                          </Button>
+                        ) : null}
+                        {isUploadingCover ? (
+                          <span className="text-slate-500">処理中...</span>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
-                  {campaign.description ? (
-                    <p className="mt-1 text-sm text-slate-600">
-                      {campaign.description}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleStatus(campaign)}
-                  >
-                    {campaign.status === "published" ? "非公開にする" : "公開する"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDelete(campaign)}
-                  >
-                    削除
-                  </Button>
-                </div>
-              </li>
-            ))}
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleStatus(campaign)}
+                    >
+                      {campaign.status === "published"
+                        ? "非公開にする"
+                        : "公開する"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(campaign)}
+                    >
+                      削除
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
