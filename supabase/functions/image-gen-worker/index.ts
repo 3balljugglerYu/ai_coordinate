@@ -56,7 +56,6 @@ const INPUT_IMAGE_FETCH_MAX_ATTEMPTS = 3;
 const INPUT_IMAGE_FETCH_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const INPUT_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
-const GEMINI_REQUEST_TIMEOUT_MS = 35_000;
 const OPENAI_REQUEST_TIMEOUT_MS = 90_000;
 // quality ティアごとに OpenAI 側の処理時間が大きく異なるため個別に拡張する
 const OPENAI_REQUEST_TIMEOUT_HIGH_MS = 300_000;
@@ -72,6 +71,27 @@ function resolveOpenAIRequestTimeoutMs(
     return OPENAI_REQUEST_TIMEOUT_MEDIUM_MS;
   }
   return OPENAI_REQUEST_TIMEOUT_MS;
+}
+
+// Gemini 側も SKU ごとに処理時間が大きく異なるため、canonical model ID から
+// タイムアウトを引く。特に Nano Banana Pro 4K は数分かかるため余裕を持たせる。
+const GEMINI_REQUEST_TIMEOUT_DEFAULT_MS = 60_000;
+
+function resolveGeminiRequestTimeoutMs(dbModel: string): number {
+  switch (dbModel) {
+    case "gemini-3.1-flash-image-preview-512":
+      return 60_000;
+    case "gemini-2.5-flash-image":
+    case "gemini-3.1-flash-image-preview-1024":
+    case "gemini-3-pro-image-1k":
+      return 90_000;
+    case "gemini-3-pro-image-2k":
+      return 180_000;
+    case "gemini-3-pro-image-4k":
+      return 300_000;
+    default:
+      return GEMINI_REQUEST_TIMEOUT_DEFAULT_MS;
+  }
 }
 const GEMINI_GENERATION_ENABLED =
   Deno.env.get("GEMINI_GENERATION_ENABLED") === "true";
@@ -1888,10 +1908,12 @@ Deno.serve(async () => {
                     "geminiRequest",
                     generatingSubstepDurationsMs,
                     async () => {
+                      const geminiTimeoutMs =
+                        resolveGeminiRequestTimeoutMs(dbModel);
                       const abortController = new AbortController();
                       const timeoutId = setTimeout(
                         () => abortController.abort(),
-                        GEMINI_REQUEST_TIMEOUT_MS
+                        geminiTimeoutMs
                       );
                       try {
                         const geminiResponse = await fetch(apiUrl, {
@@ -1938,7 +1960,7 @@ Deno.serve(async () => {
                       /aborted/i.test(attemptErrorMessage))
                   ) {
                     attemptTimedOut = true;
-                    attemptErrorMessage = `Gemini request timed out after ${GEMINI_REQUEST_TIMEOUT_MS}ms`;
+                    attemptErrorMessage = `Gemini request timed out after ${resolveGeminiRequestTimeoutMs(dbModel)}ms`;
                   }
                   geminiAttempts.push({
                     attempt,
