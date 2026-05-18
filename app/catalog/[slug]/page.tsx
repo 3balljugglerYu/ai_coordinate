@@ -8,7 +8,7 @@ import {
   getCachedPublicEntriesByCampaign,
 } from "@/features/catalog/lib/get-public-catalog";
 import { createCatalogSignedUrls } from "@/features/catalog/lib/repository";
-import { CatalogEntryCard } from "@/features/catalog/components/CatalogEntryCard";
+import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
@@ -96,17 +96,16 @@ export default async function CatalogCampaignPage({ params }: PageProps) {
             まだ公開された投稿はありません。一番乗りで申請してみませんか?
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {entries.map((entry) => (
-              <CatalogEntryCard
-                key={entry.id}
-                imageUrl={pathToUrl.get(entry.image_storage_path) ?? null}
-                alt={entry.alt}
-                displayName={entry.display_name}
-                xAccountUrl={entry.x_account_url}
-              />
-            ))}
-          </div>
+          <CatalogBookView
+            pages={entries.map((entry) => ({
+              id: entry.id,
+              imageUrl: pathToUrl.get(entry.image_storage_path) ?? null,
+              alt: entry.alt,
+              displayName: entry.display_name,
+              xAccountUrl: entry.x_account_url,
+              sourceTweetUrl: entry.source_tweet_url,
+            }))}
+          />
         )}
       </div>
     </div>
