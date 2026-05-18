@@ -84,28 +84,32 @@ const MODEL_LIST_DISPLAY_MAP: Record<string, ModelDisplayInfo> = {
     displayName: "ChatGPT Images 2.0 | High",
     defaultSize: { width: 2880, height: 2880 },
   },
+  // Nano Banana 系も Gemini API が入力アスペクト比から自動選択した
+  // 任意のサイズで出力する（Pro 4K の 16:9 は 5504×3072 等、tier 名と
+  // 長辺が一致しないケースもある）。ChatGPT と同様、displayName から
+  // 1K / 2K / 4K サフィックスを外し、実サイズはサイズバッジで表示する。
   "gemini-2.5-flash-image": {
     displayName: "Nano Banana 2",
     defaultSize: { width: 1024, height: 1024 },
   },
   "gemini-3.1-flash-image-preview-512": {
-    displayName: "Nano Banana 2 | 0.5K",
+    displayName: "Nano Banana 2",
     defaultSize: { width: 512, height: 512 },
   },
   "gemini-3.1-flash-image-preview-1024": {
-    displayName: "Nano Banana 2 | 1K",
+    displayName: "Nano Banana 2",
     defaultSize: { width: 1024, height: 1024 },
   },
   "gemini-3-pro-image-1k": {
-    displayName: "Nano Banana Pro | 1K",
+    displayName: "Nano Banana Pro",
     defaultSize: { width: 1024, height: 1024 },
   },
   "gemini-3-pro-image-2k": {
-    displayName: "Nano Banana Pro | 2K",
+    displayName: "Nano Banana Pro",
     defaultSize: { width: 2048, height: 2048 },
   },
   "gemini-3-pro-image-4k": {
-    displayName: "Nano Banana Pro | 4K",
+    displayName: "Nano Banana Pro",
     defaultSize: { width: 4096, height: 4096 },
   },
 };

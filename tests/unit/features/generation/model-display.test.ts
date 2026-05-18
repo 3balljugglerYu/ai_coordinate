@@ -77,11 +77,11 @@ describe("getModelDisplayInfo", () => {
     expect(
       getModelDisplayInfo("gemini-3.1-flash-image-preview-512"),
     ).toEqual({
-      displayName: "Nano Banana 2 | 0.5K",
+      displayName: "Nano Banana 2",
       defaultSize: { width: 512, height: 512 },
     });
     expect(getModelDisplayInfo("gemini-3-pro-image-4k")).toEqual({
-      displayName: "Nano Banana Pro | 4K",
+      displayName: "Nano Banana Pro",
       defaultSize: { width: 4096, height: 4096 },
     });
   });
