@@ -11,16 +11,19 @@ alwaysApply: false
 - このファイルは Cursor 向けのスキーマ台帳です。他 agent 向けの共通入口は `../../.agents/skills/project-database-context/SKILL.md` にあります。
 
 ## 取得元と前提
-- 更新日: 2026-03-27
+- 更新日: 2026-05-19
 - 対象: Supabase `public` スキーマ
 - 取得元: Supabase MCP（`list_tables` / `execute_sql`）
 - 本ドキュメントは「現行の実テーブル定義」を記載します（将来追加想定は記載しない）。
-- 2026-03-27 時点で `public` の BASE TABLE は 32 件、`public` 関数は 56 件です。
+- 2026-05-19 時点で `feature/user-catalog` の新規カタログテーブルを含みます。
 
-## `public` テーブル一覧（32）
+## `public` テーブル一覧
 - `admin_audit_log`
 - `admin_users`
 - `banners`
+- `catalog_audit_logs`
+- `catalog_campaigns`
+- `catalog_entries`
 - `comments`
 - `credit_forfeiture_ledger`
 - `credit_transactions`
@@ -62,6 +65,7 @@ alwaysApply: false
 - `free_percoin_batches.source` には `streak` / `refund` が含まれます。
 - `generated_images.prompt` の全文検索向け trigram index、通知・紹介・監査向けの運用インデックスが追加されています。
 - `public` 関数には、業務 RPC に加えて通知削除・updated_at 更新・紹介コード生成・異常検知などの helper / trigger 関数が存在します。
+- `feature/user-catalog` では絵師カタログ用に `catalog_campaigns` / `catalog_entries` / `catalog_audit_logs` と公開射影 view `catalog_public_entries` が追加されています。
 
 ## テーブル定義
 
@@ -192,7 +196,7 @@ alwaysApply: false
 - 主キー: `id`
 - 主要カラム: `recipient_id`, `actor_id`, `type`, `entity_type`, `entity_id`, `title`, `body`, `data`, `is_read`, `read_at`, `pushed_at`, `push_status`, `created_at`, `comment_id`
 - 外部キー: `recipient_id -> auth.users.id`, `actor_id -> auth.users.id`, `comment_id -> comments.id`
-- 備考: `type` は `like/comment/follow/bonus`、`push_status` は `pending/sent/failed`
+- 備考: `type` は `like/comment/follow/bonus/style_template_approved/style_template_rejected/style_template_unpublished/catalog_entry_approved/catalog_entry_rejected/catalog_entry_unpublished`、`entity_type` は `post/comment/user/style_template/catalog_entry`、`push_status` は `pending/sent/failed`
 - RLS:
   - `SELECT`: 受信者本人のみ
   - `INSERT`: 直接INSERTは禁止（`with_check false`）
@@ -240,6 +244,27 @@ alwaysApply: false
 - 主要カラム: `admin_user_id`, `action_type`, `target_type`, `target_id`, `metadata`, `created_at`
 - 外部キー: `admin_user_id -> auth.users.id`
 - RLS: 公開アクセス禁止（`ALL false`）
+
+#### `catalog_campaigns`
+- 主キー: `id`
+- 主要カラム: `slug`, `title`, `description`, `cover_storage_path`, `theme_hashtag`, `start_at`, `end_at`, `status`, `display_order`, `created_at`, `updated_at`
+- 制約: `slug` UNIQUE、`status` は `draft/published`
+- RLS: `published` は公開 `SELECT`、管理者は全件 `SELECT/INSERT/UPDATE/DELETE`
+
+#### `catalog_entries`
+- 主キー: `id`
+- 主要カラム: `campaign_id`, `submitter_user_id`, `submitter_token`, `display_name`, `x_account_url`, `source_tweet_url`, `source_tweet_status_id`, `source_tweet_snapshot`, `image_storage_path`, `alt`, `submitter_email`, `status`, `rejection_reason`, `approved_at`, `decided_by`, `admin_note`, `display_order`, `created_at`, `updated_at`
+- 外部キー: `campaign_id -> catalog_campaigns.id`, `submitter_user_id -> auth.users.id`, `decided_by -> auth.users.id`
+- 制約: `status` は `pending/approved/rejected`、`source_tweet_status_id` は numeric X status id、`pending/approved` の `source_tweet_status_id` は UNIQUE
+- 備考: 投稿上限は `enforce_catalog_entry_submission_cap()` で同一会員または同一ゲスト token ごとに 1 企画 3 件まで。raw IP / UA は保存しない。PII (`submitter_email`, token, admin note) は本体テーブルに閉じ、公開閲覧は `catalog_public_entries` view を使う
+- RLS: 会員投稿者は自分の投稿を `SELECT` 可、管理者は `SELECT/UPDATE/DELETE` 可。`INSERT` は service-role API 経由のみ
+
+#### `catalog_audit_logs`
+- 主キー: `id`
+- 主要カラム: `entry_id`, `actor_id`, `action`, `reason`, `metadata`, `created_at`
+- 外部キー: `entry_id -> catalog_entries.id`, `actor_id -> auth.users.id`
+- 備考: `action` は `submit/approve/reject/unpublish/withdraw`
+- RLS: 管理者または会員投稿者本人の `SELECT` のみ。`INSERT/UPDATE/DELETE` は RPC / service-role 経由
 
 #### `style_usage_events`
 - 主キー: `id`
@@ -307,6 +332,13 @@ alwaysApply: false
 - 外部キー: `created_by -> auth.users.id`, `updated_by -> auth.users.id`
 - 備考: One-Tap Style の管理プリセット。`status` は `draft/published`。`styling_prompt` が衣装変更用、`background_prompt` は背景変更チェックが ON のときだけ使う任意フィールド
 - RLS: `published` 行のみ公開 `SELECT`
+
+## `public` view
+
+#### `catalog_public_entries`
+- 公開列: `id`, `campaign_id`, `display_name`, `x_account_url`, `source_tweet_url`, `image_storage_path`, `alt`, `display_order`, `approved_at`, `created_at`, `updated_at`
+- 条件: `catalog_entries.status = 'approved'` かつ親 `catalog_campaigns.status = 'published'`
+- 権限: `anon`, `authenticated` に `SELECT`。`security_invoker = false` で本体テーブル RLS を bypass し、列射影で PII を除外する
 
 ## 主要インデックス（現行・抜粋）
 
@@ -377,6 +409,9 @@ alwaysApply: false
 - `idx_style_presets_public_order`
 - `idx_moderation_audit_logs_actor_id_created_at`, `idx_moderation_audit_logs_post_id_created_at`
 - `idx_admin_audit_log_action_type`, `idx_admin_audit_log_admin_user_id`, `idx_admin_audit_log_created_at`, `idx_admin_audit_log_target`
+- `idx_catalog_campaigns_published_order`, `idx_catalog_campaigns_status_updated`
+- `idx_catalog_entries_campaign_approved_order`, `idx_catalog_entries_campaign_status_created`, `idx_catalog_entries_submitter_token_campaign`, `idx_catalog_entries_submitter_user_campaign_status`, `uniq_catalog_entries_active_source_tweet_status`
+- `idx_catalog_audit_logs_entry_created`, `idx_catalog_audit_logs_actor_created`
 - `idx_style_usage_events_created_at`, `idx_style_usage_events_event_type_created_at`, `idx_style_usage_events_user_id_created_at`, `idx_style_usage_events_auth_state_created_at`, `idx_style_usage_events_user_auth_event_created_at`
 - `idx_style_usage_events_active_generate_attempts`
 - `idx_style_guest_generate_attempts_ip_created_at`
@@ -406,6 +441,7 @@ alwaysApply: false
 - コメント削除: `delete_comment_thread`（親に返信が残る場合は tombstone 化し、最後の返信が消えた時点で tombstone 親も物理削除）
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
 - モデレーション: `mark_post_pending_by_report`, `apply_admin_moderation_decision`
+- 絵師カタログ: `apply_catalog_entry_decision`
 - 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`, `complete_image_job_with_generated_images`
 
 ### trigger / helper / 運用関数
@@ -413,6 +449,7 @@ alwaysApply: false
 - コメント返信/整合性: `validate_parent_comment`, `prevent_direct_parent_delete_with_replies`, `update_parent_last_activity_at`, `update_parent_last_activity_at_on_delete`, `broadcast_reply_lifecycle_event`
 - 更新日時: `update_updated_at_column`, `update_banners_updated_at`, `update_popup_banners_updated_at`, `update_popup_banner_views_updated_at`, `update_materials_images_updated_at`, `update_notification_preferences_updated_at`
 - `style_presets` は `update_updated_at_column()` trigger で `updated_at` を更新
+- 絵師カタログ制約: `enforce_catalog_entry_submission_cap`
 - アカウント初期化: `handle_new_user`
 - 監視・診断: `detect_generation_billing_anomalies`, `monitor_generation_billing_anomalies`
 - 拡張由来: `pgmq_send`, `pgmq_read`, `pgmq_delete`

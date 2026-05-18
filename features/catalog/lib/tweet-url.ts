@@ -4,7 +4,7 @@
  */
 
 const HOST_PATTERN = /^(?:www\.|mobile\.)?(x\.com|twitter\.com)$/i;
-const PATH_PATTERN = /^\/([A-Za-z0-9_]{1,15})\/status\/(\d{1,30})/;
+const PATH_PATTERN = /^\/([A-Za-z0-9_]{1,15})\/status\/(\d{1,30})(?:\/|$)/;
 
 export interface ParsedTweetUrl {
   /** 正規化された URL (https://x.com/<handle>/status/<id>) */
@@ -35,7 +35,7 @@ export function parseTweetUrl(input: string | null | undefined): ParsedTweetUrl 
   const match = url.pathname.match(PATH_PATTERN);
   if (!match) return null;
 
-  const handle = match[1];
+  const handle = match[1].toLowerCase();
   const statusId = match[2];
 
   return {
@@ -71,7 +71,7 @@ export function parseXAccountUrl(input: string | null | undefined): {
   if (!handleMatch) return null;
 
   return {
-    normalized: `https://x.com/${handleMatch[1]}`,
-    handle: handleMatch[1],
+    normalized: `https://x.com/${handleMatch[1].toLowerCase()}`,
+    handle: handleMatch[1].toLowerCase(),
   };
 }

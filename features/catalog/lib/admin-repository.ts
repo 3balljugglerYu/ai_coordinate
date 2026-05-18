@@ -20,6 +20,7 @@ export interface AdminCatalogEntryRow {
   display_name: string;
   x_account_url: string;
   source_tweet_url: string;
+  source_tweet_status_id: string;
   source_tweet_snapshot: string | null;
   image_storage_path: string;
   alt: string | null;
@@ -44,6 +45,7 @@ const ADMIN_ENTRY_FIELDS = `
   display_name,
   x_account_url,
   source_tweet_url,
+  source_tweet_status_id,
   source_tweet_snapshot,
   image_storage_path,
   alt,

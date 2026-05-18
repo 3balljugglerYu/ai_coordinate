@@ -144,6 +144,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | ホーム訴求バナー | `popup_banners`, `popup_banner_views`, `popup_banner_analytics`, `popup_banner_guest_events` | `record_popup_banner_interaction`, `reorder_popup_banners` | `/api/popup-banners/**`, `/api/admin/popup-banners/**`, `/admin/popup-banners` |
 | 退会と完全削除 | `profiles`, `credit_forfeiture_ledger`, `generated_images`, `source_image_stocks` | `request_account_deletion`, `cancel_account_deletion`, `get_due_deletion_candidates`, `record_forfeiture_ledger` | `/api/account/deactivate`, `/api/account/reactivate`, `/api/internal/account-purge` |
 | Inspire (ユーザー投稿スタイルテンプレ) | `user_style_templates`, `user_style_template_preview_attempts`, `style_template_audit_logs`, `image_jobs` (拡張列), `generated_images` (拡張列), `notifications` (拡張) | `apply_user_style_template_decision`, `promote_user_style_template_draft`, `create_user_style_template_draft`, `enforce_user_style_template_submission_cap` | `/api/style-templates/**`, `/api/admin/style-templates/**`, `/api/generate-async` (inspire 経路), `/inspire/[templateId]`, `/admin/style-templates`, ホーム (env で gate) |
+| 絵師カタログ | `catalog_campaigns`, `catalog_entries`, `catalog_public_entries` view, `catalog_audit_logs`, `notifications` (拡張), Storage `catalog-images` | `apply_catalog_entry_decision`, `enforce_catalog_entry_submission_cap` | `/catalog`, `/catalog/[slug]`, `/catalog/submit`, `/api/catalog/**`, `/api/admin/catalog/**`, `/admin/catalog/**` |
 
 ## 主要フロー 1: 新規登録、初期ボーナス、紹介コード初期化
 

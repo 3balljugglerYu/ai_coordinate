@@ -41,12 +41,24 @@ describe("parseTweetUrl", () => {
     });
   });
 
+  test("ハンドルの大文字小文字は小文字に正規化する", () => {
+    expect(parseTweetUrl("https://x.com/Foo_Bar/status/123")).toEqual({
+      normalized: "https://x.com/foo_bar/status/123",
+      handle: "foo_bar",
+      statusId: "123",
+    });
+  });
+
   test("ホストが別ドメインだと null", () => {
     expect(parseTweetUrl("https://example.com/foo/status/123")).toBeNull();
   });
 
   test("status パスでない場合は null", () => {
     expect(parseTweetUrl("https://x.com/foo")).toBeNull();
+  });
+
+  test("status id の直後に英字が続く URL は null", () => {
+    expect(parseTweetUrl("https://x.com/foo/status/123abc")).toBeNull();
   });
 
   test("空文字や null も null", () => {
@@ -69,7 +81,7 @@ describe("parseXAccountUrl", () => {
   });
 
   test("twitter.com を x.com に正規化", () => {
-    expect(parseXAccountUrl("https://twitter.com/foo/?lang=ja")).toEqual({
+    expect(parseXAccountUrl("https://twitter.com/Foo/?lang=ja")).toEqual({
       normalized: "https://x.com/foo",
       handle: "foo",
     });

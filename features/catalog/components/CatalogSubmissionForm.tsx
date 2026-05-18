@@ -231,7 +231,7 @@ export function CatalogSubmissionForm({
         <div>
           <Turnstile
             siteKey={turnstileSiteKey}
-            onSuccess={(token) => setTurnstileToken(token)}
+            onSuccess={(token: string) => setTurnstileToken(token)}
             onError={() => setTurnstileToken(null)}
             onExpire={() => setTurnstileToken(null)}
           />

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { randomUUID } from "node:crypto";
+import { isIP } from "node:net";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isCatalogFeatureEnabled } from "@/lib/env";
 import {
@@ -27,7 +28,18 @@ const ACCEPTED_MIME = new Set([
   "image/webp",
 ]);
 const CATALOG_BUCKET = "catalog-images";
-const SOURCE_TWEET_SNAPSHOT_MAX = 280;
+
+function getClientIp(request: NextRequest): string | null {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const firstForwardedIp = forwardedFor?.split(",")[0]?.trim();
+  const candidate =
+    firstForwardedIp ||
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    null;
+
+  return candidate && isIP(candidate) !== 0 ? candidate : null;
+}
 
 /**
  * POST /api/catalog/submissions
@@ -126,7 +138,7 @@ export async function POST(request: NextRequest) {
   // Turnstile 検証 (本番は必須、開発で secret 未設定なら通す)
   const turnstileResult = await verifyTurnstileToken(
     turnstileToken,
-    request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip"),
+    getClientIp(request),
   );
   if (
     !turnstileResult.success &&
@@ -155,12 +167,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 重複: 同じ tweet URL が既に approved なら拒否
+  // 重複: 同じ tweet ID が審査待ち / 公開中なら拒否
   const { data: duplicate } = await adminClient
     .from("catalog_entries")
     .select("id")
-    .eq("source_tweet_url", sourceTweet.normalized)
-    .eq("status", "approved")
+    .eq("source_tweet_status_id", sourceTweet.statusId)
+    .in("status", ["pending", "approved"])
     .maybeSingle();
   if (duplicate) {
     return jsonError(
@@ -216,15 +228,10 @@ export async function POST(request: NextRequest) {
       display_name: displayName,
       x_account_url: xAccount.normalized,
       source_tweet_url: sourceTweet.normalized,
-      source_tweet_snapshot:
-        altRaw.length > 0 ? altRaw.slice(0, SOURCE_TWEET_SNAPSHOT_MAX) : null,
+      source_tweet_status_id: sourceTweet.statusId,
       image_storage_path: storagePath,
       alt: altRaw.length > 0 ? altRaw : null,
       submitter_email: submitterEmailRaw === "" ? null : submitterEmailRaw,
-      submitter_ip:
-        request.headers.get("x-forwarded-for") ??
-        request.headers.get("x-real-ip"),
-      submitter_user_agent: request.headers.get("user-agent"),
       status: "pending",
     })
     .select("id")
@@ -241,7 +248,17 @@ export async function POST(request: NextRequest) {
         429,
       );
     }
-    // unique 制約 (approved の source_tweet_url) は upload 後の race のみ
+    if (
+      insertError.code === "23505" &&
+      message.includes("uniq_catalog_entries_active_source_tweet_status")
+    ) {
+      return jsonError(
+        copy.submissionTweetDuplicate,
+        "CATALOG_TWEET_DUPLICATE",
+        409,
+      );
+    }
+    // unique 制約は upload 後の race のみ
     return jsonError(
       copy.submissionFailed,
       "CATALOG_SUBMISSION_FAILED",

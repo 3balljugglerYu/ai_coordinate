@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.catalog_entries (
   source_tweet_url TEXT NOT NULL CHECK (
     source_tweet_url ~* '^https?://(www\.|mobile\.)?(x\.com|twitter\.com)/[A-Za-z0-9_]{1,15}/status/\d+'
   ),
+  source_tweet_status_id TEXT NOT NULL CHECK (source_tweet_status_id ~ '^\d{1,30}$'),
   source_tweet_snapshot TEXT,
   image_storage_path TEXT NOT NULL,
   alt TEXT,
@@ -33,8 +34,6 @@ CREATE TABLE IF NOT EXISTS public.catalog_entries (
   approved_at TIMESTAMPTZ,
   decided_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   admin_note TEXT,
-  submitter_ip INET,
-  submitter_user_agent TEXT,
   display_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -45,12 +44,11 @@ COMMENT ON COLUMN public.catalog_entries.submitter_user_id IS '会員投稿の�
 COMMENT ON COLUMN public.catalog_entries.submitter_token IS 'クッキー由来の投稿者識別子。会員・ゲスト共通、上限・重複検知に使用';
 COMMENT ON COLUMN public.catalog_entries.x_account_url IS 'X プロフィール URL (x.com or twitter.com)';
 COMMENT ON COLUMN public.catalog_entries.source_tweet_url IS 'その作品を投稿した X ツイート URL (本人確認の代替)';
+COMMENT ON COLUMN public.catalog_entries.source_tweet_status_id IS 'X ツイートの numeric status id。URL 表記ゆれを吸収した重複防止に使用';
 COMMENT ON COLUMN public.catalog_entries.source_tweet_snapshot IS 'ツイート本文のスナップショット (ツイート削除時のフォールバック)';
 COMMENT ON COLUMN public.catalog_entries.submitter_email IS '承認結果通知用メール (任意・公開しない)';
 COMMENT ON COLUMN public.catalog_entries.copyright_consent_version IS '同意した利用規約・著作権ポリシーのバージョン';
 COMMENT ON COLUMN public.catalog_entries.status IS 'pending=審査待ち, approved=公開中, rejected=非公開';
-COMMENT ON COLUMN public.catalog_entries.submitter_ip IS '抑止用に記録。公開しない';
-COMMENT ON COLUMN public.catalog_entries.submitter_user_agent IS '抑止用に記録。公開しない';
 
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_catalog_entries_campaign_approved_order
@@ -63,14 +61,15 @@ CREATE INDEX IF NOT EXISTS idx_catalog_entries_campaign_status_created
 CREATE INDEX IF NOT EXISTS idx_catalog_entries_submitter_token_campaign
   ON public.catalog_entries (submitter_token, campaign_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_catalog_entries_submitter_user
-  ON public.catalog_entries (submitter_user_id)
+CREATE INDEX IF NOT EXISTS idx_catalog_entries_submitter_user_campaign_status
+  ON public.catalog_entries (submitter_user_id, campaign_id, status)
   WHERE submitter_user_id IS NOT NULL;
 
--- approved 行の中で同じツイート URL を重複登録できないようにする (再申請の濫用防止)
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_catalog_entries_approved_source_tweet
-  ON public.catalog_entries (source_tweet_url)
-  WHERE status = 'approved';
+-- pending / approved の中で同じツイート ID を重複登録できないようにする。
+-- URL の大文字小文字や x.com/twitter.com 表記ゆれは source_tweet_status_id で吸収する。
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_catalog_entries_active_source_tweet_status
+  ON public.catalog_entries (source_tweet_status_id)
+  WHERE status IN ('pending', 'approved');
 
 -- updated_at トリガ
 DROP TRIGGER IF EXISTS update_catalog_entries_updated_at ON public.catalog_entries;
@@ -89,29 +88,50 @@ AS $$
 DECLARE
   v_active_count INTEGER;
   v_lock_key BIGINT;
+  v_identity_kind TEXT;
+  v_identity_value TEXT;
 BEGIN
   IF NEW.status NOT IN ('pending', 'approved') THEN
     RETURN NEW;
   END IF;
 
+  IF NEW.submitter_user_id IS NOT NULL THEN
+    v_identity_kind := 'user';
+    v_identity_value := NEW.submitter_user_id::text;
+  ELSE
+    v_identity_kind := 'token';
+    v_identity_value := NEW.submitter_token;
+  END IF;
+
   IF TG_OP = 'UPDATE' AND OLD.status = NEW.status
      AND OLD.submitter_token = NEW.submitter_token
-     AND OLD.campaign_id = NEW.campaign_id THEN
+     AND OLD.campaign_id = NEW.campaign_id
+     AND OLD.submitter_user_id IS NOT DISTINCT FROM NEW.submitter_user_id THEN
     RETURN NEW;
   END IF;
 
   v_lock_key := hashtextextended(
-    'catalog_entry_cap:' || NEW.submitter_token || ':' || NEW.campaign_id::text,
+    'catalog_entry_cap:' || v_identity_kind || ':' || v_identity_value || ':' || NEW.campaign_id::text,
     0
   );
   PERFORM pg_advisory_xact_lock(v_lock_key);
 
   SELECT COUNT(*) INTO v_active_count
   FROM public.catalog_entries
-  WHERE submitter_token = NEW.submitter_token
-    AND campaign_id = NEW.campaign_id
+  WHERE campaign_id = NEW.campaign_id
     AND status IN ('pending', 'approved')
-    AND (TG_OP <> 'UPDATE' OR id <> NEW.id);
+    AND (TG_OP <> 'UPDATE' OR id <> NEW.id)
+    AND (
+      (
+        NEW.submitter_user_id IS NOT NULL
+        AND submitter_user_id = NEW.submitter_user_id
+      )
+      OR (
+        NEW.submitter_user_id IS NULL
+        AND submitter_user_id IS NULL
+        AND submitter_token = NEW.submitter_token
+      )
+    );
 
   IF v_active_count >= 3 THEN
     RAISE EXCEPTION 'catalog_entry_submission_cap_exceeded'
@@ -125,9 +145,11 @@ $$;
 
 DROP TRIGGER IF EXISTS trg_enforce_catalog_entry_submission_cap ON public.catalog_entries;
 CREATE TRIGGER trg_enforce_catalog_entry_submission_cap
-  BEFORE INSERT OR UPDATE OF status, submitter_token, campaign_id ON public.catalog_entries
+  BEFORE INSERT OR UPDATE OF status, submitter_token, submitter_user_id, campaign_id ON public.catalog_entries
   FOR EACH ROW
   EXECUTE FUNCTION public.enforce_catalog_entry_submission_cap();
+
+REVOKE EXECUTE ON FUNCTION public.enforce_catalog_entry_submission_cap() FROM anon, authenticated, PUBLIC;
 
 -- RLS
 -- ADR-008: anon と authenticated から直接 SELECT/INSERT/UPDATE/DELETE できない。

@@ -4,8 +4,8 @@
 -- admin の承認 / 差戻し / 非公開化を 1 トランザクションで適用する。
 -- 既存 apply_user_style_template_decision (20260502120300) の構造を踏襲。
 --
--- 注意: 本 RPC は admin チェックをしない。
---       呼出側 API ハンドラで requireAdmin() を必ず先行実行すること。
+-- 注意: 呼出側 API ハンドラでも requireAdmin() を先行実行する。
+--       DB 側でも service_role + admin_users による二重防御を行う。
 
 CREATE OR REPLACE FUNCTION public.apply_catalog_entry_decision(
   p_entry_id UUID,
@@ -29,6 +29,24 @@ BEGIN
   IF p_action NOT IN ('approve', 'reject', 'unpublish') THEN
     RAISE EXCEPTION 'Invalid action: %', p_action
       USING ERRCODE = '22023';
+  END IF;
+
+  IF p_actor_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: actor_id is required'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF auth.uid() IS NOT NULL AND auth.uid() <> p_actor_id THEN
+    RAISE EXCEPTION 'Unauthorized: caller must match actor_id or use service role'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_users
+    WHERE user_id = p_actor_id
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized: actor is not an admin'
+      USING ERRCODE = '42501';
   END IF;
 
   v_decided_at := COALESCE(p_decided_at, now());
@@ -85,10 +103,11 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.apply_catalog_entry_decision(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.apply_catalog_entry_decision(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.apply_catalog_entry_decision(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.apply_catalog_entry_decision(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB) TO service_role;
 
 COMMENT ON FUNCTION public.apply_catalog_entry_decision(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB) IS
-  'admin の承認/差戻し/非公開化を atomic に適用する。呼出側で requireAdmin() を必ず先行実行すること。';
+  'admin の承認/差戻し/非公開化を atomic に適用する。service_role から呼び、DB 側でも admin_users を検証する。';
 
 -- ===============================================
 -- DOWN:
