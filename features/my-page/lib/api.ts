@@ -13,6 +13,21 @@ interface MyPageApiMessages {
   deleteImageFailed?: string;
 }
 
+interface BulkDeleteApiMessages {
+  bulkDeleteFailed?: string;
+}
+
+export interface BulkDeleteResult {
+  deleted: string[];
+  failed: string[];
+}
+
+/**
+ * 1 リクエストあたりの最大件数。サーバー側 (`app/api/my-page/images/route.ts`)
+ * の上限と必ず揃えること。
+ */
+export const BULK_DELETE_MAX = 50;
+
 /**
  * マイページ用のAPI関数
  */
@@ -318,4 +333,39 @@ export async function deleteMyImage(
       `${messages?.deleteImageFailed || "画像の削除に失敗しました"}: ${deleteError.message}`
     );
   }
+}
+
+/**
+ * 未投稿画像を一括削除する。
+ *
+ * - 1 リクエストで最大 {@link BULK_DELETE_MAX} 件
+ * - サーバー側で本人所有 / 未投稿のもののみが削除対象になる
+ * - 削除できなかった ID（投稿済み・所有外・未存在・DB エラー）は `failed` で返る
+ */
+export async function bulkDeleteMyImages(
+  imageIds: string[],
+  messages?: BulkDeleteApiMessages,
+): Promise<BulkDeleteResult> {
+  const response = await fetch("/api/my-page/images", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageIds }),
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(
+      errorBody?.error ||
+        messages?.bulkDeleteFailed ||
+        "画像の一括削除に失敗しました",
+    );
+  }
+
+  const data = (await response.json()) as Partial<BulkDeleteResult>;
+  return {
+    deleted: Array.isArray(data.deleted) ? data.deleted : [],
+    failed: Array.isArray(data.failed) ? data.failed : [],
+  };
 }

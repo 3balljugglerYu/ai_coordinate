@@ -346,6 +346,26 @@ export const ptMessages = {
     imageNotFound: "Imagem não encontrada.",
     deleteImageForbidden: "Você não tem permissão para excluir esta imagem.",
     deleteImageFailed: "Não foi possível excluir a imagem.",
+    bulkDeleteStart: "Excluir em massa",
+    bulkDeleteCancel: "Cancelar",
+    bulkDeleteUnpostedOnlyNote:
+      "Apenas imagens não publicadas podem ser excluídas.",
+    bulkDeleteSelectedCount: "{count} selecionadas",
+    bulkDeleteActionWithCount: "Excluir ({count})",
+    bulkDeleteEmptyAction: "Excluir",
+    bulkDeleteConfirmTitle: "Excluir as imagens selecionadas?",
+    bulkDeleteConfirmDescription:
+      "{count} imagens serão excluídas permanentemente. Esta ação não pode ser desfeita.",
+    bulkDeleteConfirmAction: "Excluir",
+    bulkDeleteInProgress: "Excluindo...",
+    bulkDeleteSuccessTitle: "Exclusão concluída",
+    bulkDeleteSuccessDescription: "{count} imagens excluídas.",
+    bulkDeletePartialFailureTitle:
+      "Algumas imagens não puderam ser excluídas",
+    bulkDeletePartialFailureDescription: "{count} falharam.",
+    bulkDeleteFailureTitle: "Falha ao excluir",
+    bulkDeleteFailureDescription: "Tente novamente.",
+    bulkDeleteSelectImageAria: "Selecionar imagem",
     inspireSectionTitle: "Modelos de estilo enviados",
     inspireSectionDescription:
       "Envie seus estilos favoritos como modelos. Após aprovação, outras pessoas poderão gerar imagens com seu estilo.",

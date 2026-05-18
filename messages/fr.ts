@@ -346,6 +346,26 @@ export const frMessages = {
     imageNotFound: "Image introuvable.",
     deleteImageForbidden: "Vous n'êtes pas autorisé à supprimer cette image.",
     deleteImageFailed: "Impossible de supprimer l'image.",
+    bulkDeleteStart: "Suppression groupée",
+    bulkDeleteCancel: "Annuler",
+    bulkDeleteUnpostedOnlyNote:
+      "Seules les images non publiées peuvent être supprimées.",
+    bulkDeleteSelectedCount: "{count} sélectionnée(s)",
+    bulkDeleteActionWithCount: "Supprimer ({count})",
+    bulkDeleteEmptyAction: "Supprimer",
+    bulkDeleteConfirmTitle: "Supprimer les images sélectionnées ?",
+    bulkDeleteConfirmDescription:
+      "{count} images seront supprimées définitivement. Cette action est irréversible.",
+    bulkDeleteConfirmAction: "Supprimer",
+    bulkDeleteInProgress: "Suppression...",
+    bulkDeleteSuccessTitle: "Suppression terminée",
+    bulkDeleteSuccessDescription: "{count} images supprimées.",
+    bulkDeletePartialFailureTitle:
+      "Certaines images n'ont pas pu être supprimées",
+    bulkDeletePartialFailureDescription: "{count} échec(s).",
+    bulkDeleteFailureTitle: "Échec de la suppression",
+    bulkDeleteFailureDescription: "Veuillez réessayer.",
+    bulkDeleteSelectImageAria: "Sélectionner l'image",
     inspireSectionTitle: "Modèles de style soumis",
     inspireSectionDescription:
       "Soumettez vos styles préférés en tant que modèles. Une fois approuvés, d'autres utilisateurs pourront générer des images dans votre style.",
