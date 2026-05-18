@@ -13,6 +13,16 @@ interface MyImageGalleryProps {
   loadMoreRef?: React.Ref<HTMLDivElement | null>;
   isLoadingMore?: boolean;
   hasMore?: boolean;
+  /** 選択モード（true のときカードのリンクは無効化されチェックボックスが出る） */
+  selectionMode?: boolean;
+  /** 選択中の画像 ID */
+  selectedIds?: ReadonlySet<string>;
+  /** 楽観的削除中の画像 ID（半透明で表示し、操作を抑止する） */
+  pendingDeletionIds?: ReadonlySet<string>;
+  /** 選択モード中、カードがタップされたとき */
+  onToggleSelect?: (imageId: string) => void;
+  /** 通常モードで長押しされたとき（選択モードに入る + 対象を即選択） */
+  onLongPressEnterSelection?: (imageId: string) => void;
 }
 
 export function MyImageGallery({
@@ -21,6 +31,11 @@ export function MyImageGallery({
   loadMoreRef,
   isLoadingMore = false,
   hasMore = false,
+  selectionMode = false,
+  selectedIds,
+  pendingDeletionIds,
+  onToggleSelect,
+  onLongPressEnterSelection,
 }: MyImageGalleryProps) {
   const t = useTranslations("myPage");
   if (images.length === 0) {
@@ -47,14 +62,38 @@ export function MyImageGallery({
         className="flex -ml-4 w-auto"
         columnClassName="pl-4 bg-clip-padding"
       >
-        {images.map((image) => (
-          <div
-            key={image.id}
-            className="mb-4 [content-visibility:auto] [contain-intrinsic-size:0_300px]"
-          >
-            <MyImageCard image={image} currentUserId={currentUserId} />
-          </div>
-        ))}
+        {images.map((image) => {
+          const imageId = image.id;
+          return (
+            <div
+              key={imageId}
+              className="mb-4 [content-visibility:auto] [contain-intrinsic-size:0_300px]"
+            >
+              <MyImageCard
+                image={image}
+                currentUserId={currentUserId}
+                selectionMode={selectionMode}
+                selected={
+                  imageId != null && (selectedIds?.has(imageId) ?? false)
+                }
+                pendingDeletion={
+                  imageId != null &&
+                  (pendingDeletionIds?.has(imageId) ?? false)
+                }
+                onToggleSelect={
+                  onToggleSelect && imageId != null
+                    ? () => onToggleSelect(imageId)
+                    : undefined
+                }
+                onLongPressEnterSelection={
+                  onLongPressEnterSelection && imageId != null
+                    ? () => onLongPressEnterSelection(imageId)
+                    : undefined
+                }
+              />
+            </div>
+          );
+        })}
       </Masonry>
 
       {hasMore && (
