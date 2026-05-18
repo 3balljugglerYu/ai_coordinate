@@ -15,7 +15,14 @@ export type AdminAuditAction =
   | "style_template_approve"
   | "style_template_reject"
   | "style_template_unpublish"
-  | "style_template_order_update";
+  | "style_template_order_update"
+  | "catalog_campaign_create"
+  | "catalog_campaign_update"
+  | "catalog_campaign_delete"
+  | "catalog_entry_approve"
+  | "catalog_entry_reject"
+  | "catalog_entry_unpublish"
+  | "catalog_entry_reorder";
 
 export interface AdminAuditLogParams {
   adminUserId: string;
