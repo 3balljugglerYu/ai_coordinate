@@ -3,10 +3,28 @@
 import { useTranslations } from "next-intl";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { GptImage2SizeSelector } from "@/features/generation/components/GptImage2SizeSelector";
+import { isModelAvailableForGeneration } from "@/features/generation/lib/model-config";
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
 }));
+
+// isModelAvailableForGeneration を必要に応じてモックできるよう partial mock。
+// 既定は実装どおり（GPT 系は常に true）。
+jest.mock("@/features/generation/lib/model-config", () => {
+  const actual = jest.requireActual<typeof import("@/features/generation/lib/model-config")>(
+    "@/features/generation/lib/model-config"
+  );
+  return {
+    ...actual,
+    isModelAvailableForGeneration: jest.fn(actual.isModelAvailableForGeneration),
+  };
+});
+
+const isModelAvailableForGenerationMock =
+  isModelAvailableForGeneration as jest.MockedFunction<
+    typeof isModelAvailableForGeneration
+  >;
 
 jest.mock("@/components/ui/select", () => {
   const React = jest.requireActual<typeof import("react")>("react");
@@ -154,5 +172,29 @@ describe("GptImage2SizeSelector", () => {
     fireEvent.click(screen.getByRole("button", { name: /4K/ }));
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test("isModelAvailableForGeneration が false の場合は onChange も onLockedClick も呼ばない（防御ガード）", () => {
+    // 通常 GPT モデルは常に available だが、kill switch 等で一時的に false を
+    // 返すケースを想定した防御ガード。onChange / onLockedClick 双方発火しない。
+    isModelAvailableForGenerationMock.mockImplementation((model) =>
+      model !== "gpt-image-2-low-4k"
+    );
+
+    const onChange = jest.fn();
+    const onLockedClick = jest.fn();
+    render(
+      <GptImage2SizeSelector
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={onLockedClick}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /4K/ }));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onLockedClick).not.toHaveBeenCalled();
   });
 });

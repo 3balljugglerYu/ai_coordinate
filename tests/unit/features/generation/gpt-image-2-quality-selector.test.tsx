@@ -3,10 +3,27 @@
 import { useTranslations } from "next-intl";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { GptImage2QualitySelector } from "@/features/generation/components/GptImage2QualitySelector";
+import { isModelAvailableForGeneration } from "@/features/generation/lib/model-config";
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
 }));
+
+// isModelAvailableForGeneration を必要に応じてモックできるよう partial mock。
+jest.mock("@/features/generation/lib/model-config", () => {
+  const actual = jest.requireActual<typeof import("@/features/generation/lib/model-config")>(
+    "@/features/generation/lib/model-config"
+  );
+  return {
+    ...actual,
+    isModelAvailableForGeneration: jest.fn(actual.isModelAvailableForGeneration),
+  };
+});
+
+const isModelAvailableForGenerationMock =
+  isModelAvailableForGeneration as jest.MockedFunction<
+    typeof isModelAvailableForGeneration
+  >;
 
 jest.mock("@/components/ui/select", () => {
   const React = jest.requireActual<typeof import("react")>("react");
@@ -159,5 +176,25 @@ describe("GptImage2QualitySelector", () => {
     fireEvent.click(screen.getByRole("button", { name: /Generate balanced/ }));
     expect(onLockedClick).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test("isModelAvailableForGeneration が false の場合は onChange も onLockedClick も呼ばない（防御ガード）", () => {
+    isModelAvailableForGenerationMock.mockImplementation((model) =>
+      model !== "gpt-image-2-medium-1k"
+    );
+
+    const onChange = jest.fn();
+    const onLockedClick = jest.fn();
+    render(
+      <GptImage2QualitySelector
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={onLockedClick}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Generate balanced/ }));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onLockedClick).not.toHaveBeenCalled();
   });
 });

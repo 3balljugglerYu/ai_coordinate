@@ -177,4 +177,65 @@ describe("GeminiBananaSizeSelector", () => {
       screen.getByRole("button", { name: /4K.*100 Percoins/ })
     ).toBeInTheDocument();
   });
+
+  test("guest が許可されていない size を選ぶと onLockedClick を呼び、onChange は呼ばない", () => {
+    const onChange = jest.fn();
+    const onLockedClick = jest.fn();
+    render(
+      <GeminiBananaSizeSelector
+        value="gemini-3.1-flash-image-preview-512"
+        authState="guest"
+        onChange={onChange}
+        onLockedClick={onLockedClick}
+      />
+    );
+    // 1K (= gemini-3.1-flash-image-preview-1024) は guest 許可外なので、
+    // クリックすると onLockedClick が呼ばれる
+    fireEvent.click(screen.getByRole("button", { name: /^1K/ }));
+    expect(onLockedClick).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test("free プラン (isModelSelectable=false) でクリックすると onLockedClick を呼ぶ", () => {
+    const onChange = jest.fn();
+    const onLockedClick = jest.fn();
+    render(
+      <GeminiBananaSizeSelector
+        value="gemini-3-pro-image-1k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={onLockedClick}
+        // 2K と 4K だけ free プラン的に不許可
+        isModelSelectable={(model) => model === "gemini-3-pro-image-1k"}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^4K/ }));
+    expect(onLockedClick).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test("isModelAvailableForGeneration が false の場合は onChange / onLockedClick とも呼ばない（防御ガード）", () => {
+    // kill switch などで一時的に false を返すケース。
+    // 通常は Gemini が disabled な状態で発火する分岐。
+    const { isModelAvailableForGeneration } = jest.requireMock(
+      "@/features/generation/lib/model-config"
+    ) as { isModelAvailableForGeneration: jest.Mock };
+    isModelAvailableForGeneration.mockImplementation(
+      (model: string) => model !== "gemini-3-pro-image-4k"
+    );
+
+    const onChange = jest.fn();
+    const onLockedClick = jest.fn();
+    render(
+      <GeminiBananaSizeSelector
+        value="gemini-3-pro-image-1k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={onLockedClick}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^4K/ }));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onLockedClick).not.toHaveBeenCalled();
+  });
 });

@@ -1,9 +1,11 @@
 import {
   GEMINI_BANANA_2_SIZE_TIERS,
+  GEMINI_BANANA_CANONICAL_MODELS,
   GEMINI_BANANA_PRO_SIZE_TIERS,
   composeGeminiBananaModel,
   getDefaultCanonicalForFamily,
   getSizeTiersForFamily,
+  isGeminiBananaCanonicalModel,
   parseGeminiBananaModel,
 } from "@/shared/generation/gemini-banana-model";
 
@@ -111,5 +113,44 @@ describe("getDefaultCanonicalForFamily", () => {
     expect(getDefaultCanonicalForFamily("nano-pro")).toBe(
       "gemini-3-pro-image-1k"
     );
+  });
+});
+
+describe("isGeminiBananaCanonicalModel", () => {
+  it("Nano Banana 2 ファミリーの canonical を true で受ける", () => {
+    expect(
+      isGeminiBananaCanonicalModel("gemini-3.1-flash-image-preview-512")
+    ).toBe(true);
+    expect(
+      isGeminiBananaCanonicalModel("gemini-3.1-flash-image-preview-1024")
+    ).toBe(true);
+  });
+
+  it("Nano Banana Pro ファミリーの canonical を true で受ける", () => {
+    expect(isGeminiBananaCanonicalModel("gemini-3-pro-image-1k")).toBe(true);
+    expect(isGeminiBananaCanonicalModel("gemini-3-pro-image-2k")).toBe(true);
+    expect(isGeminiBananaCanonicalModel("gemini-3-pro-image-4k")).toBe(true);
+  });
+
+  it("無関係なモデル ID や非文字列は false", () => {
+    expect(isGeminiBananaCanonicalModel("gpt-image-2-low-1k")).toBe(false);
+    expect(isGeminiBananaCanonicalModel("gemini-2.5-flash-image")).toBe(false);
+    expect(isGeminiBananaCanonicalModel("unknown")).toBe(false);
+    expect(isGeminiBananaCanonicalModel(null)).toBe(false);
+    expect(isGeminiBananaCanonicalModel(undefined)).toBe(false);
+    expect(isGeminiBananaCanonicalModel(123)).toBe(false);
+  });
+});
+
+describe("GEMINI_BANANA_CANONICAL_MODELS", () => {
+  it("nano-2 と nano-pro の両ファミリーの canonical を含む", () => {
+    expect(GEMINI_BANANA_CANONICAL_MODELS).toContain(
+      "gemini-3.1-flash-image-preview-512"
+    );
+    expect(GEMINI_BANANA_CANONICAL_MODELS).toContain(
+      "gemini-3.1-flash-image-preview-1024"
+    );
+    expect(GEMINI_BANANA_CANONICAL_MODELS).toContain("gemini-3-pro-image-1k");
+    expect(GEMINI_BANANA_CANONICAL_MODELS).toContain("gemini-3-pro-image-4k");
   });
 });
