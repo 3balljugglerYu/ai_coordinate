@@ -60,16 +60,18 @@ describe("getModelBrandName", () => {
 
 describe("getModelDisplayInfo", () => {
   it("returns the list display name and default size for known models", () => {
+    // ChatGPT は動的サイジングにより tier 名 (1K/2K/4K) が実サイズと
+    // 乖離するため displayName から外している。実サイズはサイズバッジで表示。
     expect(getModelDisplayInfo("gpt-image-2-low-1k")).toEqual({
-      displayName: "ChatGPT Images 2.0 | Low 1K",
+      displayName: "ChatGPT Images 2.0 | Low",
       defaultSize: { width: 1024, height: 1024 },
     });
     expect(getModelDisplayInfo("gpt-image-2-medium-2k")).toEqual({
-      displayName: "ChatGPT Images 2.0 | Medium 2K",
+      displayName: "ChatGPT Images 2.0 | Medium",
       defaultSize: { width: 2048, height: 2048 },
     });
     expect(getModelDisplayInfo("gpt-image-2-high-4k")).toEqual({
-      displayName: "ChatGPT Images 2.0 | High 4K",
+      displayName: "ChatGPT Images 2.0 | High",
       defaultSize: { width: 2880, height: 2880 },
     });
     expect(

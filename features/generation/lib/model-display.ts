@@ -40,44 +40,48 @@ export interface ModelDisplayInfo {
 }
 
 const MODEL_LIST_DISPLAY_MAP: Record<string, ModelDisplayInfo> = {
+  // ChatGPT Images 2.0 は動的サイジングにより、入力アスペクト比と tier の
+  // ピクセル予算から実サイズが毎回変わる（4K tier の 1:1 入力でも長辺 2880px に
+  // 留まるなど）。tier 名を displayName に含めると誤解を招くため、displayName
+  // からは 1K / 2K / 4K サフィックスを外す。実サイズはサイズバッジで表示する。
   "gpt-image-2-low": {
-    displayName: "ChatGPT Images 2.0 | Low 1K",
+    displayName: "ChatGPT Images 2.0 | Low",
     defaultSize: { width: 1024, height: 1024 },
   },
   "gpt-image-2-low-1k": {
-    displayName: "ChatGPT Images 2.0 | Low 1K",
+    displayName: "ChatGPT Images 2.0 | Low",
     defaultSize: { width: 1024, height: 1024 },
   },
   "gpt-image-2-low-2k": {
-    displayName: "ChatGPT Images 2.0 | Low 2K",
+    displayName: "ChatGPT Images 2.0 | Low",
     defaultSize: { width: 2048, height: 2048 },
   },
   "gpt-image-2-low-4k": {
-    displayName: "ChatGPT Images 2.0 | Low 4K",
+    displayName: "ChatGPT Images 2.0 | Low",
     defaultSize: { width: 2880, height: 2880 },
   },
   "gpt-image-2-medium-1k": {
-    displayName: "ChatGPT Images 2.0 | Medium 1K",
+    displayName: "ChatGPT Images 2.0 | Medium",
     defaultSize: { width: 1024, height: 1024 },
   },
   "gpt-image-2-medium-2k": {
-    displayName: "ChatGPT Images 2.0 | Medium 2K",
+    displayName: "ChatGPT Images 2.0 | Medium",
     defaultSize: { width: 2048, height: 2048 },
   },
   "gpt-image-2-medium-4k": {
-    displayName: "ChatGPT Images 2.0 | Medium 4K",
+    displayName: "ChatGPT Images 2.0 | Medium",
     defaultSize: { width: 2880, height: 2880 },
   },
   "gpt-image-2-high-1k": {
-    displayName: "ChatGPT Images 2.0 | High 1K",
+    displayName: "ChatGPT Images 2.0 | High",
     defaultSize: { width: 1024, height: 1024 },
   },
   "gpt-image-2-high-2k": {
-    displayName: "ChatGPT Images 2.0 | High 2K",
+    displayName: "ChatGPT Images 2.0 | High",
     defaultSize: { width: 2048, height: 2048 },
   },
   "gpt-image-2-high-4k": {
-    displayName: "ChatGPT Images 2.0 | High 4K",
+    displayName: "ChatGPT Images 2.0 | High",
     defaultSize: { width: 2880, height: 2880 },
   },
   "gemini-2.5-flash-image": {
