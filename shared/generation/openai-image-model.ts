@@ -90,56 +90,110 @@ export function parseGptImage2Model(
   };
 }
 
-export type GptImage2AspectBucket = "square" | "portrait" | "landscape";
-
 export interface GptImage2Dimensions {
   width: number;
   height: number;
 }
 
-export const GPT_IMAGE_2_TARGET_SIZES = {
-  "1k": {
-    square: "1024x1024",
-    portrait: "1024x1536",
-    landscape: "1536x1024",
-  },
-  "2k": {
-    square: "2048x2048",
-    portrait: "1664x2496",
-    landscape: "2496x1664",
-  },
-  "4k": {
-    // OpenAI gpt-image-2 の総ピクセル上限 8,294,400 と長辺 3840 の制約に
-    // 合わせた最大サイズ。square は 2880×2880 が 1:1 での物理上限（8.29M）。
-    // portrait / landscape は 16:9（9:16）= 真の 4K UHD（3840×2160）。
-    square: "2880x2880",
-    portrait: "2160x3840",
-    landscape: "3840x2160",
-  },
-} as const satisfies Record<
+/**
+ * tier 別の出力サイズ上限。
+ * - `maxEdge`: 長辺の上限（OpenAI 公式 image-generation 仕様の最大 3840px を超えない）
+ * - `maxPixels`: 総ピクセル数の上限（OpenAI 公式 8,294,400 を超えない）
+ *
+ * tier ごとに「rect 系の OpenAI 推奨上限」を採用しているため、1:1 入力でも
+ * 同じ tier 内ではピクセル予算が同じになる（例: 1K の 1:1 は 1248×1248 ≈ 1.55M で生成）。
+ */
+export const GPT_IMAGE_2_TIER_LIMITS: Record<
   GptImage2SizeTier,
-  Record<GptImage2AspectBucket, `${number}x${number}`>
->;
+  { maxEdge: number; maxPixels: number }
+> = {
+  "1k": { maxEdge: 1536, maxPixels: 1024 * 1536 },
+  "2k": { maxEdge: 2496, maxPixels: 2048 * 2048 },
+  "4k": { maxEdge: 3840, maxPixels: 3840 * 2160 },
+};
 
-export type GptImage2TargetSize =
-  (typeof GPT_IMAGE_2_TARGET_SIZES)[GptImage2SizeTier][GptImage2AspectBucket];
+export type GptImage2TargetSize = `${number}x${number}`;
 
-export function resolveGptImage2AspectBucket(
+const SIZE_MULTIPLE = 16;
+const MAX_ASPECT_RATIO = 3;
+
+/**
+ * 入力画像のアスペクト比を保ったまま、tier の上限内で最大の出力サイズを計算する。
+ *
+ * - OpenAI gpt-image-2 制約: 長辺 ≤ 3840 / 総ピクセル ≤ 8,294,400 / 16 の倍数 / 長:短 ≤ 3:1
+ * - 入力 dimensions が null / 無効値のときは正方形扱い（1:1）
+ * - 3:1 を超える極端なアスペクトは 3:1 にクランプする
+ */
+export function computeGptImage2OptimalSize(
+  sizeTier: GptImage2SizeTier,
   dimensions: GptImage2Dimensions | null | undefined
-): GptImage2AspectBucket {
-  if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) {
-    return "square";
+): GptImage2TargetSize {
+  const { maxEdge, maxPixels } = GPT_IMAGE_2_TIER_LIMITS[sizeTier];
+
+  // 入力アスペクトの算出（width / height）。無効なら 1:1 とみなす。
+  let aspect = 1;
+  if (
+    dimensions &&
+    dimensions.width > 0 &&
+    dimensions.height > 0
+  ) {
+    aspect = dimensions.width / dimensions.height;
   }
-  const aspect = dimensions.width / dimensions.height;
-  if (aspect < 0.85) return "portrait";
-  if (aspect > 1.18) return "landscape";
-  return "square";
+  // OpenAI の長:短 ≤ 3:1 制約に合わせてクランプ
+  aspect = Math.max(1 / MAX_ASPECT_RATIO, Math.min(MAX_ASPECT_RATIO, aspect));
+
+  // 長辺を maxEdge 起点で算出
+  let width: number;
+  let height: number;
+  if (aspect >= 1) {
+    width = maxEdge;
+    height = maxEdge / aspect;
+  } else {
+    height = maxEdge;
+    width = maxEdge * aspect;
+  }
+
+  // 総ピクセル上限内に収まるようスケール
+  if (width * height > maxPixels) {
+    const scale = Math.sqrt(maxPixels / (width * height));
+    width *= scale;
+    height *= scale;
+  }
+
+  // 16 の倍数に丸める（四捨五入）
+  width = Math.round(width / SIZE_MULTIPLE) * SIZE_MULTIPLE;
+  height = Math.round(height / SIZE_MULTIPLE) * SIZE_MULTIPLE;
+
+  // 丸めにより上限を超えた場合は、長辺を 16 ずつ縮める
+  while (width * height > maxPixels) {
+    if (width >= height) {
+      width -= SIZE_MULTIPLE;
+    } else {
+      height -= SIZE_MULTIPLE;
+    }
+  }
+
+  // maxEdge を超えていないことの最終ガード
+  if (width > maxEdge) {
+    width = Math.floor(maxEdge / SIZE_MULTIPLE) * SIZE_MULTIPLE;
+  }
+  if (height > maxEdge) {
+    height = Math.floor(maxEdge / SIZE_MULTIPLE) * SIZE_MULTIPLE;
+  }
+
+  // 最小値ガード（16px 未満は不正）
+  width = Math.max(SIZE_MULTIPLE, width);
+  height = Math.max(SIZE_MULTIPLE, height);
+
+  return `${width}x${height}` as GptImage2TargetSize;
 }
 
+/**
+ * 後方互換のためのエイリアス。新規コードは computeGptImage2OptimalSize を使う。
+ */
 export function getGptImage2TargetSize(
   sizeTier: GptImage2SizeTier,
   dimensions: GptImage2Dimensions | null | undefined
 ): GptImage2TargetSize {
-  const bucket = resolveGptImage2AspectBucket(dimensions);
-  return GPT_IMAGE_2_TARGET_SIZES[sizeTier][bucket];
+  return computeGptImage2OptimalSize(sizeTier, dimensions);
 }

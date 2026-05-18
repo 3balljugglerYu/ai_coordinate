@@ -159,25 +159,29 @@ describe("openai-image (Node port)", () => {
   });
 
   describe("resolveOpenAITargetSize", () => {
-    test("正方形は 1024x1024", () => {
+    // 動的サイジング (computeGptImage2OptimalSize) により、tier の総ピクセル
+    // 上限内で入力アスペクト比を保ったまま最大サイズで生成される。1:1 入力は
+    // 旧 1024×1024（バケット固定）ではなく 1K では 1248×1248 ≒ 1.55M ピクセル
+    // まで拡張される。
+    test("1:1 入力は 1K で 1248x1248（pixel budget まで拡張）", () => {
       expect(
         resolveOpenAITargetSize({
           base64: PNG_1024x1024_BASE64,
           mimeType: "image/png",
         })
-      ).toBe("1024x1024");
+      ).toBe("1248x1248");
     });
 
-    test("縦長画像は 1024x1536", () => {
+    test("1:2 縦長は 1K で 768x1536（入力アスペクトを保持）", () => {
       expect(
         resolveOpenAITargetSize({
           base64: createPngHeader(512, 1024).toString("base64"),
           mimeType: "image/png",
         })
-      ).toBe("1024x1536");
+      ).toBe("768x1536");
     });
 
-    test("横長画像は 1536x1024", () => {
+    test("3:2 横長は 1K で 1536x1024", () => {
       expect(
         resolveOpenAITargetSize({
           base64: createPngHeader(1536, 1024).toString("base64"),
@@ -186,25 +190,25 @@ describe("openai-image (Node port)", () => {
       ).toBe("1536x1024");
     });
 
-    test("解析できない画像は 1024x1024 にフォールバック", () => {
+    test("解析できない画像は 1:1 フォールバックで 1248x1248", () => {
       expect(
         resolveOpenAITargetSize({
           base64: Buffer.from("garbage").toString("base64"),
           mimeType: "image/png",
         })
-      ).toBe("1024x1024");
+      ).toBe("1248x1248");
     });
 
-    test("GIF はフォールバックとして 1024x1024", () => {
+    test("GIF は寸法取得不能のためフォールバックで 1248x1248", () => {
       expect(
         resolveOpenAITargetSize({
           base64: Buffer.alloc(10).toString("base64"),
           mimeType: "image/gif",
         })
-      ).toBe("1024x1024");
+      ).toBe("1248x1248");
     });
 
-    test("2k は入力アスペクト比に応じた 16 の倍数サイズを返す", () => {
+    test("2k は入力アスペクト比 1:2 を保ったまま 1248x2496 を返す", () => {
       expect(
         resolveOpenAITargetSize(
           {
@@ -213,7 +217,7 @@ describe("openai-image (Node port)", () => {
           },
           "2k"
         )
-      ).toBe("1664x2496");
+      ).toBe("1248x2496");
     });
 
     test("4k 正方形は pixel budget 内の 2880x2880 にクランプする", () => {
@@ -545,7 +549,8 @@ describe("openai-image (Node port)", () => {
         fetchFn.mock.calls[0][1] as RequestInit
       ).body as FormData;
       expect(requestBody.get("quality")).toBe("high");
-      expect(requestBody.get("size")).toBe("1664x2496");
+      // 動的サイジング: targetSizeBaseIndex=1 の画像 (512x1024 = 1:2) で 2k → 1248x2496
+      expect(requestBody.get("size")).toBe("1248x2496");
       expect(requestBody.getAll("image[]")).toHaveLength(2);
       expect(requestBody.get("n")).toBe("2");
     });
