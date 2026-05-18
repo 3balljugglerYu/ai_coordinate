@@ -426,12 +426,12 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
   describe("MPSAPI-004 getUserStatsServer", () => {
     test("getUserStatsServer_authで自分のプロフィールの場合_全カウンタを集計してgeneratedCountを公開する", async () => {
       // Spec: MPSAPI-004
+      // 累計生成数は image_jobs.requested_image_count の合計から算出される（4 + 5 = 9）
       const supabase = createSupabaseMock({
         authUser: { id: "user-1" },
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 4 } },
-            { result: { data: null, error: null, count: 9 } },
             {
               result: {
                 data: [{ id: "img-1" }, { id: "img-2" }],
@@ -441,6 +441,17 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
             {
               result: {
                 data: [{ view_count: 3 }, { view_count: null }, { view_count: 7 }],
+                error: null,
+              },
+            },
+          ],
+          image_jobs: [
+            {
+              result: {
+                data: [
+                  { requested_image_count: 4 },
+                  { requested_image_count: 5 },
+                ],
                 error: null,
               },
             },
@@ -472,13 +483,15 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         followingCount: 5,
       });
       expect(supabase.getUser).toHaveBeenCalledTimes(1);
-      expect(supabase.fromCalls.generated_images).toHaveLength(4);
+      expect(supabase.fromCalls.generated_images).toHaveLength(3);
       expect(supabase.fromCalls.generated_images[0].calls.eq).toEqual([
         ["user_id", "user-1"],
         ["is_posted", true],
       ]);
-      expect(supabase.fromCalls.generated_images[1].calls.eq).toEqual([
+      expect(supabase.fromCalls.image_jobs).toHaveLength(1);
+      expect(supabase.fromCalls.image_jobs[0].calls.eq).toEqual([
         ["user_id", "user-1"],
+        ["status", "succeeded"],
       ]);
       expect(supabase.fromCalls.likes[0].calls.in).toEqual([
         ["image_id", ["img-1", "img-2"]],
@@ -491,11 +504,11 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
 
     test("getUserStatsServer_supabaseOverrideで自分のプロフィールの場合_auth参照なしで集計する", async () => {
       // Spec: MPSAPI-004
+      // 累計生成数は image_jobs.requested_image_count の合計（2 + 3 = 5）
       const supabase = createSupabaseMock({
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 2 } },
-            { result: { data: null, error: null, count: 5 } },
             {
               result: {
                 data: [{ id: "img-10" }],
@@ -505,6 +518,17 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
             {
               result: {
                 data: [{ view_count: 4 }],
+                error: null,
+              },
+            },
+          ],
+          image_jobs: [
+            {
+              result: {
+                data: [
+                  { requested_image_count: 2 },
+                  { requested_image_count: 3 },
+                ],
                 error: null,
               },
             },
@@ -635,13 +659,13 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
   describe("MPSAPI-006 getUserStatsServer", () => {
     test("getUserStatsServer_followCountRpcエラーの場合_ログしてfollow数を0にフォールバックする", async () => {
       // Spec: MPSAPI-006
+      // 累計生成数は image_jobs.requested_image_count の合計（2）
       const followError = { message: "rpc failed" };
       const supabase = createSupabaseMock({
         authUser: { id: "user-1" },
         from: {
           generated_images: [
             { result: { data: null, error: null, count: 1 } },
-            { result: { data: null, error: null, count: 2 } },
             {
               result: {
                 data: [{ id: "img-30" }],
@@ -651,6 +675,14 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
             {
               result: {
                 data: [{ view_count: 11 }],
+                error: null,
+              },
+            },
+          ],
+          image_jobs: [
+            {
+              result: {
+                data: [{ requested_image_count: 2 }],
                 error: null,
               },
             },

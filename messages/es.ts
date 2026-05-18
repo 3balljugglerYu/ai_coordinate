@@ -346,6 +346,26 @@ export const esMessages = {
     imageNotFound: "Imagen no encontrada.",
     deleteImageForbidden: "No tienes permiso para eliminar esta imagen.",
     deleteImageFailed: "No se pudo eliminar la imagen.",
+    bulkDeleteStart: "Eliminar varias",
+    bulkDeleteCancel: "Cancelar",
+    bulkDeleteUnpostedOnlyNote:
+      "Solo se pueden eliminar imágenes no publicadas.",
+    bulkDeleteSelectedCount: "{count} seleccionadas",
+    bulkDeleteActionWithCount: "Eliminar ({count})",
+    bulkDeleteEmptyAction: "Eliminar",
+    bulkDeleteConfirmTitle: "¿Eliminar las imágenes seleccionadas?",
+    bulkDeleteConfirmDescription:
+      "Se eliminarán permanentemente {count} imágenes. Esta acción no se puede deshacer.",
+    bulkDeleteConfirmAction: "Eliminar",
+    bulkDeleteInProgress: "Eliminando...",
+    bulkDeleteSuccessTitle: "Eliminación completada",
+    bulkDeleteSuccessDescription: "Se eliminaron {count} imágenes.",
+    bulkDeletePartialFailureTitle:
+      "No se pudieron eliminar algunas imágenes",
+    bulkDeletePartialFailureDescription: "{count} fallaron.",
+    bulkDeleteFailureTitle: "Error al eliminar",
+    bulkDeleteFailureDescription: "Vuelve a intentarlo.",
+    bulkDeleteSelectImageAria: "Seleccionar imagen",
     inspireSectionTitle: "Plantillas de estilo enviadas",
     inspireSectionDescription:
       "Envía tus estilos favoritos como plantillas. Una vez aprobadas, otras personas podrán generar imágenes con tu estilo.",
