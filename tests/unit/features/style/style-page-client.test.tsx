@@ -385,7 +385,7 @@ describe("StylePageClient", () => {
       await flushReactScheduler();
     });
     expect(
-      screen.getByRole("button", { name: "Start Styling" })
+      screen.getByRole("button", { name: /Start Styling/ })
     ).toBeEnabled();
   };
 
@@ -403,7 +403,7 @@ describe("StylePageClient", () => {
 
   const startStylingAndWaitForRequest = async () => {
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await flushReactScheduler();
     });
     expect(hasStyleGenerateRequest()).toBe(true);
@@ -711,7 +711,7 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     const generateButton = screen.getByRole("button", {
-      name: "Start Styling",
+      name: /Start Styling/,
     });
     expect(generateButton).toBeDisabled();
 
@@ -915,7 +915,7 @@ describe("StylePageClient", () => {
       jest.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByRole("button", { name: "Start Styling" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Start Styling/ })).toBeEnabled();
   });
 
   test("reduced motion が有効な場合は生成ステータスへのスクロールを即時にする", async () => {
@@ -955,7 +955,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1006,7 +1006,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1156,7 +1156,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1234,7 +1234,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1270,7 +1270,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1398,7 +1398,7 @@ describe("StylePageClient", () => {
       "data:image/png;base64,generated-image-base64"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
 
     expect(
       screen.getByText("This will replace the current result")
@@ -1440,7 +1440,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1485,7 +1485,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1505,7 +1505,7 @@ describe("StylePageClient", () => {
       "https://cdn.example.com/generated-style-result.png"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
 
     expect(
       screen.getByText("This will replace the result shown on this screen")
@@ -1629,7 +1629,7 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
 
     await uploadImageAndWaitUntilReady();
-    fireEvent.click(screen.getByRole("button", { name: "Start Styling" }));
+    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
 
     await act(async () => {
       await Promise.resolve();
@@ -1670,7 +1670,7 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
 
     expect(
-      screen.getByRole("button", { name: "Start Styling" })
+      screen.getByRole("button", { name: /Start Styling/ })
     ).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Sign up to continue" }));
