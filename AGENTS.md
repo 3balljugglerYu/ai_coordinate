@@ -31,8 +31,8 @@ Why: Squash merge produces a single commit with one parent, so Git cannot see th
 incoming branch's commits as ancestors. For sync / release PRs that bridge two
 long-lived branches, this destroys the merge-base linkage and forces the same
 conflicts to recur on every subsequent main update. Use `gh pr merge --merge`
-(not `--squash`) or click **Create a merge commit** in the GitHub UI when in
-doubt.
+(not `--squash`) or click **Create a merge commit** in the GitHub UI for these
+PR types.
 
 ## Destructive Operations
 
