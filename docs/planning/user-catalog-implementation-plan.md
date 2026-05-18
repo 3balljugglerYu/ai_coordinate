@@ -26,15 +26,19 @@ X 上で AI イラストを投稿しているクリエイターを Pelsta に取
 | Admin Nav | `app/(app)/admin/admin-nav-items.ts` | 22-131 | サイドバー項目追加 |
 | Admin Auth | `lib/auth.ts:requireAdmin` | 59-78 | API 用 admin 認証 |
 | i18n | `messages/ja.ts`（`inspirePage` 等） | 1599+ | キー設計 |
+| i18n ルーティング | `i18n/config.ts` | 36-51 | public path 判定と locale prefix |
 | Cache | `features/generation/components/CachedGeneratedImageGallery.tsx` | - | `"use cache"` + `cacheTag` パターン |
 | 公開ページ SSR | `app/(app)/inspire/[templateId]/page.tsx` | 1-162 | `generateMetadata` + SSR |
+| locale 再 export | `app/[locale]/search/page.tsx` | 1 | public route の locale 対応 |
+| Sitemap | `app/sitemap.ts` | 1-82 | metadata route 形式の sitemap |
 | 通知連携 | `supabase/migrations/20260502120400_extend_notifications_for_style_template.sql` | 1-57 | type / entity_type の CHECK 拡張 |
 
 **注意点**:
 
 - **Bot 対策が現リポジトリに存在しない**。Turnstile / reCAPTCHA は新規導入が必要。
 - Inspire は申請時に**プレビュー生成（OpenAI + Gemini）**が走るが、**Catalog はこの工程が不要**。投稿フォームは Inspire より大幅にシンプル。
-- 既存の `react-pageflip` / `framer-motion` / `@react-three/fiber` は package.json になし。**本めくり UI 用に新規導入が必要**。
+- 既存の `react-pageflip` は package.json になし。`swiper` は既に導入済みなので、モバイル表示では既存 Swiper 利用を第一候補にする。
+- `react-pageflip` は最終 publish が古いため、React 19 / Next.js 16 でのビルド・ブラウザ検証を Phase 5 の最初に行う。
 - Inspire の詳細ページは `requireAuth()` だが、**Catalog は未ログイン閲覧可**にする。
 
 ---
@@ -75,6 +79,9 @@ erDiagram
         text source_tweet_snapshot "ツイート本文 削除耐性"
         text image_storage_path "private path"
         text alt
+        text submitter_email "nullable 非公開"
+        timestamptz copyright_consent_at
+        text copyright_consent_version
         text status "pending approved rejected"
         timestamptz approved_at
         uuid decided_by FK "auth.users.id"
@@ -144,7 +151,7 @@ sequenceDiagram
     G->>F: フォーム入力 + Turnstile 解決
     F->>T: 自動検証
     T-->>F: トークン
-    F->>API: POST imageBase64 + meta + turnstileToken
+    F->>API: POST multipart image + meta + turnstileToken
     API->>T: トークン検証 サーバ側
     T-->>API: 結果
     API->>ST: storage.upload binary
@@ -236,7 +243,7 @@ flowchart LR
 ### ADR-003: 本めくり UI は `react-pageflip` を採用
 
 - **Context**: 3D アニメーション付き見開き UI のニーズ。自作は工数が大きい。
-- **Decision**: **PC は `react-pageflip` で見開き 2 ページ + 3D めくり、モバイルは Swiper か Embla で 1 ページ + スワイプの 2 系統切替**。
+- **Decision**: **PC は `react-pageflip` で見開き 2 ページ + 3D めくり、モバイルは既存 Swiper か CSS scroll-snap で 1 ページ + スワイプの 2 系統切替**。
 - **Reason**:
   - `react-pageflip` は React で広く使われ、3D めくりアニメーションが組み込み済み。
   - モバイルで見開き 2 ページは画面が窮屈なので分岐させる。
@@ -256,11 +263,13 @@ flowchart LR
 ### ADR-005: 公開閲覧は `"use cache"` + `cacheTag` で per-campaign キャッシュ
 
 - **Context**: `/catalog` と `/catalog/[slug]` は未ログインで頻繁にアクセスされる。
-- **Decision**: 各企画ページの entry 一覧取得を `"use cache"` でラップし、`cacheTag(`catalog-${slug}`)` を付与。承認/非承認時に `revalidateTag` で即時失効。
+- **Decision**: 各企画ページの entry メタデータ取得を cached helper function に切り出し、helper 内で `"use cache"` + `cacheTag(`catalog-${slug}`)` を付与する。承認/非承認時に `revalidateTag` で即時失効する。
 - **Reason**:
   - SSR + cache で安定した SEO スコアと配信速度。
   - 承認イベントは頻度が低いので、revalidate コストは小さい。
-- **Consequence**: 既存の Inspire パターンを踏襲できるため学習コストは低い。
+- **Consequence**:
+  - Route Handler 本体に直接 `"use cache"` は置かず、`getCachedCatalogCampaigns()` / `getCachedCatalogEntries(slug)` のような helper に分離する。
+  - private Storage の signed URL は TTL があるため、cache 対象は storage path を含むメタデータまでに限定する。署名 URL は非キャッシュ helper でリクエスト時に発行する。
 
 ### ADR-006: MVP は ja のみ、他言語ファイルにはフォールバック値を入れる
 
@@ -282,6 +291,16 @@ flowchart LR
   - サーバ側で `formData.get('image')` から File を取り、`supabase.storage.from('catalog-images').upload()` で素直に保存。
 - **Consequence**: Inspire と書き味が違うが、責務が違うので問題ない。コードは独立して読める。
 
+### ADR-008: 投稿テーブルは非公開にし、公開表示は投影 API / view に限定する
+
+- **Context**: `catalog_entries` には `submitter_email`、IP、user agent、admin note など非公開情報が混在する。`status='approved'` 行をそのまま public SELECT すると PII 漏えいの危険がある。
+- **Decision**: **`catalog_entries` 本体は anon から直接 SELECT/INSERT できない設計にする**。公開表示は PII を除いた `catalog_public_entries` view か service-role API の projection で返す。投稿は `app/api/catalog/submissions/route.ts` だけが service role で受け付ける。
+- **Reason**:
+  - Turnstile、MIME/サイズ検証、レート制限、ツイート URL 正規化を API 層で必ず通せる。
+  - 公開レスポンスからメール、IP、submitter token、user agent、admin note を構造的に除外できる。
+  - ゲスト投稿では RLS の `auth.uid()` が使えないため、本人確認 UI は submission token をクライアントに公開するのではなく、MVP では管理者審査に寄せる。
+- **Consequence**: 公開 API は service role を使うため、`status='approved'` と `campaign.status='published'` の可視性条件を repository 層で必ず再適用する。
+
 ---
 
 ## 4. 実装計画（フェーズ + TODO）
@@ -294,14 +313,20 @@ flowchart LR
 - [ ] **マイグレーション**: `supabase/migrations/{date}_add_catalog_campaigns.sql`
   - `catalog_campaigns` テーブル作成（ER 図準拠）
   - インデックス: `(status, display_order)`, `(slug)` 一意
-  - RLS: SELECT は誰でも、UPDATE/INSERT/DELETE は admin のみ（service_role 経由 or admin RPC）
+  - RLS: `status='published'` の SELECT は誰でも、INSERT/UPDATE/DELETE は admin のみ（admin route は `requireAdmin()` + service role）
 - [ ] **マイグレーション**: `supabase/migrations/{date}_add_catalog_entries.sql`
   - `catalog_entries` テーブル作成
   - インデックス: `(campaign_id, status, display_order)`, `(submitter_token, campaign_id)`, `(source_tweet_url)` 一意（partial: where status='approved'）
+  - 非公開列: `submitter_email`, `submitter_ip`, `submitter_user_agent`, `submitter_token`, `admin_note`
+  - 同意列: `copyright_consent_at`, `copyright_consent_version`
   - RLS:
-    - SELECT: `status='approved'` の行は誰でも、その他は `submitter_user_id = auth.uid()` か admin
-    - INSERT: 誰でも可能（ゲスト含む）。ただし API 経由でのみ受け付ける（直接 SQL injection を防ぐため `WITH CHECK status='pending'` 等で制限）
+    - SELECT: 会員投稿者は自分の行のみ、admin は全件。anon から本体テーブルは直接 SELECT させない
+    - INSERT: anon/authenticated から直接 INSERT させない。投稿 API が service role で挿入する
     - UPDATE/DELETE: admin のみ
+- [ ] **マイグレーション**: `supabase/migrations/{date}_add_catalog_public_views.sql`
+  - `catalog_public_entries` view を作成し、公開表示に必要な列のみ投影する
+  - 含める列: `id`, `campaign_id`, `display_name`, `x_account_url`, `source_tweet_url`, `image_storage_path`, `alt`, `display_order`, `approved_at`, `created_at`
+  - 除外する列: `submitter_email`, `submitter_token`, `submitter_ip`, `submitter_user_agent`, `admin_note`
 - [ ] **マイグレーション**: `supabase/migrations/{date}_add_catalog_audit_logs.sql`
   - 監査ログテーブル。Inspire の `style_template_audit_logs` 準拠。
 - [ ] **マイグレーション**: `supabase/migrations/{date}_add_catalog_images_storage_bucket.sql`
@@ -311,7 +336,8 @@ flowchart LR
   - 参考: `supabase/migrations/20260502124557_add_style_templates_storage_bucket.sql`
 - [ ] **マイグレーション**: `supabase/migrations/{date}_add_catalog_rpcs.sql`
   - `apply_catalog_entry_decision(entry_id uuid, action text, reason text, admin_id uuid)`: pending/approved → approved/rejected。Inspire の `apply_user_style_template_decision` パターン。
-  - `assert_catalog_submission_cap(p_token text, p_campaign_id uuid)`: トリガではなく明示 RPC として作り、API から呼ぶ（3 件まで）。
+  - `enforce_catalog_submission_cap()` trigger: `submitter_token + campaign_id` ごとに `pending+approved` 3 件まで。`pg_advisory_xact_lock` で INSERT/UPDATE と同一トランザクション内に閉じる。
+  - 24h IP 制限は `catalog_submission_rate_limits` テーブル or 監査ログ集計を使い、API 側チェックだけにしない。
 - [ ] **マイグレーション**: `supabase/migrations/{date}_extend_notifications_for_catalog.sql`
   - `notifications.type` の CHECK に `catalog_entry_approved`, `catalog_entry_rejected` を追加。
   - `entity_type` に `catalog_entry` を追加。
@@ -328,12 +354,15 @@ flowchart LR
   - `getPublishedCampaigns()`
   - `getCampaignBySlug(slug)`
   - `getApprovedEntriesByCampaign(campaignId)`
-  - `createCatalogSignedUrl(storagePath, ttl)`（一括 batch 版も）
+  - `getCachedPublishedCampaigns()` / `getCachedApprovedEntriesByCampaignSlug(slug)`（`"use cache"` はこの helper 内に置く）
+  - `createCatalogSignedUrl(storagePath, ttl)`（一括 batch 版も。TTL 切れを避けるため signed URL は cached helper の戻り値に含めない）
   - 参考: `features/inspire/lib/repository.ts`
 - [ ] **`app/api/catalog/campaigns/route.ts`**: GET 公開企画一覧。
-  - `"use cache"` + `cacheLife("hours")` + `cacheTag("catalog-campaigns")`
+  - Route Handler 本体では cached helper を呼ぶだけにし、`request.headers` や `request.url` を cached helper 内で参照しない
+  - `cacheLife("hours")` + `cacheTag("catalog-campaigns")`
 - [ ] **`app/api/catalog/campaigns/[slug]/route.ts`**: GET 個別企画 + エントリー一覧。
-  - `"use cache"` + `cacheTag(\`catalog-campaign-\${slug}\`)`
+  - `cacheTag(\`catalog-campaign-\${slug}\`)`
+  - レスポンス生成直前に signed URL を発行し、キャッシュ済みメタデータとは分離する
 - [ ] **`app/api/catalog/entries/[id]/route.ts`**: GET 個別エントリー（共有 URL 用）。
 - [ ] **`features/catalog/lib/route-copy.ts`**: API エラーメッセージの locale 解決。
 
@@ -368,6 +397,8 @@ flowchart LR
 
 - [ ] **`app/(app)/catalog/page.tsx`**: 企画一覧（カバー画像のグリッド）。
 - [ ] **`app/(app)/catalog/[slug]/page.tsx`**: 個別企画ページ（最初はシンプルなグリッド表示）。
+- [ ] **`app/[locale]/catalog/page.tsx`**, **`app/[locale]/catalog/[slug]/page.tsx`**: 既存 public route と同じ再 export で locale prefix に対応。
+- [ ] **`i18n/config.ts`**: `PUBLIC_PATH_PATTERNS` に `/catalog`, `/catalog/[slug]`, `/catalog/[slug]/p/[entryId]`, `/catalog/submit`, `/catalog/submit/thanks` を追加。
 - [ ] **`features/catalog/components/CampaignCard.tsx`**, **`CatalogEntryCard.tsx`**: 表示用コンポーネント。
 - [ ] **`messages/ja.ts`** + 他 15 言語: `catalogPage`, `catalogSubmission` 等のキー追加（他言語は ADR-006 に従い ja 値をコピー）。
 
@@ -376,14 +407,16 @@ flowchart LR
 **目的**: 3D アニメーション付き本めくり UI で個別企画を閲覧できるようにする。
 **ビルド確認**: PC・モバイル両方で本めくりが動作。
 
-- [ ] **依存追加**: `npm install react-pageflip` （+ 必要なら `react-swipeable` などの併用ライブラリ）。
+- [ ] **依存検証**: `react-pageflip` を React 19 / Next.js 16 でスパイク検証し、build とブラウザ操作が問題ない場合のみ導入する。
+- [ ] **依存追加**: `npm install react-pageflip`（PC 用）。モバイルは既存 `swiper` を第一候補にする。
 - [ ] **`features/catalog/components/CatalogBookView.tsx`**:
   - PC: `react-pageflip` で見開き 2 ページ + 3D めくり。
-  - モバイル: 1 ページずつのスワイプ表示（CSS scroll-snap or Embla）。
+  - モバイル: 1 ページずつのスワイプ表示（既存 Swiper or CSS scroll-snap）。
   - `useMediaQuery` で切替（lg 以上で PC モード）。
 - [ ] **`features/catalog/components/CatalogPage.tsx`**: 1 ページ分のコンテンツ（画像 + 表示名 + X リンク）。
 - [ ] **`app/(app)/catalog/[slug]/page.tsx`** を更新し、`CatalogBookView` を採用。
 - [ ] **`app/(app)/catalog/[slug]/p/[entryId]/page.tsx`**: 直リンクで本を該当ページから開く。
+- [ ] **`app/[locale]/catalog/[slug]/p/[entryId]/page.tsx`**: 直リンクの locale prefix 用再 export。
 - [ ] **画像プリロード**: 30 枚程度なら全件、それ以上は前後 N 枚を先読みする戦略。
 
 ### Phase 6: 投稿フォーム（ゲスト対応 + Turnstile）
@@ -403,12 +436,13 @@ flowchart LR
   - 3. レート制限チェック（同 IP/同トークン 24h 5 件まで、同 token+campaign の `pending+approved` 3 件まで）
   - 4. ツイート URL 正規化 + 重複検査
   - 5. service-role で `catalog-images` バケットに upload
-  - 6. `catalog_entries` に INSERT `status='pending'`
+  - 6. `catalog_entries` に INSERT `status='pending'`（cap trigger と一意制約で DB 側でも拒否）
   - 7. 完了レスポンス
 - [ ] **`app/(app)/catalog/submit/page.tsx`**: 申請ページ。
 - [ ] **`app/(app)/catalog/submit/thanks/page.tsx`**: 申請完了画面（任意メール入力時は「結果は連絡します」）。
+- [ ] **`app/[locale]/catalog/submit/page.tsx`**, **`app/[locale]/catalog/submit/thanks/page.tsx`**: 申請フローの locale prefix 用再 export。
 - [ ] **メール通知（Resend）**: 承認/差戻し時に `submitter_email` 宛に Resend で通知する Server Action / Edge Function（Phase 3 の `decide_entry` API から呼び出し）。
-- [ ] **submitter_token 発行**: 訪問時にクッキー（HttpOnly でなく JS 読取可、 SameSite=Lax）で UUID を発行。
+- [ ] **submitter_token 発行**: 投稿 API で HttpOnly / SameSite=Lax / Secure のクッキーを発行・更新する。クライアント JS から読ませない。
 
 ### Phase 7: SEO + OG 画像 + サイトマップ
 
@@ -419,7 +453,7 @@ flowchart LR
 - [ ] **`app/(app)/catalog/[slug]/page.tsx`** に `generateMetadata`（企画タイトル + カバー画像）。
 - [ ] **`app/(app)/catalog/[slug]/p/[entryId]/page.tsx`** に `generateMetadata`（entry の画像 + 表示名）。
 - [ ] **OG 画像動的生成**: `next/og` で `app/catalog/og/[slug]/route.tsx` 等を作成（必要なら）。または事前に画像を Storage にコピーして使う簡易版でも可。
-- [ ] **`app/sitemap.xml/route.ts`** に catalog の URL を追加。
+- [ ] **`app/sitemap.ts`** に catalog の URL を追加（既存 metadata route を更新し、`app/sitemap.xml/route.ts` は新設しない）。
 
 ### Phase 8: 仕上げ・テスト・実機確認
 
@@ -442,6 +476,7 @@ flowchart LR
 |---|---|---|
 | `supabase/migrations/{date}_add_catalog_campaigns.sql` | 新規 | 企画テーブル |
 | `supabase/migrations/{date}_add_catalog_entries.sql` | 新規 | 投稿エントリーテーブル |
+| `supabase/migrations/{date}_add_catalog_public_views.sql` | 新規 | PII を除外した公開表示用 view |
 | `supabase/migrations/{date}_add_catalog_audit_logs.sql` | 新規 | 監査ログ |
 | `supabase/migrations/{date}_add_catalog_images_storage_bucket.sql` | 新規 | Storage バケット |
 | `supabase/migrations/{date}_add_catalog_rpcs.sql` | 新規 | 状態遷移 RPC |
@@ -471,15 +506,22 @@ flowchart LR
 | `app/(app)/catalog/[slug]/p/[entryId]/page.tsx` | 新規 | 個別エントリー直リンク |
 | `app/(app)/catalog/submit/page.tsx` | 新規 | 申請フォームページ |
 | `app/(app)/catalog/submit/thanks/page.tsx` | 新規 | 申請完了 |
+| `app/[locale]/catalog/page.tsx` | 新規 | locale prefix 用再 export |
+| `app/[locale]/catalog/[slug]/page.tsx` | 新規 | locale prefix 用再 export |
+| `app/[locale]/catalog/[slug]/p/[entryId]/page.tsx` | 新規 | locale prefix 用再 export |
+| `app/[locale]/catalog/submit/page.tsx` | 新規 | locale prefix 用再 export |
+| `app/[locale]/catalog/submit/thanks/page.tsx` | 新規 | locale prefix 用再 export |
 | `app/(app)/admin/catalog/campaigns/page.tsx` | 新規 | 管理 - 企画 |
 | `app/(app)/admin/catalog/entries/page.tsx` | 新規 | 管理 - 審査 |
 | `app/(app)/admin/admin-nav-items.ts` | 修正 | カタログ管理メニュー追加 |
+| `i18n/config.ts` | 修正 | Catalog public path の locale 対応 |
 | `messages/ja.ts` | 修正 | catalog* キー追加 |
 | `messages/en.ts`〜`messages/ar.ts` | 修正 | ja 値をフォールバック追加（15 ファイル） |
-| `app/sitemap.xml/route.ts` | 修正 | catalog URL 追加 |
+| `app/sitemap.ts` | 修正 | catalog URL 追加 |
+| `lib/env.ts` | 修正 | `NEXT_PUBLIC_CATALOG_ENABLED` と Turnstile env |
 | `.env.local.example` | 修正 | Turnstile キー |
 | `.cursor/rules/database-design.mdc` | 修正 | 新規テーブル定義追記 |
-| `package.json` | 修正 | `react-pageflip`, `@marsidev/react-turnstile` 追加 |
+| `package.json` | 修正 | `react-pageflip`, `@marsidev/react-turnstile` 追加（Swiper は既存依存を利用） |
 
 ---
 
@@ -490,10 +532,11 @@ flowchart LR
 - [ ] **権限制御**: 公開 API は誰でも、管理 API は admin のみ、申請 API はゲスト OK だが Turnstile 必須。
 - [ ] **データ整合性**: `source_tweet_url` 一意制約、`(submitter_token, campaign_id)` ペアの 3 件制限。
 - [ ] **セキュリティ**:
-  - RLS 適用（特に `catalog_entries.submitter_email` などの PII を未認証 SELECT から守る）
-  - 投稿 API は service_role でのみ書き込み（直接 INSERT を RLS で禁止）
+  - RLS 適用（`catalog_entries` 本体は anon から直接 SELECT/INSERT させず、公開 view/API で PII を除外）
+  - 投稿 API は service_role でのみ書き込み（cap trigger と DB 制約で API 側チェック漏れも防ぐ）
   - 入力サニタイズ（特に `display_name`, `alt`, `admin_note` の XSS）
   - X URL のドメイン制限（`x.com`, `twitter.com`, `mobile.twitter.com` のみ許可）
+  - private Storage の signed URL TTL と cache TTL が競合しないこと
 - [ ] **パフォーマンス**: 本めくり UI で 30 枚以上のエントリーを扱う際の画像プリロード戦略。
 - [ ] **i18n**: MVP は ja のみ実値、他言語はフォールバック。型エラーが出ないこと。
 
@@ -507,6 +550,8 @@ flowchart LR
 | 異常系（レート） | 24h 5 件超 / 3 件 cap で 429 |
 | 異常系（重複） | 同じツイート URL で 409 |
 | 権限テスト | 公開 API が未ログインで成功、管理 API が未認証で 401 / 一般ユーザーで 403 |
+| RLS テスト | anon で `catalog_entries` 本体を SELECT/INSERT できず、公開 API/view では PII が返らない |
+| キャッシュ | 承認/差戻し後に cacheTag が失効し、signed URL が TTL 切れでキャッシュされない |
 | アクセシビリティ | 本めくり UI のキーボード操作、alt テキスト |
 | 実機確認 | iOS Safari / Android Chrome / PC Chrome での本めくり、レスポンシブ表示 |
 
