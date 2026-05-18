@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
+import { Resend } from "resend";
+import { env } from "@/lib/env";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
@@ -119,7 +121,35 @@ export async function POST(
     metadata: { reason: reason ?? null, campaign_id: entry.campaign_id },
   });
 
-  // 会員投稿者にはサイト内通知。ゲスト投稿者は submitter_email 経由のメール (Phase 6)。
+  // メール通知 (任意フィールド)
+  if (entry.submitter_email && env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
+    const subjectMap = {
+      approve: "【Persta.AI】絵師カタログへの掲載が承認されました",
+      reject: "【Persta.AI】絵師カタログへの申請について",
+      unpublish: "【Persta.AI】掲載中のカタログページについて",
+    } as const;
+    const bodyMap = {
+      approve:
+        "ご申請いただいた作品が承認され、絵師カタログに掲載されました。Pelsta のカタログページからご確認いただけます。\n\nありがとうございました！",
+      reject:
+        `ご申請いただいた作品の審査結果は「差戻し」となりました。${reason ? `\n\n理由: ${reason}` : ""}\n\n他の作品でぜひ再申請ください。`,
+      unpublish:
+        `掲載中だった作品について非公開化の措置を行いました。${reason ? `\n\n理由: ${reason}` : ""}\n\nご不明点があれば運営までお問い合わせください。`,
+    } as const;
+    try {
+      const resend = new Resend(env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: env.RESEND_FROM_EMAIL,
+        to: entry.submitter_email,
+        subject: subjectMap[action],
+        text: bodyMap[action],
+      });
+    } catch (err) {
+      console.warn("[admin catalog decision] resend send failed", err);
+    }
+  }
+
+  // 会員投稿者にはサイト内通知。
   if (entry.submitter_user_id != null) {
     const notificationType = ACTION_TO_NOTIFICATION_TYPE[action];
     const titleMap = {
