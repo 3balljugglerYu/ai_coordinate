@@ -113,6 +113,9 @@ export default async function CatalogCampaignPage({ params }: PageProps) {
           </p>
         ) : (
           <CatalogBookView
+            campaignTitle={campaign.title}
+            campaignHashtag={campaign.theme_hashtag}
+            campaignDescription={campaign.description}
             pages={entries.map((entry) => ({
               id: entry.id,
               imageUrl: pathToUrl.get(entry.image_storage_path) ?? null,

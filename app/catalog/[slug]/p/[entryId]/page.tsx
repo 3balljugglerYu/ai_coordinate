@@ -96,6 +96,9 @@ export default async function CatalogEntryDirectLinkPage({ params }: PageProps) 
           </h1>
         </header>
         <CatalogBookView
+          campaignTitle={campaign.title}
+          campaignHashtag={campaign.theme_hashtag}
+          campaignDescription={campaign.description}
           pages={entries.map((e) => ({
             id: e.id,
             imageUrl: pathToUrl.get(e.image_storage_path) ?? null,
