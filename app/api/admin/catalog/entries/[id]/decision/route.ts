@@ -76,7 +76,9 @@ export async function POST(
     );
   }
 
-  const { action, reason } = parsed.data;
+  const { action } = parsed.data;
+  const reason =
+    action === "approve" ? null : parsed.data.reason?.trim() || null;
   const adminClient = createAdminClient();
 
   // 通知用に entry と campaign 情報を取得
