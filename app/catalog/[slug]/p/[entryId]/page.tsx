@@ -12,7 +12,7 @@ import {
   createCatalogSignedUrl,
   createCatalogSignedUrls,
 } from "@/features/catalog/lib/repository";
-import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
+import { CatalogReaderLauncher } from "@/features/catalog/components/CatalogReaderLauncher";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
@@ -55,6 +55,13 @@ export async function generateMetadata({
   };
 }
 
+/**
+ * 個別ページの直リンク。X 共有 URL の着地点。
+ *
+ * ランディング (/catalog/[slug]) と同じ構成だが、CatalogReaderLauncher を
+ * initialOpen=true + 指定 entryId で起動し、開いた状態でリーダーが立ち上がる。
+ * 閉じるボタンで /catalog/[slug] に遷移する。
+ */
 export default async function CatalogEntryDirectLinkPage({ params }: PageProps) {
   await connection();
   const { slug, entryId } = await params;
@@ -69,7 +76,6 @@ export default async function CatalogEntryDirectLinkPage({ params }: PageProps) 
     notFound();
   }
 
-  // 同企画の全エントリーを取得 (本めくり UI で前後にめくれるように)
   const entries = await getCachedPublicEntriesByCampaign(campaign.id, slug);
 
   const adminClient = createAdminClient();
@@ -82,33 +88,49 @@ export default async function CatalogEntryDirectLinkPage({ params }: PageProps) 
   const pathToUrl = new Map<string, string | null>();
   paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
 
+  const pages = entries.map((e) => ({
+    id: e.id,
+    imageUrl: pathToUrl.get(e.image_storage_path) ?? null,
+    alt: e.alt,
+    displayName: e.display_name,
+    xAccountUrl: e.x_account_url,
+    sourceTweetUrl: e.source_tweet_url,
+  }));
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-10 sm:pt-16">
-        <nav className="mb-4 text-sm text-slate-500">
-          <Link href={`/catalog/${campaign.slug}`} className="hover:underline">
-            ← {campaign.title} に戻る
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-2xl px-4 pb-16 pt-8 sm:pt-12">
+        <nav className="mb-8 text-sm text-slate-500">
+          <Link href="/catalog" className="hover:underline">
+            ← カタログ一覧へ戻る
           </Link>
         </nav>
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            {entry.display_name} - {campaign.title}
-          </h1>
-        </header>
-        <CatalogBookView
+
+        <h1 className="sr-only">
+          {entry.display_name} - {campaign.title}
+        </h1>
+
+        <CatalogReaderLauncher
+          campaignSlug={campaign.slug}
           campaignTitle={campaign.title}
           campaignHashtag={campaign.theme_hashtag}
           campaignDescription={campaign.description}
-          pages={entries.map((e) => ({
-            id: e.id,
-            imageUrl: pathToUrl.get(e.image_storage_path) ?? null,
-            alt: e.alt,
-            displayName: e.display_name,
-            xAccountUrl: e.x_account_url,
-            sourceTweetUrl: e.source_tweet_url,
-          }))}
+          pages={pages}
+          initialOpen
           initialEntryId={entry.id}
         />
+
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href={`/catalog/submit?campaign=${campaign.slug}`}
+            className="inline-flex items-center rounded-md bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+          >
+            この企画に作品を申請する
+          </Link>
+          <span className="text-xs text-slate-400">
+            ※ 未ログインでも申請できます
+          </span>
+        </div>
       </div>
     </div>
   );

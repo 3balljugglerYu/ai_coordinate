@@ -1,13 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import type { Swiper as SwiperInstance } from "swiper/types";
-import { Pagination, Keyboard, A11y } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/pagination";
 import { CatalogPage, type CatalogPageData } from "./CatalogPage";
 import { BookCover } from "./BookCover";
 
@@ -18,7 +12,7 @@ const HTMLFlipBook = dynamic(() => import("react-pageflip"), {
   ssr: false,
   loading: () => (
     <div
-      className="flex h-[640px] w-full items-center justify-center text-stone-300"
+      className="flex h-[640px] w-full items-center justify-center text-stone-500"
       style={{ fontFamily: "var(--font-cormorant), serif" }}
     >
       Preparing the book…
@@ -38,14 +32,18 @@ interface CatalogBookViewProps {
   campaignDescription?: string | null;
 }
 
-const PC_BREAKPOINT = "(min-width: 1024px)";
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-const PC_PAGE_WIDTH = 440;
-const PC_PAGE_HEIGHT = 600;
-const NEXT_FLIP_DURATION_DEFAULT = 900;
+// 1 ページの寸法 (見開きの片側)。size="stretch" + min/max でレスポンシブにスケール。
+// 全画面リーダー前提のため、max は viewport 全体を埋めても余裕がある値にする。
+const PAGE_WIDTH = 440;
+const PAGE_HEIGHT = 600;
+const PAGE_MIN_WIDTH = 280;
+const PAGE_MAX_WIDTH = 760;
+const PAGE_MIN_HEIGHT = 380;
+const PAGE_MAX_HEIGHT = 1040;
+const FLIP_DURATION_DEFAULT = 900;
 
-// react-pageflip の型定義が古く `Ref<unknown>` 経由で flip メソッドを叩く必要があるため
-// 必要な API のみ最小限の interface として宣言する。
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
 interface FlipBookApi {
   flipPrev(corner?: "top" | "bottom"): void;
   flipNext(corner?: "top" | "bottom"): void;
@@ -55,16 +53,33 @@ interface FlipBookApi {
 }
 type FlipBookHandle = { pageFlip(): FlipBookApi } | null;
 
+type BookPageCommon = { density?: "hard"; "data-density"?: "hard" };
+
+const FlipBookPageWrapper = forwardRef<
+  HTMLDivElement,
+  React.PropsWithChildren<BookPageCommon & { className?: string }>
+>(function FlipBookPageWrapper(props, ref) {
+  const { children, className, density } = props;
+  return (
+    <div
+      ref={ref}
+      className={`relative h-full w-full overflow-hidden ${className ?? ""}`}
+      data-density={density}
+    >
+      {children}
+    </div>
+  );
+});
+
 /**
- * 絵師カタログの本めくり UI。
+ * 絵師カタログの本めくり UI (PC / モバイル 共通)。
  *
- * 見た目: 革の表紙 + ベージュの紙 + 中央の折り目 + 金箔風の枠。
- * PC は react-pageflip で 3D の見開きめくり、モバイルは Swiper で 1 ページずつ。
+ * react-pageflip 単体で:
+ * - PC: 見開き 2 ページの 3D めくり
+ * - モバイル: portrait モードに自動切替、1 ページずつめくる
  *
- * 構成 (PC):
- *   [Front Cover] [Page 1 | Page 2] [Page 3 | Page 4] ... [Back Cover]
- * 構成 (Mobile):
- *   [Cover] [Page 1] [Page 2] ... [Back Cover]
+ * UI は本のみ。装飾的なナビ / ページ番号 / 操作説明文は無し。
+ * 操作はページ角ドラッグ / スワイプ / キーボード ← → のみ。
  */
 export function CatalogBookView({
   pages,
@@ -73,29 +88,22 @@ export function CatalogBookView({
   campaignHashtag,
   campaignDescription,
 }: CatalogBookViewProps) {
-  const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [orientation, setOrientation] = useState<"landscape" | "portrait">(
+    "landscape",
+  );
   const flipBookRef = useRef<FlipBookHandle>(null);
-  const swiperRef = useRef<SwiperInstance | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setMounted(true);
     if (typeof window === "undefined" || !window.matchMedia) return;
-    const mql = window.matchMedia(PC_BREAKPOINT);
     const motion = window.matchMedia(REDUCED_MOTION_QUERY);
-    const update = () => setIsDesktop(mql.matches);
     const updateMotion = () => setReducedMotion(motion.matches);
-    update();
     updateMotion();
-    mql.addEventListener("change", update);
     motion.addEventListener("change", updateMotion);
-    return () => {
-      mql.removeEventListener("change", update);
-      motion.removeEventListener("change", updateMotion);
-    };
+    return () => motion.removeEventListener("change", updateMotion);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -106,288 +114,108 @@ export function CatalogBookView({
         pages.findIndex((p) => p.id === initialEntryId),
       )
     : 0;
-  // PC: 全体は [front cover, ...pages, back cover]。front cover は index 0
-  const initialFlipBookIndex = pages.length === 0 ? 0 : 1 + initialContentIndex;
-  // モバイル Swiper: 同様に [cover, ...pages, back cover]
-  const initialSwiperIndex = pages.length === 0 ? 0 : 1 + initialContentIndex;
-
-  const flipPrev = useCallback(() => {
-    flipBookRef.current?.pageFlip().flipPrev();
-  }, []);
-  const flipNext = useCallback(() => {
-    flipBookRef.current?.pageFlip().flipNext();
-  }, []);
+  const initialFlipIndex = pages.length === 0 ? 0 : 1 + initialContentIndex;
 
   // キーボード ← → でめくる
   useEffect(() => {
-    if (!isDesktop) return;
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") flipPrev();
-      else if (event.key === "ArrowRight") flipNext();
+      if (event.key === "ArrowLeft") flipBookRef.current?.pageFlip().flipPrev();
+      else if (event.key === "ArrowRight")
+        flipBookRef.current?.pageFlip().flipNext();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isDesktop, flipNext, flipPrev]);
+  }, []);
 
   if (pages.length === 0) {
     return (
       <div
-        className="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-6 py-16 text-center text-sm text-stone-500"
-        style={{ fontFamily: "var(--font-libre), serif" }}
+        className="rounded-md border border-stone-300 bg-[#f4ead4] px-6 py-16 text-center text-sm text-stone-700"
+        style={{ fontFamily: "var(--font-cormorant), serif" }}
       >
         まだページがありません。
       </div>
     );
   }
 
-  // ===== Mobile / SSR fallback =====
-  if (!mounted || !isDesktop) {
-    return (
-      <BookEnvironment>
-        <div className="mx-auto w-full max-w-sm">
-          <Swiper
-            modules={[Pagination, Keyboard, A11y]}
-            pagination={{ clickable: true, dynamicBullets: true }}
-            keyboard={{ enabled: true }}
-            a11y={{ enabled: true }}
-            initialSlide={initialSwiperIndex}
-            spaceBetween={16}
-            onSwiper={(s) => {
-              swiperRef.current = s;
-              setCurrentIndex(s.activeIndex);
-            }}
-            onSlideChange={(s) => setCurrentIndex(s.activeIndex)}
-            className="catalog-book-mobile"
-          >
-            <SwiperSlide>
-              <div
-                className="aspect-[3/4] w-full overflow-hidden rounded-md shadow-2xl"
-                style={{
-                  boxShadow:
-                    "0 25px 50px -12px rgba(20,10,5,0.5), 0 0 0 1px rgba(0,0,0,0.4)",
-                }}
-              >
-                <BookCover
-                  title={campaignTitle}
-                  hashtag={campaignHashtag}
-                  description={campaignDescription}
-                  variant="front"
-                />
-              </div>
-            </SwiperSlide>
-            {pages.map((page, i) => (
-              <SwiperSlide key={page.id}>
-                <div
-                  className="aspect-[3/4] w-full overflow-hidden rounded-sm bg-[#f4ead4] shadow-2xl"
-                  style={{
-                    boxShadow:
-                      "0 20px 40px -10px rgba(20,10,5,0.4), 0 0 0 1px rgba(110,80,40,0.2)",
-                  }}
-                >
-                  <CatalogPage
-                    page={page}
-                    pageNumber={i + 1}
-                    side="single"
-                  />
-                </div>
-              </SwiperSlide>
-            ))}
-            <SwiperSlide>
-              <div
-                className="aspect-[3/4] w-full overflow-hidden rounded-md shadow-2xl"
-                style={{
-                  boxShadow:
-                    "0 25px 50px -12px rgba(20,10,5,0.5), 0 0 0 1px rgba(0,0,0,0.4)",
-                }}
-              >
-                <BookCover
-                  title={campaignTitle}
-                  hashtag={campaignHashtag}
-                  variant="back"
-                />
-              </div>
-            </SwiperSlide>
-          </Swiper>
-
-          {/* モバイル用のナビ + ページ番号 */}
-          <div className="mt-6 flex items-center justify-between px-2">
-            <button
-              type="button"
-              onClick={() => swiperRef.current?.slidePrev()}
-              disabled={currentIndex === 0}
-              aria-label="前のページ"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-900/80 text-stone-100 shadow-md transition-opacity hover:bg-stone-900 disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <span
-              className="text-xs uppercase tracking-[0.3em] text-stone-500"
-              style={{ fontFamily: "var(--font-libre), serif" }}
-            >
-              {Math.max(0, currentIndex)} / {pages.length + 1}
-            </span>
-            <button
-              type="button"
-              onClick={() => swiperRef.current?.slideNext()}
-              disabled={currentIndex >= pages.length + 1}
-              aria-label="次のページ"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-900/80 text-stone-100 shadow-md transition-opacity hover:bg-stone-900 disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-
-          <p
-            className="mt-5 text-center text-xs italic text-stone-500"
-            style={{ fontFamily: "var(--font-cormorant), serif" }}
-          >
-            スワイプ、または下のボタンでページをめくれます。
-          </p>
-        </div>
-      </BookEnvironment>
-    );
-  }
-
-  // ===== PC =====
-  const totalPagesIncludingCovers = pages.length + 2;
-  const isAtFront = currentIndex === 0;
-  const isAtBack = currentIndex >= totalPagesIncludingCovers - 1;
-
   return (
-    <BookEnvironment>
-      <div className="relative flex flex-col items-center">
-        {/* 本の左右の navigation ボタン */}
-        <button
-          type="button"
-          onClick={flipPrev}
-          disabled={isAtFront}
-          aria-label="前のページへ"
-          className="group absolute left-[-72px] top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-stone-900/80 text-stone-100 shadow-lg transition-all hover:bg-stone-900 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-20 disabled:hover:scale-100"
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <button
-          type="button"
-          onClick={flipNext}
-          disabled={isAtBack}
-          aria-label="次のページへ"
-          className="group absolute right-[-72px] top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-stone-900/80 text-stone-100 shadow-lg transition-all hover:bg-stone-900 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-20 disabled:hover:scale-100"
-        >
-          <ChevronRight className="h-6 w-6" />
-        </button>
-
-        {/* 本体 (react-pageflip は client-only) */}
+    <div className="mx-auto flex w-full max-w-[1100px] justify-center">
+      {mounted ? (
         <div
-          className="relative"
+          className="relative w-full"
           style={{
-            // 本全体に深い陰影を足して、テーブルに置いた書籍のように見せる
-            filter: "drop-shadow(0 40px 35px rgba(20,10,5,0.5))",
+            filter: "drop-shadow(0 25px 25px rgba(20,10,5,0.25))",
           }}
         >
           {/* @ts-expect-error react-pageflip の型定義が古い */}
           <HTMLFlipBook
-            width={PC_PAGE_WIDTH}
-            height={PC_PAGE_HEIGHT}
-            size="fixed"
-            startPage={initialFlipBookIndex}
+            width={PAGE_WIDTH}
+            height={PAGE_HEIGHT}
+            size="stretch"
+            minWidth={PAGE_MIN_WIDTH}
+            maxWidth={PAGE_MAX_WIDTH}
+            minHeight={PAGE_MIN_HEIGHT}
+            maxHeight={PAGE_MAX_HEIGHT}
+            startPage={initialFlipIndex}
             drawShadow
             maxShadowOpacity={0.5}
-            flippingTime={reducedMotion ? 200 : NEXT_FLIP_DURATION_DEFAULT}
+            flippingTime={reducedMotion ? 200 : FLIP_DURATION_DEFAULT}
             showCover
-            usePortrait={false}
-            mobileScrollSupport={false}
+            mobileScrollSupport
+            swipeDistance={30}
+            clickEventForward
+            useMouseEvents
             ref={flipBookRef}
-            onFlip={(e: { data: number }) => setCurrentIndex(e.data)}
-            className="catalog-book-desktop"
+            onChangeOrientation={(e: { data: "landscape" | "portrait" }) =>
+              setOrientation(e.data)
+            }
+            onInit={(e: { data: { mode: "landscape" | "portrait" } }) =>
+              setOrientation(e.data.mode)
+            }
+            className="catalog-book"
+            style={{ margin: "0 auto" }}
           >
             {/* Front cover (hard cover) */}
-            <div
-              data-density="hard"
-              style={{ width: PC_PAGE_WIDTH, height: PC_PAGE_HEIGHT }}
-              className="overflow-hidden"
-            >
+            <FlipBookPageWrapper density="hard">
               <BookCover
                 title={campaignTitle}
                 hashtag={campaignHashtag}
                 description={campaignDescription}
                 variant="front"
               />
-            </div>
+            </FlipBookPageWrapper>
 
             {/* Content pages */}
             {pages.map((page, i) => (
-              <div
-                key={page.id}
-                style={{ width: PC_PAGE_WIDTH, height: PC_PAGE_HEIGHT }}
-                className="overflow-hidden"
-              >
+              <FlipBookPageWrapper key={page.id}>
                 <CatalogPage
                   page={page}
                   pageNumber={i + 1}
-                  side={i % 2 === 0 ? "right" : "left"}
+                  side={
+                    orientation === "portrait"
+                      ? "single"
+                      : i % 2 === 0
+                        ? "right"
+                        : "left"
+                  }
                 />
-              </div>
+              </FlipBookPageWrapper>
             ))}
 
             {/* Back cover (hard cover) */}
-            <div
-              data-density="hard"
-              style={{ width: PC_PAGE_WIDTH, height: PC_PAGE_HEIGHT }}
-              className="overflow-hidden"
-            >
+            <FlipBookPageWrapper density="hard">
               <BookCover title={campaignTitle} variant="back" />
-            </div>
+            </FlipBookPageWrapper>
           </HTMLFlipBook>
         </div>
-
-        {/* ページインジケータ */}
-        <div className="mt-8 flex items-center gap-3">
-          <span
-            className="text-xs uppercase tracking-[0.4em] text-stone-300"
-            style={{ fontFamily: "var(--font-libre), serif" }}
-          >
-            {isAtFront
-              ? "Cover"
-              : isAtBack
-                ? "Back"
-                : `${currentIndex} / ${pages.length}`}
-          </span>
-        </div>
-
-        <p
-          className="mt-3 text-center text-sm italic text-stone-400"
+      ) : (
+        <div
+          className="flex aspect-[3/4] w-full max-w-md items-center justify-center text-stone-500"
           style={{ fontFamily: "var(--font-cormorant), serif" }}
         >
-          Drag the page corner — or press ← / → — to turn the page.
-        </p>
-      </div>
-    </BookEnvironment>
-  );
-}
-
-/**
- * 本の周囲の「書斎」のような陰影バックグラウンド。
- * 中央に柔らかい光を集め、書籍の存在感を際立たせる。
- */
-function BookEnvironment({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="relative w-full overflow-hidden rounded-2xl px-4 py-10 sm:px-8 sm:py-14"
-      style={{
-        background:
-          "radial-gradient(ellipse at center top, #3a2a20 0%, #1f1410 60%, #120906 100%)",
-      }}
-    >
-      {/* ビネット (うすい四隅の暗さ) */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-2xl"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%)",
-        }}
-      />
-      <div className="relative">{children}</div>
+          Preparing the book…
+        </div>
+      )}
     </div>
   );
 }

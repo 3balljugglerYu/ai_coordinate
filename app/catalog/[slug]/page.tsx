@@ -11,7 +11,7 @@ import {
   createCatalogSignedUrl,
   createCatalogSignedUrls,
 } from "@/features/catalog/lib/repository";
-import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
+import { CatalogReaderLauncher } from "@/features/catalog/components/CatalogReaderLauncher";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
@@ -53,6 +53,11 @@ export async function generateMetadata({
   };
 }
 
+/**
+ * カタログのランディングページ。
+ * 表紙プレビューをタップすると、全画面 Dialog でリーダーが開く (CatalogReaderLauncher 内部で制御)。
+ * X 共有された /catalog/[slug]/p/[entryId] からも、同じ仕組みで Dialog が自動で開く。
+ */
 export default async function CatalogCampaignPage({ params }: PageProps) {
   await connection();
   const { slug } = await params;
@@ -64,6 +69,7 @@ export default async function CatalogCampaignPage({ params }: PageProps) {
 
   const entries = await getCachedPublicEntriesByCampaign(campaign.id, slug);
 
+  // 画像 signed URL を発行 (リーダーで表示するため)
   const adminClient = createAdminClient();
   const paths = entries.map((e) => e.image_storage_path);
   const { urls } = await createCatalogSignedUrls(
@@ -74,58 +80,63 @@ export default async function CatalogCampaignPage({ params }: PageProps) {
   const pathToUrl = new Map<string, string | null>();
   paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
 
+  const pages = entries.map((entry) => ({
+    id: entry.id,
+    imageUrl: pathToUrl.get(entry.image_storage_path) ?? null,
+    alt: entry.alt,
+    displayName: entry.display_name,
+    xAccountUrl: entry.x_account_url,
+    sourceTweetUrl: entry.source_tweet_url,
+  }));
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-10 sm:pt-16">
-        <nav className="mb-4 text-sm text-slate-500">
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-2xl px-4 pb-16 pt-8 sm:pt-12">
+        <nav className="mb-8 text-sm text-slate-500">
           <Link href="/catalog" className="hover:underline">
             ← カタログ一覧へ戻る
           </Link>
         </nav>
-        <header className="mb-8 space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            {campaign.title}
-          </h1>
-          {campaign.theme_hashtag ? (
-            <p className="text-sm text-blue-600">
-              X ハッシュタグ: #{campaign.theme_hashtag}
-            </p>
-          ) : null}
-          {campaign.description ? (
-            <p className="text-slate-600">{campaign.description}</p>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2 pt-2">
-            <Link
-              href={`/catalog/submit?campaign=${campaign.slug}`}
-              className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
-            >
-              この企画に作品を申請する
-            </Link>
-            <span className="text-xs text-slate-400">
-              ※ 未ログインでも申請できます
-            </span>
-          </div>
-        </header>
 
-        {entries.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center text-sm text-slate-500">
-            まだ公開された投稿はありません。一番乗りで申請してみませんか?
+        <h1 className="sr-only">{campaign.title}</h1>
+
+        <CatalogReaderLauncher
+          campaignSlug={campaign.slug}
+          campaignTitle={campaign.title}
+          campaignHashtag={campaign.theme_hashtag}
+          campaignDescription={campaign.description}
+          pages={pages}
+        />
+
+        {pages.length > 0 ? (
+          <p
+            className="mt-6 text-center text-sm italic text-stone-600"
+            style={{ fontFamily: "var(--font-cormorant), serif" }}
+          >
+            タップして本を開く →
           </p>
         ) : (
-          <CatalogBookView
-            campaignTitle={campaign.title}
-            campaignHashtag={campaign.theme_hashtag}
-            campaignDescription={campaign.description}
-            pages={entries.map((entry) => ({
-              id: entry.id,
-              imageUrl: pathToUrl.get(entry.image_storage_path) ?? null,
-              alt: entry.alt,
-              displayName: entry.display_name,
-              xAccountUrl: entry.x_account_url,
-              sourceTweetUrl: entry.source_tweet_url,
-            }))}
-          />
+          <p
+            className="mt-6 text-center text-sm text-stone-600"
+            style={{ fontFamily: "var(--font-libre), serif" }}
+          >
+            まだ公開された投稿はありません。
+            <br />
+            一番乗りで申請してみませんか?
+          </p>
         )}
+
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href={`/catalog/submit?campaign=${campaign.slug}`}
+            className="inline-flex items-center rounded-md bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+          >
+            この企画に作品を申請する
+          </Link>
+          <span className="text-xs text-slate-400">
+            ※ 未ログインでも申請できます
+          </span>
+        </div>
       </div>
     </div>
   );
