@@ -20,6 +20,10 @@ interface Props {
 
 type TabKey = "pending" | "approved" | "rejected";
 
+function formatUtcMinute(value: string): string {
+  return `${value.slice(0, 10)} ${value.slice(11, 16)} UTC`;
+}
+
 export function AdminCatalogEntriesClient({
   initialPending,
   initialApproved,
@@ -76,7 +80,7 @@ export function AdminCatalogEntriesClient({
       action: "approve" | "reject" | "unpublish",
     ) => {
       const reason =
-        action === "approve" ? null : rejectionReasons[entry.id]?.trim() ?? null;
+        action === "approve" ? null : rejectionReasons[entry.id]?.trim() || null;
 
       if (action !== "approve" && (!reason || reason.length === 0)) {
         toast({
@@ -235,7 +239,7 @@ export function AdminCatalogEntriesClient({
                       </div>
                     ) : null}
                     <div className="text-xs text-slate-400">
-                      申請日時: {new Date(entry.created_at).toLocaleString()}
+                      申請日時: {formatUtcMinute(entry.created_at)}
                     </div>
 
                     {activeTab !== "approved" && (
@@ -269,6 +273,7 @@ export function AdminCatalogEntriesClient({
                       {activeTab === "pending" && (
                         <>
                           <Button
+                            type="button"
                             size="sm"
                             onClick={() => handleDecision(entry, "approve")}
                             disabled={isProcessing}
@@ -276,6 +281,7 @@ export function AdminCatalogEntriesClient({
                             承認
                           </Button>
                           <Button
+                            type="button"
                             size="sm"
                             variant="destructive"
                             onClick={() => handleDecision(entry, "reject")}
@@ -287,6 +293,7 @@ export function AdminCatalogEntriesClient({
                       )}
                       {activeTab === "approved" && (
                         <Button
+                          type="button"
                           size="sm"
                           variant="destructive"
                           onClick={() => handleDecision(entry, "unpublish")}
@@ -297,6 +304,7 @@ export function AdminCatalogEntriesClient({
                       )}
                       {activeTab === "rejected" && (
                         <Button
+                          type="button"
                           size="sm"
                           onClick={() => handleDecision(entry, "approve")}
                           disabled={isProcessing}

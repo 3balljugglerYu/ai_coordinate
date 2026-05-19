@@ -116,11 +116,11 @@ export async function createCampaign(
     .insert({
       slug: input.slug,
       title: input.title,
-      description: input.description ?? null,
-      cover_storage_path: input.cover_storage_path ?? null,
-      theme_hashtag: input.theme_hashtag ?? null,
-      start_at: input.start_at ?? null,
-      end_at: input.end_at ?? null,
+      description: input.description || null,
+      cover_storage_path: input.cover_storage_path || null,
+      theme_hashtag: input.theme_hashtag || null,
+      start_at: input.start_at || null,
+      end_at: input.end_at || null,
       display_order: input.display_order ?? 0,
       status: "draft",
     })

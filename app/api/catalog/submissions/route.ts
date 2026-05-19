@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       source_tweet_status_id: sourceTweet.statusId,
       image_storage_path: storagePath,
       alt: altRaw.length > 0 ? altRaw : null,
-      submitter_email: submitterEmailRaw === "" ? null : submitterEmailRaw,
+      submitter_email: submitterEmailRaw || null,
       status: "pending",
     })
     .select("id")

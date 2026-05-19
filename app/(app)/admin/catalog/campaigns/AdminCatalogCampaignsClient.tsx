@@ -329,7 +329,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
           ※ カバー画像は作成後に下の一覧からアップロードできます。
         </p>
         <div className="mt-4 flex justify-end">
-          <Button onClick={handleCreate} disabled={isSubmitting}>
+          <Button type="button" onClick={handleCreate} disabled={isSubmitting}>
             {isSubmitting ? "作成中..." : "企画を作成"}
           </Button>
         </div>
@@ -438,6 +438,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => handleToggleStatus(campaign)}
@@ -447,6 +448,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
                         : "公開する"}
                     </Button>
                     <Button
+                      type="button"
                       variant="destructive"
                       size="sm"
                       onClick={() => handleDelete(campaign)}
