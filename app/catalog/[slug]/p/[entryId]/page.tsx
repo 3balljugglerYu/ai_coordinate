@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getCachedCampaignBySlug,
@@ -12,7 +11,7 @@ import {
   createCatalogSignedUrl,
   createCatalogSignedUrls,
 } from "@/features/catalog/lib/repository";
-import { CatalogReaderLauncher } from "@/features/catalog/components/CatalogReaderLauncher";
+import { CatalogReaderModal } from "@/features/catalog/components/CatalogReaderModal";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
@@ -57,10 +56,7 @@ export async function generateMetadata({
 
 /**
  * 個別ページの直リンク。X 共有 URL の着地点。
- *
- * ランディング (/catalog/[slug]) と同じ構成だが、CatalogReaderLauncher を
- * initialOpen=true + 指定 entryId で起動し、開いた状態でリーダーが立ち上がる。
- * 閉じるボタンで /catalog/[slug] に遷移する。
+ * /catalog/[slug] と同じ固定高さレイアウトで、本を該当エントリーから開いた状態で表示する。
  */
 export default async function CatalogEntryDirectLinkPage({ params }: PageProps) {
   await connection();
@@ -98,40 +94,19 @@ export default async function CatalogEntryDirectLinkPage({ params }: PageProps) 
   }));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-2xl px-4 pb-16 pt-8 sm:pt-12">
-        <nav className="mb-8 text-sm text-slate-500">
-          <Link href="/catalog" className="hover:underline">
-            ← カタログ一覧へ戻る
-          </Link>
-        </nav>
-
-        <h1 className="sr-only">
-          {entry.display_name} - {campaign.title}
-        </h1>
-
-        <CatalogReaderLauncher
-          campaignSlug={campaign.slug}
-          campaignTitle={campaign.title}
-          campaignHashtag={campaign.theme_hashtag}
-          campaignDescription={campaign.description}
-          pages={pages}
-          initialOpen
-          initialEntryId={entry.id}
-        />
-
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href={`/catalog/submit?campaign=${campaign.slug}`}
-            className="inline-flex items-center rounded-md bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
-          >
-            この企画に作品を申請する
-          </Link>
-          <span className="text-xs text-slate-400">
-            ※ 未ログインでも申請できます
-          </span>
-        </div>
-      </div>
+    <div className="h-[100dvh] overflow-hidden bg-slate-50">
+      <h1 className="sr-only">
+        {entry.display_name} - {campaign.title}
+      </h1>
+      <CatalogReaderModal
+        campaignSlug={campaign.slug}
+        campaignTitle={campaign.title}
+        campaignHashtag={campaign.theme_hashtag}
+        campaignDescription={campaign.description}
+        pages={pages}
+        initialEntryId={entry.id}
+        closeRedirectTo="/catalog"
+      />
     </div>
   );
 }

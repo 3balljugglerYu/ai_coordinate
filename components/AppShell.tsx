@@ -18,7 +18,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
   const isStandaloneDocs = pathname?.startsWith("/api-docs");
-  const shouldBypassAppShell = isAdmin || isStandaloneDocs;
+  // 絵師カタログのリーダー画面 (/catalog/[slug] と /catalog/[slug]/p/[entryId]) は
+  // 没入ビューにするため、Persta の chrome (Header / Sidebar / NavigationBar / Footer) を
+  // 一切表示せずに children だけを描画する。
+  // /catalog 一覧と /catalog/submit 系は通常 chrome を維持する。
+  const isCatalogReader = (() => {
+    if (!pathname) return false;
+    const stripped = pathname.replace(
+      /^\/(?:ja|en|ko|zh-CN|zh-TW|es|pt|fr|de|it|id|th|vi|hi|ar)(?=\/|$)/,
+      "",
+    );
+    if (
+      stripped === "/catalog" ||
+      stripped.startsWith("/catalog/submit")
+    ) {
+      return false;
+    }
+    return /^\/catalog\/[^/]+(?:\/p\/[^/]+)?\/?$/.test(stripped);
+  })();
+  const shouldBypassAppShell =
+    isAdmin || isStandaloneDocs || isCatalogReader;
 
   useEffect(() => {
     if (isAdmin) {

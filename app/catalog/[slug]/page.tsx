@@ -11,7 +11,7 @@ import {
   createCatalogSignedUrl,
   createCatalogSignedUrls,
 } from "@/features/catalog/lib/repository";
-import { CatalogReaderLauncher } from "@/features/catalog/components/CatalogReaderLauncher";
+import { CatalogReaderModal } from "@/features/catalog/components/CatalogReaderModal";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
@@ -89,55 +89,53 @@ export default async function CatalogCampaignPage({ params }: PageProps) {
     sourceTweetUrl: entry.source_tweet_url,
   }));
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-2xl px-4 pb-16 pt-8 sm:pt-12">
-        <nav className="mb-8 text-sm text-slate-500">
+  // pages がある場合はマウント時に Modal が auto-open。閉じる → /catalog へ。
+  // pages が空の場合はランディング相当の Empty state を表示する。
+  if (pages.length === 0) {
+    return (
+      <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-slate-50 lg:h-[100dvh]">
+        <nav className="flex shrink-0 items-center px-4 py-2 text-sm text-slate-500">
           <Link href="/catalog" className="hover:underline">
             ← カタログ一覧へ戻る
           </Link>
         </nav>
-
         <h1 className="sr-only">{campaign.title}</h1>
-
-        <CatalogReaderLauncher
-          campaignSlug={campaign.slug}
-          campaignTitle={campaign.title}
-          campaignHashtag={campaign.theme_hashtag}
-          campaignDescription={campaign.description}
-          pages={pages}
-        />
-
-        {pages.length > 0 ? (
+        <main className="flex flex-1 items-center justify-center overflow-hidden px-6 text-center">
           <p
-            className="mt-6 text-center text-sm italic text-stone-600"
-            style={{ fontFamily: "var(--font-cormorant), serif" }}
-          >
-            タップして本を開く →
-          </p>
-        ) : (
-          <p
-            className="mt-6 text-center text-sm text-stone-600"
+            className="text-sm text-stone-600"
             style={{ fontFamily: "var(--font-libre), serif" }}
           >
             まだ公開された投稿はありません。
             <br />
             一番乗りで申請してみませんか?
           </p>
-        )}
-
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+        </main>
+        <footer className="flex shrink-0 flex-wrap items-center justify-center gap-2 px-4 py-3">
           <Link
             href={`/catalog/submit?campaign=${campaign.slug}`}
-            className="inline-flex items-center rounded-md bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
           >
             この企画に作品を申請する
           </Link>
           <span className="text-xs text-slate-400">
             ※ 未ログインでも申請できます
           </span>
-        </div>
+        </footer>
       </div>
+    );
+  }
+
+  return (
+    <div className="h-[100dvh] overflow-hidden bg-slate-50">
+      <h1 className="sr-only">{campaign.title}</h1>
+      <CatalogReaderModal
+        campaignSlug={campaign.slug}
+        campaignTitle={campaign.title}
+        campaignHashtag={campaign.theme_hashtag}
+        campaignDescription={campaign.description}
+        pages={pages}
+        closeRedirectTo="/catalog"
+      />
     </div>
   );
 }

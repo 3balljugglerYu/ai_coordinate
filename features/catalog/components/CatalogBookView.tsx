@@ -51,7 +51,30 @@ interface FlipBookApi {
   getCurrentPageIndex(): number;
   getPageCount(): number;
 }
-type FlipBookHandle = { pageFlip(): FlipBookApi } | null;
+
+/**
+ * react-pageflip の内部 FlipController に到達するための型 (公開 API ではない)。
+ * portrait モードの slow-drag で「角の追従アニメーションを現在位置から続行させる」ため、
+ * `animateFlippingTo` を直接呼ぶ用途でのみ参照する。
+ */
+type FlipControllerInternal = {
+  calc:
+    | {
+        getPosition(): { x: number; y: number };
+        getCorner(): "top" | "bottom";
+      }
+    | null;
+  getBoundsRect(): { pageWidth: number; height: number };
+  animateFlippingTo(
+    start: { x: number; y: number },
+    dest: { x: number; y: number },
+    isTurned: boolean,
+    needReset?: boolean,
+  ): void;
+};
+type FlipBookHandle = {
+  pageFlip(): FlipBookApi & { flipController?: FlipControllerInternal };
+} | null;
 
 type BookPageCommon = { density?: "hard"; "data-density"?: "hard" };
 
@@ -94,6 +117,7 @@ export function CatalogBookView({
     "landscape",
   );
   const flipBookRef = useRef<FlipBookHandle>(null);
+  const bookContainerRef = useRef<HTMLDivElement | null>(null);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -127,6 +151,110 @@ export function CatalogBookView({
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  /**
+   * portrait モード時の slow-drag 完了判定の補完。
+   *
+   * react-pageflip 本体は touchend で次の 2 経路を持つ:
+   *   (a) 速いスワイプ (dt < 250ms かつ |dx| > swipeDistance) → flipNext / flipPrev
+   *   (b) ゆっくりドラッグ → pos.x <= 0 なら flip、それ以外は snap-back
+   *
+   * portrait モードでは bounds.left = -pageWidth のため、視覚的に画面左端まで
+   * 指を引いても pos.x は 0 に届かず、ほぼ画面外まで指を引かないと flip が完了しない。
+   * 結果、ユーザの体感では「左端までドラッグしたのに戻ってしまう」状態になる。
+   *
+   * 対応: capture-phase で touchend を握り潰し、十分な横移動があれば手動で flipNext /
+   * flipPrev を呼んでライブラリの snap-back を肩代わりする。fold アニメーション自体は
+   * ライブラリの touchmove で既に描画されているため、見た目は本来のドラッグ操作のまま。
+   */
+  useEffect(() => {
+    if (orientation !== "portrait") return;
+    const el = bookContainerRef.current;
+    if (el == null) return;
+
+    let startX = 0;
+    let startY = 0;
+    let startedAt = 0;
+    let tracking = false;
+    const LIB_SWIPE_TIMEOUT = 250; // ライブラリの swipeTimeout に合わせる
+    const DRAG_MIN_RATIO = 0.2; // コンテナ幅に対する横移動の最低比率
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) {
+        tracking = false;
+        return;
+      }
+      if (!el.contains(e.target as Node)) {
+        tracking = false;
+        return;
+      }
+      tracking = true;
+      startX = e.touches[0]!.clientX;
+      startY = e.touches[0]!.clientY;
+      startedAt = Date.now();
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
+      if (!el.contains(e.target as Node)) return;
+      const touch = e.changedTouches[0];
+      if (touch == null) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      const dt = Date.now() - startedAt;
+      // 速いスワイプはライブラリに任せる (2 重発火防止)
+      if (dt < LIB_SWIPE_TIMEOUT) return;
+      // 縦移動が横移動より大きい場合は縦スクロール意図とみなす
+      if (Math.abs(dy) > Math.abs(dx)) return;
+      const width = el.getBoundingClientRect().width;
+      if (width <= 0) return;
+      if (Math.abs(dx) < width * DRAG_MIN_RATIO) return;
+
+      // ライブラリの touchend 処理 (snap-back) を抑止して手動で flip
+      e.stopImmediatePropagation();
+      const api = flipBookRef.current?.pageFlip();
+      if (api == null) return;
+
+      // 内部 FlipController にアクセスして、ドラッグ中の calc 位置からそのまま
+      // 完了アニメーションを継続させる。public な flipNext / flipPrev は角の初期
+      // 位置からアニメをやり直してしまい、画面上で角が一瞬戻ってしまうため。
+      const fc = api.flipController;
+      if (fc?.calc != null) {
+        try {
+          const pos = fc.calc.getPosition();
+          const rect = fc.getBoundsRect();
+          const corner = fc.calc.getCorner();
+          const yEnd = corner === "bottom" ? rect.height : 0;
+          // dest.x = -pageWidth が「完了側」。direction は calc が保持しているため
+          // turnToNext / turnToPrev はアニメ終了時に正しく呼ばれる。
+          fc.animateFlippingTo(pos, { x: -rect.pageWidth, y: yEnd }, true);
+          return;
+        } catch {
+          // ライブラリ内部実装が変わった場合は public API にフォールバック
+        }
+      }
+
+      if (dx < 0) api.flipNext();
+      else api.flipPrev();
+    };
+
+    document.addEventListener("touchstart", onTouchStart, {
+      capture: true,
+      passive: true,
+    });
+    document.addEventListener("touchend", onTouchEnd, {
+      capture: true,
+    });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart, {
+        capture: true,
+      });
+      document.removeEventListener("touchend", onTouchEnd, {
+        capture: true,
+      });
+    };
+  }, [orientation]);
+
   if (pages.length === 0) {
     return (
       <div
@@ -142,6 +270,7 @@ export function CatalogBookView({
     <div className="mx-auto flex w-full max-w-[1100px] justify-center">
       {mounted ? (
         <div
+          ref={bookContainerRef}
           className="relative w-full"
           style={{
             filter: "drop-shadow(0 25px 25px rgba(20,10,5,0.25))",
