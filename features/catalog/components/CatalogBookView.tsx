@@ -209,8 +209,14 @@ export function CatalogBookView({
       const width = el.getBoundingClientRect().width;
       if (width <= 0) return;
       if (Math.abs(dx) < width * DRAG_MIN_RATIO) return;
+      // BACK 方向 (右ドラッグ = 前ページ) は library 側で `pos.x <= 0` が常に成立し、
+      // stopMove が自然に flip を完了させる (calc 座標が FORWARD と対称なため)。
+      // intercept で animateFlippingTo を呼び直すと、portrait の clamp により
+      // sweep 距離が短く違和感が出るので、BACK は library のネイティブ完了アニメに任せる。
+      if (dx > 0) return;
 
-      // ライブラリの touchend 処理 (snap-back) を抑止して手動で flip
+      // FORWARD 方向 (左ドラッグ = 次ページ) は library が `pos.x > 0` で snap-back
+      // してしまうため、intercept して手動で完了させる。
       e.stopImmediatePropagation();
       const api = flipBookRef.current?.pageFlip();
       if (api == null) return;
