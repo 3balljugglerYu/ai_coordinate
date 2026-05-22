@@ -39,6 +39,10 @@ export function CatalogPage({ page, pageNumber, side }: CatalogPageProps) {
           alt={page.alt ?? page.displayName}
           fill
           unoptimized
+          // 本は全ページを DOM に持つ。lazy だと「めくった瞬間」に読み込みが
+          // 始まり待ちが出るため eager にして全ページ画像を先読みする。
+          // (画像は Storage 変換でリサイズ + WebP 化され十分軽量)
+          loading="eager"
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 760px"
         />

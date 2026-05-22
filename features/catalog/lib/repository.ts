@@ -177,7 +177,26 @@ export async function getPublicEntryById(
 const CATALOG_BUCKET = "catalog-images";
 
 /**
- * 単一の Storage パスから signed URL を発行する。
+ * カタログ画像の Storage 変換オプション。
+ *
+ * 元画像はアップロードされたまま (リサイズ・形式変換なし) 保存されており、
+ * 数 MB の PNG/JPEG になりがち (実測: 表紙 2160×3840 の PNG で約 8MB)。
+ * Supabase Storage の画像変換でリサイズ + 再エンコードして配信する。
+ * 変換エンドポイントは Accept ヘッダに応じて WebP を返すため、対応ブラウザ
+ * では自動的に WebP 配信になる (実測: 約 8MB PNG → 約 0.22MB WebP)。
+ *
+ * width はモバイル等倍 (約 366px) の高 DPI 表示に十分な値。
+ * resize: "contain" + height 未指定で、アスペクト比を保ったまま横幅基準で
+ * 縮小される (resize 省略時は横だけ縮んで縦横比が崩れるため必須)。
+ */
+const CATALOG_IMAGE_TRANSFORM = {
+  width: 1280,
+  resize: "contain",
+  quality: 80,
+} as const;
+
+/**
+ * 単一の Storage パスから signed URL を発行する (画像変換付き)。
  *
  * @param expiresInSeconds 有効期限秒数。デフォルト 30 分。Cache Components 化したメタデータの TTL より長くすること。
  */
@@ -188,7 +207,9 @@ export async function createCatalogSignedUrl(
 ): Promise<{ url: string | null; error: { message: string } | null }> {
   const { data, error } = await client.storage
     .from(CATALOG_BUCKET)
-    .createSignedUrl(storagePath, expiresInSeconds);
+    .createSignedUrl(storagePath, expiresInSeconds, {
+      transform: CATALOG_IMAGE_TRANSFORM,
+    });
 
   return {
     url: data?.signedUrl ?? null,
@@ -197,8 +218,11 @@ export async function createCatalogSignedUrl(
 }
 
 /**
- * 複数の Storage パスから signed URL を一括発行する。
- * 行ごとに発行すると N+1 になるため、本でめくるページ数分まとめて取る。
+ * 複数の Storage パスから signed URL を一括発行する (画像変換付き)。
+ *
+ * バッチ API (createSignedUrls) は画像変換に非対応のため、変換付き URL は
+ * createSignedUrl を path ごとに発行する。多数のリクエストが同時に飛ばないよう
+ * 一定数ずつに区切って並列実行する。
  *
  * 戻り値: 入力 paths と同順の signed URL 配列。失敗したエントリは null。
  */
@@ -213,25 +237,23 @@ export async function createCatalogSignedUrls(
   if (storagePaths.length === 0) {
     return { urls: [], error: null };
   }
-  const { data, error } = await client.storage
-    .from(CATALOG_BUCKET)
-    .createSignedUrls([...storagePaths], expiresInSeconds);
 
-  if (error || !data) {
-    return {
-      urls: storagePaths.map(() => null),
-      error: error ? { message: error.message } : null,
-    };
-  }
-
-  const map = new Map<string, string | null>();
-  for (const entry of data) {
-    if (entry.path) {
-      map.set(entry.path, entry.signedUrl ?? null);
+  const CHUNK_SIZE = 16;
+  const urls: Array<string | null> = [];
+  for (let i = 0; i < storagePaths.length; i += CHUNK_SIZE) {
+    const chunk = storagePaths.slice(i, i + CHUNK_SIZE);
+    const results = await Promise.all(
+      chunk.map((path) =>
+        client.storage
+          .from(CATALOG_BUCKET)
+          .createSignedUrl(path, expiresInSeconds, {
+            transform: CATALOG_IMAGE_TRANSFORM,
+          }),
+      ),
+    );
+    for (const result of results) {
+      urls.push(result.data?.signedUrl ?? null);
     }
   }
-  return {
-    urls: storagePaths.map((p) => map.get(p) ?? null),
-    error: null,
-  };
+  return { urls, error: null };
 }

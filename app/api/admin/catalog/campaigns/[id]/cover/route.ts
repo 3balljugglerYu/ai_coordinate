@@ -10,6 +10,7 @@ import {
 } from "@/features/catalog/lib/get-public-catalog";
 import { updateCampaign } from "@/features/catalog/lib/admin-repository";
 import { getCatalogRouteCopy } from "@/features/catalog/lib/route-copy";
+import { convertCatalogImageToWebp } from "@/features/catalog/lib/catalog-image";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { jsonError } from "@/lib/api/json-error";
 
@@ -94,18 +95,26 @@ export async function POST(
     );
   }
 
-  const ext = (() => {
-    if (mimeType === "image/png") return "png";
-    if (mimeType === "image/webp") return "webp";
-    return "jpg";
-  })();
-  const storagePath = `covers/${campaign.id}/${Date.now()}-${randomUUID()}.${ext}`;
+  const storagePath = `covers/${campaign.id}/${Date.now()}-${randomUUID()}.webp`;
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  // 保存前に WebP へ変換 + リサイズして「常に WebP」で保存する。
+  let webpBuffer: Buffer;
+  try {
+    webpBuffer = await convertCatalogImageToWebp(
+      Buffer.from(await file.arrayBuffer()),
+    );
+  } catch (error) {
+    console.error("[admin catalog cover POST] webp conversion failed", error);
+    return jsonError(
+      copy.submissionImageInvalidFormat,
+      "CATALOG_ADMIN_COVER_CONVERT_FAILED",
+      400,
+    );
+  }
   const { error: uploadError } = await adminClient.storage
     .from(CATALOG_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType: mimeType,
+    .upload(storagePath, webpBuffer, {
+      contentType: "image/webp",
       upsert: false,
     });
   if (uploadError) {

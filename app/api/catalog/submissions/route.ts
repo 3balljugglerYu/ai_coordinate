@@ -9,6 +9,7 @@ import {
   catalogCampaignTag,
 } from "@/features/catalog/lib/get-public-catalog";
 import { getCatalogRouteCopy } from "@/features/catalog/lib/route-copy";
+import { convertCatalogImageToWebp } from "@/features/catalog/lib/catalog-image";
 import { verifyTurnstileToken } from "@/features/catalog/lib/turnstile";
 import {
   parseTweetUrl,
@@ -192,21 +193,27 @@ export async function POST(request: NextRequest) {
   const user = await getUser().catch(() => null);
   const submitterUserId = user?.id ?? null;
 
-  // Storage upload
-  const ext = (() => {
-    if (imageType === "image/png") return "png";
-    if (imageType === "image/webp") return "webp";
-    return "jpg";
-  })();
+  // Storage upload。保存前に WebP へ変換 + リサイズして「常に WebP」で保存する。
   const folder = submitterUserId ?? `guest/${submitterToken}`;
-  const storagePath = `${folder}/${Date.now()}-${randomUUID()}.${ext}`;
+  const storagePath = `${folder}/${Date.now()}-${randomUUID()}.webp`;
 
-  const arrayBuffer = await image.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  let webpBuffer: Buffer;
+  try {
+    webpBuffer = await convertCatalogImageToWebp(
+      Buffer.from(await image.arrayBuffer()),
+    );
+  } catch (error) {
+    console.error("[catalog submissions] webp conversion failed", error);
+    return jsonError(
+      copy.submissionImageInvalidFormat,
+      "CATALOG_IMAGE_CONVERT_FAILED",
+      400,
+    );
+  }
   const { error: uploadError } = await adminClient.storage
     .from(CATALOG_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType: imageType,
+    .upload(storagePath, webpBuffer, {
+      contentType: "image/webp",
       upsert: false,
     });
   if (uploadError) {
