@@ -55,8 +55,9 @@ export async function generateMetadata({
 
 /**
  * カタログのランディングページ。
- * 表紙プレビューをタップすると、全画面 Dialog でリーダーが開く (CatalogReaderLauncher 内部で制御)。
- * X 共有された /catalog/[slug]/p/[entryId] からも、同じ仕組みで Dialog が自動で開く。
+ * pages がある場合は CatalogReaderModal をマウントし、全画面リーダーが
+ * front cover (表紙) から開いた状態で表示される。閉じると /catalog へ戻る。
+ * X 共有された /catalog/[slug]/p/[entryId] からは、同じリーダーが該当ページから開く。
  */
 export default async function CatalogCampaignPage({ params }: PageProps) {
   await connection();
@@ -79,6 +80,17 @@ export default async function CatalogCampaignPage({ params }: PageProps) {
   );
   const pathToUrl = new Map<string, string | null>();
   paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
+
+  // front cover 用に、カタログ一覧と同じ campaign カバー画像も signed URL 化する
+  let campaignCoverImageUrl: string | null = null;
+  if (campaign.cover_storage_path) {
+    const { url } = await createCatalogSignedUrl(
+      adminClient,
+      campaign.cover_storage_path,
+      SIGNED_URL_TTL_SECONDS,
+    );
+    campaignCoverImageUrl = url;
+  }
 
   const pages = entries.map((entry) => ({
     id: entry.id,
@@ -133,6 +145,7 @@ export default async function CatalogCampaignPage({ params }: PageProps) {
         campaignTitle={campaign.title}
         campaignHashtag={campaign.theme_hashtag}
         campaignDescription={campaign.description}
+        campaignCoverImageUrl={campaignCoverImageUrl}
         pages={pages}
         closeRedirectTo="/catalog"
       />

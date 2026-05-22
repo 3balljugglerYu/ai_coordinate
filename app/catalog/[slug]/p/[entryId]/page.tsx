@@ -84,6 +84,17 @@ export default async function CatalogEntryDirectLinkPage({ params }: PageProps) 
   const pathToUrl = new Map<string, string | null>();
   paths.forEach((p, i) => pathToUrl.set(p, urls[i] ?? null));
 
+  // front cover 用に、カタログ一覧と同じ campaign カバー画像も signed URL 化する
+  let campaignCoverImageUrl: string | null = null;
+  if (campaign.cover_storage_path) {
+    const { url } = await createCatalogSignedUrl(
+      adminClient,
+      campaign.cover_storage_path,
+      SIGNED_URL_TTL_SECONDS,
+    );
+    campaignCoverImageUrl = url;
+  }
+
   const pages = entries.map((e) => ({
     id: e.id,
     imageUrl: pathToUrl.get(e.image_storage_path) ?? null,
@@ -103,6 +114,7 @@ export default async function CatalogEntryDirectLinkPage({ params }: PageProps) 
         campaignTitle={campaign.title}
         campaignHashtag={campaign.theme_hashtag}
         campaignDescription={campaign.description}
+        campaignCoverImageUrl={campaignCoverImageUrl}
         pages={pages}
         initialEntryId={entry.id}
         closeRedirectTo="/catalog"

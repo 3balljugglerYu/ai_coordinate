@@ -1,22 +1,106 @@
+import Image from "next/image";
+
 interface BookCoverProps {
   title: string;
   hashtag?: string | null;
   description?: string | null;
   variant: "front" | "back";
+  /**
+   * 表紙に表示するサムネイル画像 (campaign.cover_storage_path の signed URL)。
+   * front かつ画像ありのときだけ全面の画像表紙にする。
+   */
+  coverImageUrl?: string | null;
 }
 
 /**
  * 本の表紙 / 裏表紙。
- * react-pageflip の showCover オプションと組み合わせ、ハードカバー風に表示する。
+ * react-pageflip の showCover オプションと組み合わせて表示する。
  *
- * デザイン: 深いバーガンディの布張り風 + 金箔風の文字 + 中央の二重枠
+ * front:
+ *  - coverImageUrl があれば、カタログ一覧と同じサムネイル画像を全面に敷き、
+ *    下部のグラデーション上にタイトル / ハッシュタグを重ねる (雑誌・画集の表紙風)。
+ *  - 画像が無ければ、深いバーガンディの革表紙風デザインにフォールバックする。
+ * back: 革表紙風の奥付。
  */
 export function BookCover({
   title,
   hashtag,
   description,
   variant,
+  coverImageUrl,
 }: BookCoverProps) {
+  // front かつ画像あり → サムネイル画像を全面に敷いた表紙
+  if (variant === "front" && coverImageUrl) {
+    return (
+      <div className="relative h-full w-full overflow-hidden bg-[#2e110d]">
+        <Image
+          src={coverImageUrl}
+          alt={title}
+          fill
+          unoptimized
+          priority
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, 760px"
+        />
+
+        {/* 下部グラデーション (タイトルの可読性確保) */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/55 to-transparent"
+        />
+
+        {/* 薄い金箔風の枠 — 本らしさを残す */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-3 rounded-sm border border-[#c9a961]/45"
+        />
+
+        {/* 中央折り目側の陰影 */}
+        <div
+          aria-hidden
+          className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-black/45 to-transparent"
+        />
+
+        {/* 下部のタイトルブロック */}
+        <div className="absolute inset-x-0 bottom-0 z-10 px-7 pb-9 text-center">
+          <p
+            className="text-[10px] uppercase tracking-[0.4em] text-[#d4b87a]"
+            style={{
+              fontFamily: "var(--font-libre), serif",
+              textShadow: "0 1px 4px rgba(0,0,0,0.75)",
+            }}
+          >
+            Persta.AI Catalog
+          </p>
+          <div className="mx-auto my-3 h-px w-12 bg-[#c9a961]/70" />
+          <h1
+            className="text-3xl leading-snug text-[#f6e8c4] sm:text-4xl"
+            style={{
+              fontFamily: "var(--font-cormorant), serif",
+              fontWeight: 500,
+              letterSpacing: "0.01em",
+              textShadow: "0 2px 12px rgba(0,0,0,0.9)",
+            }}
+          >
+            {title}
+          </h1>
+          {hashtag ? (
+            <p
+              className="mt-3 text-xs tracking-[0.18em] text-[#e6d0a0]"
+              style={{
+                fontFamily: "var(--font-libre), serif",
+                textShadow: "0 1px 6px rgba(0,0,0,0.85)",
+              }}
+            >
+              #{hashtag}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  // フォールバック: 画像なしの front / back は革表紙風デザイン
   return (
     <div
       className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden"
