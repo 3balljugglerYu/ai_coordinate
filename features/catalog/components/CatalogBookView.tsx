@@ -32,8 +32,11 @@ interface CatalogBookViewProps {
   campaignDescription?: string | null;
   /** front cover に表示するサムネイル画像 URL (任意。カタログ一覧と同じ画像) */
   campaignCoverImageUrl?: string | null;
-  /** 画面中央タップ時に呼ばれる (Kobo 風に UI chrome を開閉するトグル用) */
-  onCenterTap?: () => void;
+  /**
+   * 縦スワイプ時に呼ばれる。UI chrome の表示状態を指定する
+   * (下スワイプ = true で表示 / 上スワイプ = false で非表示)。
+   */
+  onChromeVisibilityChange?: (visible: boolean) => void;
 }
 
 // 本のサイズは利用可能領域 (bookContainerRef) を実測し、その縦横比に合わせて
@@ -124,8 +127,11 @@ const FlipBookPageWrapper = forwardRef<
  * - モバイル: portrait モードに自動切替、1 ページずつめくる
  *
  * UI は本のみ。装飾的なナビ / ページ番号 / 操作説明文は無し。
- * 操作: ページ角ドラッグ / スワイプ / キーボード ← → / 3 ゾーンタップ
- * (左 = 前ページ、右 = 次ページ、中央 = onCenterTap で chrome 開閉)。
+ * 操作:
+ * - タップ: 左半分 = 前ページ / 右半分 = 次ページ
+ * - 横ドラッグ / スワイプ: 左→右 = 前ページ / 右→左 = 次ページ
+ * - 縦スワイプ: 下 = UI chrome 表示 / 上 = 非表示 (onChromeVisibilityChange)
+ * - キーボード ← →
  */
 export function CatalogBookView({
   pages,
@@ -134,7 +140,7 @@ export function CatalogBookView({
   campaignHashtag,
   campaignDescription,
   campaignCoverImageUrl,
-  onCenterTap,
+  onChromeVisibilityChange,
 }: CatalogBookViewProps) {
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -148,12 +154,12 @@ export function CatalogBookView({
   const flipBookRef = useRef<FlipBookHandle>(null);
   const bookContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // onCenterTap は親の再レンダーで identity が変わるため、ジェスチャ effect が
-  // 毎回 re-bind しないよう ref 経由で常に最新を参照する。
-  const onCenterTapRef = useRef(onCenterTap);
+  // onChromeVisibilityChange は親の再レンダーで identity が変わるため、
+  // ジェスチャ effect が毎回 re-bind しないよう ref 経由で常に最新を参照する。
+  const onChromeVisibilityChangeRef = useRef(onChromeVisibilityChange);
   useEffect(() => {
-    onCenterTapRef.current = onCenterTap;
-  }, [onCenterTap]);
+    onChromeVisibilityChangeRef.current = onChromeVisibilityChange;
+  }, [onChromeVisibilityChange]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -292,13 +298,14 @@ export function CatalogBookView({
   /**
    * タップ / スワイプのジェスチャ処理。document の capture フェーズで端末イベントを監視する。
    *
-   * - タップ (移動量が小さい): 画面を左 / 中央 / 右の 3 ゾーンに分け、
-   *   左 = 前ページ、右 = 次ページ、中央 = onCenterTap (UI chrome 開閉)。
+   * - タップ (移動量が小さい): 左半分 = 前ページ、右半分 = 次ページ。
    *   page-flip 標準の click-flip は handleBookInit の userStop ラップで抑止済みなので、
    *   ここでは end イベントを握り潰さず (内部クリーンアップを壊さず) 自前にめくる。
-   * - スワイプ / ドラッグ: page-flip 本体の fold アニメーションに任せる。ただし
-   *   portrait の FORWARD ドラッグだけは、page-flip が画面内クランプで snap-back して
-   *   しまうため intercept して animateFlippingTo で完了させる (既存ロジック)。
+   * - 縦スワイプ: 下 = UI chrome 表示 / 上 = 非表示 (onChromeVisibilityChange)。
+   * - 横スワイプ / ドラッグ: fold アニメーション自体は page-flip 本体に任せる。速い
+   *   スワイプも page-flip 標準の判定に任せる。ゆっくりした横ドラッグは page-flip の
+   *   stopMove が距離不足で snap-back することがあるため intercept し、左→右ドラッグ
+   *   = 前ページ / 右→左ドラッグ = 次ページ を必ず完了させる。
    *
    * リンク / ボタン上のタップには関与しない (リンク遷移を妨げない)。
    */
@@ -307,10 +314,10 @@ export function CatalogBookView({
     if (el == null) return;
 
     const TAP_MAX_MOVE = 24; // これ以下の移動量はタップ扱い (px)
-    const TAP_EDGE_RATIO = 0.3; // 中央ゾーンは 30〜70%。左右はそれぞれ端 30%
     const SYNTHETIC_MOUSE_GUARD_MS = 700; // touch 後に発火する合成 mouse を無視する猶予
     const LIB_SWIPE_TIMEOUT = 250; // ライブラリの swipeTimeout に合わせる
-    const DRAG_MIN_RATIO = 0.2; // コンテナ幅に対する横移動の最低比率
+    const DRAG_FLIP_MIN = 40; // 横ドラッグでページをめくる最低横移動量 (px)
+    const SWIPE_CHROME_MIN = 40; // 縦スワイプで chrome を開閉する最低縦移動量 (px)
 
     let startX = 0;
     let startY = 0;
@@ -361,52 +368,53 @@ export function CatalogBookView({
       const dy = y - startY;
       const dt = Date.now() - startedAt;
 
-      // --- タップ (3 ゾーン) ---
+      // --- タップ: 左半分 = 前ページ / 右半分 = 次ページ ---
       if (!movedBeyondTap) {
         // ページ内のリンク / ボタン上のタップには関与しない
         if ((target as HTMLElement).closest?.("a, button") != null) return;
         const rect = el.getBoundingClientRect();
         if (rect.width <= 0) return;
-        const ratio = (x - rect.left) / rect.width;
         const api = flipBookRef.current?.pageFlip();
         // page-flip 標準の click-flip は userStop ラップで抑止済み。end イベントは
         // 握り潰さないので touchPoint / isUserTouch のクリーンアップはそのまま走る。
-        if (ratio < TAP_EDGE_RATIO) api?.flipPrev();
-        else if (ratio > 1 - TAP_EDGE_RATIO) api?.flipNext();
-        else onCenterTapRef.current?.();
+        if (x - rect.left < rect.width / 2) api?.flipPrev();
+        else api?.flipNext();
         return;
       }
 
-      // --- portrait FORWARD ドラッグの完了補完 (既存ロジック / touch 専用) ---
+      // マウスのドラッグは page-flip 標準に任せる (以降は touch 専用)。
+      if (!isTouchGesture) return;
+
+      // --- 縦スワイプ: UI chrome の表示 / 非表示 ---
+      // 下スワイプ (dy > 0) = 表示、上スワイプ (dy < 0) = 非表示。
+      // page-flip は縦スワイプでは fold しないので、握り潰さず通知だけ行う。
+      if (Math.abs(dy) > Math.abs(dx)) {
+        if (Math.abs(dy) >= SWIPE_CHROME_MIN) {
+          onChromeVisibilityChangeRef.current?.(dy > 0);
+        }
+        return;
+      }
+
+      // --- 横ドラッグ (スワイプ) でのページめくり (portrait 専用) ---
       // page-flip 本体は touchend で次の 2 経路を持つ:
       //   (a) 速いスワイプ (dt < 250ms かつ |dx| > swipeDistance) → flipNext / flipPrev
-      //   (b) ゆっくりドラッグ → pos.x <= 0 なら flip、それ以外は snap-back
-      // portrait では bounds.left = -pageWidth のため、画面左端まで指を引いても
-      // pos.x が 0 に届かず flip が完了しない。capture-phase で touchend を握り潰し、
-      // 十分な横移動があれば手動で完了させる。
-      if (!isTouchGesture || orientation !== "portrait") return;
-      // 速いスワイプはライブラリに任せる (2 重発火防止)
-      if (dt < LIB_SWIPE_TIMEOUT) return;
-      // 縦移動が横移動より大きい場合は縦スクロール意図とみなす
-      if (Math.abs(dy) > Math.abs(dx)) return;
-      const width = el.getBoundingClientRect().width;
-      if (width <= 0) return;
-      if (Math.abs(dx) < width * DRAG_MIN_RATIO) return;
-      // BACK 方向 (右ドラッグ = 前ページ) は library 側で `pos.x <= 0` が常に成立し、
-      // stopMove が自然に flip を完了させる (calc 座標が FORWARD と対称なため)。
-      // intercept で animateFlippingTo を呼び直すと、portrait の clamp により
-      // sweep 距離が短く違和感が出るので、BACK は library のネイティブ完了アニメに任せる。
-      if (dx > 0) return;
+      //   (b) ゆっくりドラッグ → stopMove (pos.x <= 0 なら完了、それ以外は snap-back)
+      // (a) は page-flip に任せる (dx 方向に正しくめくられる)。(b) は portrait の
+      // 画面内クランプで FORWARD が完了しないので、ここで intercept し、左右どちらの
+      // ドラッグも必ず完了させる (左→右 = 前ページ / 右→左 = 次ページ)。
+      if (orientation !== "portrait") return;
+      if (dt < LIB_SWIPE_TIMEOUT) return; // 速いスワイプは page-flip 標準に任せる
+      // 横移動が小さすぎる場合は page-flip 標準 (snap-back) に任せる
+      if (Math.abs(dx) < DRAG_FLIP_MIN) return;
 
-      // FORWARD 方向 (左ドラッグ = 次ページ) は library が `pos.x > 0` で snap-back
-      // してしまうため、intercept して手動で完了させる。
       e.stopImmediatePropagation();
       const api = flipBookRef.current?.pageFlip();
       if (api == null) return;
 
-      // 内部 FlipController にアクセスして、ドラッグ中の calc 位置からそのまま
-      // 完了アニメーションを継続させる。public な flipNext / flipPrev は角の初期
-      // 位置からアニメをやり直してしまい、画面上で角が一瞬戻ってしまうため。
+      // page-flip が fold 中 (calc あり) なら、その fold をそのまま完了側へ動かす。
+      // stopMove の「完了」分岐と同じ animateFlippingTo 呼び出しで、calc が方向
+      // (FORWARD / BACK) を保持しているため 1 つの呼び出しで両方向を完了できる。
+      // public な flipNext / flipPrev は角の初期位置からやり直すため使わない。
       const fc = api.flipController;
       if (fc?.calc != null) {
         try {
@@ -414,8 +422,6 @@ export function CatalogBookView({
           const rect = fc.getBoundsRect();
           const corner = fc.calc.getCorner();
           const yEnd = corner === "bottom" ? rect.height : 0;
-          // dest.x = -pageWidth が「完了側」。direction は calc が保持しているため
-          // turnToNext / turnToPrev はアニメ終了時に正しく呼ばれる。
           fc.animateFlippingTo(pos, { x: -rect.pageWidth, y: yEnd }, true);
           return;
         } catch {
@@ -423,8 +429,10 @@ export function CatalogBookView({
         }
       }
 
-      if (dx < 0) api.flipNext();
-      else api.flipPrev();
+      // fold していない (calc なし) 場合は、ドラッグ方向に応じて明示的にめくる。
+      // 左→右ドラッグ (dx > 0) = 前ページ、右→左ドラッグ (dx < 0) = 次ページ。
+      if (dx > 0) api.flipPrev();
+      else api.flipNext();
     };
 
     const onTouchStart = (e: TouchEvent) => {

@@ -34,8 +34,9 @@ interface Props {
  * - AppShell 側で /catalog/[slug] 配下を `shouldBypassAppShell` にして Header / Sidebar /
  *   NavigationBar / Footer を表示させないため、この overlay が viewport を全て覆う。
  * - 閉じる × と Esc キーで `closeRedirectTo` に `router.replace` する。
- * - 本の中央タップで UI chrome (閉じる × / 申請 CTA) を開閉できる (Kobo 風)。
- *   左右タップ・スワイプでのページめくりは CatalogBookView 側で処理する。
+ * - 縦スワイプで UI chrome (閉じる × / 申請 CTA) を開閉する (下 = 表示 / 上 = 非表示)。
+ *   chrome はスライド + フェードでアニメーションする。タップ・横スワイプでの
+ *   ページめくりは CatalogBookView 側で処理する。
  */
 export function CatalogReaderModal({
   campaignSlug,
@@ -80,41 +81,44 @@ export function CatalogReaderModal({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex h-[100dvh] flex-col bg-slate-50">
+    <div
+      // select-none + WebkitTouchCallout: none で、iOS Safari の画像長押し
+      // メニュー (画像を保存… 等) とテキスト選択を抑止する。リーダーは閲覧専用
+      // なので選択・保存系の callout は出さない。
+      className="fixed inset-0 z-50 flex h-[100dvh] flex-col select-none bg-slate-50"
+      style={{ WebkitTouchCallout: "none" }}
+    >
       <button
         type="button"
         onClick={() => router.replace(closeRedirectTo)}
         aria-label="閉じる"
-        className={`absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-stone-900/70 text-white shadow-md transition-all duration-200 hover:bg-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 ${
-          chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        className={`absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-stone-900/70 text-white shadow-md transition-all duration-300 hover:bg-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 ${
+          chromeVisible
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-12 opacity-0"
         }`}
       >
         <X className="h-5 w-5" />
       </button>
 
-      {/* 左上の申請 CTA。× ボタンと同じ垂直位置 (top-4) に揃え、注釈をボタン右側に並べる。 */}
-      <div
-        className={`absolute left-4 top-4 z-10 flex items-center gap-2 transition-opacity duration-300 ${
-          chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+      {/* 左上の申請 CTA。× ボタンと同じ垂直位置 (top-4)。1 行目に申請文言、
+          2 行目に注釈を入れた 2 行構成のボタン。 */}
+      <Link
+        href={`/catalog/submit?campaign=${campaignSlug}`}
+        className={`absolute left-4 top-4 z-10 inline-flex flex-col items-center whitespace-nowrap rounded-md bg-slate-900 px-3 py-1.5 leading-tight text-white shadow-md transition-all duration-300 hover:bg-slate-800 ${
+          chromeVisible
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-12 opacity-0"
         }`}
       >
-        <Link
-          href={`/catalog/submit?campaign=${campaignSlug}`}
-          className="inline-flex h-9 items-center whitespace-nowrap rounded-md bg-slate-900 px-3 text-xs font-medium text-white shadow-md transition-colors hover:bg-slate-800"
-        >
-          この企画に作品を申請する
-        </Link>
-        <span
-          className="whitespace-nowrap text-[10px] font-medium text-white/90"
-          style={{ textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}
-        >
-          ※未ログインでもOK
-        </span>
-      </div>
+        <span className="text-xs font-medium">この企画に作品を申請する</span>
+        <span className="text-[10px] text-white/80">※未ログインでもOK</span>
+      </Link>
 
       {/*
         本は viewport 全体に広げ、× / 申請 CTA は z-10 で本の上に重ねる。
-        中央タップで chrome を開閉できるため、重なっても閲覧の妨げにならない。
+        縦スワイプ (下 = 表示 / 上 = 非表示) で chrome を開閉できるため、
+        重なっても閲覧の妨げにならない。
       */}
       <main className="relative flex flex-1 items-start justify-center overflow-hidden px-3 py-4 sm:px-6">
         <CatalogBookView
@@ -124,7 +128,7 @@ export function CatalogReaderModal({
           campaignCoverImageUrl={campaignCoverImageUrl}
           pages={pages}
           initialEntryId={initialEntryId}
-          onCenterTap={() => setChromeVisible((v) => !v)}
+          onChromeVisibilityChange={(visible) => setChromeVisible(visible)}
         />
       </main>
     </div>
