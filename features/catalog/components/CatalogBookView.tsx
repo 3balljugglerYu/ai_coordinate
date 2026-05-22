@@ -36,14 +36,14 @@ interface CatalogBookViewProps {
   onCenterTap?: () => void;
 }
 
-// 1 ページの寸法 (見開きの片側)。size="stretch" + min/max でレスポンシブにスケール。
-// 全画面リーダー前提のため、max は viewport 全体を埋めても余裕がある値にする。
-const PAGE_WIDTH = 440;
-const PAGE_HEIGHT = 600;
+// 本のサイズは利用可能領域 (bookContainerRef) を実測し、その縦横比に合わせて
+// width / height を react-pageflip へ渡す。固定比率だと端末ごとに上下 or 左右へ
+// 余白が出るため、実測比率に合わせることで端末を問わず本を画面へ密着させる。
+// min / max はスケールの下限・上限ガード。
 const PAGE_MIN_WIDTH = 280;
 const PAGE_MAX_WIDTH = 760;
 const PAGE_MIN_HEIGHT = 380;
-const PAGE_MAX_HEIGHT = 1040;
+const PAGE_MAX_HEIGHT = 1560;
 const FLIP_DURATION_DEFAULT = 900;
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -141,6 +141,10 @@ export function CatalogBookView({
   const [orientation, setOrientation] = useState<"landscape" | "portrait">(
     "landscape",
   );
+  // 利用可能領域の実測サイズ。確定するまで本は描画しない (比率を合わせるため)。
+  const [bookSize, setBookSize] = useState<{ w: number; h: number } | null>(
+    null,
+  );
   const flipBookRef = useRef<FlipBookHandle>(null);
   const bookContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -162,6 +166,27 @@ export function CatalogBookView({
     return () => motion.removeEventListener("change", updateMotion);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  /**
+   * 本のコンテナ (bookContainerRef = 利用可能領域いっぱい) を実測し、その縦横比を
+   * react-pageflip の width / height へ渡すための bookSize を確定する。
+   * 実測サイズに比率を合わせることで、本が画面に対し上下・左右とも密着する。
+   * 初回 (非ゼロサイズ) のみ確定し、以降のリサイズは size="stretch" に委ねる。
+   */
+  useEffect(() => {
+    if (!mounted) return;
+    const el = bookContainerRef.current;
+    if (el == null) return;
+    const observer = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (cr != null && cr.width > 0 && cr.height > 0) {
+        setBookSize({ w: Math.round(cr.width), h: Math.round(cr.height) });
+        observer.disconnect();
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [mounted]);
 
   // 内容ページのインデックス → 全体（front cover を含む）のインデックスに変換
   const initialContentIndex = initialEntryId
@@ -452,79 +477,109 @@ export function CatalogBookView({
     );
   }
 
+  // 実測領域 (bookSize) の縦横比に合わせて 1 ページぶんの width / height を決める。
+  // landscape (見開き) では 1 ページ = 横半分。
+  const isPortraitLayout = bookSize != null && bookSize.w < 2 * PAGE_MIN_WIDTH;
+  const flipWidth =
+    bookSize == null
+      ? 0
+      : isPortraitLayout
+        ? bookSize.w
+        : Math.round(bookSize.w / 2);
+  const flipHeight = bookSize?.h ?? 0;
+
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] justify-center">
+    <div className="mx-auto flex h-full w-full max-w-[1100px] justify-center">
       {mounted ? (
         <div
           ref={bookContainerRef}
-          className="relative w-full"
+          className="relative h-full w-full"
           style={{
             filter: "drop-shadow(0 25px 25px rgba(20,10,5,0.25))",
           }}
         >
-          {/* @ts-expect-error react-pageflip の型定義が古い */}
-          <HTMLFlipBook
-            width={PAGE_WIDTH}
-            height={PAGE_HEIGHT}
-            size="stretch"
-            minWidth={PAGE_MIN_WIDTH}
-            maxWidth={PAGE_MAX_WIDTH}
-            minHeight={PAGE_MIN_HEIGHT}
-            maxHeight={PAGE_MAX_HEIGHT}
-            startPage={initialFlipIndex}
-            drawShadow
-            maxShadowOpacity={0.5}
-            flippingTime={reducedMotion ? 200 : FLIP_DURATION_DEFAULT}
-            showCover
-            mobileScrollSupport
-            swipeDistance={30}
-            clickEventForward
-            useMouseEvents
-            ref={flipBookRef}
-            onChangeOrientation={(e: { data: "landscape" | "portrait" }) =>
-              setOrientation(e.data)
-            }
-            onInit={(e: { data: { mode: "landscape" | "portrait" } }) =>
-              handleBookInit(e.data.mode)
-            }
-            className="catalog-book"
-            style={{ margin: "0 auto" }}
-          >
-            {/* Front cover。data-density は付けず soft のままにする。showCover
-                有効時は library が createSpread() で hard に戻すため、handleBookInit
-                で updateFromHtml をラップして soft 化パッチを再適用している。 */}
-            <FlipBookPageWrapper>
-              <BookCover
-                title={campaignTitle}
-                hashtag={campaignHashtag}
-                description={campaignDescription}
-                coverImageUrl={campaignCoverImageUrl}
-                variant="front"
-              />
-            </FlipBookPageWrapper>
+          {bookSize != null ? (
+            <>
+              {/* @ts-expect-error react-pageflip の型定義が古い */}
+              <HTMLFlipBook
+                width={flipWidth}
+                height={flipHeight}
+                size="stretch"
+                // autoSize=false: 既定の autoSize は「高さ = 幅 × 比率」を
+                // padding-bottom % で固定し viewport 高さを無視するため画面から
+                // はみ出す。false にすると size="stretch" が getBlockHeight()
+                // (= コンテナ実高さ) でクランプする。さらに width/height へ実測
+                // 領域の縦横比を渡すことで、本が画面の上下・左右へ密着する。
+                autoSize={false}
+                minWidth={PAGE_MIN_WIDTH}
+                maxWidth={PAGE_MAX_WIDTH}
+                minHeight={PAGE_MIN_HEIGHT}
+                maxHeight={PAGE_MAX_HEIGHT}
+                startPage={initialFlipIndex}
+                drawShadow
+                maxShadowOpacity={0.5}
+                flippingTime={reducedMotion ? 200 : FLIP_DURATION_DEFAULT}
+                showCover
+                mobileScrollSupport
+                swipeDistance={30}
+                clickEventForward
+                useMouseEvents
+                ref={flipBookRef}
+                onChangeOrientation={(e: {
+                  data: "landscape" | "portrait";
+                }) => setOrientation(e.data)}
+                onInit={(e: { data: { mode: "landscape" | "portrait" } }) =>
+                  handleBookInit(e.data.mode)
+                }
+                // autoSize=false 時、page-flip は .catalog-book に display:block
+                // しか付けない。内部の .stf__block (absolute 100%×100%) が実寸を
+                // 持てるよう、.catalog-book 自身をコンテナいっぱいに広げる。
+                className="catalog-book h-full w-full"
+              >
+                {/* Front cover。data-density は付けず soft のままにする。showCover
+                    有効時は library が createSpread() で hard に戻すため、
+                    handleBookInit で updateFromHtml をラップして soft 化を再適用。 */}
+                <FlipBookPageWrapper>
+                  <BookCover
+                    title={campaignTitle}
+                    hashtag={campaignHashtag}
+                    description={campaignDescription}
+                    coverImageUrl={campaignCoverImageUrl}
+                    variant="front"
+                  />
+                </FlipBookPageWrapper>
 
-            {/* Content pages */}
-            {pages.map((page, i) => (
-              <FlipBookPageWrapper key={page.id}>
-                <CatalogPage
-                  page={page}
-                  pageNumber={i + 1}
-                  side={
-                    orientation === "portrait"
-                      ? "single"
-                      : i % 2 === 0
-                        ? "right"
-                        : "left"
-                  }
-                />
-              </FlipBookPageWrapper>
-            ))}
+                {/* Content pages */}
+                {pages.map((page, i) => (
+                  <FlipBookPageWrapper key={page.id}>
+                    <CatalogPage
+                      page={page}
+                      pageNumber={i + 1}
+                      side={
+                        orientation === "portrait"
+                          ? "single"
+                          : i % 2 === 0
+                            ? "right"
+                            : "left"
+                      }
+                    />
+                  </FlipBookPageWrapper>
+                ))}
 
-            {/* Back cover (hard cover) */}
-            <FlipBookPageWrapper density="hard">
-              <BookCover title={campaignTitle} variant="back" />
-            </FlipBookPageWrapper>
-          </HTMLFlipBook>
+                {/* Back cover (hard cover) */}
+                <FlipBookPageWrapper density="hard">
+                  <BookCover title={campaignTitle} variant="back" />
+                </FlipBookPageWrapper>
+              </HTMLFlipBook>
+            </>
+          ) : (
+            <div
+              className="flex h-full w-full items-center justify-center text-stone-500"
+              style={{ fontFamily: "var(--font-cormorant), serif" }}
+            >
+              Preparing the book…
+            </div>
+          )}
         </div>
       ) : (
         <div
