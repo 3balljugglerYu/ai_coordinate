@@ -171,7 +171,11 @@ export function CatalogBookView({
    * 本のコンテナ (bookContainerRef = 利用可能領域いっぱい) を実測し、その縦横比を
    * react-pageflip の width / height へ渡すための bookSize を確定する。
    * 実測サイズに比率を合わせることで、本が画面に対し上下・左右とも密着する。
-   * 初回 (非ゼロサイズ) のみ確定し、以降のリサイズは size="stretch" に委ねる。
+   *
+   * ResizeObserver は常時監視し続ける。回転・iOS のツールバー伸縮・dev の HMR
+   * などで領域サイズが変わったら bookSize を更新し、HTMLFlipBook を key で
+   * 貼り替えて (react-pageflip は width/height を初期化後に読み直さないため)
+   * 常に正しい寸法で描き直す。微小変化は無視して不要な再マウントを避ける。
    */
   useEffect(() => {
     if (!mounted) return;
@@ -179,10 +183,19 @@ export function CatalogBookView({
     if (el == null) return;
     const observer = new ResizeObserver((entries) => {
       const cr = entries[0]?.contentRect;
-      if (cr != null && cr.width > 0 && cr.height > 0) {
-        setBookSize({ w: Math.round(cr.width), h: Math.round(cr.height) });
-        observer.disconnect();
-      }
+      if (cr == null || cr.width <= 0 || cr.height <= 0) return;
+      const w = Math.round(cr.width);
+      const h = Math.round(cr.height);
+      setBookSize((prev) => {
+        if (
+          prev != null &&
+          Math.abs(prev.w - w) <= 2 &&
+          Math.abs(prev.h - h) <= 2
+        ) {
+          return prev; // 微小変化は無視 (同一参照を返し再レンダーを起こさない)
+        }
+        return { w, h };
+      });
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -217,10 +230,12 @@ export function CatalogBookView({
     }
   }, []);
 
-  const pageFlipPatchedRef = useRef(false);
+  // 既にパッチ済みの PageFlip インスタンス。key 貼り替えで再マウントされると
+  // インスタンスが変わるため、 boolean ではなくインスタンス参照で判定する。
+  const patchedInstanceRef = useRef<PageFlipInstance | null>(null);
 
   /**
-   * page-flip 本体への一度きりの内部パッチを onInit で適用する。
+   * page-flip 本体への内部パッチを onInit で適用する (インスタンスごとに一度)。
    *  1. updateFromHtml をラップ: 祖先の再レンダーごとに createSpread() が front cover
    *     を hard density に戻すため、更新のたびに soft 化パッチを再適用する。
    *  2. userStop をラップ: page-flip 標準の「クリック / タップでめくる」挙動を抑止する。
@@ -234,8 +249,8 @@ export function CatalogBookView({
     (mode: "landscape" | "portrait") => {
       setOrientation(mode);
       const pageFlip = flipBookRef.current?.pageFlip();
-      if (pageFlip != null && !pageFlipPatchedRef.current) {
-        pageFlipPatchedRef.current = true;
+      if (pageFlip != null && patchedInstanceRef.current !== pageFlip) {
+        patchedInstanceRef.current = pageFlip;
 
         const originalUpdate = pageFlip.updateFromHtml?.bind(pageFlip);
         if (originalUpdate != null) {
@@ -502,6 +517,9 @@ export function CatalogBookView({
             <>
               {/* @ts-expect-error react-pageflip の型定義が古い */}
               <HTMLFlipBook
+                // 領域サイズが変わったら key 貼り替えで本体を作り直し、新しい
+                // width/height で正しい寸法に描き直す (props の後更新は無視されるため)。
+                key={`${bookSize.w}x${bookSize.h}`}
                 width={flipWidth}
                 height={flipHeight}
                 size="stretch"

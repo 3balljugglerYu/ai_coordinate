@@ -63,12 +63,19 @@ export function CatalogReaderModal({
     return () => window.removeEventListener("keydown", handler);
   }, [router, closeRedirectTo]);
 
-  // body の縦スクロールをロック (AppShell バイパス時に念のため)
+  // リーダー表示中はドキュメントの縦スクロールをロックする。
+  // body だけでなく html (documentElement) も対象にしないと、ブラウザの
+  // ツールバー伸縮分などで生じる余剰高さによりページがスクロールしてしまう。
   useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = prevOverflow;
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
     };
   }, []);
 
@@ -97,18 +104,19 @@ export function CatalogReaderModal({
         >
           この企画に作品を申請する
         </Link>
-        <span className="whitespace-nowrap text-[10px] text-slate-500">
+        <span
+          className="whitespace-nowrap text-[10px] font-medium text-white/90"
+          style={{ textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}
+        >
           ※未ログインでもOK
         </span>
       </div>
 
       {/*
-        上部スペーサ。× / 申請ボタン (h-9 / 36px) の上下に 16px の余白を確保する。
-        16 (top-4) + 36 + 16 (gap to book) = 68px。
+        本は viewport 全体に広げ、× / 申請 CTA は z-10 で本の上に重ねる。
+        中央タップで chrome を開閉できるため、重なっても閲覧の妨げにならない。
       */}
-      <div aria-hidden className="h-[68px] shrink-0" />
-
-      <main className="relative flex flex-1 items-start justify-center overflow-hidden px-3 pb-4 sm:px-6">
+      <main className="relative flex flex-1 items-start justify-center overflow-hidden px-3 py-4 sm:px-6">
         <CatalogBookView
           campaignTitle={campaignTitle}
           campaignHashtag={campaignHashtag}
