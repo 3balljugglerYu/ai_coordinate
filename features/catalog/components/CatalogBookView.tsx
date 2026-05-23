@@ -300,17 +300,21 @@ export function CatalogBookView({
   /**
    * タップ / スワイプ / ドラッグのジェスチャ処理 (document capture)。
    *
+   * portrait / landscape 共通で「ドラッグ中は本を静止 + 指を離した瞬間に
+   * 完結アニメで前後ページへ移動」する方式を採用する (角プレビュー fold は
+   * 出さない)。これにより「中央付近をドラッグしても角からめくれる」違和感を
+   * 解消する。
+   *
    * 操作:
    * - タップ (移動量が小さい): 左半分 = 前ページ、右半分 = 次ページ (flipPrev/flipNext)。
+   *   landscape (見開き 2 ページ) でも左/右半分判定。
    * - 縦スワイプ: 下 = UI chrome 表示 / 上 = 非表示 (onChromeVisibilityChange)。
-   * - 横ドラッグ (portrait): ドラッグ中は本を静止させる (角プレビュー fold を出さない)。
-   *   指を離した瞬間に dx 方向で flipPrev/flipNext を呼んで「完結アニメ」だけを再生する。
-   *   これにより「中央付近をドラッグしても角プレビューが先に見える」違和感を解消する。
-   *   - 実装: portrait のとき page-flip 内部 touch/mouse listener を全停止する。
-   *     touch は useMouseEvents={false} で切れないため、document capture で
-   *     stopImmediatePropagation + preventDefault してライブラリに届けない。
-   *     mouse は useMouseEvents={!isPortraitLayout} で切る。
-   * - 横ドラッグ (landscape, 見開き): page-flip 標準のドラッグ追従を温存する。
+   * - 横ドラッグ: 左→右 = 前ページ / 右→左 = 次ページ。閾値 (DRAG_FLIP_MIN) 未満は何も
+   *   しない (ページ留まる)。
+   *
+   * 実装: page-flip 内部 mouse listener は useMouseEvents={false} で停止。
+   * touch listener は useMouseEvents で切れないため、document capture で
+   * stopImmediatePropagation + preventDefault してライブラリに届かないようにする。
    *
    * リンク / ボタン上のタップには関与しない (リンク遷移を妨げない)。
    */
@@ -322,10 +326,6 @@ export function CatalogBookView({
     const SYNTHETIC_MOUSE_GUARD_MS = 700; // touch 後に発火する合成 mouse を無視する猶予
     const SWIPE_CHROME_MIN = 40; // 縦スワイプで chrome を開閉する最低縦移動量 (px)
     const DRAG_FLIP_MIN = 40; // 横ドラッグでページめくり完結アニメを発火する最低横移動量 (px)
-
-    // portrait のとき自前ジェスチャ駆動 (page-flip にイベントを届けない) を有効化する。
-    // landscape では page-flip 標準のドラッグ追従を温存する。
-    const useStaticDrive = orientation === "portrait";
 
     let startX = 0;
     let startY = 0;
@@ -359,12 +359,15 @@ export function CatalogBookView({
     const finish = (x: number, y: number, target: EventTarget | null) => {
       if (!tracking) return;
       tracking = false;
-      if (target == null || !el.contains(target as Node)) return;
+      const targetInBook =
+        target != null && el.contains(target as Node);
       const dx = x - startX;
       const dy = y - startY;
 
       // --- タップ: 左半分 = 前ページ / 右半分 = 次ページ ---
+      // タップは「本の内側で押して離した」ときだけ反応する (リンク等を含む)。
       if (!movedBeyondTap) {
+        if (!targetInBook) return;
         if ((target as HTMLElement).closest?.("a, button") != null) return;
         const rect = el.getBoundingClientRect();
         if (rect.width <= 0) return;
@@ -382,9 +385,8 @@ export function CatalogBookView({
         return;
       }
 
-      // --- 横ドラッグ (portrait のみ完結アニメで完了させる) ---
+      // --- 横ドラッグ: 完結アニメで前後ページへ ---
       if (gestureMode !== "drag") return;
-      if (!useStaticDrive) return; // landscape は page-flip 標準 (window listener) に任せる
       if (Math.abs(dx) < DRAG_FLIP_MIN) return; // 閾値未満なら何もしない (ページ留まる)
       const api = flipBookRef.current?.pageFlip();
       if (dx < 0) api?.flipNext();
@@ -392,14 +394,12 @@ export function CatalogBookView({
     };
 
     /**
-     * portrait + useStaticDrive のとき、page-flip 内部の touch listener
-     * (onTouchStart/Move/End。useMouseEvents=false でも切れない) に元イベントを
-     * 届けないよう、document capture で stopImmediatePropagation + preventDefault
-     * する。これでドラッグ追従プレビュー (角めくれ) が一切出なくなる。
-     * (landscape では page-flip 標準ドラッグを残すので suppress しない。)
+     * page-flip 内部の touch listener (onTouchStart/Move/End。useMouseEvents=false
+     * でも切れない) に元イベントを届けないよう、document capture で
+     * stopImmediatePropagation + preventDefault する。これでドラッグ追従プレビュー
+     * (角めくれ) が一切出なくなる。
      */
     const suppressForLib = (e: TouchEvent | MouseEvent) => {
-      if (!useStaticDrive) return;
       e.stopImmediatePropagation();
       if (e.cancelable) e.preventDefault();
     };
@@ -446,11 +446,10 @@ export function CatalogBookView({
       finish(e.clientX, e.clientY, e.target);
     };
 
-    // portrait のとき touch を握り潰すために passive: false で attach する
-    // (preventDefault が必要なため)。landscape はそのまま passive 流。
+    // touch を握り潰すために passive: false で attach する (preventDefault が必要)。
     const opts = { capture: true } as const;
     const passiveOpts = { capture: true, passive: true } as const;
-    const touchOpts = { capture: true, passive: !useStaticDrive } as const;
+    const touchOpts = { capture: true, passive: false } as const;
     document.addEventListener("touchstart", onTouchStart, touchOpts);
     document.addEventListener("touchmove", onTouchMove, touchOpts);
     document.addEventListener("touchend", onTouchEnd, opts);
@@ -465,7 +464,10 @@ export function CatalogBookView({
       document.removeEventListener("mousemove", onMouseMove, opts);
       document.removeEventListener("mouseup", onMouseUp, opts);
     };
-  }, [orientation]);
+    // mounted を deps に含めることで、bookContainerRef が attach された後の
+    // 再レンダーで listener を attach し直す (orientation 不変な landscape でも
+    // 初回 ref=null のままにならないようにするため)。
+  }, [mounted, orientation]);
 
   if (pages.length === 0) {
     return (
@@ -503,10 +505,9 @@ export function CatalogBookView({
             <>
               {/* @ts-expect-error react-pageflip の型定義が古い */}
               <HTMLFlipBook
-                // 領域サイズや layout (portrait/landscape) が変わったら key 貼り替えで
-                // 本体を作り直し、新しい width/height/useMouseEvents で正しい寸法・
-                // listener 構成で描き直す (props の後更新は無視されるため)。
-                key={`${bookSize.w}x${bookSize.h}-${isPortraitLayout ? "p" : "l"}`}
+                // 領域サイズが変わったら key 貼り替えで本体を作り直し、新しい
+                // width/height で正しい寸法に描き直す (props の後更新は無視されるため)。
+                key={`${bookSize.w}x${bookSize.h}`}
                 width={flipWidth}
                 height={flipHeight}
                 size="stretch"
@@ -528,12 +529,11 @@ export function CatalogBookView({
                 mobileScrollSupport
                 swipeDistance={30}
                 clickEventForward
-                // portrait 時は page-flip 内部 mouse listener を切る (touch 系は
-                // useMouseEvents で切れないため、document capture suppression で別途
-                // 抑止している)。これによりドラッグ中の角めくり追従プレビューを
-                // 無くし、指を離した瞬間に flipPrev/flipNext の完結アニメだけを再生する。
-                // landscape (見開き) では page-flip 標準のドラッグ追従を温存する。
-                useMouseEvents={!isPortraitLayout}
+                // page-flip 内部 mouse listener を切る (touch 系は useMouseEvents で
+                // 切れないため、document capture suppression で別途抑止している)。
+                // これによりドラッグ中の角めくり追従プレビューを無くし、指を離した瞬間に
+                // flipPrev/flipNext の完結アニメだけを再生する (portrait / landscape 共通)。
+                useMouseEvents={false}
                 ref={flipBookRef}
                 onChangeOrientation={(e: {
                   data: "landscape" | "portrait";
