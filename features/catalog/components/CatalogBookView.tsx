@@ -69,6 +69,8 @@ type FlipControllerInternal = {
     | {
         getPosition(): { x: number; y: number };
         getCorner(): "top" | "bottom";
+        /** page-flip の FlipDirection: 0 = FORWARD (次), 1 = BACK (前) */
+        getDirection(): number;
       }
     | null;
   getBoundsRect(): { pageWidth: number; height: number };
@@ -411,12 +413,24 @@ export function CatalogBookView({
       const api = flipBookRef.current?.pageFlip();
       if (api == null) return;
 
-      // page-flip が fold 中 (calc あり) なら、その fold をそのまま完了側へ動かす。
-      // stopMove の「完了」分岐と同じ animateFlippingTo 呼び出しで、calc が方向
-      // (FORWARD / BACK) を保持しているため 1 つの呼び出しで両方向を完了できる。
-      // public な flipNext / flipPrev は角の初期位置からやり直すため使わない。
+      // めくり方向は「ドラッグ方向 (dx)」で決める。
+      // 左→右ドラッグ (dx > 0) = 前ページ、右→左ドラッグ (dx < 0) = 次ページ。
+      const wantNext = dx < 0;
+
+      // page-flip 標準の calc は「ドラッグ開始位置」で方向を決めるため、画面中央
+      // 付近で開始したドラッグだと dx の意図と逆の方向 (例: 中央スタートで右へ
+      // ドラッグ → 開始位置は右半分扱いで FORWARD calc) になることがある。
+      // calc 方向と dx の意図が一致するときだけ、その fold を最後まで動かして
+      // 滑らかに完了させる。不一致 (または calc 無し) のときは flipPrev/flipNext
+      // を呼び、page-flip 側で reset させてから dx 通りにめくらせる。
       const fc = api.flipController;
-      if (fc?.calc != null) {
+      const calcDir =
+        typeof fc?.calc?.getDirection === "function"
+          ? fc.calc.getDirection()
+          : null;
+      // page-flip の FlipDirection: 0 = FORWARD (次), 1 = BACK (前)
+      const wantedDir = wantNext ? 0 : 1;
+      if (fc?.calc != null && calcDir === wantedDir) {
         try {
           const pos = fc.calc.getPosition();
           const rect = fc.getBoundsRect();
@@ -429,10 +443,9 @@ export function CatalogBookView({
         }
       }
 
-      // fold していない (calc なし) 場合は、ドラッグ方向に応じて明示的にめくる。
-      // 左→右ドラッグ (dx > 0) = 前ページ、右→左ドラッグ (dx < 0) = 次ページ。
-      if (dx > 0) api.flipPrev();
-      else api.flipNext();
+      // calc 方向不一致 / calc 無し / 失敗時 → dx 方向で明示的にめくる。
+      if (wantNext) api.flipNext();
+      else api.flipPrev();
     };
 
     const onTouchStart = (e: TouchEvent) => {
