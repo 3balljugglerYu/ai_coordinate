@@ -435,6 +435,16 @@ export function CatalogBookView({
     const onMouseDown = (e: MouseEvent) => {
       if (Date.now() < touchActiveUntil) return; // touch 由来の合成イベントは無視
       if (e.button !== 0) return;
+      const target = e.target as Node | null;
+      // 本領域内 (リンク / ボタン以外) で押した場合は、画像のドラッグ &
+      // ドロップ起動とテキスト選択を抑止する。これをしないと <img> をマウスで
+      // 掴んだ瞬間にブラウザの drag-and-drop モードへ移行し、その後の mousemove
+      // が我々の listener に届かなくなる (= 縦スワイプで chrome 開閉ができない、
+      // 横ドラッグで完結アニメが走らない、などの不具合になる)。
+      if (target != null && el.contains(target)) {
+        const inLink = (target as HTMLElement).closest?.("a, button") != null;
+        if (!inLink) e.preventDefault();
+      }
       begin(e.clientX, e.clientY, e.target);
     };
     const onMouseMove = (e: MouseEvent) => {
@@ -446,16 +456,26 @@ export function CatalogBookView({
       finish(e.clientX, e.clientY, e.target);
     };
 
-    // touch を握り潰すために passive: false で attach する (preventDefault が必要)。
+    // 念のため dragstart 自体も本領域内では抑止する (画像 / リンクテキストの
+    // ネイティブ DnD を完全に止めるため)。
+    const onDragStart = (e: DragEvent) => {
+      const target = e.target as Node | null;
+      if (target != null && el.contains(target)) {
+        e.preventDefault();
+      }
+    };
+
+    // touch / mousedown は preventDefault を呼ぶため passive: false で attach する。
     const opts = { capture: true } as const;
     const passiveOpts = { capture: true, passive: true } as const;
-    const touchOpts = { capture: true, passive: false } as const;
-    document.addEventListener("touchstart", onTouchStart, touchOpts);
-    document.addEventListener("touchmove", onTouchMove, touchOpts);
+    const nonPassiveOpts = { capture: true, passive: false } as const;
+    document.addEventListener("touchstart", onTouchStart, nonPassiveOpts);
+    document.addEventListener("touchmove", onTouchMove, nonPassiveOpts);
     document.addEventListener("touchend", onTouchEnd, opts);
-    document.addEventListener("mousedown", onMouseDown, passiveOpts);
+    document.addEventListener("mousedown", onMouseDown, nonPassiveOpts);
     document.addEventListener("mousemove", onMouseMove, passiveOpts);
     document.addEventListener("mouseup", onMouseUp, opts);
+    document.addEventListener("dragstart", onDragStart, opts);
     return () => {
       document.removeEventListener("touchstart", onTouchStart, opts);
       document.removeEventListener("touchmove", onTouchMove, opts);
@@ -463,6 +483,7 @@ export function CatalogBookView({
       document.removeEventListener("mousedown", onMouseDown, opts);
       document.removeEventListener("mousemove", onMouseMove, opts);
       document.removeEventListener("mouseup", onMouseUp, opts);
+      document.removeEventListener("dragstart", onDragStart, opts);
     };
     // mounted を deps に含めることで、bookContainerRef が attach された後の
     // 再レンダーで listener を attach し直す (orientation 不変な landscape でも
