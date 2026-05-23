@@ -67,16 +67,27 @@ export function CatalogReaderModal({
   // リーダー表示中はドキュメントの縦スクロールをロックする。
   // body だけでなく html (documentElement) も対象にしないと、ブラウザの
   // ツールバー伸縮分などで生じる余剰高さによりページがスクロールしてしまう。
+  //
+  // さらに、root layout は body に `pb-16 lg:pb-0` を付与してモバイル下部の
+  // NavigationBar 分のスペースを確保しているが、AppShell をバイパスする
+  // リーダー画面では NavigationBar が出ないにもかかわらず padding-bottom:64px
+  // だけが残り、結果として body が viewport より 64px 高くなる。
+  // iOS Safari は overflow:hidden でも body がはみ出していると弾力スクロール
+  // (rubber band) が効いてしまうため、表示中だけ padding-bottom を 0 に
+  // 上書きして元に戻す。
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    const prevHtml = html.style.overflow;
-    const prevBody = body.style.overflow;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyPaddingBottom = body.style.paddingBottom;
     html.style.overflow = "hidden";
     body.style.overflow = "hidden";
+    body.style.paddingBottom = "0px";
     return () => {
-      html.style.overflow = prevHtml;
-      body.style.overflow = prevBody;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.paddingBottom = prevBodyPaddingBottom;
     };
   }, []);
 
