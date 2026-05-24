@@ -22,7 +22,7 @@ import { normalizeSourceImage } from "../../lib/normalize-source-image";
 
 interface StockImagesTabProps {
   active: boolean;
-  onSelect: (stock: SourceImageStock) => void;
+  onSelect: (stock: SourceImageStock) => Promise<void> | void;
   /** 削除前確認や 削除後のクライアント側通知に使う (任意)。 */
   onDeleted?: (stockId: string) => void;
   /** 追加後、親に通知 (例: 未読ドット既読化やトースト表示)。 */
@@ -30,6 +30,8 @@ interface StockImagesTabProps {
   disabled?: boolean;
   /** 現在の選択中ストック ID (該当タイルにリング表示)。 */
   selectedStockId?: string | null;
+  /** 親が fetch 中のストック ID を渡すと該当タイルにスピナーを出す。 */
+  pendingStockId?: string | null;
 }
 
 export function StockImagesTab({
@@ -39,6 +41,7 @@ export function StockImagesTab({
   onAdded,
   disabled = false,
   selectedStockId = null,
+  pendingStockId = null,
 }: StockImagesTabProps) {
   const t = useTranslations("imageSourcePicker");
   const tCoordinate = useTranslations("coordinate");
@@ -246,9 +249,9 @@ export function StockImagesTab({
             imageUrl={stock.image_url}
             alt={stock.name ?? "stock image"}
             selected={selectedStockId === stock.id}
-            loading={pendingId === stock.id}
+            loading={pendingId === stock.id || pendingStockId === stock.id}
             disabled={disabled}
-            onSelect={() => onSelect(stock)}
+            onSelect={() => void onSelect(stock)}
             onDelete={() => void handleDelete(stock)}
           />
         ))}

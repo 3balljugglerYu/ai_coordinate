@@ -29,6 +29,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { ImageSourcePicker } from "@/features/generation/components/ImageSourcePicker/ImageSourcePicker";
+import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
+import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
+import { fetchSourceImageAsUploadedImage } from "@/features/generation/lib/source-image-to-file";
+import type { SourceImageStock } from "@/features/generation/lib/database";
+import type { PickerSourceItem } from "@/features/generation/types";
 import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
 import { GenerationResultPanel } from "@/features/generation/components/GenerationResultPanel";
 import { useGenerationState } from "@/features/generation/context/GenerationStateContext";
@@ -335,6 +341,10 @@ export function StylePageClient({
     StylePresetPublicSummary["id"]
   >(() => resolveInitialSelectedPresetId(presets, initialSelectedPresetId));
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  const [pendingPickerImageId, setPendingPickerImageId] = useState<string | null>(
+    null
+  );
+  const picker = useImageSourcePicker({ defaultTab: "generated" });
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
@@ -978,6 +988,36 @@ export function StylePageClient({
     });
   };
 
+  // 画像ソースピッカーから「生成済み」または「ストック」画像を選んだとき、
+  // /style の /generate API は uploadImage (File) しか受け取らないため、
+  // URL をクライアントで fetch → Blob → File 化してアップロード扱いで反映する。
+  const handlePickFromUrl = async (
+    pickerItemId: string,
+    imageUrl: string,
+    fileNameHint?: string
+  ) => {
+    setPendingPickerImageId(pickerItemId);
+    try {
+      const payload = await fetchSourceImageAsUploadedImage(imageUrl, {
+        fileNameHint: fileNameHint ?? "picker-source",
+      });
+      handleUpload(payload);
+      picker.closePicker();
+    } catch (err) {
+      console.error("[StylePageClient] picker fetch failed:", err);
+      window.alert("画像の読み込みに失敗しました");
+    } finally {
+      setPendingPickerImageId(null);
+    }
+  };
+
+  const handleSelectGenerated = (
+    item: Extract<PickerSourceItem, { kind: "generated" }>
+  ) => handlePickFromUrl(item.id, item.imageUrl, "history-source");
+
+  const handleSelectStock = (stock: SourceImageStock) =>
+    handlePickFromUrl(stock.id, stock.image_url, stock.name ?? "stock");
+
   const handleSourceImageTypeChange = (value: SourceImageType) => {
     if (value === sourceImageType) {
       return;
@@ -1411,6 +1451,13 @@ export function StylePageClient({
               />
             ) : null}
           </div>
+
+          <div className="mt-3">
+            <ImageSourcePickerTrigger
+              onClick={picker.openPicker}
+              disabled={isGenerating}
+            />
+          </div>
         </section>
 
         <Card className="p-6">
@@ -1776,6 +1823,18 @@ export function StylePageClient({
       <SubscriptionUpsellDialog
         open={isUpsellOpen}
         onOpenChange={setIsUpsellOpen}
+      />
+
+      <ImageSourcePicker
+        open={picker.open}
+        onOpenChange={picker.setOpen}
+        activeTab={picker.activeTab}
+        onTabChange={picker.setActiveTab}
+        onSelectGenerated={handleSelectGenerated}
+        onSelectStock={handleSelectStock}
+        disabled={isGenerating}
+        pendingGeneratedId={pendingPickerImageId}
+        pendingStockId={pendingPickerImageId}
       />
     </div>
   );

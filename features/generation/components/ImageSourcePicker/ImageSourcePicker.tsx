@@ -29,13 +29,15 @@ interface ImageSourcePickerProps {
   activeTab: PickerTabId;
   onTabChange: (tab: PickerTabId) => void;
   onSelectGenerated: (item: GeneratedItem) => Promise<void> | void;
-  onSelectStock: (stock: SourceImageStock) => void;
+  onSelectStock: (stock: SourceImageStock) => Promise<void> | void;
   /** 現在選択中のストック ID (該当タイルにリング)。 */
   selectedStockId?: string | null;
   /** ピッカー内すべての操作を無効化 (生成中など)。 */
   disabled?: boolean;
   /** 親が「生成済み」画像の fetch 中の id を渡すと該当タイルにスピナーを出す。 */
   pendingGeneratedId?: string | null;
+  /** 親が「ストック」画像の fetch 中の id を渡すと該当タイルにスピナーを出す。 */
+  pendingStockId?: string | null;
 }
 
 const MOBILE_QUERY = "(max-width: 767px)";
@@ -63,6 +65,7 @@ export function ImageSourcePicker({
   selectedStockId = null,
   disabled = false,
   pendingGeneratedId = null,
+  pendingStockId = null,
 }: ImageSourcePickerProps) {
   const t = useTranslations("imageSourcePicker");
   const isMobile = useIsMobileViewport();
@@ -102,6 +105,7 @@ export function ImageSourcePicker({
           active={open && activeTab === "stock"}
           onSelect={onSelectStock}
           selectedStockId={selectedStockId}
+          pendingStockId={pendingStockId}
           disabled={disabled}
         />
       </TabsContent>
