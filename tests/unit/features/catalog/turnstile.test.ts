@@ -29,6 +29,23 @@ describe("verifyTurnstileToken", () => {
     expect(result.success).toBe(true);
   });
 
+  test("remoteIp を渡すと verify エンドポイントの body に remoteip が含まれる", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await verifyTurnstileToken("token", "203.0.113.42");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = (fetchMock.mock.calls[0][1] as { body: string }).body;
+    const params = new URLSearchParams(body);
+    expect(params.get("remoteip")).toBe("203.0.113.42");
+    expect(params.get("secret")).toBe("test-secret");
+    expect(params.get("response")).toBe("token");
+  });
+
   test("失敗レスポンスなら rejected", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

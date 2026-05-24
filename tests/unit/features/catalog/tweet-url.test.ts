@@ -70,6 +70,18 @@ describe("parseTweetUrl", () => {
   test("不正な URL は null", () => {
     expect(parseTweetUrl("not a url")).toBeNull();
   });
+
+  test("空白だけの文字列は null", () => {
+    expect(parseTweetUrl("   ")).toBeNull();
+  });
+
+  test("非文字列入力は null", () => {
+    expect(parseTweetUrl(123 as unknown as string)).toBeNull();
+  });
+
+  test("https / http 以外のプロトコルは null", () => {
+    expect(parseTweetUrl("ftp://x.com/foo/status/123")).toBeNull();
+  });
 });
 
 describe("parseXAccountUrl", () => {
@@ -97,7 +109,28 @@ describe("parseXAccountUrl", () => {
     ).toBeNull();
   });
 
-  test("空文字は null", () => {
+  test("空文字 / null / undefined / 非文字列は null", () => {
     expect(parseXAccountUrl("")).toBeNull();
+    expect(parseXAccountUrl(null)).toBeNull();
+    expect(parseXAccountUrl(undefined)).toBeNull();
+    expect(
+      parseXAccountUrl(123 as unknown as string),
+    ).toBeNull();
+  });
+
+  test("空白だけの文字列は null", () => {
+    expect(parseXAccountUrl("   ")).toBeNull();
+  });
+
+  test("URL としてパースできない文字列は null", () => {
+    expect(parseXAccountUrl("not a url")).toBeNull();
+  });
+
+  test("https / http 以外のプロトコルは null", () => {
+    expect(parseXAccountUrl("ftp://x.com/foo")).toBeNull();
+  });
+
+  test("ホストが別ドメインだと null", () => {
+    expect(parseXAccountUrl("https://example.com/foo")).toBeNull();
   });
 });
