@@ -174,9 +174,14 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
 
 - `sourceImageStockId` か、`sourceImageBase64 + sourceImageMimeType` のどちらかが必須です。
 - GPT Image 2 は `gpt-image-2-{quality}-{sizeTier}` の canonical model を使います。`quality` は `low | medium | high`、`sizeTier` は `1k | 2k | 4k` です。旧 `gpt-image-2-low` は後方互換で `gpt-image-2-low-1k` に正規化されます。
-- GPT Image 2 の出力サイズは入力画像のアスペクト比から自動選択されます。`1k`: `1024x1024` / `1024x1536` / `1536x1024`、`2k`: `2048x2048` / `1664x2496` / `2496x1664`、`4k`: `2880x2880` / `2352x3520` / `3520x2352`。GIF 入力は非対応です。
+- GPT Image 2 の出力サイズは入力画像のアスペクト比から自動選択され、**9:16 〜 16:9 にクランプ** されます (これより極端な縦長/横長の入力は AI 側で再構成されます)。代表例:
+  - `1k`: `1024x1024` (1:1) / `864x1536` (9:16) / `1536x864` (16:9) / `1024x1536` (2:3) / `1536x1024` (3:2)
+  - `2k`: `2048x2048` (1:1) / `1408x2496` (9:16) / `2496x1408` (16:9) / `1664x2496` (2:3) / `2496x1664` (3:2)
+  - `4k`: `2880x2880` (1:1) / `2880x2880` 級にクランプ。長辺 ≤ 3840、総ピクセル ≤ 8,294,400。
+  - GIF 入力は非対応です。
 - GPT Image 2 では `count` を `acceptedImageCount` として受理し、worker が OpenAI Images Edit API に 1 回で `n=acceptedImageCount` を渡します。上限はサブスクプランの生成枚数上限と `1..4` の小さい方です。
 - Gemini 系モデルでは互換性のため、この API 1 回につき 1 job / 1 画像です。複数枚生成はクライアント側が複数 job を投入します。
+- **Gemini 経路は `generationConfig.imageConfig.aspectRatio` を必ず付与** します。入力画像のアスペクトから 9 段階の離散ラベル (`9:16` / `4:5` / `3:4` / `2:3` / `1:1` / `3:2` / `4:3` / `5:4` / `16:9`) のうち最も近いものを選択し、範囲外は `9:16` / `16:9` にクランプします。`gemini-2.5-flash-image` 等 `imageSize` を持たないモデルでも `aspectRatio` だけは送信されます。
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
 - `gemini-2.5-flash-image` と `gemini-2.5-flash-image-preview` は後方互換のため受け付けますが、サーバー側で `gemini-3.1-flash-image-preview-512` に正規化されます。

@@ -172,13 +172,13 @@ describe("openai-image (Node port)", () => {
       ).toBe("1248x1248");
     });
 
-    test("1:2 縦長は 1K で 768x1536（入力アスペクトを保持）", () => {
+    test("1:2 縦長は 1K で 9:16 にクランプされ 864x1536 を返す", () => {
       expect(
         resolveOpenAITargetSize({
           base64: createPngHeader(512, 1024).toString("base64"),
           mimeType: "image/png",
         })
-      ).toBe("768x1536");
+      ).toBe("864x1536");
     });
 
     test("3:2 横長は 1K で 1536x1024", () => {
@@ -208,7 +208,7 @@ describe("openai-image (Node port)", () => {
       ).toBe("1248x1248");
     });
 
-    test("2k は入力アスペクト比 1:2 を保ったまま 1248x2496 を返す", () => {
+    test("2k で 1:2 縦長は 9:16 にクランプされ 1408x2496 を返す", () => {
       expect(
         resolveOpenAITargetSize(
           {
@@ -217,7 +217,7 @@ describe("openai-image (Node port)", () => {
           },
           "2k"
         )
-      ).toBe("1248x2496");
+      ).toBe("1408x2496");
     });
 
     test("4k 正方形は pixel budget 内の 2880x2880 にクランプする", () => {
@@ -230,6 +230,24 @@ describe("openai-image (Node port)", () => {
           "4k"
         )
       ).toBe("2880x2880");
+    });
+
+    test("1:3 の極端な縦長でも 9:16 にクランプされ 864x1536 を返す", () => {
+      expect(
+        resolveOpenAITargetSize({
+          base64: createPngHeader(512, 1536).toString("base64"),
+          mimeType: "image/png",
+        })
+      ).toBe("864x1536");
+    });
+
+    test("3:1 の極端な横長でも 16:9 にクランプされ 1536x864 を返す", () => {
+      expect(
+        resolveOpenAITargetSize({
+          base64: createPngHeader(1536, 512).toString("base64"),
+          mimeType: "image/png",
+        })
+      ).toBe("1536x864");
     });
   });
 
@@ -549,8 +567,9 @@ describe("openai-image (Node port)", () => {
         fetchFn.mock.calls[0][1] as RequestInit
       ).body as FormData;
       expect(requestBody.get("quality")).toBe("high");
-      // 動的サイジング: targetSizeBaseIndex=1 の画像 (512x1024 = 1:2) で 2k → 1248x2496
-      expect(requestBody.get("size")).toBe("1248x2496");
+      // 動的サイジング: targetSizeBaseIndex=1 の画像 (512x1024 = 1:2) で 2k
+      // → 出力アスペクト 9:16 にクランプされ 1408x2496
+      expect(requestBody.get("size")).toBe("1408x2496");
       expect(requestBody.getAll("image[]")).toHaveLength(2);
       expect(requestBody.get("n")).toBe("2");
     });

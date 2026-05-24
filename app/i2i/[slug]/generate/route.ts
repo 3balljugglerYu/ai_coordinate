@@ -13,6 +13,8 @@ import {
   MAX_IMAGE_BYTES,
   MAX_TOTAL_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
+import { parseImageDimensions } from "@/features/generation/lib/openai-image";
+import { resolveGeminiAspectRatio } from "@/shared/generation/gemini-aspect-ratio";
 
 const MODEL_NAME = "gemini-3.1-flash-image-preview";
 const OUTPUT_IMAGE_SIZE = "512";
@@ -551,11 +553,26 @@ export async function POST(request: NextRequest, context: GenerateRouteContext) 
     const baseFeedback = trimFeedback(formData.get("baseFeedback"));
     const characterFeedback = trimFeedback(formData.get("characterFeedback"));
 
+    // 出力アスペクト比は baseImage (最初の inline image / image_0 相当) を基準に解決する。
+    // baseImage は背景・衣装・構図・ポーズ等を維持する基準画像であり、出力フレームの
+    // 構図基準と aspect ratio の基準を一致させる (ADR-007)。
+    const baseImageArrayBuffer = await baseImage.arrayBuffer();
+    const baseImageDims = parseImageDimensions(
+      new Uint8Array(baseImageArrayBuffer),
+      baseImage.type,
+    );
+    const i2iAspectRatio = resolveGeminiAspectRatio(baseImageDims);
+
     const parts: GeminiContentPart[] = [
       {
         text: "画像1（base）: 背景・衣装・ポーズ・構図・カメラ・ライティングを維持する基準画像。",
       },
-      await toInlineData(baseImage),
+      {
+        inline_data: {
+          mime_type: baseImage.type,
+          data: Buffer.from(baseImageArrayBuffer).toString("base64"),
+        },
+      },
       {
         text: "画像2（character）: 顔立ち・髪型・表情・体型・骨格バランス・手足比率・キャラクター性を参照する画像。背景・衣装デザイン・ポーズ・構図・描画タッチは参照禁止。",
       },
@@ -592,6 +609,7 @@ export async function POST(request: NextRequest, context: GenerateRouteContext) 
                 responseModalities: ["TEXT", "IMAGE"],
                 imageConfig: {
                   imageSize: OUTPUT_IMAGE_SIZE,
+                  aspectRatio: i2iAspectRatio,
                 },
               },
             }),

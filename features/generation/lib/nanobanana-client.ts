@@ -17,6 +17,21 @@ export interface GeminiGenerateContentRequestBody {
     responseModalities?: Array<"TEXT" | "IMAGE">;
     imageConfig?: {
       imageSize?: "512" | "1K" | "2K" | "4K";
+      /**
+       * 出力アスペクト比 (Gemini 全モデル共通の 9 段階)。
+       * `shared/generation/gemini-aspect-ratio.ts` の `GeminiAspectRatio` 型と一致。
+       * 9:16 〜 16:9 のクランプは `resolveGeminiAspectRatio()` で行う。
+       */
+      aspectRatio?:
+        | "9:16"
+        | "4:5"
+        | "3:4"
+        | "2:3"
+        | "1:1"
+        | "3:2"
+        | "4:3"
+        | "5:4"
+        | "16:9";
     };
   };
 }

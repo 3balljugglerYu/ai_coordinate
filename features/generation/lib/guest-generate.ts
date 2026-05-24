@@ -2,8 +2,10 @@ import "server-only";
 
 import {
   callOpenAIImageEdit,
+  parseImageDimensions,
   type OpenAIImageEditResult,
 } from "@/features/generation/lib/openai-image";
+import { resolveGeminiAspectRatio } from "@/shared/generation/gemini-aspect-ratio";
 import {
   GUEST_ALLOWED_MODELS,
   parseGuestRequestedModel,
@@ -189,16 +191,28 @@ interface GeminiContentTextPart {
 }
 type GeminiContentPart = GeminiContentTextPart | GeminiContentInlineDataPart;
 
-async function fileToInlineDataPart(
+/**
+ * File から base64 inline data part と aspect ratio 解決用 dimensions を一度の I/O で取得する。
+ * Gemini API へ送る `generationConfig.imageConfig.aspectRatio` の決定に使う。
+ */
+async function fileToInlineDataPartWithDimensions(
   file: File
-): Promise<GeminiContentInlineDataPart> {
+): Promise<{
+  part: GeminiContentInlineDataPart;
+  dimensions: { width: number; height: number } | null;
+}> {
   const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
   const data = Buffer.from(arrayBuffer).toString("base64");
+  const dimensions = parseImageDimensions(bytes, file.type);
   return {
-    inline_data: {
-      mime_type: file.type,
-      data,
+    part: {
+      inline_data: {
+        mime_type: file.type,
+        data,
+      },
     },
+    dimensions,
   };
 }
 
@@ -299,7 +313,9 @@ async function dispatchGemini(
   const fetchImpl = input.fetchFn ?? fetch;
   const apiModel = toApiModelName(input.model as GeminiOnlyModel);
   const imageSize = extractImageSize(input.model as GeminiOnlyModel);
-  const imagePart = await fileToInlineDataPart(input.uploadImage);
+  const { part: imagePart, dimensions: inputDimensions } =
+    await fileToInlineDataPartWithDimensions(input.uploadImage);
+  const aspectRatio = resolveGeminiAspectRatio(inputDimensions);
   const parts: GeminiContentPart[] = [
     { text: input.promptText },
     imagePart,
@@ -322,7 +338,9 @@ async function dispatchGemini(
         generationConfig: {
           candidateCount: 1,
           responseModalities: ["TEXT", "IMAGE"],
-          imageConfig: imageSize ? { imageSize } : undefined,
+          // 出力アスペクトを 9:16 〜 16:9 にクランプするため、imageSize 有無に関わらず
+          // aspectRatio を必ず付与する。
+          imageConfig: imageSize ? { imageSize, aspectRatio } : { aspectRatio },
         },
       }),
       signal: abortController.signal,

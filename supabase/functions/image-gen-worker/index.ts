@@ -36,10 +36,15 @@ import {
 } from "../../../shared/generation/openai-image-model.ts";
 import type { GptImage2CanonicalModel } from "../../../shared/generation/openai-image-model.ts";
 import {
+  resolveGeminiAspectRatio,
+  type GeminiAspectRatio,
+} from "../../../shared/generation/gemini-aspect-ratio.ts";
+import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
   parseImageDimensions,
 } from "./openai-image.ts";
+import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -1694,6 +1699,7 @@ Deno.serve(async () => {
                       responseModalities?: Array<"TEXT" | "IMAGE">;
                       imageConfig?: {
                         imageSize?: GeminiImageSize;
+                        aspectRatio?: GeminiAspectRatio;
                       };
                     };
                   } = {
@@ -1712,26 +1718,62 @@ Deno.serve(async () => {
 
                   const imageSize = extractImageSize(dbModel);
 
-                  if (apiModel === "gemini-3.1-flash-image-preview") {
-                    if (!imageSize) {
-                      throw new Error(`Unsupported image size for model: ${dbModel}`);
-                    }
-                    nextRequestBody.generationConfig = {
-                      ...nextRequestBody.generationConfig,
-                      candidateCount: 1,
-                      responseModalities: ["TEXT", "IMAGE"],
-                      imageConfig: {
-                        imageSize,
-                      },
-                    };
-                  } else if (apiModel === "gemini-3-pro-image-preview" && imageSize) {
-                    nextRequestBody.generationConfig = {
-                      ...nextRequestBody.generationConfig,
-                      imageConfig: {
-                        imageSize,
-                      },
-                    };
+                  // `gemini-3.1-flash-image-preview` は imageSize 必須 (既存仕様)。
+                  if (apiModel === "gemini-3.1-flash-image-preview" && !imageSize) {
+                    throw new Error(`Unsupported image size for model: ${dbModel}`);
                   }
+
+                  // === 出力アスペクト比の決定 ===
+                  // Inspire (複数入力) のときは OpenAI と同じ基準画像選択を使う:
+                  // - すべて維持 (4 つ true) → image_1 (スタイルテンプレ) 基準
+                  // - 部分上書き                  → image_0 (ユーザーキャラ) 基準
+                  // 単一入力経路では image_0 (= resolvedInputImageData) を使う。
+                  const isInspireGemini =
+                    job.generation_type === "inspire" &&
+                    resolvedInspireTemplateImage !== null;
+                  let aspectBaseImage: InputImageData | null =
+                    resolvedInputImageData;
+                  if (isInspireGemini) {
+                    const inspireBaseIndex = resolveInspireTargetSizeBaseIndex({
+                      outfit: job.override_outfit ?? true,
+                      angle: job.override_angle ?? true,
+                      pose: job.override_pose ?? true,
+                      background: job.override_background ?? true,
+                    });
+                    if (inspireBaseIndex === 1) {
+                      aspectBaseImage = resolvedInspireTemplateImage;
+                    }
+                  }
+                  const aspectDims = aspectBaseImage
+                    ? parseImageDimensions(
+                        decodeBase64(aspectBaseImage.base64),
+                        aspectBaseImage.mimeType,
+                      )
+                    : null;
+                  const aspectRatio = resolveGeminiAspectRatio(aspectDims);
+
+                  // gemini-3.1-flash-image-preview のみ candidateCount / responseModalities を追加。
+                  // gemini-3-pro-image-preview / gemini-2.5-flash-image 等は不要。
+                  const requiresResponseModalities =
+                    apiModel === "gemini-3.1-flash-image-preview";
+
+                  // gemini-3-pro-image-preview は imageSize がある場合のみ送信 (既存仕様維持)。
+                  // それ以外のモデル (gemini-2.5-flash-image 等) でも `imageConfig.aspectRatio`
+                  // は必ず付与し、出力アスペクトをクランプ範囲に収める。
+                  const finalImageSize: GeminiImageSize | null =
+                    apiModel === "gemini-3.1-flash-image-preview" ||
+                    apiModel === "gemini-3-pro-image-preview"
+                      ? imageSize
+                      : null;
+
+                  nextRequestBody.generationConfig = {
+                    ...nextRequestBody.generationConfig,
+                    ...buildGeminiGenerationConfig({
+                      imageSize: finalImageSize,
+                      aspectRatio,
+                      requiresResponseModalities,
+                    }),
+                  };
 
                   return nextRequestBody;
                 }

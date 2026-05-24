@@ -342,7 +342,7 @@ describe("StyleGenerateRoute integration tests", () => {
       generationConfig: {
         candidateCount: number;
         responseModalities: string[];
-        imageConfig: { imageSize: string };
+        imageConfig: { imageSize: string; aspectRatio: string };
       };
     };
 
@@ -367,6 +367,9 @@ describe("StyleGenerateRoute integration tests", () => {
       responseModalities: ["TEXT", "IMAGE"],
       imageConfig: {
         imageSize: "512",
+        // 16 byte の zero buffer は parseImageDimensions が null を返すため、
+        // resolveGeminiAspectRatio フォールバックで "1:1" になる。
+        aspectRatio: "1:1",
       },
     });
     expect(checkAndConsumeRateLimitFn).toHaveBeenCalledWith({
