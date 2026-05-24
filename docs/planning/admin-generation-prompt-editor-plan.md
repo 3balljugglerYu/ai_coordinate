@@ -21,7 +21,7 @@ Style / Coordinate / Inspire の生成リクエストで使われるシステム
 - 多言語化 (en/ja 切替。現状プロンプトはほぼ英語 + 一部日本語混在のまま)
 - A/B テスト / バージョン分岐 (常に「現行版」だけが適用)
 - プロンプト dry-run プレビュー (実際に生成して見るのは既存の生成画面でやる)
-- **admin_audit_log への変更記録** (運用者判断で意図的にスコープ外。トレードオフ: 監査追跡性は失う代わりに実装をシンプルに保つ。将来必要になったら API PUT/DELETE 内に 15 行程度の INSERT 追加で対応可能)
+- 変更差分の **diff 表示 UI / rollback UI** (audit log は INSERT するが、専用閲覧画面は今回作らない。既存 `/admin/audit-log` で参照可)
 - **worker (Deno) の DB query バッチ最適化** (初期実装は素直な key 単位 fetch + invocation 内 Map キャッシュ。`SELECT *` での全件取得は将来 prompt key 数が増えたら検討)
 
 ---
@@ -171,12 +171,12 @@ erDiagram
 - **Reason**: (a) DB 障害耐性 (b) 初期 seed 不要 (c) コードレビューで「最後に正だったテキスト」を確認可能 (d) admin 編集の差分が `git log` から見えないトレードオフは履歴不要の方針なので許容。
 - **Consequence**: コードと DB に同じテキストが二重存在する状況になる。コード修正と DB override が乖離するケースに注意 (=「コードを直してデプロイしたのに反映されない」)。これは編集画面で「default 並表示」することで気づける。
 
-### ADR-002: 履歴・rollback 機能は実装しない
+### ADR-002: rollback UI は不要、audit log は INSERT する
 
-- **Context**: 当初 audit log + rollback UI を提案していたが、運用者意見で「不要」となった。
-- **Decision**: 1 テーブル構成 (`prompt_overrides` のみ)。`updated_at` / `updated_by` だけ持つ。
-- **Reason**: スコープを小さく保ち、初期実装コストを抑える。必要になったら admin_audit_log への記録追加で対応可能。
-- **Consequence**: 誤って保存した文言を取り戻すには手動で前の文言を再入力する必要がある (またはコード default にリセット)。
+- **Context**: 当初は履歴・rollback も含めて検討、運用者判断で一旦「全て不要」とした後、セキュリティレビューで「全ユーザー生成に影響する操作は追跡可能性が必要」となり audit log のみ復活。
+- **Decision**: 専用履歴テーブルは作らず、既存 `admin_audit_log` に 1 行 INSERT する。専用閲覧 UI / rollback UI も今回は作らない (既存 `/admin/audit-log` 画面で参照可能)。
+- **Reason**: (a) 「誰が・いつ・何を変えたか」を追跡できる (セキュリティ最低要件) (b) 既存 helper `logAdminAction()` を使うので実装コスト 5-10 行 (c) 専用 UI は YAGNI、必要になれば後から追加可能。
+- **Consequence**: 誤保存時の文言回復は手動で前回値を再入力する必要がある (画面上の rollback ボタンなし)。ただし `admin_audit_log.metadata` に先頭 500 文字程度を残すので運用者が手作業で復元可能。
 
 ### ADR-003: テンプレ変数を `{{varname}}` プレースホルダーで表現
 
@@ -379,8 +379,15 @@ Phase 5 (worker) は P3 と並列実装可能。
 - [ ] 新規: `app/api/admin/generation-prompts/route.ts`
   - `GET`: 全 key を default + override 統合で返す
 - [ ] 新規: `app/api/admin/generation-prompts/[key]/route.ts`
-  - `PUT`: requireAdmin → upsert → revalidateTag("prompt-overrides", "max") + revalidatePath
-  - `DELETE`: requireAdmin → delete (= default にリセット) → revalidate
+  - `PUT`: requireAdmin → upsert → **logAdminAction("prompt_override_update")** → revalidateTag + revalidatePath
+  - `DELETE`: requireAdmin → delete → **logAdminAction("prompt_override_reset")** → revalidate
+- [ ] **`lib/admin-audit.ts` の `AdminAuditAction` union に追加**:
+  - `"prompt_override_update"` / `"prompt_override_reset"` を新規アクションとして追加
+  - 既存の helper `logAdminAction()` 呼び出しパターン (catalog / style-template と同様) を踏襲
+- [ ] 監査 metadata の内容:
+  - `target_type: "prompt_override"`、`target_id: prompt_key`
+  - `metadata`: `{ content_before: prev?.content?.slice(0, 500) ?? null, content_after: newContent.slice(0, 500), content_length: newContent.length }` (先頭 500 文字のみ、PII 保護とログ肥大化抑止のため)
+  - DELETE 時は `metadata.content_after = null` で「default に戻された」ことを示す
 - [ ] 入力 validation:
   - `prompt_key` は registry に存在する key のみ許可 (ホワイトリスト)
   - `content` は **max 4,000 文字** (現実の prompt 長は数百〜1,500 字程度。誤入力 / DoS 対策の妥当な上限)
@@ -481,7 +488,8 @@ Phase 5 (worker) は P3 と並列実装可能。
 | `features/generation-prompts/lib/get-prompt-override.ts` | 新規 | Next.js 用 `getPromptOverride` (use cache 付き) |
 | `features/generation-prompts/lib/admin-repository.ts` | 新規 | admin client 経由の CRUD |
 | `app/api/admin/generation-prompts/route.ts` | 新規 | GET (一覧) |
-| `app/api/admin/generation-prompts/[key]/route.ts` | 新規 | PUT (upsert) / DELETE (reset) |
+| `app/api/admin/generation-prompts/[key]/route.ts` | 新規 | PUT (upsert) / DELETE (reset) + logAdminAction 呼び出し |
+| `lib/admin-audit.ts` | 修正 | `AdminAuditAction` union に `"prompt_override_update"` / `"prompt_override_reset"` 追加 |
 | `app/(app)/admin/generation-prompts/page.tsx` | 新規 | 一覧 Server Component |
 | `app/(app)/admin/generation-prompts/[key]/page.tsx` | 新規 | 編集 Server Component |
 | `features/generation-prompts/components/AdminPromptsListClient.tsx` | 新規 | 一覧 Client |
@@ -513,6 +521,7 @@ worker (Deno) 改修で Phase 5 のスコープが当初より拡大した点に
 - [ ] **入力検証**: prompt_key はホワイトリスト (registry に存在する key のみ受理)、content は max 文字数
 - [ ] **キャッシュ整合性**: 編集後 revalidateTag が呼ばれること、次のリクエストで新 content が返ること
 - [ ] **テンプレ展開**: `{{varname}}` の置換が全 supported variables で動くこと
+- [ ] **監査追跡**: PUT/DELETE 操作が `admin_audit_log` に記録されること、metadata に content 抜粋が残ること、audit log の INSERT 失敗で本体処理が止まらないこと (`logAdminAction` は try/catch で握る既存仕様)
 - [ ] **i18n**: admin nav ラベル / ボタンラベルの ja/en 揃え
 - [ ] **後方互換**: 既存 prompt 動作が DB 空状態 (= override 無し) でも変わらないこと (実質 default を使うだけ)
 
@@ -531,6 +540,7 @@ worker (Deno) 改修で Phase 5 のスコープが当初より拡大した点に
 | **E2E (新規)** | admin が `[TEST_MARKER]` を含む override 保存 → generate-async → `image_jobs.prompt_text` に marker 含まれる |
 | worker (Deno) | 本体 prompt + リトライ強化文の override fetch が両方動く + 失敗時 default fallback + invocation 内キャッシュ動作 |
 | 孤立 row | registry に無い key を DB に手で挿入 → admin 一覧の「未知」セクションに表示され削除可能 |
+| **audit** | PUT 後に admin_audit_log に action_type=prompt_override_update が記録される、DELETE 後に prompt_override_reset が記録される、metadata に content 抜粋と長さが含まれる |
 
 ### テスト実装手順
 
