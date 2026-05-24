@@ -68,14 +68,25 @@ Style / Coordinate / Inspire の生成リクエストで使われるシステム
 | `app/(app)/style/generate-async/handler.ts` | `buildStyleGenerationPrompt()` (job 作成時にプロンプト全文を組み立てて `image_jobs.prompt_text` に保存) | Next.js Route Handler |
 | `app/(app)/style/generate/handler.ts` | 同期 style 生成 | Next.js Route Handler |
 | `app/api/style-templates/preview-generation/handler.ts` | `buildInspirePrompt()` (Inspire テンプレプレビュー) | Next.js Route Handler |
-| `features/generation/lib/coordinate-guest-api.ts` | 各種 prompt 構築 | Next.js shared lib |
-| `supabase/functions/image-gen-worker/index.ts` | `buildStyleAttemptReinforcementPrefix()` (リトライ時の強化 prefix のみ) | **Supabase Edge Function (Deno)** |
+| `app/api/coordinate-generate-guest/handler.ts` | `buildPrompt()` (ゲスト同期生成、L205) | Next.js Route Handler |
+| `supabase/functions/image-gen-worker/index.ts` | `buildSharedPrompt` (= buildPrompt) L1670 / `buildInspirePrompt` L1659 / `buildStyleAttemptReinforcementPrefix` | **Supabase Edge Function (Deno)** |
 
-**重要**: worker は **リトライ強化文** だけ呼んでいる。本体プロンプトは Next.js 側で job 作成時に組み立て `image_jobs.prompt_text` に保存され、worker はそれを使う。
+#### ⚠️ shared/generation/ の bundle 影響 (重要)
 
-したがって:
-- 本体プロンプト (`STYLE_PROMPT_BASE_PREFIX`, `buildInspirePrompt` 等) の DB 読込みは **Next.js 側だけで OK**
-- リトライ強化文だけは **worker (Deno) も DB 読込みが必要**
+`prompt-core.ts` および `style-prompts.ts` は次の **client component / type-only consumer** からも import されている:
+
+- `features/inspire/components/InspirePageClient.tsx` (`InspireOverrides` 型)
+- `features/inspire/components/InspireOverrideCheckbox.tsx` (同)
+- `features/style/components/StylePageClient.tsx` (`SourceImageType` 型)
+- `features/generation/types.ts` / `features/generation/lib/form-preferences.ts` 等 (型のみ)
+
+そのため `shared/generation/` 内で `"use cache"` / `import "@/lib/supabase/admin"` / `import "next/cache"` を直接使うと、**Deno worker のビルドと client bundle が壊れる**。
+
+**結論**: `shared/generation/*` は **pure (ランタイム依存ゼロ)** に維持し、DB 解決ロジックは Next.js / Deno それぞれの wrapper に分離する設計とする (ADR-007 参照)。
+
+#### worker と Next.js 双方で全 prompt_key を取得する
+
+`buildInspirePrompt` / `buildSharedPrompt` / `buildStyleAttemptReinforcementPrefix` のすべてが worker でも Next.js でも呼ばれているため、両ランタイムで override 取得が必要 (ADR-005)。
 
 ### B-4: 参照ドキュメント
 
@@ -149,13 +160,13 @@ erDiagram
 
 | ID | 要件 |
 |----|------|
-| REQ-1 | When admin が `/admin/generation-prompts` を開くと, the system shall コード default と DB override を統合した全 prompt_key の一覧をグループ別 (Style / Coordinate / Inspire / Reinforcement) で表示する。<br>**EN**: When an admin opens `/admin/generation-prompts`, the system shall display a unified list of all prompt keys (default + overrides) grouped by category. |
+| REQ-1 | When admin が `/admin/generation-prompts` を開くと, the system shall コード default と DB override を統合した全 prompt_key の一覧を **4 つのカテゴリ (Style / Coordinate / Inspire / Reinforcement)** でグループ表示する。<br>**EN**: When an admin opens `/admin/generation-prompts`, the system shall display a unified list grouped by 4 categories: Style / Coordinate / Inspire / Reinforcement. |
 | REQ-2 | When admin が 1 key の編集ページを開くと, the system shall コード default テキストと現在の override テキストを並べて表示し、textarea で編集可能にする。<br>**EN**: When an admin opens a key's edit page, the system shall display both the code default and the current override in editable textarea. |
 | REQ-3 | When admin が 編集後 「保存」 を押すと, the system shall DB に UPSERT し、`prompt-overrides` cache tag を revalidate して即時反映する。<br>**EN**: When an admin saves edits, the system shall UPSERT to DB and revalidate the cache tag for immediate effect. |
 | REQ-4 | When admin が 「default に戻す」を押すと, the system shall DB から該当行を削除し、override 無し状態 (= コード default が使われる状態) に戻す。<br>**EN**: When an admin clicks "reset to default", the system shall DELETE the row, falling back to the code default. |
 | REQ-5 | While prompt 生成中、the system shall `getPromptOverride(key)` で cache → DB → code default の順に解決する。<br>**EN**: While building prompts, the system shall resolve via cache → DB → code default. |
 | REQ-6 | If DB クエリが失敗した場合, then the system shall コード default にフォールバックし、生成リクエストは続行する (`console.error` で記録)。<br>**EN**: If DB lookup fails, then the system shall fall back to code default and continue serving the request. |
-| REQ-7 | Where Edge Function worker でリトライ強化 prefix を取得する時, the system shall 同等のフォールバックロジックで DB 直接クエリし、失敗時は code default を使う。<br>**EN**: Where the worker fetches retry reinforcement prefixes, the system shall use the same fallback logic via direct DB query. |
+| REQ-7 | Where Edge Function worker で本体 prompt / リトライ強化文を取得する時, the system shall `resolveAllPromptTemplatesForWorker(supabase)` で全 prompt_key を 1 クエリ取得し、registry default で欠落を埋めた dict を pure builder に渡す。失敗時は registry default 100% で fallback。<br>**EN**: Where the worker resolves prompts, the system shall fetch all prompt_keys in one query, fall back to registry defaults, and pass the templates dict to the pure builder. |
 | REQ-8 | If 非 admin ユーザーが `/admin/generation-prompts` や `/api/admin/generation-prompts*` にアクセスした場合, then the system shall ページは `/` へ redirect、API は 403 を返す。<br>**EN**: If a non-admin attempts access, then the system shall redirect pages to `/` and return 403 for APIs. |
 | REQ-9 | When prompt の content に `{{varname}}` プレースホルダーが含まれる時, the system shall ビルダー関数側で正しい変数値に置換する。サポートされない変数名はそのまま残す (生成ログで気づける)。<br>**EN**: When a prompt contains `{{varname}}` placeholders, the system shall substitute them with the correct runtime values; unknown variables remain unsubstituted. |
 | REQ-10 | While admin 編集画面、the system shall 「保存」ボタン押下中は disabled にし、保存完了でトースト通知を出す。<br>**EN**: While saving, the system shall disable the button and show a success toast on completion. |
@@ -217,6 +228,28 @@ erDiagram
 - **Reason**: 既存 popup-banners / catalog と同パターン。3-5 分の遅延は admin 編集の即時性として許容範囲 (即時性が必要なら revalidate で 0 秒)。
 - **Consequence**: 編集後すぐに反映される (revalidate のおかげ)。万一 revalidate に失敗しても数分以内に自然失効。
 
+### ADR-007: shared/generation/ は pure layer、DB 解決は runtime 別 wrapper に分離
+
+- **Context**: `shared/generation/prompt-core.ts` と `style-prompts.ts` は (1) Next.js Route Handler (2) Edge Function worker (Deno) (3) client component (type import のみ) の **3 ランタイム** から import されている。これらに `"use cache"` / `next/cache` / `@/lib/supabase/admin` のような Next.js 専用依存を入れると、Deno は import 解決に失敗、client bundle は不要コード混入で肥大化する。
+- **Decision**: レイヤを次の 3 段に分離する:
+  1. **`shared/generation/prompt-registry.ts`** (pure): 全 key の `{ defaultContent, category, supportedVariables, previewSamples }` を持つレジストリ
+  2. **`shared/generation/prompt-template.ts`** (pure): `applyTemplate(text, vars)` ヘルパ
+  3. **`shared/generation/prompt-core.ts` / `style-prompts.ts`** (pure に維持): ビルダーは **pre-resolved な templates dict を受け取る pure 関数** へリファクタ
+  4. **`features/generation-prompts/lib/resolve-templates.ts`** (Next.js 専用): `"use cache"` + admin client で全 key を取得して dict を返す
+  5. **`supabase/functions/image-gen-worker/prompt-override.ts`** (Deno 専用): Deno + supabase-js で同じ dict を返す (invocation 内メモリキャッシュ付き)
+- **呼び出しパターン**:
+  ```ts
+  // Next.js Route Handler
+  const templates = await resolveCoordinatePromptsForNext();
+  const prompt = buildPrompt({ templates, generationType: "coordinate", ... }); // pure / sync
+
+  // Worker (Deno)
+  const templates = await resolveCoordinatePromptsForWorker(supabase);
+  const prompt = buildPrompt({ templates, generationType: "coordinate", ... }); // 同じ pure 関数
+  ```
+- **Reason**: (a) `shared/` の zero-runtime-dep を維持すれば Deno / client bundle を壊さない (b) ビルダー pure 化で単体テストが容易 (mock 不要) (c) 同じ pure 関数を両ランタイムで再利用できる (d) DB 解決の責務が一箇所 (resolver) に集約され見通しが良い。
+- **Consequence**: 既存ビルダー関数のシグネチャが変わる (引数に `templates` を追加)。呼び出し側 5-6 箇所の修正が必要だが、async/await の伝播より単純。ビルダー関数が async になる従来案より caller への影響範囲が広い半面、Deno/client 破壊リスクは消える。
+
 ---
 
 ## 4. 実装計画 (フェーズ + TODO)
@@ -252,7 +285,8 @@ Phase 5 (worker) は P3 と並列実装可能。
     prompt_key TEXT PRIMARY KEY CHECK (length(prompt_key) <= 100),
     -- defense in depth: API 層でも 4000 文字制限するが、DB 側にも保険
     content TEXT NOT NULL CHECK (length(content) <= 4000 AND length(trim(content)) > 0),
-    -- user 削除時に override は残し attribution だけ NULL に (style_presets パターン)
+    -- user 削除時に attribution だけ NULL に (style_presets / admin_announcements パターン)
+    created_by UUID NULL REFERENCES auth.users(id) ON DELETE SET NULL,
     updated_by UUID NULL REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -284,6 +318,8 @@ Phase 5 (worker) は P3 と並列実装可能。
     'shared/generation/prompt-registry.ts に定義された key のいずれか (registry を真とする)';
   COMMENT ON COLUMN public.prompt_overrides.content IS
     '{{varname}} プレースホルダー記法でテンプレ変数を含む prompt テキスト。max 4000 文字';
+  COMMENT ON COLUMN public.prompt_overrides.created_by IS
+    '初回 override を作成した admin ユーザー id。ユーザー削除で NULL';
   COMMENT ON COLUMN public.prompt_overrides.updated_by IS
     '最終更新 admin ユーザー id。ユーザー削除で NULL';
   ```
@@ -329,18 +365,24 @@ Phase 5 (worker) は P3 と並列実装可能。
       "coordinate.full_body_template": { ... },
       "coordinate.chibi_template": { ... },
       "inspire.keep_all_template": { ... },
-      "inspire.override_overlay_text": {
-        defaultContent: "上書きする要素: {{override_descriptions}}",
-        supportedVariables: ["override_descriptions"],
-      },
-      "reinforcement.attempt_2plus": {
-        description: "全 generation_type 共通のリトライ強化 prefix (attempt ≥ 2 で前置)",
+      // Inspire は user 選択 (override 4 種類) 別に編集できる方針 (ヒアリングで合意)
+      // → keep_all + 4 個別 = 5 key
+      "inspire.override_outfit_text": { description: "outfit を上書きする時の指示文" },
+      "inspire.override_angle_text": { description: "angle を上書きする時の指示文" },
+      "inspire.override_pose_text": { description: "pose を上書きする時の指示文" },
+      "inspire.override_background_text": { description: "background を上書きする時の指示文" },
+      "reinforcement.coordinate_attempt_2plus": {
+        description: "coordinate 系のリトライ強化 prefix (attempt ≥ 2 で前置)",
         defaultContent: "[Retry attempt {{attempt}} of {{max_attempts}}] Previous attempt did not follow instructions strictly. ...",
+        supportedVariables: ["attempt", "max_attempts"],
+      },
+      "reinforcement.style_attempt_2plus": {
+        description: "style 系のリトライ強化 prefix",
         supportedVariables: ["attempt", "max_attempts"],
       },
     } as const satisfies Record<string, PromptDefinition>;
     ```
-  - **key 数の合計目安**: 約 7-12 個 (ADR-004 に従い大型テンプレート + 変数方式で集約)
+  - **key 数の合計目安**: 約 12-14 個 (Style 5 + Coordinate 4 + Inspire 5 + Reinforcement 2)
 - [ ] 既存定数 (`STYLE_PROMPT_BASE_PREFIX` 等) を撤去し、registry に集約 (export は registry helper 経由)
 - [ ] `prompt-core.ts` 内に散在していた文字列リテラルも registry に統合 (大型テンプレート化)
 - [ ] テンプレ変数のある箇所は `{{varname}}` 表記に書き換え (`Attempt ${attempt}` → `Attempt {{attempt}}`)
@@ -348,24 +390,29 @@ Phase 5 (worker) は P3 と並列実装可能。
   - `text.replace(/\{\{(\w+)\}\}/g, ...)` ベース。`vars[name]` が無ければそのまま残す (silent 失敗回避)
 - [ ] 既存ユニットテスト (style-prompts.test.ts, inspire-prompt.test.ts) を新 registry / template 展開対応に更新
 
-### Phase 3: Next.js 用 getPromptOverride + ビルダー差し替え
+### Phase 3: ビルダー pure 化 + Next.js 用 resolver
 
-**目的**: ビルダー関数を DB-aware にする (Next.js 経路)。
-**ビルド確認**: `npm run typecheck`、既存ビルダー関数のテストが通る。
+**目的**: ADR-007 に基づき、`shared/generation/` を pure に保ちつつ Next.js 側から DB override を解決できるようにする。
+**ビルド確認**: `npm run typecheck`、既存ビルダー関数のテストが pure 化された新シグネチャで通る。
 
-- [ ] 新規ファイル: `features/generation-prompts/lib/get-prompt-override.ts`
-  - 関数 `getPromptOverride(key: PromptKey): Promise<string>`
+- [ ] `shared/generation/prompt-core.ts` / `style-prompts.ts` のビルダーを **pure 化** (async にしない、DB 依存を持たない)
+  - 旧: `buildPrompt({ generationType, ... }): string` — registry 内テキストを直接参照
+  - 新: `buildPrompt({ templates, generationType, ... }): string` — templates dict を引数として受け取り、`applyTemplate(templates[key], vars)` で展開
+  - `templates: Partial<Record<PromptKey, string>>` 型。欠落時は registry default にフォールバック
+- [ ] 新規: `features/generation-prompts/lib/resolve-templates.ts` (Next.js 専用 wrapper)
+  - 関数 `resolveAllPromptTemplates(): Promise<Record<PromptKey, string>>`
     - `"use cache"` + `cacheTag("prompt-overrides")` + `cacheLife("minutes")`
-    - admin client で `SELECT content FROM prompt_overrides WHERE prompt_key = $1`
-    - 失敗 / 行なし → registry の `defaultContent` を返す
-  - 関数 `getAllPromptOverrides(): Promise<Record<PromptKey, string>>`
-    - 一度に全件取得 + registry とマージ。admin 一覧画面用
-- [ ] `shared/generation/prompt-core.ts` と `shared/generation/style-prompts.ts` のビルダー関数を async 化
-  - `buildStyleGenerationPrompt()` → `await getPromptOverride("style.base_prefix")` 等
-  - `buildPrompt()` → 同様に async
-  - `buildInspirePrompt()` → 同様に async
-- [ ] 呼び出し側 (`app/(app)/style/generate-async/handler.ts`, `app/api/style-templates/preview-generation/handler.ts`, etc) を全て `await` 対応に更新
-- [ ] 既存テストを async に更新
+    - admin client で全 prompt_key を 1 クエリで取得
+    - DB に row が無い key は registry default で埋めて完全な dict を返す
+    - 失敗時は registry default 100% で返す (生成は止めない)
+  - 関数 `resolveTemplatesForCategory(category): Promise<...>` — 特定カテゴリだけ欲しい場合
+- [ ] 呼び出し側 4 箇所を **「resolver で templates 取得 → pure builder に渡す」パターン** に書き換え
+  - `app/(app)/style/generate-async/handler.ts` (`buildStyleGenerationPrompt`)
+  - `app/(app)/style/generate/handler.ts` (`buildStyleGenerationPrompt`)
+  - `app/api/style-templates/preview-generation/handler.ts` (`buildInspirePrompt`)
+  - `app/api/coordinate-generate-guest/handler.ts` (`buildPrompt`)
+- [ ] 既存テスト (`style-prompts.test.ts`, `inspire-prompt.test.ts`) を pure シグネチャ対応に更新 (`templates` 引数を渡す)
+- [ ] **client component の import 影響確認**: `InspirePageClient.tsx` / `StylePageClient.tsx` 等の型のみ import が壊れていないこと (型のみ抽出は変更なし)
 
 ### Phase 4: API Route
 
@@ -389,25 +436,28 @@ Phase 5 (worker) は P3 と並列実装可能。
   - `metadata`: `{ content_before: prev?.content?.slice(0, 500) ?? null, content_after: newContent.slice(0, 500), content_length: newContent.length }` (先頭 500 文字のみ、PII 保護とログ肥大化抑止のため)
   - DELETE 時は `metadata.content_after = null` で「default に戻された」ことを示す
 - [ ] 入力 validation:
-  - `prompt_key` は registry に存在する key のみ許可 (ホワイトリスト)
+  - **PUT 時**: `prompt_key` は registry に存在する key のみ許可 (ホワイトリスト)
+  - **DELETE 時**: registry に無くても DB に row が存在すれば許可 (= 孤立 row の掃除を可能にする)
   - `content` は **max 4,000 文字** (現実の prompt 長は数百〜1,500 字程度。誤入力 / DoS 対策の妥当な上限)
   - `content` が空文字 / トリム後空のときは 400 (削除したいなら DELETE を使う)
   - サポートされない `{{varname}}` を含む場合は **warning メッセージを返す** (block しない、運用者がタイポに気づける)
   - registry の supportedVariables と照合して **diff を warning に含める**
 
-### Phase 5: Worker (Deno) も全 prompt_key を DB から取得
+### Phase 5: Worker (Deno) 用 resolver
 
-**目的**: worker 内で動的に呼ばれる本体プロンプト (`buildInspirePrompt` / `buildSharedPrompt`) およびリトライ強化文を DB override 対応にする (ADR-005)。
+**目的**: worker 内で呼ばれる `buildSharedPrompt` / `buildInspirePrompt` / `buildStyleAttemptReinforcementPrefix` も DB override 対応にする (ADR-005)。pure builder は Phase 3 でリファクタ済みなので、worker からも同じ builder を呼べる。
 **ビルド確認**: `deno check supabase/functions/image-gen-worker/index.ts` の TS エラー数が既存ベースライン (25) と同じであること。
 
-- [ ] 新規: `supabase/functions/image-gen-worker/prompt-override.ts`
-  - `getPromptOverride(key: PromptKey, supabase): Promise<string>` — admin client 経由で 1 行クエリ
-  - registry default を fallback として返す
-  - **invocation 内メモリキャッシュ**: `Map<PromptKey, string>` で同 invocation 中の重複 fetch を抑止 (1 ジョブで 5-7 key を引くため効果大)
-- [ ] `shared/generation/prompt-registry.ts` を Deno 互換 import (既存 `prompt-core.ts` パターンに準拠)
-- [ ] worker の `buildSharedPrompt` / `buildInspirePrompt` / `buildStyleAttemptReinforcementPrefix` 呼出し箇所を helper 経由に変更
-  - 該当: `supabase/functions/image-gen-worker/index.ts` L1659, L1670, L165付近のリトライ強化
-- [ ] テンプレ展開ヘルパ `applyTemplate` も Deno 側で利用 (`.ts` extension import)
+- [ ] 新規: `supabase/functions/image-gen-worker/prompt-override.ts` (Deno 専用 wrapper)
+  - 関数 `resolveAllPromptTemplatesForWorker(supabase): Promise<Record<PromptKey, string>>`
+    - admin client (service role、worker は既に持っている) で `SELECT prompt_key, content FROM prompt_overrides` を **1 クエリで全件取得**
+    - registry default で欠落分を埋めて完全な dict を返す
+    - 失敗時は registry default 100% で返す
+  - **invocation 内メモリキャッシュ**: 同一 invocation 内で複数 job を処理する場合、最初の job で取得した dict を使い回す (`globalThis` レベルの WeakMap or singleton)
+- [ ] `shared/generation/prompt-registry.ts` を Deno 互換 import (既存 `prompt-core.ts` の `.ts` extension パターンに準拠)
+- [ ] worker の呼出し箇所を **「resolver で templates 取得 → pure builder に渡す」パターン** に書き換え
+  - 該当: `supabase/functions/image-gen-worker/index.ts` L1659 (`buildInspirePrompt`), L1670 (`buildSharedPrompt`), retry 強化箇所
+- [ ] テンプレ展開ヘルパ `applyTemplate` も Deno 側で利用 (pure helper を `.ts` extension で import)
 - [ ] `deno check` で新規エラーがないこと確認
 
 ### Phase 6: Admin UI (一覧 + 編集ページ)
@@ -420,7 +470,7 @@ Phase 5 (worker) は P3 と並列実装可能。
   - `listAllPrompts()` を呼んで Server Component で取得
   - Client へ props 渡し
 - [ ] 一覧 Client: `features/generation-prompts/components/AdminPromptsListClient.tsx`
-  - category (Style / Coordinate / Inspire) でグループ表示
+  - category **4 つ (Style / Coordinate / Inspire / Reinforcement)** でグループ表示
   - 各 key 行: label, 短い説明, override 有無バッジ, 編集リンク
 - [ ] 編集ページ: `app/(app)/admin/generation-prompts/[key]/page.tsx`
   - Server で対象 key の default + 現 override を取得
@@ -482,10 +532,10 @@ Phase 5 (worker) は P3 と並列実装可能。
 | `.cursor/rules/database-design.mdc` | 修正 | `prompt_overrides` の定義を追記 |
 | `shared/generation/prompt-registry.ts` | 新規 | 全 prompt_key のレジストリ (description / defaultContent / category / supportedVariables) |
 | `shared/generation/prompt-template.ts` | 新規 | `{{varname}}` テンプレ展開ヘルパ |
-| `shared/generation/style-prompts.ts` | 修正 | 既存定数を registry から読むよう変更 + `buildStyleGenerationPrompt` を async 化 |
-| `shared/generation/prompt-core.ts` | 修正 | 各分岐内テキストを registry に移行 + `buildPrompt` / `buildInspirePrompt` を async 化 |
-| `features/generation-prompts/types.ts` | 新規 | `PromptKey` union type, `PromptCategory` |
-| `features/generation-prompts/lib/get-prompt-override.ts` | 新規 | Next.js 用 `getPromptOverride` (use cache 付き) |
+| `shared/generation/style-prompts.ts` | 修正 | 既存定数を registry から読むよう変更 + ビルダーは pure 化 (`templates` 引数化) |
+| `shared/generation/prompt-core.ts` | 修正 | 各分岐内テキストを registry に移行 + ビルダーは pure 化 (`templates` 引数化、async 化しない) |
+| `features/generation-prompts/types.ts` | 新規 | `PromptKey` union type, `PromptCategory` (Style / Coordinate / Inspire / Reinforcement) |
+| `features/generation-prompts/lib/resolve-templates.ts` | 新規 | Next.js 用 resolver: `resolveAllPromptTemplates()` (use cache 付き、全 key 1 クエリ) |
 | `features/generation-prompts/lib/admin-repository.ts` | 新規 | admin client 経由の CRUD |
 | `app/api/admin/generation-prompts/route.ts` | 新規 | GET (一覧) |
 | `app/api/admin/generation-prompts/[key]/route.ts` | 新規 | PUT (upsert) / DELETE (reset) + logAdminAction 呼び出し |
@@ -495,13 +545,13 @@ Phase 5 (worker) は P3 と並列実装可能。
 | `features/generation-prompts/components/AdminPromptsListClient.tsx` | 新規 | 一覧 Client |
 | `features/generation-prompts/components/AdminPromptEditClient.tsx` | 新規 | 編集 Client (textarea + default 並表示 + buttons) |
 | `app/(app)/admin/admin-nav-items.ts` | 修正 | nav に項目追加 |
-| `supabase/functions/image-gen-worker/prompt-override.ts` | 新規 | worker 用 全 prompt_key override fetcher (Deno、invocation 内メモリキャッシュ付き) |
+| `supabase/functions/image-gen-worker/prompt-override.ts` | 新規 | Deno 用 resolver: `resolveAllPromptTemplatesForWorker(supabase)` (全 key 1 クエリ、invocation 内メモリキャッシュ) |
 | `tests/integration/admin/generation-prompt-editor-e2e.test.ts` | 新規 | E2E スモーク (編集 → 生成 → marker 確認) |
+| `app/api/coordinate-generate-guest/handler.ts` | 修正 | `buildPrompt` 呼出しを resolver 経由に (前回計画から漏れていた経路) |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | `buildStyleAttemptReinforcementPrefix` 呼出し箇所を override 対応 |
-| `app/(app)/style/generate/handler.ts` | 修正 | builder 呼出しを await |
-| `app/(app)/style/generate-async/handler.ts` | 修正 | builder 呼出しを await |
-| `app/api/style-templates/preview-generation/handler.ts` | 修正 | builder 呼出しを await |
-| `features/generation/lib/coordinate-guest-api.ts` | 修正 | builder 呼出しを await |
+| `app/(app)/style/generate/handler.ts` | 修正 | builder 呼出しを resolver 経由に |
+| `app/(app)/style/generate-async/handler.ts` | 修正 | builder 呼出しを resolver 経由に |
+| `app/api/style-templates/preview-generation/handler.ts` | 修正 | builder 呼出しを resolver 経由に |
 | `messages/ja.json` / `messages/en.json` | 修正 | admin ナビ / ボタンラベル |
 | 既存テストファイル群 | 修正 | builder の async 化に追従 |
 
