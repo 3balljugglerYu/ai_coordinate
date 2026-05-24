@@ -115,14 +115,16 @@ export const GPT_IMAGE_2_TIER_LIMITS: Record<
 export type GptImage2TargetSize = `${number}x${number}`;
 
 const SIZE_MULTIPLE = 16;
-const MAX_ASPECT_RATIO = 3;
+// 出力アスペクト比の上限。1:3 等の極端な縦長/横長を抑え、スマホ標準の 9:16 / 16:9 に揃える。
+// 入力画像はクロップせず、出力サイズ側で丸める方針 (AI が再構成)。
+const MAX_ASPECT_RATIO = 16 / 9;
 
 /**
  * 入力画像のアスペクト比を保ったまま、tier の上限内で最大の出力サイズを計算する。
  *
- * - OpenAI gpt-image-2 制約: 長辺 ≤ 3840 / 総ピクセル ≤ 8,294,400 / 16 の倍数 / 長:短 ≤ 3:1
+ * - OpenAI gpt-image-2 制約: 長辺 ≤ 3840 / 総ピクセル ≤ 8,294,400 / 16 の倍数
+ * - 出力アスペクトは 9:16 ≤ aspect ≤ 16/9 にクランプ (これより極端な入力は再構成される)
  * - 入力 dimensions が null / 無効値のときは正方形扱い（1:1）
- * - 3:1 を超える極端なアスペクトは 3:1 にクランプする
  */
 export function computeGptImage2OptimalSize(
   sizeTier: GptImage2SizeTier,
@@ -139,7 +141,7 @@ export function computeGptImage2OptimalSize(
   ) {
     aspect = dimensions.width / dimensions.height;
   }
-  // OpenAI の長:短 ≤ 3:1 制約に合わせてクランプ
+  // 出力アスペクト比を 9:16 ≤ aspect ≤ 16:9 にクランプ
   aspect = Math.max(1 / MAX_ASPECT_RATIO, Math.min(MAX_ASPECT_RATIO, aspect));
 
   // 長辺を maxEdge 起点で算出
