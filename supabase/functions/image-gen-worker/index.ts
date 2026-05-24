@@ -1731,16 +1731,19 @@ Deno.serve(async () => {
                   const isInspireGemini =
                     job.generation_type === "inspire" &&
                     resolvedInspireTemplateImage !== null;
-                  const aspectBaseImage = isInspireGemini
-                    ? resolveInspireTargetSizeBaseIndex({
-                        outfit: job.override_outfit ?? true,
-                        angle: job.override_angle ?? true,
-                        pose: job.override_pose ?? true,
-                        background: job.override_background ?? true,
-                      }) === 1
-                      ? resolvedInspireTemplateImage
-                      : resolvedInputImageData
-                    : resolvedInputImageData;
+                  let aspectBaseImage: InputImageData | null =
+                    resolvedInputImageData;
+                  if (isInspireGemini) {
+                    const inspireBaseIndex = resolveInspireTargetSizeBaseIndex({
+                      outfit: job.override_outfit ?? true,
+                      angle: job.override_angle ?? true,
+                      pose: job.override_pose ?? true,
+                      background: job.override_background ?? true,
+                    });
+                    if (inspireBaseIndex === 1) {
+                      aspectBaseImage = resolvedInspireTemplateImage;
+                    }
+                  }
                   const aspectDims = aspectBaseImage
                     ? parseImageDimensions(
                         decodeBase64(aspectBaseImage.base64),

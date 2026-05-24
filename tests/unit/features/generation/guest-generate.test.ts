@@ -235,6 +235,52 @@ describe("guest-generate", () => {
       });
     });
 
+    test("imageSize を持たない Gemini モデル (gemini-2.5-flash-image) でも aspectRatio は送られる", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      inline_data: {
+                        mime_type: "image/png",
+                        data: "BASE64_OK",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      await dispatchGuestImageGeneration({
+        // GUEST_ALLOWED_MODELS には含まれないが extractImageSize が null を返す
+        // 経路の network request body 検証用 (本番では別の guard で弾かれる想定)。
+        model: "gemini-2.5-flash-image" as unknown as Parameters<
+          typeof dispatchGuestImageGeneration
+        >[0]["model"],
+        promptText: "hello",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+      const requestBody = JSON.parse(
+        String(fetchFn.mock.calls[0][1].body),
+      ) as {
+        generationConfig: {
+          imageConfig?: { imageSize?: string; aspectRatio?: string };
+        };
+      };
+      // imageSize は含まれず、aspectRatio のみが送られること
+      expect(requestBody.generationConfig.imageConfig).toEqual({
+        aspectRatio: "1:1",
+      });
+    });
+
     test("safety/policy エラーレスポンスは safety_blocked", async () => {
       const fetchFn = jest.fn().mockResolvedValue(
         new Response(
