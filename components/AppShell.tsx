@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
+import { stripLocalePrefix } from "@/i18n/config";
 
 /**
  * Persta のヘッダー・サイドバー・フッターを条件付きで表示。
@@ -24,10 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // /catalog 一覧と /catalog/submit 系は通常 chrome を維持する。
   const isCatalogReader = (() => {
     if (!pathname) return false;
-    const stripped = pathname.replace(
-      /^\/(?:ja|en|ko|zh-CN|zh-TW|es|pt|fr|de|it|id|th|vi|hi|ar)(?=\/|$)/,
-      "",
-    );
+    const { pathname: stripped } = stripLocalePrefix(pathname);
     if (
       stripped === "/catalog" ||
       stripped.startsWith("/catalog/submit")
