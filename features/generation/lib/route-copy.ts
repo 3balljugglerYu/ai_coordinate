@@ -22,6 +22,7 @@ export const generationRouteCopy = {
     jobNotFound: "ジョブが見つかりません",
     statusFetchFailed: "ステータスの取得に失敗しました",
     inProgressFetchFailed: "未完了ジョブの取得に失敗しました",
+    historyFetchFailed: "画像履歴の取得に失敗しました",
     noImagesGenerated: "画像を生成できませんでした。",
     safetyBlocked:
       "安全性ポリシーにより生成できませんでした。\n内容を変更して再試行してください。",
@@ -69,6 +70,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -116,6 +118,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -163,6 +166,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -210,6 +214,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -257,6 +262,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -304,6 +310,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -351,6 +358,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -398,6 +406,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -445,6 +454,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -492,6 +502,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -539,6 +550,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -586,6 +598,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -633,6 +646,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -680,6 +694,7 @@ export const generationRouteCopy = {
     jobNotFound: "The job could not be found.",
     statusFetchFailed: "Failed to load the generation status.",
     inProgressFetchFailed: "Failed to load in-progress jobs.",
+    historyFetchFailed: "Failed to load the image history.",
     noImagesGenerated: "No image could be generated.",
     safetyBlocked:
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
@@ -727,6 +742,7 @@ export const generationRouteCopy = {
     jobNotFound: string;
     statusFetchFailed: string;
     inProgressFetchFailed: string;
+    historyFetchFailed: string;
     noImagesGenerated: string;
     safetyBlocked: string;
     genericGenerationFailed: string;
