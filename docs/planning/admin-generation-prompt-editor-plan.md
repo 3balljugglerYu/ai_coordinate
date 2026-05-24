@@ -21,6 +21,8 @@ Style / Coordinate / Inspire の生成リクエストで使われるシステム
 - 多言語化 (en/ja 切替。現状プロンプトはほぼ英語 + 一部日本語混在のまま)
 - A/B テスト / バージョン分岐 (常に「現行版」だけが適用)
 - プロンプト dry-run プレビュー (実際に生成して見るのは既存の生成画面でやる)
+- **admin_audit_log への変更記録** (運用者判断で意図的にスコープ外。トレードオフ: 監査追跡性は失う代わりに実装をシンプルに保つ。将来必要になったら API PUT/DELETE 内に 15 行程度の INSERT 追加で対応可能)
+- **worker (Deno) の DB query バッチ最適化** (初期実装は素直な key 単位 fetch + invocation 内 Map キャッシュ。`SELECT *` での全件取得は将来 prompt key 数が増えたら検討)
 
 ---
 
@@ -245,28 +247,45 @@ Phase 5 (worker) は P3 と並列実装可能。
 
 - [ ] マイグレーションファイル新規作成: `supabase/migrations/<timestamp>_add_prompt_overrides.sql`
   ```sql
-  CREATE TABLE prompt_overrides (
-    prompt_key TEXT PRIMARY KEY,
-    content TEXT NOT NULL,
-    updated_by UUID REFERENCES auth.users(id),
+  -- 既存パターン参照: supabase/migrations/20260322100000_add_style_presets.sql
+  CREATE TABLE IF NOT EXISTS public.prompt_overrides (
+    prompt_key TEXT PRIMARY KEY CHECK (length(prompt_key) <= 100),
+    -- defense in depth: API 層でも 4000 文字制限するが、DB 側にも保険
+    content TEXT NOT NULL CHECK (length(content) <= 4000 AND length(trim(content)) > 0),
+    -- user 削除時に override は残し attribution だけ NULL に (style_presets パターン)
+    updated_by UUID NULL REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );
 
-  -- updated_at trigger (既存 set_updated_at() があれば再利用、無ければ作成)
-  CREATE TRIGGER set_prompt_overrides_updated_at
-    BEFORE UPDATE ON prompt_overrides
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  ALTER TABLE public.prompt_overrides ENABLE ROW LEVEL SECURITY;
 
-  ALTER TABLE prompt_overrides ENABLE ROW LEVEL SECURITY;
+  -- RLS: 既存 admin-only テーブル (admin_audit_log / admin_users) と同パターン。
+  -- USING(false) で anon / authenticated 全拒否。admin client (service role) のみアクセス可
+  DROP POLICY IF EXISTS "prompt_overrides_no_public_access" ON public.prompt_overrides;
+  CREATE POLICY "prompt_overrides_no_public_access"
+    ON public.prompt_overrides
+    FOR ALL
+    USING (false);
 
-  -- RLS: admin client (service role) のみアクセス可。anon / authenticated は読み書き不可
-  -- (admin 画面と Next.js 取得は admin client 経由なので RLS バイパス)
-  CREATE POLICY "block_all_for_anon_and_authenticated" ON prompt_overrides
-    FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);
+  -- updated_at trigger: リポジトリ共通の update_updated_at_column() を利用
+  -- (style_presets / popup_banners と同パターン)
+  DROP TRIGGER IF EXISTS update_prompt_overrides_updated_at ON public.prompt_overrides;
+  CREATE TRIGGER update_prompt_overrides_updated_at
+    BEFORE UPDATE ON public.prompt_overrides
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
 
-  COMMENT ON TABLE prompt_overrides IS 'admin 編集可能な生成 prompt の override 文言。
-  既存類似: 参考なし (新カテゴリ)。詳細: docs/planning/admin-generation-prompt-editor-plan.md';
+  -- COMMENT: スキーマ自己ドキュメント化 (style_presets と同レベルの粒度)
+  COMMENT ON TABLE public.prompt_overrides IS
+    'admin 編集可能な生成 prompt の override 文言。コード default + DB override のフォールバック設計。'
+    '詳細: docs/planning/admin-generation-prompt-editor-plan.md';
+  COMMENT ON COLUMN public.prompt_overrides.prompt_key IS
+    'shared/generation/prompt-registry.ts に定義された key のいずれか (registry を真とする)';
+  COMMENT ON COLUMN public.prompt_overrides.content IS
+    '{{varname}} プレースホルダー記法でテンプレ変数を含む prompt テキスト。max 4000 文字';
+  COMMENT ON COLUMN public.prompt_overrides.updated_by IS
+    '最終更新 admin ユーザー id。ユーザー削除で NULL';
   ```
 - [ ] `.cursor/rules/database-design.mdc` に `prompt_overrides` テーブルの定義を追記
 - [ ] 型定義: `features/generation-prompts/types.ts` (新規) に `PromptKey` enum-like type 定義
