@@ -70,6 +70,14 @@ const envSchema = {
   // 申請者ホワイトリスト（カンマ区切り UUID、空 = 全許可、ADR-010 fail-open）
   INSPIRE_SUBMISSION_ALLOWED_USER_IDS:
     process.env.INSPIRE_SUBMISSION_ALLOWED_USER_IDS,
+
+  // Catalog (絵師カタログ機能)
+  // Cloudflare Turnstile (ゲスト投稿の bot 対策)
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY:
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+  TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+  // 機能全体の kill switch (未設定 or "true" で有効)
+  NEXT_PUBLIC_CATALOG_ENABLED: process.env.NEXT_PUBLIC_CATALOG_ENABLED,
 } as const;
 
 /**
@@ -154,7 +162,20 @@ function getEnv() {
       envSchema.INSPIRE_TEST_CHARACTER_IMAGE_URL || "",
     INSPIRE_SUBMISSION_ALLOWED_USER_IDS:
       envSchema.INSPIRE_SUBMISSION_ALLOWED_USER_IDS || "",
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY:
+      envSchema.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
+    TURNSTILE_SECRET_KEY: envSchema.TURNSTILE_SECRET_KEY || "",
+    NEXT_PUBLIC_CATALOG_ENABLED: envSchema.NEXT_PUBLIC_CATALOG_ENABLED || "",
   };
+}
+
+/**
+ * 絵師カタログ機能が有効化されているか。
+ * NEXT_PUBLIC_CATALOG_ENABLED が未設定 or "true" の場合に有効 (デフォルト有効)。
+ */
+export function isCatalogFeatureEnabled(): boolean {
+  const value = env.NEXT_PUBLIC_CATALOG_ENABLED.trim().toLowerCase();
+  return value === "" || value === "true" || value === "1";
 }
 
 export const env = getEnv();

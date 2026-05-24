@@ -17,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/payment-services-act",
     "/thanks-sample",
     "/free-materials",
+    "/catalog",
   ] as const;
 
   // 主要な静的ページ
@@ -79,5 +80,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Failed to fetch posts for sitemap:", error);
   }
 
-  return [...staticPages, ...postPages];
+  // 公開中の catalog 企画を追加
+  let catalogPages: MetadataRoute.Sitemap = [];
+  try {
+    const supabase = await createClient();
+    const { data: campaigns, error: campaignError } = await supabase
+      .from("catalog_campaigns")
+      .select("slug, updated_at")
+      .eq("status", "published")
+      .order("display_order", { ascending: true })
+      .limit(500);
+
+    if (!campaignError && campaigns) {
+      catalogPages = locales.flatMap((locale) =>
+        campaigns
+          .filter((c) => c.slug)
+          .map((c) => ({
+            url: `${baseUrl}${localizePublicPath(`/catalog/${c.slug}`, locale)}`,
+            lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
+            changeFrequency: "weekly" as const,
+            priority: 0.7,
+          })),
+      );
+    }
+  } catch (error) {
+    console.error("Failed to fetch catalog campaigns for sitemap:", error);
+  }
+
+  return [...staticPages, ...postPages, ...catalogPages];
 }

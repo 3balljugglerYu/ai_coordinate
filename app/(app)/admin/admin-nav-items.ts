@@ -110,6 +110,18 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "shield-check",
   },
   {
+    path: "/admin/catalog/campaigns",
+    label: "カタログ企画",
+    description: "絵師カタログの企画を作成・編集",
+    iconKey: "rectangle-horizontal",
+  },
+  {
+    path: "/admin/catalog/entries",
+    label: "カタログ審査",
+    description: "絵師カタログの投稿を審査",
+    iconKey: "shield-check",
+  },
+  {
     path: "/admin/announcements",
     label: "運営お知らせ",
     description: "運営からのお知らせを作成・公開",

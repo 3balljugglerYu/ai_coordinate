@@ -48,6 +48,11 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/search$/,
   /^\/posts\/[^/]+$/,
   /^\/i2i\/[^/]+$/,
+  /^\/catalog$/,
+  /^\/catalog\/[^/]+$/,
+  /^\/catalog\/[^/]+\/p\/[^/]+$/,
+  /^\/catalog\/submit$/,
+  /^\/catalog\/submit\/thanks$/,
 ];
 
 export function isLocale(value: string | undefined | null): value is Locale {

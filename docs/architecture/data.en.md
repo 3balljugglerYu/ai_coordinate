@@ -134,6 +134,7 @@ This matches Supabase/Postgres best practices used in this repo:
 | Moderation and admin | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
 | Home promotion banners | `popup_banners`, `popup_banner_views`, `popup_banner_analytics`, `popup_banner_guest_events` | `record_popup_banner_interaction`, `reorder_popup_banners` | `/api/popup-banners/**`, `/api/admin/popup-banners/**`, `/admin/popup-banners` |
 | Deactivation and purge | `profiles`, `credit_forfeiture_ledger`, `generated_images`, `source_image_stocks` | `request_account_deletion`, `cancel_account_deletion`, `get_due_deletion_candidates`, `record_forfeiture_ledger` | `/api/account/deactivate`, `/api/account/reactivate`, `/api/internal/account-purge` |
+| Artist catalog | `catalog_campaigns`, `catalog_entries`, `catalog_public_entries` view, `catalog_audit_logs`, `notifications` (extended), Storage `catalog-images` | `apply_catalog_entry_decision`, `enforce_catalog_entry_submission_cap` | `/catalog`, `/catalog/[slug]`, `/catalog/submit`, `/api/catalog/**`, `/api/admin/catalog/**`, `/admin/catalog/**` |
 
 ## Core flow 1: Signup, signup bonus, and referral bootstrap
 

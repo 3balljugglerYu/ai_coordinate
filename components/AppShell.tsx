@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
+import { stripLocalePrefix } from "@/i18n/config";
 
 /**
  * Persta のヘッダー・サイドバー・フッターを条件付きで表示。
@@ -18,7 +19,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
   const isStandaloneDocs = pathname?.startsWith("/api-docs");
-  const shouldBypassAppShell = isAdmin || isStandaloneDocs;
+  // 絵師カタログのリーダー画面 (/catalog/[slug] と /catalog/[slug]/p/[entryId]) は
+  // 没入ビューにするため、Persta の chrome (Header / Sidebar / NavigationBar / Footer) を
+  // 一切表示せずに children だけを描画する。
+  // /catalog 一覧と /catalog/submit 系は通常 chrome を維持する。
+  const isCatalogReader = (() => {
+    if (!pathname) return false;
+    const { pathname: stripped } = stripLocalePrefix(pathname);
+    if (
+      stripped === "/catalog" ||
+      stripped.startsWith("/catalog/submit")
+    ) {
+      return false;
+    }
+    return /^\/catalog\/[^/]+(?:\/p\/[^/]+)?\/?$/.test(stripped);
+  })();
+  const shouldBypassAppShell =
+    isAdmin || isStandaloneDocs || isCatalogReader;
 
   useEffect(() => {
     if (isAdmin) {
