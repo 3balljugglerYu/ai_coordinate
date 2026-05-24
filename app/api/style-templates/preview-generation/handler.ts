@@ -33,8 +33,12 @@ import {
   isHeicImage,
 } from "@/features/generation/lib/heic-converter";
 import { getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
-import { callOpenAIImageEditMultiInput } from "@/features/generation/lib/openai-image";
+import {
+  callOpenAIImageEditMultiInput,
+  parseImageDimensions,
+} from "@/features/generation/lib/openai-image";
 import { createNanobananaClient } from "@/features/generation/lib/nanobanana-client";
+import { resolveGeminiAspectRatio } from "@/shared/generation/gemini-aspect-ratio";
 import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import { buildInspirePrompt } from "@/shared/generation/prompt-core";
 import {
@@ -340,6 +344,14 @@ export async function handlePreviewGeneration(
         };
       }
       const client = createNanobananaClient();
+      // 出力アスペクト比はテンプレ画像 (image_1) 基準で解決する。
+      // preview は「テンプレ適用後の見え方」を確認する用途のため、
+      // テンプレの構図/フレーミングを基準にする (ADR-006)。
+      const templateAspectDims = parseImageDimensions(
+        new Uint8Array(Buffer.from(templateBase64, "base64")),
+        templateMimeType,
+      );
+      const previewAspectRatio = resolveGeminiAspectRatio(templateAspectDims);
       const response = await client.generateContent({
         apiKey: env.GEMINI_API_KEY,
         model: "gemini-3.1-flash-image-preview",
@@ -366,7 +378,10 @@ export async function handlePreviewGeneration(
           generationConfig: {
             candidateCount: 1,
             responseModalities: ["TEXT", "IMAGE"],
-            imageConfig: { imageSize: "512" },
+            imageConfig: {
+              imageSize: "512",
+              aspectRatio: previewAspectRatio,
+            },
           },
         },
       });

@@ -218,6 +218,21 @@ describe("guest-generate", () => {
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
         expect.objectContaining({ method: "POST" })
       );
+
+      // Gemini request body の imageConfig には imageSize と aspectRatio が併置される。
+      // 16 byte の zero buffer は parseImageDimensions が null を返すため、
+      // resolveGeminiAspectRatio フォールバックで "1:1" になる。
+      const requestBody = JSON.parse(
+        String(fetchFn.mock.calls[0][1].body),
+      ) as {
+        generationConfig: {
+          imageConfig?: { imageSize?: string; aspectRatio?: string };
+        };
+      };
+      expect(requestBody.generationConfig.imageConfig).toEqual({
+        imageSize: "512",
+        aspectRatio: "1:1",
+      });
     });
 
     test("safety/policy エラーレスポンスは safety_blocked", async () => {
