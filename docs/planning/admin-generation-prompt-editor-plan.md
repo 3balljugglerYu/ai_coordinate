@@ -183,19 +183,30 @@ erDiagram
 - **Reason**: (a) Mustache 風は広く認知 (b) JS の `${}` と衝突しない (c) 単純な正規表現で置換可能。
 - **Consequence**: 変数名のタイポは生成ログで `{{wrongname}}` が残るので気づける (silent 失敗にしない)。テンプレ展開ヘルパが必要。
 
-### ADR-004: prompt_key の命名規約
+### ADR-004: prompt_key の命名規約 + 大型テンプレート方式
 
-- **Context**: 15-30 個ある prompt key を体系化する必要がある。
-- **Decision**: `<category>.<subkey>` 形式の dot-separated。例: `style.base_prefix`, `coordinate.main_body`, `inspire.keep_all`, `style.reinforcement.attempt_2plus`。
-- **Reason**: 一覧画面でグループ表示が容易 (前方一致でフィルタ)、ファイル系統に対応。
-- **Consequence**: prompt_key を変更すると DB 行 orphan が発生する → migration で旧 key を削除する運用が必要。
+- **Context**: 初期案では `STYLE_PROMPT_BASE_PREFIX` 等の小さな文字列を 1 key = 1 row として 20 個前後並べる方針だった。しかし運用者目線で「文の途中だけ差し替える」のは文意の流れが見えず編集しにくい。
+- **Decision**: prompt_key は `<category>.<subkey>` の dot-separated。**1 key = 1 つの完結したテンプレート文字列** とし、動的部分は `{{variable}}` で表現する。`buildPrompt` 内に散在していた断片は集約し、key 数は 7-8 程度に圧縮する。
+- **例**:
+  ```
+  style.full_template       — Style 画面 1 リクエスト分の完成テンプレート
+  coordinate.full_template  — Coordinate 通常
+  coordinate.specified_coordinate_template — Specified Coordinate
+  coordinate.full_body_template
+  coordinate.chibi_template
+  inspire.keep_all_template — Inspire すべて維持時の本文
+  inspire.override_overlay  — 個別 override 文 (繰り返し連結)
+  reinforcement.attempt_2plus — 全 generation_type 共通リトライ強化文
+  ```
+- **Reason**: (a) 編集単位が「完結した文」になるため運用者が文意を読み取りやすい (b) key 数が少なく一覧が見渡せる (c) 細粒度な分割は将来 PR で必要なら細分化できる (今は集約寄りでスタート) (d) `{{outfit_description}}` 等の変数で動的部分を明示できる。
+- **Consequence**: コード側は registry のテンプレートを取り、`applyTemplate(template, vars)` で展開する設計に変わる。既存の `STYLE_PROMPT_BASE_PREFIX` 等の export は撤去 (registry に集約)。テンプレート展開ヘルパが必須。
 
-### ADR-005: worker (Deno) は本体プロンプトを DB 読込みしない
+### ADR-005: worker (Deno) も本体プロンプトを DB 読込みする
 
-- **Context**: 本体プロンプトは Next.js 側で job 作成時に組み立てて `image_jobs.prompt_text` に保存。worker は保存済みテキストを使う。リトライ強化 prefix だけ worker で動的生成。
-- **Decision**: worker は **リトライ強化 prefix の override のみ** DB から取得 (Deno + supabase-js)。本体プロンプトの override 取得は Next.js 側のみ。
-- **Reason**: 既存アーキテクチャを尊重。worker の DB アクセスを最小化。
-- **Consequence**: worker に小規模な DB クエリヘルパーを追加するだけで済む。Edge Function 再デプロイは必要。
+- **Context**: 当初は「本体プロンプトは Next.js 側で組み立て job に保存、worker はリトライ強化 prefix だけ動的生成」と想定していた。しかし実コード調査 (worker index.ts L1659, L1670) の結果、worker 内で `buildInspirePrompt` および `buildSharedPrompt (= buildPrompt)` が **直接呼ばれている** ことが判明。`job.input_image_url` の有無や `generation_type` によって、worker 実行時にプロンプトを組み立てるパスが残っている。
+- **Decision**: worker (Deno) も **全 prompt_key を DB から取得** できるようにする。Deno 側に `getPromptOverride(key, supabase)` helper を追加し、本体プロンプト・リトライ強化文の両方で利用。
+- **Reason**: (a) 既存の worker 内 prompt 構築ロジックを尊重 (Next.js 側に寄せる大規模リファクタを回避) (b) worker は admin client を持っているので DB アクセスのコストは小さい (c) admin 編集と worker 出力の一貫性が取れる (= Next.js 経路と worker 経路でテキストが乖離しない)。
+- **Consequence**: Phase 5 のスコープが拡大 (リトライ強化文だけ → 全 key)。worker invocation あたり最大 7-8 件の DB query が増えるが、admin client + 小規模テーブルなのでパフォーマンス影響は無視できる範囲。簡易メモリキャッシュ (worker invocation 内で同 key を 1 回だけ取得) を Phase 5 で実装する。
 
 ### ADR-006: キャッシュは `cacheLife("minutes")` (~3-5 分)
 
@@ -279,35 +290,44 @@ Phase 5 (worker) は P3 と並列実装可能。
         defaultContent: STYLE_PROMPT_BASE_PREFIX_DEFAULT, // 既存定数を rename
         supportedVariables: [],
       },
-      "style.illustration_suffix": { ... },
-      "style.real_suffix": { ... },
-      "style.keep_background_suffix": { ... },
-      "style.change_background_suffix": { ... },
-      "style.reinforcement_attempt_2plus": {
-        defaultContent: "...attempt {{attempt}} of 3...",
-        supportedVariables: ["attempt"],
+      "style.full_template": {
+        category: "style",
+        description: "Style 画面で 1 リクエスト分使う完成テンプレート (前文 + suffix + 背景 + ユーザー指示)",
+        defaultContent: "CRITICAL INSTRUCTION: ... {{style_suffix}} ... {{background_instruction}} ... Styling Direction: {{styling_prompt}} {{background_prompt_section}}",
+        supportedVariables: ["style_suffix", "background_instruction", "styling_prompt", "background_prompt_section"],
       },
-      "coordinate.main_body": { ... },          // buildPrompt() coordinate 分岐
-      "coordinate.specified_main_body": { ... }, // specified_coordinate
-      "coordinate.full_body_main": { ... },
-      "coordinate.chibi_main": { ... },
-      "coordinate.background_keep": { ... },
-      "coordinate.background_ai_auto": { ... },
-      "coordinate.background_include_in_prompt": { ... },
-      "coordinate.reinforcement_attempt_2plus": { ... },
-      "inspire.keep_all": { ... },              // 全 override false の時
-      "inspire.override_outfit": { ... },
-      "inspire.override_angle": { ... },
-      "inspire.override_pose": { ... },
-      "inspire.override_background": { ... },
+      "style.illustration_suffix_text": { ... },  // {{style_suffix}} に入る illustration 用文
+      "style.real_suffix_text": { ... },          // 同 real 用
+      "style.keep_background_text": { ... },      // {{background_instruction}} に入る keep 用
+      "style.change_background_text": { ... },    // 同 change 用
+      "coordinate.full_template": {
+        category: "coordinate",
+        description: "通常コーディネート (coordinate) の完成テンプレート",
+        defaultContent: "...{{outfit_description}}...{{background_directive}}...",
+        supportedVariables: ["outfit_description", "background_directive"],
+      },
+      "coordinate.specified_coordinate_template": { ... },
+      "coordinate.full_body_template": { ... },
+      "coordinate.chibi_template": { ... },
+      "inspire.keep_all_template": { ... },
+      "inspire.override_overlay_text": {
+        defaultContent: "上書きする要素: {{override_descriptions}}",
+        supportedVariables: ["override_descriptions"],
+      },
+      "reinforcement.attempt_2plus": {
+        description: "全 generation_type 共通のリトライ強化 prefix (attempt ≥ 2 で前置)",
+        defaultContent: "[Retry attempt {{attempt}} of {{max_attempts}}] Previous attempt did not follow instructions strictly. ...",
+        supportedVariables: ["attempt", "max_attempts"],
+      },
     } as const satisfies Record<string, PromptDefinition>;
     ```
-- [ ] 既存定数 (`STYLE_PROMPT_BASE_PREFIX` 等) を `_DEFAULT` 接尾辞付きに rename、`shared/generation/style-prompts.ts` で registry から import
-- [ ] `prompt-core.ts` の各分岐内のテキストリテラルも registry の defaultContent へ移行
-- [ ] テンプレ変数のあるテキストは `{{varname}}` 表記に書き換え (`Attempt ${attempt}` → `Attempt {{attempt}}`)
+  - **key 数の合計目安**: 約 7-12 個 (ADR-004 に従い大型テンプレート + 変数方式で集約)
+- [ ] 既存定数 (`STYLE_PROMPT_BASE_PREFIX` 等) を撤去し、registry に集約 (export は registry helper 経由)
+- [ ] `prompt-core.ts` 内に散在していた文字列リテラルも registry に統合 (大型テンプレート化)
+- [ ] テンプレ変数のある箇所は `{{varname}}` 表記に書き換え (`Attempt ${attempt}` → `Attempt {{attempt}}`)
 - [ ] テンプレ展開ヘルパ `applyTemplate(text, vars)` を `shared/generation/prompt-template.ts` (新規) に実装
-  - `text.replace(/\{\{(\w+)\}\}/g, ...)` ベース。`vars[name]` が無ければそのまま残す
-- [ ] 既存ユニットテスト (style-prompts.test.ts, inspire-prompt.test.ts) が引き続き通ることを確認
+  - `text.replace(/\{\{(\w+)\}\}/g, ...)` ベース。`vars[name]` が無ければそのまま残す (silent 失敗回避)
+- [ ] 既存ユニットテスト (style-prompts.test.ts, inspire-prompt.test.ts) を新 registry / template 展開対応に更新
 
 ### Phase 3: Next.js 用 getPromptOverride + ビルダー差し替え
 
@@ -344,20 +364,24 @@ Phase 5 (worker) は P3 と並列実装可能。
   - `DELETE`: requireAdmin → delete (= default にリセット) → revalidate
 - [ ] 入力 validation:
   - `prompt_key` は registry に存在する key のみ許可 (ホワイトリスト)
-  - `content` は max 10,000 文字 (XSS / DoS 対策)
-  - サポートされない `{{varname}}` を含む場合は warn (block しない、registry に supportedVariables を持たせ照合)
+  - `content` は **max 4,000 文字** (現実の prompt 長は数百〜1,500 字程度。誤入力 / DoS 対策の妥当な上限)
+  - `content` が空文字 / トリム後空のときは 400 (削除したいなら DELETE を使う)
+  - サポートされない `{{varname}}` を含む場合は **warning メッセージを返す** (block しない、運用者がタイポに気づける)
+  - registry の supportedVariables と照合して **diff を warning に含める**
 
-### Phase 5: Worker (Deno) 側の override 対応
+### Phase 5: Worker (Deno) も全 prompt_key を DB から取得
 
-**目的**: worker のリトライ強化 prefix も DB override を尊重する。
-**ビルド確認**: `deno check supabase/functions/image-gen-worker/index.ts` で 25 件以下 (= 既存と同じベースライン)。
+**目的**: worker 内で動的に呼ばれる本体プロンプト (`buildInspirePrompt` / `buildSharedPrompt`) およびリトライ強化文を DB override 対応にする (ADR-005)。
+**ビルド確認**: `deno check supabase/functions/image-gen-worker/index.ts` の TS エラー数が既存ベースライン (25) と同じであること。
 
 - [ ] 新規: `supabase/functions/image-gen-worker/prompt-override.ts`
-  - `async function getReinforcementPrompt(key: ReinforcementKey, supabase): Promise<string>`
-  - admin client (worker は service role) で 1 行クエリ。失敗時は registry default を返す
-  - 簡易メモリキャッシュ (worker invocation 内で 1 回だけ取得) はオプション
-- [ ] `supabase/functions/image-gen-worker/index.ts` の `buildStyleAttemptReinforcementPrefix` 呼出し箇所を helper 経由に変更
-- [ ] `shared/generation/prompt-registry.ts` から default を import (既存 cross-import パターン)
+  - `getPromptOverride(key: PromptKey, supabase): Promise<string>` — admin client 経由で 1 行クエリ
+  - registry default を fallback として返す
+  - **invocation 内メモリキャッシュ**: `Map<PromptKey, string>` で同 invocation 中の重複 fetch を抑止 (1 ジョブで 5-7 key を引くため効果大)
+- [ ] `shared/generation/prompt-registry.ts` を Deno 互換 import (既存 `prompt-core.ts` パターンに準拠)
+- [ ] worker の `buildSharedPrompt` / `buildInspirePrompt` / `buildStyleAttemptReinforcementPrefix` 呼出し箇所を helper 経由に変更
+  - 該当: `supabase/functions/image-gen-worker/index.ts` L1659, L1670, L165付近のリトライ強化
+- [ ] テンプレ展開ヘルパ `applyTemplate` も Deno 側で利用 (`.ts` extension import)
 - [ ] `deno check` で新規エラーがないこと確認
 
 ### Phase 6: Admin UI (一覧 + 編集ページ)
@@ -376,16 +400,28 @@ Phase 5 (worker) は P3 と並列実装可能。
   - Server で対象 key の default + 現 override を取得
   - 不明な key は notFound()
 - [ ] 編集 Client: `features/generation-prompts/components/AdminPromptEditClient.tsx`
-  - 大きな `<textarea>` (rows={20})
-  - 上部に「コード default」を <pre> で表示 (折り畳み可)
-  - 「保存」 / 「default に戻す」 / 「キャンセル」 ボタン
+  - 大きな `<textarea>` (rows={20})、下部に **「文字数: 428 / 4,000」 + 簡易トークン目安** 表示
+  - 上部に「コード default」を `<pre>` で表示 (折り畳み可)
+  - **プレビューペイン**: 「使える変数」のサンプル値 (default values) を変数ごとの input で受け取り、`applyTemplate` で展開した結果を右側に表示
+    - 例: `{{attempt}}` には `2` を仮置き、`{{styling_prompt}}` には "白いシャツとデニム" 等のサンプル
+    - registry に `previewSampleValues: Record<string, string>` を持たせると UI 側でデフォルト埋め込み可能
   - 「使える変数」の説明 (supportedVariables が空でなければ表示)
+  - 未サポートの `{{varname}}` を入力すると warning バナー
+  - 「保存」 / 「default に戻す」 / 「キャンセル」 ボタン
+  - **「default に戻す」は confirm ダイアログ必須** (誤操作防止)
+  - **編集量が default から ±30% 以上変わる場合** は軽い注意喚起 ("大幅な変更です。確認してください")
   - 保存中 disabled + 完了で toast
+- [ ] **孤立 row のハンドリング**:
+  - registry に存在しないが DB に row がある key を一覧で「未知 (要対応)」セクションに表示
+  - 削除リンクのみ提供 (編集不可)
 - [ ] Admin Nav 追加: `app/(app)/admin/admin-nav-items.ts`
   ```ts
   { path: "/admin/generation-prompts", label: "生成プロンプト管理", iconKey: "text" }
   ```
-- [ ] i18n: `messages/ja.json` / `messages/en.json` にラベル追加 (今回はキー数少ない)
+- [ ] i18n: registry の `description` / category ラベルを ja/en 両方持たせる
+  - `description: { ja: "Style 画面...", en: "Style screen ..." }` 形式に
+  - admin UI は `useLocale()` に応じて表示切替
+- [ ] `messages/ja.json` / `messages/en.json` にボタン / 見出しラベル追加
 
 ### Phase 7: テスト + 統合検証 + デプロイ
 
@@ -400,6 +436,10 @@ Phase 5 (worker) は P3 と並列実装可能。
 - [ ] 統合テスト:
   - style generate-async が override 適用済みプロンプトで job 作成すること
   - inspire preview が override 適用済みで動作すること
+- [ ] **E2E スモークテスト** (新規 / Phase 7 必須):
+  - `tests/integration/admin/generation-prompt-editor-e2e.test.ts` を新規作成
+  - フロー: ① admin が `coordinate.full_template` を `[TEST_MARKER]` を含む文言に編集 → ② generate-async POST → ③ `image_jobs.prompt_text` に `[TEST_MARKER]` が含まれることを確認 → ④ DELETE で default に戻す
+  - これがあると、async 化失敗で default が常に使われている等の致命バグを Phase 7 で検出できる
 - [ ] `npm run lint && npm run typecheck && npm run test`
 - [ ] `npm run build -- --webpack` (Turbopack 禁止)
 - [ ] migration を本番適用 (`supabase migration up` — ユーザ承認が必要)
@@ -428,7 +468,8 @@ Phase 5 (worker) は P3 と並列実装可能。
 | `features/generation-prompts/components/AdminPromptsListClient.tsx` | 新規 | 一覧 Client |
 | `features/generation-prompts/components/AdminPromptEditClient.tsx` | 新規 | 編集 Client (textarea + default 並表示 + buttons) |
 | `app/(app)/admin/admin-nav-items.ts` | 修正 | nav に項目追加 |
-| `supabase/functions/image-gen-worker/prompt-override.ts` | 新規 | worker 用 override fetcher (Deno) |
+| `supabase/functions/image-gen-worker/prompt-override.ts` | 新規 | worker 用 全 prompt_key override fetcher (Deno、invocation 内メモリキャッシュ付き) |
+| `tests/integration/admin/generation-prompt-editor-e2e.test.ts` | 新規 | E2E スモーク (編集 → 生成 → marker 確認) |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | `buildStyleAttemptReinforcementPrefix` 呼出し箇所を override 対応 |
 | `app/(app)/style/generate/handler.ts` | 修正 | builder 呼出しを await |
 | `app/(app)/style/generate-async/handler.ts` | 修正 | builder 呼出しを await |
@@ -437,7 +478,9 @@ Phase 5 (worker) は P3 と並列実装可能。
 | `messages/ja.json` / `messages/en.json` | 修正 | admin ナビ / ボタンラベル |
 | 既存テストファイル群 | 修正 | builder の async 化に追従 |
 
-**変更概算**: 本体 ~400 行追加 / ~80 行修正、テスト ~250 行追加。
+**変更概算**: 本体 ~450 行追加 / ~100 行修正、テスト ~300 行追加 (E2E 込み)。
+
+worker (Deno) 改修で Phase 5 のスコープが当初より拡大した点に注意。Phase 5 と Phase 3 (Next.js builder async 化) は内部 helper を別途持つため並行実装可能。
 
 ---
 
@@ -466,7 +509,9 @@ Phase 5 (worker) は P3 と並列実装可能。
 | 異常系 (DB 障害) | DB query が throw しても getPromptOverride が default を返して生成は続行 |
 | 統合 (style) | style generate-async POST → `image_jobs.prompt_text` に override 反映済みテキストが入っている |
 | 統合 (inspire) | inspire preview API → override 反映済みプロンプトで Gemini 呼出し |
-| worker (Deno) | リトライ強化 prefix の override fetch が動く + 失敗時 default fallback |
+| **E2E (新規)** | admin が `[TEST_MARKER]` を含む override 保存 → generate-async → `image_jobs.prompt_text` に marker 含まれる |
+| worker (Deno) | 本体 prompt + リトライ強化文の override fetch が両方動く + 失敗時 default fallback + invocation 内キャッシュ動作 |
+| 孤立 row | registry に無い key を DB に手で挿入 → admin 一覧の「未知」セクションに表示され削除可能 |
 
 ### テスト実装手順
 
