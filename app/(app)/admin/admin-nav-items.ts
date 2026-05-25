@@ -98,6 +98,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "image",
   },
   {
+    path: "/admin/generation-prompts",
+    label: "生成プロンプト管理",
+    description: "Style / Coordinate / Inspire のシステムプロンプトを編集",
+    iconKey: "file-text",
+  },
+  {
     path: "/admin/style-presets",
     label: "One-Tap Style管理",
     description: "スタイル画像とpromptを管理",
