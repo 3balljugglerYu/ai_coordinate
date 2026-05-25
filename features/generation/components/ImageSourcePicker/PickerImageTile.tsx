@@ -50,9 +50,11 @@ export function PickerImageTile({
           src={imageUrl}
           alt={alt}
           fill
+          // モバイル: 3 列グリッドなので 33vw。PC: 4 列の md: ブレークポイント
+          // で実体は ~150px 前後。Next.js Image Optimization が WebP に変換
+          // しサイズも縮小するので、unoptimized は付けない。
           sizes="(max-width: 768px) 33vw, 160px"
           className="object-cover"
-          unoptimized
         />
         {loading ? (
           <span className="absolute inset-0 flex items-center justify-center bg-black/40">

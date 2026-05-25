@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,11 @@ import {
   validateImageFile,
 } from "../../lib/validation";
 import { normalizeSourceImage } from "../../lib/normalize-source-image";
+import {
+  clearStockCache,
+  fetchStockFirstPage,
+  getCachedStockFirstPage,
+} from "../../lib/picker-cache";
 
 interface StockImagesTabProps {
   active: boolean;
@@ -45,11 +50,16 @@ export function StockImagesTab({
 }: StockImagesTabProps) {
   const t = useTranslations("imageSourcePicker");
   const tCoordinate = useTranslations("coordinate");
-  const [stocks, setStocks] = useState<SourceImageStock[]>([]);
+  // mount 時点で cache があれば即時表示。limit/count はクライアント計算用なので
+  // cache にない場合は null から後追いで埋まる (UI 表示はオプショナル)。
+  const initialCache = useMemo(() => getCachedStockFirstPage(), []);
+  const [stocks, setStocks] = useState<SourceImageStock[]>(
+    initialCache?.stocks ?? [],
+  );
   const [limit, setLimit] = useState<number | null>(null);
   const [count, setCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(initialCache !== null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -59,12 +69,14 @@ export function StockImagesTab({
     setIsLoading(true);
     setError(null);
     try {
-      const [stocksData, limitValue, countValue] = await Promise.all([
-        getSourceImageStocks(50, 0),
+      // stocks 本体は cache モジュール経由 (in-flight dedup + 自動キャッシュ)。
+      // limit/count はサイズが小さく独立しているので並列取得。
+      const [stocksPage, limitValue, countValue] = await Promise.all([
+        fetchStockFirstPage(50),
         getStockImageLimit().catch(() => null),
         getCurrentStockImageCount().catch(() => null),
       ]);
-      setStocks(stocksData);
+      setStocks(stocksPage.stocks);
       setLimit(limitValue);
       setCount(countValue);
     } catch (err) {
@@ -76,10 +88,12 @@ export function StockImagesTab({
     }
   }, [t]);
 
+  // active 化時は cache の有無に関わらず最新化 (SWR-like)。cache が
+  // ある場合は items が表示されたまま、裏で fetch される。
   useEffect(() => {
-    if (!active || hasLoadedOnce) return;
+    if (!active) return;
     void refresh();
-  }, [active, hasLoadedOnce, refresh]);
+  }, [active, refresh]);
 
   const isLimitReached =
     typeof limit === "number" && typeof count === "number" && count >= limit;
@@ -93,6 +107,7 @@ export function StockImagesTab({
         await deleteSourceImageStock(stock.id);
         setStocks((prev) => prev.filter((s) => s.id !== stock.id));
         setCount((prev) => (typeof prev === "number" ? prev - 1 : prev));
+        clearStockCache();
         onDeleted?.(stock.id);
       } catch (err) {
         const message =
@@ -145,7 +160,8 @@ export function StockImagesTab({
           throw new Error(data.error || tCoordinate("stockUploadFailed"));
         }
 
-        // refresh and pick the new stock.
+        // 新規アップロード後はキャッシュを破棄してから再取得する。
+        clearStockCache();
         await refresh();
         const created = (await getSourceImageStocks(50, 0)).find(
           (s) => s.id === data.id,

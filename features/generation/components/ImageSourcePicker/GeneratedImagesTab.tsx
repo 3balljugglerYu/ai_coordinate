@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { PickerImageTile } from "./PickerImageTile";
 import { PickerSkeleton } from "./PickerSkeleton";
 import type { PickerSourceItem } from "../../types";
+import {
+  fetchGeneratedFirstPage,
+  getCachedGeneratedFirstPage,
+} from "../../lib/picker-cache";
 
 type GeneratedItem = Extract<PickerSourceItem, { kind: "generated" }>;
 
@@ -45,29 +49,40 @@ export function GeneratedImagesTab({
   onFirstItemReady,
 }: GeneratedImagesTabProps) {
   const t = useTranslations("imageSourcePicker");
-  const [items, setItems] = useState<GeneratedItem[]>([]);
-  const [nextOffset, setNextOffset] = useState<number | null>(0);
+  // mount 時点で cache があれば即時表示する。なければ通常通り fetch 待ち。
+  const initialCache = useMemo(() => getCachedGeneratedFirstPage(), []);
+  const [items, setItems] = useState<GeneratedItem[]>(
+    initialCache?.items ?? [],
+  );
+  const [nextOffset, setNextOffset] = useState<number | null>(
+    initialCache?.nextOffset ?? 0,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(initialCache !== null);
 
   const fetchPage = useCallback(
     async (offset: number) => {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch(
-          `/api/generation-history/picker?limit=${PAGE_LIMIT}&offset=${offset}`,
-          { cache: "no-store" },
-        );
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+        if (offset === 0) {
+          // 先頭ページは cache モジュール経由 (in-flight dedup + キャッシュ書込)
+          const data = await fetchGeneratedFirstPage(PAGE_LIMIT);
+          setItems(data.items);
+          setNextOffset(data.nextOffset);
+        } else {
+          const res = await fetch(
+            `/api/generation-history/picker?limit=${PAGE_LIMIT}&offset=${offset}`,
+            { cache: "no-store" },
+          );
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const data = (await res.json()) as PickerApiResponse;
+          setItems((prev) => [...prev, ...data.items]);
+          setNextOffset(data.nextOffset);
         }
-        const data = (await res.json()) as PickerApiResponse;
-        setItems((prev) =>
-          offset === 0 ? data.items : [...prev, ...data.items],
-        );
-        setNextOffset(data.nextOffset);
       } catch (err) {
         console.error("[GeneratedImagesTab] fetch failed", err);
         setError(t("loadError"));
@@ -79,10 +94,12 @@ export function GeneratedImagesTab({
     [t],
   );
 
+  // active 化時は必ず背景 revalidate を走らせる。cache がある場合は items
+  // が既に表示されたまま、裏で fetch して差分を反映する (SWR-like)。
   useEffect(() => {
-    if (!active || hasLoadedOnce) return;
+    if (!active) return;
     void fetchPage(0);
-  }, [active, hasLoadedOnce, fetchPage]);
+  }, [active, fetchPage]);
 
   // 初回 active 時、items が揃ったら最初のアイテムを親に通知 (1 回だけ)。
   const firstItemNotifiedRef = useRef(false);
