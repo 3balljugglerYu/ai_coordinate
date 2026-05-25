@@ -46,6 +46,7 @@ alwaysApply: false
 - `popup_banners`
 - `post_reports`
 - `profiles`
+- `prompt_overrides`
 - `push_subscriptions`
 - `referrals`
 - `source_image_stocks`
@@ -332,6 +333,13 @@ alwaysApply: false
 - 外部キー: `created_by -> auth.users.id`, `updated_by -> auth.users.id`
 - 備考: One-Tap Style の管理プリセット。`status` は `draft/published`。`styling_prompt` が衣装変更用、`background_prompt` は背景変更チェックが ON のときだけ使う任意フィールド
 - RLS: `published` 行のみ公開 `SELECT`
+
+#### `prompt_overrides`
+- 主キー: `prompt_key` (TEXT, max 100 文字)
+- 主要カラム: `content` (TEXT, max 4000 文字 / 非空), `created_by`, `updated_by`, `created_at`, `updated_at`
+- 外部キー: `created_by -> auth.users.id` (ON DELETE SET NULL), `updated_by -> auth.users.id` (ON DELETE SET NULL)
+- 備考: admin 画面から編集する生成 prompt の override 文言。コード default (`shared/generation/prompt-registry.ts`) + DB override のフォールバック設計。`content` には `{{varname}}` プレースホルダーを含む。`prompt_key` は registry を真とする (DB CHECK は文字数のみ)
+- RLS: `USING (false)` で全拒否、admin client (service role) のみアクセス可
 
 ## `public` view
 
