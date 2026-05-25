@@ -285,6 +285,11 @@ export interface GenerationRequest {
   prompt: string;
   sourceImage?: File;
   sourceImageStockId?: string;
+  /**
+   * 生成済み画像を入力 source として再利用する場合の id。
+   * sourceImage / sourceImageStockId と排他。
+   */
+  sourceImageGeneratedId?: string;
   sourceImageType?: SourceImageType;
   backgroundMode?: BackgroundMode;
   // 後方互換（1リリース維持）

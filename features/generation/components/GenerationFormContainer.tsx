@@ -866,6 +866,8 @@ export function GenerationFormContainer({
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    /** 生成済み画像を入力 source として再利用するときの id (排他) */
+    sourceImageGeneratedId?: string;
     sourceImageType?: import("../types").SourceImageType;
     backgroundMode: import("../types").BackgroundMode;
     count: number;
@@ -997,6 +999,7 @@ export function GenerationFormContainer({
             prompt: data.prompt,
             sourceImage: data.sourceImage,
             sourceImageStockId: data.sourceImageStockId,
+            sourceImageGeneratedId: data.sourceImageGeneratedId,
             sourceImageType: data.sourceImageType,
             backgroundMode: data.backgroundMode,
             count,

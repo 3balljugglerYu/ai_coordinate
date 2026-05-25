@@ -65,6 +65,8 @@ interface GenerationFormProps {
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    /** 生成済み画像を入力 source として再利用する場合の id (排他) */
+    sourceImageGeneratedId?: string;
     sourceImageType?: SourceImageType;
     backgroundMode: BackgroundMode;
     count: number;
@@ -94,7 +96,6 @@ export function GenerationForm({
   authState = "authenticated",
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
-  const pickerT = useTranslations("imageSourcePicker");
   const subscriptionT = useTranslations("subscription");
   const generationState = useGenerationState();
   const openStockTabRequestId = generationState?.openStockTabRequestId ?? 0;
@@ -129,9 +130,14 @@ export function GenerationForm({
   const [selectedStock, setSelectedStock] = useState<SourceImageStock | null>(
     null
   );
-  const [pendingGeneratedId, setPendingGeneratedId] = useState<string | null>(
-    null
-  );
+  /**
+   * 生成済み画像をピッカーから選んだ場合、URL → File への変換と再アップロード
+   * を行わず id のみ保持する。サーバ側 (/api/generate-async) で
+   * sourceImageGeneratedId を受け、generated_images から URL を直接解決する。
+   * uploadedImage / selectedStock とは排他。
+   */
+  const [selectedGenerated, setSelectedGenerated] =
+    useState<GeneratedPickerItem | null>(null);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
@@ -237,7 +243,7 @@ export function GenerationForm({
       return;
     }
 
-    if (!uploadedImage && !selectedStock) {
+    if (!uploadedImage && !selectedStock && !selectedGenerated) {
       alert(t("missingUploadedImage"));
       return;
     }
@@ -252,10 +258,15 @@ export function GenerationForm({
       );
     }
 
+    // ソース画像の入力は uploadedImage / stock / generated のいずれか 1 つ。
+    // selectedStock / selectedGenerated が立っているときはサーバ側で id 経由
+    // で URL を解決するため、sourceImage (File) は undefined を渡す。
     onSubmit({
       prompt: trimmedPrompt,
-      sourceImage: selectedStock ? undefined : uploadedImage?.file,
+      sourceImage:
+        selectedStock || selectedGenerated ? undefined : uploadedImage?.file,
       sourceImageStockId: selectedStock?.id,
+      sourceImageGeneratedId: selectedGenerated?.id,
       sourceImageType,
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
@@ -263,44 +274,40 @@ export function GenerationForm({
     });
   };
 
-  const hasSourceImage = !!uploadedImage || !!selectedStock;
+  const hasSourceImage =
+    !!uploadedImage || !!selectedStock || !!selectedGenerated;
   const isSubmitDisabled =
     !prompt.trim() || !hasSourceImage || isGenerating || isPromptTooLong;
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
     setSelectedStock(null);
+    setSelectedGenerated(null);
   }, []);
 
   const handleSelectStock = useCallback(
     (stock: SourceImageStock) => {
       setSelectedStock(stock);
       setUploadedImage(null);
+      setSelectedGenerated(null);
       picker.closePicker();
     },
     [picker]
   );
 
+  /**
+   * 生成済み画像の選択: クライアントで URL を fetch せず、id だけ保持して
+   * picker を閉じる。実体の取得はサーバ側 (generated_images.image_url) で
+   * 完結するため、選択後ほぼゼロ待機で生成可能になる。
+   */
   const handleSelectGenerated = useCallback(
-    async (item: GeneratedPickerItem) => {
-      setPendingGeneratedId(item.id);
-      try {
-        const payload = await fetchSourceImageAsUploadedImage(item.imageUrl, {
-          fileNameHint: "history-source",
-        });
-        handleImageUpload(payload);
-        picker.closePicker();
-      } catch (err) {
-        console.error(
-          "[GenerationForm] generated image fetch failed:",
-          err
-        );
-        window.alert(pickerT("appliedFromGeneratedFailedToast"));
-      } finally {
-        setPendingGeneratedId(null);
-      }
+    (item: GeneratedPickerItem) => {
+      setSelectedGenerated(item);
+      setUploadedImage(null);
+      setSelectedStock(null);
+      picker.closePicker();
     },
-    [handleImageUpload, picker, pickerT]
+    [picker]
   );
 
   // チュートリアルモード: プロンプトをセット（step4のonHighlightedで自動セット）
@@ -382,6 +389,7 @@ export function GenerationForm({
   useEffect(() => {
     const handler = () => {
       setSelectedStock(null);
+      setSelectedGenerated(null);
       setSelectedModel(DEFAULT_GENERATION_MODEL);
     };
     document.addEventListener("tutorial:prepare-coordinate-state", handler);
@@ -407,6 +415,7 @@ export function GenerationForm({
     const handler = () => {
       setUploadedImage(null);
       setSelectedStock(null);
+      setSelectedGenerated(null);
       setSourceImageType("illustration");
       setPrompt("");
       setBackgroundMode("keep");
@@ -471,18 +480,21 @@ export function GenerationForm({
             onImageRemove={() => {
               setUploadedImage(null);
               setSelectedStock(null);
+              setSelectedGenerated(null);
             }}
             value={
               selectedStock
                 ? {
-                    // ストック選択時もアップローダのプレビュー枠に表示する。
-                    // File は使わないので空の File を渡しておく。
-                    file: new File([], selectedStock.name ?? "stock"),
+                    // ストック選択時はリモート URL のみで preview を出す
+                    // (file は使わないので渡さない)。
                     previewUrl: selectedStock.image_url,
-                    width: 0,
-                    height: 0,
                   }
-                : uploadedImage
+                : selectedGenerated
+                  ? {
+                      // 生成済み画像選択時も同様に preview のみ表示する。
+                      previewUrl: selectedGenerated.imageUrl,
+                    }
+                  : uploadedImage
             }
           />
           {selectedStock ? (
@@ -711,9 +723,12 @@ export function GenerationForm({
           onSelectStock={handleSelectStock}
           selectedStockId={selectedStock?.id ?? null}
           disabled={isGenerating}
-          pendingGeneratedId={pendingGeneratedId}
+          pendingGeneratedId={null}
           currentPreviewUrl={
-            selectedStock?.image_url ?? uploadedImage?.previewUrl ?? null
+            selectedStock?.image_url ??
+            selectedGenerated?.imageUrl ??
+            uploadedImage?.previewUrl ??
+            null
           }
           currentPreviewAlt={selectedStock?.name ?? ""}
         />
