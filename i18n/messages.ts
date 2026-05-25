@@ -66,6 +66,7 @@ const clientNamespaces = [
   "inspireSubmission",
   "inspirePage",
   "adminStyleTemplates",
+  "imageSourcePicker",
 ] as const satisfies readonly ClientMessageNamespace[];
 
 type NamespaceSelection<TMessages, TNamespaces extends readonly (keyof TMessages)[]> = {

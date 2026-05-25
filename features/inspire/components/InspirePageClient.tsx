@@ -8,6 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { ImageSourcePicker } from "@/features/generation/components/ImageSourcePicker/ImageSourcePicker";
+import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
+import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
 import {
@@ -19,14 +22,18 @@ import type { SubscriptionPlan } from "@/features/subscription/subscription-conf
 import {
   DEFAULT_GENERATION_MODEL,
   type GeminiModel,
+  type PickerSourceItem,
   type UploadedImage,
 } from "@/features/generation/types";
+import type { SourceImageStock } from "@/features/generation/lib/database";
 import { InspireGenerationFlow } from "./InspireGenerationFlow";
 import { InspireOverrideCheckbox } from "./InspireOverrideCheckbox";
 import {
   hasAnyInspireOverride,
   type InspireOverrides,
 } from "@/shared/generation/prompt-core";
+
+type GeneratedPickerItem = Extract<PickerSourceItem, { kind: "generated" }>;
 
 interface InspireTemplate {
   id: string;
@@ -107,6 +114,17 @@ export function InspirePageClient({
   // polling 終了 (onComplete) で activeJobId を null に戻し再生成可能とする。
   const isGenerating = submitting || activeJobId !== null;
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  /**
+   * ピッカーで「ストック / 生成済み」を選んだ場合、URL → File 化を行わず
+   * id と preview URL だけ保持する。submit 時に sourceImageStockId /
+   * sourceImageGeneratedId としてサーバへ送る (アップロード往復をスキップ)。
+   */
+  const [selectedRemoteSource, setSelectedRemoteSource] = useState<
+    | { kind: "stock"; id: string; previewUrl: string; name?: string | null }
+    | { kind: "generated"; id: string; previewUrl: string }
+    | null
+  >(null);
+  const picker = useImageSourcePicker({ defaultTab: "generated" });
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
@@ -125,28 +143,64 @@ export function InspirePageClient({
   const [templateAspectRatio, setTemplateAspectRatio] = useState<number>(1);
   const totalPercoinCost = getPercoinCost(selectedModel) * count;
 
+  const handleSelectStock = (stock: SourceImageStock) => {
+    setSelectedRemoteSource({
+      kind: "stock",
+      id: stock.id,
+      previewUrl: stock.image_url,
+      name: stock.name,
+    });
+    setUploadedImage(null);
+    setError(null);
+    picker.closePicker();
+  };
+
+  const handleSelectGenerated = (item: GeneratedPickerItem) => {
+    setSelectedRemoteSource({
+      kind: "generated",
+      id: item.id,
+      previewUrl: item.imageUrl,
+    });
+    setUploadedImage(null);
+    setError(null);
+    picker.closePicker();
+  };
+
+  const hasSourceImage =
+    Boolean(uploadedImage) || Boolean(selectedRemoteSource);
+
   const handleGenerate = async (): Promise<void> => {
-    if (!uploadedImage) {
+    if (!hasSourceImage) {
       setError(copy.formImageRequired);
       return;
     }
     setError(null);
     setSubmitting(true);
     try {
-      const base64 = await fileToBase64(uploadedImage.file);
+      // ソース画像は 3 経路のうち 1 つ。stock/generated はサーバ側で id 経由
+      // で image_url を解決するため、クライアントから Base64 を送らない。
+      const requestBody: Record<string, unknown> = {
+        prompt: "inspire",
+        generationType: "inspire",
+        model: selectedModel,
+        count,
+        styleTemplateId: template.id,
+        overrides,
+      };
+      if (selectedRemoteSource?.kind === "stock") {
+        requestBody.sourceImageStockId = selectedRemoteSource.id;
+      } else if (selectedRemoteSource?.kind === "generated") {
+        requestBody.sourceImageGeneratedId = selectedRemoteSource.id;
+      } else if (uploadedImage) {
+        const base64 = await fileToBase64(uploadedImage.file);
+        requestBody.sourceImageBase64 = base64;
+        requestBody.sourceImageMimeType = uploadedImage.file.type;
+      }
+
       const response = await fetch("/api/generate-async", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: "inspire",
-          sourceImageBase64: base64,
-          sourceImageMimeType: uploadedImage.file.type,
-          generationType: "inspire",
-          model: selectedModel,
-          count,
-          styleTemplateId: template.id,
-          overrides,
-        }),
+        body: JSON.stringify(requestBody),
       });
       if (!response.ok) {
         toast({ title: copy.formGenerationFailed, variant: "destructive" });
@@ -169,19 +223,32 @@ export function InspirePageClient({
         /style と完全に同じレイアウト・コンポーネント・aspect ratio。
       */}
       <section className="grid grid-cols-2 gap-3 md:gap-6">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-3">
           <ImageUploader
             onImageUpload={(image) => {
               setUploadedImage(image);
+              setSelectedRemoteSource(null);
               setError(null);
             }}
-            onImageRemove={() => setUploadedImage(null)}
-            value={uploadedImage}
+            onImageRemove={() => {
+              setUploadedImage(null);
+              setSelectedRemoteSource(null);
+            }}
+            value={
+              uploadedImage ??
+              (selectedRemoteSource
+                ? { previewUrl: selectedRemoteSource.previewUrl }
+                : null)
+            }
             label={copy.formUploadLabel}
             addImageLabel={copy.formAddImageAction}
             disabled={isGenerating}
             aspectRatio={templateAspectRatio}
             filledPreviewMode="natural"
+          />
+          <ImageSourcePickerTrigger
+            onClick={picker.openPicker}
+            disabled={isGenerating}
           />
         </div>
 
@@ -300,7 +367,7 @@ export function InspirePageClient({
           <GenerationSubmitButton
             onClick={handleGenerate}
             disabled={
-              !uploadedImage || isGenerating || !hasAnyInspireOverride(overrides)
+              !hasSourceImage || isGenerating || !hasAnyInspireOverride(overrides)
             }
             isGenerating={isGenerating}
             generateLabel={copy.formGenerateButton}
@@ -341,6 +408,26 @@ export function InspirePageClient({
       <SubscriptionUpsellDialog
         open={isUpsellOpen}
         onOpenChange={setIsUpsellOpen}
+      />
+
+      <ImageSourcePicker
+        open={picker.open}
+        onOpenChange={picker.setOpen}
+        activeTab={picker.activeTab}
+        onTabChange={picker.setActiveTab}
+        onSelectGenerated={handleSelectGenerated}
+        onSelectStock={handleSelectStock}
+        selectedStockId={
+          selectedRemoteSource?.kind === "stock"
+            ? selectedRemoteSource.id
+            : null
+        }
+        disabled={isGenerating}
+        currentPreviewUrl={
+          selectedRemoteSource?.previewUrl ??
+          uploadedImage?.previewUrl ??
+          null
+        }
       />
     </div>
   );

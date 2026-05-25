@@ -112,6 +112,7 @@ export async function generateImageAsync(
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId: request.sourceImageStockId,
+      sourceImageGeneratedId: request.sourceImageGeneratedId,
       sourceImageType: request.sourceImageType || "illustration",
       backgroundMode,
       backgroundChange: backgroundModeToBackgroundChange(backgroundMode),

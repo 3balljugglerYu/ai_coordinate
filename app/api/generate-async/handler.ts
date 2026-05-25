@@ -115,6 +115,7 @@ export async function postGenerateAsyncRoute(
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId,
+      sourceImageGeneratedId,
       sourceImageType,
       backgroundMode,
       count,
@@ -195,6 +196,36 @@ export async function postGenerateAsyncRoute(
       } catch (error) {
         console.error("Error fetching source image stock:", error);
         return jsonError(copy.sourceStockFetchFailed, "GENERATION_SOURCE_STOCK_FETCH_FAILED", 500);
+      }
+    } else if (sourceImageGeneratedId) {
+      // 生成済み画像 ID がある場合、generated_images の image_url を再利用する。
+      // クライアントは画像本体をアップロードせず、サーバ側で user_id 整合を取る
+      // (RLS と二重防御)。アップロードのラウンドトリップを完全に省略できる。
+      // エラーコピーは stock 用を流用 (ユーザー視点では同等の見え方で十分)。
+      try {
+        const { data: generated, error: genError } =
+          await jobRepository.findGeneratedImage(
+            sourceImageGeneratedId,
+            user.id,
+          );
+
+        if (genError || !generated) {
+          console.error("Failed to fetch source generated image:", genError);
+          return jsonError(
+            copy.sourceStockNotFound,
+            "GENERATION_SOURCE_GENERATED_NOT_FOUND",
+            404,
+          );
+        }
+
+        inputImageUrl = generated.image_url;
+      } catch (error) {
+        console.error("Error fetching source generated image:", error);
+        return jsonError(
+          copy.sourceStockFetchFailed,
+          "GENERATION_SOURCE_GENERATED_FETCH_FAILED",
+          500,
+        );
       }
     } else if (sourceImageBase64 && sourceImageMimeType) {
       // sourceImageBase64がある場合、一時的にStorageにアップロードしてURLを取得

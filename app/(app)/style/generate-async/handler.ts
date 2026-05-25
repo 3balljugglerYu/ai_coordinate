@@ -167,26 +167,58 @@ export async function postStyleGenerateAsyncRoute(
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
 
+    // ソース画像の入力は次の 3 経路から 1 つだけ:
+    //  1. アップロード (uploadImage: File)
+    //  2. ストック画像 (sourceImageStockId)
+    //  3. 生成済み画像の再利用 (sourceImageGeneratedId)
+    // 2 / 3 のときは画像本体は既に Supabase Storage 上にあるので、
+    // クライアントから再アップロードさせず DB の image_url を流用する。
     const uploadImage = getFile(formData.get("uploadImage"));
-    if (!uploadImage) {
+    const sourceImageStockIdEntry = formData.get("sourceImageStockId");
+    const sourceImageStockId =
+      typeof sourceImageStockIdEntry === "string" &&
+      sourceImageStockIdEntry.trim().length > 0
+        ? sourceImageStockIdEntry.trim()
+        : null;
+    const sourceImageGeneratedIdEntry = formData.get("sourceImageGeneratedId");
+    const sourceImageGeneratedId =
+      typeof sourceImageGeneratedIdEntry === "string" &&
+      sourceImageGeneratedIdEntry.trim().length > 0
+        ? sourceImageGeneratedIdEntry.trim()
+        : null;
+
+    const sourceInputCount =
+      (uploadImage ? 1 : 0) +
+      (sourceImageStockId ? 1 : 0) +
+      (sourceImageGeneratedId ? 1 : 0);
+    if (sourceInputCount === 0) {
       return jsonError(
         copy.missingUploadImage,
         "STYLE_MISSING_UPLOAD_IMAGE",
         400
       );
     }
-
-    const uploadImageError = validateImageFile(
-      uploadImage,
-      copy.uploadImageLabel,
-      copy
-    );
-    if (uploadImageError) {
+    if (sourceInputCount > 1) {
       return jsonError(
-        uploadImageError,
-        "STYLE_INVALID_UPLOAD_IMAGE",
+        copy.missingUploadImage,
+        "STYLE_AMBIGUOUS_SOURCE_IMAGE",
         400
       );
+    }
+
+    if (uploadImage) {
+      const uploadImageError = validateImageFile(
+        uploadImage,
+        copy.uploadImageLabel,
+        copy
+      );
+      if (uploadImageError) {
+        return jsonError(
+          uploadImageError,
+          "STYLE_INVALID_UPLOAD_IMAGE",
+          400
+        );
+      }
     }
 
     if (backgroundChange && !preset.backgroundPrompt?.trim()) {
@@ -235,36 +267,87 @@ export async function postStyleGenerateAsyncRoute(
       templates: promptTemplates,
     });
 
-    const arrayBuffer = await uploadImage.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 15);
-    const extension = getSafeExtensionFromMimeType(uploadImage.type);
-    const fileName = `temp/${user.id}/${timestamp}-${randomStr}.${extension}`;
+    // 3 経路のうち選択された 1 つから inputImageUrl と resolvedStockId を確定。
+    let inputImageUrl: string;
+    let resolvedStockId: string | null = null;
 
-    const { data: uploadData, error: uploadError } =
-      await jobRepository.uploadSourceImage(fileName, buffer, uploadImage.type);
+    if (sourceImageStockId) {
+      const { data: stock, error: stockError } =
+        await jobRepository.findSourceImageStock(sourceImageStockId, user.id);
+      if (stockError || !stock) {
+        console.error(
+          "Style async generate route: failed to fetch source stock",
+          stockError
+        );
+        return jsonError(
+          copy.generationFailed,
+          "STYLE_SOURCE_STOCK_NOT_FOUND",
+          404
+        );
+      }
+      inputImageUrl = stock.image_url;
+      resolvedStockId = stock.id;
+    } else if (sourceImageGeneratedId) {
+      const { data: generated, error: genError } =
+        await jobRepository.findGeneratedImage(
+          sourceImageGeneratedId,
+          user.id
+        );
+      if (genError || !generated) {
+        console.error(
+          "Style async generate route: failed to fetch source generated",
+          genError
+        );
+        return jsonError(
+          copy.generationFailed,
+          "STYLE_SOURCE_GENERATED_NOT_FOUND",
+          404
+        );
+      }
+      inputImageUrl = generated.image_url;
+    } else if (uploadImage) {
+      const arrayBuffer = await uploadImage.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const extension = getSafeExtensionFromMimeType(uploadImage.type);
+      const fileName = `temp/${user.id}/${timestamp}-${randomStr}.${extension}`;
 
-    if (uploadError || !uploadData) {
-      console.error(
-        "Style async generate route: failed to upload source image",
-        uploadError
-      );
+      const { data: uploadData, error: uploadError } =
+        await jobRepository.uploadSourceImage(
+          fileName,
+          buffer,
+          uploadImage.type
+        );
+
+      if (uploadError || !uploadData) {
+        console.error(
+          "Style async generate route: failed to upload source image",
+          uploadError
+        );
+        return jsonError(
+          copy.styleImageReadFailed,
+          "STYLE_SOURCE_UPLOAD_FAILED",
+          500
+        );
+      }
+
+      inputImageUrl = jobRepository.getSourceImagePublicUrl(uploadData.path);
+    } else {
+      // 上の sourceInputCount チェックを通過した時点で必ずいずれかに該当する。
       return jsonError(
-        copy.styleImageReadFailed,
-        "STYLE_SOURCE_UPLOAD_FAILED",
-        500
+        copy.missingUploadImage,
+        "STYLE_MISSING_UPLOAD_IMAGE",
+        400
       );
     }
-
-    const inputImageUrl = jobRepository.getSourceImagePublicUrl(uploadData.path);
 
     // UCL-016 / ADR-008: billingMode は常に "paid"。worker はこれを見て減算する。
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
       prompt_text: prompt,
       input_image_url: inputImageUrl,
-      source_image_stock_id: null,
+      source_image_stock_id: resolvedStockId,
       source_image_type: sourceImageType,
       generation_type: "one_tap_style",
       model,

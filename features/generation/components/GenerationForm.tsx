@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { Lock, Upload, Folder } from "lucide-react";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,39 +13,26 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { GenerationModelControls } from "./GenerationModelControls";
 import { GenerationSubmitButton } from "./GenerationSubmitButton";
-import { StockImageListClient } from "./StockImageListClient";
-import { StockImageAddButton } from "./StockImageAddButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
+import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
+import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
   getMaxGenerationCount,
   type SubscriptionPlan,
 } from "@/features/subscription/subscription-config";
-import {
-  getSourceImageStocks,
-  getStockImageLimit,
-  type SourceImageStock,
-} from "../lib/database";
-import { getCurrentUserId } from "../lib/current-user";
-import {
-  COORDINATE_STOCK_CREATED_EVENT,
-  useCoordinateStocksUnread,
-} from "../hooks/useCoordinateStocksUnread";
+import type { SourceImageStock } from "../lib/database";
+import { useCoordinateStocksUnread } from "../hooks/useCoordinateStocksUnread";
 import {
   getPercoinCost,
   isFreePlanAllowedModel,
   resolveEffectiveModelForAuthState,
 } from "../lib/model-config";
 import {
-  migrateLegacySelectedStockIdKey,
   readPreferredBackgroundMode,
-  readPreferredImageSourceType,
   readPreferredModel,
-  readPreferredSelectedStockId,
   writePreferredBackgroundMode,
-  writePreferredImageSourceType,
   writePreferredModel,
-  writePreferredSelectedStockId,
 } from "../lib/form-preferences";
 import {
   GENERATION_PROMPT_MAX_LENGTH,
@@ -57,6 +44,7 @@ import type {
   GeminiModel,
   BackgroundMode,
   SourceImageType,
+  PickerSourceItem,
 } from "../types";
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
@@ -68,6 +56,8 @@ import {
   COORDINATE_PENDING_SOURCE_IMAGE_KEY,
   type CoordinateApplyFromHistoryDetail,
 } from "../lib/apply-from-history-event";
+import { fetchSourceImageAsUploadedImage } from "../lib/source-image-to-file";
+import { useImageSourcePicker } from "../hooks/useImageSourcePicker";
 
 interface GenerationFormProps {
   subscriptionPlan: SubscriptionPlan;
@@ -75,6 +65,8 @@ interface GenerationFormProps {
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    /** 生成済み画像を入力 source として再利用する場合の id (排他) */
+    sourceImageGeneratedId?: string;
     sourceImageType?: SourceImageType;
     backgroundMode: BackgroundMode;
     count: number;
@@ -89,37 +81,13 @@ interface GenerationFormProps {
   authState?: "guest" | "authenticated";
 }
 
-type ImageSourceType = "upload" | "stock";
 type BackgroundModeOption = {
   value: BackgroundMode;
   label: string;
   description: string;
 };
-type RefreshStocksOptions = {
-  showLoading?: boolean;
-  validateSelectedStock?: boolean;
-  waitForStockImageId?: string | null;
-};
 
-function preloadImage(src: string): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-
-  return new Promise((resolve) => {
-    let finished = false;
-    const image = new window.Image();
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      window.clearTimeout(timeoutId);
-      resolve();
-    };
-
-    const timeoutId = window.setTimeout(finish, 5000);
-    image.onload = finish;
-    image.onerror = finish;
-    image.src = src;
-  });
-}
+type GeneratedPickerItem = Extract<PickerSourceItem, { kind: "generated" }>;
 
 export function GenerationForm({
   subscriptionPlan,
@@ -158,12 +126,18 @@ export function GenerationForm({
     { value: "illustration", label: t("sourceImageTypeIllustration") },
     { value: "real", label: t("sourceImageTypeReal") },
   ];
-  const [imageSourceType, setImageSourceType] = useState<ImageSourceType>("upload");
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
-  const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
-  const [recentlySavedStockId, setRecentlySavedStockId] = useState<string | null>(
+  const [selectedStock, setSelectedStock] = useState<SourceImageStock | null>(
     null
   );
+  /**
+   * 生成済み画像をピッカーから選んだ場合、URL → File への変換と再アップロード
+   * を行わず id のみ保持する。サーバ側 (/api/generate-async) で
+   * sourceImageGeneratedId を受け、generated_images から URL を直接解決する。
+   * uploadedImage / selectedStock とは排他。
+   */
+  const [selectedGenerated, setSelectedGenerated] =
+    useState<GeneratedPickerItem | null>(null);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
@@ -171,19 +145,24 @@ export function GenerationForm({
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
-  const [stocks, setStocks] = useState<SourceImageStock[]>([]);
-  const [stockLimit, setStockLimit] = useState<number | null>(null);
-  const [currentCount, setCurrentCount] = useState<number | null>(null);
-  const [isLoadingStocks, setIsLoadingStocks] = useState(true);
-  const [isRefreshingStocks, setIsRefreshingStocks] = useState(false);
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
-  const activeStockRefreshCountRef = useRef(0);
   const isAuthenticated = authState === "authenticated";
   const {
     hasDot: hasStockTabDot,
     markSeen: markStockTabSeen,
   } = useCoordinateStocksUnread({ enabled: isAuthenticated });
+
+  // ピッカー: 「ストック」タブをアクティブにした瞬間に未読ドットを既読化する。
+  const picker = useImageSourcePicker({
+    defaultTab: "generated",
+    onTabChange: (tab) => {
+      if (tab === "stock" && isAuthenticated) {
+        void markStockTabSeen();
+      }
+    },
+  });
+
   const promptLength = prompt.length;
   const isPromptTooLong = isGenerationPromptTooLong(prompt);
   const maxGenerationCount = getMaxGenerationCount(subscriptionPlan);
@@ -199,22 +178,13 @@ export function GenerationForm({
     setSelectedCount((current) => Math.min(current, maxGenerationCount));
   }, [maxGenerationCount]);
 
-  // ブラウザに保存された前回の選択（モデル / 背景設定 / 画像ソースタブ / ストック選択）を
-  // マウント時に復元する。SSR との hydration mismatch を避けるため初期値は default のまま、
-  // クライアント側の useEffect で上書きする。
+  // ブラウザに保存された前回の選択 (モデル / 背景設定) を復元する。
+  // SSR との hydration mismatch を避けるため初期値は default のまま、useEffect で上書きする。
   useEffect(() => {
-    migrateLegacySelectedStockIdKey();
     setSelectedModel(readPreferredModel());
     setBackgroundMode(readPreferredBackgroundMode());
-    const restoredImageSourceType = readPreferredImageSourceType();
-    const restoredStockId = readPreferredSelectedStockId();
-    setImageSourceType(restoredImageSourceType);
-    setSelectedStockId(restoredStockId);
   }, []);
 
-  // ユーザー操作時にだけ localStorage に書き込むラッパー。
-  // tutorial:clear / tutorial:set-background-mode のような system-driven な
-  // setState では呼ばれない（直接 setSelectedModel / setBackgroundMode する）。
   const handleSelectedModelChange = useCallback((value: GeminiModel) => {
     setSelectedModel(value);
     writePreferredModel(value);
@@ -242,22 +212,13 @@ export function GenerationForm({
     return () => observer.disconnect();
   }, []);
 
-  // ストック選択 ID は上のマウント useEffect で `readPreferredSelectedStockId` 経由で復元する。
-  // 旧 `localStorage.getItem("selectedStockId")` 直接アクセスは削除済み。
-
   // 投稿後にホームで保存した場合のナビ赤丸は、コーディネート画面を開いた時点で既読扱いにする。
   useEffect(() => {
     clearCoordinateSourceStockSavePromptDot();
   }, []);
 
-  // ストックタブを開いている間は赤丸ドットを既読化する。
-  // imageSourceType が "stock" に変化した瞬間と、マウント直後に "stock" だったケースを両方拾える。
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (imageSourceType !== "stock") return;
-    void markStockTabSeen();
-  }, [imageSourceType, isAuthenticated, markStockTabSeen]);
-
+  // 「ストックタブを開け」リクエスト (SaveSourceImageToStockDialog が保存直後に発火)。
+  // 新 UX ではピッカーを「ストック」タブで開く。
   useEffect(() => {
     const requestId = openStockTabRequestId;
     if (!isAuthenticated) return;
@@ -265,11 +226,9 @@ export function GenerationForm({
     if (lastHandledOpenStockTabRequestIdRef.current === requestId) return;
 
     lastHandledOpenStockTabRequestIdRef.current = requestId;
-    setImageSourceType("stock");
-    writePreferredImageSourceType("stock");
-    setUploadedImage(null);
-    void markStockTabSeen();
-  }, [openStockTabRequestId, isAuthenticated, markStockTabSeen]);
+    picker.setActiveTab("stock");
+    picker.setOpen(true);
+  }, [openStockTabRequestId, isAuthenticated, picker]);
 
   const handleSubmit = async () => {
     const trimmedPrompt = prompt.trim();
@@ -284,13 +243,8 @@ export function GenerationForm({
       return;
     }
 
-    if (imageSourceType === "upload" && !uploadedImage) {
+    if (!uploadedImage && !selectedStock && !selectedGenerated) {
       alert(t("missingUploadedImage"));
-      return;
-    }
-
-    if (imageSourceType === "stock" && !selectedStockId) {
-      alert(t("missingStockImage"));
       return;
     }
 
@@ -304,13 +258,15 @@ export function GenerationForm({
       );
     }
 
-    // ストック画像の場合、画像ファイルを取得する必要がある
-    // ただし、生成APIではBase64が必要なので、URLから画像を取得する必要がある
-    // 現時点では、ストック画像IDを渡して、サーバー側で処理する方針とする
+    // ソース画像の入力は uploadedImage / stock / generated のいずれか 1 つ。
+    // selectedStock / selectedGenerated が立っているときはサーバ側で id 経由
+    // で URL を解決するため、sourceImage (File) は undefined を渡す。
     onSubmit({
       prompt: trimmedPrompt,
-      sourceImage: imageSourceType === "upload" ? uploadedImage?.file : undefined,
-      sourceImageStockId: imageSourceType === "stock" ? (selectedStockId || undefined) : undefined,
+      sourceImage:
+        selectedStock || selectedGenerated ? undefined : uploadedImage?.file,
+      sourceImageStockId: selectedStock?.id,
+      sourceImageGeneratedId: selectedGenerated?.id,
       sourceImageType,
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
@@ -318,159 +274,54 @@ export function GenerationForm({
     });
   };
 
-  const hasSourceImage = imageSourceType === "upload" ? !!uploadedImage : !!selectedStockId;
+  const hasSourceImage =
+    !!uploadedImage || !!selectedStock || !!selectedGenerated;
   const isSubmitDisabled =
     !prompt.trim() || !hasSourceImage || isGenerating || isPromptTooLong;
-  const isStockLimitReached =
-    stockLimit !== null && currentCount !== null && currentCount >= stockLimit;
-  const shouldShowStockListLoading =
-    isLoadingStocks || (imageSourceType === "stock" && isRefreshingStocks);
-  const stockListContainsSelectedStock =
-    selectedStockId !== null && stocks.some((stock) => stock.id === selectedStockId);
-  const shouldShowGeneratedImagesFromSelectedStock =
-    selectedStockId !== null &&
-    !shouldShowStockListLoading &&
-    stockListContainsSelectedStock;
-  const displayedStocks = useMemo(() => {
-    if (!recentlySavedStockId) return stocks;
-
-    const recentlySavedStock = stocks.find(
-      (stock) => stock.id === recentlySavedStockId
-    );
-    if (!recentlySavedStock) return stocks;
-
-    return [
-      recentlySavedStock,
-      ...stocks.filter((stock) => stock.id !== recentlySavedStockId),
-    ];
-  }, [recentlySavedStockId, stocks]);
-
-  // localStorageの変更を別タブから監視（新キーに統一）。
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === null) {
-        // localStorage.clear() の場合は再読込
-        setSelectedStockId(readPreferredSelectedStockId());
-        setImageSourceType(readPreferredImageSourceType());
-        return;
-      }
-      if (event.key === "persta-ai:last-selected-stock-id") {
-        setSelectedStockId(readPreferredSelectedStockId());
-      } else if (event.key === "persta-ai:last-image-source-type") {
-        setImageSourceType(readPreferredImageSourceType());
-      }
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  const refreshStocks = useCallback(
-    async ({
-      showLoading = false,
-      validateSelectedStock = true,
-      waitForStockImageId = null,
-    }: RefreshStocksOptions = {}) => {
-      activeStockRefreshCountRef.current += 1;
-      setIsRefreshingStocks(true);
-      try {
-        if (showLoading) {
-          setIsLoadingStocks(true);
-        }
-        const userId = await getCurrentUserId();
-        if (!userId) {
-          setStocks([]);
-          setStockLimit(null);
-          setCurrentCount(null);
-          return;
-        }
-        const [stocksData, limit] = await Promise.all([
-          getSourceImageStocks(50, 0),
-          getStockImageLimit(),
-        ]);
-        const stockToWaitFor =
-          waitForStockImageId !== null
-            ? stocksData.find((stock) => stock.id === waitForStockImageId)
-            : null;
-        if (stockToWaitFor?.image_url) {
-          await preloadImage(stockToWaitFor.image_url);
-        }
-        setStocks(stocksData);
-        setStockLimit(limit);
-        setCurrentCount(stocksData.length);
-        if (validateSelectedStock) {
-          // 永続化された selectedStockId が現存しないなら破棄して upload に戻す（R12）。
-          setSelectedStockId((current) => {
-            if (current && !stocksData.some((s) => s.id === current)) {
-              writePreferredSelectedStockId(null);
-              setImageSourceType("upload");
-              writePreferredImageSourceType("upload");
-              return null;
-            }
-            return current;
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch stocks:", error);
-      } finally {
-        if (showLoading) {
-          setIsLoadingStocks(false);
-        }
-        activeStockRefreshCountRef.current -= 1;
-        if (activeStockRefreshCountRef.current <= 0) {
-          activeStockRefreshCountRef.current = 0;
-          setIsRefreshingStocks(false);
-        }
-      }
-    },
-    []
-  );
-
-  // ストック画像と制限数を取得
-  useEffect(() => {
-    void refreshStocks({ showLoading: true });
-  }, [refreshStocks]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (typeof window === "undefined") return;
-
-    const handleStockCreated = (event: Event) => {
-      if (
-        event instanceof CustomEvent &&
-        typeof event.detail?.stockId === "string"
-      ) {
-        setSelectedStockId(event.detail.stockId);
-        setRecentlySavedStockId(event.detail.stockId);
-      }
-      const stockId =
-        event instanceof CustomEvent &&
-        typeof event.detail?.stockId === "string"
-          ? event.detail.stockId
-          : null;
-      void refreshStocks({
-        validateSelectedStock: false,
-        waitForStockImageId: stockId,
-      });
-    };
-
-    window.addEventListener(
-      COORDINATE_STOCK_CREATED_EVENT,
-      handleStockCreated
-    );
-    return () => {
-      window.removeEventListener(
-        COORDINATE_STOCK_CREATED_EVENT,
-        handleStockCreated
-      );
-    };
-  }, [isAuthenticated, refreshStocks]);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
-    setSelectedStockId(null);
-    writePreferredSelectedStockId(null);
+    setSelectedStock(null);
+    setSelectedGenerated(null);
   }, []);
+
+  // uploadedImage.previewUrl が blob: の場合、差替時 (ImageUploader 内部で
+  // 処理) と unmount 時の両方で revoke が必要。ImageUploader は controlled
+  // モードでは unmount 時の revoke を抑止する設計 (親が URL ライフサイクル
+  // を所有) のため、親側で cleanup を実装する。
+  useEffect(() => {
+    const currentUrl = uploadedImage?.previewUrl;
+    return () => {
+      if (currentUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [uploadedImage?.previewUrl]);
+
+  const handleSelectStock = useCallback(
+    (stock: SourceImageStock) => {
+      setSelectedStock(stock);
+      setUploadedImage(null);
+      setSelectedGenerated(null);
+      picker.closePicker();
+    },
+    [picker]
+  );
+
+  /**
+   * 生成済み画像の選択: クライアントで URL を fetch せず、id だけ保持して
+   * picker を閉じる。実体の取得はサーバ側 (generated_images.image_url) で
+   * 完結するため、選択後ほぼゼロ待機で生成可能になる。
+   */
+  const handleSelectGenerated = useCallback(
+    (item: GeneratedPickerItem) => {
+      setSelectedGenerated(item);
+      setUploadedImage(null);
+      setSelectedStock(null);
+      picker.closePicker();
+    },
+    [picker]
+  );
 
   // チュートリアルモード: プロンプトをセット（step4のonHighlightedで自動セット）
   useEffect(() => {
@@ -482,38 +333,17 @@ export function GenerationForm({
     return () => document.removeEventListener("tutorial:set-prompt", handler);
   }, []);
 
-  // 生成結果一覧（リスト表示）の「次の生成に使う」: 生成済み画像を
-  // 人物アップロード欄に差し込み、upload タブに切り替える。
+  // 生成結果一覧の「次の生成に使う」/ /style からの遷移時に、
+  // 画像 URL を受け取って人物アップロード欄に差し込む。
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent<CoordinateApplyFromHistoryDetail>).detail;
       if (!detail?.imageUrl) return;
       try {
-        const res = await fetch(detail.imageUrl);
-        if (!res.ok) {
-          throw new Error(`fetch failed: ${res.status}`);
-        }
-        const blob = await res.blob();
-        const mimeType = blob.type || "image/png";
-        const ext = mimeType.split("/")[1]?.split("+")[0] ?? "png";
-        const fileName = `${detail.fileNameHint ?? "coordinate-history"}.${ext}`;
-        const file = new File([blob], fileName, { type: mimeType });
-        const objectUrl = URL.createObjectURL(file);
-        const img = new Image();
-        img.onload = () => {
-          handleImageUpload({
-            file,
-            previewUrl: objectUrl,
-            width: img.naturalWidth || 1024,
-            height: img.naturalHeight || 1024,
-          });
-          setImageSourceType("upload");
-          writePreferredImageSourceType("upload");
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-        };
-        img.src = objectUrl;
+        const payload = await fetchSourceImageAsUploadedImage(detail.imageUrl, {
+          fileNameHint: detail.fileNameHint ?? "coordinate-history",
+        });
+        handleImageUpload(payload);
       } catch (err) {
         console.error("[apply-from-history] 画像取得に失敗:", err);
       }
@@ -527,8 +357,7 @@ export function GenerationForm({
   }, [handleImageUpload]);
 
   // /style → 「このイラストで生成」 → 確認 → /coordinate 遷移時に
-  // sessionStorage に画像 URL が積まれていれば、フォーム mount 時に
-  // 既存の apply-from-history イベントへ流し込んで自動セットする。
+  // sessionStorage に画像 URL が積まれていれば apply-from-history へ転送する。
   useEffect(() => {
     if (typeof window === "undefined") return;
     let pendingUrl: string | null = null;
@@ -543,7 +372,7 @@ export function GenerationForm({
     try {
       window.sessionStorage.removeItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY);
     } catch {
-      // 書き込み不可は無視（次回も同じ値を読むだけ）
+      // 書き込み不可は無視
     }
     document.dispatchEvent(
       new CustomEvent(COORDINATE_APPLY_FROM_HISTORY_EVENT, {
@@ -569,21 +398,19 @@ export function GenerationForm({
       document.removeEventListener("tutorial:set-background-mode", handler);
   }, []);
 
-  // チュートリアル開始時は、前回の保存状態に関係なく Library / GPT Image 2 Low / 標準サイズに寄せる。
+  // チュートリアル開始時は、前回の保存状態に関係なく既定モデルへ寄せる。
   useEffect(() => {
     const handler = () => {
-      setImageSourceType("upload");
-      setSelectedStockId(null);
+      setSelectedStock(null);
+      setSelectedGenerated(null);
       setSelectedModel(DEFAULT_GENERATION_MODEL);
-      writePreferredImageSourceType("upload");
-      writePreferredSelectedStockId(null);
     };
     document.addEventListener("tutorial:prepare-coordinate-state", handler);
     return () =>
       document.removeEventListener("tutorial:prepare-coordinate-state", handler);
   }, []);
 
-  // チュートリアル中は Size step の対象を必ず表示するため、GPT Image 2 の既定モデルへ寄せる。
+  // チュートリアル中は Size step の対象を必ず表示するため、既定モデルへ寄せる。
   useEffect(() => {
     const handler = () => {
       setSelectedModel(DEFAULT_GENERATION_MODEL);
@@ -596,25 +423,23 @@ export function GenerationForm({
       );
   }, []);
 
-  // チュートリアル中断時: フォームを初期状態にクリア（デモ画像・プロンプト・背景設定等をリセット）
+  // チュートリアル中断時: フォームを初期状態にクリア
   useEffect(() => {
     const handler = () => {
       setUploadedImage(null);
-      setSelectedStockId(null);
+      setSelectedStock(null);
+      setSelectedGenerated(null);
       setSourceImageType("illustration");
       setPrompt("");
       setBackgroundMode("keep");
       setSelectedCount(1);
       setSelectedModel(DEFAULT_GENERATION_MODEL);
-      setImageSourceType("upload");
-      writePreferredSelectedStockId(null);
-      writePreferredImageSourceType("upload");
     };
     document.addEventListener("tutorial:clear", handler);
     return () => document.removeEventListener("tutorial:clear", handler);
   }, []);
 
-  // チュートリアルモード: デモ画像を自動セット（ステップ表示時に onHighlighted で発火）
+  // チュートリアルモード: デモ画像を自動セット
   useEffect(() => {
     const handler = async () => {
       try {
@@ -632,7 +457,6 @@ export function GenerationForm({
             width: img.naturalWidth || 800,
             height: img.naturalHeight || 800,
           });
-          setImageSourceType("upload");
         };
         img.src = objectUrl;
       } catch (err) {
@@ -659,168 +483,47 @@ export function GenerationForm({
   return (
     <Card className="p-6">
       <div className="space-y-6">
-        {/* 画像ソース選択タブ */}
-        <div>
-          <Label className="text-base font-medium mb-3 block">
+        {/* 画像入力エリア: アップローダ常時表示 + ピッカートリガ */}
+        <div className="space-y-3">
+          <Label className="text-base font-medium block">
             {t("imageSourceLabel")}
           </Label>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={imageSourceType === "upload" ? "default" : "outline"}
-              onClick={() => {
-                setImageSourceType("upload");
-                writePreferredImageSourceType("upload");
-                // 生成中はストック選択を保持し、閲覧目的のタブ切替を許可する。
-                // 完了後にユーザーが続けて別生成を行う際の元タブ選択を失わせない。
-                if (!isGenerating) {
-                  setSelectedStockId(null);
-                  writePreferredSelectedStockId(null);
-                }
-              }}
-              className="flex-1"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              {t("libraryTab")}
-            </Button>
-            <Button
-              type="button"
-              variant={imageSourceType === "stock" ? "default" : "outline"}
-              onClick={() => {
-                setImageSourceType("stock");
-                writePreferredImageSourceType("stock");
-                if (!isGenerating) {
-                  setUploadedImage(null);
-                }
-              }}
-              className="relative flex-1"
-            >
-              <Folder className="mr-2 h-4 w-4" />
-              {t("stockTab")}
-              {/*
-                ストックタブが既にアクティブな場合（保存後のリロード復帰や
-                imageSourceType="stock" の永続化からの復元）は、ユーザーは
-                即座にストック内容を確認できる状態にあるため、`useCoordinateStocksUnread`
-                の初期 fetch でドットが立っていても見せない。
-                seen 状態の永続化は別の useEffect で markStockTabSeen() が走るので
-                次回アクセス時もドットは表示されない。
-              */}
-              {hasStockTabDot && imageSourceType !== "stock" && (
-                <span
-                  className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500"
-                  aria-label={t("stockTabUnreadDotLabel")}
-                />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* 画像アップロード or ストック選択 */}
-        {imageSourceType === "upload" ? (
-          <div className="space-y-4">
-            <ImageUploader
-              onImageUpload={handleImageUpload}
-              onImageRemove={() => setUploadedImage(null)}
-              value={uploadedImage}
-            />
-            {uploadedImage && (
-              <div className="mt-4">
-                <GeneratedImagesFromSource
-                  stockId={null}
-                  storagePath={null}
-                  // ローカルアップロードの場合、storage_pathはまだないので後で実装
-                  // 現時点ではストック画像選択時のみ表示
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Label className="text-base font-medium">
-                  {t("stockImagesLabel")}
-                </Label>
-                <StockImageAddButton
-                  disabled={
-                    isGenerating ||
-                    isLoadingStocks ||
-                    isRefreshingStocks ||
-                    stockLimit === null ||
-                    currentCount === null ||
-                    isStockLimitReached
+          <ImageUploader
+            onImageUpload={handleImageUpload}
+            onImageRemove={() => {
+              setUploadedImage(null);
+              setSelectedStock(null);
+              setSelectedGenerated(null);
+            }}
+            value={
+              selectedStock
+                ? {
+                    // ストック選択時はリモート URL のみで preview を出す
+                    // (file は使わないので渡さない)。
+                    previewUrl: selectedStock.image_url,
                   }
-                    onUploadSuccess={(stockId) => {
-                      setSelectedStockId(stockId);
-                      setRecentlySavedStockId(stockId);
-                      writePreferredSelectedStockId(stockId);
-                      void refreshStocks({
-                        validateSelectedStock: false,
-                        waitForStockImageId: stockId,
-                      });
-                      void markStockTabSeen();
-                    }}
-                  onUploadError={(error) => {
-                    console.error("Stock upload error:", error);
-                    alert(error);
-                  }}
-                />
-                {isStockLimitReached && (
-                  <span className="text-xs text-muted-foreground">
-                    {t("stockLimitReachedInline")}
-                  </span>
-                )}
-              </div>
-              {shouldShowStockListLoading ? (
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex-shrink-0 w-[140px] sm:w-[160px]">
-                      <div className="aspect-square animate-pulse rounded bg-gray-200" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <StockImageListClient
-                  stocks={displayedStocks}
-                  selectedStockId={selectedStockId}
-                  onSelect={(stock) => {
-                    setRecentlySavedStockId(null);
-                    if (stock) {
-                      setSelectedStockId(stock.id);
-                      writePreferredSelectedStockId(stock.id);
-                    } else {
-                      setSelectedStockId(null);
-                      writePreferredSelectedStockId(null);
+                : selectedGenerated
+                  ? {
+                      // 生成済み画像選択時も同様に preview のみ表示する。
+                      previewUrl: selectedGenerated.imageUrl,
                     }
-                  }}
-                  onDelete={(stockId) => {
-                    if (selectedStockId === stockId) {
-                      setSelectedStockId(null);
-                      writePreferredSelectedStockId(null);
-                    }
-                    if (recentlySavedStockId === stockId) {
-                      setRecentlySavedStockId(null);
-                    }
-                    // ストックリストから削除
-                    setStocks((prev) => prev.filter((s) => s.id !== stockId));
-                    setCurrentCount((prev) => (prev !== null ? Math.max(0, prev - 1) : null));
-                  }}
-                  onRefreshTrigger={() => {
-                    void refreshStocks({ validateSelectedStock: false });
-                  }}
-                />
-              )}
-              {shouldShowGeneratedImagesFromSelectedStock && (
-                <div className="mt-4">
-                  <GeneratedImagesFromSource
-                    stockId={selectedStockId}
-                    storagePath={null}
-                  />
-                </div>
-              )}
+                  : uploadedImage
+            }
+          />
+          {selectedStock ? (
+            <div>
+              <GeneratedImagesFromSource
+                stockId={selectedStock.id}
+                storagePath={selectedStock.storage_path}
+              />
             </div>
-          </div>
-        )}
+          ) : null}
+          <ImageSourcePickerTrigger
+            onClick={picker.openPicker}
+            disabled={isGenerating || isTutorialInProgress}
+            showUnreadDot={hasStockTabDot}
+          />
+        </div>
 
         <div>
           <Label className="text-base font-medium block">
@@ -1022,6 +725,25 @@ export function GenerationForm({
           open={showAuthModal}
           onClose={() => setShowAuthModal(false)}
           redirectTo={currentUrl}
+        />
+
+        <ImageSourcePicker
+          open={picker.open}
+          onOpenChange={picker.setOpen}
+          activeTab={picker.activeTab}
+          onTabChange={picker.setActiveTab}
+          onSelectGenerated={handleSelectGenerated}
+          onSelectStock={handleSelectStock}
+          selectedStockId={selectedStock?.id ?? null}
+          disabled={isGenerating}
+          pendingGeneratedId={null}
+          currentPreviewUrl={
+            selectedStock?.image_url ??
+            selectedGenerated?.imageUrl ??
+            uploadedImage?.previewUrl ??
+            null
+          }
+          currentPreviewAlt={selectedStock?.name ?? ""}
         />
       </div>
     </Card>

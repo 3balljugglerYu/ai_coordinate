@@ -1,5 +1,19 @@
 /** @jest-environment node */
 
+// resolveAllPromptTemplates が next/cache + admin client を使うため、
+// test 環境では空 dict を返すスタブにする (pure builder が registry default に
+// フォールバックするので既存挙動と等価)
+jest.mock("@/features/generation-prompts/lib/resolve-templates", () => ({
+  resolveAllPromptTemplates: jest.fn().mockResolvedValue({}),
+  PROMPT_OVERRIDES_CACHE_TAG: "prompt-overrides",
+}));
+jest.mock("next/cache", () => ({
+  cacheTag: jest.fn(),
+  cacheLife: jest.fn(),
+  revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
+}));
+
 jest.mock("@/features/generation/lib/model-config", () => ({
   ...jest.requireActual("@/features/generation/lib/model-config"),
   GEMINI_GENERATION_ENABLED: true,
@@ -74,6 +88,7 @@ function createUploadImage(
 function createAsyncGenerationJobRepositoryMock(): jest.Mocked<AsyncGenerationJobRepository> {
   return {
     findSourceImageStock: jest.fn(),
+    findGeneratedImage: jest.fn(),
     uploadSourceImage: jest.fn(),
     getSourceImagePublicUrl: jest.fn(),
     getUserCreditBalance: jest.fn(),
@@ -345,5 +360,185 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       "style-job-001",
       "Queue message dispatch failed."
     );
+  });
+
+  // Phase: 再アップロード省略のための sourceImageStockId / sourceImageGeneratedId 経路
+  describe("sourceImageStockId / sourceImageGeneratedId 経路", () => {
+    test("sourceImageStockId 指定時は stock を DB から取得し uploadSourceImage を呼ばない", async () => {
+      jobRepository.findSourceImageStock.mockResolvedValueOnce({
+        data: {
+          id: "stock-1",
+          image_url: "https://cdn.example.com/stocks/source.png",
+        },
+        error: null,
+      });
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("sourceImageStockId", "stock-1");
+      formData.set("sourceImageType", "real");
+      formData.set("model", "gpt-image-2-low-1k");
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(formData),
+        {
+          getUserFn,
+          jobRepository,
+          getPublishedStylePresetForGenerationFn,
+          recordStyleUsageEventFn,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(jobRepository.findSourceImageStock).toHaveBeenCalledWith(
+        "stock-1",
+        "user-123",
+      );
+      expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+      const inserted = jobRepository.createImageJob.mock.calls[0]?.[0];
+      expect(inserted?.input_image_url).toBe(
+        "https://cdn.example.com/stocks/source.png",
+      );
+      expect(inserted?.source_image_stock_id).toBe("stock-1");
+    });
+
+    test("sourceImageGeneratedId 指定時は generated_images を取得し uploadSourceImage を呼ばない", async () => {
+      jobRepository.findGeneratedImage.mockResolvedValueOnce({
+        data: {
+          id: "gen-7",
+          image_url: "https://cdn.example.com/generated/gen-7.png",
+        },
+        error: null,
+      });
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("sourceImageGeneratedId", "gen-7");
+      formData.set("model", "gpt-image-2-low-1k");
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(formData),
+        {
+          getUserFn,
+          jobRepository,
+          getPublishedStylePresetForGenerationFn,
+          recordStyleUsageEventFn,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(jobRepository.findGeneratedImage).toHaveBeenCalledWith(
+        "gen-7",
+        "user-123",
+      );
+      expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+      const inserted = jobRepository.createImageJob.mock.calls[0]?.[0];
+      expect(inserted?.input_image_url).toBe(
+        "https://cdn.example.com/generated/gen-7.png",
+      );
+      // generated 経由は stock_id を持たない
+      expect(inserted?.source_image_stock_id ?? null).toBeNull();
+    });
+
+    test("stock 未検出時は 404 STYLE_SOURCE_STOCK_NOT_FOUND", async () => {
+      jobRepository.findSourceImageStock.mockResolvedValueOnce({
+        data: null,
+        error: new Error("not found"),
+      });
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("sourceImageStockId", "missing-stock");
+      formData.set("model", "gpt-image-2-low-1k");
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(formData),
+        {
+          getUserFn,
+          jobRepository,
+          getPublishedStylePresetForGenerationFn,
+          recordStyleUsageEventFn,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        },
+      );
+      const body = await readJson(response);
+      expect(response.status).toBe(404);
+      expect(body.errorCode).toBe("STYLE_SOURCE_STOCK_NOT_FOUND");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("generated 未検出時は 404 STYLE_SOURCE_GENERATED_NOT_FOUND", async () => {
+      jobRepository.findGeneratedImage.mockResolvedValueOnce({
+        data: null,
+        error: new Error("not found"),
+      });
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("sourceImageGeneratedId", "missing-gen");
+      formData.set("model", "gpt-image-2-low-1k");
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(formData),
+        {
+          getUserFn,
+          jobRepository,
+          getPublishedStylePresetForGenerationFn,
+          recordStyleUsageEventFn,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        },
+      );
+      const body = await readJson(response);
+      expect(response.status).toBe(404);
+      expect(body.errorCode).toBe("STYLE_SOURCE_GENERATED_NOT_FOUND");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("stockId / generatedId / uploadImage を同時に送ると 400 で曖昧拒否", async () => {
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+      formData.set("sourceImageStockId", "stock-1");
+      formData.set("model", "gpt-image-2-low-1k");
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(formData),
+        {
+          getUserFn,
+          jobRepository,
+          getPublishedStylePresetForGenerationFn,
+          recordStyleUsageEventFn,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        },
+      );
+      const body = await readJson(response);
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_AMBIGUOUS_SOURCE_IMAGE");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("uploadImage も stockId も generatedId も無いと 400 STYLE_MISSING_UPLOAD_IMAGE", async () => {
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("model", "gpt-image-2-low-1k");
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(formData),
+        {
+          getUserFn,
+          jobRepository,
+          getPublishedStylePresetForGenerationFn,
+          recordStyleUsageEventFn,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        },
+      );
+      const body = await readJson(response);
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_MISSING_UPLOAD_IMAGE");
+    });
   });
 });
