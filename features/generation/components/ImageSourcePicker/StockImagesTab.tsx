@@ -10,7 +10,6 @@ import { PickerSkeleton } from "./PickerSkeleton";
 import {
   deleteSourceImageStock,
   getCurrentStockImageCount,
-  getSourceImageStocks,
   getStockImageLimit,
   type SourceImageStock,
 } from "../../lib/database";
@@ -65,7 +64,7 @@ export function StockImagesTab({
   const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<SourceImageStock[] | null> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -79,9 +78,13 @@ export function StockImagesTab({
       setStocks(stocksPage.stocks);
       setLimit(limitValue);
       setCount(countValue);
+      // 呼び出し元が「新規追加した stock を即座に find したい」場合に
+      // 再 fetch せず済むよう、取得した stocks を return する。
+      return stocksPage.stocks;
     } catch (err) {
       console.error("[StockImagesTab] refresh failed", err);
       setError(t("loadError"));
+      return null;
     } finally {
       setIsLoading(false);
       setHasLoadedOnce(true);
@@ -161,11 +164,12 @@ export function StockImagesTab({
         }
 
         // 新規アップロード後はキャッシュを破棄してから再取得する。
+        // refresh() の戻り値から find することで、ネットワーク呼び出しを
+        // 1 回に抑える (以前は refresh の後に getSourceImageStocks を再呼び
+        // 出していて冗長だった)。
         clearStockCache();
-        await refresh();
-        const created = (await getSourceImageStocks(50, 0)).find(
-          (s) => s.id === data.id,
-        );
+        const refreshedStocks = await refresh();
+        const created = refreshedStocks?.find((s) => s.id === data.id);
         if (created) {
           onAdded?.(created);
         }

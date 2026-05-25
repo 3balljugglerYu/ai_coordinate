@@ -137,6 +137,14 @@ beforeEach(() => {
     writable: true,
     configurable: true,
   });
+  // jsdom には URL.revokeObjectURL が無いため polyfill。
+  // GenerationForm が blob URL の cleanup でこれを呼ぶ。
+  if (typeof URL.revokeObjectURL !== "function") {
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: jest.fn(),
+    });
+  }
 });
 
 describe("GenerationForm (new image source picker integration)", () => {

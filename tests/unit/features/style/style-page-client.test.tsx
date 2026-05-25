@@ -471,6 +471,14 @@ describe("StylePageClient", () => {
       configurable: true,
       value: scrollIntoViewMock,
     });
+    // jsdom には URL.revokeObjectURL が無いため polyfill。
+    // StylePageClient が blob URL の cleanup でこれを呼ぶ。
+    if (typeof URL.revokeObjectURL !== "function") {
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        value: jest.fn(),
+      });
+    }
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: jest.fn().mockImplementation((query: string) => ({

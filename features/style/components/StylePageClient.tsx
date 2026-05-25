@@ -352,6 +352,19 @@ export function StylePageClient({
     | null
   >(null);
   const picker = useImageSourcePicker({ defaultTab: "generated" });
+
+  // uploadedImage.previewUrl が blob: の場合、差替時 (ImageUploader 内部で
+  // 処理) と unmount 時の両方で revoke が必要。ImageUploader は controlled
+  // モードでは unmount 時の revoke を抑止する設計 (親が URL ライフサイクル
+  // を所有) のため、親側で cleanup を実装する。
+  useEffect(() => {
+    const currentUrl = uploadedImage?.previewUrl;
+    return () => {
+      if (currentUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [uploadedImage?.previewUrl]);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
