@@ -45,6 +45,7 @@ import {
   parseImageDimensions,
 } from "./openai-image.ts";
 import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
+import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -1652,6 +1653,10 @@ Deno.serve(async () => {
                     });
                   }
 
+                  // 全 prompt_key を 1 クエリで取得 (invocation 内メモリキャッシュ付き)
+                  // → admin が編集した override があれば適用、無ければ registry default
+                  const promptTemplates =
+                    await resolveAllPromptTemplatesForWorker(supabase);
                   const fullPrompt =
                     job.generation_type === "one_tap_style"
                       ? job.prompt_text
@@ -1665,6 +1670,7 @@ Deno.serve(async () => {
                               pose: job.override_pose ?? true,
                               background: job.override_background ?? true,
                             },
+                            templates: promptTemplates,
                           })
                         : job.input_image_url
                         ? buildSharedPrompt({
@@ -1675,6 +1681,7 @@ Deno.serve(async () => {
                               job.source_image_type === "real"
                                 ? "real"
                                 : "illustration",
+                            templates: promptTemplates,
                           })
                         : job.prompt_text;
 
@@ -1907,11 +1914,22 @@ Deno.serve(async () => {
               const isOneTapStyle = job.generation_type === "one_tap_style";
               const isCoordinate = job.generation_type === "coordinate";
 
+              // リトライ強化 prefix にも admin override を反映する
+              // (templates dict は既に resolveAllPromptTemplatesForWorker で取得済み —
+              //  invocation 内メモリキャッシュにより 2 回目以降は DB 取得なし)
+              const reinforcementTemplates =
+                await resolveAllPromptTemplatesForWorker(supabase);
               for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 const reinforcementPrefix = isOneTapStyle
-                  ? buildStyleAttemptReinforcementPrefix(attempt)
+                  ? buildStyleAttemptReinforcementPrefix(
+                      attempt,
+                      reinforcementTemplates,
+                    )
                   : isCoordinate
-                    ? buildCoordinateAttemptReinforcementPrefix(attempt)
+                    ? buildCoordinateAttemptReinforcementPrefix(
+                        attempt,
+                        reinforcementTemplates,
+                      )
                     : "";
                 const reinforcementApplied = reinforcementPrefix.length > 0;
 
