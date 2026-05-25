@@ -29,6 +29,7 @@ import {
 import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
+import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 
 interface StyleGenerateAsyncRouteDependencies {
   getUserFn?: typeof getUser;
@@ -225,11 +226,13 @@ export async function postStyleGenerateAsyncRoute(
       );
     }
 
+    const promptTemplates = await resolveAllPromptTemplates();
     const prompt = buildStyleGenerationPrompt({
       stylingPrompt: preset.stylingPrompt,
       backgroundPrompt: preset.backgroundPrompt,
       backgroundChange,
       sourceImageType,
+      templates: promptTemplates,
     });
 
     const arrayBuffer = await uploadImage.arrayBuffer();

@@ -1,7 +1,25 @@
 /**
  * 画像生成の共通ロジック
  * Next.js API/Client と Supabase Edge Function の両方から利用する。
+ *
+ * 本ファイルは pure (ランタイム依存ゼロ) に保つ (ADR-007)。
+ * DB override の解決は呼び出し側で resolver を経由させ、
+ * `templates` 引数として渡す設計。
  */
+
+import { PROMPT_REGISTRY } from "./prompt-registry.ts";
+import { applyTemplate } from "./prompt-template.ts";
+
+/**
+ * registry key の content を解決する。templates dict に override があれば優先、
+ * 無ければ registry の defaultContent を返す (sync)。
+ */
+function resolveTemplate(
+  templates: Record<string, string> | undefined,
+  key: keyof typeof PROMPT_REGISTRY,
+): string {
+  return templates?.[key] ?? PROMPT_REGISTRY[key].defaultContent;
+}
 
 export type GenerationType =
   | "coordinate"
@@ -89,6 +107,11 @@ export interface BuildPromptOptions {
   outfitDescription: string; // ユーザー入力（日本語のまま）
   backgroundMode: BackgroundMode;
   sourceImageType?: SourceImageType;
+  /**
+   * 解決済み prompt templates dict (Next.js resolver / worker resolver から渡す)。
+   * 省略時は registry default を 100% 使う (= 既存挙動と等価、テスト容易)。
+   */
+  templates?: Record<string, string>;
 }
 
 /**
@@ -127,6 +150,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
     outfitDescription,
     backgroundMode,
     sourceImageType = "illustration",
+    templates,
   } = options;
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
 
@@ -137,37 +161,22 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   if (generationType === "coordinate") {
-    const coordinateBasePrefix = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
-
-1. Outfit Transformation within the Existing Frame (REQUIRED): You MUST replace the person's current clothing with the outfit described under "New Outfit" below. The replacement MUST appear only on body parts that are already visible in \`image_0.png\`. DO NOT extend the crop, widen the framing, or reveal additional body parts (legs, feet, lower body, etc.) that are not visible in the original image. The output image MUST visibly show the new outfit on the parts of the body that were already in frame. Returning the original outfit unchanged is a failure; extending the frame or adding body parts not in the original image is also a failure.
-
-2. Pose & Identity Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`. Do not alter the person's identity.
-
-3. Strict Framing: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a body part is not in the original frame, do not add it. Preserve the exact crop, camera angle, and composition of \`image_0.png\`.`;
-
-    const coordinateRealStyleSuffix =
-      "Generate a photorealistic result based on the uploaded photo. Captured with an 85mm portrait lens. Preserve the original camera angle, framing, realistic lighting, and composition. Do not introduce painterly or illustrated rendering.";
-
-    const coordinateIllustrationStyleSuffix =
-      "Maintain the exact illustration touch and artistic style of the uploaded image. Preserve the original camera angle, framing, pose, and composition.";
-
-    const coordinateKeepBackgroundSuffix =
-      "Keep the entire original background unchanged as much as possible. Do not replace, redesign, or restyle the background.";
-
-    const coordinateChangeBackgroundSuffix =
-      "You MUST restyle the background within the existing framing so that it complements the new outfit's style and color palette. Replace or redesign the original background accordingly. Preserve the camera angle, crop, composition, pose, facial features, and character identity.";
-
     const styleSuffix =
       sourceImageType === "real"
-        ? coordinateRealStyleSuffix
-        : coordinateIllustrationStyleSuffix;
+        ? resolveTemplate(templates, "coordinate.real_style_suffix")
+        : resolveTemplate(templates, "coordinate.illustration_style_suffix");
 
-    const sections: string[] = [coordinateBasePrefix, styleSuffix];
+    const sections: string[] = [
+      resolveTemplate(templates, "coordinate.base_prefix"),
+      styleSuffix,
+    ];
 
     if (backgroundMode === "keep") {
-      sections.push(coordinateKeepBackgroundSuffix);
+      sections.push(resolveTemplate(templates, "coordinate.keep_background_suffix"));
     } else if (backgroundMode === "ai_auto") {
-      sections.push(coordinateChangeBackgroundSuffix);
+      sections.push(
+        resolveTemplate(templates, "coordinate.change_background_suffix"),
+      );
     }
     // include_in_prompt: ユーザー記述に背景指示を委ねるため、システム側の背景指示は追加しない
 
@@ -177,93 +186,39 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   if (generationType === "specified_coordinate") {
-    if (backgroundMode === "keep") {
-      return `Edit **only the outfit** of the person in the image to match the provided clothing image.
-
-**New Outfit:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style.`;
-    }
-
-    if (backgroundMode === "ai_auto") {
-      return `Edit **only the outfit** of the person in the image to match the provided clothing image, and **generate a new background that complements the new look**.
-
-**New Outfit:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Make sure the updated background still feels cohesive with the character and shares the same illustration style as the original.`;
-    }
-
-    return `Edit **the outfit** of the person in the image to match the provided clothing image.
-
-**New Outfit:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, lighting, and art style.`;
+    const key =
+      backgroundMode === "keep"
+        ? "coordinate.specified_keep_template"
+        : backgroundMode === "ai_auto"
+          ? "coordinate.specified_ai_auto_template"
+          : "coordinate.specified_include_in_prompt_template";
+    return applyTemplate(resolveTemplate(templates, key), {
+      description: sanitizedDescription,
+    });
   }
 
   if (generationType === "full_body") {
-    if (backgroundMode === "keep") {
-      return `Generate a full-body image from the upper body image, maintaining the character's appearance and style.
-
-**Outfit Description:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, the entire background, lighting, and art style. Extend the image naturally to show the full body while maintaining proportions.`;
-    }
-
-    if (backgroundMode === "ai_auto") {
-      return `Generate a full-body image from the upper body image, maintaining the character's appearance and style.
-
-**Outfit Description:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Extend the image naturally to show the full body while maintaining proportions. Generate a new background that complements the full-body composition.`;
-    }
-
-    return `Generate a full-body image from the upper body image, maintaining the character's appearance and style.
-
-**Outfit Description:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face, hair, pose, expression, lighting, and art style. Extend the image naturally to show the full body while maintaining proportions.`;
+    const key =
+      backgroundMode === "keep"
+        ? "coordinate.full_body_keep_template"
+        : backgroundMode === "ai_auto"
+          ? "coordinate.full_body_ai_auto_template"
+          : "coordinate.full_body_include_in_prompt_template";
+    return applyTemplate(resolveTemplate(templates, key), {
+      description: sanitizedDescription,
+    });
   }
 
   if (generationType === "chibi") {
-    if (backgroundMode === "keep") {
-      return `Transform the person in the image into a chibi-style character (2-head proportion) while maintaining their appearance and outfit.
-
-**Outfit Description:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face features, hair, pose, expression, the entire background, lighting, and art style. Apply chibi proportions (2-head ratio) while preserving the character's recognizable features.`;
-    }
-
-    if (backgroundMode === "ai_auto") {
-      return `Transform the person in the image into a chibi-style character (2-head proportion) while maintaining their appearance and outfit.
-
-**Outfit Description:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face features, hair, pose, expression, lighting, and art style. Apply chibi proportions (2-head ratio) while preserving the character's recognizable features. Generate a new background that complements the chibi style.`;
-    }
-
-    return `Transform the person in the image into a chibi-style character (2-head proportion) while maintaining their appearance and outfit.
-
-**Outfit Description:**
-
-${sanitizedDescription}
-
-Keep everything else consistent: face features, hair, pose, expression, lighting, and art style. Apply chibi proportions (2-head ratio) while preserving the character's recognizable features.`;
+    const key =
+      backgroundMode === "keep"
+        ? "coordinate.chibi_keep_template"
+        : backgroundMode === "ai_auto"
+          ? "coordinate.chibi_ai_auto_template"
+          : "coordinate.chibi_include_in_prompt_template";
+    return applyTemplate(resolveTemplate(templates, key), {
+      description: sanitizedDescription,
+    });
   }
 
   if (generationType === "one_tap_style") {
@@ -292,51 +247,21 @@ export interface BuildInspirePromptOptions {
    * 4 つすべて true は「すべて維持」と等価（image_1 のシーンに丸ごとキャラを置く）。
    */
   overrides: InspireOverrides;
+  /**
+   * 解決済み prompt templates dict (Next.js resolver / worker resolver から渡す)。
+   * 省略時は registry default を 100% 使う。
+   */
+  templates?: Record<string, string>;
 }
 
 /**
- * プロンプト前文（全パターン共通・必ず先頭に置く）。
- * モデルに「キャラクター体型を絶対に保持」させるための強い指示。
- *
- * 注: この shared モジュールは Next.js（API/Client）と Supabase Deno Worker の両方から import する。
- * 共有定数はここ（shared/）に置く（lib/ には移さない — Worker から import できないため）。
- */
-const INSPIRE_PROMPT_PREAMBLE =
-  "絶対に守ること：必ずimage_0のキャラクターの体型は完全に保持してください。";
-
-/**
- * 各 override（チェックボックス）の ON / OFF に対応するアクション文（日本語）。
- *
- * - ON: image_1 から該当属性を image_0 に適用する指示
- * - OFF: image_0 の該当属性を変えない指示
- *
- * 設計指針: 長文や属性列挙はモデルの解釈を散らかして drift を生むため、各属性 1 文で短く。
- * 「キャラ本体の完全保持」は冒頭の前文で強く宣言済みなので、ここでは個別属性だけ書く。
- */
-const INSPIRE_ACTION_SENTENCES = {
-  outfit: {
-    on: "image_1の服をimage_0に着せてください。",
-    off: "image_0の衣装は変えないでください。",
-  },
-  angle: {
-    on: "image_1と同じカメラアングルをimage_0に適用してください。",
-    off: "image_0のカメラアングルは変えないでください。",
-  },
-  pose: {
-    on: "image_1のポーズと似たようなポーズをimage_0に適用してください。",
-    off: "image_0のポーズは変えないでください。",
-  },
-  background: {
-    on: "image_1の背景と同じ背景をimage_0に適用してください。",
-    off: "image_0の背景は変えないでください。",
-  },
-} as const satisfies Record<keyof InspireOverrides, { on: string; off: string }>;
-
-/**
  * outfit → angle → pose → background の順に、各 override が ON なら ON 文、
- * OFF なら OFF 文を返す（4 文必ず生成）。
+ * OFF なら OFF 文を返す（4 文必ず生成）。templates dict があれば override を優先。
  */
-function getInspireActionSentences(overrides: InspireOverrides): string[] {
+function getInspireActionSentences(
+  overrides: InspireOverrides,
+  templates: Record<string, string> | undefined,
+): string[] {
   const order: ReadonlyArray<keyof InspireOverrides> = [
     "outfit",
     "angle",
@@ -345,8 +270,11 @@ function getInspireActionSentences(overrides: InspireOverrides): string[] {
   ];
   return order.map((key) =>
     overrides[key]
-      ? INSPIRE_ACTION_SENTENCES[key].on
-      : INSPIRE_ACTION_SENTENCES[key].off
+      ? resolveTemplate(templates, `inspire.${key}_on` as keyof typeof PROMPT_REGISTRY)
+      : resolveTemplate(
+          templates,
+          `inspire.${key}_off` as keyof typeof PROMPT_REGISTRY,
+        ),
   );
 }
 
@@ -369,9 +297,10 @@ function getInspireActionSentences(overrides: InspireOverrides): string[] {
  * チェックなしで呼ぶと action 文が 0 件になり、生成意図不明のプロンプトになる。
  */
 export function buildInspirePrompt(options: BuildInspirePromptOptions): string {
-  const { overrides } = options;
-  const actions = getInspireActionSentences(overrides);
-  return [INSPIRE_PROMPT_PREAMBLE, ...actions].join("\n\n");
+  const { overrides, templates } = options;
+  const preamble = resolveTemplate(templates, "inspire.preamble");
+  const actions = getInspireActionSentences(overrides, templates);
+  return [preamble, ...actions].join("\n\n");
 }
 
 /**
@@ -392,10 +321,19 @@ export function resolveInspireTargetSizeBaseIndex(
 /**
  * coordinate 生成タイプ向けのリトライ強化 prefix。
  * attempt=1 は空文字、attempt>=2 で「前回は衣装置換が反映されなかった」旨を Gemini に強く伝える。
+ *
+ * テンプレ内の `{{attempt}}` は呼び出し時に attempt 値で置換する。
  */
-export function buildCoordinateAttemptReinforcementPrefix(attempt: number): string {
+export function buildCoordinateAttemptReinforcementPrefix(
+  attempt: number,
+  templates?: Record<string, string>,
+): string {
   if (attempt <= 1) {
     return "";
   }
-  return `RETRY NOTICE (attempt ${attempt}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the New Outfit described below. You MUST strictly apply the outfit replacement on the body parts already visible in \`image_0.png\`, within the existing frame, and any background instruction below. Do not return the original image unchanged. Do not extend the crop, widen the framing, or add body parts (legs, feet, lower body) that were not visible in \`image_0.png\`.\n\n`;
+  const template = resolveTemplate(
+    templates,
+    "reinforcement.coordinate_attempt_2plus",
+  );
+  return applyTemplate(template, { attempt });
 }

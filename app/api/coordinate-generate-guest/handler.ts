@@ -25,6 +25,7 @@ import {
   type GenerationType,
   type SourceImageType,
 } from "@/shared/generation/prompt-core";
+import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 import { isOpenAIImageModel } from "@/features/generation/types";
 
 interface CoordinateGenerateGuestRouteDependencies {
@@ -202,11 +203,13 @@ export async function postCoordinateGenerateGuestRoute(
     // プロンプト構築（インジェクション対策と種類別整形は buildPrompt が担当）
     let composedPrompt: string;
     try {
+      const promptTemplates = await resolveAllPromptTemplates();
       composedPrompt = buildPrompt({
         generationType,
         outfitDescription: promptText,
         backgroundMode,
         sourceImageType,
+        templates: promptTemplates,
       });
     } catch (error) {
       console.warn("Coordinate guest generate route: prompt build failed", error);
