@@ -206,5 +206,61 @@ describe("GenerationForm (new image source picker integration)", () => {
     expect(arg.prompt).toBe("test prompt");
     expect(arg.sourceImage).toBeInstanceOf(File);
     expect(arg.sourceImageStockId).toBeUndefined();
+    expect(arg.sourceImageGeneratedId).toBeUndefined();
+  });
+
+  test("生成済みタブから選択 + 決定 → submit で sourceImageGeneratedId が送られる (File は無し)", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    // 生成済みタブの fetch を items 1 件返すよう mock
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        items: [
+          {
+            kind: "generated",
+            id: "gen-42",
+            imageUrl: "https://x/g.png",
+            storagePath: "u/g.png",
+            createdAt: "2026-01-01",
+            generationType: "coordinate",
+          },
+        ],
+        nextOffset: null,
+      }),
+    });
+
+    render(<GenerationForm subscriptionPlan="free" onSubmit={onSubmit} />);
+
+    // ピッカーを開く
+    await user.click(screen.getByRole("button", { name: "triggerLabel" }));
+    // 生成済みタブのタイル
+    const tiles = await screen.findAllByRole("button", {
+      name: "selectImageAria",
+    });
+    await user.click(tiles[0]);
+    // 決定
+    const confirmButtons = screen.getAllByRole("button", {
+      name: "confirmAction",
+    });
+    const enabled = confirmButtons.find(
+      (b) => !(b as HTMLButtonElement).disabled,
+    );
+    if (enabled) await user.click(enabled);
+
+    // prompt 入力
+    const textarea = screen.getByRole("textbox");
+    await user.type(textarea, "test");
+
+    const submit = screen.getByTestId("mock-submit");
+    await waitFor(() => expect(submit).not.toBeDisabled());
+    await user.click(submit);
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const arg = onSubmit.mock.calls[0][0];
+    expect(arg.sourceImage).toBeUndefined();
+    expect(arg.sourceImageStockId).toBeUndefined();
+    expect(arg.sourceImageGeneratedId).toBe("gen-42");
   });
 });
