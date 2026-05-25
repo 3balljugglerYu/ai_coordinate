@@ -134,14 +134,21 @@ export function ImageSourcePicker({
   const animateTimeoutRef = useRef<number | null>(null);
 
   // touch ハンドラから常に最新値を参照するための ref。
+  // 注意: state を useEffect 経由で ref に同期すると 1 フレーム遅れ、
+  // タイル選択直後のアニメ中に touchstart が走ると ref が古いままで
+  // 「上ドラッグしても preview が縮まない」事象が起きる。そのため
+  // ref への書き込みは setState と同タイミングで同期的に行う。
   const previewHeightRef = useRef(previewHeight);
   const previewMaxPxRef = useRef(previewMaxPx);
-  useEffect(() => {
-    previewHeightRef.current = previewHeight;
-  }, [previewHeight]);
-  useEffect(() => {
-    previewMaxPxRef.current = previewMaxPx;
-  }, [previewMaxPx]);
+
+  const setPreviewHeightSync = useCallback((value: number) => {
+    previewHeightRef.current = value;
+    setPreviewHeight(value);
+  }, []);
+  const setPreviewMaxPxSync = useCallback((value: number) => {
+    previewMaxPxRef.current = value;
+    setPreviewMaxPx(value);
+  }, []);
 
   // モバイル drawer 内のスクロール領域への参照 (touch ハンドラ用)。
   // callback ref として実装するため、useRef は単なるストレージ。
@@ -154,26 +161,26 @@ export function ImageSourcePicker({
     if (typeof window === "undefined") return;
     const updateMax = () => {
       const next = Math.floor(window.innerHeight * PREVIEW_MAX_HEIGHT_RATIO);
-      setPreviewMaxPx(next);
-      setPreviewHeight((h) => Math.min(h, next));
+      setPreviewMaxPxSync(next);
+      setPreviewHeightSync(Math.min(previewHeightRef.current, next));
     };
     window.addEventListener("resize", updateMax);
     return () => window.removeEventListener("resize", updateMax);
-  }, []);
+  }, [setPreviewMaxPxSync, setPreviewHeightSync]);
 
   useEffect(() => {
     if (open) {
       setActiveSnapPoint(INITIAL_SNAP_POINT);
       setPreviewed(null);
       setIsConfirming(false);
-      setPreviewHeight(previewMaxPx);
+      setPreviewHeightSync(previewMaxPx);
       setIsAnimating(false);
       if (animateTimeoutRef.current) {
         window.clearTimeout(animateTimeoutRef.current);
         animateTimeoutRef.current = null;
       }
     }
-  }, [open, previewMaxPx]);
+  }, [open, previewMaxPx, setPreviewHeightSync]);
 
   // クリーンアップ
   useEffect(() => {
@@ -256,10 +263,15 @@ export function ImageSourcePicker({
         const currentY = event.touches[0].clientY;
         const dragUp = touchStartY - currentY; // 正 = 上方向ドラッグ
 
-        // 上ドラッグ: preview がまだ残っていて grid が top にある → preview を消費
-        if (dragUp > 0 && initialPreviewHeight > 0 && initialScrollTop === 0) {
+        // 上ドラッグ: preview が残っていれば先に消費する (scrollTop は問わない)。
+        // 理由: grid を途中までスクロールした状態でタイル選択し preview が開
+        // いたとき、ユーザーが期待するのは「次に上ドラッグしたら preview が
+        // 縮む」。scrollTop=0 を要求すると、scrollTop>0 から始まるドラッグで
+        // preview が消費されず、grid だけがさらにスクロールしてしまう。
+        // preview を消費中は preventDefault で grid の同時スクロールを止める。
+        if (dragUp > 0 && initialPreviewHeight > 0) {
           const newHeight = Math.max(0, initialPreviewHeight - dragUp);
-          setPreviewHeight(newHeight);
+          setPreviewHeightSync(newHeight);
           if (newHeight < initialPreviewHeight) {
             didShrinkPreview = true;
             didGrowPreview = false;
@@ -282,7 +294,7 @@ export function ImageSourcePicker({
             previewMaxPxRef.current,
             initialPreviewHeight + pullDown,
           );
-          setPreviewHeight(newHeight);
+          setPreviewHeightSync(newHeight);
           if (newHeight > initialPreviewHeight) {
             didGrowPreview = true;
             didShrinkPreview = false;
@@ -307,7 +319,7 @@ export function ImageSourcePicker({
         const target = didShrinkPreview ? 0 : didGrowPreview ? max : null;
         if (target !== null) {
           setIsAnimating(true);
-          setPreviewHeight(target);
+          setPreviewHeightSync(target);
           if (animateTimeoutRef.current) {
             window.clearTimeout(animateTimeoutRef.current);
           }
@@ -331,7 +343,7 @@ export function ImageSourcePicker({
         node.removeEventListener("touchcancel", onTouchEnd);
       };
     },
-    [],
+    [setPreviewHeightSync],
   );
 
   /**
@@ -342,7 +354,7 @@ export function ImageSourcePicker({
    */
   const openPreviewWithAnimation = useCallback(() => {
     setIsAnimating(true);
-    setPreviewHeight(previewMaxPx);
+    setPreviewHeightSync(previewMaxPx);
     if (animateTimeoutRef.current) {
       window.clearTimeout(animateTimeoutRef.current);
     }
@@ -350,7 +362,7 @@ export function ImageSourcePicker({
       setIsAnimating(false);
       animateTimeoutRef.current = null;
     }, PREVIEW_OPEN_ANIMATION_MS);
-  }, [previewMaxPx]);
+  }, [previewMaxPx, setPreviewHeightSync]);
 
   const handleTileGenerated = useCallback(
     (item: GeneratedItem) => {
