@@ -425,9 +425,11 @@ export function ImageSourcePicker({
     </div>
   );
 
-  // PC モーダル用プレビュー
+  // PC モーダル用プレビュー。2 カラム左側に大きく表示する。
+  // 親 (左カラム) で max-w-md (28rem = 448px) にラップしているため、ここでは
+  // w-full + aspect-square で親に追従する。
   const previewForDialog = previewSourceUrl ? (
-    <div className="mx-auto aspect-square w-full max-w-md overflow-hidden rounded-md bg-black">
+    <div className="aspect-square w-full overflow-hidden rounded-md bg-black">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={previewSourceUrl}
@@ -436,7 +438,7 @@ export function ImageSourcePicker({
       />
     </div>
   ) : (
-    <div className="mx-auto flex aspect-square w-full max-w-md items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
+    <div className="flex aspect-square w-full items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-sm text-gray-400">
       {t("sheetTitle")}
     </div>
   );
@@ -563,23 +565,56 @@ export function ImageSourcePicker({
       </Drawer.Root>
 
       <Dialog open={open && !isMobile} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        {/*
+          PC 版モーダル: Instagram 風の 2 カラムレイアウト。
+          - 左カラム: preview (大きく square で表示)
+          - 右カラム: タブ + グリッド (内部スクロール)
+          - ヘッダーとフッターはモーダル上下に固定
+          - 幅/高さは inline style で指定 (shadcn の sm:max-w-lg + Tailwind v4
+            のスキャナ生成事情で class 上書きが効きにくいため)
+        */}
+        <DialogContent
+          className="flex flex-col p-0"
+          style={{
+            width: "min(95vw, 1100px)",
+            maxWidth: "min(95vw, 1100px)",
+            height: "85vh",
+            maxHeight: "85vh",
+          }}
+        >
+          <DialogHeader className="flex-shrink-0 border-b px-6 py-4">
             <DialogTitle>{t("sheetTitle")}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            {previewForDialog}
+
+          {/* 本体 2 カラム: 左 preview / 右 タブ+グリッド */}
+          <div
+            className="flex flex-1 gap-6 px-6 py-4"
+            style={{ minHeight: 0 }}
+          >
+            {/* 左: preview。container 高さに合わせて square 表示。 */}
+            <div className="flex w-1/2 items-start justify-center">
+              <div className="w-full max-w-md">{previewForDialog}</div>
+            </div>
+
+            {/* 右: tabs + grid (independent scroll) */}
             <Tabs
               value={activeTab}
               onValueChange={(v) => onTabChange(v as PickerTabId)}
-              className="flex flex-col gap-3"
+              className="flex w-1/2 flex-col gap-3"
+              style={{ minHeight: 0 }}
             >
-              {tabsList}
-              {generatedTabPanel}
-              {stockTabPanel}
+              <div className="flex-shrink-0">{tabsList}</div>
+              <div
+                className="flex-1 overflow-y-auto pr-1"
+                style={{ minHeight: 0 }}
+              >
+                {generatedTabPanel}
+                {stockTabPanel}
+              </div>
             </Tabs>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="flex-shrink-0 px-6 py-4">
             <Button
               type="button"
               onClick={() => void handleConfirm()}
