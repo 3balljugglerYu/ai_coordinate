@@ -46,9 +46,7 @@ interface ImageSourcePickerProps {
   pendingStockId?: string | null;
   /**
    * 初期プレビュー表示する画像の URL。親が現在フォームに入っている画像
-   * (アップロード済みのプレビューや選択中ストックの image_url) を渡す。null の
-   * ときはプレースホルダ。ユーザーがタイルをタップすると、そのタイルの画像が
-   * 内部プレビュー状態として優先表示される。
+   * (アップロード済みのプレビューや選択中ストックの image_url) を渡す。
    */
   currentPreviewUrl?: string | null;
   /** プレビュー画像の alt テキスト。 */
@@ -60,16 +58,23 @@ const MOBILE_QUERY = "(max-width: 767px)";
 /**
  * モバイルボトムシートのスナップポイント (画面高さに対する比率)。
  *
- * vaul は snap 値を `window.innerHeight` 基準で換算するため、iOS Safari の
- * アドレスバー表示中は「大きな viewport」を基準にしてしまい、最大 snap に
- * すると header (タイトル + 決定ボタン) がアドレスバー裏に隠れて操作不能に
- * なる。そこで最大は 0.9 に留め、上部 10vh ≈ 60〜90px を安全領域として確保する。
- *
- * - 0.5: 半開き状態。下にドラッグして縮めたいときの止め位置。
- * - 0.9: 初期表示。preview + tab + grid を最大限見せる「ほぼ全画面」状態。
+ * - 0.5: 半開き状態。ハンドル下ドラッグで縮めたいときの止め位置。
+ * - 0.95: 初期表示。preview + tab + grid を最大限見せる「ほぼ全画面」状態。
  */
 const MOBILE_SNAP_POINTS: number[] = [0.5, 0.95];
 const INITIAL_SNAP_POINT = MOBILE_SNAP_POINTS[1];
+
+/**
+ * preview top sheet の最大高さを「ビューポート高さの何割」とするか。
+ * 50% ≈ 422px (iPhone 844px viewport)。aspect-square で width=358px の
+ * preview 画像 + 余白がちょうど収まる目安。
+ */
+const PREVIEW_MAX_HEIGHT_RATIO = 0.5;
+
+/**
+ * タイル選択時、preview が閉じている場合にゆっくり展開するアニメ時間 (ms)。
+ */
+const PREVIEW_OPEN_ANIMATION_MS = 500;
 
 function useIsMobileViewport() {
   const [isMobile, setIsMobile] = useState(true);
@@ -82,6 +87,11 @@ function useIsMobileViewport() {
     return () => mql.removeEventListener("change", update);
   }, []);
   return isMobile;
+}
+
+function getInitialPreviewMaxPx(): number {
+  if (typeof window === "undefined") return 420;
+  return Math.floor(window.innerHeight * PREVIEW_MAX_HEIGHT_RATIO);
 }
 
 export function ImageSourcePicker({
@@ -100,7 +110,7 @@ export function ImageSourcePicker({
 }: ImageSourcePickerProps) {
   const t = useTranslations("imageSourcePicker");
   const isMobile = useIsMobileViewport();
-  // 現在のスナップ位置。open のたびに初期スナップ (0.55) にリセットする。
+  // 現在のスナップ位置。open のたびに初期スナップにリセットする。
   const [activeSnapPoint, setActiveSnapPoint] = useState<
     number | string | null
   >(INITIAL_SNAP_POINT);
@@ -108,18 +118,71 @@ export function ImageSourcePicker({
   const [previewed, setPreviewed] = useState<PreviewedSelection | null>(null);
   // 決定ボタンが多重押しされないようにする。
   const [isConfirming, setIsConfirming] = useState(false);
-  // プレビュー (top sheet) の展開状態。ハンドルバーを上にドラッグで閉じ、
-  // 下にドラッグまたはタイル選択で開く。
-  const [previewExpanded, setPreviewExpanded] = useState(true);
+
+  // preview の高さ (px)。
+  // - グリッドスクロールに比例して縮む (scrollTop に追従)
+  // - タイル選択でアニメ付きで最大に戻る
+  const [previewMaxPx, setPreviewMaxPx] = useState<number>(
+    getInitialPreviewMaxPx,
+  );
+  const [previewHeight, setPreviewHeight] = useState<number>(
+    getInitialPreviewMaxPx,
+  );
+  // アニメ中だけ CSS transition を有効にする。スクロール追従中は transition
+  // を切って指の動きにピッタリ追従させる。
+  const [isAnimating, setIsAnimating] = useState(false);
+  const animateTimeoutRef = useRef<number | null>(null);
+
+  // touch ハンドラから常に最新値を参照するための ref。
+  const previewHeightRef = useRef(previewHeight);
+  const previewMaxPxRef = useRef(previewMaxPx);
+  useEffect(() => {
+    previewHeightRef.current = previewHeight;
+  }, [previewHeight]);
+  useEffect(() => {
+    previewMaxPxRef.current = previewMaxPx;
+  }, [previewMaxPx]);
+
+  // モバイル drawer 内のスクロール領域への参照 (touch ハンドラ用)。
+  // callback ref として実装するため、useRef は単なるストレージ。
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  // touch ハンドラの cleanup 関数 (callback ref から呼ぶ)
+  const detachTouchListenersRef = useRef<(() => void) | null>(null);
+
+  // viewport サイズ変更に追随
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateMax = () => {
+      const next = Math.floor(window.innerHeight * PREVIEW_MAX_HEIGHT_RATIO);
+      setPreviewMaxPx(next);
+      setPreviewHeight((h) => Math.min(h, next));
+    };
+    window.addEventListener("resize", updateMax);
+    return () => window.removeEventListener("resize", updateMax);
+  }, []);
 
   useEffect(() => {
     if (open) {
       setActiveSnapPoint(INITIAL_SNAP_POINT);
       setPreviewed(null);
       setIsConfirming(false);
-      setPreviewExpanded(true);
+      setPreviewHeight(previewMaxPx);
+      setIsAnimating(false);
+      if (animateTimeoutRef.current) {
+        window.clearTimeout(animateTimeoutRef.current);
+        animateTimeoutRef.current = null;
+      }
     }
-  }, [open]);
+  }, [open, previewMaxPx]);
+
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      if (animateTimeoutRef.current) {
+        window.clearTimeout(animateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const previewSourceUrl =
     previewed?.kind === "generated"
@@ -136,18 +199,173 @@ export function ImageSourcePicker({
   const previewedStockId =
     previewed?.kind === "stock" ? previewed.stock.id : selectedStockId;
 
-  // タイル選択時:
-  // - プレビュー画像を更新
-  // - top sheet が閉じていれば自動で開く (ユーザーが選んだ画像をすぐ確認できる)
-  // - drawer の snap 位置は維持する (95% 展開中にタップしても下に戻らない)
-  const handleTileGenerated = useCallback((item: GeneratedItem) => {
-    setPreviewed({ kind: "generated", item });
-    setPreviewExpanded(true);
-  }, []);
-  const handleTileStock = useCallback((stock: SourceImageStock) => {
-    setPreviewed({ kind: "stock", stock });
-    setPreviewExpanded(true);
-  }, []);
+  /**
+   * グリッド上で「シーケンシャル」な指追従ジェスチャを実装する。
+   *
+   * - 上ドラッグ (指を上に動かす):
+   *   - preview が表示中 AND grid が scrollTop=0 のとき → 指追従で preview を縮める
+   *     (preventDefault で native スクロールを抑止)
+   *   - preview が 0 になったら preventDefault を解除 → 以降は native スクロール
+   * - 下ドラッグ (指を下に動かす):
+   *   - grid が scrollTop=0 AND preview が最大未満 → 指追従で preview を伸ばす
+   *   - それ以外は native スクロールで grid を上に戻す
+   *
+   * touchstart/touchmove を passive: false で直接 addEventListener する
+   * (React の onTouchMove は passive で preventDefault できないため)。
+   *
+   * callback ref で実装する理由: vaul Drawer.Content は Portal で open=true
+   * のときだけ mount される。useEffect deps だと「effect が走るタイミング」と
+   * 「ref が set されるタイミング」のズレで listener が貼られないケースが
+   * あり得るため、ref attach のタイミングで確実に listener を貼る。
+   */
+  const attachScrollContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      // 既存の listener を必ず解除
+      if (detachTouchListenersRef.current) {
+        detachTouchListenersRef.current();
+        detachTouchListenersRef.current = null;
+      }
+      scrollContainerRef.current = node;
+      if (!node) return;
+
+      let touchStartY = 0;
+      let initialPreviewHeight = 0;
+      let initialScrollTop = 0;
+      // この touch シーケンス中に preview を縮める方向に動かしたか
+      let didShrinkPreview = false;
+      // この touch シーケンス中に preview を広げる方向に動かしたか
+      let didGrowPreview = false;
+
+      const onTouchStart = (event: TouchEvent) => {
+        if (event.touches.length !== 1) return;
+        touchStartY = event.touches[0].clientY;
+        initialPreviewHeight = previewHeightRef.current;
+        initialScrollTop = node.scrollTop;
+        didShrinkPreview = false;
+        didGrowPreview = false;
+        // 進行中のアニメは中断 (gesture が優先)
+        if (animateTimeoutRef.current) {
+          window.clearTimeout(animateTimeoutRef.current);
+          animateTimeoutRef.current = null;
+        }
+        setIsAnimating(false);
+      };
+
+      const onTouchMove = (event: TouchEvent) => {
+        if (event.touches.length !== 1) return;
+        const currentY = event.touches[0].clientY;
+        const dragUp = touchStartY - currentY; // 正 = 上方向ドラッグ
+
+        // 上ドラッグ: preview がまだ残っていて grid が top にある → preview を消費
+        if (dragUp > 0 && initialPreviewHeight > 0 && initialScrollTop === 0) {
+          const newHeight = Math.max(0, initialPreviewHeight - dragUp);
+          setPreviewHeight(newHeight);
+          if (newHeight < initialPreviewHeight) {
+            didShrinkPreview = true;
+            didGrowPreview = false;
+          }
+          if (newHeight > 0) {
+            // まだ消費中: native scroll をブロック
+            event.preventDefault();
+          }
+          return;
+        }
+
+        // 下ドラッグ: grid が top で preview が最大未満 → preview を伸ばす
+        if (
+          dragUp < 0 &&
+          initialScrollTop === 0 &&
+          previewHeightRef.current < previewMaxPxRef.current
+        ) {
+          const pullDown = -dragUp;
+          const newHeight = Math.min(
+            previewMaxPxRef.current,
+            initialPreviewHeight + pullDown,
+          );
+          setPreviewHeight(newHeight);
+          if (newHeight > initialPreviewHeight) {
+            didGrowPreview = true;
+            didShrinkPreview = false;
+          }
+          event.preventDefault();
+          return;
+        }
+        // 他のケース (grid 既スクロール中など) は native scroll に委ねる
+      };
+
+      const onTouchEnd = () => {
+        const cur = previewHeightRef.current;
+        const max = previewMaxPxRef.current;
+        // 中途半端な高さで指を離した場合のみ snap させる
+        if (cur <= 0 || cur >= max) {
+          didShrinkPreview = false;
+          didGrowPreview = false;
+          return;
+        }
+        // 上ドラッグで縮め途中 → 0 まで閉じる
+        // 下ドラッグで広げ途中 → 最大まで開く
+        const target = didShrinkPreview ? 0 : didGrowPreview ? max : null;
+        if (target !== null) {
+          setIsAnimating(true);
+          setPreviewHeight(target);
+          if (animateTimeoutRef.current) {
+            window.clearTimeout(animateTimeoutRef.current);
+          }
+          animateTimeoutRef.current = window.setTimeout(() => {
+            setIsAnimating(false);
+            animateTimeoutRef.current = null;
+          }, PREVIEW_OPEN_ANIMATION_MS);
+        }
+        didShrinkPreview = false;
+        didGrowPreview = false;
+      };
+
+      node.addEventListener("touchstart", onTouchStart, { passive: false });
+      node.addEventListener("touchmove", onTouchMove, { passive: false });
+      node.addEventListener("touchend", onTouchEnd, { passive: true });
+      node.addEventListener("touchcancel", onTouchEnd, { passive: true });
+      detachTouchListenersRef.current = () => {
+        node.removeEventListener("touchstart", onTouchStart);
+        node.removeEventListener("touchmove", onTouchMove);
+        node.removeEventListener("touchend", onTouchEnd);
+        node.removeEventListener("touchcancel", onTouchEnd);
+      };
+    },
+    [],
+  );
+
+  /**
+   * タイル選択時:
+   * - プレビュー画像を内部 state に反映 (チェックバッジ切替)
+   * - preview が縮んでいる場合、最大高さまでアニメで開く
+   * - グリッドのスクロール位置は変更しない (独立)
+   */
+  const openPreviewWithAnimation = useCallback(() => {
+    setIsAnimating(true);
+    setPreviewHeight(previewMaxPx);
+    if (animateTimeoutRef.current) {
+      window.clearTimeout(animateTimeoutRef.current);
+    }
+    animateTimeoutRef.current = window.setTimeout(() => {
+      setIsAnimating(false);
+      animateTimeoutRef.current = null;
+    }, PREVIEW_OPEN_ANIMATION_MS);
+  }, [previewMaxPx]);
+
+  const handleTileGenerated = useCallback(
+    (item: GeneratedItem) => {
+      setPreviewed({ kind: "generated", item });
+      openPreviewWithAnimation();
+    },
+    [openPreviewWithAnimation],
+  );
+  const handleTileStock = useCallback(
+    (stock: SourceImageStock) => {
+      setPreviewed({ kind: "stock", stock });
+      openPreviewWithAnimation();
+    },
+    [openPreviewWithAnimation],
+  );
 
   const handleConfirm = useCallback(async () => {
     if (!previewed || isConfirming || disabled) return;
@@ -161,102 +379,31 @@ export function ImageSourcePicker({
     } finally {
       setIsConfirming(false);
     }
-  }, [
-    previewed,
-    isConfirming,
-    disabled,
-    onSelectGenerated,
-    onSelectStock,
-  ]);
+  }, [previewed, isConfirming, disabled, onSelectGenerated, onSelectStock]);
 
   const confirmDisabled = !previewed || disabled || isConfirming;
 
-  // top sheet (preview) のドラッグ開閉:
-  // - 下方向 16px 超のドラッグで「開く」
-  // - 上方向 16px 超のドラッグで「閉じる」
-  // - ドラッグ距離が閾値未満なら単純なタップとしてトグル
-  const dragStartYRef = useRef<number | null>(null);
-  const DRAG_THRESHOLD_PX = 16;
-  const handlePreviewHandlePointerDown = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      dragStartYRef.current = event.clientY;
-      event.currentTarget.setPointerCapture(event.pointerId);
-    },
-    [],
-  );
-  const handlePreviewHandlePointerUp = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      const startY = dragStartYRef.current;
-      dragStartYRef.current = null;
-      try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      } catch {
-        // capture が解除済みの場合は無視
-      }
-      if (startY === null) return;
-      const delta = event.clientY - startY;
-      if (delta < -DRAG_THRESHOLD_PX) {
-        setPreviewExpanded(false);
-      } else if (delta > DRAG_THRESHOLD_PX) {
-        setPreviewExpanded(true);
-      } else {
-        // 閾値未満ならタップとしてトグル
-        setPreviewExpanded((v) => !v);
-      }
-    },
-    [],
-  );
-
   /**
-   * モバイル用プレビュー領域 (top sheet)。展開/閉じ状態を max-height で
-   * アニメーションし、下端に開閉ハンドルを置く。
+   * プレビュー本体 (正方形 + bg-black + object-contain)。
+   * - 縦長画像: 上下フィット、左右に黒帯
+   * - 横長画像: 左右フィット、上下に黒帯
    */
-  const previewTopSheet = (
-    <div className="flex-shrink-0">
-      <div
-        className="overflow-hidden bg-white transition-[max-height] duration-300 ease-out"
-        // 正方形プレビュー (width 基準) + 余白 + transition の最大値。
-        // 60vh は実際のサイズではなく上限の安全側 cap。
-        // 内側の aspect-square w-full max-w-[420px] が実サイズを決める。
-        style={{ maxHeight: previewExpanded ? "60vh" : 0 }}
-      >
-        <div className="px-4 pb-2 pt-2">
-          {previewSourceUrl ? (
-            // 正方形コンテナ + bg-black + object-contain:
-            // - 縦長画像: 上下フィット、左右に黒帯
-            // - 横長画像: 左右フィット、上下に黒帯
-            // - 正方形画像: ぴったり収まる
-            <div className="mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-md bg-black">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewSourceUrl}
-                alt={previewAlt}
-                className="h-full w-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="mx-auto flex aspect-square w-full max-w-[420px] items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
-              {t("sheetTitle")}
-            </div>
-          )}
-        </div>
-      </div>
-      {/* 開閉ハンドル: 上にドラッグで閉じる / 下にドラッグまたはタップで開く */}
-      <button
-        type="button"
-        data-vaul-no-drag
-        aria-label={previewExpanded ? t("sheetTitle") : t("sheetTitle")}
-        aria-expanded={previewExpanded}
-        onPointerDown={handlePreviewHandlePointerDown}
-        onPointerUp={handlePreviewHandlePointerUp}
-        className="group flex w-full cursor-grab touch-none items-center justify-center py-2 active:cursor-grabbing"
-      >
-        <span className="block h-1.5 w-12 rounded-full bg-gray-300 transition-colors group-hover:bg-gray-400" />
-      </button>
+  const previewImage = previewSourceUrl ? (
+    <div className="mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-md bg-black">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={previewSourceUrl}
+        alt={previewAlt}
+        className="h-full w-full object-contain"
+      />
+    </div>
+  ) : (
+    <div className="mx-auto flex aspect-square w-full max-w-[420px] items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
+      {t("sheetTitle")}
     </div>
   );
 
-  // PC モーダル用プレビュー (open/close 制御なし、常時正方形 + 黒背景 + 内接フィット)
+  // PC モーダル用プレビュー
   const previewForDialog = previewSourceUrl ? (
     <div className="mx-auto aspect-square w-full max-w-md overflow-hidden rounded-md bg-black">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -313,7 +460,7 @@ export function ImageSourcePicker({
     </TabsContent>
   );
 
-  // モバイル: vaul Drawer (スナップポイント付きネイティブ風ボトムシート)
+  // モバイル: vaul Drawer + 独立 preview/grid (スクロール連動高さ)
   // PC: shadcn Dialog (中央モーダル)
   return (
     <>
@@ -329,11 +476,6 @@ export function ImageSourcePicker({
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
           <Drawer.Content
             className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-white outline-none"
-            // iOS Safari の動的アドレスバー込みで「現在表示中の viewport」を使う:
-            // - 100vh はアドレスバー込みの最大値で、バー表示中はその分だけ
-            //   drawer が画面上端を超えてしまい header が押せなくなる。
-            // - 100dvh はバーの表示/非表示に追従するので、snap 0.95 でも
-            //   header (タイトル + 決定ボタン) が必ず可視範囲に入る。
             style={{ height: "100dvh", maxHeight: "100dvh" }}
           >
             {/* 固定ヘッダ: ハンドル + タイトル + 決定ボタン */}
@@ -358,23 +500,33 @@ export function ImageSourcePicker({
               </div>
             </div>
 
-            {/* 折りたたみ可能なプレビュー (top sheet)。下端のハンドルを
-                上にドラッグで閉じ、下にドラッグまたはタップで開く。 */}
-            {previewTopSheet}
+            {/* preview top sheet:
+                高さはグリッドの scrollTop に連動して縮む (Instagram 風)。
+                タイル選択時のみアニメで最大に戻る。 */}
+            <div
+              className={
+                isAnimating
+                  ? "flex-shrink-0 overflow-hidden bg-white transition-[height] duration-500 ease-out"
+                  : "flex-shrink-0 overflow-hidden bg-white"
+              }
+              style={{ height: `${previewHeight}px` }}
+            >
+              <div className="px-4 pb-2 pt-2">{previewImage}</div>
+            </div>
 
-            {/* タブとグリッドはピッカー下部に固定し、グリッドのみが内部
-                スクロールする。preview を畳めばグリッドが見える領域が増え、
-                preview を開けばすぐ確認できる。 */}
+            {/* タブとグリッド (独立スクロール、preview とは onScroll で連動)。
+                タイル選択は preview を開くだけで scrollTop は変更しない。 */}
             <Tabs
               value={activeTab}
               onValueChange={(v) => onTabChange(v as PickerTabId)}
               className="flex flex-1 flex-col"
               style={{ minHeight: 0 }}
             >
-              <div data-vaul-no-drag className="px-4 pb-2">
+              <div data-vaul-no-drag className="px-4 pb-2 pt-1">
                 {tabsList}
               </div>
               <div
+                ref={attachScrollContainerRef}
                 data-vaul-no-drag
                 className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6"
                 style={{ minHeight: 0 }}
