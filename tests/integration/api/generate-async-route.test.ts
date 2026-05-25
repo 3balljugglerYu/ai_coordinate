@@ -90,6 +90,7 @@ async function readJson(response: Response): Promise<JsonRecord> {
 function createAsyncGenerationJobRepositoryMock(): jest.Mocked<AsyncGenerationJobRepository> {
   return {
     findSourceImageStock: jest.fn(),
+    findGeneratedImage: jest.fn(),
     uploadSourceImage: jest.fn(),
     getSourceImagePublicUrl: jest.fn(),
     getUserCreditBalance: jest.fn(),
@@ -490,11 +491,12 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         },
         error: null,
       });
+      // 注: schema 改修後 (sourceImageStockId / sourceImageGeneratedId /
+      // sourceImageBase64 を排他化) は同時送信が 400 になるため、stockId のみ
+      // 指定する。uploadSourceImage が呼ばれないことは引き続き検証する。
       const request = createRequest({
         prompt: "linen jacket",
         sourceImageStockId,
-        sourceImageBase64: Buffer.from("should-not-upload").toString("base64"),
-        sourceImageMimeType: "image/png",
       });
 
       // ============================================================
@@ -522,6 +524,46 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         "https://cdn.example.com/source-stock.png"
       );
       expect(inserted?.source_image_stock_id).toBe(sourceImageStockId);
+    });
+
+    test("postGenerateAsyncRoute_sourceImageGeneratedId指定の場合_生成済み画像URLを再利用しアップロードしない", async () => {
+      // Arrange
+      const sourceImageGeneratedId = "22222222-2222-4222-8222-222222222222";
+      jobRepository.findGeneratedImage.mockResolvedValueOnce({
+        data: {
+          id: sourceImageGeneratedId,
+          image_url: "https://cdn.example.com/generated-source.png",
+        },
+        error: null,
+      });
+      const request = createRequest({
+        prompt: "linen jacket",
+        sourceImageGeneratedId,
+      });
+
+      // Act
+      const response = await postGenerateAsyncRoute(request, {
+        getUserFn,
+        jobRepository,
+      });
+      const body = await readJson(response);
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(body.jobId).toBe("job-001");
+      expect(jobRepository.findGeneratedImage).toHaveBeenCalledWith(
+        sourceImageGeneratedId,
+        "user-123"
+      );
+      // generated 経由ではアップロード往復を行わない (パフォーマンス改善の意図)
+      expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+
+      const inserted = jobRepository.createImageJob.mock.calls[0]?.[0];
+      expect(inserted?.input_image_url).toBe(
+        "https://cdn.example.com/generated-source.png"
+      );
+      // generated 由来は stock_id を持たない (stock とは別経路)
+      expect(inserted?.source_image_stock_id ?? null).toBeNull();
     });
 
     test("postGenerateAsyncRoute_ストック画像未検出の場合_404を返す", async () => {

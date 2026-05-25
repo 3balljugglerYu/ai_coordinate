@@ -74,6 +74,7 @@ function createUploadImage(
 function createAsyncGenerationJobRepositoryMock(): jest.Mocked<AsyncGenerationJobRepository> {
   return {
     findSourceImageStock: jest.fn(),
+    findGeneratedImage: jest.fn(),
     uploadSourceImage: jest.fn(),
     getSourceImagePublicUrl: jest.fn(),
     getUserCreditBalance: jest.fn(),
