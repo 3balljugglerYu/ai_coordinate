@@ -29,6 +29,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { ImageSourcePicker } from "@/features/generation/components/ImageSourcePicker/ImageSourcePicker";
+import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
+import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
+import type { SourceImageStock } from "@/features/generation/lib/database";
+import type { PickerSourceItem } from "@/features/generation/types";
 import { GenerationStatusCard } from "@/features/generation/components/GenerationStatusCard";
 import { GenerationResultPanel } from "@/features/generation/components/GenerationResultPanel";
 import { useGenerationState } from "@/features/generation/context/GenerationStateContext";
@@ -335,6 +340,31 @@ export function StylePageClient({
     StylePresetPublicSummary["id"]
   >(() => resolveInitialSelectedPresetId(presets, initialSelectedPresetId));
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  /**
+   * ピッカーから「生成済み / ストック」を選んだとき、URL → File → 再アップ
+   * ロードのラウンドトリップを省略する。代わりに id と preview URL だけを
+   * 保持し、submit 時に sourceImageStockId / sourceImageGeneratedId として
+   * サーバへ送る。uploadedImage とは排他。
+   */
+  const [selectedRemoteSource, setSelectedRemoteSource] = useState<
+    | { kind: "stock"; id: string; previewUrl: string; name?: string | null }
+    | { kind: "generated"; id: string; previewUrl: string }
+    | null
+  >(null);
+  const picker = useImageSourcePicker({ defaultTab: "generated" });
+
+  // uploadedImage.previewUrl が blob: の場合、差替時 (ImageUploader 内部で
+  // 処理) と unmount 時の両方で revoke が必要。ImageUploader は controlled
+  // モードでは unmount 時の revoke を抑止する設計 (親が URL ライフサイクル
+  // を所有) のため、親側で cleanup を実装する。
+  useEffect(() => {
+    const currentUrl = uploadedImage?.previewUrl;
+    return () => {
+      if (currentUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [uploadedImage?.previewUrl]);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
@@ -413,9 +443,10 @@ export function StylePageClient({
   const isGenerating = generationPhase !== "idle";
   const isBackgroundChangeAvailable = Boolean(selectedPreset?.hasBackgroundPrompt);
   const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
+  const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
   const isGenerateDisabled =
     !selectedPreset ||
-    !uploadedImage ||
+    !hasSourceImage ||
     isGenerating ||
     isGuestDailyLimitReached ||
     shouldDisablePaidContinuation;
@@ -965,6 +996,8 @@ export function StylePageClient({
   const handleUpload = (image: UploadedImage) => {
     runAfterResultResetCheck(() => {
       setUploadedImage(image);
+      // 直接アップロードを優先するため、リモート選択はクリア。
+      setSelectedRemoteSource(null);
       setErrorState(null);
       setResultImageUrl(null);
     });
@@ -973,9 +1006,48 @@ export function StylePageClient({
   const handleUploadRemove = () => {
     runAfterResultResetCheck(() => {
       setUploadedImage(null);
+      setSelectedRemoteSource(null);
       setErrorState(null);
       setResultImageUrl(null);
     });
+  };
+
+  /**
+   * 「生成済み」または「ストック」画像をピッカーから選んだ際の共通処理。
+   * 旧実装は URL → File → /api/source-image-stocks に再アップロード → 完了
+   * 待ちというラウンドトリップだったが、サーバ側で sourceImageStockId /
+   * sourceImageGeneratedId を直接受け取れるよう拡張したため (Phase 1/2)、
+   * クライアントは id と preview URL のみ保持して即座に picker を閉じる。
+   */
+  const handleSelectGenerated = (
+    item: Extract<PickerSourceItem, { kind: "generated" }>
+  ) => {
+    runAfterResultResetCheck(() => {
+      setUploadedImage(null);
+      setSelectedRemoteSource({
+        kind: "generated",
+        id: item.id,
+        previewUrl: item.imageUrl,
+      });
+      setErrorState(null);
+      setResultImageUrl(null);
+    });
+    picker.closePicker();
+  };
+
+  const handleSelectStock = (stock: SourceImageStock) => {
+    runAfterResultResetCheck(() => {
+      setUploadedImage(null);
+      setSelectedRemoteSource({
+        kind: "stock",
+        id: stock.id,
+        previewUrl: stock.image_url,
+        name: stock.name,
+      });
+      setErrorState(null);
+      setResultImageUrl(null);
+    });
+    picker.closePicker();
   };
 
   const handleSourceImageTypeChange = (value: SourceImageType) => {
@@ -1100,7 +1172,11 @@ export function StylePageClient({
   };
 
   const generateImageWithAsyncJob = async () => {
-    if (!selectedPreset || !uploadedImage || isGenerating) {
+    if (
+      !selectedPreset ||
+      (!uploadedImage && !selectedRemoteSource) ||
+      isGenerating
+    ) {
       return;
     }
 
@@ -1116,14 +1192,23 @@ export function StylePageClient({
     setErrorState(null);
 
     try {
-      const normalizedFile = await normalizeSourceImage(uploadedImage.file);
-
       const formData = new FormData();
       formData.set("styleId", selectedPreset.id);
-      formData.set("uploadImage", normalizedFile);
       formData.set("sourceImageType", sourceImageType);
       formData.set("backgroundChange", backgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
+
+      if (selectedRemoteSource?.kind === "stock") {
+        // ストック画像: サーバ側で source_image_stocks から URL を解決。
+        formData.set("sourceImageStockId", selectedRemoteSource.id);
+      } else if (selectedRemoteSource?.kind === "generated") {
+        // 生成済み画像: サーバ側で generated_images から URL を解決。
+        formData.set("sourceImageGeneratedId", selectedRemoteSource.id);
+      } else if (uploadedImage) {
+        // 直接アップロード: normalize してから File として送る。
+        const normalizedFile = await normalizeSourceImage(uploadedImage.file);
+        formData.set("uploadImage", normalizedFile);
+      }
 
       const response = await fetch("/style/generate-async", {
         method: "POST",
@@ -1390,7 +1475,12 @@ export function StylePageClient({
               <ImageUploader
                 onImageUpload={handleUpload}
                 onImageRemove={handleUploadRemove}
-                value={uploadedImage}
+                value={
+                  uploadedImage ??
+                  (selectedRemoteSource
+                    ? { previewUrl: selectedRemoteSource.previewUrl }
+                    : null)
+                }
                 label={t("uploadLabel")}
                 addImageLabel={t("addImageAction")}
                 compact={isReferenceCardCollapsed}
@@ -1410,6 +1500,13 @@ export function StylePageClient({
                 aspectRatio={selectedPresetAspectRatio}
               />
             ) : null}
+          </div>
+
+          <div className="mt-3">
+            <ImageSourcePickerTrigger
+              onClick={picker.openPicker}
+              disabled={isGenerating}
+            />
           </div>
         </section>
 
@@ -1776,6 +1873,23 @@ export function StylePageClient({
       <SubscriptionUpsellDialog
         open={isUpsellOpen}
         onOpenChange={setIsUpsellOpen}
+      />
+
+      <ImageSourcePicker
+        open={picker.open}
+        onOpenChange={picker.setOpen}
+        activeTab={picker.activeTab}
+        onTabChange={picker.setActiveTab}
+        onSelectGenerated={handleSelectGenerated}
+        onSelectStock={handleSelectStock}
+        disabled={isGenerating}
+        pendingGeneratedId={null}
+        pendingStockId={null}
+        currentPreviewUrl={
+          selectedRemoteSource?.previewUrl ??
+          uploadedImage?.previewUrl ??
+          null
+        }
       />
     </div>
   );

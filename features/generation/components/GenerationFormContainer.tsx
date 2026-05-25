@@ -866,6 +866,8 @@ export function GenerationFormContainer({
     prompt: string;
     sourceImage?: File;
     sourceImageStockId?: string;
+    /** 生成済み画像を入力 source として再利用するときの id (排他) */
+    sourceImageGeneratedId?: string;
     sourceImageType?: import("../types").SourceImageType;
     backgroundMode: import("../types").BackgroundMode;
     count: number;
@@ -966,9 +968,11 @@ export function GenerationFormContainer({
       consumePendingSourceImageBatch(stockPromptPendingJobIdRef.current);
       stockPromptPendingJobIdRef.current = null;
     }
-    const stockPromptSubmittedAt = data.sourceImage
-      ? performance.now()
-      : null;
+    // ストック保存案内 (SaveSourceImageToStockDialog) は一旦無効化中のため、
+    // 起動タイミング記録もコメントアウト。復活時に下行を有効化する。
+    // const stockPromptSubmittedAt = data.sourceImage
+    //   ? performance.now()
+    //   : null;
 
     try {
       const percoinCost = getPercoinCost(data.model);
@@ -997,6 +1001,7 @@ export function GenerationFormContainer({
             prompt: data.prompt,
             sourceImage: data.sourceImage,
             sourceImageStockId: data.sourceImageStockId,
+            sourceImageGeneratedId: data.sourceImageGeneratedId,
             sourceImageType: data.sourceImageType,
             backgroundMode: data.backgroundMode,
             count,
@@ -1092,6 +1097,12 @@ export function GenerationFormContainer({
         throw new Error(t("submitJobFailed"));
       }
 
+      // ストック保存案内モーダル (SaveSourceImageToStockDialog) は現在無効化中。
+      // 「アップロード由来生成 → 3 秒後にストック保存を促す」フローは仕様上
+      // 一旦不要としたため、起動側のみ丸ごとコメントアウトしている。再開する
+      // 場合は下記ブロックのコメントを外すだけで復活する (関連の ref 初期化・
+      // クリーンアップ・タイマー stop 等の周辺コードはそのまま残してある)。
+      /*
       // ライブラリタブの upload 由来生成の場合、元画像 File を jobId 群に紐づけて
       // 保持する。3 秒タイマー満了時に SaveSourceImageToStockDialog が取り出す。
       if (data.sourceImage && registerPendingSourceImage) {
@@ -1169,6 +1180,7 @@ export function GenerationFormContainer({
           );
         }, remainingDelay);
       }
+      */
 
       const nextJobTotalCount = jobIds.length;
       const nextProgressTotalCount = sumProgressUnits(

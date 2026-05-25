@@ -12,6 +12,14 @@ export interface AsyncGenerationJobRepository {
     sourceImageStockId: string,
     userId: string
   ): Promise<RepositoryResult<{ id: string; image_url: string }>>;
+  /**
+   * 生成済み画像を入力 source として再利用するときの参照取得。
+   * RLS と二重防御のため WHERE user_id を必ず付与する。
+   */
+  findGeneratedImage(
+    generatedImageId: string,
+    userId: string
+  ): Promise<RepositoryResult<{ id: string; image_url: string }>>;
   uploadSourceImage(
     fileName: string,
     buffer: Buffer,
@@ -49,6 +57,24 @@ export class SupabaseAsyncGenerationJobRepository
 
     if (error || !data) {
       return { data: null, error: error ?? new Error("stock not found") } as const;
+    }
+
+    return { data, error: null } as const;
+  }
+
+  async findGeneratedImage(generatedImageId: string, userId: string) {
+    const { data, error } = await this.supabase
+      .from("generated_images")
+      .select("id, image_url")
+      .eq("id", generatedImageId)
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) {
+      return {
+        data: null,
+        error: error ?? new Error("generated image not found"),
+      } as const;
     }
 
     return { data, error: null } as const;

@@ -14,11 +14,28 @@ import {
 import type { ImageUploadConfig, UploadedImage } from "../types";
 import NextImage from "next/image";
 
+/**
+ * ImageUploader の controlled value。
+ *
+ * 直接アップロード時は `UploadedImage` ({ file: File; previewUrl: string }) を
+ * そのまま渡せばよいが、ピッカー経由で「生成済み / ストック画像」を選んだ
+ * 場合はクライアントに File を持たない (サーバ側で storage_path から
+ * 解決する設計のため)。よって value は file 無しの preview-only も許容する
+ * よう緩和型にしている。ImageUploader 自体は内部で file を読まないので、
+ * 表示は previewUrl のみで完結する。
+ */
+type ImageUploaderValue = {
+  previewUrl: string;
+  file?: File;
+  width?: number;
+  height?: number;
+};
+
 interface ImageUploaderProps {
   onImageUpload: (image: UploadedImage) => void;
   onImageRemove?: () => void;
   /** 親からプログラム的にセットされた画像（チュートリアル等で使用） */
-  value?: UploadedImage | null;
+  value?: ImageUploaderValue | null;
   config?: ImageUploadConfig;
   className?: string;
   label?: string;

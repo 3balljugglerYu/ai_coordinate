@@ -47,6 +47,42 @@ export type GenerationType =
   | 'inspire';
 
 /**
+ * 画像ソースピッカー「生成済み」タブに表示する generation_type の集合。
+ * coordinate 系の派生 (specified_coordinate / full_body / chibi)、style (one_tap_style)、
+ * inspire を含む。ユーザー視点での「自分が生成した人物画像」全般を入力に再利用できる。
+ */
+export const PICKER_GENERATION_TYPES = [
+  'coordinate',
+  'specified_coordinate',
+  'full_body',
+  'chibi',
+  'one_tap_style',
+  'inspire',
+] as const satisfies readonly GenerationType[];
+
+/**
+ * 画像ソースピッカーで扱う 1 アイテムの最小表現。
+ * 生成済み画像とストック画像を区別しつつ、共通の表示プロパティを揃える。
+ */
+export type PickerSourceItem =
+  | {
+      kind: 'generated';
+      id: string;
+      imageUrl: string;
+      storagePath: string;
+      createdAt: string;
+      generationType: GenerationType | null;
+    }
+  | {
+      kind: 'stock';
+      id: string;
+      imageUrl: string;
+      storagePath: string;
+      createdAt: string;
+      name: string | null;
+    };
+
+/**
  * inspire 生成時の override 組み合わせ。4 つすべて true は「すべて維持」と等価。
  * shared/generation/prompt-core.ts の InspireOverrides を再エクスポート。
  */
@@ -249,6 +285,11 @@ export interface GenerationRequest {
   prompt: string;
   sourceImage?: File;
   sourceImageStockId?: string;
+  /**
+   * 生成済み画像を入力 source として再利用する場合の id。
+   * sourceImage / sourceImageStockId と排他。
+   */
+  sourceImageGeneratedId?: string;
   sourceImageType?: SourceImageType;
   backgroundMode?: BackgroundMode;
   // 後方互換（1リリース維持）

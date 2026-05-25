@@ -66,6 +66,12 @@ export const generationRequestSchema = z.object({
       }
     ),
   sourceImageStockId: z.string().uuid().optional(),
+  /**
+   * 生成済み画像 (generated_images) を入力 source として再利用する場合の id。
+   * クライアントは画像本体をアップロードせず、サーバー側で user_id を検証した上で
+   * DB の image_url をそのまま流用する。stockId / base64 と排他。
+   */
+  sourceImageGeneratedId: z.string().uuid().optional(),
   sourceImageType: z.enum(SOURCE_IMAGE_TYPES).optional().default("illustration"),
   backgroundMode: z.enum(BACKGROUND_MODES).optional(),
   backgroundChange: z.boolean().optional(),
@@ -103,6 +109,9 @@ export const generationRequestSchema = z.object({
   const hasSourceImageStockId =
     typeof data.sourceImageStockId === "string" &&
     data.sourceImageStockId.length > 0;
+  const hasSourceImageGeneratedId =
+    typeof data.sourceImageGeneratedId === "string" &&
+    data.sourceImageGeneratedId.length > 0;
   const hasSourceImageBase64 =
     typeof data.sourceImageBase64 === "string" &&
     data.sourceImageBase64.trim().length > 0;
@@ -110,12 +119,30 @@ export const generationRequestSchema = z.object({
     typeof data.sourceImageMimeType === "string" &&
     data.sourceImageMimeType.trim().length > 0;
 
-  // フロント仕様と合わせて、元画像（アップロード or ストック）を必須化
-  if (!hasSourceImageStockId && !(hasSourceImageBase64 && hasSourceImageMimeType)) {
+  // フロント仕様と合わせて、元画像 (アップロード or ストック or 生成済み再利用) を必須化
+  if (
+    !hasSourceImageStockId &&
+    !hasSourceImageGeneratedId &&
+    !(hasSourceImageBase64 && hasSourceImageMimeType)
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["sourceImageBase64"],
       message: "人物画像をアップロードまたはストック画像を選択してください",
+    });
+  }
+
+  // stockId / generatedId / base64 は排他: 同時に複数指定された場合は曖昧。
+  const sourceInputCount =
+    (hasSourceImageStockId ? 1 : 0) +
+    (hasSourceImageGeneratedId ? 1 : 0) +
+    (hasSourceImageBase64 ? 1 : 0);
+  if (sourceInputCount > 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["sourceImageGeneratedId"],
+      message:
+        "sourceImageStockId / sourceImageGeneratedId / sourceImageBase64 は同時に指定できません",
     });
   }
 

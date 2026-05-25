@@ -247,7 +247,10 @@ function fireScheduledTimeout(timer: ScheduledTimeout) {
   });
 }
 
-describe("GenerationFormContainer stock prompt timer", () => {
+// 元画像ストック保存案内 (SaveSourceImageToStockDialog) は仕様により
+// 一旦無効化中 (GenerationFormContainer 側で起動ブロックをコメントアウト)。
+// 機能を復活させる際は describe.skip → describe に戻すこと。
+describe.skip("GenerationFormContainer stock prompt timer", () => {
   beforeEach(() => {
     scheduledTimeouts = [];
     nextTimeoutId = 1;
