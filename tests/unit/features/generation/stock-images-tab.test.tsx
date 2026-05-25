@@ -32,6 +32,7 @@ import {
   getSourceImageStocks,
   getStockImageLimit,
 } from "@/features/generation/lib/database";
+import { clearStockCache } from "@/features/generation/lib/picker-cache";
 
 const mockGetSourceImageStocks = getSourceImageStocks as jest.MockedFunction<
   typeof getSourceImageStocks
@@ -48,6 +49,9 @@ const mockDeleteSourceImageStock =
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // モジュールスコープの cache がテスト間でリークするとモック呼び出し回数や
+  // 初期 hasLoadedOnce が変わるので、各テストで必ずクリアする。
+  clearStockCache();
   // confirm を yes に
   window.confirm = jest.fn(() => true);
   window.alert = jest.fn();

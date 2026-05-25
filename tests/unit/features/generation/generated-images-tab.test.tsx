@@ -10,6 +10,7 @@ jest.mock("next-intl", () => ({
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GeneratedImagesTab } from "@/features/generation/components/ImageSourcePicker/GeneratedImagesTab";
+import { clearGeneratedCache } from "@/features/generation/lib/picker-cache";
 
 let fetchMock: jest.Mock;
 
@@ -20,6 +21,8 @@ beforeEach(() => {
     writable: true,
     configurable: true,
   });
+  // モジュールスコープ cache がテスト間でリークするのを防ぐ
+  clearGeneratedCache();
 });
 
 function jsonResponse(payload: unknown) {
@@ -106,8 +109,40 @@ describe("GeneratedImagesTab", () => {
     });
   });
 
-  test("nextOffset があれば「もっと見る」で追加 fetch する", async () => {
-    const user = userEvent.setup();
+  test("nextOffset があれば IntersectionObserver 発火で次ページを fetch する", async () => {
+    // IntersectionObserver を sentinel が intersect している状態で mock する。
+    // 実装は new IntersectionObserver(cb).observe(sentinel) を呼ぶので、
+    // mock 側で observe された瞬間に cb({ isIntersecting: true }) を発火する。
+    type ObserverCallback = (entries: IntersectionObserverEntry[]) => void;
+    const observerInstances: Array<{
+      cb: ObserverCallback;
+      disconnect: jest.Mock;
+    }> = [];
+    const observerMock = jest.fn((cb: ObserverCallback) => {
+      const disconnect = jest.fn();
+      const instance = { cb, disconnect };
+      observerInstances.push(instance);
+      return {
+        observe: () => {
+          // 即座に「intersect 済み」を通知する。
+          cb([
+            { isIntersecting: true } as unknown as IntersectionObserverEntry,
+          ]);
+        },
+        unobserve: jest.fn(),
+        disconnect,
+        takeRecords: jest.fn(() => []),
+        root: null,
+        rootMargin: "",
+        thresholds: [],
+      };
+    });
+    Object.defineProperty(globalThis, "IntersectionObserver", {
+      value: observerMock,
+      writable: true,
+      configurable: true,
+    });
+
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         items: [
@@ -123,8 +158,6 @@ describe("GeneratedImagesTab", () => {
         nextOffset: 50,
       }),
     );
-    render(<GeneratedImagesTab active onSelect={() => {}} />);
-    const more = await screen.findByRole("button", { name: "loadMore" });
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         items: [
@@ -140,7 +173,7 @@ describe("GeneratedImagesTab", () => {
         nextOffset: null,
       }),
     );
-    await user.click(more);
+    render(<GeneratedImagesTab active onSelect={() => {}} />);
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith(
         "/api/generation-history/picker?limit=50&offset=50",
