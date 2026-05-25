@@ -43,7 +43,6 @@ export function PickerImageTile({
           "relative block w-full overflow-hidden rounded-md bg-gray-100",
           "aspect-square",
           "ring-offset-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black",
-          selected && "ring-2 ring-black",
           disabled && "cursor-not-allowed opacity-50",
         )}
       >
@@ -61,12 +60,20 @@ export function PickerImageTile({
           </span>
         ) : null}
         {selected && !loading ? (
-          <span
-            aria-hidden="true"
-            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-white shadow"
-          >
-            <Check className="h-3.5 w-3.5" strokeWidth={3} />
-          </span>
+          <>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-10"
+              style={{ backgroundColor: "rgba(255, 255, 255, 0.5)" }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute z-20 inline-flex h-6 w-6 items-center justify-center rounded-full text-white shadow"
+              style={{ backgroundColor: "#22c55e", top: "6px", right: "6px" }}
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            </span>
+          </>
         ) : null}
       </button>
 

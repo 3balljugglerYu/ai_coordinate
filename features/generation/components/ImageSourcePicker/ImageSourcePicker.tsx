@@ -371,6 +371,16 @@ export function ImageSourcePicker({
     },
     [openPreviewWithAnimation],
   );
+
+  /**
+   * ボトムシート表示時のデフォルト選択。GeneratedImagesTab が初回 fetch を
+   * 終えたタイミングで先頭アイテムを通知してくるので、ユーザーがまだ何も
+   * 選んでいなければ自動で previewed に入れる。アニメは出さない (open 時の
+   * 初期表示なので静かに表示する)。
+   */
+  const handleFirstGeneratedReady = useCallback((item: GeneratedItem) => {
+    setPreviewed((prev) => prev ?? { kind: "generated", item });
+  }, []);
   const handleTileStock = useCallback(
     (stock: SourceImageStock) => {
       setPreviewed({ kind: "stock", stock });
@@ -453,6 +463,7 @@ export function ImageSourcePicker({
         pendingItemId={pendingGeneratedId}
         selectedItemId={previewedGeneratedId}
         disabled={disabled || isConfirming}
+        onFirstItemReady={handleFirstGeneratedReady}
       />
     </TabsContent>
   );
@@ -534,7 +545,7 @@ export function ImageSourcePicker({
               className="flex flex-1 flex-col"
               style={{ minHeight: 0 }}
             >
-              <div data-vaul-no-drag className="px-4 pb-2 pt-1">
+              <div data-vaul-no-drag className="px-4 pb-0.5 pt-1">
                 {tabsList}
               </div>
               <div

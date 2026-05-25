@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,12 @@ interface GeneratedImagesTabProps {
   selectedItemId?: string | null;
   /** disabled (例: 生成中)。 */
   disabled?: boolean;
+  /**
+   * 初回 active 時に items[0] が揃ったタイミングで 1 度だけ呼ばれる。
+   * 親はこれを使って「ボトムシート表示時に先頭アイテムをデフォルト選択」
+   * を実装できる。
+   */
+  onFirstItemReady?: (item: GeneratedItem) => void;
 }
 
 const PAGE_LIMIT = 50;
@@ -36,6 +42,7 @@ export function GeneratedImagesTab({
   pendingItemId,
   selectedItemId = null,
   disabled = false,
+  onFirstItemReady,
 }: GeneratedImagesTabProps) {
   const t = useTranslations("imageSourcePicker");
   const [items, setItems] = useState<GeneratedItem[]>([]);
@@ -76,6 +83,16 @@ export function GeneratedImagesTab({
     if (!active || hasLoadedOnce) return;
     void fetchPage(0);
   }, [active, hasLoadedOnce, fetchPage]);
+
+  // 初回 active 時、items が揃ったら最初のアイテムを親に通知 (1 回だけ)。
+  const firstItemNotifiedRef = useRef(false);
+  useEffect(() => {
+    if (!active) return;
+    if (firstItemNotifiedRef.current) return;
+    if (items.length === 0) return;
+    firstItemNotifiedRef.current = true;
+    onFirstItemReady?.(items[0]);
+  }, [active, items, onFirstItemReady]);
 
   const showEmpty = useMemo(
     () => hasLoadedOnce && !isLoading && items.length === 0 && !error,
