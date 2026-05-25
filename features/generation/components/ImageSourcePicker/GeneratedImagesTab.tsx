@@ -22,6 +22,8 @@ interface GeneratedImagesTabProps {
   onSelect: (item: GeneratedItem) => Promise<void> | void;
   /** 親が「fetch 中の id」を渡すと該当タイルにスピナーを出す。 */
   pendingItemId?: string | null;
+  /** 親が「現在 preview 中の id」を渡すと該当タイルにチェックバッジを出す。 */
+  selectedItemId?: string | null;
   /** disabled (例: 生成中)。 */
   disabled?: boolean;
 }
@@ -32,6 +34,7 @@ export function GeneratedImagesTab({
   active,
   onSelect,
   pendingItemId,
+  selectedItemId = null,
   disabled = false,
 }: GeneratedImagesTabProps) {
   const t = useTranslations("imageSourcePicker");
@@ -123,6 +126,7 @@ export function GeneratedImagesTab({
             alt={item.generationType ?? "generated image"}
             onSelect={() => void onSelect(item)}
             loading={pendingItemId === item.id}
+            selected={selectedItemId === item.id}
             disabled={disabled}
           />
         ))}

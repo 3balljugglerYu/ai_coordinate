@@ -1733,6 +1733,7 @@ export const zhCnMessages = {
     loadMore: "Load more",
     appliedFromGeneratedToast: "Picked a generated image",
     appliedFromGeneratedFailedToast: "Failed to load the selected image",
+    confirmAction: "Apply",
   },
 
 } satisfies DeepReplaceStrings<typeof jaMessages>;

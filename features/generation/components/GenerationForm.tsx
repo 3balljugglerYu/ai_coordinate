@@ -712,6 +712,10 @@ export function GenerationForm({
           selectedStockId={selectedStock?.id ?? null}
           disabled={isGenerating}
           pendingGeneratedId={pendingGeneratedId}
+          currentPreviewUrl={
+            selectedStock?.image_url ?? uploadedImage?.previewUrl ?? null
+          }
+          currentPreviewAlt={selectedStock?.name ?? ""}
         />
       </div>
     </Card>

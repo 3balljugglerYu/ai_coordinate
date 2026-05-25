@@ -1835,6 +1835,7 @@ export function StylePageClient({
         disabled={isGenerating}
         pendingGeneratedId={pendingPickerImageId}
         pendingStockId={pendingPickerImageId}
+        currentPreviewUrl={uploadedImage?.previewUrl ?? null}
       />
     </div>
   );

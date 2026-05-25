@@ -1667,5 +1667,6 @@ export const jaMessages = {
     loadMore: "もっと見る",
     appliedFromGeneratedToast: "生成済み画像を選択しました",
     appliedFromGeneratedFailedToast: "画像の読み込みに失敗しました",
+    confirmAction: "決定",
   },
 } as const;

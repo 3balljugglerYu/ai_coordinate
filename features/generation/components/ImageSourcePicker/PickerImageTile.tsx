@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Loader2, X } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +58,14 @@ export function PickerImageTile({
         {loading ? (
           <span className="absolute inset-0 flex items-center justify-center bg-black/40">
             <Loader2 className="h-5 w-5 animate-spin text-white" />
+          </span>
+        ) : null}
+        {selected && !loading ? (
+          <span
+            aria-hidden="true"
+            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-white shadow"
+          >
+            <Check className="h-3.5 w-3.5" strokeWidth={3} />
           </span>
         ) : null}
       </button>
