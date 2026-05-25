@@ -133,6 +133,71 @@ jest.mock("@/features/generation/lib/normalize-source-image", () => ({
   normalizeSourceImage: async (file: File) => file,
 }));
 
+// 画像ソースピッカー一式を mock 化し、選択経路を直接発火できる UI で代替
+jest.mock("@/features/generation/components/ImageSourcePickerTrigger", () => ({
+  ImageSourcePickerTrigger: ({ onClick }: { onClick: () => void }) => (
+    <button type="button" data-testid="mock-picker-trigger" onClick={onClick}>
+      open-picker
+    </button>
+  ),
+}));
+jest.mock(
+  "@/features/generation/components/ImageSourcePicker/ImageSourcePicker",
+  () => ({
+    ImageSourcePicker: ({
+      open,
+      onSelectStock,
+      onSelectGenerated,
+    }: {
+      open: boolean;
+      onSelectStock: (stock: {
+        id: string;
+        image_url: string;
+        name: string | null;
+      }) => void;
+      onSelectGenerated: (item: {
+        kind: "generated";
+        id: string;
+        imageUrl: string;
+        storagePath: string;
+        createdAt: string;
+        generationType: string | null;
+      }) => void;
+    }) =>
+      open ? (
+        <div data-testid="mock-image-source-picker">
+          <button
+            type="button"
+            onClick={() =>
+              onSelectStock({
+                id: "stock-A",
+                image_url: "https://cdn.example/stock-A.png",
+                name: "stock-A",
+              })
+            }
+          >
+            mock-select-stock
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onSelectGenerated({
+                kind: "generated",
+                id: "gen-A",
+                imageUrl: "https://cdn.example/gen-A.png",
+                storagePath: "u/gen-A.png",
+                createdAt: "2026-01-01",
+                generationType: "coordinate",
+              })
+            }
+          >
+            mock-select-generated
+          </button>
+        </div>
+      ) : null,
+  }),
+);
+
 const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
@@ -1756,5 +1821,99 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Buy Percoins" }));
 
     expect(routerPushMock).toHaveBeenCalledWith("/credits/purchase");
+  });
+
+  // 本 PR で追加した selectedRemoteSource 経路 (ストック / 生成済み) のテスト
+  describe("ImageSourcePicker 統合 (sourceImageStockId / sourceImageGeneratedId)", () => {
+    test("ストック画像選択 → 生成で /style/generate-async に sourceImageStockId が含まれる", async () => {
+      // 認証済みユーザーは async 経路を使う
+      statusPayloadQueue.push({
+        authState: "authenticated",
+        remainingDaily: 5,
+        showRemainingWarning: false,
+      });
+
+      render(<StylePageClient presets={presets} />);
+
+      // picker トリガクリック → picker open
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("mock-picker-trigger"));
+        await flushReactScheduler();
+      });
+      // ストック選択
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "mock-select-stock" }),
+        );
+        await flushReactScheduler();
+      });
+
+      // generate 押下
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: /Start Styling/ }),
+        );
+        await flushReactScheduler();
+      });
+
+      // /style/generate-async が呼ばれ、formData に sourceImageStockId が入る
+      const generateCall = fetchMock.mock.calls.find(([input]) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : (input as Request).url;
+        return url === "/style/generate-async";
+      });
+      expect(generateCall).toBeDefined();
+      const [, init] = generateCall!;
+      const formData = init?.body as FormData;
+      expect(formData.get("sourceImageStockId")).toBe("stock-A");
+      expect(formData.get("uploadImage")).toBeNull();
+    });
+
+    test("生成済み画像選択 → 生成で /style/generate-async に sourceImageGeneratedId が含まれる", async () => {
+      statusPayloadQueue.push({
+        authState: "authenticated",
+        remainingDaily: 5,
+        showRemainingWarning: false,
+      });
+
+      render(<StylePageClient presets={presets} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("mock-picker-trigger"));
+        await flushReactScheduler();
+      });
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "mock-select-generated" }),
+        );
+        await flushReactScheduler();
+      });
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: /Start Styling/ }),
+        );
+        await flushReactScheduler();
+      });
+
+      const generateCall = fetchMock.mock.calls.find(([input]) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : (input as Request).url;
+        return url === "/style/generate-async";
+      });
+      expect(generateCall).toBeDefined();
+      const [, init] = generateCall!;
+      const formData = init?.body as FormData;
+      expect(formData.get("sourceImageGeneratedId")).toBe("gen-A");
+      expect(formData.get("uploadImage")).toBeNull();
+      expect(formData.get("sourceImageStockId")).toBeNull();
+    });
   });
 });
