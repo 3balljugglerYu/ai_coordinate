@@ -10,6 +10,7 @@ import {
   buildStyleAttemptReinforcementPrefix,
   buildStyleGenerationPrompt,
 } from "@/shared/generation/style-prompts";
+import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import {
   checkAndConsumeStyleGenerateRateLimit,
@@ -385,11 +386,13 @@ export async function postStyleGenerateRoute(
       });
     }
 
+    const promptTemplates = await resolveAllPromptTemplates();
     const basePromptText = buildStyleGenerationPrompt({
       stylingPrompt: preset.stylingPrompt,
       backgroundPrompt: preset.backgroundPrompt,
       backgroundChange,
       sourceImageType,
+      templates: promptTemplates,
     });
 
     let lastDispatchResult: DispatchGuestImageGenerationResult | null = null;

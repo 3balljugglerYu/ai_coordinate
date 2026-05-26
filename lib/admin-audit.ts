@@ -22,7 +22,9 @@ export type AdminAuditAction =
   | "catalog_entry_approve"
   | "catalog_entry_reject"
   | "catalog_entry_unpublish"
-  | "catalog_entry_reorder";
+  | "catalog_entry_reorder"
+  | "prompt_override_update"
+  | "prompt_override_reset";
 
 export interface AdminAuditLogParams {
   adminUserId: string;

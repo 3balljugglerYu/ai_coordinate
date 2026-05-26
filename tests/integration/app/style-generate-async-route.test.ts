@@ -1,5 +1,19 @@
 /** @jest-environment node */
 
+// resolveAllPromptTemplates が next/cache + admin client を使うため、
+// test 環境では空 dict を返すスタブにする (pure builder が registry default に
+// フォールバックするので既存挙動と等価)
+jest.mock("@/features/generation-prompts/lib/resolve-templates", () => ({
+  resolveAllPromptTemplates: jest.fn().mockResolvedValue({}),
+  PROMPT_OVERRIDES_CACHE_TAG: "prompt-overrides",
+}));
+jest.mock("next/cache", () => ({
+  cacheTag: jest.fn(),
+  cacheLife: jest.fn(),
+  revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
+}));
+
 jest.mock("@/features/generation/lib/model-config", () => ({
   ...jest.requireActual("@/features/generation/lib/model-config"),
   GEMINI_GENERATION_ENABLED: true,

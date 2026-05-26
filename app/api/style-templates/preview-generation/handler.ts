@@ -41,6 +41,7 @@ import { createNanobananaClient } from "@/features/generation/lib/nanobanana-cli
 import { resolveGeminiAspectRatio } from "@/shared/generation/gemini-aspect-ratio";
 import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import { buildInspirePrompt } from "@/shared/generation/prompt-core";
+import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 import {
   GEMINI_DISABLED_MESSAGE,
   SAFETY_POLICY_BLOCKED_ERROR,
@@ -283,8 +284,10 @@ export async function handlePreviewGeneration(
 
   // OpenAI と Gemini を並列起動。
   // Step 2 プレビューは「すべて維持」相当（テンプレ全体を image_0 に適用）のプロンプトで生成する。
+  const promptTemplates = await resolveAllPromptTemplates();
   const inspirePrompt = buildInspirePrompt({
     overrides: { outfit: true, angle: true, pose: true, background: true },
+    templates: promptTemplates,
   });
 
   const openaiPromise: Promise<PreviewOutcome> = (async () => {
