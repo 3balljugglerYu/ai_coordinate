@@ -40,11 +40,10 @@ interface CoordinateGenerateGuestRouteDependencies {
   releaseRateLimitAttemptFn?: typeof releaseGuestGenerateRateLimitAttempt;
 }
 
+// 注: specified_coordinate / full_body / chibi は UI から外れて 30 日以上利用ゼロのため撤去。
+// ゲスト経路では coordinate のみを受け付ける。
 const ALLOWED_GENERATION_TYPES: GenerationType[] = [
   "coordinate",
-  "specified_coordinate",
-  "full_body",
-  "chibi",
 ];
 
 function getFile(entry: FormDataEntryValue | null): File | null {

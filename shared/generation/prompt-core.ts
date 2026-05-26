@@ -21,11 +21,16 @@ function resolveTemplate(
   return templates?.[key] ?? PROMPT_REGISTRY[key].defaultContent;
 }
 
+/**
+ * 生成タイプ。
+ *
+ * 注: 過去には `specified_coordinate` / `full_body` / `chibi` も列挙していたが、
+ * UI から選択肢が外れて 30 日以上利用ゼロのため registry / builder ロジックごと撤去した。
+ * DB の CHECK 制約 (image_jobs / generated_images) には歴史的経緯で残っているが、
+ * 新規 job では使われない。再導入する場合は registry + builder + UI の追加が必要。
+ */
 export type GenerationType =
   | "coordinate"
-  | "specified_coordinate"
-  | "full_body"
-  | "chibi"
   | "one_tap_style"
   | "inspire";
 
@@ -185,41 +190,8 @@ export function buildPrompt(options: BuildPromptOptions): string {
     return sections.join("\n\n");
   }
 
-  if (generationType === "specified_coordinate") {
-    const key =
-      backgroundMode === "keep"
-        ? "coordinate.specified_keep_template"
-        : backgroundMode === "ai_auto"
-          ? "coordinate.specified_ai_auto_template"
-          : "coordinate.specified_include_in_prompt_template";
-    return applyTemplate(resolveTemplate(templates, key), {
-      description: sanitizedDescription,
-    });
-  }
-
-  if (generationType === "full_body") {
-    const key =
-      backgroundMode === "keep"
-        ? "coordinate.full_body_keep_template"
-        : backgroundMode === "ai_auto"
-          ? "coordinate.full_body_ai_auto_template"
-          : "coordinate.full_body_include_in_prompt_template";
-    return applyTemplate(resolveTemplate(templates, key), {
-      description: sanitizedDescription,
-    });
-  }
-
-  if (generationType === "chibi") {
-    const key =
-      backgroundMode === "keep"
-        ? "coordinate.chibi_keep_template"
-        : backgroundMode === "ai_auto"
-          ? "coordinate.chibi_ai_auto_template"
-          : "coordinate.chibi_include_in_prompt_template";
-    return applyTemplate(resolveTemplate(templates, key), {
-      description: sanitizedDescription,
-    });
-  }
+  // specified_coordinate / full_body / chibi は UI から外れて 30 日以上利用ゼロのため
+  // 撤去 (GenerationType union からも除外)。再導入する場合は git log から復元可能。
 
   if (generationType === "one_tap_style") {
     // One-tap style stores a fully assembled style-specific prompt in prompt_text.
@@ -237,7 +209,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   throw new Error(
-    `API Error - Configuration '${generationType}' not found. Available types: coordinate, specified_coordinate, full_body, chibi, one_tap_style, inspire`
+    `API Error - Configuration '${generationType}' not found. Available types: coordinate, one_tap_style, inspire`
   );
 }
 
