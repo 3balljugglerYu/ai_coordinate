@@ -35,7 +35,8 @@ export default async function AdminGenerationPromptsPage() {
       category: def.category,
       description: def.description,
       hasOverride: row !== undefined,
-      updatedAt: row?.updated_at ?? null,
+      // リポジトリ規約: 空文字列も null として扱うため || null を使う
+      updatedAt: row?.updated_at || null,
     };
   });
 

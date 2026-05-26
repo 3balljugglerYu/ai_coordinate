@@ -115,7 +115,8 @@ export function AdminPromptListClient({
                         </p>
                         {item.updatedAt ? (
                           <p className="mt-1 text-xs text-slate-500">
-                            最終更新: {new Date(item.updatedAt).toLocaleString("ja-JP")}
+                            {/* hydration mismatch を避けるため ISO 文字列を決定論的にスライス */}
+                            最終更新: {item.updatedAt.slice(0, 10)} {item.updatedAt.slice(11, 16)} UTC
                           </p>
                         ) : null}
                       </div>

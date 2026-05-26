@@ -234,7 +234,8 @@ export function AdminPromptEditClient({
             </button>
             {updatedAt ? (
               <span className="text-xs text-slate-500">
-                最終更新: {new Date(updatedAt).toLocaleString("ja-JP")}
+                {/* hydration mismatch を避けるため ISO 文字列を決定論的にスライス */}
+                最終更新: {updatedAt.slice(0, 10)} {updatedAt.slice(11, 16)} UTC
               </span>
             ) : null}
           </div>

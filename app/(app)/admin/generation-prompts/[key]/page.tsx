@@ -72,10 +72,11 @@ export default async function AdminGenerationPromptEditPage({
       <AdminPromptEditClient
         promptKey={key}
         defaultContent={def.defaultContent}
-        currentContent={override?.content ?? null}
+        // リポジトリ規約: 空文字列も null として扱うため || null を使う
+        currentContent={override?.content || null}
         supportedVariables={[...def.supportedVariables]}
         previewSamples={def.previewSamples ?? null}
-        updatedAt={override?.updated_at ?? null}
+        updatedAt={override?.updated_at || null}
       />
     </div>
   );

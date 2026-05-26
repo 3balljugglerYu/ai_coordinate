@@ -63,14 +63,22 @@ export async function PUT(
     );
   }
 
-  let body: { content?: unknown };
+  // request.json() は null / 配列 / プリミティブを返し得るため、object であることを
+  // 確認してから property アクセスする (defensive programming)
+  let parsedBody: unknown = null;
   try {
-    body = (await request.json()) as { content?: unknown };
+    parsedBody = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const content = typeof body.content === "string" ? body.content : "";
+  const content =
+    parsedBody !== null &&
+    typeof parsedBody === "object" &&
+    !Array.isArray(parsedBody) &&
+    typeof (parsedBody as { content?: unknown }).content === "string"
+      ? (parsedBody as { content: string }).content
+      : "";
   if (content.trim().length === 0) {
     return NextResponse.json(
       { error: "content must not be empty (use DELETE to reset)" },
