@@ -51,13 +51,23 @@ describe("isAllowedInputImageUrl", () => {
     expect(isAllowedInputImageUrl(STOCK_URL)).toBe(true);
   });
 
-  test("生成済み画像本体パス（uuid 直下のオブジェクト）は拒否する", () => {
+  test("生成済み画像本体パス（uuid 直下のオブジェクト）を受理する（『生成結果から生成』のソース）", () => {
     const url = `${PROJECT_URL}/storage/v1/object/public/generated-images/3f2504e0-4f89-11d3-9a0c-0305e82c3301/job1-0-abc.png`;
+    expect(isAllowedInputImageUrl(url)).toBe(true);
+  });
+
+  test("uuid 直下でもファイル名が空なら拒否する", () => {
+    const url = `${PROJECT_URL}/storage/v1/object/public/generated-images/3f2504e0-4f89-11d3-9a0c-0305e82c3301/`;
     expect(isAllowedInputImageUrl(url)).toBe(false);
   });
 
-  test("pre-generation/ 配下は拒否する", () => {
+  test("pre-generation/ 配下は拒否する（ループ防止）", () => {
     const url = `${PROJECT_URL}/storage/v1/object/public/generated-images/3f2504e0-4f89-11d3-9a0c-0305e82c3301/pre-generation/foo_display.webp`;
+    expect(isAllowedInputImageUrl(url)).toBe(false);
+  });
+
+  test("uuid 配下の未知サブディレクトリは拒否する", () => {
+    const url = `${PROJECT_URL}/storage/v1/object/public/generated-images/3f2504e0-4f89-11d3-9a0c-0305e82c3301/cache/foo.png`;
     expect(isAllowedInputImageUrl(url)).toBe(false);
   });
 
