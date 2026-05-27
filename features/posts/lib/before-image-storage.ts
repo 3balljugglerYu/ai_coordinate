@@ -6,8 +6,9 @@
  * `{user_id}/pre-generation/{generated_image_id}_display.webp` に保存する。
  *
  * 入力 URL は `generated-images` バケット配下の公開 URL のうち、
- * `temp/...` または `{uuid}/stocks/...` プレフィックスのみを受理する
- * （`isAllowedInputImageUrl` 参照）。それ以外は SSRF / 任意 URL 注入防止のため拒否。
+ * `temp/...` / `{uuid}/stocks/...` / `{uuid}/{file}`（生成画像本体）のみを受理する
+ * （`isAllowedInputImageUrl` 参照）。`pre-generation/` などの内部ディレクトリは
+ * SSRF / 任意 URL 注入 / ループ防止のため拒否する。
  *
  * 失敗してもログのみで投稿などの上流フローは止めない設計。
  */
@@ -26,7 +27,9 @@ const UUID_RE =
  * 後続パスが以下のいずれかであるものだけ通す:
  *   - `temp/...`（生成リクエスト時のユーザーアップロード）
  *   - `{uuid}/stocks/...`（ストック画像由来）
- * それ以外（生成済み画像本体や pre-generation/ 配下など）は SSRF / 任意 URL 注入防止のため拒否。
+ *   - `{uuid}/{file}`（生成画像本体 = 「生成結果から生成」のソース。
+ *     handler 側で `findGeneratedImage(id, user.id)` により所有確認済み）
+ * `pre-generation/` などの内部ディレクトリは SSRF / 任意 URL 注入 / ループ防止のため拒否。
  */
 export function isAllowedInputImageUrl(rawUrl: string): boolean {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,12 +40,28 @@ export function isAllowedInputImageUrl(rawUrl: string): boolean {
   if (!rawUrl.startsWith(expectedPrefix)) {
     return false;
   }
-  const objectPath = rawUrl.slice(expectedPrefix.length);
+  const rawObjectPath = rawUrl.slice(expectedPrefix.length);
+  // `%2F` などでセグメント検査をすり抜けないよう、デコード後のパスで判定する。
+  // 不正な % エンコーディングは拒否する。
+  let objectPath: string;
+  try {
+    objectPath = decodeURIComponent(rawObjectPath);
+  } catch {
+    return false;
+  }
   if (objectPath.startsWith("temp/")) {
     return true;
   }
-  // ストック画像: 第 1 階層が UUID（user_id）で第 2 階層が `stocks`
   const segments = objectPath.split("/");
+  // 生成画像本体: `{uuid}/{file}`（uuid 直下のファイル）
+  if (
+    segments.length === 2 &&
+    UUID_RE.test(segments[0]) &&
+    segments[1].length > 0
+  ) {
+    return true;
+  }
+  // ストック画像: 第 1 階層が UUID（user_id）で第 2 階層が `stocks`
   if (segments.length >= 3 && UUID_RE.test(segments[0]) && segments[1] === "stocks") {
     return true;
   }
