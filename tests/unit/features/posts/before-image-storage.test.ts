@@ -71,6 +71,16 @@ describe("isAllowedInputImageUrl", () => {
     expect(isAllowedInputImageUrl(url)).toBe(false);
   });
 
+  test("URL エンコードされたスラッシュ (%2F) による pre-generation バイパスは拒否する", () => {
+    const url = `${PROJECT_URL}/storage/v1/object/public/generated-images/3f2504e0-4f89-11d3-9a0c-0305e82c3301/pre-generation%2Ffoo.webp`;
+    expect(isAllowedInputImageUrl(url)).toBe(false);
+  });
+
+  test("不正な % エンコーディングは拒否する", () => {
+    const url = `${PROJECT_URL}/storage/v1/object/public/generated-images/3f2504e0-4f89-11d3-9a0c-0305e82c3301/foo%ZZ.png`;
+    expect(isAllowedInputImageUrl(url)).toBe(false);
+  });
+
   test("第 1 階層が UUID でない /stocks/ は拒否する", () => {
     const url = `${PROJECT_URL}/storage/v1/object/public/generated-images/not-uuid/stocks/foo.png`;
     expect(isAllowedInputImageUrl(url)).toBe(false);

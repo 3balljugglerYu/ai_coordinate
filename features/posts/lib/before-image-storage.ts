@@ -40,7 +40,15 @@ export function isAllowedInputImageUrl(rawUrl: string): boolean {
   if (!rawUrl.startsWith(expectedPrefix)) {
     return false;
   }
-  const objectPath = rawUrl.slice(expectedPrefix.length);
+  const rawObjectPath = rawUrl.slice(expectedPrefix.length);
+  // `%2F` などでセグメント検査をすり抜けないよう、デコード後のパスで判定する。
+  // 不正な % エンコーディングは拒否する。
+  let objectPath: string;
+  try {
+    objectPath = decodeURIComponent(rawObjectPath);
+  } catch {
+    return false;
+  }
   if (objectPath.startsWith("temp/")) {
     return true;
   }
