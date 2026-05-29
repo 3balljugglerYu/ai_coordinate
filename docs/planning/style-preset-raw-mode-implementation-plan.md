@@ -41,8 +41,8 @@
 
 ### B-2: 既存実装
 
-#### `style_presets` テーブル (`supabase/migrations/20260322100000_add_style_presets.sql`)
-カラム: `id, slug (UNIQUE), title, prompt, thumbnail_image_url, thumbnail_storage_path, thumbnail_width/height, sort_order, status ('draft'|'published'), created_by/updated_by, created_at/updated_at`。RLS は SELECT `status = 'published'`、admin の INSERT/UPDATE は RPC 経由。トリガー `update_updated_at_column()` で自動更新。
+#### `style_presets` テーブル (`supabase/migrations/20260322100000_add_style_presets.sql` + 後続 migration)
+現行カラム: `id, slug (UNIQUE), title, styling_prompt, background_prompt, thumbnail_image_url, thumbnail_storage_path, thumbnail_width/height, sort_order, status ('draft'|'published'), created_by/updated_by, created_at/updated_at`。legacy `prompt` カラムは `20260325102000_drop_legacy_style_preset_prompt.sql` で削除済み。RLS は SELECT `status = 'published'`、admin の INSERT/UPDATE は `create_style_preset` / `update_style_preset` RPC 経由。トリガー `update_updated_at_column()` で自動更新。
 
 #### 既存 admin (`/admin/style-presets/`)
 - `StylePresetForm.tsx` (305行): title / stylingPrompt / backgroundPrompt / sortOrder / status / file (thumbnail) の編集
@@ -64,18 +64,22 @@
 - inspire で導入された関連カラム: `style_template_id`, `style_reference_image_url`, `override_*` 4 boolean
 - 整合性 CHECK: `(generation_type = 'inspire') = (style_template_id IS NOT NULL)`
 
-#### `/api/generate-async` (`handler.ts`)
-- `stylePresetId` を受け取り、生成時点で `prompt_text` に serialized 済みの形で `image_jobs` に INSERT (= preset id は jobs に保存していない)
-- `style_reference_image_url` は inspire 専用に使われている
+#### `/style/generate` / `/style/generate-async`
+- `/style` UI は guest 同期生成で `app/(app)/style/generate/handler.ts`、ログインユーザー非同期生成で `app/(app)/style/generate-async/handler.ts` を呼ぶ
+- どちらも `styleId` を受け取り、`getPublishedStylePresetForGeneration()` で preset を解決してから `buildStyleGenerationPrompt()` を呼ぶ
+- 非同期経路は生成時点で `prompt_text` に serialized 済みの形で `image_jobs` に INSERT (= preset id は jobs に保存していない)
+- `app/api/generate-async/handler.ts` は Coordinate / Inspire 系の汎用生成経路であり、本計画の Style preset raw/dual の主対象ではない
+- `style_reference_image_url` は現状 inspire 専用に使われている
 
 #### Edge Function (`image-gen-worker/index.ts`)
-- 1634-1642 行: `job.style_reference_image_url` (storage_path) を署名 URL 化して image_1 として OpenAI に渡す経路
+- 1634-1642 行: `job.style_reference_image_url` (storage_path) を `style-templates` bucket から download し、image_1 として provider に渡す inspire 経路
 - 1537-1735 行: multi-input batch 経路で image_0 (ユーザーキャラ) / image_1 (style template) を構築
 
 #### Storage
 - `generated-images` (public): 既存生成画像 + temp 一時アップロード
 - `style-templates` (private): inspire の参考画像
-- preset reference 用は `generated-images/presets/{presetId}/reference.webp` で統一推奨 (RLS 既存)
+- `style_presets` (public): One-Tap Style の thumbnail 画像を保存する既存 bucket
+- preset reference 用は `style_presets/{presetId}/reference.webp` で統一する。preset に固定で紐付く admin 管理画像なので、`generated-images` や `style-templates` ではなく既存 `style_presets` bucket を正とする。
 
 #### `/admin/generation-prompts` (PR #290) — 参考にする admin パターン
 - list / [key] 詳細 / API route / audit log / category 別グループ表示
@@ -96,7 +100,7 @@
 | `/admin/style-presets` form | 既存 | category select + image_input_mode + reference image upload |
 | `/admin/preset-categories` | なし | **新規** (list + edit + audit log) |
 | `/style` UI | 既存 | preset card に category バッジ追加 |
-| `handler.ts` | 既存 | preset 解決時に category 取得 → skip_base_prefix と image_input_mode 反映 |
+| `/style/generate` / `/style/generate-async` | 既存 | preset 解決時に category 取得 → skip_base_prefix と image_input_mode 反映 |
 | `buildStyleGenerationPrompt` | 既存 | 第二引数に `{ skipBasePrefix?: boolean }` を追加 |
 | `image-gen-worker` | 既存 | dual モード時の image_1 取得経路を inspire と共通化 |
 | `messages/ja.ts` / `en.ts` | 既存 | category 関連ラベル + バッジ |
@@ -161,7 +165,7 @@ erDiagram
 sequenceDiagram
     participant U as User
     participant SP as /style
-    participant API as /api/generate-async
+    participant API as /style/generate or /style/generate-async
     participant DB as Supabase
     participant W as image-gen-worker
 
@@ -181,15 +185,15 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant API as /api/generate-async
+    participant API as /style/generate-async
     participant DB as Supabase
     participant W as image-gen-worker
 
     API->>DB: SELECT preset + JOIN category
     API->>API: category.default_image_input_mode = 'dual'
-    API->>DB: INSERT image_jobs (style_reference_image_url=preset.reference_image_url, style_preset_category_key='デフォルメ')
+    API->>DB: INSERT image_jobs (style_reference_image_url=preset.reference_image_storage_path, style_preset_category_key='デフォルメ')
     API->>W: invoke
-    W->>DB: signed URL for image_0 (user) + image_1 (preset.reference)
+    W->>Storage: image_0 (user) + image_1 (style_presets bucket reference) を取得
     W->>OpenAI: image_0 + image_1 + prompt
 ```
 
@@ -213,14 +217,14 @@ flowchart TD
 |---|---|
 | REQ-1 | When admin が `/admin/preset-categories` で新規カテゴリを作成する時, the system shall key (slug) / 表示名 (ja/en) / バッジ色 / `skip_base_prefix` / `default_image_input_mode` を保存し audit_log に記録する。<br>**EN**: When an admin creates a new preset category, the system shall persist its key, display names, badge colors, `skip_base_prefix`, `default_image_input_mode`, and record an audit log entry. |
 | REQ-2 | When admin が `/admin/style-presets` で preset を作成・編集する時, the system shall preset_categories から有効な category 一覧を select に表示し、選択を必須化する。<br>**EN**: When editing a style preset, the system shall present active categories as a required select. |
-| REQ-3 | When preset の `image_input_mode = 'dual'` の場合, the system shall admin に参考画像 (image_1) のアップロードを必須化し、`generated-images/presets/{presetId}/reference.webp` に保存する。<br>**EN**: When the input mode is 'dual', the system shall require the admin to upload a reference image and store it at `generated-images/presets/{presetId}/reference.webp`. |
+| REQ-3 | When preset の `image_input_mode = 'dual'` の場合, the system shall admin に参考画像 (image_1) のアップロードを必須化し、`style_presets/{presetId}/reference.webp` に保存する。<br>**EN**: When the input mode is 'dual', the system shall require the admin to upload a reference image and store it at `style_presets/{presetId}/reference.webp`. |
 | REQ-4 | When ユーザーが `/style` でプリセットを選んで生成する時, the system shall preset → category を join 取得し、`category.skip_base_prefix = true` なら `style.base_prefix` を付与せず raw プロンプトを送る。<br>**EN**: When generating, the system shall skip `style.base_prefix` if the joined `category.skip_base_prefix` is true. |
 | REQ-5 | When 生成ジョブが作成される時, the system shall `image_jobs.style_preset_category_key` に生成時点の category.key をスナップショット保存する。<br>**EN**: When creating a job, the system shall snapshot the category key into `image_jobs.style_preset_category_key`. |
-| REQ-6 | When dual モード preset の生成時, the system shall preset.reference_image_url を `image_jobs.style_reference_image_url` に保存し、worker が image_1 として OpenAI / Gemini に渡す。<br>**EN**: For dual-mode generation, the system shall propagate the reference image to `style_reference_image_url` and the worker shall pass it as image_1. |
-| REQ-7 | If admin が category を `is_active = false` にした場合, then the system shall その category を新規 preset 編集の select から除外するが、既存 preset の挙動と過去ジョブの集計は維持する。<br>**EN**: If a category is deactivated, the system shall hide it from new preset editing but preserve existing preset behavior and historical analytics. |
+| REQ-6 | When dual モード preset の生成時, the system shall guest 同期経路 (`/style/generate`) では参考画像を image_1 として provider 呼び出しへ直接渡し、ログインユーザー非同期経路 (`/style/generate-async`) では `preset.reference_image_storage_path` を `image_jobs.style_reference_image_url` に保存して worker が image_1 として OpenAI / Gemini に渡す。<br>**EN**: For dual-mode generation, the guest sync route shall pass the reference image directly as image_1, while the async route shall snapshot `reference_image_storage_path` into `style_reference_image_url` for the worker. |
+| REQ-7 | If admin が category を `is_active = false` にした場合, then the system shall その category を新規 preset 作成時の select から除外する。ただし既存 preset の表示・生成可否は `style_presets.status` で制御し、inactive category であることだけを理由に既存 published preset の生成を止めない。<br>**EN**: If a category is deactivated, the system shall hide it from new preset creation, but existing published presets remain controlled by `style_presets.status` and are not blocked solely because the category is inactive. |
 | REQ-8 | While `/style` ページで preset を一覧表示する時, the system shall preset_categories.badge_color / badge_text_color / display_name (現在 locale) に基づくバッジを各 preset card に表示する。<br>**EN**: While listing presets, the system shall render badges using category fields in the current locale. |
 | REQ-9 | Where 既存 preset (= migration 前から存在) の場合, the system shall seed された `coordinate` カテゴリに backfill 紐付けし、`skip_base_prefix = false` / `image_input_mode = 'single'` で現状挙動を 100% 維持する。<br>**EN**: Existing presets shall be backfilled to a seeded `coordinate` category with `skip_base_prefix = false` and `image_input_mode = 'single'`. |
-| REQ-10 | If category の skip_base_prefix と preset の image_input_mode が DB 整合性 (CHECK 制約) に違反する INSERT/UPDATE がある場合, then the system shall RAISE EXCEPTION で拒否する。<br>**EN**: The DB shall reject inserts/updates that violate consistency constraints. |
+| REQ-10 | If preset の `image_input_mode = 'dual'` なのに `reference_image_storage_path` が無い INSERT/UPDATE がある場合, then the system shall DB CHECK 制約で拒否する。category の active 状態や `default_image_input_mode` との照合は admin API / RPC validation で拒否する。<br>**EN**: The DB shall reject dual presets without a reference storage path, while active-category/default-mode validation is enforced by admin API/RPC validation. |
 | REQ-11 | When admin が category / preset を更新した時, the system shall `cacheTag` を `revalidateTag` でフラッシュし、ユーザー側 `/style` 一覧に反映する。<br>**EN**: On admin updates, the system shall revalidate cache tags so the user-facing list reflects changes. |
 | REQ-12 | Where preset の image_input_mode = 'dual' で reference 画像が削除済み (storage_path に object 無し) の場合, the system shall handler 段階で 500 を返さず、worker 側で「reference download failed」として通常の失敗フローに乗せる (既存 inspire と同等)。<br>**EN**: If the reference object is missing, the worker shall handle it as a normal failure path, same as inspire. |
 
@@ -277,12 +281,12 @@ flowchart TD
 - **Reason**: (a) クエリ・集計から NULL 分岐を排除 (b) admin form で category 選択が常に明示される (c) NULL = 旧データという暗黙ルールを残さない。
 - **Consequence**: seed migration 失敗時のロールバック検討が必要 (Phase 1 で対策)。
 
-### ADR-008: storage bucket は既存 `generated-images` を流用
+### ADR-008: reference storage bucket は既存 `style_presets` を流用
 
-- **Context**: 新規 `style-presets` バケットを作る案もあった。
-- **Decision**: 既存 `generated-images` (public) 配下の `presets/{presetId}/reference.webp` に保存。
-- **Reason**: (a) RLS と CDN 設定が既に整っている (b) 既存 thumbnail (`style_presets.thumbnail_*`) と同じ運用パターン (c) public bucket でも CDN キャッシュで実用十分。
-- **Consequence**: 万が一プライベート化したい時は別 bucket 作成 + storage_path 移行 migration が必要。当面は public で問題なし。
+- **Context**: `generated-images` / `style-templates` / 既存 `style_presets` bucket のどれに preset reference 画像を置くか。
+- **Decision**: 既存 `style_presets` bucket 配下の `{presetId}/reference.webp` に保存する。
+- **Reason**: (a) reference 画像は admin が preset に固定で登録する画像なので、生成画像 (`generated-images`) ではなく preset 管理画像として扱うのが自然 (b) 既存 thumbnail と同じ bucket / admin storage helper を再利用できる (c) `style-templates` は Inspire 投稿テンプレート用で責務が異なる。
+- **Consequence**: worker は image_1 を取得するとき、`generation_type='inspire'` なら `style-templates` bucket、One-Tap Style dual なら `style_presets` bucket から download する。`image_jobs.style_reference_image_url` には URL ではなく storage path を保存する。
 
 ---
 
@@ -384,8 +388,12 @@ flowchart LR
 - [ ] `features/style-presets/lib/preset-category-repository.ts` (新規): listAll / getByKey / upsert / delete
 - [ ] `features/style-presets/lib/style-preset-repository.ts` (既存拡張): category_id / image_input_mode / reference_image_* を返すよう SELECT 修正、INSERT/UPDATE に対応
 - [ ] `features/style-presets/lib/get-public-style-presets.ts`: JOIN で `preset_categories` を取得、`cacheTag` を `style-presets-with-category` に変更
+  - user-facing `/style` は Server Component 経由なので admin client で published preset + category を取得し、inactive category に紐づく既存 published preset も表示できるようにする
 - [ ] `features/generation/lib/job-types.ts`: `ImageJobCreateInput` に `style_preset_category_key?: string | null`、`style_reference_image_url?: string | null` (既存 inspire 用カラム流用) を追加
 - [ ] `features/style-presets/lib/schema.ts`: `StylePresetPublicSummary` 型に category 情報追加
+- [ ] `create_style_preset` / `update_style_preset` RPC の signature を category / image_input_mode / reference_image_* 対応に更新
+  - grant/revoke と COMMENT も新 signature に追従
+  - repository の RPC 呼び出しと統合テストを同時に更新
 
 ### Phase 3: Admin API + UI — preset-categories
 
@@ -394,6 +402,9 @@ flowchart LR
 
 - [ ] `app/api/admin/preset-categories/route.ts`: GET (一覧) + POST (新規)
 - [ ] `app/api/admin/preset-categories/[id]/route.ts`: PATCH + DELETE (= is_active=false 化、物理削除はしない)
+- [ ] category deactivate の意味を API / UI に明示
+  - `is_active=false` は「新規 preset 作成時の選択肢から外す」だけ
+  - 既存 preset の user-facing 表示・生成可否は `style_presets.status` で制御する
 - [ ] `lib/admin-audit.ts`: `preset_category_create` / `preset_category_update` / `preset_category_deactivate` の `AdminAuditAction` 追加
 - [ ] `app/(app)/admin/preset-categories/page.tsx`: 一覧 (server component)
 - [ ] `features/preset-categories/components/AdminPresetCategoryListClient.tsx`: 一覧 + 並び替え
@@ -413,9 +424,11 @@ flowchart LR
   - reference image upload (dual モード時のみ表示、必須)
 - [ ] `app/api/admin/style-presets/route.ts` (POST) / `[id]/route.ts` (PATCH):
   - category_id / image_input_mode / reference_image_storage_path を受け付け
+  - 新規 preset 作成時は `is_active=true` の category のみ許可。既存 preset 編集時は、現在紐付いている inactive category は維持可能だが、別 inactive category への変更は不可
   - validation: dual モードなら reference image 必須
-  - reference image を `generated-images/presets/{presetId}/reference.webp` に upload
+  - reference image を `style_presets/{presetId}/reference.webp` に upload
 - [ ] `features/style-presets/lib/style-preset-storage.ts`: reference image 用の uploader 追加 (既存 thumbnail uploader と同じパターン)
+  - fixed path (`{presetId}/reference.webp`) のため、更新時は upsert or 旧 object 削除後 upload のどちらかを明示
 - [ ] `lib/admin-audit.ts`: `style_preset_update` のメタデータに category 変更履歴を含める
 
 ### Phase 5: handler.ts 分岐 + worker dual 経路
@@ -424,14 +437,24 @@ flowchart LR
 **ビルド確認**: `npm run test` で handler の characterization テスト通過、Edge Function deploy 後にローカルで coordinate / chibi / dual 各経路を実機確認。
 
 - [ ] `shared/generation/style-prompts.ts`: `buildStyleGenerationPrompt(params, options?: { skipBasePrefix?: boolean })` に変更
-- [ ] `app/api/generate-async/handler.ts`:
+- [ ] `app/(app)/style/generate/handler.ts` (guest 同期生成):
+  - `styleId` を受け取った時、preset + category を join 取得
+  - `category.skip_base_prefix` を `buildStyleGenerationPrompt` の options に渡す
+  - `image_input_mode = 'dual'` なら preset reference を `style_presets` bucket から取得し、image_1 として provider 呼び出しに渡す
+  - `dispatchGuestImageGeneration` を optional second image 対応に拡張
+    - OpenAI: `callOpenAIImageEditMultiInput` を使う
+    - Gemini: parts に 2 枚目の `inline_data` を追加する
+- [ ] `app/(app)/style/generate-async/handler.ts` (ログインユーザー非同期生成):
   - `stylePresetId` を受け取った時、preset + category を join 取得
   - `category.skip_base_prefix` を `buildStyleGenerationPrompt` の options に渡す
-  - `image_input_mode = 'dual'` なら `style_reference_image_url` を image_jobs に保存 (= preset.reference_image_storage_path から signed URL or storage_path を渡す)
+  - `image_input_mode = 'dual'` なら `style_reference_image_url` を image_jobs に保存 (= preset.reference_image_storage_path を storage path として渡す。signed URL は保存しない)
   - `image_jobs.style_preset_category_key = category.key` を保存
+- [ ] `app/api/generate-async/handler.ts` は Coordinate / Inspire 系の汎用経路なので、Style preset raw/dual の主実装対象からは外す (共有型追加が必要な場合のみ修正)
 - [ ] `features/generation/lib/schema.ts`: 必要なら `stylePresetId` の validation 拡張 (= category 経由で image_input_mode を inspire と区別)
 - [ ] `supabase/functions/image-gen-worker/index.ts`:
-  - 1634-1642 行の image_1 取得経路を「inspire 専用」から「`style_reference_image_url` があれば取得」へ汎化
+  - 1634-1642 行の image_1 取得経路を汎化
+    - `generation_type='inspire'`: 既存どおり `style-templates` bucket から取得
+    - `generation_type='one_tap_style'` かつ `style_reference_image_url IS NOT NULL`: `style_presets` bucket から取得
   - dual モード時のテスト: storage download 失敗時の失敗フロー確認
 
 ### Phase 6: /style UI バッジ表示
@@ -456,8 +479,9 @@ flowchart LR
 - [ ] 統合テスト:
   - `admin-preset-categories-routes.test.ts`
   - `admin-style-presets-routes.test.ts` (category / dual モード 拡張)
-  - `generate-async-route.test.ts` (skip_base_prefix 分岐 + style_reference_image_url 経路)
-- [ ] characterization テスト: 既存 `generate-async-route.char.test.ts` を category=coordinate ケースで通る (= 後方互換確認)
+  - `style-generate-route.test.ts` (guest 同期の skip_base_prefix 分岐 + dual image_1 経路)
+  - `style-generate-async-route.test.ts` (非同期の skip_base_prefix 分岐 + style_reference_image_url 経路)
+- [ ] characterization テスト: 既存 `/style` 生成 route の category=coordinate ケースで prompt が migration 前と一致する (= 後方互換確認)
 - [ ] E2E スモーク (手動 or playwright):
   - admin → category 作成 → preset 作成 (single + dual 各 1) → user 側で生成 → 結果確認
 - [ ] migration を本番適用 (`supabase db push` — ユーザー承認要)
@@ -493,7 +517,10 @@ flowchart LR
 | `app/api/admin/style-presets/route.ts` | 修正 | category / dual / reference image validation |
 | `app/api/admin/style-presets/[id]/route.ts` | 修正 | 同上 |
 | `shared/generation/style-prompts.ts` | 修正 | `skipBasePrefix` option 追加 |
-| `app/api/generate-async/handler.ts` | 修正 | preset + category 解決 + 分岐 |
+| `app/(app)/style/generate/handler.ts` | 修正 | guest 同期生成の preset + category 解決、skipBasePrefix、dual image_1 |
+| `app/(app)/style/generate-async/handler.ts` | 修正 | ログインユーザー非同期生成の preset + category 解決、skipBasePrefix、style_reference_image_url 保存 |
+| `features/generation/lib/guest-generate.ts` | 修正 | optional second image を provider に渡す |
+| `features/generation/lib/openai-image.ts` | 既存利用 | guest dual 時に `callOpenAIImageEditMultiInput` を利用 |
 | `features/generation/lib/job-types.ts` | 修正 | style_preset_category_key |
 | `features/generation/lib/schema.ts` | 修正 | 必要なら validation |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | image_1 経路を inspire 専用から汎化 |
@@ -505,7 +532,9 @@ flowchart LR
 | `tests/unit/shared/style-prompts-skip-base-prefix.test.ts` | 新規 | skipBasePrefix 分岐 |
 | `tests/integration/api/admin-preset-categories-routes.test.ts` | 新規 | API |
 | `tests/integration/api/admin-style-presets-routes.test.ts` | 修正 | category + dual モード |
-| `tests/integration/app/generate-async-route.test.ts` | 修正 | skip_base_prefix / style_reference_image_url 経路 |
+| `tests/integration/app/style-generate-route.test.ts` | 修正 | guest 同期の skip_base_prefix / dual image_1 経路 |
+| `tests/integration/app/style-generate-async-route.test.ts` | 修正 | 非同期の skip_base_prefix / style_reference_image_url 経路 |
+| `tests/unit/features/generation/guest-generate.test.ts` | 修正 | optional second image を OpenAI / Gemini に渡す |
 
 **変更概算**: 本体 ~700 行 (追加 ~550 / 修正 ~150) / テスト ~500 行追加。
 
@@ -515,8 +544,8 @@ flowchart LR
 
 ### 品質チェックリスト
 
-- [ ] **エラーハンドリング**: category not active / preset.reference 欠落 / dual モードで image_1 download 失敗
-- [ ] **権限制御**: preset_categories の SELECT は public (is_active のみ)、CUD は admin (requireAdmin)
+- [ ] **エラーハンドリング**: inactive category への新規割当拒否 / preset.reference 欠落 / dual モードで image_1 download 失敗
+- [ ] **権限制御**: preset_categories の CUD は admin (requireAdmin)。public/server list は published preset の表示に必要な category 情報を返すが、admin の新規選択肢は active category のみに絞る
 - [ ] **データ整合性**: `style_presets_dual_requires_reference` CHECK、key 不変トリガ、`category_id NOT NULL`
 - [ ] **セキュリティ**: reference image upload は admin 限定 + MIME / サイズ検証 (既存 thumbnail uploader と同じ)、storage_path injection 防止
 - [ ] **キャッシュ整合性**: admin 更新時に `revalidateTag('style-presets-with-category')` を呼ぶ
@@ -531,11 +560,11 @@ flowchart LR
 |---|---|
 | 正常系 (DB) | seed coordinate / chibi が両方入る、key 不変 (UPDATE で RAISE)、`style_presets_dual_requires_reference` 通過 |
 | 正常系 (API) | admin で category CRUD、preset で category 紐付け + dual モード reference image upload |
-| 正常系 (handler) | coordinate preset: 既存挙動と完全一致 (snapshot 検証)、chibi preset: base_prefix なし、dual preset: style_reference_image_url 保存 |
-| 正常系 (worker) | dual モード時に image_1 を download + signed URL 生成 + OpenAI に渡す |
+| 正常系 (handler) | coordinate preset: 既存挙動と完全一致 (snapshot 検証)、chibi preset: base_prefix なし、guest dual: image_1 を provider に渡す、async dual: style_reference_image_url 保存 |
+| 正常系 (worker) | async dual モード時に `style_presets` bucket から image_1 を download + OpenAI / Gemini に渡す。inspire は従来どおり `style-templates` bucket |
 | 異常系 | inactive category を新規 preset に紐付けようとすると 400、dual モードで reference 無しの POST で 400、key 重複で 409 |
 | 後方互換 | 既存 preset (= coordinate seed 後 backfill) の生成結果が migration 前と prompt 完全一致 (= snapshot/golden file) |
-| 権限 | non-admin が `/api/admin/preset-categories` を叩くと 403、preset_categories の SELECT は inactive を返さない |
+| 権限 | non-admin が `/api/admin/preset-categories` を叩くと 403、新規 preset 作成 select は inactive を返さない。既存 inactive category に紐づく published preset は `status='published'` なら生成可能 |
 | UI バッジ | StylePresetPreviewCard でバッジ表示 (color / display_name) を locale 切り替えで確認 |
 
 ### テスト実装手順
@@ -555,10 +584,11 @@ flowchart LR
   - 問題時は preset_categories DROP / style_presets の新カラム DROP / image_jobs.style_preset_category_key DROP で戻せる
   - 既存 preset は backfill 解除でも UNIQUE 違反は出ない (category_id NOT NULL の解除を伴う)
   - seed 行のロールバックは `DELETE FROM preset_categories WHERE key IN ('coordinate','chibi')` (= ただし FK 制約で style_presets が紐付いていれば不可、その場合は backfill 解除が先)
+- **Storage**: reference 画像は `style_presets/{presetId}/reference.webp` に追加されるだけ。DB rollback 時に不要 object が残る可能性があるため、運用 rollback 手順に object cleanup を追記する
 - **Git**: Phase 単位で別コミット。Phase 7 → 6 → 5 と部分的に revert 可能
 - **段階リリース**: Phase 1-2 (DB + 型) だけ deploy しても、handler / UI は旧挙動 (= migration の skip_base_prefix=false 等で 100% 後方互換)。Phase 5 の deploy で skip_base_prefix が初めて有効化される
 - **機能フラグ**: 必要なら `NEXT_PUBLIC_STYLE_PRESET_RAW_MODE_ENABLED` を導入し、UI バッジ / chibi preset の出現を制御可能 (Phase 6 まで完成後に判断)
-- **Edge Function**: Phase 5 の worker 変更は inspire の image_1 経路を汎化するだけで、`style_reference_image_url` が NULL なら従来と同じ挙動。revert したい場合は前バージョンに redeploy で安全
+- **Edge Function**: Phase 5 の worker 変更は inspire の image_1 経路を維持しつつ One-Tap Style dual 用の `style_presets` bucket download を追加するだけで、`style_reference_image_url` が NULL なら従来と同じ挙動。revert したい場合は前バージョンに redeploy で安全
 
 ---
 
@@ -581,10 +611,10 @@ flowchart LR
 ## 9. 整合性チェック結果
 
 - [x] **図とスキーマの整合性**: ER 図のカラムと migration SQL が一致 (category_id / image_input_mode / reference_image_* / style_preset_category_key)
-- [x] **認証モデルの一貫性**: preset_categories の RLS (public SELECT は is_active のみ、CUD は admin 経由) + admin API は `requireAdmin()` で保護
+- [x] **認証モデルの一貫性**: preset_categories の CUD は admin API (`requireAdmin()`) 経由。`is_active=false` は新規選択肢から外すための運用フラグであり、既存 published preset の生成停止条件にはしない
 - [x] **データフェッチの整合性**: `/style` は Server Component + `cacheTag` (既存パターン踏襲)、admin は `requireAdmin` + RPC/管理者 client
 - [x] **イベント網羅性**: 生成 INSERT / category 更新 (audit_log) / 削除 (= is_active=false) すべてカバー
-- [x] **API パラメータのソース安全性**: stylePresetId は user 入力だが、サーバ側で preset 存在 + status='published' + category.is_active=true を再検証
+- [x] **API パラメータのソース安全性**: stylePresetId は user 入力だが、サーバ側で preset 存在 + status='published' を再検証。category は join 取得し、`skip_base_prefix` / `image_input_mode` / snapshot key のみに使う
 - [x] **ビジネスルールの DB 層での強制**:
   - 整合性: `style_presets_dual_requires_reference` CHECK
   - key 不変: BEFORE UPDATE トリガで RAISE EXCEPTION
