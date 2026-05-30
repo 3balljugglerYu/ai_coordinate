@@ -53,6 +53,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { StylePresetForm } from "./StylePresetForm";
 import type { StylePresetAdmin } from "@/features/style-presets/lib/schema";
+import type { PresetCategoryAdmin } from "@/features/style-presets/lib/preset-category-repository";
 
 interface SortableStylePresetCardProps {
   preset: StylePresetAdmin;
@@ -206,10 +207,12 @@ const pointerSensorOptions = {
 
 interface StylePresetListClientProps {
   initialPresets: StylePresetAdmin[];
+  categories: PresetCategoryAdmin[];
 }
 
 export function StylePresetListClient({
   initialPresets,
+  categories,
 }: StylePresetListClientProps) {
   const [presets, setPresets] = useState<StylePresetAdmin[]>(initialPresets);
   const [editingPreset, setEditingPreset] = useState<StylePresetAdmin | null>(
@@ -398,6 +401,7 @@ export function StylePresetListClient({
             <DialogTitle>スタイルを追加</DialogTitle>
           </DialogHeader>
           <StylePresetForm
+            categories={categories}
             onSuccess={async () => {
               setIsCreateOpen(false);
               await reload();
@@ -422,6 +426,7 @@ export function StylePresetListClient({
           {editingPreset ? (
             <StylePresetForm
               preset={editingPreset}
+              categories={categories}
               onSuccess={async () => {
                 setEditingPreset(null);
                 await reload();

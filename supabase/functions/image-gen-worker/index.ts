@@ -412,6 +412,34 @@ async function downloadStyleTemplateImage(
   };
 }
 
+/**
+ * One-Tap Style dual モード用: style_presets bucket から admin が登録した
+ * 参考画像 (image_1) を取得する。`job.style_reference_image_url` は
+ * `{presetId}/reference.webp` 形式の storage path。
+ */
+async function downloadStylePresetReferenceImage(
+  supabase: ReturnType<typeof createClient>,
+  storagePath: string
+): Promise<InputImageData> {
+  const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+    supabase.storage.from("style_presets").download(storagePath),
+    "Style preset reference download"
+  );
+
+  if (error || !data) {
+    throw new Error(
+      `Style preset reference download failed: ${error?.message ?? "Unknown error"}`
+    );
+  }
+
+  const mimeType = data.type || "image/webp";
+  const arrayBuffer = await data.arrayBuffer();
+  return {
+    base64: encodeBase64(new Uint8Array(arrayBuffer)),
+    mimeType,
+  };
+}
+
 async function downloadInputImageViaStockFallback(
   supabase: ReturnType<typeof createClient>,
   sourceImageStockId: string
@@ -1534,7 +1562,8 @@ Deno.serve(async () => {
               // OpenAI 経路で再利用するため、inputPreparation 内で取得した入力画像を
               // 外側スコープに保持する（Gemini 経路でも parts に inline_data として使うのは同じ）
               let resolvedInputImageData: InputImageData | null = null;
-              // Inspire の image_1（スタイルテンプレ）。OpenAI 経路で多入力に渡す。
+              // image_1 (二枚目): Inspire のスタイルテンプレ、または One-Tap Style dual モードの参考画像。
+              // OpenAI 多入力経路と Gemini parts の両方で再利用する。
               let resolvedInspireTemplateImage: InputImageData | null = null;
               const requestBody = await measureGeneratingSubstep(
                 jobId,
@@ -1631,8 +1660,10 @@ Deno.serve(async () => {
                     });
                   }
 
-                  // ===== Inspire: テンプレ画像を image_1 として追加 =====
-                  // image_0 = ユーザーキャラ（既に push 済）, image_1 = スタイルテンプレ
+                  // ===== image_1 取得 =====
+                  // image_0 = ユーザーキャラ（既に push 済）
+                  // image_1 = (a) Inspire のスタイルテンプレ画像 (style-templates bucket)
+                  //          (b) One-Tap Style dual モード preset の参考画像 (style_presets bucket)
                   if (job.generation_type === "inspire") {
                     const templatePath = job.style_reference_image_url as
                       | string
@@ -1649,6 +1680,24 @@ Deno.serve(async () => {
                       inline_data: {
                         mime_type: inspireTemplateImageData.mimeType,
                         data: inspireTemplateImageData.base64,
+                      },
+                    });
+                  } else if (
+                    job.generation_type === "one_tap_style" &&
+                    typeof job.style_reference_image_url === "string" &&
+                    job.style_reference_image_url.length > 0
+                  ) {
+                    const referencePath = job.style_reference_image_url;
+                    const referenceImageData =
+                      await downloadStylePresetReferenceImage(
+                        supabase,
+                        referencePath
+                      );
+                    resolvedInspireTemplateImage = referenceImageData;
+                    parts.push({
+                      inline_data: {
+                        mime_type: referenceImageData.mimeType,
+                        data: referenceImageData.base64,
                       },
                     });
                   }
@@ -1797,8 +1846,12 @@ Deno.serve(async () => {
                   throw new Error("OpenAI gpt-image-2 requires an input image");
                 }
                 const openAIInputImage = resolvedInputImageData;
+                // image_1 を多入力で渡すケース:
+                //   - Inspire (style template)
+                //   - One-Tap Style dual モード preset (admin 登録の参考画像)
                 const isInspireOpenAI =
-                  job.generation_type === "inspire" &&
+                  (job.generation_type === "inspire" ||
+                    job.generation_type === "one_tap_style") &&
                   resolvedInspireTemplateImage !== null;
                 const gptImage2 = parseGptImage2Model(dbModel);
                 if (!gptImage2) {
@@ -1827,17 +1880,22 @@ Deno.serve(async () => {
                               openAIInputImage,
                               resolvedInspireTemplateImage,
                             ],
-                            // 出力フレームの起点画像はチェック組み合わせ依存（resolveInspireTargetSizeBaseIndex）。
-                            // すべて維持（4 つ true）: image_1 のシーンへ置換 → image_1 基準
-                            // 部分上書き: image_0 を編集 → image_0 基準
+                            // 出力フレームの起点画像はジョブ種別で決まる:
+                            //   - Inspire (override_* 4 bool あり):
+                            //       すべて維持 (4 つ true) → image_1 基準
+                            //       部分上書き (1 つ以上 false) → image_0 基準
+                            //   - One-Tap Style dual: image_0 (ユーザーキャラ) を編集する設計
+                            //     なので常に 0 (image_0 基準)
                             // プロンプト側のフレーミング指示と一致させる。
                             targetSizeBaseIndex:
-                              resolveInspireTargetSizeBaseIndex({
-                                outfit: job.override_outfit ?? true,
-                                angle: job.override_angle ?? true,
-                                pose: job.override_pose ?? true,
-                                background: job.override_background ?? true,
-                              }),
+                              job.generation_type === "inspire"
+                                ? resolveInspireTargetSizeBaseIndex({
+                                    outfit: job.override_outfit ?? true,
+                                    angle: job.override_angle ?? true,
+                                    pose: job.override_pose ?? true,
+                                    background: job.override_background ?? true,
+                                  })
+                                : 0,
                             timeoutMs: openAIRequestTimeoutMs,
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,

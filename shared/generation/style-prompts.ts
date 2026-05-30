@@ -50,9 +50,34 @@ export interface BuildStyleGenerationPromptParams {
   templates?: Record<string, string>;
 }
 
+export interface BuildStyleGenerationPromptOptions {
+  /**
+   * true のとき style.base_prefix / illustration_suffix / real_suffix /
+   * keep_background_suffix / change_background_suffix を一切付与せず、
+   * stylingPrompt (+ backgroundPrompt) だけを raw に返す。
+   *
+   * preset_categories.skip_base_prefix = true (= ちびキャラ等の raw モード)
+   * のときに使う。共通プロンプトの「フレーム維持・identity 保持」が
+   * フォルム変形系の生成と整合しないため。
+   */
+  skipBasePrefix?: boolean;
+}
+
 export function buildStyleGenerationPrompt(
   params: BuildStyleGenerationPromptParams,
+  options: BuildStyleGenerationPromptOptions = {},
 ): string {
+  if (options.skipBasePrefix) {
+    // raw モード: admin が登録した文言だけを送る。
+    // background_change のみは UX 上「背景も変える」のシグナルとして残せるが、
+    // 共通文言を一切付与しない方針のため backgroundPrompt の追記のみ行う。
+    const sections = [`Styling Direction:\n${params.stylingPrompt}`];
+    if (params.backgroundChange && params.backgroundPrompt) {
+      sections.push(`Background Direction:\n${params.backgroundPrompt}`);
+    }
+    return sections.join("\n\n");
+  }
+
   const promptSuffix =
     params.sourceImageType === "real"
       ? resolveTemplate(params.templates, "style.real_suffix")

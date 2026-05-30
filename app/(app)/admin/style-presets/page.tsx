@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { listStylePresetsForAdmin } from "@/features/style-presets/lib/style-preset-repository";
+import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
 import { StylePresetListClient } from "./StylePresetListClient";
 
 export default async function AdminStylePresetsPage() {
@@ -16,7 +17,11 @@ export default async function AdminStylePresetsPage() {
     redirect("/");
   }
 
-  const presets = await listStylePresetsForAdmin();
+  const [presets, categories] = await Promise.all([
+    listStylePresetsForAdmin(),
+    // 編集時に既存の inactive category を維持できるよう includeInactive=true
+    listPresetCategories({ includeInactive: true }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -44,7 +49,10 @@ export default async function AdminStylePresetsPage() {
 
       <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">
         <CardContent className="p-6 sm:p-8">
-          <StylePresetListClient initialPresets={presets} />
+          <StylePresetListClient
+            initialPresets={presets}
+            categories={categories}
+          />
         </CardContent>
       </Card>
     </div>

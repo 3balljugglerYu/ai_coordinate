@@ -11,6 +11,14 @@ const STYLE_PRESET_CARD_TITLE_HEIGHT_PX = 44;
 const STYLE_PRESET_CARD_HEIGHT_PX =
   STYLE_PRESET_CARD_IMAGE_HEIGHT_PX + STYLE_PRESET_CARD_TITLE_HEIGHT_PX;
 
+interface StylePresetPreviewCardCategory {
+  key: string;
+  displayNameJa: string;
+  displayNameEn: string;
+  badgeColor: string;
+  badgeTextColor: string;
+}
+
 interface StylePresetPreviewCardData {
   id: string;
   title: string;
@@ -18,6 +26,11 @@ interface StylePresetPreviewCardData {
   thumbnailWidth: number;
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
+  /**
+   * 紐づく preset_categories のサマリ。`coordinate` (= default) はバッジ非表示で
+   * 既存挙動と同じ見た目を保つ。それ以外のカテゴリのみバッジを左上に表示する。
+   */
+  category?: StylePresetPreviewCardCategory;
 }
 
 interface StylePresetPreviewCardProps {
@@ -27,6 +40,11 @@ interface StylePresetPreviewCardProps {
   isSelected?: boolean;
   onClick?: () => void;
   buttonRef?: Ref<HTMLButtonElement>;
+  /**
+   * バッジ表示時の locale ('ja' / 'en')。display_name_{ja,en} を選ぶ。
+   * 省略時は 'ja'。
+   */
+  locale?: "ja" | "en";
 }
 
 export function buildStylePresetImageSrc(
@@ -50,8 +68,16 @@ export function StylePresetPreviewCard({
   isSelected,
   onClick,
   buttonRef,
+  locale = "ja",
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
+  // 'coordinate' は default カテゴリで既存挙動と同じ見た目を保つため、バッジを描画しない。
+  const shouldShowBadge =
+    preset.category != null && preset.category.key !== "coordinate";
+  const badgeText =
+    locale === "en"
+      ? preset.category?.displayNameEn
+      : preset.category?.displayNameJa;
   const card = (
     <Card
       className={`group overflow-hidden p-0 transition ${
@@ -75,6 +101,18 @@ export function StylePresetPreviewCard({
             className="object-cover object-top"
             priority={selected}
           />
+          {shouldShowBadge && preset.category && (
+            <span
+              className="absolute left-1.5 top-1.5 inline-flex max-w-[80%] items-center truncate rounded px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
+              style={{
+                backgroundColor: preset.category.badgeColor,
+                color: preset.category.badgeTextColor,
+              }}
+              aria-label={badgeText}
+            >
+              {badgeText}
+            </span>
+          )}
         </div>
         <div
           className="flex items-center border-t bg-white px-3"

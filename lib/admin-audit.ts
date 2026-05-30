@@ -24,7 +24,10 @@ export type AdminAuditAction =
   | "catalog_entry_unpublish"
   | "catalog_entry_reorder"
   | "prompt_override_update"
-  | "prompt_override_reset";
+  | "prompt_override_reset"
+  | "preset_category_create"
+  | "preset_category_update"
+  | "preset_category_deactivate";
 
 export interface AdminAuditLogParams {
   adminUserId: string;

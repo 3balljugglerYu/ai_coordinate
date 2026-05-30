@@ -36,18 +36,7 @@ interface StyleGenerateAsyncRouteDependencies {
   jobRepository?: AsyncGenerationJobRepository;
   invokeImageWorkerFn?: (edgeFunctionUrl: string) => void;
   supabaseUrl?: string;
-  getPublishedStylePresetForGenerationFn?: (
-    styleId: string
-  ) => Promise<{
-    id: string;
-    title: string;
-    thumbnailImageUrl: string;
-    thumbnailWidth: number;
-    thumbnailHeight: number;
-    hasBackgroundPrompt: boolean;
-    stylingPrompt: string;
-    backgroundPrompt: string | null;
-  } | null>;
+  getPublishedStylePresetForGenerationFn?: typeof getPublishedStylePresetForGeneration;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
 }
 
@@ -259,13 +248,17 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     const promptTemplates = await resolveAllPromptTemplates();
-    const prompt = buildStyleGenerationPrompt({
-      stylingPrompt: preset.stylingPrompt,
-      backgroundPrompt: preset.backgroundPrompt,
-      backgroundChange,
-      sourceImageType,
-      templates: promptTemplates,
-    });
+    const prompt = buildStyleGenerationPrompt(
+      {
+        stylingPrompt: preset.stylingPrompt,
+        backgroundPrompt: preset.backgroundPrompt,
+        backgroundChange,
+        sourceImageType,
+        templates: promptTemplates,
+      },
+      // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
+      { skipBasePrefix: preset.category.skipBasePrefix },
+    );
 
     // 3 経路のうち選択された 1 つから inputImageUrl と resolvedStockId を確定。
     let inputImageUrl: string;
@@ -343,6 +336,11 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     // UCL-016 / ADR-008: billingMode は常に "paid"。worker はこれを見て減算する。
+    // dual モード preset の場合は preset.reference_image_storage_path を
+    // image_jobs.style_reference_image_url に保存し、worker が image_1 として読む。
+    const isDualPreset =
+      preset.imageInputMode === "dual" &&
+      preset.referenceImageStoragePath !== null;
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
       prompt_text: prompt,
@@ -358,6 +356,11 @@ export async function postStyleGenerateAsyncRoute(
       status: "queued",
       processing_stage: "queued",
       attempts: 0,
+      style_reference_image_url: isDualPreset
+        ? preset.referenceImageStoragePath
+        : null,
+      // category.key のスナップショット (ADR-006)
+      style_preset_category_key: preset.category.key,
     };
 
     const { data: job, error: insertError } =

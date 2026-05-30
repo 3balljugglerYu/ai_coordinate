@@ -15,6 +15,21 @@ export const stylePresetStatusSchema = z.enum(STYLE_PRESET_STATUS_VALUES);
 
 export type StylePresetStatus = (typeof STYLE_PRESET_STATUS_VALUES)[number];
 
+export const IMAGE_INPUT_MODE_VALUES = ["single", "dual"] as const;
+export const imageInputModeSchema = z.enum(IMAGE_INPUT_MODE_VALUES);
+export type ImageInputMode = (typeof IMAGE_INPUT_MODE_VALUES)[number];
+
+export interface StylePresetCategoryRef {
+  id: string;
+  key: string;
+  displayNameJa: string;
+  displayNameEn: string;
+  badgeColor: string;
+  badgeTextColor: string;
+  skipBasePrefix: boolean;
+  isActive: boolean;
+}
+
 export interface StylePresetAdmin {
   id: string;
   slug: string;
@@ -27,6 +42,12 @@ export interface StylePresetAdmin {
   thumbnailHeight: number;
   sortOrder: number;
   status: StylePresetStatus;
+  category: StylePresetCategoryRef;
+  imageInputMode: ImageInputMode;
+  referenceImageUrl: string | null;
+  referenceImageStoragePath: string | null;
+  referenceImageWidth: number | null;
+  referenceImageHeight: number | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
@@ -40,12 +61,16 @@ export interface StylePresetPublicSummary {
   thumbnailWidth: number;
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
+  category: StylePresetCategoryRef;
+  imageInputMode: ImageInputMode;
 }
 
 export interface StylePresetGenerationRecord extends StylePresetPublicSummary {
   stylingPrompt: string;
   backgroundPrompt: string | null;
   status: StylePresetStatus;
+  referenceImageUrl: string | null;
+  referenceImageStoragePath: string | null;
 }
 
 export interface StylePresetInsert {
@@ -60,6 +85,14 @@ export interface StylePresetInsert {
   sortOrder?: number;
   status: StylePresetStatus;
   createdBy?: string | null;
+  // category / dual モード関連: 未指定の場合 RPC 側で 'coordinate' / 'single' に
+  // フォールバックする (= 既存挙動を 100% 維持)。Phase 4 で admin UI 必須化する。
+  categoryId?: string;
+  imageInputMode?: ImageInputMode;
+  referenceImageUrl?: string | null;
+  referenceImageStoragePath?: string | null;
+  referenceImageWidth?: number | null;
+  referenceImageHeight?: number | null;
 }
 
 export interface StylePresetUpdate {
@@ -73,6 +106,13 @@ export interface StylePresetUpdate {
   sortOrder?: number;
   status?: StylePresetStatus;
   updatedBy?: string | null;
+  // 未指定なら現状値を維持する semantics。
+  categoryId?: string;
+  imageInputMode?: ImageInputMode;
+  referenceImageUrl?: string | null;
+  referenceImageStoragePath?: string | null;
+  referenceImageWidth?: number | null;
+  referenceImageHeight?: number | null;
 }
 
 export const stylePresetReorderSchema = z.object({

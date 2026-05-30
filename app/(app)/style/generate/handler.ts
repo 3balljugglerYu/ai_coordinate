@@ -56,13 +56,7 @@ interface StyleGenerateRouteDependencies {
    */
   openaiClient?: typeof callOpenAIImageEdit;
   getUserFn?: typeof getUser;
-  getPublishedStylePresetForGenerationFn?: (
-    styleId: string
-  ) => Promise<{
-    id: string;
-    stylingPrompt: string;
-    backgroundPrompt: string | null;
-  } | null>;
+  getPublishedStylePresetForGenerationFn?: typeof getPublishedStylePresetForGeneration;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
   checkAndConsumeRateLimitFn?: (params: {
     request: NextRequest;
@@ -249,6 +243,18 @@ export async function postStyleGenerateRoute(
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
 
+    // dual モード preset (= admin が参考画像を登録しているテンプレ) は
+    // guest 同期では未サポート。dispatchGuestImageGeneration を image_1 対応に
+    // するとスコープが大きいため、ログインユーザーの非同期経路に誘導する。
+    // 初期ユースケース (ちびキャラ = single モード) はそのまま動く。
+    if (preset.imageInputMode === "dual") {
+      return jsonError(
+        copy.invalidStylePreset,
+        "STYLE_DUAL_PRESET_GUEST_FORBIDDEN",
+        400
+      );
+    }
+
     const uploadImage = getFile(formData.get("uploadImage"));
     if (!uploadImage) {
       return jsonError(
@@ -387,13 +393,17 @@ export async function postStyleGenerateRoute(
     }
 
     const promptTemplates = await resolveAllPromptTemplates();
-    const basePromptText = buildStyleGenerationPrompt({
-      stylingPrompt: preset.stylingPrompt,
-      backgroundPrompt: preset.backgroundPrompt,
-      backgroundChange,
-      sourceImageType,
-      templates: promptTemplates,
-    });
+    const basePromptText = buildStyleGenerationPrompt(
+      {
+        stylingPrompt: preset.stylingPrompt,
+        backgroundPrompt: preset.backgroundPrompt,
+        backgroundChange,
+        sourceImageType,
+        templates: promptTemplates,
+      },
+      // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
+      { skipBasePrefix: preset.category.skipBasePrefix },
+    );
 
     let lastDispatchResult: DispatchGuestImageGenerationResult | null = null;
     for (let attempt = 1; attempt <= MAX_RETRYABLE_ATTEMPTS; attempt += 1) {

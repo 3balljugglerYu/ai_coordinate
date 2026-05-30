@@ -36,6 +36,17 @@ describe("get-public-style-presets", () => {
     jest.clearAllMocks();
   });
 
+  const baseCategory = {
+    id: "cat-1",
+    key: "coordinate",
+    displayNameJa: "コーディネート",
+    displayNameEn: "Coordinate",
+    badgeColor: "#1f2937",
+    badgeTextColor: "#ffffff",
+    skipBasePrefix: false,
+    isActive: true,
+  } as const;
+
   test("getPublishedStylePresets_キャッシュタグを付けて公開一覧を返す", async () => {
     mockListPublishedStylePresets.mockResolvedValueOnce([
       {
@@ -45,6 +56,8 @@ describe("get-public-style-presets", () => {
         thumbnailWidth: 912,
         thumbnailHeight: 1173,
         hasBackgroundPrompt: true,
+        category: baseCategory,
+        imageInputMode: "single",
       },
     ]);
 
@@ -64,6 +77,8 @@ describe("get-public-style-presets", () => {
       thumbnailWidth: 912,
       thumbnailHeight: 1173,
       hasBackgroundPrompt: false,
+      category: baseCategory,
+      imageInputMode: "single",
     });
 
     const result = await getPublishedStylePreset("preset-1");
