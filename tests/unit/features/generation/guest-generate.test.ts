@@ -235,6 +235,61 @@ describe("guest-generate", () => {
       });
     });
 
+    test("referenceImage 指定時は Gemini に image_0 と image_1 を送る", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      inline_data: {
+                        mime_type: "image/png",
+                        data: "BASE64_OK",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      const referenceBytes = new Uint8Array([1, 2, 3]);
+
+      await dispatchGuestImageGeneration({
+        model: "gemini-3.1-flash-image-preview-512",
+        promptText: "hello",
+        uploadImage: createPngFile(),
+        referenceImage: new File([referenceBytes], "reference.webp", {
+          type: "image/webp",
+        }),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+
+      const requestBody = JSON.parse(
+        String(fetchFn.mock.calls[0][1].body),
+      ) as {
+        contents: Array<{ parts: Array<Record<string, unknown>> }>;
+      };
+      expect(requestBody.contents[0].parts).toHaveLength(3);
+      expect(requestBody.contents[0].parts[1]).toEqual({
+        inline_data: {
+          mime_type: "image/png",
+          data: Buffer.alloc(16).toString("base64"),
+        },
+      });
+      expect(requestBody.contents[0].parts[2]).toEqual({
+        inline_data: {
+          mime_type: "image/webp",
+          data: Buffer.from(referenceBytes).toString("base64"),
+        },
+      });
+    });
+
     test("imageSize を持たない Gemini モデル (gemini-2.5-flash-image) でも aspectRatio は送られる", async () => {
       const fetchFn = jest.fn().mockResolvedValue(
         new Response(
@@ -480,6 +535,57 @@ describe("guest-generate", () => {
           apiKey: "openai-key",
           quality: "low",
           sizeTier: "1k",
+        })
+      );
+    });
+
+    test("referenceImage 指定時は OpenAI multi-input に image_0 と image_1 を送る", async () => {
+      const openaiClient = jest.fn();
+      const openaiMultiInputClient = jest.fn().mockResolvedValue([
+        {
+          data: "OPENAI_BASE64",
+          mimeType: "image/png",
+        },
+      ]);
+      const referenceBytes = new Uint8Array([1, 2, 3]);
+
+      const result = await dispatchGuestImageGeneration({
+        model: "gpt-image-2-low-1k",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        referenceImage: new File([referenceBytes], "reference.webp", {
+          type: "image/webp",
+        }),
+        geminiApiKey: "(unused)",
+        openaiApiKey: "openai-key",
+        openaiClient,
+        openaiMultiInputClient,
+      });
+
+      expect(result).toEqual({
+        kind: "success",
+        imageDataUrl: "data:image/png;base64,OPENAI_BASE64",
+        mimeType: "image/png",
+      });
+      expect(openaiClient).not.toHaveBeenCalled();
+      expect(openaiMultiInputClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: "x",
+          inputImages: [
+            {
+              base64: Buffer.alloc(16).toString("base64"),
+              mimeType: "image/png",
+            },
+            {
+              base64: Buffer.from(referenceBytes).toString("base64"),
+              mimeType: "image/webp",
+            },
+          ],
+          targetSizeBaseIndex: 0,
+          apiKey: "openai-key",
+          quality: "low",
+          sizeTier: "1k",
+          n: 1,
         })
       );
     });

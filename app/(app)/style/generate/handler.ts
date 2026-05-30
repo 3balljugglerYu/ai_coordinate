@@ -4,6 +4,7 @@ import {
   MAX_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
+import { downloadStylePresetReferenceImage } from "@/features/style-presets/lib/style-preset-storage";
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import {
@@ -28,6 +29,7 @@ import {
 } from "@/features/generation/lib/guest-generate";
 import {
   callOpenAIImageEdit,
+  callOpenAIImageEditMultiInput,
 } from "@/features/generation/lib/openai-image";
 import {
   DEFAULT_GENERATION_MODEL,
@@ -55,8 +57,10 @@ interface StyleGenerateRouteDependencies {
    * テスト用 OpenAI クライアント差し替え (GPT Image 2 が選ばれた場合のみ呼ばれる)
    */
   openaiClient?: typeof callOpenAIImageEdit;
+  openaiMultiInputClient?: typeof callOpenAIImageEditMultiInput;
   getUserFn?: typeof getUser;
   getPublishedStylePresetForGenerationFn?: typeof getPublishedStylePresetForGeneration;
+  downloadStylePresetReferenceImageFn?: typeof downloadStylePresetReferenceImage;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
   checkAndConsumeRateLimitFn?: (params: {
     request: NextRequest;
@@ -156,9 +160,14 @@ export async function postStyleGenerateRoute(
     const getUserFn = dependencies.getUserFn ?? getUser;
     const fetchFn = dependencies.fetchFn ?? fetch;
     const openaiClient = dependencies.openaiClient ?? callOpenAIImageEdit;
+    const openaiMultiInputClient =
+      dependencies.openaiMultiInputClient ?? callOpenAIImageEditMultiInput;
     const getPublishedStylePresetForGenerationFn =
       dependencies.getPublishedStylePresetForGenerationFn ??
       getPublishedStylePresetForGeneration;
+    const downloadStylePresetReferenceImageFn =
+      dependencies.downloadStylePresetReferenceImageFn ??
+      downloadStylePresetReferenceImage;
     const recordStyleUsageEventFn =
       dependencies.recordStyleUsageEventFn ?? recordStyleUsageEvent;
     const checkAndConsumeRateLimitFn =
@@ -243,18 +252,6 @@ export async function postStyleGenerateRoute(
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
 
-    // dual モード preset (= admin が参考画像を登録しているテンプレ) は
-    // guest 同期では未サポート。dispatchGuestImageGeneration を image_1 対応に
-    // するとスコープが大きいため、ログインユーザーの非同期経路に誘導する。
-    // 初期ユースケース (ちびキャラ = single モード) はそのまま動く。
-    if (preset.imageInputMode === "dual") {
-      return jsonError(
-        copy.invalidStylePreset,
-        "STYLE_DUAL_PRESET_GUEST_FORBIDDEN",
-        400
-      );
-    }
-
     const uploadImage = getFile(formData.get("uploadImage"));
     if (!uploadImage) {
       return jsonError(
@@ -283,6 +280,33 @@ export async function postStyleGenerateRoute(
         "STYLE_BACKGROUND_PROMPT_UNAVAILABLE",
         400
       );
+    }
+
+    let referenceImage: File | null = null;
+    if (preset.imageInputMode === "dual") {
+      if (!preset.referenceImageStoragePath) {
+        return jsonError(
+          copy.invalidStylePreset,
+          "STYLE_DUAL_REFERENCE_MISSING",
+          400
+        );
+      }
+
+      try {
+        referenceImage = await downloadStylePresetReferenceImageFn(
+          preset.referenceImageStoragePath
+        );
+      } catch (error) {
+        console.error(
+          "Style generate route: failed to load dual preset reference",
+          error
+        );
+        return jsonError(
+          copy.guestUpstreamUnavailable,
+          "STYLE_DUAL_REFERENCE_DOWNLOAD_FAILED",
+          500
+        );
+      }
     }
 
     if (!geminiApiKey && !isOpenAIImageModel(model)) {
@@ -418,6 +442,8 @@ export async function postStyleGenerateRoute(
         openaiApiKey,
         fetchFn,
         openaiClient,
+        openaiMultiInputClient,
+        referenceImage,
       });
       lastDispatchResult = dispatchResult;
 

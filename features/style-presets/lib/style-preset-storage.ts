@@ -106,13 +106,15 @@ export async function deleteStylePresetImage(
 }
 
 /**
- * dual モード preset の image_1 として使う「参考画像」を style_presets bucket に upsert する。
- * 固定パス `{presetId}/reference.webp` を使うので、preset 編集での差し替えは upsert で上書き。
+ * dual モード preset の image_1 として使う「参考画像」を style_presets bucket に保存する。
+ * 新規作成時は固定パス `{presetId}/reference.webp`、編集時は呼び出し側が fileId を渡して
+ * 新規 object として保存する。DB 更新失敗時に既存 reference object を壊さないため。
  * 計画書 Phase 4 + ADR-008 参照。
  */
 export async function uploadStylePresetReferenceImage(
   file: File,
-  presetId: string
+  presetId: string,
+  fileId?: string
 ): Promise<{
   imageUrl: string;
   storagePath: string;
@@ -135,13 +137,15 @@ export async function uploadStylePresetReferenceImage(
     throw new Error("画像サイズの取得に失敗しました");
   }
 
-  const storagePath = `${presetId}/reference.webp`;
+  const storagePath = fileId
+    ? `${presetId}/${fileId}.webp`
+    : `${presetId}/reference.webp`;
 
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)
     .upload(storagePath, webpBuffer, {
       contentType: "image/webp",
-      upsert: true,
+      upsert: fileId ? false : true,
     });
 
   if (error) {
@@ -159,4 +163,24 @@ export async function uploadStylePresetReferenceImage(
     width: metadata.width,
     height: metadata.height,
   };
+}
+
+export async function downloadStylePresetReferenceImage(
+  storagePath: string
+): Promise<File> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .download(storagePath);
+
+  if (error || !data) {
+    console.error("Style preset reference image download error:", error);
+    throw new Error(
+      `参考画像の取得に失敗しました: ${error?.message ?? "Unknown error"}`
+    );
+  }
+
+  const mimeType = data.type || "image/webp";
+  const arrayBuffer = await data.arrayBuffer();
+  return new File([arrayBuffer], "reference.webp", { type: mimeType });
 }

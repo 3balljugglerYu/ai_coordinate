@@ -53,7 +53,6 @@ BEGIN
     id,
     slug,
     title,
-    prompt,
     styling_prompt,
     background_prompt,
     thumbnail_image_url,
@@ -75,7 +74,6 @@ BEGIN
     p_id,
     p_slug,
     p_title,
-    p_styling_prompt,
     p_styling_prompt,
     NULLIF(p_background_prompt, ''),
     p_thumbnail_image_url,
@@ -153,7 +151,6 @@ BEGIN
   UPDATE public.style_presets
   SET
     title = p_title,
-    prompt = p_styling_prompt,
     styling_prompt = p_styling_prompt,
     background_prompt = NULLIF(p_background_prompt, ''),
     thumbnail_image_url = p_thumbnail_image_url,

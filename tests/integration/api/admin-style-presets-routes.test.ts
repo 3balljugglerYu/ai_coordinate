@@ -25,7 +25,6 @@ import {
 import {
   deleteStylePresetImage,
   uploadStylePresetImage,
-  uploadStylePresetReferenceImage,
 } from "@/features/style-presets/lib/style-preset-storage";
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
 import { revalidateStylePresets } from "@/features/style-presets/lib/revalidate-style-presets";
@@ -45,10 +44,6 @@ const mockReorderStylePresets =
   reorderStylePresets as jest.MockedFunction<typeof reorderStylePresets>;
 const mockUploadStylePresetImage =
   uploadStylePresetImage as jest.MockedFunction<typeof uploadStylePresetImage>;
-const mockUploadStylePresetReferenceImage =
-  uploadStylePresetReferenceImage as jest.MockedFunction<
-    typeof uploadStylePresetReferenceImage
-  >;
 const mockDeleteStylePresetImage =
   deleteStylePresetImage as jest.MockedFunction<typeof deleteStylePresetImage>;
 const mockGetPresetCategoryById =
@@ -230,6 +225,7 @@ describe("admin style preset routes", () => {
     formData.set("background_prompt", "");
     formData.set("sort_order", "3");
     formData.set("status", "published");
+    formData.set("category_id", TEST_CATEGORY_ID);
     formData.set(
       "file",
       new File(["image"], "style.png", { type: "image/png" })
@@ -242,6 +238,7 @@ describe("admin style preset routes", () => {
       height: 960,
     });
     mockCreateStylePreset.mockRejectedValueOnce(new Error("db failed"));
+    mockGetPresetCategoryById.mockResolvedValueOnce(TEST_CATEGORY_ADMIN);
 
     const response = await POST(
       createFormRequest("/api/admin/style-presets", formData, "POST")

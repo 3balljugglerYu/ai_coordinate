@@ -27,6 +27,7 @@ export async function PATCH(
   let newThumbnailPath: string | null = null;
   let newReferencePath: string | null = null;
   let oldThumbnailPath: string | null = null;
+  let oldReferencePath: string | null = null;
 
   try {
     const user = await requireAdmin();
@@ -41,6 +42,7 @@ export async function PATCH(
     }
 
     oldThumbnailPath = existing.thumbnailStoragePath;
+    oldReferencePath = existing.referenceImageStoragePath;
 
     const formData = await request.formData();
     const title = formData.get("title");
@@ -152,9 +154,14 @@ export async function PATCH(
       referenceImageHeight: existing.referenceImageHeight,
     };
 
-    // 新しい reference file がきたら upsert (storage path は固定 `{presetId}/reference.webp`)
+    // 新しい reference file は新規 object に保存し、DB 更新成功後に旧 object を削除する。
+    // 既存 fixed path を直接 upsert すると、DB 更新失敗時に旧 reference を壊すため。
     if (referenceFile instanceof File && referenceFile.size > 0) {
-      const uploaded = await uploadStylePresetReferenceImage(referenceFile, id);
+      const uploaded = await uploadStylePresetReferenceImage(
+        referenceFile,
+        id,
+        `reference-${crypto.randomUUID()}`
+      );
       newReferencePath = uploaded.storagePath;
       updatePayload.referenceImageUrl = uploaded.imageUrl;
       updatePayload.referenceImageStoragePath = uploaded.storagePath;
@@ -202,12 +209,34 @@ export async function PATCH(
           // best effort
         }
       }
+      if (
+        oldReferencePath &&
+        newReferencePath &&
+        oldReferencePath !== newReferencePath
+      ) {
+        try {
+          await deleteStylePresetImage(oldReferencePath);
+        } catch {
+          // best effort
+        }
+      }
 
       revalidateStylePresets();
       return NextResponse.json(updated);
     }
 
     const updated = await updateStylePreset(id, updatePayload);
+    if (
+      oldReferencePath &&
+      newReferencePath &&
+      oldReferencePath !== newReferencePath
+    ) {
+      try {
+        await deleteStylePresetImage(oldReferencePath);
+      } catch {
+        // best effort
+      }
+    }
     revalidateStylePresets();
     return NextResponse.json(updated);
   } catch (error) {
@@ -220,7 +249,7 @@ export async function PATCH(
         // rollback best effort
       }
     }
-    if (newReferencePath) {
+    if (newReferencePath && newReferencePath !== oldReferencePath) {
       try {
         await deleteStylePresetImage(newReferencePath);
       } catch {

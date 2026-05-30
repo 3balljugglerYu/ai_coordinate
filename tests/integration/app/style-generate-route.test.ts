@@ -67,7 +67,41 @@ type StyleGenerateRouteDependencies = NonNullable<
 type StyleOpenAIClient = NonNullable<
   StyleGenerateRouteDependencies["openaiClient"]
 >;
+type DownloadStylePresetReferenceImageFn = NonNullable<
+  StyleGenerateRouteDependencies["downloadStylePresetReferenceImageFn"]
+>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
+const TEST_COORDINATE_CATEGORY = {
+  id: "category-coordinate",
+  key: "coordinate",
+  displayNameJa: "コーディネート",
+  displayNameEn: "Coordinate",
+  badgeColor: "#1f2937",
+  badgeTextColor: "#ffffff",
+  skipBasePrefix: false,
+  isActive: true,
+};
+
+function buildStylePresetForGeneration(
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    id: STYLE_ID,
+    title: "PARIS CODE",
+    thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
+    thumbnailWidth: 912,
+    thumbnailHeight: 1173,
+    hasBackgroundPrompt: false,
+    stylingPrompt: "RAW PROMPT\nSECOND LINE",
+    backgroundPrompt: null,
+    status: "published",
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
+    referenceImageUrl: null,
+    referenceImageStoragePath: null,
+    ...overrides,
+  };
+}
 
 function buildExpectedPrompt(params: {
   sourceImageType?: "illustration" | "real";
@@ -187,11 +221,7 @@ describe("StyleGenerateRoute integration tests", () => {
       .fn()
       .mockImplementation(async (styleId: string) =>
         styleId === STYLE_ID
-          ? {
-              id: STYLE_ID,
-              stylingPrompt: "RAW PROMPT\nSECOND LINE",
-              backgroundPrompt: null,
-            }
+          ? buildStylePresetForGeneration()
           : null
       );
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
@@ -407,6 +437,64 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
+  test("postStyleGenerateRoute_dualプリセットはゲスト経路でもreference画像を送信する", async () => {
+    const referenceBytes = new Uint8Array([7, 8, 9]);
+    const downloadStylePresetReferenceImageFn = jest
+      .fn<
+        ReturnType<DownloadStylePresetReferenceImageFn>,
+        Parameters<DownloadStylePresetReferenceImageFn>
+      >()
+      .mockResolvedValue(
+        new File([referenceBytes], "reference.webp", {
+          type: "image/webp",
+        })
+      );
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        referenceImageUrl: "https://example.com/reference.webp",
+        referenceImageStoragePath: "style-presets/preset-1/reference.webp",
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      downloadStylePresetReferenceImageFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,generated-image-base64",
+      mimeType: "image/png",
+    });
+    expect(downloadStylePresetReferenceImageFn).toHaveBeenCalledWith(
+      "style-presets/preset-1/reference.webp"
+    );
+
+    const [, init] = fetchFn.mock.calls[0];
+    const requestBody = JSON.parse(String(init?.body)) as {
+      contents: Array<{ parts: Array<Record<string, unknown>> }>;
+    };
+    expect(requestBody.contents[0].parts).toHaveLength(3);
+    expect(requestBody.contents[0].parts[2]).toEqual({
+      inline_data: {
+        mime_type: "image/webp",
+        data: Buffer.from(referenceBytes).toString("base64"),
+      },
+    });
+  });
+
   test("postStyleGenerateRoute_OpenAIモデルはGEMINI_API_KEY無しでも生成できる", async () => {
     const openaiClient = jest.fn().mockResolvedValue({
       data: "openai-generated-image-base64",
@@ -617,9 +705,10 @@ describe("StyleGenerateRoute integration tests", () => {
 
   test("postStyleGenerateRoute_backgroundChange有効時_背景promptを合成する", async () => {
     getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
-      id: STYLE_ID,
-      stylingPrompt: "RAW PROMPT\nSECOND LINE",
-      backgroundPrompt: "Soft spring city street with blossoms",
+      ...buildStylePresetForGeneration({
+        backgroundPrompt: "Soft spring city street with blossoms",
+        hasBackgroundPrompt: true,
+      }),
     });
 
     const formData = new FormData();

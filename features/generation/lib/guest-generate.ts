@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   callOpenAIImageEdit,
+  callOpenAIImageEditMultiInput,
   parseImageDimensions,
   type OpenAIImageEditResult,
 } from "@/features/generation/lib/openai-image";
@@ -167,6 +168,7 @@ export interface DispatchGuestImageGenerationInput {
   model: GeminiModel;
   promptText: string;
   uploadImage: File;
+  referenceImage?: File | null;
   geminiApiKey: string;
   openaiApiKey?: string;
   geminiTimeoutMs?: number;
@@ -179,6 +181,10 @@ export interface DispatchGuestImageGenerationInput {
    * OpenAI 呼び出しのモック注入用。既定は本物の callOpenAIImageEdit。
    */
   openaiClient?: typeof callOpenAIImageEdit;
+  /**
+   * OpenAI 複数画像入力呼び出しのモック注入用。referenceImage がある場合のみ使う。
+   */
+  openaiMultiInputClient?: typeof callOpenAIImageEditMultiInput;
 }
 
 const RETRYABLE_NO_IMAGE_FINISH_REASONS = new Set(["MALFORMED_FUNCTION_CALL"]);
@@ -264,6 +270,8 @@ async function dispatchOpenAI(
   const arrayBuffer = await input.uploadImage.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString("base64");
   const openaiClient = input.openaiClient ?? callOpenAIImageEdit;
+  const openaiMultiInputClient =
+    input.openaiMultiInputClient ?? callOpenAIImageEditMultiInput;
   const gptImage2 = parseGptImage2Model(input.model);
   if (!gptImage2) {
     return {
@@ -272,14 +280,41 @@ async function dispatchOpenAI(
     };
   }
   try {
-    const result: OpenAIImageEditResult = await openaiClient({
-      prompt: input.promptText,
-      inputImage: { base64, mimeType: input.uploadImage.type },
-      timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
-      quality: gptImage2.quality,
-      sizeTier: gptImage2.sizeTier,
-      apiKey: input.openaiApiKey,
-    });
+    let result: OpenAIImageEditResult;
+    if (input.referenceImage) {
+      const referenceArrayBuffer = await input.referenceImage.arrayBuffer();
+      const referenceBase64 =
+        Buffer.from(referenceArrayBuffer).toString("base64");
+      const [multiInputResult] = await openaiMultiInputClient({
+        prompt: input.promptText,
+        inputImages: [
+          { base64, mimeType: input.uploadImage.type },
+          {
+            base64: referenceBase64,
+            mimeType: input.referenceImage.type || "image/webp",
+          },
+        ],
+        targetSizeBaseIndex: 0,
+        timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
+        quality: gptImage2.quality,
+        sizeTier: gptImage2.sizeTier,
+        apiKey: input.openaiApiKey,
+        n: 1,
+      });
+      if (!multiInputResult) {
+        throw new Error("No images generated");
+      }
+      result = multiInputResult;
+    } else {
+      result = await openaiClient({
+        prompt: input.promptText,
+        inputImage: { base64, mimeType: input.uploadImage.type },
+        timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
+        quality: gptImage2.quality,
+        sizeTier: gptImage2.sizeTier,
+        apiKey: input.openaiApiKey,
+      });
+    }
     return {
       kind: "success",
       imageDataUrl: `data:${result.mimeType};base64,${result.data}`,
@@ -320,6 +355,11 @@ async function dispatchGemini(
     { text: input.promptText },
     imagePart,
   ];
+  if (input.referenceImage) {
+    const { part: referenceImagePart } =
+      await fileToInlineDataPartWithDimensions(input.referenceImage);
+    parts.push(referenceImagePart);
+  }
 
   const abortController = new AbortController();
   const timeoutMs = input.geminiTimeoutMs ?? GUEST_GEMINI_TIMEOUT_MS;

@@ -34,6 +34,37 @@ import {
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
+const TEST_COORDINATE_CATEGORY = {
+  id: "category-coordinate",
+  key: "coordinate",
+  displayNameJa: "コーディネート",
+  displayNameEn: "Coordinate",
+  badgeColor: "#1f2937",
+  badgeTextColor: "#ffffff",
+  skipBasePrefix: false,
+  isActive: true,
+};
+
+function buildStylePresetForGeneration(
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    id: STYLE_ID,
+    title: "PARIS CODE",
+    thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
+    thumbnailWidth: 912,
+    thumbnailHeight: 1173,
+    hasBackgroundPrompt: false,
+    stylingPrompt: "RAW PROMPT\nSECOND LINE",
+    backgroundPrompt: null,
+    status: "published",
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
+    referenceImageUrl: null,
+    referenceImageStoragePath: null,
+    ...overrides,
+  };
+}
 
 function buildExpectedPrompt(params: {
   sourceImageType?: "illustration" | "real";
@@ -109,16 +140,9 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
     jobRepository = createAsyncGenerationJobRepositoryMock();
-    getPublishedStylePresetForGenerationFn = jest.fn().mockResolvedValue({
-      id: STYLE_ID,
-      title: "PARIS CODE",
-      thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
-      thumbnailWidth: 912,
-      thumbnailHeight: 1173,
-      hasBackgroundPrompt: false,
-      stylingPrompt: "RAW PROMPT\nSECOND LINE",
-      backgroundPrompt: null,
-    });
+    getPublishedStylePresetForGenerationFn = jest
+      .fn()
+      .mockResolvedValue(buildStylePresetForGeneration());
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
     invokeImageWorkerFn = jest.fn();
 
@@ -195,6 +219,8 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       status: "queued",
       processing_stage: "queued",
       attempts: 0,
+      style_reference_image_url: null,
+      style_preset_category_key: "coordinate",
     });
     expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
       "style-job-001"
