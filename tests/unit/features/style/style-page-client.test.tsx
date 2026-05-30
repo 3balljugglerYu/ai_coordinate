@@ -379,6 +379,17 @@ function translate(
   );
 }
 
+const TEST_COORDINATE_CATEGORY = {
+  id: "cat-coordinate",
+  key: "coordinate",
+  displayNameJa: "コーディネート",
+  displayNameEn: "Coordinate",
+  badgeColor: "#1f2937",
+  badgeTextColor: "#ffffff",
+  skipBasePrefix: false,
+  isActive: true,
+} as const;
+
 const presets: readonly StylePresetPublicSummary[] = [
   {
     id: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
@@ -387,6 +398,8 @@ const presets: readonly StylePresetPublicSummary[] = [
     thumbnailWidth: 912,
     thumbnailHeight: 1173,
     hasBackgroundPrompt: true,
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
   },
   {
     id: "a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e",
@@ -395,6 +408,8 @@ const presets: readonly StylePresetPublicSummary[] = [
     thumbnailWidth: 640,
     thumbnailHeight: 480,
     hasBackgroundPrompt: false,
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
   },
 ];
 
