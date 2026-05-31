@@ -1,8 +1,11 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
+  DUAL_REFERENCE_SOURCE_VALUES,
   IMAGE_INPUT_MODE_VALUES,
   stylePresetStatusSchema,
+  type DualReferenceSource,
   type ImageInputMode,
 } from "@/features/style-presets/lib/schema";
 import {
@@ -46,6 +49,10 @@ export async function POST(request: NextRequest) {
   let uploadedThumbnailPath: string | null = null;
   let uploadedReferencePath: string | null = null;
 
+  // CSRF 防御: cookie 認証 mutation route は Same-Origin Origin 検証 (REQ-14)
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     const user = await requireAdmin();
     const formData = await request.formData();
@@ -57,6 +64,7 @@ export async function POST(request: NextRequest) {
     const statusEntry = formData.get("status");
     const categoryIdEntry = formData.get("category_id");
     const imageInputModeEntry = formData.get("image_input_mode");
+    const dualReferenceSourceEntry = formData.get("dual_reference_source");
     const file = formData.get("file");
     const referenceFile = formData.get("reference_file");
 
@@ -133,11 +141,34 @@ export async function POST(request: NextRequest) {
       imageInputMode = imageInputModeEntry as ImageInputMode;
     }
 
-    // dual モードなら reference 画像必須
-    if (imageInputMode === "dual") {
+    // dual_reference_source (未指定なら 'admin')。single の場合は 'admin' に正規化 (DB CHECK 制約)
+    let dualReferenceSource: DualReferenceSource = "admin";
+    if (
+      typeof dualReferenceSourceEntry === "string" &&
+      dualReferenceSourceEntry.length > 0
+    ) {
+      if (
+        !DUAL_REFERENCE_SOURCE_VALUES.includes(
+          dualReferenceSourceEntry as DualReferenceSource,
+        )
+      ) {
+        return NextResponse.json(
+          { error: "dual_reference_source は 'admin' か 'user_upload' を指定してください" },
+          { status: 400 }
+        );
+      }
+      dualReferenceSource = dualReferenceSourceEntry as DualReferenceSource;
+    }
+    if (imageInputMode === "single") {
+      // single + user_upload は DB CHECK 制約で拒否されるため、サーバ側で 'admin' に矯正
+      dualReferenceSource = "admin";
+    }
+
+    // dual + admin の場合のみ reference 画像必須。dual + user_upload はユーザーがその都度提供する
+    if (imageInputMode === "dual" && dualReferenceSource === "admin") {
       if (!(referenceFile instanceof File) || referenceFile.size === 0) {
         return NextResponse.json(
-          { error: "dual モードでは参考画像 (image_1) が必須です" },
+          { error: "dual (admin) モードでは参考画像 (image_1) が必須です" },
           { status: 400 }
         );
       }
@@ -159,7 +190,11 @@ export async function POST(request: NextRequest) {
     let referenceImageStoragePath: string | null = null;
     let referenceImageWidth: number | null = null;
     let referenceImageHeight: number | null = null;
-    if (imageInputMode === "dual" && referenceFile instanceof File) {
+    if (
+      imageInputMode === "dual" &&
+      dualReferenceSource === "admin" &&
+      referenceFile instanceof File
+    ) {
       const refUploaded = await uploadStylePresetReferenceImage(
         referenceFile,
         presetId
@@ -185,6 +220,7 @@ export async function POST(request: NextRequest) {
       createdBy: user.id,
       categoryId: category.id,
       imageInputMode,
+      dualReferenceSource,
       referenceImageUrl,
       referenceImageStoragePath,
       referenceImageWidth,

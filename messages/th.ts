@@ -1616,6 +1616,13 @@ export const thMessages = {
     heading: "Persta",
     subtitle:
       "แพลตฟอร์มจัดสไตล์ด้วย AI สำหรับลุคและตัวละครที่คุณอยากสร้าง",
+    userReferenceImageLabel: "Reference image (image_1)",
+    userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
+    userPromptLabel: "Additional style instructions (optional)",
+    userPromptPlaceholder: "e.g. Add a long-sleeved coat as well",
+    userPromptHint: "You can add extra requests for the selected style (up to {max} characters).",
+    userPromptClear: "Clear",
+    userPromptCharacterCount: "{current}/{max} characters",
     stylePresetCarouselTitle: "เปลี่ยนชุดได้ ไม่ต้องใช้พรอมป์!",
     stylePresetConfirmTitle: "ลองชุดนี้?",
     stylePresetConfirmCancel: "ดูชุดอื่น",

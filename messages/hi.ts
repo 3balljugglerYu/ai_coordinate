@@ -1618,6 +1618,13 @@ export const hiMessages = {
     heading: "Persta",
     subtitle:
       "उन लुक्स और कैरेक्टरों के लिए AI स्टाइलिंग प्लेटफ़ॉर्म जिन्हें आप बनाना चाहते हैं।",
+    userReferenceImageLabel: "Reference image (image_1)",
+    userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
+    userPromptLabel: "Additional style instructions (optional)",
+    userPromptPlaceholder: "e.g. Add a long-sleeved coat as well",
+    userPromptHint: "You can add extra requests for the selected style (up to {max} characters).",
+    userPromptClear: "Clear",
+    userPromptCharacterCount: "{current}/{max} characters",
     stylePresetCarouselTitle: "बिना प्रॉम्प्ट के आउटफ़िट बदलें!",
     stylePresetConfirmTitle: "इसे आज़माएँ?",
     stylePresetConfirmCancel: "अन्य आउटफ़िट देखें",

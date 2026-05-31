@@ -25,6 +25,7 @@ interface FormState {
   showSourceImageTypeControl: boolean;
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
+  showUserPromptInput: boolean;
   visibility: "public" | "admin_only";
   displayOrder: number;
   isActive: boolean;
@@ -45,6 +46,7 @@ function toFormState(initial?: PresetCategoryAdmin): FormState {
     showSourceImageTypeControl: initial?.showSourceImageTypeControl ?? true,
     showBackgroundChangeControl: initial?.showBackgroundChangeControl ?? true,
     showGenerationModelControl: initial?.showGenerationModelControl ?? true,
+    showUserPromptInput: initial?.showUserPromptInput ?? false,
     visibility: initial?.visibility ?? "admin_only",
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
@@ -83,6 +85,7 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_source_image_type_control: form.showSourceImageTypeControl,
               show_background_change_control: form.showBackgroundChangeControl,
               show_generation_model_control: form.showGenerationModelControl,
+              show_user_prompt_input: form.showUserPromptInput,
               visibility: form.visibility,
               display_order: form.displayOrder,
               is_active: form.isActive,
@@ -100,6 +103,7 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_source_image_type_control: form.showSourceImageTypeControl,
               show_background_change_control: form.showBackgroundChangeControl,
               show_generation_model_control: form.showGenerationModelControl,
+              show_user_prompt_input: form.showUserPromptInput,
               visibility: form.visibility,
               display_order: form.displayOrder,
               is_active: form.isActive,
@@ -477,6 +481,24 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
             <br />
             <span className="text-xs text-slate-500">
               OFF の場合、/style ではモデル選択を表示せず、既定モデルで生成します。
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.showUserPromptInput}
+            onChange={(e) =>
+              update("showUserPromptInput", e.target.checked)
+            }
+            className="mt-1 h-4 w-4 rounded border-slate-300"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">ユーザープロンプト入力欄を表示</span>
+            <br />
+            <span className="text-xs text-slate-500">
+              ON にすると /style にプロンプト textarea が出現し、preset.stylingPrompt の後ろにユーザー入力を結合して生成します。OFF (default) なら入力欄は出ず、preset.stylingPrompt のみで生成。
             </span>
           </span>
         </label>

@@ -1616,6 +1616,13 @@ export const koMessages = {
     heading: "Persta",
     subtitle:
       "만들고 싶은 룩과 캐릭터를 위한 AI 스타일링 플랫폼.",
+    userReferenceImageLabel: "Reference image (image_1)",
+    userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
+    userPromptLabel: "Additional style instructions (optional)",
+    userPromptPlaceholder: "e.g. Add a long-sleeved coat as well",
+    userPromptHint: "You can add extra requests for the selected style (up to {max} characters).",
+    userPromptClear: "Clear",
+    userPromptCharacterCount: "{current}/{max} characters",
     stylePresetCarouselTitle: "프롬프트 없이 코디 변경!",
     stylePresetConfirmTitle: "이 룩을 입혀볼까요?",
     stylePresetConfirmCancel: "다른 코디 보기",

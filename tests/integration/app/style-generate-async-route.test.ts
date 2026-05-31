@@ -48,6 +48,7 @@ const TEST_COORDINATE_CATEGORY = {
   showSourceImageTypeControl: true,
   showBackgroundChangeControl: true,
   showGenerationModelControl: true,
+  showUserPromptInput: false,
   visibility: "public",
   isActive: true,
 };
@@ -67,6 +68,7 @@ function buildStylePresetForGeneration(
     status: "published",
     category: TEST_COORDINATE_CATEGORY,
     imageInputMode: "single",
+    dualReferenceSource: "admin",
     referenceImageUrl: null,
     referenceImageStoragePath: null,
     ...overrides,
@@ -228,6 +230,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       processing_stage: "queued",
       attempts: 0,
       style_reference_image_url: null,
+      style_reference_image_bucket: null,
       style_preset_category_key: "coordinate",
     });
     expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(

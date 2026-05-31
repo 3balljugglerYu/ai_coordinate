@@ -1614,6 +1614,13 @@ export const zhTwMessages = {
     heading: "Persta",
     subtitle:
       "想呈現的造型與角色，皆可從這裡開始的 AI 造型平台。",
+    userReferenceImageLabel: "Reference image (image_1)",
+    userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
+    userPromptLabel: "Additional style instructions (optional)",
+    userPromptPlaceholder: "e.g. Add a long-sleeved coat as well",
+    userPromptHint: "You can add extra requests for the selected style (up to {max} characters).",
+    userPromptClear: "Clear",
+    userPromptCharacterCount: "{current}/{max} characters",
     stylePresetCarouselTitle: "免提示詞，立即換裝!",
     stylePresetConfirmTitle: "要試穿這套嗎?",
     stylePresetConfirmCancel: "看看其他穿搭",

@@ -20,6 +20,10 @@ export const IMAGE_INPUT_MODE_VALUES = ["single", "dual"] as const;
 export const imageInputModeSchema = z.enum(IMAGE_INPUT_MODE_VALUES);
 export type ImageInputMode = (typeof IMAGE_INPUT_MODE_VALUES)[number];
 
+export const DUAL_REFERENCE_SOURCE_VALUES = ["admin", "user_upload"] as const;
+export const dualReferenceSourceSchema = z.enum(DUAL_REFERENCE_SOURCE_VALUES);
+export type DualReferenceSource = (typeof DUAL_REFERENCE_SOURCE_VALUES)[number];
+
 export const STYLE_PRESET_CATEGORY_VISIBILITY_VALUES = [
   "public",
   "admin_only",
@@ -44,6 +48,7 @@ export interface StylePresetCategoryRef {
   showSourceImageTypeControl: boolean;
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
+  showUserPromptInput: boolean;
   visibility: StylePresetCategoryVisibility;
   isActive: boolean;
 }
@@ -62,6 +67,7 @@ export interface StylePresetAdmin {
   status: StylePresetStatus;
   category: StylePresetCategoryRef;
   imageInputMode: ImageInputMode;
+  dualReferenceSource: DualReferenceSource;
   referenceImageUrl: string | null;
   referenceImageStoragePath: string | null;
   referenceImageWidth: number | null;
@@ -81,6 +87,7 @@ export interface StylePresetPublicSummary {
   hasBackgroundPrompt: boolean;
   category: StylePresetCategoryRef;
   imageInputMode: ImageInputMode;
+  dualReferenceSource: DualReferenceSource;
 }
 
 export interface StylePresetGenerationRecord extends StylePresetPublicSummary {
@@ -103,10 +110,11 @@ export interface StylePresetInsert {
   sortOrder?: number;
   status: StylePresetStatus;
   createdBy?: string | null;
-  // category / dual モード関連: 未指定の場合 RPC 側で 'coordinate' / 'single' に
+  // category / dual モード関連: 未指定の場合 RPC 側で 'coordinate' / 'single' / 'admin' に
   // フォールバックする (= 既存挙動を 100% 維持)。Phase 4 で admin UI 必須化する。
   categoryId?: string;
   imageInputMode?: ImageInputMode;
+  dualReferenceSource?: DualReferenceSource;
   referenceImageUrl?: string | null;
   referenceImageStoragePath?: string | null;
   referenceImageWidth?: number | null;
@@ -127,6 +135,7 @@ export interface StylePresetUpdate {
   // 未指定なら現状値を維持する semantics。
   categoryId?: string;
   imageInputMode?: ImageInputMode;
+  dualReferenceSource?: DualReferenceSource;
   referenceImageUrl?: string | null;
   referenceImageStoragePath?: string | null;
   referenceImageWidth?: number | null;

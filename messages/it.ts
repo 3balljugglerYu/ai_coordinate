@@ -1620,6 +1620,13 @@ export const itMessages = {
     heading: "Persta",
     subtitle:
       "Una piattaforma di styling con IA per i look e i personaggi che vuoi creare.",
+    userReferenceImageLabel: "Reference image (image_1)",
+    userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
+    userPromptLabel: "Additional style instructions (optional)",
+    userPromptPlaceholder: "e.g. Add a long-sleeved coat as well",
+    userPromptHint: "You can add extra requests for the selected style (up to {max} characters).",
+    userPromptClear: "Clear",
+    userPromptCharacterCount: "{current}/{max} characters",
     stylePresetCarouselTitle: "Cambia outfit, senza prompt!",
     stylePresetConfirmTitle: "Provarlo?",
     stylePresetConfirmCancel: "Vedi altri outfit",

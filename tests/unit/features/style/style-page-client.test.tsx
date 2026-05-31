@@ -395,6 +395,7 @@ const TEST_COORDINATE_CATEGORY = {
   showSourceImageTypeControl: true,
   showBackgroundChangeControl: true,
   showGenerationModelControl: true,
+  showUserPromptInput: false,
   visibility: "public",
   isActive: true,
 } as const;
@@ -409,6 +410,7 @@ const presets: readonly StylePresetPublicSummary[] = [
     hasBackgroundPrompt: true,
     category: TEST_COORDINATE_CATEGORY,
     imageInputMode: "single",
+    dualReferenceSource: "admin",
   },
   {
     id: "a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e",
@@ -419,6 +421,7 @@ const presets: readonly StylePresetPublicSummary[] = [
     hasBackgroundPrompt: false,
     category: TEST_COORDINATE_CATEGORY,
     imageInputMode: "single",
+    dualReferenceSource: "admin",
   },
 ];
 

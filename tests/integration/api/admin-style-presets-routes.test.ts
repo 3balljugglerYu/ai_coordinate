@@ -71,6 +71,7 @@ const TEST_CATEGORY_REF = {
   showSourceImageTypeControl: true,
   showBackgroundChangeControl: true,
   showGenerationModelControl: true,
+  showUserPromptInput: false,
   visibility: "public",
   isActive: true,
 } as const;
@@ -90,6 +91,7 @@ function withCategoryFields<T extends object>(preset: T): never {
     ...preset,
     category: TEST_CATEGORY_REF,
     imageInputMode: "single" as const,
+    dualReferenceSource: "admin" as const,
     referenceImageUrl: null,
     referenceImageStoragePath: null,
     referenceImageWidth: null,
@@ -100,6 +102,11 @@ function withCategoryFields<T extends object>(preset: T): never {
 function createFormRequest(path: string, formData: FormData, method: string) {
   return new NextRequest(`http://localhost${path}`, {
     method,
+    headers: {
+      // Same-Origin check (ensureSameOrigin) を通すため
+      origin: "http://localhost",
+      host: "localhost",
+    },
     body: formData,
   });
 }
@@ -109,6 +116,8 @@ function createJsonRequest(path: string, body: Record<string, unknown>) {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      origin: "http://localhost",
+      host: "localhost",
     },
     body: JSON.stringify(body),
   });
@@ -451,6 +460,7 @@ describe("admin style preset routes", () => {
     const response = await DELETE(
       new NextRequest("http://localhost/api/admin/style-presets/preset-1", {
         method: "DELETE",
+        headers: { origin: "http://localhost", host: "localhost" },
       }),
       { params: Promise.resolve({ id: "preset-1" }) }
     );

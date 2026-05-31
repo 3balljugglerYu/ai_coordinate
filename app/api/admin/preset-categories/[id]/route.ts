@@ -1,6 +1,7 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   deactivatePresetCategory,
@@ -32,6 +33,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   await connection();
+
+  // CSRF 防御: cookie 認証 mutation route は Same-Origin Origin 検証 (REQ-14)
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   let user: Awaited<ReturnType<typeof requireAdmin>>;
   try {
     user = await requireAdmin();
@@ -233,6 +239,15 @@ export async function PATCH(
     }
     update.showGenerationModelControl = body.show_generation_model_control;
   }
+  if (body.show_user_prompt_input !== undefined) {
+    if (typeof body.show_user_prompt_input !== "boolean") {
+      return NextResponse.json(
+        { error: "show_user_prompt_input must be boolean" },
+        { status: 400 },
+      );
+    }
+    update.showUserPromptInput = body.show_user_prompt_input;
+  }
   if (body.visibility !== undefined) {
     if (
       typeof body.visibility !== "string" ||
@@ -311,10 +326,15 @@ export async function PATCH(
  * (既存 preset との FK 整合性 + 過去ジョブのスナップショット集計を壊さないため)
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   await connection();
+
+  // CSRF 防御: cookie 認証 mutation route は Same-Origin Origin 検証 (REQ-14)
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   let user: Awaited<ReturnType<typeof requireAdmin>>;
   try {
     user = await requireAdmin();

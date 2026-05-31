@@ -85,6 +85,7 @@ const TEST_COORDINATE_CATEGORY = {
   showSourceImageTypeControl: true,
   showBackgroundChangeControl: true,
   showGenerationModelControl: true,
+  showUserPromptInput: false,
   visibility: "public",
   isActive: true,
 };
@@ -104,6 +105,7 @@ function buildStylePresetForGeneration(
     status: "published",
     category: TEST_COORDINATE_CATEGORY,
     imageInputMode: "single",
+    dualReferenceSource: "admin",
     referenceImageUrl: null,
     referenceImageStoragePath: null,
     ...overrides,

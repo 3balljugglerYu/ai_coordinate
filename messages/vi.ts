@@ -1617,6 +1617,13 @@ export const viMessages = {
     heading: "Persta",
     subtitle:
       "Nền tảng styling AI cho những diện mạo và nhân vật bạn muốn tạo nên.",
+    userReferenceImageLabel: "Reference image (image_1)",
+    userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
+    userPromptLabel: "Additional style instructions (optional)",
+    userPromptPlaceholder: "e.g. Add a long-sleeved coat as well",
+    userPromptHint: "You can add extra requests for the selected style (up to {max} characters).",
+    userPromptClear: "Clear",
+    userPromptCharacterCount: "{current}/{max} characters",
     stylePresetCarouselTitle: "Đổi đồ — không cần prompt!",
     stylePresetConfirmTitle: "Thử bộ này?",
     stylePresetConfirmCancel: "Xem các bộ khác",

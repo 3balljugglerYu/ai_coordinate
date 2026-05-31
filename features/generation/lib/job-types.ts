@@ -65,6 +65,11 @@ export interface ImageJob {
   // generation_type='one_tap_style' の生成時に保存し、後で category が rename/削除されても
   // 過去ジョブの集計が連続するようにする。
   style_preset_category_key?: string | null;
+  // one_tap_style の image_1 (style_reference_image_url) を取得する Storage bucket。
+  // 'style_presets' = admin 登録の preset 参考画像、'generated-images' = ユーザーが
+  // /style でアップロードした temp/{user_id}/... 画像。NULL は旧 job 互換で
+  // 'style_presets' 扱い (worker 側で fallback)。
+  style_reference_image_bucket?: "style_presets" | "generated-images" | null;
 }
 
 /**

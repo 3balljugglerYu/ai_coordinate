@@ -31,6 +31,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { ImageSourcePicker } from "@/features/generation/components/ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
+import { PromptInputField } from "@/features/generation/components/PromptInputField";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
 import type { SourceImageStock } from "@/features/generation/lib/database";
 import type { PickerSourceItem } from "@/features/generation/types";
@@ -372,6 +374,12 @@ export function StylePageClient({
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
+  // dual + user_upload preset 用の image_1。preset.dualReferenceSource='user_upload' のときのみ意味あり。
+  const [userReferenceImage, setUserReferenceImage] = useState<File | null>(
+    null,
+  );
+  // category.showUserPromptInput=true のときのみ意味あり (= サーバ側でホワイトリスト処理)。
+  const [userPromptInputValue, setUserPromptInputValue] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const currentUrl = useCurrentUrlForRedirect();
@@ -1138,6 +1146,19 @@ export function StylePageClient({
       formData.set("sourceImageType", effectiveSourceImageType);
       formData.set("backgroundChange", effectiveBackgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
+      if (
+        selectedPreset.imageInputMode === "dual" &&
+        selectedPreset.dualReferenceSource === "user_upload" &&
+        userReferenceImage
+      ) {
+        formData.set("uploadImage2", userReferenceImage);
+      }
+      if (
+        selectedPreset.category.showUserPromptInput &&
+        userPromptInputValue.trim().length > 0
+      ) {
+        formData.set("userPrompt", userPromptInputValue);
+      }
 
       const response = await fetch("/style/generate", {
         method: "POST",
@@ -1219,6 +1240,19 @@ export function StylePageClient({
       formData.set("sourceImageType", effectiveSourceImageType);
       formData.set("backgroundChange", effectiveBackgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
+      if (
+        selectedPreset.imageInputMode === "dual" &&
+        selectedPreset.dualReferenceSource === "user_upload" &&
+        userReferenceImage
+      ) {
+        formData.set("uploadImage2", userReferenceImage);
+      }
+      if (
+        selectedPreset.category.showUserPromptInput &&
+        userPromptInputValue.trim().length > 0
+      ) {
+        formData.set("userPrompt", userPromptInputValue);
+      }
 
       if (selectedRemoteSource?.kind === "stock") {
         // ストック画像: サーバ側で source_image_stocks から URL を解決。
@@ -1768,6 +1802,64 @@ export function StylePageClient({
           </div>
         </Card>
       </section>
+
+      {/*
+        preset.dualReferenceSource='user_upload' のとき、ユーザーが image_1 を
+        その都度アップロードする UI を表示する。
+      */}
+      {selectedPreset &&
+        selectedPreset.imageInputMode === "dual" &&
+        selectedPreset.dualReferenceSource === "user_upload" && (
+          <section className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-4">
+            <Label
+              htmlFor="user-reference-image"
+              className="text-base font-medium text-amber-900"
+            >
+              {t("userReferenceImageLabel")}
+            </Label>
+            <p className="text-xs text-amber-800">
+              {t("userReferenceImageHint")}
+            </p>
+            <input
+              id="user-reference-image"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              disabled={isGenerating}
+              onChange={(event) => {
+                const next = event.target.files?.[0] ?? null;
+                setUserReferenceImage(next);
+              }}
+              className="block w-full text-sm text-amber-900"
+            />
+            {userReferenceImage && (
+              <p className="text-xs text-amber-900">
+                {userReferenceImage.name}
+              </p>
+            )}
+          </section>
+        )}
+
+      {/*
+        category.showUserPromptInput=true のとき、ユーザーがプロンプトを入力する UI を表示する。
+        生成時に preset.stylingPrompt の後ろに結合される (= preset で大枠を決め、ユーザーが細部追加)。
+      */}
+      {selectedPreset?.category.showUserPromptInput && (
+        <PromptInputField
+          value={userPromptInputValue}
+          onChange={setUserPromptInputValue}
+          label={t("userPromptLabel")}
+          placeholder={t("userPromptPlaceholder")}
+          hint={t("userPromptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
+          clearLabel={t("userPromptClear")}
+          characterCount={t("userPromptCharacterCount", {
+            current: userPromptInputValue.length,
+            max: GENERATION_PROMPT_MAX_LENGTH,
+          })}
+          maxLength={GENERATION_PROMPT_MAX_LENGTH}
+          disabled={isGenerating}
+          id="user-prompt"
+        />
+      )}
 
       {errorState ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">

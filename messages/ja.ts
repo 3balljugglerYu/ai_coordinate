@@ -1548,6 +1548,13 @@ export const jaMessages = {
   home: {
     heading: "Persta | ペルスタ",
     subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
+    userReferenceImageLabel: "参考画像 (image_1)",
+    userReferenceImageHint: "このスタイルでは、あなたが選んだ参考画像を組み合わせて生成します (JPEG / PNG / WebP)。",
+    userPromptLabel: "追加のスタイル指示 (任意)",
+    userPromptPlaceholder: "例: 長袖のコートも追加してください",
+    userPromptHint: "選んだスタイルに追加で要望があれば入力できます (最大 {max} 文字)。",
+    userPromptClear: "クリア",
+    userPromptCharacterCount: "{current}/{max} 文字",
     stylePresetCarouselTitle: "プロンプトなしでお着替え！",
     stylePresetConfirmTitle: "こちらを試着しますか？",
     stylePresetConfirmCancel: "他のコーデをみる",

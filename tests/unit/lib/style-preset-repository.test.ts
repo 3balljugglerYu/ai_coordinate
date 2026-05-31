@@ -190,10 +190,12 @@ describe("style-preset repository", () => {
           showSourceImageTypeControl: true,
           showBackgroundChangeControl: true,
           showGenerationModelControl: true,
+          showUserPromptInput: false,
           visibility: "public",
           isActive: true,
         },
         imageInputMode: "single",
+        dualReferenceSource: "admin",
       },
     ]);
   });
@@ -359,6 +361,7 @@ describe("style-preset repository", () => {
       p_reference_image_storage_path: null,
       p_reference_image_width: null,
       p_reference_image_height: null,
+      p_dual_reference_source: "admin",
     });
     expect(updated.sortOrder).toBe(2);
     expect(updated.updatedBy).toBe("admin-2");

@@ -34,6 +34,7 @@ export interface PresetCategoryRow {
   show_source_image_type_control?: boolean | null;
   show_background_change_control?: boolean | null;
   show_generation_model_control?: boolean | null;
+  show_user_prompt_input?: boolean | null;
   visibility?: StylePresetCategoryVisibility | null;
   display_order: number;
   is_active: boolean;
@@ -58,6 +59,7 @@ export interface PresetCategoryAdmin {
   showSourceImageTypeControl: boolean;
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
+  showUserPromptInput: boolean;
   visibility: StylePresetCategoryVisibility;
   displayOrder: number;
   isActive: boolean;
@@ -81,6 +83,7 @@ export interface PresetCategoryInsert {
   showSourceImageTypeControl?: boolean;
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
+  showUserPromptInput?: boolean;
   visibility?: StylePresetCategoryVisibility;
   displayOrder?: number;
   isActive?: boolean;
@@ -100,6 +103,7 @@ export interface PresetCategoryUpdate {
   showSourceImageTypeControl?: boolean;
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
+  showUserPromptInput?: boolean;
   visibility?: StylePresetCategoryVisibility;
   displayOrder?: number;
   isActive?: boolean;
@@ -134,6 +138,7 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     showSourceImageTypeControl: row.show_source_image_type_control ?? true,
     showBackgroundChangeControl: row.show_background_change_control ?? true,
     showGenerationModelControl: row.show_generation_model_control ?? true,
+    showUserPromptInput: row.show_user_prompt_input ?? false,
     visibility: normalizeVisibility(row.visibility),
     displayOrder: row.display_order,
     isActive: row.is_active,
@@ -226,6 +231,7 @@ export async function createPresetCategory(
       show_source_image_type_control: input.showSourceImageTypeControl ?? true,
       show_background_change_control: input.showBackgroundChangeControl ?? true,
       show_generation_model_control: input.showGenerationModelControl ?? true,
+      show_user_prompt_input: input.showUserPromptInput ?? false,
       visibility: input.visibility ?? "admin_only",
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
@@ -268,6 +274,8 @@ export async function updatePresetCategory(
     payload.show_background_change_control = input.showBackgroundChangeControl;
   if (input.showGenerationModelControl !== undefined)
     payload.show_generation_model_control = input.showGenerationModelControl;
+  if (input.showUserPromptInput !== undefined)
+    payload.show_user_prompt_input = input.showUserPromptInput;
   if (input.visibility !== undefined)
     payload.visibility = input.visibility;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
