@@ -1,0 +1,110 @@
+/** @jest-environment node */
+
+import {
+  buildStyleGenerationPrompt,
+  STYLE_PROMPT_BASE_PREFIX,
+  STYLE_PROMPT_ILLUSTRATION_SUFFIX,
+  STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+  STYLE_PROMPT_REAL_SUFFIX,
+} from "@/shared/generation/style-prompts";
+
+describe("buildStyleGenerationPrompt - default (skipBasePrefix = false)", () => {
+  test("illustration + backgroundChange=false で base_prefix + illustration_suffix + keep_background_suffix を含む", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "Wearing pajamas",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "illustration",
+    });
+    expect(result).toContain(STYLE_PROMPT_BASE_PREFIX);
+    expect(result).toContain(STYLE_PROMPT_ILLUSTRATION_SUFFIX);
+    expect(result).toContain(STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX);
+    expect(result).toContain("Styling Direction:\nWearing pajamas");
+    expect(result).not.toContain("Background Direction:");
+  });
+
+  test("real ソースの時 illustration_suffix ではなく real_suffix を選ぶ", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "Wearing pajamas",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "real",
+    });
+    expect(result).toContain(STYLE_PROMPT_REAL_SUFFIX);
+    expect(result).not.toContain(STYLE_PROMPT_ILLUSTRATION_SUFFIX);
+  });
+
+  test("backgroundChange=true + backgroundPrompt あり で Background Direction を末尾に追記する", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "Wearing pajamas",
+      backgroundPrompt: "Soft spring background",
+      backgroundChange: true,
+      sourceImageType: "illustration",
+    });
+    expect(result).toContain("Background Direction:\nSoft spring background");
+  });
+
+  test("templates dict 指定で base_prefix を override できる", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "illustration",
+      templates: {
+        "style.base_prefix": "CUSTOM PREFIX",
+      },
+    });
+    expect(result).toContain("CUSTOM PREFIX");
+    expect(result).not.toContain(STYLE_PROMPT_BASE_PREFIX);
+  });
+});
+
+describe("buildStyleGenerationPrompt - skipBasePrefix = true (raw モード)", () => {
+  test("base_prefix / illustration_suffix / keep_background_suffix を一切含まず styling prompt だけになる", () => {
+    const result = buildStyleGenerationPrompt(
+      {
+        stylingPrompt: "Convert to chibi style",
+        backgroundPrompt: null,
+        backgroundChange: false,
+        sourceImageType: "illustration",
+      },
+      { skipBasePrefix: true },
+    );
+    expect(result).toBe("Styling Direction:\nConvert to chibi style");
+    expect(result).not.toContain(STYLE_PROMPT_BASE_PREFIX);
+    expect(result).not.toContain(STYLE_PROMPT_ILLUSTRATION_SUFFIX);
+    expect(result).not.toContain(STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX);
+  });
+
+  test("raw モードでも backgroundChange=true + backgroundPrompt あり なら Background Direction を追記する", () => {
+    const result = buildStyleGenerationPrompt(
+      {
+        stylingPrompt: "Convert to chibi style",
+        backgroundPrompt: "Cute pastel background",
+        backgroundChange: true,
+        sourceImageType: "illustration",
+      },
+      { skipBasePrefix: true },
+    );
+    expect(result).toBe(
+      "Styling Direction:\nConvert to chibi style\n\nBackground Direction:\nCute pastel background",
+    );
+  });
+
+  test("raw モードでは sourceImageType は影響しない (real でも illustration でも結果同じ)", () => {
+    const baseParams = {
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      backgroundChange: false,
+    };
+    const illustration = buildStyleGenerationPrompt(
+      { ...baseParams, sourceImageType: "illustration" as const },
+      { skipBasePrefix: true },
+    );
+    const real = buildStyleGenerationPrompt(
+      { ...baseParams, sourceImageType: "real" as const },
+      { skipBasePrefix: true },
+    );
+    expect(illustration).toBe(real);
+  });
+});
