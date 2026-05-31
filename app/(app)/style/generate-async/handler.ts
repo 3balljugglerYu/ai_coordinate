@@ -10,6 +10,7 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
 import { env, getAdminUserIds } from "@/lib/env";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
@@ -109,6 +110,11 @@ export async function postStyleGenerateAsyncRoute(
   const copy = (await getAllMessages(locale)).style;
 
   try {
+    // CSRF 防御: cookie 認証でペルコイン消費・ジョブ投入する mutation route のため、
+    // request body を読む前に Same-Origin Origin 検証を通す。
+    const originGuard = ensureSameOrigin(request);
+    if (originGuard) return originGuard;
+
     const getUserFn = dependencies.getUserFn ?? getUser;
     const jobRepository =
       dependencies.jobRepository ?? createAsyncGenerationJobRepository();

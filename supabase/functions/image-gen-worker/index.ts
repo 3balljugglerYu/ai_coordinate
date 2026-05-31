@@ -478,6 +478,33 @@ async function downloadGeneratedImagesTempReferenceImage(
 }
 
 /**
+ * dual + user_upload の reference temp 画像を、ジョブ成功後に削除する。
+ * 失敗しても生成結果は壊さず、既存 cleanup cron に委ねる。
+ */
+async function deleteGeneratedImagesTempReferenceImageIfExists(
+  supabase: ReturnType<typeof createClient>,
+  storagePath: string | null
+): Promise<void> {
+  if (!storagePath?.startsWith("temp/")) {
+    return;
+  }
+
+  const { error } = await supabase.storage
+    .from("generated-images")
+    .remove([storagePath]);
+
+  if (error) {
+    console.warn(
+      "[Worker] failed to cleanup one_tap_style user_upload reference image",
+      {
+        path: storagePath,
+        error: error.message,
+      }
+    );
+  }
+}
+
+/**
  * one_tap_style の image_1 取得元 bucket / path を job から解決する pure helper (ADR-005)。
  * - `style_reference_image_bucket` 明示値があればそれを使う
  * - NULL (旧 job 互換) は 'style_presets' fallback
@@ -1268,8 +1295,8 @@ Deno.serve(async () => {
           p_queue_name: QUEUE_NAME,
           p_msg_id: msgId,
         });
-        continue;
-      }
+            continue;
+          }
 
       try {
         // ジョブのステータスを取得（冪等性チェック）
@@ -1452,6 +1479,7 @@ Deno.serve(async () => {
             : null;
         const workerStartedAtMs = Date.now();
         let currentStage: TimedProcessingStage | null = null;
+        let generatedImagesTempReferencePathToCleanup: string | null = null;
         const dbModel = normalizeModelName(job.model);
         const apiModel = toApiModelName(dbModel);
         const backgroundMode = resolveBackgroundMode(job.background_mode, null);
@@ -1750,16 +1778,20 @@ Deno.serve(async () => {
                       },
                     );
                     if (location) {
-                      const referenceImageData =
-                        location.bucket === "generated-images"
-                          ? await downloadGeneratedImagesTempReferenceImage(
-                              supabase,
-                              location.path,
-                            )
-                          : await downloadStylePresetReferenceImage(
-                              supabase,
-                              location.path,
-                            );
+                      let referenceImageData: InputImageData;
+                      if (location.bucket === "generated-images") {
+                        referenceImageData =
+                          await downloadGeneratedImagesTempReferenceImage(
+                            supabase,
+                            location.path,
+                          );
+                        generatedImagesTempReferencePathToCleanup = location.path;
+                      } else {
+                        referenceImageData = await downloadStylePresetReferenceImage(
+                          supabase,
+                          location.path,
+                        );
+                      }
                       resolvedInspireTemplateImage = referenceImageData;
                       parts.push({
                         inline_data: {
@@ -2563,7 +2595,12 @@ Deno.serve(async () => {
               currentStage,
             });
             continue;
-          }
+	          }
+
+          await deleteGeneratedImagesTempReferenceImageIfExists(
+            supabase,
+            generatedImagesTempReferencePathToCleanup,
+          );
 
           const siteUrl = Deno.env.get("SITE_URL");
           const cronSecret = Deno.env.get("CRON_SECRET");
