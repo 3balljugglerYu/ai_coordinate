@@ -1472,6 +1472,7 @@ export const thMessages = {
       "สไตล์นี้ไม่รองรับการเปลี่ยนพื้นหลัง",
     styleImageReadFailed: "อ่านรูปสไตล์ไม่สำเร็จ",
     noCreditsFlow: "หน้าจอนี้ไม่ตรวจสอบหรือใช้ Percoin",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

@@ -1409,6 +1409,7 @@ export const jaMessages = {
       "このスタイルは背景変更に対応していません。",
     styleImageReadFailed: "スタイル画像の読み込みに失敗しました。",
     noCreditsFlow: "この画面ではペルコイン確認や消費は行いません。",
+    userGuidanceTooltipAria: "このスタイルの利用ガイドを開く",
     userReferenceImageLabel: "参考画像 (image_1)",
     userReferenceImageHint: "このスタイルでは、あなたが選んだ参考画像を組み合わせて生成します (JPEG / PNG / WebP)。",
     userPromptLabel: "追加のスタイル指示 (任意)",

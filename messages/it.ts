@@ -1476,6 +1476,7 @@ export const itMessages = {
       "Questo stile non supporta il cambio dello sfondo.",
     styleImageReadFailed: "Impossibile leggere l'immagine dello stile.",
     noCreditsFlow: "Questa schermata non controlla né consuma Percoin.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

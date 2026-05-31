@@ -1474,6 +1474,7 @@ export const hiMessages = {
       "यह स्टाइल पृष्ठभूमि परिवर्तन का समर्थन नहीं करता।",
     styleImageReadFailed: "स्टाइल छवि पढ़ने में विफल।",
     noCreditsFlow: "यह स्क्रीन Percoin की जाँच या उपयोग नहीं करती।",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

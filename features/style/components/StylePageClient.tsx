@@ -33,6 +33,7 @@ import { ImageSourcePicker } from "@/features/generation/components/ImageSourceP
 import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
 import { PromptInputField } from "@/features/generation/components/PromptInputField";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
+import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
 import type { SourceImageStock } from "@/features/generation/lib/database";
 import type { PickerSourceItem } from "@/features/generation/types";
@@ -196,6 +197,7 @@ function StyleReferencePanel({
   className,
   collapsed = false,
   aspectRatio,
+  tooltip,
 }: {
   label: string;
   imageSrc: string;
@@ -203,6 +205,11 @@ function StyleReferencePanel({
   className?: string;
   collapsed?: boolean;
   aspectRatio?: number;
+  /**
+   * 画像コンテナの右上に絶対配置で重ねる任意の要素 (主に LabelInfoTooltip の `?` を想定)。
+   * preset カテゴリの user_guidance を画像内に表示するために使う。
+   */
+  tooltip?: React.ReactNode;
 }) {
   return (
     <div className={className ?? "space-y-3"}>
@@ -228,6 +235,13 @@ function StyleReferencePanel({
             className="object-cover"
             priority
           />
+          {tooltip ? (
+            <div
+              className={`absolute z-10 ${collapsed ? "right-1 top-1" : "right-2 top-2"}`}
+            >
+              {tooltip}
+            </div>
+          ) : null}
         </div>
       </Card>
     </div>
@@ -1555,6 +1569,22 @@ export function StylePageClient({
                 className={isReferenceCardCollapsed ? "min-w-0 space-y-1" : "min-w-0 space-y-3"}
                 collapsed={isReferenceCardCollapsed}
                 aspectRatio={selectedPresetAspectRatio}
+                tooltip={(() => {
+                  const guidance =
+                    (styleCardLocale === "en"
+                      ? selectedPreset.category.userGuidanceEn
+                      : selectedPreset.category.userGuidanceJa) ?? null;
+                  if (!guidance) return null;
+                  return (
+                    <LabelInfoTooltip
+                      ariaLabel={t("userGuidanceTooltipAria")}
+                      content={
+                        <span className="whitespace-pre-line">{guidance}</span>
+                      }
+                      contentClassName="max-w-[20rem] px-3 py-2 text-sm leading-6"
+                    />
+                  );
+                })()}
               />
             ) : null}
           </div>

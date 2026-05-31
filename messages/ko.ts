@@ -1472,6 +1472,7 @@ export const koMessages = {
       "이 스타일은 배경 변경을 지원하지 않습니다.",
     styleImageReadFailed: "스타일 이미지를 읽지 못했습니다.",
     noCreditsFlow: "이 화면에서는 Percoin을 확인하거나 사용하지 않습니다.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

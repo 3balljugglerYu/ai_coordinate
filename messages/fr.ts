@@ -1476,6 +1476,7 @@ export const frMessages = {
       "Ce style ne prend pas en charge le changement d'arrière-plan.",
     styleImageReadFailed: "Impossible de lire l'image du style.",
     noCreditsFlow: "Cet écran ne vérifie ni ne consomme de Percoins.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

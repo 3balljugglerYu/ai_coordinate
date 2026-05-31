@@ -1476,6 +1476,7 @@ export const deMessages = {
       "Dieser Stil unterstützt keine Hintergrundänderungen.",
     styleImageReadFailed: "Stilbild konnte nicht gelesen werden.",
     noCreditsFlow: "Dieser Bildschirm prüft oder verbraucht keine Percoins.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

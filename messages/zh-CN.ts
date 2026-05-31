@@ -1470,6 +1470,7 @@ export const zhCnMessages = {
       "此造型不支持背景更换。",
     styleImageReadFailed: "读取造型图片失败。",
     noCreditsFlow: "本页面不会查询或消耗 Percoin。",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

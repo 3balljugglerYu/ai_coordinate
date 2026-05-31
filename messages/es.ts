@@ -1476,6 +1476,7 @@ export const esMessages = {
       "Este estilo no permite cambiar el fondo.",
     styleImageReadFailed: "No se pudo leer la imagen del estilo.",
     noCreditsFlow: "Esta pantalla no comprueba ni consume Percoins.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

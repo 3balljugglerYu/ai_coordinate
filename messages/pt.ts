@@ -1476,6 +1476,7 @@ export const ptMessages = {
       "Este estilo não suporta mudança de fundo.",
     styleImageReadFailed: "Não foi possível ler a imagem do estilo.",
     noCreditsFlow: "Esta tela não verifica nem consome Percoins.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

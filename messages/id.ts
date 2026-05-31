@@ -1475,6 +1475,7 @@ export const idMessages = {
       "Gaya ini tidak mendukung perubahan latar belakang.",
     styleImageReadFailed: "Gagal membaca gambar gaya.",
     noCreditsFlow: "Layar ini tidak memeriksa atau menggunakan Percoin.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

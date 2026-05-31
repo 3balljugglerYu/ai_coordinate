@@ -1473,6 +1473,7 @@ export const arMessages = {
       "هذا الأسلوب لا يدعم تغيير الخلفية.",
     styleImageReadFailed: "فشل قراءة صورة الأسلوب.",
     noCreditsFlow: "هذه الشاشة لا تتحقق من Percoin أو تستهلكها.",
+    userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",
