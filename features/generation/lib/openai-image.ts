@@ -50,6 +50,7 @@ export interface CallOpenAIImageEditParams {
   timeoutMs: number;
   quality: GptImage2Quality;
   sizeTier: GptImage2SizeTier;
+  targetSize?: OpenAITargetSize;
   /**
    * fetch 実装の差し替え用（テストでモック注入する）。
    * 既定では Node の global fetch を使う。
@@ -80,6 +81,7 @@ export interface CallOpenAIImageEditMultiInputParams {
    * inspire 経路では 1（テンプレ画像）を指定する。
    */
   targetSizeBaseIndex?: number;
+  targetSize?: OpenAITargetSize;
   fetchFn?: typeof fetch;
   apiKey?: string;
   n?: number;
@@ -306,7 +308,9 @@ export async function callOpenAIImageEditBatch(
     );
   }
 
-  const targetSize = resolveOpenAITargetSize(params.inputImage, params.sizeTier);
+  const targetSize =
+    params.targetSize ??
+    resolveOpenAITargetSize(params.inputImage, params.sizeTier);
   const bytes = decodeBase64(params.inputImage.base64);
 
   const buildForm = () => {
@@ -421,7 +425,8 @@ export async function callOpenAIImageEditMultiInput(
   const baseIndex = params.targetSizeBaseIndex ?? 0;
   const baseImage =
     params.inputImages[baseIndex] ?? params.inputImages[0];
-  const targetSize = resolveOpenAITargetSize(baseImage, params.sizeTier);
+  const targetSize =
+    params.targetSize ?? resolveOpenAITargetSize(baseImage, params.sizeTier);
 
   const buildForm = () => {
     const form = new FormData();

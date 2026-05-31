@@ -4,6 +4,7 @@ import {
   MAX_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
+import { downloadStylePresetReferenceImage } from "@/features/style-presets/lib/style-preset-storage";
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import {
@@ -28,6 +29,7 @@ import {
 } from "@/features/generation/lib/guest-generate";
 import {
   callOpenAIImageEdit,
+  callOpenAIImageEditMultiInput,
 } from "@/features/generation/lib/openai-image";
 import {
   DEFAULT_GENERATION_MODEL,
@@ -55,14 +57,10 @@ interface StyleGenerateRouteDependencies {
    * テスト用 OpenAI クライアント差し替え (GPT Image 2 が選ばれた場合のみ呼ばれる)
    */
   openaiClient?: typeof callOpenAIImageEdit;
+  openaiMultiInputClient?: typeof callOpenAIImageEditMultiInput;
   getUserFn?: typeof getUser;
-  getPublishedStylePresetForGenerationFn?: (
-    styleId: string
-  ) => Promise<{
-    id: string;
-    stylingPrompt: string;
-    backgroundPrompt: string | null;
-  } | null>;
+  getPublishedStylePresetForGenerationFn?: typeof getPublishedStylePresetForGeneration;
+  downloadStylePresetReferenceImageFn?: typeof downloadStylePresetReferenceImage;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
   checkAndConsumeRateLimitFn?: (params: {
     request: NextRequest;
@@ -162,9 +160,14 @@ export async function postStyleGenerateRoute(
     const getUserFn = dependencies.getUserFn ?? getUser;
     const fetchFn = dependencies.fetchFn ?? fetch;
     const openaiClient = dependencies.openaiClient ?? callOpenAIImageEdit;
+    const openaiMultiInputClient =
+      dependencies.openaiMultiInputClient ?? callOpenAIImageEditMultiInput;
     const getPublishedStylePresetForGenerationFn =
       dependencies.getPublishedStylePresetForGenerationFn ??
       getPublishedStylePresetForGeneration;
+    const downloadStylePresetReferenceImageFn =
+      dependencies.downloadStylePresetReferenceImageFn ??
+      downloadStylePresetReferenceImage;
     const recordStyleUsageEventFn =
       dependencies.recordStyleUsageEventFn ?? recordStyleUsageEvent;
     const checkAndConsumeRateLimitFn =
@@ -248,6 +251,19 @@ export async function postStyleGenerateRoute(
     if (!preset) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
+    if (preset.category.visibility === "admin_only") {
+      return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    }
+    const effectiveSourceImageType: SourceImageType =
+      preset.category.showSourceImageTypeControl
+        ? sourceImageType
+        : "illustration";
+    const effectiveBackgroundChange = preset.category.showBackgroundChangeControl
+      ? backgroundChange
+      : false;
+    const effectiveModel = preset.category.showGenerationModelControl
+      ? model
+      : DEFAULT_GENERATION_MODEL;
 
     const uploadImage = getFile(formData.get("uploadImage"));
     if (!uploadImage) {
@@ -271,7 +287,7 @@ export async function postStyleGenerateRoute(
       );
     }
 
-    if (backgroundChange && !preset.backgroundPrompt?.trim()) {
+    if (effectiveBackgroundChange && !preset.backgroundPrompt?.trim()) {
       return jsonError(
         copy.styleBackgroundPromptUnavailable,
         "STYLE_BACKGROUND_PROMPT_UNAVAILABLE",
@@ -279,14 +295,26 @@ export async function postStyleGenerateRoute(
       );
     }
 
-    if (!geminiApiKey && !isOpenAIImageModel(model)) {
+    const dualReferenceImageStoragePath =
+      preset.imageInputMode === "dual"
+        ? preset.referenceImageStoragePath
+        : null;
+    if (preset.imageInputMode === "dual" && !dualReferenceImageStoragePath) {
+      return jsonError(
+        copy.invalidStylePreset,
+        "STYLE_DUAL_REFERENCE_MISSING",
+        400
+      );
+    }
+
+    if (!geminiApiKey && !isOpenAIImageModel(effectiveModel)) {
       return jsonError(
         copy.guestUpstreamUnavailable,
         "STYLE_UPSTREAM_UNAVAILABLE",
         500
       );
     }
-    if (!openaiApiKey && isOpenAIImageModel(model)) {
+    if (!openaiApiKey && isOpenAIImageModel(effectiveModel)) {
       return jsonError(
         copy.guestUpstreamUnavailable,
         "STYLE_UPSTREAM_UNAVAILABLE",
@@ -377,6 +405,26 @@ export async function postStyleGenerateRoute(
       );
     }
 
+    let referenceImage: File | null = null;
+    if (dualReferenceImageStoragePath) {
+      try {
+        referenceImage = await downloadStylePresetReferenceImageFn(
+          dualReferenceImageStoragePath
+        );
+      } catch (error) {
+        console.error(
+          "Style generate route: failed to load dual preset reference",
+          error
+        );
+        await releaseReservedAttempt("infra_error");
+        return jsonError(
+          copy.guestUpstreamUnavailable,
+          "STYLE_DUAL_REFERENCE_DOWNLOAD_FAILED",
+          500
+        );
+      }
+    }
+
     if (authState === "guest") {
       await recordStyleGenerateAttemptEvent({
         recordStyleUsageEventFn,
@@ -387,13 +435,17 @@ export async function postStyleGenerateRoute(
     }
 
     const promptTemplates = await resolveAllPromptTemplates();
-    const basePromptText = buildStyleGenerationPrompt({
-      stylingPrompt: preset.stylingPrompt,
-      backgroundPrompt: preset.backgroundPrompt,
-      backgroundChange,
-      sourceImageType,
-      templates: promptTemplates,
-    });
+    const basePromptText = buildStyleGenerationPrompt(
+      {
+        stylingPrompt: preset.stylingPrompt,
+        backgroundPrompt: preset.backgroundPrompt,
+        backgroundChange: effectiveBackgroundChange,
+        sourceImageType: effectiveSourceImageType,
+        templates: promptTemplates,
+      },
+      // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
+      { skipBasePrefix: preset.category.skipBasePrefix },
+    );
 
     let lastDispatchResult: DispatchGuestImageGenerationResult | null = null;
     for (let attempt = 1; attempt <= MAX_RETRYABLE_ATTEMPTS; attempt += 1) {
@@ -401,13 +453,16 @@ export async function postStyleGenerateRoute(
       const promptText = `${reinforcementPrefix}${basePromptText}`;
 
       const dispatchResult = await dispatchGuestImageGeneration({
-        model,
+        model: effectiveModel,
         promptText,
         uploadImage,
         geminiApiKey: geminiApiKey ?? "",
         openaiApiKey,
         fetchFn,
         openaiClient,
+        openaiMultiInputClient,
+        referenceImage,
+        outputAspectRatioMode: preset.category.outputAspectRatioMode,
       });
       lastDispatchResult = dispatchResult;
 

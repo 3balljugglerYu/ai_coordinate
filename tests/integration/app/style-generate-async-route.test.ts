@@ -34,6 +34,44 @@ import {
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
+const TEST_COORDINATE_CATEGORY = {
+  id: "category-coordinate",
+  key: "coordinate",
+  displayNameJa: "コーディネート",
+  displayNameEn: "Coordinate",
+  badgeColor: "#1f2937",
+  badgeTextColor: "#ffffff",
+  skipBasePrefix: false,
+  outputAspectRatioMode: "source",
+  userGuidanceJa: null,
+  userGuidanceEn: null,
+  showSourceImageTypeControl: true,
+  showBackgroundChangeControl: true,
+  showGenerationModelControl: true,
+  visibility: "public",
+  isActive: true,
+};
+
+function buildStylePresetForGeneration(
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    id: STYLE_ID,
+    title: "PARIS CODE",
+    thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
+    thumbnailWidth: 912,
+    thumbnailHeight: 1173,
+    hasBackgroundPrompt: false,
+    stylingPrompt: "RAW PROMPT\nSECOND LINE",
+    backgroundPrompt: null,
+    status: "published",
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
+    referenceImageUrl: null,
+    referenceImageStoragePath: null,
+    ...overrides,
+  };
+}
 
 function buildExpectedPrompt(params: {
   sourceImageType?: "illustration" | "real";
@@ -109,16 +147,9 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
     jobRepository = createAsyncGenerationJobRepositoryMock();
-    getPublishedStylePresetForGenerationFn = jest.fn().mockResolvedValue({
-      id: STYLE_ID,
-      title: "PARIS CODE",
-      thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
-      thumbnailWidth: 912,
-      thumbnailHeight: 1173,
-      hasBackgroundPrompt: false,
-      stylingPrompt: "RAW PROMPT\nSECOND LINE",
-      backgroundPrompt: null,
-    });
+    getPublishedStylePresetForGenerationFn = jest
+      .fn()
+      .mockResolvedValue(buildStylePresetForGeneration());
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
     invokeImageWorkerFn = jest.fn();
 
@@ -189,12 +220,15 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
           thumbnailWidth: 912,
           thumbnailHeight: 1173,
           hasBackgroundPrompt: false,
+          outputAspectRatioMode: "source",
           billingMode: "paid",
         },
       },
       status: "queued",
       processing_stage: "queued",
       attempts: 0,
+      style_reference_image_url: null,
+      style_preset_category_key: "coordinate",
     });
     expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
       "style-job-001"
@@ -202,6 +236,83 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     expect(invokeImageWorkerFn).toHaveBeenCalledWith(
       "https://example.supabase.co/functions/v1/image-gen-worker"
     );
+  });
+
+  test("カテゴリで非表示のstyleフォーム項目はサーバー側でも既定値に固定する", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
+      ...buildStylePresetForGeneration({
+        backgroundPrompt: "Soft spring city street with blossoms",
+        hasBackgroundPrompt: true,
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showSourceImageTypeControl: false,
+          showBackgroundChangeControl: false,
+          showGenerationModelControl: false,
+        },
+      }),
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("sourceImageType", "real");
+    formData.set("backgroundChange", "true");
+    formData.set("model", "gemini-3.1-flash-image-preview-512");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    expect(response.status).toBe(200);
+    expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt_text: buildExpectedPrompt({
+          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        }),
+        source_image_type: "illustration",
+        model: "gpt-image-2-low-1k",
+        background_mode: "keep",
+      }),
+    );
+  });
+
+  test("運営限定カテゴリは非管理者のasync生成では使えない", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
+      ...buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "chibi",
+          displayNameJa: "ちびキャラ",
+          displayNameEn: "Chibi",
+          visibility: "admin_only",
+        },
+      }),
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gemini-3.1-flash-image-preview-512");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_INVALID_STYLE");
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    expect(invokeImageWorkerFn).not.toHaveBeenCalled();
   });
 
   test("Phase 5: 5回無料枠は完全廃止 (reservation 系 RPC を呼び出さない)", async () => {

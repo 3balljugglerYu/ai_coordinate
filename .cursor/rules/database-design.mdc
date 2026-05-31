@@ -128,7 +128,7 @@ alwaysApply: false
 
 #### `image_jobs`
 - 主キー: `id`
-- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `generation_metadata`, `model`, `status`, `processing_stage`, `requested_image_count`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`
+- 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `generation_metadata`, `model`, `status`, `processing_stage`, `requested_image_count`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`, `style_template_id`, `style_reference_image_url`, `style_preset_category_key`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
 - 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`requested_image_count` は `1..4`（OpenAI batched edit の受理枚数）、`generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style`、`source_image_type` は `illustration/real`、`background_mode` は `keep/ai_auto/include_in_prompt`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low-1k` / `gpt-image-2-low-2k` / `gpt-image-2-low-4k` / `gpt-image-2-medium-1k` / `gpt-image-2-medium-2k` / `gpt-image-2-medium-4k` / `gpt-image-2-high-1k` / `gpt-image-2-high-2k` / `gpt-image-2-high-4k`（旧 `gpt-image-2-low` も履歴互換で許可）を保持する
 - RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
@@ -329,10 +329,19 @@ alwaysApply: false
 
 #### `style_presets`
 - 主キー: `id`
-- 主要カラム: `slug`, `title`, `styling_prompt`, `background_prompt`, `thumbnail_image_url`, `thumbnail_storage_path`, `thumbnail_width`, `thumbnail_height`, `sort_order`, `status`, `created_by`, `updated_by`, `created_at`, `updated_at`
-- 外部キー: `created_by -> auth.users.id`, `updated_by -> auth.users.id`
-- 備考: One-Tap Style の管理プリセット。`status` は `draft/published`。`styling_prompt` が衣装変更用、`background_prompt` は背景変更チェックが ON のときだけ使う任意フィールド
-- RLS: `published` 行のみ公開 `SELECT`
+- 主要カラム: `slug`, `title`, `styling_prompt`, `background_prompt`, `thumbnail_image_url`, `thumbnail_storage_path`, `thumbnail_width`, `thumbnail_height`, `sort_order`, `status`, `category_id`, `image_input_mode`, `reference_image_url`, `reference_image_storage_path`, `reference_image_width`, `reference_image_height`, `created_by`, `updated_by`, `created_at`, `updated_at`
+- 外部キー: `created_by -> auth.users.id`, `updated_by -> auth.users.id`, `category_id -> preset_categories.id` (`ON DELETE RESTRICT`)
+- CHECK 制約: `style_presets_dual_requires_reference` — `image_input_mode = 'dual'` のときは `reference_image_storage_path` と `reference_image_url` が NOT NULL
+- 備考: One-Tap Style の管理プリセット。`status` は `draft/published`。`styling_prompt` が衣装変更用、`background_prompt` は背景変更チェックが ON のときだけ使う任意フィールド。`image_input_mode='dual'` の場合は preset 固有の参考画像 (image_1) を `style_presets` bucket の `{presetId}/reference.webp` から取得する
+- RLS: `published` かつカテゴリ `visibility='public'` の行のみ公開 `SELECT`
+
+#### `preset_categories`
+- 主キー: `id`
+- 主要カラム: `key` (UNIQUE, 不変), `display_name_ja`, `display_name_en`, `badge_color`, `badge_text_color`, `skip_base_prefix`, `default_image_input_mode` (`single|dual`), `output_aspect_ratio_mode` (`source|square`), `user_guidance_ja`, `user_guidance_en`, `show_source_image_type_control`, `show_background_change_control`, `show_generation_model_control`, `visibility` (`public|admin_only`), `display_order`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`
+- 外部キー: `created_by -> auth.users.id` (`ON DELETE SET NULL`), `updated_by -> auth.users.id` (`ON DELETE SET NULL`)
+- トリガ: `prevent_preset_category_key_change` で `key` の UPDATE を拒否 (過去ジョブのスナップショット集計を守るため)
+- 備考: `style_presets` のカテゴリ。`skip_base_prefix=true` のとき生成時に `style.base_prefix` を一切付与しない (raw モード)。`output_aspect_ratio_mode='source'` はアップロード画像比率に合わせ、`square` は One-Tap Style 生成を 1:1 に固定する。`user_guidance_ja/en` はユーザー向け推奨画像・注意事項の説明文。`show_*_control` は `/style` 画面のアップロード画像タイプ・背景設定・生成モデル選択の表示可否をカテゴリ単位で制御する。`visibility='admin_only'` は `ADMIN_USER_IDS` の運営ユーザーだけ `/style` 表示・生成可能にする。`is_active=false` は「新規 preset 作成時の選択肢から外す」だけで、既存 preset の表示は `style_presets.status` とカテゴリ `visibility` で制御する。seed 値は `coordinate` と `chibi`
+- RLS: `visibility='public'` のみ公開 `SELECT`。admin route は service role で全件参照
 
 #### `prompt_overrides`
 - 主キー: `prompt_key` (TEXT, max 100 文字)

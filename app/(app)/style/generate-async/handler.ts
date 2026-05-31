@@ -9,7 +9,7 @@ import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
-import { env } from "@/lib/env";
+import { env, getAdminUserIds } from "@/lib/env";
 import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
@@ -36,18 +36,7 @@ interface StyleGenerateAsyncRouteDependencies {
   jobRepository?: AsyncGenerationJobRepository;
   invokeImageWorkerFn?: (edgeFunctionUrl: string) => void;
   supabaseUrl?: string;
-  getPublishedStylePresetForGenerationFn?: (
-    styleId: string
-  ) => Promise<{
-    id: string;
-    title: string;
-    thumbnailImageUrl: string;
-    thumbnailWidth: number;
-    thumbnailHeight: number;
-    hasBackgroundPrompt: boolean;
-    stylingPrompt: string;
-    backgroundPrompt: string | null;
-  } | null>;
+  getPublishedStylePresetForGenerationFn?: typeof getPublishedStylePresetForGeneration;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
 }
 
@@ -154,17 +143,33 @@ export async function postStyleGenerateAsyncRoute(
     const model = rawModel && isKnownModelInput(rawModel)
       ? normalizeModelName(rawModel)
       : DEFAULT_GENERATION_MODEL;
-    if (!isModelAvailableForGeneration(model)) {
+
+    const isAdminUser = getAdminUserIds().includes(user.id);
+    const preset = await getPublishedStylePresetForGenerationFn(styleId, {
+      includeAdminOnly: isAdminUser,
+    });
+    if (!preset) {
+      return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    }
+    if (preset.category.visibility === "admin_only" && !isAdminUser) {
+      return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    }
+    const effectiveSourceImageType: SourceImageType =
+      preset.category.showSourceImageTypeControl
+        ? sourceImageType
+        : "illustration";
+    const effectiveBackgroundChange = preset.category.showBackgroundChangeControl
+      ? backgroundChange
+      : false;
+    const effectiveModel = preset.category.showGenerationModelControl
+      ? model
+      : DEFAULT_GENERATION_MODEL;
+    if (!isModelAvailableForGeneration(effectiveModel)) {
       return jsonError(
         copy.modelTemporarilyUnavailable,
         "STYLE_MODEL_TEMPORARILY_UNAVAILABLE",
         400
       );
-    }
-
-    const preset = await getPublishedStylePresetForGenerationFn(styleId);
-    if (!preset) {
-      return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
 
     // ソース画像の入力は次の 3 経路から 1 つだけ:
@@ -221,7 +226,7 @@ export async function postStyleGenerateAsyncRoute(
       }
     }
 
-    if (backgroundChange && !preset.backgroundPrompt?.trim()) {
+    if (effectiveBackgroundChange && !preset.backgroundPrompt?.trim()) {
       return jsonError(
         copy.styleBackgroundPromptUnavailable,
         "STYLE_BACKGROUND_PROMPT_UNAVAILABLE",
@@ -230,7 +235,7 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     // 残高チェック (Phase 5 / ADR-008)。実減算は worker。
-    const percoinCost = getPercoinCost(model);
+    const percoinCost = getPercoinCost(effectiveModel);
     const { data: creditData, error: creditError } =
       await jobRepository.getUserCreditBalance(user.id);
 
@@ -259,13 +264,17 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     const promptTemplates = await resolveAllPromptTemplates();
-    const prompt = buildStyleGenerationPrompt({
-      stylingPrompt: preset.stylingPrompt,
-      backgroundPrompt: preset.backgroundPrompt,
-      backgroundChange,
-      sourceImageType,
-      templates: promptTemplates,
-    });
+    const prompt = buildStyleGenerationPrompt(
+      {
+        stylingPrompt: preset.stylingPrompt,
+        backgroundPrompt: preset.backgroundPrompt,
+        backgroundChange: effectiveBackgroundChange,
+        sourceImageType: effectiveSourceImageType,
+        templates: promptTemplates,
+      },
+      // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
+      { skipBasePrefix: preset.category.skipBasePrefix },
+    );
 
     // 3 経路のうち選択された 1 つから inputImageUrl と resolvedStockId を確定。
     let inputImageUrl: string;
@@ -343,21 +352,38 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     // UCL-016 / ADR-008: billingMode は常に "paid"。worker はこれを見て減算する。
+    // dual モード preset の場合は preset.reference_image_storage_path を
+    // image_jobs.style_reference_image_url に保存し、worker が image_1 として読む。
+    const isDualPreset =
+      preset.imageInputMode === "dual" &&
+      preset.referenceImageStoragePath !== null;
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
       prompt_text: prompt,
       input_image_url: inputImageUrl,
       source_image_stock_id: resolvedStockId,
-      source_image_type: sourceImageType,
+      source_image_type: effectiveSourceImageType,
       generation_type: "one_tap_style",
-      model,
-      background_mode: backgroundChangeToBackgroundMode(backgroundChange),
-      generation_metadata: buildOneTapStyleGenerationMetadata(preset, "paid", {
-        reservedAttemptId: null,
-      }),
+      model: effectiveModel,
+      background_mode: backgroundChangeToBackgroundMode(effectiveBackgroundChange),
+      generation_metadata: buildOneTapStyleGenerationMetadata(
+        {
+          ...preset,
+          outputAspectRatioMode: preset.category.outputAspectRatioMode,
+        },
+        "paid",
+        {
+          reservedAttemptId: null,
+        },
+      ),
       status: "queued",
       processing_stage: "queued",
       attempts: 0,
+      style_reference_image_url: isDualPreset
+        ? preset.referenceImageStoragePath
+        : null,
+      // category.key のスナップショット (ADR-006)
+      style_preset_category_key: preset.category.key,
     };
 
     const { data: job, error: insertError } =

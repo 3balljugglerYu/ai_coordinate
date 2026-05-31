@@ -28,6 +28,7 @@ jest.mock("next/image", () => ({
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
+  useLocale: () => "ja",
 }));
 
 jest.mock("next/navigation", () => ({

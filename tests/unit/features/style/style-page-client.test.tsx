@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 jest.mock("next-intl", () => ({
+  useLocale: jest.fn(),
   useTranslations: jest.fn(),
 }));
 
@@ -201,6 +202,7 @@ jest.mock(
 const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
+const useLocaleMock = useLocale as jest.MockedFunction<typeof useLocale>;
 const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
 const translationFunctionCache = new Map<
   string | undefined,
@@ -379,6 +381,24 @@ function translate(
   );
 }
 
+const TEST_COORDINATE_CATEGORY = {
+  id: "cat-coordinate",
+  key: "coordinate",
+  displayNameJa: "コーディネート",
+  displayNameEn: "Coordinate",
+  badgeColor: "#1f2937",
+  badgeTextColor: "#ffffff",
+  skipBasePrefix: false,
+  outputAspectRatioMode: "source",
+  userGuidanceJa: null,
+  userGuidanceEn: null,
+  showSourceImageTypeControl: true,
+  showBackgroundChangeControl: true,
+  showGenerationModelControl: true,
+  visibility: "public",
+  isActive: true,
+} as const;
+
 const presets: readonly StylePresetPublicSummary[] = [
   {
     id: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
@@ -387,6 +407,8 @@ const presets: readonly StylePresetPublicSummary[] = [
     thumbnailWidth: 912,
     thumbnailHeight: 1173,
     hasBackgroundPrompt: true,
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
   },
   {
     id: "a4d8859c-c8ab-4b53-9b97-d9b0e6970a2e",
@@ -395,6 +417,8 @@ const presets: readonly StylePresetPublicSummary[] = [
     thumbnailWidth: 640,
     thumbnailHeight: 480,
     hasBackgroundPrompt: false,
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
   },
 ];
 
@@ -482,6 +506,7 @@ describe("StylePageClient", () => {
       push: routerPushMock,
       refresh: jest.fn(),
     } as unknown as ReturnType<typeof useRouter>);
+    useLocaleMock.mockReturnValue("en");
 
     translationFunctionCache.clear();
     useTranslationsMock.mockImplementation((namespace?: string) => {
@@ -672,6 +697,27 @@ describe("StylePageClient", () => {
     });
   });
 
+  test("英語localeではカテゴリバッジに英語名を表示する", () => {
+    const chibiPresets: readonly StylePresetPublicSummary[] = [
+      {
+        ...presets[0],
+        id: "preset-chibi",
+        title: "CHIBI STYLE",
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "chibi",
+          displayNameJa: "ちびキャラ",
+          displayNameEn: "Chibi",
+        },
+      },
+    ];
+
+    render(<StylePageClient presets={chibiPresets} />);
+
+    expect(screen.getByText("Chibi")).toBeInTheDocument();
+    expect(screen.queryByText("ちびキャラ")).not.toBeInTheDocument();
+  });
+
   test("初期選択プリセットIDが指定された場合はそのカードを選択状態で表示する", () => {
     render(
       <StylePageClient
@@ -852,6 +898,47 @@ describe("StylePageClient", () => {
     expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
       "gemini-3-pro-image-4k"
     );
+  });
+
+  test("カテゴリ設定でフォーム項目を非表示にし_既定値で送信する", async () => {
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+    window.localStorage.setItem(
+      SELECTED_MODEL_STORAGE_KEY,
+      "gemini-3-pro-image-4k"
+    );
+    const hiddenControlPresets: readonly StylePresetPublicSummary[] = [
+      {
+        ...presets[0],
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showSourceImageTypeControl: false,
+          showBackgroundChangeControl: false,
+          showGenerationModelControl: false,
+        },
+      },
+    ];
+
+    render(<StylePageClient presets={hiddenControlPresets} />);
+
+    expect(screen.queryByText("Upload image type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Background")).not.toBeInTheDocument();
+    expect(screen.queryByText("Generation model")).not.toBeInTheDocument();
+
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
+
+    const generateCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        (typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url) ===
+          "/style/generate" && (init?.method ?? "GET") === "POST"
+    );
+    expect(generateCall).toBeDefined();
+    const [, init] = generateCall!;
+    const formData = init?.body as FormData;
+
+    expect(formData.get("sourceImageType")).toBe("illustration");
+    expect(formData.get("backgroundChange")).toBe("false");
+    expect(formData.get("model")).toBe("gpt-image-2-low-1k");
   });
 
   test("背景変更非対応presetではチェックボックスをdisabledにし、選択切替時にOFFへ戻す", () => {

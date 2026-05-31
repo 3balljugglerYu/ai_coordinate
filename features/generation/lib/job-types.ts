@@ -61,6 +61,10 @@ export interface ImageJob {
   override_angle?: boolean | null;
   override_pose?: boolean | null;
   override_background?: boolean | null;
+  // Style preset カテゴリのスナップショット (preset_categories.key)。
+  // generation_type='one_tap_style' の生成時に保存し、後で category が rename/削除されても
+  // 過去ジョブの集計が連続するようにする。
+  style_preset_category_key?: string | null;
 }
 
 /**

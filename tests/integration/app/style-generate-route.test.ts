@@ -67,7 +67,48 @@ type StyleGenerateRouteDependencies = NonNullable<
 type StyleOpenAIClient = NonNullable<
   StyleGenerateRouteDependencies["openaiClient"]
 >;
+type DownloadStylePresetReferenceImageFn = NonNullable<
+  StyleGenerateRouteDependencies["downloadStylePresetReferenceImageFn"]
+>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
+const TEST_COORDINATE_CATEGORY = {
+  id: "category-coordinate",
+  key: "coordinate",
+  displayNameJa: "コーディネート",
+  displayNameEn: "Coordinate",
+  badgeColor: "#1f2937",
+  badgeTextColor: "#ffffff",
+  skipBasePrefix: false,
+  outputAspectRatioMode: "source",
+  userGuidanceJa: null,
+  userGuidanceEn: null,
+  showSourceImageTypeControl: true,
+  showBackgroundChangeControl: true,
+  showGenerationModelControl: true,
+  visibility: "public",
+  isActive: true,
+};
+
+function buildStylePresetForGeneration(
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    id: STYLE_ID,
+    title: "PARIS CODE",
+    thumbnailImageUrl: "https://example.com/style-presets/paris-code.webp",
+    thumbnailWidth: 912,
+    thumbnailHeight: 1173,
+    hasBackgroundPrompt: false,
+    stylingPrompt: "RAW PROMPT\nSECOND LINE",
+    backgroundPrompt: null,
+    status: "published",
+    category: TEST_COORDINATE_CATEGORY,
+    imageInputMode: "single",
+    referenceImageUrl: null,
+    referenceImageStoragePath: null,
+    ...overrides,
+  };
+}
 
 function buildExpectedPrompt(params: {
   sourceImageType?: "illustration" | "real";
@@ -117,6 +158,20 @@ function createUploadImage(
   } = options;
 
   return new File([new Uint8Array(size)], name, { type });
+}
+
+function createPngHeader(width: number, height: number): ArrayBuffer {
+  const buf = Buffer.alloc(24);
+  buf.writeUInt32BE(0x89504e47, 0);
+  buf.writeUInt32BE(0x0d0a1a0a, 4);
+  buf.writeUInt32BE(13, 8);
+  buf.write("IHDR", 12);
+  buf.writeUInt32BE(width, 16);
+  buf.writeUInt32BE(height, 20);
+  return buf.buffer.slice(
+    buf.byteOffset,
+    buf.byteOffset + buf.byteLength,
+  ) as ArrayBuffer;
 }
 
 function createSuccessResponse() {
@@ -187,11 +242,7 @@ describe("StyleGenerateRoute integration tests", () => {
       .fn()
       .mockImplementation(async (styleId: string) =>
         styleId === STYLE_ID
-          ? {
-              id: STYLE_ID,
-              stylingPrompt: "RAW PROMPT\nSECOND LINE",
-              backgroundPrompt: null,
-            }
+          ? buildStylePresetForGeneration()
           : null
       );
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
@@ -407,6 +458,152 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
+  test("postStyleGenerateRoute_dualプリセットはゲスト経路でもreference画像を送信する", async () => {
+    const referenceBytes = new Uint8Array([7, 8, 9]);
+    const downloadStylePresetReferenceImageFn = jest
+      .fn<
+        ReturnType<DownloadStylePresetReferenceImageFn>,
+        Parameters<DownloadStylePresetReferenceImageFn>
+      >()
+      .mockResolvedValue(
+        new File([referenceBytes], "reference.webp", {
+          type: "image/webp",
+        })
+      );
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        referenceImageUrl: "https://example.com/reference.webp",
+        referenceImageStoragePath: "style-presets/preset-1/reference.webp",
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      downloadStylePresetReferenceImageFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,generated-image-base64",
+      mimeType: "image/png",
+    });
+    expect(downloadStylePresetReferenceImageFn).toHaveBeenCalledWith(
+      "style-presets/preset-1/reference.webp"
+    );
+
+    const [, init] = fetchFn.mock.calls[0];
+    const requestBody = JSON.parse(String(init?.body)) as {
+      contents: Array<{ parts: Array<Record<string, unknown>> }>;
+    };
+    expect(requestBody.contents[0].parts).toHaveLength(3);
+    expect(requestBody.contents[0].parts[2]).toEqual({
+      inline_data: {
+        mime_type: "image/webp",
+        data: Buffer.from(referenceBytes).toString("base64"),
+      },
+    });
+  });
+
+  test("postStyleGenerateRoute_dualプリセットでもrateLimit拒否時はreference画像を取得しない", async () => {
+    const downloadStylePresetReferenceImageFn = jest
+      .fn<
+        ReturnType<DownloadStylePresetReferenceImageFn>,
+        Parameters<DownloadStylePresetReferenceImageFn>
+      >()
+      .mockResolvedValue(
+        new File([new Uint8Array([7, 8, 9])], "reference.webp", {
+          type: "image/webp",
+        })
+      );
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        referenceImageUrl: "https://example.com/reference.webp",
+        referenceImageStoragePath: "style-presets/preset-1/reference.webp",
+      })
+    );
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: false,
+      reason: "guest_daily",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      downloadStylePresetReferenceImageFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(429);
+    expect(downloadStylePresetReferenceImageFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_カテゴリが正方形固定ならGeminiへ1:1を送る", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "chibi",
+          displayNameJa: "ちびキャラ",
+          displayNameEn: "Chibi",
+          outputAspectRatioMode: "square",
+        },
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set(
+      "uploadImage",
+      new File([createPngHeader(1600, 900)], "wide.png", {
+        type: "image/png",
+      })
+    );
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(200);
+    const [, init] = fetchFn.mock.calls[0];
+    const requestBody = JSON.parse(String(init?.body)) as {
+      generationConfig: {
+        imageConfig?: { imageSize?: string; aspectRatio?: string };
+      };
+    };
+    expect(requestBody.generationConfig.imageConfig).toEqual({
+      imageSize: "512",
+      aspectRatio: "1:1",
+    });
+  });
+
   test("postStyleGenerateRoute_OpenAIモデルはGEMINI_API_KEY無しでも生成できる", async () => {
     const openaiClient = jest.fn().mockResolvedValue({
       data: "openai-generated-image-base64",
@@ -615,11 +812,93 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
+  test("postStyleGenerateRoute_カテゴリで非表示のstyleフォーム項目は既定値に固定する", async () => {
+    const openaiClient = jest.fn().mockResolvedValue({
+      data: "openai-generated-image-base64",
+      mimeType: "image/png",
+    }) as jest.MockedFunction<StyleOpenAIClient>;
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
+      ...buildStylePresetForGeneration({
+        backgroundPrompt: "Soft spring city street with blossoms",
+        hasBackgroundPrompt: true,
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showSourceImageTypeControl: false,
+          showBackgroundChangeControl: false,
+          showGenerationModelControl: false,
+        },
+      }),
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("sourceImageType", "real");
+    formData.set("backgroundChange", "true");
+    formData.set("model", "gemini-3.1-flash-image-preview-512");
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      openaiApiKey: "openai-key",
+      openaiClient,
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(200);
+    expect(openaiClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: buildExpectedPrompt({
+          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        }),
+      }),
+    );
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_運営限定カテゴリはguest生成不可", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "chibi",
+          displayNameJa: "ちびキャラ",
+          displayNameEn: "Chibi",
+          visibility: "admin_only",
+        },
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_INVALID_STYLE");
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   test("postStyleGenerateRoute_backgroundChange有効時_背景promptを合成する", async () => {
     getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
-      id: STYLE_ID,
-      stylingPrompt: "RAW PROMPT\nSECOND LINE",
-      backgroundPrompt: "Soft spring city street with blossoms",
+      ...buildStylePresetForGeneration({
+        backgroundPrompt: "Soft spring city street with blossoms",
+        hasBackgroundPrompt: true,
+      }),
     });
 
     const formData = new FormData();

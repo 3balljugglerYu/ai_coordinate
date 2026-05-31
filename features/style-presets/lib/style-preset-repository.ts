@@ -4,7 +4,10 @@ import {
   normalizeStylePresetOptionalPrompt,
   normalizeStylePresetPrompt,
   normalizeStylePresetTitle,
+  type ImageInputMode,
   type StylePresetAdmin,
+  type StylePresetCategoryRef,
+  type StylePresetCategoryVisibility,
   type StylePresetGenerationRecord,
   type StylePresetInsert,
   type StylePresetPublicSummary,
@@ -12,6 +15,28 @@ import {
 } from "./schema";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
+
+interface PublishedStylePresetAccessOptions {
+  includeAdminOnly?: boolean;
+}
+
+interface StylePresetCategoryRow {
+  id: string;
+  key: string;
+  display_name_ja: string;
+  display_name_en: string;
+  badge_color: string;
+  badge_text_color: string;
+  skip_base_prefix: boolean;
+  output_aspect_ratio_mode?: string | null;
+  user_guidance_ja?: string | null;
+  user_guidance_en?: string | null;
+  show_source_image_type_control?: boolean | null;
+  show_background_change_control?: boolean | null;
+  show_generation_model_control?: boolean | null;
+  visibility?: StylePresetCategoryVisibility | string | null;
+  is_active: boolean;
+}
 
 interface StylePresetRow {
   id: string;
@@ -25,14 +50,38 @@ interface StylePresetRow {
   thumbnail_height: number;
   sort_order: number;
   status: "draft" | "published";
+  category_id: string;
+  image_input_mode: ImageInputMode;
+  reference_image_url: string | null;
+  reference_image_storage_path: string | null;
+  reference_image_width: number | null;
+  reference_image_height: number | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  // PostgREST embedded select で category を JOIN した結果
+  category?: StylePresetCategoryRow | StylePresetCategoryRow[] | null;
 }
+
+const STYLE_PRESET_WITH_CATEGORY_SELECT =
+  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, visibility, is_active)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
+}
+
+function normalizeCategoryVisibility(
+  value: StylePresetCategoryVisibility | string | null | undefined,
+): StylePresetCategoryVisibility {
+  return value === "admin_only" ? "admin_only" : "public";
+}
+
+function canAccessCategory(
+  category: StylePresetCategoryRef,
+  options: PublishedStylePresetAccessOptions = {},
+): boolean {
+  return options.includeAdminOnly === true || category.visibility === "public";
 }
 
 function mapRpcRow(data: unknown): StylePresetRow | null {
@@ -45,6 +94,59 @@ function mapRpcRow(data: unknown): StylePresetRow | null {
   }
 
   return data as StylePresetRow;
+}
+
+function extractCategory(
+  embedded: StylePresetRow["category"],
+): StylePresetCategoryRow | null {
+  if (!embedded) return null;
+  if (Array.isArray(embedded)) return embedded[0] ?? null;
+  return embedded;
+}
+
+function mapCategoryRefStrict(
+  row: StylePresetRow,
+  embedded: StylePresetCategoryRow | null,
+): StylePresetCategoryRef {
+  if (!embedded) {
+    // category_id は NOT NULL なので、本来は到達しない。
+    // RPC 経由で取得した行 (embedded なし) もここに来るので、最小情報で fallback。
+    return {
+      id: row.category_id,
+      key: "coordinate",
+      displayNameJa: "コーディネート",
+      displayNameEn: "Coordinate",
+      badgeColor: "#1f2937",
+      badgeTextColor: "#ffffff",
+      skipBasePrefix: false,
+      outputAspectRatioMode: "source",
+      userGuidanceJa: null,
+      userGuidanceEn: null,
+      showSourceImageTypeControl: true,
+      showBackgroundChangeControl: true,
+      showGenerationModelControl: true,
+      visibility: "public",
+      isActive: true,
+    };
+  }
+  return {
+    id: embedded.id,
+    key: embedded.key,
+    displayNameJa: embedded.display_name_ja,
+    displayNameEn: embedded.display_name_en,
+    badgeColor: embedded.badge_color,
+    badgeTextColor: embedded.badge_text_color,
+    skipBasePrefix: embedded.skip_base_prefix,
+    outputAspectRatioMode:
+      embedded.output_aspect_ratio_mode === "square" ? "square" : "source",
+    userGuidanceJa: embedded.user_guidance_ja ?? null,
+    userGuidanceEn: embedded.user_guidance_en ?? null,
+    showSourceImageTypeControl: embedded.show_source_image_type_control ?? true,
+    showBackgroundChangeControl: embedded.show_background_change_control ?? true,
+    showGenerationModelControl: embedded.show_generation_model_control ?? true,
+    visibility: normalizeCategoryVisibility(embedded.visibility),
+    isActive: embedded.is_active,
+  };
 }
 
 function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
@@ -60,6 +162,12 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
     thumbnailHeight: row.thumbnail_height,
     sortOrder: row.sort_order,
     status: row.status,
+    category: mapCategoryRefStrict(row, extractCategory(row.category)),
+    imageInputMode: row.image_input_mode,
+    referenceImageUrl: row.reference_image_url,
+    referenceImageStoragePath: row.reference_image_storage_path,
+    referenceImageWidth: row.reference_image_width,
+    referenceImageHeight: row.reference_image_height,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
     createdAt: row.created_at,
@@ -75,6 +183,8 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     thumbnailWidth: row.thumbnail_width,
     thumbnailHeight: row.thumbnail_height,
     hasBackgroundPrompt: Boolean(row.background_prompt?.trim()),
+    category: mapCategoryRefStrict(row, extractCategory(row.category)),
+    imageInputMode: row.image_input_mode,
   };
 }
 
@@ -86,6 +196,8 @@ function mapRowToGenerationRecord(
     stylingPrompt: row.styling_prompt,
     backgroundPrompt: row.background_prompt,
     status: row.status,
+    referenceImageUrl: row.reference_image_url,
+    referenceImageStoragePath: row.reference_image_storage_path,
   };
 }
 
@@ -123,7 +235,7 @@ export async function listStylePresetsForAdmin(
   const supabase = getSupabase(client);
   const { data, error } = await supabase
     .from("style_presets")
-    .select("*")
+    .select(STYLE_PRESET_WITH_CATEGORY_SELECT)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
 
@@ -142,7 +254,7 @@ export async function getStylePresetForAdminById(
   const supabase = getSupabase(client);
   const { data, error } = await supabase
     .from("style_presets")
-    .select("*")
+    .select(STYLE_PRESET_WITH_CATEGORY_SELECT)
     .eq("id", id)
     .maybeSingle();
 
@@ -155,12 +267,13 @@ export async function getStylePresetForAdminById(
 }
 
 export async function listPublishedStylePresets(
+  options: PublishedStylePresetAccessOptions = {},
   client?: SupabaseClient
 ): Promise<StylePresetPublicSummary[]> {
   const supabase = getSupabase(client);
   const { data, error } = await supabase
     .from("style_presets")
-    .select("*")
+    .select(STYLE_PRESET_WITH_CATEGORY_SELECT)
     .eq("status", "published")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
@@ -170,17 +283,20 @@ export async function listPublishedStylePresets(
     return [];
   }
 
-  return (data ?? []).map((row) => mapRowToPublicSummary(row as StylePresetRow));
+  return (data ?? [])
+    .map((row) => mapRowToPublicSummary(row as StylePresetRow))
+    .filter((preset) => canAccessCategory(preset.category, options));
 }
 
 export async function getPublishedStylePresetById(
   id: string,
+  options: PublishedStylePresetAccessOptions = {},
   client?: SupabaseClient
 ): Promise<StylePresetPublicSummary | null> {
   const supabase = getSupabase(client);
   const { data, error } = await supabase
     .from("style_presets")
-    .select("*")
+    .select(STYLE_PRESET_WITH_CATEGORY_SELECT)
     .eq("id", id)
     .eq("status", "published")
     .maybeSingle();
@@ -190,17 +306,20 @@ export async function getPublishedStylePresetById(
     return null;
   }
 
-  return data ? mapRowToPublicSummary(data as StylePresetRow) : null;
+  if (!data) return null;
+  const preset = mapRowToPublicSummary(data as StylePresetRow);
+  return canAccessCategory(preset.category, options) ? preset : null;
 }
 
 export async function getPublishedStylePresetForGeneration(
   id: string,
+  options: PublishedStylePresetAccessOptions = {},
   client?: SupabaseClient
 ): Promise<StylePresetGenerationRecord | null> {
   const supabase = getSupabase(client);
   const { data, error } = await supabase
     .from("style_presets")
-    .select("*")
+    .select(STYLE_PRESET_WITH_CATEGORY_SELECT)
     .eq("id", id)
     .eq("status", "published")
     .maybeSingle();
@@ -213,7 +332,9 @@ export async function getPublishedStylePresetForGeneration(
     return null;
   }
 
-  return data ? mapRowToGenerationRecord(data as StylePresetRow) : null;
+  if (!data) return null;
+  const preset = mapRowToGenerationRecord(data as StylePresetRow);
+  return canAccessCategory(preset.category, options) ? preset : null;
 }
 
 export async function createStylePreset(
@@ -242,15 +363,24 @@ export async function createStylePreset(
     p_sort_order: input.sortOrder ?? 0,
     p_status: input.status,
     p_created_by: input.createdBy ?? null,
+    // 未指定なら RPC 側で 'coordinate' (default category) にフォールバック
+    p_category_id: input.categoryId ?? null,
+    p_image_input_mode: input.imageInputMode ?? "single",
+    p_reference_image_url: input.referenceImageUrl ?? null,
+    p_reference_image_storage_path: input.referenceImageStoragePath ?? null,
+    p_reference_image_width: input.referenceImageWidth ?? null,
+    p_reference_image_height: input.referenceImageHeight ?? null,
   });
 
   const row = mapRpcRow(data);
   if (error || !row) {
     console.error("[style-preset-repository] create rpc error:", error);
-    throw new Error("スタイルの作成に失敗しました");
+    throw new Error(error?.message ?? "スタイルの作成に失敗しました");
   }
 
-  return mapRowToAdmin(row);
+  // RPC は category を embedded で返さないので、JOIN 済みの行を再取得する
+  const persisted = await getStylePresetForAdminById(row.id, supabase);
+  return persisted ?? mapRowToAdmin(row);
 }
 
 export async function updateStylePreset(
@@ -299,15 +429,38 @@ export async function updateStylePreset(
     p_status: input.status !== undefined ? input.status : existing.status,
     p_updated_by:
       input.updatedBy !== undefined ? input.updatedBy : existing.updatedBy,
+    p_category_id:
+      input.categoryId !== undefined ? input.categoryId : existing.category.id,
+    p_image_input_mode:
+      input.imageInputMode !== undefined
+        ? input.imageInputMode
+        : existing.imageInputMode,
+    p_reference_image_url:
+      input.referenceImageUrl !== undefined
+        ? input.referenceImageUrl
+        : existing.referenceImageUrl,
+    p_reference_image_storage_path:
+      input.referenceImageStoragePath !== undefined
+        ? input.referenceImageStoragePath
+        : existing.referenceImageStoragePath,
+    p_reference_image_width:
+      input.referenceImageWidth !== undefined
+        ? input.referenceImageWidth
+        : existing.referenceImageWidth,
+    p_reference_image_height:
+      input.referenceImageHeight !== undefined
+        ? input.referenceImageHeight
+        : existing.referenceImageHeight,
   });
 
   const row = mapRpcRow(data);
   if (error || !row) {
     console.error("[style-preset-repository] update rpc error:", error);
-    throw new Error("スタイルの更新に失敗しました");
+    throw new Error(error?.message ?? "スタイルの更新に失敗しました");
   }
 
-  return mapRowToAdmin(row);
+  const persisted = await getStylePresetForAdminById(row.id, supabase);
+  return persisted ?? mapRowToAdmin(row);
 }
 
 export async function deleteStylePreset(

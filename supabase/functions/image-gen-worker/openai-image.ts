@@ -39,6 +39,7 @@ export interface CallOpenAIImageEditParams {
   timeoutMs: number;
   quality: GptImage2Quality;
   sizeTier: GptImage2SizeTier;
+  targetSize?: OpenAITargetSize;
 }
 
 export interface OpenAIImageEditResult {
@@ -260,7 +261,9 @@ export async function callOpenAIImageEditBatch(
     );
   }
 
-  const targetSize = resolveOpenAITargetSize(params.inputImage, params.sizeTier);
+  const targetSize =
+    params.targetSize ??
+    resolveOpenAITargetSize(params.inputImage, params.sizeTier);
   const bytes = decodeBase64(params.inputImage.base64);
 
   const buildForm = () => {
@@ -352,6 +355,7 @@ export interface CallOpenAIImageEditMultiInputParams {
   quality: GptImage2Quality;
   sizeTier: GptImage2SizeTier;
   targetSizeBaseIndex?: number;
+  targetSize?: OpenAITargetSize;
   n?: number;
 }
 
@@ -381,7 +385,8 @@ export async function callOpenAIImageEditMultiInputBatch(
   const baseIndex = params.targetSizeBaseIndex ?? 0;
   const baseImage =
     params.inputImages[baseIndex] ?? params.inputImages[0];
-  const targetSize = resolveOpenAITargetSize(baseImage, params.sizeTier);
+  const targetSize =
+    params.targetSize ?? resolveOpenAITargetSize(baseImage, params.sizeTier);
 
   const buildForm = () => {
     const form = new FormData();

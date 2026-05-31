@@ -104,6 +104,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "file-text",
   },
   {
+    path: "/admin/preset-categories",
+    label: "プリセットカテゴリ管理",
+    description: "One-Tap Style のカテゴリ (コーディネート / ちびキャラ等) を管理",
+    iconKey: "file-text",
+  },
+  {
     path: "/admin/style-presets",
     label: "One-Tap Style管理",
     description: "スタイル画像とpromptを管理",
