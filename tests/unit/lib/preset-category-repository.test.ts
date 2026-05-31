@@ -31,6 +31,7 @@ const SAMPLE_ROW: PresetCategoryRow = {
   show_source_image_type_control: true,
   show_background_change_control: true,
   show_generation_model_control: true,
+  show_user_prompt_input: false,
   visibility: "public",
   display_order: 10,
   is_active: true,
@@ -164,8 +165,27 @@ describe("createPresetCategory", () => {
     expect(insertedArg.badge_text_color).toBe("#ffffff");
     expect(insertedArg.skip_base_prefix).toBe(false);
     expect(insertedArg.default_image_input_mode).toBe("single");
+    expect(insertedArg.show_user_prompt_input).toBe(false);
     expect(insertedArg.visibility).toBe("admin_only");
     expect(insertedArg.is_active).toBe(true);
+  });
+
+  test("createPresetCategory: showUserPromptInput=true を渡すと insert にそのまま反映される", async () => {
+    const fromBuilder = buildMutationChain({
+      data: { ...SAMPLE_ROW, show_user_prompt_input: true },
+      error: null,
+    });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await createPresetCategory({
+      key: "chibi",
+      displayNameJa: "ちびキャラ",
+      displayNameEn: "Chibi",
+      showUserPromptInput: true,
+    });
+
+    const insertedArg = (fromBuilder.insert as jest.Mock).mock.calls[0]?.[0];
+    expect(insertedArg.show_user_prompt_input).toBe(true);
   });
 
   test("DB error なら例外", async () => {
@@ -223,6 +243,72 @@ describe("updatePresetCategory", () => {
     await expect(updatePresetCategory("missing", {})).rejects.toThrow(
       "カテゴリが見つかりません",
     );
+  });
+
+  test("updatePresetCategory: showUserPromptInput=true を含めると update payload に show_user_prompt_input が乗る", async () => {
+    const fromBuilder = buildMutationChain({
+      data: { ...SAMPLE_ROW, show_user_prompt_input: true },
+      error: null,
+    });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    const result = await updatePresetCategory(SAMPLE_ROW.id, {
+      showUserPromptInput: true,
+    });
+    expect(result.showUserPromptInput).toBe(true);
+
+    const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
+    expect(updatedArg.show_user_prompt_input).toBe(true);
+  });
+
+  test("updatePresetCategory: showUserPromptInput=false (明示) も update payload に乗る", async () => {
+    const fromBuilder = buildMutationChain({
+      data: { ...SAMPLE_ROW, show_user_prompt_input: false },
+      error: null,
+    });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await updatePresetCategory(SAMPLE_ROW.id, {
+      showUserPromptInput: false,
+    });
+
+    const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
+    expect(updatedArg.show_user_prompt_input).toBe(false);
+  });
+
+  test("updatePresetCategory: showUserPromptInput を省略すると update payload に含まれない", async () => {
+    const fromBuilder = buildMutationChain({
+      data: SAMPLE_ROW,
+      error: null,
+    });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await updatePresetCategory(SAMPLE_ROW.id, {
+      badgeColor: "#abcdef",
+    });
+
+    const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
+    expect(updatedArg.show_user_prompt_input).toBeUndefined();
+  });
+
+  test("getPresetCategoryById: 取得結果の showUserPromptInput マッパー (true/null fallback)", async () => {
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({
+        data: { ...SAMPLE_ROW, show_user_prompt_input: true },
+        error: null,
+      }),
+    });
+    const result = await updatePresetCategory(SAMPLE_ROW.id, {});
+    expect(result.showUserPromptInput).toBe(true);
+
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({
+        data: { ...SAMPLE_ROW, show_user_prompt_input: null },
+        error: null,
+      }),
+    });
+    const result2 = await updatePresetCategory(SAMPLE_ROW.id, {});
+    expect(result2.showUserPromptInput).toBe(false);
   });
 
   test("update DB error なら例外", async () => {

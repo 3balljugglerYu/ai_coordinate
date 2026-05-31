@@ -435,6 +435,176 @@ describe("admin style preset routes", () => {
     expect(body.id).toBe("preset-1");
   });
 
+  test("patchAdminStylePreset_dual_reference_source に不正値を渡すと 400 を返す", async () => {
+    const formData = new FormData();
+    formData.set("title", "Updated Title");
+    formData.set("styling_prompt", "Updated prompt");
+    formData.set("background_prompt", "");
+    formData.set("sort_order", "1");
+    formData.set("status", "published");
+    formData.set("image_input_mode", "dual");
+    formData.set("dual_reference_source", "INVALID_SOURCE");
+
+    mockGetStylePresetForAdminById.mockResolvedValueOnce({
+      id: "preset-1",
+      slug: "preset-1",
+      title: "Before",
+      stylingPrompt: "Before prompt",
+      backgroundPrompt: null,
+      thumbnailImageUrl: "https://example.com/old.webp",
+      thumbnailStoragePath: null,
+      thumbnailWidth: 720,
+      thumbnailHeight: 960,
+      sortOrder: 0,
+      status: "published",
+      createdBy: "admin-1",
+      updatedBy: "admin-1",
+      createdAt: "2026-05-30T00:00:00.000Z",
+      updatedAt: "2026-05-30T00:00:00.000Z",
+      category: TEST_CATEGORY_REF,
+      imageInputMode: "dual",
+      dualReferenceSource: "admin",
+      referenceImageUrl: "https://example.com/reference-old.webp",
+      referenceImageStoragePath: "style-presets/preset-1/reference-old.webp",
+      referenceImageWidth: 256,
+      referenceImageHeight: 256,
+    } as never);
+
+    const response = await PATCH(
+      createFormRequest("/api/admin/style-presets/preset-1", formData, "PATCH"),
+      { params: Promise.resolve({ id: "preset-1" }) },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/dual_reference_source/);
+    expect(mockUpdateStylePreset).not.toHaveBeenCalled();
+  });
+
+  test("patchAdminStylePreset_dual+admin から dual+user_upload への切替で reference 情報をクリアし旧 reference を削除する", async () => {
+    const formData = new FormData();
+    formData.set("title", "Updated Title");
+    formData.set("styling_prompt", "Updated prompt");
+    formData.set("background_prompt", "");
+    formData.set("sort_order", "1");
+    formData.set("status", "published");
+    formData.set("image_input_mode", "dual");
+    formData.set("dual_reference_source", "user_upload");
+
+    mockGetStylePresetForAdminById.mockResolvedValueOnce({
+      id: "preset-1",
+      slug: "preset-1",
+      title: "Before",
+      stylingPrompt: "Before prompt",
+      backgroundPrompt: null,
+      thumbnailImageUrl: "https://example.com/old.webp",
+      thumbnailStoragePath: null,
+      thumbnailWidth: 720,
+      thumbnailHeight: 960,
+      sortOrder: 0,
+      status: "published",
+      createdBy: "admin-1",
+      updatedBy: "admin-1",
+      createdAt: "2026-05-30T00:00:00.000Z",
+      updatedAt: "2026-05-30T00:00:00.000Z",
+      category: TEST_CATEGORY_REF,
+      imageInputMode: "dual",
+      dualReferenceSource: "admin",
+      referenceImageUrl: "https://example.com/reference-old.webp",
+      referenceImageStoragePath: "style-presets/preset-1/reference-old.webp",
+      referenceImageWidth: 256,
+      referenceImageHeight: 256,
+    } as never);
+    mockUpdateStylePreset.mockResolvedValueOnce(
+      withCategoryFields({
+        id: "preset-1",
+        slug: "preset-1",
+        title: "Updated Title",
+        stylingPrompt: "Updated prompt",
+        backgroundPrompt: "",
+        thumbnailImageUrl: "https://example.com/old.webp",
+        thumbnailStoragePath: null,
+        thumbnailWidth: 720,
+        thumbnailHeight: 960,
+        sortOrder: 1,
+        status: "published",
+        createdBy: "admin-1",
+        updatedBy: "admin-1",
+        createdAt: "2026-05-30T00:00:00.000Z",
+        updatedAt: "2026-05-30T01:00:00.000Z",
+      }),
+    );
+
+    const response = await PATCH(
+      createFormRequest("/api/admin/style-presets/preset-1", formData, "PATCH"),
+      { params: Promise.resolve({ id: "preset-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateStylePreset).toHaveBeenCalledWith(
+      "preset-1",
+      expect.objectContaining({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+        referenceImageUrl: null,
+        referenceImageStoragePath: null,
+        referenceImageWidth: null,
+        referenceImageHeight: null,
+      }),
+    );
+    expect(mockDeleteStylePresetImage).toHaveBeenCalledWith(
+      "style-presets/preset-1/reference-old.webp",
+    );
+    expect(mockUploadStylePresetReferenceImage).not.toHaveBeenCalled();
+  });
+
+  test("patchAdminStylePreset_dual+admin で参考画像が無いと 400 を返す", async () => {
+    const formData = new FormData();
+    formData.set("title", "Updated Title");
+    formData.set("styling_prompt", "Updated prompt");
+    formData.set("background_prompt", "");
+    formData.set("sort_order", "1");
+    formData.set("status", "published");
+    formData.set("image_input_mode", "dual");
+    formData.set("dual_reference_source", "admin");
+    // reference_file も既存 referenceImageStoragePath も無い
+
+    mockGetStylePresetForAdminById.mockResolvedValueOnce({
+      id: "preset-1",
+      slug: "preset-1",
+      title: "Before",
+      stylingPrompt: "Before prompt",
+      backgroundPrompt: null,
+      thumbnailImageUrl: "https://example.com/old.webp",
+      thumbnailStoragePath: null,
+      thumbnailWidth: 720,
+      thumbnailHeight: 960,
+      sortOrder: 0,
+      status: "published",
+      createdBy: "admin-1",
+      updatedBy: "admin-1",
+      createdAt: "2026-05-30T00:00:00.000Z",
+      updatedAt: "2026-05-30T00:00:00.000Z",
+      category: TEST_CATEGORY_REF,
+      imageInputMode: "single",
+      dualReferenceSource: "admin",
+      referenceImageUrl: null,
+      referenceImageStoragePath: null,
+      referenceImageWidth: null,
+      referenceImageHeight: null,
+    } as never);
+
+    const response = await PATCH(
+      createFormRequest("/api/admin/style-presets/preset-1", formData, "PATCH"),
+      { params: Promise.resolve({ id: "preset-1" }) },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/dual.*admin.*参考画像/);
+    expect(mockUpdateStylePreset).not.toHaveBeenCalled();
+  });
+
   test("deleteAdminStylePreset_対象を削除して再検証する", async () => {
     mockGetStylePresetForAdminById.mockResolvedValueOnce(
       withCategoryFields({

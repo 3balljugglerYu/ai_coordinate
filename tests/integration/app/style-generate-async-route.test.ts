@@ -360,6 +360,100 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     );
   });
 
+  test("dual user_upload で uploadImage2 を送らないと 400 STYLE_DUAL_USER_IMAGE_REQUIRED", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    const body = await readJson(response);
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_DUAL_USER_IMAGE_REQUIRED");
+    expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+  });
+
+  test("dual user_upload で uploadImage2 が不正な形式なら 400 STYLE_INVALID_DUAL_USER_IMAGE", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    // 不正な MIME (text/plain) を含む File を image_1 に渡す
+    formData.set(
+      "uploadImage2",
+      new File(["not an image"], "bad.txt", { type: "text/plain" }),
+    );
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    const body = await readJson(response);
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_INVALID_DUAL_USER_IMAGE");
+    expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+  });
+
+  test("showUserPromptInput=true でも userPrompt が上限超過なら 400 STYLE_USER_PROMPT_TOO_LONG", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showUserPromptInput: true,
+        },
+      }),
+    );
+
+    const longPrompt = "あ".repeat(2000);
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("userPrompt", longPrompt);
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    const body = await readJson(response);
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_USER_PROMPT_TOO_LONG");
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+  });
+
   test("showUserPromptInput=false のカテゴリでは userPrompt を送られても無視する", async () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
