@@ -1613,6 +1613,67 @@ export function StylePageClient({
               </div>
             ) : null}
 
+            {/*
+              preset.dualReferenceSource='user_upload' のとき、ユーザーが image_1 を
+              その都度アップロードする UI を表示する。アップロード画像のタイプの直下
+              (= coordinate 画面と同じく preset カスタマイズ入力を集約) に置く。
+            */}
+            {selectedPreset &&
+              selectedPreset.imageInputMode === "dual" &&
+              selectedPreset.dualReferenceSource === "user_upload" && (
+                <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-4">
+                  <Label
+                    htmlFor="user-reference-image"
+                    className="text-base font-medium text-amber-900"
+                  >
+                    {t("userReferenceImageLabel")}
+                  </Label>
+                  <p className="text-xs text-amber-800">
+                    {t("userReferenceImageHint")}
+                  </p>
+                  <input
+                    id="user-reference-image"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    disabled={isGenerating}
+                    onChange={(event) => {
+                      const next = event.target.files?.[0] ?? null;
+                      setUserReferenceImage(next);
+                    }}
+                    className="block w-full text-sm text-amber-900"
+                  />
+                  {userReferenceImage && (
+                    <p className="text-xs text-amber-900">
+                      {userReferenceImage.name}
+                    </p>
+                  )}
+                </div>
+              )}
+
+            {/*
+              category.showUserPromptInput=true のとき、ユーザープロンプト入力欄を
+              アップロード画像タイプの直下に表示する (coordinate 画面と同じ並び)。
+              生成時に preset.stylingPrompt の後ろに結合される (= preset で大枠を決め、
+              ユーザーが細部追加)。
+            */}
+            {selectedPreset?.category.showUserPromptInput && (
+              <PromptInputField
+                value={userPromptInputValue}
+                onChange={setUserPromptInputValue}
+                label={t("userPromptLabel")}
+                placeholder={t("userPromptPlaceholder")}
+                hint={t("userPromptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
+                clearLabel={t("userPromptClear")}
+                characterCount={t("userPromptCharacterCount", {
+                  current: userPromptInputValue.length,
+                  max: GENERATION_PROMPT_MAX_LENGTH,
+                })}
+                maxLength={GENERATION_PROMPT_MAX_LENGTH}
+                disabled={isGenerating}
+                id="user-prompt"
+              />
+            )}
+
             {shouldShowBackgroundChangeControl ? (
               <div>
                 <div className="space-y-2">
@@ -1802,64 +1863,6 @@ export function StylePageClient({
           </div>
         </Card>
       </section>
-
-      {/*
-        preset.dualReferenceSource='user_upload' のとき、ユーザーが image_1 を
-        その都度アップロードする UI を表示する。
-      */}
-      {selectedPreset &&
-        selectedPreset.imageInputMode === "dual" &&
-        selectedPreset.dualReferenceSource === "user_upload" && (
-          <section className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-4">
-            <Label
-              htmlFor="user-reference-image"
-              className="text-base font-medium text-amber-900"
-            >
-              {t("userReferenceImageLabel")}
-            </Label>
-            <p className="text-xs text-amber-800">
-              {t("userReferenceImageHint")}
-            </p>
-            <input
-              id="user-reference-image"
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              disabled={isGenerating}
-              onChange={(event) => {
-                const next = event.target.files?.[0] ?? null;
-                setUserReferenceImage(next);
-              }}
-              className="block w-full text-sm text-amber-900"
-            />
-            {userReferenceImage && (
-              <p className="text-xs text-amber-900">
-                {userReferenceImage.name}
-              </p>
-            )}
-          </section>
-        )}
-
-      {/*
-        category.showUserPromptInput=true のとき、ユーザーがプロンプトを入力する UI を表示する。
-        生成時に preset.stylingPrompt の後ろに結合される (= preset で大枠を決め、ユーザーが細部追加)。
-      */}
-      {selectedPreset?.category.showUserPromptInput && (
-        <PromptInputField
-          value={userPromptInputValue}
-          onChange={setUserPromptInputValue}
-          label={t("userPromptLabel")}
-          placeholder={t("userPromptPlaceholder")}
-          hint={t("userPromptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
-          clearLabel={t("userPromptClear")}
-          characterCount={t("userPromptCharacterCount", {
-            current: userPromptInputValue.length,
-            max: GENERATION_PROMPT_MAX_LENGTH,
-          })}
-          maxLength={GENERATION_PROMPT_MAX_LENGTH}
-          disabled={isGenerating}
-          id="user-prompt"
-        />
-      )}
 
       {errorState ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
