@@ -440,6 +440,14 @@ export function StylePageClient({
 
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
+
+  // プリセット切り替え時に preset 固有の入力 (userPrompt / 参考画像) をリセットする。
+  // 別 preset で意図しない入力が引き継がれてクレジット浪費しないための防御。
+  useEffect(() => {
+    setUserReferenceImage(null);
+    setUserPromptInputValue("");
+  }, [selectedPreset?.id]);
+
   const shouldShowSourceImageTypeControl =
     selectedPreset?.category.showSourceImageTypeControl ?? true;
   const shouldShowBackgroundChangeControl =
@@ -1662,6 +1670,7 @@ export function StylePageClient({
                     {t("userReferenceImageHint")}
                   </p>
                   <input
+                    key={selectedPreset?.id}
                     id="user-reference-image"
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"

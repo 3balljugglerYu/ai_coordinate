@@ -29,9 +29,10 @@ export function ensureSameOrigin(request: NextRequest): NextResponse | null {
     );
   }
 
-  // 自サイトの host (= forwarded を考慮)
-  const host =
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  // 自サイトの host。Next.js は `request.nextUrl.host` を信頼された
+  // プロキシ設定 (Vercel など) で正規化して返すため、生の x-forwarded-host /
+  // host を手動 parse するよりヘッダースプーフィングに堅牢。
+  const host = request.nextUrl.host;
   if (!host) {
     // host が取れないのは異常な構成なので拒否
     return NextResponse.json(
