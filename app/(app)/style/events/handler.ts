@@ -9,6 +9,7 @@ import {
   type StylePublicUsageEventType,
 } from "@/features/style/lib/style-usage-events";
 import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
+import { getAdminUserIds } from "@/lib/env";
 
 const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
   "visit",
@@ -19,9 +20,8 @@ const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
 
 interface StyleEventsRouteDependencies {
   getUserFn?: typeof getUser;
-  getPublishedStylePresetByIdFn?: (
-    styleId: string
-  ) => Promise<{ id: string } | null>;
+  getAdminUserIdsFn?: typeof getAdminUserIds;
+  getPublishedStylePresetByIdFn?: typeof getPublishedStylePresetById;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
 }
 
@@ -49,10 +49,15 @@ export async function postStyleEventsRoute(
     const getPublishedStylePresetByIdFn =
       dependencies.getPublishedStylePresetByIdFn ??
       getPublishedStylePresetById;
+    const getAdminUserIdsFn =
+      dependencies.getAdminUserIdsFn ?? getAdminUserIds;
     const recordStyleUsageEventFn =
       dependencies.recordStyleUsageEventFn ?? recordStyleUsageEvent;
 
     const user = await getUserFn();
+    const includeAdminOnly = user
+      ? getAdminUserIdsFn().includes(user.id)
+      : false;
 
     const payload = (await request.json().catch(() => null)) as
       | { eventType?: unknown; styleId?: unknown }
@@ -68,7 +73,10 @@ export async function postStyleEventsRoute(
         ? payload.styleId.trim()
         : null;
 
-    if (styleId && !(await getPublishedStylePresetByIdFn(styleId))) {
+    if (
+      styleId &&
+      !(await getPublishedStylePresetByIdFn(styleId, { includeAdminOnly }))
+    ) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
 

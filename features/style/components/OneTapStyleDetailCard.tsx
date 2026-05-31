@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,8 @@ export function OneTapStyleDetailCard({
 }: OneTapStyleDetailCardProps) {
   const router = useRouter();
   const t = useTranslations("style");
+  const locale = useLocale();
+  const styleCardLocale = locale === "en" ? "en" : "ja";
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const handleConfirm = () => {
@@ -41,6 +43,7 @@ export function OneTapStyleDetailCard({
         preset={preset}
         alt={t("detailPresetCardAlt", { name: preset.title })}
         onClick={() => setIsConfirmOpen(true)}
+        locale={styleCardLocale}
       />
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>

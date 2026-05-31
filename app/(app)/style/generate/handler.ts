@@ -295,31 +295,16 @@ export async function postStyleGenerateRoute(
       );
     }
 
-    let referenceImage: File | null = null;
-    if (preset.imageInputMode === "dual") {
-      if (!preset.referenceImageStoragePath) {
-        return jsonError(
-          copy.invalidStylePreset,
-          "STYLE_DUAL_REFERENCE_MISSING",
-          400
-        );
-      }
-
-      try {
-        referenceImage = await downloadStylePresetReferenceImageFn(
-          preset.referenceImageStoragePath
-        );
-      } catch (error) {
-        console.error(
-          "Style generate route: failed to load dual preset reference",
-          error
-        );
-        return jsonError(
-          copy.guestUpstreamUnavailable,
-          "STYLE_DUAL_REFERENCE_DOWNLOAD_FAILED",
-          500
-        );
-      }
+    const dualReferenceImageStoragePath =
+      preset.imageInputMode === "dual"
+        ? preset.referenceImageStoragePath
+        : null;
+    if (preset.imageInputMode === "dual" && !dualReferenceImageStoragePath) {
+      return jsonError(
+        copy.invalidStylePreset,
+        "STYLE_DUAL_REFERENCE_MISSING",
+        400
+      );
     }
 
     if (!geminiApiKey && !isOpenAIImageModel(effectiveModel)) {
@@ -418,6 +403,26 @@ export async function postStyleGenerateRoute(
         },
         { status: 429 }
       );
+    }
+
+    let referenceImage: File | null = null;
+    if (dualReferenceImageStoragePath) {
+      try {
+        referenceImage = await downloadStylePresetReferenceImageFn(
+          dualReferenceImageStoragePath
+        );
+      } catch (error) {
+        console.error(
+          "Style generate route: failed to load dual preset reference",
+          error
+        );
+        await releaseReservedAttempt("infra_error");
+        return jsonError(
+          copy.guestUpstreamUnavailable,
+          "STYLE_DUAL_REFERENCE_DOWNLOAD_FAILED",
+          500
+        );
+      }
     }
 
     if (authState === "guest") {

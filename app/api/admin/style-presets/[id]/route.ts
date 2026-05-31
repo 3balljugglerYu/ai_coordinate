@@ -54,6 +54,8 @@ export async function PATCH(
     const imageInputModeEntry = formData.get("image_input_mode");
     const file = formData.get("file");
     const referenceFile = formData.get("reference_file");
+    const hasNewReferenceFile =
+      referenceFile instanceof File && referenceFile.size > 0;
 
     if (typeof title !== "string" || title.trim() === "") {
       return NextResponse.json(
@@ -118,7 +120,7 @@ export async function PATCH(
 
     // dual モードの整合性: 新しい mode が dual の場合、reference 画像が必要 (新規 file または既存 storage_path)
     const willHaveReference =
-      referenceFile instanceof File && referenceFile.size > 0
+      hasNewReferenceFile
         ? true
         : existing.referenceImageStoragePath !== null;
     if (imageInputMode === "dual" && !willHaveReference) {
@@ -127,7 +129,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    if (referenceFile instanceof File && referenceFile.size > 0) {
+    if (hasNewReferenceFile) {
       const refError = validateStylePresetImageFile(referenceFile);
       if (refError) {
         return NextResponse.json({ error: refError }, { status: 400 });
@@ -156,7 +158,7 @@ export async function PATCH(
 
     // 新しい reference file は新規 object に保存し、DB 更新成功後に旧 object を削除する。
     // 既存 fixed path を直接 upsert すると、DB 更新失敗時に旧 reference を壊すため。
-    if (referenceFile instanceof File && referenceFile.size > 0) {
+    if (imageInputMode === "dual" && hasNewReferenceFile) {
       const uploaded = await uploadStylePresetReferenceImage(
         referenceFile,
         id,
@@ -169,16 +171,31 @@ export async function PATCH(
       updatePayload.referenceImageHeight = uploaded.height;
     }
 
-    // single モードに切り替えた場合は reference 情報をクリア (= 物理ファイルは bucket に残るが DB はクリア)
-    if (
-      imageInputMode === "single" &&
-      existing.imageInputMode === "dual"
-    ) {
+    // single モードでは reference 情報を保持しない。旧 object は DB 更新成功後に削除する。
+    if (imageInputMode === "single") {
       updatePayload.referenceImageUrl = null;
       updatePayload.referenceImageStoragePath = null;
       updatePayload.referenceImageWidth = null;
       updatePayload.referenceImageHeight = null;
     }
+
+    const deleteOldReferenceAfterUpdate = async () => {
+      if (!oldReferencePath) {
+        return;
+      }
+      const shouldDeleteOldReference =
+        imageInputMode === "single" ||
+        (newReferencePath !== null && oldReferencePath !== newReferencePath);
+      if (!shouldDeleteOldReference) {
+        return;
+      }
+
+      try {
+        await deleteStylePresetImage(oldReferencePath);
+      } catch {
+        // best effort
+      }
+    };
 
     // thumbnail file が来た場合は差し替え
     if (file instanceof File && file.size > 0) {
@@ -209,34 +226,14 @@ export async function PATCH(
           // best effort
         }
       }
-      if (
-        oldReferencePath &&
-        newReferencePath &&
-        oldReferencePath !== newReferencePath
-      ) {
-        try {
-          await deleteStylePresetImage(oldReferencePath);
-        } catch {
-          // best effort
-        }
-      }
+      await deleteOldReferenceAfterUpdate();
 
       revalidateStylePresets();
       return NextResponse.json(updated);
     }
 
     const updated = await updateStylePreset(id, updatePayload);
-    if (
-      oldReferencePath &&
-      newReferencePath &&
-      oldReferencePath !== newReferencePath
-    ) {
-      try {
-        await deleteStylePresetImage(oldReferencePath);
-      } catch {
-        // best effort
-      }
-    }
+    await deleteOldReferenceAfterUpdate();
     revalidateStylePresets();
     return NextResponse.json(updated);
   } catch (error) {

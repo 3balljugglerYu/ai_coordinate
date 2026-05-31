@@ -516,6 +516,49 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
+  test("postStyleGenerateRoute_dualプリセットでもrateLimit拒否時はreference画像を取得しない", async () => {
+    const downloadStylePresetReferenceImageFn = jest
+      .fn<
+        ReturnType<DownloadStylePresetReferenceImageFn>,
+        Parameters<DownloadStylePresetReferenceImageFn>
+      >()
+      .mockResolvedValue(
+        new File([new Uint8Array([7, 8, 9])], "reference.webp", {
+          type: "image/webp",
+        })
+      );
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        referenceImageUrl: "https://example.com/reference.webp",
+        referenceImageStoragePath: "style-presets/preset-1/reference.webp",
+      })
+    );
+    checkAndConsumeRateLimitFn.mockResolvedValueOnce({
+      allowed: false,
+      reason: "guest_daily",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      downloadStylePresetReferenceImageFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(429);
+    expect(downloadStylePresetReferenceImageFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   test("postStyleGenerateRoute_カテゴリが正方形固定ならGeminiへ1:1を送る", async () => {
     getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
       buildStylePresetForGeneration({

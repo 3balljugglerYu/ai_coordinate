@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 jest.mock("next-intl", () => ({
+  useLocale: jest.fn(),
   useTranslations: jest.fn(),
 }));
 
@@ -201,6 +202,7 @@ jest.mock(
 const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
+const useLocaleMock = useLocale as jest.MockedFunction<typeof useLocale>;
 const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
 const translationFunctionCache = new Map<
   string | undefined,
@@ -504,6 +506,7 @@ describe("StylePageClient", () => {
       push: routerPushMock,
       refresh: jest.fn(),
     } as unknown as ReturnType<typeof useRouter>);
+    useLocaleMock.mockReturnValue("en");
 
     translationFunctionCache.clear();
     useTranslationsMock.mockImplementation((namespace?: string) => {
@@ -692,6 +695,27 @@ describe("StylePageClient", () => {
       eventType: "visit",
       styleId: null,
     });
+  });
+
+  test("英語localeではカテゴリバッジに英語名を表示する", () => {
+    const chibiPresets: readonly StylePresetPublicSummary[] = [
+      {
+        ...presets[0],
+        id: "preset-chibi",
+        title: "CHIBI STYLE",
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "chibi",
+          displayNameJa: "ちびキャラ",
+          displayNameEn: "Chibi",
+        },
+      },
+    ];
+
+    render(<StylePageClient presets={chibiPresets} />);
+
+    expect(screen.getByText("Chibi")).toBeInTheDocument();
+    expect(screen.queryByText("ちびキャラ")).not.toBeInTheDocument();
   });
 
   test("初期選択プリセットIDが指定された場合はそのカードを選択状態で表示する", () => {

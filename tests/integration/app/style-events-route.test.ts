@@ -23,12 +23,14 @@ async function readJson(response: Response): Promise<JsonRecord> {
 
 describe("StyleEventsRoute integration tests", () => {
   let getUserFn: jest.Mock;
+  let getAdminUserIdsFn: jest.Mock;
   let getPublishedStylePresetByIdFn: jest.Mock;
   let recordStyleUsageEventFn: jest.Mock<Promise<void>, [unknown]>;
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
+    getAdminUserIdsFn = jest.fn().mockReturnValue([]);
     getPublishedStylePresetByIdFn = jest
       .fn()
       .mockImplementation(async (styleId: string) =>
@@ -52,6 +54,7 @@ describe("StyleEventsRoute integration tests", () => {
       createRequest({ eventType: "visit", styleId: STYLE_ID }),
       {
         getUserFn,
+        getAdminUserIdsFn,
         getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
@@ -73,6 +76,7 @@ describe("StyleEventsRoute integration tests", () => {
       createRequest({ eventType: "invalid-event", styleId: STYLE_ID }),
       {
         getUserFn,
+        getAdminUserIdsFn,
         getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
@@ -89,6 +93,7 @@ describe("StyleEventsRoute integration tests", () => {
       createRequest({ eventType: "generate", styleId: STYLE_ID }),
       {
         getUserFn,
+        getAdminUserIdsFn,
         getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
@@ -110,6 +115,7 @@ describe("StyleEventsRoute integration tests", () => {
       createRequest({ eventType: "download", styleId: "unknown-style" }),
       {
         getUserFn,
+        getAdminUserIdsFn,
         getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
@@ -126,6 +132,7 @@ describe("StyleEventsRoute integration tests", () => {
       createRequest({ eventType: "download", styleId: STYLE_ID }),
       {
         getUserFn,
+        getAdminUserIdsFn,
         getPublishedStylePresetByIdFn,
         recordStyleUsageEventFn,
       }
@@ -136,6 +143,34 @@ describe("StyleEventsRoute integration tests", () => {
     expect(body).toEqual({ ok: true });
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
       userId: "user-123",
+      authState: "authenticated",
+      eventType: "download",
+      styleId: STYLE_ID,
+    });
+  });
+
+  test("postStyleEventsRoute_管理者の場合_adminOnlyプリセットを許可して検証する", async () => {
+    getUserFn.mockResolvedValueOnce({ id: "admin-1" });
+    getAdminUserIdsFn.mockReturnValueOnce(["admin-1"]);
+
+    const response = await postStyleEventsRoute(
+      createRequest({ eventType: "download", styleId: STYLE_ID }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(getPublishedStylePresetByIdFn).toHaveBeenCalledWith(STYLE_ID, {
+      includeAdminOnly: true,
+    });
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: "admin-1",
       authState: "authenticated",
       eventType: "download",
       styleId: STYLE_ID,

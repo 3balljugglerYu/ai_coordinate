@@ -25,6 +25,7 @@ import {
 import {
   deleteStylePresetImage,
   uploadStylePresetImage,
+  uploadStylePresetReferenceImage,
 } from "@/features/style-presets/lib/style-preset-storage";
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
 import { revalidateStylePresets } from "@/features/style-presets/lib/revalidate-style-presets";
@@ -44,6 +45,10 @@ const mockReorderStylePresets =
   reorderStylePresets as jest.MockedFunction<typeof reorderStylePresets>;
 const mockUploadStylePresetImage =
   uploadStylePresetImage as jest.MockedFunction<typeof uploadStylePresetImage>;
+const mockUploadStylePresetReferenceImage =
+  uploadStylePresetReferenceImage as jest.MockedFunction<
+    typeof uploadStylePresetReferenceImage
+  >;
 const mockDeleteStylePresetImage =
   deleteStylePresetImage as jest.MockedFunction<typeof deleteStylePresetImage>;
 const mockGetPresetCategoryById =
@@ -338,6 +343,87 @@ describe("admin style preset routes", () => {
     );
     expect(mockRevalidateStylePresets).toHaveBeenCalled();
     expect(body.status).toBe("draft");
+  });
+
+  test("patchAdminStylePreset_singleモードではreference情報をクリアして旧referenceを削除する", async () => {
+    const formData = new FormData();
+    formData.set("title", "Updated Title");
+    formData.set("styling_prompt", "Updated prompt");
+    formData.set("background_prompt", "");
+    formData.set("sort_order", "1");
+    formData.set("status", "published");
+    formData.set("image_input_mode", "single");
+    formData.set(
+      "reference_file",
+      new File(["reference"], "reference.png", { type: "image/png" })
+    );
+
+    mockGetStylePresetForAdminById.mockResolvedValueOnce({
+      id: "preset-1",
+      slug: "preset-1",
+      title: "Before",
+      stylingPrompt: "Before prompt",
+      backgroundPrompt: null,
+      thumbnailImageUrl: "https://example.com/old.webp",
+      thumbnailStoragePath: null,
+      thumbnailWidth: 720,
+      thumbnailHeight: 960,
+      sortOrder: 0,
+      status: "published",
+      createdBy: "admin-1",
+      updatedBy: "admin-1",
+      createdAt: "2026-03-22T00:00:00.000Z",
+      updatedAt: "2026-03-22T00:00:00.000Z",
+      category: TEST_CATEGORY_REF,
+      imageInputMode: "dual",
+      referenceImageUrl: "https://example.com/reference-old.webp",
+      referenceImageStoragePath: "style-presets/preset-1/reference-old.webp",
+      referenceImageWidth: 256,
+      referenceImageHeight: 256,
+    } as never);
+    mockUpdateStylePreset.mockResolvedValueOnce(
+      withCategoryFields({
+        id: "preset-1",
+        slug: "preset-1",
+        title: "Updated Title",
+        stylingPrompt: "Updated prompt",
+        backgroundPrompt: "",
+        thumbnailImageUrl: "https://example.com/old.webp",
+        thumbnailStoragePath: null,
+        thumbnailWidth: 720,
+        thumbnailHeight: 960,
+        sortOrder: 1,
+        status: "published",
+        createdBy: "admin-1",
+        updatedBy: "admin-1",
+        createdAt: "2026-03-22T00:00:00.000Z",
+        updatedAt: "2026-03-22T01:00:00.000Z",
+      }),
+    );
+
+    const response = await PATCH(
+      createFormRequest("/api/admin/style-presets/preset-1", formData, "PATCH"),
+      { params: Promise.resolve({ id: "preset-1" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockUploadStylePresetReferenceImage).not.toHaveBeenCalled();
+    expect(mockUpdateStylePreset).toHaveBeenCalledWith(
+      "preset-1",
+      expect.objectContaining({
+        imageInputMode: "single",
+        referenceImageUrl: null,
+        referenceImageStoragePath: null,
+        referenceImageWidth: null,
+        referenceImageHeight: null,
+      })
+    );
+    expect(mockDeleteStylePresetImage).toHaveBeenCalledWith(
+      "style-presets/preset-1/reference-old.webp"
+    );
+    expect(mockRevalidateStylePresets).toHaveBeenCalled();
+    expect(body.id).toBe("preset-1");
   });
 
   test("deleteAdminStylePreset_対象を削除して再検証する", async () => {

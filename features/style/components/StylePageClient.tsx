@@ -10,7 +10,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Maximize2, Minimize2, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -329,6 +329,8 @@ export function StylePageClient({
   const t = useTranslations("style");
   const coordinateT = useTranslations("coordinate");
   const postsT = useTranslations("posts");
+  const locale = useLocale();
+  const styleCardLocale = locale === "en" ? "en" : "ja";
   const { toast, dismiss } = useToast();
   const presetStripRef = useRef<HTMLDivElement | null>(null);
   const generationStatusSectionRef = useRef<HTMLDivElement | null>(null);
@@ -1441,6 +1443,7 @@ export function StylePageClient({
               buttonRef={buildPresetButtonRef(preset.id)}
               alt={t("styleCardAlt", { name: preset.title })}
               disabled={isGenerating}
+              locale={styleCardLocale}
             />
           ))}
         </div>
