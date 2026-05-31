@@ -27,6 +27,11 @@ import {
   ALLOWED_IMAGE_MIME_TYPE_SET,
   MAX_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
+import { getGptImage2TargetSize } from "@/shared/generation/openai-image-model";
+import {
+  shouldForceSquareStyleOutput,
+  type StyleOutputAspectRatioMode,
+} from "@/shared/generation/style-output-aspect-ratio";
 import {
   isOpenAIProviderErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
@@ -169,6 +174,7 @@ export interface DispatchGuestImageGenerationInput {
   promptText: string;
   uploadImage: File;
   referenceImage?: File | null;
+  outputAspectRatioMode?: StyleOutputAspectRatioMode;
   geminiApiKey: string;
   openaiApiKey?: string;
   geminiTimeoutMs?: number;
@@ -280,6 +286,11 @@ async function dispatchOpenAI(
     };
   }
   try {
+    const targetSize = shouldForceSquareStyleOutput(
+      input.outputAspectRatioMode,
+    )
+      ? getGptImage2TargetSize(gptImage2.sizeTier, null)
+      : undefined;
     let result: OpenAIImageEditResult;
     if (input.referenceImage) {
       const referenceArrayBuffer = await input.referenceImage.arrayBuffer();
@@ -298,6 +309,7 @@ async function dispatchOpenAI(
         timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
         quality: gptImage2.quality,
         sizeTier: gptImage2.sizeTier,
+        targetSize,
         apiKey: input.openaiApiKey,
         n: 1,
       });
@@ -312,6 +324,7 @@ async function dispatchOpenAI(
         timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
         quality: gptImage2.quality,
         sizeTier: gptImage2.sizeTier,
+        targetSize,
         apiKey: input.openaiApiKey,
       });
     }
@@ -350,7 +363,9 @@ async function dispatchGemini(
   const imageSize = extractImageSize(input.model as GeminiOnlyModel);
   const { part: imagePart, dimensions: inputDimensions } =
     await fileToInlineDataPartWithDimensions(input.uploadImage);
-  const aspectRatio = resolveGeminiAspectRatio(inputDimensions);
+  const aspectRatio = shouldForceSquareStyleOutput(input.outputAspectRatioMode)
+    ? "1:1"
+    : resolveGeminiAspectRatio(inputDimensions);
   const parts: GeminiContentPart[] = [
     { text: input.promptText },
     imagePart,

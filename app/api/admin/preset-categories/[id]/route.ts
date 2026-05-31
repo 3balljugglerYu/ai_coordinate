@@ -6,11 +6,14 @@ import {
   deactivatePresetCategory,
   getPresetCategoryById,
   PRESET_CATEGORY_IMAGE_INPUT_MODES,
+  STYLE_PRESET_CATEGORY_VISIBILITY_VALUES,
+  STYLE_OUTPUT_ASPECT_RATIO_MODES,
   updatePresetCategory,
 } from "@/features/style-presets/lib/preset-category-repository";
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
+const MAX_USER_GUIDANCE_LENGTH = 1000;
 
 function revalidatePresetCategoriesCache(id: string): void {
   revalidateTag("style-presets", "max");
@@ -142,6 +145,107 @@ export async function PATCH(
     update.defaultImageInputMode = body.default_image_input_mode as
       | "single"
       | "dual";
+  }
+  if (body.output_aspect_ratio_mode !== undefined) {
+    if (
+      typeof body.output_aspect_ratio_mode !== "string" ||
+      !STYLE_OUTPUT_ASPECT_RATIO_MODES.includes(
+        body.output_aspect_ratio_mode as "source" | "square",
+      )
+    ) {
+      return NextResponse.json(
+        { error: "output_aspect_ratio_mode must be 'source' or 'square'" },
+        { status: 400 },
+      );
+    }
+    update.outputAspectRatioMode = body.output_aspect_ratio_mode as
+      | "source"
+      | "square";
+  }
+  if (body.user_guidance_ja !== undefined) {
+    if (
+      body.user_guidance_ja !== null &&
+      typeof body.user_guidance_ja !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "user_guidance_ja must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_guidance_ja === "string"
+        ? body.user_guidance_ja.trim()
+        : "";
+    if (trimmed.length > MAX_USER_GUIDANCE_LENGTH) {
+      return NextResponse.json(
+        { error: `user_guidance_ja must be <= ${MAX_USER_GUIDANCE_LENGTH} chars` },
+        { status: 400 },
+      );
+    }
+    update.userGuidanceJa = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_guidance_en !== undefined) {
+    if (
+      body.user_guidance_en !== null &&
+      typeof body.user_guidance_en !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "user_guidance_en must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_guidance_en === "string"
+        ? body.user_guidance_en.trim()
+        : "";
+    if (trimmed.length > MAX_USER_GUIDANCE_LENGTH) {
+      return NextResponse.json(
+        { error: `user_guidance_en must be <= ${MAX_USER_GUIDANCE_LENGTH} chars` },
+        { status: 400 },
+      );
+    }
+    update.userGuidanceEn = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.show_source_image_type_control !== undefined) {
+    if (typeof body.show_source_image_type_control !== "boolean") {
+      return NextResponse.json(
+        { error: "show_source_image_type_control must be boolean" },
+        { status: 400 },
+      );
+    }
+    update.showSourceImageTypeControl = body.show_source_image_type_control;
+  }
+  if (body.show_background_change_control !== undefined) {
+    if (typeof body.show_background_change_control !== "boolean") {
+      return NextResponse.json(
+        { error: "show_background_change_control must be boolean" },
+        { status: 400 },
+      );
+    }
+    update.showBackgroundChangeControl = body.show_background_change_control;
+  }
+  if (body.show_generation_model_control !== undefined) {
+    if (typeof body.show_generation_model_control !== "boolean") {
+      return NextResponse.json(
+        { error: "show_generation_model_control must be boolean" },
+        { status: 400 },
+      );
+    }
+    update.showGenerationModelControl = body.show_generation_model_control;
+  }
+  if (body.visibility !== undefined) {
+    if (
+      typeof body.visibility !== "string" ||
+      !STYLE_PRESET_CATEGORY_VISIBILITY_VALUES.includes(
+        body.visibility as "public" | "admin_only",
+      )
+    ) {
+      return NextResponse.json(
+        { error: "visibility must be 'public' or 'admin_only'" },
+        { status: 400 },
+      );
+    }
+    update.visibility = body.visibility as "public" | "admin_only";
   }
   if (body.display_order !== undefined) {
     if (

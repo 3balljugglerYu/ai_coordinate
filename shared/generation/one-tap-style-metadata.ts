@@ -1,3 +1,8 @@
+import {
+  normalizeStyleOutputAspectRatioMode,
+  type StyleOutputAspectRatioMode,
+} from "./style-output-aspect-ratio.ts";
+
 export type OneTapStyleBillingMode = "free" | "paid";
 
 export interface OneTapStylePresetMetadata extends Record<string, unknown> {
@@ -8,6 +13,7 @@ export interface OneTapStylePresetMetadata extends Record<string, unknown> {
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
   billingMode: OneTapStyleBillingMode;
+  outputAspectRatioMode: StyleOutputAspectRatioMode;
   reservedAttemptId?: string;
 }
 
@@ -22,6 +28,7 @@ interface OneTapStylePresetInput {
   thumbnailWidth: number;
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
+  outputAspectRatioMode?: StyleOutputAspectRatioMode | string | null;
 }
 
 interface OneTapStyleMetadataOptions {
@@ -54,6 +61,9 @@ export function buildOneTapStyleGenerationMetadata(
       thumbnailWidth: preset.thumbnailWidth,
       thumbnailHeight: preset.thumbnailHeight,
       hasBackgroundPrompt: preset.hasBackgroundPrompt,
+      outputAspectRatioMode: normalizeStyleOutputAspectRatioMode(
+        preset.outputAspectRatioMode,
+      ),
       billingMode,
       ...(typeof options.reservedAttemptId === "string" &&
       options.reservedAttemptId.length > 0
@@ -83,6 +93,7 @@ export function getOneTapStylePresetMetadata(
     thumbnailHeight,
     hasBackgroundPrompt,
     billingMode,
+    outputAspectRatioMode,
   } = oneTapStyle;
 
   if (
@@ -104,6 +115,9 @@ export function getOneTapStylePresetMetadata(
     thumbnailHeight,
     hasBackgroundPrompt,
     billingMode: isBillingMode(billingMode) ? billingMode : "free",
+    outputAspectRatioMode: normalizeStyleOutputAspectRatioMode(
+      outputAspectRatioMode,
+    ),
     ...(typeof oneTapStyle.reservedAttemptId === "string"
       ? { reservedAttemptId: oneTapStyle.reservedAttemptId }
       : {}),

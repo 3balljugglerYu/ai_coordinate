@@ -60,6 +60,13 @@ const TEST_CATEGORY_REF = {
   badgeColor: "#1f2937",
   badgeTextColor: "#ffffff",
   skipBasePrefix: false,
+  outputAspectRatioMode: "source",
+  userGuidanceJa: null,
+  userGuidanceEn: null,
+  showSourceImageTypeControl: true,
+  showBackgroundChangeControl: true,
+  showGenerationModelControl: true,
+  visibility: "public",
   isActive: true,
 } as const;
 const TEST_CATEGORY_ADMIN = {

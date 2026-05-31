@@ -59,6 +59,36 @@ export function AdminPresetCategoryListClient({ categories }: Props) {
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
                         デフォルト入力: {category.defaultImageInputMode}
                       </span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
+                        出力比率:{" "}
+                        {category.outputAspectRatioMode === "square"
+                          ? "正方形固定"
+                          : "アップロード画像に合わせる"}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                          category.visibility === "public"
+                            ? "bg-sky-100 text-sky-800"
+                            : "bg-orange-100 text-orange-800"
+                        }`}
+                      >
+                        公開範囲:{" "}
+                        {category.visibility === "public"
+                          ? "全ユーザー"
+                          : "運営のみ"}
+                      </span>
+                      {(category.userGuidanceJa || category.userGuidanceEn) && (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800">
+                          説明あり
+                        </span>
+                      )}
+                      {(!category.showSourceImageTypeControl ||
+                        !category.showBackgroundChangeControl ||
+                        !category.showGenerationModelControl) && (
+                        <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-800">
+                          UI 非表示設定あり
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-500">
                       {category.displayNameEn} · 表示順: {category.displayOrder}

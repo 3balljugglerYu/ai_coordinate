@@ -1,10 +1,23 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  STYLE_PRESET_CATEGORY_VISIBILITY_VALUES,
+  type StylePresetCategoryVisibility,
+} from "./schema";
+import {
+  STYLE_OUTPUT_ASPECT_RATIO_MODES,
+  normalizeStyleOutputAspectRatioMode,
+  type StyleOutputAspectRatioMode,
+} from "@/shared/generation/style-output-aspect-ratio";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
 export const PRESET_CATEGORY_IMAGE_INPUT_MODES = ["single", "dual"] as const;
 export type PresetCategoryImageInputMode =
   (typeof PRESET_CATEGORY_IMAGE_INPUT_MODES)[number];
+export { STYLE_PRESET_CATEGORY_VISIBILITY_VALUES };
+export { STYLE_OUTPUT_ASPECT_RATIO_MODES };
+export type { StylePresetCategoryVisibility };
+export type { StyleOutputAspectRatioMode };
 
 export interface PresetCategoryRow {
   id: string;
@@ -15,6 +28,13 @@ export interface PresetCategoryRow {
   badge_text_color: string;
   skip_base_prefix: boolean;
   default_image_input_mode: PresetCategoryImageInputMode;
+  output_aspect_ratio_mode?: StyleOutputAspectRatioMode | null;
+  user_guidance_ja?: string | null;
+  user_guidance_en?: string | null;
+  show_source_image_type_control?: boolean | null;
+  show_background_change_control?: boolean | null;
+  show_generation_model_control?: boolean | null;
+  visibility?: StylePresetCategoryVisibility | null;
   display_order: number;
   is_active: boolean;
   created_by: string | null;
@@ -32,6 +52,13 @@ export interface PresetCategoryAdmin {
   badgeTextColor: string;
   skipBasePrefix: boolean;
   defaultImageInputMode: PresetCategoryImageInputMode;
+  outputAspectRatioMode: StyleOutputAspectRatioMode;
+  userGuidanceJa: string | null;
+  userGuidanceEn: string | null;
+  showSourceImageTypeControl: boolean;
+  showBackgroundChangeControl: boolean;
+  showGenerationModelControl: boolean;
+  visibility: StylePresetCategoryVisibility;
   displayOrder: number;
   isActive: boolean;
   createdBy: string | null;
@@ -48,6 +75,13 @@ export interface PresetCategoryInsert {
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
   defaultImageInputMode?: PresetCategoryImageInputMode;
+  outputAspectRatioMode?: StyleOutputAspectRatioMode;
+  userGuidanceJa?: string | null;
+  userGuidanceEn?: string | null;
+  showSourceImageTypeControl?: boolean;
+  showBackgroundChangeControl?: boolean;
+  showGenerationModelControl?: boolean;
+  visibility?: StylePresetCategoryVisibility;
   displayOrder?: number;
   isActive?: boolean;
   createdBy?: string | null;
@@ -60,6 +94,13 @@ export interface PresetCategoryUpdate {
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
   defaultImageInputMode?: PresetCategoryImageInputMode;
+  outputAspectRatioMode?: StyleOutputAspectRatioMode;
+  userGuidanceJa?: string | null;
+  userGuidanceEn?: string | null;
+  showSourceImageTypeControl?: boolean;
+  showBackgroundChangeControl?: boolean;
+  showGenerationModelControl?: boolean;
+  visibility?: StylePresetCategoryVisibility;
   displayOrder?: number;
   isActive?: boolean;
   updatedBy?: string | null;
@@ -67,6 +108,12 @@ export interface PresetCategoryUpdate {
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
+}
+
+function normalizeVisibility(
+  value: StylePresetCategoryVisibility | string | null | undefined,
+): StylePresetCategoryVisibility {
+  return value === "admin_only" ? "admin_only" : "public";
 }
 
 function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
@@ -79,6 +126,15 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     badgeTextColor: row.badge_text_color,
     skipBasePrefix: row.skip_base_prefix,
     defaultImageInputMode: row.default_image_input_mode,
+    outputAspectRatioMode: normalizeStyleOutputAspectRatioMode(
+      row.output_aspect_ratio_mode,
+    ),
+    userGuidanceJa: row.user_guidance_ja ?? null,
+    userGuidanceEn: row.user_guidance_en ?? null,
+    showSourceImageTypeControl: row.show_source_image_type_control ?? true,
+    showBackgroundChangeControl: row.show_background_change_control ?? true,
+    showGenerationModelControl: row.show_generation_model_control ?? true,
+    visibility: normalizeVisibility(row.visibility),
     displayOrder: row.display_order,
     isActive: row.is_active,
     createdBy: row.created_by,
@@ -164,6 +220,13 @@ export async function createPresetCategory(
       badge_text_color: input.badgeTextColor ?? "#ffffff",
       skip_base_prefix: input.skipBasePrefix ?? false,
       default_image_input_mode: input.defaultImageInputMode ?? "single",
+      output_aspect_ratio_mode: input.outputAspectRatioMode ?? "source",
+      user_guidance_ja: input.userGuidanceJa ?? null,
+      user_guidance_en: input.userGuidanceEn ?? null,
+      show_source_image_type_control: input.showSourceImageTypeControl ?? true,
+      show_background_change_control: input.showBackgroundChangeControl ?? true,
+      show_generation_model_control: input.showGenerationModelControl ?? true,
+      visibility: input.visibility ?? "admin_only",
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
       created_by: input.createdBy ?? null,
@@ -193,6 +256,20 @@ export async function updatePresetCategory(
   if (input.skipBasePrefix !== undefined) payload.skip_base_prefix = input.skipBasePrefix;
   if (input.defaultImageInputMode !== undefined)
     payload.default_image_input_mode = input.defaultImageInputMode;
+  if (input.outputAspectRatioMode !== undefined)
+    payload.output_aspect_ratio_mode = input.outputAspectRatioMode;
+  if (input.userGuidanceJa !== undefined)
+    payload.user_guidance_ja = input.userGuidanceJa;
+  if (input.userGuidanceEn !== undefined)
+    payload.user_guidance_en = input.userGuidanceEn;
+  if (input.showSourceImageTypeControl !== undefined)
+    payload.show_source_image_type_control = input.showSourceImageTypeControl;
+  if (input.showBackgroundChangeControl !== undefined)
+    payload.show_background_change_control = input.showBackgroundChangeControl;
+  if (input.showGenerationModelControl !== undefined)
+    payload.show_generation_model_control = input.showGenerationModelControl;
+  if (input.visibility !== undefined)
+    payload.visibility = input.visibility;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
   if (input.isActive !== undefined) payload.is_active = input.isActive;
   if (input.updatedBy !== undefined) payload.updated_by = input.updatedBy;

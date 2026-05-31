@@ -44,6 +44,13 @@ describe("get-public-style-presets", () => {
     badgeColor: "#1f2937",
     badgeTextColor: "#ffffff",
     skipBasePrefix: false,
+    outputAspectRatioMode: "source",
+    userGuidanceJa: null,
+    userGuidanceEn: null,
+    showSourceImageTypeControl: true,
+    showBackgroundChangeControl: true,
+    showGenerationModelControl: true,
+    visibility: "public",
     isActive: true,
   } as const;
 
@@ -69,6 +76,16 @@ describe("get-public-style-presets", () => {
     expect(result[0]?.hasBackgroundPrompt).toBe(true);
   });
 
+  test("getPublishedStylePresets_管理者指定では運営限定カテゴリも取得する", async () => {
+    mockListPublishedStylePresets.mockResolvedValueOnce([]);
+
+    await getPublishedStylePresets({ includeAdminOnly: true });
+
+    expect(mockListPublishedStylePresets).toHaveBeenCalledWith({
+      includeAdminOnly: true,
+    });
+  });
+
   test("getPublishedStylePreset_ID指定で公開プリセットを返す", async () => {
     mockGetPublishedStylePresetById.mockResolvedValueOnce({
       id: "preset-1",
@@ -88,5 +105,16 @@ describe("get-public-style-presets", () => {
     expect(mockGetPublishedStylePresetById).toHaveBeenCalledWith("preset-1");
     expect(result?.id).toBe("preset-1");
     expect(result?.hasBackgroundPrompt).toBe(false);
+  });
+
+  test("getPublishedStylePreset_管理者指定では運営限定カテゴリも取得する", async () => {
+    mockGetPublishedStylePresetById.mockResolvedValueOnce(null);
+
+    await getPublishedStylePreset("preset-admin", { includeAdminOnly: true });
+
+    expect(mockGetPublishedStylePresetById).toHaveBeenCalledWith(
+      "preset-admin",
+      { includeAdminOnly: true }
+    );
   });
 });

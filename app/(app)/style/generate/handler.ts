@@ -251,6 +251,19 @@ export async function postStyleGenerateRoute(
     if (!preset) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
+    if (preset.category.visibility === "admin_only") {
+      return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    }
+    const effectiveSourceImageType: SourceImageType =
+      preset.category.showSourceImageTypeControl
+        ? sourceImageType
+        : "illustration";
+    const effectiveBackgroundChange = preset.category.showBackgroundChangeControl
+      ? backgroundChange
+      : false;
+    const effectiveModel = preset.category.showGenerationModelControl
+      ? model
+      : DEFAULT_GENERATION_MODEL;
 
     const uploadImage = getFile(formData.get("uploadImage"));
     if (!uploadImage) {
@@ -274,7 +287,7 @@ export async function postStyleGenerateRoute(
       );
     }
 
-    if (backgroundChange && !preset.backgroundPrompt?.trim()) {
+    if (effectiveBackgroundChange && !preset.backgroundPrompt?.trim()) {
       return jsonError(
         copy.styleBackgroundPromptUnavailable,
         "STYLE_BACKGROUND_PROMPT_UNAVAILABLE",
@@ -309,14 +322,14 @@ export async function postStyleGenerateRoute(
       }
     }
 
-    if (!geminiApiKey && !isOpenAIImageModel(model)) {
+    if (!geminiApiKey && !isOpenAIImageModel(effectiveModel)) {
       return jsonError(
         copy.guestUpstreamUnavailable,
         "STYLE_UPSTREAM_UNAVAILABLE",
         500
       );
     }
-    if (!openaiApiKey && isOpenAIImageModel(model)) {
+    if (!openaiApiKey && isOpenAIImageModel(effectiveModel)) {
       return jsonError(
         copy.guestUpstreamUnavailable,
         "STYLE_UPSTREAM_UNAVAILABLE",
@@ -421,8 +434,8 @@ export async function postStyleGenerateRoute(
       {
         stylingPrompt: preset.stylingPrompt,
         backgroundPrompt: preset.backgroundPrompt,
-        backgroundChange,
-        sourceImageType,
+        backgroundChange: effectiveBackgroundChange,
+        sourceImageType: effectiveSourceImageType,
         templates: promptTemplates,
       },
       // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
@@ -435,7 +448,7 @@ export async function postStyleGenerateRoute(
       const promptText = `${reinforcementPrefix}${basePromptText}`;
 
       const dispatchResult = await dispatchGuestImageGeneration({
-        model,
+        model: effectiveModel,
         promptText,
         uploadImage,
         geminiApiKey: geminiApiKey ?? "",
@@ -444,6 +457,7 @@ export async function postStyleGenerateRoute(
         openaiClient,
         openaiMultiInputClient,
         referenceImage,
+        outputAspectRatioMode: preset.category.outputAspectRatioMode,
       });
       lastDispatchResult = dispatchResult;
 

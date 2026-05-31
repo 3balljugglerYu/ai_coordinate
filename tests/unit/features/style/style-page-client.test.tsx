@@ -387,6 +387,13 @@ const TEST_COORDINATE_CATEGORY = {
   badgeColor: "#1f2937",
   badgeTextColor: "#ffffff",
   skipBasePrefix: false,
+  outputAspectRatioMode: "source",
+  userGuidanceJa: null,
+  userGuidanceEn: null,
+  showSourceImageTypeControl: true,
+  showBackgroundChangeControl: true,
+  showGenerationModelControl: true,
+  visibility: "public",
   isActive: true,
 } as const;
 
@@ -867,6 +874,47 @@ describe("StylePageClient", () => {
     expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
       "gemini-3-pro-image-4k"
     );
+  });
+
+  test("カテゴリ設定でフォーム項目を非表示にし_既定値で送信する", async () => {
+    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+    window.localStorage.setItem(
+      SELECTED_MODEL_STORAGE_KEY,
+      "gemini-3-pro-image-4k"
+    );
+    const hiddenControlPresets: readonly StylePresetPublicSummary[] = [
+      {
+        ...presets[0],
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showSourceImageTypeControl: false,
+          showBackgroundChangeControl: false,
+          showGenerationModelControl: false,
+        },
+      },
+    ];
+
+    render(<StylePageClient presets={hiddenControlPresets} />);
+
+    expect(screen.queryByText("Upload image type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Background")).not.toBeInTheDocument();
+    expect(screen.queryByText("Generation model")).not.toBeInTheDocument();
+
+    await uploadImageAndWaitUntilReady();
+    await startStylingAndWaitForRequest();
+
+    const generateCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        (typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url) ===
+          "/style/generate" && (init?.method ?? "GET") === "POST"
+    );
+    expect(generateCall).toBeDefined();
+    const [, init] = generateCall!;
+    const formData = init?.body as FormData;
+
+    expect(formData.get("sourceImageType")).toBe("illustration");
+    expect(formData.get("backgroundChange")).toBe("false");
+    expect(formData.get("model")).toBe("gpt-image-2-low-1k");
   });
 
   test("背景変更非対応presetではチェックボックスをdisabledにし、選択切替時にOFFへ戻す", () => {

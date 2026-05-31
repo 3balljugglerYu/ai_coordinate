@@ -30,6 +30,7 @@ import {
 } from "../../../shared/generation/one-tap-style-metadata.ts";
 import {
   GPT_IMAGE_2_PERCOIN_COSTS,
+  getGptImage2TargetSize,
   isGptImage2CanonicalModel,
   normalizeLegacyGptImage2Model,
   parseGptImage2Model,
@@ -1806,7 +1807,13 @@ Deno.serve(async () => {
                         aspectBaseImage.mimeType,
                       )
                     : null;
-                  const aspectRatio = resolveGeminiAspectRatio(aspectDims);
+                  const forceSquareOneTapStyleOutput =
+                    job.generation_type === "one_tap_style" &&
+                    oneTapStyleMetadata?.outputAspectRatioMode === "square";
+                  const aspectRatio: GeminiAspectRatio =
+                    forceSquareOneTapStyleOutput
+                      ? "1:1"
+                      : resolveGeminiAspectRatio(aspectDims);
 
                   // gemini-3.1-flash-image-preview のみ candidateCount / responseModalities を追加。
                   // gemini-3-pro-image-preview / gemini-2.5-flash-image 等は不要。
@@ -1859,6 +1866,10 @@ Deno.serve(async () => {
                 }
                 const openAIRequestTimeoutMs =
                   resolveOpenAIRequestTimeoutMs(gptImage2);
+                const targetSize =
+                  oneTapStyleMetadata?.outputAspectRatioMode === "square"
+                    ? getGptImage2TargetSize(gptImage2.sizeTier, null)
+                    : undefined;
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
@@ -1896,6 +1907,7 @@ Deno.serve(async () => {
                                     background: job.override_background ?? true,
                                   })
                                 : 0,
+                            targetSize,
                             timeoutMs: openAIRequestTimeoutMs,
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
@@ -1907,6 +1919,7 @@ Deno.serve(async () => {
                             timeoutMs: openAIRequestTimeoutMs,
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
+                            targetSize,
                             n: requestedImageCount,
                           }),
                     { attempt: 1 }

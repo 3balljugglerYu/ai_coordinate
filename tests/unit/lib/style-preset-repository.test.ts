@@ -23,6 +23,13 @@ const TEST_CATEGORY_ROW = {
   badge_color: "#1f2937",
   badge_text_color: "#ffffff",
   skip_base_prefix: false,
+  output_aspect_ratio_mode: "source",
+  user_guidance_ja: null,
+  user_guidance_en: null,
+  show_source_image_type_control: true,
+  show_background_change_control: true,
+  show_generation_model_control: true,
+  visibility: "public",
   is_active: true,
 };
 
@@ -177,10 +184,85 @@ describe("style-preset repository", () => {
           badgeColor: "#1f2937",
           badgeTextColor: "#ffffff",
           skipBasePrefix: false,
+          outputAspectRatioMode: "source",
+          userGuidanceJa: null,
+          userGuidanceEn: null,
+          showSourceImageTypeControl: true,
+          showBackgroundChangeControl: true,
+          showGenerationModelControl: true,
+          visibility: "public",
           isActive: true,
         },
         imageInputMode: "single",
       },
+    ]);
+  });
+
+  test("listPublishedStylePresets_運営限定カテゴリは既定で除外し管理者指定では含める", async () => {
+    const publicRow = {
+      id: "preset-public",
+      slug: "public-style",
+      title: "PUBLIC STYLE",
+      styling_prompt: "public prompt",
+      background_prompt: null,
+      thumbnail_image_url: "https://example.com/public.webp",
+      thumbnail_storage_path: null,
+      thumbnail_width: 512,
+      thumbnail_height: 512,
+      sort_order: 0,
+      status: "published",
+      category_id: TEST_CATEGORY_ID,
+      image_input_mode: "single",
+      reference_image_url: null,
+      reference_image_storage_path: null,
+      reference_image_width: null,
+      reference_image_height: null,
+      category: TEST_CATEGORY_ROW,
+      created_by: null,
+      updated_by: null,
+      created_at: "2026-03-22T00:00:00.000Z",
+      updated_at: "2026-03-22T00:00:00.000Z",
+    };
+    const adminOnlyRow = {
+      ...publicRow,
+      id: "preset-admin-only",
+      slug: "chibi-style",
+      title: "CHIBI STYLE",
+      category_id: "category-chibi",
+      category: {
+        ...TEST_CATEGORY_ROW,
+        id: "category-chibi",
+        key: "chibi",
+        display_name_ja: "ちびキャラ",
+        display_name_en: "Chibi",
+        visibility: "admin_only",
+      },
+    };
+    const data = [publicRow, adminOnlyRow];
+    const makeQuery = () => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest
+        .fn()
+        .mockReturnValueOnce({
+          order: jest.fn().mockResolvedValue({ data, error: null }),
+        }),
+    });
+    const from = jest
+      .fn()
+      .mockReturnValueOnce(makeQuery())
+      .mockReturnValueOnce(makeQuery());
+
+    mockCreateAdminClient.mockReturnValue({ from } as never);
+
+    await expect(listPublishedStylePresets()).resolves.toHaveLength(1);
+    const adminPresets = await listPublishedStylePresets({
+      includeAdminOnly: true,
+    });
+
+    expect(adminPresets.map((preset) => preset.id)).toEqual([
+      "preset-public",
+      "preset-admin-only",
     ]);
   });
 

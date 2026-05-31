@@ -42,6 +42,13 @@ const TEST_COORDINATE_CATEGORY = {
   badgeColor: "#1f2937",
   badgeTextColor: "#ffffff",
   skipBasePrefix: false,
+  outputAspectRatioMode: "source",
+  userGuidanceJa: null,
+  userGuidanceEn: null,
+  showSourceImageTypeControl: true,
+  showBackgroundChangeControl: true,
+  showGenerationModelControl: true,
+  visibility: "public",
   isActive: true,
 };
 
@@ -213,6 +220,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
           thumbnailWidth: 912,
           thumbnailHeight: 1173,
           hasBackgroundPrompt: false,
+          outputAspectRatioMode: "source",
           billingMode: "paid",
         },
       },
@@ -228,6 +236,83 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     expect(invokeImageWorkerFn).toHaveBeenCalledWith(
       "https://example.supabase.co/functions/v1/image-gen-worker"
     );
+  });
+
+  test("カテゴリで非表示のstyleフォーム項目はサーバー側でも既定値に固定する", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
+      ...buildStylePresetForGeneration({
+        backgroundPrompt: "Soft spring city street with blossoms",
+        hasBackgroundPrompt: true,
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showSourceImageTypeControl: false,
+          showBackgroundChangeControl: false,
+          showGenerationModelControl: false,
+        },
+      }),
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("sourceImageType", "real");
+    formData.set("backgroundChange", "true");
+    formData.set("model", "gemini-3.1-flash-image-preview-512");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    expect(response.status).toBe(200);
+    expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt_text: buildExpectedPrompt({
+          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        }),
+        source_image_type: "illustration",
+        model: "gpt-image-2-low-1k",
+        background_mode: "keep",
+      }),
+    );
+  });
+
+  test("運営限定カテゴリは非管理者のasync生成では使えない", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce({
+      ...buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "chibi",
+          displayNameJa: "ちびキャラ",
+          displayNameEn: "Chibi",
+          visibility: "admin_only",
+        },
+      }),
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gemini-3.1-flash-image-preview-512");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_INVALID_STYLE");
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    expect(invokeImageWorkerFn).not.toHaveBeenCalled();
   });
 
   test("Phase 5: 5回無料枠は完全廃止 (reservation 系 RPC を呼び出さない)", async () => {

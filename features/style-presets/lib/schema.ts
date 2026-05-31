@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { StyleOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 
 export const STYLE_PRESET_ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -19,6 +20,16 @@ export const IMAGE_INPUT_MODE_VALUES = ["single", "dual"] as const;
 export const imageInputModeSchema = z.enum(IMAGE_INPUT_MODE_VALUES);
 export type ImageInputMode = (typeof IMAGE_INPUT_MODE_VALUES)[number];
 
+export const STYLE_PRESET_CATEGORY_VISIBILITY_VALUES = [
+  "public",
+  "admin_only",
+] as const;
+export const stylePresetCategoryVisibilitySchema = z.enum(
+  STYLE_PRESET_CATEGORY_VISIBILITY_VALUES
+);
+export type StylePresetCategoryVisibility =
+  (typeof STYLE_PRESET_CATEGORY_VISIBILITY_VALUES)[number];
+
 export interface StylePresetCategoryRef {
   id: string;
   key: string;
@@ -27,6 +38,13 @@ export interface StylePresetCategoryRef {
   badgeColor: string;
   badgeTextColor: string;
   skipBasePrefix: boolean;
+  outputAspectRatioMode: StyleOutputAspectRatioMode;
+  userGuidanceJa: string | null;
+  userGuidanceEn: string | null;
+  showSourceImageTypeControl: boolean;
+  showBackgroundChangeControl: boolean;
+  showGenerationModelControl: boolean;
+  visibility: StylePresetCategoryVisibility;
   isActive: boolean;
 }
 

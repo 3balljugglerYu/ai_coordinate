@@ -7,6 +7,7 @@ import {
   type ImageInputMode,
   type StylePresetAdmin,
   type StylePresetCategoryRef,
+  type StylePresetCategoryVisibility,
   type StylePresetGenerationRecord,
   type StylePresetInsert,
   type StylePresetPublicSummary,
@@ -14,6 +15,10 @@ import {
 } from "./schema";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
+
+interface PublishedStylePresetAccessOptions {
+  includeAdminOnly?: boolean;
+}
 
 interface StylePresetCategoryRow {
   id: string;
@@ -23,6 +28,13 @@ interface StylePresetCategoryRow {
   badge_color: string;
   badge_text_color: string;
   skip_base_prefix: boolean;
+  output_aspect_ratio_mode?: string | null;
+  user_guidance_ja?: string | null;
+  user_guidance_en?: string | null;
+  show_source_image_type_control?: boolean | null;
+  show_background_change_control?: boolean | null;
+  show_generation_model_control?: boolean | null;
+  visibility?: StylePresetCategoryVisibility | string | null;
   is_active: boolean;
 }
 
@@ -53,10 +65,23 @@ interface StylePresetRow {
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, is_active)";
+  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, visibility, is_active)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
+}
+
+function normalizeCategoryVisibility(
+  value: StylePresetCategoryVisibility | string | null | undefined,
+): StylePresetCategoryVisibility {
+  return value === "admin_only" ? "admin_only" : "public";
+}
+
+function canAccessCategory(
+  category: StylePresetCategoryRef,
+  options: PublishedStylePresetAccessOptions = {},
+): boolean {
+  return options.includeAdminOnly === true || category.visibility === "public";
 }
 
 function mapRpcRow(data: unknown): StylePresetRow | null {
@@ -94,6 +119,13 @@ function mapCategoryRefStrict(
       badgeColor: "#1f2937",
       badgeTextColor: "#ffffff",
       skipBasePrefix: false,
+      outputAspectRatioMode: "source",
+      userGuidanceJa: null,
+      userGuidanceEn: null,
+      showSourceImageTypeControl: true,
+      showBackgroundChangeControl: true,
+      showGenerationModelControl: true,
+      visibility: "public",
       isActive: true,
     };
   }
@@ -105,6 +137,14 @@ function mapCategoryRefStrict(
     badgeColor: embedded.badge_color,
     badgeTextColor: embedded.badge_text_color,
     skipBasePrefix: embedded.skip_base_prefix,
+    outputAspectRatioMode:
+      embedded.output_aspect_ratio_mode === "square" ? "square" : "source",
+    userGuidanceJa: embedded.user_guidance_ja ?? null,
+    userGuidanceEn: embedded.user_guidance_en ?? null,
+    showSourceImageTypeControl: embedded.show_source_image_type_control ?? true,
+    showBackgroundChangeControl: embedded.show_background_change_control ?? true,
+    showGenerationModelControl: embedded.show_generation_model_control ?? true,
+    visibility: normalizeCategoryVisibility(embedded.visibility),
     isActive: embedded.is_active,
   };
 }
@@ -227,6 +267,7 @@ export async function getStylePresetForAdminById(
 }
 
 export async function listPublishedStylePresets(
+  options: PublishedStylePresetAccessOptions = {},
   client?: SupabaseClient
 ): Promise<StylePresetPublicSummary[]> {
   const supabase = getSupabase(client);
@@ -242,11 +283,14 @@ export async function listPublishedStylePresets(
     return [];
   }
 
-  return (data ?? []).map((row) => mapRowToPublicSummary(row as StylePresetRow));
+  return (data ?? [])
+    .map((row) => mapRowToPublicSummary(row as StylePresetRow))
+    .filter((preset) => canAccessCategory(preset.category, options));
 }
 
 export async function getPublishedStylePresetById(
   id: string,
+  options: PublishedStylePresetAccessOptions = {},
   client?: SupabaseClient
 ): Promise<StylePresetPublicSummary | null> {
   const supabase = getSupabase(client);
@@ -262,11 +306,14 @@ export async function getPublishedStylePresetById(
     return null;
   }
 
-  return data ? mapRowToPublicSummary(data as StylePresetRow) : null;
+  if (!data) return null;
+  const preset = mapRowToPublicSummary(data as StylePresetRow);
+  return canAccessCategory(preset.category, options) ? preset : null;
 }
 
 export async function getPublishedStylePresetForGeneration(
   id: string,
+  options: PublishedStylePresetAccessOptions = {},
   client?: SupabaseClient
 ): Promise<StylePresetGenerationRecord | null> {
   const supabase = getSupabase(client);
@@ -285,7 +332,9 @@ export async function getPublishedStylePresetForGeneration(
     return null;
   }
 
-  return data ? mapRowToGenerationRecord(data as StylePresetRow) : null;
+  if (!data) return null;
+  const preset = mapRowToGenerationRecord(data as StylePresetRow);
+  return canAccessCategory(preset.category, options) ? preset : null;
 }
 
 export async function createStylePreset(

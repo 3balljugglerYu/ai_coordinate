@@ -416,11 +416,23 @@ export function StylePageClient({
 
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
+  const shouldShowSourceImageTypeControl =
+    selectedPreset?.category.showSourceImageTypeControl ?? true;
+  const shouldShowBackgroundChangeControl =
+    selectedPreset?.category.showBackgroundChangeControl ?? true;
+  const shouldShowGenerationModelControl =
+    selectedPreset?.category.showGenerationModelControl ?? true;
+  const effectiveSourceImageType = shouldShowSourceImageTypeControl
+    ? sourceImageType
+    : "illustration";
+  const effectiveBackgroundChange = shouldShowBackgroundChangeControl
+    ? backgroundChange
+    : false;
   const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
   const modelAuthState =
     effectiveAuthState === "authenticated" ? "authenticated" : "guest";
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
-    selectedModel,
+    shouldShowGenerationModelControl ? selectedModel : DEFAULT_GENERATION_MODEL,
     modelAuthState
   );
   const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
@@ -441,7 +453,8 @@ export function StylePageClient({
       !hasEnoughPercoins);
 
   const isGenerating = generationPhase !== "idle";
-  const isBackgroundChangeAvailable = Boolean(selectedPreset?.hasBackgroundPrompt);
+  const isBackgroundChangeAvailable =
+    shouldShowBackgroundChangeControl && Boolean(selectedPreset?.hasBackgroundPrompt);
   const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
   const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
   const isGenerateDisabled =
@@ -821,10 +834,17 @@ export function StylePageClient({
   }, [effectiveAuthState, isAuthenticatedPaidOnlyMode]);
 
   useEffect(() => {
-    if (!selectedPreset?.hasBackgroundPrompt && backgroundChange) {
+    if (
+      (!selectedPreset?.hasBackgroundPrompt || !shouldShowBackgroundChangeControl) &&
+      backgroundChange
+    ) {
       setBackgroundChange(false);
     }
-  }, [backgroundChange, selectedPreset?.hasBackgroundPrompt]);
+  }, [
+    backgroundChange,
+    selectedPreset?.hasBackgroundPrompt,
+    shouldShowBackgroundChangeControl,
+  ]);
 
   useEffect(() => {
     if (!selectedPresetId) {
@@ -1113,8 +1133,8 @@ export function StylePageClient({
       const formData = new FormData();
       formData.set("styleId", selectedPreset.id);
       formData.set("uploadImage", normalizedFile);
-      formData.set("sourceImageType", sourceImageType);
-      formData.set("backgroundChange", backgroundChange ? "true" : "false");
+      formData.set("sourceImageType", effectiveSourceImageType);
+      formData.set("backgroundChange", effectiveBackgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
 
       const response = await fetch("/style/generate", {
@@ -1194,8 +1214,8 @@ export function StylePageClient({
     try {
       const formData = new FormData();
       formData.set("styleId", selectedPreset.id);
-      formData.set("sourceImageType", sourceImageType);
-      formData.set("backgroundChange", backgroundChange ? "true" : "false");
+      formData.set("sourceImageType", effectiveSourceImageType);
+      formData.set("backgroundChange", effectiveBackgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
 
       if (selectedRemoteSource?.kind === "stock") {
@@ -1512,104 +1532,110 @@ export function StylePageClient({
 
         <Card className="p-6">
           <div className="space-y-6">
-            <div>
-              <Label className="text-base font-medium block">
-                {t("sourceImageTypeLabel")}
-              </Label>
-              <RadioGroup
-                value={sourceImageType}
-                onValueChange={(value) =>
-                  handleSourceImageTypeChange(value as SourceImageType)
-                }
-                className="mt-2 flex items-center gap-6"
-                disabled={isGenerating}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    id="style-source-image-type-illustration"
-                    value="illustration"
-                  />
-                  <Label
-                    htmlFor="style-source-image-type-illustration"
-                    className="text-sm font-medium leading-none"
-                  >
-                    {t("sourceImageTypeIllustration")}
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    id="style-source-image-type-real"
-                    value="real"
-                  />
-                  <Label
-                    htmlFor="style-source-image-type-real"
-                    className="text-sm font-medium leading-none"
-                  >
-                    {t("sourceImageTypeReal")}
-                  </Label>
-                </div>
-              </RadioGroup>
-              <p className="mt-2 text-xs leading-5 text-slate-500">
-                {t("sourceImageTypeHint")}
-              </p>
-            </div>
-
-            <div>
-              <div className="space-y-2">
+            {shouldShowSourceImageTypeControl ? (
+              <div>
                 <Label className="text-base font-medium block">
-                  {t("backgroundChangeLabel")}
+                  {t("sourceImageTypeLabel")}
                 </Label>
-                <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                  <Checkbox
-                    id="style-background-change"
-                    checked={backgroundChange}
-                    onCheckedChange={(checked) =>
-                      handleBackgroundChangeToggle(checked === true)
-                    }
-                    disabled={isBackgroundChangeDisabled}
-                    className="mt-0.5"
-                  />
-                  <div className="min-w-0 space-y-1">
+                <RadioGroup
+                  value={sourceImageType}
+                  onValueChange={(value) =>
+                    handleSourceImageTypeChange(value as SourceImageType)
+                  }
+                  className="mt-2 flex items-center gap-6"
+                  disabled={isGenerating}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem
+                      id="style-source-image-type-illustration"
+                      value="illustration"
+                    />
                     <Label
-                      htmlFor="style-background-change"
-                      className={`text-sm font-medium ${
-                        isBackgroundChangeDisabled
-                          ? "cursor-not-allowed text-slate-400"
-                          : "cursor-pointer text-slate-900"
-                      }`}
+                      htmlFor="style-source-image-type-illustration"
+                      className="text-sm font-medium leading-none"
                     >
-                      {t("backgroundChangeCheckbox")}
+                      {t("sourceImageTypeIllustration")}
                     </Label>
-                    <p className="text-xs leading-5 text-slate-500">
-                      {isBackgroundChangeAvailable
-                        ? t("backgroundChangeDescription")
-                        : t("backgroundChangeDisabledHint")}
-                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem
+                      id="style-source-image-type-real"
+                      value="real"
+                    />
+                    <Label
+                      htmlFor="style-source-image-type-real"
+                      className="text-sm font-medium leading-none"
+                    >
+                      {t("sourceImageTypeReal")}
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("sourceImageTypeHint")}
+                </p>
+              </div>
+            ) : null}
+
+            {shouldShowBackgroundChangeControl ? (
+              <div>
+                <div className="space-y-2">
+                  <Label className="text-base font-medium block">
+                    {t("backgroundChangeLabel")}
+                  </Label>
+                  <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                    <Checkbox
+                      id="style-background-change"
+                      checked={backgroundChange}
+                      onCheckedChange={(checked) =>
+                        handleBackgroundChangeToggle(checked === true)
+                      }
+                      disabled={isBackgroundChangeDisabled}
+                      className="mt-0.5"
+                    />
+                    <div className="min-w-0 space-y-1">
+                      <Label
+                        htmlFor="style-background-change"
+                        className={`text-sm font-medium ${
+                          isBackgroundChangeDisabled
+                            ? "cursor-not-allowed text-slate-400"
+                            : "cursor-pointer text-slate-900"
+                        }`}
+                      >
+                        {t("backgroundChangeCheckbox")}
+                      </Label>
+                      <p className="text-xs leading-5 text-slate-500">
+                        {isBackgroundChangeAvailable
+                          ? t("backgroundChangeDescription")
+                          : t("backgroundChangeDisabledHint")}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : null}
 
-            <GenerationModelControls
-              value={effectiveSelectedModel}
-              onChange={handleSelectedModelChange}
-              onLockedClick={() => {
-                if (modelAuthState === "guest") {
-                  setShowAuthModal(true);
-                } else if (subscriptionPlan === "free") {
-                  setIsUpsellOpen(true);
+            {shouldShowGenerationModelControl ? (
+              <GenerationModelControls
+                value={effectiveSelectedModel}
+                onChange={handleSelectedModelChange}
+                onLockedClick={() => {
+                  if (modelAuthState === "guest") {
+                    setShowAuthModal(true);
+                  } else if (subscriptionPlan === "free") {
+                    setIsUpsellOpen(true);
+                  }
+                }}
+                authState={modelAuthState}
+                modelLabel={t("modelLabel")}
+                disabled={isGenerating}
+                isModelSelectable={
+                  modelAuthState === "authenticated" &&
+                  subscriptionPlan === "free"
+                    ? isFreePlanAllowedModel
+                    : undefined
                 }
-              }}
-              authState={modelAuthState}
-              modelLabel={t("modelLabel")}
-              disabled={isGenerating}
-              isModelSelectable={
-                modelAuthState === "authenticated" &&
-                subscriptionPlan === "free"
-                  ? isFreePlanAllowedModel
-                  : undefined
-              }
-            />
+              />
+            ) : null}
 
             <GenerationSubmitButton
               onClick={handleGenerate}

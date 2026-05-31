@@ -21,6 +21,20 @@ function createPngFile(name = "input.png"): File {
   return new File([new Uint8Array(16)], name, { type: "image/png" });
 }
 
+function createPngHeader(width: number, height: number): ArrayBuffer {
+  const buf = Buffer.alloc(24);
+  buf.writeUInt32BE(0x89504e47, 0);
+  buf.writeUInt32BE(0x0d0a1a0a, 4);
+  buf.writeUInt32BE(13, 8);
+  buf.write("IHDR", 12);
+  buf.writeUInt32BE(width, 16);
+  buf.writeUInt32BE(height, 20);
+  return buf.buffer.slice(
+    buf.byteOffset,
+    buf.byteOffset + buf.byteLength,
+  ) as ArrayBuffer;
+}
+
 describe("guest-generate", () => {
   describe("assertGuestRequest", () => {
     test("user が null なら guest 通過", () => {
@@ -287,6 +301,53 @@ describe("guest-generate", () => {
           mime_type: "image/webp",
           data: Buffer.from(referenceBytes).toString("base64"),
         },
+      });
+    });
+
+    test("outputAspectRatioMode=square は Gemini aspectRatio を 1:1 に固定する", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      inline_data: {
+                        mime_type: "image/png",
+                        data: "BASE64_OK",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+      await dispatchGuestImageGeneration({
+        model: "gemini-3.1-flash-image-preview-512",
+        promptText: "hello",
+        uploadImage: new File([createPngHeader(1600, 900)], "wide.png", {
+          type: "image/png",
+        }),
+        outputAspectRatioMode: "square",
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+
+      const requestBody = JSON.parse(
+        String(fetchFn.mock.calls[0][1].body),
+      ) as {
+        generationConfig: {
+          imageConfig?: { imageSize?: string; aspectRatio?: string };
+        };
+      };
+      expect(requestBody.generationConfig.imageConfig).toEqual({
+        imageSize: "512",
+        aspectRatio: "1:1",
       });
     });
 
@@ -586,6 +647,31 @@ describe("guest-generate", () => {
           quality: "low",
           sizeTier: "1k",
           n: 1,
+        })
+      );
+    });
+
+    test("outputAspectRatioMode=square は OpenAI targetSize を正方形に固定する", async () => {
+      const openaiClient = jest.fn().mockResolvedValue({
+        data: "OPENAI_BASE64",
+        mimeType: "image/png",
+      });
+
+      await dispatchGuestImageGeneration({
+        model: "gpt-image-2-low-1k",
+        promptText: "x",
+        uploadImage: new File([createPngHeader(1600, 900)], "wide.png", {
+          type: "image/png",
+        }),
+        outputAspectRatioMode: "square",
+        geminiApiKey: "(unused)",
+        openaiApiKey: "openai-key",
+        openaiClient,
+      });
+
+      expect(openaiClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetSize: "1248x1248",
         })
       );
     });

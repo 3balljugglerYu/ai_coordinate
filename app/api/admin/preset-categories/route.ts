@@ -6,11 +6,14 @@ import {
   createPresetCategory,
   listPresetCategories,
   PRESET_CATEGORY_IMAGE_INPUT_MODES,
+  STYLE_PRESET_CATEGORY_VISIBILITY_VALUES,
+  STYLE_OUTPUT_ASPECT_RATIO_MODES,
 } from "@/features/style-presets/lib/preset-category-repository";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
+const MAX_USER_GUIDANCE_LENGTH = 1000;
 
 function revalidatePresetCategoriesCache(): void {
   // style preset の表示 cacheTag を流用 (preset → category の JOIN 結果が更新される)
@@ -58,6 +61,13 @@ interface ParsedCreatePayload {
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
   defaultImageInputMode?: "single" | "dual";
+  outputAspectRatioMode?: "source" | "square";
+  userGuidanceJa?: string | null;
+  userGuidanceEn?: string | null;
+  showSourceImageTypeControl?: boolean;
+  showBackgroundChangeControl?: boolean;
+  showGenerationModelControl?: boolean;
+  visibility?: "public" | "admin_only";
   displayOrder?: number;
   isActive?: boolean;
 }
@@ -181,6 +191,101 @@ export async function POST(request: NextRequest) {
       | "single"
       | "dual";
   }
+  if (body.output_aspect_ratio_mode !== undefined) {
+    if (
+      typeof body.output_aspect_ratio_mode !== "string" ||
+      !STYLE_OUTPUT_ASPECT_RATIO_MODES.includes(
+        body.output_aspect_ratio_mode as "source" | "square",
+      )
+    ) {
+      return NextResponse.json(
+        { error: "output_aspect_ratio_mode must be 'source' or 'square'" },
+        { status: 400 },
+      );
+    }
+    payload.outputAspectRatioMode = body.output_aspect_ratio_mode as
+      | "source"
+      | "square";
+  }
+  if (body.user_guidance_ja !== undefined) {
+    if (body.user_guidance_ja !== null && typeof body.user_guidance_ja !== "string") {
+      return NextResponse.json(
+        { error: "user_guidance_ja must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_guidance_ja === "string"
+        ? body.user_guidance_ja.trim()
+        : "";
+    if (trimmed.length > MAX_USER_GUIDANCE_LENGTH) {
+      return NextResponse.json(
+        { error: `user_guidance_ja must be <= ${MAX_USER_GUIDANCE_LENGTH} chars` },
+        { status: 400 },
+      );
+    }
+    payload.userGuidanceJa = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_guidance_en !== undefined) {
+    if (body.user_guidance_en !== null && typeof body.user_guidance_en !== "string") {
+      return NextResponse.json(
+        { error: "user_guidance_en must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_guidance_en === "string"
+        ? body.user_guidance_en.trim()
+        : "";
+    if (trimmed.length > MAX_USER_GUIDANCE_LENGTH) {
+      return NextResponse.json(
+        { error: `user_guidance_en must be <= ${MAX_USER_GUIDANCE_LENGTH} chars` },
+        { status: 400 },
+      );
+    }
+    payload.userGuidanceEn = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.show_source_image_type_control !== undefined) {
+    if (typeof body.show_source_image_type_control !== "boolean") {
+      return NextResponse.json(
+        { error: "show_source_image_type_control must be boolean" },
+        { status: 400 },
+      );
+    }
+    payload.showSourceImageTypeControl = body.show_source_image_type_control;
+  }
+  if (body.show_background_change_control !== undefined) {
+    if (typeof body.show_background_change_control !== "boolean") {
+      return NextResponse.json(
+        { error: "show_background_change_control must be boolean" },
+        { status: 400 },
+      );
+    }
+    payload.showBackgroundChangeControl = body.show_background_change_control;
+  }
+  if (body.show_generation_model_control !== undefined) {
+    if (typeof body.show_generation_model_control !== "boolean") {
+      return NextResponse.json(
+        { error: "show_generation_model_control must be boolean" },
+        { status: 400 },
+      );
+    }
+    payload.showGenerationModelControl = body.show_generation_model_control;
+  }
+  if (body.visibility !== undefined) {
+    if (
+      typeof body.visibility !== "string" ||
+      !STYLE_PRESET_CATEGORY_VISIBILITY_VALUES.includes(
+        body.visibility as "public" | "admin_only",
+      )
+    ) {
+      return NextResponse.json(
+        { error: "visibility must be 'public' or 'admin_only'" },
+        { status: 400 },
+      );
+    }
+    payload.visibility = body.visibility as "public" | "admin_only";
+  }
   if (body.display_order !== undefined) {
     if (
       typeof body.display_order !== "number" ||
@@ -222,6 +327,13 @@ export async function POST(request: NextRequest) {
         display_name_en: created.displayNameEn,
         skip_base_prefix: created.skipBasePrefix,
         default_image_input_mode: created.defaultImageInputMode,
+        output_aspect_ratio_mode: created.outputAspectRatioMode,
+        has_user_guidance:
+          created.userGuidanceJa !== null || created.userGuidanceEn !== null,
+        show_source_image_type_control: created.showSourceImageTypeControl,
+        show_background_change_control: created.showBackgroundChangeControl,
+        show_generation_model_control: created.showGenerationModelControl,
+        visibility: created.visibility,
         is_active: created.isActive,
       },
     });

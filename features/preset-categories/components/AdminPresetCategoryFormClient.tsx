@@ -19,6 +19,13 @@ interface FormState {
   badgeTextColor: string;
   skipBasePrefix: boolean;
   defaultImageInputMode: "single" | "dual";
+  outputAspectRatioMode: "source" | "square";
+  userGuidanceJa: string;
+  userGuidanceEn: string;
+  showSourceImageTypeControl: boolean;
+  showBackgroundChangeControl: boolean;
+  showGenerationModelControl: boolean;
+  visibility: "public" | "admin_only";
   displayOrder: number;
   isActive: boolean;
 }
@@ -32,6 +39,13 @@ function toFormState(initial?: PresetCategoryAdmin): FormState {
     badgeTextColor: initial?.badgeTextColor ?? "#ffffff",
     skipBasePrefix: initial?.skipBasePrefix ?? false,
     defaultImageInputMode: initial?.defaultImageInputMode ?? "single",
+    outputAspectRatioMode: initial?.outputAspectRatioMode ?? "source",
+    userGuidanceJa: initial?.userGuidanceJa ?? "",
+    userGuidanceEn: initial?.userGuidanceEn ?? "",
+    showSourceImageTypeControl: initial?.showSourceImageTypeControl ?? true,
+    showBackgroundChangeControl: initial?.showBackgroundChangeControl ?? true,
+    showGenerationModelControl: initial?.showGenerationModelControl ?? true,
+    visibility: initial?.visibility ?? "admin_only",
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -63,6 +77,13 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
               default_image_input_mode: form.defaultImageInputMode,
+              output_aspect_ratio_mode: form.outputAspectRatioMode,
+              user_guidance_ja: form.userGuidanceJa.trim() || null,
+              user_guidance_en: form.userGuidanceEn.trim() || null,
+              show_source_image_type_control: form.showSourceImageTypeControl,
+              show_background_change_control: form.showBackgroundChangeControl,
+              show_generation_model_control: form.showGenerationModelControl,
+              visibility: form.visibility,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -73,6 +94,13 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
               default_image_input_mode: form.defaultImageInputMode,
+              output_aspect_ratio_mode: form.outputAspectRatioMode,
+              user_guidance_ja: form.userGuidanceJa.trim() || null,
+              user_guidance_en: form.userGuidanceEn.trim() || null,
+              show_source_image_type_control: form.showSourceImageTypeControl,
+              show_background_change_control: form.showBackgroundChangeControl,
+              show_generation_model_control: form.showGenerationModelControl,
+              visibility: form.visibility,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -262,6 +290,83 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
             preset 新規作成時の初期値。preset ごとに上書き可能。
           </span>
         </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            出力比率
+          </span>
+          <select
+            value={form.outputAspectRatioMode}
+            onChange={(e) =>
+              update(
+                "outputAspectRatioMode",
+                e.target.value as "source" | "square",
+              )
+            }
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="source">アップロード画像に合わせる</option>
+            <option value="square">正方形固定 (1:1)</option>
+          </select>
+          <span className="mt-1 block text-xs text-slate-500">
+            正方形固定にすると、このカテゴリの preset 生成は Gemini / OpenAI ともに 1:1 で出力します。
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            公開範囲
+          </span>
+          <select
+            value={form.visibility}
+            onChange={(e) =>
+              update(
+                "visibility",
+                e.target.value as "public" | "admin_only",
+              )
+            }
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="admin_only">運営のみ</option>
+            <option value="public">全ユーザーに公開</option>
+          </select>
+          <span className="mt-1 block text-xs text-slate-500">
+            運営のみの場合、ADMIN_USER_IDS のユーザーだけ /style に表示・生成できます。
+          </span>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            ユーザー向け説明 (日本語)
+          </span>
+          <textarea
+            value={form.userGuidanceJa}
+            onChange={(e) => update("userGuidanceJa", e.target.value)}
+            maxLength={1000}
+            rows={5}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            placeholder="例: 正面向き・全身が写っているイラストがおすすめです。"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            ユーザーに推奨画像や注意事項を伝えるための説明文です。表示場所は別 UI で利用できます。
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            ユーザー向け説明 (English)
+          </span>
+          <textarea
+            value={form.userGuidanceEn}
+            onChange={(e) => update("userGuidanceEn", e.target.value)}
+            maxLength={1000}
+            rows={5}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            placeholder="Example: Front-facing full-body illustrations work best."
+          />
+        </label>
       </div>
 
       <div className="rounded-md bg-slate-50 p-4">
@@ -312,6 +417,66 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               false にすると新規 preset 作成の選択肢から外れます。
               既存 preset の表示・生成可否は preset 側の status で制御するため、
               inactive にしても過去の preset 表示・集計は維持されます。
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
+      <fieldset className="space-y-3 rounded-md border border-slate-200 p-4">
+        <legend className="px-1 text-sm font-medium text-slate-700">
+          ユーザー画面の表示項目
+        </legend>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.showSourceImageTypeControl}
+            onChange={(e) =>
+              update("showSourceImageTypeControl", e.target.checked)
+            }
+            className="mt-1 h-4 w-4 rounded border-slate-300"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">アップロード画像のタイプを表示</span>
+            <br />
+            <span className="text-xs text-slate-500">
+              OFF の場合、/style では「イラスト / 写真」を選ばせず、生成時は illustration として扱います。
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.showBackgroundChangeControl}
+            onChange={(e) =>
+              update("showBackgroundChangeControl", e.target.checked)
+            }
+            className="mt-1 h-4 w-4 rounded border-slate-300"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">背景設定を表示</span>
+            <br />
+            <span className="text-xs text-slate-500">
+              OFF の場合、/style では背景変更チェックを表示せず、生成時は背景変更なしとして扱います。
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.showGenerationModelControl}
+            onChange={(e) =>
+              update("showGenerationModelControl", e.target.checked)
+            }
+            className="mt-1 h-4 w-4 rounded border-slate-300"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">生成モデル選択を表示</span>
+            <br />
+            <span className="text-xs text-slate-500">
+              OFF の場合、/style ではモデル選択を表示せず、既定モデルで生成します。
             </span>
           </span>
         </label>
