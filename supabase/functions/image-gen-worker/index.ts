@@ -441,6 +441,90 @@ async function downloadStylePresetReferenceImage(
   };
 }
 
+/**
+ * One-Tap Style dual + user_upload モード用: generated-images bucket の
+ * temp/{user_id}/... に user が /style-async でアップロードした参考画像を取得する。
+ * 設計判断は docs/planning/style-preset-user-dual-and-prompt-implementation-plan.md ADR-005 参照。
+ *
+ * セキュリティ: path 先頭が `temp/` であることを必ず検証してから download する
+ * (= bucket 内の他 path への横展開を防ぐ)。
+ */
+async function downloadGeneratedImagesTempReferenceImage(
+  supabase: ReturnType<typeof createClient>,
+  storagePath: string
+): Promise<InputImageData> {
+  if (!storagePath.startsWith("temp/")) {
+    throw new Error(
+      `generated-images temp reference must start with 'temp/' (got: ${storagePath})`
+    );
+  }
+  const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+    supabase.storage.from("generated-images").download(storagePath),
+    "Style preset user_upload reference download"
+  );
+
+  if (error || !data) {
+    throw new Error(
+      `Style preset user_upload reference download failed: ${error?.message ?? "Unknown error"}`
+    );
+  }
+
+  const mimeType = data.type || "image/webp";
+  const arrayBuffer = await data.arrayBuffer();
+  return {
+    base64: encodeBase64(new Uint8Array(arrayBuffer)),
+    mimeType,
+  };
+}
+
+/**
+ * dual + user_upload の reference temp 画像を、ジョブ成功後に削除する。
+ * 失敗しても生成結果は壊さず、既存 cleanup cron に委ねる。
+ */
+async function deleteGeneratedImagesTempReferenceImageIfExists(
+  supabase: ReturnType<typeof createClient>,
+  storagePath: string | null
+): Promise<void> {
+  if (!storagePath?.startsWith("temp/")) {
+    return;
+  }
+
+  const { error } = await supabase.storage
+    .from("generated-images")
+    .remove([storagePath]);
+
+  if (error) {
+    console.warn(
+      "[Worker] failed to cleanup one_tap_style user_upload reference image",
+      {
+        path: storagePath,
+        error: error.message,
+      }
+    );
+  }
+}
+
+/**
+ * one_tap_style の image_1 取得元 bucket / path を job から解決する pure helper (ADR-005)。
+ * - `style_reference_image_bucket` 明示値があればそれを使う
+ * - NULL (旧 job 互換) は 'style_presets' fallback
+ * - 'generated-images' の場合は path 先頭が `temp/` であることを呼び出し側で再検証する
+ *
+ * 戻り値: image_1 が無いジョブ (= style_reference_image_url なし) なら null
+ */
+export function resolveStyleReferenceImageLocation(job: {
+  style_reference_image_url?: string | null;
+  style_reference_image_bucket?: string | null;
+}): { bucket: "style_presets" | "generated-images"; path: string } | null {
+  const path = job.style_reference_image_url;
+  if (typeof path !== "string" || path.length === 0) return null;
+  const bucket =
+    job.style_reference_image_bucket === "generated-images"
+      ? "generated-images"
+      : "style_presets";
+  return { bucket, path };
+}
+
 async function downloadInputImageViaStockFallback(
   supabase: ReturnType<typeof createClient>,
   sourceImageStockId: string
@@ -1211,8 +1295,8 @@ Deno.serve(async () => {
           p_queue_name: QUEUE_NAME,
           p_msg_id: msgId,
         });
-        continue;
-      }
+            continue;
+          }
 
       try {
         // ジョブのステータスを取得（冪等性チェック）
@@ -1395,6 +1479,7 @@ Deno.serve(async () => {
             : null;
         const workerStartedAtMs = Date.now();
         let currentStage: TimedProcessingStage | null = null;
+        let generatedImagesTempReferencePathToCleanup: string | null = null;
         const dbModel = normalizeModelName(job.model);
         const apiModel = toApiModelName(dbModel);
         const backgroundMode = resolveBackgroundMode(job.background_mode, null);
@@ -1683,24 +1768,38 @@ Deno.serve(async () => {
                         data: inspireTemplateImageData.base64,
                       },
                     });
-                  } else if (
-                    job.generation_type === "one_tap_style" &&
-                    typeof job.style_reference_image_url === "string" &&
-                    job.style_reference_image_url.length > 0
-                  ) {
-                    const referencePath = job.style_reference_image_url;
-                    const referenceImageData =
-                      await downloadStylePresetReferenceImage(
-                        supabase,
-                        referencePath
-                      );
-                    resolvedInspireTemplateImage = referenceImageData;
-                    parts.push({
-                      inline_data: {
-                        mime_type: referenceImageData.mimeType,
-                        data: referenceImageData.base64,
+                  } else if (job.generation_type === "one_tap_style") {
+                    // image_1 取得: bucket は image_jobs.style_reference_image_bucket の
+                    // 明示値で決定 (NULL は 'style_presets' fallback)。ADR-005 参照。
+                    const location = resolveStyleReferenceImageLocation(
+                      job as {
+                        style_reference_image_url?: string | null;
+                        style_reference_image_bucket?: string | null;
                       },
-                    });
+                    );
+                    if (location) {
+                      let referenceImageData: InputImageData;
+                      if (location.bucket === "generated-images") {
+                        referenceImageData =
+                          await downloadGeneratedImagesTempReferenceImage(
+                            supabase,
+                            location.path,
+                          );
+                        generatedImagesTempReferencePathToCleanup = location.path;
+                      } else {
+                        referenceImageData = await downloadStylePresetReferenceImage(
+                          supabase,
+                          location.path,
+                        );
+                      }
+                      resolvedInspireTemplateImage = referenceImageData;
+                      parts.push({
+                        inline_data: {
+                          mime_type: referenceImageData.mimeType,
+                          data: referenceImageData.base64,
+                        },
+                      });
+                    }
                   }
 
                   // 全 prompt_key を 1 クエリで取得 (invocation 内メモリキャッシュ付き)
@@ -2496,7 +2595,12 @@ Deno.serve(async () => {
               currentStage,
             });
             continue;
-          }
+	          }
+
+          await deleteGeneratedImagesTempReferenceImageIfExists(
+            supabase,
+            generatedImagesTempReferencePathToCleanup,
+          );
 
           const siteUrl = Deno.env.get("SITE_URL");
           const cronSecret = Deno.env.get("CRON_SECRET");

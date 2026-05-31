@@ -1,6 +1,7 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   createPresetCategory,
@@ -67,6 +68,7 @@ interface ParsedCreatePayload {
   showSourceImageTypeControl?: boolean;
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
+  showUserPromptInput?: boolean;
   visibility?: "public" | "admin_only";
   displayOrder?: number;
   isActive?: boolean;
@@ -78,6 +80,11 @@ interface ParsedCreatePayload {
  */
 export async function POST(request: NextRequest) {
   await connection();
+
+  // CSRF 防御: cookie 認証 mutation route は Same-Origin Origin 検証 (REQ-14)
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   let user: Awaited<ReturnType<typeof requireAdmin>>;
   try {
     user = await requireAdmin();
@@ -272,6 +279,15 @@ export async function POST(request: NextRequest) {
     }
     payload.showGenerationModelControl = body.show_generation_model_control;
   }
+  if (body.show_user_prompt_input !== undefined) {
+    if (typeof body.show_user_prompt_input !== "boolean") {
+      return NextResponse.json(
+        { error: "show_user_prompt_input must be boolean" },
+        { status: 400 },
+      );
+    }
+    payload.showUserPromptInput = body.show_user_prompt_input;
+  }
   if (body.visibility !== undefined) {
     if (
       typeof body.visibility !== "string" ||
@@ -333,6 +349,7 @@ export async function POST(request: NextRequest) {
         show_source_image_type_control: created.showSourceImageTypeControl,
         show_background_change_control: created.showBackgroundChangeControl,
         show_generation_model_control: created.showGenerationModelControl,
+        show_user_prompt_input: created.showUserPromptInput,
         visibility: created.visibility,
         is_active: created.isActive,
       },

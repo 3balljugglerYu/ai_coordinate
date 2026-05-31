@@ -44,6 +44,7 @@ import { getUser } from "@/lib/auth";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StyleUsageAuthState } from "@/features/style/lib/style-usage-events";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
 const MAX_RETRYABLE_ATTEMPTS = 2;
 
@@ -295,11 +296,62 @@ export async function postStyleGenerateRoute(
       );
     }
 
+    // dual モードの参考画像入手経路 (ADR-001 + ADR-004)
+    //   - admin: preset 登録の固定画像 (storage_path) を後段で download
+    //   - user_upload: form の uploadImage2 を直接 File として provider に渡す
+    const uploadImage2 = getFile(formData.get("uploadImage2"));
+    const userPromptEntry = formData.get("userPrompt");
+    const userPromptRaw =
+      typeof userPromptEntry === "string" ? userPromptEntry : "";
+
+    // REQ-13: rate-limit 消費 / credit / Storage upload / provider 呼び出しより前に
+    // user_upload / userPrompt 系の入力検証を完了する
+    const expectsUserUploadImage2 =
+      preset.imageInputMode === "dual" &&
+      preset.dualReferenceSource === "user_upload";
+    if (expectsUserUploadImage2) {
+      if (!uploadImage2) {
+        return jsonError(
+          copy.missingUploadImage,
+          "STYLE_DUAL_USER_IMAGE_REQUIRED",
+          400
+        );
+      }
+      const refError = validateImageFile(
+        uploadImage2,
+        copy.uploadImageLabel,
+        copy
+      );
+      if (refError) {
+        return jsonError(refError, "STYLE_INVALID_DUAL_USER_IMAGE", 400);
+      }
+    }
+    // category.show_user_prompt_input=true なら userPrompt を採用、false なら無視 (REQ-12)
+    const effectiveUserPromptInput =
+      preset.category.showUserPromptInput && userPromptRaw.trim().length > 0
+        ? userPromptRaw
+        : null;
+    if (
+      preset.category.showUserPromptInput &&
+      userPromptRaw.length > GENERATION_PROMPT_MAX_LENGTH
+    ) {
+      return jsonError(
+        copy.invalidStylePreset,
+        "STYLE_USER_PROMPT_TOO_LONG",
+        400
+      );
+    }
+
     const dualReferenceImageStoragePath =
-      preset.imageInputMode === "dual"
+      preset.imageInputMode === "dual" &&
+      preset.dualReferenceSource === "admin"
         ? preset.referenceImageStoragePath
         : null;
-    if (preset.imageInputMode === "dual" && !dualReferenceImageStoragePath) {
+    if (
+      preset.imageInputMode === "dual" &&
+      preset.dualReferenceSource === "admin" &&
+      !dualReferenceImageStoragePath
+    ) {
       return jsonError(
         copy.invalidStylePreset,
         "STYLE_DUAL_REFERENCE_MISSING",
@@ -407,6 +459,7 @@ export async function postStyleGenerateRoute(
 
     let referenceImage: File | null = null;
     if (dualReferenceImageStoragePath) {
+      // admin dual: storage_path から download
       try {
         referenceImage = await downloadStylePresetReferenceImageFn(
           dualReferenceImageStoragePath
@@ -423,6 +476,9 @@ export async function postStyleGenerateRoute(
           500
         );
       }
+    } else if (expectsUserUploadImage2 && uploadImage2) {
+      // user_upload: temp upload を経由せず、formData の File を直接 provider に渡す (ADR-004)
+      referenceImage = uploadImage2;
     }
 
     if (authState === "guest") {
@@ -442,6 +498,7 @@ export async function postStyleGenerateRoute(
         backgroundChange: effectiveBackgroundChange,
         sourceImageType: effectiveSourceImageType,
         templates: promptTemplates,
+        userPromptInput: effectiveUserPromptInput,
       },
       // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
       { skipBasePrefix: preset.category.skipBasePrefix },

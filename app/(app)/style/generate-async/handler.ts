@@ -10,6 +10,7 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
 import { env, getAdminUserIds } from "@/lib/env";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
@@ -30,6 +31,7 @@ import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 
 interface StyleGenerateAsyncRouteDependencies {
   getUserFn?: typeof getUser;
@@ -108,6 +110,11 @@ export async function postStyleGenerateAsyncRoute(
   const copy = (await getAllMessages(locale)).style;
 
   try {
+    // CSRF 防御: cookie 認証でペルコイン消費・ジョブ投入する mutation route のため、
+    // request body を読む前に Same-Origin Origin 検証を通す。
+    const originGuard = ensureSameOrigin(request);
+    if (originGuard) return originGuard;
+
     const getUserFn = dependencies.getUserFn ?? getUser;
     const jobRepository =
       dependencies.jobRepository ?? createAsyncGenerationJobRepository();
@@ -179,6 +186,12 @@ export async function postStyleGenerateAsyncRoute(
     // 2 / 3 のときは画像本体は既に Supabase Storage 上にあるので、
     // クライアントから再アップロードさせず DB の image_url を流用する。
     const uploadImage = getFile(formData.get("uploadImage"));
+    // dual + user_upload preset の image_1。preset.dualReferenceSource='user_upload' のときのみ意味あり。
+    const uploadImage2 = getFile(formData.get("uploadImage2"));
+    // category.showUserPromptInput=true のときのみ意味あり (= サーバ側ホワイトリスト, REQ-12)
+    const userPromptEntry = formData.get("userPrompt");
+    const userPromptRaw =
+      typeof userPromptEntry === "string" ? userPromptEntry : "";
     const sourceImageStockIdEntry = formData.get("sourceImageStockId");
     const sourceImageStockId =
       typeof sourceImageStockIdEntry === "string" &&
@@ -234,6 +247,49 @@ export async function postStyleGenerateAsyncRoute(
       );
     }
 
+    // REQ-13: user_upload (image_1) と userPrompt の validation は credit 残高チェックより前。
+    // dual + user_upload preset では image_1 が必須。dual + admin / single では uploadImage2 は無視。
+    const expectsUserUploadImage2 =
+      preset.imageInputMode === "dual" &&
+      preset.dualReferenceSource === "user_upload";
+    if (expectsUserUploadImage2) {
+      if (!uploadImage2) {
+        return jsonError(
+          copy.missingUploadImage,
+          "STYLE_DUAL_USER_IMAGE_REQUIRED",
+          400
+        );
+      }
+      const refValidationError = validateImageFile(
+        uploadImage2,
+        copy.uploadImageLabel,
+        copy
+      );
+      if (refValidationError) {
+        return jsonError(
+          refValidationError,
+          "STYLE_INVALID_DUAL_USER_IMAGE",
+          400
+        );
+      }
+    }
+
+    // category.show_user_prompt_input=true なら userPrompt を採用、false なら無視 (REQ-12)
+    const effectiveUserPromptInput =
+      preset.category.showUserPromptInput && userPromptRaw.trim().length > 0
+        ? userPromptRaw
+        : null;
+    if (
+      preset.category.showUserPromptInput &&
+      userPromptRaw.length > GENERATION_PROMPT_MAX_LENGTH
+    ) {
+      return jsonError(
+        copy.invalidStylePreset,
+        "STYLE_USER_PROMPT_TOO_LONG",
+        400
+      );
+    }
+
     // 残高チェック (Phase 5 / ADR-008)。実減算は worker。
     const percoinCost = getPercoinCost(effectiveModel);
     const { data: creditData, error: creditError } =
@@ -271,6 +327,7 @@ export async function postStyleGenerateAsyncRoute(
         backgroundChange: effectiveBackgroundChange,
         sourceImageType: effectiveSourceImageType,
         templates: promptTemplates,
+        userPromptInput: effectiveUserPromptInput,
       },
       // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
       { skipBasePrefix: preset.category.skipBasePrefix },
@@ -352,11 +409,50 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     // UCL-016 / ADR-008: billingMode は常に "paid"。worker はこれを見て減算する。
-    // dual モード preset の場合は preset.reference_image_storage_path を
-    // image_jobs.style_reference_image_url に保存し、worker が image_1 として読む。
-    const isDualPreset =
+    // dual モード preset の image_1 取得経路 (ADR-005):
+    //   - admin: preset.referenceImageStoragePath を style_presets bucket から worker が取得
+    //   - user_upload: uploadImage2 を temp upload した path を generated-images bucket から取得
+    let styleReferenceImageUrl: string | null = null;
+    let styleReferenceImageBucket:
+      | "style_presets"
+      | "generated-images"
+      | null = null;
+    if (
       preset.imageInputMode === "dual" &&
-      preset.referenceImageStoragePath !== null;
+      preset.dualReferenceSource === "admin" &&
+      preset.referenceImageStoragePath !== null
+    ) {
+      styleReferenceImageUrl = preset.referenceImageStoragePath;
+      styleReferenceImageBucket = "style_presets";
+    } else if (expectsUserUploadImage2 && uploadImage2) {
+      // user_upload 経路: temp upload で path 保存。bucket は generated-images
+      const refArrayBuffer = await uploadImage2.arrayBuffer();
+      const refBuffer = Buffer.from(refArrayBuffer);
+      const refTimestamp = Date.now();
+      const refRandomStr = Math.random().toString(36).substring(2, 15);
+      const refExtension = getSafeExtensionFromMimeType(uploadImage2.type);
+      const refFileName = `temp/${user.id}/${refTimestamp}-${refRandomStr}-ref.${refExtension}`;
+      const { data: refUploadData, error: refUploadError } =
+        await jobRepository.uploadSourceImage(
+          refFileName,
+          refBuffer,
+          uploadImage2.type
+        );
+      if (refUploadError || !refUploadData) {
+        console.error(
+          "Style async generate route: failed to upload reference image_1",
+          refUploadError
+        );
+        return jsonError(
+          copy.styleImageReadFailed,
+          "STYLE_DUAL_USER_IMAGE_UPLOAD_FAILED",
+          500
+        );
+      }
+      styleReferenceImageUrl = refUploadData.path;
+      styleReferenceImageBucket = "generated-images";
+    }
+
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
       prompt_text: prompt,
@@ -379,9 +475,8 @@ export async function postStyleGenerateAsyncRoute(
       status: "queued",
       processing_stage: "queued",
       attempts: 0,
-      style_reference_image_url: isDualPreset
-        ? preset.referenceImageStoragePath
-        : null,
+      style_reference_image_url: styleReferenceImageUrl,
+      style_reference_image_bucket: styleReferenceImageBucket,
       // category.key のスナップショット (ADR-006)
       style_preset_category_key: preset.category.key,
     };

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
+  DUAL_REFERENCE_SOURCE_VALUES,
   IMAGE_INPUT_MODE_VALUES,
   stylePresetStatusSchema,
+  type DualReferenceSource,
   type ImageInputMode,
 } from "@/features/style-presets/lib/schema";
 import {
@@ -29,6 +32,10 @@ export async function PATCH(
   let oldThumbnailPath: string | null = null;
   let oldReferencePath: string | null = null;
 
+  // CSRF 防御: cookie 認証 mutation route は Same-Origin Origin 検証 (REQ-14)
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     const user = await requireAdmin();
     const { id } = await params;
@@ -52,6 +59,7 @@ export async function PATCH(
     const statusEntry = formData.get("status");
     const categoryIdEntry = formData.get("category_id");
     const imageInputModeEntry = formData.get("image_input_mode");
+    const dualReferenceSourceEntry = formData.get("dual_reference_source");
     const file = formData.get("file");
     const referenceFile = formData.get("reference_file");
     const hasNewReferenceFile =
@@ -118,14 +126,40 @@ export async function PATCH(
       imageInputMode = imageInputModeEntry as ImageInputMode;
     }
 
-    // dual モードの整合性: 新しい mode が dual の場合、reference 画像が必要 (新規 file または既存 storage_path)
+    // dual_reference_source 解決: 未指定なら現在値維持。single の場合は 'admin' に矯正 (DB CHECK 制約)
+    let dualReferenceSource: DualReferenceSource = existing.dualReferenceSource;
+    if (
+      typeof dualReferenceSourceEntry === "string" &&
+      dualReferenceSourceEntry.length > 0
+    ) {
+      if (
+        !DUAL_REFERENCE_SOURCE_VALUES.includes(
+          dualReferenceSourceEntry as DualReferenceSource,
+        )
+      ) {
+        return NextResponse.json(
+          { error: "dual_reference_source は 'admin' か 'user_upload' を指定してください" },
+          { status: 400 }
+        );
+      }
+      dualReferenceSource = dualReferenceSourceEntry as DualReferenceSource;
+    }
+    if (imageInputMode === "single") {
+      dualReferenceSource = "admin";
+    }
+
+    // dual + admin のときのみ reference 画像必須 (新規 file または既存 storage_path)
     const willHaveReference =
       hasNewReferenceFile
         ? true
         : existing.referenceImageStoragePath !== null;
-    if (imageInputMode === "dual" && !willHaveReference) {
+    if (
+      imageInputMode === "dual" &&
+      dualReferenceSource === "admin" &&
+      !willHaveReference
+    ) {
       return NextResponse.json(
-        { error: "dual モードでは参考画像 (image_1) が必須です" },
+        { error: "dual (admin) モードでは参考画像 (image_1) が必須です" },
         { status: 400 }
       );
     }
@@ -149,6 +183,7 @@ export async function PATCH(
       updatedBy: user.id,
       categoryId: targetCategoryId,
       imageInputMode,
+      dualReferenceSource,
       // reference image 系はこの後で上書きするか既存維持
       referenceImageUrl: existing.referenceImageUrl,
       referenceImageStoragePath: existing.referenceImageStoragePath,
@@ -156,9 +191,13 @@ export async function PATCH(
       referenceImageHeight: existing.referenceImageHeight,
     };
 
-    // 新しい reference file は新規 object に保存し、DB 更新成功後に旧 object を削除する。
+    // 新しい reference file (= admin dual の場合のみ意味あり) を新規 object に保存し、DB 更新成功後に旧 object を削除する。
     // 既存 fixed path を直接 upsert すると、DB 更新失敗時に旧 reference を壊すため。
-    if (imageInputMode === "dual" && hasNewReferenceFile) {
+    if (
+      imageInputMode === "dual" &&
+      dualReferenceSource === "admin" &&
+      hasNewReferenceFile
+    ) {
       const uploaded = await uploadStylePresetReferenceImage(
         referenceFile,
         id,
@@ -171,8 +210,13 @@ export async function PATCH(
       updatePayload.referenceImageHeight = uploaded.height;
     }
 
-    // single モードでは reference 情報を保持しない。旧 object は DB 更新成功後に削除する。
-    if (imageInputMode === "single") {
+    // 以下のケースで reference 情報をクリア (= DB のみ。旧 object は後段で削除):
+    //   1. single モードに切り替えた (= reference 不要)
+    //   2. dual だが dual_reference_source が user_upload に切り替わった (= preset の固定参考画像は使わない)
+    if (
+      imageInputMode === "single" ||
+      (imageInputMode === "dual" && dualReferenceSource === "user_upload")
+    ) {
       updatePayload.referenceImageUrl = null;
       updatePayload.referenceImageStoragePath = null;
       updatePayload.referenceImageWidth = null;
@@ -183,8 +227,11 @@ export async function PATCH(
       if (!oldReferencePath) {
         return;
       }
-      const shouldDeleteOldReference =
+      const switchedAwayFromAdminDual =
         imageInputMode === "single" ||
+        (imageInputMode === "dual" && dualReferenceSource === "user_upload");
+      const shouldDeleteOldReference =
+        switchedAwayFromAdminDual ||
         (newReferencePath !== null && oldReferencePath !== newReferencePath);
       if (!shouldDeleteOldReference) {
         return;
@@ -269,9 +316,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF 防御: cookie 認証 mutation route は Same-Origin Origin 検証 (REQ-14)
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     await requireAdmin();
     const { id } = await params;

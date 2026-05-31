@@ -48,6 +48,7 @@ const TEST_COORDINATE_CATEGORY = {
   showSourceImageTypeControl: true,
   showBackgroundChangeControl: true,
   showGenerationModelControl: true,
+  showUserPromptInput: false,
   visibility: "public",
   isActive: true,
 };
@@ -67,6 +68,7 @@ function buildStylePresetForGeneration(
     status: "published",
     category: TEST_COORDINATE_CATEGORY,
     imageInputMode: "single",
+    dualReferenceSource: "admin",
     referenceImageUrl: null,
     referenceImageStoragePath: null,
     ...overrides,
@@ -97,12 +99,21 @@ function buildExpectedPrompt(params: {
   return promptSections.join("\n\n");
 }
 
-function createRequest(formData: FormData): NextRequest {
+function createRequest(
+  formData: FormData,
+  options: { origin?: string | null; host?: string } = {}
+): NextRequest {
+  const headers = new Headers({
+    "accept-language": "ja",
+    host: options.host ?? "localhost",
+  });
+  if (options.origin !== null) {
+    headers.set("origin", options.origin ?? "http://localhost");
+  }
+
   return new NextRequest("http://localhost/style/generate-async", {
     method: "POST",
-    headers: {
-      "accept-language": "ja",
-    },
+    headers,
     body: formData,
   });
 }
@@ -176,6 +187,56 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     });
   });
 
+  test("Same-Origin: Origin ヘッダーが無い mutation は 403 で拒否する", async () => {
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(
+      createRequest(formData, { origin: null }),
+      {
+        getUserFn,
+        jobRepository,
+        getPublishedStylePresetForGenerationFn,
+        recordStyleUsageEventFn,
+        invokeImageWorkerFn,
+        supabaseUrl: "https://example.supabase.co",
+      }
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({ error: "Missing Origin header" });
+    expect(getUserFn).not.toHaveBeenCalled();
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+  });
+
+  test("Same-Origin: cross-site Origin の mutation は 403 で拒否する", async () => {
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(
+      createRequest(formData, { origin: "https://evil.example" }),
+      {
+        getUserFn,
+        jobRepository,
+        getPublishedStylePresetForGenerationFn,
+        recordStyleUsageEventFn,
+        invokeImageWorkerFn,
+        supabaseUrl: "https://example.supabase.co",
+      }
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({ error: "Cross-site request rejected" });
+    expect(getUserFn).not.toHaveBeenCalled();
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+  });
+
   test("UCL-016: 認証ユーザーのジョブは常に billingMode=paid で作成される", async () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
@@ -228,6 +289,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       processing_stage: "queued",
       attempts: 0,
       style_reference_image_url: null,
+      style_reference_image_bucket: null,
       style_preset_category_key: "coordinate",
     });
     expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
@@ -236,6 +298,182 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     expect(invokeImageWorkerFn).toHaveBeenCalledWith(
       "https://example.supabase.co/functions/v1/image-gen-worker"
     );
+  });
+
+  test("dual user_upload では uploadImage2 を temp 保存し、prompt にユーザー指定を結合する", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showUserPromptInput: true,
+        },
+      })
+    );
+    jobRepository.uploadSourceImage
+      .mockResolvedValueOnce({
+        data: { path: "temp/user-123/source-image.png" },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { path: "temp/user-123/reference-image-ref.png" },
+        error: null,
+      });
+    jobRepository.getSourceImagePublicUrl.mockReturnValueOnce(
+      "https://cdn.example.com/temp/user-123/source-image.png"
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set(
+      "uploadImage2",
+      createUploadImage({ name: "reference.png" })
+    );
+    formData.set("userPrompt", "髪色をピンクにして、丸い目にする");
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    expect(response.status).toBe(200);
+    expect(jobRepository.uploadSourceImage).toHaveBeenNthCalledWith(
+      2,
+      expect.stringMatching(/^temp\/user-123\/.+-ref\.png$/),
+      expect.any(Buffer),
+      "image/png"
+    );
+    const inserted = jobRepository.createImageJob.mock.calls[0]?.[0];
+    expect(inserted?.style_reference_image_url).toBe(
+      "temp/user-123/reference-image-ref.png"
+    );
+    expect(inserted?.style_reference_image_bucket).toBe("generated-images");
+    expect(inserted?.prompt_text).toContain(
+      "User Visual Preferences:\n髪色をピンクにして、丸い目にする"
+    );
+  });
+
+  test("dual user_upload で uploadImage2 を送らないと 400 STYLE_DUAL_USER_IMAGE_REQUIRED", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    const body = await readJson(response);
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_DUAL_USER_IMAGE_REQUIRED");
+    expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+  });
+
+  test("dual user_upload で uploadImage2 が不正な形式なら 400 STYLE_INVALID_DUAL_USER_IMAGE", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    // 不正な MIME (text/plain) を含む File を image_1 に渡す
+    formData.set(
+      "uploadImage2",
+      new File(["not an image"], "bad.txt", { type: "text/plain" }),
+    );
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    const body = await readJson(response);
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_INVALID_DUAL_USER_IMAGE");
+    expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+  });
+
+  test("showUserPromptInput=true でも userPrompt が上限超過なら 400 STYLE_USER_PROMPT_TOO_LONG", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showUserPromptInput: true,
+        },
+      }),
+    );
+
+    const longPrompt = "あ".repeat(2000);
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("userPrompt", longPrompt);
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    const body = await readJson(response);
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_USER_PROMPT_TOO_LONG");
+    expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+  });
+
+  test("showUserPromptInput=false のカテゴリでは userPrompt を送られても無視する", async () => {
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("userPrompt", "この指示は採用しない");
+    formData.set("model", "gpt-image-2-low-1k");
+
+    const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    expect(response.status).toBe(200);
+    const inserted = jobRepository.createImageJob.mock.calls[0]?.[0];
+    expect(inserted?.prompt_text).not.toContain("User Visual Preferences");
+    expect(inserted?.prompt_text).not.toContain("この指示は採用しない");
   });
 
   test("カテゴリで非表示のstyleフォーム項目はサーバー側でも既定値に固定する", async () => {

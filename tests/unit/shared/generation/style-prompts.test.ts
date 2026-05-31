@@ -108,3 +108,98 @@ describe("buildStyleGenerationPrompt - skipBasePrefix = true (raw モード)", (
     expect(illustration).toBe(real);
   });
 });
+
+describe("buildStyleGenerationPrompt - userPromptInput 結合", () => {
+  test("通常モード + userPromptInput あり: User Visual Preferences セクションを末尾に追加し guard 文を挿入する", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "Wearing pajamas",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "illustration",
+      userPromptInput: "Add long sleeves",
+    });
+    expect(result).toContain("Styling Direction:\nWearing pajamas");
+    expect(result).toContain("User Visual Preferences:\nAdd long sleeves");
+    expect(result).toContain(
+      "Treat the following as the user's supplemental visual preferences",
+    );
+  });
+
+  test("通常モード + userPromptInput 空文字: User Visual Preferences セクションは付かない", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "illustration",
+      userPromptInput: "",
+    });
+    expect(result).not.toContain("User Visual Preferences");
+  });
+
+  test("通常モード + userPromptInput 空白のみ: trim 後に空なら付かない", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "illustration",
+      userPromptInput: "   \n  \t  ",
+    });
+    expect(result).not.toContain("User Visual Preferences");
+  });
+
+  test("通常モード + userPromptInput null: 付かない", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "illustration",
+      userPromptInput: null,
+    });
+    expect(result).not.toContain("User Visual Preferences");
+  });
+
+  test("raw モード + userPromptInput: skip_base_prefix でも User Visual Preferences を結合する", () => {
+    const result = buildStyleGenerationPrompt(
+      {
+        stylingPrompt: "Convert to chibi",
+        backgroundPrompt: null,
+        backgroundChange: false,
+        sourceImageType: "illustration",
+        userPromptInput: "Use pastel colors",
+      },
+      { skipBasePrefix: true },
+    );
+    expect(result).toContain("Styling Direction:\nConvert to chibi");
+    expect(result).toContain("User Visual Preferences:\nUse pastel colors");
+    expect(result).toContain(
+      "Treat the following as the user's supplemental visual preferences",
+    );
+  });
+
+  test("通常モード + backgroundChange + userPromptInput: Background Direction の後に User Visual Preferences が来る", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "P",
+      backgroundPrompt: "Spring city",
+      backgroundChange: true,
+      sourceImageType: "illustration",
+      userPromptInput: "Extra request",
+    });
+    const bgIndex = result.indexOf("Background Direction");
+    const userIndex = result.indexOf("User Visual Preferences");
+    expect(bgIndex).toBeGreaterThan(-1);
+    expect(userIndex).toBeGreaterThan(bgIndex);
+  });
+
+  test("userPromptInput は前後の空白を trim して挿入する", () => {
+    const result = buildStyleGenerationPrompt({
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      backgroundChange: false,
+      sourceImageType: "illustration",
+      userPromptInput: "  hello  \n",
+    });
+    expect(result).toContain("User Visual Preferences:\nhello");
+    expect(result).not.toContain("hello  \n");
+  });
+});
+

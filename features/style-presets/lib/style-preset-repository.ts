@@ -4,6 +4,7 @@ import {
   normalizeStylePresetOptionalPrompt,
   normalizeStylePresetPrompt,
   normalizeStylePresetTitle,
+  type DualReferenceSource,
   type ImageInputMode,
   type StylePresetAdmin,
   type StylePresetCategoryRef,
@@ -34,6 +35,7 @@ interface StylePresetCategoryRow {
   show_source_image_type_control?: boolean | null;
   show_background_change_control?: boolean | null;
   show_generation_model_control?: boolean | null;
+  show_user_prompt_input?: boolean | null;
   visibility?: StylePresetCategoryVisibility | string | null;
   is_active: boolean;
 }
@@ -52,6 +54,7 @@ interface StylePresetRow {
   status: "draft" | "published";
   category_id: string;
   image_input_mode: ImageInputMode;
+  dual_reference_source?: DualReferenceSource | string | null;
   reference_image_url: string | null;
   reference_image_storage_path: string | null;
   reference_image_width: number | null;
@@ -65,7 +68,7 @@ interface StylePresetRow {
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, visibility, is_active)";
+  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, visibility, is_active)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
@@ -125,6 +128,7 @@ function mapCategoryRefStrict(
       showSourceImageTypeControl: true,
       showBackgroundChangeControl: true,
       showGenerationModelControl: true,
+      showUserPromptInput: false,
       visibility: "public",
       isActive: true,
     };
@@ -144,9 +148,16 @@ function mapCategoryRefStrict(
     showSourceImageTypeControl: embedded.show_source_image_type_control ?? true,
     showBackgroundChangeControl: embedded.show_background_change_control ?? true,
     showGenerationModelControl: embedded.show_generation_model_control ?? true,
+    showUserPromptInput: embedded.show_user_prompt_input ?? false,
     visibility: normalizeCategoryVisibility(embedded.visibility),
     isActive: embedded.is_active,
   };
+}
+
+function normalizeDualReferenceSource(
+  value: DualReferenceSource | string | null | undefined,
+): DualReferenceSource {
+  return value === "user_upload" ? "user_upload" : "admin";
 }
 
 function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
@@ -164,6 +175,7 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
     status: row.status,
     category: mapCategoryRefStrict(row, extractCategory(row.category)),
     imageInputMode: row.image_input_mode,
+    dualReferenceSource: normalizeDualReferenceSource(row.dual_reference_source),
     referenceImageUrl: row.reference_image_url,
     referenceImageStoragePath: row.reference_image_storage_path,
     referenceImageWidth: row.reference_image_width,
@@ -185,6 +197,7 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     hasBackgroundPrompt: Boolean(row.background_prompt?.trim()),
     category: mapCategoryRefStrict(row, extractCategory(row.category)),
     imageInputMode: row.image_input_mode,
+    dualReferenceSource: normalizeDualReferenceSource(row.dual_reference_source),
   };
 }
 
@@ -370,6 +383,7 @@ export async function createStylePreset(
     p_reference_image_storage_path: input.referenceImageStoragePath ?? null,
     p_reference_image_width: input.referenceImageWidth ?? null,
     p_reference_image_height: input.referenceImageHeight ?? null,
+    p_dual_reference_source: input.dualReferenceSource ?? "admin",
   });
 
   const row = mapRpcRow(data);
@@ -451,6 +465,10 @@ export async function updateStylePreset(
       input.referenceImageHeight !== undefined
         ? input.referenceImageHeight
         : existing.referenceImageHeight,
+    p_dual_reference_source:
+      input.dualReferenceSource !== undefined
+        ? input.dualReferenceSource
+        : existing.dualReferenceSource,
   });
 
   const row = mapRpcRow(data);

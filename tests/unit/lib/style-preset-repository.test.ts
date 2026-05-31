@@ -190,10 +190,12 @@ describe("style-preset repository", () => {
           showSourceImageTypeControl: true,
           showBackgroundChangeControl: true,
           showGenerationModelControl: true,
+          showUserPromptInput: false,
           visibility: "public",
           isActive: true,
         },
         imageInputMode: "single",
+        dualReferenceSource: "admin",
       },
     ]);
   });
@@ -359,9 +361,326 @@ describe("style-preset repository", () => {
       p_reference_image_storage_path: null,
       p_reference_image_width: null,
       p_reference_image_height: null,
+      p_dual_reference_source: "admin",
     });
     expect(updated.sortOrder).toBe(2);
     expect(updated.updatedBy).toBe("admin-2");
+  });
+
+  test("createStylePreset_dualReferenceSource=user_upload を指定すると RPC に user_upload が渡る", async () => {
+    const createdRow = {
+      id: "preset-dual-user",
+      slug: "dual-user-1",
+      title: "Dual user upload",
+      styling_prompt: "P",
+      background_prompt: null,
+      thumbnail_image_url: "https://example.com/t.webp",
+      thumbnail_storage_path: null,
+      thumbnail_width: 720,
+      thumbnail_height: 960,
+      sort_order: 0,
+      status: "draft",
+      category_id: TEST_CATEGORY_ID,
+      image_input_mode: "dual",
+      dual_reference_source: "user_upload",
+      reference_image_url: null,
+      reference_image_storage_path: null,
+      reference_image_width: null,
+      reference_image_height: null,
+      category: TEST_CATEGORY_ROW,
+      created_by: "admin-1",
+      updated_by: "admin-1",
+      created_at: "2026-05-30T00:00:00.000Z",
+      updated_at: "2026-05-30T00:00:00.000Z",
+    };
+    const slugQuery = {
+      select: jest.fn().mockReturnThis(),
+      like: jest.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const getByIdQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest
+        .fn()
+        .mockResolvedValue({ data: createdRow, error: null }),
+    };
+    const from = jest
+      .fn()
+      .mockReturnValueOnce(slugQuery)
+      .mockReturnValueOnce(getByIdQuery);
+    const rpc = jest
+      .fn()
+      .mockResolvedValue({ data: createdRow, error: null });
+    mockCreateAdminClient.mockReturnValue({ from, rpc } as never);
+
+    await createStylePreset({
+      title: "Dual user upload",
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      thumbnailImageUrl: "https://example.com/t.webp",
+      thumbnailStoragePath: null,
+      thumbnailWidth: 720,
+      thumbnailHeight: 960,
+      sortOrder: 0,
+      status: "draft",
+      createdBy: "admin-1",
+      imageInputMode: "dual",
+      dualReferenceSource: "user_upload",
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "create_style_preset",
+      expect.objectContaining({
+        p_image_input_mode: "dual",
+        p_dual_reference_source: "user_upload",
+      }),
+    );
+  });
+
+  test("createStylePreset_dualReferenceSource 未指定時は admin がデフォルトで RPC に渡る", async () => {
+    const createdRow = {
+      id: "preset-dual-default",
+      slug: "dual-default",
+      title: "Default dual",
+      styling_prompt: "P",
+      background_prompt: null,
+      thumbnail_image_url: "https://example.com/t.webp",
+      thumbnail_storage_path: null,
+      thumbnail_width: 720,
+      thumbnail_height: 960,
+      sort_order: 0,
+      status: "draft",
+      category_id: TEST_CATEGORY_ID,
+      image_input_mode: "dual",
+      dual_reference_source: "admin",
+      reference_image_url: null,
+      reference_image_storage_path: null,
+      reference_image_width: null,
+      reference_image_height: null,
+      category: TEST_CATEGORY_ROW,
+      created_by: "admin-1",
+      updated_by: "admin-1",
+      created_at: "2026-05-30T00:00:00.000Z",
+      updated_at: "2026-05-30T00:00:00.000Z",
+    };
+    const slugQuery = {
+      select: jest.fn().mockReturnThis(),
+      like: jest.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const getByIdQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest
+        .fn()
+        .mockResolvedValue({ data: createdRow, error: null }),
+    };
+    const from = jest
+      .fn()
+      .mockReturnValueOnce(slugQuery)
+      .mockReturnValueOnce(getByIdQuery);
+    const rpc = jest
+      .fn()
+      .mockResolvedValue({ data: createdRow, error: null });
+    mockCreateAdminClient.mockReturnValue({ from, rpc } as never);
+
+    await createStylePreset({
+      title: "Default dual",
+      stylingPrompt: "P",
+      backgroundPrompt: null,
+      thumbnailImageUrl: "https://example.com/t.webp",
+      thumbnailStoragePath: null,
+      thumbnailWidth: 720,
+      thumbnailHeight: 960,
+      sortOrder: 0,
+      status: "draft",
+      createdBy: "admin-1",
+      imageInputMode: "dual",
+      // dualReferenceSource は省略
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "create_style_preset",
+      expect.objectContaining({
+        p_dual_reference_source: "admin",
+      }),
+    );
+  });
+
+  test("updateStylePreset_dualReferenceSource 未指定時は既存値 (user_upload) を保持する", async () => {
+    const existingRow = {
+      id: "preset-existing",
+      slug: "existing",
+      title: "Existing",
+      styling_prompt: "Existing prompt",
+      background_prompt: null,
+      thumbnail_image_url: "https://example.com/e.webp",
+      thumbnail_storage_path: null,
+      thumbnail_width: 720,
+      thumbnail_height: 960,
+      sort_order: 1,
+      status: "published",
+      category_id: TEST_CATEGORY_ID,
+      image_input_mode: "dual",
+      dual_reference_source: "user_upload",
+      reference_image_url: null,
+      reference_image_storage_path: null,
+      reference_image_width: null,
+      reference_image_height: null,
+      category: TEST_CATEGORY_ROW,
+      created_by: "admin-1",
+      updated_by: "admin-1",
+      created_at: "2026-05-30T00:00:00.000Z",
+      updated_at: "2026-05-30T00:00:00.000Z",
+    };
+    const updatedRow = {
+      ...existingRow,
+      title: "Updated",
+      updated_by: "admin-2",
+    };
+    const maybeSingle = jest
+      .fn()
+      .mockResolvedValueOnce({ data: existingRow, error: null })
+      .mockResolvedValueOnce({ data: updatedRow, error: null });
+    const from = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle,
+    });
+    const rpc = jest
+      .fn()
+      .mockResolvedValue({ data: updatedRow, error: null });
+    mockCreateAdminClient.mockReturnValue({ from, rpc } as never);
+
+    await updateStylePreset("preset-existing", {
+      title: "Updated",
+      updatedBy: "admin-2",
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "update_style_preset",
+      expect.objectContaining({
+        p_dual_reference_source: "user_upload",
+      }),
+    );
+  });
+
+  test("updateStylePreset_dualReferenceSource を user_upload→admin に切り替えると RPC にも反映される", async () => {
+    const existingRow = {
+      id: "preset-switch",
+      slug: "switch",
+      title: "Switch",
+      styling_prompt: "P",
+      background_prompt: null,
+      thumbnail_image_url: "https://example.com/s.webp",
+      thumbnail_storage_path: null,
+      thumbnail_width: 720,
+      thumbnail_height: 960,
+      sort_order: 0,
+      status: "draft",
+      category_id: TEST_CATEGORY_ID,
+      image_input_mode: "dual",
+      dual_reference_source: "user_upload",
+      reference_image_url: null,
+      reference_image_storage_path: null,
+      reference_image_width: null,
+      reference_image_height: null,
+      category: TEST_CATEGORY_ROW,
+      created_by: "admin-1",
+      updated_by: "admin-1",
+      created_at: "2026-05-30T00:00:00.000Z",
+      updated_at: "2026-05-30T00:00:00.000Z",
+    };
+    const updatedRow = { ...existingRow, dual_reference_source: "admin" };
+    const maybeSingle = jest
+      .fn()
+      .mockResolvedValueOnce({ data: existingRow, error: null })
+      .mockResolvedValueOnce({ data: updatedRow, error: null });
+    const from = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle,
+    });
+    const rpc = jest
+      .fn()
+      .mockResolvedValue({ data: updatedRow, error: null });
+    mockCreateAdminClient.mockReturnValue({ from, rpc } as never);
+
+    const result = await updateStylePreset("preset-switch", {
+      dualReferenceSource: "admin",
+      updatedBy: "admin-2",
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "update_style_preset",
+      expect.objectContaining({
+        p_dual_reference_source: "admin",
+      }),
+    );
+    expect(result.dualReferenceSource).toBe("admin");
+  });
+
+  test("mapRowToAdmin_dual_reference_source の正規化: 未知値 / null / undefined はすべて admin に丸める", async () => {
+    const rowBase = {
+      id: "preset-norm",
+      slug: "norm",
+      title: "Norm",
+      styling_prompt: "P",
+      background_prompt: null,
+      thumbnail_image_url: "https://example.com/n.webp",
+      thumbnail_storage_path: null,
+      thumbnail_width: 720,
+      thumbnail_height: 960,
+      sort_order: 0,
+      status: "draft",
+      category_id: TEST_CATEGORY_ID,
+      image_input_mode: "dual",
+      reference_image_url: null,
+      reference_image_storage_path: null,
+      reference_image_width: null,
+      reference_image_height: null,
+      category: TEST_CATEGORY_ROW,
+      created_by: null,
+      updated_by: null,
+      created_at: "2026-05-30T00:00:00.000Z",
+      updated_at: "2026-05-30T00:00:00.000Z",
+    };
+
+    for (const value of [null, undefined, "invalid", "Admin", ""]) {
+      const updatedRow = { ...rowBase, dual_reference_source: value };
+      const maybeSingle = jest
+        .fn()
+        .mockResolvedValueOnce({ data: updatedRow, error: null })
+        .mockResolvedValueOnce({ data: updatedRow, error: null });
+      const from = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle,
+      });
+      const rpc = jest
+        .fn()
+        .mockResolvedValue({ data: updatedRow, error: null });
+      mockCreateAdminClient.mockReturnValue({ from, rpc } as never);
+
+      const result = await updateStylePreset("preset-norm", {});
+      expect(result.dualReferenceSource).toBe("admin");
+    }
+
+    // user_upload はそのまま通過する
+    const userRow = { ...rowBase, dual_reference_source: "user_upload" };
+    const maybeSingle2 = jest
+      .fn()
+      .mockResolvedValueOnce({ data: userRow, error: null })
+      .mockResolvedValueOnce({ data: userRow, error: null });
+    const from2 = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: maybeSingle2,
+    });
+    const rpc2 = jest.fn().mockResolvedValue({ data: userRow, error: null });
+    mockCreateAdminClient.mockReturnValue({ from: from2, rpc: rpc2 } as never);
+
+    const result = await updateStylePreset("preset-norm", {});
+    expect(result.dualReferenceSource).toBe("user_upload");
   });
 
   test("deleteStylePreset_RPCで削除と再採番を依頼する", async () => {

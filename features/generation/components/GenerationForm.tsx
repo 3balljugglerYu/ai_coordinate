@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -16,6 +15,7 @@ import { GenerationSubmitButton } from "./GenerationSubmitButton";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
+import { PromptInputField } from "./PromptInputField";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
   getMaxGenerationCount,
@@ -553,53 +553,22 @@ export function GenerationForm({
         </div>
 
         {/* 着せ替え内容入力 */}
-        <div data-tour="tour-prompt-input">
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="prompt" className="text-base font-medium">
-              {t("promptLabel")}
-            </Label>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900"
-              onClick={() => setPrompt("")}
-              disabled={
-                !prompt.length || isGenerating || isTutorialInProgress
-              }
-              aria-label={t("promptClear")}
-            >
-              {t("promptClear")}
-            </Button>
-          </div>
-          <Textarea
-            id="prompt"
-            placeholder={t("promptPlaceholder")}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="mt-2 min-h-[100px]"
-            maxLength={GENERATION_PROMPT_MAX_LENGTH}
-            aria-invalid={isPromptTooLong}
-            disabled={isGenerating || isTutorialInProgress}
-          />
-          <p className="mt-1 flex items-center justify-between gap-3 text-xs text-gray-500">
-            <span>
-              {t("promptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
-            </span>
-            <span
-              className={
-                promptLength >= GENERATION_PROMPT_MAX_LENGTH
-                  ? "font-medium tabular-nums text-amber-600"
-                  : "tabular-nums"
-              }
-            >
-              {t("promptCharacterCount", {
-                current: promptLength,
-                max: GENERATION_PROMPT_MAX_LENGTH,
-              })}
-            </span>
-          </p>
-        </div>
+        <PromptInputField
+          value={prompt}
+          onChange={setPrompt}
+          label={t("promptLabel")}
+          placeholder={t("promptPlaceholder")}
+          hint={t("promptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
+          clearLabel={t("promptClear")}
+          characterCount={t("promptCharacterCount", {
+            current: promptLength,
+            max: GENERATION_PROMPT_MAX_LENGTH,
+          })}
+          maxLength={GENERATION_PROMPT_MAX_LENGTH}
+          invalid={isPromptTooLong}
+          disabled={isGenerating || isTutorialInProgress}
+          containerProps={{ "data-tour": "tour-prompt-input" }}
+        />
 
         {/* 背景設定 */}
         <div data-tour="tour-background-change">

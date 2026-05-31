@@ -50,6 +50,7 @@ describe("get-public-style-presets", () => {
     showSourceImageTypeControl: true,
     showBackgroundChangeControl: true,
     showGenerationModelControl: true,
+    showUserPromptInput: false,
     visibility: "public",
     isActive: true,
   } as const;
@@ -65,6 +66,7 @@ describe("get-public-style-presets", () => {
         hasBackgroundPrompt: true,
         category: baseCategory,
         imageInputMode: "single",
+        dualReferenceSource: "admin",
       },
     ]);
 
@@ -96,6 +98,7 @@ describe("get-public-style-presets", () => {
       hasBackgroundPrompt: false,
       category: baseCategory,
       imageInputMode: "single",
+      dualReferenceSource: "admin",
     });
 
     const result = await getPublishedStylePreset("preset-1");

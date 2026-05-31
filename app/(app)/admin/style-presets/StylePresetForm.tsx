@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type {
+  DualReferenceSource,
   ImageInputMode,
   StylePresetAdmin,
   StylePresetStatus,
@@ -102,6 +103,8 @@ export function StylePresetForm({
         ?.defaultImageInputMode ??
       "single",
   );
+  const [dualReferenceSource, setDualReferenceSource] =
+    useState<DualReferenceSource>(preset?.dualReferenceSource ?? "admin");
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referencePreviewUrl, setReferencePreviewUrl] = useState<string | null>(
     preset?.referenceImageUrl ?? null,
@@ -199,13 +202,13 @@ export function StylePresetForm({
       return;
     }
 
-    if (imageInputMode === "dual") {
+    if (imageInputMode === "dual" && dualReferenceSource === "admin") {
       const hasExistingReference = preset?.referenceImageStoragePath != null;
       if (!referenceFile && !hasExistingReference) {
         toast({
           title: "エラー",
           description:
-            "dual モードでは参考画像 (image_1) のアップロードが必須です",
+            "dual (admin) モードでは参考画像 (image_1) のアップロードが必須です",
           variant: "destructive",
         });
         return;
@@ -222,6 +225,7 @@ export function StylePresetForm({
       formData.append("status", status);
       formData.append("category_id", categoryId);
       formData.append("image_input_mode", imageInputMode);
+      formData.append("dual_reference_source", dualReferenceSource);
       if (file) {
         formData.append("file", file);
       }
@@ -407,6 +411,39 @@ export function StylePresetForm({
         </div>
 
         {imageInputMode === "dual" && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="dual_reference_source">参考画像 (image_1) の出所</Label>
+              <Select
+                value={dualReferenceSource}
+                onValueChange={(value) =>
+                  setDualReferenceSource(value as DualReferenceSource)
+                }
+              >
+                <SelectTrigger
+                  id="dual_reference_source"
+                  className="mt-1 min-h-[44px]"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    admin (preset 登録時の固定画像)
+                  </SelectItem>
+                  <SelectItem value="user_upload">
+                    user_upload (ユーザーが /style で毎回アップロード)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-slate-500">
+                admin: admin が登録した参考画像を全ユーザー共通で使用。
+                user_upload: ユーザーがその都度アップロードした画像を image_1 として使う。
+              </p>
+            </div>
+          </div>
+        )}
+
+        {imageInputMode === "dual" && dualReferenceSource === "admin" && (
           <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
             <Label htmlFor="reference_file" className="text-amber-900">
               参考画像 (image_1)

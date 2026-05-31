@@ -85,6 +85,7 @@ const TEST_COORDINATE_CATEGORY = {
   showSourceImageTypeControl: true,
   showBackgroundChangeControl: true,
   showGenerationModelControl: true,
+  showUserPromptInput: false,
   visibility: "public",
   isActive: true,
 };
@@ -104,6 +105,7 @@ function buildStylePresetForGeneration(
     status: "published",
     category: TEST_COORDINATE_CATEGORY,
     imageInputMode: "single",
+    dualReferenceSource: "admin",
     referenceImageUrl: null,
     referenceImageStoragePath: null,
     ...overrides,
@@ -1220,5 +1222,114 @@ describe("StyleGenerateRoute integration tests", () => {
       `${buildStyleAttemptReinforcementPrefix(2)}${firstText}`
     );
     expect(releaseRateLimitAttemptFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_dual user_upload では uploadImage2 を provider にそのまま渡し prompt に userPrompt を結合する", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showUserPromptInput: true,
+        },
+      }),
+    );
+
+    const refBytes = new Uint8Array([1, 2, 3, 4]);
+    const referenceFile = new File([refBytes], "user-ref.png", {
+      type: "image/png",
+    });
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("uploadImage2", referenceFile);
+    formData.set("userPrompt", "髪色をピンクに");
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(200);
+    const [, init] = fetchFn.mock.calls[0];
+    const requestBody = JSON.parse(String(init?.body)) as {
+      contents: Array<{ parts: Array<Record<string, unknown>> }>;
+    };
+    // text + uploadImage + uploadImage2 の 3 つの parts が来る
+    expect(requestBody.contents[0].parts).toHaveLength(3);
+    expect(requestBody.contents[0].parts[2]).toEqual({
+      inline_data: {
+        mime_type: "image/png",
+        data: Buffer.from(refBytes).toString("base64"),
+      },
+    });
+    const promptText = String(requestBody.contents[0].parts[0].text);
+    expect(promptText).toContain("User Visual Preferences:\n髪色をピンクに");
+  });
+
+  test("postStyleGenerateRoute_dual user_upload で uploadImage2 が無いと 400 STYLE_DUAL_USER_IMAGE_REQUIRED", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_DUAL_USER_IMAGE_REQUIRED");
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_showUserPromptInput=true でも userPrompt が上限超過なら 400 STYLE_USER_PROMPT_TOO_LONG", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          showUserPromptInput: true,
+        },
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+    formData.set("userPrompt", "あ".repeat(2000));
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("STYLE_USER_PROMPT_TOO_LONG");
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 });
