@@ -27,6 +27,7 @@ export const PROMPT_CATEGORIES = [
   "coordinate",
   "inspire",
   "reinforcement",
+  "creator_looks",
 ] as const;
 export type PromptCategory = (typeof PROMPT_CATEGORIES)[number];
 
@@ -85,6 +86,98 @@ const REINFORCEMENT_COORDINATE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): Th
 const REINFORCEMENT_STYLE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the Styling Direction. You MUST strictly apply the outfit replacement on the body parts already visible in \`image_0.png\`, within the existing frame, and any background instruction below. Do not return the original image unchanged. Do not extend the crop, widen the framing, or add body parts (legs, feet, lower body) that were not visible in \`image_0.png\`.
 
 `;
+
+// ============================================================================
+// Creator Looks 系 (= 投稿時に VLM で衣装プロンプトを抽出する meta-prompt)
+//
+// このテンプレートは Persta の moat であり、admin が `/admin/generation-prompts` から
+// 編集できる。runtime は `creator_looks.meta_extractor` キーを resolver で取得し、
+// 投稿された画像と一緒に gpt-5.5 Responses API に送る。
+//
+// 出力 (= hidden_prompt) は `user_style_template_secrets` に保存され、
+// 通常ユーザー (= クリエイター本人含む) からは一切見えない。
+//
+// 設計判断: docs/planning/creator-looks-implementation-plan.md ADR-005, ADR-010
+// ============================================================================
+
+const CREATOR_LOOKS_META_EXTRACTOR_DEFAULT = `# Role
+
+You are an expert in outfit analysis and Image-to-Image prompt writing for Gemini 3 Flash Image / Nano Banana 2.
+
+Analyze the attached outfit reference image and create a concise English prompt for transforming the outfit in \`image_0.png\`.
+
+---
+
+# Input Roles
+
+- Attached outfit reference image:
+  Use only as the source of outfit design, colors, materials, and visible accessories.
+
+- \`image_0.png\`:
+  This is the base image to edit.
+  Preserve its character identity, face, hairstyle, pose, framing, crop, composition, and art style.
+
+Do not extract the reference image's face, hairstyle, body identity, pose, or personal traits.
+
+---
+
+# Rules
+
+1. Change only the visible outfit and visible accessories.
+2. Preserve the exact face, hairstyle, body shape, pose, hand positions, camera angle, crop, framing, composition, and art style of \`image_0.png\`.
+3. Describe only clothing and accessories that can appear within the visible frame of \`image_0.png\`.
+4. If a body area is not visible in \`image_0.png\`, omit that section entirely.
+5. Only for the Lower Body, Feet/Legs, and Accessories sections, output the placeholder text [Include ONLY if visible in image_0.png. Otherwise, omit this section.] immediately before the corresponding placeholder text.
+6. If there is no hat or headwear, write: \`no hat, no headwear\`.
+7. If there is no handheld item, write: \`None, hands are empty.\`
+8. Use specific color names, concrete clothing terms, and concise fashion descriptions.
+9. Avoid unsafe or fetish-like wording such as \`bound\`, \`binding\`, \`wrapped around\`, \`knots\`, \`fetish\`, or \`Lolita\`.
+10. Instead of preserving the original background, briefly describe a background setting that best matches the mood, world, and style of the analyzed outfit.
+
+---
+
+# Output Rules
+
+- Output only the final English prompt.
+- Put everything in one code block.
+- Keep the final prompt concise.
+
+---
+
+# Final Prompt Format
+
+CRITICAL INSTRUCTION:
+This is an Image-to-Image outfit transformation task based on \`image_0.png\`.
+
+Preserve:
+Maintain the exact character identity, face, hairstyle, body shape, pose, hand positions, camera angle, crop, framing, composition, and art style of \`image_0.png\`.
+
+Edit:
+Replace only the visible clothing and visible accessories.
+Do not add body parts, change the pose, or alter the character identity.
+
+Styling Direction:
+Head: ...
+Upper Body: ...
+Lower Body: [Include ONLY if visible in image_0.png. Otherwise, omit this section.]...
+Feet/Legs: [Include ONLY if visible in image_0.png. Otherwise, omit this section.]...
+Accessories: [Include ONLY if visible in image_0.png. Otherwise, omit this section.]
+  • Head/Hair: ...
+  • Ears: ...
+  • Neck: ...
+  • Wrists/Hands: ...
+  • Handheld Item & Arm Pose: ...
+  • Others: ...
+
+Background: ...
+
+Constraints:
+No extra limbs.
+No extra fingers.
+No added body parts outside the original frame.
+No pose change.
+No identity change.
+No art style change.`;
 
 // ============================================================================
 // レジストリ本体
@@ -239,6 +332,16 @@ export const PROMPT_REGISTRY = {
     defaultContent: REINFORCEMENT_STYLE_DEFAULT,
     supportedVariables: ["attempt"],
     previewSamples: { attempt: "2" },
+  },
+
+  // ── Creator Looks ──────────────────────────────────────────────────────────
+  "creator_looks.meta_extractor": {
+    category: "creator_looks",
+    description:
+      "Creator Looks: クリエイター投稿画像から衣装+背景プロンプトを抽出する meta-prompt (VLM 入力)。" +
+      "出力は user_style_template_secrets に保存され、通常ユーザーには公開しない。",
+    defaultContent: CREATOR_LOOKS_META_EXTRACTOR_DEFAULT,
+    supportedVariables: [],
   },
 } as const satisfies Record<string, PromptDefinition>;
 

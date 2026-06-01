@@ -78,6 +78,11 @@ const envSchema = {
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   // 機能全体の kill switch (未設定 or "true" で有効)
   NEXT_PUBLIC_CATALOG_ENABLED: process.env.NEXT_PUBLIC_CATALOG_ENABLED,
+
+  // Creator Looks (= ユーザー投稿 + 隠し meta-prompt 機能)
+  // サーバ専用 kill switch。NEXT_PUBLIC_ プレフィックスを意図的に付けない (= クライアントバンドルに展開させない)
+  // Stage 1 では false (= admin role のみアクセス可)、Stage 3 で true (= 全公開)
+  CREATOR_LOOKS_ENABLED: process.env.CREATOR_LOOKS_ENABLED,
 } as const;
 
 /**
@@ -166,6 +171,7 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
     TURNSTILE_SECRET_KEY: envSchema.TURNSTILE_SECRET_KEY || "",
     NEXT_PUBLIC_CATALOG_ENABLED: envSchema.NEXT_PUBLIC_CATALOG_ENABLED || "",
+    CREATOR_LOOKS_ENABLED: envSchema.CREATOR_LOOKS_ENABLED || "",
   };
 }
 
@@ -176,6 +182,19 @@ function getEnv() {
 export function isCatalogFeatureEnabled(): boolean {
   const value = env.NEXT_PUBLIC_CATALOG_ENABLED.trim().toLowerCase();
   return value === "" || value === "true" || value === "1";
+}
+
+/**
+ * Creator Looks 機能の env 由来 kill switch。
+ *
+ * - サーバ専用 (= NEXT_PUBLIC_ プレフィックスを意図的に付けない、クライアントバンドルに展開させない)
+ * - Stage 1 では false (= 一般ユーザーには無効、admin role のみが Creator Looks UI / API を使える)
+ * - Stage 3 で true (= 全公開)
+ * - デフォルトは false (= fail-closed)
+ */
+export function isCreatorLooksFeatureEnabled(): boolean {
+  const value = env.CREATOR_LOOKS_ENABLED.trim().toLowerCase();
+  return value === "true" || value === "1";
 }
 
 export const env = getEnv();

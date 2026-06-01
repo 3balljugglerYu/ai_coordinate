@@ -29,6 +29,7 @@ const CATEGORY_LABELS: Record<PromptCategory, string> = {
   coordinate: "Coordinate (通常 / specified / full body / chibi)",
   inspire: "Inspire (テンプレ適用)",
   reinforcement: "Reinforcement (リトライ強化文)",
+  creator_looks: "Creator Looks (隠し meta-prompt)",
 };
 
 export function AdminPromptListClient({
