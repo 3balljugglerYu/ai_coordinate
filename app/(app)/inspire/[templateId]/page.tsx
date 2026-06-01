@@ -114,7 +114,7 @@ export default async function InspirePage({ params }: InspirePageProps) {
                 templateImageUrl={templateImageUrl}
                 title={template.alt}
                 submittedByUserId={template.submitted_by_user_id}
-                submitterNickname={profile?.nickname ?? null}
+                submitterNickname={profile?.nickname || null}
                 usageCount={template.usage_count ?? 0}
                 subscriptionPlan={viewerProfile?.subscription_plan ?? "free"}
               />
@@ -127,8 +127,8 @@ export default async function InspirePage({ params }: InspirePageProps) {
                   submitted_by_user_id: template.submitted_by_user_id,
                 }}
                 submitter={{
-                  nickname: profile?.nickname ?? null,
-                  avatar_url: profile?.avatar_url ?? null,
+                  nickname: profile?.nickname || null,
+                  avatar_url: profile?.avatar_url || null,
                 }}
                 copy={{
                   formTitle: t("formTitle"),

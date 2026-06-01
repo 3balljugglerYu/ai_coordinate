@@ -382,10 +382,11 @@ export async function handlePreviewGeneration(
     .eq("id", draftId);
   if (draftUpdateError) {
     console.error("[preview-generation] draft update failed", draftUpdateError);
+    // 順序: DB 削除を先に行い、Storage は best-effort (= 孤立 row を生むより孤立ファイルの方が安全)
+    await adminClient.from("user_style_templates").delete().eq("id", draftId);
     await adminClient.storage
       .from("style-templates")
       .remove([templateStoragePath]);
-    await adminClient.from("user_style_templates").delete().eq("id", draftId);
     return jsonError(
       copy.templateGenerationFailed,
       "INSPIRE_DRAFT_UPDATE_FAILED",
@@ -649,10 +650,11 @@ export async function handlePreviewGeneration(
     const pathsToRemove = Array.from(
       new Set([templateStoragePath, ...successes.map((s) => s.storagePath)])
     );
+    // 順序: DB 削除を先に行い、Storage は best-effort (= 孤立 row を生むより孤立ファイルの方が安全)
+    await adminClient.from("user_style_templates").delete().eq("id", draftId);
     await adminClient.storage
       .from("style-templates")
       .remove(pathsToRemove);
-    await adminClient.from("user_style_templates").delete().eq("id", draftId);
     await adminClient.from("user_style_template_preview_attempts").insert({
       user_id: user.id,
       outcome: "failed",

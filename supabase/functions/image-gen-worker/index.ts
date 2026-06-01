@@ -1843,38 +1843,38 @@ Deno.serve(async () => {
                     }
                   }
 
-                  const fullPrompt =
-                    job.generation_type === "one_tap_style"
-                      ? job.prompt_text
-                      : creatorLooksHiddenPrompt
-                        ? composeCreatorLooksPrompt(
-                            creatorLooksHiddenPrompt,
-                            job.override_background ?? true,
-                          )
-                        : job.generation_type === "inspire"
-                        ? buildInspirePrompt({
-                            // 新仕様: 4 bool カラム。inspire ジョブは migration で必ず値が入る。
-                            // 万一 NULL の場合は「すべて維持」で fallback する。
-                            overrides: {
-                              outfit: job.override_outfit ?? true,
-                              angle: job.override_angle ?? true,
-                              pose: job.override_pose ?? true,
-                              background: job.override_background ?? true,
-                            },
-                            templates: promptTemplates,
-                          })
-                        : job.input_image_url
-                        ? buildSharedPrompt({
-                            generationType: job.generation_type as GenerationType,
-                            outfitDescription: job.prompt_text,
-                            backgroundMode,
-                            sourceImageType:
-                              job.source_image_type === "real"
-                                ? "real"
-                                : "illustration",
-                            templates: promptTemplates,
-                          })
-                        : job.prompt_text;
+                  let fullPrompt = job.prompt_text;
+                  if (job.generation_type === "one_tap_style") {
+                    fullPrompt = job.prompt_text;
+                  } else if (creatorLooksHiddenPrompt) {
+                    fullPrompt = composeCreatorLooksPrompt(
+                      creatorLooksHiddenPrompt,
+                      job.override_background ?? true,
+                    );
+                  } else if (job.generation_type === "inspire") {
+                    fullPrompt = buildInspirePrompt({
+                      // 新仕様: 4 bool カラム。inspire ジョブは migration で必ず値が入る。
+                      // 万一 NULL の場合は「すべて維持」で fallback する。
+                      overrides: {
+                        outfit: job.override_outfit ?? true,
+                        angle: job.override_angle ?? true,
+                        pose: job.override_pose ?? true,
+                        background: job.override_background ?? true,
+                      },
+                      templates: promptTemplates,
+                    });
+                  } else if (job.input_image_url) {
+                    fullPrompt = buildSharedPrompt({
+                      generationType: job.generation_type as GenerationType,
+                      outfitDescription: job.prompt_text,
+                      backgroundMode,
+                      sourceImageType:
+                        job.source_image_type === "real"
+                          ? "real"
+                          : "illustration",
+                      templates: promptTemplates,
+                    });
+                  }
 
                   parts.push({
                     text: fullPrompt,

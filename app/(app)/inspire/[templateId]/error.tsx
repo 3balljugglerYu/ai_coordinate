@@ -40,7 +40,7 @@ export default function InspirePageError({
         時間をおいてから再度お試しください。
       </p>
       <div>
-        <Button onClick={reset} variant="default">
+        <Button onClick={reset} variant="default" type="button">
           再読み込み
         </Button>
       </div>

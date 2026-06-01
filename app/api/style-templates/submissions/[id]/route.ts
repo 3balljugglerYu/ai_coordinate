@@ -113,7 +113,8 @@ export async function DELETE(
 
     // ホームカルーセル / クリエイター個人ページのキャッシュを無効化
     // (= Phase 6 で実 use cache 化されたため、ここで明示 invalidate が効くようになった)
-    revalidateTag("home-user-style-templates", "max");
+    // mutation 直後の即時反映が必要なので expire:0 (= "max" は stale-while-revalidate で不適)
+    revalidateTag("home-user-style-templates", { expire: 0 });
 
     return NextResponse.json({ success: true, action: "deleted" });
   }
@@ -141,7 +142,8 @@ export async function DELETE(
     }
 
     // 撤回時はホームカルーセルから即座に消えるよう cache invalidate (REQ-014)
-    revalidateTag("home-user-style-templates", "max");
+    // 即時反映が必要なので expire:0 (= "max" は stale-while-revalidate で不適)
+    revalidateTag("home-user-style-templates", { expire: 0 });
 
     return NextResponse.json({ success: true, action: "withdrawn" });
   }
