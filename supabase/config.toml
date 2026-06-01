@@ -12,3 +12,9 @@ verify_jwt = false
 # 関数内で TEMP_IMAGE_CLEANUP_CRON_SECRET を Authorization ヘッダ照合（最小権限原則）。
 [functions.cleanup-temp-images]
 verify_jwt = false
+
+# extract-creator-looks-prompt は pg_net (= enqueue_creator_looks_extraction RPC) から
+# 呼び出されるため verify_jwt は無効。
+# 関数内で EDGE_FUNCTION_SECRET を Authorization ヘッダ照合（ADR-011 vault パターン）。
+[functions.extract-creator-looks-prompt]
+verify_jwt = false
