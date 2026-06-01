@@ -1729,6 +1729,34 @@ export const zhCnMessages = {
     resultsPlaceholder: "生成的图片会显示在此处。",
     resultImageAlt: "生成图片",
   },
+  creatorLooksDetail: {
+    untitled: "Untitled",
+    anonymousCreator: "Anonymous creator",
+    imageMissing: "Image could not be loaded",
+    byLabel: "by",
+    usageCount: "Used {count} times",
+    myCharacterLabel: "My character",
+    myCharacterHint:
+      "PNG / JPEG / WebP / HEIC, up to 10MB. 1024px or larger recommended.",
+    backgroundLabel: "Background settings",
+    backgroundCheckboxLabel:
+      "Also change background to match the creator's world",
+    backgroundCheckboxDescription:
+      "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    poseAngleNote:
+      "* Camera angle and pose are preserved. Future update planned.",
+    tryThisLook: "Try this look",
+    submitting: "Generating...",
+    missingMyCharacter: "Please upload your character image.",
+    rateLimitedCooldown:
+      "Please wait. It has been less than 60 seconds since your last generation.",
+    hiddenPromptNotReady: "Preparing... Please try again shortly.",
+    generateFailed: "Generation failed. Please try again later.",
+    generateFailedDescription:
+      "Try a different image or wait a moment before retrying.",
+    generationResultTitle: "Generation result",
+    generationResultAlt: "Generated image",
+  },
   popupBanners: {
     dialogTitle: "公告",
     dialogDescription: "推荐更新",

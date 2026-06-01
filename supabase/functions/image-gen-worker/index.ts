@@ -10,6 +10,7 @@ import {
   resolveBackgroundMode,
   resolveInspireTargetSizeBaseIndex,
 } from "../../../shared/generation/prompt-core.ts";
+import { composeCreatorLooksPrompt } from "./creator-looks-prompt.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import {
@@ -1806,10 +1807,51 @@ Deno.serve(async () => {
                   // → admin が編集した override があれば適用、無ければ registry default
                   const promptTemplates =
                     await resolveAllPromptTemplatesForWorker(supabase);
+
+                  // Creator Looks 投稿か検出 → 検出時は user_style_template_secrets から
+                  // hidden_prompt を取得して inspire の buildInspirePrompt を上書きする。
+                  // (= ADR-001 / REQ-008、計画書 Phase 4 Worker 改修)
+                  let creatorLooksHiddenPrompt: string | null = null;
+                  if (
+                    job.generation_type === "inspire" &&
+                    job.style_template_id
+                  ) {
+                    const { data: templateRow } = await supabase
+                      .from("user_style_templates")
+                      .select("is_creator_looks")
+                      .eq("id", job.style_template_id)
+                      .maybeSingle();
+                    if (templateRow?.is_creator_looks === true) {
+                      const { data: secretRow } = await supabase
+                        .from("user_style_template_secrets")
+                        .select("hidden_prompt")
+                        .eq("template_id", job.style_template_id)
+                        .maybeSingle();
+                      if (
+                        secretRow &&
+                        typeof secretRow.hidden_prompt === "string" &&
+                        secretRow.hidden_prompt.length > 0
+                      ) {
+                        creatorLooksHiddenPrompt = secretRow.hidden_prompt;
+                      } else {
+                        // hidden_prompt 未生成: API 層で 422 で弾いている想定だが
+                        // race condition で worker まで来た場合のフェイルセーフ
+                        throw new Error(
+                          "CREATOR_LOOKS_HIDDEN_PROMPT_NOT_READY",
+                        );
+                      }
+                    }
+                  }
+
                   const fullPrompt =
                     job.generation_type === "one_tap_style"
                       ? job.prompt_text
-                      : job.generation_type === "inspire"
+                      : creatorLooksHiddenPrompt
+                        ? composeCreatorLooksPrompt(
+                            creatorLooksHiddenPrompt,
+                            job.override_background ?? true,
+                          )
+                        : job.generation_type === "inspire"
                         ? buildInspirePrompt({
                             // 新仕様: 4 bool カラム。inspire ジョブは migration で必ず値が入る。
                             // 万一 NULL の場合は「すべて維持」で fallback する。

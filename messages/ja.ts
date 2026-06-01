@@ -1660,6 +1660,35 @@ export const jaMessages = {
     resultsPlaceholder: "ここに生成された画像が表示されます。",
     resultImageAlt: "生成された画像",
   },
+  creatorLooksDetail: {
+    untitled: "無題",
+    anonymousCreator: "匿名クリエイター",
+    imageMissing: "画像を読み込めませんでした",
+    byLabel: "by",
+    usageCount: "{count} 回使用されました",
+    myCharacterLabel: "マイキャラ",
+    myCharacterHint:
+      "PNG / JPEG / WebP / HEIC、10MB まで。1024px 以上推奨。",
+    backgroundLabel: "背景設定",
+    backgroundCheckboxLabel: "背景もクリエイターの世界に合わせて変更する",
+    backgroundCheckboxDescription:
+      "OFF のときは元の背景をできるだけ維持し、ON のときはクリエイターの作品から背景を抽出して反映します。",
+    poseAngleNote:
+      "※ カメラアングルとポーズは変わりません。今後のアップデートで対応予定です。",
+    tryThisLook: "これを着せる",
+    submitting: "生成中...",
+    missingMyCharacter: "マイキャラの画像をアップロードしてください。",
+    rateLimitedCooldown:
+      "少々お待ちください。前回の生成から 60 秒以内です。",
+    hiddenPromptNotReady:
+      "準備中です。しばらくしてから再度お試しください。",
+    generateFailed:
+      "生成に失敗しました。時間をおいて再試行してください。",
+    generateFailedDescription:
+      "別の画像で試すか、しばらくしてから再試行してください。",
+    generationResultTitle: "生成結果",
+    generationResultAlt: "生成された画像",
+  },
   popupBanners: {
     dialogTitle: "お知らせ",
     dialogDescription: "おすすめ情報のお知らせ",

@@ -32,6 +32,11 @@ export interface UserStyleTemplateRow {
   display_order: number;
   created_at: string;
   updated_at: string;
+  // Phase 1 で追加された Creator Looks 列 (= 既存 Inspire 投稿は false / NULL のまま)
+  is_creator_looks?: boolean;
+  submission_source?: string | null;
+  usage_count?: number;
+  posted_count?: number;
 }
 
 const TEMPLATE_BASE_FIELDS = `
@@ -51,7 +56,11 @@ const TEMPLATE_BASE_FIELDS = `
   preview_generated_at,
   display_order,
   created_at,
-  updated_at
+  updated_at,
+  is_creator_looks,
+  submission_source,
+  usage_count,
+  posted_count
 ` as const;
 
 /**

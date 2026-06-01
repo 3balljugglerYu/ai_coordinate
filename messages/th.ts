@@ -1731,6 +1731,34 @@ export const thMessages = {
     resultsPlaceholder: "รูปที่สร้างจะปรากฏที่นี่",
     resultImageAlt: "รูปที่สร้าง",
   },
+  creatorLooksDetail: {
+    untitled: "Untitled",
+    anonymousCreator: "Anonymous creator",
+    imageMissing: "Image could not be loaded",
+    byLabel: "by",
+    usageCount: "Used {count} times",
+    myCharacterLabel: "My character",
+    myCharacterHint:
+      "PNG / JPEG / WebP / HEIC, up to 10MB. 1024px or larger recommended.",
+    backgroundLabel: "Background settings",
+    backgroundCheckboxLabel:
+      "Also change background to match the creator's world",
+    backgroundCheckboxDescription:
+      "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    poseAngleNote:
+      "* Camera angle and pose are preserved. Future update planned.",
+    tryThisLook: "Try this look",
+    submitting: "Generating...",
+    missingMyCharacter: "Please upload your character image.",
+    rateLimitedCooldown:
+      "Please wait. It has been less than 60 seconds since your last generation.",
+    hiddenPromptNotReady: "Preparing... Please try again shortly.",
+    generateFailed: "Generation failed. Please try again later.",
+    generateFailedDescription:
+      "Try a different image or wait a moment before retrying.",
+    generationResultTitle: "Generation result",
+    generationResultAlt: "Generated image",
+  },
   popupBanners: {
     dialogTitle: "ประกาศ",
     dialogDescription: "การอัปเดตที่แนะนำ",

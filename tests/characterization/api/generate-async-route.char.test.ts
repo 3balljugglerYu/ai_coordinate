@@ -41,6 +41,9 @@ function createRequest(body: unknown): NextRequest {
     headers: {
       "Content-Type": "application/json",
       "accept-language": "ja",
+      // Phase 4: ensureSameOrigin を pass するために Origin/Host を一致させる
+      origin: "http://localhost",
+      host: "localhost",
     },
     body: JSON.stringify(body),
   });

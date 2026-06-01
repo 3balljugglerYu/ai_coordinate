@@ -10,6 +10,7 @@ import {
   getStyleTemplateById,
 } from "@/features/inspire/lib/repository";
 import { InspirePageClient } from "@/features/inspire/components/InspirePageClient";
+import { CreatorLooksDetailSection } from "@/features/inspire/components/CreatorLooksDetailSection";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
@@ -97,49 +98,61 @@ export default async function InspirePage({ params }: InspirePageProps) {
           </div>
 
           <GenerationStateProvider>
-            <InspirePageClient
-              template={{
-                id: template.id,
-                alt: template.alt,
-                image_url: templateImageUrl,
-                submitted_by_user_id: template.submitted_by_user_id,
-              }}
-              submitter={{
-                nickname: profile?.nickname ?? null,
-                avatar_url: profile?.avatar_url ?? null,
-              }}
-              copy={{
-              formTitle: t("formTitle"),
-              formDescription: t("formDescription"),
-              formImageLabel: t("formImageLabel"),
-              formCountLabel: t("formCountLabel"),
-              formModelLabel: t("formModelLabel"),
-              formGenerateButton: t("formGenerateButton"),
-              formGenerating: t("formGenerating"),
-              formImageRequired: t("formImageRequired"),
-              formGenerationFailed: t("formGenerationFailed"),
-              submittedByLabel: t("submittedByLabel"),
-              submitterAnonymous: t("submitterAnonymous"),
-              submitterViewProfile: t("submitterViewProfile"),
-              selectedTemplateLabel: t("selectedTemplateLabel"),
-              formGenerateAria: t("formGenerateAria"),
-              formCharacterUploadHint: t("formCharacterUploadHint"),
-              formUploadLabel: t("formUploadLabel"),
-              formAddImageAction: t("formAddImageAction"),
-              overrideLabel: t("overrideLabel"),
-              overrideHint: t("overrideHint"),
-              overrideAngle: t("overrideAngle"),
-              overridePose: t("overridePose"),
-              overrideOutfit: t("overrideOutfit"),
-              overrideBackground: t("overrideBackground"),
-              statusFailed: t("statusFailed"),
-              statusFailedDescription: t("statusFailedDescription"),
-              resultsTitle: t("resultsTitle"),
-              resultsPlaceholder: t("resultsPlaceholder"),
-              resultImageAlt: t("resultImageAlt"),
-            }}
-              subscriptionPlan={viewerProfile?.subscription_plan ?? "free"}
-            />
+            {template.is_creator_looks === true ? (
+              <CreatorLooksDetailSection
+                templateId={template.id}
+                templateImageUrl={templateImageUrl}
+                title={template.alt}
+                submittedByUserId={template.submitted_by_user_id}
+                submitterNickname={profile?.nickname ?? null}
+                usageCount={template.usage_count ?? 0}
+                subscriptionPlan={viewerProfile?.subscription_plan ?? "free"}
+              />
+            ) : (
+              <InspirePageClient
+                template={{
+                  id: template.id,
+                  alt: template.alt,
+                  image_url: templateImageUrl,
+                  submitted_by_user_id: template.submitted_by_user_id,
+                }}
+                submitter={{
+                  nickname: profile?.nickname ?? null,
+                  avatar_url: profile?.avatar_url ?? null,
+                }}
+                copy={{
+                  formTitle: t("formTitle"),
+                  formDescription: t("formDescription"),
+                  formImageLabel: t("formImageLabel"),
+                  formCountLabel: t("formCountLabel"),
+                  formModelLabel: t("formModelLabel"),
+                  formGenerateButton: t("formGenerateButton"),
+                  formGenerating: t("formGenerating"),
+                  formImageRequired: t("formImageRequired"),
+                  formGenerationFailed: t("formGenerationFailed"),
+                  submittedByLabel: t("submittedByLabel"),
+                  submitterAnonymous: t("submitterAnonymous"),
+                  submitterViewProfile: t("submitterViewProfile"),
+                  selectedTemplateLabel: t("selectedTemplateLabel"),
+                  formGenerateAria: t("formGenerateAria"),
+                  formCharacterUploadHint: t("formCharacterUploadHint"),
+                  formUploadLabel: t("formUploadLabel"),
+                  formAddImageAction: t("formAddImageAction"),
+                  overrideLabel: t("overrideLabel"),
+                  overrideHint: t("overrideHint"),
+                  overrideAngle: t("overrideAngle"),
+                  overridePose: t("overridePose"),
+                  overrideOutfit: t("overrideOutfit"),
+                  overrideBackground: t("overrideBackground"),
+                  statusFailed: t("statusFailed"),
+                  statusFailedDescription: t("statusFailedDescription"),
+                  resultsTitle: t("resultsTitle"),
+                  resultsPlaceholder: t("resultsPlaceholder"),
+                  resultImageAlt: t("resultImageAlt"),
+                }}
+                subscriptionPlan={viewerProfile?.subscription_plan ?? "free"}
+              />
+            )}
 
             <div className="mt-8">
               <Suspense fallback={<GeneratedImageGallerySkeleton />}>
