@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getUser, isInspireSubmitterAllowed } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isInspireFeatureEnabled } from "@/lib/env";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { getInspireRouteCopy } from "@/features/inspire/lib/route-copy";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { jsonError } from "@/lib/api/json-error";
@@ -30,6 +31,10 @@ const promoteSchema = z.object({
  * REQ-S-06 / REQ-S-07 / REQ-S-10 / REQ-S-11 参照
  */
 export async function POST(request: NextRequest) {
+  // CSRF 防御: 同一オリジン以外の mutation を reject (Phase 3 必須)
+  const originReject = ensureSameOrigin(request);
+  if (originReject) return originReject;
+
   const copy = getInspireRouteCopy(getRouteLocale(request));
 
   if (!isInspireFeatureEnabled()) {

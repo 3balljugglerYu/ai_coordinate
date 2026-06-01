@@ -23,6 +23,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUser, isInspireSubmitterAllowed } from "@/lib/auth";
+import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env, isInspireFeatureEnabled } from "@/lib/env";
 import { getInspireRouteCopy } from "@/features/inspire/lib/route-copy";
@@ -47,6 +49,11 @@ import {
   SAFETY_POLICY_BLOCKED_ERROR,
   sanitizeProviderErrorMessage,
 } from "@/shared/generation/errors";
+import { processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
+import {
+  submissionConsentsSchema,
+  SUBMISSION_SOURCES,
+} from "@/features/inspire/lib/creator-looks-submission";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 const RATE_LIMIT_WINDOW_HOURS = 24;
@@ -70,7 +77,15 @@ const previewSchema = z.object({
       ].includes(lower);
     }),
   alt: z.string().max(200).optional().nullable(),
+  // Creator Looks 用追加フィールド (optional、存在すれば Creator Looks モード)
+  is_creator_looks: z.literal(true).optional(),
+  submission_source: z.enum(SUBMISSION_SOURCES).optional(),
+  submission_consents: submissionConsentsSchema.optional(),
 });
+
+// Creator Looks: 1 日 2 件投稿 cap (= REQ-011 API 層先行 reject)
+const CREATOR_LOOKS_DAILY_CAP = 2;
+const CREATOR_LOOKS_DAILY_WINDOW_HOURS = 24;
 
 interface PreviewSuccess {
   provider: "openai" | "gemini";
@@ -134,6 +149,10 @@ async function fetchTestCharacterImage(): Promise<{
 export async function handlePreviewGeneration(
   request: NextRequest
 ): Promise<NextResponse> {
+  // CSRF 防御: 同一オリジン以外の mutation を reject (ADR-009, Phase 3 必須)
+  const originReject = ensureSameOrigin(request);
+  if (originReject) return originReject;
+
   const copy = getInspireRouteCopy(getRouteLocale(request));
 
   if (!isInspireFeatureEnabled()) {
@@ -207,6 +226,57 @@ export async function handlePreviewGeneration(
     );
   }
 
+  // Creator Looks モード判定
+  const isCreatorLooksMode = parsed.data.is_creator_looks === true;
+  if (isCreatorLooksMode) {
+    // (a) 機能 gate (env + admin/allowlist) - クライアント任意フラグを server 側で再検証
+    const allowed = await isCreatorLooksEnabledForUser(user);
+    if (!allowed) {
+      return jsonError(
+        copy.submitterNotAllowed,
+        "CREATOR_LOOKS_NOT_ALLOWED",
+        403
+      );
+    }
+    // (b) 必須追加フィールド検証
+    if (!parsed.data.submission_source || !parsed.data.submission_consents) {
+      return jsonError(
+        copy.invalidRequest,
+        "CREATOR_LOOKS_FIELDS_MISSING",
+        400
+      );
+    }
+    // (c) 1 日 2 件 cap (= REQ-011 API 層先行 reject、Storage upload と Edge Function 起動を防ぐ)
+    const dailyWindowStart = new Date(
+      Date.now() - CREATOR_LOOKS_DAILY_WINDOW_HOURS * 60 * 60 * 1000
+    ).toISOString();
+    const { count: dailyCount, error: dailyError } = await adminClient
+      .from("user_style_templates")
+      .select("id", { count: "exact", head: true })
+      .eq("submitted_by_user_id", user.id)
+      .eq("is_creator_looks", true)
+      .neq("moderation_status", "draft")
+      .gte("created_at", dailyWindowStart);
+    if (dailyError) {
+      console.error(
+        "[preview-generation] creator_looks daily cap query failed",
+        dailyError
+      );
+      return jsonError(
+        copy.templateGenerationFailed,
+        "CREATOR_LOOKS_CAP_QUERY_FAILED",
+        500
+      );
+    }
+    if ((dailyCount ?? 0) >= CREATOR_LOOKS_DAILY_CAP) {
+      return jsonError(
+        copy.rateLimitDaily,
+        "CREATOR_LOOKS_DAILY_CAP_EXCEEDED",
+        429
+      );
+    }
+  }
+
   // base64 を素のデータに正規化（HEIC は JPEG 変換）
   let templateBase64 = parsed.data.imageBase64.replace(/^data:.+;base64,/, "");
   let templateMimeType = parsed.data.imageMimeType;
@@ -232,6 +302,28 @@ export async function handlePreviewGeneration(
     }
   } else {
     templateExtension = getSafeExtensionFromMimeType(templateMimeType);
+  }
+
+  // Creator Looks モード: サーバ側で magic-byte 検証 / 寸法上限 / EXIF 除去 / WebP 再エンコード
+  // (= polyglot 無害化、HI-003 Security)
+  if (isCreatorLooksMode) {
+    const rawBuffer = Buffer.from(templateBase64, "base64");
+    const processed = await processSubmissionImage(rawBuffer);
+    if (!processed.ok) {
+      console.warn(
+        "[preview-generation] creator_looks image processing rejected",
+        processed.error.code
+      );
+      return jsonError(
+        copy.sourceImageInvalidFormat,
+        `CREATOR_LOOKS_IMAGE_${processed.error.code}`,
+        400
+      );
+    }
+    // 再エンコード後の WebP を採用 (= EXIF 除去済み、polyglot 無害化済み)
+    templateBase64 = processed.data.webpBuffer.toString("base64");
+    templateMimeType = "image/webp";
+    templateExtension = "webp";
   }
 
   // draft 作成
@@ -274,12 +366,19 @@ export async function handlePreviewGeneration(
   // draft 行に image_url / storage_path を設定
   // image_url は Storage REST のパス文字列（Storage 直叩きの内部 URL）。
   // 公開時には API 層で署名 URL を発行する想定。
+  // Creator Looks モード時は is_creator_looks / submission_source / submission_consents も同時に保存。
+  const draftUpdate: Record<string, unknown> = {
+    image_url: templateStoragePath,
+    storage_path: templateStoragePath,
+  };
+  if (isCreatorLooksMode) {
+    draftUpdate.is_creator_looks = true;
+    draftUpdate.submission_source = parsed.data.submission_source;
+    draftUpdate.submission_consents = parsed.data.submission_consents;
+  }
   await adminClient
     .from("user_style_templates")
-    .update({
-      image_url: templateStoragePath,
-      storage_path: templateStoragePath,
-    })
+    .update(draftUpdate)
     .eq("id", draftId);
 
   // OpenAI と Gemini を並列起動。

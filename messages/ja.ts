@@ -457,6 +457,24 @@ export const jaMessages = {
     enlargedImageClose: "閉じる",
     enlargedPrev: "前の画像",
     enlargedNext: "次の画像",
+    // Creator Looks 専用 (= isCreatorLooksMode=true のときだけ表示される)
+    creatorLooksSectionTitle: "Creator Looks 投稿",
+    creatorLooksSectionDescription:
+      "あなたの作品が他のユーザーの着せ替え素材として使われます。下記の出所申告と同意にすべてチェックを入れてください。",
+    creatorLooksSourceLabel: "画像の出所",
+    creatorLooksSource_self_created: "自分が描いた / 制作した",
+    creatorLooksSource_self_photographed: "自分で撮影した",
+    creatorLooksSource_licensed_other: "他者の作品（明示的に許諾を得たもの）",
+    creatorLooksConsentsLabel: "同意事項（すべて必須）",
+    creatorLooksConsent_copyright: "この画像の著作権を侵害していません。",
+    creatorLooksConsent_third_party_ip:
+      "第三者の知的財産（アニメ・ゲーム・ブランド等）を侵害していません。",
+    creatorLooksConsent_secondary_use:
+      "この画像の衣装と背景が他ユーザーの着せ替え素材として使われることに同意します。",
+    creatorLooksConsent_promo_use:
+      "Persta がサンプル・宣伝・ヘルプ等でこの画像を使うことに同意します。",
+    creatorLooksConsent_no_sensitive:
+      "この画像にはセンシティブ要素（性的・暴力的・差別的な表現等）が含まれていません。",
   },
   profileEdit: {
     title: "プロフィールを編集",

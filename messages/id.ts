@@ -465,7 +465,27 @@ export const idMessages = {
     enlargeImageAriaLabel: "Klik untuk memperbesar",
     enlargedImageClose: "Tutup",
     enlargedPrev: "Gambar sebelumnya",
-    enlargedNext: "Gambar berikutnya",
+    enlargedNext: "Next image",
+    // Creator Looks (TODO: localize before Stage 3)
+    creatorLooksSectionTitle: "Creator Looks submission",
+    creatorLooksSectionDescription:
+      "Your artwork will be available as a dress-up source for other users. Please declare the source and check all agreements below.",
+    creatorLooksSourceLabel: "Image source",
+    creatorLooksSource_self_created: "I drew / created it myself",
+    creatorLooksSource_self_photographed: "I photographed it myself",
+    creatorLooksSource_licensed_other:
+      "Someone else's work (with explicit permission)",
+    creatorLooksConsentsLabel: "Agreements (all required)",
+    creatorLooksConsent_copyright:
+      "I am not infringing the copyright of this image.",
+    creatorLooksConsent_third_party_ip:
+      "I am not infringing third-party IP (anime, games, brands, etc.).",
+    creatorLooksConsent_secondary_use:
+      "I agree that the outfit and background of this image may be used as dress-up material by other users.",
+    creatorLooksConsent_promo_use:
+      "I agree that Persta may use this image for samples, promotion, help docs, etc.",
+    creatorLooksConsent_no_sensitive:
+      "This image does not contain sensitive content (sexual, violent, discriminatory, etc.).",
   },
   profileEdit: {
     title: "Edit profil",

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isInspireFeatureEnabled } from "@/lib/env";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { getInspireRouteCopy } from "@/features/inspire/lib/route-copy";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { jsonError } from "@/lib/api/json-error";
@@ -53,6 +54,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF 防御: 同一オリジン以外の mutation を reject (Phase 3 必須)
+  const originReject = ensureSameOrigin(request);
+  if (originReject) return originReject;
+
   const copy = getInspireRouteCopy(getRouteLocale(request));
 
   if (!isInspireFeatureEnabled()) {

@@ -27,6 +27,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  SUBMISSION_SOURCES,
+  type SubmissionSource,
+  buildSubmissionConsents,
+  isAllConsentsAcknowledged,
+} from "@/features/inspire/lib/creator-looks-submission";
 
 interface PreviewSummary {
   provider: "openai" | "gemini";
@@ -52,6 +58,12 @@ interface UserStyleTemplateSubmissionFormProps {
    * 通常の新規申請では undefined。
    */
   replaceTemplateId?: string | null;
+  /**
+   * Creator Looks モードか (= 出所申告 + 5 つの同意チェックを追加表示)。
+   * server 側で `isCreatorLooksEnabledForUser(user)` を判定して渡す。
+   * false (= 既存 Inspire 投稿フロー) ならフォームは現状と同じ挙動。
+   */
+  isCreatorLooksMode?: boolean;
 }
 
 type Step = 1 | 2 | 3;
@@ -191,6 +203,7 @@ function MediaCell({
 export function UserStyleTemplateSubmissionForm({
   testCharacterImageUrl,
   replaceTemplateId,
+  isCreatorLooksMode = false,
 }: UserStyleTemplateSubmissionFormProps) {
   const t = useTranslations("inspireSubmission");
   const { toast } = useToast();
@@ -213,6 +226,17 @@ export function UserStyleTemplateSubmissionForm({
   const [consent, setConsent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+
+  // Creator Looks 追加 state (= isCreatorLooksMode=true のときだけ意味を持つ)
+  const [submissionSource, setSubmissionSource] =
+    useState<SubmissionSource | null>(null);
+  const [creatorLooksConsents, setCreatorLooksConsents] = useState({
+    copyright: false,
+    third_party_ip: false,
+    secondary_use: false,
+    promo_use: false,
+    no_sensitive: false,
+  });
   // 拡大表示している画像のインデックス（null = 表示なし）。
   // インデックスは下記 enlargeableSlides 配列上の位置を指す。
   const [enlargedIndex, setEnlargedIndex] = useState<number | null>(null);
@@ -370,6 +394,25 @@ export function UserStyleTemplateSubmissionForm({
     setErrorMessage(null);
     try {
       const base64 = await readFileAsBase64(file);
+
+      // Creator Looks モード時は出所申告と同意 5 項目を一緒に送る (= Step 1 で完結)
+      // ただし Step 1 段階では consent をまだ取っていないので、ここでは送らず
+      // submission (= 申請確定) 時に再度 preview-generation を呼び直す形式は取らない。
+      // 代わりに、Creator Looks モード時は Step 1 で source + 5 つの同意も同時に取り、
+      // この preview-generation 呼び出し前に validate する。
+      const creatorLooksPayload =
+        isCreatorLooksMode &&
+        submissionSource !== null &&
+        isAllConsentsAcknowledged(creatorLooksConsents)
+          ? {
+              is_creator_looks: true as const,
+              submission_source: submissionSource,
+              submission_consents: buildSubmissionConsents(
+                creatorLooksConsents
+              ),
+            }
+          : {};
+
       const response = await fetch("/api/style-templates/preview-generation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -377,12 +420,20 @@ export function UserStyleTemplateSubmissionForm({
           imageBase64: base64,
           imageMimeType: file.type,
           alt: alt || null,
+          ...creatorLooksPayload,
         }),
       });
 
       if (response.status === 429) {
         setErrorMessage(t("submitFailedRateLimit"));
         return;
+      }
+      if (response.status === 403) {
+        const data = await response.json().catch(() => null);
+        if (data?.errorCode === "CREATOR_LOOKS_NOT_ALLOWED") {
+          setErrorMessage(t("submitFailedGeneric"));
+          return;
+        }
       }
       if (response.status === 400) {
         const data = await response.json().catch(() => null);
@@ -392,6 +443,13 @@ export function UserStyleTemplateSubmissionForm({
         }
         if (data?.errorCode === "INSPIRE_IMAGE_TOO_LARGE") {
           setErrorMessage(t("submitFailedTooLarge"));
+          return;
+        }
+        if (
+          typeof data?.errorCode === "string" &&
+          data.errorCode.startsWith("CREATOR_LOOKS_IMAGE_")
+        ) {
+          setErrorMessage(t("submitFailedSafety"));
           return;
         }
         setErrorMessage(t("previewFailed"));
@@ -413,7 +471,15 @@ export function UserStyleTemplateSubmissionForm({
     } finally {
       setGenerating(false);
     }
-  }, [alt, fetchSignedUrl, file, t]);
+  }, [
+    alt,
+    fetchSignedUrl,
+    file,
+    t,
+    isCreatorLooksMode,
+    submissionSource,
+    creatorLooksConsents,
+  ]);
 
   const handleSubmit = useCallback(async () => {
     if (!previewResult || !consent) {
@@ -510,20 +576,36 @@ export function UserStyleTemplateSubmissionForm({
               />
             </div>
 
-            <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
-              <Checkbox
-                id="inspire-consent"
-                checked={consent}
-                onCheckedChange={(v) => setConsent(v === true)}
-                className="mt-0.5 cursor-pointer"
+            {/*
+              Creator Looks モード:
+              既存の single consent を hide し、出所申告 + 5 つの同意チェックを表示する。
+              CREATOR_LOOKS_ENABLED=false かつ admin/allowlist 外なら isCreatorLooksMode は
+              false で渡され、以下の塊は表示されない (= 既存 Inspire 投稿フローは無変更)。
+            */}
+            {isCreatorLooksMode ? (
+              <CreatorLooksConsentBlock
+                t={t}
+                source={submissionSource}
+                onSourceChange={setSubmissionSource}
+                consents={creatorLooksConsents}
+                onConsentsChange={setCreatorLooksConsents}
               />
-              <Label
-                htmlFor="inspire-consent"
-                className="cursor-pointer text-xs leading-snug"
-              >
-                {t("step3ConsentLabel")}
-              </Label>
-            </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                <Checkbox
+                  id="inspire-consent"
+                  checked={consent}
+                  onCheckedChange={(v) => setConsent(v === true)}
+                  className="mt-0.5 cursor-pointer"
+                />
+                <Label
+                  htmlFor="inspire-consent"
+                  className="cursor-pointer text-xs leading-snug"
+                >
+                  {t("step3ConsentLabel")}
+                </Label>
+              </div>
+            )}
 
             {errorMessage && (
               <p className="text-sm text-destructive">{errorMessage}</p>
@@ -536,7 +618,13 @@ export function UserStyleTemplateSubmissionForm({
               <Button
                 type="button"
                 onClick={() => setStep(2)}
-                disabled={!file || !consent}
+                disabled={
+                  !file ||
+                  (isCreatorLooksMode
+                    ? submissionSource === null ||
+                      !isAllConsentsAcknowledged(creatorLooksConsents)
+                    : !consent)
+                }
               >
                 {t("step1NextButton")}
               </Button>
@@ -738,5 +826,111 @@ export function UserStyleTemplateSubmissionForm({
         nextLabel={t("enlargedNext")}
       />
     </>
+  );
+}
+
+// ===============================================
+// Creator Looks 専用: 出所申告 + 5 つの同意チェック UI
+// ===============================================
+// isCreatorLooksMode=true の Step 1 にのみ表示される。
+// 既存 Inspire 投稿フローでは表示されない (= isCreatorLooksMode=false なので render されない)。
+
+type CreatorLooksConsentBlockProps = {
+  t: ReturnType<typeof useTranslations>;
+  source: SubmissionSource | null;
+  onSourceChange: (next: SubmissionSource) => void;
+  consents: {
+    copyright: boolean;
+    third_party_ip: boolean;
+    secondary_use: boolean;
+    promo_use: boolean;
+    no_sensitive: boolean;
+  };
+  onConsentsChange: (
+    updater: (prev: CreatorLooksConsentBlockProps["consents"]) => CreatorLooksConsentBlockProps["consents"]
+  ) => void;
+};
+
+function CreatorLooksConsentBlock({
+  t,
+  source,
+  onSourceChange,
+  consents,
+  onConsentsChange,
+}: CreatorLooksConsentBlockProps) {
+  return (
+    <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-primary">
+          {t("creatorLooksSectionTitle")}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {t("creatorLooksSectionDescription")}
+        </p>
+      </div>
+
+      {/* 出所申告 */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">
+          {t("creatorLooksSourceLabel")}
+          <span className="ml-1 text-xs text-destructive">*</span>
+        </legend>
+        <div className="space-y-1.5">
+          {SUBMISSION_SOURCES.map((s) => (
+            <label
+              key={s}
+              className="flex cursor-pointer items-center gap-2 text-sm"
+            >
+              <input
+                type="radio"
+                name="creator-looks-source"
+                value={s}
+                checked={source === s}
+                onChange={() => onSourceChange(s)}
+                className="cursor-pointer"
+              />
+              <span>{t(`creatorLooksSource_${s}`)}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* 5 つの同意 */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">
+          {t("creatorLooksConsentsLabel")}
+          <span className="ml-1 text-xs text-destructive">*</span>
+        </legend>
+        {(
+          [
+            "copyright",
+            "third_party_ip",
+            "secondary_use",
+            "promo_use",
+            "no_sensitive",
+          ] as const
+        ).map((key) => (
+          <div key={key} className="flex items-start gap-2">
+            <Checkbox
+              id={`creator-looks-consent-${key}`}
+              checked={consents[key]}
+              onCheckedChange={(v) =>
+                onConsentsChange((prev) => ({
+                  ...prev,
+                  [key]: v === true,
+                }))
+              }
+              className="mt-0.5 cursor-pointer"
+            />
+            <Label
+              htmlFor={`creator-looks-consent-${key}`}
+              className="cursor-pointer text-xs leading-snug"
+            >
+              {t(`creatorLooksConsent_${key}`)}
+            </Label>
+          </div>
+        ))}
+      </fieldset>
+    </div>
   );
 }
