@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
+import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
 import { env } from "@/lib/env";
@@ -176,6 +177,19 @@ export async function postGenerateAsyncRoute(
       }
       // image_url は storage_path 文字列（Storage 内部パス）。Worker 側で署名 URL 化して fetch する。
       inspireStyleTemplateImageUrl = template.storage_path;
+
+      // Stage 1 厳密化 (Phase 8): Creator Looks 投稿の生成は admin/allowlist のみ許可
+      // 一般ユーザーが styleTemplateId を直接叩いて生成しようとしても 403 で reject
+      if (template.is_creator_looks === true) {
+        const allowed = await isCreatorLooksEnabledForUser(user);
+        if (!allowed) {
+          return jsonError(
+            "現在この機能は限定公開中です",
+            "CREATOR_LOOKS_NOT_AVAILABLE",
+            403
+          );
+        }
+      }
 
       // Creator Looks 投稿の場合: per-user-per-template cool-down (= REQ-007, HI-005 Security)
       // 過去 60 秒以内に同 user × 同 template の image_jobs が存在すれば 429。

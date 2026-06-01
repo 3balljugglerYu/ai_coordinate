@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { isInspireFeatureEnabled } from "@/lib/env";
 import { requireAuth } from "@/lib/auth";
+import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createStyleTemplateSignedUrl,
@@ -60,6 +61,15 @@ export default async function InspirePage({ params }: InspirePageProps) {
 
   if (template.moderation_status !== "visible") {
     notFound();
+  }
+
+  // Stage 1 厳密化 (Phase 8): Creator Looks 投稿は admin/allowlist 該当ユーザーのみ閲覧可
+  // 一般ユーザーには 404 を返し、Creator Looks 機能の存在自体を隠す
+  if (template.is_creator_looks === true) {
+    const allowed = await isCreatorLooksEnabledForUser(user);
+    if (!allowed) {
+      notFound();
+    }
   }
 
   const t = await getTranslations("inspirePage");
