@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isInspireFeatureEnabled } from "@/lib/env";
@@ -110,6 +111,10 @@ export async function DELETE(
       return jsonError(copy.withdrawFailed, "INSPIRE_WITHDRAW_FAILED", 500);
     }
 
+    // ホームカルーセル / クリエイター個人ページのキャッシュを無効化
+    // (= Phase 6 で実 use cache 化されたため、ここで明示 invalidate が効くようになった)
+    revalidateTag("home-user-style-templates", "max");
+
     return NextResponse.json({ success: true, action: "deleted" });
   }
 
@@ -134,6 +139,9 @@ export async function DELETE(
     if (!success) {
       return jsonError(copy.templateNotFound, "INSPIRE_TEMPLATE_NOT_FOUND", 404);
     }
+
+    // 撤回時はホームカルーセルから即座に消えるよう cache invalidate (REQ-014)
+    revalidateTag("home-user-style-templates", "max");
 
     return NextResponse.json({ success: true, action: "withdrawn" });
   }
