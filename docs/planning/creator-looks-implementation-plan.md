@@ -24,7 +24,7 @@
 | Critical | A-4 | `prompt_overrides` の Creator Looks 行は閲覧監査 log + super_admin 化を ADR-010 |
 | Critical | B-1 | `NEXT_PUBLIC_CREATOR_LOOKS_ENABLED` → `CREATOR_LOOKS_ENABLED` (サーバ専用) |
 | Critical | B-2 | 全 mutation route に `ensureSameOrigin` 必須をチェックリスト化 |
-| Critical | B-3 | API + DB CHECK で `is_creator_looks=true` 投稿を admin (or allowlist) に限定 |
+| Critical | B-3 | API + DB Trigger/RPC で `is_creator_looks=true` 投稿を admin (or allowlist) に限定 |
 | Critical | C-1 | 改修対象を `UserStyleTemplateSubmissionForm.tsx` (1 画面式) に修正 |
 | Critical | C-2 | `CachedHomeUserStyleTemplateSection` を実際に `use cache` 化する作業を Phase 6 に追加 |
 | Critical | C-3 | i18n を 15 言語必須に統一 |
@@ -63,8 +63,8 @@
 | 既存資産 | パス | 流用ポイント |
 |---|---|---|
 | `user_style_templates` テーブル | `supabase/migrations/20260502124531_*.sql` | レコードのストレージ。`is_creator_looks BOOLEAN` 列追加で Inspire と区別 |
-| `image_jobs.style_template_id` + `override_target` | `supabase/migrations/20260502124619_*.sql` | 既に存在。`override_target` CHECK を拡張するのみ |
-| `notifications` テーブル + `create_notification(...)` RPC (SECURITY DEFINER) | `supabase/migrations/20251213013611_notifications.sql` + 既存 RPC | 通知 A〜D の INSERT は **必ず `create_notification` RPC 経由**。複数宛先 (= admin 全員) のために `create_notification_bulk(recipients UUID[], ...)` の新規追加検討 |
+| `image_jobs.style_template_id` + `override_*` 4 bool | `supabase/migrations/20260502120100_*.sql` + `20260516120000_*.sql` | 既に存在。Creator Looks も `generation_type='inspire'` + `override_outfit/angle/pose/background` を流用 |
+| `notifications` テーブル + `create_notification(...)` RPC (SECURITY DEFINER) | `supabase/migrations/20251213013611_notifications.sql` + 既存 RPC | 通知 A/C/D は `create_notification` RPC 経由。通知 B は既存 RPC が自己通知を skip するため、専用 self-notification RPC を新規追加 |
 | `style_template_audit_logs` | `supabase/migrations/20260502124647_*.sql` | 監査履歴を流用 (`action` CHECK 拡張で `extract_failed` 追加) |
 | `promote_user_style_template_draft` RPC | `supabase/migrations/20260502124719_*.sql` | 投稿フォーム → 状態昇格に流用 |
 | `apply_user_style_template_decision` RPC | `supabase/migrations/20260502124705_*.sql` | 承認 / 却下 / 非公開化 |
@@ -83,7 +83,7 @@
 | 新規 | 内容 |
 |---|---|
 | `user_style_templates` 列追加 | `is_creator_looks` / `submission_source` / `submission_consents` / `usage_count` / `posted_count` |
-| 列レベル CHECK 強化 | `submission_consents` JSONB 5 項目すべて true / `submission_source` ENUM / `is_creator_looks=true` 時の admin 制約 |
+| 列レベル CHECK 強化 | `submission_consents` JSONB 5 項目すべて true / `submission_source` ENUM。admin/allowlist 判定や secrets 存在確認など cross-table 条件は Trigger/RPC で強制 |
 | `user_style_template_secrets` テーブル (新規) | 抽出済み hidden_prompt の保管 (admin/service_role のみ) |
 | `creator_looks_allowlist` テーブル (新規) | Stage 2 用、fail-closed 設計 |
 | `creator_notified_at` 列 (`generated_images` に追加) | 通知 D の重複防止 |
@@ -94,6 +94,7 @@
 | `extract-creator-looks-prompt` Edge Function | gpt-5.5 Responses API で meta-prompt 実行 |
 | 通知発火 DB Trigger 4 種 (`create_notification[_bulk]` 経由) | A/B/C/D の発火 |
 | `trg_enforce_creator_looks_daily_cap` Trigger (1 日 2 件) | 既存 Inspire trigger とは別管理 |
+| `prompt_overrides_audit_logs` | `creator_looks.%` prompt の閲覧 / 更新監査 |
 | `redactSecrets()` ヘルパ | Edge Function / Worker / Sentry の logger でこれを必須通過 |
 | `PROMPT_REGISTRY` 新カテゴリ `creator_looks` + キー `creator_looks.meta_extractor` | meta-prompt テンプレート (admin 編集可能、ただし監査 log 必須) |
 | 投稿フォーム改修 | タイトル必須化 / 出所申告 select / 4 つの同意チェック + NSFW 否認 |
@@ -230,7 +231,7 @@ flowchart TD
     Try["これを着せる ボタン"]
     Cooldown{API 層 cool-down: 同 template 60s 以内に既存?}
     RejectCool["エラー: 少々お待ちください"]
-    GenJob["image_jobs INSERT<br/>style_template_id + override_target"]
+    GenJob["image_jobs INSERT<br/>style_template_id + override_* 4 bool"]
     SecretCheck{hidden_prompt 生成済?}
     NotReady["エラー: 準備中"]
     Generate["生成 Worker (= redactSecrets 必須)<br/>gpt-image-2 Edit エンドポイント"]
@@ -276,17 +277,17 @@ stateDiagram-v2
 - **REQ-001 (ja/en)**: When クリエイターが投稿フォームから「投稿する」を押したとき, the system shall サーバ側で画像処理 (magic-byte / 寸法 / EXIF / 再エンコード) を完了し、`user_style_templates` を `is_creator_looks=true`、`moderation_status='draft'` で INSERT、続いて `promote_user_style_template_draft` RPC で pending に昇格する。
   - When a creator clicks "Submit" on the submission form, the system shall perform server-side image processing (magic-byte check / dimension limit / EXIF strip / re-encode), INSERT a `user_style_templates` record with `is_creator_looks=true` and `moderation_status='draft'`, then promote to `pending` via RPC.
 
-- **REQ-002**: When `user_style_templates.moderation_status` が `draft` から `pending` に遷移したとき, the system shall Trigger 内で `create_notification_bulk(...)` で admin 全員 (= 投稿者本人は除外) に通知 A (`creator_looks_submission_received`)、`create_notification(...)` で投稿者に通知 B (`creator_looks_submission_acknowledged`) を発行する。
+- **REQ-002**: When `user_style_templates.moderation_status` が `draft` から `pending` に遷移したとき, the system shall Trigger 内で `create_notification_bulk(...)` で admin 全員 (= 投稿者本人は除外) に通知 A (`creator_looks_submission_received`) を発行し、自己通知を許可する専用 `create_creator_looks_self_notification(...)` RPC で投稿者に通知 B (`creator_looks_submission_acknowledged`) を発行する。既存 `create_notification(...)` は `recipient_id = actor_id` を skip するため、通知 B には使わない。
 
 - **REQ-003**: When 投稿が pending 状態になったとき, the system shall `enqueue_creator_looks_extraction` RPC を呼び、pg_net 経由で `extract-creator-looks-prompt` Edge Function を非同期起動する。Edge Function は gpt-5.5 Responses API でクリエイター画像を解析、出力テキストを `user_style_template_secrets` に UPSERT する。**全 log / error response は `redactSecrets()` を必ず通過させる。**
 
-- **REQ-004**: When 運営が `/admin/style-templates` で「承認」を押したとき, the system shall `moderation_status='visible'` に更新する。Trigger は OLD != NEW のときのみ通知 C (`creator_looks_moderation_result`, action=approved) を発行する。CHECK 制約により、`hidden_prompt IS NOT NULL` でないと visible 遷移は失敗する。
+- **REQ-004**: When 運営が `/admin/style-templates` で「承認」を押したとき, the system shall `moderation_status='visible'` に更新する。Trigger は OLD != NEW のときのみ通知 C (`creator_looks_moderation_result`, action=approved) を発行する。`apply_user_style_template_decision` RPC と DB guard trigger は `user_style_template_secrets.hidden_prompt IS NOT NULL` を `EXISTS` で確認し、未生成なら visible 遷移を失敗させる。cross-table 条件は PostgreSQL CHECK 制約では表現しない。
 
 - **REQ-005**: When 「却下」を押したとき, the system shall `moderation_status='removed'` に更新し、通知 C (action=rejected) を発行する。
 
 - **REQ-006**: When 消費者が Creator Looks 経由の生成結果をホーム投稿し、`generated_images.is_posted` が false → true になったとき, the system shall Trigger 内で `creator_notified_at IS NULL` の場合のみ通知 D (`creator_looks_post_published`) を発行し、`creator_notified_at = now()` で one-shot 化する。
 
-- **REQ-007**: When 消費者が詳細ページで「Try this look」を押したとき, the system shall API 層で「同 template 60 秒以内の生成」をチェックし、cool-down 期間内なら 429 を返す。OK なら `image_jobs` を `style_template_id` + `override_target` (背景 ON: `outfit_with_background` / OFF: `outfit`) で INSERT する。
+- **REQ-007**: When 消費者が詳細ページで「Try this look」を押したとき, the system shall API 層で「同 template 60 秒以内の生成」をチェックし、cool-down 期間内なら 429 を返す。OK なら既存 Inspire API と同じ `styleTemplateId` + `overrides` object を受け、`image_jobs` に `style_template_id` + `override_outfit=true` / `override_angle=false` / `override_pose=false` / `override_background=<背景ON>` を INSERT する。
 
 - **REQ-008**: When 生成 Worker が image_jobs を処理するとき, the system shall `user_style_template_secrets.hidden_prompt` を取得 (= NULL なら失敗ステータスで終了)、gpt-image-2 Images API Edit エンドポイントに消費者キャラ画像 + hidden_prompt を送る。**`error.message` から hidden_prompt を sanitize してから client に返す。**
 
@@ -308,7 +309,7 @@ stateDiagram-v2
 
 - **REQ-015**: If 生成時に `user_style_template_secrets.hidden_prompt` が未生成 (= NULL) の場合, the system shall 「準備中です。しばらくお待ちください」エラーを返す (= IDOR ではなく明示エラー)。
 
-- **REQ-016**: If 一般ユーザーが直接 API を叩いて `is_creator_looks=true` で投稿を試みた場合, the system shall API 層で 403 を返し、DB CHECK でも `EXISTS (SELECT 1 FROM admin_users WHERE user_id = submitted_by_user_id)` 制約により reject する (= 二重ガード)。
+- **REQ-016**: If 一般ユーザーが直接 API を叩いて `is_creator_looks=true` で投稿を試みた場合, the system shall API 層で 403 を返し、DB guard trigger / RPC 内でも `admin_users` または Stage 2 allowlist を確認して reject する (= 二重ガード)。`EXISTS` を含む cross-table 条件は CHECK 制約ではなく trigger/RPC に置く。
 
 ### オプション (Where ...)
 
@@ -344,9 +345,9 @@ stateDiagram-v2
 ### ADR-004: 通知発火は DB Trigger + `create_notification` SECURITY DEFINER RPC 経由
 
 - **Context**: 通知 A/B/C/D を app 層か DB Trigger か。
-- **Decision**: DB Trigger 採用。ただし `notifications` の RLS は `WITH CHECK (false)` なので **必ず `create_notification(...)` (既存 SECURITY DEFINER RPC) または新規 `create_notification_bulk(...)` 経由で INSERT する**。Trigger 自身は `SECURITY DEFINER SET search_path = public`。
+- **Decision**: DB Trigger 採用。ただし `notifications` の RLS は `WITH CHECK (false)` なので、通知 A/C/D は `create_notification(...)` (既存 SECURITY DEFINER RPC) または新規 `create_notification_bulk(...)` 経由で INSERT する。通知 B は投稿者本人への自己通知であり、既存 `create_notification(...)` は `recipient_id = actor_id` を skip するため、`type='creator_looks_submission_acknowledged'` だけを許可する専用 `create_creator_looks_self_notification(...)` SECURITY DEFINER RPC を追加する。Trigger 自身は `SECURITY DEFINER SET search_path = public`。
 - **Reason**: 「原子的・冪等な処理は RPC/Trigger に寄せる」(`docs/architecture/data.ja.md`) と整合。RLS 直接バイパスより監査性が高い。
-- **Consequence**: bulk RPC を新規追加する必要あり。Trigger 失敗時は EXCEPTION を握り潰して `style_template_audit_logs` に書き残す (= REQ-002 が user_style_templates INSERT を ROLLBACK しない設計)。
+- **Consequence**: bulk RPC と self-notification RPC を新規追加する必要あり。Trigger 失敗時は EXCEPTION を握り潰して `style_template_audit_logs` に書き残す (= REQ-002 が user_style_templates INSERT を ROLLBACK しない設計)。
 
 ### ADR-005: meta-prompt テンプレートは `prompt_overrides` に登録 (= `/admin/generation-prompts` で編集可)
 
@@ -427,7 +428,7 @@ GRANT EXECUTE ON FUNCTION public.get_creator_looks_secret_for_admin(uuid) TO aut
 
 - **Context**: `enqueue_creator_looks_extraction` から `net.http_post` で Edge Function を起動する際の認証と整合性。
 - **Decision**:
-  - 認証: Edge Function 側で `Authorization: Bearer <vault シークレット>` を必須検証。vault シークレットは Supabase Vault に保管し、`current_setting('app.edge_function_secret', true)` で取得。
+  - 認証: Edge Function 側で `Authorization: Bearer <vault シークレット>` を必須検証。vault シークレットは Supabase Vault に保管し、既存 cron migration と同じく `vault.decrypted_secrets` から取得して `net.http_post` の `Authorization` ヘッダを組み立てる。
   - トランザクション境界: `net.http_post` の HTTP リクエストは **トランザクションコミット後** に飛ぶ (= pg_net 仕様)。promote RPC 内で enqueue を呼んで OK。promote が ROLLBACK されれば enqueue も飛ばない (= 整合性自動保証)。
   - 監視: `net.http_response` を 5 分毎の cron で polling、失敗を `style_template_audit_logs` に記録 + admin 通知。
 - **Reason**: 認証なしの Edge Function は誰でも叩ける。トランザクション境界の曖昧さは整合性破綻のもと。
@@ -439,6 +440,13 @@ GRANT EXECUTE ON FUNCTION public.get_creator_looks_secret_for_admin(uuid) TO aut
 - **Decision**: 既存 `UserStyleTemplateSubmissionForm.tsx` が `fetch + useState` で書かれており、画像 multipart upload + 既存 image processing pipeline と一貫しているため、**Route Handler を維持** する。
 - **Reason**: Server Action 化は progressive enhancement の利得があるが、既存パターンとの混在を増やすデメリットが上回る。
 - **Consequence**: 将来的に Inspire 系を一括で Server Action 化する PR を切る際は別途検討。
+
+### ADR-013: cross-table 不変条件は CHECK ではなく Trigger/RPC で担保
+
+- **Context**: `is_creator_looks=true` の投稿者が admin/allowlist に含まれることや、visible 遷移前に `user_style_template_secrets.hidden_prompt` が存在することは、別テーブル参照を伴う。PostgreSQL CHECK 制約では subquery / cross-table 参照を使えない。
+- **Decision**: 同一行だけで完結する条件 (`submission_consents` JSONB 5 項目、`submission_source` 許可値など) は CHECK 制約で強制する。admin/allowlist 判定、secrets 存在確認、visible 遷移ガードは `BEFORE INSERT/UPDATE` trigger と `promote_user_style_template_draft` / `apply_user_style_template_decision` RPC 内の明示検証で強制する。
+- **Reason**: DB 層の二重ガードを維持しつつ、Postgres で実行可能な制約として実装するため。
+- **Consequence**: Trigger/RPC の単体テストで「一般ユーザーの直叩き reject」「hidden_prompt 未生成時の承認 reject」を必須化する。
 
 ---
 
@@ -474,18 +482,21 @@ flowchart LR
 
 #### マイグレーション順序 (重要)
 
-1. `user_style_templates` 列追加 + CHECK
+1. `user_style_templates` 列追加 + self-contained CHECK
 2. `user_style_template_secrets` 新規 (RLS + admin RPC)
 3. `creator_looks_allowlist` 新規 (RLS + fail-closed)
 4. `generated_images.creator_notified_at` 列追加
-5. `image_jobs.override_target` CHECK 拡張 + `generated_images.override_target` CHECK 拡張
-6. `notifications.type` + `entity_type` CHECK 拡張
-7. `style_template_audit_logs.action` CHECK 拡張 (`extract_failed` 追加)
-8. `create_notification_bulk(recipients UUID[], ...)` SECURITY DEFINER RPC 新規
-9. `enforce_user_style_template_submission_cap` を `WHERE NOT NEW.is_creator_looks` で除外更新
-10. `trg_enforce_creator_looks_daily_cap` Trigger 新規
-11. `get_creator_looks_secret_for_admin` RPC (= ADR-008 擬似コード)
-12. `enqueue_creator_looks_extraction` RPC + promote RPC 拡張
+5. `notifications.type` + `entity_type` CHECK 拡張
+6. `style_template_audit_logs.action` CHECK 拡張 (`extract_failed` 追加)
+7. `creator_looks` DB guard trigger / RPC 拡張 (admin/allowlist + hidden_prompt 存在確認)
+8. `create_notification_bulk(...)` + `create_creator_looks_self_notification(...)` SECURITY DEFINER RPC 新規
+9. `prompt_overrides_audit_logs` 新規 + admin route 監査
+10. `enforce_user_style_template_submission_cap` を `WHERE NOT NEW.is_creator_looks` で除外更新
+11. `trg_enforce_creator_looks_daily_cap` Trigger 新規
+12. `get_creator_looks_secret_for_admin` RPC (= ADR-008 擬似コード)
+13. `enqueue_creator_looks_extraction` RPC + promote RPC 拡張
+
+※ 生成 override は既存 `override_*` 4 bool を流用するため、新規 CHECK 拡張マイグレーションは作らない。
 
 #### TODO
 
@@ -496,7 +507,7 @@ flowchart LR
   - `usage_count INTEGER NOT NULL DEFAULT 0`
   - `posted_count INTEGER NOT NULL DEFAULT 0`
   - CHECK `creator_looks_requires_consent` (= JSONB 5 項目すべて true、`submission_source` 必須、`is_creator_looks=true` 時のみ強制)
-  - CHECK `creator_looks_submitter_must_be_admin` (= `EXISTS (SELECT 1 FROM admin_users WHERE user_id = submitted_by_user_id)` を pending 以降で強制) ※Stage 2 で外す前提
+  - CHECK は同一行だけで完結する条件に限定。`admin_users` / `creator_looks_allowlist` / `user_style_template_secrets` 参照は Trigger/RPC に置く
 
 - [ ] **マイグレーション 2** (`*_create_creator_looks_secrets.sql`):
   - `user_style_template_secrets` (template_id FK / hidden_prompt / generator_version / vlm_model / generated_at)
@@ -512,34 +523,48 @@ flowchart LR
   - `generated_images.creator_notified_at TIMESTAMPTZ NULL`
   - インデックス: `(style_template_id, creator_notified_at) WHERE is_posted = true`
 
-- [ ] **マイグレーション 5** (`*_extend_override_target_for_creator_looks.sql`):
-  - `image_jobs.override_target` CHECK 拡張: `outfit_with_background` 追加
-  - `generated_images.override_target` CHECK 拡張: 同上 (= 両側更新必須)
+- [ ] **生成 override 実装タスク**:
+  - DB は既存 `override_outfit` / `override_angle` / `override_pose` / `override_background` CHECK を流用
+  - 新しい `override_target` 値は追加しない
+  - TypeScript schema / route / worker で Creator Looks の背景 ON/OFF を `override_background` にマッピングする
 
-- [ ] **マイグレーション 6** (`*_extend_notifications_for_creator_looks.sql`):
+- [ ] **マイグレーション 5** (`*_extend_notifications_for_creator_looks.sql`):
   - `notifications.type` CHECK 拡張: `creator_looks_submission_received` / `_acknowledged` / `_moderation_result` / `_post_published`
   - `notifications.entity_type` CHECK 拡張: `creator_looks_template` 等
 
-- [ ] **マイグレーション 7** (`*_extend_audit_log_action_for_creator_looks.sql`):
+- [ ] **マイグレーション 6** (`*_extend_audit_log_action_for_creator_looks.sql`):
   - `style_template_audit_logs.action` CHECK 拡張: `extract_failed`
 
-- [ ] **マイグレーション 8** (`*_create_notification_bulk_rpc.sql`):
+- [ ] **マイグレーション 7** (`*_creator_looks_db_guard_triggers.sql`):
+  - `BEFORE INSERT OR UPDATE OF is_creator_looks, moderation_status` trigger を追加
+  - `is_creator_looks=true AND moderation_status IN ('pending','visible')` のとき `admin_users` または Stage 2 allowlist を確認
+  - `is_creator_looks=true AND moderation_status='visible'` のとき `user_style_template_secrets.hidden_prompt IS NOT NULL` を `EXISTS` で確認
+  - `promote_user_style_template_draft` / `apply_user_style_template_decision` にも同じ guard を呼ぶ明示検証を追加
+
+- [ ] **マイグレーション 8** (`*_create_creator_looks_notification_rpcs.sql`):
   - `create_notification_bulk(p_recipients UUID[], p_actor UUID, p_type TEXT, ...)` SECURITY DEFINER
   - 既存 `create_notification` の bulk 版。1 行ずつ INSERT
+  - `create_creator_looks_self_notification(p_user_id UUID, p_template_id UUID, ...)` SECURITY DEFINER
+  - self-notification RPC は `type='creator_looks_submission_acknowledged'` のみ許可し、任意 type の自己通知作成に使えないようにする
 
-- [ ] **マイグレーション 9** (`*_update_inspire_cap_exclude_creator_looks.sql`):
+- [ ] **マイグレーション 9** (`*_create_prompt_overrides_audit_logs.sql`):
+  - `prompt_overrides_audit_logs` (id / prompt_key / actor_id / action=`select|update` / metadata / created_at)
+  - `/admin/generation-prompts` の Creator Looks 行取得・更新時に必ず INSERT
+  - Stage 2 までに super_admin 制約を追加できるよう action / actor を保持
+
+- [ ] **マイグレーション 10** (`*_update_inspire_cap_exclude_creator_looks.sql`):
   - `enforce_user_style_template_submission_cap` の WHERE 句に `AND NOT NEW.is_creator_looks` を追加
 
-- [ ] **マイグレーション 10** (`*_creator_looks_daily_submission_cap.sql`):
+- [ ] **マイグレーション 11** (`*_creator_looks_daily_submission_cap.sql`):
   - `trg_enforce_creator_looks_daily_cap` Trigger
   - 過去 24 時間 (= `now() - interval '24 hours'`) で 2 件以上なら EXCEPTION
   - `pg_advisory_xact_lock(hashtextextended('creator_looks_cap_' || NEW.submitted_by_user_id::text, 0))` で race 防止
 
-- [ ] **マイグレーション 11** (`*_creator_looks_secret_admin_rpc.sql`): ADR-008 の擬似コードをそのまま実装
+- [ ] **マイグレーション 12** (`*_creator_looks_secret_admin_rpc.sql`): ADR-008 の擬似コードをそのまま実装
 
-- [ ] **マイグレーション 12** (`*_creator_looks_enqueue_extraction_rpc.sql`):
+- [ ] **マイグレーション 13** (`*_creator_looks_enqueue_extraction_rpc.sql`):
   - `enqueue_creator_looks_extraction(p_template_id UUID)` RPC
-  - `net.http_post(url := 'https://...functions.../extract-creator-looks-prompt', headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.edge_function_secret')), body := ...)` 呼び出し
+  - 既存 cron migration と同じく `vault.decrypted_secrets` から `creator_looks_extract_secret` を取得し、`net.http_post(... headers := jsonb_build_object('Authorization', 'Bearer ' || v_secret) ...)` を呼び出す
   - 既存 `promote_user_style_template_draft` を拡張し、Creator Looks のときに enqueue を呼ぶ
 
 - [ ] **環境変数**:
@@ -559,7 +584,7 @@ flowchart LR
 
 - [ ] **Supabase 型再生成**: `npx supabase gen types typescript --linked > types/supabase.ts` で typecheck パス
 
-- [ ] **Supabase Vault**: `app.edge_function_secret` キーをセット (Edge Function 起動認証用)
+- [ ] **Supabase Vault**: `creator_looks_extract_secret` キーをセット (Edge Function 起動認証用)。Edge Function 側の `EDGE_FUNCTION_SECRET` と同じ値を登録する
 
 ---
 
@@ -657,13 +682,14 @@ flowchart LR
 
 - [ ] **`POST /api/generate-async` 改修**:
   - `ensureSameOrigin(request)` 必須
-  - Creator Looks 経由のリクエストには `style_template_id` + `override_target ∈ {outfit, outfit_with_background}` を受ける
+  - Creator Looks 経由のリクエストには既存 Inspire と同じ `styleTemplateId` + `overrides` object を受ける
+  - 背景 ON/OFF は `overrides.background` に対応させ、`overrides` は `{ outfit: true, angle: false, pose: false, background: boolean }` を基本形にする
   - API 層 cool-down: per-user-per-template で 60 秒以内に既存ジョブがあれば 429
 
 - [ ] **生成 Worker 改修** (`supabase/functions/image-gen-worker/index.ts`):
   - `style_template_id` から `user_style_template_secrets.hidden_prompt` を取得 (= NULL なら `STYLE_HIDDEN_PROMPT_NOT_READY` で失敗)
-  - `override_target='outfit_with_background'` のとき: hidden_prompt をそのまま使用
-  - `override_target='outfit'` のとき: hidden_prompt から Background セクションを除去 + 「keep original background」指示を追加
+  - `override_background=true` のとき: hidden_prompt をそのまま使用
+  - `override_background=false` のとき: hidden_prompt から Background セクションを除去 + 「keep original background」指示を追加
   - gpt-image-2 Images API Edit エンドポイントに送る
   - **`error.message` 文字列から hidden_prompt を `redactSecrets` 経由で削除してから client に返す**
 
@@ -688,7 +714,7 @@ flowchart LR
   - WHEN clause: `(OLD.moderation_status = 'draft' AND NEW.moderation_status = 'pending' AND NEW.is_creator_looks)`
   - SECURITY DEFINER。失敗時は EXCEPTION 抑止 + audit log
   - admin 全員に `create_notification_bulk(...)` で通知 A (= 投稿者除外)
-  - 投稿者本人に `create_notification(...)` で通知 B
+  - 投稿者本人には self-notification 専用 `create_creator_looks_self_notification(...)` で通知 B
 
 - [ ] **DB Trigger 2: 通知 C** (`*_creator_looks_notifications_moderation_trigger.sql`):
   - `user_style_templates AFTER UPDATE OF moderation_status`
@@ -790,14 +816,15 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 |
 |---|---|---|
-| `supabase/migrations/*_add_creator_looks_columns.sql` | 新規 | 列追加 + CHECK + admin 制約 |
+| `supabase/migrations/*_add_creator_looks_columns.sql` | 新規 | 列追加 + self-contained CHECK |
 | `supabase/migrations/*_create_creator_looks_secrets.sql` | 新規 | secrets テーブル + RLS deny all |
 | `supabase/migrations/*_create_creator_looks_allowlist.sql` | 新規 | allowlist テーブル + RLS |
 | `supabase/migrations/*_add_creator_notified_at.sql` | 新規 | `generated_images.creator_notified_at` 追加 |
-| `supabase/migrations/*_extend_override_target_for_creator_looks.sql` | 新規 | image_jobs + generated_images の CHECK 拡張 |
+| `supabase/migrations/*_creator_looks_db_guard_triggers.sql` | 新規 | admin/allowlist + hidden_prompt 存在確認を Trigger/RPC で強制 |
 | `supabase/migrations/*_extend_notifications_for_creator_looks.sql` | 新規 | notifications.type / entity_type CHECK 拡張 |
 | `supabase/migrations/*_extend_audit_log_action_for_creator_looks.sql` | 新規 | audit log action CHECK 拡張 |
-| `supabase/migrations/*_create_notification_bulk_rpc.sql` | 新規 | bulk INSERT RPC |
+| `supabase/migrations/*_create_creator_looks_notification_rpcs.sql` | 新規 | bulk INSERT RPC + self-notification RPC |
+| `supabase/migrations/*_create_prompt_overrides_audit_logs.sql` | 新規 | Creator Looks prompt override 閲覧/更新監査 |
 | `supabase/migrations/*_update_inspire_cap_exclude_creator_looks.sql` | 新規 | 既存 trigger に WHERE 句追加 |
 | `supabase/migrations/*_creator_looks_daily_submission_cap.sql` | 新規 | 1 日 2 件 trigger |
 | `supabase/migrations/*_creator_looks_secret_admin_rpc.sql` | 新規 | ADR-008 RPC |
@@ -821,8 +848,9 @@ flowchart LR
 | `app/api/style-templates/route.ts` | 修正 | `ensureSameOrigin` + Creator Looks 対応 + サーバ画像処理 |
 | `app/api/style-templates/submissions/route.ts` | 修正 | `ensureSameOrigin` 追加 |
 | `app/api/style-templates/[id]/withdraw/route.ts` | 新規 or 修正 | `ensureSameOrigin` + revalidateTag |
-| `app/api/generate-async/route.ts` | 修正 | `ensureSameOrigin` + cool-down + Creator Looks override_target |
+| `app/api/generate-async/route.ts` | 修正 | `ensureSameOrigin` + cool-down + Creator Looks overrides 4 bool |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | hidden_prompt 読み込み + gpt-image-2 Edit + redactSecrets |
+| `features/generation-prompts/**` | 修正 | `creator_looks.%` prompt の SELECT / UPDATE 監査 |
 | `features/home/components/CachedHomeUserStyleTemplateSection.tsx` | 修正 | `use cache` 化 + admin 分離 |
 | `features/home/components/HomeUserStyleTemplateCarousel.tsx` | 修正 | Creator Looks バッジ |
 | `features/generation/components/GeneratedImageGalleryClient.tsx` | 修正 | 帰属リンク表示 |
@@ -844,6 +872,7 @@ flowchart LR
 - [ ] **セキュリティ**:
   - `user_style_template_secrets` RLS が service_role 以外を完全遮断 (= pgTAP テスト)
   - hidden_prompt がレスポンス / ログ / 通知本文に出ない (= e2e で確認、`redactSecrets` ユニットテスト)
+  - `creator_looks.%` prompt override の閲覧 / 更新が `prompt_overrides_audit_logs` に残る
   - 全 mutation route に `ensureSameOrigin` 適用 (= grep で 100% カバー)
 - [ ] **i18n**: 15 言語すべて揃っているか (= ESLint で漏れ検出)
 - [ ] **CSRF**: 上記セキュリティと重複
@@ -925,7 +954,7 @@ flowchart LR
 - ✅ **データフェッチの整合性**: Server Component → fetch → Client に props のパターン (= ADR-002 / 既存 Inspire 同様)
 - ✅ **イベント網羅性**: 投稿 / 受付 / 承認 / 却下 / 撤回 / 公開の全状態に通知タイプを定義 + 冪等性ガード
 - ✅ **API パラメータのソース安全性**: `submitted_by_user_id` は API route で `getUser()` から取得 (= リクエストボディから受け取らない)
-- ✅ **ビジネスルールの DB 層強制**: 投稿頻度 (Trigger + CHECK 二段) / 同意必須 (CHECK 強制) / `is_creator_looks=true` の admin 制約 (CHECK)
+- ✅ **ビジネスルールの DB 層強制**: 投稿頻度 (API 先行 reject + Trigger) / 同意必須 (CHECK 強制) / `is_creator_looks=true` の admin/allowlist 制約 (Trigger/RPC)
 - ✅ **moat 防御の多層化**: テーブル分離 (ADR-001) / SECURITY DEFINER + admin チェック (ADR-008) / 全層 redactSecrets (ADR-009) / 監査 + super_admin 化 (ADR-010)
 - ✅ **CSRF 対策**: 全 mutation route で `ensureSameOrigin` (= チェックリスト化)
 - ✅ **既存パターンへの準拠**: SECURITY DEFINER + REVOKE/GRANT + `(SELECT auth.uid())` + advisory_xact_lock を踏襲
