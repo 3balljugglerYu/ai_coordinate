@@ -63,6 +63,9 @@ export default async function AdminStyleTemplatesPage() {
       image_url: sign(row.storage_path),
       preview_openai_image_url: sign(row.preview_openai_image_url),
       preview_gemini_image_url: sign(row.preview_gemini_image_url),
+      // Phase 5 で追加: Creator Looks 識別用
+      is_creator_looks: row.is_creator_looks ?? false,
+      submission_source: row.submission_source ?? null,
     }));
   };
 
