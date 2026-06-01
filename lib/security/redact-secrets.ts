@@ -18,6 +18,8 @@
  * 注意:
  *   - 値 (string) の中に hidden_prompt が文字列として埋め込まれているケースは
  *     完全には防げない (= 個別文脈で文字列マッチングする責任は呼出側にある)。
+ *   - ただし Error.message / Error.stack はログに出やすいため、代表的な credential と
+ *     `hidden_prompt=...` のような key-value 文字列だけ追加でマスクする。
  *   - 本ヘルパは pure (= 副作用なし)、入力 obj を mutate しない。
  */
 
@@ -47,9 +49,24 @@ const SENSITIVE_KEY_SUBSTRINGS = [
   "private_key",
 ] as const;
 
+const SENSITIVE_STRING_KEY_VALUE_PATTERN =
+  /\b(hidden_prompt|extracted_prompt|meta_extractor_output|creator_looks_prompt|authorization|api_key|apikey|secret|password|bearer|service_role|access_token|refresh_token|private_key)(\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,}\]]+)/gi;
+const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
+const OPENAI_KEY_PATTERN = /\bsk-[A-Za-z0-9_-]{16,}/g;
+const GOOGLE_API_KEY_PATTERN = /\bAIza[0-9A-Za-z_-]{20,}/g;
+
 function isSensitiveKey(key: string): boolean {
   const lower = key.toLowerCase();
   return SENSITIVE_KEY_SUBSTRINGS.some((sub) => lower.includes(sub));
+}
+
+function redactSensitiveString(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return value
+    .replace(SENSITIVE_STRING_KEY_VALUE_PATTERN, "$1$2[REDACTED]")
+    .replace(BEARER_TOKEN_PATTERN, "Bearer [REDACTED]")
+    .replace(OPENAI_KEY_PATTERN, "sk-[REDACTED]")
+    .replace(GOOGLE_API_KEY_PATTERN, "AIza[REDACTED]");
 }
 
 /**
@@ -64,7 +81,7 @@ function isSensitiveKey(key: string): boolean {
  *
  * Error はそのまま return すると下流で stack trace が見えなくなるため、
  * { name, message, stack } の 3 属性を持つ plain object に変換する。
- * 注意: stack 内に secret 文字列が混じっていても本ヘルパは検知できない。
+ * Error の message / stack には代表的な secret 文字列の fallback redaction をかける。
  */
 export function redactSecrets<T>(value: T): T {
   return _redact(value, new WeakSet()) as T;
@@ -84,8 +101,8 @@ function _redact(value: unknown, seen: WeakSet<object>): unknown {
   if (value instanceof Error) {
     return {
       name: value.name,
-      message: value.message,
-      stack: value.stack,
+      message: redactSensitiveString(value.message),
+      stack: redactSensitiveString(value.stack),
     };
   }
 

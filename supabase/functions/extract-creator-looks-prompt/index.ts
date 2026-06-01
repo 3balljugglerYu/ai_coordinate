@@ -69,9 +69,24 @@ const SENSITIVE_KEY_SUBSTRINGS = [
   "private_key",
 ];
 
+const SENSITIVE_STRING_KEY_VALUE_PATTERN =
+  /\b(hidden_prompt|extracted_prompt|meta_extractor_output|creator_looks_prompt|authorization|api_key|apikey|secret|password|bearer|service_role|access_token|refresh_token|private_key)(\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,}\]]+)/gi;
+const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
+const OPENAI_KEY_PATTERN = /\bsk-[A-Za-z0-9_-]{16,}/g;
+const GOOGLE_API_KEY_PATTERN = /\bAIza[0-9A-Za-z_-]{20,}/g;
+
 function isSensitiveKey(key: string): boolean {
   const lower = key.toLowerCase();
   return SENSITIVE_KEY_SUBSTRINGS.some((sub) => lower.includes(sub));
+}
+
+function redactSensitiveString(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return value
+    .replace(SENSITIVE_STRING_KEY_VALUE_PATTERN, "$1$2[REDACTED]")
+    .replace(BEARER_TOKEN_PATTERN, "Bearer [REDACTED]")
+    .replace(OPENAI_KEY_PATTERN, "sk-[REDACTED]")
+    .replace(GOOGLE_API_KEY_PATTERN, "AIza[REDACTED]");
 }
 
 function redactSecrets(
@@ -86,7 +101,11 @@ function redactSecrets(
   if (t === "function" || t === "symbol") return "[REDACTED]";
 
   if (value instanceof Error) {
-    return { name: value.name, message: value.message, stack: value.stack };
+    return {
+      name: value.name,
+      message: redactSensitiveString(value.message),
+      stack: redactSensitiveString(value.stack),
+    };
   }
   if (value instanceof Date) return value.toISOString();
   if (value instanceof RegExp) return value.toString();
@@ -148,17 +167,15 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
 Deno.serve(async (req) => {
   // 1. Authorization 検証
   const expectedSecret = Deno.env.get("EDGE_FUNCTION_SECRET");
-  if (expectedSecret) {
-    const authHeader = req.headers.get("Authorization") || "";
-    if (authHeader !== `Bearer ${expectedSecret}`) {
-      safeLog("warn", "Authorization mismatch");
-      return jsonResponse(401, { error: "unauthorized" });
-    }
-  } else {
-    safeLog(
-      "warn",
-      "EDGE_FUNCTION_SECRET is not set; allowing request (development only)",
-    );
+  if (!expectedSecret) {
+    safeLog("error", "EDGE_FUNCTION_SECRET is not set; refusing request");
+    return jsonResponse(500, { error: "server_misconfigured" });
+  }
+
+  const authHeader = req.headers.get("Authorization") || "";
+  if (authHeader !== `Bearer ${expectedSecret}`) {
+    safeLog("warn", "Authorization mismatch");
+    return jsonResponse(401, { error: "unauthorized" });
   }
 
   // 2. body parse
@@ -194,7 +211,7 @@ Deno.serve(async (req) => {
   // 4. テンプレ取得
   const { data: template, error: templateError } = await supabase
     .from("user_style_templates")
-    .select("id, image_url, storage_path, is_creator_looks")
+    .select("id, image_url, storage_path, is_creator_looks, submitted_by_user_id")
     .eq("id", templateId)
     .maybeSingle();
 
@@ -263,9 +280,9 @@ Deno.serve(async (req) => {
   // 8. 失敗時の処理
   if (!extractedPrompt) {
     // audit_log に記録 (= hidden_prompt は含めない、error.code / message のみ)
-    await supabase.from("style_template_audit_logs").insert({
+    const { error: auditError } = await supabase.from("style_template_audit_logs").insert({
       template_id: templateId,
-      actor_id: null,
+      actor_id: template.submitted_by_user_id,
       action: "extract_failed",
       reason: lastError?.code ?? "unknown",
       metadata: redactSecrets({
@@ -275,6 +292,12 @@ Deno.serve(async (req) => {
         vlm_model: VLM_MODEL,
       }),
     });
+    if (auditError) {
+      safeLog("error", "failed to write extract_failed audit log", {
+        template_id: templateId,
+        error: auditError,
+      });
+    }
 
     safeLog("error", "extraction permanently failed", {
       template_id: templateId,
@@ -321,13 +344,30 @@ Deno.serve(async (req) => {
 // helpers (= 上記 handler から呼ばれる)
 // ---------------------------------------------------------------------------
 
-// supabase-js client は型が複雑なので unknown 経由で扱う
+type PromptOverridesQueryClient = {
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (
+        column: string,
+        value: string,
+      ) => {
+        maybeSingle: () => Promise<{
+          data: { content?: unknown } | null;
+          error: unknown | null;
+        }>;
+      };
+    };
+  };
+};
+
+// supabase-js client は型が複雑なので、この関数で使う最小 interface に絞る。
 async function resolveMetaPrompt(
-  supabase: ReturnType<typeof createClient>,
+  supabase: unknown,
 ): Promise<string | null> {
+  const client = supabase as PromptOverridesQueryClient;
   // override 優先
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("prompt_overrides")
       .select("content")
       .eq("prompt_key", META_EXTRACTOR_KEY)
@@ -386,11 +426,8 @@ async function callResponsesApi(
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      // error text に prompt 内容が含まれる可能性があるが、redactSecrets では string 自体は
-      // mask できない (= キーベースのため)。message のみ短く切り詰める。
-      const trimmed = errorText.slice(0, 500);
-      throw new Error(`OpenAI ${response.status}: ${trimmed}`);
+      await response.body?.cancel().catch(() => undefined);
+      throw new Error(`OpenAI ${response.status}: upstream_error`);
     }
 
     const json = await response.json();

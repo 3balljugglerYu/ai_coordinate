@@ -32,6 +32,7 @@ DECLARE
   v_consumer_nickname TEXT;
   v_title TEXT;
   v_body TEXT;
+  v_notification_id UUID;
 BEGIN
   -- 冪等性 + one-shot ガード
   IF OLD.is_posted IS NOT DISTINCT FROM NEW.is_posted THEN
@@ -70,7 +71,17 @@ BEGIN
             '」の衣装で生成した画像をホームに投稿しました。';
 
   BEGIN
-    PERFORM public.create_notification(
+    -- 投稿者本人が自分の Creator Looks で公開した場合は通知不要だが、
+    -- 以降の false→true 循環で再試行し続けないよう one-shot だけ立てる。
+    IF v_template_record.submitted_by_user_id = NEW.user_id THEN
+      UPDATE public.generated_images
+      SET creator_notified_at = now()
+      WHERE id = NEW.id
+        AND creator_notified_at IS NULL;
+      RETURN NEW;
+    END IF;
+
+    SELECT public.create_notification(
       v_template_record.submitted_by_user_id,
       NEW.user_id,
       'creator_looks_post_published',
@@ -83,7 +94,18 @@ BEGIN
         'generated_image_id', NEW.id,
         'consumer_user_id', NEW.user_id
       )
-    );
+    ) INTO v_notification_id;
+
+    IF v_notification_id IS NULL THEN
+      INSERT INTO public.style_template_audit_logs (template_id, actor_id, action, reason, metadata)
+      VALUES (v_template_record.id, NEW.user_id, 'submit',
+              'notify_publication_skipped',
+              jsonb_build_object(
+                'generated_image_id', NEW.id,
+                'notification_returned_null', true
+              ));
+      RETURN NEW;
+    END IF;
 
     -- one-shot 化: creator_notified_at を立てる
     -- 注: 同じトリガ内で同じ行を UPDATE すると再帰しないよう

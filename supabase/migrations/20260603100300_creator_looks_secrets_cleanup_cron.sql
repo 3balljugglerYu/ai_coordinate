@@ -60,7 +60,7 @@ BEGIN
         metadata
       ) VALUES (
         v_secret.template_id,
-        NULL,
+        v_secret.submitted_by_user_id,
         'withdraw',
         'secrets_cleanup_30days',
         jsonb_build_object(

@@ -376,10 +376,22 @@ export async function handlePreviewGeneration(
     draftUpdate.submission_source = parsed.data.submission_source;
     draftUpdate.submission_consents = parsed.data.submission_consents;
   }
-  await adminClient
+  const { error: draftUpdateError } = await adminClient
     .from("user_style_templates")
     .update(draftUpdate)
     .eq("id", draftId);
+  if (draftUpdateError) {
+    console.error("[preview-generation] draft update failed", draftUpdateError);
+    await adminClient.storage
+      .from("style-templates")
+      .remove([templateStoragePath]);
+    await adminClient.from("user_style_templates").delete().eq("id", draftId);
+    return jsonError(
+      copy.templateGenerationFailed,
+      "INSPIRE_DRAFT_UPDATE_FAILED",
+      500
+    );
+  }
 
   // OpenAI と Gemini を並列起動。
   // Step 2 プレビューは「すべて維持」相当（テンプレ全体を image_0 に適用）のプロンプトで生成する。
@@ -628,10 +640,29 @@ export async function handlePreviewGeneration(
     if (s.provider === "gemini") updatePayload.preview_gemini_image_url = s.storagePath;
   }
 
-  await adminClient
+  const { error: previewUpdateError } = await adminClient
     .from("user_style_templates")
     .update(updatePayload)
     .eq("id", draftId);
+  if (previewUpdateError) {
+    console.error("[preview-generation] preview update failed", previewUpdateError);
+    const pathsToRemove = Array.from(
+      new Set([templateStoragePath, ...successes.map((s) => s.storagePath)])
+    );
+    await adminClient.storage
+      .from("style-templates")
+      .remove(pathsToRemove);
+    await adminClient.from("user_style_templates").delete().eq("id", draftId);
+    await adminClient.from("user_style_template_preview_attempts").insert({
+      user_id: user.id,
+      outcome: "failed",
+    });
+    return jsonError(
+      copy.templateGenerationFailed,
+      "INSPIRE_PREVIEW_UPDATE_FAILED",
+      500
+    );
+  }
 
   await adminClient.from("user_style_template_preview_attempts").insert({
     user_id: user.id,

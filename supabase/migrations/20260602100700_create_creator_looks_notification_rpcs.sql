@@ -33,6 +33,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_recipient_id UUID;
+  v_notification_id UUID;
   v_inserted_count INTEGER := 0;
 BEGIN
   IF p_recipient_ids IS NULL OR cardinality(p_recipient_ids) = 0 THEN
@@ -47,7 +48,7 @@ BEGIN
     END IF;
 
     BEGIN
-      PERFORM public.create_notification(
+      SELECT public.create_notification(
         v_recipient_id,
         p_actor_id,
         p_type,
@@ -56,8 +57,10 @@ BEGIN
         p_title,
         p_body,
         p_data
-      );
-      v_inserted_count := v_inserted_count + 1;
+      ) INTO v_notification_id;
+      IF v_notification_id IS NOT NULL THEN
+        v_inserted_count := v_inserted_count + 1;
+      END IF;
     EXCEPTION
       WHEN OTHERS THEN
         RAISE WARNING 'create_notification_bulk: failed for recipient % type %: %',
@@ -73,9 +76,7 @@ COMMENT ON FUNCTION public.create_notification_bulk(UUID[], UUID, TEXT, TEXT, UU
   '複数 recipient に同じ通知を発火する bulk 版。内部で create_notification を 1 件ずつ呼び、自己通知はスキップ';
 
 REVOKE ALL ON FUNCTION public.create_notification_bulk(UUID[], UUID, TEXT, TEXT, UUID, TEXT, TEXT, JSONB)
-  FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_notification_bulk(UUID[], UUID, TEXT, TEXT, UUID, TEXT, TEXT, JSONB)
-  TO authenticated;
+  FROM PUBLIC, anon, authenticated;
 
 -- (2) self-notification 専用 RPC
 -- type は 'creator_looks_submission_acknowledged' のみ許可。
@@ -93,8 +94,20 @@ SET search_path = public
 AS $$
 DECLARE
   v_notification_id UUID;
+  v_template_owner_id UUID;
 BEGIN
   IF p_user_id IS NULL OR p_template_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT submitted_by_user_id INTO v_template_owner_id
+  FROM public.user_style_templates
+  WHERE id = p_template_id
+    AND is_creator_looks = true;
+
+  IF v_template_owner_id IS NULL OR v_template_owner_id <> p_user_id THEN
+    RAISE WARNING 'create_creator_looks_self_notification: template % is not owned by user % or is not Creator Looks',
+      p_template_id, p_user_id;
     RETURN NULL;
   END IF;
 
@@ -133,9 +146,7 @@ COMMENT ON FUNCTION public.create_creator_looks_self_notification(UUID, UUID, TE
   'Creator Looks の通知 B (= 投稿者本人への受付完了通知) 専用 RPC。type は creator_looks_submission_acknowledged 固定';
 
 REVOKE ALL ON FUNCTION public.create_creator_looks_self_notification(UUID, UUID, TEXT, TEXT, JSONB)
-  FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_creator_looks_self_notification(UUID, UUID, TEXT, TEXT, JSONB)
-  TO authenticated;
+  FROM PUBLIC, anon, authenticated;
 
 COMMIT;
 

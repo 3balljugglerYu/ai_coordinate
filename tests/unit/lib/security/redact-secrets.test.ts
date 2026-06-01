@@ -187,6 +187,26 @@ describe("redactSecrets", () => {
       expect(typeof result.stack).toBe("string");
     });
 
+    test("Error message / stack 内の代表的な secret 文字列はマスク", () => {
+      const err = new Error(
+        "provider failed hidden_prompt=secret-outfit Authorization=Bearer-token-123 Bearer token-456 sk-live-secretvalue123456"
+      );
+      err.stack =
+        "Error: secret='stack-secret' at caller (api_key:AIzaSyVerySecretApiKeyValue123456)";
+
+      const result = redactSecrets(err) as {
+        message: string;
+        stack?: string;
+      };
+
+      expect(result.message).toContain("hidden_prompt=[REDACTED]");
+      expect(result.message).toContain("Authorization=[REDACTED]");
+      expect(result.message).toContain("Bearer [REDACTED]");
+      expect(result.message).toContain("sk-[REDACTED]");
+      expect(result.stack).toContain("secret=[REDACTED]");
+      expect(result.stack).toContain("api_key:[REDACTED]");
+    });
+
     test("Date は ISO 文字列化", () => {
       const d = new Date("2026-06-01T00:00:00Z");
       expect(redactSecrets(d)).toBe("2026-06-01T00:00:00.000Z");

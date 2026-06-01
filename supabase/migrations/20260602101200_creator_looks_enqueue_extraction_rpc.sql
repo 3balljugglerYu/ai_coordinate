@@ -37,9 +37,32 @@ DECLARE
   v_function_url TEXT := 'https://hnrccaxrvhtbuihfvitc.supabase.co/functions/v1/extract-creator-looks-prompt';
   v_headers JSONB;
   v_body JSONB;
+  v_caller_id UUID := auth.uid();
+  v_template_owner_id UUID;
+  v_is_creator_looks BOOLEAN;
 BEGIN
   IF p_template_id IS NULL THEN
     RETURN false;
+  END IF;
+
+  SELECT submitted_by_user_id, is_creator_looks
+  INTO v_template_owner_id, v_is_creator_looks
+  FROM public.user_style_templates
+  WHERE id = p_template_id;
+
+  IF v_template_owner_id IS NULL OR v_is_creator_looks IS DISTINCT FROM true THEN
+    RETURN false;
+  END IF;
+
+  IF v_caller_id IS NOT NULL
+     AND v_template_owner_id <> v_caller_id
+     AND NOT EXISTS (
+       SELECT 1
+       FROM public.admin_users
+       WHERE user_id = v_caller_id
+     ) THEN
+    RAISE EXCEPTION 'creator_looks_enqueue_not_authorized'
+      USING ERRCODE = '42501';
   END IF;
 
   -- Vault から secret を取得 (= 既存 cron migration と同じパターン)
@@ -87,11 +110,9 @@ $$;
 COMMENT ON FUNCTION public.enqueue_creator_looks_extraction(UUID) IS
   'Creator Looks の meta-prompt 抽出 Edge Function を pg_net 経由で非同期起動する RPC。Vault secret 未設定なら no-op';
 
-REVOKE ALL ON FUNCTION public.enqueue_creator_looks_extraction(UUID) FROM PUBLIC, anon;
--- 通常 authenticated user は直接呼ばない (= promote RPC 内から呼ばれる)
--- ただし promote RPC が SECURITY DEFINER 経由で呼ぶので、直接 GRANT は不要。
--- 念のため authenticated にも EXECUTE を付与 (= 万一の手動再 enqueue 用)
-GRANT EXECUTE ON FUNCTION public.enqueue_creator_looks_extraction(UUID) TO authenticated;
+-- 通常 authenticated user は直接呼ばない (= promote RPC 内から呼ばれる)。
+-- SECURITY DEFINER 内部呼び出しで足りるため、直接 EXECUTE は公開しない。
+REVOKE ALL ON FUNCTION public.enqueue_creator_looks_extraction(UUID) FROM PUBLIC, anon, authenticated;
 
 -- ===============================================
 -- 2) promote_user_style_template_draft 拡張
@@ -111,6 +132,11 @@ DECLARE
   v_template RECORD;
   v_now TIMESTAMPTZ := now();
 BEGIN
+  IF auth.uid() IS NOT NULL AND auth.uid() <> p_actor_id THEN
+    RAISE EXCEPTION 'unauthorized_actor'
+      USING ERRCODE = '42501';
+  END IF;
+
   -- 行の取得（所有者検証込み）+ Creator Looks フラグも取得
   SELECT id, submitted_by_user_id, moderation_status, image_url, storage_path, is_creator_looks
   INTO v_template
