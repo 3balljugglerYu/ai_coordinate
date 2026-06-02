@@ -481,6 +481,136 @@ export function UserStyleTemplateSubmissionForm({
     creatorLooksConsents,
   ]);
 
+  /**
+   * Creator Looks モード専用の一気通貫送信。
+   *
+   * 既存 Inspire の Step 2 (preview 生成) / Step 3 (結果確認) は投稿者にとって
+   * 不要なため、Step 1 のチェック完了でそのまま「申請する」を押せる UX にする。
+   *
+   * 内部:
+   *   1) preview-generation API を Creator Looks payload で叩く
+   *      → サーバ側で preview 生成は skip、draft 行のみ作成して template_id を返す
+   *   2) 返ってきた template_id で submissions API を叩いて pending に昇格
+   *      → DB Trigger 経由で extract-creator-looks-prompt Edge Function が起動
+   *
+   * 既存 Inspire の handleGeneratePreview / handleSubmit はこの関数の影響を受けない。
+   */
+  const handleCreatorLooksSubmit = useCallback(async () => {
+    if (!file) return;
+    if (submissionSource === null) {
+      setErrorMessage(t("submitFailedConsent"));
+      return;
+    }
+    if (!isAllConsentsAcknowledged(creatorLooksConsents)) {
+      setErrorMessage(t("submitFailedConsent"));
+      return;
+    }
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const base64 = await readFileAsBase64(file);
+      const previewResponse = await fetch(
+        "/api/style-templates/preview-generation",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: base64,
+            imageMimeType: file.type,
+            alt: alt || null,
+            is_creator_looks: true,
+            submission_source: submissionSource,
+            submission_consents: buildSubmissionConsents(creatorLooksConsents),
+          }),
+        }
+      );
+      if (previewResponse.status === 429) {
+        const data = await previewResponse.json().catch(() => null);
+        if (data?.errorCode === "CREATOR_LOOKS_DAILY_CAP_EXCEEDED") {
+          setErrorMessage(t("submitFailedCap"));
+        } else {
+          setErrorMessage(t("submitFailedRateLimit"));
+        }
+        return;
+      }
+      if (previewResponse.status === 403) {
+        setErrorMessage(t("submitFailedGeneric"));
+        return;
+      }
+      if (previewResponse.status === 400) {
+        const data = await previewResponse.json().catch(() => null);
+        if (
+          typeof data?.errorCode === "string" &&
+          data.errorCode.startsWith("CREATOR_LOOKS_IMAGE_")
+        ) {
+          setErrorMessage(t("submitFailedSafety"));
+          return;
+        }
+        if (data?.errorCode === "INSPIRE_IMAGE_TOO_LARGE") {
+          setErrorMessage(t("submitFailedTooLarge"));
+          return;
+        }
+        setErrorMessage(t("submitFailedGeneric"));
+        return;
+      }
+      if (!previewResponse.ok) {
+        setErrorMessage(t("submitFailedGeneric"));
+        return;
+      }
+      const previewData = (await previewResponse.json()) as {
+        template_id?: string;
+      };
+      if (!previewData.template_id) {
+        setErrorMessage(t("submitFailedGeneric"));
+        return;
+      }
+
+      // submissions 失敗 + ユーザー離脱で draft が孤立しないよう、
+      // template_id を previewResult に保存しておく。
+      // これで leaveNow({ deleteDraft: true }) が draft DELETE を呼べる。
+      setPreviewResult({
+        template_id: previewData.template_id,
+        outcome: "success",
+        previews: [],
+      });
+
+      const submitResponse = await fetch("/api/style-templates/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: previewData.template_id,
+          copyrightConsent: true,
+        }),
+      });
+      if (submitResponse.status === 429) {
+        setErrorMessage(t("submitFailedCap"));
+        return;
+      }
+      if (!submitResponse.ok) {
+        setErrorMessage(t("submitFailedGeneric"));
+        return;
+      }
+
+      toast({ title: t("submitSuccess") });
+      // 申請成功時は draft → pending 昇格済み。leaveNow は draft DELETE を呼ばない。
+      leaveNow({ deleteDraft: false });
+    } catch (err) {
+      console.error("[submission] creator-looks submit failed", err);
+      setErrorMessage(t("submitFailedGeneric"));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [
+    alt,
+    creatorLooksConsents,
+    file,
+    leaveNow,
+    setPreviewResult,
+    submissionSource,
+    t,
+    toast,
+  ]);
+
   const handleSubmit = useCallback(async () => {
     if (!previewResult || !consent) {
       setErrorMessage(t("submitFailedConsent"));
@@ -534,7 +664,11 @@ export function UserStyleTemplateSubmissionForm({
           <p className="text-sm text-muted-foreground">{t("dialogDescription")}</p>
         </header>
 
-        <StepIndicator current={step} />
+        {/*
+          Creator Looks モードでは preview を生成せず Step 1 で完結するため、
+          3 step インジケータは表示しない。
+        */}
+        {!isCreatorLooksMode && <StepIndicator current={step} />}
 
         {step === 1 && (
           <div className="space-y-4">
@@ -615,24 +749,44 @@ export function UserStyleTemplateSubmissionForm({
               <Button type="button" variant="ghost" onClick={requestLeave}>
                 {t("cancelButton")}
               </Button>
-              <Button
-                type="button"
-                onClick={() => setStep(2)}
-                disabled={
-                  !file ||
-                  (isCreatorLooksMode
-                    ? submissionSource === null ||
-                      !isAllConsentsAcknowledged(creatorLooksConsents)
-                    : !consent)
-                }
-              >
-                {t("step1NextButton")}
-              </Button>
+              {isCreatorLooksMode ? (
+                <Button
+                  type="button"
+                  onClick={handleCreatorLooksSubmit}
+                  disabled={
+                    !file ||
+                    submissionSource === null ||
+                    !isAllConsentsAcknowledged(creatorLooksConsents) ||
+                    submitting
+                  }
+                  className="cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2
+                        className="mr-1.5 size-4 motion-safe:animate-spin"
+                        aria-hidden="true"
+                      />
+                      {t("submitting")}
+                    </>
+                  ) : (
+                    t("step3SubmitButton")
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  disabled={!file || !consent}
+                >
+                  {t("step1NextButton")}
+                </Button>
+              )}
             </div>
           </div>
         )}
 
-        {step === 2 && (
+        {step === 2 && !isCreatorLooksMode && (
           <div className="space-y-4">
             <h2 className="text-base font-semibold">{t("step2Title")}</h2>
             <p className="text-sm text-muted-foreground">{t("step2Description")}</p>
@@ -709,7 +863,7 @@ export function UserStyleTemplateSubmissionForm({
           </div>
         )}
 
-        {step === 3 && previewResult && (
+        {step === 3 && previewResult && !isCreatorLooksMode && (
           <div className="space-y-4">
             <h2 className="text-base font-semibold">{t("step3Title")}</h2>
             <p className="text-sm text-muted-foreground">{t("step3Description")}</p>

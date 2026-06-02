@@ -394,6 +394,18 @@ export async function handlePreviewGeneration(
     );
   }
 
+  // Creator Looks モードは preview 生成を行わず即時 draft 完了で返す。
+  // 投稿者向け試着シミュレーションは UX 上不要 (消費者が利用時に生成する) ため、
+  // OpenAI / Gemini への課金・90 秒待ち時間を省略する。
+  // hidden_prompt 抽出は submissions API での pending 昇格時に Trigger 経由で発火する。
+  if (isCreatorLooksMode) {
+    return NextResponse.json({
+      template_id: draftId,
+      outcome: "skipped",
+      previews: [],
+    });
+  }
+
   // OpenAI と Gemini を並列起動。
   // Step 2 プレビューは「すべて維持」相当（テンプレ全体を image_0 に適用）のプロンプトで生成する。
   const promptTemplates = await resolveAllPromptTemplates();
