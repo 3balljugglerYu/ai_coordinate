@@ -17,6 +17,12 @@ export interface HomeUserStyleTemplateCardData {
   id: string;
   alt: string | null;
   image_url: string | null;
+  /**
+   * Creator Looks 投稿フラグ (Phase 6 で追加)。
+   * true ならカードの左上に「Creator Looks」バッジを表示する。
+   * 既存 Inspire 投稿は false (= バッジ無し、見た目変更なし)。
+   */
+  is_creator_looks?: boolean;
 }
 
 interface HomeUserStyleTemplateCarouselProps {
@@ -54,7 +60,7 @@ export function HomeUserStyleTemplateCarousel({
               onClick={() => setPending(template)}
               className="block w-[140px] overflow-hidden rounded-md border bg-card transition hover:opacity-90 sm:w-[160px]"
             >
-              <div className="aspect-square w-full bg-muted">
+              <div className="relative aspect-square w-full bg-muted">
                 {template.image_url ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
@@ -63,6 +69,15 @@ export function HomeUserStyleTemplateCarousel({
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
+                ) : null}
+                {/* Creator Looks バッジ (= is_creator_looks=true のみ表示、モックアップ 02 準拠) */}
+                {template.is_creator_looks ? (
+                  <span
+                    className="absolute left-1.5 top-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm"
+                    aria-label="Creator Looks"
+                  >
+                    Creator Looks
+                  </span>
                 ) : null}
               </div>
             </button>

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteUrl } from "@/lib/env";
+import { getUser } from "@/lib/auth";
+import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-popup-banners";
 import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
 import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
@@ -145,6 +147,11 @@ export default async function LocaleHome({
   const { locale: localeParam } = await params;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
 
+  // Creator Looks: admin / allowlist 該当ユーザーのみカルーセルに含める (= Stage 1 厳密化)
+  // 非該当ユーザーには Creator Looks 投稿を完全非表示にし、既存 Inspire 投稿のみ表示する
+  const currentUser = await getUser();
+  const includeCreatorLooks = await isCreatorLooksEnabledForUser(currentUser);
+
   return (
     <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
       <HomeStructuredData locale={locale} />
@@ -166,7 +173,9 @@ export default async function LocaleHome({
       */}
       {process.env.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED === "true" && (
         <Suspense fallback={<HomeUserStyleTemplateCarouselSkeleton />}>
-          <CachedHomeUserStyleTemplateSection />
+          <CachedHomeUserStyleTemplateSection
+            includeCreatorLooks={includeCreatorLooks}
+          />
         </Suspense>
       )}
       <Suspense fallback={<PostListSkeleton />}>

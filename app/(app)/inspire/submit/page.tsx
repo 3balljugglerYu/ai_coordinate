@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { env, isInspireFeatureEnabled } from "@/lib/env";
 import { isInspireSubmitterAllowed, requireAuth } from "@/lib/auth";
+import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 import { UserStyleTemplateSubmissionForm } from "@/features/inspire/components/UserStyleTemplateSubmissionForm";
@@ -59,12 +60,17 @@ export default async function InspireSubmitPage({
 
   const testCharacterImageUrl = env.INSPIRE_TEST_CHARACTER_IMAGE_URL || null;
 
+  // Creator Looks モードの可否を server 側で判定して props 経由で渡す
+  // (= env と admin/allowlist のチェックを client に露出させない)
+  const isCreatorLooksMode = await isCreatorLooksEnabledForUser(user);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
         <UserStyleTemplateSubmissionForm
           testCharacterImageUrl={testCharacterImageUrl}
           replaceTemplateId={replaceTemplateId}
+          isCreatorLooksMode={isCreatorLooksMode}
         />
       </div>
     </div>

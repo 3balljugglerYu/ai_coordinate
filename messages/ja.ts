@@ -457,6 +457,24 @@ export const jaMessages = {
     enlargedImageClose: "閉じる",
     enlargedPrev: "前の画像",
     enlargedNext: "次の画像",
+    // Creator Looks 専用 (= isCreatorLooksMode=true のときだけ表示される)
+    creatorLooksSectionTitle: "Creator Looks 投稿",
+    creatorLooksSectionDescription:
+      "あなたの作品が他のユーザーの着せ替え素材として使われます。下記の出所申告と同意にすべてチェックを入れてください。",
+    creatorLooksSourceLabel: "画像の出所",
+    creatorLooksSource_self_created: "自分が描いた / 制作した",
+    creatorLooksSource_self_photographed: "自分で撮影した",
+    creatorLooksSource_licensed_other: "他者の作品（明示的に許諾を得たもの）",
+    creatorLooksConsentsLabel: "同意事項（すべて必須）",
+    creatorLooksConsent_copyright: "この画像の著作権を侵害していません。",
+    creatorLooksConsent_third_party_ip:
+      "第三者の知的財産（アニメ・ゲーム・ブランド等）を侵害していません。",
+    creatorLooksConsent_secondary_use:
+      "この画像の衣装と背景が他ユーザーの着せ替え素材として使われることに同意します。",
+    creatorLooksConsent_promo_use:
+      "Persta がサンプル・宣伝・ヘルプ等でこの画像を使うことに同意します。",
+    creatorLooksConsent_no_sensitive:
+      "この画像にはセンシティブ要素（性的・暴力的・差別的な表現等）が含まれていません。",
   },
   profileEdit: {
     title: "プロフィールを編集",
@@ -1641,6 +1659,35 @@ export const jaMessages = {
     resultsTitle: "生成結果",
     resultsPlaceholder: "ここに生成された画像が表示されます。",
     resultImageAlt: "生成された画像",
+  },
+  creatorLooksDetail: {
+    untitled: "無題",
+    anonymousCreator: "匿名クリエイター",
+    imageMissing: "画像を読み込めませんでした",
+    byLabel: "by",
+    usageCount: "{count} 回使用されました",
+    myCharacterLabel: "マイキャラ",
+    myCharacterHint:
+      "PNG / JPEG / WebP / HEIC、10MB まで。1024px 以上推奨。",
+    backgroundLabel: "背景設定",
+    backgroundCheckboxLabel: "背景もクリエイターの世界に合わせて変更する",
+    backgroundCheckboxDescription:
+      "OFF のときは元の背景をできるだけ維持し、ON のときはクリエイターの作品から背景を抽出して反映します。",
+    poseAngleNote:
+      "※ カメラアングルとポーズは変わりません。今後のアップデートで対応予定です。",
+    tryThisLook: "これを着せる",
+    submitting: "生成中...",
+    missingMyCharacter: "マイキャラの画像をアップロードしてください。",
+    rateLimitedCooldown:
+      "少々お待ちください。前回の生成から 60 秒以内です。",
+    hiddenPromptNotReady:
+      "準備中です。しばらくしてから再度お試しください。",
+    generateFailed:
+      "生成に失敗しました。時間をおいて再試行してください。",
+    generateFailedDescription:
+      "別の画像で試すか、しばらくしてから再試行してください。",
+    generationResultTitle: "生成結果",
+    generationResultAlt: "生成された画像",
   },
   popupBanners: {
     dialogTitle: "お知らせ",

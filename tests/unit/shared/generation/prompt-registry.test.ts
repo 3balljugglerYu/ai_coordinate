@@ -53,13 +53,25 @@ describe("PROMPT_REGISTRY", () => {
     }
   });
 
-  test("4 つのカテゴリすべてに少なくとも 1 つの key が存在する", () => {
+  test("全カテゴリすべてに少なくとも 1 つの key が存在する", () => {
     for (const category of PROMPT_CATEGORIES) {
       const found = PROMPT_KEYS.some(
         (k) => PROMPT_REGISTRY[k].category === category,
       );
       expect(found).toBe(true);
     }
+  });
+
+  test("creator_looks カテゴリには meta_extractor が存在する", () => {
+    expect(PROMPT_KEYS).toContain("creator_looks.meta_extractor");
+    const def = PROMPT_REGISTRY["creator_looks.meta_extractor"];
+    expect(def.category).toBe("creator_looks");
+    // meta-prompt 本体に必須のセクションヘッダが含まれる
+    expect(def.defaultContent).toContain("Styling Direction");
+    expect(def.defaultContent).toContain("Background");
+    expect(def.defaultContent).toContain("Constraints");
+    // 変数は含まれない (= 画像入力のみ)
+    expect(def.supportedVariables).toEqual([]);
   });
 });
 

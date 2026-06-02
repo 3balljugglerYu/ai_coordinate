@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
+import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
 import { env } from "@/lib/env";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import {
   getPercoinCost,
@@ -28,6 +30,9 @@ import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { DEFAULT_LOCALE } from "@/i18n/config";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
+
+// Creator Looks: per-user-per-template cool-down (= REQ-007 連打防止 / コスト暴走防止)
+const CREATOR_LOOKS_COOLDOWN_SECONDS = 60;
 
 interface GenerateAsyncRouteDependencies {
   getUserFn?: typeof getUser;
@@ -82,6 +87,10 @@ export async function postGenerateAsyncRoute(
   request: NextRequest,
   dependencies: GenerateAsyncRouteDependencies = {}
 ) {
+  // CSRF 防御: 同一オリジン以外の mutation を reject (Phase 3 必須)
+  const originReject = ensureSameOrigin(request);
+  if (originReject) return originReject;
+
   const copy = getGenerationRouteCopy(getRouteLocale(request));
   const routeStartedAt = Date.now();
   const requestId = crypto.randomUUID();
@@ -168,6 +177,62 @@ export async function postGenerateAsyncRoute(
       }
       // image_url は storage_path 文字列（Storage 内部パス）。Worker 側で署名 URL 化して fetch する。
       inspireStyleTemplateImageUrl = template.storage_path;
+
+      // Stage 1 厳密化 (Phase 8): Creator Looks 投稿の生成は admin/allowlist のみ許可
+      // 一般ユーザーが styleTemplateId を直接叩いて生成しようとしても 403 で reject
+      if (template.is_creator_looks === true) {
+        const allowed = await isCreatorLooksEnabledForUser(user);
+        if (!allowed) {
+          return jsonError(
+            "現在この機能は限定公開中です",
+            "CREATOR_LOOKS_NOT_AVAILABLE",
+            403
+          );
+        }
+      }
+
+      // Creator Looks 投稿の場合: per-user-per-template cool-down (= REQ-007, HI-005 Security)
+      // 過去 60 秒以内に同 user × 同 template の image_jobs が存在すれば 429。
+      // Stage 1 では admin only なので影響は限定的だが、Stage 3 でコスト暴走対策となる。
+      if (template.is_creator_looks === true) {
+        const cooldownSince = new Date(
+          Date.now() - CREATOR_LOOKS_COOLDOWN_SECONDS * 1000
+        ).toISOString();
+        const { count: recentJobsCount, error: cooldownError } =
+          await adminClient
+            .from("image_jobs")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("style_template_id", styleTemplateId)
+            .gte("created_at", cooldownSince);
+        if (cooldownError) {
+          console.error(
+            "[generate-async] creator_looks cooldown query failed",
+            cooldownError
+          );
+          // 失敗時は fail-open (= 既存挙動を維持)。Stage 1 では admin only なのでリスクは低い。
+        } else if ((recentJobsCount ?? 0) > 0) {
+          return jsonError(
+            "少々お待ちください (前回の生成から 60 秒以内です)",
+            "CREATOR_LOOKS_COOLDOWN",
+            429
+          );
+        }
+
+        // Creator Looks 投稿で hidden_prompt が未生成なら 422 (= UX 上の明示エラー、REQ-015)
+        const { data: secret } = await adminClient
+          .from("user_style_template_secrets")
+          .select("template_id")
+          .eq("template_id", styleTemplateId)
+          .maybeSingle();
+        if (!secret) {
+          return jsonError(
+            "準備中です。しばらくお待ちください",
+            "CREATOR_LOOKS_HIDDEN_PROMPT_NOT_READY",
+            422
+          );
+        }
+      }
     }
 
     const jobRepository =

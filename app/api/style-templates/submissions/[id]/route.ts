@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isInspireFeatureEnabled } from "@/lib/env";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { getInspireRouteCopy } from "@/features/inspire/lib/route-copy";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { jsonError } from "@/lib/api/json-error";
@@ -53,6 +55,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF 防御: 同一オリジン以外の mutation を reject (Phase 3 必須)
+  const originReject = ensureSameOrigin(request);
+  if (originReject) return originReject;
+
   const copy = getInspireRouteCopy(getRouteLocale(request));
 
   if (!isInspireFeatureEnabled()) {
@@ -105,6 +111,11 @@ export async function DELETE(
       return jsonError(copy.withdrawFailed, "INSPIRE_WITHDRAW_FAILED", 500);
     }
 
+    // ホームカルーセル / クリエイター個人ページのキャッシュを無効化
+    // (= Phase 6 で実 use cache 化されたため、ここで明示 invalidate が効くようになった)
+    // mutation 直後の即時反映が必要なので expire:0 (= "max" は stale-while-revalidate で不適)
+    revalidateTag("home-user-style-templates", { expire: 0 });
+
     return NextResponse.json({ success: true, action: "deleted" });
   }
 
@@ -129,6 +140,10 @@ export async function DELETE(
     if (!success) {
       return jsonError(copy.templateNotFound, "INSPIRE_TEMPLATE_NOT_FOUND", 404);
     }
+
+    // 撤回時はホームカルーセルから即座に消えるよう cache invalidate (REQ-014)
+    // 即時反映が必要なので expire:0 (= "max" は stale-while-revalidate で不適)
+    revalidateTag("home-user-style-templates", { expire: 0 });
 
     return NextResponse.json({ success: true, action: "withdrawn" });
   }

@@ -44,6 +44,9 @@ export interface AdminStyleTemplateItem {
     nickname: string | null;
     avatar_url: string | null;
   };
+  // Phase 5 で追加: Creator Looks 投稿の識別 (= バッジ表示用)
+  is_creator_looks?: boolean;
+  submission_source?: string | null;
 }
 
 interface Copy {
@@ -102,6 +105,12 @@ export function AdminStyleTemplatesClient({
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState<DecisionAction | null>(null);
   const [enlargedIndex, setEnlargedIndex] = useState<number | null>(null);
+
+  // Creator Looks: admin が hidden_prompt を確認するための state
+  // ADR-008 admin 信頼境界扱い (= devtools で見えても admin の責任とする)
+  const [hiddenPrompt, setHiddenPrompt] = useState<string | null>(null);
+  const [hiddenPromptLoading, setHiddenPromptLoading] = useState(false);
+  const [hiddenPromptError, setHiddenPromptError] = useState<string | null>(null);
 
   // 詳細パネルの 3 つの画像（テンプレ → OpenAI → Gemini）。URL が無いものは除外。
   const lightboxSlides = useMemo<ImageLightboxSlide[]>(() => {
@@ -227,8 +236,18 @@ export function AdminStyleTemplatesClient({
                 </div>
               </button>
               <div className="space-y-2 p-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline">{item.moderation_status}</Badge>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline">{item.moderation_status}</Badge>
+                    {item.is_creator_looks && (
+                      <Badge
+                        variant="default"
+                        className="bg-primary/90 text-[10px] font-semibold"
+                      >
+                        Creator Looks
+                      </Badge>
+                    )}
+                  </div>
                   <span className="text-muted-foreground">
                     {item.created_at.slice(0, 10)}
                   </span>
@@ -359,6 +378,80 @@ export function AdminStyleTemplatesClient({
 
               {openItem.alt && (
                 <p className="text-sm text-muted-foreground">{openItem.alt}</p>
+              )}
+
+              {/* Creator Looks 投稿の場合: 出所申告 + hidden_prompt 取得ボタン */}
+              {openItem.is_creator_looks && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="default" className="bg-primary/90">
+                      Creator Looks
+                    </Badge>
+                    {openItem.submission_source && (
+                      <span className="text-muted-foreground">
+                        source: {openItem.submission_source}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={hiddenPromptLoading}
+                      onClick={async () => {
+                        setHiddenPromptLoading(true);
+                        setHiddenPromptError(null);
+                        setHiddenPrompt(null);
+                        try {
+                          const response = await fetch(
+                            `/api/admin/creator-looks/${openItem.id}/secret`,
+                          );
+                          if (!response.ok) {
+                            const data = await response
+                              .json()
+                              .catch(() => null);
+                            setHiddenPromptError(
+                              data?.error ?? `HTTP ${response.status}`,
+                            );
+                            return;
+                          }
+                          const data = (await response.json()) as {
+                            hidden_prompt: string | null;
+                            status: string;
+                          };
+                          if (data.status === "not_ready") {
+                            setHiddenPromptError(
+                              "hidden_prompt not yet generated",
+                            );
+                            return;
+                          }
+                          setHiddenPrompt(data.hidden_prompt);
+                        } catch (e) {
+                          setHiddenPromptError(
+                            e instanceof Error ? e.message : String(e),
+                          );
+                        } finally {
+                          setHiddenPromptLoading(false);
+                        }
+                      }}
+                    >
+                      {hiddenPromptLoading
+                        ? "Loading hidden prompt..."
+                        : "View hidden prompt (admin only)"}
+                    </Button>
+                  </div>
+                  {hiddenPromptError && (
+                    <p className="text-destructive">
+                      Error: {hiddenPromptError}
+                    </p>
+                  )}
+                  {hiddenPrompt && (
+                    <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded border bg-background p-2 font-mono text-[10px]">
+                      {hiddenPrompt}
+                    </pre>
+                  )}
+                </div>
               )}
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
