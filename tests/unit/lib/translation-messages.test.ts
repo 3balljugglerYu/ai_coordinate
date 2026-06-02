@@ -12,6 +12,7 @@ const expectedClientNamespaces = [
   "coordinate",
   "contact",
   "credits",
+  "creatorLooksDetail",
   "imageSourcePicker",
   "inspirePage",
   "inspireSubmission",
