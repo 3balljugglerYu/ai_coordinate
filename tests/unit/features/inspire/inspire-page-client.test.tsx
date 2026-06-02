@@ -90,6 +90,12 @@ jest.mock(
   }),
 );
 
+// normalizeSourceImage は内部で URL.createObjectURL を使うため jsdom では動かない。
+// テストでは pass-through で十分 (= 元 file をそのまま返す)。
+jest.mock("@/features/generation/lib/normalize-source-image", () => ({
+  normalizeSourceImage: jest.fn(async (file: File) => file),
+}));
+
 // 生成済みタブ/ストックタブの fetch を mock
 const getSourceImageStocksMock = jest.fn(async () => []);
 jest.mock("@/features/generation/lib/database", () => ({

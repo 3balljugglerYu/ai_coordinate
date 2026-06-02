@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,10 @@ export function CreatorLooksDetailClient({
     }
     setSubmitting(true);
     try {
-      const base64 = await fileToBase64(uploadedImage.file);
+      // 4.5MB の Vercel Serverless body 制限を回避するため、送信前にリサイズ/圧縮する
+      // (= 既存 Style / Coordinate と同じ normalizeSourceImage を流用)
+      const normalized = await normalizeSourceImage(uploadedImage.file);
+      const base64 = await fileToBase64(normalized);
       const response = await fetch("/api/generate-async", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,7 +82,7 @@ export function CreatorLooksDetailClient({
           count: 1,
           styleTemplateId: templateId,
           sourceImageBase64: base64,
-          sourceImageMimeType: uploadedImage.file.type,
+          sourceImageMimeType: normalized.type,
           // Creator Looks: 衣装は必ず移植 / 背景はユーザー選択
           // アングル / ポーズは現状常に false (= 将来 UI で開放、計画 §A-4)
           overrides: {
