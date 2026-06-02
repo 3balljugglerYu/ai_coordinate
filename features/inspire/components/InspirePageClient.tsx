@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { ImageSourcePicker } from "@/features/generation/components/ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
 import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
@@ -192,9 +193,12 @@ export function InspirePageClient({
       } else if (selectedRemoteSource?.kind === "generated") {
         requestBody.sourceImageGeneratedId = selectedRemoteSource.id;
       } else if (uploadedImage) {
-        const base64 = await fileToBase64(uploadedImage.file);
+        // 4.5MB の Vercel Serverless body 制限を回避するため、送信前にリサイズ/圧縮する
+        // (= 既存 Style / Coordinate と同じ normalizeSourceImage を流用)
+        const normalized = await normalizeSourceImage(uploadedImage.file);
+        const base64 = await fileToBase64(normalized);
         requestBody.sourceImageBase64 = base64;
-        requestBody.sourceImageMimeType = uploadedImage.file.type;
+        requestBody.sourceImageMimeType = normalized.type;
       }
 
       const response = await fetch("/api/generate-async", {
