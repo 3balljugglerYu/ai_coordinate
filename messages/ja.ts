@@ -462,7 +462,7 @@ export const jaMessages = {
     creatorLooksSectionDescription:
       "あなたの作品が他のユーザーの着せ替え素材として使われます。下記の出所申告と同意にすべてチェックを入れてください。",
     creatorLooksSourceLabel: "画像の出所",
-    creatorLooksSource_self_created: "自分が描いた / 制作した",
+    creatorLooksSource_self_created: "自分が AI 生成した / 制作した",
     creatorLooksSource_self_photographed: "自分で撮影した",
     creatorLooksSource_licensed_other: "他者の作品（明示的に許諾を得たもの）",
     creatorLooksConsentsLabel: "同意事項（すべて必須）",

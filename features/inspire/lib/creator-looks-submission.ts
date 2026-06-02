@@ -8,11 +8,11 @@
 
 import { z } from "zod";
 
-export const SUBMISSION_SOURCES = [
-  "self_created",
-  "self_photographed",
-  "licensed_other",
-] as const;
+/**
+ * 受付対象の画像出所。本人が AI 生成 / 制作したものに限定する (= 著作権リスク最小化)。
+ * 撮影物・他者作品 (許諾済を含む) は将来検討。
+ */
+export const SUBMISSION_SOURCES = ["self_created"] as const;
 
 export type SubmissionSource = (typeof SUBMISSION_SOURCES)[number];
 
