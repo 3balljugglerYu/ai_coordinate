@@ -443,6 +443,7 @@ export const viMessages = {
     submitFailedConsent: "Vui lòng xác nhận đồng ý về bản quyền.",
     submitFailedRateLimit:
       "Bạn đã đạt giới hạn tạo bản xem trước (10 lần / 24 giờ).",
+    submitFailedCreatorLooksDailyCap: "Bài đăng Creator Looks giới hạn 2 bài/ngày. Vui lòng thử lại vào ngày mai.",
     submitFailedCap:
       "Bạn đã đạt giới hạn 5 lần gửi đang hoạt động. Hãy rút một lần và thử lại.",
     submitFailedSafety:

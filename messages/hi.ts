@@ -444,6 +444,7 @@ export const hiMessages = {
     submitFailedConsent: "कृपया कॉपीराइट सहमति की पुष्टि करें।",
     submitFailedRateLimit:
       "आप पूर्वावलोकन उत्पन्न करने की सीमा (24 घंटे में 10) तक पहुँच गए हैं।",
+    submitFailedCreatorLooksDailyCap: "Creator Looks पोस्ट प्रति दिन 2 तक सीमित हैं। कृपया कल पुनः प्रयास करें।",
     submitFailedCap:
       "आप 5 सक्रिय सबमिशन की सीमा तक पहुँच गए हैं। मौजूदा सबमिशन वापस लें और फिर से प्रयास करें।",
     submitFailedSafety:

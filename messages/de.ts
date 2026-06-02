@@ -446,6 +446,7 @@ export const deMessages = {
     submitFailedConsent: "Bitte die Urheberrechtszustimmung bestätigen.",
     submitFailedRateLimit:
       "Du hast das Vorschau-Generierungslimit erreicht (10 pro 24 h).",
+    submitFailedCreatorLooksDailyCap: "Creator-Looks-Beiträge sind auf 2 pro Tag begrenzt. Bitte versuchen Sie es morgen erneut.",
     submitFailedCap:
       "Du hast das Limit von 5 aktiven Einreichungen erreicht. Ziehe eine zurück und versuche es erneut.",
     submitFailedSafety:

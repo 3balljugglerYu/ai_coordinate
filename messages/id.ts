@@ -445,6 +445,7 @@ export const idMessages = {
     submitFailedConsent: "Mohon konfirmasi persetujuan hak cipta.",
     submitFailedRateLimit:
       "Kamu telah mencapai batas pembuatan pratinjau (10 per 24 jam).",
+    submitFailedCreatorLooksDailyCap: "Postingan Creator Looks dibatasi 2 per hari. Silakan coba lagi besok.",
     submitFailedCap:
       "Kamu telah mencapai batas 5 kiriman aktif. Tarik salah satu dan coba lagi.",
     submitFailedSafety:

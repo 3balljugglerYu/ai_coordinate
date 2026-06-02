@@ -442,6 +442,7 @@ export const zhCnMessages = {
     submitFailedConsent: "请确认版权同意。",
     submitFailedRateLimit:
       "已达到预览生成上限 (24 小时 10 次)。",
+    submitFailedCreatorLooksDailyCap: "Creator Looks 投稿每日限 2 件。请明天再试。",
     submitFailedCap:
       "已达到 5 个公开投稿上限。请撤回一个现有投稿后再试。",
     submitFailedSafety:

@@ -443,6 +443,7 @@ export const arMessages = {
     submitFailedConsent: "يُرجى تأكيد موافقة حقوق الطبع والنشر.",
     submitFailedRateLimit:
       "وصلت إلى حد توليد المعاينات (10 لكل 24 ساعة).",
+    submitFailedCreatorLooksDailyCap: "منشورات Creator Looks محدودة بـ ٢ منشورات يوميًا. يرجى المحاولة غدًا.",
     submitFailedCap:
       "وصلت إلى حد 5 إرسالات نشطة. اسحب إرسالًا قائمًا وحاول مرة أخرى.",
     submitFailedSafety:

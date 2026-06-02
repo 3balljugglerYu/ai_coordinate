@@ -446,6 +446,7 @@ export const ptMessages = {
     submitFailedConsent: "Confirme o consentimento de direitos autorais.",
     submitFailedRateLimit:
       "Você atingiu o limite de gerações de preview (10 a cada 24h).",
+    submitFailedCreatorLooksDailyCap: "As publicações do Creator Looks são limitadas a 2 por dia. Tente novamente amanhã.",
     submitFailedCap:
       "Você atingiu o limite de 5 envios ativos. Retire um existente e tente novamente.",
     submitFailedSafety:

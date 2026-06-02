@@ -443,6 +443,7 @@ export const thMessages = {
     submitFailedConsent: "โปรดยืนยันความยินยอมเรื่องลิขสิทธิ์",
     submitFailedRateLimit:
       "ถึงขีดจำกัดการสร้างตัวอย่างแล้ว (10 ครั้งต่อ 24 ชั่วโมง)",
+    submitFailedCreatorLooksDailyCap: "การโพสต์ Creator Looks จำกัด 2 รายการต่อวัน กรุณาลองใหม่ในวันพรุ่งนี้",
     submitFailedCap:
       "ถึงขีดจำกัด 5 รายการที่กำลังเผยแพร่อยู่ ถอนออกหนึ่งรายการแล้วลองอีกครั้ง",
     submitFailedSafety:
