@@ -147,25 +147,31 @@ export async function PATCH(
     return NextResponse.json({ error: "not_creator_looks" }, { status: 400 });
   }
 
-  // UPSERT (= 存在しなければ INSERT、存在すれば UPDATE)
-  // user_style_template_secrets AFTER INSERT/UPDATE trigger が hidden_prompt 変更時に
+  // 既存 row の hidden_prompt のみを UPDATE。
+  // (= upsert + updated_at は user_style_template_secrets に updated_at カラムが
+  // 存在しないため PGRST204 になる。抽出済 row があることが前提なので UPDATE で十分)
+  // user_style_template_secrets AFTER UPDATE trigger が hidden_prompt 変更時に
   // admin preview 再生成を enqueue する (= 20260603100400)。
-  const { error: upsertError } = await adminClient
+  const { error: updateError, count: updatedCount } = await adminClient
     .from("user_style_template_secrets")
-    .upsert(
-      {
-        template_id: templateId,
-        hidden_prompt: parsed.data.hidden_prompt,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "template_id" },
-    );
-  if (upsertError) {
+    .update(
+      { hidden_prompt: parsed.data.hidden_prompt },
+      { count: "exact" },
+    )
+    .eq("template_id", templateId);
+  if (updateError) {
     console.error(
-      "[admin/creator-looks/secret PATCH] upsert failed",
-      upsertError,
+      "[admin/creator-looks/secret PATCH] update failed",
+      updateError,
     );
-    return NextResponse.json({ error: "upsert_failed" }, { status: 500 });
+    return NextResponse.json({ error: "update_failed" }, { status: 500 });
+  }
+  if (!updatedCount || updatedCount === 0) {
+    // 抽出前の状態 (= secrets 行が無い) で編集しようとした
+    return NextResponse.json(
+      { error: "hidden_prompt_not_ready" },
+      { status: 404 },
+    );
   }
 
   // 監査ログ (= hidden_prompt の値は metadata に絶対含めない、ADR-009)
