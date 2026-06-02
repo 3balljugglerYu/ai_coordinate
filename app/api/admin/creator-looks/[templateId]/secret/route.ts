@@ -11,8 +11,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const patchBodySchema = z.object({
+  hidden_prompt: z.string().min(10).max(20000),
+});
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,4 +78,107 @@ export async function GET(
     { hidden_prompt: data, status: "ready" },
     { status: 200 },
   );
+}
+
+/**
+ * PATCH /api/admin/creator-looks/[templateId]/secret
+ *
+ * admin が hidden_prompt を手動で編集する。
+ * UPDATE 後に user_style_template_secrets AFTER UPDATE Trigger
+ * (= 20260603100400 で追加) が発火し、admin preview が自動再生成される。
+ *
+ * 設計判断:
+ *   - requireAdmin() で API レイヤーの admin チェック (= 既存パターン)
+ *   - service-role の adminClient で直接 UPSERT (= RPC を追加せず最小修正)
+ *   - audit log として style_template_audit_logs に「hidden_prompt 手動更新」を記録
+ *     (= 監査性、誰がいつ編集したかを追跡可能に)
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ templateId: string }> },
+) {
+  let actorId: string | null = null;
+  try {
+    const user = await requireAdmin();
+    actorId = user.id;
+  } catch (rejection) {
+    if (rejection instanceof NextResponse) return rejection;
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { templateId } = await params;
+  if (!templateId || !UUID_RE.test(templateId)) {
+    return NextResponse.json(
+      { error: "invalid_template_id" },
+      { status: 400 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+  const parsed = patchBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "invalid_hidden_prompt" },
+      { status: 400 },
+    );
+  }
+
+  const adminClient = createAdminClient();
+
+  // 対象テンプレが Creator Looks 投稿であることを確認
+  const { data: template, error: tmplErr } = await adminClient
+    .from("user_style_templates")
+    .select("id, is_creator_looks")
+    .eq("id", templateId)
+    .maybeSingle();
+  if (tmplErr) {
+    console.error("[admin/creator-looks/secret PATCH] template fetch", tmplErr);
+    return NextResponse.json({ error: "template_fetch_failed" }, { status: 500 });
+  }
+  if (!template) {
+    return NextResponse.json({ error: "template_not_found" }, { status: 404 });
+  }
+  if (template.is_creator_looks !== true) {
+    return NextResponse.json({ error: "not_creator_looks" }, { status: 400 });
+  }
+
+  // UPSERT (= 存在しなければ INSERT、存在すれば UPDATE)
+  // user_style_template_secrets AFTER INSERT/UPDATE trigger が hidden_prompt 変更時に
+  // admin preview 再生成を enqueue する (= 20260603100400)。
+  const { error: upsertError } = await adminClient
+    .from("user_style_template_secrets")
+    .upsert(
+      {
+        template_id: templateId,
+        hidden_prompt: parsed.data.hidden_prompt,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "template_id" },
+    );
+  if (upsertError) {
+    console.error(
+      "[admin/creator-looks/secret PATCH] upsert failed",
+      upsertError,
+    );
+    return NextResponse.json({ error: "upsert_failed" }, { status: 500 });
+  }
+
+  // 監査ログ (= hidden_prompt の値は metadata に絶対含めない、ADR-009)
+  await adminClient.from("style_template_audit_logs").insert({
+    template_id: templateId,
+    actor_id: actorId,
+    action: "edit",
+    reason: "admin_hidden_prompt_edit",
+    metadata: {
+      event: "creator_looks_hidden_prompt_manual_edit",
+      hidden_prompt_length: parsed.data.hidden_prompt.length,
+    },
+  });
+
+  return NextResponse.json({ success: true, status: "ready" }, { status: 200 });
 }

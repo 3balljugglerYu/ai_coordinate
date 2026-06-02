@@ -94,6 +94,13 @@ export default async function InspirePage({ params }: InspirePageProps) {
   // 閲覧中ユーザー本人のサブスクリプションプラン（モデル選択ロック判定に使う）。
   const viewerProfile = await getUserProfileServer(user.id);
 
+  // テンプレ累計利用回数を generated_images から動的取得 (= マイページ「生成数」と同じパターン)。
+  // user_style_templates.usage_count カラムは削除済 (= migration 20260603100900)。
+  const { count: usageCount } = await adminClient
+    .from("generated_images")
+    .select("id", { count: "exact", head: true })
+    .eq("style_template_id", template.id);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
@@ -115,7 +122,7 @@ export default async function InspirePage({ params }: InspirePageProps) {
                 title={template.alt}
                 submittedByUserId={template.submitted_by_user_id}
                 submitterNickname={profile?.nickname || null}
-                usageCount={template.usage_count ?? 0}
+                usageCount={usageCount ?? 0}
                 subscriptionPlan={viewerProfile?.subscription_plan ?? "free"}
               />
             ) : (

@@ -35,7 +35,6 @@ export interface UserStyleTemplateRow {
   // Phase 1 で追加された Creator Looks 列 (= 既存 Inspire 投稿は false / NULL のまま)
   is_creator_looks?: boolean;
   submission_source?: string | null;
-  usage_count?: number;
   posted_count?: number;
 }
 
@@ -59,7 +58,6 @@ const TEMPLATE_BASE_FIELDS = `
   updated_at,
   is_creator_looks,
   submission_source,
-  usage_count,
   posted_count
 ` as const;
 
