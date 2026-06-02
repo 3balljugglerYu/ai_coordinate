@@ -442,6 +442,7 @@ export const zhTwMessages = {
     submitFailedConsent: "請確認著作權同意。",
     submitFailedRateLimit:
       "已達到預覽生成上限 (24 小時 10 次)。",
+    submitFailedCreatorLooksDailyCap: "Creator Looks 投稿每日限 2 件。請明天再試。",
     submitFailedCap:
       "公開中的投稿已達 5 件上限。請先撤回現有投稿後再試。",
     submitFailedSafety:

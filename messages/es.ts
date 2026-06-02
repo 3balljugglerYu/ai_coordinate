@@ -446,6 +446,7 @@ export const esMessages = {
     submitFailedConsent: "Confirma el consentimiento de derechos de autor.",
     submitFailedRateLimit:
       "Has alcanzado el límite de generaciones de previsualización (10 cada 24 h).",
+    submitFailedCreatorLooksDailyCap: "Las publicaciones de Creator Looks están limitadas a 2 por día. Inténtalo de nuevo mañana.",
     submitFailedCap:
       "Has llegado al límite de 5 envíos activos. Retira uno y vuelve a intentarlo.",
     submitFailedSafety:

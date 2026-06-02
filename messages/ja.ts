@@ -439,6 +439,8 @@ export const jaMessages = {
       "プレビュー生成回数の上限に達しました（24h で 10 回まで）。",
     submitFailedCap:
       "申請可能なテンプレ数の上限（5 件）を超えています。既存の申請を取り下げてから再試行してください。",
+    submitFailedCreatorLooksDailyCap:
+      "Creator Looks の投稿は 1 日 2 件までです。明日以降に再度お試しください。",
     submitFailedSafety:
       "安全性ポリシーによりプレビューを生成できませんでした。別の画像でお試しください。",
     submitFailedTooLarge:

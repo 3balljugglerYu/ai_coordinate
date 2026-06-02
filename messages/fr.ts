@@ -446,6 +446,7 @@ export const frMessages = {
     submitFailedConsent: "Veuillez confirmer le consentement aux droits d'auteur.",
     submitFailedRateLimit:
       "Vous avez atteint la limite de génération d'aperçus (10 par 24 h).",
+    submitFailedCreatorLooksDailyCap: "Les publications Creator Looks sont limitées à 2 par jour. Veuillez réessayer demain.",
     submitFailedCap:
       "Vous avez atteint la limite de 5 soumissions actives. Retirez-en une et réessayez.",
     submitFailedSafety:

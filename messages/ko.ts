@@ -443,6 +443,7 @@ export const koMessages = {
     submitFailedConsent: "저작권 동의를 확인해 주세요.",
     submitFailedRateLimit:
       "미리보기 생성 한도(24시간 10회)에 도달했습니다.",
+    submitFailedCreatorLooksDailyCap: "Creator Looks 게시는 하루 2건까지입니다. 내일 다시 시도해 주세요.",
     submitFailedCap:
       "공개 중인 투고 한도(5건)에 도달했습니다. 기존 투고를 취하한 뒤 다시 시도해 주세요.",
     submitFailedSafety:

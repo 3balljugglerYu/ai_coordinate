@@ -443,6 +443,7 @@ export const enMessages = {
     submitFailedConsent: "Please confirm copyright consent.",
     submitFailedRateLimit:
       "You've reached the preview generation limit (10 per 24h).",
+    submitFailedCreatorLooksDailyCap: "Creator Looks submissions are limited to 2 per day. Please try again tomorrow.",
     submitFailedCap:
       "You've reached the limit of 5 active submissions. Withdraw an existing one and try again.",
     submitFailedSafety:

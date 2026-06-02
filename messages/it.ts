@@ -446,6 +446,7 @@ export const itMessages = {
     submitFailedConsent: "Conferma il consenso al copyright.",
     submitFailedRateLimit:
       "Hai raggiunto il limite di generazione delle anteprime (10 ogni 24 ore).",
+    submitFailedCreatorLooksDailyCap: "I post di Creator Looks sono limitati a 2 al giorno. Riprova domani.",
     submitFailedCap:
       "Hai raggiunto il limite di 5 invii attivi. Ritirane uno e riprova.",
     submitFailedSafety:

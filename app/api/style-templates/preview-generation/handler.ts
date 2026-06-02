@@ -23,7 +23,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUser, isInspireSubmitterAllowed } from "@/lib/auth";
-import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
+import {
+  isAdminUser,
+  isCreatorLooksEnabledForUser,
+  isInCreatorLooksAllowlist,
+} from "@/lib/auth/creator-looks";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env, isInspireFeatureEnabled } from "@/lib/env";
@@ -247,33 +251,39 @@ export async function handlePreviewGeneration(
       );
     }
     // (c) 1 日 2 件 cap (= REQ-011 API 層先行 reject、Storage upload と Edge Function 起動を防ぐ)
-    const dailyWindowStart = new Date(
-      Date.now() - CREATOR_LOOKS_DAILY_WINDOW_HOURS * 60 * 60 * 1000
-    ).toISOString();
-    const { count: dailyCount, error: dailyError } = await adminClient
-      .from("user_style_templates")
-      .select("id", { count: "exact", head: true })
-      .eq("submitted_by_user_id", user.id)
-      .eq("is_creator_looks", true)
-      .neq("moderation_status", "draft")
-      .gte("created_at", dailyWindowStart);
-    if (dailyError) {
-      console.error(
-        "[preview-generation] creator_looks daily cap query failed",
-        dailyError
-      );
-      return jsonError(
-        copy.templateGenerationFailed,
-        "CREATOR_LOOKS_CAP_QUERY_FAILED",
-        500
-      );
-    }
-    if ((dailyCount ?? 0) >= CREATOR_LOOKS_DAILY_CAP) {
-      return jsonError(
-        copy.rateLimitDaily,
-        "CREATOR_LOOKS_DAILY_CAP_EXCEEDED",
-        429
-      );
+    // 運営者 (admin_users) と Stage 2 招待クリエイター (creator_looks_allowlist) は対象外
+    // (= 動作確認 / 運用テストで投稿を繰り返すため)
+    const isExemptFromDailyCap =
+      isAdminUser(user) || (await isInCreatorLooksAllowlist(user.id));
+    if (!isExemptFromDailyCap) {
+      const dailyWindowStart = new Date(
+        Date.now() - CREATOR_LOOKS_DAILY_WINDOW_HOURS * 60 * 60 * 1000
+      ).toISOString();
+      const { count: dailyCount, error: dailyError } = await adminClient
+        .from("user_style_templates")
+        .select("id", { count: "exact", head: true })
+        .eq("submitted_by_user_id", user.id)
+        .eq("is_creator_looks", true)
+        .neq("moderation_status", "draft")
+        .gte("created_at", dailyWindowStart);
+      if (dailyError) {
+        console.error(
+          "[preview-generation] creator_looks daily cap query failed",
+          dailyError
+        );
+        return jsonError(
+          copy.templateGenerationFailed,
+          "CREATOR_LOOKS_CAP_QUERY_FAILED",
+          500
+        );
+      }
+      if ((dailyCount ?? 0) >= CREATOR_LOOKS_DAILY_CAP) {
+        return jsonError(
+          copy.rateLimitDaily,
+          "CREATOR_LOOKS_DAILY_CAP_EXCEEDED",
+          429
+        );
+      }
     }
   }
 

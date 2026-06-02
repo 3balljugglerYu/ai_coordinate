@@ -523,7 +523,7 @@ export function UserStyleTemplateSubmissionForm({
       if (previewResponse.status === 429) {
         const data = await previewResponse.json().catch(() => null);
         if (data?.errorCode === "CREATOR_LOOKS_DAILY_CAP_EXCEEDED") {
-          setErrorMessage(t("submitFailedCap"));
+          setErrorMessage(t("submitFailedCreatorLooksDailyCap"));
         } else {
           setErrorMessage(t("submitFailedRateLimit"));
         }
