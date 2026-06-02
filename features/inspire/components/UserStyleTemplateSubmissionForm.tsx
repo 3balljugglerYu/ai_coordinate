@@ -565,6 +565,15 @@ export function UserStyleTemplateSubmissionForm({
         return;
       }
 
+      // submissions 失敗 + ユーザー離脱で draft が孤立しないよう、
+      // template_id を previewResult に保存しておく。
+      // これで leaveNow({ deleteDraft: true }) が draft DELETE を呼べる。
+      setPreviewResult({
+        template_id: previewData.template_id,
+        outcome: "success",
+        previews: [],
+      });
+
       const submitResponse = await fetch("/api/style-templates/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -596,6 +605,7 @@ export function UserStyleTemplateSubmissionForm({
     creatorLooksConsents,
     file,
     leaveNow,
+    setPreviewResult,
     submissionSource,
     t,
     toast,
