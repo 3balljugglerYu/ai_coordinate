@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -64,6 +65,7 @@ export function CreatorLooksDetailClient({
 }: CreatorLooksDetailClientProps) {
   const t = useTranslations("creatorLooksDetail");
   const { toast } = useToast();
+  const router = useRouter();
 
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [backgroundEnabled, setBackgroundEnabled] = useState(true);
@@ -76,6 +78,10 @@ export function CreatorLooksDetailClient({
 
   const isFreePlan = subscriptionPlan === "free" || !subscriptionPlan;
   const totalPercoinCost = getPercoinCost(selectedModel) * 1;
+  // Style / InspirePageClient と同じ: 「コーデ開始」押下直後 (= fetch 中で jobId 未取得) から
+  // ステータスバーを表示するため、submitting または activeJobId のどちらかで InspireGenerationFlow を
+  // マウントする。jobId が null の間は内部で「準備中」表示。
+  const isGenerating = submitting || activeJobId !== null;
 
   const handleSubmit = async () => {
     if (!uploadedImage) {
@@ -213,10 +219,15 @@ export function CreatorLooksDetailClient({
         </div>
       </Card>
 
-      {/* 生成中フロー (= 既存 InspireGenerationFlow 完全流用) */}
-      {/* aspectRatio: モックアップ通り 1:1 を仮定 (= 詳細ページのテンプレ大画像が aspect-square) */}
-      {/* showResultPanel=false: 下の CachedGeneratedImageGallery が結果を一覧表示するため二重表示を避ける */}
-      {activeJobId && (
+      {/*
+        生成中フロー (= InspirePageClient と同パターン)。
+        - 「コーデ開始」押下直後の fetch 中 (= submitting=true, activeJobId=null) からマウントし、
+          内部で「準備中」表示 → jobId 取得後に polling 開始 → 完了で結果。
+        - showResultPanel=false: 下の CachedGeneratedImageGallery が結果一覧表示するため二重表示回避。
+        - onComplete で router.refresh() を呼び、Server Component な gallery を再 fetch して
+          新しい生成画像を即時表示する。
+      */}
+      {isGenerating && (
         <InspireGenerationFlow
           jobId={activeJobId}
           aspectRatio={1}
@@ -228,7 +239,10 @@ export function CreatorLooksDetailClient({
             resultsPlaceholder: "",
             resultImageAlt: t("generationResultAlt"),
           }}
-          onComplete={() => setActiveJobId(null)}
+          onComplete={() => {
+            setActiveJobId(null);
+            router.refresh();
+          }}
         />
       )}
 
