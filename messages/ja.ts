@@ -1675,7 +1675,8 @@ export const jaMessages = {
       "OFF のときは元の背景をできるだけ維持し、ON のときはクリエイターの作品から背景を抽出して反映します。",
     poseAngleNote:
       "※ カメラアングルとポーズは変わりません。今後のアップデートで対応予定です。",
-    tryThisLook: "これを着せる",
+    modelLabel: "生成モデル",
+    tryThisLook: "コーデ開始！",
     submitting: "生成中...",
     missingMyCharacter: "マイキャラの画像をアップロードしてください。",
     rateLimitedCooldown:

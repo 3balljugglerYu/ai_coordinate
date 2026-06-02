@@ -2,12 +2,19 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ImageUploader } from "@/features/generation/components/ImageUploader";
-import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { ImageUploader } from "@/features/generation/components/ImageUploader";
+import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
+import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
+import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
+import {
+  getPercoinCost,
+  isFreePlanAllowedModel,
+} from "@/features/generation/lib/model-config";
+import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import type {
   UploadedImage,
   GeminiModel,
@@ -24,13 +31,16 @@ import { InspireGenerationFlow } from "./InspireGenerationFlow";
  *   - 注釈で「カメラアングル / ポーズは変わらない (今後対応予定)」を明示 (REQ-018, モックアップ 03)
  *   - generationType=inspire で API に投げる (= 既存パイプラインに乗せる、ADR-002)
  *   - override_outfit=true / override_background=<チェック状態> / override_angle=false / override_pose=false
+ *   - モデル選択 + ペルコイン消費量表示は Style/Inspire と同じ GenerationModelControls /
+ *     GenerationSubmitButton を流用 (= UX 統一、Free plan upsell も同じ動線)
+ *   - 生成枚数は 1 枚固定 (= Creator Looks は「着せ替えを 1 回試す」用途)
  */
 
 interface CreatorLooksDetailClientProps {
   templateId: string;
   /**
-   * 将来モデル選択 UI を出すための情報。Stage 1 では未使用 (= 固定モデル)。
-   * Phase 5 以降で MODEL 選択 UI を追加する際に活用予定。
+   * Subscription plan (= Free plan で課金モデルを選んだ時に Upsell ダイアログを開くため)。
+   * 未指定なら "free" 扱い (= fail-closed、課金モデル選択は upsell へ誘導)。
    */
   subscriptionPlan?: string;
 }
@@ -50,6 +60,7 @@ async function fileToBase64(file: File): Promise<string> {
 
 export function CreatorLooksDetailClient({
   templateId,
+  subscriptionPlan,
 }: CreatorLooksDetailClientProps) {
   const t = useTranslations("creatorLooksDetail");
   const { toast } = useToast();
@@ -58,8 +69,13 @@ export function CreatorLooksDetailClient({
   const [backgroundEnabled, setBackgroundEnabled] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>(
+    DEFAULT_GENERATION_MODEL,
+  );
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
 
-  const selectedModel: GeminiModel = DEFAULT_GENERATION_MODEL;
+  const isFreePlan = subscriptionPlan === "free" || !subscriptionPlan;
+  const totalPercoinCost = getPercoinCost(selectedModel) * 1;
 
   const handleSubmit = async () => {
     if (!uploadedImage) {
@@ -167,18 +183,35 @@ export function CreatorLooksDetailClient({
         {t("poseAngleNote")}
       </p>
 
-      {/* Try this look CTA */}
-      <div>
-        <Button
-          type="button"
-          size="lg"
-          className="w-full"
-          onClick={handleSubmit}
-          disabled={submitDisabled}
-        >
-          {submitting ? t("submitting") : t("tryThisLook")}
-        </Button>
-      </div>
+      {/* モデル選択 + 生成 CTA (= Style / Inspire と同じ GenerationModelControls / SubmitButton) */}
+      <Card className="p-6">
+        <div className="space-y-6">
+          <GenerationModelControls
+            value={selectedModel}
+            onChange={setSelectedModel}
+            onLockedClick={() => {
+              if (isFreePlan) {
+                setIsUpsellOpen(true);
+              }
+            }}
+            authState="authenticated"
+            modelLabel={t("modelLabel")}
+            disabled={submitting || activeJobId !== null}
+            isModelSelectable={
+              isFreePlan ? isFreePlanAllowedModel : undefined
+            }
+          />
+
+          <GenerationSubmitButton
+            onClick={handleSubmit}
+            disabled={submitDisabled}
+            isGenerating={submitting}
+            generateLabel={t("tryThisLook")}
+            generatingLabel={t("submitting")}
+            costAmount={totalPercoinCost}
+          />
+        </div>
+      </Card>
 
       {/* 生成中フロー (= 既存 InspireGenerationFlow 完全流用) */}
       {/* aspectRatio: モックアップ通り 1:1 を仮定 (= 詳細ページのテンプレ大画像が aspect-square) */}
@@ -198,6 +231,12 @@ export function CreatorLooksDetailClient({
           onComplete={() => setActiveJobId(null)}
         />
       )}
+
+      {/* Free plan upsell ダイアログ (= 課金モデルを選択しようとした時に表示) */}
+      <SubscriptionUpsellDialog
+        open={isUpsellOpen}
+        onOpenChange={setIsUpsellOpen}
+      />
     </div>
   );
 }
