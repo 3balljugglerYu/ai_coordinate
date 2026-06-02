@@ -106,6 +106,10 @@ export function AdminStyleTemplatesClient({
   const [submitting, setSubmitting] = useState<DecisionAction | null>(null);
   const [enlargedIndex, setEnlargedIndex] = useState<number | null>(null);
 
+  // Creator Looks: admin が hidden_prompt を編集するための state
+  const [hiddenPromptEditing, setHiddenPromptEditing] = useState(false);
+  const [hiddenPromptDraft, setHiddenPromptDraft] = useState("");
+  const [hiddenPromptSaving, setHiddenPromptSaving] = useState(false);
   // Creator Looks: admin が hidden_prompt を確認するための state
   // ADR-008 admin 信頼境界扱い (= devtools で見えても admin の責任とする)
   const [hiddenPrompt, setHiddenPrompt] = useState<string | null>(null);
@@ -446,10 +450,97 @@ export function AdminStyleTemplatesClient({
                       Error: {hiddenPromptError}
                     </p>
                   )}
-                  {hiddenPrompt && (
-                    <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded border bg-background p-2 font-mono text-[10px]">
-                      {hiddenPrompt}
-                    </pre>
+                  {hiddenPrompt && !hiddenPromptEditing && (
+                    <>
+                      <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded border bg-background p-2 font-mono text-[10px]">
+                        {hiddenPrompt}
+                      </pre>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setHiddenPromptDraft(hiddenPrompt);
+                          setHiddenPromptEditing(true);
+                          setHiddenPromptError(null);
+                        }}
+                      >
+                        Edit hidden prompt
+                      </Button>
+                    </>
+                  )}
+                  {hiddenPromptEditing && (
+                    <div className="space-y-2">
+                      <textarea
+                        value={hiddenPromptDraft}
+                        onChange={(e) => setHiddenPromptDraft(e.target.value)}
+                        className="h-64 w-full resize-y rounded border bg-background p-2 font-mono text-[10px]"
+                        disabled={hiddenPromptSaving}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={
+                            hiddenPromptSaving ||
+                            hiddenPromptDraft.trim().length < 10
+                          }
+                          onClick={async () => {
+                            if (!openItem) return;
+                            setHiddenPromptSaving(true);
+                            setHiddenPromptError(null);
+                            try {
+                              const response = await fetch(
+                                `/api/admin/creator-looks/${openItem.id}/secret`,
+                                {
+                                  method: "PATCH",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    hidden_prompt: hiddenPromptDraft,
+                                  }),
+                                },
+                              );
+                              if (!response.ok) {
+                                const data = await response
+                                  .json()
+                                  .catch(() => null);
+                                setHiddenPromptError(
+                                  data?.error ?? `HTTP ${response.status}`,
+                                );
+                                return;
+                              }
+                              setHiddenPrompt(hiddenPromptDraft);
+                              setHiddenPromptEditing(false);
+                            } catch (e) {
+                              setHiddenPromptError(
+                                e instanceof Error ? e.message : String(e),
+                              );
+                            } finally {
+                              setHiddenPromptSaving(false);
+                            }
+                          }}
+                        >
+                          {hiddenPromptSaving ? "Saving..." : "Save"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={hiddenPromptSaving}
+                          onClick={() => {
+                            setHiddenPromptEditing(false);
+                            setHiddenPromptDraft("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        保存すると admin プレビューが自動再生成されます。
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
