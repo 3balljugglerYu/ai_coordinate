@@ -67,6 +67,9 @@ const clientNamespaces = [
   "inspirePage",
   "adminStyleTemplates",
   "imageSourcePicker",
+  // Creator Looks 詳細ページの Client Component (CreatorLooksDetailClient) が
+  // useTranslations("creatorLooksDetail") を使うため client bundle に含める
+  "creatorLooksDetail",
 ] as const satisfies readonly ClientMessageNamespace[];
 
 type NamespaceSelection<TMessages, TNamespaces extends readonly (keyof TMessages)[]> = {
