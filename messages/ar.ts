@@ -1748,6 +1748,7 @@ export const arMessages = {
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
+    modelLabel: "نموذج الإنشاء",
     tryThisLook: "Try this look",
     submitting: "Generating...",
     missingMyCharacter: "Please upload your character image.",
