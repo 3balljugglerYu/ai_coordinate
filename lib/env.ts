@@ -83,6 +83,9 @@ const envSchema = {
   // サーバ専用 kill switch。NEXT_PUBLIC_ プレフィックスを意図的に付けない (= クライアントバンドルに展開させない)
   // Stage 1 では false (= admin role のみアクセス可)、Stage 3 で true (= 全公開)
   CREATOR_LOOKS_ENABLED: process.env.CREATOR_LOOKS_ENABLED,
+  // pg_net → Next.js internal API の Bearer 認証用。
+  // Supabase Vault `creator_looks_extract_secret` と Edge Function Secrets `EDGE_FUNCTION_SECRET` と同じ値にする。
+  EDGE_FUNCTION_SECRET: process.env.EDGE_FUNCTION_SECRET,
 } as const;
 
 /**
@@ -172,6 +175,7 @@ function getEnv() {
     TURNSTILE_SECRET_KEY: envSchema.TURNSTILE_SECRET_KEY || "",
     NEXT_PUBLIC_CATALOG_ENABLED: envSchema.NEXT_PUBLIC_CATALOG_ENABLED || "",
     CREATOR_LOOKS_ENABLED: envSchema.CREATOR_LOOKS_ENABLED || "",
+    EDGE_FUNCTION_SECRET: envSchema.EDGE_FUNCTION_SECRET || "",
   };
 }
 
