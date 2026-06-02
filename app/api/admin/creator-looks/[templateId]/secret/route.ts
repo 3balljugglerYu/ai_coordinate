@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,7 +37,11 @@ export async function GET(
     );
   }
 
-  const supabase = createAdminClient();
+  // 認証済みユーザーの Cookie/JWT を持つ server client を使う。
+  // get_creator_looks_secret_for_admin RPC は内部で auth.uid() を読んで
+  // admin_users 所属を確認するため、service-role の createAdminClient() では
+  // auth.uid() が NULL になり常に 403 (not_authorized) が返ってしまう。
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc(
     "get_creator_looks_secret_for_admin",
     { p_template_id: templateId },
