@@ -228,8 +228,9 @@ export function UserStyleTemplateSubmissionForm({
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   // Creator Looks 追加 state (= isCreatorLooksMode=true のときだけ意味を持つ)
+  // 出所は self_created (= 本人 AI 生成 / 制作) のみ受け付けるため、初期値で固定。
   const [submissionSource, setSubmissionSource] =
-    useState<SubmissionSource | null>(null);
+    useState<SubmissionSource>("self_created");
   const [creatorLooksConsents, setCreatorLooksConsents] = useState({
     copyright: false,
     third_party_ip: false,
@@ -402,7 +403,6 @@ export function UserStyleTemplateSubmissionForm({
       // この preview-generation 呼び出し前に validate する。
       const creatorLooksPayload =
         isCreatorLooksMode &&
-        submissionSource !== null &&
         isAllConsentsAcknowledged(creatorLooksConsents)
           ? {
               is_creator_looks: true as const,
@@ -497,10 +497,6 @@ export function UserStyleTemplateSubmissionForm({
    */
   const handleCreatorLooksSubmit = useCallback(async () => {
     if (!file) return;
-    if (submissionSource === null) {
-      setErrorMessage(t("submitFailedConsent"));
-      return;
-    }
     if (!isAllConsentsAcknowledged(creatorLooksConsents)) {
       setErrorMessage(t("submitFailedConsent"));
       return;
@@ -755,7 +751,6 @@ export function UserStyleTemplateSubmissionForm({
                   onClick={handleCreatorLooksSubmit}
                   disabled={
                     !file ||
-                    submissionSource === null ||
                     !isAllConsentsAcknowledged(creatorLooksConsents) ||
                     submitting
                   }
@@ -991,7 +986,7 @@ export function UserStyleTemplateSubmissionForm({
 
 type CreatorLooksConsentBlockProps = {
   t: ReturnType<typeof useTranslations>;
-  source: SubmissionSource | null;
+  source: SubmissionSource;
   onSourceChange: (next: SubmissionSource) => void;
   consents: {
     copyright: boolean;

@@ -10,12 +10,8 @@ import {
 } from "@/features/inspire/lib/creator-looks-submission";
 
 describe("SUBMISSION_SOURCES", () => {
-  test("3 つの値が定義済み", () => {
-    expect(SUBMISSION_SOURCES).toEqual([
-      "self_created",
-      "self_photographed",
-      "licensed_other",
-    ]);
+  test("self_created のみ受け付ける (= 本人 AI 生成 / 制作)", () => {
+    expect(SUBMISSION_SOURCES).toEqual(["self_created"]);
   });
 });
 
