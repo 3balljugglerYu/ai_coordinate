@@ -169,12 +169,21 @@ describe("PUT /api/admin/generation-prompts/[key]", () => {
     expect(res.status).toBe(400);
   });
 
-  test("4000 文字超過は 400", async () => {
+  test("10000 文字超過は 400", async () => {
     mockRequireAdmin.mockResolvedValue(FAKE_ADMIN);
-    const res = await PUT(makePutRequest({ content: "x".repeat(4001) }), {
+    const res = await PUT(makePutRequest({ content: "x".repeat(10001) }), {
       params: Promise.resolve({ key: "style.base_prefix" }),
     });
     expect(res.status).toBe(400);
+  });
+
+  test("4000 超〜10000 以内は許可 (上限緩和後)", async () => {
+    mockRequireAdmin.mockResolvedValue(FAKE_ADMIN);
+    mockUpsert.mockResolvedValue({ previousContent: null });
+    const res = await PUT(makePutRequest({ content: "x".repeat(8000) }), {
+      params: Promise.resolve({ key: "style.base_prefix" }),
+    });
+    expect(res.status).toBe(200);
   });
 
   test("正常系は upsert + audit log + revalidate を呼ぶ", async () => {
