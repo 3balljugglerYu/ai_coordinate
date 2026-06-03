@@ -15,7 +15,8 @@ import {
 } from "@/shared/generation/prompt-registry";
 import { extractTemplateVariables } from "@/shared/generation/prompt-template";
 
-const MAX_CONTENT_LENGTH = 4000;
+// DB の prompt_overrides_content_check と同値に保つこと (defense in depth)
+const MAX_CONTENT_LENGTH = 10000;
 
 /**
  * 編集後に変更を即時反映させるための共通リバリデーション。

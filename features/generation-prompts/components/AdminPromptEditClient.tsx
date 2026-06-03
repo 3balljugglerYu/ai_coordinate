@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { applyTemplate } from "@/shared/generation/prompt-template";
 import { extractTemplateVariables } from "@/shared/generation/prompt-template";
 
-const MAX_CONTENT_LENGTH = 4000;
+// API (route.ts) / DB (prompt_overrides_content_check) の上限と同値に保つこと
+const MAX_CONTENT_LENGTH = 10000;
 const SIGNIFICANT_CHANGE_RATIO = 0.3; // ±30% で大幅変更とみなす
 
 interface Props {
