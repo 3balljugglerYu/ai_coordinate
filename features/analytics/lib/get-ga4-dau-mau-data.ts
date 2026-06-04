@@ -68,7 +68,8 @@ function getDauMauErrorMessage(error: unknown) {
   return "BigQuery から DAU/MAU を取得できませんでした。dataset 名、location、権限を確認してください。";
 }
 
-async function buildGa4DauMauData(
+/** createGa4RangeCachedFetcher でラップする前の本体(BigQuery クライアントをモックして単体テストするため export)。 */
+export async function buildGa4DauMauData(
   range: DashboardRange
 ): Promise<Ga4DauMauData> {
   if (!hasGa4BigQueryConfig()) {
