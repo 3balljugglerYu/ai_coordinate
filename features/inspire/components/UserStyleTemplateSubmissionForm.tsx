@@ -9,6 +9,7 @@ import {
   PSEUDO_INITIAL_PROGRESS,
   calculatePseudoProgress,
 } from "@/features/generation/lib/pseudo-progress";
+import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { ImageLightboxDialog } from "@/features/inspire/components/ImageLightboxDialog";
 import {
   AlertDialog,
@@ -394,7 +395,9 @@ export function UserStyleTemplateSubmissionForm({
     setGenerating(true);
     setErrorMessage(null);
     try {
-      const base64 = await readFileAsBase64(file);
+      // Vercel Serverless の本文上限 (4.5MB) 超過による 413 を防ぐため、送信前に縮小・再エンコード
+      const normalizedFile = await normalizeSourceImage(file);
+      const base64 = await readFileAsBase64(normalizedFile);
 
       // Creator Looks モード時は出所申告と同意 5 項目を一緒に送る (= Step 1 で完結)
       // ただし Step 1 段階では consent をまだ取っていないので、ここでは送らず
@@ -418,7 +421,7 @@ export function UserStyleTemplateSubmissionForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageBase64: base64,
-          imageMimeType: file.type,
+          imageMimeType: normalizedFile.type,
           alt: alt || null,
           ...creatorLooksPayload,
         }),
@@ -504,7 +507,9 @@ export function UserStyleTemplateSubmissionForm({
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      const base64 = await readFileAsBase64(file);
+      // Vercel Serverless の本文上限 (4.5MB) 超過による 413 を防ぐため、送信前に縮小・再エンコード
+      const normalizedFile = await normalizeSourceImage(file);
+      const base64 = await readFileAsBase64(normalizedFile);
       const previewResponse = await fetch(
         "/api/style-templates/preview-generation",
         {
@@ -512,7 +517,7 @@ export function UserStyleTemplateSubmissionForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             imageBase64: base64,
-            imageMimeType: file.type,
+            imageMimeType: normalizedFile.type,
             alt: alt || null,
             is_creator_looks: true,
             submission_source: submissionSource,
