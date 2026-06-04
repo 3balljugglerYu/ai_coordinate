@@ -32,7 +32,12 @@ export interface Ga4ExternalAccessRow {
 
 export interface Ga4DauRow {
   dateKey: string;
-  dau: number;
+  /** その日に logged_in='yes' イベントを持つ distinct 訪問者 */
+  loggedIn: number;
+  /** logged_in='no' のみ(ゲスト)の distinct 訪問者 */
+  guest: number;
+  /** logged_in 未取得(計測前/初回pageview取りこぼし)の distinct 訪問者 */
+  unknown: number;
 }
 
 export interface Ga4TopTransitionRow {

@@ -1,6 +1,8 @@
-import { Activity, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Ga4DauRow } from "@/features/analytics/lib/ga4-types";
+import { AdminDauMauTrendChartPanel } from "./AdminDauMauTrendChartPanel";
+import type { DauMauTrendPoint } from "./AdminDauMauTrendChart";
 
 interface AdminDauMauCardProps {
   dauRows: Ga4DauRow[];
@@ -16,12 +18,22 @@ function formatDateLabel(dateKey: string): string {
   return `${Number(month)}/${Number(day)}`;
 }
 
+function rowTotal(row: Ga4DauRow): number {
+  return row.loggedIn + row.guest + row.unknown;
+}
+
 export function AdminDauMauCard({ dauRows, mau }: AdminDauMauCardProps) {
-  const latestDau =
-    dauRows.length > 0 ? dauRows[dauRows.length - 1]!.dau : 0;
+  const latestTotal =
+    dauRows.length > 0 ? rowTotal(dauRows[dauRows.length - 1]!) : 0;
   const stickinessPct =
-    mau > 0 ? Number(((latestDau / mau) * 100).toFixed(1)) : null;
-  const maxCount = dauRows.reduce((max, row) => Math.max(max, row.dau), 0);
+    mau > 0 ? Number(((latestTotal / mau) * 100).toFixed(1)) : null;
+
+  const chartData: DauMauTrendPoint[] = dauRows.map((row) => ({
+    label: formatDateLabel(row.dateKey),
+    loggedIn: row.loggedIn,
+    guest: row.guest,
+    unknown: row.unknown,
+  }));
 
   return (
     <Card className="border-violet-200/60 bg-white/95 shadow-sm">
@@ -36,19 +48,19 @@ export function AdminDauMauCard({ dauRows, mau }: AdminDauMauCardProps) {
           アクセスユーザー（DAU / MAU）
         </CardTitle>
         <p className="text-xs text-slate-500">
-          サイト訪問者数（GA4・全訪問者。現状ログイン/未ログインは区別しません）。MAU は直近30日（当日含む）。
+          サイト訪問者数（GA4）。日次アクセスをログイン / 未ログイン別に表示します。MAU は直近30日の総アクセス（当日含む）。
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-xs font-medium text-slate-500">DAU（本日）</p>
+            <p className="text-xs font-medium text-slate-500">DAU（本日・計）</p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
-              {formatInt(latestDau)}
+              {formatInt(latestTotal)}
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-xs font-medium text-slate-500">MAU（30日）</p>
+            <p className="text-xs font-medium text-slate-500">MAU（30日・計）</p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
               {formatInt(mau)}
             </p>
@@ -62,46 +74,13 @@ export function AdminDauMauCard({ dauRows, mau }: AdminDauMauCardProps) {
         </div>
 
         <div>
-          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
-            <Activity className="h-3.5 w-3.5" aria-hidden />
-            日次アクセス（選択期間）
+          <p className="mb-2 text-xs font-medium text-slate-500">
+            日次アクセス（ログイン状態別）
           </p>
-          {dauRows.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm text-slate-500">
-              データはまだありません。
-            </div>
-          ) : (
-            <>
-              <div
-                className="flex h-16 items-end gap-0.5"
-                role="img"
-                aria-label="選択期間の日次アクセスユーザー推移"
-              >
-                {dauRows.map((row) => (
-                  <div
-                    key={row.dateKey}
-                    className="flex-1 rounded-t bg-violet-400/70"
-                    style={{
-                      height:
-                        maxCount > 0
-                          ? `${Math.max(
-                              (row.dau / maxCount) * 100,
-                              row.dau > 0 ? 6 : 0
-                            )}%`
-                          : "0%",
-                    }}
-                    title={`${formatDateLabel(row.dateKey)}: ${formatInt(row.dau)}`}
-                  />
-                ))}
-              </div>
-              <div className="mt-1 flex justify-between text-[10px] text-slate-400">
-                <span>{formatDateLabel(dauRows[0]!.dateKey)}</span>
-                <span>
-                  {formatDateLabel(dauRows[dauRows.length - 1]!.dateKey)}
-                </span>
-              </div>
-            </>
-          )}
+          <AdminDauMauTrendChartPanel data={chartData} />
+          <p className="mt-2 text-[11px] leading-5 text-slate-400">
+            ※「計測前/未取得」は logged_in 計測が行き渡る前の訪問。計測開始後は減っていきます。
+          </p>
         </div>
       </CardContent>
     </Card>

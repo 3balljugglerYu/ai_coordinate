@@ -23,7 +23,9 @@ const MAU_WINDOW_DAYS = 30;
 
 type BigQueryDauRow = {
   dateKey: string;
-  dau: number | string;
+  loggedIn: number | string;
+  guest: number | string;
+  unknown: number | string;
 };
 
 type BigQueryMauRow = {
@@ -130,7 +132,9 @@ async function buildGa4DauMauData(
 
     const dauRows = ((dauQueryResult ?? []) as BigQueryDauRow[]).map((row) => ({
       dateKey: row.dateKey,
-      dau: parseGa4Metric(row.dau),
+      loggedIn: parseGa4Metric(row.loggedIn),
+      guest: parseGa4Metric(row.guest),
+      unknown: parseGa4Metric(row.unknown),
     }));
     const mau = parseGa4Metric(
       ((mauQueryResult ?? []) as BigQueryMauRow[])[0]?.mau

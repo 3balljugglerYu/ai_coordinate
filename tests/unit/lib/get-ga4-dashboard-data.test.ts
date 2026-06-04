@@ -108,7 +108,7 @@ function dauMauOk() {
   return {
     dauMauStatus: "ready" as const,
     dauMauStatusMessage: null as string | null,
-    dauRows: [{ dateKey: "2026-01-01", dau: 3 }],
+    dauRows: [{ dateKey: "2026-01-01", loggedIn: 2, guest: 1, unknown: 0 }],
     mau: 5,
   };
 }
