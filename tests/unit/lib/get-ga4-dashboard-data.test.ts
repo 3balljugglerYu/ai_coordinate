@@ -6,11 +6,13 @@ import { getGa4EntryAccessData } from "@/features/analytics/lib/get-ga4-entry-ac
 import { getGa4ExternalAccessData } from "@/features/analytics/lib/get-ga4-external-access-data";
 import { getGa4PageFlowData } from "@/features/analytics/lib/get-ga4-page-flow-data";
 import { getGa4PageSummaryData } from "@/features/analytics/lib/get-ga4-page-summary-data";
+import { getGa4DauMauData } from "@/features/analytics/lib/get-ga4-dau-mau-data";
 
 jest.mock("@/features/analytics/lib/get-ga4-page-summary-data");
 jest.mock("@/features/analytics/lib/get-ga4-page-flow-data");
 jest.mock("@/features/analytics/lib/get-ga4-entry-access-data");
 jest.mock("@/features/analytics/lib/get-ga4-external-access-data");
+jest.mock("@/features/analytics/lib/get-ga4-dau-mau-data");
 
 const getGa4PageSummaryDataMock = getGa4PageSummaryData as jest.MockedFunction<
   typeof getGa4PageSummaryData
@@ -24,6 +26,9 @@ const getGa4EntryAccessDataMock = getGa4EntryAccessData as jest.MockedFunction<
 const getGa4ExternalAccessDataMock = getGa4ExternalAccessData as jest.MockedFunction<
   typeof getGa4ExternalAccessData
 >;
+const getGa4DauMauDataMock = getGa4DauMauData as jest.MockedFunction<
+  typeof getGa4DauMauData
+>;
 
 const MSG_PAGE_SUMMARY_ERROR =
   "GA4 データの取得に失敗しました。認証情報、Property 権限、または外部通信設定を確認してください。";
@@ -33,6 +38,8 @@ const MSG_ENTRY_ACCESS_ERROR =
   "BigQuery から入口ページ別アクセスを取得できませんでした。dataset 名、location、権限を確認してください。";
 const MSG_EXTERNAL_ACCESS_ERROR =
   "BigQuery から外部流入アクセスを取得できませんでした。dataset 名、location、権限を確認してください。";
+const MSG_DAU_MAU_ERROR =
+  "BigQuery から DAU/MAU を取得できませんでした。dataset 名、location、権限を確認してください。";
 
 function pageSummaryOk() {
   return {
@@ -97,6 +104,15 @@ function externalAccessOk() {
   };
 }
 
+function dauMauOk() {
+  return {
+    dauMauStatus: "ready" as const,
+    dauMauStatusMessage: null as string | null,
+    dauRows: [{ dateKey: "2026-01-01", dau: 3 }],
+    mau: 5,
+  };
+}
+
 describe("getGa4DashboardData", () => {
   const range: DashboardRange = "7d";
 
@@ -106,6 +122,7 @@ describe("getGa4DashboardData", () => {
     getGa4PageFlowDataMock.mockResolvedValue(pageFlowOk());
     getGa4EntryAccessDataMock.mockResolvedValue(entryAccessOk());
     getGa4ExternalAccessDataMock.mockResolvedValue(externalAccessOk());
+    getGa4DauMauDataMock.mockResolvedValue(dauMauOk());
   });
 
   test("getGa4DashboardData_range指定_4取得を同一rangeで並行呼び出しする", async () => {
@@ -119,6 +136,8 @@ describe("getGa4DashboardData", () => {
     expect(getGa4EntryAccessDataMock).toHaveBeenCalledWith(range);
     expect(getGa4ExternalAccessDataMock).toHaveBeenCalledTimes(1);
     expect(getGa4ExternalAccessDataMock).toHaveBeenCalledWith(range);
+    expect(getGa4DauMauDataMock).toHaveBeenCalledTimes(1);
+    expect(getGa4DauMauDataMock).toHaveBeenCalledWith(range);
   });
 
   test("getGa4DashboardData_全成功の場合_rangeと結果をマージして返す", async () => {
@@ -129,6 +148,7 @@ describe("getGa4DashboardData", () => {
       ...pageSummaryOk(),
       ...entryAccessOk(),
       ...externalAccessOk(),
+      ...dauMauOk(),
       ...pageFlowOk(),
       range,
     });
@@ -177,6 +197,18 @@ describe("getGa4DashboardData", () => {
     expect(result.externalAccessStatusMessage).toBe(MSG_EXTERNAL_ACCESS_ERROR);
     expect(result.externalAccessRows).toEqual([]);
     expect(result.status).toBe("ready");
+  });
+
+  test("getGa4DashboardData_DAUMAU失敗の場合_DAUMAU用errorスタブにする", async () => {
+    // Spec: GA4DASH-008
+    getGa4DauMauDataMock.mockRejectedValueOnce(new Error("bq dau"));
+    const result = await getGa4DashboardData(range);
+    expect(result.dauMauStatus).toBe("error");
+    expect(result.dauMauStatusMessage).toBe(MSG_DAU_MAU_ERROR);
+    expect(result.dauRows).toEqual([]);
+    expect(result.mau).toBe(0);
+    expect(result.status).toBe("ready");
+    expect(result.externalAccessStatus).toBe("ready");
   });
 
   test("getGa4DashboardData_複数失敗の場合_独立スタブと成功部分を併せて返す", async () => {

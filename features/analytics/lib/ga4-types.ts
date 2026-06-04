@@ -30,6 +30,11 @@ export interface Ga4ExternalAccessRow {
   totalExternalSessions: number;
 }
 
+export interface Ga4DauRow {
+  dateKey: string;
+  dau: number;
+}
+
 export interface Ga4TopTransitionRow {
   fromPage: string;
   toPage: string;
@@ -58,6 +63,10 @@ export interface Ga4DashboardData {
   externalAccessStatus: Ga4DashboardStatus;
   externalAccessStatusMessage: string | null;
   externalAccessRows: Ga4ExternalAccessRow[];
+  dauMauStatus: Ga4DashboardStatus;
+  dauMauStatusMessage: string | null;
+  dauRows: Ga4DauRow[];
+  mau: number;
   topTransitions: Ga4TopTransitionRow[];
   topDropoffPages: Ga4DropoffPageRow[];
   pageFlowStatus: Ga4DashboardStatus;

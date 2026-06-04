@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { DashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
+import { getGa4DauMauData } from "./get-ga4-dau-mau-data";
 import { getGa4EntryAccessData } from "./get-ga4-entry-access-data";
 import { getGa4ExternalAccessData } from "./get-ga4-external-access-data";
 import { getGa4PageFlowData } from "./get-ga4-page-flow-data";
@@ -15,12 +16,14 @@ export async function getGa4DashboardData(
     pageFlowResult,
     entryAccessResult,
     externalAccessResult,
+    dauMauResult,
   ] =
     await Promise.allSettled([
       getGa4PageSummaryData(range),
       getGa4PageFlowData(range),
       getGa4EntryAccessData(range),
       getGa4ExternalAccessData(range),
+      getGa4DauMauData(range),
     ]);
 
   const pageSummary =
@@ -66,11 +69,23 @@ export async function getGa4DashboardData(
           externalAccessRows: [],
         };
 
+  const dauMau =
+    dauMauResult.status === "fulfilled"
+      ? dauMauResult.value
+      : {
+          dauMauStatus: "error" as const,
+          dauMauStatusMessage:
+            "BigQuery から DAU/MAU を取得できませんでした。dataset 名、location、権限を確認してください。",
+          dauRows: [],
+          mau: 0,
+        };
+
   return {
     range,
     ...pageSummary,
     ...entryAccess,
     ...externalAccess,
+    ...dauMau,
     ...pageFlow,
   };
 }

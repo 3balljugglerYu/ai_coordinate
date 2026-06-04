@@ -7,6 +7,7 @@ import type {
   DashboardTrendPoint,
 } from "@/features/admin-dashboard/lib/dashboard-types";
 import type { Ga4DashboardData } from "@/features/analytics/lib/ga4-types";
+import { AdminDauMauCard } from "./AdminDauMauCard";
 import { AdminEntryAccessStackedCard } from "./AdminEntryAccessStackedCard";
 import { AdminExternalAccessStackedCard } from "./AdminExternalAccessStackedCard";
 import { AdminDropoffPagesCard } from "./AdminDropoffPagesCard";
@@ -58,6 +59,7 @@ function AnalyticsUnavailableCard({
 export function AdminPageAnalyticsAccessSection({
   ga4,
 }: AdminPageAnalyticsGa4SectionProps) {
+  const isDauMauReady = ga4.dauMauStatus === "ready";
   const isEntryAccessReady = ga4.entryAccessStatus === "ready";
   const isExternalAccessReady = ga4.externalAccessStatus === "ready";
 
@@ -94,6 +96,18 @@ export function AdminPageAnalyticsAccessSection({
           </div>
         ) : null}
       </div>
+
+      {isDauMauReady ? (
+        <AdminDauMauCard dauRows={ga4.dauRows} mau={ga4.mau} />
+      ) : (
+        <AnalyticsUnavailableCard
+          title="DAU / MAU は現在利用できません"
+          message={
+            ga4.dauMauStatusMessage ??
+            "BigQuery 設定または権限を確認してください。"
+          }
+        />
+      )}
 
       {isExternalAccessReady ? (
         <AdminExternalAccessStackedCard rows={ga4.externalAccessRows} />

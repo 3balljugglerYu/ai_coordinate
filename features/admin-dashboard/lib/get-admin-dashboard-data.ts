@@ -23,7 +23,6 @@ import {
   type StyleGuestGenerateAttemptRow,
   type StylePresetDashboardRow,
 } from "./build-one-tap-style-detailed";
-import { buildDauMau, type DauMauActivityRow } from "./build-dau-mau";
 import type {
   AdminDashboardData,
   AdminDashboardKpi,
@@ -564,11 +563,6 @@ export async function getAdminDashboardData(
   const activeThresholdIso = new Date(
     now.getTime() - 7 * 24 * 60 * 60 * 1000
   ).toISOString();
-  // DAU/MAU は range に依存せず直近30日固定。窓の起点 JST 日を丸ごと含めるため
-  // 1日分のバッファを取り、日次集計は buildDauMau 側で JST 30 日キーに絞り込む。
-  const dauMauWindowStartIso = new Date(
-    now.getTime() - 30 * 24 * 60 * 60 * 1000
-  ).toISOString();
 
   const [
     profilesResult,
@@ -583,7 +577,6 @@ export async function getAdminDashboardData(
     expiringResult,
     reportsResult,
     activeVisiblePostsResult,
-    dauMauActivityResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -644,12 +637,6 @@ export async function getAdminDashboardData(
       .eq("moderation_status", "visible")
       .not("user_id", "is", null)
       .gte("posted_at", activeThresholdIso),
-    supabase
-      .from("generated_images")
-      .select("user_id, created_at")
-      .not("user_id", "is", null)
-      .gte("created_at", dauMauWindowStartIso)
-      .lte("created_at", nowIso),
   ]);
 
   if (profilesResult.error) console.error("Dashboard profiles fetch error:", profilesResult.error);
@@ -679,7 +666,6 @@ export async function getAdminDashboardData(
   if (expiringResult.error) console.error("Dashboard expiring fetch error:", expiringResult.error);
   if (reportsResult.error) console.error("Dashboard reports fetch error:", reportsResult.error);
   if (activeVisiblePostsResult.error) console.error("Dashboard active visible fetch error:", activeVisiblePostsResult.error);
-  if (dauMauActivityResult.error) console.error("Dashboard DAU/MAU fetch error:", dauMauActivityResult.error);
 
   const profiles = (profilesResult.data ?? []) as ProfileRow[];
   const generatedImages = (generatedResult.data ?? []) as GeneratedImageRow[];
@@ -695,7 +681,6 @@ export async function getAdminDashboardData(
   const activeVisiblePosts = (activeVisiblePostsResult.data ?? []) as Array<{
     user_id: string | null;
   }>;
-  const dauMauActivity = (dauMauActivityResult.data ?? []) as DauMauActivityRow[];
   const pendingCount = pendingResult.count ?? 0;
 
   const currentProfiles = profiles.filter((profile) =>
@@ -833,7 +818,6 @@ export async function getAdminDashboardData(
     purchases: currentRevenueTransactions,
   });
   const modelMix = buildModelMix(currentGeneratedImages);
-  const dauMau = buildDauMau({ activity: dauMauActivity, now });
   const opsSummary = buildOpsSummary({
     jobs,
     revenueTransactions: currentRevenueTransactions,
@@ -894,7 +878,6 @@ export async function getAdminDashboardData(
     opsSummary,
     funnel,
     modelMix,
-    dauMau,
     recentPurchases,
     alerts,
     quickActions: adminQuickActionItems.map((item) => ({

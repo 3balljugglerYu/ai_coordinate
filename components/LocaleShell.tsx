@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { UnreadNotificationProvider } from "@/features/notifications/components/UnreadNotificationProvider";
 import { MissionDotProvider } from "@/features/challenges/components/MissionDotProvider";
 import { Ga4Script } from "@/features/analytics/components/Ga4Script";
+import { Ga4LoginStatus } from "@/features/analytics/components/Ga4LoginStatus";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
@@ -41,6 +42,7 @@ export async function LocaleShell({
       <CoordinateSourceStockSavePromptDialogHost />
       <Toaster />
       <Ga4Script />
+      <Ga4LoginStatus />
       <VercelAnalyticsScripts />
     </NextIntlClientProvider>
   );
