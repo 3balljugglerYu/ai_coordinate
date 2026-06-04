@@ -450,6 +450,8 @@ export const enMessages = {
       "Preview blocked by safety policy. Please try another image.",
     submitFailedTooLarge:
       "Image is too large. Compress to 10MB or less and try again.",
+    submitFailedTooSmall:
+      "Image resolution is too low. Please use an image at least 768px on both width and height.",
     previewFailed:
       "Preview generation failed. Please retry.",
     cancelButton: "Cancel",

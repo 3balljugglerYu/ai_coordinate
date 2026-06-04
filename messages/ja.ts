@@ -445,6 +445,8 @@ export const jaMessages = {
       "安全性ポリシーによりプレビューを生成できませんでした。別の画像でお試しください。",
     submitFailedTooLarge:
       "画像サイズが大きすぎます。10MB 以下に圧縮して再試行してください。",
+    submitFailedTooSmall:
+      "画像の解像度が低すぎます。幅・高さとも 768px 以上の画像を使ってください。",
     previewFailed: "プレビュー生成に失敗しました。やり直してください。",
     cancelButton: "キャンセル",
     featureLockedTitle: "この機能は現在限定公開中です",

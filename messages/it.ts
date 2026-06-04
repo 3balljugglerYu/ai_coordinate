@@ -453,6 +453,8 @@ export const itMessages = {
       "Anteprima bloccata dalla policy di sicurezza. Prova con un'altra immagine.",
     submitFailedTooLarge:
       "Immagine troppo grande. Comprimila a 10 MB o meno e riprova.",
+    submitFailedTooSmall:
+      "La risoluzione dell'immagine è troppo bassa. Usa un'immagine di almeno 768px in larghezza e altezza.",
     previewFailed:
       "Generazione dell'anteprima non riuscita. Riprova.",
     cancelButton: "Annulla",

@@ -4,6 +4,7 @@ import sharp from "sharp";
 import {
   processSubmissionImage,
   CREATOR_LOOKS_IMAGE_MAX_DIMENSION,
+  CREATOR_LOOKS_IMAGE_MIN_DIMENSION,
 } from "@/features/inspire/lib/creator-looks-image";
 
 /**
@@ -41,14 +42,14 @@ async function makeJpegBuffer(width: number, height: number): Promise<Buffer> {
 }
 
 describe("processSubmissionImage", () => {
-  test("有効な PNG (512x512) は WebP に再エンコードされ ok=true", async () => {
-    const buf = await makePngBuffer(512, 512);
+  test("有効な PNG (768x768) は WebP に再エンコードされ ok=true", async () => {
+    const buf = await makePngBuffer(768, 768);
     const result = await processSubmissionImage(buf);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.originalFormat).toBe("png");
-    expect(result.data.width).toBe(512);
-    expect(result.data.height).toBe(512);
+    expect(result.data.width).toBe(768);
+    expect(result.data.height).toBe(768);
     // 出力 buffer は WebP magic byte で始まる
     const head = result.data.webpBuffer.subarray(0, 12);
     // WebP の magic: "RIFF....WEBP"
@@ -57,13 +58,13 @@ describe("processSubmissionImage", () => {
   });
 
   test("有効な JPEG も同様に再エンコードされる", async () => {
-    const buf = await makeJpegBuffer(256, 384);
+    const buf = await makeJpegBuffer(800, 900);
     const result = await processSubmissionImage(buf);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.originalFormat).toBe("jpeg");
-    expect(result.data.width).toBe(256);
-    expect(result.data.height).toBe(384);
+    expect(result.data.width).toBe(800);
+    expect(result.data.height).toBe(900);
   });
 
   test("無効なバッファ (= テキスト) は INVALID_BUFFER で reject", async () => {
@@ -83,16 +84,25 @@ describe("processSubmissionImage", () => {
   });
 
   test("寸法上限 (4096) を超える画像は DIMENSION_TOO_LARGE で reject", async () => {
-    // 4097 にすると上限 (4096) を超える
-    const buf = await makePngBuffer(4097, 100);
+    // 4097 にすると上限 (4096) を超える。高さは下限 (768) 以上にして上限判定が先に出ることを保証
+    const buf = await makePngBuffer(4097, 800);
     const result = await processSubmissionImage(buf);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("DIMENSION_TOO_LARGE");
   });
 
-  test("ちょうど 4096 ピクセルは valid (= 境界条件)", async () => {
-    const buf = await makePngBuffer(4096, 100);
+  test("上限超過と下限未満を同時に満たす場合は MAX 判定を優先 (4097x500 → DIMENSION_TOO_LARGE)", async () => {
+    // 幅 4097 (>4096) かつ 高さ 500 (<768)。検証順 (MAX→MIN) を pin する
+    const buf = await makePngBuffer(4097, 500);
+    const result = await processSubmissionImage(buf);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("DIMENSION_TOO_LARGE");
+  });
+
+  test("ちょうど 4096 ピクセルは valid (= 上限境界条件)", async () => {
+    const buf = await makePngBuffer(4096, 768);
     const result = await processSubmissionImage(buf);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -103,11 +113,42 @@ describe("processSubmissionImage", () => {
     expect(CREATOR_LOOKS_IMAGE_MAX_DIMENSION).toBe(4096);
   });
 
+  test("寸法下限 (768) 未満の画像は DIMENSION_TOO_SMALL で reject", async () => {
+    // 両辺とも 768 未満 → 低解像度なので生成品質を落とす
+    const buf = await makePngBuffer(500, 500);
+    const result = await processSubmissionImage(buf);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("DIMENSION_TOO_SMALL");
+  });
+
+  test("片辺だけ 768 未満 (767x768) でも DIMENSION_TOO_SMALL で reject", async () => {
+    // 超縦長/横長の素材対策: 片方でも 768 未満なら reject
+    const buf = await makePngBuffer(767, 768);
+    const result = await processSubmissionImage(buf);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("DIMENSION_TOO_SMALL");
+  });
+
+  test("ちょうど 768 ピクセルは valid (= 下限境界条件)", async () => {
+    const buf = await makePngBuffer(768, 768);
+    const result = await processSubmissionImage(buf);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.width).toBe(768);
+    expect(result.data.height).toBe(768);
+  });
+
+  test("CREATOR_LOOKS_IMAGE_MIN_DIMENSION 定数は 768", () => {
+    expect(CREATOR_LOOKS_IMAGE_MIN_DIMENSION).toBe(768);
+  });
+
   test("WebP 入力も valid (= 既に WebP の画像も処理可)", async () => {
     const webpBuf = await sharp({
       create: {
-        width: 200,
-        height: 200,
+        width: 768,
+        height: 768,
         channels: 3,
         background: { r: 0, g: 0, b: 200 },
       },

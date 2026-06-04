@@ -450,6 +450,8 @@ export const koMessages = {
       "안전 정책에 의해 미리보기가 차단되었습니다. 다른 이미지로 다시 시도해 주세요.",
     submitFailedTooLarge:
       "이미지가 너무 큽니다. 10MB 이하로 압축한 뒤 다시 시도해 주세요.",
+    submitFailedTooSmall:
+      "이미지 해상도가 너무 낮습니다. 가로·세로 모두 768px 이상인 이미지를 사용해 주세요.",
     previewFailed:
       "미리보기 생성에 실패했습니다. 다시 시도해 주세요.",
     cancelButton: "취소",

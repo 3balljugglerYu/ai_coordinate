@@ -453,6 +453,8 @@ export const esMessages = {
       "La previsualización fue bloqueada por la política de seguridad. Prueba con otra imagen.",
     submitFailedTooLarge:
       "La imagen es demasiado grande. Comprímela a 10MB o menos y vuelve a intentarlo.",
+    submitFailedTooSmall:
+      "La resolución de la imagen es demasiado baja. Usa una imagen de al menos 768px de ancho y alto.",
     previewFailed:
       "La generación de la previsualización falló. Vuelve a intentarlo.",
     cancelButton: "Cancelar",

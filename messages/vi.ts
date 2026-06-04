@@ -450,6 +450,8 @@ export const viMessages = {
       "Bản xem trước bị chặn theo chính sách an toàn. Hãy thử với hình khác.",
     submitFailedTooLarge:
       "Hình quá lớn. Hãy nén xuống 10MB hoặc nhỏ hơn rồi thử lại.",
+    submitFailedTooSmall:
+      "Độ phân giải hình ảnh quá thấp. Vui lòng dùng hình có chiều rộng và chiều cao tối thiểu 768px.",
     previewFailed:
       "Tạo bản xem trước thất bại. Vui lòng thử lại.",
     cancelButton: "Hủy",

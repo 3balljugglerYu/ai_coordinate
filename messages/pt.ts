@@ -453,6 +453,8 @@ export const ptMessages = {
       "Preview bloqueado pela política de segurança. Tente outra imagem.",
     submitFailedTooLarge:
       "A imagem é muito grande. Comprima para até 10MB e tente novamente.",
+    submitFailedTooSmall:
+      "A resolução da imagem é muito baixa. Use uma imagem com pelo menos 768px de largura e altura.",
     previewFailed:
       "Falha ao gerar o preview. Tente novamente.",
     cancelButton: "Cancelar",

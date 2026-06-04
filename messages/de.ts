@@ -453,6 +453,8 @@ export const deMessages = {
       "Vorschau wurde durch die Sicherheitsrichtlinie blockiert. Bitte ein anderes Bild verwenden.",
     submitFailedTooLarge:
       "Bild ist zu groß. Komprimiere auf 10 MB oder weniger und versuche es erneut.",
+    submitFailedTooSmall:
+      "Die Bildauflösung ist zu niedrig. Bitte verwende ein Bild mit mindestens 768px Breite und Höhe.",
     previewFailed:
       "Vorschau-Generierung fehlgeschlagen. Bitte erneut versuchen.",
     cancelButton: "Abbrechen",
