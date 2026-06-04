@@ -34,6 +34,7 @@ import {
   buildSubmissionConsents,
   isAllConsentsAcknowledged,
 } from "@/features/inspire/lib/creator-looks-submission";
+import { isSubmissionImageTooSmall } from "@/features/inspire/lib/submission-image-constraints";
 
 interface PreviewSummary {
   provider: "openai" | "gemini";
@@ -89,6 +90,29 @@ async function readFileAsBase64(file: File): Promise<string> {
     };
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * 画像ファイルの自然寸法 (naturalWidth/Height) を読む。
+ * decode に失敗した場合は null を返し、寸法判定をサーバに委ねる
+ * (= ここでブロックせず、submit 時の normalize / server 検証に任せる)。
+ */
+async function readImageDimensions(
+  file: File,
+): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
   });
 }
 
@@ -340,7 +364,7 @@ export function UserStyleTemplateSubmissionForm({
   }, [alt, consent, file, leaveNow, previewResult]);
 
   const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       setErrorMessage(null);
       const next = event.target.files?.[0] ?? null;
       if (!next) {
@@ -356,6 +380,14 @@ export function UserStyleTemplateSubmissionForm({
       }
       if (next.size > MAX_FILE_SIZE_BYTES) {
         setErrorMessage(t("submitFailedTooLarge"));
+        return;
+      }
+      // 寸法下限チェック (= 低解像度・超縦長/横長の素材を選択時点で弾く)。
+      // decode 失敗時 (dims=null) はブロックせず server 検証に委ねる。
+      // 超縦長などで normalize 後に下限割れするケースは server が最終的に reject する。
+      const dims = await readImageDimensions(next);
+      if (dims && isSubmissionImageTooSmall(dims.width, dims.height)) {
+        setErrorMessage(t("submitFailedTooSmall"));
         return;
       }
       setFile(next);
@@ -446,6 +478,10 @@ export function UserStyleTemplateSubmissionForm({
         }
         if (data?.errorCode === "INSPIRE_IMAGE_TOO_LARGE") {
           setErrorMessage(t("submitFailedTooLarge"));
+          return;
+        }
+        if (data?.errorCode === "CREATOR_LOOKS_IMAGE_DIMENSION_TOO_SMALL") {
+          setErrorMessage(t("submitFailedTooSmall"));
           return;
         }
         if (
@@ -540,6 +576,10 @@ export function UserStyleTemplateSubmissionForm({
       }
       if (previewResponse.status === 400) {
         const data = await previewResponse.json().catch(() => null);
+        if (data?.errorCode === "CREATOR_LOOKS_IMAGE_DIMENSION_TOO_SMALL") {
+          setErrorMessage(t("submitFailedTooSmall"));
+          return;
+        }
         if (
           typeof data?.errorCode === "string" &&
           data.errorCode.startsWith("CREATOR_LOOKS_IMAGE_")

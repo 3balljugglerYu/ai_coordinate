@@ -449,6 +449,8 @@ export const zhTwMessages = {
       "因安全政策，預覽被擋下。請更換圖片再試。",
     submitFailedTooLarge:
       "圖片過大。請壓縮至 10MB 以下後再試。",
+    submitFailedTooSmall:
+      "圖片解析度過低。請使用寬與高皆不小於 768px 的圖片。",
     previewFailed:
       "預覽生成失敗，請重試。",
     cancelButton: "取消",

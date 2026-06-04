@@ -18,7 +18,11 @@
 
 import sharp from "sharp";
 
+import { SUBMISSION_IMAGE_MIN_DIMENSION } from "./submission-image-constraints";
+
 const MAX_DIMENSION = 4096;
+// 低解像度の素材は生成品質を落とすため、両辺とも下限を強制する (client と共有の定数)
+const MIN_DIMENSION = SUBMISSION_IMAGE_MIN_DIMENSION;
 const WEBP_QUALITY = 85;
 
 // magic-byte ベースで受け付ける format (sharp が判定する文字列)
@@ -35,6 +39,7 @@ export type ImageProcessingErrorCode =
   | "INVALID_BUFFER"
   | "FORMAT_NOT_SUPPORTED"
   | "DIMENSION_TOO_LARGE"
+  | "DIMENSION_TOO_SMALL"
   | "DIMENSION_MISSING"
   | "RE_ENCODE_FAILED";
 
@@ -125,6 +130,17 @@ export async function processSubmissionImage(
     };
   }
 
+  // 4b. 寸法下限 (= 低解像度の素材は生成品質を落とすため reject)。両辺とも MIN_DIMENSION 以上。
+  if (metadata.width < MIN_DIMENSION || metadata.height < MIN_DIMENSION) {
+    return {
+      ok: false,
+      error: {
+        code: "DIMENSION_TOO_SMALL",
+        message: `Image is ${metadata.width}x${metadata.height}, min required is ${MIN_DIMENSION}x${MIN_DIMENSION}`,
+      },
+    };
+  }
+
   // 5. WebP 再エンコード (= EXIF / GPS / ICC profile を捨てる、orientation は画素化)
   // sharp は明示的に withMetadata() を呼ばなければ EXIF を出力に含めない。
   // rotate() で EXIF orientation を画素方向に反映 (= reader 依存の表示崩れを防ぐ)。
@@ -164,4 +180,5 @@ export async function processSubmissionImage(
 }
 
 export const CREATOR_LOOKS_IMAGE_MAX_DIMENSION = MAX_DIMENSION;
+export const CREATOR_LOOKS_IMAGE_MIN_DIMENSION = MIN_DIMENSION;
 export const CREATOR_LOOKS_IMAGE_ALLOWED_FORMATS = ALLOWED_FORMATS;

@@ -452,6 +452,8 @@ export const idMessages = {
       "Pratinjau diblokir oleh kebijakan keamanan. Coba gambar lain.",
     submitFailedTooLarge:
       "Gambar terlalu besar. Kompres ke 10MB atau kurang dan coba lagi.",
+    submitFailedTooSmall:
+      "Resolusi gambar terlalu rendah. Gunakan gambar dengan lebar dan tinggi minimal 768px.",
     previewFailed:
       "Pembuatan pratinjau gagal. Silakan coba lagi.",
     cancelButton: "Batal",

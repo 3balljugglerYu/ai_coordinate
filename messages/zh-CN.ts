@@ -449,6 +449,8 @@ export const zhCnMessages = {
       "预览因安全策略被拦截。请尝试其他图片。",
     submitFailedTooLarge:
       "图片过大。请压缩到 10MB 以内后重试。",
+    submitFailedTooSmall:
+      "图片分辨率过低。请使用宽和高均不小于 768px 的图片。",
     previewFailed:
       "预览生成失败，请重试。",
     cancelButton: "取消",

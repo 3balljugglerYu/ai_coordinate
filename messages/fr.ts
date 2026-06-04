@@ -453,6 +453,8 @@ export const frMessages = {
       "Aperçu bloqué par la politique de sécurité. Essayez avec une autre image.",
     submitFailedTooLarge:
       "L'image est trop volumineuse. Compressez-la sous 10 Mo et réessayez.",
+    submitFailedTooSmall:
+      "La résolution de l'image est trop faible. Utilisez une image d'au moins 768px en largeur et en hauteur.",
     previewFailed:
       "La génération de l'aperçu a échoué. Veuillez réessayer.",
     cancelButton: "Annuler",
