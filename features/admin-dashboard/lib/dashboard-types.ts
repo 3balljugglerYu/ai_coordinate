@@ -29,6 +29,23 @@ export interface DashboardTrendPoint {
   generations: number;
 }
 
+export interface DashboardDauMauTrendPoint {
+  bucket: string;
+  label: string;
+  count: number;
+}
+
+export interface DashboardDauMauSummary {
+  /** 当日(JST)の distinct アクティブユーザー数 */
+  dau: number;
+  /** 直近30日(JST・当日含む)の distinct アクティブユーザー数 */
+  mau: number;
+  /** dau / mau * 100(小数1桁)。mau=0 のとき null */
+  stickinessPct: number | null;
+  /** 直近30日の日別 distinct アクティブユーザー数(30点) */
+  trend: DashboardDauMauTrendPoint[];
+}
+
 export interface DashboardRevenueSeries {
   key: string;
   label: string;
@@ -226,6 +243,7 @@ export interface AdminDashboardData {
   opsSummary: DashboardOpsSummary;
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
+  dauMau: DashboardDauMauSummary;
   recentPurchases: DashboardPurchaseRow[];
   alerts: DashboardAlertRow[];
   quickActions: DashboardQuickAction[];

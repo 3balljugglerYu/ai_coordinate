@@ -8,6 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminDashboardModeTabs } from "./AdminDashboardModeTabs";
 import { AdminDashboardRangeTabs } from "./AdminDashboardRangeTabs";
+import { AdminDauMauCard } from "./AdminDauMauCard";
 import { AdminKpiCard } from "./AdminKpiCard";
 import { AdminOpsSummaryCard } from "./AdminOpsSummaryCard";
 import { AdminPriorityAlertsCard } from "./AdminPriorityAlertsCard";
@@ -106,6 +107,10 @@ export function AdminDashboardView({
                 />
               );
             })}
+          </section>
+
+          <section>
+            <AdminDauMauCard dauMau={data.dauMau} />
           </section>
 
           <section>
