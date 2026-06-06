@@ -102,12 +102,22 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
       // 認証処理
       if (isSignUp) {
-        await signUp(
-          email,
-          password,
-          referralCode || undefined,
-          signupSource
-        );
+        if (redirectTarget === "/") {
+          await signUp(
+            email,
+            password,
+            referralCode || undefined,
+            signupSource
+          );
+        } else {
+          await signUp(
+            email,
+            password,
+            referralCode || undefined,
+            signupSource,
+            redirectTarget
+          );
+        }
         // サインアップ成功
         setError(null);
         toast({
@@ -199,6 +209,24 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     if (copiedSuccessfully) {
       setCopied(true);
     }
+  };
+
+  const buildAuthPageHref = (path: "/login" | "/signup") => {
+    const params = new URLSearchParams();
+    const redirectTarget = resolveRedirectTarget();
+
+    if (redirectTarget !== "/") {
+      params.set("next", redirectTarget);
+    }
+    if (referralCode) {
+      params.set("ref", referralCode);
+    }
+    if (signupSource) {
+      params.set("signup_source", signupSource);
+    }
+
+    const query = params.toString();
+    return query ? `${path}?${query}` : path;
   };
 
   return (
@@ -453,14 +481,20 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         {isSignUp ? (
           <p className="text-gray-600">
             {t("haveAccount")}{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
+            <Link
+              href={buildAuthPageHref("/login")}
+              className="font-medium text-primary hover:underline"
+            >
               {t("submitSignin")}
             </Link>
           </p>
         ) : (
           <p className="text-gray-600">
             {t("noAccount")}{" "}
-            <Link href="/signup" className="font-medium text-primary hover:underline">
+            <Link
+              href={buildAuthPageHref("/signup")}
+              className="font-medium text-primary hover:underline"
+            >
               {t("signupTitle")}
             </Link>
           </p>

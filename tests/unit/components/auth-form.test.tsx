@@ -213,7 +213,8 @@ describe("AuthForm unit tests from EARS specs", () => {
           validEmail,
           validPassword,
           undefined,
-          null
+          null,
+          "/style"
         );
       });
       expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
@@ -243,10 +244,34 @@ describe("AuthForm unit tests from EARS specs", () => {
           validEmail,
           validPassword,
           undefined,
-          "style"
+          "style",
+          "/style"
         );
       });
       expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
+    });
+
+    test("handleSubmit_redirectTo付き新規登録の場合_signUpとloginへnextを引き継ぐ", async () => {
+      const redirectTo = "/style?claim_wardrobe=1";
+      const { container } = render(
+        <AuthForm mode="signup" redirectTo={redirectTo} />
+      );
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          null,
+          redirectTo
+        );
+      });
+      expect(pushMock).toHaveBeenCalledWith(
+        "/login?next=%2Fstyle%3Fclaim_wardrobe%3D1"
+      );
     });
 
     test("handleSubmit_列挙対策でsignup成功解決される場合_汎用成功応答を維持する", async () => {
@@ -730,6 +755,29 @@ describe("AuthForm unit tests from EARS specs", () => {
       expect(screen.getByText("ログイン中...")).toBeInTheDocument();
 
       oauthDeferred.resolve({} as Awaited<ReturnType<typeof signInWithOAuth>>);
+    });
+
+    test("renderAuthForm_signinモードの新規登録リンクはredirectToをnextで引き継ぐ", () => {
+      render(<AuthForm mode="signin" redirectTo="/style?claim_wardrobe=1" />);
+
+      expect(screen.getByRole("link", { name: "新規登録" })).toHaveAttribute(
+        "href",
+        "/signup?next=%2Fstyle%3Fclaim_wardrobe%3D1"
+      );
+    });
+
+    test("renderAuthForm_signupモードのログインリンクはnextを維持する", () => {
+      useSearchParamsMock.mockReturnValue({
+        get: (key: string) =>
+          key === "next" ? "/style?claim_wardrobe=1" : null,
+      } as unknown as ReturnType<typeof useSearchParams>);
+
+      render(<AuthForm mode="signup" />);
+
+      expect(screen.getByRole("link", { name: "ログイン" })).toHaveAttribute(
+        "href",
+        "/login?next=%2Fstyle%3Fclaim_wardrobe%3D1"
+      );
     });
   });
 
