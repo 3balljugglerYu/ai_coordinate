@@ -95,10 +95,13 @@ export async function saveWardrobeImage(
   return { id: data.id as string };
 }
 
-/** JST の本日 0:00 を UTC ISO 文字列で返す (ゲスト生成の日次境界に合わせる)。 */
-function jstStartOfTodayIso(): string {
+/**
+ * 指定時刻 (epoch ms) が属する JST の日の 0:00 を UTC ISO 文字列で返す。
+ * ゲスト生成の日次境界 (JST) に合わせるための純粋関数 (テスト可能)。
+ */
+export function jstStartOfDayIso(nowMs: number): string {
   const jstOffsetMs = 9 * 60 * 60 * 1000;
-  const jst = new Date(Date.now() + jstOffsetMs);
+  const jst = new Date(nowMs + jstOffsetMs);
   const jstMidnightAsUtc = Date.UTC(
     jst.getUTCFullYear(),
     jst.getUTCMonth(),
@@ -120,7 +123,7 @@ export async function countTodaysWardrobeClaims(
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("generation_metadata->>source", "guest_wardrobe_claim")
-    .gte("created_at", jstStartOfTodayIso());
+    .gte("created_at", jstStartOfDayIso(Date.now()));
 
   if (error) {
     throw new Error(`Count wardrobe claims failed: ${error.message}`);
