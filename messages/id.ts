@@ -1413,6 +1413,12 @@ export const idMessages = {
     resultPlaceholder: "Gambar yang dihasilkan akan muncul di sini.",
     resultSaveHint:
       "Gunakan tombol unduh untuk menyimpan gambar yang ingin kamu pertahankan.",
+    wardrobeSaveButton: "Simpan ke lemari",
+    wardrobeSaveHelper: "Simpan untuk melihat lagi gaya ini kapan saja (perlu login, gratis).",
+    wardrobeSaveModalTitle: "Simpan gaya ini ke lemarimu",
+    wardrobeSaveModalDescription: "Masuk untuk menyimpan gaya buatanmu ke lemari dan melihatnya lagi atau mengoleksinya kapan saja. (30 dtk, gratis)",
+    wardrobeSaveSuccess: "Tersimpan ke lemarimu!",
+    wardrobeSaveError: "Gagal menyimpan. Silakan coba lagi nanti.",
     downloadAction: "Unduh",
     downloadAriaLabel: "Unduh hasil yang dihasilkan",
     downloadSuccessTitle: "Terunduh",

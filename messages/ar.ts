@@ -1411,6 +1411,12 @@ export const arMessages = {
     resultPlaceholder: "ستظهر صورتك المُنشأة هنا.",
     resultSaveHint:
       "استخدم زر التنزيل لحفظ أي صورة تريد الاحتفاظ بها.",
+    wardrobeSaveButton: "حفظ في الخزانة",
+    wardrobeSaveHelper: "احفظها لمشاهدة هذه الإطلالة في أي وقت (يلزم تسجيل الدخول، مجاني).",
+    wardrobeSaveModalTitle: "احفظ هذه الإطلالة في خزانتك",
+    wardrobeSaveModalDescription: "سجّل الدخول لحفظ إطلالاتك في الخزانة ومشاهدتها أو جمعها في أي وقت. (30 ثانية، مجاني)",
+    wardrobeSaveSuccess: "تم الحفظ في خزانتك!",
+    wardrobeSaveError: "تعذّر الحفظ. يرجى المحاولة لاحقًا.",
     downloadAction: "تنزيل",
     downloadAriaLabel: "تنزيل النتيجة المُنشأة",
     downloadSuccessTitle: "تم التنزيل",

@@ -1410,6 +1410,12 @@ export const koMessages = {
     resultPlaceholder: "생성된 이미지가 여기에 표시됩니다.",
     resultSaveHint:
       "보관하고 싶은 이미지는 다운로드 버튼으로 저장해 주세요.",
+    wardrobeSaveButton: "옷장에 저장",
+    wardrobeSaveHelper: "저장하면 이 코디를 언제든 다시 볼 수 있어요 (로그인 필요·무료)",
+    wardrobeSaveModalTitle: "이 코디를 옷장에 저장",
+    wardrobeSaveModalDescription: "로그인하면 생성한 코디가 옷장에 저장되어 언제든 다시 보고 모을 수 있어요. (30초·무료)",
+    wardrobeSaveSuccess: "옷장에 저장했어요!",
+    wardrobeSaveError: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
     downloadAction: "다운로드",
     downloadAriaLabel: "생성 결과 다운로드",
     downloadSuccessTitle: "다운로드 완료",

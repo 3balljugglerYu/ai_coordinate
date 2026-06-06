@@ -16,6 +16,7 @@ const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
   "download",
   "generate",
   "signup_click",
+  "wardrobe_save_click",
 ]);
 
 interface StyleEventsRouteDependencies {

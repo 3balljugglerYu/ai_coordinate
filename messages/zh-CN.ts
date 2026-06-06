@@ -1408,6 +1408,12 @@ export const zhCnMessages = {
     resultPlaceholder: "生成的图片会显示在此处。",
     resultSaveHint:
       "想保留的图片请用下载按钮保存。",
+    wardrobeSaveButton: "保存到衣橱",
+    wardrobeSaveHelper: "保存后可随时回看这套搭配（需登录·免费）",
+    wardrobeSaveModalTitle: "把这套搭配保存到衣橱",
+    wardrobeSaveModalDescription: "登录后即可把生成的搭配保存到衣橱，随时回看和收藏。（30秒·免费）",
+    wardrobeSaveSuccess: "已保存到衣橱！",
+    wardrobeSaveError: "保存失败，请稍后重试。",
     downloadAction: "下载",
     downloadAriaLabel: "下载生成结果",
     downloadSuccessTitle: "已下载",

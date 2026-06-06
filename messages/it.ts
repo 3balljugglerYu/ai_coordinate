@@ -1414,6 +1414,12 @@ export const itMessages = {
     resultPlaceholder: "La tua immagine generata apparirà qui.",
     resultSaveHint:
       "Usa il pulsante di download per salvare qualsiasi immagine vuoi conservare.",
+    wardrobeSaveButton: "Salva nell'armadio",
+    wardrobeSaveHelper: "Salvalo per rivedere questo look quando vuoi (login richiesto, gratis).",
+    wardrobeSaveModalTitle: "Salva questo look nel tuo armadio",
+    wardrobeSaveModalDescription: "Accedi per salvare i tuoi look nell'armadio e rivederli o collezionarli quando vuoi. (30 sec, gratis)",
+    wardrobeSaveSuccess: "Salvato nel tuo armadio!",
+    wardrobeSaveError: "Salvataggio non riuscito. Riprova più tardi.",
     downloadAction: "Scarica",
     downloadAriaLabel: "Scarica risultato generato",
     downloadSuccessTitle: "Scaricata",

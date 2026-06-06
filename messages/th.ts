@@ -1410,6 +1410,12 @@ export const thMessages = {
     resultPlaceholder: "รูปที่สร้างจะปรากฏที่นี่",
     resultSaveHint:
       "ใช้ปุ่มดาวน์โหลดเพื่อบันทึกรูปที่ต้องการเก็บ",
+    wardrobeSaveButton: "บันทึกลงตู้เสื้อผ้า",
+    wardrobeSaveHelper: "บันทึกไว้เพื่อกลับมาดูลุคนี้ได้ทุกเมื่อ (ต้องเข้าสู่ระบบ ฟรี)",
+    wardrobeSaveModalTitle: "บันทึกลุคนี้ลงตู้เสื้อผ้าของคุณ",
+    wardrobeSaveModalDescription: "เข้าสู่ระบบเพื่อบันทึกลุคที่สร้างลงตู้เสื้อผ้า แล้วกลับมาดูหรือสะสมได้ทุกเมื่อ (30 วินาที ฟรี)",
+    wardrobeSaveSuccess: "บันทึกลงตู้เสื้อผ้าแล้ว!",
+    wardrobeSaveError: "บันทึกไม่สำเร็จ โปรดลองใหม่ภายหลัง",
     downloadAction: "ดาวน์โหลด",
     downloadAriaLabel: "ดาวน์โหลดผลลัพธ์ที่สร้าง",
     downloadSuccessTitle: "ดาวน์โหลดแล้ว",

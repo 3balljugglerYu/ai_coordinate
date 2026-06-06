@@ -43,6 +43,8 @@ export interface ImageDownloadButtonProps {
   messages: ImageDownloadButtonMessages;
   /** 成功時の追加処理（usage tracking 等）。トースト表示は本コンポーネントが担う。 */
   callbacks?: DownloadCallbacks;
+  /** DL する Blob を加工する任意の変換（ゲストの透かし焼き込み等）。 */
+  transformBlob?: (blob: Blob) => Promise<Blob>;
 }
 
 /**
@@ -60,6 +62,7 @@ export function ImageDownloadButton({
   ariaLabel,
   messages,
   callbacks,
+  transformBlob,
 }: ImageDownloadButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -100,6 +103,7 @@ export function ImageDownloadButton({
             callbacks?.onDownloadSuccess?.();
           },
         },
+        transformBlob,
       );
     } catch (error) {
       console.error("ImageDownloadButton error:", error);

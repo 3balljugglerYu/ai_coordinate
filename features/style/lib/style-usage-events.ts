@@ -8,12 +8,17 @@ export type StyleUsageEventType =
   | "generate"
   | "download"
   | "rate_limited"
-  | "signup_click";
+  | "signup_click"
+  | "wardrobe_save_click"
+  | "wardrobe_save_completed";
+// client から直接送信を許可する公開イベント。wardrobe_save_completed は
+// claim 成功時に server 側でのみ記録するため含めない。
 export type StylePublicUsageEventType =
   | "visit"
   | "download"
   | "generate"
-  | "signup_click";
+  | "signup_click"
+  | "wardrobe_save_click";
 export type StyleUsageAuthState = "authenticated" | "guest";
 
 export interface RecordStyleUsageEventInput {

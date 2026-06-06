@@ -1410,6 +1410,12 @@ export const enMessages = {
     resultPlaceholder: "Your generated image will appear here.",
     resultSaveHint:
       "Use the download button to save any image you want to keep.",
+    wardrobeSaveButton: "Save to closet",
+    wardrobeSaveHelper: "Save it to revisit this look anytime (login required, free).",
+    wardrobeSaveModalTitle: "Save this look to your closet",
+    wardrobeSaveModalDescription: "Log in to save your looks to your closet and revisit or collect them anytime. (30 sec, free)",
+    wardrobeSaveSuccess: "Saved to your closet!",
+    wardrobeSaveError: "Couldn't save. Please try again later.",
     downloadAction: "Download",
     downloadAriaLabel: "Download generated result",
     downloadSuccessTitle: "Downloaded",

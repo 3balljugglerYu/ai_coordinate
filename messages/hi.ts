@@ -1412,6 +1412,12 @@ export const hiMessages = {
     resultPlaceholder: "आपकी उत्पन्न छवि यहाँ दिखाई देगी।",
     resultSaveHint:
       "जिस छवि को आप रखना चाहते हैं उसे सहेजने के लिए डाउनलोड बटन का उपयोग करें।",
+    wardrobeSaveButton: "अलमारी में सहेजें",
+    wardrobeSaveHelper: "इस लुक को कभी भी दोबारा देखने के लिए सहेजें (लॉगिन ज़रूरी, मुफ़्त)।",
+    wardrobeSaveModalTitle: "इस लुक को अपनी अलमारी में सहेजें",
+    wardrobeSaveModalDescription: "लॉगिन करें और अपने बनाए लुक अलमारी में सहेजें, उन्हें कभी भी दोबारा देखें या इकट्ठा करें। (30 सेकंड, मुफ़्त)",
+    wardrobeSaveSuccess: "आपकी अलमारी में सहेजा गया!",
+    wardrobeSaveError: "सहेजा नहीं जा सका। कृपया बाद में पुनः प्रयास करें।",
     downloadAction: "डाउनलोड",
     downloadAriaLabel: "उत्पन्न परिणाम डाउनलोड करें",
     downloadSuccessTitle: "डाउनलोड हो गया",

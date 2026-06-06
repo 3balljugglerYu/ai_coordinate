@@ -1414,6 +1414,12 @@ export const frMessages = {
     resultPlaceholder: "Votre image générée s'affichera ici.",
     resultSaveHint:
       "Utilisez le bouton de téléchargement pour enregistrer toute image que vous voulez garder.",
+    wardrobeSaveButton: "Enregistrer dans le dressing",
+    wardrobeSaveHelper: "Enregistrez pour revoir ce look à tout moment (connexion requise, gratuit).",
+    wardrobeSaveModalTitle: "Enregistrer ce look dans votre dressing",
+    wardrobeSaveModalDescription: "Connectez-vous pour enregistrer vos looks dans votre dressing et les revoir ou les collectionner à tout moment. (30 s, gratuit)",
+    wardrobeSaveSuccess: "Enregistré dans votre dressing !",
+    wardrobeSaveError: "Échec de l'enregistrement. Veuillez réessayer plus tard.",
     downloadAction: "Télécharger",
     downloadAriaLabel: "Télécharger le résultat généré",
     downloadSuccessTitle: "Téléchargée",

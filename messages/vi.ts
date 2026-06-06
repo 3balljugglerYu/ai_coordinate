@@ -1411,6 +1411,12 @@ export const viMessages = {
     resultPlaceholder: "Hình bạn tạo sẽ xuất hiện tại đây.",
     resultSaveHint:
       "Dùng nút tải xuống để lưu hình bạn muốn giữ lại.",
+    wardrobeSaveButton: "Lưu vào tủ đồ",
+    wardrobeSaveHelper: "Lưu lại để xem lại bộ đồ này bất cứ lúc nào (cần đăng nhập, miễn phí).",
+    wardrobeSaveModalTitle: "Lưu bộ đồ này vào tủ đồ của bạn",
+    wardrobeSaveModalDescription: "Đăng nhập để lưu các bộ đồ đã tạo vào tủ đồ và xem lại hoặc sưu tầm bất cứ lúc nào. (30 giây, miễn phí)",
+    wardrobeSaveSuccess: "Đã lưu vào tủ đồ của bạn!",
+    wardrobeSaveError: "Không thể lưu. Vui lòng thử lại sau.",
     downloadAction: "Tải xuống",
     downloadAriaLabel: "Tải kết quả đã tạo",
     downloadSuccessTitle: "Đã tải xuống",

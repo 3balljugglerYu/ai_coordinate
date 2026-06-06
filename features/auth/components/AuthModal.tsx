@@ -6,9 +6,19 @@ interface AuthModalProps {
   open: boolean;
   onClose: () => void;
   redirectTo?: string;
+  /** 任意の文脈見出し（例: クローゼット保存導線）。指定時はフォーム上部に表示。 */
+  title?: string;
+  /** 見出しの下に出すメリット説明文。 */
+  description?: string;
 }
 
-export function AuthModal({ open, onClose, redirectTo = "/" }: AuthModalProps) {
+export function AuthModal({
+  open,
+  onClose,
+  redirectTo = "/",
+  title,
+  description,
+}: AuthModalProps) {
   useEffect(() => {
     if (!open) return;
     const originalOverflow = document.body.style.overflow;
@@ -34,6 +44,18 @@ export function AuthModal({ open, onClose, redirectTo = "/" }: AuthModalProps) {
           <X className="h-5 w-5 m-2 text-gray-600" />
         </button>
         <div className="relative rounded-2xl bg-white shadow-2xl">
+          {title || description ? (
+            <div className="border-b border-gray-100 px-6 pb-4 pt-6 text-center">
+              {title ? (
+                <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+              ) : null}
+              {description ? (
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  {description}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <AuthForm mode="signin" redirectTo={redirectTo} />
         </div>
       </div>

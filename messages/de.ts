@@ -1414,6 +1414,12 @@ export const deMessages = {
     resultPlaceholder: "Dein generiertes Bild erscheint hier.",
     resultSaveHint:
       "Verwende den Download-Button, um Bilder zu speichern, die du behalten möchtest.",
+    wardrobeSaveButton: "Im Kleiderschrank speichern",
+    wardrobeSaveHelper: "Speichere es, um dieses Outfit jederzeit wiederzusehen (Login nötig, kostenlos).",
+    wardrobeSaveModalTitle: "Dieses Outfit im Kleiderschrank speichern",
+    wardrobeSaveModalDescription: "Melde dich an, um deine Outfits im Kleiderschrank zu speichern und jederzeit wiederzusehen oder zu sammeln. (30 Sek., kostenlos)",
+    wardrobeSaveSuccess: "Im Kleiderschrank gespeichert!",
+    wardrobeSaveError: "Speichern fehlgeschlagen. Bitte versuche es später erneut.",
     downloadAction: "Herunterladen",
     downloadAriaLabel: "Generiertes Ergebnis herunterladen",
     downloadSuccessTitle: "Heruntergeladen",

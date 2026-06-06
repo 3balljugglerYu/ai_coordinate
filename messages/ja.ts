@@ -1350,6 +1350,12 @@ export const jaMessages = {
     resultPlaceholder: "生成した画像がここに表示されます",
     resultSaveHint:
       "必要な画像はダウンロードボタンから保存してください。",
+    wardrobeSaveButton: "クローゼットに保存",
+    wardrobeSaveHelper: "保存すると、この着せ替えをいつでも見返せます（要ログイン・無料）",
+    wardrobeSaveModalTitle: "この子をクローゼットに保存",
+    wardrobeSaveModalDescription: "ログインすると、生成した着せ替えがクローゼットに保存され、いつでも見返し・集められます。（30秒・無料）",
+    wardrobeSaveSuccess: "クローゼットに保存しました！",
+    wardrobeSaveError: "保存に失敗しました。時間をおいて再試行してください。",
     downloadAction: "ダウンロード",
     downloadAriaLabel: "生成結果をダウンロード",
     downloadSuccessTitle: "ダウンロードしました",
