@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import {
   postWardrobeClaimRoute,
   WARDROBE_CLAIM_MAX_IMAGE_BYTES,
-  WARDROBE_CLAIM_DAILY_CAP,
+  WARDROBE_CLAIM_MAX_PER_USER,
 } from "@/app/api/wardrobe/claim/handler";
 
 const TINY_PNG_DATA_URL =
@@ -23,7 +23,7 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     getUserFn: jest.fn().mockResolvedValue({ id: "user-1" }),
     saveWardrobeImageFn: jest.fn().mockResolvedValue({ id: "img-99" }),
     recordStyleUsageEventFn: jest.fn().mockResolvedValue(undefined),
-    countTodaysWardrobeClaimsFn: jest.fn().mockResolvedValue(0),
+    countWardrobeClaimsFn: jest.fn().mockResolvedValue(0),
     ...overrides,
   };
 }
@@ -188,21 +188,19 @@ describe("postWardrobeClaimRoute", () => {
     consoleSpy.mockRestore();
   });
 
-  test("1日の上限到達: 429 で保存も記録もしない", async () => {
+  test("生涯上限(既に claim 済み)到達: 429 で保存も記録もしない", async () => {
     const deps = makeDeps({
-      countTodaysWardrobeClaimsFn: jest
+      countWardrobeClaimsFn: jest
         .fn()
-        .mockResolvedValue(WARDROBE_CLAIM_DAILY_CAP),
+        .mockResolvedValue(WARDROBE_CLAIM_MAX_PER_USER),
     });
     const res = await postWardrobeClaimRoute(
       buildRequest({ imageBase64: TINY_PNG_DATA_URL }),
       deps,
     );
     expect(res.status).toBe(429);
-    expect((await res.json()).errorCode).toBe(
-      "WARDROBE_CLAIM_DAILY_CAP_EXCEEDED",
-    );
-    expect(deps.countTodaysWardrobeClaimsFn).toHaveBeenCalledWith("user-1");
+    expect((await res.json()).errorCode).toBe("WARDROBE_CLAIM_ALREADY_CLAIMED");
+    expect(deps.countWardrobeClaimsFn).toHaveBeenCalledWith("user-1");
     expect(deps.saveWardrobeImageFn).not.toHaveBeenCalled();
     expect(deps.recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
@@ -212,7 +210,7 @@ describe("postWardrobeClaimRoute", () => {
       .spyOn(console, "error")
       .mockImplementation(() => {});
     const deps = makeDeps({
-      countTodaysWardrobeClaimsFn: jest
+      countWardrobeClaimsFn: jest
         .fn()
         .mockRejectedValue(new Error("count query down")),
     });
@@ -225,7 +223,7 @@ describe("postWardrobeClaimRoute", () => {
     consoleSpy.mockRestore();
   });
 
-  test("WARDROBE_CLAIM_DAILY_CAP は 1", () => {
-    expect(WARDROBE_CLAIM_DAILY_CAP).toBe(1);
+  test("WARDROBE_CLAIM_MAX_PER_USER は 1(生涯1回)", () => {
+    expect(WARDROBE_CLAIM_MAX_PER_USER).toBe(1);
   });
 });

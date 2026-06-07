@@ -28,9 +28,19 @@ interface AuthFormProps {
   mode: "signin" | "signup";
   onSuccess?: () => void;
   redirectTo?: string;
+  /**
+   * ログイン↔新規登録の切替リンクを隠す。クローゼット保存導線のように
+   * 新規登録に固定したい場合に true(既存アカウントへの安易な連携を防ぐ）。
+   */
+  hideModeSwitch?: boolean;
 }
 
-export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  onSuccess,
+  redirectTo,
+  hideModeSwitch,
+}: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -476,7 +486,8 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         </div>
       </div>
 
-      {/* 切り替えリンク */}
+      {/* 切り替えリンク (hideModeSwitch のときは出さない=signup 固定) */}
+      {!hideModeSwitch ? (
       <div className="mt-6 text-center text-sm">
         {isSignUp ? (
           <p className="text-gray-600">
@@ -500,6 +511,7 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
           </p>
         )}
       </div>
+      ) : null}
       </Card>
 
       {/* WebView Google ログインブロック ダイアログ（iOS用） */}

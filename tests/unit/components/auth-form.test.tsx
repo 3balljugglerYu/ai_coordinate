@@ -10,7 +10,7 @@ jest.mock("next-intl", () => {
     useTranslations: (namespace?: string) => {
       const table =
         namespace && namespace in jaMessages
-          ? (jaMessages as Record<string, Record<string, string>>)[namespace]
+          ? (jaMessages as unknown as Record<string, Record<string, string>>)[namespace]
           : {};
 
       return (key: string) => table[key] ?? key;
@@ -127,7 +127,7 @@ describe("AuthForm unit tests from EARS specs", () => {
         return null;
       },
     } as unknown as ReturnType<typeof useSearchParams>);
-    useToastMock.mockReturnValue({
+    (useToastMock as jest.Mock).mockReturnValue({
       toast: toastMock,
     });
 
@@ -136,6 +136,15 @@ describe("AuthForm unit tests from EARS specs", () => {
     signInWithOAuthMock.mockResolvedValue(
       {} as Awaited<ReturnType<typeof signInWithOAuth>>
     );
+  });
+
+  test("hideModeSwitch_signup固定でログインへの切替リンクを出さない", () => {
+    // 通常の signup ではログインへの切替リンクがある
+    const { container, rerender } = render(<AuthForm mode="signup" />);
+    expect(container.querySelector('a[href="/login"]')).not.toBeNull();
+    // hideModeSwitch=true なら切替リンクを出さない(=既存アカウントへの誘導を断つ)
+    rerender(<AuthForm mode="signup" hideModeSwitch />);
+    expect(container.querySelector('a[href="/login"]')).toBeNull();
   });
 
   describe("AUTH-001 handleSubmit", () => {
@@ -278,7 +287,7 @@ describe("AuthForm unit tests from EARS specs", () => {
       // ============================================================
       // Arrange
       // ============================================================
-      signUpMock.mockResolvedValueOnce(undefined as Awaited<ReturnType<typeof signUp>>);
+      signUpMock.mockResolvedValueOnce(undefined as unknown as Awaited<ReturnType<typeof signUp>>);
       const { container } = render(<AuthForm mode="signup" />);
       fillSignUpInputs({ email: validEmail, password: validPassword });
 

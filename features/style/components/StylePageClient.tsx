@@ -2120,6 +2120,8 @@ export function StylePageClient({
             ? t("wardrobeSaveModalDescription")
             : undefined
         }
+        mode={authModalContext === "wardrobe" ? "signup" : "signin"}
+        hideModeSwitch={authModalContext === "wardrobe"}
       />
 
       <SubscriptionUpsellDialog

@@ -4,7 +4,7 @@ import { getUser } from "@/lib/auth";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import {
   saveWardrobeImage,
-  countTodaysWardrobeClaims,
+  countWardrobeClaims,
 } from "./save-wardrobe-image";
 
 /**
@@ -23,9 +23,11 @@ import {
 // デコード後 3MB を上限とする。client は送信前に normalizeSourceImage で縮小する想定。
 export const WARDROBE_CLAIM_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
-// claim の 1 ユーザー 1 日あたり上限 (JST)。ゲスト生成が 1/日 のため整合させる。
-// 任意画像の連投アップロード濫用を防ぐ最小限のガード。
-export const WARDROBE_CLAIM_DAILY_CAP = 1;
+// claim の 1 アカウントあたり生涯上限。claim は「ゲスト時代の1枚を登録時に1度だけ
+// 持ち込む」転換用途なので生涯1回に限定する。これにより、既存アカウントがログアウト→
+// ゲスト無料生成→claim を繰り返して自アカウントに毎日貯める濫用を、ログイン/signup の
+// UI 導線や OAuth に依らずサーバ側で確実に防ぐ。
+export const WARDROBE_CLAIM_MAX_PER_USER = 1;
 
 export type WardrobeClaimErrorCode =
   | "MISSING_IMAGE"
@@ -120,7 +122,7 @@ export interface WardrobeClaimDependencies {
   getUserFn?: typeof getUser;
   saveWardrobeImageFn?: typeof saveWardrobeImage;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
-  countTodaysWardrobeClaimsFn?: typeof countTodaysWardrobeClaims;
+  countWardrobeClaimsFn?: typeof countWardrobeClaims;
 }
 
 export async function postWardrobeClaimRoute(
@@ -132,8 +134,8 @@ export async function postWardrobeClaimRoute(
     dependencies.saveWardrobeImageFn ?? saveWardrobeImage;
   const recordStyleUsageEventFn =
     dependencies.recordStyleUsageEventFn ?? recordStyleUsageEvent;
-  const countTodaysWardrobeClaimsFn =
-    dependencies.countTodaysWardrobeClaimsFn ?? countTodaysWardrobeClaims;
+  const countWardrobeClaimsFn =
+    dependencies.countWardrobeClaimsFn ?? countWardrobeClaims;
 
   try {
     const user = await getUserFn();
@@ -155,14 +157,15 @@ export async function postWardrobeClaimRoute(
       );
     }
 
-    // 1 日上限ガード (H3)。count 取得に失敗したら fail-open で保存を優先する
-    // (転換を取りこぼさない。濫用は稀な count 失敗時のみすり抜ける程度)。
+    // 生涯上限ガード。claim は 1 アカウント 1 回まで(転換は一生に一度)。既に claim 済みなら
+    // 拒否する。これでログイン/signup どちらの導線・OAuth でも、既存アカウントが毎日 claim で
+    // 貯める濫用を防ぐ。count 取得失敗時は fail-open(保存を優先=転換を取りこぼさない)。
     try {
-      const todaysClaims = await countTodaysWardrobeClaimsFn(user.id);
-      if (todaysClaims >= WARDROBE_CLAIM_DAILY_CAP) {
+      const priorClaims = await countWardrobeClaimsFn(user.id);
+      if (priorClaims >= WARDROBE_CLAIM_MAX_PER_USER) {
         return jsonError(
-          "You have reached today's save limit.",
-          "WARDROBE_CLAIM_DAILY_CAP_EXCEEDED",
+          "This account has already used its wardrobe save.",
+          "WARDROBE_CLAIM_ALREADY_CLAIMED",
           429,
         );
       }

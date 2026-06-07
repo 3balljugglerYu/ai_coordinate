@@ -96,34 +96,19 @@ export async function saveWardrobeImage(
 }
 
 /**
- * 指定時刻 (epoch ms) が属する JST の日の 0:00 を UTC ISO 文字列で返す。
- * ゲスト生成の日次境界 (JST) に合わせるための純粋関数 (テスト可能)。
- */
-export function jstStartOfDayIso(nowMs: number): string {
-  const jstOffsetMs = 9 * 60 * 60 * 1000;
-  const jst = new Date(nowMs + jstOffsetMs);
-  const jstMidnightAsUtc = Date.UTC(
-    jst.getUTCFullYear(),
-    jst.getUTCMonth(),
-    jst.getUTCDate(),
-  );
-  return new Date(jstMidnightAsUtc - jstOffsetMs).toISOString();
-}
-
-/**
- * 当該ユーザーが JST 本日中に claim 保存した枚数を数える (1 日上限ガード用)。
+ * 当該ユーザーが claim 保存した累計枚数(全期間)を数える。
+ * claim は「ゲスト時代の1枚を登録時に1度だけ持ち込む」用途。既存アカウントが
+ * (ログアウト→ゲスト無料生成→claim を繰り返して)自アカウントに毎日貯める濫用を
+ * 防ぐため、生涯上限(1アカウント1回)の判定に使う。
  * `generation_metadata.source='guest_wardrobe_claim'` の行のみを対象にする。
  */
-export async function countTodaysWardrobeClaims(
-  userId: string,
-): Promise<number> {
+export async function countWardrobeClaims(userId: string): Promise<number> {
   const supabase = createAdminClient();
   const { count, error } = await supabase
     .from("generated_images")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("generation_metadata->>source", "guest_wardrobe_claim")
-    .gte("created_at", jstStartOfDayIso(Date.now()));
+    .eq("generation_metadata->>source", "guest_wardrobe_claim");
 
   if (error) {
     throw new Error(`Count wardrobe claims failed: ${error.message}`);

@@ -10,6 +10,10 @@ interface AuthModalProps {
   title?: string;
   /** 見出しの下に出すメリット説明文。 */
   description?: string;
+  /** 既定で表示する認証モード。保存導線では "signup" を渡す。 */
+  mode?: "signin" | "signup";
+  /** ログイン↔新規登録の切替リンクを隠す(signup 固定にしたいとき)。 */
+  hideModeSwitch?: boolean;
 }
 
 export function AuthModal({
@@ -18,6 +22,8 @@ export function AuthModal({
   redirectTo = "/",
   title,
   description,
+  mode = "signin",
+  hideModeSwitch,
 }: AuthModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -56,7 +62,11 @@ export function AuthModal({
               ) : null}
             </div>
           ) : null}
-          <AuthForm mode="signin" redirectTo={redirectTo} />
+          <AuthForm
+            mode={mode}
+            redirectTo={redirectTo}
+            hideModeSwitch={hideModeSwitch}
+          />
         </div>
       </div>
     </div>
