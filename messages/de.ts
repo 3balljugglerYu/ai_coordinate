@@ -1420,6 +1420,7 @@ export const deMessages = {
     wardrobeSaveModalDescription: "Melde dich an, um deine Outfits im Kleiderschrank zu speichern und jederzeit wiederzusehen oder zu sammeln. (30 Sek., kostenlos)",
     wardrobeSaveSuccess: "Im Kleiderschrank gespeichert!",
     wardrobeSaveError: "Speichern fehlgeschlagen. Bitte versuche es später erneut.",
+    wardrobeSaveAlreadyClaimed: "Du hast offenbar bereits ein Konto. Dieses Bild kann nicht in deinem Konto gespeichert werden. Bitte melde dich an und generiere es erneut.",
     downloadAction: "Herunterladen",
     downloadAriaLabel: "Generiertes Ergebnis herunterladen",
     downloadSuccessTitle: "Heruntergeladen",

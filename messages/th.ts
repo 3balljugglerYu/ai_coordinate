@@ -1416,6 +1416,7 @@ export const thMessages = {
     wardrobeSaveModalDescription: "เข้าสู่ระบบเพื่อบันทึกลุคที่สร้างลงตู้เสื้อผ้า แล้วกลับมาดูหรือสะสมได้ทุกเมื่อ (30 วินาที ฟรี)",
     wardrobeSaveSuccess: "บันทึกลงตู้เสื้อผ้าแล้ว!",
     wardrobeSaveError: "บันทึกไม่สำเร็จ โปรดลองใหม่ภายหลัง",
+    wardrobeSaveAlreadyClaimed: "ดูเหมือนคุณมีบัญชีอยู่แล้ว รูปนี้ไม่สามารถบันทึกไปยังบัญชีของคุณได้ กรุณาเข้าสู่ระบบแล้วลองสร้างใหม่อีกครั้ง",
     downloadAction: "ดาวน์โหลด",
     downloadAriaLabel: "ดาวน์โหลดผลลัพธ์ที่สร้าง",
     downloadSuccessTitle: "ดาวน์โหลดแล้ว",

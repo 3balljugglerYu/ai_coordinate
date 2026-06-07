@@ -1420,6 +1420,7 @@ export const ptMessages = {
     wardrobeSaveModalDescription: "Faça login para salvar seus looks no guarda-roupa e revê-los ou colecioná-los quando quiser. (30 s, grátis)",
     wardrobeSaveSuccess: "Salvo no seu guarda-roupa!",
     wardrobeSaveError: "Não foi possível salvar. Tente novamente mais tarde.",
+    wardrobeSaveAlreadyClaimed: "Parece que você já tem uma conta. Esta imagem não pode ser salva na sua conta. Faça login e gere novamente.",
     downloadAction: "Baixar",
     downloadAriaLabel: "Baixar resultado gerado",
     downloadSuccessTitle: "Baixado",

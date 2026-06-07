@@ -1414,6 +1414,7 @@ export const zhCnMessages = {
     wardrobeSaveModalDescription: "登录后即可把生成的搭配保存到衣橱，随时回看和收藏。（30秒·免费）",
     wardrobeSaveSuccess: "已保存到衣橱！",
     wardrobeSaveError: "保存失败，请稍后重试。",
+    wardrobeSaveAlreadyClaimed: "您似乎已拥有账号。该图片无法保存到您的账号。请登录后重新生成。",
     downloadAction: "下载",
     downloadAriaLabel: "下载生成结果",
     downloadSuccessTitle: "已下载",

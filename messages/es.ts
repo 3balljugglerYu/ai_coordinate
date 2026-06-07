@@ -1420,6 +1420,7 @@ export const esMessages = {
     wardrobeSaveModalDescription: "Inicia sesión para guardar tus looks en el armario y volver a verlos o coleccionarlos cuando quieras. (30 s, gratis)",
     wardrobeSaveSuccess: "¡Guardado en tu armario!",
     wardrobeSaveError: "No se pudo guardar. Inténtalo de nuevo más tarde.",
+    wardrobeSaveAlreadyClaimed: "Parece que ya tienes una cuenta. Esta imagen no se puede guardar en tu cuenta. Inicia sesión y vuelve a generarla.",
     downloadAction: "Descargar",
     downloadAriaLabel: "Descargar resultado generado",
     downloadSuccessTitle: "Descargado",

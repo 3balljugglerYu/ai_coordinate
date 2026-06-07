@@ -678,7 +678,12 @@ export function StylePageClient({
         return;
       }
       if (result.status === "error") {
-        toast({ title: t("wardrobeSaveError") });
+        toast({
+          title:
+            result.errorCode === "WARDROBE_CLAIM_ALREADY_CLAIMED"
+              ? t("wardrobeSaveAlreadyClaimed")
+              : t("wardrobeSaveError"),
+        });
       }
       // none / error: フラグを URL から外して /style に留める
       router.replace("/style");

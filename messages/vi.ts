@@ -1417,6 +1417,7 @@ export const viMessages = {
     wardrobeSaveModalDescription: "Đăng nhập để lưu các bộ đồ đã tạo vào tủ đồ và xem lại hoặc sưu tầm bất cứ lúc nào. (30 giây, miễn phí)",
     wardrobeSaveSuccess: "Đã lưu vào tủ đồ của bạn!",
     wardrobeSaveError: "Không thể lưu. Vui lòng thử lại sau.",
+    wardrobeSaveAlreadyClaimed: "Có vẻ bạn đã có tài khoản. Hình này không thể lưu vào tài khoản của bạn. Vui lòng đăng nhập rồi tạo lại.",
     downloadAction: "Tải xuống",
     downloadAriaLabel: "Tải kết quả đã tạo",
     downloadSuccessTitle: "Đã tải xuống",

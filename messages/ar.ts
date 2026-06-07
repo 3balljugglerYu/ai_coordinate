@@ -1417,6 +1417,7 @@ export const arMessages = {
     wardrobeSaveModalDescription: "سجّل الدخول لحفظ إطلالاتك في الخزانة ومشاهدتها أو جمعها في أي وقت. (30 ثانية، مجاني)",
     wardrobeSaveSuccess: "تم الحفظ في خزانتك!",
     wardrobeSaveError: "تعذّر الحفظ. يرجى المحاولة لاحقًا.",
+    wardrobeSaveAlreadyClaimed: "يبدو أنك تملك حسابًا بالفعل. لا يمكن حفظ هذه الصورة في حسابك. يرجى تسجيل الدخول ثم إعادة الإنشاء.",
     downloadAction: "تنزيل",
     downloadAriaLabel: "تنزيل النتيجة المُنشأة",
     downloadSuccessTitle: "تم التنزيل",

@@ -1420,6 +1420,7 @@ export const itMessages = {
     wardrobeSaveModalDescription: "Accedi per salvare i tuoi look nell'armadio e rivederli o collezionarli quando vuoi. (30 sec, gratis)",
     wardrobeSaveSuccess: "Salvato nel tuo armadio!",
     wardrobeSaveError: "Salvataggio non riuscito. Riprova più tardi.",
+    wardrobeSaveAlreadyClaimed: "Sembra che tu abbia già un account. Questa immagine non può essere salvata nel tuo account. Accedi e riprova a generarla.",
     downloadAction: "Scarica",
     downloadAriaLabel: "Scarica risultato generato",
     downloadSuccessTitle: "Scaricata",

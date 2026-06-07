@@ -1356,6 +1356,7 @@ export const jaMessages = {
     wardrobeSaveModalDescription: "ログインすると、生成した着せ替えがクローゼットに保存され、いつでも見返し・集められます。（30秒・無料）",
     wardrobeSaveSuccess: "クローゼットに保存しました！",
     wardrobeSaveError: "保存に失敗しました。時間をおいて再試行してください。",
+    wardrobeSaveAlreadyClaimed: "すでにアカウントをお持ちのようです。このイラストはあなたのアカウントに保存することができません。ログイン後に再度、生成をお試しください。",
     downloadAction: "ダウンロード",
     downloadAriaLabel: "生成結果をダウンロード",
     downloadSuccessTitle: "ダウンロードしました",

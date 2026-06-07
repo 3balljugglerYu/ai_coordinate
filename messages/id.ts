@@ -1419,6 +1419,7 @@ export const idMessages = {
     wardrobeSaveModalDescription: "Masuk untuk menyimpan gaya buatanmu ke lemari dan melihatnya lagi atau mengoleksinya kapan saja. (30 dtk, gratis)",
     wardrobeSaveSuccess: "Tersimpan ke lemarimu!",
     wardrobeSaveError: "Gagal menyimpan. Silakan coba lagi nanti.",
+    wardrobeSaveAlreadyClaimed: "Sepertinya kamu sudah punya akun. Gambar ini tidak dapat disimpan ke akunmu. Silakan masuk lalu buat ulang.",
     downloadAction: "Unduh",
     downloadAriaLabel: "Unduh hasil yang dihasilkan",
     downloadSuccessTitle: "Terunduh",

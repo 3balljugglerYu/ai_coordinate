@@ -1416,6 +1416,7 @@ export const koMessages = {
     wardrobeSaveModalDescription: "로그인하면 생성한 코디가 옷장에 저장되어 언제든 다시 보고 모을 수 있어요. (30초·무료)",
     wardrobeSaveSuccess: "옷장에 저장했어요!",
     wardrobeSaveError: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    wardrobeSaveAlreadyClaimed: "이미 계정을 가지고 계신 것 같습니다. 이 이미지는 회원님의 계정에 저장할 수 없습니다. 로그인 후 다시 생성해 주세요.",
     downloadAction: "다운로드",
     downloadAriaLabel: "생성 결과 다운로드",
     downloadSuccessTitle: "다운로드 완료",

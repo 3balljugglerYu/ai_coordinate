@@ -1416,6 +1416,7 @@ export const enMessages = {
     wardrobeSaveModalDescription: "Log in to save your looks to your closet and revisit or collect them anytime. (30 sec, free)",
     wardrobeSaveSuccess: "Saved to your closet!",
     wardrobeSaveError: "Couldn't save. Please try again later.",
+    wardrobeSaveAlreadyClaimed: "It looks like you already have an account. This image can't be saved to your account. Please log in and try generating again.",
     downloadAction: "Download",
     downloadAriaLabel: "Download generated result",
     downloadSuccessTitle: "Downloaded",

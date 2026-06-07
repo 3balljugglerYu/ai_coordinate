@@ -1420,6 +1420,7 @@ export const frMessages = {
     wardrobeSaveModalDescription: "Connectez-vous pour enregistrer vos looks dans votre dressing et les revoir ou les collectionner à tout moment. (30 s, gratuit)",
     wardrobeSaveSuccess: "Enregistré dans votre dressing !",
     wardrobeSaveError: "Échec de l'enregistrement. Veuillez réessayer plus tard.",
+    wardrobeSaveAlreadyClaimed: "Vous semblez déjà avoir un compte. Cette image ne peut pas être enregistrée sur votre compte. Connectez-vous puis réessayez de générer.",
     downloadAction: "Télécharger",
     downloadAriaLabel: "Télécharger le résultat généré",
     downloadSuccessTitle: "Téléchargée",

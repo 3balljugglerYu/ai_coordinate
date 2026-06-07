@@ -1418,6 +1418,7 @@ export const hiMessages = {
     wardrobeSaveModalDescription: "लॉगिन करें और अपने बनाए लुक अलमारी में सहेजें, उन्हें कभी भी दोबारा देखें या इकट्ठा करें। (30 सेकंड, मुफ़्त)",
     wardrobeSaveSuccess: "आपकी अलमारी में सहेजा गया!",
     wardrobeSaveError: "सहेजा नहीं जा सका। कृपया बाद में पुनः प्रयास करें।",
+    wardrobeSaveAlreadyClaimed: "लगता है आपके पास पहले से खाता है। यह इमेज आपके खाते में सहेजी नहीं जा सकती। कृपया लॉगिन के बाद दोबारा जनरेट करें।",
     downloadAction: "डाउनलोड",
     downloadAriaLabel: "उत्पन्न परिणाम डाउनलोड करें",
     downloadSuccessTitle: "डाउनलोड हो गया",
