@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, Heart, User } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,8 @@ import {
 import { APP_NAME, ROUTES } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
 import { SearchBar } from "@/features/posts/components/SearchBar";
+import { AuthModal } from "@/features/auth/components/AuthModal";
+import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -47,6 +49,9 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const commonT = useTranslations("common");
+  const styleT = useTranslations("style");
+  // 生成後のゲストはヘッダーのログインも「保存する」(signup固定+画像引き継ぎ)に切替。
+  const saveTrigger = useWardrobeSaveTrigger();
   const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -265,6 +270,16 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
             />
           </DropdownMenuContent>
         </DropdownMenu>
+      ) : saveTrigger.hasGuestImage ? (
+        <Button
+          type="button"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={saveTrigger.trigger}
+        >
+          <Heart className="h-4 w-4" />
+          {styleT("wardrobeSaveButton")}
+        </Button>
       ) : (
         <Link href="/login">
           <Button variant="outline" size="sm" className="text-xs">
@@ -322,6 +337,9 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
         {renderSearchBar()}
         <HeaderRight />
       </div>
+
+      {/* 生成後ゲストの保存導線(signup固定)。 */}
+      <AuthModal {...saveTrigger.authModalProps} />
     </header>
   );
 }
