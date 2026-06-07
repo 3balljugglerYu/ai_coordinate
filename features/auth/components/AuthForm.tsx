@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
-import { parseSignupSource } from "../lib/signup-source";
+import { parseSignupSource, type SignupSource } from "../lib/signup-source";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
 import { useWebViewDetection, buildIntentUrl } from "./WebViewBanner";
@@ -33,6 +33,12 @@ interface AuthFormProps {
    * 新規登録に固定したい場合に true(既存アカウントへの安易な連携を防ぐ）。
    */
   hideModeSwitch?: boolean;
+  /**
+   * 流入元の明示指定。URL クエリ(?signup_source=)が使えない
+   * モーダル内表示(保存導線など)で流入元を確実に付与するために使う。
+   * 指定時は URL クエリより優先する。
+   */
+  signupSource?: SignupSource | null;
 }
 
 export function AuthForm({
@@ -40,6 +46,7 @@ export function AuthForm({
   onSuccess,
   redirectTo,
   hideModeSwitch,
+  signupSource: signupSourceProp,
 }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,7 +78,9 @@ export function AuthForm({
 
   // URLクエリパラメータから紹介コードを取得
   const referralCode = searchParams.get("ref");
-  const signupSource = parseSignupSource(searchParams.get("signup_source"));
+  // prop 指定(モーダル内導線)を優先し、無ければ URL クエリから解決する。
+  const signupSource =
+    signupSourceProp ?? parseSignupSource(searchParams.get("signup_source"));
 
   const resolveRedirectTarget = () =>
     redirectTo ??

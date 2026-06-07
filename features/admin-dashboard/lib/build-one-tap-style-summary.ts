@@ -183,6 +183,19 @@ export function buildOneTapStyleSummary(params: {
     params.previousStart,
     params.currentStart
   );
+  // 保存導線経由の「新規登録到達」: profiles.signup_source = 'wardrobe'。
+  const wardrobeSignupsCurrent = countProfiles(
+    params.profiles,
+    "wardrobe",
+    params.currentStart,
+    params.now
+  );
+  const wardrobeSignupsPrevious = countProfiles(
+    params.profiles,
+    "wardrobe",
+    params.previousStart,
+    params.currentStart
+  );
 
   return {
     metrics: [
@@ -221,6 +234,12 @@ export function buildOneTapStyleSummary(params: {
         label: "保存完了数",
         currentCount: wardrobeSaveCompletionsCurrent,
         previousCount: wardrobeSaveCompletionsPrevious,
+      }),
+      createMetric({
+        key: "wardrobeSignups",
+        label: "保存経由の新規登録数",
+        currentCount: wardrobeSignupsCurrent,
+        previousCount: wardrobeSignupsPrevious,
       }),
     ],
   };

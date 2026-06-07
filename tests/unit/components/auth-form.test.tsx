@@ -260,6 +260,49 @@ describe("AuthForm unit tests from EARS specs", () => {
       expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
     });
 
+    test("handleSubmit_signupSource prop指定時_URLに無くてもsignUpへ渡す", async () => {
+      // 保存導線のモーダルは URL クエリを持たないため prop で流入元を渡す
+      const { container } = render(
+        <AuthForm mode="signup" signupSource="wardrobe" />
+      );
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          "wardrobe"
+        );
+      });
+    });
+
+    test("handleSubmit_signupSource propはURLクエリより優先される", async () => {
+      signupSource = "style";
+      useSearchParamsMock.mockReturnValue({
+        get: (key: string) =>
+          key === "signup_source" ? signupSource : null,
+      } as unknown as ReturnType<typeof useSearchParams>);
+
+      const { container } = render(
+        <AuthForm mode="signup" signupSource="wardrobe" />
+      );
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          "wardrobe"
+        );
+      });
+    });
+
     test("handleSubmit_redirectTo付き新規登録の場合_signUpとloginへnextを引き継ぐ", async () => {
       const redirectTo = "/style?claim_wardrobe=1";
       const { container } = render(

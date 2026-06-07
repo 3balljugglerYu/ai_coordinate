@@ -16,6 +16,7 @@ import {
   useGuestGeneration,
 } from "@/features/wardrobe/lib/guest-generation-store";
 import type { AuthModalProps } from "@/features/auth/components/AuthModal";
+import { WARDROBE_SIGNUP_SOURCE } from "@/features/auth/lib/signup-source";
 
 /** ログイン後に「退避した画像を保存する」ことを示すクエリキー。 */
 const CLAIM_QUERY_KEY = "claim_wardrobe";
@@ -71,6 +72,7 @@ export type WardrobeAuthModalProps = Pick<
   | "description"
   | "mode"
   | "hideModeSwitch"
+  | "signupSource"
 >;
 
 export interface UseWardrobeSaveResult {
@@ -152,6 +154,7 @@ export function useWardrobeSave({
       description: t("wardrobeSaveModalDescription"),
       mode: "signup",
       hideModeSwitch: true,
+      signupSource: WARDROBE_SIGNUP_SOURCE,
     },
   };
 }
@@ -210,6 +213,7 @@ export function useWardrobeSaveTrigger(): UseWardrobeSaveTriggerResult {
       description: t("wardrobeSaveModalDescription"),
       mode: "signup",
       hideModeSwitch: true,
+      signupSource: WARDROBE_SIGNUP_SOURCE,
     },
   };
 }

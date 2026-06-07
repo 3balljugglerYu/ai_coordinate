@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import { AuthForm } from "./AuthForm";
+import type { SignupSource } from "../lib/signup-source";
 
 export interface AuthModalProps {
   open: boolean;
@@ -14,6 +15,8 @@ export interface AuthModalProps {
   mode?: "signin" | "signup";
   /** ログイン↔新規登録の切替リンクを隠す(signup 固定にしたいとき)。 */
   hideModeSwitch?: boolean;
+  /** 流入元の明示指定(保存導線など)。AuthForm に引き渡す。 */
+  signupSource?: SignupSource | null;
 }
 
 export function AuthModal({
@@ -24,6 +27,7 @@ export function AuthModal({
   description,
   mode = "signin",
   hideModeSwitch,
+  signupSource,
 }: AuthModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -66,6 +70,7 @@ export function AuthModal({
             mode={mode}
             redirectTo={redirectTo}
             hideModeSwitch={hideModeSwitch}
+            signupSource={signupSource}
           />
         </div>
       </div>

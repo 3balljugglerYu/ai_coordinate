@@ -104,6 +104,12 @@ describe("buildOneTapStyleSummary", () => {
         created_at: "2026-03-17T06:00:00.000Z",
         signup_source: "style",
       },
+      // 保存導線経由の新規登録(current 1 / previous 0)
+      {
+        user_id: "user-12",
+        created_at: "2026-03-18T08:00:00.000Z",
+        signup_source: "wardrobe",
+      },
     ];
 
     const summary = buildOneTapStyleSummary({
@@ -158,6 +164,14 @@ describe("buildOneTapStyleSummary", () => {
       {
         key: "wardrobeSaveCompletions",
         label: "保存完了数",
+        currentCount: 1,
+        previousCount: 0,
+        deltaPct: null,
+        deltaDirection: "up",
+      },
+      {
+        key: "wardrobeSignups",
+        label: "保存経由の新規登録数",
         currentCount: 1,
         previousCount: 0,
         deltaPct: null,

@@ -65,7 +65,8 @@ export type DashboardOneTapStyleMetricKey =
   | "signupClicks"
   | "signupCompletions"
   | "wardrobeSaveClicks"
-  | "wardrobeSaveCompletions";
+  | "wardrobeSaveCompletions"
+  | "wardrobeSignups";
 
 export interface DashboardOneTapStyleMetric {
   key: DashboardOneTapStyleMetricKey;
