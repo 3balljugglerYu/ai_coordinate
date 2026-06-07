@@ -64,6 +64,14 @@ import type { StylePresetPublicSummary } from "@/features/style-presets/lib/sche
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
+import { applyPerstaWatermark } from "@/features/generation/lib/apply-watermark";
+import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
+import { WardrobeSaveButton } from "@/features/wardrobe/components/WardrobeSaveButton";
+import { WardrobeClaimOverlay } from "@/features/wardrobe/components/WardrobeClaimOverlay";
+import {
+  clearGuestGeneration,
+  setGuestGeneration,
+} from "@/features/wardrobe/lib/guest-generation-store";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { PostModal } from "@/features/posts/components/PostModal";
@@ -292,6 +300,7 @@ function StyleResultDownloadButton({
   successTitle,
   successDescription,
   failedMessage,
+  transformBlob,
 }: {
   imageUrl: string;
   styleId: string;
@@ -300,6 +309,7 @@ function StyleResultDownloadButton({
   successTitle: string;
   successDescription: string;
   failedMessage: string;
+  transformBlob?: (blob: Blob) => Promise<Blob>;
 }) {
   const trackDownloadUsage = () => {
     void recordStyleUsageClientEvent({
@@ -330,6 +340,7 @@ function StyleResultDownloadButton({
         onShareSuccess: trackDownloadUsage,
         onDownloadSuccess: trackDownloadUsage,
       }}
+      transformBlob={transformBlob}
     />
   );
 }
@@ -461,6 +472,7 @@ export function StylePageClient({
     ? backgroundChange
     : false;
   const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
+  const wardrobeSave = useWardrobeSave({ authState: effectiveAuthState });
   const modelAuthState =
     effectiveAuthState === "authenticated" ? "authenticated" : "guest";
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
@@ -485,16 +497,24 @@ export function StylePageClient({
       !hasEnoughPercoins);
 
   const isGenerating = generationPhase !== "idle";
+  // ゲストが1枚生成した後の状態。1日1回のため再生成できず、結果を消す操作をすると
+  // 「画像ゼロ・保存対象ゼロ」のデッドエンドになる。よって設定変更・再生成を一括で抑止し、
+  // 結果を保持したまま保存(ログイン)/DL に集中させる。認証ユーザーは結果がアカウントに
+  // 保存され再生成も可能なため対象外。
+  const isGuestResultLocked =
+    effectiveAuthState !== "authenticated" && Boolean(resultImageUrl);
   const isBackgroundChangeAvailable =
     shouldShowBackgroundChangeControl && Boolean(selectedPreset?.hasBackgroundPrompt);
-  const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
+  const isBackgroundChangeDisabled =
+    isGenerating || isGuestResultLocked || !isBackgroundChangeAvailable;
   const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
   const isGenerateDisabled =
     !selectedPreset ||
     !hasSourceImage ||
     isGenerating ||
     isGuestDailyLimitReached ||
-    shouldDisablePaidContinuation;
+    shouldDisablePaidContinuation ||
+    isGuestResultLocked;
   const hasGeneratedResult = Boolean(resultImageUrl);
   const activeAsyncResultImageUrl =
     shouldUseAsyncGeneration && isGenerating
@@ -513,6 +533,21 @@ export function StylePageClient({
     Boolean(resultImageUrl) &&
     Boolean(resultGeneratedImageId) &&
     effectiveAuthState === "authenticated";
+
+  // ゲストが生成した画像を共有ストアへ publish（バナー/サイドバーの保存導線用）。
+  const guestSaveImage = resultImageUrl ?? displayedResultImageUrl;
+  useEffect(() => {
+    if (effectiveAuthState !== "authenticated" && guestSaveImage) {
+      setGuestGeneration({
+        imageBase64: guestSaveImage,
+        styleId: selectedPreset?.id ?? null,
+      });
+    } else {
+      clearGuestGeneration();
+    }
+    return () => clearGuestGeneration();
+  }, [effectiveAuthState, guestSaveImage, selectedPreset?.id]);
+
   const isCompletingGeneration = generationPhase === "completing";
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
@@ -632,6 +667,13 @@ export function StylePageClient({
     });
 
     router.push(resolveStyleSignupPath(signupPath));
+  };
+
+  const handleWardrobeSaveClick = () => {
+    wardrobeSave.requestSave({
+      imageBase64: resultImageUrl ?? displayedResultImageUrl,
+      styleId: selectedPreset?.id ?? null,
+    });
   };
 
   const clearResultReadyToastTimeout = () => {
@@ -935,6 +977,12 @@ export function StylePageClient({
     action: () => void,
     intent: ResultConfirmationIntent = "change"
   ) => {
+    // ゲスト生成後は結果を消す操作を一切行わない(UI 無効化の最終防壁)。
+    // 再生成できないため、結果を消しても利点がなくデッドエンドになるだけ。
+    if (isGuestResultLocked) {
+      return;
+    }
+
     if (!hasGeneratedResult) {
       action();
       return;
@@ -1498,7 +1546,7 @@ export function StylePageClient({
               onClick={() => handlePresetSelect(preset.id)}
               buttonRef={buildPresetButtonRef(preset.id)}
               alt={t("styleCardAlt", { name: preset.title })}
-              disabled={isGenerating}
+              disabled={isGenerating || isGuestResultLocked}
               locale={styleCardLocale}
             />
           ))}
@@ -1563,7 +1611,7 @@ export function StylePageClient({
                 label={t("uploadLabel")}
                 addImageLabel={t("addImageAction")}
                 compact={isReferenceCardCollapsed}
-                disabled={isGenerating}
+                disabled={isGenerating || isGuestResultLocked}
                 aspectRatio={selectedPresetAspectRatio}
                 filledPreviewMode="natural"
               />
@@ -1600,7 +1648,7 @@ export function StylePageClient({
           <div className="mt-3">
             <ImageSourcePickerTrigger
               onClick={picker.openPicker}
-              disabled={isGenerating}
+              disabled={isGenerating || isGuestResultLocked}
             />
           </div>
         </section>
@@ -1618,7 +1666,7 @@ export function StylePageClient({
                     handleSourceImageTypeChange(value as SourceImageType)
                   }
                   className="mt-2 flex items-center gap-6"
-                  disabled={isGenerating}
+                  disabled={isGenerating || isGuestResultLocked}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem
@@ -1798,27 +1846,16 @@ export function StylePageClient({
             ) : null}
 
             {shouldShowDailyLimitCard ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-                <p className="text-sm font-medium text-red-900">
-                  {rateLimitStatus?.authState === "guest"
-                    ? t("guestRateLimitDaily")
-                    : t("authenticatedRateLimitDaily")}
+              rateLimitStatus?.authState === "guest" ? (
+                // coordinate 画面の上限表示に合わせ、赤枠やボタンは置かず amber の小さめ文字のみ。
+                <p className="text-xs leading-5 text-amber-700">
+                  {t("guestRateLimitDaily")}
                 </p>
-                {rateLimitStatus?.authState === "guest" ? (
-                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-5 text-red-800">
-                      {t("guestRateLimitSignupHint")}
-                    </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="w-full sm:w-auto"
-                      onClick={() => handleSignupCtaClick()}
-                    >
-                      {t("guestRateLimitSignupAction")}
-                    </Button>
-                  </div>
-                ) : (
+              ) : (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                  <p className="text-sm font-medium text-red-900">
+                    {t("authenticatedRateLimitDaily")}
+                  </p>
                   <div className="mt-3 space-y-3">
                     <p className="text-xs leading-5 text-red-800">
                       {t("authenticatedPaidContinueHint", {
@@ -1864,8 +1901,8 @@ export function StylePageClient({
                       </div>
                     ) : null}
                   </div>
-                )}
-              </div>
+                </div>
+              )
             ) : null}
 
             {isGenerating ? (
@@ -1959,7 +1996,15 @@ export function StylePageClient({
                     successTitle={t("downloadSuccessTitle")}
                     successDescription={t("downloadSuccessDescription")}
                     failedMessage={t("downloadFailed")}
+                    transformBlob={
+                      effectiveAuthState !== "authenticated"
+                        ? applyPerstaWatermark
+                        : undefined
+                    }
                   />
+                  {wardrobeSave.isGuest ? (
+                    <WardrobeSaveButton onClick={handleWardrobeSaveClick} />
+                  ) : null}
                   {canPostGeneratedResult ? (
                     <Button
                       type="button"
@@ -1977,7 +2022,9 @@ export function StylePageClient({
             }
             footer={
               <p className="text-xs leading-5 text-slate-500">
-                {t("resultSaveHint")}
+                {effectiveAuthState !== "authenticated"
+                  ? t("wardrobeSaveHelper")
+                  : t("resultSaveHint")}
               </p>
             }
           />
@@ -2027,10 +2074,21 @@ export function StylePageClient({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ロックモデル等の通常ログイン導線 */}
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         redirectTo={currentUrl}
+      />
+
+      {/* ゲスト保存（ログイン転換）導線: signup 固定 */}
+      <AuthModal {...wardrobeSave.authModalProps} />
+
+      {/* ログイン後の claim 表示(保存中 / 保存完了)。自動遷移はしない。 */}
+      <WardrobeClaimOverlay
+        status={wardrobeSave.claimStatus}
+        onView={wardrobeSave.goToSavedImage}
+        onClose={wardrobeSave.dismissClaim}
       />
 
       <SubscriptionUpsellDialog

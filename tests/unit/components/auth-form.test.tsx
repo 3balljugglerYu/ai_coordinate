@@ -10,7 +10,7 @@ jest.mock("next-intl", () => {
     useTranslations: (namespace?: string) => {
       const table =
         namespace && namespace in jaMessages
-          ? (jaMessages as Record<string, Record<string, string>>)[namespace]
+          ? (jaMessages as unknown as Record<string, Record<string, string>>)[namespace]
           : {};
 
       return (key: string) => table[key] ?? key;
@@ -127,7 +127,7 @@ describe("AuthForm unit tests from EARS specs", () => {
         return null;
       },
     } as unknown as ReturnType<typeof useSearchParams>);
-    useToastMock.mockReturnValue({
+    (useToastMock as jest.Mock).mockReturnValue({
       toast: toastMock,
     });
 
@@ -136,6 +136,26 @@ describe("AuthForm unit tests from EARS specs", () => {
     signInWithOAuthMock.mockResolvedValue(
       {} as Awaited<ReturnType<typeof signInWithOAuth>>
     );
+  });
+
+  test("claim_wardrobe リダイレクト時_別ブラウザ案内を表示する", () => {
+    const { rerender } = render(
+      <AuthForm mode="signin" redirectTo="/style?claim_wardrobe=1" />
+    );
+    expect(screen.getByText(/別のブラウザ/)).toBeInTheDocument();
+
+    // 通常のリダイレクトでは出さない
+    rerender(<AuthForm mode="signin" redirectTo="/style" />);
+    expect(screen.queryByText(/別のブラウザ/)).not.toBeInTheDocument();
+  });
+
+  test("hideModeSwitch_signup固定でログインへの切替リンクを出さない", () => {
+    // 通常の signup ではログインへの切替リンクがある
+    const { container, rerender } = render(<AuthForm mode="signup" />);
+    expect(container.querySelector('a[href="/login"]')).not.toBeNull();
+    // hideModeSwitch=true なら切替リンクを出さない(=既存アカウントへの誘導を断つ)
+    rerender(<AuthForm mode="signup" hideModeSwitch />);
+    expect(container.querySelector('a[href="/login"]')).toBeNull();
   });
 
   describe("AUTH-001 handleSubmit", () => {
@@ -213,7 +233,8 @@ describe("AuthForm unit tests from EARS specs", () => {
           validEmail,
           validPassword,
           undefined,
-          null
+          null,
+          "/style"
         );
       });
       expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
@@ -243,17 +264,84 @@ describe("AuthForm unit tests from EARS specs", () => {
           validEmail,
           validPassword,
           undefined,
-          "style"
+          "style",
+          "/style"
         );
       });
       expect(pushMock).toHaveBeenCalledWith("/login?next=%2Fstyle");
+    });
+
+    test("handleSubmit_signupSource prop指定時_URLに無くてもsignUpへ渡す", async () => {
+      // 保存導線のモーダルは URL クエリを持たないため prop で流入元を渡す
+      const { container } = render(
+        <AuthForm mode="signup" signupSource="wardrobe" />
+      );
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          "wardrobe"
+        );
+      });
+    });
+
+    test("handleSubmit_signupSource propはURLクエリより優先される", async () => {
+      signupSource = "style";
+      useSearchParamsMock.mockReturnValue({
+        get: (key: string) =>
+          key === "signup_source" ? signupSource : null,
+      } as unknown as ReturnType<typeof useSearchParams>);
+
+      const { container } = render(
+        <AuthForm mode="signup" signupSource="wardrobe" />
+      );
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          "wardrobe"
+        );
+      });
+    });
+
+    test("handleSubmit_redirectTo付き新規登録の場合_signUpとloginへnextを引き継ぐ", async () => {
+      const redirectTo = "/style?claim_wardrobe=1";
+      const { container } = render(
+        <AuthForm mode="signup" redirectTo={redirectTo} />
+      );
+      fillSignUpInputs({ email: validEmail, password: validPassword });
+
+      submitForm(container);
+
+      await waitFor(() => {
+        expect(signUpMock).toHaveBeenCalledWith(
+          validEmail,
+          validPassword,
+          undefined,
+          null,
+          redirectTo
+        );
+      });
+      expect(pushMock).toHaveBeenCalledWith(
+        "/login?next=%2Fstyle%3Fclaim_wardrobe%3D1"
+      );
     });
 
     test("handleSubmit_列挙対策でsignup成功解決される場合_汎用成功応答を維持する", async () => {
       // ============================================================
       // Arrange
       // ============================================================
-      signUpMock.mockResolvedValueOnce(undefined as Awaited<ReturnType<typeof signUp>>);
+      signUpMock.mockResolvedValueOnce(undefined as unknown as Awaited<ReturnType<typeof signUp>>);
       const { container } = render(<AuthForm mode="signup" />);
       fillSignUpInputs({ email: validEmail, password: validPassword });
 
@@ -730,6 +818,29 @@ describe("AuthForm unit tests from EARS specs", () => {
       expect(screen.getByText("ログイン中...")).toBeInTheDocument();
 
       oauthDeferred.resolve({} as Awaited<ReturnType<typeof signInWithOAuth>>);
+    });
+
+    test("renderAuthForm_signinモードの新規登録リンクはredirectToをnextで引き継ぐ", () => {
+      render(<AuthForm mode="signin" redirectTo="/style?claim_wardrobe=1" />);
+
+      expect(screen.getByRole("link", { name: "新規登録" })).toHaveAttribute(
+        "href",
+        "/signup?next=%2Fstyle%3Fclaim_wardrobe%3D1"
+      );
+    });
+
+    test("renderAuthForm_signupモードのログインリンクはnextを維持する", () => {
+      useSearchParamsMock.mockReturnValue({
+        get: (key: string) =>
+          key === "next" ? "/style?claim_wardrobe=1" : null,
+      } as unknown as ReturnType<typeof useSearchParams>);
+
+      render(<AuthForm mode="signup" />);
+
+      expect(screen.getByRole("link", { name: "ログイン" })).toHaveAttribute(
+        "href",
+        "/login?next=%2Fstyle%3Fclaim_wardrobe%3D1"
+      );
     });
   });
 

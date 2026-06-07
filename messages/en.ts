@@ -220,6 +220,7 @@ export const enMessages = {
     signupSuccessLine1: "Your account request has been received. Please check your email.",
     signupSuccessLine2:
       "If you don't see it, please check your spam folder as well.",
+    wardrobeClaimBrowserHint: "The confirmation email button may open in a different browser. To save the illustration you generated, finish signing up and then log in here, in this browser.",
     loginMetaTitle: "Log in | Persta.AI",
     loginMetaDescription: "Log in to Persta.AI",
     signupMetaTitle: "Sign up | Persta.AI",
@@ -913,8 +914,7 @@ export const enMessages = {
     guestResultDownloadFailed:
       "Failed to download the image. Please try again.",
     guestLoginCtaTitle: "Try without signing in",
-    guestLoginCtaDescription:
-      "You can try ChatGPT Image 2.0 once per day. Results are not saved.",
+    guestLoginCtaDescription: "Try ChatGPT Image 2.0 free, once a day. Log in (free sign-up) after generating to save your image.",
     guestLoginCtaAction: "Sign in / Sign up",
     guestSubmitFailed: "Generation failed. Please try again in a few moments.",
     guestRateLimitDailyMessage:
@@ -1374,8 +1374,7 @@ export const enMessages = {
     generateRetryHint:
       "If the result does not come out well, try again. If it still fails, please let us know.",
     guestLoginCtaTitle: "Try without signing in",
-    guestLoginCtaDescription:
-      "You can try ChatGPT Image 2.0 once per day. Results are not saved.",
+    guestLoginCtaDescription: "Try ChatGPT Image 2.0 free, once a day. Log in (free sign-up) after generating to save your image.",
     guestLoginCtaAction: "Sign in / Sign up",
     generateButton: "Start Styling",
     generatingButton: "Generating...",
@@ -1410,6 +1409,17 @@ export const enMessages = {
     resultPlaceholder: "Your generated image will appear here.",
     resultSaveHint:
       "Use the download button to save any image you want to keep.",
+    wardrobeSaveButton: "Save",
+    wardrobeSaveHelper: "Save to download without the Persta.AI logo.",
+    wardrobeSaveModalTitle: "Save this image",
+    wardrobeSaveModalDescription: "Log in to save the image you generated to your account and view it anytime.",
+    wardrobeSaveSuccess: "Saved!",
+    wardrobeSaveError: "Couldn't save. Please try again later.",
+    wardrobeClaiming: "Saving…",
+    wardrobeClaimSavedHint: "You can view it anytime on My Page.",
+    wardrobeViewSavedAction: "View on My Page",
+    wardrobeClaimCloseAction: "Close",
+    wardrobeSaveAlreadyClaimed: "It looks like you already have an account. The previous image couldn't be saved to your account.",
     downloadAction: "Download",
     downloadAriaLabel: "Download generated result",
     downloadSuccessTitle: "Downloaded",
@@ -1448,8 +1458,7 @@ export const enMessages = {
       "The image generation service is temporarily unavailable. Please try again in a few moments.",
     guestRateLimitShort:
       "Servers are busy right now. Please try again in a moment.",
-    guestRateLimitDaily:
-      "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
+    guestRateLimitDaily: "You have reached today's trial limit (1 per day). Sign up to continue.",
     authenticatedRateLimitDaily:
       "You have reached today's free generation limit.",
     authenticatedPaidContinueHint:

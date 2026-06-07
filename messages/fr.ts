@@ -220,6 +220,7 @@ export const frMessages = {
     signupSuccessLine1: "Votre demande a été reçue. Veuillez consulter votre messagerie.",
     signupSuccessLine2:
       "Si vous ne le voyez pas, pensez à vérifier le dossier spam.",
+    wardrobeClaimBrowserHint: "Le bouton de l'e-mail de confirmation peut s'ouvrir dans un autre navigateur. Pour enregistrer l'illustration générée, terminez l'inscription puis connectez-vous ici, dans ce navigateur.",
     loginMetaTitle: "Connexion | Persta.AI",
     loginMetaDescription: "Connectez-vous à Persta.AI",
     signupMetaTitle: "Inscription | Persta.AI",
@@ -916,8 +917,7 @@ export const frMessages = {
     guestResultDownloadFailed:
       "Impossible de télécharger l'image. Veuillez réessayer.",
     guestLoginCtaTitle: "Essayez sans vous connecter",
-    guestLoginCtaDescription:
-      "Vous pouvez essayer ChatGPT Image 2.0 et Nano Banana 2 (0.5K) une fois par jour. Les résultats ne sont pas enregistrés.",
+    guestLoginCtaDescription: "Essayez ChatGPT Image 2.0 gratuitement, une fois par jour. Connectez-vous (inscription gratuite) après la génération pour enregistrer votre image.",
     guestLoginCtaAction: "Se connecter / S'inscrire",
     guestSubmitFailed: "La génération a échoué. Veuillez réessayer dans quelques instants.",
     guestRateLimitDailyMessage:
@@ -1378,8 +1378,7 @@ export const frMessages = {
     generateRetryHint:
       "Si le résultat ne convient pas, réessayez. Si cela échoue encore, faites-nous signe.",
     guestLoginCtaTitle: "Essayez sans vous connecter",
-    guestLoginCtaDescription:
-      "Vous pouvez essayer ChatGPT Image 2.0 et Nano Banana 2 (0.5K) une fois par jour. Les résultats ne sont pas enregistrés.",
+    guestLoginCtaDescription: "Essayez ChatGPT Image 2.0 gratuitement, une fois par jour. Connectez-vous (inscription gratuite) après la génération pour enregistrer votre image.",
     guestLoginCtaAction: "Se connecter / S'inscrire",
     generateButton: "Démarrer le styling",
     generatingButton: "Génération...",
@@ -1414,6 +1413,17 @@ export const frMessages = {
     resultPlaceholder: "Votre image générée s'affichera ici.",
     resultSaveHint:
       "Utilisez le bouton de téléchargement pour enregistrer toute image que vous voulez garder.",
+    wardrobeSaveButton: "Enregistrer",
+    wardrobeSaveHelper: "Enregistrez pour télécharger sans le logo Persta.AI.",
+    wardrobeSaveModalTitle: "Enregistrer cette image",
+    wardrobeSaveModalDescription: "Connectez-vous pour enregistrer l'image générée sur votre compte et la revoir à tout moment.",
+    wardrobeSaveSuccess: "Enregistré !",
+    wardrobeSaveError: "Échec de l'enregistrement. Veuillez réessayer plus tard.",
+    wardrobeClaiming: "Enregistrement…",
+    wardrobeClaimSavedHint: "Vous pouvez le consulter à tout moment sur Ma page.",
+    wardrobeViewSavedAction: "Voir sur Ma page",
+    wardrobeClaimCloseAction: "Fermer",
+    wardrobeSaveAlreadyClaimed: "Vous semblez déjà avoir un compte. L'image précédente n'a pas pu être enregistrée sur votre compte.",
     downloadAction: "Télécharger",
     downloadAriaLabel: "Télécharger le résultat généré",
     downloadSuccessTitle: "Téléchargée",
@@ -1452,8 +1462,7 @@ export const frMessages = {
       "Le service de génération d'images est temporairement indisponible. Veuillez réessayer dans quelques instants.",
     guestRateLimitShort:
       "Les serveurs sont saturés. Veuillez réessayer dans un instant.",
-    guestRateLimitDaily:
-      "Vous avez atteint la limite gratuite du jour. Inscrivez-vous pour continuer à utiliser One-Tap Style.",
+    guestRateLimitDaily: "Vous avez atteint la limite d'essai du jour (1 par jour). Inscrivez-vous pour continuer.",
     authenticatedRateLimitDaily:
       "Vous avez atteint la limite gratuite de génération du jour.",
     authenticatedPaidContinueHint:

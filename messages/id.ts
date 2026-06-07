@@ -220,6 +220,7 @@ export const idMessages = {
     signupSuccessLine1: "Permintaan akunmu telah diterima. Silakan cek emailmu.",
     signupSuccessLine2:
       "Jika tidak terlihat, periksa juga folder spam.",
+    wardrobeClaimBrowserHint: "Tombol di email konfirmasi mungkin terbuka di browser lain. Untuk menyimpan ilustrasi yang kamu buat, selesaikan pendaftaran lalu masuk di sini, di browser ini.",
     loginMetaTitle: "Masuk | Persta.AI",
     loginMetaDescription: "Masuk ke Persta.AI",
     signupMetaTitle: "Daftar | Persta.AI",
@@ -915,8 +916,7 @@ export const idMessages = {
     guestResultDownloadFailed:
       "Gagal mengunduh gambar. Silakan coba lagi.",
     guestLoginCtaTitle: "Coba tanpa masuk",
-    guestLoginCtaDescription:
-      "Kamu bisa mencoba ChatGPT Image 2.0 dan Nano Banana 2 (0.5K) sekali sehari. Hasil tidak disimpan.",
+    guestLoginCtaDescription: "Coba ChatGPT Image 2.0 gratis, sekali sehari. Masuk (daftar gratis) setelah membuat untuk menyimpan gambarmu.",
     guestLoginCtaAction: "Masuk / Daftar",
     guestSubmitFailed: "Pembuatan gagal. Silakan coba lagi sebentar.",
     guestRateLimitDailyMessage:
@@ -1377,8 +1377,7 @@ export const idMessages = {
     generateRetryHint:
       "Jika hasilnya kurang memuaskan, coba lagi. Jika tetap gagal, beri tahu kami.",
     guestLoginCtaTitle: "Coba tanpa masuk",
-    guestLoginCtaDescription:
-      "Kamu bisa mencoba ChatGPT Image 2.0 dan Nano Banana 2 (0.5K) sekali sehari. Hasil tidak disimpan.",
+    guestLoginCtaDescription: "Coba ChatGPT Image 2.0 gratis, sekali sehari. Masuk (daftar gratis) setelah membuat untuk menyimpan gambarmu.",
     guestLoginCtaAction: "Masuk / Daftar",
     generateButton: "Mulai styling",
     generatingButton: "Menghasilkan...",
@@ -1413,6 +1412,17 @@ export const idMessages = {
     resultPlaceholder: "Gambar yang dihasilkan akan muncul di sini.",
     resultSaveHint:
       "Gunakan tombol unduh untuk menyimpan gambar yang ingin kamu pertahankan.",
+    wardrobeSaveButton: "Simpan",
+    wardrobeSaveHelper: "Simpan untuk mengunduh tanpa logo Persta.AI.",
+    wardrobeSaveModalTitle: "Simpan gambar ini",
+    wardrobeSaveModalDescription: "Masuk untuk menyimpan gambar yang dibuat ke akunmu dan melihatnya kapan saja.",
+    wardrobeSaveSuccess: "Tersimpan!",
+    wardrobeSaveError: "Gagal menyimpan. Silakan coba lagi nanti.",
+    wardrobeClaiming: "Menyimpan…",
+    wardrobeClaimSavedHint: "Kamu bisa melihatnya kapan saja di Halaman Saya.",
+    wardrobeViewSavedAction: "Lihat di Halaman Saya",
+    wardrobeClaimCloseAction: "Tutup",
+    wardrobeSaveAlreadyClaimed: "Sepertinya kamu sudah punya akun. Gambar sebelumnya tidak dapat disimpan ke akunmu.",
     downloadAction: "Unduh",
     downloadAriaLabel: "Unduh hasil yang dihasilkan",
     downloadSuccessTitle: "Terunduh",
@@ -1451,8 +1461,7 @@ export const idMessages = {
       "Layanan pembuatan gambar sementara tidak tersedia. Silakan coba lagi sebentar.",
     guestRateLimitShort:
       "Server sedang sibuk. Silakan coba lagi sebentar.",
-    guestRateLimitDaily:
-      "Kamu telah mencapai batas percobaan gratis hari ini. Daftar untuk terus menggunakan One-Tap Style.",
+    guestRateLimitDaily: "Kamu telah mencapai batas percobaan hari ini (1 per hari). Daftar untuk melanjutkan.",
     authenticatedRateLimitDaily:
       "Kamu telah mencapai batas pembuatan gratis hari ini.",
     authenticatedPaidContinueHint:

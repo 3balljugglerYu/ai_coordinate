@@ -220,6 +220,7 @@ export const zhCnMessages = {
     signupSuccessLine1: "已收到你的注册申请，请查收邮箱。",
     signupSuccessLine2:
       "如果没有收到，请同时检查垃圾邮件文件夹。",
+    wardrobeClaimBrowserHint: "确认邮件中的按钮可能会在其他浏览器中打开。若要保存你生成的插画，请完成注册后，在此页面（此浏览器）登录。",
     loginMetaTitle: "登录 | Persta.AI",
     loginMetaDescription: "登录到 Persta.AI",
     signupMetaTitle: "注册 | Persta.AI",
@@ -912,8 +913,7 @@ export const zhCnMessages = {
     guestResultDownloadFailed:
       "下载图片失败，请重试。",
     guestLoginCtaTitle: "免登录体验",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 与 Nano Banana 2 (0.5K) 每天可免费体验一次。结果不会保存。",
+    guestLoginCtaDescription: "每天可免费试用 ChatGPT Image 2.0 一次。生成后登录（免费注册）即可保存图片。",
     guestLoginCtaAction: "登录 / 注册",
     guestSubmitFailed: "生成失败，请稍后重试。",
     guestRateLimitDailyMessage:
@@ -1372,8 +1372,7 @@ export const zhCnMessages = {
     generateRetryHint:
       "如果结果不理想，可再次尝试。如仍然不满意，请告诉我们。",
     guestLoginCtaTitle: "免登录体验",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 与 Nano Banana 2 (0.5K) 每天可免费体验一次。结果不会保存。",
+    guestLoginCtaDescription: "每天可免费试用 ChatGPT Image 2.0 一次。生成后登录（免费注册）即可保存图片。",
     guestLoginCtaAction: "登录 / 注册",
     generateButton: "开始造型",
     generatingButton: "生成中...",
@@ -1408,6 +1407,17 @@ export const zhCnMessages = {
     resultPlaceholder: "生成的图片会显示在此处。",
     resultSaveHint:
       "想保留的图片请用下载按钮保存。",
+    wardrobeSaveButton: "保存",
+    wardrobeSaveHelper: "保存后即可下载无 Persta.AI 标志的图片。",
+    wardrobeSaveModalTitle: "保存这张图片",
+    wardrobeSaveModalDescription: "登录后，您生成的图片将保存到您的账号，随时可查看。",
+    wardrobeSaveSuccess: "已保存！",
+    wardrobeSaveError: "保存失败，请稍后重试。",
+    wardrobeClaiming: "正在保存…",
+    wardrobeClaimSavedHint: "可随时在「我的页面」查看。",
+    wardrobeViewSavedAction: "在我的页面查看",
+    wardrobeClaimCloseAction: "关闭",
+    wardrobeSaveAlreadyClaimed: "您似乎已拥有账号。刚才的图片无法保存到您的账号。",
     downloadAction: "下载",
     downloadAriaLabel: "下载生成结果",
     downloadSuccessTitle: "已下载",
@@ -1446,8 +1456,7 @@ export const zhCnMessages = {
       "图片生成服务暂不可用，请稍后重试。",
     guestRateLimitShort:
       "服务器繁忙，请稍后重试。",
-    guestRateLimitDaily:
-      "已达到今日免费体验上限。注册后可继续使用一键造型。",
+    guestRateLimitDaily: "已达到今日体验上限 (每日 1 次)。注册后可继续使用。",
     authenticatedRateLimitDaily:
       "已达到今日免费生成上限。",
     authenticatedPaidContinueHint:

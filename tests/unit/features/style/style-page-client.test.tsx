@@ -287,7 +287,7 @@ const styleMessages = {
   resultReplaceConfirmActionAuthenticated: "Generate again",
   generationFailed: "Failed to generate the image.",
   guestRateLimitDaily:
-    "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
+    "You have reached today's trial limit (1 per day). Sign up to continue.",
   authenticatedRateLimitDaily:
     "You have reached today's free generation limit.",
   authenticatedPaidContinueHint:
@@ -1078,7 +1078,8 @@ describe("StylePageClient", () => {
       jest.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByRole("button", { name: /Start Styling/ })).toBeEnabled();
+    // ゲストは1枚生成後、結果消失と上限エラーを防ぐため再生成ボタンは無効のまま。
+    expect(screen.getByRole("button", { name: /Start Styling/ })).toBeDisabled();
   });
 
   test("reduced motion が有効な場合は生成ステータスへのスクロールを即時にする", async () => {
@@ -1466,7 +1467,7 @@ describe("StylePageClient", () => {
     });
   });
 
-  test("生成結果がある状態で変更操作をすると確認ダイアログが表示され_キャンセルで結果を保持する", async () => {
+  test("ゲストは生成結果がある状態では設定変更が無効化され結果が消えない", async () => {
     jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
@@ -1482,22 +1483,17 @@ describe("StylePageClient", () => {
       "data:image/png;base64,generated-image-base64"
     );
 
-    fireEvent.click(
+    // ゲストは1日1回で再生成できないため、結果を消す設定変更を一括で抑止する。
+    expect(
       screen.getByRole("button", {
         name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
       })
-    );
+    ).toBeDisabled();
+    const photoRadio = screen.getByRole("radio", { name: "Photo" });
+    expect(photoRadio).toBeDisabled();
 
-    expect(
-      screen.getByText("This will clear the current result")
-    ).toBeInTheDocument();
-    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
-      "src",
-      "data:image/png;base64,generated-image-base64"
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Keep result" }));
-
+    // 無効化されているため確認ダイアログも出ず、結果は保持される。
+    fireEvent.click(photoRadio);
     expect(
       screen.queryByText("This will clear the current result")
     ).not.toBeInTheDocument();
@@ -1505,43 +1501,52 @@ describe("StylePageClient", () => {
       "src",
       "data:image/png;base64,generated-image-base64"
     );
-    expect(
-      screen.getByRole("button", { name: /PARIS CODE style card/ })
-    ).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("生成結果がある状態で変更確認に同意すると結果を削除して変更を反映する", async () => {
-    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+  test("ログインユーザーは設定変更の確認に同意すると結果を消して変更を反映する", async () => {
+    jest.useFakeTimers();
 
-    render(<StylePageClient presets={presets} />);
+    render(
+      <StylePageClient presets={presets} initialAuthState="authenticated" />
+    );
 
-    await uploadImageAndWaitUntilReady();
-    await startStylingAndWaitForRequest();
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
     act(() => {
       jest.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByAltText("Generated result")).toHaveAttribute(
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
       "src",
-      "data:image/png;base64,generated-image-base64"
+      "https://cdn.example.com/generated-style-result.png"
     );
 
+    // 認証ユーザーは結果がアカウントに保存されるため、設定変更の確認に同意すれば
+    // 表示結果を切り替えられる(=従来どおりの操作自由度を維持)。
     fireEvent.click(screen.getByRole("radio", { name: "Photo" }));
-
     expect(
-      screen.getByText("This will clear the current result")
+      screen.getByText("This will switch the result shown on this screen")
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(screen.queryByAltText("Generated result")).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Photo" })).toBeChecked();
-    expect(
-      screen.getByText("Your generated image will appear here.")
-    ).toBeInTheDocument();
   });
 
-  test("生成結果がある状態でStart Stylingを押すと確認ダイアログが表示され_続行後に再生成する", async () => {
+  test("ゲストは1枚生成後はStart Stylingが無効化され再生成できない(結果消失と上限エラーを防ぐ)", async () => {
     jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
@@ -1561,33 +1566,16 @@ describe("StylePageClient", () => {
       "data:image/png;base64,generated-image-base64"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
+    // 生成済みゲストは再生成ボタンが無効(押しても確認ダイアログは出ない)。
+    const startButton = screen.getByRole("button", { name: /Start Styling/ });
+    expect(startButton).toBeDisabled();
 
+    fireEvent.click(startButton);
     expect(
-      screen.getByText("This will replace the current result")
-    ).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalled();
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Generate again" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(4);
-
-    expect(
-      await screen.findByText("Styling is complete.")
-    ).toBeInTheDocument();
-
-    act(() => {
-      jest.advanceTimersByTime(5000);
-    });
-
-    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
-      "src",
-      "data:image/png;base64,generated-image-base64"
-    );
+      screen.queryByText("This will replace the current result")
+    ).not.toBeInTheDocument();
+    // 結果は保持されたまま
+    expect(screen.getByAltText("Generated result")).toBeInTheDocument();
   });
 
   test("ログインユーザーが生成結果ありで設定変更すると保存済み前提の確認文言を表示する", async () => {
@@ -1807,7 +1795,7 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
   });
 
-  test("未ログインユーザーが上限到達時_signupカードを表示して生成を止める", async () => {
+  test("未ログインユーザーが上限到達時_上限メッセージのみ表示し生成を止める(ボタンは出さない)", async () => {
     statusPayloadQueue = [
       {
         authState: "guest",
@@ -1818,16 +1806,18 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
+    // coordinate と同じ一行の上限メッセージのみ表示する。
     expect(
       await screen.findByText(
-        "You have reached today's free trial limit. Sign up to keep using One-Tap Style."
+        "You have reached today's trial limit (1 per day). Sign up to continue."
       )
     ).toBeInTheDocument();
+    // 補助文と「新規登録して続ける」ボタンは出さない。
     expect(
-      screen.getByText("Create an account to keep going right away.")
-    ).toBeInTheDocument();
+      screen.queryByText("Create an account to keep going right away.")
+    ).not.toBeInTheDocument();
     expect(
-      screen.queryByText("You have 0 generations left for today.")
+      screen.queryByRole("button", { name: "Sign up to continue" })
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
@@ -1835,16 +1825,6 @@ describe("StylePageClient", () => {
     expect(
       screen.getByRole("button", { name: /Start Styling/ })
     ).toBeDisabled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Sign up to continue" }));
-
-    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
-      eventType: "signup_click",
-      styleId: presets[0].id,
-    });
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/signup?next=%2Fstyle&signup_source=style"
-    );
   });
 
   test("ログインユーザーが上限到達時_翌日案内カードを表示して生成を止める", async () => {

@@ -220,6 +220,7 @@ export const hiMessages = {
     signupSuccessLine1: "आपका खाता अनुरोध प्राप्त हो गया है। कृपया अपना ईमेल देखें।",
     signupSuccessLine2:
       "अगर नहीं मिलता है, तो कृपया स्पैम फ़ोल्डर भी देखें।",
+    wardrobeClaimBrowserHint: "पुष्टिकरण ईमेल का बटन किसी दूसरे ब्राउज़र में खुल सकता है। आपने जो इलस्ट्रेशन बनाया है उसे सहेजने के लिए, साइन अप पूरा करें और फिर इसी स्क्रीन (इसी ब्राउज़र) में लॉगिन करें।",
     loginMetaTitle: "लॉग इन | Persta.AI",
     loginMetaDescription: "Persta.AI में लॉग इन करें",
     signupMetaTitle: "साइन अप | Persta.AI",
@@ -914,8 +915,7 @@ export const hiMessages = {
     guestResultDownloadFailed:
       "छवि डाउनलोड करने में विफल। कृपया फिर से प्रयास करें।",
     guestLoginCtaTitle: "बिना साइन इन किए आज़माएँ",
-    guestLoginCtaDescription:
-      "आप दिन में एक बार ChatGPT Image 2.0 और Nano Banana 2 (0.5K) आज़मा सकते हैं। परिणाम सहेजे नहीं जाते।",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 दिन में एक बार मुफ़्त आज़माएँ। बनाने के बाद लॉगिन (मुफ़्त साइन-अप) करके अपनी इमेज सहेजें।",
     guestLoginCtaAction: "साइन इन / साइन अप",
     guestSubmitFailed: "जनरेशन विफल। कुछ क्षणों में फिर से प्रयास करें।",
     guestRateLimitDailyMessage:
@@ -1376,8 +1376,7 @@ export const hiMessages = {
     generateRetryHint:
       "यदि परिणाम अच्छा नहीं आता है, तो फिर से प्रयास करें। यदि यह अभी भी विफल होता है, तो कृपया हमें बताएँ।",
     guestLoginCtaTitle: "बिना साइन इन किए आज़माएँ",
-    guestLoginCtaDescription:
-      "आप दिन में एक बार ChatGPT Image 2.0 और Nano Banana 2 (0.5K) आज़मा सकते हैं। परिणाम सहेजे नहीं जाते।",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 दिन में एक बार मुफ़्त आज़माएँ। बनाने के बाद लॉगिन (मुफ़्त साइन-अप) करके अपनी इमेज सहेजें।",
     guestLoginCtaAction: "साइन इन / साइन अप",
     generateButton: "स्टाइलिंग शुरू करें",
     generatingButton: "उत्पन्न हो रहा है...",
@@ -1412,6 +1411,17 @@ export const hiMessages = {
     resultPlaceholder: "आपकी उत्पन्न छवि यहाँ दिखाई देगी।",
     resultSaveHint:
       "जिस छवि को आप रखना चाहते हैं उसे सहेजने के लिए डाउनलोड बटन का उपयोग करें।",
+    wardrobeSaveButton: "सहेजें",
+    wardrobeSaveHelper: "सहेजें और Persta.AI लोगो के बिना डाउनलोड करें।",
+    wardrobeSaveModalTitle: "यह इमेज सहेजें",
+    wardrobeSaveModalDescription: "लॉगिन करें और बनाई गई इमेज आपके खाते में सहेजें, उसे कभी भी देखें।",
+    wardrobeSaveSuccess: "सहेज लिया!",
+    wardrobeSaveError: "सहेजा नहीं जा सका। कृपया बाद में पुनः प्रयास करें।",
+    wardrobeClaiming: "सहेजा जा रहा है…",
+    wardrobeClaimSavedHint: "आप इसे माय पेज पर कभी भी देख सकते हैं।",
+    wardrobeViewSavedAction: "माय पेज पर देखें",
+    wardrobeClaimCloseAction: "बंद करें",
+    wardrobeSaveAlreadyClaimed: "लगता है आपके पास पहले से खाता है। पिछली इमेज आपके खाते में सहेजी नहीं जा सकी।",
     downloadAction: "डाउनलोड",
     downloadAriaLabel: "उत्पन्न परिणाम डाउनलोड करें",
     downloadSuccessTitle: "डाउनलोड हो गया",
@@ -1450,8 +1460,7 @@ export const hiMessages = {
       "छवि जनरेशन सेवा अस्थायी रूप से अनुपलब्ध है। कृपया कुछ क्षणों में फिर से प्रयास करें।",
     guestRateLimitShort:
       "अभी सर्वर व्यस्त हैं। कृपया एक पल में फिर से प्रयास करें।",
-    guestRateLimitDaily:
-      "आप आज की मुफ़्त ट्रायल सीमा तक पहुँच गए हैं। One-Tap Style का उपयोग जारी रखने के लिए साइन अप करें।",
+    guestRateLimitDaily: "आप आज की ट्रायल सीमा (प्रति दिन 1) तक पहुँच गए हैं। जारी रखने के लिए साइन अप करें।",
     authenticatedRateLimitDaily:
       "आप आज की मुफ़्त जनरेशन सीमा तक पहुँच गए हैं।",
     authenticatedPaidContinueHint:

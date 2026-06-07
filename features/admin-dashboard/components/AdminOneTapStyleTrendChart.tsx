@@ -118,6 +118,24 @@ export default function AdminOneTapStyleTrendChart({
             dot={false}
             activeDot={{ r: 5 }}
           />
+          <Line
+            type="monotone"
+            dataKey="wardrobeSaveClicks"
+            name="保存クリック数"
+            stroke="#E11D48"
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 5 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="wardrobeSaveCompletions"
+            name="保存完了数"
+            stroke="#0D9488"
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 5 }}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

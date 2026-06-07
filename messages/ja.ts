@@ -217,6 +217,7 @@ export const jaMessages = {
     signupSuccessLine1: "新規登録を受け付けました。メールをご確認ください。",
     signupSuccessLine2:
       "届かない場合は、迷惑メールフォルダもあわせてご確認ください。",
+    wardrobeClaimBrowserHint: "確認メールのボタンは別のブラウザで開くことがあります。生成したイラストを保存するには、登録完了後、この画面（このブラウザ）でログインしてください。",
     loginMetaTitle: "ログイン | Persta.AI",
     loginMetaDescription: "Persta.AI にログイン",
     signupMetaTitle: "新規登録 | Persta.AI",
@@ -882,8 +883,7 @@ export const jaMessages = {
     guestResultDownloadSuccessDescription: "画像を保存しました。",
     guestResultDownloadFailed: "画像のダウンロードに失敗しました。もう一度お試しください。",
     guestLoginCtaTitle: "未ログインでお試しいただけます",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 を 1 日 1 回までお試しいただけます。保存はされません。",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 を 1 日 1 回まで無料でお試しいただけます。生成後にログイン（無料登録）すると画像を保存できます。",
     guestLoginCtaAction: "ログイン / 新規登録",
     guestSubmitFailed: "生成に失敗しました。少し時間をおいて再試行してください。",
     guestRateLimitDailyMessage:
@@ -1316,8 +1316,7 @@ export const jaMessages = {
     generateRetryHint:
       "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
     guestLoginCtaTitle: "未ログインでお試しいただけます",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 を 1 日 1 回までお試しいただけます。保存はされません。",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 を 1 日 1 回まで無料でお試しいただけます。生成後にログイン（無料登録）すると画像を保存できます。",
     guestLoginCtaAction: "ログイン / 新規登録",
     generateButton: "コーデ開始！",
     generatingButton: "生成中...",
@@ -1350,6 +1349,17 @@ export const jaMessages = {
     resultPlaceholder: "生成した画像がここに表示されます",
     resultSaveHint:
       "必要な画像はダウンロードボタンから保存してください。",
+    wardrobeSaveButton: "保存する",
+    wardrobeSaveHelper: "保存すると、Persta.AIのロゴなしでダウンロードできます。",
+    wardrobeSaveModalTitle: "このイラストを保存する",
+    wardrobeSaveModalDescription: "ログインすると、生成したイラストがあなたのアカウントに保存され、いつでも見返せます。",
+    wardrobeSaveSuccess: "保存しました！",
+    wardrobeSaveError: "保存に失敗しました。時間をおいて再試行してください。",
+    wardrobeClaiming: "保存しています…",
+    wardrobeClaimSavedHint: "マイページでいつでも見返せます。",
+    wardrobeViewSavedAction: "マイページで見る",
+    wardrobeClaimCloseAction: "閉じる",
+    wardrobeSaveAlreadyClaimed: "すでにアカウントをお持ちのようです。先ほどのイラストはあなたのアカウントに保存することができませんでした。",
     downloadAction: "ダウンロード",
     downloadAriaLabel: "生成結果をダウンロード",
     downloadSuccessTitle: "ダウンロードしました",
@@ -1384,8 +1394,7 @@ export const jaMessages = {
       "画像生成サービスが一時的に利用できません。少し時間をおいて再試行してください。",
     guestRateLimitShort:
       "サーバーが混み合っています。時間をおいて再度お試しください。",
-    guestRateLimitDaily:
-      "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
+    guestRateLimitDaily: "本日のお試し回数（1 日 1 回）に達しました。ログイン / 新規登録すると引き続き利用できます。",
     authenticatedRateLimitDaily:
       "本日の無料分の生成回数が上限に達しました。",
     authenticatedPaidContinueHint:

@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Heart, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { AuthModal } from "@/features/auth/components/AuthModal";
+import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 
 interface GuestGenerationTrialCtaProps {
   title: string;
@@ -9,12 +14,23 @@ interface GuestGenerationTrialCtaProps {
   testId: string;
 }
 
+/**
+ * ゲスト試用バナー。
+ *
+ * - 生成前: 現状どおり `/login` へのフルページ遷移。
+ * - 生成後（共有ストアにゲスト生成画像がある）: 「保存する」ボタンに切り替わり、
+ *   押下で signup 固定モーダル + 画像引き継ぎ（= 結果パネルの「保存する」と同一挙動）。
+ *   claim は遷移先ページの `useWardrobeSave` が処理する。
+ */
 export function GuestGenerationTrialCta({
   title,
   description,
   actionLabel,
   testId,
 }: GuestGenerationTrialCtaProps) {
+  const tStyle = useTranslations("style");
+  const saveTrigger = useWardrobeSaveTrigger();
+
   return (
     <div
       data-testid={testId}
@@ -30,14 +46,28 @@ export function GuestGenerationTrialCta({
           <p className="mt-1 text-xs text-amber-800">{description}</p>
         </div>
       </div>
-      <Button
-        asChild
-        variant="default"
-        size="sm"
-        className="self-end sm:self-auto"
-      >
-        <Link href="/login">{actionLabel}</Link>
-      </Button>
+      {saveTrigger.hasGuestImage ? (
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          onClick={saveTrigger.trigger}
+          className="self-end sm:self-auto"
+        >
+          <Heart className="mr-2 h-4 w-4" />
+          {tStyle("wardrobeSaveButton")}
+        </Button>
+      ) : (
+        <Button
+          asChild
+          variant="default"
+          size="sm"
+          className="self-end sm:self-auto"
+        >
+          <Link href="/login">{actionLabel}</Link>
+        </Button>
+      )}
+      <AuthModal {...saveTrigger.authModalProps} />
     </div>
   );
 }

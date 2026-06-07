@@ -82,9 +82,13 @@ export async function downloadGeneratedImage(
   image: DownloadableImage,
   messages: DownloadMessages,
   callbacks?: DownloadCallbacks,
+  transformBlob?: (blob: Blob) => Promise<Blob>,
 ): Promise<void> {
   const payload = await fetchImagePayload(image, messages);
-  triggerBrowserDownload(payload);
+  const finalPayload = transformBlob
+    ? { ...payload, blob: await transformBlob(payload.blob) }
+    : payload;
+  triggerBrowserDownload(finalPayload);
   callbacks?.onDownloadSuccess?.();
 }
 
@@ -103,9 +107,10 @@ export async function shareOrDownloadGeneratedImage(
   image: DownloadableImage,
   messages: DownloadMessages,
   callbacks?: DownloadCallbacks,
+  transformBlob?: (blob: Blob) => Promise<Blob>,
 ): Promise<void> {
   if (!isMobileUserAgent()) {
-    await downloadGeneratedImage(image, messages, callbacks);
+    await downloadGeneratedImage(image, messages, callbacks, transformBlob);
     return;
   }
 
@@ -116,6 +121,10 @@ export async function shareOrDownloadGeneratedImage(
   } catch {
     // CORS で失敗した場合は通常 fetch にフォールバック
     payload = await fetchImagePayload(image, messages);
+  }
+
+  if (transformBlob) {
+    payload = { ...payload, blob: await transformBlob(payload.blob) };
   }
 
   const file = new File([payload.blob], payload.fileName, {

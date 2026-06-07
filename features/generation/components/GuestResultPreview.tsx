@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
 import { GenerationResultPanel } from "./GenerationResultPanel";
 import { ImageDownloadButton } from "./ImageDownloadButton";
+import { applyPerstaWatermark } from "@/features/generation/lib/apply-watermark";
+import { WardrobeSaveButton } from "@/features/wardrobe/components/WardrobeSaveButton";
 
 /**
  * ゲスト DL のファイル名規則。`determineFileName` がこの ID を fallback
@@ -29,10 +29,10 @@ export interface GuestResultPreviewProps {
    */
   result: GuestResultPreviewImage | null;
   /**
-   * 「保存するにはログイン」CTA をクリックされたときの handler。
-   * AuthModal を開く想定。
+   * 「保存する（＝アカウントへ保存してログイン転換）」ボタンをクリックされたときの handler。
+   * `useWardrobeSave().requestSave` をラップして渡す想定。signup 固定モーダルを開く。
    */
-  onLoginCtaClick: () => void;
+  onSaveToAccountClick: () => void;
 }
 
 /**
@@ -47,9 +47,11 @@ export interface GuestResultPreviewProps {
  */
 export function GuestResultPreview({
   result,
-  onLoginCtaClick,
+  onSaveToAccountClick,
 }: GuestResultPreviewProps) {
   const t = useTranslations("coordinate");
+  // 保存導線の案内文は /style と共通（"style" 名前空間の wardrobeSaveHelper）。
+  const tStyle = useTranslations("style");
 
   return (
     <GenerationResultPanel
@@ -60,40 +62,34 @@ export function GuestResultPreview({
       aspectRatio={1}
       action={
         result ? (
-          <ImageDownloadButton
-            imageUrl={result.url}
-            id={GUEST_DOWNLOAD_ID}
-            variant="outline"
-            label={t("guestResultDownloadAction")}
-            ariaLabel={t("guestResultDownloadAriaLabel")}
-            messages={{
-              accessDenied: t("guestResultDownloadFailed"),
-              fetchFailed: () => t("guestResultDownloadFailed"),
-              failedFallback: t("guestResultDownloadFailed"),
-              successTitle: t("guestResultDownloadSuccessTitle"),
-              successDescription: t("guestResultDownloadSuccessDescription"),
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <ImageDownloadButton
+              imageUrl={result.url}
+              id={GUEST_DOWNLOAD_ID}
+              variant="outline"
+              label={t("guestResultDownloadAction")}
+              ariaLabel={t("guestResultDownloadAriaLabel")}
+              messages={{
+                accessDenied: t("guestResultDownloadFailed"),
+                fetchFailed: () => t("guestResultDownloadFailed"),
+                failedFallback: t("guestResultDownloadFailed"),
+                successTitle: t("guestResultDownloadSuccessTitle"),
+                successDescription: t("guestResultDownloadSuccessDescription"),
+              }}
+              transformBlob={applyPerstaWatermark}
+            />
+            <WardrobeSaveButton onClick={onSaveToAccountClick} />
+          </div>
         ) : null
       }
       footer={
         result ? (
-          <div
+          <p
             data-testid="guest-result-preview"
-            className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+            className="text-xs leading-5 text-slate-500"
           >
-            <p className="text-sm text-amber-900">{t("guestResultSaveHint")}</p>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={onLoginCtaClick}
-              className="self-end sm:self-auto"
-            >
-              <Lock className="mr-2 h-3.5 w-3.5" />
-              {t("guestResultLoginCta")}
-            </Button>
-          </div>
+            {tStyle("wardrobeSaveHelper")}
+          </p>
         ) : null
       }
     />

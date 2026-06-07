@@ -1,6 +1,7 @@
 import {
   buildOneTapStyleAnalytics,
   buildOneTapStyleSummary,
+  computeWardrobeConversionRatePct,
   type StyleUsageEventRow,
 } from "@/features/admin-dashboard/lib/build-one-tap-style-summary";
 import {
@@ -10,6 +11,19 @@ import {
   type StylePresetDashboardRow,
   type StyleSignupProfileRow,
 } from "@/features/admin-dashboard/lib/build-one-tap-style-detailed";
+
+describe("computeWardrobeConversionRatePct", () => {
+  test("クリックが 0 のときは null", () => {
+    expect(computeWardrobeConversionRatePct(0, 0)).toBeNull();
+    expect(computeWardrobeConversionRatePct(3, 0)).toBeNull();
+  });
+
+  test("保存完了 / 保存クリック を % で返す(小数1桁)", () => {
+    expect(computeWardrobeConversionRatePct(1, 2)).toBe(50);
+    expect(computeWardrobeConversionRatePct(1, 3)).toBe(33.3);
+    expect(computeWardrobeConversionRatePct(2, 2)).toBe(100);
+  });
+});
 
 describe("buildOneTapStyleSummary", () => {
   test("current と previous の visit/generate/signup を集計する", () => {
@@ -49,6 +63,35 @@ describe("buildOneTapStyleSummary", () => {
         style_id: "fluffy_pajamas_code",
         created_at: "2026-03-17T03:00:00.000Z",
       },
+      // 保存ファネル: クリック(guest) current 2 / previous 1、完了(auth) current 1 / previous 0
+      {
+        user_id: null,
+        auth_state: "guest",
+        event_type: "wardrobe_save_click",
+        style_id: "paris_code",
+        created_at: "2026-03-18T05:00:00.000Z",
+      },
+      {
+        user_id: null,
+        auth_state: "guest",
+        event_type: "wardrobe_save_click",
+        style_id: "paris_code",
+        created_at: "2026-03-18T05:30:00.000Z",
+      },
+      {
+        user_id: null,
+        auth_state: "guest",
+        event_type: "wardrobe_save_click",
+        style_id: "paris_code",
+        created_at: "2026-03-17T05:00:00.000Z",
+      },
+      {
+        user_id: "user-11",
+        auth_state: "authenticated",
+        event_type: "wardrobe_save_completed",
+        style_id: "paris_code",
+        created_at: "2026-03-18T07:00:00.000Z",
+      },
     ];
     const profiles: StyleSignupProfileRow[] = [
       {
@@ -60,6 +103,12 @@ describe("buildOneTapStyleSummary", () => {
         user_id: "user-10",
         created_at: "2026-03-17T06:00:00.000Z",
         signup_source: "style",
+      },
+      // 保存導線経由の新規登録(current 1 / previous 0)
+      {
+        user_id: "user-12",
+        created_at: "2026-03-18T08:00:00.000Z",
+        signup_source: "wardrobe",
       },
     ];
 
@@ -104,6 +153,30 @@ describe("buildOneTapStyleSummary", () => {
         deltaPct: 0,
         deltaDirection: "flat",
       },
+      {
+        key: "wardrobeSaveClicks",
+        label: "保存クリック数",
+        currentCount: 2,
+        previousCount: 1,
+        deltaPct: 100,
+        deltaDirection: "up",
+      },
+      {
+        key: "wardrobeSaveCompletions",
+        label: "保存完了数",
+        currentCount: 1,
+        previousCount: 0,
+        deltaPct: null,
+        deltaDirection: "up",
+      },
+      {
+        key: "wardrobeSignups",
+        label: "保存経由の新規登録数",
+        currentCount: 1,
+        previousCount: 0,
+        deltaPct: null,
+        deltaDirection: "up",
+      },
     ]);
   });
 
@@ -130,6 +203,20 @@ describe("buildOneTapStyleSummary", () => {
         style_id: "paris_code",
         created_at: "2026-03-19T04:00:00.000Z",
       },
+      {
+        user_id: null,
+        auth_state: "guest",
+        event_type: "wardrobe_save_click",
+        style_id: "paris_code",
+        created_at: "2026-03-18T05:00:00.000Z",
+      },
+      {
+        user_id: "user-4",
+        auth_state: "authenticated",
+        event_type: "wardrobe_save_completed",
+        style_id: "paris_code",
+        created_at: "2026-03-19T05:00:00.000Z",
+      },
     ];
     const profiles: StyleSignupProfileRow[] = [
       {
@@ -155,6 +242,8 @@ describe("buildOneTapStyleSummary", () => {
         generations: 1,
         signupClicks: 0,
         signupCompletions: 0,
+        wardrobeSaveClicks: 1,
+        wardrobeSaveCompletions: 0,
       },
       {
         bucket: "2026-03-19",
@@ -163,6 +252,8 @@ describe("buildOneTapStyleSummary", () => {
         generations: 0,
         signupClicks: 1,
         signupCompletions: 1,
+        wardrobeSaveClicks: 0,
+        wardrobeSaveCompletions: 1,
       },
       {
         bucket: "2026-03-20",
@@ -171,6 +262,8 @@ describe("buildOneTapStyleSummary", () => {
         generations: 0,
         signupClicks: 0,
         signupCompletions: 0,
+        wardrobeSaveClicks: 0,
+        wardrobeSaveCompletions: 0,
       },
     ]);
   });

@@ -630,16 +630,24 @@ export async function signUp(
   email: string,
   password: string,
   referralCode?: string,
-  signupSource?: SignupSource | null
+  signupSource?: SignupSource | null,
+  redirectTo?: string
 ) {
   const supabase = createClient();
   const locale = resolveClientLocale();
+  const callbackUrl = new URL(
+    `${getSiteUrlForClient().replace(/\/$/, "")}/auth/callback`
+  );
+
+  if (redirectTo && redirectTo !== "/") {
+    callbackUrl.searchParams.set("next", redirectTo);
+  }
 
   const signUpOptions: {
     emailRedirectTo: string;
     data?: { referral_code?: string; signup_source?: SignupSource };
   } = {
-    emailRedirectTo: getSiteUrlForClient() + "/auth/callback",
+    emailRedirectTo: callbackUrl.toString(),
   };
 
   if (referralCode || signupSource) {

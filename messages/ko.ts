@@ -220,6 +220,7 @@ export const koMessages = {
     signupSuccessLine1: "회원가입 신청을 받았습니다. 이메일을 확인해 주세요.",
     signupSuccessLine2:
       "메일이 보이지 않으면 스팸함도 함께 확인해 주세요.",
+    wardrobeClaimBrowserHint: "확인 메일의 버튼이 다른 브라우저에서 열릴 수 있어요. 생성한 일러스트를 저장하려면 가입을 완료한 뒤, 이 화면(이 브라우저)에서 로그인해 주세요.",
     loginMetaTitle: "로그인 | Persta.AI",
     loginMetaDescription: "Persta.AI에 로그인하세요",
     signupMetaTitle: "회원가입 | Persta.AI",
@@ -913,8 +914,7 @@ export const koMessages = {
     guestResultDownloadFailed:
       "이미지 다운로드에 실패했습니다. 다시 시도해 주세요.",
     guestLoginCtaTitle: "로그인 없이 체험",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 과 Nano Banana 2 (0.5K)를 하루 한 번 체험할 수 있습니다. 결과는 저장되지 않습니다.",
+    guestLoginCtaDescription: "ChatGPT Image 2.0을 하루 1회 무료로 사용해 보세요. 생성 후 로그인(무료 가입)하면 이미지를 저장할 수 있어요.",
     guestLoginCtaAction: "로그인 / 회원가입",
     guestSubmitFailed: "생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     guestRateLimitDailyMessage:
@@ -1374,8 +1374,7 @@ export const koMessages = {
     generateRetryHint:
       "결과가 마음에 들지 않으면 다시 시도해 보세요. 그래도 잘 안 되면 알려주세요.",
     guestLoginCtaTitle: "로그인 없이 체험",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 과 Nano Banana 2 (0.5K)를 하루 한 번 체험할 수 있습니다. 결과는 저장되지 않습니다.",
+    guestLoginCtaDescription: "ChatGPT Image 2.0을 하루 1회 무료로 사용해 보세요. 생성 후 로그인(무료 가입)하면 이미지를 저장할 수 있어요.",
     guestLoginCtaAction: "로그인 / 회원가입",
     generateButton: "스타일링 시작",
     generatingButton: "생성 중...",
@@ -1410,6 +1409,17 @@ export const koMessages = {
     resultPlaceholder: "생성된 이미지가 여기에 표시됩니다.",
     resultSaveHint:
       "보관하고 싶은 이미지는 다운로드 버튼으로 저장해 주세요.",
+    wardrobeSaveButton: "저장하기",
+    wardrobeSaveHelper: "저장하면 Persta.AI 로고 없이 다운로드할 수 있어요.",
+    wardrobeSaveModalTitle: "이 이미지 저장하기",
+    wardrobeSaveModalDescription: "로그인하면 생성한 이미지가 회원님의 계정에 저장되어 언제든 다시 볼 수 있어요.",
+    wardrobeSaveSuccess: "저장했어요!",
+    wardrobeSaveError: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    wardrobeClaiming: "저장 중…",
+    wardrobeClaimSavedHint: "마이페이지에서 언제든 다시 볼 수 있어요.",
+    wardrobeViewSavedAction: "마이페이지에서 보기",
+    wardrobeClaimCloseAction: "닫기",
+    wardrobeSaveAlreadyClaimed: "이미 계정을 가지고 계신 것 같습니다. 방금 이미지는 회원님의 계정에 저장할 수 없었습니다.",
     downloadAction: "다운로드",
     downloadAriaLabel: "생성 결과 다운로드",
     downloadSuccessTitle: "다운로드 완료",
@@ -1448,8 +1458,7 @@ export const koMessages = {
       "이미지 생성 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
     guestRateLimitShort:
       "현재 서버가 혼잡합니다. 잠시 후 다시 시도해 주세요.",
-    guestRateLimitDaily:
-      "오늘의 무료 체험 한도에 도달했습니다. 회원가입 후에도 계속 원탭 스타일을 사용할 수 있습니다.",
+    guestRateLimitDaily: "오늘의 체험 한도(하루 1회)에 도달했습니다. 회원가입 후 계속 이용할 수 있습니다.",
     authenticatedRateLimitDaily:
       "오늘의 무료 생성 한도에 도달했습니다.",
     authenticatedPaidContinueHint:

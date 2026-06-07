@@ -220,6 +220,7 @@ export const viMessages = {
     signupSuccessLine1: "Yêu cầu tạo tài khoản đã được nhận. Vui lòng kiểm tra email.",
     signupSuccessLine2:
       "Nếu không thấy, hãy kiểm tra cả thư mục spam.",
+    wardrobeClaimBrowserHint: "Nút trong email xác nhận có thể mở ở trình duyệt khác. Để lưu hình minh họa bạn đã tạo, hãy hoàn tất đăng ký rồi đăng nhập tại đây, trên trình duyệt này.",
     loginMetaTitle: "Đăng nhập | Persta.AI",
     loginMetaDescription: "Đăng nhập Persta.AI",
     signupMetaTitle: "Đăng ký | Persta.AI",
@@ -913,8 +914,7 @@ export const viMessages = {
     guestResultDownloadFailed:
       "Tải hình thất bại. Vui lòng thử lại.",
     guestLoginCtaTitle: "Thử mà không cần đăng nhập",
-    guestLoginCtaDescription:
-      "Bạn có thể thử ChatGPT Image 2.0 và Nano Banana 2 (0.5K) một lần mỗi ngày. Kết quả không được lưu.",
+    guestLoginCtaDescription: "Dùng thử ChatGPT Image 2.0 miễn phí, mỗi ngày 1 lần. Đăng nhập (đăng ký miễn phí) sau khi tạo để lưu hình của bạn.",
     guestLoginCtaAction: "Đăng nhập / Đăng ký",
     guestSubmitFailed: "Tạo thất bại. Vui lòng thử lại sau ít phút.",
     guestRateLimitDailyMessage:
@@ -1375,8 +1375,7 @@ export const viMessages = {
     generateRetryHint:
       "Nếu kết quả không như ý, hãy thử lại. Nếu vẫn thất bại, hãy báo cho chúng tôi.",
     guestLoginCtaTitle: "Thử mà không cần đăng nhập",
-    guestLoginCtaDescription:
-      "Bạn có thể thử ChatGPT Image 2.0 và Nano Banana 2 (0.5K) một lần mỗi ngày. Kết quả không được lưu.",
+    guestLoginCtaDescription: "Dùng thử ChatGPT Image 2.0 miễn phí, mỗi ngày 1 lần. Đăng nhập (đăng ký miễn phí) sau khi tạo để lưu hình của bạn.",
     guestLoginCtaAction: "Đăng nhập / Đăng ký",
     generateButton: "Bắt đầu styling",
     generatingButton: "Đang tạo...",
@@ -1411,6 +1410,17 @@ export const viMessages = {
     resultPlaceholder: "Hình bạn tạo sẽ xuất hiện tại đây.",
     resultSaveHint:
       "Dùng nút tải xuống để lưu hình bạn muốn giữ lại.",
+    wardrobeSaveButton: "Lưu",
+    wardrobeSaveHelper: "Lưu để tải xuống không có logo Persta.AI.",
+    wardrobeSaveModalTitle: "Lưu hình này",
+    wardrobeSaveModalDescription: "Đăng nhập để lưu hình đã tạo vào tài khoản của bạn và xem lại bất cứ lúc nào.",
+    wardrobeSaveSuccess: "Đã lưu!",
+    wardrobeSaveError: "Không thể lưu. Vui lòng thử lại sau.",
+    wardrobeClaiming: "Đang lưu…",
+    wardrobeClaimSavedHint: "Bạn có thể xem lại bất cứ lúc nào ở Trang của tôi.",
+    wardrobeViewSavedAction: "Xem ở Trang của tôi",
+    wardrobeClaimCloseAction: "Đóng",
+    wardrobeSaveAlreadyClaimed: "Có vẻ bạn đã có tài khoản. Hình vừa rồi không thể lưu vào tài khoản của bạn.",
     downloadAction: "Tải xuống",
     downloadAriaLabel: "Tải kết quả đã tạo",
     downloadSuccessTitle: "Đã tải xuống",
@@ -1449,8 +1459,7 @@ export const viMessages = {
       "Dịch vụ tạo hình tạm thời không khả dụng. Vui lòng thử lại sau ít phút.",
     guestRateLimitShort:
       "Máy chủ đang bận. Vui lòng thử lại sau ít phút.",
-    guestRateLimitDaily:
-      "Bạn đã đạt giới hạn dùng thử miễn phí của hôm nay. Đăng ký để tiếp tục dùng One-Tap Style.",
+    guestRateLimitDaily: "Bạn đã đạt giới hạn dùng thử hôm nay (1 lần/ngày). Đăng ký để tiếp tục.",
     authenticatedRateLimitDaily:
       "Bạn đã đạt giới hạn tạo miễn phí của hôm nay.",
     authenticatedPaidContinueHint:

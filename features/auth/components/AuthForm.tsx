@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
-import { parseSignupSource } from "../lib/signup-source";
+import { parseSignupSource, type SignupSource } from "../lib/signup-source";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
 import { useWebViewDetection, buildIntentUrl } from "./WebViewBanner";
@@ -28,9 +28,26 @@ interface AuthFormProps {
   mode: "signin" | "signup";
   onSuccess?: () => void;
   redirectTo?: string;
+  /**
+   * ログイン↔新規登録の切替リンクを隠す。クローゼット保存導線のように
+   * 新規登録に固定したい場合に true(既存アカウントへの安易な連携を防ぐ）。
+   */
+  hideModeSwitch?: boolean;
+  /**
+   * 流入元の明示指定。URL クエリ(?signup_source=)が使えない
+   * モーダル内表示(保存導線など)で流入元を確実に付与するために使う。
+   * 指定時は URL クエリより優先する。
+   */
+  signupSource?: SignupSource | null;
 }
 
-export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  onSuccess,
+  redirectTo,
+  hideModeSwitch,
+  signupSource: signupSourceProp,
+}: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -61,13 +78,20 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
   // URLクエリパラメータから紹介コードを取得
   const referralCode = searchParams.get("ref");
-  const signupSource = parseSignupSource(searchParams.get("signup_source"));
+  // prop 指定(モーダル内導線)を優先し、無ければ URL クエリから解決する。
+  const signupSource =
+    signupSourceProp ?? parseSignupSource(searchParams.get("signup_source"));
 
   const resolveRedirectTarget = () =>
     redirectTo ??
     searchParams.get("redirect") ??
     searchParams.get("next") ??
     "/";
+
+  // 保存導線(claim_wardrobe)経由のとき、確認メールが別ブラウザで開く場合の
+  // 案内を表示する(=このブラウザに戻ってログインすれば保存される)。
+  const isWardrobeClaimFlow =
+    resolveRedirectTarget().includes("claim_wardrobe");
 
   // コンポーネントマウント時またはmode変更時にローディング状態をリセット
   useEffect(() => {
@@ -102,12 +126,22 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
 
       // 認証処理
       if (isSignUp) {
-        await signUp(
-          email,
-          password,
-          referralCode || undefined,
-          signupSource
-        );
+        if (redirectTarget === "/") {
+          await signUp(
+            email,
+            password,
+            referralCode || undefined,
+            signupSource
+          );
+        } else {
+          await signUp(
+            email,
+            password,
+            referralCode || undefined,
+            signupSource,
+            redirectTarget
+          );
+        }
         // サインアップ成功
         setError(null);
         toast({
@@ -201,6 +235,24 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
     }
   };
 
+  const buildAuthPageHref = (path: "/login" | "/signup") => {
+    const params = new URLSearchParams();
+    const redirectTarget = resolveRedirectTarget();
+
+    if (redirectTarget !== "/") {
+      params.set("next", redirectTarget);
+    }
+    if (referralCode) {
+      params.set("ref", referralCode);
+    }
+    if (signupSource) {
+      params.set("signup_source", signupSource);
+    }
+
+    const query = params.toString();
+    return query ? `${path}?${query}` : path;
+  };
+
   return (
     <>
       <Card className="relative w-full max-w-md p-4 sm:p-6">
@@ -226,6 +278,14 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
             : t("signinDescription")}
         </p>
       </div>
+
+      {isWardrobeClaimFlow ? (
+        <Alert className="mb-4 border-amber-200 bg-amber-50">
+          <AlertDescription className="text-xs leading-5 text-amber-800">
+            {t("wardrobeClaimBrowserHint")}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -448,24 +508,32 @@ export function AuthForm({ mode, onSuccess, redirectTo }: AuthFormProps) {
         </div>
       </div>
 
-      {/* 切り替えリンク */}
+      {/* 切り替えリンク (hideModeSwitch のときは出さない=signup 固定) */}
+      {!hideModeSwitch ? (
       <div className="mt-6 text-center text-sm">
         {isSignUp ? (
           <p className="text-gray-600">
             {t("haveAccount")}{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
+            <Link
+              href={buildAuthPageHref("/login")}
+              className="font-medium text-primary hover:underline"
+            >
               {t("submitSignin")}
             </Link>
           </p>
         ) : (
           <p className="text-gray-600">
             {t("noAccount")}{" "}
-            <Link href="/signup" className="font-medium text-primary hover:underline">
+            <Link
+              href={buildAuthPageHref("/signup")}
+              className="font-medium text-primary hover:underline"
+            >
               {t("signupTitle")}
             </Link>
           </p>
         )}
       </div>
+      ) : null}
       </Card>
 
       {/* WebView Google ログインブロック ダイアログ（iOS用） */}

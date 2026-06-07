@@ -220,6 +220,7 @@ export const arMessages = {
     signupSuccessLine1: "تم استلام طلب الحساب. يُرجى التحقق من بريدك الإلكتروني.",
     signupSuccessLine2:
       "إذا لم تجد الرسالة، يُرجى التحقق من مجلد البريد المزعج أيضًا.",
+    wardrobeClaimBrowserHint: "قد يفتح زر بريد التأكيد في متصفّح آخر. لحفظ الرسمة التي أنشأتها، أكمل التسجيل ثم سجّل الدخول هنا في هذا المتصفّح.",
     loginMetaTitle: "تسجيل الدخول | Persta.AI",
     loginMetaDescription: "سجّل الدخول إلى Persta.AI",
     signupMetaTitle: "إنشاء حساب | Persta.AI",
@@ -913,8 +914,7 @@ export const arMessages = {
     guestResultDownloadFailed:
       "فشل تنزيل الصورة. يُرجى المحاولة مرة أخرى.",
     guestLoginCtaTitle: "جرّب دون تسجيل الدخول",
-    guestLoginCtaDescription:
-      "يمكنك تجربة ChatGPT Image 2.0 و Nano Banana 2 (0.5K) مرة واحدة يوميًا. لا تُحفظ النتائج.",
+    guestLoginCtaDescription: "جرّب ChatGPT Image 2.0 مجانًا مرة واحدة يوميًا. سجّل الدخول (تسجيل مجاني) بعد الإنشاء لحفظ صورتك.",
     guestLoginCtaAction: "تسجيل الدخول / إنشاء حساب",
     guestSubmitFailed: "فشل التوليد. يُرجى المحاولة بعد لحظات.",
     guestRateLimitDailyMessage:
@@ -1375,8 +1375,7 @@ export const arMessages = {
     generateRetryHint:
       "إذا لم تكن النتيجة جيدة، حاول مرة أخرى. إذا فشل مجددًا، يُرجى إخبارنا.",
     guestLoginCtaTitle: "جرّب دون تسجيل الدخول",
-    guestLoginCtaDescription:
-      "يمكنك تجربة ChatGPT Image 2.0 و Nano Banana 2 (0.5K) مرة واحدة يوميًا. لا تُحفظ النتائج.",
+    guestLoginCtaDescription: "جرّب ChatGPT Image 2.0 مجانًا مرة واحدة يوميًا. سجّل الدخول (تسجيل مجاني) بعد الإنشاء لحفظ صورتك.",
     guestLoginCtaAction: "تسجيل الدخول / إنشاء حساب",
     generateButton: "بدء التنسيق",
     generatingButton: "جارٍ التوليد...",
@@ -1411,6 +1410,17 @@ export const arMessages = {
     resultPlaceholder: "ستظهر صورتك المُنشأة هنا.",
     resultSaveHint:
       "استخدم زر التنزيل لحفظ أي صورة تريد الاحتفاظ بها.",
+    wardrobeSaveButton: "حفظ",
+    wardrobeSaveHelper: "احفظ لتنزيل الصورة بدون شعار Persta.AI.",
+    wardrobeSaveModalTitle: "احفظ هذه الصورة",
+    wardrobeSaveModalDescription: "سجّل الدخول لحفظ الصورة التي أنشأتها في حسابك ومشاهدتها في أي وقت.",
+    wardrobeSaveSuccess: "تم الحفظ!",
+    wardrobeSaveError: "تعذّر الحفظ. يرجى المحاولة لاحقًا.",
+    wardrobeClaiming: "جارٍ الحفظ…",
+    wardrobeClaimSavedHint: "يمكنك مشاهدتها في أي وقت من صفحتي.",
+    wardrobeViewSavedAction: "عرض في صفحتي",
+    wardrobeClaimCloseAction: "إغلاق",
+    wardrobeSaveAlreadyClaimed: "يبدو أنك تملك حسابًا بالفعل. تعذّر حفظ الصورة السابقة في حسابك.",
     downloadAction: "تنزيل",
     downloadAriaLabel: "تنزيل النتيجة المُنشأة",
     downloadSuccessTitle: "تم التنزيل",
@@ -1449,8 +1459,7 @@ export const arMessages = {
       "خدمة توليد الصور غير متاحة مؤقتًا. يُرجى المحاولة مرة أخرى بعد لحظات.",
     guestRateLimitShort:
       "الخوادم مزدحمة الآن. يُرجى المحاولة مرة أخرى بعد لحظة.",
-    guestRateLimitDaily:
-      "وصلت إلى حد التجربة المجانية اليومي. سجّل لمواصلة استخدام One-Tap Style.",
+    guestRateLimitDaily: "وصلت إلى حد التجربة اليومي (مرة واحدة في اليوم). سجّل للحصول على متابعة.",
     authenticatedRateLimitDaily:
       "وصلت إلى حد التوليد المجاني اليومي.",
     authenticatedPaidContinueHint:

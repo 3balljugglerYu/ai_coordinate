@@ -220,6 +220,7 @@ export const thMessages = {
     signupSuccessLine1: "เราได้รับคำขอลงทะเบียนของคุณแล้ว โปรดตรวจสอบอีเมล",
     signupSuccessLine2:
       "หากไม่พบ โปรดตรวจสอบโฟลเดอร์สแปมด้วย",
+    wardrobeClaimBrowserHint: "ปุ่มในอีเมลยืนยันอาจเปิดในเบราว์เซอร์อื่น หากต้องการบันทึกภาพที่คุณสร้าง ให้สมัครให้เสร็จแล้วเข้าสู่ระบบที่หน้านี้ (เบราว์เซอร์นี้)",
     loginMetaTitle: "เข้าสู่ระบบ | Persta.AI",
     loginMetaDescription: "เข้าสู่ระบบ Persta.AI",
     signupMetaTitle: "สมัครสมาชิก | Persta.AI",
@@ -913,8 +914,7 @@ export const thMessages = {
     guestResultDownloadFailed:
       "ดาวน์โหลดรูปไม่สำเร็จ โปรดลองอีกครั้ง",
     guestLoginCtaTitle: "ลองโดยไม่ต้องเข้าสู่ระบบ",
-    guestLoginCtaDescription:
-      "คุณลอง ChatGPT Image 2.0 และ Nano Banana 2 (0.5K) ได้วันละครั้ง ผลลัพธ์จะไม่ถูกบันทึก",
+    guestLoginCtaDescription: "ทดลองใช้ ChatGPT Image 2.0 ฟรีวันละ 1 ครั้ง เข้าสู่ระบบ (สมัครฟรี) หลังสร้างเพื่อบันทึกรูปของคุณ",
     guestLoginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
     guestSubmitFailed: "สร้างไม่สำเร็จ โปรดลองอีกครั้งภายหลัง",
     guestRateLimitDailyMessage:
@@ -1374,8 +1374,7 @@ export const thMessages = {
     generateRetryHint:
       "หากผลไม่น่าพอใจ ลองอีกครั้ง หากยังไม่ได้ โปรดแจ้งเรา",
     guestLoginCtaTitle: "ลองโดยไม่ต้องเข้าสู่ระบบ",
-    guestLoginCtaDescription:
-      "คุณลอง ChatGPT Image 2.0 และ Nano Banana 2 (0.5K) ได้วันละครั้ง ผลลัพธ์จะไม่ถูกบันทึก",
+    guestLoginCtaDescription: "ทดลองใช้ ChatGPT Image 2.0 ฟรีวันละ 1 ครั้ง เข้าสู่ระบบ (สมัครฟรี) หลังสร้างเพื่อบันทึกรูปของคุณ",
     guestLoginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
     generateButton: "เริ่มจัดสไตล์",
     generatingButton: "กำลังสร้าง...",
@@ -1410,6 +1409,17 @@ export const thMessages = {
     resultPlaceholder: "รูปที่สร้างจะปรากฏที่นี่",
     resultSaveHint:
       "ใช้ปุ่มดาวน์โหลดเพื่อบันทึกรูปที่ต้องการเก็บ",
+    wardrobeSaveButton: "บันทึก",
+    wardrobeSaveHelper: "บันทึกเพื่อดาวน์โหลดโดยไม่มีโลโก้ Persta.AI",
+    wardrobeSaveModalTitle: "บันทึกรูปนี้",
+    wardrobeSaveModalDescription: "เข้าสู่ระบบเพื่อบันทึกรูปที่สร้างไว้ในบัญชีของคุณ และดูได้ทุกเมื่อ",
+    wardrobeSaveSuccess: "บันทึกแล้ว!",
+    wardrobeSaveError: "บันทึกไม่สำเร็จ โปรดลองใหม่ภายหลัง",
+    wardrobeClaiming: "กำลังบันทึก…",
+    wardrobeClaimSavedHint: "ดูได้ทุกเมื่อที่หน้าของฉัน",
+    wardrobeViewSavedAction: "ดูที่หน้าของฉัน",
+    wardrobeClaimCloseAction: "ปิด",
+    wardrobeSaveAlreadyClaimed: "ดูเหมือนคุณมีบัญชีอยู่แล้ว รูปก่อนหน้านี้ไม่สามารถบันทึกไปยังบัญชีของคุณได้",
     downloadAction: "ดาวน์โหลด",
     downloadAriaLabel: "ดาวน์โหลดผลลัพธ์ที่สร้าง",
     downloadSuccessTitle: "ดาวน์โหลดแล้ว",
@@ -1448,8 +1458,7 @@ export const thMessages = {
       "บริการสร้างรูปไม่พร้อมใช้งานชั่วคราว โปรดลองอีกครั้งภายหลัง",
     guestRateLimitShort:
       "เซิร์ฟเวอร์กำลังหนาแน่น โปรดลองอีกครั้งในไม่ช้า",
-    guestRateLimitDaily:
-      "ถึงขีดจำกัดทดลองใช้ของวันนี้แล้ว สมัครสมาชิกเพื่อใช้ One-Tap Style ต่อไป",
+    guestRateLimitDaily: "ถึงขีดจำกัดทดลองของวันนี้แล้ว (1 ครั้งต่อวัน) สมัครสมาชิกเพื่อใช้ต่อ",
     authenticatedRateLimitDaily:
       "ถึงขีดจำกัดการสร้างฟรีของวันนี้แล้ว",
     authenticatedPaidContinueHint:

@@ -104,6 +104,8 @@ describe("ImageDownloadButton", () => {
         onShareSuccess: expect.any(Function),
         onDownloadSuccess: expect.any(Function),
       }),
+      // transformBlob: このボタンは透かしを渡さないため undefined
+      undefined,
     );
 
     // download success path: 内部 toast + 呼び出し側 callback の双方が走る
