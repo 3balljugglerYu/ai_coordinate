@@ -159,6 +159,30 @@ export function buildOneTapStyleSummary(params: {
     params.previousStart,
     params.currentStart
   );
+  const wardrobeSaveClicksCurrent = countEvents(
+    params.events,
+    "wardrobe_save_click",
+    params.currentStart,
+    params.now
+  );
+  const wardrobeSaveClicksPrevious = countEvents(
+    params.events,
+    "wardrobe_save_click",
+    params.previousStart,
+    params.currentStart
+  );
+  const wardrobeSaveCompletionsCurrent = countEvents(
+    params.events,
+    "wardrobe_save_completed",
+    params.currentStart,
+    params.now
+  );
+  const wardrobeSaveCompletionsPrevious = countEvents(
+    params.events,
+    "wardrobe_save_completed",
+    params.previousStart,
+    params.currentStart
+  );
 
   return {
     metrics: [
@@ -186,8 +210,34 @@ export function buildOneTapStyleSummary(params: {
         currentCount: signupCompletionsCurrent,
         previousCount: signupCompletionsPrevious,
       }),
+      createMetric({
+        key: "wardrobeSaveClicks",
+        label: "保存クリック数",
+        currentCount: wardrobeSaveClicksCurrent,
+        previousCount: wardrobeSaveClicksPrevious,
+      }),
+      createMetric({
+        key: "wardrobeSaveCompletions",
+        label: "保存完了数",
+        currentCount: wardrobeSaveCompletionsCurrent,
+        previousCount: wardrobeSaveCompletionsPrevious,
+      }),
     ],
   };
+}
+
+/**
+ * 保存ファネルの転換率（保存完了 / 保存クリック）をパーセントで返す。
+ * クリックが 0 のときは算出不能として null。
+ */
+export function computeWardrobeConversionRatePct(
+  completions: number,
+  clicks: number
+): number | null {
+  if (clicks <= 0) {
+    return null;
+  }
+  return Number(((completions / clicks) * 100).toFixed(1));
 }
 
 function buildOneTapStyleTrend(params: {
@@ -207,6 +257,8 @@ function buildOneTapStyleTrend(params: {
         generations: 0,
         signupClicks: 0,
         signupCompletions: 0,
+        wardrobeSaveClicks: 0,
+        wardrobeSaveCompletions: 0,
       },
     ])
   );
@@ -233,6 +285,16 @@ function buildOneTapStyleTrend(params: {
 
     if (event.event_type === "signup_click") {
       bucket.signupClicks += 1;
+      continue;
+    }
+
+    if (event.event_type === "wardrobe_save_click") {
+      bucket.wardrobeSaveClicks += 1;
+      continue;
+    }
+
+    if (event.event_type === "wardrobe_save_completed") {
+      bucket.wardrobeSaveCompletions += 1;
     }
   }
 

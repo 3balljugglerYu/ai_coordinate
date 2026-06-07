@@ -63,7 +63,9 @@ export type DashboardOneTapStyleMetricKey =
   | "visits"
   | "generations"
   | "signupClicks"
-  | "signupCompletions";
+  | "signupCompletions"
+  | "wardrobeSaveClicks"
+  | "wardrobeSaveCompletions";
 
 export interface DashboardOneTapStyleMetric {
   key: DashboardOneTapStyleMetricKey;
@@ -85,6 +87,8 @@ export interface DashboardOneTapStyleTrendPoint {
   generations: number;
   signupClicks: number;
   signupCompletions: number;
+  wardrobeSaveClicks: number;
+  wardrobeSaveCompletions: number;
 }
 
 export interface DashboardOneTapStyleAnalytics {
