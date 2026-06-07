@@ -220,6 +220,7 @@ export const arMessages = {
     signupSuccessLine1: "تم استلام طلب الحساب. يُرجى التحقق من بريدك الإلكتروني.",
     signupSuccessLine2:
       "إذا لم تجد الرسالة، يُرجى التحقق من مجلد البريد المزعج أيضًا.",
+    wardrobeClaimBrowserHint: "قد يفتح زر بريد التأكيد في متصفّح آخر. لحفظ الرسمة التي أنشأتها، أكمل التسجيل ثم سجّل الدخول هنا في هذا المتصفّح.",
     loginMetaTitle: "تسجيل الدخول | Persta.AI",
     loginMetaDescription: "سجّل الدخول إلى Persta.AI",
     signupMetaTitle: "إنشاء حساب | Persta.AI",

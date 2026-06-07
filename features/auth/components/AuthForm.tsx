@@ -88,6 +88,11 @@ export function AuthForm({
     searchParams.get("next") ??
     "/";
 
+  // 保存導線(claim_wardrobe)経由のとき、確認メールが別ブラウザで開く場合の
+  // 案内を表示する(=このブラウザに戻ってログインすれば保存される)。
+  const isWardrobeClaimFlow =
+    resolveRedirectTarget().includes("claim_wardrobe");
+
   // コンポーネントマウント時またはmode変更時にローディング状態をリセット
   useEffect(() => {
     setIsLoading(false);
@@ -273,6 +278,14 @@ export function AuthForm({
             : t("signinDescription")}
         </p>
       </div>
+
+      {isWardrobeClaimFlow ? (
+        <Alert className="mb-4 border-amber-200 bg-amber-50">
+          <AlertDescription className="text-xs leading-5 text-amber-800">
+            {t("wardrobeClaimBrowserHint")}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {error && (
         <Alert variant="destructive" className="mb-4">

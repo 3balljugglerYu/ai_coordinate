@@ -220,6 +220,7 @@ export const idMessages = {
     signupSuccessLine1: "Permintaan akunmu telah diterima. Silakan cek emailmu.",
     signupSuccessLine2:
       "Jika tidak terlihat, periksa juga folder spam.",
+    wardrobeClaimBrowserHint: "Tombol di email konfirmasi mungkin terbuka di browser lain. Untuk menyimpan ilustrasi yang kamu buat, selesaikan pendaftaran lalu masuk di sini, di browser ini.",
     loginMetaTitle: "Masuk | Persta.AI",
     loginMetaDescription: "Masuk ke Persta.AI",
     signupMetaTitle: "Daftar | Persta.AI",

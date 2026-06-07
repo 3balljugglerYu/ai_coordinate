@@ -220,6 +220,7 @@ export const deMessages = {
     signupSuccessLine1: "Wir haben deine Anfrage erhalten. Bitte prüfe deine E-Mails.",
     signupSuccessLine2:
       "Falls du sie nicht siehst, prüfe bitte auch deinen Spam-Ordner.",
+    wardrobeClaimBrowserHint: "Der Button in der Bestätigungs-E-Mail öffnet sich möglicherweise in einem anderen Browser. Um das erstellte Bild zu speichern, schließe die Registrierung ab und melde dich dann hier in diesem Browser an.",
     loginMetaTitle: "Anmelden | Persta.AI",
     loginMetaDescription: "Bei Persta.AI anmelden",
     signupMetaTitle: "Registrieren | Persta.AI",

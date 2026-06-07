@@ -217,6 +217,7 @@ export const jaMessages = {
     signupSuccessLine1: "新規登録を受け付けました。メールをご確認ください。",
     signupSuccessLine2:
       "届かない場合は、迷惑メールフォルダもあわせてご確認ください。",
+    wardrobeClaimBrowserHint: "確認メールのボタンは別のブラウザで開くことがあります。生成したイラストを保存するには、登録完了後、この画面（このブラウザ）でログインしてください。",
     loginMetaTitle: "ログイン | Persta.AI",
     loginMetaDescription: "Persta.AI にログイン",
     signupMetaTitle: "新規登録 | Persta.AI",

@@ -220,6 +220,7 @@ export const ptMessages = {
     signupSuccessLine1: "Sua solicitação foi recebida. Confira o seu e-mail.",
     signupSuccessLine2:
       "Se não encontrar, verifique também a pasta de spam.",
+    wardrobeClaimBrowserHint: "O botão do e-mail de confirmação pode abrir em outro navegador. Para salvar a ilustração que você gerou, conclua o cadastro e depois faça login aqui, neste navegador.",
     loginMetaTitle: "Entrar | Persta.AI",
     loginMetaDescription: "Entre na Persta.AI",
     signupMetaTitle: "Criar conta | Persta.AI",

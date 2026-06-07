@@ -220,6 +220,7 @@ export const hiMessages = {
     signupSuccessLine1: "आपका खाता अनुरोध प्राप्त हो गया है। कृपया अपना ईमेल देखें।",
     signupSuccessLine2:
       "अगर नहीं मिलता है, तो कृपया स्पैम फ़ोल्डर भी देखें।",
+    wardrobeClaimBrowserHint: "पुष्टिकरण ईमेल का बटन किसी दूसरे ब्राउज़र में खुल सकता है। आपने जो इलस्ट्रेशन बनाया है उसे सहेजने के लिए, साइन अप पूरा करें और फिर इसी स्क्रीन (इसी ब्राउज़र) में लॉगिन करें।",
     loginMetaTitle: "लॉग इन | Persta.AI",
     loginMetaDescription: "Persta.AI में लॉग इन करें",
     signupMetaTitle: "साइन अप | Persta.AI",

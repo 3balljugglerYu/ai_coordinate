@@ -220,6 +220,7 @@ export const enMessages = {
     signupSuccessLine1: "Your account request has been received. Please check your email.",
     signupSuccessLine2:
       "If you don't see it, please check your spam folder as well.",
+    wardrobeClaimBrowserHint: "The confirmation email button may open in a different browser. To save the illustration you generated, finish signing up and then log in here, in this browser.",
     loginMetaTitle: "Log in | Persta.AI",
     loginMetaDescription: "Log in to Persta.AI",
     signupMetaTitle: "Sign up | Persta.AI",

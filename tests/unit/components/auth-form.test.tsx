@@ -138,6 +138,17 @@ describe("AuthForm unit tests from EARS specs", () => {
     );
   });
 
+  test("claim_wardrobe リダイレクト時_別ブラウザ案内を表示する", () => {
+    const { rerender } = render(
+      <AuthForm mode="signin" redirectTo="/style?claim_wardrobe=1" />
+    );
+    expect(screen.getByText(/別のブラウザ/)).toBeInTheDocument();
+
+    // 通常のリダイレクトでは出さない
+    rerender(<AuthForm mode="signin" redirectTo="/style" />);
+    expect(screen.queryByText(/別のブラウザ/)).not.toBeInTheDocument();
+  });
+
   test("hideModeSwitch_signup固定でログインへの切替リンクを出さない", () => {
     // 通常の signup ではログインへの切替リンクがある
     const { container, rerender } = render(<AuthForm mode="signup" />);

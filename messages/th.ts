@@ -220,6 +220,7 @@ export const thMessages = {
     signupSuccessLine1: "เราได้รับคำขอลงทะเบียนของคุณแล้ว โปรดตรวจสอบอีเมล",
     signupSuccessLine2:
       "หากไม่พบ โปรดตรวจสอบโฟลเดอร์สแปมด้วย",
+    wardrobeClaimBrowserHint: "ปุ่มในอีเมลยืนยันอาจเปิดในเบราว์เซอร์อื่น หากต้องการบันทึกภาพที่คุณสร้าง ให้สมัครให้เสร็จแล้วเข้าสู่ระบบที่หน้านี้ (เบราว์เซอร์นี้)",
     loginMetaTitle: "เข้าสู่ระบบ | Persta.AI",
     loginMetaDescription: "เข้าสู่ระบบ Persta.AI",
     signupMetaTitle: "สมัครสมาชิก | Persta.AI",

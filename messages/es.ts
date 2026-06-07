@@ -220,6 +220,7 @@ export const esMessages = {
     signupSuccessLine1: "Hemos recibido tu solicitud de cuenta. Revisa tu correo.",
     signupSuccessLine2:
       "Si no lo ves, revisa también la carpeta de spam.",
+    wardrobeClaimBrowserHint: "El botón del correo de confirmación puede abrirse en otro navegador. Para guardar la ilustración que generaste, completa el registro y luego inicia sesión aquí, en este navegador.",
     loginMetaTitle: "Iniciar sesión | Persta.AI",
     loginMetaDescription: "Inicia sesión en Persta.AI",
     signupMetaTitle: "Crear cuenta | Persta.AI",

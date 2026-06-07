@@ -220,6 +220,7 @@ export const viMessages = {
     signupSuccessLine1: "Yêu cầu tạo tài khoản đã được nhận. Vui lòng kiểm tra email.",
     signupSuccessLine2:
       "Nếu không thấy, hãy kiểm tra cả thư mục spam.",
+    wardrobeClaimBrowserHint: "Nút trong email xác nhận có thể mở ở trình duyệt khác. Để lưu hình minh họa bạn đã tạo, hãy hoàn tất đăng ký rồi đăng nhập tại đây, trên trình duyệt này.",
     loginMetaTitle: "Đăng nhập | Persta.AI",
     loginMetaDescription: "Đăng nhập Persta.AI",
     signupMetaTitle: "Đăng ký | Persta.AI",

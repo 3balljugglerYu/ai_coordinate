@@ -220,6 +220,7 @@ export const koMessages = {
     signupSuccessLine1: "회원가입 신청을 받았습니다. 이메일을 확인해 주세요.",
     signupSuccessLine2:
       "메일이 보이지 않으면 스팸함도 함께 확인해 주세요.",
+    wardrobeClaimBrowserHint: "확인 메일의 버튼이 다른 브라우저에서 열릴 수 있어요. 생성한 일러스트를 저장하려면 가입을 완료한 뒤, 이 화면(이 브라우저)에서 로그인해 주세요.",
     loginMetaTitle: "로그인 | Persta.AI",
     loginMetaDescription: "Persta.AI에 로그인하세요",
     signupMetaTitle: "회원가입 | Persta.AI",

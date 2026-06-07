@@ -220,6 +220,7 @@ export const itMessages = {
     signupSuccessLine1: "Abbiamo ricevuto la tua richiesta. Controlla la tua email.",
     signupSuccessLine2:
       "Se non la vedi, controlla anche la cartella spam.",
+    wardrobeClaimBrowserHint: "Il pulsante dell'email di conferma potrebbe aprirsi in un altro browser. Per salvare l'illustrazione generata, completa la registrazione e poi accedi qui, in questo browser.",
     loginMetaTitle: "Accedi | Persta.AI",
     loginMetaDescription: "Accedi a Persta.AI",
     signupMetaTitle: "Registrati | Persta.AI",

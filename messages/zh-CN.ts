@@ -220,6 +220,7 @@ export const zhCnMessages = {
     signupSuccessLine1: "已收到你的注册申请，请查收邮箱。",
     signupSuccessLine2:
       "如果没有收到，请同时检查垃圾邮件文件夹。",
+    wardrobeClaimBrowserHint: "确认邮件中的按钮可能会在其他浏览器中打开。若要保存你生成的插画，请完成注册后，在此页面（此浏览器）登录。",
     loginMetaTitle: "登录 | Persta.AI",
     loginMetaDescription: "登录到 Persta.AI",
     signupMetaTitle: "注册 | Persta.AI",
