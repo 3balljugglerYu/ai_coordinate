@@ -171,15 +171,33 @@ describe("useWardrobeSave", () => {
     expect(mockClaim).not.toHaveBeenCalled();
   });
 
-  test("claim 副作用: saved → success トースト + /my-page へ遷移", async () => {
+  test("claim 中は claimStatus=claiming(オーバーレイ表示用)", () => {
+    mockSearchParams = new URLSearchParams("claim_wardrobe=1");
+    mockClaim.mockReturnValue(new Promise(() => {})); // 解決しない
+    const { result } = renderHook(() =>
+      useWardrobeSave({ authState: "authenticated" }),
+    );
+    expect(result.current.claimStatus).toBe("claiming");
+  });
+
+  test("claim 副作用: saved → success トースト + 自動遷移せず claimStatus=saved", async () => {
     mockSearchParams = new URLSearchParams("claim_wardrobe=1");
     mockClaim.mockResolvedValue({ status: "saved", id: "img-1" });
-    renderHook(() => useWardrobeSave({ authState: "authenticated" }));
+    const { result } = renderHook(() =>
+      useWardrobeSave({ authState: "authenticated" }),
+    );
 
     await waitFor(() => expect(mockClaim).toHaveBeenCalledTimes(1));
     expect(mockToast).toHaveBeenCalledWith({ title: "保存しました" });
+    // 保護ページへ自動遷移しない(再ログイン画面を挟まないため)
+    expect(mockPush).not.toHaveBeenCalled();
+    // claim フラグだけ URL から外す
+    expect(mockReplace).toHaveBeenCalledWith("/style");
+    await waitFor(() => expect(result.current.claimStatus).toBe("saved"));
+
+    // 「マイページで見る」で初めて遷移する
+    act(() => result.current.goToSavedImage());
     expect(mockPush).toHaveBeenCalledWith("/my-page");
-    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   test("claim 副作用: ALREADY_CLAIMED → 専用トースト + pathname へ replace", async () => {

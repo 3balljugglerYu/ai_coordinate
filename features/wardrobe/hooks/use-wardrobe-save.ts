@@ -28,6 +28,17 @@ function appendClaimFlag(currentUrl: string): string {
     : `${currentUrl}?${CLAIM_QUERY_KEY}=1`;
 }
 
+/** claim フラグだけを URL から取り除いた pathname + query を組み立てる。 */
+function stripClaimFlag(
+  pathname: string | null,
+  search: string | null | undefined
+): string {
+  const nextParams = new URLSearchParams(search ?? "");
+  nextParams.delete(CLAIM_QUERY_KEY);
+  const query = nextParams.toString();
+  return `${pathname ?? "/"}${query ? `?${query}` : ""}`;
+}
+
 /**
  * 保存導線の共通処理: 計測（wardrobe_save_click）+ 画像を localStorage へ退避。
  * 画像が無ければ false を返し何もしない。
@@ -75,6 +86,9 @@ export type WardrobeAuthModalProps = Pick<
   | "signupSource"
 >;
 
+/** ログイン後 claim の進行状態。オーバーレイ表示に使う。 */
+export type WardrobeClaimStatus = "idle" | "claiming" | "saved";
+
 export interface UseWardrobeSaveResult {
   /** ゲスト（保存導線を出すべき状態）かどうか。 */
   isGuest: boolean;
@@ -82,6 +96,15 @@ export interface UseWardrobeSaveResult {
   requestSave: (request: WardrobeSaveRequest) => void;
   /** 保存導線専用の signup 固定 AuthModal に spread するための props。 */
   authModalProps: WardrobeAuthModalProps;
+  /**
+   * ログイン後 claim の状態。"claiming" 中はブロッキングオーバーレイ、
+   * "saved" は「保存しました + マイページで見る」表示を出す（自動遷移しない）。
+   */
+  claimStatus: WardrobeClaimStatus;
+  /** 「マイページで見る」押下時。/my-page へ遷移する。 */
+  goToSavedImage: () => void;
+  /** 保存完了表示を閉じてその場に留まる。 */
+  dismissClaim: () => void;
 }
 
 /**
@@ -105,47 +128,77 @@ export function useWardrobeSave({
   const currentUrl = useCurrentUrlForRedirect();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const hasClaimFlag = searchParams?.get(CLAIM_QUERY_KEY) === "1";
+  // claim の結果のみ state で持ち、表示状態(claimStatus)は派生で求める。
+  // (effect 内での同期 setState を避け、認証解決を待ってから claim するため)
+  const [claimOutcome, setClaimOutcome] = useState<
+    "pending" | "saved" | "resolved"
+  >("pending");
   const claimHandledRef = useRef(false);
 
   const isGuest = authState !== "authenticated";
+
+  // フラグ付きで戻ってきた瞬間からオーバーレイを出し、未ログイン用バナーの
+  // 一瞬の表示(=誤タップ要因)を覆う。ゲスト確定時/閉じた後は出さない。
+  const claimStatus: WardrobeClaimStatus =
+    claimOutcome === "saved"
+      ? "saved"
+      : claimOutcome === "resolved"
+        ? "idle"
+        : hasClaimFlag && authState !== "guest"
+          ? "claiming"
+          : "idle";
 
   const requestSave = useCallback((request: WardrobeSaveRequest) => {
     if (!trackAndStashWardrobeSave(request)) return;
     setIsAuthModalOpen(true);
   }, []);
 
+  const goToSavedImage = useCallback(() => {
+    router.push("/my-page");
+  }, [router]);
+
+  const dismissClaim = useCallback(() => {
+    setClaimOutcome("resolved");
+  }, []);
+
   // ログイン後 (?claim_wardrobe=1 で戻る) に、退避した画像を保存する。
+  // 自動でページ遷移はせず、claim 中はオーバーレイ・完了後は「保存しました」を
+  // その場で表示する(保護ページへの自動遷移で再ログイン画面が挟まるのを防ぐ)。
+  // 認証解決まで(guest/null)は待機し、cookie 反映待ちでも取りこぼさない。
   useEffect(() => {
     if (claimHandledRef.current) return;
-    if (searchParams?.get(CLAIM_QUERY_KEY) !== "1") return;
+    if (!hasClaimFlag) return;
     if (authState !== "authenticated") return;
     claimHandledRef.current = true;
+
     void (async () => {
       const result = await claimPendingWardrobeSave();
       if (result.status === "saved") {
         toast({ title: t("wardrobeSaveSuccess") });
-        router.push("/my-page");
-        return;
+        setClaimOutcome("saved");
+      } else {
+        setClaimOutcome("resolved");
+        if (result.status === "error") {
+          toast({
+            title:
+              result.errorCode === "WARDROBE_CLAIM_ALREADY_CLAIMED"
+                ? t("wardrobeSaveAlreadyClaimed")
+                : t("wardrobeSaveError"),
+          });
+        }
       }
-      if (result.status === "error") {
-        toast({
-          title:
-            result.errorCode === "WARDROBE_CLAIM_ALREADY_CLAIMED"
-              ? t("wardrobeSaveAlreadyClaimed")
-              : t("wardrobeSaveError"),
-        });
-      }
-      // none / error: claim フラグだけを URL から外して元の画面に留める
-      const nextParams = new URLSearchParams(searchParams?.toString() ?? "");
-      nextParams.delete(CLAIM_QUERY_KEY);
-      const nextQuery = nextParams.toString();
-      router.replace(`${pathname ?? "/"}${nextQuery ? `?${nextQuery}` : ""}`);
+      // 結果確定後にフラグを外す(リロードや戻る操作での二重実行を防ぐ)。
+      router.replace(stripClaimFlag(pathname, searchParams?.toString()));
     })();
-  }, [searchParams, authState, toast, t, router, pathname]);
+  }, [hasClaimFlag, searchParams, authState, toast, t, router, pathname]);
 
   return {
     isGuest,
     requestSave,
+    claimStatus,
+    goToSavedImage,
+    dismissClaim,
     authModalProps: {
       open: isAuthModalOpen,
       onClose: () => setIsAuthModalOpen(false),

@@ -67,6 +67,7 @@ import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-cl
 import { applyPerstaWatermark } from "@/features/generation/lib/apply-watermark";
 import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
 import { WardrobeSaveButton } from "@/features/wardrobe/components/WardrobeSaveButton";
+import { WardrobeClaimOverlay } from "@/features/wardrobe/components/WardrobeClaimOverlay";
 import {
   clearGuestGeneration,
   setGuestGeneration,
@@ -2082,6 +2083,13 @@ export function StylePageClient({
 
       {/* ゲスト保存（ログイン転換）導線: signup 固定 */}
       <AuthModal {...wardrobeSave.authModalProps} />
+
+      {/* ログイン後の claim 表示(保存中 / 保存完了)。自動遷移はしない。 */}
+      <WardrobeClaimOverlay
+        status={wardrobeSave.claimStatus}
+        onView={wardrobeSave.goToSavedImage}
+        onClose={wardrobeSave.dismissClaim}
+      />
 
       <SubscriptionUpsellDialog
         open={isUpsellOpen}

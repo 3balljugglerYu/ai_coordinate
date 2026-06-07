@@ -56,6 +56,7 @@ import { readCoordinateStockSavePromptDismissed } from "../lib/form-preferences"
 import { GuestResultPreview } from "./GuestResultPreview";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
+import { WardrobeClaimOverlay } from "@/features/wardrobe/components/WardrobeClaimOverlay";
 import {
   clearGuestGeneration,
   setGuestGeneration,
@@ -1421,6 +1422,13 @@ export function GenerationFormContainer({
       ) : null}
 
       {isGuest ? <AuthModal {...wardrobeSave.authModalProps} /> : null}
+
+      {/* ログイン後の claim 表示。認証済みで戻ってくるため isGuest では分岐しない。 */}
+      <WardrobeClaimOverlay
+        status={wardrobeSave.claimStatus}
+        onView={wardrobeSave.goToSavedImage}
+        onClose={wardrobeSave.dismissClaim}
+      />
     </div>
   );
 }
