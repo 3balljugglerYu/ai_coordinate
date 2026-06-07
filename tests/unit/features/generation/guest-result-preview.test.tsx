@@ -9,7 +9,7 @@
  * を結果表示中だけ render する。あわせて「離脱で消える」ヒントを維持する。
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 
 jest.mock("next-intl", () => ({
@@ -94,7 +94,7 @@ describe("GuestResultPreview", () => {
     expect(screen.getByText("leave-page-warning")).toBeInTheDocument();
   });
 
-  test("DL クリックで共通ヘルパに data URL / id / 透かし関数を渡す", () => {
+  test("DL クリックで共通ヘルパに data URL / id / 透かし関数を渡す", async () => {
     render(
       <GuestResultPreview
         result={{ url: "data:image/png;base64,abc", mimeType: "image/png" }}
@@ -106,7 +106,7 @@ describe("GuestResultPreview", () => {
       screen.getByRole("button", { name: "Download generated result" }),
     );
 
-    expect(mockShareOrDownload).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockShareOrDownload).toHaveBeenCalledTimes(1));
     const call = mockShareOrDownload.mock.calls[0];
     expect(call[0]).toEqual({
       url: "data:image/png;base64,abc",
@@ -114,6 +114,7 @@ describe("GuestResultPreview", () => {
     });
     // ゲスト DL は透かし（transformBlob）が 4 番目の引数として渡る
     expect(typeof call[3]).toBe("function");
+    await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
   });
 
   test("保存ボタンクリックで onSaveToAccountClick が呼ばれる", () => {

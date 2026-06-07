@@ -113,8 +113,11 @@ export function useWardrobeSave({
               : t("wardrobeSaveError"),
         });
       }
-      // none / error: フラグを URL から外して元の画面に留める
-      router.replace(pathname ?? "/");
+      // none / error: claim フラグだけを URL から外して元の画面に留める
+      const nextParams = new URLSearchParams(searchParams?.toString() ?? "");
+      nextParams.delete(CLAIM_QUERY_KEY);
+      const nextQuery = nextParams.toString();
+      router.replace(`${pathname ?? "/"}${nextQuery ? `?${nextQuery}` : ""}`);
     })();
   }, [searchParams, authState, toast, t, router, pathname]);
 

@@ -200,6 +200,25 @@ describe("useWardrobeSave", () => {
     expect(mockReplace).toHaveBeenCalledWith("/style");
   });
 
+  test("claim 副作用: 保存失敗時は claim フラグだけ外し、他クエリを維持する", async () => {
+    mockPathname = "/style";
+    mockSearchParams = new URLSearchParams(
+      "style=foo&claim_wardrobe=1&utm_source=test",
+    );
+    mockClaim.mockResolvedValue({
+      status: "error",
+      errorCode: "WARDROBE_CLAIM_ALREADY_CLAIMED",
+    });
+    renderHook(() => useWardrobeSave({ authState: "authenticated" }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith({ title: "すでに保存済み" }),
+    );
+    expect(mockReplace).toHaveBeenCalledWith(
+      "/style?style=foo&utm_source=test",
+    );
+  });
+
   test("claim 副作用: 再レンダーしても claim は一度だけ", async () => {
     mockSearchParams = new URLSearchParams("claim_wardrobe=1");
     mockClaim.mockResolvedValue({ status: "none" });
