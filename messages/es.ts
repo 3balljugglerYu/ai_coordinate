@@ -1457,8 +1457,7 @@ export const esMessages = {
       "El servicio de generación de imágenes no está disponible temporalmente. Inténtalo de nuevo en unos momentos.",
     guestRateLimitShort:
       "Los servidores están saturados. Inténtalo de nuevo en un momento.",
-    guestRateLimitDaily:
-      "Has alcanzado el límite gratuito diario. Regístrate para seguir usando One-Tap Style.",
+    guestRateLimitDaily: "Has alcanzado el límite de prueba diario (1 al día). Regístrate para continuar.",
     authenticatedRateLimitDaily:
       "Has alcanzado el límite gratuito diario de generación.",
     authenticatedPaidContinueHint:

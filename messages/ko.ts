@@ -1453,8 +1453,7 @@ export const koMessages = {
       "이미지 생성 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
     guestRateLimitShort:
       "현재 서버가 혼잡합니다. 잠시 후 다시 시도해 주세요.",
-    guestRateLimitDaily:
-      "오늘의 무료 체험 한도에 도달했습니다. 회원가입 후에도 계속 원탭 스타일을 사용할 수 있습니다.",
+    guestRateLimitDaily: "오늘의 체험 한도(하루 1회)에 도달했습니다. 회원가입 후 계속 이용할 수 있습니다.",
     authenticatedRateLimitDaily:
       "오늘의 무료 생성 한도에 도달했습니다.",
     authenticatedPaidContinueHint:

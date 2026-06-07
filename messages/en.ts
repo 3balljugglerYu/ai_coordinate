@@ -1453,8 +1453,7 @@ export const enMessages = {
       "The image generation service is temporarily unavailable. Please try again in a few moments.",
     guestRateLimitShort:
       "Servers are busy right now. Please try again in a moment.",
-    guestRateLimitDaily:
-      "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
+    guestRateLimitDaily: "You have reached today's trial limit (1 per day). Sign up to continue.",
     authenticatedRateLimitDaily:
       "You have reached today's free generation limit.",
     authenticatedPaidContinueHint:

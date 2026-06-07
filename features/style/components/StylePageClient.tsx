@@ -1846,25 +1846,10 @@ export function StylePageClient({
 
             {shouldShowDailyLimitCard ? (
               rateLimitStatus?.authState === "guest" ? (
-                // coordinate 画面の上限表示に合わせ、赤枠ではなく amber の小さめ文字にする。
-                <div className="space-y-3">
-                  <p className="text-xs leading-5 text-amber-700">
-                    {t("guestRateLimitDaily")}
-                  </p>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-5 text-amber-700">
-                      {t("guestRateLimitSignupHint")}
-                    </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="w-full sm:w-auto"
-                      onClick={() => handleSignupCtaClick()}
-                    >
-                      {t("guestRateLimitSignupAction")}
-                    </Button>
-                  </div>
-                </div>
+                // coordinate 画面の上限表示に合わせ、赤枠やボタンは置かず amber の小さめ文字のみ。
+                <p className="text-xs leading-5 text-amber-700">
+                  {t("guestRateLimitDaily")}
+                </p>
               ) : (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
                   <p className="text-sm font-medium text-red-900">

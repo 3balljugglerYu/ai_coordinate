@@ -1454,8 +1454,7 @@ export const viMessages = {
       "Dịch vụ tạo hình tạm thời không khả dụng. Vui lòng thử lại sau ít phút.",
     guestRateLimitShort:
       "Máy chủ đang bận. Vui lòng thử lại sau ít phút.",
-    guestRateLimitDaily:
-      "Bạn đã đạt giới hạn dùng thử miễn phí của hôm nay. Đăng ký để tiếp tục dùng One-Tap Style.",
+    guestRateLimitDaily: "Bạn đã đạt giới hạn dùng thử hôm nay (1 lần/ngày). Đăng ký để tiếp tục.",
     authenticatedRateLimitDaily:
       "Bạn đã đạt giới hạn tạo miễn phí của hôm nay.",
     authenticatedPaidContinueHint:

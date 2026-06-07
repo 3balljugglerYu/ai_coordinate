@@ -1453,8 +1453,7 @@ export const thMessages = {
       "บริการสร้างรูปไม่พร้อมใช้งานชั่วคราว โปรดลองอีกครั้งภายหลัง",
     guestRateLimitShort:
       "เซิร์ฟเวอร์กำลังหนาแน่น โปรดลองอีกครั้งในไม่ช้า",
-    guestRateLimitDaily:
-      "ถึงขีดจำกัดทดลองใช้ของวันนี้แล้ว สมัครสมาชิกเพื่อใช้ One-Tap Style ต่อไป",
+    guestRateLimitDaily: "ถึงขีดจำกัดทดลองของวันนี้แล้ว (1 ครั้งต่อวัน) สมัครสมาชิกเพื่อใช้ต่อ",
     authenticatedRateLimitDaily:
       "ถึงขีดจำกัดการสร้างฟรีของวันนี้แล้ว",
     authenticatedPaidContinueHint:

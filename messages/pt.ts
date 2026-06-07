@@ -1457,8 +1457,7 @@ export const ptMessages = {
       "O serviço de geração de imagens está indisponível temporariamente. Tente novamente em instantes.",
     guestRateLimitShort:
       "Os servidores estão sobrecarregados agora. Tente de novo em instantes.",
-    guestRateLimitDaily:
-      "Você atingiu o limite de uso gratuito de hoje. Cadastre-se para continuar usando o One-Tap Style.",
+    guestRateLimitDaily: "Você atingiu o limite de teste de hoje (1 por dia). Cadastre-se para continuar.",
     authenticatedRateLimitDaily:
       "Você atingiu o limite gratuito de geração de hoje.",
     authenticatedPaidContinueHint:

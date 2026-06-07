@@ -1389,8 +1389,7 @@ export const jaMessages = {
       "画像生成サービスが一時的に利用できません。少し時間をおいて再試行してください。",
     guestRateLimitShort:
       "サーバーが混み合っています。時間をおいて再度お試しください。",
-    guestRateLimitDaily:
-      "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
+    guestRateLimitDaily: "本日のお試し回数（1 日 1 回）に達しました。ログイン / 新規登録すると引き続き利用できます。",
     authenticatedRateLimitDaily:
       "本日の無料分の生成回数が上限に達しました。",
     authenticatedPaidContinueHint:

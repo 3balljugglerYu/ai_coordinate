@@ -1456,8 +1456,7 @@ export const idMessages = {
       "Layanan pembuatan gambar sementara tidak tersedia. Silakan coba lagi sebentar.",
     guestRateLimitShort:
       "Server sedang sibuk. Silakan coba lagi sebentar.",
-    guestRateLimitDaily:
-      "Kamu telah mencapai batas percobaan gratis hari ini. Daftar untuk terus menggunakan One-Tap Style.",
+    guestRateLimitDaily: "Kamu telah mencapai batas percobaan hari ini (1 per hari). Daftar untuk melanjutkan.",
     authenticatedRateLimitDaily:
       "Kamu telah mencapai batas pembuatan gratis hari ini.",
     authenticatedPaidContinueHint:

@@ -1457,8 +1457,7 @@ export const deMessages = {
       "Der Bildgenerierungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es gleich erneut.",
     guestRateLimitShort:
       "Server sind gerade ausgelastet. Bitte gleich erneut versuchen.",
-    guestRateLimitDaily:
-      "Du hast das heutige kostenlose Testlimit erreicht. Registriere dich, um One-Tap Style weiter zu nutzen.",
+    guestRateLimitDaily: "Du hast das heutige Testlimit erreicht (1 pro Tag). Registriere dich, um weiterzumachen.",
     authenticatedRateLimitDaily:
       "Du hast das heutige kostenlose Generierungslimit erreicht.",
     authenticatedPaidContinueHint:

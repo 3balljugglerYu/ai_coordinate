@@ -1454,8 +1454,7 @@ export const arMessages = {
       "خدمة توليد الصور غير متاحة مؤقتًا. يُرجى المحاولة مرة أخرى بعد لحظات.",
     guestRateLimitShort:
       "الخوادم مزدحمة الآن. يُرجى المحاولة مرة أخرى بعد لحظة.",
-    guestRateLimitDaily:
-      "وصلت إلى حد التجربة المجانية اليومي. سجّل لمواصلة استخدام One-Tap Style.",
+    guestRateLimitDaily: "وصلت إلى حد التجربة اليومي (مرة واحدة في اليوم). سجّل للحصول على متابعة.",
     authenticatedRateLimitDaily:
       "وصلت إلى حد التوليد المجاني اليومي.",
     authenticatedPaidContinueHint:

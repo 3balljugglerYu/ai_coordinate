@@ -1457,8 +1457,7 @@ export const frMessages = {
       "Le service de génération d'images est temporairement indisponible. Veuillez réessayer dans quelques instants.",
     guestRateLimitShort:
       "Les serveurs sont saturés. Veuillez réessayer dans un instant.",
-    guestRateLimitDaily:
-      "Vous avez atteint la limite gratuite du jour. Inscrivez-vous pour continuer à utiliser One-Tap Style.",
+    guestRateLimitDaily: "Vous avez atteint la limite d'essai du jour (1 par jour). Inscrivez-vous pour continuer.",
     authenticatedRateLimitDaily:
       "Vous avez atteint la limite gratuite de génération du jour.",
     authenticatedPaidContinueHint:

@@ -1451,8 +1451,7 @@ export const zhCnMessages = {
       "图片生成服务暂不可用，请稍后重试。",
     guestRateLimitShort:
       "服务器繁忙，请稍后重试。",
-    guestRateLimitDaily:
-      "已达到今日免费体验上限。注册后可继续使用一键造型。",
+    guestRateLimitDaily: "已达到今日体验上限 (每日 1 次)。注册后可继续使用。",
     authenticatedRateLimitDaily:
       "已达到今日免费生成上限。",
     authenticatedPaidContinueHint:

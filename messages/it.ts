@@ -1457,8 +1457,7 @@ export const itMessages = {
       "Il servizio di generazione delle immagini è temporaneamente non disponibile. Riprova tra qualche istante.",
     guestRateLimitShort:
       "I server sono attualmente sovraccarichi. Riprova tra poco.",
-    guestRateLimitDaily:
-      "Hai raggiunto il limite gratuito di prove di oggi. Registrati per continuare a usare One-Tap Style.",
+    guestRateLimitDaily: "Hai raggiunto il limite di prova di oggi (1 al giorno). Registrati per continuare.",
     authenticatedRateLimitDaily:
       "Hai raggiunto il limite gratuito di generazioni di oggi.",
     authenticatedPaidContinueHint:

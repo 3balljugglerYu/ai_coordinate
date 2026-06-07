@@ -1451,8 +1451,7 @@ export const zhTwMessages = {
       "圖片生成服務暫時無法使用，請稍後再試。",
     guestRateLimitShort:
       "目前伺服器繁忙，請稍後再試。",
-    guestRateLimitDaily:
-      "已達到今日免費試用上限。註冊後可繼續使用一鍵造型。",
+    guestRateLimitDaily: "已達到今日試用上限 (每日 1 次)。註冊後可繼續使用。",
     authenticatedRateLimitDaily:
       "已達到今日免費生成上限。",
     authenticatedPaidContinueHint:

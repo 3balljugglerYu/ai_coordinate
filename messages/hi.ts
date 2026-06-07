@@ -1455,8 +1455,7 @@ export const hiMessages = {
       "छवि जनरेशन सेवा अस्थायी रूप से अनुपलब्ध है। कृपया कुछ क्षणों में फिर से प्रयास करें।",
     guestRateLimitShort:
       "अभी सर्वर व्यस्त हैं। कृपया एक पल में फिर से प्रयास करें।",
-    guestRateLimitDaily:
-      "आप आज की मुफ़्त ट्रायल सीमा तक पहुँच गए हैं। One-Tap Style का उपयोग जारी रखने के लिए साइन अप करें।",
+    guestRateLimitDaily: "आप आज की ट्रायल सीमा (प्रति दिन 1) तक पहुँच गए हैं। जारी रखने के लिए साइन अप करें।",
     authenticatedRateLimitDaily:
       "आप आज की मुफ़्त जनरेशन सीमा तक पहुँच गए हैं।",
     authenticatedPaidContinueHint:

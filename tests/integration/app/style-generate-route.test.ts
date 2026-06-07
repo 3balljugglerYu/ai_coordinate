@@ -699,7 +699,7 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(response.status).toBe(429);
     expect(body).toEqual({
       error:
-        "本日の無料お試し回数が上限に達しました。新規登録すると引き続き利用できます。",
+        "本日のお試し回数（1 日 1 回）に達しました。ログイン / 新規登録すると引き続き利用できます。",
       errorCode: "STYLE_RATE_LIMIT_DAILY",
       signupCta: true,
       signupPath: "/signup?next=%2Fstyle&signup_source=style",

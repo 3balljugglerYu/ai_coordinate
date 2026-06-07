@@ -287,7 +287,7 @@ const styleMessages = {
   resultReplaceConfirmActionAuthenticated: "Generate again",
   generationFailed: "Failed to generate the image.",
   guestRateLimitDaily:
-    "You have reached today's free trial limit. Sign up to keep using One-Tap Style.",
+    "You have reached today's trial limit (1 per day). Sign up to continue.",
   authenticatedRateLimitDaily:
     "You have reached today's free generation limit.",
   authenticatedPaidContinueHint:
@@ -1795,7 +1795,7 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
   });
 
-  test("未ログインユーザーが上限到達時_signupカードを表示して生成を止める", async () => {
+  test("未ログインユーザーが上限到達時_上限メッセージのみ表示し生成を止める(ボタンは出さない)", async () => {
     statusPayloadQueue = [
       {
         authState: "guest",
@@ -1806,16 +1806,18 @@ describe("StylePageClient", () => {
 
     render(<StylePageClient presets={presets} />);
 
+    // coordinate と同じ一行の上限メッセージのみ表示する。
     expect(
       await screen.findByText(
-        "You have reached today's free trial limit. Sign up to keep using One-Tap Style."
+        "You have reached today's trial limit (1 per day). Sign up to continue."
       )
     ).toBeInTheDocument();
+    // 補助文と「新規登録して続ける」ボタンは出さない。
     expect(
-      screen.getByText("Create an account to keep going right away.")
-    ).toBeInTheDocument();
+      screen.queryByText("Create an account to keep going right away.")
+    ).not.toBeInTheDocument();
     expect(
-      screen.queryByText("You have 0 generations left for today.")
+      screen.queryByRole("button", { name: "Sign up to continue" })
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Add image" }));
@@ -1823,16 +1825,6 @@ describe("StylePageClient", () => {
     expect(
       screen.getByRole("button", { name: /Start Styling/ })
     ).toBeDisabled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Sign up to continue" }));
-
-    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
-      eventType: "signup_click",
-      styleId: presets[0].id,
-    });
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/signup?next=%2Fstyle&signup_source=style"
-    );
   });
 
   test("ログインユーザーが上限到達時_翌日案内カードを表示して生成を止める", async () => {
