@@ -1417,7 +1417,7 @@ export const ptMessages = {
     wardrobeSaveButton: "Salvar",
     wardrobeSaveHelper: "Ao salvar, a imagem gerada aqui é adicionada à sua conta.",
     wardrobeSaveModalTitle: "Salvar esta imagem",
-    wardrobeSaveModalDescription: "Faça login para salvar a imagem gerada na sua conta e vê-la quando quiser. (30 s, grátis)",
+    wardrobeSaveModalDescription: "Faça login para salvar a imagem gerada na sua conta e vê-la quando quiser.",
     wardrobeSaveSuccess: "Salvo!",
     wardrobeSaveError: "Não foi possível salvar. Tente novamente mais tarde.",
     wardrobeSaveAlreadyClaimed: "Parece que você já tem uma conta. A imagem anterior não pôde ser salva na sua conta.",

@@ -1413,7 +1413,7 @@ export const thMessages = {
     wardrobeSaveButton: "บันทึก",
     wardrobeSaveHelper: "เมื่อบันทึก รูปที่คุณสร้างที่นี่จะถูกเพิ่มเข้าบัญชีของคุณ",
     wardrobeSaveModalTitle: "บันทึกรูปนี้",
-    wardrobeSaveModalDescription: "เข้าสู่ระบบเพื่อบันทึกรูปที่สร้างไว้ในบัญชีของคุณ และดูได้ทุกเมื่อ (30 วินาที ฟรี)",
+    wardrobeSaveModalDescription: "เข้าสู่ระบบเพื่อบันทึกรูปที่สร้างไว้ในบัญชีของคุณ และดูได้ทุกเมื่อ",
     wardrobeSaveSuccess: "บันทึกแล้ว!",
     wardrobeSaveError: "บันทึกไม่สำเร็จ โปรดลองใหม่ภายหลัง",
     wardrobeSaveAlreadyClaimed: "ดูเหมือนคุณมีบัญชีอยู่แล้ว รูปก่อนหน้านี้ไม่สามารถบันทึกไปยังบัญชีของคุณได้",

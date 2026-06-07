@@ -1413,7 +1413,7 @@ export const enMessages = {
     wardrobeSaveButton: "Save",
     wardrobeSaveHelper: "Save and the image you generated here will be added to your account.",
     wardrobeSaveModalTitle: "Save this image",
-    wardrobeSaveModalDescription: "Log in to save the image you generated to your account and view it anytime. (30 sec, free)",
+    wardrobeSaveModalDescription: "Log in to save the image you generated to your account and view it anytime.",
     wardrobeSaveSuccess: "Saved!",
     wardrobeSaveError: "Couldn't save. Please try again later.",
     wardrobeSaveAlreadyClaimed: "It looks like you already have an account. The previous image couldn't be saved to your account.",

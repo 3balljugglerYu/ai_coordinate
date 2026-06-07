@@ -1417,7 +1417,7 @@ export const deMessages = {
     wardrobeSaveButton: "Speichern",
     wardrobeSaveHelper: "Beim Speichern wird das hier erstellte Bild deinem Konto hinzugefügt.",
     wardrobeSaveModalTitle: "Dieses Bild speichern",
-    wardrobeSaveModalDescription: "Melde dich an, um das erstellte Bild in deinem Konto zu speichern und jederzeit anzusehen. (30 Sek., kostenlos)",
+    wardrobeSaveModalDescription: "Melde dich an, um das erstellte Bild in deinem Konto zu speichern und jederzeit anzusehen.",
     wardrobeSaveSuccess: "Gespeichert!",
     wardrobeSaveError: "Speichern fehlgeschlagen. Bitte versuche es später erneut.",
     wardrobeSaveAlreadyClaimed: "Du hast offenbar bereits ein Konto. Das vorherige Bild konnte nicht in deinem Konto gespeichert werden.",

@@ -1417,7 +1417,7 @@ export const itMessages = {
     wardrobeSaveButton: "Salva",
     wardrobeSaveHelper: "Salvando, l'immagine generata qui viene aggiunta al tuo account.",
     wardrobeSaveModalTitle: "Salva questa immagine",
-    wardrobeSaveModalDescription: "Accedi per salvare l'immagine generata sul tuo account e rivederla quando vuoi. (30 sec, gratis)",
+    wardrobeSaveModalDescription: "Accedi per salvare l'immagine generata sul tuo account e rivederla quando vuoi.",
     wardrobeSaveSuccess: "Salvato!",
     wardrobeSaveError: "Salvataggio non riuscito. Riprova più tardi.",
     wardrobeSaveAlreadyClaimed: "Sembra che tu abbia già un account. L'immagine precedente non è stata salvata nel tuo account.",

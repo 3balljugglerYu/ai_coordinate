@@ -1413,7 +1413,7 @@ export const koMessages = {
     wardrobeSaveButton: "저장하기",
     wardrobeSaveHelper: "저장하면 여기서 생성한 이미지가 만든 계정에 등록됩니다.",
     wardrobeSaveModalTitle: "이 이미지 저장하기",
-    wardrobeSaveModalDescription: "로그인하면 생성한 이미지가 회원님의 계정에 저장되어 언제든 다시 볼 수 있어요. (30초·무료)",
+    wardrobeSaveModalDescription: "로그인하면 생성한 이미지가 회원님의 계정에 저장되어 언제든 다시 볼 수 있어요.",
     wardrobeSaveSuccess: "저장했어요!",
     wardrobeSaveError: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
     wardrobeSaveAlreadyClaimed: "이미 계정을 가지고 계신 것 같습니다. 방금 이미지는 회원님의 계정에 저장할 수 없었습니다.",

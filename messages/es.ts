@@ -1417,7 +1417,7 @@ export const esMessages = {
     wardrobeSaveButton: "Guardar",
     wardrobeSaveHelper: "Al guardar, la imagen generada aquí se añade a tu cuenta.",
     wardrobeSaveModalTitle: "Guardar esta imagen",
-    wardrobeSaveModalDescription: "Inicia sesión para guardar la imagen generada en tu cuenta y verla cuando quieras. (30 s, gratis)",
+    wardrobeSaveModalDescription: "Inicia sesión para guardar la imagen generada en tu cuenta y verla cuando quieras.",
     wardrobeSaveSuccess: "¡Guardado!",
     wardrobeSaveError: "No se pudo guardar. Inténtalo de nuevo más tarde.",
     wardrobeSaveAlreadyClaimed: "Parece que ya tienes una cuenta. La imagen anterior no se pudo guardar en tu cuenta.",

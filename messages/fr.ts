@@ -1417,7 +1417,7 @@ export const frMessages = {
     wardrobeSaveButton: "Enregistrer",
     wardrobeSaveHelper: "En enregistrant, l'image générée ici est ajoutée à votre compte.",
     wardrobeSaveModalTitle: "Enregistrer cette image",
-    wardrobeSaveModalDescription: "Connectez-vous pour enregistrer l'image générée sur votre compte et la revoir à tout moment. (30 s, gratuit)",
+    wardrobeSaveModalDescription: "Connectez-vous pour enregistrer l'image générée sur votre compte et la revoir à tout moment.",
     wardrobeSaveSuccess: "Enregistré !",
     wardrobeSaveError: "Échec de l'enregistrement. Veuillez réessayer plus tard.",
     wardrobeSaveAlreadyClaimed: "Vous semblez déjà avoir un compte. L'image précédente n'a pas pu être enregistrée sur votre compte.",

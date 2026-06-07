@@ -1414,7 +1414,7 @@ export const viMessages = {
     wardrobeSaveButton: "Lưu",
     wardrobeSaveHelper: "Khi lưu, hình bạn tạo ở đây sẽ được thêm vào tài khoản của bạn.",
     wardrobeSaveModalTitle: "Lưu hình này",
-    wardrobeSaveModalDescription: "Đăng nhập để lưu hình đã tạo vào tài khoản của bạn và xem lại bất cứ lúc nào. (30 giây, miễn phí)",
+    wardrobeSaveModalDescription: "Đăng nhập để lưu hình đã tạo vào tài khoản của bạn và xem lại bất cứ lúc nào.",
     wardrobeSaveSuccess: "Đã lưu!",
     wardrobeSaveError: "Không thể lưu. Vui lòng thử lại sau.",
     wardrobeSaveAlreadyClaimed: "Có vẻ bạn đã có tài khoản. Hình vừa rồi không thể lưu vào tài khoản của bạn.",

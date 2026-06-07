@@ -1411,7 +1411,7 @@ export const zhCnMessages = {
     wardrobeSaveButton: "保存",
     wardrobeSaveHelper: "保存后，您在这里生成的图片将添加到您的账号。",
     wardrobeSaveModalTitle: "保存这张图片",
-    wardrobeSaveModalDescription: "登录后，您生成的图片将保存到您的账号，随时可查看。（30秒·免费）",
+    wardrobeSaveModalDescription: "登录后，您生成的图片将保存到您的账号，随时可查看。",
     wardrobeSaveSuccess: "已保存！",
     wardrobeSaveError: "保存失败，请稍后重试。",
     wardrobeSaveAlreadyClaimed: "您似乎已拥有账号。刚才的图片无法保存到您的账号。",

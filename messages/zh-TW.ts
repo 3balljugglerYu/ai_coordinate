@@ -1411,7 +1411,7 @@ export const zhTwMessages = {
     wardrobeSaveButton: "儲存",
     wardrobeSaveHelper: "儲存後，您在這裡生成的圖片將加入您的帳號。",
     wardrobeSaveModalTitle: "儲存這張圖片",
-    wardrobeSaveModalDescription: "登入後，您生成的圖片將儲存到您的帳號，隨時可查看。（30秒·免費）",
+    wardrobeSaveModalDescription: "登入後，您生成的圖片將儲存到您的帳號，隨時可查看。",
     wardrobeSaveSuccess: "已儲存！",
     wardrobeSaveError: "儲存失敗，請稍後再試。",
     wardrobeSaveAlreadyClaimed: "您似乎已擁有帳號。剛才的圖片無法儲存到您的帳號。",

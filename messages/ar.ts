@@ -1414,7 +1414,7 @@ export const arMessages = {
     wardrobeSaveButton: "حفظ",
     wardrobeSaveHelper: "عند الحفظ، تُضاف الصورة التي أنشأتها هنا إلى حسابك.",
     wardrobeSaveModalTitle: "احفظ هذه الصورة",
-    wardrobeSaveModalDescription: "سجّل الدخول لحفظ الصورة التي أنشأتها في حسابك ومشاهدتها في أي وقت. (30 ثانية، مجاني)",
+    wardrobeSaveModalDescription: "سجّل الدخول لحفظ الصورة التي أنشأتها في حسابك ومشاهدتها في أي وقت.",
     wardrobeSaveSuccess: "تم الحفظ!",
     wardrobeSaveError: "تعذّر الحفظ. يرجى المحاولة لاحقًا.",
     wardrobeSaveAlreadyClaimed: "يبدو أنك تملك حسابًا بالفعل. تعذّر حفظ الصورة السابقة في حسابك.",

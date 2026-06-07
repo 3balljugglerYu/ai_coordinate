@@ -1415,7 +1415,7 @@ export const hiMessages = {
     wardrobeSaveButton: "सहेजें",
     wardrobeSaveHelper: "सहेजने पर, यहाँ बनाई गई इमेज आपके खाते में जुड़ जाती है।",
     wardrobeSaveModalTitle: "यह इमेज सहेजें",
-    wardrobeSaveModalDescription: "लॉगिन करें और बनाई गई इमेज आपके खाते में सहेजें, उसे कभी भी देखें। (30 सेकंड, मुफ़्त)",
+    wardrobeSaveModalDescription: "लॉगिन करें और बनाई गई इमेज आपके खाते में सहेजें, उसे कभी भी देखें।",
     wardrobeSaveSuccess: "सहेज लिया!",
     wardrobeSaveError: "सहेजा नहीं जा सका। कृपया बाद में पुनः प्रयास करें।",
     wardrobeSaveAlreadyClaimed: "लगता है आपके पास पहले से खाता है। पिछली इमेज आपके खाते में सहेजी नहीं जा सकी।",

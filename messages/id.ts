@@ -1416,7 +1416,7 @@ export const idMessages = {
     wardrobeSaveButton: "Simpan",
     wardrobeSaveHelper: "Dengan menyimpan, gambar yang kamu buat di sini akan ditambahkan ke akunmu.",
     wardrobeSaveModalTitle: "Simpan gambar ini",
-    wardrobeSaveModalDescription: "Masuk untuk menyimpan gambar yang dibuat ke akunmu dan melihatnya kapan saja. (30 dtk, gratis)",
+    wardrobeSaveModalDescription: "Masuk untuk menyimpan gambar yang dibuat ke akunmu dan melihatnya kapan saja.",
     wardrobeSaveSuccess: "Tersimpan!",
     wardrobeSaveError: "Gagal menyimpan. Silakan coba lagi nanti.",
     wardrobeSaveAlreadyClaimed: "Sepertinya kamu sudah punya akun. Gambar sebelumnya tidak dapat disimpan ke akunmu.",

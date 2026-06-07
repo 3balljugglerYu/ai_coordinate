@@ -1353,7 +1353,7 @@ export const jaMessages = {
     wardrobeSaveButton: "保存する",
     wardrobeSaveHelper: "保存すると、こちらで生成したイラストが作成したアカウントに登録されます。",
     wardrobeSaveModalTitle: "このイラストを保存する",
-    wardrobeSaveModalDescription: "ログインすると、生成したイラストがあなたのアカウントに保存され、いつでも見返せます。（30秒・無料）",
+    wardrobeSaveModalDescription: "ログインすると、生成したイラストがあなたのアカウントに保存され、いつでも見返せます。",
     wardrobeSaveSuccess: "保存しました！",
     wardrobeSaveError: "保存に失敗しました。時間をおいて再試行してください。",
     wardrobeSaveAlreadyClaimed: "すでにアカウントをお持ちのようです。先ほどのイラストはあなたのアカウントに保存することができませんでした。",
