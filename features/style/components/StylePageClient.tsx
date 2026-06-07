@@ -1845,15 +1845,14 @@ export function StylePageClient({
             ) : null}
 
             {shouldShowDailyLimitCard ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-                <p className="text-sm font-medium text-red-900">
-                  {rateLimitStatus?.authState === "guest"
-                    ? t("guestRateLimitDaily")
-                    : t("authenticatedRateLimitDaily")}
-                </p>
-                {rateLimitStatus?.authState === "guest" ? (
-                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-5 text-red-800">
+              rateLimitStatus?.authState === "guest" ? (
+                // coordinate 画面の上限表示に合わせ、赤枠ではなく amber の小さめ文字にする。
+                <div className="space-y-3">
+                  <p className="text-xs leading-5 text-amber-700">
+                    {t("guestRateLimitDaily")}
+                  </p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-amber-700">
                       {t("guestRateLimitSignupHint")}
                     </p>
                     <Button
@@ -1865,7 +1864,12 @@ export function StylePageClient({
                       {t("guestRateLimitSignupAction")}
                     </Button>
                   </div>
-                ) : (
+                </div>
+              ) : (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                  <p className="text-sm font-medium text-red-900">
+                    {t("authenticatedRateLimitDaily")}
+                  </p>
                   <div className="mt-3 space-y-3">
                     <p className="text-xs leading-5 text-red-800">
                       {t("authenticatedPaidContinueHint", {
@@ -1911,8 +1915,8 @@ export function StylePageClient({
                       </div>
                     ) : null}
                   </div>
-                )}
-              </div>
+                </div>
+              )
             ) : null}
 
             {isGenerating ? (
