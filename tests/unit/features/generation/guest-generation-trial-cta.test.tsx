@@ -48,7 +48,7 @@ beforeEach(() => {
     () =>
       ((key: string) => labels[key] ?? key) as ReturnType<typeof useTranslations>,
   );
-  mockStash.mockReset();
+  mockStash.mockReset().mockReturnValue(true);
   mockRecord.mockReset().mockResolvedValue(undefined);
   clearGuestGeneration();
 });
