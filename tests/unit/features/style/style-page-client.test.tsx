@@ -1467,7 +1467,7 @@ describe("StylePageClient", () => {
     });
   });
 
-  test("生成結果がある状態で変更操作をすると確認ダイアログが表示され_キャンセルで結果を保持する", async () => {
+  test("ゲストは生成結果がある状態では設定変更が無効化され結果が消えない", async () => {
     jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
@@ -1483,22 +1483,17 @@ describe("StylePageClient", () => {
       "data:image/png;base64,generated-image-base64"
     );
 
-    fireEvent.click(
+    // ゲストは1日1回で再生成できないため、結果を消す設定変更を一括で抑止する。
+    expect(
       screen.getByRole("button", {
         name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
       })
-    );
+    ).toBeDisabled();
+    const photoRadio = screen.getByRole("radio", { name: "Photo" });
+    expect(photoRadio).toBeDisabled();
 
-    expect(
-      screen.getByText("This will clear the current result")
-    ).toBeInTheDocument();
-    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
-      "src",
-      "data:image/png;base64,generated-image-base64"
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Keep result" }));
-
+    // 無効化されているため確認ダイアログも出ず、結果は保持される。
+    fireEvent.click(photoRadio);
     expect(
       screen.queryByText("This will clear the current result")
     ).not.toBeInTheDocument();
@@ -1506,40 +1501,49 @@ describe("StylePageClient", () => {
       "src",
       "data:image/png;base64,generated-image-base64"
     );
-    expect(
-      screen.getByRole("button", { name: /PARIS CODE style card/ })
-    ).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("生成結果がある状態で変更確認に同意すると結果を削除して変更を反映する", async () => {
-    jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+  test("ログインユーザーは設定変更の確認に同意すると結果を消して変更を反映する", async () => {
+    jest.useFakeTimers();
 
-    render(<StylePageClient presets={presets} />);
+    render(
+      <StylePageClient presets={presets} initialAuthState="authenticated" />
+    );
 
-    await uploadImageAndWaitUntilReady();
-    await startStylingAndWaitForRequest();
+    fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
     act(() => {
       jest.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByAltText("Generated result")).toHaveAttribute(
+    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
       "src",
-      "data:image/png;base64,generated-image-base64"
+      "https://cdn.example.com/generated-style-result.png"
     );
 
+    // 認証ユーザーは結果がアカウントに保存されるため、設定変更の確認に同意すれば
+    // 表示結果を切り替えられる(=従来どおりの操作自由度を維持)。
     fireEvent.click(screen.getByRole("radio", { name: "Photo" }));
-
     expect(
-      screen.getByText("This will clear the current result")
+      screen.getByText("This will switch the result shown on this screen")
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(screen.queryByAltText("Generated result")).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Photo" })).toBeChecked();
-    expect(
-      screen.getByText("Your generated image will appear here.")
-    ).toBeInTheDocument();
   });
 
   test("ゲストは1枚生成後はStart Stylingが無効化され再生成できない(結果消失と上限エラーを防ぐ)", async () => {

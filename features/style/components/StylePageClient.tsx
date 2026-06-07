@@ -496,9 +496,16 @@ export function StylePageClient({
       !hasEnoughPercoins);
 
   const isGenerating = generationPhase !== "idle";
+  // ゲストが1枚生成した後の状態。1日1回のため再生成できず、結果を消す操作をすると
+  // 「画像ゼロ・保存対象ゼロ」のデッドエンドになる。よって設定変更・再生成を一括で抑止し、
+  // 結果を保持したまま保存(ログイン)/DL に集中させる。認証ユーザーは結果がアカウントに
+  // 保存され再生成も可能なため対象外。
+  const isGuestResultLocked =
+    effectiveAuthState !== "authenticated" && Boolean(resultImageUrl);
   const isBackgroundChangeAvailable =
     shouldShowBackgroundChangeControl && Boolean(selectedPreset?.hasBackgroundPrompt);
-  const isBackgroundChangeDisabled = isGenerating || !isBackgroundChangeAvailable;
+  const isBackgroundChangeDisabled =
+    isGenerating || isGuestResultLocked || !isBackgroundChangeAvailable;
   const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
   const isGenerateDisabled =
     !selectedPreset ||
@@ -506,9 +513,7 @@ export function StylePageClient({
     isGenerating ||
     isGuestDailyLimitReached ||
     shouldDisablePaidContinuation ||
-    // ゲストは1枚生成したら再生成不可(結果消失+上限エラーを防ぐ)。
-    // rate-limit status の更新タイミングに依存せず in-session 結果で確実に抑止する。
-    (effectiveAuthState !== "authenticated" && Boolean(resultImageUrl));
+    isGuestResultLocked;
   const hasGeneratedResult = Boolean(resultImageUrl);
   const activeAsyncResultImageUrl =
     shouldUseAsyncGeneration && isGenerating
@@ -971,6 +976,12 @@ export function StylePageClient({
     action: () => void,
     intent: ResultConfirmationIntent = "change"
   ) => {
+    // ゲスト生成後は結果を消す操作を一切行わない(UI 無効化の最終防壁)。
+    // 再生成できないため、結果を消しても利点がなくデッドエンドになるだけ。
+    if (isGuestResultLocked) {
+      return;
+    }
+
     if (!hasGeneratedResult) {
       action();
       return;
@@ -1534,7 +1545,7 @@ export function StylePageClient({
               onClick={() => handlePresetSelect(preset.id)}
               buttonRef={buildPresetButtonRef(preset.id)}
               alt={t("styleCardAlt", { name: preset.title })}
-              disabled={isGenerating}
+              disabled={isGenerating || isGuestResultLocked}
               locale={styleCardLocale}
             />
           ))}
@@ -1599,7 +1610,7 @@ export function StylePageClient({
                 label={t("uploadLabel")}
                 addImageLabel={t("addImageAction")}
                 compact={isReferenceCardCollapsed}
-                disabled={isGenerating}
+                disabled={isGenerating || isGuestResultLocked}
                 aspectRatio={selectedPresetAspectRatio}
                 filledPreviewMode="natural"
               />
@@ -1636,7 +1647,7 @@ export function StylePageClient({
           <div className="mt-3">
             <ImageSourcePickerTrigger
               onClick={picker.openPicker}
-              disabled={isGenerating}
+              disabled={isGenerating || isGuestResultLocked}
             />
           </div>
         </section>
@@ -1654,7 +1665,7 @@ export function StylePageClient({
                     handleSourceImageTypeChange(value as SourceImageType)
                   }
                   className="mt-2 flex items-center gap-6"
-                  disabled={isGenerating}
+                  disabled={isGenerating || isGuestResultLocked}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem
