@@ -79,6 +79,11 @@ interface GenerationFormProps {
    * は認証済みのみが入るため）。
    */
   authState?: "guest" | "authenticated";
+  /**
+   * ゲストが既に1枚生成済み(=本日の無料枠を消費済み)で、再生成を抑止したいとき true。
+   * 再生成すると in-memory の結果が失われ上限エラーになるため、生成ボタンを無効化する。
+   */
+  guestGenerationLocked?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -94,6 +99,7 @@ export function GenerationForm({
   onSubmit,
   isGenerating = false,
   authState = "authenticated",
+  guestGenerationLocked = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
@@ -277,7 +283,11 @@ export function GenerationForm({
   const hasSourceImage =
     !!uploadedImage || !!selectedStock || !!selectedGenerated;
   const isSubmitDisabled =
-    !prompt.trim() || !hasSourceImage || isGenerating || isPromptTooLong;
+    !prompt.trim() ||
+    !hasSourceImage ||
+    isGenerating ||
+    isPromptTooLong ||
+    guestGenerationLocked;
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
@@ -684,6 +694,12 @@ export function GenerationForm({
           dataTour="tour-generate-btn"
           pulseIconWhenGenerating
         />
+
+        {guestGenerationLocked ? (
+          <p className="mt-2 text-center text-xs leading-5 text-amber-700">
+            {t("guestRateLimitDailyMessage")}
+          </p>
+        ) : null}
 
         <SubscriptionUpsellDialog
           open={isUpsellOpen}

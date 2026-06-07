@@ -1078,7 +1078,8 @@ describe("StylePageClient", () => {
       jest.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByRole("button", { name: /Start Styling/ })).toBeEnabled();
+    // ゲストは1枚生成後、結果消失と上限エラーを防ぐため再生成ボタンは無効のまま。
+    expect(screen.getByRole("button", { name: /Start Styling/ })).toBeDisabled();
   });
 
   test("reduced motion が有効な場合は生成ステータスへのスクロールを即時にする", async () => {
@@ -1541,7 +1542,7 @@ describe("StylePageClient", () => {
     ).toBeInTheDocument();
   });
 
-  test("生成結果がある状態でStart Stylingを押すと確認ダイアログが表示され_続行後に再生成する", async () => {
+  test("ゲストは1枚生成後はStart Stylingが無効化され再生成できない(結果消失と上限エラーを防ぐ)", async () => {
     jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
 
     render(<StylePageClient presets={presets} />);
@@ -1561,33 +1562,16 @@ describe("StylePageClient", () => {
       "data:image/png;base64,generated-image-base64"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
+    // 生成済みゲストは再生成ボタンが無効(押しても確認ダイアログは出ない)。
+    const startButton = screen.getByRole("button", { name: /Start Styling/ });
+    expect(startButton).toBeDisabled();
 
+    fireEvent.click(startButton);
     expect(
-      screen.getByText("This will replace the current result")
-    ).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalled();
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Generate again" }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(4);
-
-    expect(
-      await screen.findByText("Styling is complete.")
-    ).toBeInTheDocument();
-
-    act(() => {
-      jest.advanceTimersByTime(5000);
-    });
-
-    expect(await screen.findByAltText("Generated result")).toHaveAttribute(
-      "src",
-      "data:image/png;base64,generated-image-base64"
-    );
+      screen.queryByText("This will replace the current result")
+    ).not.toBeInTheDocument();
+    // 結果は保持されたまま
+    expect(screen.getByAltText("Generated result")).toBeInTheDocument();
   });
 
   test("ログインユーザーが生成結果ありで設定変更すると保存済み前提の確認文言を表示する", async () => {

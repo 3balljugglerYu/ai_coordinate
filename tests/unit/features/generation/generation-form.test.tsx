@@ -209,6 +209,25 @@ describe("GenerationForm (new image source picker integration)", () => {
     expect(arg.sourceImageGeneratedId).toBeUndefined();
   });
 
+  test("guestGenerationLocked のとき画像+prompt が揃っても submit は disabled のまま", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    render(
+      <GenerationForm
+        subscriptionPlan="free"
+        onSubmit={onSubmit}
+        authState="guest"
+        guestGenerationLocked
+      />,
+    );
+
+    await user.click(screen.getByText("mock-upload"));
+    await user.type(screen.getByRole("textbox"), "test prompt");
+
+    // 通常ならこの時点で活性化するが、ロック中は disabled のまま
+    expect(screen.getByTestId("mock-submit")).toBeDisabled();
+  });
+
   test("画像なしで submit を試みると alert (missing source image)", async () => {
     const user = userEvent.setup();
     const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});

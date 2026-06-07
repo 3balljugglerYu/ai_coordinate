@@ -1367,6 +1367,7 @@ export function GenerationFormContainer({
         onSubmit={handleGenerate}
         isGenerating={isFormBusy}
         authState={authState}
+        guestGenerationLocked={isGuest && guestResult !== null}
       />
 
       {error ? (

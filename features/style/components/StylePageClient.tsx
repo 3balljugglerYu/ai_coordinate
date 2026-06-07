@@ -505,7 +505,10 @@ export function StylePageClient({
     !hasSourceImage ||
     isGenerating ||
     isGuestDailyLimitReached ||
-    shouldDisablePaidContinuation;
+    shouldDisablePaidContinuation ||
+    // ゲストは1枚生成したら再生成不可(結果消失+上限エラーを防ぐ)。
+    // rate-limit status の更新タイミングに依存せず in-session 結果で確実に抑止する。
+    (effectiveAuthState !== "authenticated" && Boolean(resultImageUrl));
   const hasGeneratedResult = Boolean(resultImageUrl);
   const activeAsyncResultImageUrl =
     shouldUseAsyncGeneration && isGenerating
