@@ -914,8 +914,7 @@ export const hiMessages = {
     guestResultDownloadFailed:
       "छवि डाउनलोड करने में विफल। कृपया फिर से प्रयास करें।",
     guestLoginCtaTitle: "बिना साइन इन किए आज़माएँ",
-    guestLoginCtaDescription:
-      "आप दिन में एक बार ChatGPT Image 2.0 और Nano Banana 2 (0.5K) आज़मा सकते हैं। परिणाम सहेजे नहीं जाते।",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 दिन में एक बार मुफ़्त आज़माएँ। बनाने के बाद लॉगिन (मुफ़्त साइन-अप) करके अपनी इमेज सहेजें।",
     guestLoginCtaAction: "साइन इन / साइन अप",
     guestSubmitFailed: "जनरेशन विफल। कुछ क्षणों में फिर से प्रयास करें।",
     guestRateLimitDailyMessage:
@@ -1376,8 +1375,7 @@ export const hiMessages = {
     generateRetryHint:
       "यदि परिणाम अच्छा नहीं आता है, तो फिर से प्रयास करें। यदि यह अभी भी विफल होता है, तो कृपया हमें बताएँ।",
     guestLoginCtaTitle: "बिना साइन इन किए आज़माएँ",
-    guestLoginCtaDescription:
-      "आप दिन में एक बार ChatGPT Image 2.0 और Nano Banana 2 (0.5K) आज़मा सकते हैं। परिणाम सहेजे नहीं जाते।",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 दिन में एक बार मुफ़्त आज़माएँ। बनाने के बाद लॉगिन (मुफ़्त साइन-अप) करके अपनी इमेज सहेजें।",
     guestLoginCtaAction: "साइन इन / साइन अप",
     generateButton: "स्टाइलिंग शुरू करें",
     generatingButton: "उत्पन्न हो रहा है...",

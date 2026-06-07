@@ -913,8 +913,7 @@ export const thMessages = {
     guestResultDownloadFailed:
       "ดาวน์โหลดรูปไม่สำเร็จ โปรดลองอีกครั้ง",
     guestLoginCtaTitle: "ลองโดยไม่ต้องเข้าสู่ระบบ",
-    guestLoginCtaDescription:
-      "คุณลอง ChatGPT Image 2.0 และ Nano Banana 2 (0.5K) ได้วันละครั้ง ผลลัพธ์จะไม่ถูกบันทึก",
+    guestLoginCtaDescription: "ทดลองใช้ ChatGPT Image 2.0 ฟรีวันละ 1 ครั้ง เข้าสู่ระบบ (สมัครฟรี) หลังสร้างเพื่อบันทึกรูปของคุณ",
     guestLoginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
     guestSubmitFailed: "สร้างไม่สำเร็จ โปรดลองอีกครั้งภายหลัง",
     guestRateLimitDailyMessage:
@@ -1374,8 +1373,7 @@ export const thMessages = {
     generateRetryHint:
       "หากผลไม่น่าพอใจ ลองอีกครั้ง หากยังไม่ได้ โปรดแจ้งเรา",
     guestLoginCtaTitle: "ลองโดยไม่ต้องเข้าสู่ระบบ",
-    guestLoginCtaDescription:
-      "คุณลอง ChatGPT Image 2.0 และ Nano Banana 2 (0.5K) ได้วันละครั้ง ผลลัพธ์จะไม่ถูกบันทึก",
+    guestLoginCtaDescription: "ทดลองใช้ ChatGPT Image 2.0 ฟรีวันละ 1 ครั้ง เข้าสู่ระบบ (สมัครฟรี) หลังสร้างเพื่อบันทึกรูปของคุณ",
     guestLoginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
     generateButton: "เริ่มจัดสไตล์",
     generatingButton: "กำลังสร้าง...",

@@ -913,8 +913,7 @@ export const koMessages = {
     guestResultDownloadFailed:
       "이미지 다운로드에 실패했습니다. 다시 시도해 주세요.",
     guestLoginCtaTitle: "로그인 없이 체험",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 과 Nano Banana 2 (0.5K)를 하루 한 번 체험할 수 있습니다. 결과는 저장되지 않습니다.",
+    guestLoginCtaDescription: "ChatGPT Image 2.0을 하루 1회 무료로 사용해 보세요. 생성 후 로그인(무료 가입)하면 이미지를 저장할 수 있어요.",
     guestLoginCtaAction: "로그인 / 회원가입",
     guestSubmitFailed: "생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     guestRateLimitDailyMessage:
@@ -1374,8 +1373,7 @@ export const koMessages = {
     generateRetryHint:
       "결과가 마음에 들지 않으면 다시 시도해 보세요. 그래도 잘 안 되면 알려주세요.",
     guestLoginCtaTitle: "로그인 없이 체험",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 과 Nano Banana 2 (0.5K)를 하루 한 번 체험할 수 있습니다. 결과는 저장되지 않습니다.",
+    guestLoginCtaDescription: "ChatGPT Image 2.0을 하루 1회 무료로 사용해 보세요. 생성 후 로그인(무료 가입)하면 이미지를 저장할 수 있어요.",
     guestLoginCtaAction: "로그인 / 회원가입",
     generateButton: "스타일링 시작",
     generatingButton: "생성 중...",

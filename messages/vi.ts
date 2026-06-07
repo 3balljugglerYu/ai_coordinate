@@ -913,8 +913,7 @@ export const viMessages = {
     guestResultDownloadFailed:
       "Tải hình thất bại. Vui lòng thử lại.",
     guestLoginCtaTitle: "Thử mà không cần đăng nhập",
-    guestLoginCtaDescription:
-      "Bạn có thể thử ChatGPT Image 2.0 và Nano Banana 2 (0.5K) một lần mỗi ngày. Kết quả không được lưu.",
+    guestLoginCtaDescription: "Dùng thử ChatGPT Image 2.0 miễn phí, mỗi ngày 1 lần. Đăng nhập (đăng ký miễn phí) sau khi tạo để lưu hình của bạn.",
     guestLoginCtaAction: "Đăng nhập / Đăng ký",
     guestSubmitFailed: "Tạo thất bại. Vui lòng thử lại sau ít phút.",
     guestRateLimitDailyMessage:
@@ -1375,8 +1374,7 @@ export const viMessages = {
     generateRetryHint:
       "Nếu kết quả không như ý, hãy thử lại. Nếu vẫn thất bại, hãy báo cho chúng tôi.",
     guestLoginCtaTitle: "Thử mà không cần đăng nhập",
-    guestLoginCtaDescription:
-      "Bạn có thể thử ChatGPT Image 2.0 và Nano Banana 2 (0.5K) một lần mỗi ngày. Kết quả không được lưu.",
+    guestLoginCtaDescription: "Dùng thử ChatGPT Image 2.0 miễn phí, mỗi ngày 1 lần. Đăng nhập (đăng ký miễn phí) sau khi tạo để lưu hình của bạn.",
     guestLoginCtaAction: "Đăng nhập / Đăng ký",
     generateButton: "Bắt đầu styling",
     generatingButton: "Đang tạo...",

@@ -916,8 +916,7 @@ export const frMessages = {
     guestResultDownloadFailed:
       "Impossible de télécharger l'image. Veuillez réessayer.",
     guestLoginCtaTitle: "Essayez sans vous connecter",
-    guestLoginCtaDescription:
-      "Vous pouvez essayer ChatGPT Image 2.0 et Nano Banana 2 (0.5K) une fois par jour. Les résultats ne sont pas enregistrés.",
+    guestLoginCtaDescription: "Essayez ChatGPT Image 2.0 gratuitement, une fois par jour. Connectez-vous (inscription gratuite) après la génération pour enregistrer votre image.",
     guestLoginCtaAction: "Se connecter / S'inscrire",
     guestSubmitFailed: "La génération a échoué. Veuillez réessayer dans quelques instants.",
     guestRateLimitDailyMessage:
@@ -1378,8 +1377,7 @@ export const frMessages = {
     generateRetryHint:
       "Si le résultat ne convient pas, réessayez. Si cela échoue encore, faites-nous signe.",
     guestLoginCtaTitle: "Essayez sans vous connecter",
-    guestLoginCtaDescription:
-      "Vous pouvez essayer ChatGPT Image 2.0 et Nano Banana 2 (0.5K) une fois par jour. Les résultats ne sont pas enregistrés.",
+    guestLoginCtaDescription: "Essayez ChatGPT Image 2.0 gratuitement, une fois par jour. Connectez-vous (inscription gratuite) après la génération pour enregistrer votre image.",
     guestLoginCtaAction: "Se connecter / S'inscrire",
     generateButton: "Démarrer le styling",
     generatingButton: "Génération...",

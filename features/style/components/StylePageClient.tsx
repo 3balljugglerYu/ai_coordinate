@@ -67,6 +67,10 @@ import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-cl
 import { applyPerstaWatermark } from "@/features/generation/lib/apply-watermark";
 import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
 import { WardrobeSaveButton } from "@/features/wardrobe/components/WardrobeSaveButton";
+import {
+  clearGuestGeneration,
+  setGuestGeneration,
+} from "@/features/wardrobe/lib/guest-generation-store";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { PostModal } from "@/features/posts/components/PostModal";
@@ -520,6 +524,21 @@ export function StylePageClient({
     Boolean(resultImageUrl) &&
     Boolean(resultGeneratedImageId) &&
     effectiveAuthState === "authenticated";
+
+  // ゲストが生成した画像を共有ストアへ publish（バナー/サイドバーの保存導線用）。
+  const guestSaveImage = resultImageUrl ?? displayedResultImageUrl;
+  useEffect(() => {
+    if (effectiveAuthState !== "authenticated" && guestSaveImage) {
+      setGuestGeneration({
+        imageBase64: guestSaveImage,
+        styleId: selectedPreset?.id ?? null,
+      });
+    } else {
+      clearGuestGeneration();
+    }
+    return () => clearGuestGeneration();
+  }, [effectiveAuthState, guestSaveImage, selectedPreset?.id]);
+
   const isCompletingGeneration = generationPhase === "completing";
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight

@@ -912,8 +912,7 @@ export const zhCnMessages = {
     guestResultDownloadFailed:
       "下载图片失败，请重试。",
     guestLoginCtaTitle: "免登录体验",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 与 Nano Banana 2 (0.5K) 每天可免费体验一次。结果不会保存。",
+    guestLoginCtaDescription: "每天可免费试用 ChatGPT Image 2.0 一次。生成后登录（免费注册）即可保存图片。",
     guestLoginCtaAction: "登录 / 注册",
     guestSubmitFailed: "生成失败，请稍后重试。",
     guestRateLimitDailyMessage:
@@ -1372,8 +1371,7 @@ export const zhCnMessages = {
     generateRetryHint:
       "如果结果不理想，可再次尝试。如仍然不满意，请告诉我们。",
     guestLoginCtaTitle: "免登录体验",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 与 Nano Banana 2 (0.5K) 每天可免费体验一次。结果不会保存。",
+    guestLoginCtaDescription: "每天可免费试用 ChatGPT Image 2.0 一次。生成后登录（免费注册）即可保存图片。",
     guestLoginCtaAction: "登录 / 注册",
     generateButton: "开始造型",
     generatingButton: "生成中...",

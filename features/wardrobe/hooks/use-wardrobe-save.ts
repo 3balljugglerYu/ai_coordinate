@@ -11,10 +11,43 @@ import {
   claimPendingWardrobeSave,
   stashPendingWardrobeSave,
 } from "@/features/wardrobe/lib/pending-wardrobe-save";
+import {
+  getGuestGeneration,
+  useGuestGeneration,
+} from "@/features/wardrobe/lib/guest-generation-store";
 import type { AuthModalProps } from "@/features/auth/components/AuthModal";
 
 /** ログイン後に「退避した画像を保存する」ことを示すクエリキー。 */
 const CLAIM_QUERY_KEY = "claim_wardrobe";
+
+/** currentUrl に claim フラグを付与する（既存クエリの有無で ? / & を切替）。 */
+function appendClaimFlag(currentUrl: string): string {
+  return currentUrl.includes("?")
+    ? `${currentUrl}&${CLAIM_QUERY_KEY}=1`
+    : `${currentUrl}?${CLAIM_QUERY_KEY}=1`;
+}
+
+/**
+ * 保存導線の共通処理: 計測（wardrobe_save_click）+ 画像を localStorage へ退避。
+ * 画像が無ければ false を返し何もしない。
+ */
+function trackAndStashWardrobeSave({
+  imageBase64,
+  styleId,
+}: WardrobeSaveRequest): boolean {
+  if (!imageBase64) return false;
+  void recordStyleUsageClientEvent({
+    eventType: "wardrobe_save_click",
+    styleId: styleId ?? null,
+  }).catch(() => {
+    // 計測はブロッカーにしない
+  });
+  stashPendingWardrobeSave({
+    imageBase64,
+    styleId: styleId ?? null,
+  });
+  return true;
+}
 
 export interface WardrobeSaveRequest {
   /** 退避する生成画像（data URL）。null/undefined の場合は何もしない。 */
@@ -74,23 +107,10 @@ export function useWardrobeSave({
 
   const isGuest = authState !== "authenticated";
 
-  const requestSave = useCallback(
-    ({ imageBase64, styleId }: WardrobeSaveRequest) => {
-      if (!imageBase64) return;
-      void recordStyleUsageClientEvent({
-        eventType: "wardrobe_save_click",
-        styleId: styleId ?? null,
-      }).catch(() => {
-        // 計測はブロッカーにしない
-      });
-      stashPendingWardrobeSave({
-        imageBase64,
-        styleId: styleId ?? null,
-      });
-      setIsAuthModalOpen(true);
-    },
-    [],
-  );
+  const requestSave = useCallback((request: WardrobeSaveRequest) => {
+    if (!trackAndStashWardrobeSave(request)) return;
+    setIsAuthModalOpen(true);
+  }, []);
 
   // ログイン後 (?claim_wardrobe=1 で戻る) に、退避した画像を保存する。
   useEffect(() => {
@@ -121,13 +141,67 @@ export function useWardrobeSave({
     })();
   }, [searchParams, authState, toast, t, router, pathname]);
 
-  const redirectTo = currentUrl.includes("?")
-    ? `${currentUrl}&${CLAIM_QUERY_KEY}=1`
-    : `${currentUrl}?${CLAIM_QUERY_KEY}=1`;
-
   return {
     isGuest,
     requestSave,
+    authModalProps: {
+      open: isAuthModalOpen,
+      onClose: () => setIsAuthModalOpen(false),
+      redirectTo: appendClaimFlag(currentUrl),
+      title: t("wardrobeSaveModalTitle"),
+      description: t("wardrobeSaveModalDescription"),
+      mode: "signup",
+      hideModeSwitch: true,
+    },
+  };
+}
+
+export interface UseWardrobeSaveTriggerResult {
+  /** ストアにゲスト生成画像があるか（＝保存導線を出せる状態か）。 */
+  hasGuestImage: boolean;
+  /** 押下時にストアの画像を退避し、signup 固定モーダルを開く。 */
+  trigger: () => void;
+  /** 保存導線専用の signup 固定 AuthModal に spread するための props。 */
+  authModalProps: WardrobeAuthModalProps;
+}
+
+/**
+ * 生成結果 state を持たない外側のUI（試用バナー・サイドバーのログインボタン等）
+ * から、ゲスト保存導線を発火させるための軽量フック。
+ *
+ * `useWardrobeSave` と異なり claim 副作用は持たない（claim は遷移先ページの
+ * `useWardrobeSave` が一元処理する）。画像は共有ストアから取得する。
+ */
+export function useWardrobeSaveTrigger(): UseWardrobeSaveTriggerResult {
+  const t = useTranslations("style");
+  const guest = useGuestGeneration();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // 静的レンダリング(PPR)を壊さないよう usePathname/useSearchParams は使わず、
+  // redirectTo はクリック時に window.location から組み立てる。
+  const [redirectTo, setRedirectTo] = useState("/");
+
+  const trigger = useCallback(() => {
+    const value = getGuestGeneration();
+    if (!value) return;
+    if (
+      !trackAndStashWardrobeSave({
+        imageBase64: value.imageBase64,
+        styleId: value.styleId,
+      })
+    ) {
+      return;
+    }
+    const location =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "/";
+    setRedirectTo(appendClaimFlag(location));
+    setIsAuthModalOpen(true);
+  }, []);
+
+  return {
+    hasGuestImage: guest !== null,
+    trigger,
     authModalProps: {
       open: isAuthModalOpen,
       onClose: () => setIsAuthModalOpen(false),

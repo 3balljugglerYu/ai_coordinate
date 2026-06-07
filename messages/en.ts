@@ -913,8 +913,7 @@ export const enMessages = {
     guestResultDownloadFailed:
       "Failed to download the image. Please try again.",
     guestLoginCtaTitle: "Try without signing in",
-    guestLoginCtaDescription:
-      "You can try ChatGPT Image 2.0 once per day. Results are not saved.",
+    guestLoginCtaDescription: "Try ChatGPT Image 2.0 free, once a day. Log in (free sign-up) after generating to save your image.",
     guestLoginCtaAction: "Sign in / Sign up",
     guestSubmitFailed: "Generation failed. Please try again in a few moments.",
     guestRateLimitDailyMessage:
@@ -1374,8 +1373,7 @@ export const enMessages = {
     generateRetryHint:
       "If the result does not come out well, try again. If it still fails, please let us know.",
     guestLoginCtaTitle: "Try without signing in",
-    guestLoginCtaDescription:
-      "You can try ChatGPT Image 2.0 once per day. Results are not saved.",
+    guestLoginCtaDescription: "Try ChatGPT Image 2.0 free, once a day. Log in (free sign-up) after generating to save your image.",
     guestLoginCtaAction: "Sign in / Sign up",
     generateButton: "Start Styling",
     generatingButton: "Generating...",

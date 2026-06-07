@@ -58,7 +58,14 @@ jest.mock("@/features/wardrobe/lib/pending-wardrobe-save", () => ({
   claimPendingWardrobeSave: (...args: unknown[]) => mockClaim(...args),
 }));
 
-import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
+import {
+  useWardrobeSave,
+  useWardrobeSaveTrigger,
+} from "@/features/wardrobe/hooks/use-wardrobe-save";
+import {
+  clearGuestGeneration,
+  setGuestGeneration,
+} from "@/features/wardrobe/lib/guest-generation-store";
 
 beforeEach(() => {
   mockPush.mockReset();
@@ -69,6 +76,11 @@ beforeEach(() => {
   mockClaim.mockReset().mockResolvedValue({ status: "none" });
   mockSearchParams = new URLSearchParams();
   mockPathname = "/style";
+  clearGuestGeneration();
+});
+
+afterEach(() => {
+  clearGuestGeneration();
 });
 
 describe("useWardrobeSave", () => {
@@ -229,5 +241,46 @@ describe("useWardrobeSave", () => {
     rerender();
     rerender();
     expect(mockClaim).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useWardrobeSaveTrigger", () => {
+  test("ストアが空のとき hasGuestImage は false、trigger は何もしない", () => {
+    const { result } = renderHook(() => useWardrobeSaveTrigger());
+    expect(result.current.hasGuestImage).toBe(false);
+    expect(result.current.authModalProps.open).toBe(false);
+
+    act(() => result.current.trigger());
+
+    expect(mockStash).not.toHaveBeenCalled();
+    expect(mockRecordEvent).not.toHaveBeenCalled();
+    expect(result.current.authModalProps.open).toBe(false);
+  });
+
+  test("ストアに画像があるとき hasGuestImage は true", () => {
+    setGuestGeneration({ imageBase64: "data:image/png;base64,abc", styleId: "s1" });
+    const { result } = renderHook(() => useWardrobeSaveTrigger());
+    expect(result.current.hasGuestImage).toBe(true);
+  });
+
+  test("trigger: ストア画像を退避 + 計測 + モーダルを開き redirectTo を付与", () => {
+    setGuestGeneration({ imageBase64: "data:image/png;base64,abc", styleId: "s1" });
+    const { result } = renderHook(() => useWardrobeSaveTrigger());
+
+    act(() => result.current.trigger());
+
+    expect(mockRecordEvent).toHaveBeenCalledWith({
+      eventType: "wardrobe_save_click",
+      styleId: "s1",
+    });
+    expect(mockStash).toHaveBeenCalledWith({
+      imageBase64: "data:image/png;base64,abc",
+      styleId: "s1",
+    });
+    expect(result.current.authModalProps.open).toBe(true);
+    expect(result.current.authModalProps.mode).toBe("signup");
+    expect(result.current.authModalProps.hideModeSwitch).toBe(true);
+    // jsdom の既定 location は "/" のため
+    expect(result.current.authModalProps.redirectTo).toBe("/?claim_wardrobe=1");
   });
 });

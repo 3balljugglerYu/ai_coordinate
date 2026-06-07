@@ -915,8 +915,7 @@ export const idMessages = {
     guestResultDownloadFailed:
       "Gagal mengunduh gambar. Silakan coba lagi.",
     guestLoginCtaTitle: "Coba tanpa masuk",
-    guestLoginCtaDescription:
-      "Kamu bisa mencoba ChatGPT Image 2.0 dan Nano Banana 2 (0.5K) sekali sehari. Hasil tidak disimpan.",
+    guestLoginCtaDescription: "Coba ChatGPT Image 2.0 gratis, sekali sehari. Masuk (daftar gratis) setelah membuat untuk menyimpan gambarmu.",
     guestLoginCtaAction: "Masuk / Daftar",
     guestSubmitFailed: "Pembuatan gagal. Silakan coba lagi sebentar.",
     guestRateLimitDailyMessage:
@@ -1377,8 +1376,7 @@ export const idMessages = {
     generateRetryHint:
       "Jika hasilnya kurang memuaskan, coba lagi. Jika tetap gagal, beri tahu kami.",
     guestLoginCtaTitle: "Coba tanpa masuk",
-    guestLoginCtaDescription:
-      "Kamu bisa mencoba ChatGPT Image 2.0 dan Nano Banana 2 (0.5K) sekali sehari. Hasil tidak disimpan.",
+    guestLoginCtaDescription: "Coba ChatGPT Image 2.0 gratis, sekali sehari. Masuk (daftar gratis) setelah membuat untuk menyimpan gambarmu.",
     guestLoginCtaAction: "Masuk / Daftar",
     generateButton: "Mulai styling",
     generatingButton: "Menghasilkan...",

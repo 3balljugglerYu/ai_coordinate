@@ -916,8 +916,7 @@ export const deMessages = {
     guestResultDownloadFailed:
       "Bild konnte nicht heruntergeladen werden. Bitte erneut versuchen.",
     guestLoginCtaTitle: "Ohne Anmeldung ausprobieren",
-    guestLoginCtaDescription:
-      "Du kannst ChatGPT Image 2.0 und Nano Banana 2 (0.5K) einmal pro Tag testen. Ergebnisse werden nicht gespeichert.",
+    guestLoginCtaDescription: "Teste ChatGPT Image 2.0 einmal täglich kostenlos. Melde dich nach dem Erstellen an (kostenlose Registrierung), um dein Bild zu speichern.",
     guestLoginCtaAction: "Anmelden / Registrieren",
     guestSubmitFailed: "Generierung fehlgeschlagen. Bitte gleich erneut versuchen.",
     guestRateLimitDailyMessage:
@@ -1378,8 +1377,7 @@ export const deMessages = {
     generateRetryHint:
       "Wenn das Ergebnis nicht überzeugt, versuche es erneut. Klappt es weiterhin nicht, sag uns Bescheid.",
     guestLoginCtaTitle: "Ohne Anmeldung ausprobieren",
-    guestLoginCtaDescription:
-      "Du kannst ChatGPT Image 2.0 und Nano Banana 2 (0.5K) einmal pro Tag testen. Ergebnisse werden nicht gespeichert.",
+    guestLoginCtaDescription: "Teste ChatGPT Image 2.0 einmal täglich kostenlos. Melde dich nach dem Erstellen an (kostenlose Registrierung), um dein Bild zu speichern.",
     guestLoginCtaAction: "Anmelden / Registrieren",
     generateButton: "Styling starten",
     generatingButton: "Wird generiert...",

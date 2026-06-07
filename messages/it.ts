@@ -916,8 +916,7 @@ export const itMessages = {
     guestResultDownloadFailed:
       "Impossibile scaricare l'immagine. Riprova.",
     guestLoginCtaTitle: "Provalo senza accedere",
-    guestLoginCtaDescription:
-      "Puoi provare ChatGPT Image 2.0 e Nano Banana 2 (0.5K) una volta al giorno. I risultati non vengono salvati.",
+    guestLoginCtaDescription: "Prova ChatGPT Image 2.0 gratis, una volta al giorno. Accedi (registrazione gratuita) dopo la generazione per salvare la tua immagine.",
     guestLoginCtaAction: "Accedi / Registrati",
     guestSubmitFailed: "Generazione non riuscita. Riprova tra qualche istante.",
     guestRateLimitDailyMessage:
@@ -1378,8 +1377,7 @@ export const itMessages = {
     generateRetryHint:
       "Se il risultato non ti convince, riprova. Se continua a non riuscire, faccelo sapere.",
     guestLoginCtaTitle: "Provalo senza accedere",
-    guestLoginCtaDescription:
-      "Puoi provare ChatGPT Image 2.0 e Nano Banana 2 (0.5K) una volta al giorno. I risultati non vengono salvati.",
+    guestLoginCtaDescription: "Prova ChatGPT Image 2.0 gratis, una volta al giorno. Accedi (registrazione gratuita) dopo la generazione per salvare la tua immagine.",
     guestLoginCtaAction: "Accedi / Registrati",
     generateButton: "Avvia styling",
     generatingButton: "Generazione...",

@@ -56,6 +56,10 @@ import { readCoordinateStockSavePromptDismissed } from "../lib/form-preferences"
 import { GuestResultPreview } from "./GuestResultPreview";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
+import {
+  clearGuestGeneration,
+  setGuestGeneration,
+} from "@/features/wardrobe/lib/guest-generation-store";
 
 interface GenerationFormContainerProps {
   subscriptionPlan: SubscriptionPlan;
@@ -200,6 +204,16 @@ export function GenerationFormContainer({
   } | null>(null);
   // ゲスト保存（ログイン転換）導線。/style と共通の hook。
   const wardrobeSave = useWardrobeSave({ authState });
+
+  // ゲストが生成した画像を共有ストアへ publish（バナー/サイドバーの保存導線用）。
+  useEffect(() => {
+    if (isGuest && guestResult) {
+      setGuestGeneration({ imageBase64: guestResult.url, styleId: null });
+    } else {
+      clearGuestGeneration();
+    }
+    return () => clearGuestGeneration();
+  }, [isGuest, guestResult]);
   const [localIsGenerating, setLocalIsGenerating] = useState(false);
   const [localTotalCount, setLocalTotalCount] = useState(0);
   const [, setLocalGeneratingCount] = useState(0);

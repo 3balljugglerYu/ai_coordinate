@@ -913,8 +913,7 @@ export const arMessages = {
     guestResultDownloadFailed:
       "فشل تنزيل الصورة. يُرجى المحاولة مرة أخرى.",
     guestLoginCtaTitle: "جرّب دون تسجيل الدخول",
-    guestLoginCtaDescription:
-      "يمكنك تجربة ChatGPT Image 2.0 و Nano Banana 2 (0.5K) مرة واحدة يوميًا. لا تُحفظ النتائج.",
+    guestLoginCtaDescription: "جرّب ChatGPT Image 2.0 مجانًا مرة واحدة يوميًا. سجّل الدخول (تسجيل مجاني) بعد الإنشاء لحفظ صورتك.",
     guestLoginCtaAction: "تسجيل الدخول / إنشاء حساب",
     guestSubmitFailed: "فشل التوليد. يُرجى المحاولة بعد لحظات.",
     guestRateLimitDailyMessage:
@@ -1375,8 +1374,7 @@ export const arMessages = {
     generateRetryHint:
       "إذا لم تكن النتيجة جيدة، حاول مرة أخرى. إذا فشل مجددًا، يُرجى إخبارنا.",
     guestLoginCtaTitle: "جرّب دون تسجيل الدخول",
-    guestLoginCtaDescription:
-      "يمكنك تجربة ChatGPT Image 2.0 و Nano Banana 2 (0.5K) مرة واحدة يوميًا. لا تُحفظ النتائج.",
+    guestLoginCtaDescription: "جرّب ChatGPT Image 2.0 مجانًا مرة واحدة يوميًا. سجّل الدخول (تسجيل مجاني) بعد الإنشاء لحفظ صورتك.",
     guestLoginCtaAction: "تسجيل الدخول / إنشاء حساب",
     generateButton: "بدء التنسيق",
     generatingButton: "جارٍ التوليد...",

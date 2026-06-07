@@ -882,8 +882,7 @@ export const jaMessages = {
     guestResultDownloadSuccessDescription: "画像を保存しました。",
     guestResultDownloadFailed: "画像のダウンロードに失敗しました。もう一度お試しください。",
     guestLoginCtaTitle: "未ログインでお試しいただけます",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 を 1 日 1 回までお試しいただけます。保存はされません。",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 を 1 日 1 回まで無料でお試しいただけます。生成後にログイン（無料登録）すると画像を保存できます。",
     guestLoginCtaAction: "ログイン / 新規登録",
     guestSubmitFailed: "生成に失敗しました。少し時間をおいて再試行してください。",
     guestRateLimitDailyMessage:
@@ -1316,8 +1315,7 @@ export const jaMessages = {
     generateRetryHint:
       "うまくいかない場合は、もう一度お試しください。それでも改善しない場合はご報告いただけると助かります。",
     guestLoginCtaTitle: "未ログインでお試しいただけます",
-    guestLoginCtaDescription:
-      "ChatGPT Image 2.0 を 1 日 1 回までお試しいただけます。保存はされません。",
+    guestLoginCtaDescription: "ChatGPT Image 2.0 を 1 日 1 回まで無料でお試しいただけます。生成後にログイン（無料登録）すると画像を保存できます。",
     guestLoginCtaAction: "ログイン / 新規登録",
     generateButton: "コーデ開始！",
     generatingButton: "生成中...",

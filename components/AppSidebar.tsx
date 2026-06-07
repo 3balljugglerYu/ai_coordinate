@@ -10,7 +10,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle /* , Coins */ } from "lucide-react";
+import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle, Heart /* , Coins */ } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,8 @@ import {
   stripLocalePrefix,
 } from "@/i18n/config";
 import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
+import { AuthModal } from "@/features/auth/components/AuthModal";
+import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 
 const SIDEBAR_OPEN_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
@@ -51,6 +53,8 @@ export function AppSidebar() {
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const navT = useTranslations("nav");
   const commonT = useTranslations("common");
+  const styleT = useTranslations("style");
+  const saveTrigger = useWardrobeSaveTrigger();
   const [user, setUser] = useState<User | null>(null);
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === "undefined") {
@@ -354,6 +358,29 @@ export function AppSidebar() {
               <span className="whitespace-nowrap pr-4">{navT("logout")}</span>
             </div>
           </button>
+        ) : saveTrigger.hasGuestImage ? (
+          // 生成後のゲスト: ログインの代わりに「保存する」(signup固定+画像引き継ぎ)。
+          <button
+            className={cn(
+              "group flex w-full items-center py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100",
+            )}
+            onClick={saveTrigger.trigger}
+            aria-label={styleT("wardrobeSaveButton")}
+          >
+            <div className="flex w-[72px] shrink-0 items-center justify-center">
+              <Heart className="h-5 w-5" />
+            </div>
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-200",
+                isOpen ? "w-auto opacity-100" : "w-0 opacity-0"
+              )}
+            >
+              <span className="whitespace-nowrap pr-4">
+                {styleT("wardrobeSaveButton")}
+              </span>
+            </div>
+          </button>
         ) : (
           <button
             className={cn(
@@ -376,6 +403,9 @@ export function AppSidebar() {
           </button>
         )}
       </div>
+
+      {/* 生成後ゲストの保存導線(signup固定)。生成前/通常時は閉じたまま。 */}
+      <AuthModal {...saveTrigger.authModalProps} />
     </aside>
   );
 }
