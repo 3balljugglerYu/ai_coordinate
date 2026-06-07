@@ -1413,7 +1413,7 @@ export const idMessages = {
     resultSaveHint:
       "Gunakan tombol unduh untuk menyimpan gambar yang ingin kamu pertahankan.",
     wardrobeSaveButton: "Simpan",
-    wardrobeSaveHelper: "Dengan menyimpan, gambar yang kamu buat di sini akan ditambahkan ke akunmu.",
+    wardrobeSaveHelper: "Simpan untuk mengunduh tanpa logo Persta.AI.",
     wardrobeSaveModalTitle: "Simpan gambar ini",
     wardrobeSaveModalDescription: "Masuk untuk menyimpan gambar yang dibuat ke akunmu dan melihatnya kapan saja.",
     wardrobeSaveSuccess: "Tersimpan!",

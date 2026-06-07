@@ -1350,7 +1350,7 @@ export const jaMessages = {
     resultSaveHint:
       "必要な画像はダウンロードボタンから保存してください。",
     wardrobeSaveButton: "保存する",
-    wardrobeSaveHelper: "保存すると、こちらで生成したイラストが作成したアカウントに登録されます。",
+    wardrobeSaveHelper: "保存すると、Persta.AIのロゴなしでダウンロードできます。",
     wardrobeSaveModalTitle: "このイラストを保存する",
     wardrobeSaveModalDescription: "ログインすると、生成したイラストがあなたのアカウントに保存され、いつでも見返せます。",
     wardrobeSaveSuccess: "保存しました！",

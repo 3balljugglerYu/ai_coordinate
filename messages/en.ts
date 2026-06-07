@@ -1410,7 +1410,7 @@ export const enMessages = {
     resultSaveHint:
       "Use the download button to save any image you want to keep.",
     wardrobeSaveButton: "Save",
-    wardrobeSaveHelper: "Save and the image you generated here will be added to your account.",
+    wardrobeSaveHelper: "Save to download without the Persta.AI logo.",
     wardrobeSaveModalTitle: "Save this image",
     wardrobeSaveModalDescription: "Log in to save the image you generated to your account and view it anytime.",
     wardrobeSaveSuccess: "Saved!",

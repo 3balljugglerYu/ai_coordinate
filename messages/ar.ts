@@ -1411,7 +1411,7 @@ export const arMessages = {
     resultSaveHint:
       "استخدم زر التنزيل لحفظ أي صورة تريد الاحتفاظ بها.",
     wardrobeSaveButton: "حفظ",
-    wardrobeSaveHelper: "عند الحفظ، تُضاف الصورة التي أنشأتها هنا إلى حسابك.",
+    wardrobeSaveHelper: "احفظ لتنزيل الصورة بدون شعار Persta.AI.",
     wardrobeSaveModalTitle: "احفظ هذه الصورة",
     wardrobeSaveModalDescription: "سجّل الدخول لحفظ الصورة التي أنشأتها في حسابك ومشاهدتها في أي وقت.",
     wardrobeSaveSuccess: "تم الحفظ!",

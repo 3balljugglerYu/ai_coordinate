@@ -1414,7 +1414,7 @@ export const deMessages = {
     resultSaveHint:
       "Verwende den Download-Button, um Bilder zu speichern, die du behalten möchtest.",
     wardrobeSaveButton: "Speichern",
-    wardrobeSaveHelper: "Beim Speichern wird das hier erstellte Bild deinem Konto hinzugefügt.",
+    wardrobeSaveHelper: "Speichern, um ohne Persta.AI-Logo herunterzuladen.",
     wardrobeSaveModalTitle: "Dieses Bild speichern",
     wardrobeSaveModalDescription: "Melde dich an, um das erstellte Bild in deinem Konto zu speichern und jederzeit anzusehen.",
     wardrobeSaveSuccess: "Gespeichert!",

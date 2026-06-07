@@ -1410,7 +1410,7 @@ export const thMessages = {
     resultSaveHint:
       "ใช้ปุ่มดาวน์โหลดเพื่อบันทึกรูปที่ต้องการเก็บ",
     wardrobeSaveButton: "บันทึก",
-    wardrobeSaveHelper: "เมื่อบันทึก รูปที่คุณสร้างที่นี่จะถูกเพิ่มเข้าบัญชีของคุณ",
+    wardrobeSaveHelper: "บันทึกเพื่อดาวน์โหลดโดยไม่มีโลโก้ Persta.AI",
     wardrobeSaveModalTitle: "บันทึกรูปนี้",
     wardrobeSaveModalDescription: "เข้าสู่ระบบเพื่อบันทึกรูปที่สร้างไว้ในบัญชีของคุณ และดูได้ทุกเมื่อ",
     wardrobeSaveSuccess: "บันทึกแล้ว!",

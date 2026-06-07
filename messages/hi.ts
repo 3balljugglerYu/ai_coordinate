@@ -1412,7 +1412,7 @@ export const hiMessages = {
     resultSaveHint:
       "जिस छवि को आप रखना चाहते हैं उसे सहेजने के लिए डाउनलोड बटन का उपयोग करें।",
     wardrobeSaveButton: "सहेजें",
-    wardrobeSaveHelper: "सहेजने पर, यहाँ बनाई गई इमेज आपके खाते में जुड़ जाती है।",
+    wardrobeSaveHelper: "सहेजें और Persta.AI लोगो के बिना डाउनलोड करें।",
     wardrobeSaveModalTitle: "यह इमेज सहेजें",
     wardrobeSaveModalDescription: "लॉगिन करें और बनाई गई इमेज आपके खाते में सहेजें, उसे कभी भी देखें।",
     wardrobeSaveSuccess: "सहेज लिया!",

@@ -1408,7 +1408,7 @@ export const zhTwMessages = {
     resultSaveHint:
       "想保留的圖片請使用下載按鈕儲存。",
     wardrobeSaveButton: "儲存",
-    wardrobeSaveHelper: "儲存後，您在這裡生成的圖片將加入您的帳號。",
+    wardrobeSaveHelper: "儲存後即可下載無 Persta.AI 標誌的圖片。",
     wardrobeSaveModalTitle: "儲存這張圖片",
     wardrobeSaveModalDescription: "登入後，您生成的圖片將儲存到您的帳號，隨時可查看。",
     wardrobeSaveSuccess: "已儲存！",

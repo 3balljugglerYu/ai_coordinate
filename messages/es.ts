@@ -1414,7 +1414,7 @@ export const esMessages = {
     resultSaveHint:
       "Usa el botón de descarga para guardar cualquier imagen que quieras conservar.",
     wardrobeSaveButton: "Guardar",
-    wardrobeSaveHelper: "Al guardar, la imagen generada aquí se añade a tu cuenta.",
+    wardrobeSaveHelper: "Guarda para descargar sin el logo de Persta.AI.",
     wardrobeSaveModalTitle: "Guardar esta imagen",
     wardrobeSaveModalDescription: "Inicia sesión para guardar la imagen generada en tu cuenta y verla cuando quieras.",
     wardrobeSaveSuccess: "¡Guardado!",

@@ -1414,7 +1414,7 @@ export const frMessages = {
     resultSaveHint:
       "Utilisez le bouton de téléchargement pour enregistrer toute image que vous voulez garder.",
     wardrobeSaveButton: "Enregistrer",
-    wardrobeSaveHelper: "En enregistrant, l'image générée ici est ajoutée à votre compte.",
+    wardrobeSaveHelper: "Enregistrez pour télécharger sans le logo Persta.AI.",
     wardrobeSaveModalTitle: "Enregistrer cette image",
     wardrobeSaveModalDescription: "Connectez-vous pour enregistrer l'image générée sur votre compte et la revoir à tout moment.",
     wardrobeSaveSuccess: "Enregistré !",

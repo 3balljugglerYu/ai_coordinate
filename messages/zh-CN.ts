@@ -1408,7 +1408,7 @@ export const zhCnMessages = {
     resultSaveHint:
       "想保留的图片请用下载按钮保存。",
     wardrobeSaveButton: "保存",
-    wardrobeSaveHelper: "保存后，您在这里生成的图片将添加到您的账号。",
+    wardrobeSaveHelper: "保存后即可下载无 Persta.AI 标志的图片。",
     wardrobeSaveModalTitle: "保存这张图片",
     wardrobeSaveModalDescription: "登录后，您生成的图片将保存到您的账号，随时可查看。",
     wardrobeSaveSuccess: "已保存！",

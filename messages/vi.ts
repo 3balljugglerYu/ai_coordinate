@@ -1411,7 +1411,7 @@ export const viMessages = {
     resultSaveHint:
       "Dùng nút tải xuống để lưu hình bạn muốn giữ lại.",
     wardrobeSaveButton: "Lưu",
-    wardrobeSaveHelper: "Khi lưu, hình bạn tạo ở đây sẽ được thêm vào tài khoản của bạn.",
+    wardrobeSaveHelper: "Lưu để tải xuống không có logo Persta.AI.",
     wardrobeSaveModalTitle: "Lưu hình này",
     wardrobeSaveModalDescription: "Đăng nhập để lưu hình đã tạo vào tài khoản của bạn và xem lại bất cứ lúc nào.",
     wardrobeSaveSuccess: "Đã lưu!",

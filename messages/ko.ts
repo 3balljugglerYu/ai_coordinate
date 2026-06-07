@@ -1410,7 +1410,7 @@ export const koMessages = {
     resultSaveHint:
       "보관하고 싶은 이미지는 다운로드 버튼으로 저장해 주세요.",
     wardrobeSaveButton: "저장하기",
-    wardrobeSaveHelper: "저장하면 여기서 생성한 이미지가 만든 계정에 등록됩니다.",
+    wardrobeSaveHelper: "저장하면 Persta.AI 로고 없이 다운로드할 수 있어요.",
     wardrobeSaveModalTitle: "이 이미지 저장하기",
     wardrobeSaveModalDescription: "로그인하면 생성한 이미지가 회원님의 계정에 저장되어 언제든 다시 볼 수 있어요.",
     wardrobeSaveSuccess: "저장했어요!",
