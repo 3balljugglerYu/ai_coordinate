@@ -3,9 +3,10 @@
 /**
  * `GuestResultPreview` の挙動テスト。
  *
- * Step 3 で追加したダウンロードボタンが、結果表示中だけ render され、
- * クリック時に共通ヘルパへ data URL と coordinate-guest-* の id が渡る
- * ことを検証する。あわせて既存のログイン CTA も併存していることを確認する。
+ * ゲスト結果プレビューは /style と挙動を揃え、
+ * - ダウンロードボタン（ゲストは透かし付き = transformBlob を渡す）
+ * - 「保存する」= アカウント保存（ログイン転換）ボタン
+ * を結果表示中だけ render する。あわせて「離脱で消える」ヒントを維持する。
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -33,12 +34,13 @@ const labels: Record<string, string> = {
   guestResultPlaceholder: "placeholder",
   guestResultAlt: "alt",
   guestResultSaveHint: "leave-page-warning",
-  guestResultLoginCta: "Sign in",
   guestResultDownloadAction: "Download",
   guestResultDownloadAriaLabel: "Download generated result",
   guestResultDownloadSuccessTitle: "downloaded",
   guestResultDownloadSuccessDescription: "saved",
   guestResultDownloadFailed: "download-failed",
+  // WardrobeSaveButton は "style" 名前空間の wardrobeSaveButton を使う
+  wardrobeSaveButton: "Save to account",
 };
 
 const useTranslationsMock = useTranslations as jest.MockedFunction<
@@ -62,22 +64,24 @@ afterEach(() => {
 });
 
 describe("GuestResultPreview", () => {
-  test("result が null のときは DL ボタンも CTA も描画しない", () => {
-    render(<GuestResultPreview result={null} onLoginCtaClick={jest.fn()} />);
+  test("result が null のときは DL ボタンも保存ボタンも描画しない", () => {
+    render(
+      <GuestResultPreview result={null} onSaveToAccountClick={jest.fn()} />,
+    );
 
     expect(
       screen.queryByRole("button", { name: "Download generated result" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Sign in" }),
+      screen.queryByRole("button", { name: "Save to account" }),
     ).not.toBeInTheDocument();
   });
 
-  test("result があるとき DL ボタンとログイン CTA が併存する", () => {
+  test("result があるとき DL ボタンと保存ボタンが併存し、ヒントも残る", () => {
     render(
       <GuestResultPreview
         result={{ url: "data:image/png;base64,abc", mimeType: "image/png" }}
-        onLoginCtaClick={jest.fn()}
+        onSaveToAccountClick={jest.fn()}
       />,
     );
 
@@ -85,17 +89,16 @@ describe("GuestResultPreview", () => {
       screen.getByRole("button", { name: "Download generated result" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Sign in" }),
+      screen.getByRole("button", { name: "Save to account" }),
     ).toBeInTheDocument();
-    // ヒント文も維持されている
     expect(screen.getByText("leave-page-warning")).toBeInTheDocument();
   });
 
-  test("DL ボタンクリックで共通ヘルパに data URL と coordinate-guest の id を渡す", () => {
+  test("DL クリックで共通ヘルパに data URL / id / 透かし関数を渡す", () => {
     render(
       <GuestResultPreview
         result={{ url: "data:image/png;base64,abc", mimeType: "image/png" }}
-        onLoginCtaClick={jest.fn()}
+        onSaveToAccountClick={jest.fn()}
       />,
     );
 
@@ -104,23 +107,25 @@ describe("GuestResultPreview", () => {
     );
 
     expect(mockShareOrDownload).toHaveBeenCalledTimes(1);
-    const [target] = mockShareOrDownload.mock.calls[0];
-    expect(target).toEqual({
+    const call = mockShareOrDownload.mock.calls[0];
+    expect(call[0]).toEqual({
       url: "data:image/png;base64,abc",
       id: "coordinate-guest",
     });
+    // ゲスト DL は透かし（transformBlob）が 4 番目の引数として渡る
+    expect(typeof call[3]).toBe("function");
   });
 
-  test("CTA クリックで onLoginCtaClick が呼ばれる", () => {
-    const onLogin = jest.fn();
+  test("保存ボタンクリックで onSaveToAccountClick が呼ばれる", () => {
+    const onSave = jest.fn();
     render(
       <GuestResultPreview
         result={{ url: "data:image/png;base64,abc", mimeType: "image/png" }}
-        onLoginCtaClick={onLogin}
+        onSaveToAccountClick={onSave}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(onLogin).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Save to account" }));
+    expect(onSave).toHaveBeenCalledTimes(1);
   });
 });

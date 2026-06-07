@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import { AuthForm } from "./AuthForm";
 
-interface AuthModalProps {
+export interface AuthModalProps {
   open: boolean;
   onClose: () => void;
   redirectTo?: string;

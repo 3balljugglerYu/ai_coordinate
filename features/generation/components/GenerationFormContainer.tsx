@@ -55,7 +55,7 @@ import {
 import { readCoordinateStockSavePromptDismissed } from "../lib/form-preferences";
 import { GuestResultPreview } from "./GuestResultPreview";
 import { AuthModal } from "@/features/auth/components/AuthModal";
-import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
+import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
 
 interface GenerationFormContainerProps {
   subscriptionPlan: SubscriptionPlan;
@@ -64,10 +64,6 @@ interface GenerationFormContainerProps {
    * `GuestResultPreview` に in-memory で表示する。既定は "authenticated"。
    */
   authState?: "guest" | "authenticated";
-  /**
-   * ロックモデル選択や「保存するにはログイン」CTA から呼ばれる。AuthModal を開く想定。
-   */
-  onRequestSignIn?: () => void;
 }
 
 type TrackedGenerationJobStatus = Pick<
@@ -191,7 +187,6 @@ function sumCompletedProgressUnits(
 export function GenerationFormContainer({
   subscriptionPlan,
   authState = "authenticated",
-  onRequestSignIn,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
@@ -203,15 +198,8 @@ export function GenerationFormContainer({
     url: string;
     mimeType: string;
   } | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const currentUrl = useCurrentUrlForRedirect();
-  const handleRequestSignIn = () => {
-    if (onRequestSignIn) {
-      onRequestSignIn();
-    } else {
-      setShowAuthModal(true);
-    }
-  };
+  // ゲスト保存（ログイン転換）導線。/style と共通の hook。
+  const wardrobeSave = useWardrobeSave({ authState });
   const [localIsGenerating, setLocalIsGenerating] = useState(false);
   const [localTotalCount, setLocalTotalCount] = useState(0);
   const [, setLocalGeneratingCount] = useState(0);
@@ -1408,17 +1396,16 @@ export function GenerationFormContainer({
       {isGuest ? (
         <GuestResultPreview
           result={guestResult}
-          onLoginCtaClick={handleRequestSignIn}
+          onSaveToAccountClick={() =>
+            wardrobeSave.requestSave({
+              imageBase64: guestResult?.url,
+              styleId: null,
+            })
+          }
         />
       ) : null}
 
-      {isGuest && !onRequestSignIn ? (
-        <AuthModal
-          open={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          redirectTo={currentUrl}
-        />
-      ) : null}
+      {isGuest ? <AuthModal {...wardrobeSave.authModalProps} /> : null}
     </div>
   );
 }

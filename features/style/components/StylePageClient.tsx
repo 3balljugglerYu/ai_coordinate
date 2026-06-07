@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -11,7 +11,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Heart, Maximize2, Minimize2, Share2 } from "lucide-react";
+import { Maximize2, Minimize2, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -64,11 +64,9 @@ import type { StylePresetPublicSummary } from "@/features/style-presets/lib/sche
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
-import {
-  stashPendingWardrobeSave,
-  claimPendingWardrobeSave,
-} from "@/features/wardrobe/lib/pending-wardrobe-save";
 import { applyPerstaWatermark } from "@/features/generation/lib/apply-watermark";
+import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
+import { WardrobeSaveButton } from "@/features/wardrobe/components/WardrobeSaveButton";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { PostModal } from "@/features/posts/components/PostModal";
@@ -403,13 +401,8 @@ export function StylePageClient({
   // category.showUserPromptInput=true のときのみ意味あり (= サーバ側でホワイトリスト処理)。
   const [userPromptInputValue, setUserPromptInputValue] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authModalContext, setAuthModalContext] = useState<
-    "default" | "wardrobe"
-  >("default");
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const currentUrl = useCurrentUrlForRedirect();
-  const searchParams = useSearchParams();
-  const wardrobeClaimHandledRef = useRef(false);
   // /style ページが GenerationStateProvider でラップされているとき、
   // 生成結果一覧が isGenerating / generatingCount を購読してスケルトン表示する。
   // ラップされていない（ゲストモード等）場合は null。
@@ -474,6 +467,7 @@ export function StylePageClient({
     ? backgroundChange
     : false;
   const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
+  const wardrobeSave = useWardrobeSave({ authState: effectiveAuthState });
   const modelAuthState =
     effectiveAuthState === "authenticated" ? "authenticated" : "guest";
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
@@ -648,47 +642,11 @@ export function StylePageClient({
   };
 
   const handleWardrobeSaveClick = () => {
-    const image = resultImageUrl ?? displayedResultImageUrl;
-    if (!image) return;
-    void recordStyleUsageClientEvent({
-      eventType: "wardrobe_save_click",
-      styleId: selectedPreset?.id ?? null,
-    }).catch(() => {
-      // 計測はブロッカーにしない
-    });
-    stashPendingWardrobeSave({
-      imageBase64: image,
+    wardrobeSave.requestSave({
+      imageBase64: resultImageUrl ?? displayedResultImageUrl,
       styleId: selectedPreset?.id ?? null,
     });
-    setAuthModalContext("wardrobe");
-    setShowAuthModal(true);
   };
-
-  // ログイン後 (?claim_wardrobe=1 で戻る) に、退避した画像をクローゼットへ保存する。
-  useEffect(() => {
-    if (wardrobeClaimHandledRef.current) return;
-    if (searchParams?.get("claim_wardrobe") !== "1") return;
-    if (effectiveAuthState !== "authenticated") return;
-    wardrobeClaimHandledRef.current = true;
-    void (async () => {
-      const result = await claimPendingWardrobeSave();
-      if (result.status === "saved") {
-        toast({ title: t("wardrobeSaveSuccess") });
-        router.push("/my-page");
-        return;
-      }
-      if (result.status === "error") {
-        toast({
-          title:
-            result.errorCode === "WARDROBE_CLAIM_ALREADY_CLAIMED"
-              ? t("wardrobeSaveAlreadyClaimed")
-              : t("wardrobeSaveError"),
-        });
-      }
-      // none / error: フラグを URL から外して /style に留める
-      router.replace("/style");
-    })();
-  }, [searchParams, effectiveAuthState, toast, t, router]);
 
   const clearResultReadyToastTimeout = () => {
     if (resultReadyToastTimeoutRef.current === null) {
@@ -1813,7 +1771,6 @@ export function StylePageClient({
                 onChange={handleSelectedModelChange}
                 onLockedClick={() => {
                   if (modelAuthState === "guest") {
-                    setAuthModalContext("default");
                     setShowAuthModal(true);
                   } else if (subscriptionPlan === "free") {
                     setIsUpsellOpen(true);
@@ -2022,16 +1979,8 @@ export function StylePageClient({
                         : undefined
                     }
                   />
-                  {effectiveAuthState !== "authenticated" ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleWardrobeSaveClick}
-                      className="flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium shadow-sm"
-                    >
-                      <Heart className="h-4 w-4" />
-                      <span>{t("wardrobeSaveButton")}</span>
-                    </Button>
+                  {wardrobeSave.isGuest ? (
+                    <WardrobeSaveButton onClick={handleWardrobeSaveClick} />
                   ) : null}
                   {canPostGeneratedResult ? (
                     <Button
@@ -2102,32 +2051,15 @@ export function StylePageClient({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ロックモデル等の通常ログイン導線 */}
       <AuthModal
         open={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          setAuthModalContext("default");
-        }}
-        redirectTo={
-          authModalContext === "wardrobe"
-            ? currentUrl.includes("?")
-              ? `${currentUrl}&claim_wardrobe=1`
-              : `${currentUrl}?claim_wardrobe=1`
-            : currentUrl
-        }
-        title={
-          authModalContext === "wardrobe"
-            ? t("wardrobeSaveModalTitle")
-            : undefined
-        }
-        description={
-          authModalContext === "wardrobe"
-            ? t("wardrobeSaveModalDescription")
-            : undefined
-        }
-        mode={authModalContext === "wardrobe" ? "signup" : "signin"}
-        hideModeSwitch={authModalContext === "wardrobe"}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo={currentUrl}
       />
+
+      {/* ゲスト保存（ログイン転換）導線: signup 固定 */}
+      <AuthModal {...wardrobeSave.authModalProps} />
 
       <SubscriptionUpsellDialog
         open={isUpsellOpen}
