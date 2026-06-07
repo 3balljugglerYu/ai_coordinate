@@ -22,6 +22,7 @@ import {
 // errorCode 無しで不可視に失敗するため、base64 化 (約 ×1.37) しても 4.5MB に収まる
 // デコード後 3MB を上限とする。client は送信前に normalizeSourceImage で縮小する想定。
 export const WARDROBE_CLAIM_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+export const WARDROBE_CLAIM_MAX_IMAGE_BASE64_LENGTH = 5 * 1024 * 1024;
 
 // claim の 1 アカウントあたり生涯上限。claim は「ゲスト時代の1枚を登録時に1度だけ
 // 持ち込む」転換用途なので生涯1回に限定する。これにより、既存アカウントがログアウト→
@@ -79,6 +80,10 @@ export function parseWardrobeClaimRequest(
 
   if (typeof imageBase64 !== "string" || imageBase64.length === 0) {
     return { ok: false, code: "MISSING_IMAGE" };
+  }
+
+  if (imageBase64.length > WARDROBE_CLAIM_MAX_IMAGE_BASE64_LENGTH) {
+    return { ok: false, code: "IMAGE_TOO_LARGE" };
   }
 
   const match = DATA_URL_RE.exec(imageBase64);

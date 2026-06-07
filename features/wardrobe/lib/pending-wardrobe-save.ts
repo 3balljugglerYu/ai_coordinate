@@ -12,6 +12,7 @@
  */
 
 const PENDING_KEY = "persta-ai:wardrobe-pending";
+export const PENDING_WARDROBE_SAVE_MAX_IMAGE_BASE64_LENGTH = 4 * 1024 * 1024;
 
 export interface PendingWardrobeSave {
   imageBase64: string;
@@ -32,12 +33,14 @@ function safeRead(key: string): string | null {
   }
 }
 
-function safeWrite(key: string, value: string): void {
-  if (typeof window === "undefined") return;
+function safeWrite(key: string, value: string): boolean {
+  if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(key, value);
+    return true;
   } catch {
     // private browsing / quota 超過は黙って無視
+    return false;
   }
 }
 
@@ -50,8 +53,14 @@ function safeRemove(key: string): void {
   }
 }
 
-export function stashPendingWardrobeSave(payload: PendingWardrobeSave): void {
-  safeWrite(
+export function stashPendingWardrobeSave(payload: PendingWardrobeSave): boolean {
+  if (
+    payload.imageBase64.length > PENDING_WARDROBE_SAVE_MAX_IMAGE_BASE64_LENGTH
+  ) {
+    return false;
+  }
+
+  return safeWrite(
     PENDING_KEY,
     JSON.stringify({
       imageBase64: payload.imageBase64,

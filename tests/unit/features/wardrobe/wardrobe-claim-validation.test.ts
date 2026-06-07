@@ -2,6 +2,7 @@
 
 import {
   parseWardrobeClaimRequest,
+  WARDROBE_CLAIM_MAX_IMAGE_BASE64_LENGTH,
   WARDROBE_CLAIM_MAX_IMAGE_BYTES,
 } from "@/app/api/wardrobe/claim/handler";
 
@@ -113,6 +114,15 @@ describe("parseWardrobeClaimRequest", () => {
           "image/webp",
           WARDROBE_CLAIM_MAX_IMAGE_BYTES + 1,
         ),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.code).toBe("IMAGE_TOO_LARGE");
+    });
+
+    test("base64 文字列長が上限超過なら decode 前に IMAGE_TOO_LARGE", () => {
+      const result = parseWardrobeClaimRequest({
+        imageBase64: "x".repeat(WARDROBE_CLAIM_MAX_IMAGE_BASE64_LENGTH + 1),
       });
       expect(result.ok).toBe(false);
       if (result.ok) return;

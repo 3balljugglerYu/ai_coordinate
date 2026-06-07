@@ -72,7 +72,7 @@ beforeEach(() => {
   mockReplace.mockReset();
   mockToast.mockReset();
   mockRecordEvent.mockReset().mockResolvedValue(undefined);
-  mockStash.mockReset();
+  mockStash.mockReset().mockReturnValue(true);
   mockClaim.mockReset().mockResolvedValue({ status: "none" });
   mockSearchParams = new URLSearchParams();
   mockPathname = "/style";
@@ -140,6 +140,22 @@ describe("useWardrobeSave", () => {
     expect(result.current.authModalProps.open).toBe(false);
   });
 
+  test("requestSave: 退避に失敗した場合はモーダルを開かず計測しない", () => {
+    mockStash.mockReturnValueOnce(false);
+    const { result } = renderHook(() => useWardrobeSave({ authState: "guest" }));
+
+    act(() => {
+      result.current.requestSave({
+        imageBase64: "data:image/png;base64,abc",
+        styleId: "s",
+      });
+    });
+
+    expect(mockStash).toHaveBeenCalled();
+    expect(mockRecordEvent).not.toHaveBeenCalled();
+    expect(result.current.authModalProps.open).toBe(false);
+  });
+
   test("authModalProps は signup 固定・切替非表示・クエリ無しは ? でフラグ付与", () => {
     mockPathname = "/coordinate";
     const { result } = renderHook(() => useWardrobeSave({ authState: "guest" }));
@@ -154,6 +170,14 @@ describe("useWardrobeSave", () => {
   test("redirectTo: 既存クエリがあるときは & でフラグを付与する", () => {
     mockPathname = "/style";
     mockSearchParams = new URLSearchParams("style=foo");
+    const { result } = renderHook(() => useWardrobeSave({ authState: "guest" }));
+    expect(result.current.authModalProps.redirectTo).toBe(
+      "/style?style=foo&claim_wardrobe=1",
+    );
+  });
+
+  test("redirectTo: claim_wardrobe が既にあるときは重複させない", () => {
+    mockSearchParams = new URLSearchParams("style=foo&claim_wardrobe=1");
     const { result } = renderHook(() => useWardrobeSave({ authState: "guest" }));
     expect(result.current.authModalProps.redirectTo).toBe(
       "/style?style=foo&claim_wardrobe=1",

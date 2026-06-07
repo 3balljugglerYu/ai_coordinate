@@ -5,6 +5,7 @@ import {
   readPendingWardrobeSave,
   clearPendingWardrobeSave,
   claimPendingWardrobeSave,
+  PENDING_WARDROBE_SAVE_MAX_IMAGE_BASE64_LENGTH,
 } from "@/features/wardrobe/lib/pending-wardrobe-save";
 
 const KEY = "persta-ai:wardrobe-pending";
@@ -17,7 +18,9 @@ beforeEach(() => {
 
 describe("退避 (stash/read/clear)", () => {
   test("stash → read で往復する", () => {
-    stashPendingWardrobeSave({ imageBase64: IMG, styleId: "s1" });
+    expect(stashPendingWardrobeSave({ imageBase64: IMG, styleId: "s1" })).toBe(
+      true,
+    );
     expect(readPendingWardrobeSave()).toEqual({ imageBase64: IMG, styleId: "s1" });
   });
 
@@ -44,6 +47,29 @@ describe("退避 (stash/read/clear)", () => {
     stashPendingWardrobeSave({ imageBase64: IMG, styleId: null });
     clearPendingWardrobeSave();
     expect(readPendingWardrobeSave()).toBeNull();
+  });
+
+  test("上限を超える imageBase64 は保存しない", () => {
+    const tooLargeImage = "x".repeat(
+      PENDING_WARDROBE_SAVE_MAX_IMAGE_BASE64_LENGTH + 1,
+    );
+    expect(
+      stashPendingWardrobeSave({ imageBase64: tooLargeImage, styleId: null }),
+    ).toBe(false);
+    expect(readPendingWardrobeSave()).toBeNull();
+  });
+
+  test("localStorage 書き込み失敗時は false を返す", () => {
+    const spy = jest
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new DOMException("quota exceeded", "QuotaExceededError");
+      });
+
+    expect(stashPendingWardrobeSave({ imageBase64: IMG, styleId: null })).toBe(
+      false,
+    );
+    spy.mockRestore();
   });
 });
 

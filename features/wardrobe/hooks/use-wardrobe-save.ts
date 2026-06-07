@@ -23,9 +23,19 @@ const CLAIM_QUERY_KEY = "claim_wardrobe";
 
 /** currentUrl に claim フラグを付与する（既存クエリの有無で ? / & を切替）。 */
 function appendClaimFlag(currentUrl: string): string {
-  return currentUrl.includes("?")
-    ? `${currentUrl}&${CLAIM_QUERY_KEY}=1`
-    : `${currentUrl}?${CLAIM_QUERY_KEY}=1`;
+  const hashIndex = currentUrl.indexOf("#");
+  const base = hashIndex === -1 ? currentUrl : currentUrl.slice(0, hashIndex);
+  const hash = hashIndex === -1 ? "" : currentUrl.slice(hashIndex);
+  const queryIndex = base.indexOf("?");
+
+  if (queryIndex === -1) {
+    return `${base}?${CLAIM_QUERY_KEY}=1${hash}`;
+  }
+
+  const pathname = base.slice(0, queryIndex);
+  const params = new URLSearchParams(base.slice(queryIndex + 1));
+  params.set(CLAIM_QUERY_KEY, "1");
+  return `${pathname}?${params.toString()}${hash}`;
 }
 
 /** claim フラグだけを URL から取り除いた pathname + query を組み立てる。 */
@@ -48,15 +58,17 @@ function trackAndStashWardrobeSave({
   styleId,
 }: WardrobeSaveRequest): boolean {
   if (!imageBase64) return false;
+  const stashed = stashPendingWardrobeSave({
+    imageBase64,
+    styleId: styleId ?? null,
+  });
+  if (!stashed) return false;
+
   void recordStyleUsageClientEvent({
     eventType: "wardrobe_save_click",
     styleId: styleId ?? null,
   }).catch(() => {
     // 計測はブロッカーにしない
-  });
-  stashPendingWardrobeSave({
-    imageBase64,
-    styleId: styleId ?? null,
   });
   return true;
 }
