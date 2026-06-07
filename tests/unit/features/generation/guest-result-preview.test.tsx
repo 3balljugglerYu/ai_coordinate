@@ -34,6 +34,8 @@ const labels: Record<string, string> = {
   guestResultPlaceholder: "placeholder",
   guestResultAlt: "alt",
   guestResultSaveHint: "leave-page-warning",
+  // フッターは /style と共通の wardrobeSaveHelper(style 名前空間)を表示する
+  wardrobeSaveHelper: "save-to-account-helper",
   guestResultDownloadAction: "Download",
   guestResultDownloadAriaLabel: "Download generated result",
   guestResultDownloadSuccessTitle: "downloaded",
@@ -91,7 +93,7 @@ describe("GuestResultPreview", () => {
     expect(
       screen.getByRole("button", { name: "Save to account" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("leave-page-warning")).toBeInTheDocument();
+    expect(screen.getByText("save-to-account-helper")).toBeInTheDocument();
   });
 
   test("DL クリックで共通ヘルパに data URL / id / 透かし関数を渡す", async () => {

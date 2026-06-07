@@ -50,6 +50,8 @@ export function GuestResultPreview({
   onSaveToAccountClick,
 }: GuestResultPreviewProps) {
   const t = useTranslations("coordinate");
+  // 保存導線の案内文は /style と共通（"style" 名前空間の wardrobeSaveHelper）。
+  const tStyle = useTranslations("style");
 
   return (
     <GenerationResultPanel
@@ -82,12 +84,12 @@ export function GuestResultPreview({
       }
       footer={
         result ? (
-          <div
+          <p
             data-testid="guest-result-preview"
-            className="rounded-lg border border-amber-200 bg-amber-50 p-3"
+            className="text-xs leading-5 text-slate-500"
           >
-            <p className="text-sm text-amber-900">{t("guestResultSaveHint")}</p>
-          </div>
+            {tStyle("wardrobeSaveHelper")}
+          </p>
         ) : null
       }
     />
