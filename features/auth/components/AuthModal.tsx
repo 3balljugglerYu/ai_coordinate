@@ -41,9 +41,9 @@ export function AuthModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6">
       <div className="absolute inset-0 bg-white/70 backdrop-blur-sm" />
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 my-auto w-full max-w-md">
         <button
           type="button"
           onClick={onClose}
@@ -53,7 +53,7 @@ export function AuthModal({
           <span className="sr-only">閉じる</span>
           <X className="h-5 w-5 m-2 text-gray-600" />
         </button>
-        <div className="relative rounded-2xl bg-white shadow-2xl">
+        <div className="relative max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
           {title || description ? (
             <div className="border-b border-gray-100 px-6 pb-4 pt-6 text-center">
               {title ? (
