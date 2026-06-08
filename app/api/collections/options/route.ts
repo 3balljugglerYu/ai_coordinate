@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
+// 衣装ごとに返す画像の上限(選択UI用。最新からこの件数まで)
+const MAX_IMAGES_PER_OUTFIT = 12;
 
 export interface CollectionOutfitOption {
   presetId: string;
@@ -58,39 +60,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ threshold: category.completionThreshold, outfits: [] });
   }
 
-  const { data: images, error: imageError } = await admin
-    .from("generated_images")
-    .select("id, image_url, generation_metadata, created_at")
-    .eq("user_id", user.id)
-    .eq("generation_type", "one_tap_style")
-    .in("generation_metadata->oneTapStyle->>id", presetIds)
-    .order("created_at", { ascending: false });
-  if (imageError) {
-    console.error("[collections options] image query failed:", imageError);
+  // 衣装ごとに「最新 MAX_IMAGES_PER_OUTFIT 件」だけ返す(レスポンス肥大・遅延を防ぐ)。
+  // 衣装数(=preset数)は小さい(3/4/6 程度)ため、衣装ごとに limit 付きで個別取得する。
+  try {
+    const perOutfit = await Promise.all(
+      presetIds.map(async (presetId) => {
+        const { data, error } = await admin
+          .from("generated_images")
+          .select("id, image_url")
+          .eq("user_id", user.id)
+          .eq("generation_type", "one_tap_style")
+          .eq("generation_metadata->oneTapStyle->>id", presetId)
+          .order("created_at", { ascending: false })
+          .limit(MAX_IMAGES_PER_OUTFIT);
+        if (error) throw error;
+        const images = (data ?? [])
+          .filter((r) => typeof r.image_url === "string" && r.image_url)
+          .map((r) => ({ id: r.id as string, url: r.image_url as string }));
+        return {
+          presetId,
+          displayOrder: displayOrderByPreset.get(presetId) ?? 0,
+          images,
+        } satisfies CollectionOutfitOption;
+      }),
+    );
+
+    const outfits: CollectionOutfitOption[] = perOutfit
+      .filter((o) => o.images.length > 0)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+
+    return NextResponse.json({ threshold: category.completionThreshold, outfits });
+  } catch (error) {
+    console.error("[collections options] image query failed:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const byPreset = new Map<string, { id: string; url: string }[]>();
-  for (const row of images ?? []) {
-    const meta = row.generation_metadata as
-      | { oneTapStyle?: { id?: unknown } }
-      | null;
-    const presetId =
-      typeof meta?.oneTapStyle?.id === "string" ? meta.oneTapStyle.id : null;
-    const url = row.image_url as string | null;
-    if (!presetId || !displayOrderByPreset.has(presetId) || !url) continue;
-    const list = byPreset.get(presetId) ?? [];
-    list.push({ id: row.id as string, url });
-    byPreset.set(presetId, list);
-  }
-
-  const outfits: CollectionOutfitOption[] = Array.from(byPreset.entries())
-    .map(([presetId, imgs]) => ({
-      presetId,
-      displayOrder: displayOrderByPreset.get(presetId) ?? 0,
-      images: imgs,
-    }))
-    .sort((a, b) => a.displayOrder - b.displayOrder);
-
-  return NextResponse.json({ threshold: category.completionThreshold, outfits });
 }
