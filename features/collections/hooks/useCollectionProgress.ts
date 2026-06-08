@@ -34,6 +34,7 @@ export interface CollectionComposerTarget {
   displayName: string;
   threshold: number;
   toCount: number;
+  characterImageUrl: string | null;
 }
 
 /**
@@ -87,6 +88,7 @@ export function useCollectionProgress() {
             displayName: series.displayNameJa,
             threshold: series.completionThreshold,
             toCount,
+            characterImageUrl: series.characterImageUrl,
           });
           return;
         }
@@ -103,6 +105,7 @@ export function useCollectionProgress() {
           mountImageUrl: buildPublicMountUrl(series.mountImagePath),
           sharePath: null,
           completionId: null,
+          characterImageUrl: series.characterImageUrl,
         });
         break;
       }
@@ -134,6 +137,7 @@ export function useCollectionProgress() {
       mountImageUrl: result.mountImageUrl,
       sharePath: result.sharePath,
       completionId: result.completionId,
+      characterImageUrl: target?.characterImageUrl ?? null,
     });
   }, []);
 

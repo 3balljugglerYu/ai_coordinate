@@ -23,6 +23,8 @@ export interface CollectionCelebration {
   sharePath: string | null;
   /** 公開ページ token(= collection_completions.id)。シェアに使う */
   completionId: string | null;
+  /** リング中央のシリーズ用キャラ画像(任意) */
+  characterImageUrl: string | null;
 }
 
 interface Props {
@@ -56,8 +58,14 @@ export function CollectionProgressModal({
 
   if (!celebration) return null;
 
-  const { displayName, toCount, threshold, isCompleted, mountImageUrl } =
-    celebration;
+  const {
+    displayName,
+    toCount,
+    threshold,
+    isCompleted,
+    mountImageUrl,
+    characterImageUrl,
+  } = celebration;
   const ratio = threshold > 0 ? Math.min(1, animatedCount / threshold) : 0;
   const reachedComplete = toCount >= threshold;
 
@@ -76,23 +84,38 @@ export function CollectionProgressModal({
           ) : null}
 
           {/* 円形プログレスリング(時計回りに埋まる) */}
-          <div className="flex justify-center py-2">
+          <div className="flex flex-col items-center gap-2 py-2">
             <CollectionProgressRing
               ratio={ratio}
               complete={reachedComplete}
+              imageUrl={characterImageUrl}
               className="w-[min(200px,70vw)]"
             >
-              {reachedComplete ? (
-                <span className="text-2xl font-bold text-amber-500">完成</span>
-              ) : (
-                <>
-                  <span className="text-4xl font-bold tabular-nums text-gray-900">
-                    {toCount}
-                  </span>
-                  <span className="text-sm text-gray-500">/ {threshold} 種</span>
-                </>
-              )}
+              {!characterImageUrl ? (
+                reachedComplete ? (
+                  <span className="text-2xl font-bold text-amber-500">完成</span>
+                ) : (
+                  <>
+                    <span className="text-4xl font-bold tabular-nums text-gray-900">
+                      {toCount}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      / {threshold} 種
+                    </span>
+                  </>
+                )
+              ) : null}
             </CollectionProgressRing>
+            {/* キャラ画像があるときはカウントをリング下に表示 */}
+            {characterImageUrl ? (
+              <span className="text-sm font-medium text-gray-600">
+                {reachedComplete ? (
+                  <span className="font-bold text-amber-500">完成</span>
+                ) : (
+                  `${toCount} / ${threshold} 種`
+                )}
+              </span>
+            ) : null}
           </div>
 
           {isCompleted && mountImageUrl ? (

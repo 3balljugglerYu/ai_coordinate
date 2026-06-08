@@ -113,6 +113,7 @@ export function MyPageCollections({
       mountImageUrl: matched?.mountImageUrl ?? null,
       sharePath: matched ? `/m/${matched.completionId}` : null,
       completionId: matched?.completionId ?? null,
+      characterImageUrl: series.characterImageUrl,
     });
   }
 
@@ -161,15 +162,20 @@ export function MyPageCollections({
                   <CollectionProgressRing
                     ratio={ratio}
                     complete={completed}
+                    imageUrl={s.characterImageUrl}
                     className="w-16 shrink-0"
                   >
-                    {completed ? (
-                      <span className="text-xs font-bold text-amber-500">完成</span>
-                    ) : (
-                      <span className="text-sm font-bold tabular-nums text-gray-900">
-                        {s.uniqueOutfitCount}/{s.completionThreshold}
-                      </span>
-                    )}
+                    {!s.characterImageUrl ? (
+                      completed ? (
+                        <span className="text-xs font-bold text-amber-500">
+                          完成
+                        </span>
+                      ) : (
+                        <span className="text-sm font-bold tabular-nums text-gray-900">
+                          {s.uniqueOutfitCount}/{s.completionThreshold}
+                        </span>
+                      )
+                    ) : null}
                   </CollectionProgressRing>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-gray-800">

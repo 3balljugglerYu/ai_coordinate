@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 // viewBox 固定。実寸は外側 className(幅)で制御し、SVG が拡縮する。
@@ -18,11 +19,14 @@ const C = 2 * Math.PI * R;
 export function CollectionProgressRing({
   ratio,
   complete = false,
+  imageUrl,
   className,
   children,
 }: {
   ratio: number;
   complete?: boolean;
+  /** 中央に表示するシリーズ用キャラ画像(任意)。未達成は薄く、進捗で色が増える */
+  imageUrl?: string | null;
   className?: string;
   children?: ReactNode;
 }) {
@@ -64,6 +68,22 @@ export function CollectionProgressRing({
           className="transition-[stroke-dashoffset] duration-1000 ease-out"
         />
       </svg>
+      {imageUrl ? (
+        <div className="absolute inset-[14%] overflow-hidden rounded-full">
+          <Image
+            src={imageUrl}
+            alt=""
+            fill
+            sizes="200px"
+            className="object-cover transition-[filter,opacity] duration-1000 ease-out"
+            // 未達成は薄くグレー → 進捗で色が増え、完成でフルカラー
+            style={{
+              filter: `grayscale(${1 - clamped})`,
+              opacity: 0.4 + 0.6 * clamped,
+            }}
+          />
+        </div>
+      ) : null}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {children}
       </div>

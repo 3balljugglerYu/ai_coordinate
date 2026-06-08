@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { buildPublicGeneratedImageUrl } from "./public-mount-server-api";
 import type {
   CollectionProgress,
   CollectionProgressRow,
@@ -22,7 +23,7 @@ export async function getCollectionProgress(
     throw error;
   }
   const rows = (data ?? []) as CollectionProgressRow[];
-  return rows.map(mapProgressRow);
+  return attachCharacterImages(rows.map(mapProgressRow));
 }
 
 /**
@@ -43,7 +44,7 @@ export async function getCollectionProgressForUser(
     throw error;
   }
   const rows = (data ?? []) as CollectionProgressRow[];
-  return rows.map(mapProgressRow);
+  return attachCharacterImages(rows.map(mapProgressRow));
 }
 
 function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
@@ -58,5 +59,39 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     mountStatus: row.mount_status,
     mountImagePath: row.mount_image_path,
     completedAt: row.completed_at,
+    characterImageUrl: null,
   };
+}
+
+/**
+ * 各シリーズに「リング中央キャラ画像」の公開URLを付与する。
+ * RPC は返さないため、対象カテゴリの collection_character_path をまとめて引いて結合する。
+ */
+async function attachCharacterImages(
+  items: CollectionProgress[],
+): Promise<CollectionProgress[]> {
+  if (items.length === 0) return items;
+  const supabase = createAdminClient();
+  const categoryIds = items.map((i) => i.categoryId);
+  const { data, error } = await supabase
+    .from("preset_categories")
+    .select("id, collection_character_path")
+    .in("id", categoryIds);
+  if (error) {
+    // キャラ画像の付与失敗は致命ではない(リングはテキスト表示にフォールバック)
+    return items;
+  }
+  const pathById = new Map<string, string | null>();
+  for (const row of data ?? []) {
+    pathById.set(
+      row.id as string,
+      (row.collection_character_path as string | null) ?? null,
+    );
+  }
+  return items.map((i) => ({
+    ...i,
+    characterImageUrl: buildPublicGeneratedImageUrl(
+      pathById.get(i.categoryId) ?? null,
+    ),
+  }));
 }

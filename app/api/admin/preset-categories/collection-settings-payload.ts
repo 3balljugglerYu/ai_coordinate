@@ -17,6 +17,7 @@ export interface CollectionSettingsPayload {
   completionThreshold?: number | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
+  collectionCharacterPath?: string | null;
 }
 
 export interface CollectionSettingsExisting {
@@ -77,6 +78,18 @@ export function parseCollectionSettings(
       return { ok: false, error: "mount_layout must be one of grid_3 / grid_4 / grid_6" };
     } else {
       payload.mountLayout = v;
+    }
+  }
+
+  // 任意: リング中央のキャラ画像パス(R-02 の必須対象ではない)
+  if (body.collection_character_path !== undefined) {
+    const v = body.collection_character_path;
+    if (v === null) {
+      payload.collectionCharacterPath = null;
+    } else if (typeof v !== "string" || v.trim().length === 0) {
+      return { ok: false, error: "collection_character_path must be a non-empty string or null" };
+    } else {
+      payload.collectionCharacterPath = v.trim();
     }
   }
 

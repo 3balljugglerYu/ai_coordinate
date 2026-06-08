@@ -14,6 +14,8 @@ export interface CollectionProgress {
   mountStatus: "generating" | "completed" | "failed" | null;
   mountImagePath: string | null;
   completedAt: string | null;
+  /** 進捗リング中央に表示するシリーズ用キャラ画像の公開URL(無ければ null) */
+  characterImageUrl: string | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */
