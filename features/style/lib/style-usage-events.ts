@@ -10,7 +10,12 @@ export type StyleUsageEventType =
   | "rate_limited"
   | "signup_click"
   | "wardrobe_save_click"
-  | "wardrobe_save_completed";
+  | "wardrobe_save_completed"
+  // コレクション(集めてコンプリート)系。complete_achieved / mount_generated は
+  // server 側でのみ記録。mount_shared は公開ページURLのシェア時に発火する。
+  | "complete_achieved"
+  | "mount_generated"
+  | "mount_shared";
 // client から直接送信を許可する公開イベント。wardrobe_save_completed は
 // claim 成功時に server 側でのみ記録するため含めない。
 export type StylePublicUsageEventType =
