@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
+import { getAdminUserIds } from "@/lib/env";
 import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
 import { composeMount } from "@/features/collections/lib/compose-mount";
 import { getRepresentativeImagesForCategory } from "@/features/collections/lib/representative-images";
@@ -119,14 +120,18 @@ export async function POST(request: NextRequest) {
   try {
     const { data: category, error: categoryError } = await admin
       .from("preset_categories")
-      .select("id, mount_template_path, mount_layout, completion_threshold")
+      .select("id, mount_template_path, mount_layout, completion_threshold, visibility")
       .eq("key", categoryKey)
       .eq("is_collection_series", true)
-      .eq("visibility", "public")
       .eq("is_active", true)
       .single();
     if (categoryError || !category) {
       throw new Error(`category not found: ${categoryError?.message ?? categoryKey}`);
+    }
+    // 公開シリーズ、または admin プレビューのみ許可(admin_only は admin だけ)
+    const isAdmin = getAdminUserIds().includes(user.id);
+    if (category.visibility !== "public" && !isAdmin) {
+      throw new Error(`category not public: ${categoryKey}`);
     }
     const layout = category.mount_layout as unknown;
     const templatePath = category.mount_template_path as string | null;

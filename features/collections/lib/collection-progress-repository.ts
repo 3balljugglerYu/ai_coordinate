@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   CollectionProgress,
   CollectionProgressRow,
@@ -17,6 +18,27 @@ export async function getCollectionProgress(
   supabase: SupabaseClient,
 ): Promise<CollectionProgress[]> {
   const { data, error } = await supabase.rpc("get_collection_progress");
+  if (error) {
+    throw error;
+  }
+  const rows = (data ?? []) as CollectionProgressRow[];
+  return rows.map(mapProgressRow);
+}
+
+/**
+ * 指定ユーザーの進捗を service_role 専用 RPC で取得する。
+ * `includeAdminOnly=true` で admin_only シリーズも含める(admin プレビュー用)。
+ * 呼び出し側(server route)で admin 判定し、userId はセッションから解決すること。
+ */
+export async function getCollectionProgressForUser(
+  userId: string,
+  includeAdminOnly: boolean,
+): Promise<CollectionProgress[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc("get_collection_progress_for_user", {
+    p_user_id: userId,
+    p_include_admin_only: includeAdminOnly,
+  });
   if (error) {
     throw error;
   }
