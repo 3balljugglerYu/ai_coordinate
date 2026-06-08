@@ -65,7 +65,7 @@ export function CollectionProgressRing({
           strokeLinecap="round"
           strokeDasharray={C}
           strokeDashoffset={dashoffset}
-          className="transition-[stroke-dashoffset] duration-1000 ease-out"
+          className="transition-[stroke-dashoffset] duration-1000 ease-out motion-reduce:transition-none"
         />
       </svg>
       {imageUrl ? (
@@ -75,7 +75,7 @@ export function CollectionProgressRing({
             alt=""
             fill
             sizes="200px"
-            className="object-cover transition-[filter,opacity] duration-1000 ease-out"
+            className="object-cover transition-[filter,opacity] duration-1000 ease-out motion-reduce:transition-none"
             // 未達成は薄くグレー → 進捗で色が増え、完成でフルカラー
             style={{
               filter: `grayscale(${1 - clamped})`,
