@@ -28,9 +28,15 @@ interface Props {
   open: boolean;
   celebration: CollectionCelebration | null;
   onClose: () => void;
-  /** シェアボタン押下(公開ページURLのシェア)。Phase 5 で配線。 */
+  /** シェアボタン押下(公開ページURLのシェア)。 */
   onShare?: (celebration: CollectionCelebration) => void;
 }
+
+// 円形プログレスリングの寸法(style カード程度の大きさ)
+const RING_SIZE = 200;
+const RING_STROKE = 16;
+const RING_R = (RING_SIZE - RING_STROKE) / 2;
+const RING_C = 2 * Math.PI * RING_R;
 
 export function CollectionProgressModal({
   open,
@@ -38,7 +44,7 @@ export function CollectionProgressModal({
   onClose,
   onShare,
 }: Props) {
-  // バーは fromCount から toCount へアニメーションさせる。
+  // リングは fromCount から toCount へアニメーションさせる。
   // 親が celebration ごとに key を変えて再マウントするため、初期値=fromCount で開始し、
   // effect 内では timeout(非同期)でのみ toCount へ更新する(同期 setState を避ける)。
   const [animatedCount, setAnimatedCount] = useState(
@@ -57,8 +63,10 @@ export function CollectionProgressModal({
 
   const { displayName, toCount, threshold, isCompleted, mountImageUrl } =
     celebration;
-  const ratio =
-    threshold > 0 ? Math.min(1, animatedCount / threshold) : 0;
+  const ratio = threshold > 0 ? Math.min(1, animatedCount / threshold) : 0;
+  // 時計回りに埋まる: 上(12時)起点で arc を伸ばす(dashoffset を減らす)
+  const dashoffset = RING_C * (1 - ratio);
+  const reachedComplete = toCount >= threshold;
 
   return (
     <Dialog open={open} onOpenChange={(next) => (!next ? onClose() : undefined)}>
@@ -74,18 +82,57 @@ export function CollectionProgressModal({
             <p className="text-center text-sm text-gray-600">{displayName}</p>
           ) : null}
 
-          <div className="space-y-2">
-            <div className="flex items-end justify-center gap-1">
-              <span className="text-3xl font-bold text-primary tabular-nums">
-                {toCount}
-              </span>
-              <span className="pb-1 text-sm text-gray-500">/ {threshold} 種</span>
-            </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
-                style={{ width: `${Math.round(ratio * 100)}%` }}
-              />
+          {/* 円形プログレスリング(時計回りに埋まる) */}
+          <div className="flex justify-center py-2">
+            <div className="relative aspect-square w-[min(200px,70vw)]">
+              <svg
+                viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+                className={`h-full w-full -rotate-90 ${
+                  reachedComplete
+                    ? "drop-shadow-[0_0_12px_rgba(245,158,11,0.65)]"
+                    : ""
+                }`}
+              >
+                <defs>
+                  <linearGradient id="collRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FBBF24" />
+                    <stop offset="100%" stopColor="#F59E0B" />
+                  </linearGradient>
+                </defs>
+                <circle
+                  cx={RING_SIZE / 2}
+                  cy={RING_SIZE / 2}
+                  r={RING_R}
+                  fill="none"
+                  stroke="#F1ECE4"
+                  strokeWidth={RING_STROKE}
+                />
+                <circle
+                  cx={RING_SIZE / 2}
+                  cy={RING_SIZE / 2}
+                  r={RING_R}
+                  fill="none"
+                  stroke="url(#collRingGrad)"
+                  strokeWidth={RING_STROKE}
+                  strokeLinecap="round"
+                  strokeDasharray={RING_C}
+                  strokeDashoffset={dashoffset}
+                  className="transition-[stroke-dashoffset] duration-1000 ease-out"
+                />
+              </svg>
+              {/* 中央ラベル(svg は回転しているので別レイヤで水平表示) */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                {reachedComplete ? (
+                  <span className="text-2xl font-bold text-amber-500">完成</span>
+                ) : (
+                  <>
+                    <span className="text-4xl font-bold tabular-nums text-gray-900">
+                      {toCount}
+                    </span>
+                    <span className="text-sm text-gray-500">/ {threshold} 種</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
