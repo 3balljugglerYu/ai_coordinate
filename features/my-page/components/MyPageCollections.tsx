@@ -10,6 +10,7 @@ import {
   type CollectionCelebration,
 } from "@/features/collections/components/CollectionProgressModal";
 import { CollectionMountComposer } from "@/features/collections/components/CollectionMountComposer";
+import { CollectionProgressRing } from "@/features/collections/components/CollectionProgressRing";
 import { shareMount } from "@/features/collections/lib/share-mount";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
 
@@ -116,7 +117,7 @@ export function MyPageCollections({
   }
 
   return (
-    <Card className="mt-4 p-4">
+    <Card className="mt-4 mb-6 p-4">
       <h2 className="mb-3 text-base font-semibold text-gray-900">コレクション</h2>
 
       {completedMounts.length > 0 ? (
@@ -142,35 +143,42 @@ export function MyPageCollections({
       ) : null}
 
       {progress.length > 0 ? (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {progress.map((s) => {
             const ratio =
               s.completionThreshold > 0
                 ? Math.min(1, s.uniqueOutfitCount / s.completionThreshold)
                 : 0;
-            const eligibleNotCompleted =
-              s.uniqueOutfitCount >= s.completionThreshold && !s.isCompleted;
+            const completed = s.uniqueOutfitCount >= s.completionThreshold;
+            const eligibleNotCompleted = completed && !s.isCompleted;
             return (
               <li key={s.categoryKey}>
                 <button
                   type="button"
                   onClick={() => openSeriesModal(s)}
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-left hover:bg-gray-50"
+                  className="flex w-full items-center gap-4 rounded-lg border border-gray-200 p-3 text-left hover:bg-gray-50"
                 >
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-800">
+                  <CollectionProgressRing
+                    ratio={ratio}
+                    complete={completed}
+                    className="w-16 shrink-0"
+                  >
+                    {completed ? (
+                      <span className="text-xs font-bold text-amber-500">完成</span>
+                    ) : (
+                      <span className="text-sm font-bold tabular-nums text-gray-900">
+                        {s.uniqueOutfitCount}/{s.completionThreshold}
+                      </span>
+                    )}
+                  </CollectionProgressRing>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-gray-800">
                       {s.displayNameJa}
-                    </span>
-                    <span className="tabular-nums text-gray-500">
+                    </p>
+                    <p className="text-sm text-gray-500">
                       {s.uniqueOutfitCount} / {s.completionThreshold} 種
                       {s.isCompleted ? "（達成）" : ""}
-                    </span>
-                  </div>
-                  <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.round(ratio * 100)}%` }}
-                    />
+                    </p>
                   </div>
                 </button>
                 {eligibleNotCompleted ? (
@@ -183,7 +191,7 @@ export function MyPageCollections({
                         threshold: s.completionThreshold,
                       })
                     }
-                    className="mt-1 w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                    className="mt-2 w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
                   >
                     台紙を作る
                   </button>
