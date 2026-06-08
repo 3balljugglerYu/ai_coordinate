@@ -39,6 +39,11 @@ interface AuthFormProps {
    * 指定時は URL クエリより優先する。
    */
   signupSource?: SignupSource | null;
+  /**
+   * フォーム自身の見出し(タイトル＋説明)を隠す。モーダル側が既に
+   * 見出しを持つ場合(保存導線など)に true にして縦の重複を避ける。
+   */
+  hideHeading?: boolean;
 }
 
 export function AuthForm({
@@ -47,6 +52,7 @@ export function AuthForm({
   redirectTo,
   hideModeSwitch,
   signupSource: signupSourceProp,
+  hideHeading,
 }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -268,19 +274,21 @@ export function AuthForm({
         </div>
       )}
 
-      <div className="mb-6 text-center">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-          {isSignUp ? t("signupTitle") : t("signinTitle")}
-        </h2>
-        <p className="mt-2 text-sm text-gray-600">
-          {isSignUp
-            ? t("signupDescription")
-            : t("signinDescription")}
-        </p>
-      </div>
+      {!hideHeading && (
+        <div className="mb-4 text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+            {isSignUp ? t("signupTitle") : t("signinTitle")}
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            {isSignUp
+              ? t("signupDescription")
+              : t("signinDescription")}
+          </p>
+        </div>
+      )}
 
       {isWardrobeClaimFlow ? (
-        <Alert className="mb-4 border-amber-200 bg-amber-50">
+        <Alert className="mb-2 border-amber-200 bg-amber-50">
           <AlertDescription className="text-xs leading-5 text-amber-800">
             {t("wardrobeClaimBrowserHint")}
           </AlertDescription>
@@ -293,7 +301,7 @@ export function AuthForm({
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* メールアドレス */}
         <div>
           <Label htmlFor="email">{t("emailLabel")}</Label>
@@ -434,7 +442,7 @@ export function AuthForm({
       </form>
 
       {/* SNSログイン */}
-      <div className="mt-6">
+      <div className="mt-4">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300" />
@@ -444,7 +452,7 @@ export function AuthForm({
           </div>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-4 space-y-3">
           {/* Google */}
           <Button
             type="button"
