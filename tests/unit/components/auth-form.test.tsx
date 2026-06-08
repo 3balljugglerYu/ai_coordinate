@@ -158,6 +158,30 @@ describe("AuthForm unit tests from EARS specs", () => {
     expect(container.querySelector('a[href="/login"]')).toBeNull();
   });
 
+  test("hideHeading_未指定または false の場合_フォーム見出しを表示する", () => {
+    // 既定(未指定)では自身の見出し(新規登録/作成して…)を表示する
+    const { rerender } = render(<AuthForm mode="signup" />);
+    expect(
+      screen.getByRole("heading", { name: "新規登録" })
+    ).toBeInTheDocument();
+
+    // 明示的に false でも表示する
+    rerender(<AuthForm mode="signup" hideHeading={false} />);
+    expect(
+      screen.getByRole("heading", { name: "新規登録" })
+    ).toBeInTheDocument();
+  });
+
+  test("hideHeading_true の場合_フォーム見出しを隠す", () => {
+    // モーダルが独自ヘッダーを持つときに重複を避けるため見出しを隠す
+    render(<AuthForm mode="signup" hideHeading />);
+    expect(
+      screen.queryByRole("heading", { name: "新規登録" })
+    ).not.toBeInTheDocument();
+    // 見出しを隠してもフォーム本体(入力欄)は描画される
+    expect(screen.getByLabelText("メールアドレス")).toBeInTheDocument();
+  });
+
   describe("AUTH-001 handleSubmit", () => {
     test("handleSubmit_有効な新規登録入力の場合_確認トースト表示後にloginへ遷移する", async () => {
       // ============================================================

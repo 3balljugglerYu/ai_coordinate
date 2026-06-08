@@ -71,6 +71,7 @@ export function AuthModal({
             redirectTo={redirectTo}
             hideModeSwitch={hideModeSwitch}
             signupSource={signupSource}
+            hideHeading={Boolean(title || description)}
           />
         </div>
       </div>
