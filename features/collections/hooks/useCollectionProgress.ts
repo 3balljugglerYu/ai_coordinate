@@ -65,6 +65,7 @@ export function useCollectionProgress() {
         let isCompleted = series.isCompleted;
         let mountImageUrl = buildPublicMountUrl(series.mountImagePath);
         let sharePath: string | null = null;
+        let completionId: string | null = null;
 
         if (
           toCount >= series.completionThreshold &&
@@ -86,6 +87,9 @@ export function useCollectionProgress() {
                 isCompleted = true;
                 mountImageUrl = m.mountImageUrl ?? mountImageUrl;
                 sharePath = m.sharePath ?? null;
+                completionId = sharePath
+                  ? sharePath.replace("/m/", "")
+                  : null;
               }
             }
           } catch {
@@ -103,6 +107,7 @@ export function useCollectionProgress() {
           isCompleted,
           mountImageUrl,
           sharePath,
+          completionId,
         });
         break; // 1件ずつ表示
       }

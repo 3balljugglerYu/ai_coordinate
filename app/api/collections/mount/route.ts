@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
@@ -135,6 +136,8 @@ export async function POST(request: Request) {
       throw new Error(`finalize failed: ${finalizeError.message}`);
     }
     if (finalized === true) {
+      // マイページのコレクション表示(ユーザー別 cache)を更新
+      revalidateTag(`collection-completions:${user.id}`, "max");
       await Promise.allSettled([
         recordStyleUsageEvent({
           userId: user.id,

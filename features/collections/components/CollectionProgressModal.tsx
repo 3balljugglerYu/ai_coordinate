@@ -20,6 +20,8 @@ export interface CollectionCelebration {
   isCompleted: boolean;
   mountImageUrl: string | null;
   sharePath: string | null;
+  /** 公開ページ token(= collection_completions.id)。シェアに使う */
+  completionId: string | null;
 }
 
 interface Props {
