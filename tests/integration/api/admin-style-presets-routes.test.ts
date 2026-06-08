@@ -73,6 +73,10 @@ const TEST_CATEGORY_REF = {
   showGenerationModelControl: true,
   showUserPromptInput: false,
   visibility: "public",
+  isCollectionSeries: false,
+  completionThreshold: null,
+  mountTemplatePath: null,
+  mountLayout: null,
   isActive: true,
 } as const;
 const TEST_CATEGORY_ADMIN = {

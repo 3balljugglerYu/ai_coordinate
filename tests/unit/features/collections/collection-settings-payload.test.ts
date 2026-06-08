@@ -90,10 +90,23 @@ describe("parseCollectionSettings", () => {
     if (r.ok) expect(r.payload.mountTemplatePath).toBeNull();
   });
 
-  test("PATCH: 既存ONで N のみ変更は既存値とマージして ok", () => {
+  test("PATCH: 既存ONでレイアウトのスロット数と異なる N は拒否", () => {
     const r = parseCollectionSettings({ completion_threshold: 6 }, ON);
+    expect(r.ok).toBe(false);
+  });
+
+  test("PATCH: 既存ONで N とレイアウトを同時に変更しスロット数が一致すれば ok", () => {
+    const r = parseCollectionSettings(
+      { completion_threshold: 6, mount_layout: "grid_6" },
+      ON,
+    );
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.payload).toEqual({ completionThreshold: 6 });
+    if (r.ok) {
+      expect(r.payload).toEqual({
+        completionThreshold: 6,
+        mountLayout: "grid_6",
+      });
+    }
   });
 
   test("PATCH: 既存ONを無効化すれば必須チェックは不要で ok", () => {

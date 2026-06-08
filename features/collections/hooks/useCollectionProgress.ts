@@ -66,6 +66,7 @@ export function useCollectionProgress() {
         let mountImageUrl = buildPublicMountUrl(series.mountImagePath);
         let sharePath: string | null = null;
         let completionId: string | null = null;
+        let mountPending = false;
 
         if (
           toCount >= series.completionThreshold &&
@@ -90,11 +91,20 @@ export function useCollectionProgress() {
                 completionId = sharePath
                   ? sharePath.replace("/m/", "")
                   : null;
+              } else {
+                mountPending = true;
               }
+            } else {
+              mountPending = true;
             }
           } catch {
-            // 台紙生成に失敗しても進捗演出は出す(次回 mypage 等で再試行可)
+            // 完了台紙が確定するまでは ack せず、次回ポーリングで再試行する
+            mountPending = true;
           }
+        }
+
+        if (mountPending) {
+          continue;
         }
 
         setAck(series.categoryKey, toCount);

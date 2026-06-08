@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
 import { composeMount } from "@/features/collections/lib/compose-mount";
 import { getRepresentativeImagesForCategory } from "@/features/collections/lib/representative-images";
@@ -32,7 +33,10 @@ async function downloadBuffer(
   return Buffer.from(await data.arrayBuffer());
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   // 1) 認証(セッションから user を解決。client の user_id は信用しない)
   const supabase = await createClient();
   const {
@@ -83,22 +87,42 @@ export async function POST(request: Request) {
   if (reserved.mount_status === "completed") {
     return NextResponse.json({ status: "completed", mountImageUrl, sharePath });
   }
+  if (reserved.mount_status === "generating" && reserved.newly_reserved === false) {
+    return NextResponse.json(
+      { status: "generating", sharePath },
+      { status: 202 },
+    );
+  }
+  if (reserved.mount_status === "failed" && reserved.newly_reserved === false) {
+    return jsonError("台紙生成の再試行準備ができていません", "MOUNT_RETRY_NOT_READY", 409);
+  }
 
   // 4) 合成(generating)。失敗時は failed に落として 500。
+  let uploadedPath: string | null = null;
   try {
     const { data: category, error: categoryError } = await admin
       .from("preset_categories")
       .select("id, mount_template_path, mount_layout, completion_threshold")
       .eq("key", categoryKey)
       .eq("is_collection_series", true)
+      .eq("visibility", "public")
+      .eq("is_active", true)
       .single();
     if (categoryError || !category) {
       throw new Error(`category not found: ${categoryError?.message ?? categoryKey}`);
     }
     const layout = category.mount_layout as unknown;
     const templatePath = category.mount_template_path as string | null;
+    const threshold =
+      typeof category.completion_threshold === "number"
+        ? category.completion_threshold
+        : null;
     if (!isMountLayoutKey(layout) || !templatePath) {
       throw new Error("collection settings incomplete (layout/template)");
+    }
+    const slotCount = slotCountForLayout(layout);
+    if (threshold !== slotCount) {
+      throw new Error(`collection threshold/layout mismatch: ${threshold ?? "null"} vs ${slotCount}`);
     }
 
     const templatePng = await downloadBuffer(admin, TEMPLATE_BUCKET, templatePath);
@@ -108,8 +132,8 @@ export async function POST(request: Request) {
       categoryId: category.id as string,
       limit: slotCountForLayout(layout),
     });
-    if (reps.length === 0) {
-      throw new Error("no representative images found");
+    if (reps.length !== slotCount) {
+      throw new Error(`representative images incomplete: ${reps.length} of ${slotCount}`);
     }
     const stickers = await Promise.all(
       reps.map((r) => downloadBuffer(admin, GENERATED_IMAGES_BUCKET, r.storagePath)),
@@ -117,23 +141,32 @@ export async function POST(request: Request) {
 
     const mountPng = await composeMount({ templatePng, stickers, layout });
 
+    await admin.storage.from(GENERATED_IMAGES_BUCKET).remove([mountStoragePath]);
     const { error: uploadError } = await admin.storage
       .from(GENERATED_IMAGES_BUCKET)
       .upload(mountStoragePath, mountPng, {
         contentType: "image/png",
-        upsert: true,
+        upsert: false,
       });
     if (uploadError) {
       throw new Error(`mount upload failed: ${uploadError.message}`);
     }
+    uploadedPath = mountStoragePath;
 
     // 5) 完了確定。初回遷移(true)のときだけイベント記録(重複防止)
-    const { data: finalized, error: finalizeError } = await supabase.rpc(
+    const { data: finalized, error: finalizeError } = await admin.rpc(
       "finalize_collection_completion",
-      { p_completion_id: completionId, p_mount_image_path: mountStoragePath },
+      {
+        p_completion_id: completionId,
+        p_user_id: user.id,
+        p_mount_image_path: mountStoragePath,
+      },
     );
     if (finalizeError) {
       throw new Error(`finalize failed: ${finalizeError.message}`);
+    }
+    if (finalized !== true) {
+      throw new Error("finalize skipped: completion is not generating");
     }
     if (finalized === true) {
       // マイページのコレクション表示(ユーザー別 cache)を更新
@@ -155,9 +188,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "completed", mountImageUrl, sharePath });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
+    if (uploadedPath) {
+      await admin.storage.from(GENERATED_IMAGES_BUCKET).remove([uploadedPath]).catch(() => {});
+    }
     try {
-      await supabase.rpc("fail_collection_completion", {
+      await admin.rpc("fail_collection_completion", {
         p_completion_id: completionId,
+        p_user_id: user.id,
         p_error: message.slice(0, 500),
       });
     } catch {

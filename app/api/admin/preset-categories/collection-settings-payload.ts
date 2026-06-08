@@ -1,4 +1,8 @@
-import { isMountLayoutKey, type MountLayoutKey } from "@/features/collections/lib/mount-layouts";
+import {
+  isMountLayoutKey,
+  slotCountForLayout,
+  type MountLayoutKey,
+} from "@/features/collections/lib/mount-layouts";
 
 /**
  * preset_categories のコレクション設定(is_collection_series / completion_threshold /
@@ -105,6 +109,12 @@ export function parseCollectionSettings(
         ok: false,
         error:
           "コレクション有効時は コンプリート必要数(N) / 台紙テンプレ / レイアウト がすべて必要です",
+      };
+    }
+    if (effective.completionThreshold !== slotCountForLayout(effective.mountLayout)) {
+      return {
+        ok: false,
+        error: "コンプリート必要数(N)は選択した台紙レイアウトのスロット数と一致させてください",
       };
     }
   }

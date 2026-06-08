@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 
 const UUID_PATTERN =
@@ -10,7 +11,10 @@ const UUID_PATTERN =
  * 台紙の所有者が公開ページURLをシェアした際に mount_shared を記録する。
  * 所有者のみ(RLS で本人の completion しか見えない)を確認してから記録する。
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   const supabase = await createClient();
   const {
     data: { user },
