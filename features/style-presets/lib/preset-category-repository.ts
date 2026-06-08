@@ -8,6 +8,10 @@ import {
   normalizeStyleOutputAspectRatioMode,
   type StyleOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
+import {
+  isMountLayoutKey,
+  type MountLayoutKey,
+} from "@/features/collections/lib/mount-layouts";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -36,6 +40,10 @@ export interface PresetCategoryRow {
   show_generation_model_control?: boolean | null;
   show_user_prompt_input?: boolean | null;
   visibility?: StylePresetCategoryVisibility | null;
+  is_collection_series?: boolean | null;
+  completion_threshold?: number | null;
+  mount_template_path?: string | null;
+  mount_layout?: string | null;
   display_order: number;
   is_active: boolean;
   created_by: string | null;
@@ -61,6 +69,10 @@ export interface PresetCategoryAdmin {
   showGenerationModelControl: boolean;
   showUserPromptInput: boolean;
   visibility: StylePresetCategoryVisibility;
+  isCollectionSeries: boolean;
+  completionThreshold: number | null;
+  mountTemplatePath: string | null;
+  mountLayout: MountLayoutKey | null;
   displayOrder: number;
   isActive: boolean;
   createdBy: string | null;
@@ -85,6 +97,10 @@ export interface PresetCategoryInsert {
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
   visibility?: StylePresetCategoryVisibility;
+  isCollectionSeries?: boolean;
+  completionThreshold?: number | null;
+  mountTemplatePath?: string | null;
+  mountLayout?: MountLayoutKey | null;
   displayOrder?: number;
   isActive?: boolean;
   createdBy?: string | null;
@@ -105,6 +121,10 @@ export interface PresetCategoryUpdate {
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
   visibility?: StylePresetCategoryVisibility;
+  isCollectionSeries?: boolean;
+  completionThreshold?: number | null;
+  mountTemplatePath?: string | null;
+  mountLayout?: MountLayoutKey | null;
   displayOrder?: number;
   isActive?: boolean;
   updatedBy?: string | null;
@@ -140,6 +160,10 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     showGenerationModelControl: row.show_generation_model_control ?? true,
     showUserPromptInput: row.show_user_prompt_input ?? false,
     visibility: normalizeVisibility(row.visibility),
+    isCollectionSeries: row.is_collection_series ?? false,
+    completionThreshold: row.completion_threshold ?? null,
+    mountTemplatePath: row.mount_template_path ?? null,
+    mountLayout: isMountLayoutKey(row.mount_layout) ? row.mount_layout : null,
     displayOrder: row.display_order,
     isActive: row.is_active,
     createdBy: row.created_by,
@@ -233,6 +257,10 @@ export async function createPresetCategory(
       show_generation_model_control: input.showGenerationModelControl ?? true,
       show_user_prompt_input: input.showUserPromptInput ?? false,
       visibility: input.visibility ?? "admin_only",
+      is_collection_series: input.isCollectionSeries ?? false,
+      completion_threshold: input.completionThreshold ?? null,
+      mount_template_path: input.mountTemplatePath ?? null,
+      mount_layout: input.mountLayout ?? null,
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
       created_by: input.createdBy ?? null,
@@ -278,6 +306,13 @@ export async function updatePresetCategory(
     payload.show_user_prompt_input = input.showUserPromptInput;
   if (input.visibility !== undefined)
     payload.visibility = input.visibility;
+  if (input.isCollectionSeries !== undefined)
+    payload.is_collection_series = input.isCollectionSeries;
+  if (input.completionThreshold !== undefined)
+    payload.completion_threshold = input.completionThreshold;
+  if (input.mountTemplatePath !== undefined)
+    payload.mount_template_path = input.mountTemplatePath;
+  if (input.mountLayout !== undefined) payload.mount_layout = input.mountLayout;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
   if (input.isActive !== undefined) payload.is_active = input.isActive;
   if (input.updatedBy !== undefined) payload.updated_by = input.updatedBy;

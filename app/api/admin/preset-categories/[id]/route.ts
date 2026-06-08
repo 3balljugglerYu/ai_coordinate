@@ -11,6 +11,7 @@ import {
   STYLE_OUTPUT_ASPECT_RATIO_MODES,
   updatePresetCategory,
 } from "@/features/style-presets/lib/preset-category-repository";
+import { parseCollectionSettings } from "../collection-settings-payload";
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
@@ -284,6 +285,18 @@ export async function PATCH(
     }
     update.isActive = body.is_active;
   }
+
+  // コレクション設定(既存値とマージして R-02 を検証)
+  const collectionResult = parseCollectionSettings(body, {
+    isCollectionSeries: existing.isCollectionSeries,
+    completionThreshold: existing.completionThreshold,
+    mountTemplatePath: existing.mountTemplatePath,
+    mountLayout: existing.mountLayout,
+  });
+  if (!collectionResult.ok) {
+    return NextResponse.json({ error: collectionResult.error }, { status: 400 });
+  }
+  Object.assign(update, collectionResult.payload);
 
   try {
     const updated = await updatePresetCategory(id, {

@@ -27,6 +27,10 @@ interface FormState {
   showGenerationModelControl: boolean;
   showUserPromptInput: boolean;
   visibility: "public" | "admin_only";
+  isCollectionSeries: boolean;
+  completionThreshold: number | null;
+  mountTemplatePath: string | null;
+  mountLayout: "" | "grid_3" | "grid_4" | "grid_6";
   displayOrder: number;
   isActive: boolean;
 }
@@ -48,9 +52,22 @@ function toFormState(initial?: PresetCategoryAdmin): FormState {
     showGenerationModelControl: initial?.showGenerationModelControl ?? true,
     showUserPromptInput: initial?.showUserPromptInput ?? false,
     visibility: initial?.visibility ?? "admin_only",
+    isCollectionSeries: initial?.isCollectionSeries ?? false,
+    completionThreshold: initial?.completionThreshold ?? null,
+    mountTemplatePath: initial?.mountTemplatePath ?? null,
+    mountLayout: initial?.mountLayout ?? "",
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("file read failed"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
@@ -58,6 +75,38 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
   const [form, setForm] = useState<FormState>(() => toFormState(initial));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingTemplate, setUploadingTemplate] = useState(false);
+
+  async function handleTemplateUpload(file: File) {
+    if (!/^[a-z][a-z0-9_]{1,49}$/.test(form.key.trim())) {
+      setError("台紙テンプレをアップロードする前に key を入力してください");
+      return;
+    }
+    setUploadingTemplate(true);
+    setError(null);
+    try {
+      const imageBase64 = await fileToBase64(file);
+      const res = await fetch("/api/admin/collection-mount-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryKey: form.key.trim(), imageBase64 }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as {
+        path?: string;
+        error?: string;
+      };
+      if (!res.ok || !payload.path) {
+        setError(payload.error ?? "台紙テンプレのアップロードに失敗しました");
+        return;
+      }
+      update("mountTemplatePath", payload.path);
+    } catch (err) {
+      console.error("[AdminPresetCategoryFormClient] template upload failed:", err);
+      setError("台紙テンプレのアップロードに失敗しました");
+    } finally {
+      setUploadingTemplate(false);
+    }
+  }
 
   function update<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -87,6 +136,10 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_generation_model_control: form.showGenerationModelControl,
               show_user_prompt_input: form.showUserPromptInput,
               visibility: form.visibility,
+              is_collection_series: form.isCollectionSeries,
+              completion_threshold: form.completionThreshold,
+              mount_template_path: form.mountTemplatePath,
+              mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -105,6 +158,10 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_generation_model_control: form.showGenerationModelControl,
               show_user_prompt_input: form.showUserPromptInput,
               visibility: form.visibility,
+              is_collection_series: form.isCollectionSeries,
+              completion_threshold: form.completionThreshold,
+              mount_template_path: form.mountTemplatePath,
+              mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -502,6 +559,98 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
             </span>
           </span>
         </label>
+      </fieldset>
+
+      <fieldset className="space-y-4 rounded-md border border-slate-200 p-4">
+        <legend className="px-1 text-sm font-semibold text-slate-800">
+          コレクション設定（集めてコンプリート）
+        </legend>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.isCollectionSeries}
+            onChange={(e) => update("isCollectionSeries", e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-slate-300"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">このカテゴリをコレクションシリーズにする</span>
+            <br />
+            <span className="text-xs text-slate-500">
+              ON にすると、ユニーク衣装を N 種そろえるとコンプリート判定・台紙生成が走ります。ON 時は下記 N / レイアウト / 台紙テンプレが必須です。
+            </span>
+          </span>
+        </label>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              コンプリート必要数 N
+            </span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={form.completionThreshold ?? ""}
+              onChange={(e) =>
+                update(
+                  "completionThreshold",
+                  e.target.value === "" ? null : Math.floor(Number(e.target.value)),
+                )
+              }
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="4"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              台紙レイアウト
+            </span>
+            <select
+              value={form.mountLayout}
+              onChange={(e) =>
+                update(
+                  "mountLayout",
+                  e.target.value as FormState["mountLayout"],
+                )
+              }
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">（未選択）</option>
+              <option value="grid_3">grid_3（3枠）</option>
+              <option value="grid_4">grid_4（4枠・2×2）</option>
+              <option value="grid_6">grid_6（6枠・2×3）</option>
+            </select>
+            <span className="mt-1 block text-xs text-slate-500">
+              スロット数（=枠数）は N と一致させてください。
+            </span>
+          </label>
+        </div>
+
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">
+            台紙テンプレ（キャラを抜いた空PNG）
+          </span>
+          <input
+            type="file"
+            accept="image/png"
+            disabled={uploadingTemplate}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleTemplateUpload(file);
+              e.target.value = "";
+            }}
+            className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-slate-50 file:px-3 file:py-1.5 file:text-sm"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            {uploadingTemplate
+              ? "アップロード中…"
+              : form.mountTemplatePath
+                ? `登録済み: ${form.mountTemplatePath}`
+                : "PNG・256〜4096px。アップロードすると保存パスが設定されます。"}
+          </span>
+        </div>
       </fieldset>
 
       <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">

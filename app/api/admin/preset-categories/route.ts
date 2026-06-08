@@ -10,6 +10,8 @@ import {
   STYLE_PRESET_CATEGORY_VISIBILITY_VALUES,
   STYLE_OUTPUT_ASPECT_RATIO_MODES,
 } from "@/features/style-presets/lib/preset-category-repository";
+import { parseCollectionSettings } from "./collection-settings-payload";
+import type { MountLayoutKey } from "@/features/collections/lib/mount-layouts";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -70,6 +72,10 @@ interface ParsedCreatePayload {
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
   visibility?: "public" | "admin_only";
+  isCollectionSeries?: boolean;
+  completionThreshold?: number | null;
+  mountTemplatePath?: string | null;
+  mountLayout?: MountLayoutKey | null;
   displayOrder?: number;
   isActive?: boolean;
 }
@@ -324,6 +330,18 @@ export async function POST(request: NextRequest) {
     }
     payload.isActive = body.is_active;
   }
+
+  // コレクション設定(新規は既存値なし=すべて off/null から判定)
+  const collectionResult = parseCollectionSettings(body, {
+    isCollectionSeries: false,
+    completionThreshold: null,
+    mountTemplatePath: null,
+    mountLayout: null,
+  });
+  if (!collectionResult.ok) {
+    return NextResponse.json({ error: collectionResult.error }, { status: 400 });
+  }
+  Object.assign(payload, collectionResult.payload);
 
   try {
     const created = await createPresetCategory({
