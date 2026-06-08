@@ -90,6 +90,7 @@ import { GenerationSubmitButton } from "@/features/generation/components/Generat
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { AuthModal } from "@/features/auth/components/AuthModal";
+import { COLLECTION_PROGRESS_REFRESH_EVENT } from "@/features/collections/hooks/useCollectionProgress";
 import {
   readPreferredModel,
   writePreferredModel,
@@ -1448,6 +1449,11 @@ export function StylePageClient({
       }).catch(() => {
         // Tracking failures should not affect the page UX.
       });
+      // コレクション進捗を即時再チェック(全画面チェッカーへ通知)。
+      // 非同期生成で他画面にいてもポーリングが拾うが、style画面では即時に出す。
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+      }
     } catch (error) {
       handleGenerationError(
         error instanceof Error ? error.message : t("unknownError")
