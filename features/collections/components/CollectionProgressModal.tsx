@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -140,6 +141,15 @@ export function CollectionProgressModal({
               ) : null}
             </div>
           ) : null}
+
+          <div className="text-center">
+            <Link
+              href="/collections/wafer"
+              className="text-xs text-gray-500 underline hover:text-gray-700"
+            >
+              遊び方をみる
+            </Link>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

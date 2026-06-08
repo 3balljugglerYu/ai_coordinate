@@ -102,6 +102,14 @@ export default async function PublicMountPage({
         >
           Persta で作ってみる
         </Link>
+        <div className="mt-2">
+          <Link
+            href="/collections/wafer"
+            className="text-xs text-gray-500 underline hover:text-gray-700"
+          >
+            遊び方をみる
+          </Link>
+        </div>
       </section>
     </main>
   );
