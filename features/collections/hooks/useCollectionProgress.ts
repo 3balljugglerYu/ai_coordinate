@@ -6,6 +6,11 @@ import type { CollectionCelebration } from "@/features/collections/components/Co
 
 const ACK_PREFIX = "collection-ack:";
 const POLL_INTERVAL_MS = 10000;
+// 台紙生成が失敗し続けたときに 10秒ごとに叩き続けない(リトライストーム防止)。
+// 失敗のたびに指数バックオフし、上限回数で打ち止め(セッション中は再試行しない)。
+const MOUNT_RETRY_BASE_MS = 30_000;
+const MOUNT_RETRY_MAX_MS = 5 * 60_000;
+const MOUNT_MAX_FAILURES = 5;
 /** style 画面などからの即時再チェック用イベント */
 export const COLLECTION_PROGRESS_REFRESH_EVENT = "collection-progress-refresh";
 
@@ -42,6 +47,10 @@ export function useCollectionProgress() {
   const celebrationRef = useRef<CollectionCelebration | null>(null);
   celebrationRef.current = celebration;
   const processingRef = useRef(false);
+  // categoryKey → 台紙生成のリトライ状態(連続失敗回数と次回試行可能時刻)
+  const mountRetryRef = useRef<Map<string, { failures: number; nextAt: number }>>(
+    new Map(),
+  );
 
   const evaluate = useCallback(async () => {
     if (processingRef.current) return;
@@ -72,6 +81,13 @@ export function useCollectionProgress() {
           toCount >= series.completionThreshold &&
           series.mountStatus !== "completed"
         ) {
+          const retry = mountRetryRef.current.get(series.categoryKey);
+          if (retry && Date.now() < retry.nextAt) {
+            // バックオフ中(または打ち止め): 今回はスキップ(ack せず次回以降に再評価)
+            continue;
+          }
+
+          let failed = false;
           try {
             const mountRes = await fetch("/api/collections/mount", {
               method: "POST",
@@ -91,14 +107,34 @@ export function useCollectionProgress() {
                 completionId = sharePath
                   ? sharePath.replace("/m/", "")
                   : null;
+                mountRetryRef.current.delete(series.categoryKey);
               } else {
+                // 202 等: 別フローが生成中。失敗扱いにせず次回ポーリングで再確認する
                 mountPending = true;
               }
             } else {
-              mountPending = true;
+              failed = true;
             }
           } catch {
             // 完了台紙が確定するまでは ack せず、次回ポーリングで再試行する
+            failed = true;
+          }
+
+          if (failed) {
+            const rec = mountRetryRef.current.get(series.categoryKey) ?? {
+              failures: 0,
+              nextAt: 0,
+            };
+            rec.failures += 1;
+            rec.nextAt =
+              rec.failures >= MOUNT_MAX_FAILURES
+                ? Number.POSITIVE_INFINITY // 打ち止め(再読み込みまで自動再試行しない)
+                : Date.now() +
+                  Math.min(
+                    MOUNT_RETRY_MAX_MS,
+                    MOUNT_RETRY_BASE_MS * 2 ** (rec.failures - 1),
+                  );
+            mountRetryRef.current.set(series.categoryKey, rec);
             mountPending = true;
           }
         }

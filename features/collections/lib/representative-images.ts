@@ -5,13 +5,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /**
  * 台紙の各スロットに置く「うちの子の代表シール」を取得する。
  *
- * スロットは category の style_presets を display_order 順に並べた先頭から
- * `limit`(= レイアウトのスロット数 = N) 個。各 preset について、当該ユーザーの
- * 最新の one_tap_style 生成画像(generation_metadata.oneTapStyle.id = preset.id)を
- * 代表として用いる。
+ * スロットは「カテゴリの先頭N preset」ではなく、**ユーザーが実際に集めた衣装**で
+ * 埋める(計画書 指摘1 の (B) 改修)。コンプリート条件は「N種(どの衣装でも)」なので、
+ * カテゴリの preset 数が N を超えても、ユーザーが集めた衣装で台紙を完成できる。
  *
- * 前提: コレクションシリーズのカテゴリは preset 数 = N で運用する(計画書 ADR-001)。
- * preset 数が N を超える場合は display_order 先頭 N 個をスロットに割り当てる。
+ * - 同じ衣装を複数回作っている場合は最新の1枚を代表に採用する。
+ * - 並び順は preset の display_order 昇順(台紙のコマは番号ラベルのみで特定衣装に
+ *   紐づかない前提)。集めた衣装が N を超える場合は先頭 limit(=N) 個を採用する。
+ *
+ * 注意: 将来「コマに特定衣装名が刷り込まれた台紙」を使う場合は、コマと衣装の対応を
+ * 固定する必要があるため別途設計が要る(本実装は番号ラベルの台紙を前提)。
  */
 export interface RepresentativeImage {
   presetId: string;
@@ -26,40 +29,57 @@ export async function getRepresentativeImagesForCategory(params: {
 }): Promise<RepresentativeImage[]> {
   const supabase = createAdminClient();
 
+  // 1. カテゴリに属する preset の id → display_order を引く
   const { data: presets, error: presetError } = await supabase
     .from("style_presets")
     .select("id, display_order")
-    .eq("category_id", params.categoryId)
-    .order("display_order", { ascending: true })
-    .limit(params.limit);
+    .eq("category_id", params.categoryId);
   if (presetError) {
     throw presetError;
   }
-
-  const results: RepresentativeImage[] = [];
-  for (const preset of presets ?? []) {
-    const presetId = preset.id as string;
-    const { data: images, error: imageError } = await supabase
-      .from("generated_images")
-      .select("storage_path, image_url")
-      .eq("user_id", params.userId)
-      .eq("generation_type", "one_tap_style")
-      // jsonb パスでの絞り込み(PostgREST): generation_metadata->oneTapStyle->>id
-      .eq("generation_metadata->oneTapStyle->>id", presetId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (imageError) {
-      throw imageError;
-    }
-    const row = images?.[0];
-    if (row?.storage_path && row?.image_url) {
-      results.push({
-        presetId,
-        storagePath: row.storage_path as string,
-        imageUrl: row.image_url as string,
-      });
-    }
+  const displayOrderByPreset = new Map<string, number>();
+  for (const p of presets ?? []) {
+    displayOrderByPreset.set(p.id as string, (p.display_order as number) ?? 0);
+  }
+  const presetIds = Array.from(displayOrderByPreset.keys());
+  if (presetIds.length === 0) {
+    return [];
   }
 
-  return results;
+  // 2. ユーザーが当該カテゴリの衣装で生成した画像を新しい順に取得
+  const { data: images, error: imageError } = await supabase
+    .from("generated_images")
+    .select("storage_path, image_url, created_at, generation_metadata")
+    .eq("user_id", params.userId)
+    .eq("generation_type", "one_tap_style")
+    .in("generation_metadata->oneTapStyle->>id", presetIds)
+    .order("created_at", { ascending: false });
+  if (imageError) {
+    throw imageError;
+  }
+
+  // 3. 衣装(preset id)ごとに最新1枚を代表に採用(降順なので最初に出たものが最新)
+  const repByPreset = new Map<string, RepresentativeImage>();
+  for (const row of images ?? []) {
+    const meta = row.generation_metadata as
+      | { oneTapStyle?: { id?: unknown } }
+      | null;
+    const presetId =
+      typeof meta?.oneTapStyle?.id === "string" ? meta.oneTapStyle.id : null;
+    if (!presetId || !displayOrderByPreset.has(presetId)) continue;
+    if (repByPreset.has(presetId)) continue; // 既に最新を採用済み
+    const storagePath = row.storage_path as string | null;
+    const imageUrl = row.image_url as string | null;
+    if (!storagePath || !imageUrl) continue;
+    repByPreset.set(presetId, { presetId, storagePath, imageUrl });
+  }
+
+  // 4. 集めた衣装を display_order 昇順に並べ、先頭 limit(=N) 個を採用
+  return Array.from(repByPreset.values())
+    .sort(
+      (a, b) =>
+        (displayOrderByPreset.get(a.presetId) ?? 0) -
+        (displayOrderByPreset.get(b.presetId) ?? 0),
+    )
+    .slice(0, params.limit);
 }
