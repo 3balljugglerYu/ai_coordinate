@@ -262,6 +262,8 @@ stateDiagram-v2
 - **R-41** When a mount is generated, the system shall record a `mount_generated` event.
 - **R-42** When a user shares a mount, the system shall record a `mount_shared` event.
 - **R-43** Where an admin views the dashboard, the system shall present per-series aggregates (visits member/guest, generate attempts/successes/rate, downloads/rate, save clicks, signups via save, completions, mounts generated, mounts shared, per-outfit generation counts).
+- **R-44** Where an admin views a collection series, the system shall provide a paginated list of completers showing the user, completion datetime, and mount thumbnail, filterable by series, with each row linking to the admin user detail page. Only `completed` rows are listed.
+  管理者がシリーズを見るとき、システムは達成者一覧（ユーザー・達成日時・台紙サムネ）をシリーズで絞り込み・ページング付きで提供し、各行はユーザー詳細へリンクする。`completed` の行のみを対象とする。
 
 ---
 
@@ -421,6 +423,8 @@ flowchart LR
 - [ ] `mount_shared` のクライアント発火（公開ページURLの **URL共有時**）。サーバー側でログイン状態、completion 所有者、event_type を検証し、KPI 用イベントとして扱う
 - [ ] `features/admin-dashboard/lib/get-collection-kpi.ts`（シリーズ別集計：既存イベント＋ `collection_completions` ＋ 衣装別生成数）
 - [ ] admin ダッシュボードにシリーズ選択付きカードを追加（DAU/MAUカード `app/(app)/admin/page.tsx` の並びを参考）
+- [ ] **達成者一覧テーブル** `features/admin-dashboard/components/AdminCollectionCompletionsTable.tsx`（シリーズで絞り込み、ユーザー・達成日時・台紙サムネを表示、行から `app/(app)/admin/users/[userId]` へリンク。`AdminRecentPurchasesTable` を参考）（R-44）
+- [ ] 一覧取得 server-api `features/admin-dashboard/lib/get-collection-completions.ts`（`collection_completions` の `completed` のみをシリーズ・期間で取得しページング。admin 専用＝`requireAdmin()` 経路でのみ呼ぶ）
 
 #### Phase 7: 仕上げ・テスト
 目的: エラーハンドリング・i18n・テストを整える。
@@ -461,6 +465,8 @@ flowchart LR
 | `app/api/admin/preset-categories/[id]/route.ts` | 修正 | バリデーション |
 | `features/style/lib/style-usage-events.ts` | 修正 | 新イベント種別 |
 | `features/admin-dashboard/lib/get-collection-kpi.ts` | 新規 | KPI集計 |
+| `features/admin-dashboard/lib/get-collection-completions.ts` | 新規 | 達成者一覧取得（admin専用） |
+| `features/admin-dashboard/components/AdminCollectionCompletionsTable.tsx` | 新規 | 達成者一覧テーブル |
 | `app/(app)/admin/page.tsx` | 修正 | KPIカード追加 |
 | `messages/ja.ts` / `messages/en.ts` ほか全対応 locale | 修正 | 翻訳キー追加 |
 | `docs/architecture/data.ja.md` / `docs/architecture/data.en.md` | 修正 | コレクション関連のデータフロー追記 |
@@ -494,6 +500,7 @@ flowchart LR
 | シェア/公開ページ | 未ログインで公開台紙ページが開け、OGP/Twitterカードに台紙が出る。閲覧者にDLボタンが出ず所有者のみ保存可。noindex 指定。シェアは画像ではなくURLが共有される |
 | 計測 | complete_achieved / mount_generated / mount_shared が記録される |
 | admin | コレクション無効化で進捗UIが消える、不正設定が拒否される |
+| admin 達成者一覧 | `completed` のみ表示、シリーズで絞り込める、ページング、行からユーザー詳細へ遷移、admin 以外は取得不可 |
 
 ### テスト実装手順
 `/test-flow Collections` を起点に `/spec-extract` → `/spec-write` → `/test-generate` → `/test-reviewing` → `/spec-verify` の順で実施。
