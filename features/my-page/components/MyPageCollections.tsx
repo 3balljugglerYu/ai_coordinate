@@ -43,6 +43,8 @@ export function MyPageCollections({
   const [celebration, setCelebration] = useState<CollectionCelebration | null>(
     null,
   );
+  // タップのたびにモーダルを再マウントしてバーを 0 から再アニメさせるための nonce
+  const [celebrationNonce, setCelebrationNonce] = useState(0);
   const [composer, setComposer] = useState<ComposerTarget | null>(null);
 
   const refreshProgress = useCallback(async () => {
@@ -98,10 +100,12 @@ export function MyPageCollections({
     const matched = completedMounts.find(
       (m) => m.categoryKey === series.categoryKey,
     );
+    setCelebrationNonce((n) => n + 1);
     setCelebration({
       categoryKey: series.categoryKey,
       displayName: series.displayNameJa,
-      fromCount: series.uniqueOutfitCount,
+      // マイページからのタップでも 0→現在値 でバーをアニメーションさせる
+      fromCount: 0,
       toCount: series.uniqueOutfitCount,
       threshold: series.completionThreshold,
       isCompleted: series.isCompleted,
@@ -200,7 +204,7 @@ export function MyPageCollections({
       ) : null}
 
       <CollectionProgressModal
-        key={celebration ? celebration.categoryKey : "none"}
+        key={celebration ? `${celebration.categoryKey}-${celebrationNonce}` : "none"}
         open={!!celebration}
         celebration={celebration}
         onClose={() => setCelebration(null)}
