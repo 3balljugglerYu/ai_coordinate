@@ -274,7 +274,7 @@ export function AuthForm({
         </div>
       )}
 
-      {!hideHeading ? (
+      {!hideHeading && (
         <div className="mb-4 text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             {isSignUp ? t("signupTitle") : t("signinTitle")}
@@ -285,7 +285,7 @@ export function AuthForm({
               : t("signinDescription")}
           </p>
         </div>
-      ) : null}
+      )}
 
       {isWardrobeClaimFlow ? (
         <Alert className="mb-2 border-amber-200 bg-amber-50">
