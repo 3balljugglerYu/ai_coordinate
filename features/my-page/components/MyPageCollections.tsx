@@ -1,15 +1,23 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ImageModal } from "@/features/generation/components/ImageModal";
 import {
   CollectionProgressModal,
   type CollectionCelebration,
 } from "@/features/collections/components/CollectionProgressModal";
+import { CollectionMountComposer } from "@/features/collections/components/CollectionMountComposer";
 import { shareMount } from "@/features/collections/lib/share-mount";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
+
+interface ComposerTarget {
+  categoryKey: string;
+  displayName: string;
+  threshold: number;
+}
 
 export interface CompletedMountView {
   completionId: string;
@@ -29,24 +37,52 @@ export function MyPageCollections({
 }: {
   completedMounts: CompletedMountView[];
 }) {
+  const router = useRouter();
   const [progress, setProgress] = useState<CollectionProgress[]>([]);
   const [enlargeIndex, setEnlargeIndex] = useState<number | null>(null);
   const [celebration, setCelebration] = useState<CollectionCelebration | null>(
     null,
   );
+  const [composer, setComposer] = useState<ComposerTarget | null>(null);
+
+  const refreshProgress = useCallback(async () => {
+    try {
+      const r = await fetch("/api/collections/progress", { cache: "no-store" });
+      const d = (r.ok ? await r.json() : { items: [] }) as {
+        items?: CollectionProgress[];
+      };
+      setProgress(d.items ?? []);
+    } catch {
+      // 取得失敗は無視
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
-    fetch("/api/collections/progress", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { items: [] }))
-      .then((d: { items?: CollectionProgress[] }) => {
+    void (async () => {
+      try {
+        const r = await fetch("/api/collections/progress", {
+          cache: "no-store",
+        });
+        const d = (r.ok ? await r.json() : { items: [] }) as {
+          items?: CollectionProgress[];
+        };
         if (active) setProgress(d.items ?? []);
-      })
-      .catch(() => {});
+      } catch {
+        // 取得失敗は無視
+      }
+    })();
     return () => {
       active = false;
     };
   }, []);
+
+  const handleGenerated = useCallback(() => {
+    setComposer(null);
+    void refreshProgress();
+    // サーバー側 cache(完了台紙サムネ)を反映するため再描画
+    router.refresh();
+  }, [refreshProgress, router]);
 
   if (completedMounts.length === 0 && progress.length === 0) {
     return null;
@@ -108,6 +144,8 @@ export function MyPageCollections({
               s.completionThreshold > 0
                 ? Math.min(1, s.uniqueOutfitCount / s.completionThreshold)
                 : 0;
+            const eligibleNotCompleted =
+              s.uniqueOutfitCount >= s.completionThreshold && !s.isCompleted;
             return (
               <li key={s.categoryKey}>
                 <button
@@ -131,6 +169,21 @@ export function MyPageCollections({
                     />
                   </div>
                 </button>
+                {eligibleNotCompleted ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setComposer({
+                        categoryKey: s.categoryKey,
+                        displayName: s.displayNameJa,
+                        threshold: s.completionThreshold,
+                      })
+                    }
+                    className="mt-1 w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                  >
+                    台紙を作る
+                  </button>
+                ) : null}
               </li>
             );
           })}
@@ -157,6 +210,17 @@ export function MyPageCollections({
           }
         }}
       />
+
+      {composer ? (
+        <CollectionMountComposer
+          key={composer.categoryKey}
+          categoryKey={composer.categoryKey}
+          displayName={composer.displayName}
+          threshold={composer.threshold}
+          onClose={() => setComposer(null)}
+          onGenerated={handleGenerated}
+        />
+      ) : null}
     </Card>
   );
 }

@@ -6,6 +6,7 @@ import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
 import { composeMount } from "@/features/collections/lib/compose-mount";
 import { getRepresentativeImagesForCategory } from "@/features/collections/lib/representative-images";
+import { resolveSelectedImages } from "@/features/collections/lib/resolve-selected-images";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import type { ReserveCollectionResultRow } from "@/features/collections/lib/collection-types";
 
@@ -46,16 +47,32 @@ export async function POST(request: NextRequest) {
     return jsonError("ログインが必要です", "UNAUTHENTICATED", 401);
   }
 
-  // 2) 入力(categoryKey のみ)
+  // 2) 入力(categoryKey + 任意 selections)
   let categoryKey: unknown;
+  let selectionsRaw: unknown;
   try {
     const body = await request.json();
     categoryKey = body?.categoryKey;
+    selectionsRaw = body?.selections;
   } catch {
     return jsonError("不正なリクエストです", "INVALID_BODY", 400);
   }
   if (typeof categoryKey !== "string" || !CATEGORY_KEY_PATTERN.test(categoryKey)) {
     return jsonError("不正なカテゴリです", "INVALID_CATEGORY_KEY", 400);
+  }
+  // selections は { [presetId]: generatedImageId } の plain object のみ許容
+  let selections: Record<string, string> | null = null;
+  if (selectionsRaw !== undefined && selectionsRaw !== null) {
+    if (
+      typeof selectionsRaw !== "object" ||
+      Array.isArray(selectionsRaw) ||
+      !Object.entries(selectionsRaw as Record<string, unknown>).every(
+        ([k, v]) => typeof k === "string" && typeof v === "string",
+      )
+    ) {
+      return jsonError("不正な選択です", "INVALID_SELECTIONS", 400);
+    }
+    selections = selectionsRaw as Record<string, string>;
   }
 
   // 3) 予約(N到達をサーバー側で再検証。冪等)
@@ -127,11 +144,19 @@ export async function POST(request: NextRequest) {
 
     const templatePng = await downloadBuffer(admin, TEMPLATE_BUCKET, templatePath);
 
-    const reps = await getRepresentativeImagesForCategory({
-      userId: user.id,
-      categoryId: category.id as string,
-      limit: slotCountForLayout(layout),
-    });
+    // selections 指定があれば「ユーザーが選んだ画像」を、無ければ衣装ごと最新を採用
+    const reps = selections
+      ? await resolveSelectedImages({
+          userId: user.id,
+          categoryId: category.id as string,
+          selections,
+          slotCount,
+        })
+      : await getRepresentativeImagesForCategory({
+          userId: user.id,
+          categoryId: category.id as string,
+          limit: slotCount,
+        });
     if (reps.length !== slotCount) {
       throw new Error(`representative images incomplete: ${reps.length} of ${slotCount}`);
     }
