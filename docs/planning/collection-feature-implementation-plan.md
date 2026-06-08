@@ -42,7 +42,8 @@
 | ポップアップ(Dialog) | `features/popup-banners/components/PopupBannerOverlay.tsx`（shadcn Dialog）| モーダルの外枠に転用 |
 | 画像拡大モーダル | `features/generation/components/ImageModal.tsx`（yet-another-react-lightbox）| 台紙サムネの拡大に流用 |
 | マイページ残高 | `app/(app)/my-page/page.tsx:41` ＋ `features/my-page/components/CachedMyPagePercoinBalance.tsx`（`"use cache"` + `cacheTag`）| この直前に台紙サムネを差し込み |
-| Storage 保存 | ゲスト保存の `features/.../save-wardrobe-image.ts`（`generated-images` バケットへ upload）| 台紙画像の保存パターンを踏襲 |
+| Storage 保存（台紙画像） | ゲスト保存の `features/.../save-wardrobe-image.ts`（`generated-images` バケットへ upload）| 生成済み台紙は `generated-images` にユーザー別・シリーズ別の決定的パスで保存 |
+| Storage 保存（台紙テンプレ） | Supabase Storage bucket + admin API | 台紙テンプレはユーザー生成物と混在させず、専用 bucket または専用 prefix へ admin のみ upload |
 | サーバー画像処理 | `sharp@^0.34.5`（`package.json`）| 台紙合成に使用（Node ランタイム） |
 | うちの子の名前 | `source_image_stocks.name`（`supabase/migrations/20250123140000_*.sql`）| 名前のプリフィル元 |
 
@@ -51,6 +52,10 @@
 - **Supabase Edge Function（`image-gen-worker`）は Deno のため sharp 不可。** 台紙合成は **Next.js の Node ランタイム API ルート**で行う（`export const runtime = "nodejs"`）。
 - `preset_categories.key` は不変。集計は key スナップショットで行うため、カテゴリ削除・改名に強い。
 - 生成は非同期（数十秒〜数分）。完了検知はポーリング前提。
+- `createAdminClient()` や `"use cache"` を使う箇所では RLS が効かないため、所有者条件・公開条件をアプリ側で必ず再適用する。
+- クライアントから `user_id` や進捗数を受け取らない。ユーザー識別は `auth.uid()` / `getUser()` のセッション情報に限定する。
+- 複数テーブルに跨る進捗確定・台紙生成予約・完了確定は、冪等性を担保する RPC に寄せる。
+- 台紙テンプレ upload は MIME type、ファイルサイズ、画像寸法、保存 prefix を検証し、admin 以外の書き込みを禁止する。
 
 ### 1-4. 入稿サンプルから確定した台紙仕様（2026-06-08 受領）
 
@@ -100,7 +105,10 @@ erDiagram
         text category_key
         int threshold_at_completion
         text mount_image_path
+        text mount_status
+        text mount_error
         timestamptz completed_at
+        timestamptz updated_at
     }
 ```
 
@@ -121,10 +129,11 @@ flowchart TD
     J --> K{"ユニーク数がNに到達したか"}
     K -->|"未到達"| L["進捗のみ表示しackを更新"]
     K -->|"到達かつ未生成"| M["台紙生成APIを呼ぶ"]
-    M --> N["サーバーで進捗を再検証し台紙をsharp合成"]
-    N --> O["generated-imagesへ保存しcollection_completionsへINSERT"]
-    O --> P["complete_achievedとmount_generatedを計測"]
-    P --> Q["コンプリート演出モーダルを表示"]
+    M --> N["サーバーで進捗を再検証"]
+    N --> O["completion予約行を作成しsharp合成"]
+    O --> P["generated-imagesへ決定的パス保存"]
+    P --> Q["completionをcompletedに更新しイベント計測"]
+    Q --> R["コンプリート演出モーダルを表示"]
 ```
 
 ### 2-3. 台紙合成のシーケンス
@@ -137,14 +146,14 @@ sequenceDiagram
     participant ST as Storage
     C->>API: POST /api/collections/mount でcategoryKey送信
     API->>DB: getUserでセッションからuser_idを解決
-    API->>DB: 進捗RPCでユニーク数とNを再検証
-    API->>DB: 既存completionの有無を確認
+    API->>DB: 進捗RPCでauth.uid()のユニーク数とNを再検証
+    API->>DB: completion予約RPCで既存/生成中/新規予約を判定
     API->>DB: カテゴリの各衣装ごとに代表画像を取得
     API->>ST: 台紙テンプレと収集シールを取得
-    API->>API: sharpで合成し名前を描画
-    API->>ST: 合成台紙をgenerated-imagesへupload
-    API->>DB: collection_completionsへINSERT 一意制約で冪等
-    API->>DB: complete_achievedとmount_generatedをINSERT
+    API->>API: sharpで合成（文字描画なし）
+    API->>ST: 合成台紙をgenerated-imagesの決定的パスへupload
+    API->>DB: completion完了RPCでcompleted化
+    API->>DB: complete_achievedとmount_generatedをINSERT（冪等）
     API-->>C: 台紙URLと達成情報を返す
 ```
 
@@ -164,10 +173,10 @@ stateDiagram-v2
 
 ### コレクション設定（admin）
 
-- **R-01** When an admin enables collection on a preset category and sets a threshold and a mount template, the system shall persist `is_collection_series`, `completion_threshold`, `mount_template_path`, `mount_layout`, and `mount_show_pet_name` for that category.
+- **R-01** When an admin enables collection on a preset category and sets a threshold, a mount template, and a layout, the system shall persist `is_collection_series`, `completion_threshold`, `mount_template_path`, and `mount_layout` for that category.
   管理者がカテゴリのコレクションを有効化し、必要数・台紙テンプレを設定したとき、システムはそれらをカテゴリに保存する。
-- **R-02** If an admin enables collection without a positive threshold or without a mount template, then the system shall reject the update with a validation error.
-  必要数が正でない、または台紙テンプレ未設定でコレクションを有効化しようとした場合、システムはバリデーションエラーで拒否する。
+- **R-02** If an admin enables collection without a positive threshold, a supported layout, or a valid mount template path, then the system shall reject the update with a validation error.
+  必要数が正でない、レイアウトが未対応、または台紙テンプレ未設定でコレクションを有効化しようとした場合、システムはバリデーションエラーで拒否する。
 - **R-03** While a category is not a collection series, the system shall not show progress UI, modals, or mounts for that category.
   カテゴリが非コレクションの間、システムはそのカテゴリの進捗UI・モーダル・台紙を一切表示しない。
 
@@ -180,11 +189,13 @@ stateDiagram-v2
 
 ### 台紙生成
 
-- **R-20** When a user's unique outfit count reaches the threshold and no completion exists for that series, the system shall generate the mount by compositing the user's collected stickers (complete square images) into the slots of the category's mount template in outfit `display_order`, store it, and create exactly one `collection_completions` row.
+- **R-20** When a user's unique outfit count reaches the threshold and no completed or generating completion exists for that series, the system shall reserve a completion, generate the mount by compositing the user's collected stickers (complete square images) into the slots of the category's mount template in outfit `display_order`, store it, and complete exactly one `collection_completions` row.
 - **R-21** The system shall not render any name or number text onto the mount; names are baked into each sticker at generation time and slot numbers are part of the template.
   台紙には名前・番号を描画しない（名前はシール側、番号はテンプレ側に既にある）。
 - **R-22** If a completion already exists for the user and series, then the system shall not regenerate the mount (idempotent via unique constraint).
 - **R-23** When the mount API is called, the system shall re-validate the threshold server-side using the session `user_id`, and shall not trust client-supplied counts or user ids.
+- **R-24** The system shall treat localStorage acknowledgements as UI state only; completion eligibility and mount generation shall always be decided server-side.
+- **R-25** When duplicate mount API requests are sent concurrently for the same user and series, the system shall not create duplicate completions or leave untracked storage objects.
 
 ### マイページ表示
 
@@ -214,7 +225,7 @@ stateDiagram-v2
 - **Context**: 「四季をそろえる」体験。総生成数だと同じ衣装の連打でコンプリートしてしまう。
 - **Decision**: `COUNT(DISTINCT generation_metadata->'oneTapStyle'->>'id')` を採用。
 - **Reason**: 「集める」体験の本質に合致。個別衣装IDは既に記録済みで追加実装不要。
-- **Consequence**: JSONB からの DISTINCT 抽出が必要。RPC に寄せて集計する。
+- **Consequence**: JSONB からの DISTINCT 抽出が必要。RPC に寄せて集計し、`image_jobs(user_id, style_preset_category_key, oneTapStyle.id)` 相当の partial/expression index を追加する。
 
 ### ADR-003: 台紙はサーバー側 sharp によるテンプレ合成（AI生成しない）
 
@@ -226,23 +237,37 @@ stateDiagram-v2
 ### ADR-004: 台紙は初回コンプリート時に1回だけ生成（再生成なし・コイン課金なし）
 
 - **Context**: 合成は出力が毎回同じで原価が発生しないため、再生成課金の意味が薄い。
-- **Decision**: `collection_completions` に `UNIQUE(user_id, category_id)` を張り、初回のみ生成。コイン消費ロジックは実装しない。
+- **Decision**: `collection_completions` に `UNIQUE(user_id, category_id)` を張り、`mount_status`（`generating` / `completed` / `failed`）で予約から完了までを管理する。台紙画像は決定的パスに保存し、初回のみ生成する。コイン消費ロジックは実装しない。
 - **Reason**: 仕様確定どおり。冪等性をDB制約で担保。
-- **Consequence**: コンプリート後にNが引き上げられても、既存達成者の台紙は据え置き（後述の運用ルール）。
+- **Consequence**: コンプリート後にNが引き上げられても、既存達成者の台紙は据え置き（後述の運用ルール）。生成途中で失敗した行は `failed` とし、再試行条件をサーバー側で制御する。
 
 ### ADR-005: 進捗検知はグローバルポーリング＋localStorage ack（既存パターン踏襲）
 
 - **Context**: 生成は非同期。どの画面にいてもカウントアップ時にモーダルを出したい。style画面では即時に出したい。
 - **Decision**: `GeneratedImageNotificationChecker` と同型のチェッカーを `AppShell` に並置（10秒間隔）。最後にackしたユニーク数を localStorage に保持し、増分でモーダル発火。style画面は完了ポーリング時に即時再チェックを発火。二重発火は ack で抑止。
 - **Reason**: 既存の実績パターンを再利用でき、Realtime 接続を増やさない。
-- **Consequence**: 他画面では最大10秒の表示遅延。許容範囲。
+- **Consequence**: 他画面では最大10秒の表示遅延。許容範囲。ack はクライアント表示の重複抑止だけに使い、サーバーの完了判定には使わない。
 
 ### ADR-006: 台紙生成APIはサーバーで進捗を再検証する
 
 - **Context**: クライアントのカウントや user_id を信用すると不正に台紙を作られうる。
-- **Decision**: API は `getUser()` でセッションから user_id を解決し、進捗RPCでN到達を再検証してから合成・INSERT する。
+- **Decision**: API は `getUser()` でセッションから user_id を解決し、`get_collection_progress()` は user_id 引数を受け取らず `auth.uid()` を使う。予約・完了 RPC は `SECURITY DEFINER` を使う場合でも `auth.uid()` 必須、`search_path = public, extensions` 固定、対象 user/category の再検証を行う。
 - **Reason**: APIパラメータのソース安全性。リポジトリ規約に沿う。
-- **Consequence**: クライアントは categoryKey のみ送る。
+- **Consequence**: クライアントは categoryKey のみ送る。service role を使う route handler は RLS をバイパスするため、user_id/category_key の所有者条件を必ず明示する。
+
+### ADR-007: マイページのコレクション表示はユーザー別 cache とする
+
+- **Context**: My Page は cached Server Component の既存パターンがあるが、コレクション進捗と台紙はユーザー固有データ。
+- **Decision**: `CachedMyPageCollections` は `userId` を明示的な入力として受け取り、`cacheTag('collection-completions:' + userId)` のようにユーザー単位のタグを使う。`createAdminClient()` を使う場合は `user_id = userId` と公開条件を再適用する。
+- **Reason**: ユーザー間の cache 混線と古い達成状態の表示を避ける。
+- **Consequence**: 台紙生成完了時に同一 userId の collection cache を revalidate/update する。
+
+### ADR-008: 台紙テンプレと生成済み台紙の Storage 境界を分ける
+
+- **Context**: 台紙テンプレは admin が管理する共有素材、生成済み台紙はユーザー別の成果物であり、権限とライフサイクルが異なる。
+- **Decision**: 台紙テンプレは専用 bucket（例: `collection-mount-templates`）または admin 専用 prefix に保存し、生成済み台紙は `generated-images/collection-mounts/{userId}/{categoryKey}/mount.png` の決定的パスに保存する。
+- **Reason**: ユーザー生成物との混在を避け、upload 検証・公開範囲・cleanup 方針を分離できる。
+- **Consequence**: Storage policy と admin API validation を migration / route 実装に含める。
 
 ---
 
@@ -265,22 +290,29 @@ flowchart LR
 目的: コレクション設定カラムと達成テーブル、計測イベント種別を追加する。
 ビルド確認: 型生成後 `npm run typecheck` が通る。
 
-- [ ] `preset_categories` に `is_collection_series`(bool default false) / `completion_threshold`(int, CHECK > 0 when set) / `mount_template_path`(text) / `mount_layout`(text、例 `grid_3`/`grid_4`/`grid_6`) を追加（`20260530080000_*.sql` を参考）
-- [ ] `collection_completions` テーブル新規作成（`id, user_id FK, category_id FK, category_key, threshold_at_completion, mount_image_path, completed_at`、`UNIQUE(user_id, category_id)`、index on `user_id`）
-- [ ] RLS: `collection_completions` は本人 SELECT のみ。INSERT はサーバー（service role / RPC）経由
+- [ ] `preset_categories` に `is_collection_series`(bool default false) / `completion_threshold`(int) / `mount_template_path`(text) / `mount_layout`(text、例 `grid_3`/`grid_4`/`grid_6`) を追加（`20260530080000_*.sql` を参考）
+- [ ] DB制約: `completion_threshold IS NULL OR completion_threshold > 0`、`mount_layout IN ('grid_3','grid_4','grid_6')`、`is_collection_series=true` の場合は threshold/template/layout がすべて非NULLになる CHECK を追加
+- [ ] `collection_completions` テーブル新規作成（`id, user_id FK ON DELETE CASCADE, category_id FK ON DELETE RESTRICT, category_key, threshold_at_completion, mount_image_path, mount_status, mount_error, completed_at, created_at, updated_at`、`UNIQUE(user_id, category_id)`）
+- [ ] `collection_completions.mount_status` は `generating` / `completed` / `failed` の CHECK。表示・KPI は原則 `completed` のみ対象
+- [ ] index: `collection_completions(user_id, mount_status, completed_at desc)` / `collection_completions(category_id, completed_at desc)` / `image_jobs` の `user_id + style_preset_category_key + oneTapStyle.id` partial/expression index（`status='succeeded'`）
+- [ ] RLS: `collection_completions` は RLS を有効化し、本人 `SELECT` のみ許可。public の `INSERT/UPDATE/DELETE` は許可しない。書き込みは認証付き RPC または service role route に限定
 - [ ] `style_usage_events.event_type` CHECK に `complete_achieved` / `mount_generated` / `mount_shared` を追加（`20260606120000_*.sql` を参考に DROP+ADD）
-- [ ] 進捗集計 RPC `get_collection_progress(p_user_id uuid)` を作成（アクティブなコレクションカテゴリごとに、ユニーク衣装数・N・完了フラグ・台紙パスを返す。`image_jobs` の `style_preset_category_key` と `generation_metadata->'oneTapStyle'->>'id'` を DISTINCT 集計、`collection_completions` と LEFT JOIN）
+- [ ] 進捗集計 RPC `get_collection_progress()` を作成（引数で user_id を受け取らず `auth.uid()` を使用。アクティブなコレクションカテゴリごとに、ユニーク衣装数・N・完了フラグ・台紙パスを返す。`image_jobs` の `style_preset_category_key` と `generation_metadata->'oneTapStyle'->>'id'` を DISTINCT 集計、`collection_completions` と LEFT JOIN）
+- [ ] 台紙生成予約 RPC `reserve_collection_completion(p_category_key text)` と完了 RPC `finalize_collection_completion(...)` を作成。`SECURITY DEFINER` の場合は `auth.uid()` 必須、`search_path` 固定、N到達再検証、`UNIQUE(user_id, category_id)` 競合時の既存行返却を実装
+- [ ] 台紙テンプレ用 Storage bucket/prefix と policy を定義（admin write、server read、MIME/サイズ/寸法検証は API 側）
 - [ ] 型定義の再生成（`supabase gen types`）
 
 #### Phase 2: サーバーサイド（集計・台紙合成API）
 目的: 進捗取得と台紙生成のサーバーロジックを実装する。
 ビルド確認: `npm run typecheck` / `npm run lint` が通る。
 
-- [ ] `features/collections/lib/collection-progress-repository.ts`: 進捗RPC呼び出しラッパー（server）
+- [ ] `features/collections/lib/collection-progress-repository.ts`: 進捗RPC呼び出しラッパー（server、user_id 引数は渡さない）
 - [ ] `features/collections/lib/mount-layouts.ts`: レイアウト種別（grid_3/grid_4/grid_6）ごとのスロット座標の定数（入稿PNG実寸ベース。grid_4=2×2を初回実装）
 - [ ] `features/collections/lib/compose-mount.ts`: sharp 合成（テンプレの各スロットへ完成シールを正方形配置するのみ。文字描画なし）
-- [ ] `features/collections/lib/representative-images.ts`: カテゴリの各衣装(preset)につきユーザー代表画像（最新succeeded）を取得
-- [ ] `app/api/collections/mount/route.ts`（`runtime = "nodejs"`）: `requireAuth` → 進捗RPC再検証 → 既存completion確認 → 代表画像取得 → 合成 → `generated-images` upload → `collection_completions` INSERT → `complete_achieved`/`mount_generated` 記録（`save-wardrobe-image.ts` の upload を参考）
+- [ ] `features/collections/lib/representative-images.ts`: カテゴリの各衣装(preset)につきユーザー代表画像（最新succeeded）を取得。service role を使う場合も `user_id` / `style_preset_category_key` / preset id を必ず絞り込む
+- [ ] `app/api/collections/mount/route.ts`（`runtime = "nodejs"`）: `requireAuth` → 進捗RPC再検証 → completion予約RPC → 代表画像取得 → 合成 → `generated-images/collection-mounts/{userId}/{categoryKey}/mount.png` へ `upsert=false` upload → 完了RPC → `complete_achieved`/`mount_generated` 記録（冪等）
+- [ ] 台紙APIの防御: categoryKey schema validation、rate limit、同時実行時の既存/生成中 completion 応答、upload 成功後の DB 完了失敗時の retry/cleanup 方針
+- [ ] `complete_achieved` / `mount_generated` は `mount_status` が初めて `completed` へ遷移した場合のみ記録し、リトライや既存 completion 応答では重複記録しない
 - [ ] 計測イベント挿入に新種別を許可（`features/style/lib/style-usage-events.ts` の型 union 拡張）
 
 #### Phase 3: admin（コレクション設定・台紙テンプレ管理）
@@ -288,7 +320,8 @@ flowchart LR
 ビルド確認: admin編集画面が表示・保存できる。
 
 - [ ] preset-categories 編集フォームに「コレクション設定」セクション追加（有効化・N・レイアウト選択）（`app/(app)/admin/preset-categories/[id]/page.tsx`）
-- [ ] 台紙テンプレPNGアップロードUI＋プレビュー（`generated-images` か専用バケットへ）
+- [ ] 台紙テンプレPNGアップロードUI＋プレビュー（専用 bucket または admin 専用 prefix へ保存）
+- [ ] 台紙テンプレ upload validation（PNG MIME、最大サイズ、画像寸法、許可 prefix、`mount_layout` とスロット数の整合）
 - [ ] API バリデーション（R-02）を `app/api/admin/preset-categories/[id]/route.ts` に追加（`requireAdmin()`）
 - [ ] audit_log への記録（既存の admin 編集監査パターンに合わせる）
 - [ ] i18n キー追加（ja/en）
@@ -299,7 +332,8 @@ flowchart LR
 
 - [ ] `features/collections/components/CollectionProgressModal.tsx`（`PopupBannerOverlay` の Dialog ＋ `GenerationStatusCard` の進捗アニメを転用、前回値→新値）
 - [ ] `features/collections/hooks/useCollectionProgress.ts`（進捗取得＋localStorage ack 管理）
-- [ ] `components/CollectionProgressChecker.tsx`（10秒ポーリング、増分検知でモーダル発火、N到達で台紙API呼び出し）を `components/AppShell.tsx` に並置
+- [ ] `components/CollectionProgressChecker.tsx`（ログイン時のみ10秒ポーリング、増分検知でモーダル発火、N到達で台紙API呼び出し）を `components/AppShell.tsx` に並置
+- [ ] localStorage ack は UI 表示抑止のみに使い、複数タブでは BroadcastChannel などで二重モーダル/二重API呼び出しを抑止
 - [ ] style画面の完了ポーリング（`StylePageClient.tsx:1406` 付近）で即時に進捗再チェックを発火
 - [ ] コンプリート演出バリアント（達成時の表示・シェア導線）
 
@@ -307,8 +341,9 @@ flowchart LR
 目的: 進捗一覧と台紙サムネをマイページに出す。
 ビルド確認: マイページが表示でき、サムネ拡大が動く。
 
-- [ ] `features/my-page/components/CachedMyPageCollections.tsx`（進捗一覧＋台紙サムネ、`"use cache"` + `cacheTag`）
+- [ ] `features/my-page/components/CachedMyPageCollections.tsx`（進捗一覧＋台紙サムネ、`"use cache"` + ユーザー別 `cacheTag`。`userId` を明示入力にし、service role 使用時は `user_id=userId` で再フィルタ）
 - [ ] `app/(app)/my-page/page.tsx` で `CachedMyPagePercoinBalance` の直前に配置
+- [ ] completion 完了時に対象ユーザーの collection cache を revalidate/update
 - [ ] 進捗行タップ → `CollectionProgressModal`、台紙サムネタップ → `ImageModal`（`features/generation/components/ImageModal.tsx`）
 - [ ] 複数シリーズの一覧表示（R-13/R-30/R-31）
 
@@ -316,7 +351,7 @@ flowchart LR
 目的: 企画KPIをシリーズ別に可視化する。
 ビルド確認: ダッシュボードにカードが表示される。
 
-- [ ] `mount_shared` のクライアント発火（シェアボタン）
+- [ ] `mount_shared` のクライアント発火（シェアボタン）。サーバー側でログイン状態、completion 所有者、event_type を検証し、KPI 用イベントとして扱う
 - [ ] `features/admin-dashboard/lib/get-collection-kpi.ts`（シリーズ別集計：既存イベント＋ `collection_completions` ＋ 衣装別生成数）
 - [ ] admin ダッシュボードにシリーズ選択付きカードを追加（DAU/MAUカード `app/(app)/admin/page.tsx` の並びを参考）
 
@@ -338,6 +373,8 @@ flowchart LR
 | `supabase/migrations/20260608xxxxxx_create_collection_completions.sql` | 新規 | 達成テーブル＋RLS |
 | `supabase/migrations/20260608xxxxxx_add_collection_usage_event_types.sql` | 新規 | event_type CHECK 拡張 |
 | `supabase/migrations/20260608xxxxxx_create_get_collection_progress_rpc.sql` | 新規 | 進捗集計RPC |
+| `supabase/migrations/20260608xxxxxx_create_collection_completion_rpcs.sql` | 新規 | 台紙生成予約・完了RPC |
+| `supabase/migrations/20260608xxxxxx_create_collection_storage_policies.sql` | 新規 | 台紙テンプレ Storage bucket/policy |
 | `features/collections/lib/collection-progress-repository.ts` | 新規 | 進捗取得 |
 | `features/collections/lib/mount-layouts.ts` | 新規 | レイアウト座標定数 |
 | `features/collections/lib/compose-mount.ts` | 新規 | sharp 合成 |
@@ -355,7 +392,10 @@ flowchart LR
 | `features/style/lib/style-usage-events.ts` | 修正 | 新イベント種別 |
 | `features/admin-dashboard/lib/get-collection-kpi.ts` | 新規 | KPI集計 |
 | `app/(app)/admin/page.tsx` | 修正 | KPIカード追加 |
-| `messages/ja.json` / `messages/en.json` | 修正 | 翻訳キー追加 |
+| `messages/ja.ts` / `messages/en.ts` ほか全対応 locale | 修正 | 翻訳キー追加 |
+| `docs/architecture/data.ja.md` / `docs/architecture/data.en.md` | 修正 | コレクション関連のデータフロー追記 |
+| `.cursor/rules/database-design.mdc` | 修正 | テーブル・RLS・index・RPC 台帳更新 |
+| `docs/API.md` | 修正 | コレクション進捗・台紙生成 API 契約追記 |
 
 ---
 
@@ -363,10 +403,11 @@ flowchart LR
 
 ### 品質チェックリスト
 - [ ] エラーハンドリング: 台紙合成失敗・テンプレ未設定・代表画像不足・upload失敗
-- [ ] 権限制御: 台紙APIはセッションから user_id 解決（R-23）、`collection_completions` RLSは本人のみ、admin設定は `requireAdmin()`
-- [ ] データ整合性: `UNIQUE(user_id, category_id)` で台紙の冪等性（R-22）、`completion_threshold` CHECK
-- [ ] セキュリティ: クライアントから N/user_id を信用しない、入力バリデーション
-- [ ] i18n: ja/en 両方
+- [ ] 権限制御: 台紙APIはセッションから user_id 解決（R-23）、`collection_completions` RLSは本人のみ、admin設定は `requireAdmin()`、RPC は `auth.uid()` と `search_path` を検証
+- [ ] データ整合性: `UNIQUE(user_id, category_id)` と `mount_status` で台紙の冪等性（R-22/R-25）、`completion_threshold` / `mount_layout` / collection settings CHECK
+- [ ] セキュリティ: クライアントから N/user_id を信用しない、入力バリデーション、rate limit、Storage path/MIME/サイズ/寸法検証
+- [ ] キャッシュ: My Page のコレクション表示は userId 入力・ユーザー別 cacheTag・完了時 revalidate
+- [ ] i18n: 既存 `messages/*.ts` の全対応 locale
 
 ### テスト観点
 | カテゴリ | テスト内容 |
@@ -375,7 +416,10 @@ flowchart LR
 | 進捗 | ユニーク数の増分でモーダル発火、同一衣装連打では増えない |
 | 異常系 | テンプレ未設定/代表画像不足時のフォールバック、合成失敗 |
 | 冪等性 | 同一シリーズで台紙が二重生成されない |
-| 権限 | 未認証でカウントされない、他ユーザーの completion を参照不可 |
+| 同時実行 | 同一ユーザー/シリーズへ同時に台紙APIを複数回投げても completion と Storage object が重複しない |
+| 権限 | 未認証でカウントされない、他ユーザーの completion を参照不可、RPC に user_id spoofing ができない |
+| キャッシュ | My Page の collection cache がユーザー間で混線せず、完了後に更新される |
+| Storage | 台紙テンプレ upload の MIME/サイズ/寸法/prefix validation、不正パス拒否 |
 | 複数シリーズ | 2シリーズ同時進行で進捗・台紙が独立 |
 | 計測 | complete_achieved / mount_generated / mount_shared が記録される |
 | admin | コレクション無効化で進捗UIが消える、不正設定が拒否される |
@@ -387,7 +431,7 @@ flowchart LR
 
 ## 8. ロールバック方針
 
-- **DBマイグレーション**: 各マイグレーションに down（カラム/テーブル DROP、CHECK の元定義への復帰）を用意。`collection_completions` は独立テーブルのため安全に DROP 可能。
+- **DBマイグレーション**: 本番では forward-only を基本とし、問題時は追加 migration で無効化・修正する。DROP / down / rollback は破壊的操作として扱い、実施前に明示確認を取る。
 - **機能フラグ**: コレクション機能は `is_collection_series=false` が既定。全カテゴリで false の間は進捗UI・モーダル・台紙・KPIが一切出ない（=実質オフ）。ウエハース企画は当該カテゴリのみ true にして段階投入。
 - **Git**: フェーズごとにコミットし、フェーズ単位で revert 可能にする。
 - **外部影響なし**: 既存の生成・保存・課金フローには加算的変更のみ（`image_jobs` は読み取りのみ、新イベント種別は後方互換）。
