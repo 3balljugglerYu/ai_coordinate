@@ -131,8 +131,11 @@ flowchart TD
     K --> L{"N種そろったか"}
     L -->|"まだ"| I
     L -->|"そろった"| M["台紙が自動生成されコンプリート演出"]
-    M --> N["SNSへワンタップでシェア"]
-    M --> O["マイページで進捗と台紙を確認"]
+    M --> N["公開台紙ページのURLをSNSへシェア"]
+    M --> O["マイページで進捗と台紙を確認 本人は保存も可"]
+    N --> P["閲覧者が公開台紙ページを開く"]
+    P --> Q["うちの子でも作れるCTAから新規登録"]
+    Q --> B
 ```
 
 ### 2-3. 管理者視点の設定フロー
@@ -242,6 +245,17 @@ stateDiagram-v2
 - **R-30** When a user opens My Page, the system shall list progress for every active collection series the user is participating in, each opening the progress modal on tap.
 - **R-31** When a user has completed one or more series, the system shall display the mount thumbnails immediately above the percoin balance, each opening the enlargement modal on tap.
 
+### シェア（公開ページ）
+
+- **R-32** When the mount owner taps share, the system shall share a URL to the public mount page (OGP/Twitter `summary_large_image` card showing the mount), not the raw image file.
+  所有者がシェアしたとき、システムは画像ファイルではなく公開台紙ページのURLを共有する。
+- **R-33** The public mount page shall be viewable without login, render the mount and a registration CTA, be link-only via a non-guessable token (`collection_completions.id`), and be excluded from indexing (`robots noindex`).
+  公開台紙ページは未ログインで閲覧でき、台紙と登録CTAを表示し、推測不能なtokenでlink-onlyとし、インデックス対象外にする。
+- **R-34** While a viewer is not the mount owner, the system shall not show a download/save action; only the owner shall be able to save the mount image.
+  閲覧者が所有者でない間、システムはダウンロード/保存導線を出さず、保存は所有者のみが行える。
+- **R-35** For OGP cards to render, the mount image shall be served from a publicly readable URL (no signed/expiring URL for the OG image).
+  OGカード表示のため、台紙画像は公開読み取り可能なURLで配信する。
+
 ### 計測（KPI）
 
 - **R-40** When completion is achieved, the system shall record a `complete_achieved` event.
@@ -308,6 +322,16 @@ stateDiagram-v2
 - **Decision**: 台紙テンプレは専用 bucket（例: `collection-mount-templates`）または admin 専用 prefix に保存し、生成済み台紙は `generated-images/collection-mounts/{userId}/{categoryKey}/mount.png` の決定的パスに保存する。
 - **Reason**: ユーザー生成物との混在を避け、upload 検証・公開範囲・cleanup 方針を分離できる。
 - **Consequence**: Storage policy と admin API validation を migration / route 実装に含める。
+
+### ADR-009: 台紙シェアは公開OGPページへのURL共有とする（画像直接共有にしない）
+
+- **Context**: 本企画の最大目的は新規登録の獲得。台紙を「画像ファイル直接共有（`shareOrDownloadGeneratedImage`）」にすると、SNSに画像が貼られるだけで Persta へ戻る導線が無く、拡散しても登録に繋がらない。
+- **Decision**: 台紙シェアは `posts/[id]` と同型の**公開ページ**（例 `app/m/[token]/page.tsx`、token は `collection_completions.id`（UUID）を使用）への **URL 共有**にする（`lib/share-post.ts` パターン）。公開ページは未ログインでも閲覧でき、OGP/Twitter カード（`summary_large_image`）に台紙を出し、「あなたのうちの子でも作れる」**新規登録 CTA** を表示する。
+- **Reason**: 「Xで自慢 → Perstaで揃える → 登録」の funnel を成立させる。OGカードは crawler が画像を取得するため、台紙画像は**公開読み取り可能**な場所/URL である必要がある（署名URLは crawler 非対応のため不可）。
+- **Consequence**:
+  - 台紙画像は公開読み取りできる保存先/配信にする（private バケットなら公開コピーまたは公開 prefix を用意）。`generated-images` の公開可否を実装時に確認し、必要なら公開配信経路を用意する。
+  - 公開ページは link-only（UUID token・`robots noindex`・一覧化しない）。所有者特定情報は台紙画像とうちの子の名前に限定。
+  - **ダウンロード/保存は台紙の所有者のみ**に提供し、閲覧者には登録 CTA のみ表示する（OG画像自体は技術的に保存可能だが、明示導線は出さない）。台紙にシリーズ章/Persta ブランドを入れ、保存されても宣伝になるようにする。
 
 ---
 
@@ -386,12 +410,15 @@ flowchart LR
 - [ ] completion 完了時に対象ユーザーの collection cache を revalidate/update
 - [ ] 進捗行タップ → `CollectionProgressModal`、台紙サムネタップ → `ImageModal`（`features/generation/components/ImageModal.tsx`）
 - [ ] 複数シリーズの一覧表示（R-13/R-30/R-31）
+- [ ] **公開台紙ページ** `app/m/[token]/page.tsx`（未ログイン可・OGP/Twitter `summary_large_image`・`robots noindex`・登録CTA。`app/posts/[id]/page.tsx` の `generateMetadata` を参考。token は `collection_completions.id`）（R-32/R-33）
+- [ ] 公開ページ用 server-api（token→completion 解決、所有者判定、台紙の公開URL解決）。台紙画像は OGP のため公開読み取り可能URLで配信（R-35）
+- [ ] 所有者のシェアボタン＝公開ページURLの **URL共有**（`lib/share-post.ts` 流用）。保存/DLボタンは**所有者のみ**表示（R-34）
 
 #### Phase 6: KPI（admin ダッシュボード）
 目的: 企画KPIをシリーズ別に可視化する。
 ビルド確認: ダッシュボードにカードが表示される。
 
-- [ ] `mount_shared` のクライアント発火（シェアボタン）。サーバー側でログイン状態、completion 所有者、event_type を検証し、KPI 用イベントとして扱う
+- [ ] `mount_shared` のクライアント発火（公開ページURLの **URL共有時**）。サーバー側でログイン状態、completion 所有者、event_type を検証し、KPI 用イベントとして扱う
 - [ ] `features/admin-dashboard/lib/get-collection-kpi.ts`（シリーズ別集計：既存イベント＋ `collection_completions` ＋ 衣装別生成数）
 - [ ] admin ダッシュボードにシリーズ選択付きカードを追加（DAU/MAUカード `app/(app)/admin/page.tsx` の並びを参考）
 
@@ -427,6 +454,9 @@ flowchart LR
 | `features/style/components/StylePageClient.tsx` | 修正 | 完了時に進捗即時再チェック |
 | `features/my-page/components/CachedMyPageCollections.tsx` | 新規 | 進捗一覧＋台紙サムネ |
 | `app/(app)/my-page/page.tsx` | 修正 | 残高の直前に配置 |
+| `app/m/[token]/page.tsx` | 新規 | 公開台紙ページ（OGP・noindex・登録CTA） |
+| `features/collections/lib/public-mount-server-api.ts` | 新規 | token→台紙解決・所有者判定・公開URL解決 |
+| `features/collections/components/MountShareButton.tsx` | 新規 | 公開ページURLのURL共有（所有者のみ保存ボタン） |
 | `app/(app)/admin/preset-categories/[id]/page.tsx` | 修正 | コレクション設定UI |
 | `app/api/admin/preset-categories/[id]/route.ts` | 修正 | バリデーション |
 | `features/style/lib/style-usage-events.ts` | 修正 | 新イベント種別 |
@@ -461,6 +491,7 @@ flowchart LR
 | キャッシュ | My Page の collection cache がユーザー間で混線せず、完了後に更新される |
 | Storage | 台紙テンプレ upload の MIME/サイズ/寸法/prefix validation、不正パス拒否 |
 | 複数シリーズ | 2シリーズ同時進行で進捗・台紙が独立 |
+| シェア/公開ページ | 未ログインで公開台紙ページが開け、OGP/Twitterカードに台紙が出る。閲覧者にDLボタンが出ず所有者のみ保存可。noindex 指定。シェアは画像ではなくURLが共有される |
 | 計測 | complete_achieved / mount_generated / mount_shared が記録される |
 | admin | コレクション無効化で進捗UIが消える、不正設定が拒否される |
 
