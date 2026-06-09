@@ -5,7 +5,7 @@ import type { RepresentativeImage } from "./representative-images";
 
 /**
  * ユーザーが台紙に載せる画像を「衣装ごとに明示指定」した場合に、それを検証して
- * スロット順(display_order 昇順)の代表画像配列に解決する。
+ * スロット順(sort_order 昇順)の代表画像配列に解決する。
  *
  * selections: { [presetId]: generatedImageId }
  * - 各画像が本人の one_tap_style 生成物で、その衣装(oneTapStyle.id === presetId)であること、
@@ -29,12 +29,12 @@ export async function resolveSelectedImages(params: {
 
   const { data: presets, error: presetError } = await supabase
     .from("style_presets")
-    .select("id, display_order")
+    .select("id, sort_order")
     .eq("category_id", params.categoryId);
   if (presetError) throw presetError;
-  const displayOrderByPreset = new Map<string, number>();
+  const sortOrderByPreset = new Map<string, number>();
   for (const p of presets ?? []) {
-    displayOrderByPreset.set(p.id as string, (p.display_order as number) ?? 0);
+    sortOrderByPreset.set(p.id as string, (p.sort_order as number) ?? 0);
   }
 
   const imageIds = presetIds.map((pid) => params.selections[pid]);
@@ -53,7 +53,7 @@ export async function resolveSelectedImages(params: {
 
   const result: RepresentativeImage[] = [];
   for (const presetId of presetIds) {
-    if (!displayOrderByPreset.has(presetId)) {
+    if (!sortOrderByPreset.has(presetId)) {
       throw new Error(`preset not in category: ${presetId}`);
     }
     const imageId = params.selections[presetId];
@@ -79,7 +79,7 @@ export async function resolveSelectedImages(params: {
 
   return result.sort(
     (a, b) =>
-      (displayOrderByPreset.get(a.presetId) ?? 0) -
-      (displayOrderByPreset.get(b.presetId) ?? 0),
+      (sortOrderByPreset.get(a.presetId) ?? 0) -
+      (sortOrderByPreset.get(b.presetId) ?? 0),
   );
 }

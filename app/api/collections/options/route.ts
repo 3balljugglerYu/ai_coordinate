@@ -17,7 +17,7 @@ export interface CollectionOutfitOption {
 /**
  * GET /api/collections/options?categoryKey=...
  * 台紙に載せる画像を衣装ごとに選ぶための選択肢(本人の生成画像)を返す。
- * 各衣装は新しい順。画像のある衣装のみ、display_order 昇順で返す。
+ * 各衣装は新しい順。画像のある衣装のみ、sort_order 昇順で返す。
  */
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data: presets, error: presetError } = await admin
     .from("style_presets")
-    .select("id, display_order")
+    .select("id, sort_order")
     .eq("category_id", category.id);
   if (presetError) {
     console.error("[collections options] preset query failed:", presetError);
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   }
   const displayOrderByPreset = new Map<string, number>();
   for (const p of presets ?? []) {
-    displayOrderByPreset.set(p.id as string, (p.display_order as number) ?? 0);
+    displayOrderByPreset.set(p.id as string, (p.sort_order as number) ?? 0);
   }
   const presetIds = Array.from(displayOrderByPreset.keys());
   if (presetIds.length === 0) {

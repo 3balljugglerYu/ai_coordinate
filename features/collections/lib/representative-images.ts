@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * カテゴリの preset 数が N を超えても、ユーザーが集めた衣装で台紙を完成できる。
  *
  * - 同じ衣装を複数回作っている場合は最新の1枚を代表に採用する。
- * - 並び順は preset の display_order 昇順(台紙のコマは番号ラベルのみで特定衣装に
+ * - 並び順は preset の sort_order 昇順(台紙のコマは番号ラベルのみで特定衣装に
  *   紐づかない前提)。集めた衣装が N を超える場合は先頭 limit(=N) 個を採用する。
  *
  * 注意: 将来「コマに特定衣装名が刷り込まれた台紙」を使う場合は、コマと衣装の対応を
@@ -29,19 +29,19 @@ export async function getRepresentativeImagesForCategory(params: {
 }): Promise<RepresentativeImage[]> {
   const supabase = createAdminClient();
 
-  // 1. カテゴリに属する preset の id → display_order を引く
+  // 1. カテゴリに属する preset の id → sort_order を引く
   const { data: presets, error: presetError } = await supabase
     .from("style_presets")
-    .select("id, display_order")
+    .select("id, sort_order")
     .eq("category_id", params.categoryId);
   if (presetError) {
     throw presetError;
   }
-  const displayOrderByPreset = new Map<string, number>();
+  const sortOrderByPreset = new Map<string, number>();
   for (const p of presets ?? []) {
-    displayOrderByPreset.set(p.id as string, (p.display_order as number) ?? 0);
+    sortOrderByPreset.set(p.id as string, (p.sort_order as number) ?? 0);
   }
-  const presetIds = Array.from(displayOrderByPreset.keys());
+  const presetIds = Array.from(sortOrderByPreset.keys());
   if (presetIds.length === 0) {
     return [];
   }
@@ -66,7 +66,7 @@ export async function getRepresentativeImagesForCategory(params: {
       | null;
     const presetId =
       typeof meta?.oneTapStyle?.id === "string" ? meta.oneTapStyle.id : null;
-    if (!presetId || !displayOrderByPreset.has(presetId)) continue;
+    if (!presetId || !sortOrderByPreset.has(presetId)) continue;
     if (repByPreset.has(presetId)) continue; // 既に最新を採用済み
     const storagePath = row.storage_path as string | null;
     const imageUrl = row.image_url as string | null;
@@ -74,12 +74,12 @@ export async function getRepresentativeImagesForCategory(params: {
     repByPreset.set(presetId, { presetId, storagePath, imageUrl });
   }
 
-  // 4. 集めた衣装を display_order 昇順に並べ、先頭 limit(=N) 個を採用
+  // 4. 集めた衣装を sort_order 昇順に並べ、先頭 limit(=N) 個を採用
   return Array.from(repByPreset.values())
     .sort(
       (a, b) =>
-        (displayOrderByPreset.get(a.presetId) ?? 0) -
-        (displayOrderByPreset.get(b.presetId) ?? 0),
+        (sortOrderByPreset.get(a.presetId) ?? 0) -
+        (sortOrderByPreset.get(b.presetId) ?? 0),
     )
     .slice(0, params.limit);
 }

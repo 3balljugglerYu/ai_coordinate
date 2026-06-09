@@ -164,6 +164,7 @@ export function MyPageCollections({
                     ratio={ratio}
                     complete={completed}
                     imageUrl={s.characterImageUrl}
+                    tintByProgress={false}
                     className="w-16 shrink-0"
                   >
                     {!s.characterImageUrl ? (
