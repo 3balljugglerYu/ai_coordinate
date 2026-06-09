@@ -489,7 +489,7 @@ export function CollectionProgressModal({
             {/* N種到達かつ台紙未作成 → 「台紙を作成する」CTA を土台の生成ボタン領域に
                   かぶせる(土台PNGの「シールを生成する」を覆い隠す)。
                 それ以外は透明クリック領域で /style へ遷移。 */}
-            {toCount >= threshold && !cIsCompleted && onCreateMount ? (
+            {toCount >= threshold && onCreateMount ? (
               <button
                 type="button"
                 onClick={() => onCreateMount(celebration)}
@@ -502,7 +502,7 @@ export function CollectionProgressModal({
                   fontFamily: "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
                 }}
               >
-                台紙を作成する →
+                {cIsCompleted ? "台紙を更新する →" : "台紙を作成する →"}
               </button>
             ) : (
               <Link

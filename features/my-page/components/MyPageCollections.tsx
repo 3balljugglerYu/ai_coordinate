@@ -98,23 +98,35 @@ export function MyPageCollections({
   }));
 
   function openSeriesModal(series: CollectionProgress) {
-    const matched = completedMounts.find(
-      (m) => m.categoryKey === series.categoryKey,
-    );
     setCelebrationNonce((n) => n + 1);
+    // マイページタップでは「進捗モーダル(0→現在値アニメ + ボタン)」を見せたいので、
+    // 完了済みでも mountImageUrl は渡さない(= showMount=false で進捗ビューになる)。
+    // 「作成 or 更新」の判定はモーダル側で isCompleted を見て切替。
     setCelebration({
       categoryKey: series.categoryKey,
       displayName: series.displayNameJa,
-      // マイページからのタップでも 0→現在値 でバーをアニメーションさせる
       fromCount: 0,
       toCount: series.uniqueOutfitCount,
       threshold: series.completionThreshold,
       isCompleted: series.isCompleted,
-      mountImageUrl: matched?.mountImageUrl ?? null,
-      sharePath: matched ? `/m/${matched.completionId}` : null,
-      completionId: matched?.completionId ?? null,
+      mountImageUrl: null,
+      sharePath: null,
+      completionId: null,
       characterImageUrl: series.characterImageUrl,
       collectedImageUrls: series.collectedImageUrls ?? [],
+    });
+  }
+
+  /**
+   * モーダル内「台紙を作成する／更新する」CTA 押下時。
+   * モーダルを閉じてから composer (画像選択) を開く。
+   */
+  function openComposerFromCelebration(c: CollectionCelebration) {
+    setCelebration(null);
+    setComposer({
+      categoryKey: c.categoryKey,
+      displayName: c.displayName,
+      threshold: c.threshold,
     });
   }
 
@@ -152,7 +164,6 @@ export function MyPageCollections({
                 ? Math.min(1, s.uniqueOutfitCount / s.completionThreshold)
                 : 0;
             const completed = s.uniqueOutfitCount >= s.completionThreshold;
-            const eligibleNotCompleted = completed && !s.isCompleted;
             return (
               <li key={s.categoryKey}>
                 <button
@@ -189,21 +200,7 @@ export function MyPageCollections({
                     </p>
                   </div>
                 </button>
-                {eligibleNotCompleted ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setComposer({
-                        categoryKey: s.categoryKey,
-                        displayName: s.displayNameJa,
-                        threshold: s.completionThreshold,
-                      })
-                    }
-                    className="mt-2 w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-                  >
-                    台紙を作る
-                  </button>
-                ) : null}
+                {/* 台紙作成・更新はモーダル内 CTA に集約(行下のボタンは廃止) */}
               </li>
             );
           })}
@@ -229,6 +226,7 @@ export function MyPageCollections({
             void shareMount(c.completionId).catch(() => {});
           }
         }}
+        onCreateMount={openComposerFromCelebration}
       />
 
       {composer ? (
