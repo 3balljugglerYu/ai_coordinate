@@ -101,18 +101,19 @@ export async function POST(request: NextRequest) {
   const mountImageUrl = publicUrlData.publicUrl;
   const sharePath = `/m/${completionId}`;
 
-  // 既に完了済みなら再生成しない(ADR-004)
-  if (reserved.mount_status === "completed") {
-    return NextResponse.json({ status: "completed", mountImageUrl, sharePath });
-  }
-  if (reserved.mount_status === "generating" && reserved.newly_reserved === false) {
-    return NextResponse.json(
-      { status: "generating", sharePath },
-      { status: 202 },
-    );
-  }
-  if (reserved.mount_status === "failed" && reserved.newly_reserved === false) {
-    return jsonError("台紙生成の再試行準備ができていません", "MOUNT_RETRY_NOT_READY", 409);
+  // 既に完了済みの台紙に対する「選択を変えて作り直す(=更新)」リクエストは許可する。
+  // 競合(generating 進行中 / failed リトライ未準備)は従来通りハンドル。
+  const isUpdate = reserved.mount_status === "completed";
+  if (!isUpdate) {
+    if (reserved.mount_status === "generating" && reserved.newly_reserved === false) {
+      return NextResponse.json(
+        { status: "generating", sharePath },
+        { status: 202 },
+      );
+    }
+    if (reserved.mount_status === "failed" && reserved.newly_reserved === false) {
+      return jsonError("台紙生成の再試行準備ができていません", "MOUNT_RETRY_NOT_READY", 409);
+    }
   }
 
   // 4) 合成(generating)。失敗時は failed に落として 500。
@@ -183,22 +184,22 @@ export async function POST(request: NextRequest) {
     }
     uploadedPath = mountStoragePath;
 
-    // 5) 完了確定。初回遷移(true)のときだけイベント記録(重複防止)
-    const { data: finalized, error: finalizeError } = await admin.rpc(
-      "finalize_collection_completion",
-      {
-        p_completion_id: completionId,
-        p_user_id: user.id,
-        p_mount_image_path: mountStoragePath,
-      },
-    );
-    if (finalizeError) {
-      throw new Error(`finalize failed: ${finalizeError.message}`);
-    }
-    if (finalized !== true) {
-      throw new Error("finalize skipped: completion is not generating");
-    }
-    if (finalized === true) {
+    if (!isUpdate) {
+      // 5) 初回のみ finalize(generating → completed の遷移)。イベント記録もここだけ。
+      const { data: finalized, error: finalizeError } = await admin.rpc(
+        "finalize_collection_completion",
+        {
+          p_completion_id: completionId,
+          p_user_id: user.id,
+          p_mount_image_path: mountStoragePath,
+        },
+      );
+      if (finalizeError) {
+        throw new Error(`finalize failed: ${finalizeError.message}`);
+      }
+      if (finalized !== true) {
+        throw new Error("finalize skipped: completion is not generating");
+      }
       // マイページのコレクション表示(ユーザー別 cache)を更新
       revalidateTag(`collection-completions:${user.id}`, "max");
       await Promise.allSettled([
@@ -213,9 +214,19 @@ export async function POST(request: NextRequest) {
           eventType: "mount_generated",
         }),
       ]);
+    } else {
+      // 更新時は finalize 不要(既に completed)。サムネを差し替えるため cache だけ revalidate。
+      revalidateTag(`collection-completions:${user.id}`, "max");
     }
 
-    return NextResponse.json({ status: "completed", mountImageUrl, sharePath });
+    // クライアント側で古い画像がキャッシュされ続けないよう、リクエストごとに変わる
+    // バージョン文字列を付与する(同一URLにファイル差し替えのため必須)。
+    const versioned = `${mountImageUrl}?v=${Date.now()}`;
+    return NextResponse.json({
+      status: "completed",
+      mountImageUrl: versioned,
+      sharePath,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
     if (uploadedPath) {
