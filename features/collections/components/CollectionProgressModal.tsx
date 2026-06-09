@@ -63,6 +63,101 @@ const BUTTON = { left: 7.9, top: 83.8, width: 84.2, height: 10.8 }; // 生成ボ
 const RING_R = 47;
 const RING_C = 2 * Math.PI * RING_R;
 
+// 「%達成！」バッジの位置(リング右下に被せる)。サイズは土台コンテナ幅%。
+const BADGE = { cx: 73.0, cy: 60.5, size: 26.0 };
+
+/**
+ * スカロップ(波打ち)型のゴールドバッジ + 王冠 + 「○○%／達成！」を描く SVG。
+ * 画像素材を持たずインラインで完結し、画面幅に応じて拡縮しても崩れない。
+ */
+function AchievementBadge({ percent }: { percent: number }) {
+  // 10弁のスカロップを極座標で生成(内/外を交互に)
+  const cx = 50;
+  const cy = 50;
+  const petals = 10;
+  const rOuter = 44;
+  const rInner = 38;
+  const pts: string[] = [];
+  for (let i = 0; i < petals * 2; i++) {
+    const a = (i * Math.PI) / petals - Math.PI / 2;
+    const r = i % 2 === 0 ? rOuter : rInner;
+    const x = cx + r * Math.cos(a);
+    const y = cy + r * Math.sin(a);
+    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+  }
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      className="h-full w-full drop-shadow-[0_2px_4px_rgba(180,90,20,0.35)]"
+      aria-hidden
+    >
+      <defs>
+        <radialGradient id="badgeFill" cx="50%" cy="42%" r="60%">
+          <stop offset="0%" stopColor="#FFFBEB" />
+          <stop offset="70%" stopColor="#FEF3C7" />
+          <stop offset="100%" stopColor="#FDE68A" />
+        </radialGradient>
+        <linearGradient id="badgeStroke" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#FCD34D" />
+          <stop offset="100%" stopColor="#F59E0B" />
+        </linearGradient>
+      </defs>
+      {/* 外側スカロップ(濃ゴールド) */}
+      <polygon
+        points={pts.join(" ")}
+        fill="url(#badgeStroke)"
+      />
+      {/* 内側スカロップ(中身)。やや小さい同形で重ねて縁取りを作る */}
+      <polygon
+        points={pts
+          .map((p) => {
+            const [x, y] = p.split(",").map(Number);
+            return `${(cx + (x - cx) * 0.86).toFixed(2)},${(cy + (y - cy) * 0.86).toFixed(2)}`;
+          })
+          .join(" ")}
+        fill="url(#badgeFill)"
+      />
+      {/* 王冠(シンプル) */}
+      <g transform="translate(50 25)">
+        <path
+          d="M -7 6 L -7 -1 L -3 3 L 0 -4 L 3 3 L 7 -1 L 7 6 Z"
+          fill="#F59E0B"
+          stroke="#FFFFFF"
+          strokeWidth="0.6"
+          strokeLinejoin="round"
+        />
+        <circle cx="-7" cy="-1" r="1.2" fill="#F59E0B" />
+        <circle cx="0" cy="-4" r="1.3" fill="#F59E0B" />
+        <circle cx="7" cy="-1" r="1.2" fill="#F59E0B" />
+      </g>
+      {/* 「○○%」(オレンジ・大きめ) */}
+      <text
+        x="50"
+        y="58"
+        textAnchor="middle"
+        fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
+        fontWeight="700"
+        fontSize="20"
+        fill="#F97316"
+      >
+        {percent}%
+      </text>
+      {/* 「達成！」 */}
+      <text
+        x="50"
+        y="72"
+        textAnchor="middle"
+        fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
+        fontWeight="700"
+        fontSize="9"
+        fill="#B45309"
+      >
+        達成！
+      </text>
+    </svg>
+  );
+}
+
 export function CollectionProgressModal({
   open,
   celebration,
@@ -244,6 +339,19 @@ export function CollectionProgressModal({
                   className="transition-[stroke-dashoffset] duration-1000 ease-out motion-reduce:transition-none"
                 />
               </svg>
+            </div>
+
+            {/* %達成バッジ(リング右下) */}
+            <div
+              className="pointer-events-none absolute"
+              style={{
+                left: `${BADGE.cx - BADGE.size / 2}%`,
+                top: `${BADGE.cy - (BADGE.size * FRAME_ASPECT) / 2}%`,
+                width: `${BADGE.size}%`,
+                aspectRatio: "1 / 1",
+              }}
+            >
+              <AchievementBadge percent={Math.round(ratio * 100)} />
             </div>
 
             {/* 集めたシール(?枠に重ねる) */}
