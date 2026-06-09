@@ -119,8 +119,8 @@ export function MyPageCollections({
   }
 
   return (
-    <Card className="mt-4 mb-6 p-4">
-      <h2 className="mb-3 text-base font-semibold text-gray-900">コレクション</h2>
+    <Card className="mt-4 mb-6 px-5 py-3">
+      <h2 className="mb-1 text-base font-semibold text-gray-900">コレクション</h2>
 
       {completedMounts.length > 0 ? (
         <div className="mb-4 flex flex-wrap gap-3">
