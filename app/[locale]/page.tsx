@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
+import { getAdminUserIds } from "@/lib/env";
 import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-popup-banners";
 import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
 import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
@@ -151,6 +152,10 @@ export default async function LocaleHome({
   // 非該当ユーザーには Creator Looks 投稿を完全非表示にし、既存 Inspire 投稿のみ表示する
   const currentUser = await getUser();
   const includeCreatorLooks = await isCreatorLooksEnabledForUser(currentUser);
+  // 公開前カテゴリ(admin_only)を admin にだけプレビュー表示する
+  const isAdminViewer = currentUser
+    ? getAdminUserIds().includes(currentUser.id)
+    : false;
 
   return (
     <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
@@ -163,7 +168,7 @@ export default async function LocaleHome({
         <CachedHomeBannerSection />
       </Suspense>
       <Suspense fallback={<HomeStylePresetCarouselSkeleton />}>
-        <CachedHomeStylePresetSection />
+        <CachedHomeStylePresetSection isAdminViewer={isAdminViewer} />
       </Suspense>
       {/*
         Inspire ホームカルーセル（ADR-013）。
