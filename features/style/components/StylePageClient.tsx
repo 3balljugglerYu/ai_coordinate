@@ -1753,8 +1753,14 @@ export function StylePageClient({
               <PromptInputField
                 value={userPromptInputValue}
                 onChange={setUserPromptInputValue}
-                label={t("userPromptLabel")}
-                placeholder={t("userPromptPlaceholder")}
+                label={
+                  selectedPreset.category.userPromptLabel ??
+                  t("userPromptLabel")
+                }
+                placeholder={
+                  selectedPreset.category.userPromptPlaceholder ??
+                  t("userPromptPlaceholder")
+                }
                 hint={t("userPromptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
                 clearLabel={t("userPromptClear")}
                 characterCount={t("userPromptCharacterCount", {

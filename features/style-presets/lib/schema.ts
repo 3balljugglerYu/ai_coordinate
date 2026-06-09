@@ -49,6 +49,10 @@ export interface StylePresetCategoryRef {
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
   showUserPromptInput: boolean;
+  /** /style のプロンプト textarea ラベル(任意, null なら i18n デフォルト) */
+  userPromptLabel: string | null;
+  /** /style のプロンプト textarea placeholder(任意, null なら i18n デフォルト) */
+  userPromptPlaceholder: string | null;
   visibility: StylePresetCategoryVisibility;
   isActive: boolean;
 }

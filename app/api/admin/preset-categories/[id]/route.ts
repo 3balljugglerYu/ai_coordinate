@@ -16,6 +16,8 @@ import { parseCollectionSettings } from "../collection-settings-payload";
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
 const MAX_USER_GUIDANCE_LENGTH = 1000;
+const MAX_USER_PROMPT_LABEL_LENGTH = 80;
+const MAX_USER_PROMPT_PLACEHOLDER_LENGTH = 200;
 
 function revalidatePresetCategoriesCache(id: string): void {
   revalidateTag("style-presets", "max");
@@ -248,6 +250,49 @@ export async function PATCH(
       );
     }
     update.showUserPromptInput = body.show_user_prompt_input;
+  }
+  if (body.user_prompt_label !== undefined) {
+    if (body.user_prompt_label !== null && typeof body.user_prompt_label !== "string") {
+      return NextResponse.json(
+        { error: "user_prompt_label must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_prompt_label === "string"
+        ? body.user_prompt_label.trim()
+        : "";
+    if (trimmed.length > MAX_USER_PROMPT_LABEL_LENGTH) {
+      return NextResponse.json(
+        { error: `user_prompt_label must be <= ${MAX_USER_PROMPT_LABEL_LENGTH} chars` },
+        { status: 400 },
+      );
+    }
+    update.userPromptLabel = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_prompt_placeholder !== undefined) {
+    if (
+      body.user_prompt_placeholder !== null &&
+      typeof body.user_prompt_placeholder !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "user_prompt_placeholder must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_prompt_placeholder === "string"
+        ? body.user_prompt_placeholder.trim()
+        : "";
+    if (trimmed.length > MAX_USER_PROMPT_PLACEHOLDER_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `user_prompt_placeholder must be <= ${MAX_USER_PROMPT_PLACEHOLDER_LENGTH} chars`,
+        },
+        { status: 400 },
+      );
+    }
+    update.userPromptPlaceholder = trimmed.length > 0 ? trimmed : null;
   }
   if (body.visibility !== undefined) {
     if (

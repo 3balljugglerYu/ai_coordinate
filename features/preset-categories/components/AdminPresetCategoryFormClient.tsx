@@ -26,6 +26,8 @@ interface FormState {
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
   showUserPromptInput: boolean;
+  userPromptLabel: string;
+  userPromptPlaceholder: string;
   visibility: "public" | "admin_only";
   isCollectionSeries: boolean;
   completionThreshold: number | null;
@@ -52,6 +54,8 @@ function toFormState(initial?: PresetCategoryAdmin): FormState {
     showBackgroundChangeControl: initial?.showBackgroundChangeControl ?? true,
     showGenerationModelControl: initial?.showGenerationModelControl ?? true,
     showUserPromptInput: initial?.showUserPromptInput ?? false,
+    userPromptLabel: initial?.userPromptLabel ?? "",
+    userPromptPlaceholder: initial?.userPromptPlaceholder ?? "",
     visibility: initial?.visibility ?? "admin_only",
     isCollectionSeries: initial?.isCollectionSeries ?? false,
     completionThreshold: initial?.completionThreshold ?? null,
@@ -169,6 +173,8 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_background_change_control: form.showBackgroundChangeControl,
               show_generation_model_control: form.showGenerationModelControl,
               show_user_prompt_input: form.showUserPromptInput,
+              user_prompt_label: form.userPromptLabel.trim() || null,
+              user_prompt_placeholder: form.userPromptPlaceholder.trim() || null,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: form.completionThreshold,
@@ -192,6 +198,8 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_background_change_control: form.showBackgroundChangeControl,
               show_generation_model_control: form.showGenerationModelControl,
               show_user_prompt_input: form.showUserPromptInput,
+              user_prompt_label: form.userPromptLabel.trim() || null,
+              user_prompt_placeholder: form.userPromptPlaceholder.trim() || null,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: form.completionThreshold,
@@ -595,6 +603,48 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
             </span>
           </span>
         </label>
+
+        {form.showUserPromptInput ? (
+          <div className="ml-7 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs text-slate-500">
+              未入力の場合、ユーザー画面では i18n のデフォルト文言「追加スタイルの指示(任意)」「例: 長袖のコートも追加して」が表示されます。
+            </p>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                ラベル(textarea の見出し)
+              </span>
+              <input
+                type="text"
+                value={form.userPromptLabel}
+                onChange={(e) => update("userPromptLabel", e.target.value)}
+                maxLength={80}
+                placeholder="例: 追加スタイルの指示(任意)"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                最大 80 文字
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                プレースホルダ(textarea 内のヒント)
+              </span>
+              <textarea
+                value={form.userPromptPlaceholder}
+                onChange={(e) =>
+                  update("userPromptPlaceholder", e.target.value)
+                }
+                maxLength={200}
+                rows={2}
+                placeholder="例: ウエハースシールに描いて欲しい一言を入力(例: ハイビスカスの花を持たせて)"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                最大 200 文字
+              </span>
+            </label>
+          </div>
+        ) : null}
       </fieldset>
 
       <fieldset className="space-y-4 rounded-md border border-slate-200 p-4">

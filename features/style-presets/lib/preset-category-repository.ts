@@ -39,6 +39,8 @@ export interface PresetCategoryRow {
   show_background_change_control?: boolean | null;
   show_generation_model_control?: boolean | null;
   show_user_prompt_input?: boolean | null;
+  user_prompt_label?: string | null;
+  user_prompt_placeholder?: string | null;
   visibility?: StylePresetCategoryVisibility | null;
   is_collection_series?: boolean | null;
   completion_threshold?: number | null;
@@ -69,6 +71,8 @@ export interface PresetCategoryAdmin {
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
   showUserPromptInput: boolean;
+  userPromptLabel: string | null;
+  userPromptPlaceholder: string | null;
   visibility: StylePresetCategoryVisibility;
   isCollectionSeries: boolean;
   completionThreshold: number | null;
@@ -98,6 +102,8 @@ export interface PresetCategoryInsert {
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
@@ -123,6 +129,8 @@ export interface PresetCategoryUpdate {
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
@@ -163,6 +171,8 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     showBackgroundChangeControl: row.show_background_change_control ?? true,
     showGenerationModelControl: row.show_generation_model_control ?? true,
     showUserPromptInput: row.show_user_prompt_input ?? false,
+    userPromptLabel: row.user_prompt_label ?? null,
+    userPromptPlaceholder: row.user_prompt_placeholder ?? null,
     visibility: normalizeVisibility(row.visibility),
     isCollectionSeries: row.is_collection_series ?? false,
     completionThreshold: row.completion_threshold ?? null,
@@ -261,6 +271,8 @@ export async function createPresetCategory(
       show_background_change_control: input.showBackgroundChangeControl ?? true,
       show_generation_model_control: input.showGenerationModelControl ?? true,
       show_user_prompt_input: input.showUserPromptInput ?? false,
+      user_prompt_label: input.userPromptLabel ?? null,
+      user_prompt_placeholder: input.userPromptPlaceholder ?? null,
       visibility: input.visibility ?? "admin_only",
       is_collection_series: input.isCollectionSeries ?? false,
       completion_threshold: input.completionThreshold ?? null,
@@ -310,6 +322,10 @@ export async function updatePresetCategory(
     payload.show_generation_model_control = input.showGenerationModelControl;
   if (input.showUserPromptInput !== undefined)
     payload.show_user_prompt_input = input.showUserPromptInput;
+  if (input.userPromptLabel !== undefined)
+    payload.user_prompt_label = input.userPromptLabel;
+  if (input.userPromptPlaceholder !== undefined)
+    payload.user_prompt_placeholder = input.userPromptPlaceholder;
   if (input.visibility !== undefined)
     payload.visibility = input.visibility;
   if (input.isCollectionSeries !== undefined)
