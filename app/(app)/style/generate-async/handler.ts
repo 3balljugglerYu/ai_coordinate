@@ -9,7 +9,7 @@ import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
-import { env, getAdminUserIds } from "@/lib/env";
+import { env, isAdminViewer } from "@/lib/env";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
   createAsyncGenerationJobRepository,
@@ -151,7 +151,7 @@ export async function postStyleGenerateAsyncRoute(
       ? normalizeModelName(rawModel)
       : DEFAULT_GENERATION_MODEL;
 
-    const isAdminUser = getAdminUserIds().includes(user.id);
+    const isAdminUser = isAdminViewer(user.id);
     const preset = await getPublishedStylePresetForGenerationFn(styleId, {
       includeAdminOnly: isAdminUser,
     });

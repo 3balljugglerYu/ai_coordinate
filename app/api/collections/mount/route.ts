@@ -3,7 +3,7 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
-import { getAdminUserIds } from "@/lib/env";
+import { isAdminViewer } from "@/lib/env";
 import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
 import { composeMount } from "@/features/collections/lib/compose-mount";
 import {
@@ -149,9 +149,8 @@ export async function POST(request: NextRequest) {
     if (categoryError || !category) {
       throw new Error(`category not found: ${categoryError?.message ?? categoryKey}`);
     }
-    // 公開シリーズ、または admin プレビューのみ許可(admin_only は admin だけ)
-    const isAdmin = getAdminUserIds().includes(user.id);
-    if (category.visibility !== "public" && !isAdmin) {
+    // 公開シリーズ、または admin/プレビュー admin のプレビューのみ許可
+    if (category.visibility !== "public" && !isAdminViewer(user.id)) {
       throw new Error(`category not public: ${categoryKey}`);
     }
     const layout = category.mount_layout as unknown;

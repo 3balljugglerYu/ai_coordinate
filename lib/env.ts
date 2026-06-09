@@ -46,6 +46,9 @@ const envSchema = {
 
   // Admin
   ADMIN_USER_IDS: process.env.ADMIN_USER_IDS,
+  // 「admin 公開コンテンツ閲覧のみ」を許可するプレビュー権限ユーザー(任意, csv)。
+  // /admin/* 管理画面と requireAdmin 系 API は許可されない。
+  ADMIN_PREVIEW_USER_IDS: process.env.ADMIN_PREVIEW_USER_IDS,
 
   // Account deletion / purge
   ACCOUNT_PURGE_CRON_SECRET: process.env.ACCOUNT_PURGE_CRON_SECRET,
@@ -153,6 +156,7 @@ function getEnv() {
     GA4_BIGQUERY_DATASET: envSchema.GA4_BIGQUERY_DATASET || "",
     GA4_BIGQUERY_LOCATION: envSchema.GA4_BIGQUERY_LOCATION || "",
     ADMIN_USER_IDS: envSchema.ADMIN_USER_IDS || "",
+    ADMIN_PREVIEW_USER_IDS: envSchema.ADMIN_PREVIEW_USER_IDS || "",
     ACCOUNT_PURGE_CRON_SECRET:
       envSchema.ACCOUNT_PURGE_CRON_SECRET || "",
     ACCOUNT_FORFEITURE_HASH_SALT:
@@ -289,11 +293,36 @@ export function isStripeTestMode(): boolean {
  * 空文字列の場合は空配列を返す
  */
 export function getAdminUserIds(): string[] {
-  const adminUserIds = env.ADMIN_USER_IDS;
-  if (!adminUserIds || adminUserIds.trim() === "") {
+  return parseCsvUserIds(env.ADMIN_USER_IDS);
+}
+
+/**
+ * プレビュー権限ユーザー (= admin_only コンテンツ閲覧のみ許可) のIDリストを取得。
+ * /admin/* 管理画面・requireAdmin で守られている API は許可しない (=擬似 admin)。
+ * カンマ区切り、空なら空配列。
+ */
+export function getAdminPreviewUserIds(): string[] {
+  return parseCsvUserIds(env.ADMIN_PREVIEW_USER_IDS);
+}
+
+/**
+ * 「admin_only コンテンツを閲覧できるか」の判定。
+ * フル admin (ADMIN_USER_IDS) と プレビュー admin (ADMIN_PREVIEW_USER_IDS) の
+ * どちらかに含まれていれば true。/admin/* 管理機能はこれと別ガード。
+ */
+export function isAdminViewer(userId: string | null | undefined): boolean {
+  if (!userId) return false;
+  return (
+    getAdminUserIds().includes(userId) ||
+    getAdminPreviewUserIds().includes(userId)
+  );
+}
+
+function parseCsvUserIds(value: string | undefined): string[] {
+  if (!value || value.trim() === "") {
     return [];
   }
-  return adminUserIds
+  return value
     .split(",")
     .map((id) => id.trim())
     .filter((id) => id.length > 0);

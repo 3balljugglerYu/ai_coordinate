@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { incrementViewCount } from "@/features/posts/lib/server-api";
 import { getPost } from "@/features/posts/lib/server-api";
 import { getUser } from "@/lib/auth";
-import { getAdminUserIds } from "@/lib/env";
+import { isAdminViewer as checkIsAdminViewer } from "@/lib/env";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
@@ -18,8 +18,7 @@ export async function POST(
   try {
     const user = await getUser();
     const currentUserId = user?.id ?? null;
-    const isAdminViewer =
-      !!currentUserId && getAdminUserIds().includes(currentUserId);
+    const isAdminViewer = checkIsAdminViewer(currentUserId);
 
     const { id } = await params;
 

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUser } from "@/lib/auth";
-import { getAdminUserIds } from "@/lib/env";
+import { isAdminViewer as checkIsAdminViewer } from "@/lib/env";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
 import type {
@@ -690,7 +690,7 @@ export const getPost = cache(async (
 ): Promise<Post | null> => {
   const supabase = supabaseOverride ?? (await createClient());
   const useCache = !!supabaseOverride;
-  const isAdminViewer = !!currentUserId && getAdminUserIds().includes(currentUserId);
+  const isAdminViewer = checkIsAdminViewer(currentUserId);
 
   // まず画像を取得（is_postedの条件なし）
   const { data, error } = await supabase

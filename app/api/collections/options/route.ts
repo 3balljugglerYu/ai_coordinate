@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAdminUserIds } from "@/lib/env";
+import { isAdminViewer } from "@/lib/env";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "INVALID_CATEGORY_KEY" }, { status: 400 });
   }
 
-  const isAdmin = getAdminUserIds().includes(user.id);
+  const isAdmin = isAdminViewer(user.id);
   const category = await getPresetCategoryByKey(categoryKey);
   if (
     !category ||

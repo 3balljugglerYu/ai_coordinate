@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAdminUserIds } from "@/lib/env";
+import { isAdminViewer } from "@/lib/env";
 import { getCollectionProgressForUser } from "@/features/collections/lib/collection-progress-repository";
 
 /**
@@ -18,7 +18,7 @@ export async function GET() {
     return NextResponse.json({ items: [] });
   }
 
-  const isAdmin = getAdminUserIds().includes(user.id);
+  const isAdmin = isAdminViewer(user.id);
 
   try {
     const items = await getCollectionProgressForUser(user.id, isAdmin);

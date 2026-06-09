@@ -9,7 +9,7 @@ import {
   type StylePublicUsageEventType,
 } from "@/features/style/lib/style-usage-events";
 import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
-import { getAdminUserIds } from "@/lib/env";
+import { getAdminPreviewUserIds, getAdminUserIds } from "@/lib/env";
 
 const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
   "visit",
@@ -56,9 +56,11 @@ export async function postStyleEventsRoute(
       dependencies.recordStyleUsageEventFn ?? recordStyleUsageEvent;
 
     const user = await getUserFn();
-    const includeAdminOnly = user
-      ? getAdminUserIdsFn().includes(user.id)
-      : false;
+    // フル admin + プレビュー admin の両方が admin_only preset を閲覧/イベント記録可能。
+    const previewIds = getAdminPreviewUserIds();
+    const includeAdminOnly = !!user && (
+      getAdminUserIdsFn().includes(user.id) || previewIds.includes(user.id)
+    );
 
     const payload = (await request.json().catch(() => null)) as
       | { eventType?: unknown; styleId?: unknown }

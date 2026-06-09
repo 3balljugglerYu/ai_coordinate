@@ -12,7 +12,7 @@ import { getPublishedStylePresets } from "@/features/style-presets/lib/get-publi
 import { getTotalStyleGenerateCount } from "@/features/style/lib/style-usage-stats";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getUser } from "@/lib/auth";
-import { getAdminUserIds } from "@/lib/env";
+import { isAdminViewer } from "@/lib/env";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
@@ -59,9 +59,9 @@ export default async function StylePage({ searchParams }: StylePageProps) {
   const t = await getTranslations("style");
   const coordinateT = await getTranslations("coordinate");
   const user = await getUser();
-  const isAdminViewer = user ? getAdminUserIds().includes(user.id) : false;
+  const isAdminViewerFlag = isAdminViewer(user?.id ?? null);
   const presets = await getPublishedStylePresets({
-    includeAdminOnly: isAdminViewer,
+    includeAdminOnly: isAdminViewerFlag,
   });
   const profile = user ? await getUserProfileServer(user.id) : null;
   const params = (await searchParams) ?? {};
