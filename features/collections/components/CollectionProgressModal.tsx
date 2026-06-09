@@ -38,33 +38,52 @@ interface Props {
 }
 
 /**
- * シリーズごとのモーダル土台画像(タイトル・ホロ円・?枠・生成ボタンが描かれた PNG)。
- * この画像の上に「進捗リング(アニメ)」と「集めたシール(?枠に重ねる)」を重畳する。
- * 画像は public/ 配下。未登録シリーズは簡易レイアウトにフォールバック。
+ * カテゴリごとのモーダルレイアウト定義。
+ * - 土台 PNG (frame)・アスペクト比 (frameAspect)
+ * - 中央 admin 画像(DISC)・進捗リング(RING)の bbox
+ * - スロット(集めたシール)の中心 x 配列・中心 y・直径
+ * - 「シールを生成する」ボタンの透明領域
+ * - %達成バッジの位置
+ *
+ * スロット座標を配列で持つので、4個用 PNG と 6個用 PNG をそれぞれ用意し
+ * カテゴリごとに切替できる。slots.cx.length より多い「集めたシール」は
+ * 表示されないが ready ゲートも打ち切るためデッドロックしない。
+ * 未登録カテゴリは PNG なしの簡易レイアウトにフォールバック。
  */
-const FRAME_BY_KEY: Record<string, string> = {
-  collectible_wafer_sticker: "/collections/wafer/modal-frame.webp",
-};
-const FRAME_ASPECT = 1086 / 1448; // 土台画像のアスペクト比(W/H)
+interface ModalLayout {
+  frame: string;
+  frameAspect: number;
+  disc: { left: number; top: number; size: number };
+  ring: { left: number; top: number; size: number };
+  badge: { cx: number; cy: number; size: number };
+  button: { left: number; top: number; width: number; height: number };
+  slots: { cx: number[]; cy: number; d: number };
+}
 
-// 土台画像内の各要素の位置(PIL で金枠を円フィット実測。% は土台コンテナに対する割合)
-// 金枠の輪: 中心 (49.82%, 43.82%)。admin 画像(DISC)と進捗リング(RING)は
-// 「同一中心・同一半径」で置くため、リングは常に admin 画像の縁にぴったり乗る。
-// 半径は焼き込みの金枠を覆える 30.3%W にする(下の絵が外にはみ出さない)。
-const DISC = { left: 19.52, top: 21.09, size: 60.6 }; // 中央画像のbbox(径=30.3%W)
-// 進捗リング: arc半径(=r47 × size/100)が 30.3%W になるよう size を逆算(30.3/0.47)。
-const RING = { left: 17.59, top: 19.64, size: 64.47 }; // 進捗リングのbbox(正方・px)。size は幅%
-const SLOT_CX = [23.9, 41.21, 57.69, 75.46]; // ?枠の中心x(%)
-const SLOT_CY = 75.1; // ?枠の中心y(%)
-const SLOT_D = 14.0; // シールの直径(幅%)。?枠を覆うサイズ
-const BUTTON = { left: 7.9, top: 83.8, width: 84.2, height: 10.8 }; // 生成ボタン領域(%)
+const MODAL_LAYOUTS: Record<string, ModalLayout> = {
+  // ウエハース(4スロット)
+  collectible_wafer_sticker: {
+    frame: "/collections/wafer/modal-frame.webp",
+    frameAspect: 1086 / 1448,
+    // 金枠の輪: 中心 (49.82%, 43.82%)、半径 30.3%(W)
+    disc: { left: 19.52, top: 21.09, size: 60.6 },
+    ring: { left: 17.59, top: 19.64, size: 64.47 },
+    badge: { cx: 73.0, cy: 60.5, size: 26.0 },
+    button: { left: 7.9, top: 83.8, width: 84.2, height: 10.8 },
+    slots: { cx: [23.9, 41.21, 57.69, 75.46], cy: 75.1, d: 14.0 },
+  },
+  // ※6スロット用カテゴリは別途、6個 ?枠が描かれた土台 PNG を用意し
+  //   ここに同じ形式で追加する。例:
+  // collectible_wafer_sticker_6: {
+  //   frame: "/collections/wafer/modal-frame-6.webp",
+  //   ...
+  //   slots: { cx: [<6個の中心x>], cy: ..., d: ... },
+  // },
+};
 
 // 進捗リング(SVG)の定数
 const RING_R = 47;
 const RING_C = 2 * Math.PI * RING_R;
-
-// 「%達成！」バッジの位置(リング右下に被せる)。サイズは土台コンテナ幅%。
-const BADGE = { cx: 73.0, cy: 60.5, size: 26.0 };
 
 /**
  * スカロップ(波打ち)型のゴールドバッジ + 王冠 + 「○○%／達成！」を描く SVG。
@@ -190,15 +209,23 @@ export function CollectionProgressModal({
   const cCharacterImageUrl = celebration?.characterImageUrl ?? null;
   const cCollectedImageUrls = celebration?.collectedImageUrls ?? [];
   const cShowMount = cIsCompleted && !!cMountImageUrl;
-  const cFrame = celebration ? (FRAME_BY_KEY[celebration.categoryKey] ?? null) : null;
+  const cLayout = celebration
+    ? (MODAL_LAYOUTS[celebration.categoryKey] ?? null)
+    : null;
+  // ready ゲートはスロット数で打ち切る。集めたシールがスロット数より多い場合
+  // (=例: 4スロット PNG に対し threshold=6 で 6枚集まった等)に、表示されない
+  // シールの onLoad を待ち続けてデッドロックするのを防ぐ。
+  const cSlotsShown = cLayout
+    ? Math.min(cCollectedImageUrls.length, cLayout.slots.cx.length)
+    : 0;
   const totalImages = !celebration
     ? 0
     : cShowMount
       ? cMountImageUrl
         ? 1
         : 0
-      : cFrame
-        ? 1 + (cCharacterImageUrl ? 1 : 0) + cCollectedImageUrls.length
+      : cLayout
+        ? 1 + (cCharacterImageUrl ? 1 : 0) + cSlotsShown
         : 0;
   const ready = totalImages === 0 || loadedCount >= totalImages;
 
@@ -243,20 +270,20 @@ export function CollectionProgressModal({
   const characterImageUrl = cCharacterImageUrl;
   const collectedImageUrls = cCollectedImageUrls;
   const showMount = cShowMount;
-  const frame = cFrame;
+  const layout = cLayout;
   const ratio = threshold > 0 ? Math.min(1, animatedCount / threshold) : 0;
   const dashoffset = RING_C * (1 - ratio);
 
-  // シールは正方形。幅%(=SLOT_D, コンテナ幅基準)を高さ%(コンテナ高さ基準)へ換算する。
-  // 正方になるよう height% = SLOT_D × (W/H) = SLOT_D × FRAME_ASPECT。
-  const slotHeightPct = SLOT_D * FRAME_ASPECT;
+  // シールは正方形。幅%(=slots.d, コンテナ幅基準)を高さ%(コンテナ高さ基準)へ換算する。
+  // 正方になるよう height% = slots.d × (W/H) = slots.d × frameAspect。
+  const slotHeightPct = layout ? layout.slots.d * layout.frameAspect : 0;
 
   return (
     <Dialog open={open} onOpenChange={(next) => (!next ? onClose() : undefined)}>
       <DialogContent
         showCloseButton={false}
         className={
-          showMount || !frame
+          showMount || !layout
             ? "w-[min(92vw,420px)] overflow-hidden rounded-3xl border-0 bg-gradient-to-b from-[#FFFaf2] to-white p-5 shadow-2xl"
             : "w-[min(88vw,380px)] border-0 bg-transparent p-0 shadow-none"
         }
@@ -333,14 +360,14 @@ export function CollectionProgressModal({
               遊び方をみる ›
             </Link>
           </div>
-        ) : frame ? (
+        ) : layout ? (
           /* ===== 進捗: 土台PNG + リング + シール重畳 ===== */
           <div
             className="relative w-full overflow-hidden rounded-[1.4rem]"
-            style={{ aspectRatio: `${FRAME_ASPECT}` }}
+            style={{ aspectRatio: `${layout.frameAspect}` }}
           >
             <Image
-              src={frame}
+              src={layout.frame}
               alt=""
               fill
               sizes="380px"
@@ -354,9 +381,9 @@ export function CollectionProgressModal({
               <div
                 className="absolute overflow-hidden rounded-full"
                 style={{
-                  left: `${DISC.left}%`,
-                  top: `${DISC.top}%`,
-                  width: `${DISC.size}%`,
+                  left: `${layout.disc.left}%`,
+                  top: `${layout.disc.top}%`,
+                  width: `${layout.disc.size}%`,
                   aspectRatio: "1 / 1",
                 }}
               >
@@ -375,9 +402,9 @@ export function CollectionProgressModal({
             <div
               className="absolute"
               style={{
-                left: `${RING.left}%`,
-                top: `${RING.top}%`,
-                width: `${RING.size}%`,
+                left: `${layout.ring.left}%`,
+                top: `${layout.ring.top}%`,
+                width: `${layout.ring.size}%`,
                 aspectRatio: "1 / 1",
               }}
             >
@@ -420,17 +447,17 @@ export function CollectionProgressModal({
             <div
               className="pointer-events-none absolute"
               style={{
-                left: `${BADGE.cx - BADGE.size / 2}%`,
-                top: `${BADGE.cy - (BADGE.size * FRAME_ASPECT) / 2}%`,
-                width: `${BADGE.size}%`,
+                left: `${layout.badge.cx - layout.badge.size / 2}%`,
+                top: `${layout.badge.cy - (layout.badge.size * layout.frameAspect) / 2}%`,
+                width: `${layout.badge.size}%`,
                 aspectRatio: "1 / 1",
               }}
             >
               <AchievementBadge percent={Math.round(ratio * 100)} />
             </div>
 
-            {/* 集めたシール(?枠に重ねる) */}
-            {SLOT_CX.map((cx, i) => {
+            {/* 集めたシール(?枠に重ねる)。slots.cx 上限まで。それ以上の集まりは表示しない。 */}
+            {layout.slots.cx.map((cx, i) => {
               const url = collectedImageUrls[i];
               if (!url) return null;
               return (
@@ -438,9 +465,9 @@ export function CollectionProgressModal({
                   key={i}
                   className="absolute overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)]"
                   style={{
-                    left: `${cx - SLOT_D / 2}%`,
-                    top: `${SLOT_CY - slotHeightPct / 2}%`,
-                    width: `${SLOT_D}%`,
+                    left: `${cx - layout.slots.d / 2}%`,
+                    top: `${layout.slots.cy - slotHeightPct / 2}%`,
+                    width: `${layout.slots.d}%`,
                     aspectRatio: "1 / 1",
                   }}
                 >
@@ -462,10 +489,10 @@ export function CollectionProgressModal({
               aria-label="シールを生成する"
               className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
               style={{
-                left: `${BUTTON.left}%`,
-                top: `${BUTTON.top}%`,
-                width: `${BUTTON.width}%`,
-                height: `${BUTTON.height}%`,
+                left: `${layout.button.left}%`,
+                top: `${layout.button.top}%`,
+                width: `${layout.button.width}%`,
+                height: `${layout.button.height}%`,
               }}
             />
           </div>
