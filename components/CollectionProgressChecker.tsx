@@ -32,7 +32,7 @@ export function CollectionProgressChecker() {
         onClose={dismiss}
         onShare={(c) => {
           if (c.completionId) {
-            void shareMount(c.completionId).catch(() => {});
+            void shareMount(c.completionId, c.mountImageUrl).catch(() => {});
           }
         }}
         onCreateMount={openComposerFromCelebration}

@@ -21,7 +21,7 @@ export function MountShareButton({
   async function handleShare() {
     setBusy(true);
     try {
-      await shareMount(completionId);
+      await shareMount(completionId, mountImageUrl);
     } catch {
       // ユーザーキャンセル等は無視
     } finally {

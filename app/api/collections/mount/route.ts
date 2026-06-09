@@ -6,6 +6,10 @@ import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { getAdminUserIds } from "@/lib/env";
 import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
 import { composeMount } from "@/features/collections/lib/compose-mount";
+import {
+  composeMountOgp,
+  ogpPathFromMountPath,
+} from "@/features/collections/lib/compose-mount-ogp";
 import { getRepresentativeImagesForCategory } from "@/features/collections/lib/representative-images";
 import { resolveSelectedImages } from "@/features/collections/lib/resolve-selected-images";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
@@ -135,7 +139,9 @@ export async function POST(request: NextRequest) {
   try {
     const { data: category, error: categoryError } = await admin
       .from("preset_categories")
-      .select("id, mount_template_path, mount_layout, completion_threshold, visibility")
+      .select(
+        "id, mount_template_path, mount_layout, completion_threshold, visibility, display_name_ja",
+      )
       .eq("key", categoryKey)
       .eq("is_collection_series", true)
       .eq("is_active", true)
@@ -198,6 +204,27 @@ export async function POST(request: NextRequest) {
     }
     uploadedPath = mountStoragePath;
 
+    // OGP 用 1200x630(X summary_large_image / OGP 2:1) を併せて生成・アップ。
+    // パスは mount-{ts}.png → ogp-{ts}.png の対応。失敗してもメイン処理は止めない。
+    try {
+      const ogpPath = ogpPathFromMountPath(mountStoragePath);
+      if (ogpPath) {
+        const ogpPng = await composeMountOgp({
+          mountPng,
+          displayName: (category.display_name_ja as string | null) ?? "",
+          threshold: threshold ?? undefined,
+        });
+        await admin.storage
+          .from(GENERATED_IMAGES_BUCKET)
+          .upload(ogpPath, ogpPng, {
+            contentType: "image/png",
+            upsert: false,
+          });
+      }
+    } catch (ogpError) {
+      console.error("collection mount OGP generation failed:", ogpError);
+    }
+
     if (!isUpdate) {
       // 5) 初回のみ finalize(generating → completed の遷移)。イベント記録もここだけ。
       const { data: finalized, error: finalizeError } = await admin.rpc(
@@ -239,11 +266,14 @@ export async function POST(request: NextRequest) {
       if (updateError) {
         throw new Error(`mount_image_path update failed: ${updateError.message}`);
       }
-      // 旧ファイルは削除(残しても問題ないが容量節約)
+      // 旧 mount + OGP は削除(残しても問題ないが容量節約)
       if (previousMountPath && previousMountPath !== mountStoragePath) {
+        const oldOgpPath = ogpPathFromMountPath(previousMountPath);
+        const toRemove = [previousMountPath];
+        if (oldOgpPath) toRemove.push(oldOgpPath);
         await admin.storage
           .from(GENERATED_IMAGES_BUCKET)
-          .remove([previousMountPath])
+          .remove(toRemove)
           .catch(() => {});
       }
       // マイページのコレクション表示(ユーザー別 cache)を更新

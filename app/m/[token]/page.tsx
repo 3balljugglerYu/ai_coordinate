@@ -32,6 +32,15 @@ export async function generateMetadata({
   };
   if (!mount) return base;
 
+  // X(summary_large_image)・Facebook 等は 2:1 横長想定。台紙は縦長なので
+  // 横長 OGP(1200x630)を別途用意してそれを優先的に使う。
+  // mount-{ts}.png → ogp-{ts}.png の対応(コミット 2026-06-09 以降に作成された
+  // 台紙は OGP も併せて生成される)。旧台紙は OGP ファイルが無いので、その
+  // 場合のみ縦長 mount をフォールバックに使う(中央クロップで一部が見切れる)。
+  const ogpImageUrl = mount.mountImageUrl.includes("/mount-")
+    ? mount.mountImageUrl.replace("/mount-", "/ogp-")
+    : mount.mountImageUrl;
+
   return {
     ...base,
     openGraph: {
@@ -39,13 +48,13 @@ export async function generateMetadata({
       description: SHARE_DESCRIPTION,
       type: "article",
       siteName: "Persta.AI",
-      images: [{ url: mount.mountImageUrl, alt: title }],
+      images: [{ url: ogpImageUrl, alt: title, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: SHARE_DESCRIPTION,
-      images: [mount.mountImageUrl],
+      images: [ogpImageUrl],
     },
   };
 }
