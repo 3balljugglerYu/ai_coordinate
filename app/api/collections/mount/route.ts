@@ -94,7 +94,9 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
   const completionId = reserved.completion_id;
-  const mountStoragePath = `collection-mounts/${user.id}/${categoryKey}/mount.png`;
+  // ファイルパスにタイムスタンプを含め、初回/更新ごとに URL が変わるようにする。
+  // これによりブラウザ/CDN/OGP キャッシュが自然と新しい画像を取得する。
+  const mountStoragePath = `collection-mounts/${user.id}/${categoryKey}/mount-${Date.now()}.png`;
   const { data: publicUrlData } = admin.storage
     .from(GENERATED_IMAGES_BUCKET)
     .getPublicUrl(mountStoragePath);
@@ -114,6 +116,18 @@ export async function POST(request: NextRequest) {
     if (reserved.mount_status === "failed" && reserved.newly_reserved === false) {
       return jsonError("台紙生成の再試行準備ができていません", "MOUNT_RETRY_NOT_READY", 409);
     }
+  }
+
+  // 更新の場合は、削除対象として既存パスを控える(差し替え後にゴミ削除)
+  let previousMountPath: string | null = null;
+  if (isUpdate) {
+    const { data: prev } = await admin
+      .from("collection_completions")
+      .select("mount_image_path")
+      .eq("id", completionId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    previousMountPath = (prev?.mount_image_path as string | null) ?? null;
   }
 
   // 4) 合成(generating)。失敗時は failed に落として 500。
@@ -172,7 +186,7 @@ export async function POST(request: NextRequest) {
 
     const mountPng = await composeMount({ templatePng, stickers, layout });
 
-    await admin.storage.from(GENERATED_IMAGES_BUCKET).remove([mountStoragePath]);
+    // パスにタイムスタンプが含まれるため毎回新規パス。事前 remove は不要。
     const { error: uploadError } = await admin.storage
       .from(GENERATED_IMAGES_BUCKET)
       .upload(mountStoragePath, mountPng, {
@@ -215,12 +229,29 @@ export async function POST(request: NextRequest) {
         }),
       ]);
     } else {
-      // 更新時は finalize 不要(既に completed)。サムネを差し替えるため cache だけ revalidate。
+      // 更新時は finalize 不要(既に completed)だが、DB の mount_image_path を新パスへ
+      // 差し替える(タイムスタンプ付きでサムネURL も自然と変わる)。
+      const { error: updateError } = await admin
+        .from("collection_completions")
+        .update({ mount_image_path: mountStoragePath })
+        .eq("id", completionId)
+        .eq("user_id", user.id);
+      if (updateError) {
+        throw new Error(`mount_image_path update failed: ${updateError.message}`);
+      }
+      // 旧ファイルは削除(残しても問題ないが容量節約)
+      if (previousMountPath && previousMountPath !== mountStoragePath) {
+        await admin.storage
+          .from(GENERATED_IMAGES_BUCKET)
+          .remove([previousMountPath])
+          .catch(() => {});
+      }
+      // マイページのコレクション表示(ユーザー別 cache)を更新
       revalidateTag(`collection-completions:${user.id}`, "max");
     }
 
-    // クライアント側で古い画像がキャッシュされ続けないよう、リクエストごとに変わる
-    // バージョン文字列を付与する(同一URLにファイル差し替えのため必須)。
+    // ファイル名に毎回タイムスタンプが入るため URL 自体が変わる → 追加の v 付与は不要だが、
+    // フォールバック的に付けておく。
     const versioned = `${mountImageUrl}?v=${Date.now()}`;
     return NextResponse.json({
       status: "completed",

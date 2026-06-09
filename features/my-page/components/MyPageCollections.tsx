@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { ImageModal } from "@/features/generation/components/ImageModal";
 import {
   CollectionProgressModal,
   type CollectionCelebration,
@@ -32,7 +31,7 @@ export interface CompletedMountView {
 
 /**
  * マイページのコレクション表示。
- * - 完了済み台紙のサムネ(タップで拡大モーダル=コンテンツ詳細と同じ ImageModal)
+ * - 完了済み台紙のサムネ(タップで CollectionProgressModal の完了ビュー = 台紙+シェア)
  * - 進捗一覧(ライブ取得。行タップで進捗モーダル)
  * 完了サムネはサーバー(cache)から props で受け取り、進捗はクライアントで取得する。
  */
@@ -43,7 +42,6 @@ export function MyPageCollections({
 }) {
   const router = useRouter();
   const [progress, setProgress] = useState<CollectionProgress[]>([]);
-  const [enlargeIndex, setEnlargeIndex] = useState<number | null>(null);
   const [celebration, setCelebration] = useState<CollectionCelebration | null>(
     null,
   );
@@ -114,11 +112,26 @@ export function MyPageCollections({
     return null;
   }
 
-  const enlargeImages = completedMounts.map((m) => ({
-    id: m.completionId,
-    url: m.mountImageUrl,
-    is_posted: false,
-  }));
+  /**
+   * サムネクリックで「台紙 + シェアボタン」のモーダル(完了モード)を表示。
+   * 拡大表示と兼ねるため CollectionProgressModal の完了ビューを再利用する。
+   */
+  function openMountModal(m: CompletedMountView) {
+    setCelebrationNonce((n) => n + 1);
+    setCelebration({
+      categoryKey: m.categoryKey,
+      displayName: m.displayName,
+      fromCount: 0,
+      toCount: 0,
+      threshold: 0,
+      isCompleted: true,
+      mountImageUrl: m.mountImageUrl,
+      sharePath: `/m/${m.completionId}`,
+      completionId: m.completionId,
+      characterImageUrl: null,
+      collectedImageUrls: [],
+    });
+  }
 
   function openSeriesModal(series: CollectionProgress) {
     setCelebrationNonce((n) => n + 1);
@@ -159,13 +172,13 @@ export function MyPageCollections({
 
       {completedMounts.length > 0 ? (
         <div className="mb-4 flex flex-wrap gap-3">
-          {completedMounts.map((m, i) => (
+          {completedMounts.map((m) => (
             <button
               key={m.completionId}
               type="button"
-              onClick={() => setEnlargeIndex(i)}
+              onClick={() => openMountModal(m)}
               className="relative aspect-[525/612] w-24 overflow-hidden rounded-md border border-gray-200"
-              aria-label={`${m.displayName} の台紙を拡大`}
+              aria-label={`${m.displayName} の台紙を表示`}
             >
               <Image
                 src={m.mountImageUrl}
@@ -228,15 +241,6 @@ export function MyPageCollections({
             );
           })}
         </ul>
-      ) : null}
-
-      {enlargeIndex !== null && enlargeImages[enlargeIndex] ? (
-        <ImageModal
-          images={enlargeImages}
-          initialIndex={enlargeIndex}
-          onClose={() => setEnlargeIndex(null)}
-          disablePostAndDownload
-        />
       ) : null}
 
       <CollectionProgressModal
