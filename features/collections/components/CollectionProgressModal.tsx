@@ -117,8 +117,8 @@ function AchievementBadge({ percent }: { percent: number }) {
           .join(" ")}
         fill="url(#badgeFill)"
       />
-      {/* 王冠(シンプル) */}
-      <g transform="translate(50 25)">
+      {/* 王冠(シンプル) - %が真ん中にくるよう下にシフト */}
+      <g transform="translate(50 31)">
         <path
           d="M -7 6 L -7 -1 L -3 3 L 0 -4 L 3 3 L 7 -1 L 7 6 Z"
           fill="#F59E0B"
@@ -130,10 +130,10 @@ function AchievementBadge({ percent }: { percent: number }) {
         <circle cx="0" cy="-4" r="1.3" fill="#F59E0B" />
         <circle cx="7" cy="-1" r="1.2" fill="#F59E0B" />
       </g>
-      {/* 「○○%」(オレンジ・大きめ) */}
+      {/* 「○○%」(オレンジ・大きめ) - バッジ中央に配置 */}
       <text
         x="50"
-        y="58"
+        y="57"
         textAnchor="middle"
         fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
         fontWeight="700"
@@ -142,10 +142,10 @@ function AchievementBadge({ percent }: { percent: number }) {
       >
         {percent}%
       </text>
-      {/* 「達成！」 */}
+      {/* 「達成！」 - %の直下 */}
       <text
         x="50"
-        y="72"
+        y="69"
         textAnchor="middle"
         fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
         fontWeight="700"
