@@ -78,22 +78,9 @@ export function useCollectionProgress() {
         const fromCount = acked;
         const toCount = series.uniqueOutfitCount;
 
-        if (
-          toCount >= series.completionThreshold &&
-          series.mountStatus !== "completed"
-        ) {
-          // 台紙未完成 → 画像選択コンポーザを開く(ack は生成 or 閉じる時)
-          setComposer({
-            categoryKey: series.categoryKey,
-            displayName: series.displayNameJa,
-            threshold: series.completionThreshold,
-            toCount,
-            characterImageUrl: series.characterImageUrl,
-          });
-          return;
-        }
-
-        // 途中経過 or 既に完了済み → 進捗モーダル
+        // 「N種到達 + 台紙未完成」も含めて、まず進捗モーダル(100%アニメ)を見せる。
+        // モーダル内の「台紙を作成する」ボタン押下時に composer を開く流れにする。
+        // ack はここで進める(次回からはモーダルを開かない)。
         setAck(series.categoryKey, toCount);
         setCelebration({
           categoryKey: series.categoryKey,
@@ -123,6 +110,24 @@ export function useCollectionProgress() {
       void evaluate();
     }, 300);
   }, [evaluate]);
+
+  /**
+   * モーダルの「台紙を作成する」ボタン押下時。
+   * モーダルを閉じてから、画像選択コンポーザを開く。
+   */
+  const openComposerFromCelebration = useCallback(
+    (c: CollectionCelebration) => {
+      setCelebration(null);
+      setComposer({
+        categoryKey: c.categoryKey,
+        displayName: c.displayName,
+        threshold: c.threshold,
+        toCount: c.toCount,
+        characterImageUrl: c.characterImageUrl,
+      });
+    },
+    [],
+  );
 
   const onComposerGenerated = useCallback((result: MountGeneratedResult) => {
     const target = composerRef.current;
@@ -165,5 +170,12 @@ export function useCollectionProgress() {
     };
   }, [evaluate]);
 
-  return { celebration, dismiss, composer, closeComposer, onComposerGenerated };
+  return {
+    celebration,
+    dismiss,
+    composer,
+    closeComposer,
+    onComposerGenerated,
+    openComposerFromCelebration,
+  };
 }

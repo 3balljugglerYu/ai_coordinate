@@ -35,6 +35,8 @@ interface Props {
   onClose: () => void;
   /** シェアボタン押下(公開ページURLのシェア)。 */
   onShare?: (celebration: CollectionCelebration) => void;
+  /** N種到達かつ台紙未作成のとき「台紙を作成する」ボタン押下で呼ばれる */
+  onCreateMount?: (celebration: CollectionCelebration) => void;
 }
 
 /**
@@ -189,6 +191,7 @@ export function CollectionProgressModal({
   celebration,
   onClose,
   onShare,
+  onCreateMount,
 }: Props) {
   // リングと %バッジは fromCount → toCount を rAF で滑らかにアニメさせる。
   // 親が celebration ごとに key を変えて再マウントするため、初期値=fromCount で開始し、
@@ -483,18 +486,37 @@ export function CollectionProgressModal({
               );
             })}
 
-            {/* 生成ボタン(透明クリック領域) */}
-            <Link
-              href="/style"
-              aria-label="シールを生成する"
-              className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
-              style={{
-                left: `${layout.button.left}%`,
-                top: `${layout.button.top}%`,
-                width: `${layout.button.width}%`,
-                height: `${layout.button.height}%`,
-              }}
-            />
+            {/* N種到達かつ台紙未作成 → 「台紙を作成する」CTA を土台の生成ボタン領域に
+                  かぶせる(土台PNGの「シールを生成する」を覆い隠す)。
+                それ以外は透明クリック領域で /style へ遷移。 */}
+            {toCount >= threshold && !cIsCompleted && onCreateMount ? (
+              <button
+                type="button"
+                onClick={() => onCreateMount(celebration)}
+                className="absolute flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                style={{
+                  left: `${layout.button.left}%`,
+                  top: `${layout.button.top}%`,
+                  width: `${layout.button.width}%`,
+                  height: `${layout.button.height}%`,
+                  fontFamily: "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                }}
+              >
+                台紙を作成する →
+              </button>
+            ) : (
+              <Link
+                href="/style"
+                aria-label="シールを生成する"
+                className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                style={{
+                  left: `${layout.button.left}%`,
+                  top: `${layout.button.top}%`,
+                  width: `${layout.button.width}%`,
+                  height: `${layout.button.height}%`,
+                }}
+              />
+            )}
           </div>
         ) : (
           /* ===== フォールバック(土台画像未登録シリーズ) ===== */

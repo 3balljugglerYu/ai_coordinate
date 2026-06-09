@@ -11,8 +11,14 @@ import { shareMount } from "@/features/collections/lib/share-mount";
  * 未ログイン時は /api/collections/progress が空配列を返すため何も起きない。
  */
 export function CollectionProgressChecker() {
-  const { celebration, dismiss, composer, closeComposer, onComposerGenerated } =
-    useCollectionProgress();
+  const {
+    celebration,
+    dismiss,
+    composer,
+    closeComposer,
+    onComposerGenerated,
+    openComposerFromCelebration,
+  } = useCollectionProgress();
   return (
     <>
       <CollectionProgressModal
@@ -29,6 +35,7 @@ export function CollectionProgressChecker() {
             void shareMount(c.completionId).catch(() => {});
           }
         }}
+        onCreateMount={openComposerFromCelebration}
       />
       {composer ? (
         <CollectionMountComposer
