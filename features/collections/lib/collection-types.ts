@@ -16,6 +16,8 @@ export interface CollectionProgress {
   completedAt: string | null;
   /** 進捗リング中央に表示するシリーズ用キャラ画像の公開URL(無ければ null) */
   characterImageUrl: string | null;
+  /** 集めたシール(衣装ごと最新1枚)の公開URL。display_order 昇順。モーダルのシール一覧用 */
+  collectedImageUrls: string[];
 }
 
 /** RPC の生レスポンス行(snake_case) */

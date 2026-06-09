@@ -106,6 +106,7 @@ export function useCollectionProgress() {
           sharePath: null,
           completionId: null,
           characterImageUrl: series.characterImageUrl,
+          collectedImageUrls: series.collectedImageUrls ?? [],
         });
         break;
       }
@@ -138,6 +139,7 @@ export function useCollectionProgress() {
       sharePath: result.sharePath,
       completionId: result.completionId,
       characterImageUrl: target?.characterImageUrl ?? null,
+      collectedImageUrls: [],
     });
   }, []);
 

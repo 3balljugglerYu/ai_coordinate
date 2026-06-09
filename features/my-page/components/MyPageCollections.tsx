@@ -114,6 +114,7 @@ export function MyPageCollections({
       sharePath: matched ? `/m/${matched.completionId}` : null,
       completionId: matched?.completionId ?? null,
       characterImageUrl: series.characterImageUrl,
+      collectedImageUrls: series.collectedImageUrls ?? [],
     });
   }
 

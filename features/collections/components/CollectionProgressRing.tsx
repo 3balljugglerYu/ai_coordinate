@@ -20,13 +20,16 @@ export function CollectionProgressRing({
   ratio,
   complete = false,
   imageUrl,
+  tintByProgress = true,
   className,
   children,
 }: {
   ratio: number;
   complete?: boolean;
-  /** 中央に表示するシリーズ用キャラ画像(任意)。未達成は薄く、進捗で色が増える */
+  /** 中央に表示するシリーズ用キャラ画像(任意) */
   imageUrl?: string | null;
+  /** true: 進捗に応じて画像がグレー→カラーに変化。false: 常にフルカラー(枠だけアニメ) */
+  tintByProgress?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
@@ -76,11 +79,16 @@ export function CollectionProgressRing({
             fill
             sizes="200px"
             className="object-cover transition-[filter,opacity] duration-1000 ease-out motion-reduce:transition-none"
-            // 未達成は薄くグレー → 進捗で色が増え、完成でフルカラー
-            style={{
-              filter: `grayscale(${1 - clamped})`,
-              opacity: 0.4 + 0.6 * clamped,
-            }}
+            // tintByProgress=true: 未達成は薄くグレー → 進捗で色が増える
+            // tintByProgress=false: 常にフルカラー(枠だけアニメ)
+            style={
+              tintByProgress
+                ? {
+                    filter: `grayscale(${1 - clamped})`,
+                    opacity: 0.4 + 0.6 * clamped,
+                  }
+                : undefined
+            }
           />
         </div>
       ) : null}

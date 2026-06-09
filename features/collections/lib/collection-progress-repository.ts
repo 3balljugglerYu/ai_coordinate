@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildPublicGeneratedImageUrl } from "./public-mount-server-api";
+import { getRepresentativeImagesForCategory } from "./representative-images";
 import type {
   CollectionProgress,
   CollectionProgressRow,
@@ -44,7 +45,8 @@ export async function getCollectionProgressForUser(
     throw error;
   }
   const rows = (data ?? []) as CollectionProgressRow[];
-  return attachCharacterImages(rows.map(mapProgressRow));
+  const withCharacter = await attachCharacterImages(rows.map(mapProgressRow));
+  return attachCollectedImages(withCharacter, userId);
 }
 
 function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
@@ -60,7 +62,34 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     mountImagePath: row.mount_image_path,
     completedAt: row.completed_at,
     characterImageUrl: null,
+    collectedImageUrls: [],
   };
+}
+
+/**
+ * 各シリーズに「集めたシール画像(衣装ごと最新1枚)」の公開URL配列を付与する。
+ * モーダルのシール一覧(GET! / ?)で使う。最大 completionThreshold 件。
+ */
+async function attachCollectedImages(
+  items: CollectionProgress[],
+  userId: string,
+): Promise<CollectionProgress[]> {
+  if (items.length === 0) return items;
+  return Promise.all(
+    items.map(async (item) => {
+      try {
+        const reps = await getRepresentativeImagesForCategory({
+          userId,
+          categoryId: item.categoryId,
+          limit: item.completionThreshold,
+        });
+        return { ...item, collectedImageUrls: reps.map((r) => r.imageUrl) };
+      } catch {
+        // 画像取得失敗は致命ではない(空配列にフォールバック)
+        return item;
+      }
+    }),
+  );
 }
 
 /**
