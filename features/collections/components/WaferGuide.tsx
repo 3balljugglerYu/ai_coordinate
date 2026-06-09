@@ -73,7 +73,7 @@ function Sparkle({ className }: { className?: string }) {
 const CHARS = [
   {
     no: "01",
-    src: "/collections/wafer/ajisai.png",
+    src: "/collections/wafer/ajisai.webp",
     name: "あじさいノアナ",
     theme: "梅雨もごきげん、青むらさきのワンピース",
     cardBg: "bg-violet-50",
@@ -81,7 +81,7 @@ const CHARS = [
   },
   {
     no: "02",
-    src: "/collections/wafer/hibiscus.png",
+    src: "/collections/wafer/hibiscus.webp",
     name: "ハイビスカスノアナ",
     theme: "常夏アロハで元気いっぱい",
     cardBg: "bg-rose-50",
@@ -89,7 +89,7 @@ const CHARS = [
   },
   {
     no: "03",
-    src: "/collections/wafer/china.png",
+    src: "/collections/wafer/china.webp",
     name: "チャイナノアナ",
     theme: "あでやかチャイナドレス",
     cardBg: "bg-red-50",
@@ -97,7 +97,7 @@ const CHARS = [
   },
   {
     no: "04",
-    src: "/collections/wafer/himawari.png",
+    src: "/collections/wafer/himawari.webp",
     name: "ひまわりノアナ",
     theme: "夏のおひさまカラー",
     cardBg: "bg-amber-50",
@@ -345,7 +345,7 @@ export function WaferGuide({
               </p>
               <div className="relative mx-auto mt-6 aspect-[525/612] w-full max-w-xs overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.12)]">
                 <Image
-                  src="/collections/wafer/complete-sample.png"
+                  src="/collections/wafer/complete-sample.webp"
                   alt="コンプリート台紙のサンプル(全4種のシールが並んだ夏ファッションコレクション)"
                   fill
                   sizes="(max-width: 480px) 80vw, 320px"

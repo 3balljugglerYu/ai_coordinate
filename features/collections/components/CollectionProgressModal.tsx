@@ -43,7 +43,7 @@ interface Props {
  * 画像は public/ 配下。未登録シリーズは簡易レイアウトにフォールバック。
  */
 const FRAME_BY_KEY: Record<string, string> = {
-  collectible_wafer_sticker: "/collections/wafer/modal-frame.png",
+  collectible_wafer_sticker: "/collections/wafer/modal-frame.webp",
 };
 const FRAME_ASPECT = 1086 / 1448; // 土台画像のアスペクト比(W/H)
 
@@ -178,8 +178,34 @@ export function CollectionProgressModal({
     celebration?.fromCount ?? 0,
   );
 
+  // すべての画像 (土台/中央/各シール/台紙) のロードが終わってからアニメ開始。
+  // アニメだけ走って画像が後から出る現象を避ける。Image の onLoad で加算し、
+  // 必要枚数に到達したら ready=true。
+  const [loadedCount, setLoadedCount] = useState(0);
+  const onImgLoad = () => setLoadedCount((c) => c + 1);
+
+  // ready を effect の deps に入れるため、useEffect より前で算出する(null-safe)。
+  const cIsCompleted = celebration?.isCompleted ?? false;
+  const cMountImageUrl = celebration?.mountImageUrl ?? null;
+  const cCharacterImageUrl = celebration?.characterImageUrl ?? null;
+  const cCollectedImageUrls = celebration?.collectedImageUrls ?? [];
+  const cShowMount = cIsCompleted && !!cMountImageUrl;
+  const cFrame = celebration ? (FRAME_BY_KEY[celebration.categoryKey] ?? null) : null;
+  const totalImages = !celebration
+    ? 0
+    : cShowMount
+      ? cMountImageUrl
+        ? 1
+        : 0
+      : cFrame
+        ? 1 + (cCharacterImageUrl ? 1 : 0) + cCollectedImageUrls.length
+        : 0;
+  const ready = totalImages === 0 || loadedCount >= totalImages;
+
+  // ready (全画像ロード完了) を gate にして rAF を開始する。
+  // 親が key で再マウントするので state は再初期化される。
   useEffect(() => {
-    if (!open || !celebration) return;
+    if (!open || !celebration || !ready) return;
     const from = celebration.fromCount;
     const to = celebration.toCount;
     // 即値で揃えるべきケース(同値 or モーション低減)はマイクロタスクで切替し、
@@ -208,24 +234,18 @@ export function CollectionProgressModal({
     };
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [open, celebration]);
+  }, [open, celebration, ready]);
 
   if (!celebration) return null;
 
-  const {
-    categoryKey,
-    displayName,
-    toCount,
-    threshold,
-    isCompleted,
-    mountImageUrl,
-    characterImageUrl,
-    collectedImageUrls,
-  } = celebration;
+  const { displayName, toCount, threshold } = celebration;
+  const mountImageUrl = cMountImageUrl;
+  const characterImageUrl = cCharacterImageUrl;
+  const collectedImageUrls = cCollectedImageUrls;
+  const showMount = cShowMount;
+  const frame = cFrame;
   const ratio = threshold > 0 ? Math.min(1, animatedCount / threshold) : 0;
   const dashoffset = RING_C * (1 - ratio);
-  const showMount = isCompleted && !!mountImageUrl;
-  const frame = FRAME_BY_KEY[categoryKey] ?? null;
 
   // シールは正方形。幅%(=SLOT_D, コンテナ幅基準)を高さ%(コンテナ高さ基準)へ換算する。
   // 正方になるよう height% = SLOT_D × (W/H) = SLOT_D × FRAME_ASPECT。
@@ -274,17 +294,27 @@ export function CollectionProgressModal({
           <span className="sr-only">閉じる</span>
         </DialogClose>
 
+        {/* すべての画像のロード完了まで opacity:0。
+              アニメ(rAF)もこのフラグで開始を gate しているため、
+              絵とアニメが同時に開始される。 */}
+        <div
+          style={{
+            opacity: ready ? 1 : 0,
+            transition: "opacity 220ms ease-out",
+          }}
+        >
         {showMount ? (
           /* ===== 完成: 台紙を表示 ===== */
           <div className="space-y-4 text-center">
             <h2 className="text-xl font-bold text-amber-500">コンプリート！</h2>
             <div className="relative mx-auto aspect-[525/612] w-56 overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]">
               <Image
-                src={mountImageUrl}
+                src={mountImageUrl ?? ""}
                 alt={`${displayName} コンプリート台紙`}
                 fill
                 sizes="224px"
                 className="object-cover"
+                onLoad={onImgLoad}
               />
             </div>
             {onShare ? (
@@ -316,6 +346,7 @@ export function CollectionProgressModal({
               sizes="380px"
               priority
               className="object-contain"
+              onLoad={onImgLoad}
             />
 
             {/* 中央: admin 設定画像で円を塗りつぶし(焼き込みキャラを隠す) */}
@@ -335,6 +366,7 @@ export function CollectionProgressModal({
                   fill
                   sizes="320px"
                   className="object-cover"
+                  onLoad={onImgLoad}
                 />
               </div>
             ) : null}
@@ -412,7 +444,14 @@ export function CollectionProgressModal({
                     aspectRatio: "1 / 1",
                   }}
                 >
-                  <Image src={url} alt="" fill sizes="56px" className="object-cover" />
+                  <Image
+                    src={url}
+                    alt=""
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                    onLoad={onImgLoad}
+                  />
                 </div>
               );
             })}
@@ -453,6 +492,7 @@ export function CollectionProgressModal({
             </Link>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
