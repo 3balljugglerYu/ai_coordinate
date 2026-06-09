@@ -130,7 +130,9 @@ function AchievementBadge({ percent }: { percent: number }) {
         <circle cx="0" cy="-4" r="1.3" fill="#F59E0B" />
         <circle cx="7" cy="-1" r="1.2" fill="#F59E0B" />
       </g>
-      {/* 「○○%」(オレンジ・大きめ) - バッジ中央に配置 */}
+      {/* 「○○%」(オレンジ・大きめ) - バッジ中央に配置
+            カウントアップ後半でぴょこっと拡縮(coll-pop)。SVG <text> は
+            transform-box=fill-box で自身の中心を回転原点にできる。 */}
       <text
         x="50"
         y="57"
@@ -139,6 +141,11 @@ function AchievementBadge({ percent }: { percent: number }) {
         fontWeight="700"
         fontSize="20"
         fill="#F97316"
+        style={{
+          transformBox: "fill-box",
+          transformOrigin: "center",
+          animation: "coll-pop 1400ms ease-out both",
+        }}
       >
         {percent}%
       </text>
@@ -234,6 +241,18 @@ export function CollectionProgressModal({
             : "w-[min(88vw,380px)] border-0 bg-transparent p-0 shadow-none"
         }
       >
+        <style>{`
+          @keyframes coll-pop {
+            0%, 70% { transform: scale(1); }
+            82% { transform: scale(1.24); }
+            92% { transform: scale(0.96); }
+            100% { transform: scale(1); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            @keyframes coll-pop { from,to { transform: scale(1); } }
+          }
+        `}</style>
+
         {/* a11y 用タイトル */}
         <DialogTitle className="sr-only">
           {showMount ? "コンプリート！" : `${displayName} コレクション`}
@@ -360,7 +379,7 @@ export function CollectionProgressModal({
                   strokeLinecap="round"
                   strokeDasharray={RING_C}
                   strokeDashoffset={dashoffset}
-                  className="transition-[stroke-dashoffset] duration-75 ease-linear motion-reduce:transition-none"
+                  className="transition-none motion-reduce:transition-none"
                 />
               </svg>
             </div>
