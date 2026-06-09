@@ -9,7 +9,10 @@ import {
   CollectionProgressModal,
   type CollectionCelebration,
 } from "@/features/collections/components/CollectionProgressModal";
-import { CollectionMountComposer } from "@/features/collections/components/CollectionMountComposer";
+import {
+  CollectionMountComposer,
+  type MountGeneratedResult,
+} from "@/features/collections/components/CollectionMountComposer";
 import { CollectionProgressRing } from "@/features/collections/components/CollectionProgressRing";
 import { shareMount } from "@/features/collections/lib/share-mount";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
@@ -80,12 +83,32 @@ export function MyPageCollections({
     };
   }, []);
 
-  const handleGenerated = useCallback(() => {
-    setComposer(null);
-    void refreshProgress();
-    // サーバー側 cache(完了台紙サムネ)を反映するため再描画
-    router.refresh();
-  }, [refreshProgress, router]);
+  const handleGenerated = useCallback(
+    (result: MountGeneratedResult) => {
+      const target = composer;
+      setComposer(null);
+      // 生成成功 → 完了モーダル(台紙サムネ + シェア)を表示
+      setCelebrationNonce((n) => n + 1);
+      setCelebration({
+        categoryKey: result.categoryKey,
+        displayName: target?.displayName ?? "",
+        // 0 アニメは不要(既に完成)。toCount=threshold で 100% 表示。
+        fromCount: target?.threshold ?? 0,
+        toCount: target?.threshold ?? 0,
+        threshold: target?.threshold ?? 0,
+        isCompleted: true,
+        mountImageUrl: result.mountImageUrl,
+        sharePath: result.sharePath,
+        completionId: result.completionId,
+        characterImageUrl: null,
+        collectedImageUrls: [],
+      });
+      void refreshProgress();
+      // サーバー側 cache(完了台紙サムネ)を反映するため再描画
+      router.refresh();
+    },
+    [composer, refreshProgress, router],
+  );
 
   if (completedMounts.length === 0 && progress.length === 0) {
     return null;

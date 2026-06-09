@@ -150,7 +150,48 @@ export function CollectionMountComposer({
         ) : null}
 
         {status === "generating" ? (
-          <p className="py-6 text-center text-sm text-gray-500">台紙を作成中…</p>
+          <div className="space-y-3 py-3">
+            <p className="text-center text-sm text-gray-500">
+              台紙を作成中…
+            </p>
+            {/* スケルトン: 台紙のアスペクト(525/612) と 2×2 スロットを模した
+                shimmer プレースホルダ */}
+            <div
+              role="status"
+              aria-live="polite"
+              aria-label="台紙を作成中"
+              className="relative mx-auto aspect-[525/612] w-56 overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-amber-50 via-rose-50 to-violet-50"
+            >
+              <style>{`
+                @keyframes coll-shimmer {
+                  0%   { transform: translateX(-120%); }
+                  100% { transform: translateX(120%); }
+                }
+                .coll-shimmer-bar { animation: coll-shimmer 1.6s linear infinite; }
+                @media (prefers-reduced-motion: reduce){
+                  .coll-shimmer-bar { animation: none; }
+                }
+              `}</style>
+              {/* 2×2 スロット枠 */}
+              <div className="absolute inset-0 grid grid-cols-2 gap-3 p-5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="relative overflow-hidden rounded-md bg-white/70"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-100 via-rose-100 to-sky-100" />
+                  </div>
+                ))}
+              </div>
+              {/* 斜め shimmer */}
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                <div
+                  className="coll-shimmer-bar absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/65 to-transparent"
+                  aria-hidden
+                />
+              </div>
+            </div>
+          </div>
         ) : null}
 
         {status === "error" ? (
