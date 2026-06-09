@@ -164,19 +164,43 @@ export function CollectionProgressModal({
   onClose,
   onShare,
 }: Props) {
-  // リングは fromCount から toCount へアニメーションさせる。
+  // リングと %バッジは fromCount → toCount を rAF で滑らかにアニメさせる。
   // 親が celebration ごとに key を変えて再マウントするため、初期値=fromCount で開始し、
-  // effect 内では timeout(非同期)でのみ toCount へ更新する(同期 setState を避ける)。
+  // effect 内で requestAnimationFrame を回して animatedCount を非同期に更新する。
   const [animatedCount, setAnimatedCount] = useState(
     celebration?.fromCount ?? 0,
   );
 
   useEffect(() => {
     if (!open || !celebration) return;
-    const id = window.setTimeout(() => {
-      setAnimatedCount(celebration.toCount);
-    }, 80);
-    return () => window.clearTimeout(id);
+    const from = celebration.fromCount;
+    const to = celebration.toCount;
+    // 即値で揃えるべきケース(同値 or モーション低減)はマイクロタスクで切替し、
+    // effect 中の同期 setState(cascading render) を避ける。
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (from === to || reduce) {
+      let canceled = false;
+      queueMicrotask(() => {
+        if (!canceled) setAnimatedCount(to);
+      });
+      return () => {
+        canceled = true;
+      };
+    }
+    const duration = 1100; // ms
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+    let raf = 0;
+    let startTs: number | null = null;
+    const tick = (now: number) => {
+      if (startTs === null) startTs = now;
+      const t = Math.min(1, (now - startTs) / duration);
+      setAnimatedCount(from + (to - from) * easeOut(t));
+      if (t < 1) raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
   }, [open, celebration]);
 
   if (!celebration) return null;
@@ -336,7 +360,7 @@ export function CollectionProgressModal({
                   strokeLinecap="round"
                   strokeDasharray={RING_C}
                   strokeDashoffset={dashoffset}
-                  className="transition-[stroke-dashoffset] duration-1000 ease-out motion-reduce:transition-none"
+                  className="transition-[stroke-dashoffset] duration-75 ease-linear motion-reduce:transition-none"
                 />
               </svg>
             </div>
