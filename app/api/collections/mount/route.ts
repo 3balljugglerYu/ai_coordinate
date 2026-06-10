@@ -9,7 +9,9 @@ import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib
 import { composeMount } from "@/features/collections/lib/compose-mount";
 import {
   composeMountOgp,
+  composeMountOgpFromTemplate,
   ogpPathFromMountPath,
+  parseOgpMountPlacement,
 } from "@/features/collections/lib/compose-mount-ogp";
 import { getRepresentativeImagesForCategory } from "@/features/collections/lib/representative-images";
 import { resolveSelectedImages } from "@/features/collections/lib/resolve-selected-images";
@@ -183,7 +185,7 @@ export async function POST(request: NextRequest) {
     const { data: category, error: categoryError } = await admin
       .from("preset_categories")
       .select(
-        "id, mount_template_path, mount_layout, completion_threshold, visibility, display_name_ja",
+        "id, mount_template_path, mount_layout, completion_threshold, visibility, display_name_ja, ogp_template_path, ogp_mount_placement",
       )
       .eq("key", categoryKey)
       .eq("is_collection_series", true)
@@ -248,10 +250,33 @@ export async function POST(request: NextRequest) {
 
     // OGP 用 1200x630(X summary_large_image / OGP 2:1) を併せて生成・アップ。
     // パスは mount-{ts}.png → ogp-{ts}.png の対応。失敗してもメイン処理は止めない。
+    // カテゴリにデザインテンプレート(ogp_template_path)があればテンプレート合成、
+    // 無ければ従来の SVG 合成。テンプレート起因の失敗は SVG 合成へフォールバック。
     try {
       const ogpPath = ogpPathFromMountPath(mountStoragePath);
       if (ogpPath) {
-        const ogpPng = await composeMountOgp({
+        const ogpTemplatePath = category.ogp_template_path as string | null;
+        let ogpPng: Buffer | null = null;
+        if (ogpTemplatePath) {
+          try {
+            const ogpTemplatePng = await downloadBuffer(
+              admin,
+              TEMPLATE_BUCKET,
+              ogpTemplatePath,
+            );
+            ogpPng = await composeMountOgpFromTemplate({
+              templatePng: ogpTemplatePng,
+              mountPng,
+              placement: parseOgpMountPlacement(category.ogp_mount_placement),
+            });
+          } catch (templateError) {
+            console.error(
+              "collection mount OGP template compose failed (fallback to default design):",
+              templateError,
+            );
+          }
+        }
+        ogpPng ??= await composeMountOgp({
           mountPng,
           displayName: (category.display_name_ja as string | null) ?? "",
           threshold: threshold ?? undefined,

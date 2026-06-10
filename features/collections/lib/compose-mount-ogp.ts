@@ -219,6 +219,137 @@ function buildSparkles(
   return out;
 }
 
+/** OGP テンプレート上への台紙配置(1200x630 座標系) */
+export type OgpMountPlacement = {
+  /** 台紙中心の x 座標 */
+  cx: number;
+  /** 台紙中心の y 座標 */
+  cy: number;
+  /** 回転前の台紙幅(px)。高さは台紙の縦横比から決まる */
+  width: number;
+  /** 時計回りの回転角(度) */
+  rotate: number;
+};
+
+export const DEFAULT_OGP_MOUNT_PLACEMENT: OgpMountPlacement = {
+  cx: 800,
+  cy: 315,
+  width: 366,
+  rotate: 2.5,
+};
+
+/**
+ * preset_categories.ogp_mount_placement(JSONB) を検証して返す。
+ * 不正・欠損フィールドは既定値で補う。
+ */
+export function parseOgpMountPlacement(raw: unknown): OgpMountPlacement {
+  const d = DEFAULT_OGP_MOUNT_PLACEMENT;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return { ...d };
+  }
+  const obj = raw as Record<string, unknown>;
+  const num = (v: unknown, fallback: number, min: number, max: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= min && v <= max
+      ? v
+      : fallback;
+  return {
+    cx: num(obj.cx, d.cx, 0, 1200),
+    cy: num(obj.cy, d.cy, 0, 630),
+    width: num(obj.width, d.width, 50, 1200),
+    rotate: num(obj.rotate, d.rotate, -45, 45),
+  };
+}
+
+/**
+ * カテゴリ別デザインテンプレート(1200x630)に実物のコンプリート台紙を
+ * 重ねて OGP 画像を生成する。テンプレートが設定されていないカテゴリは
+ * 従来の composeMountOgp(SVG 合成)を使うこと。
+ *
+ * 合成手順:
+ *  1. テンプレートを 1200x630 に cover リサイズ
+ *  2. 台紙を placement.width に等比縮小し、ソフトシャドウを敷く
+ *  3. placement.rotate 度回転し、(cx, cy) 中心に配置
+ *  4. キャンバス外にはみ出す部分は事前クロップ(sharp は負座標を許容しない)
+ */
+export async function composeMountOgpFromTemplate(params: {
+  templatePng: Buffer;
+  mountPng: Buffer;
+  placement?: OgpMountPlacement;
+}): Promise<Buffer> {
+  const W = 1200;
+  const H = 630;
+  const p = params.placement ?? DEFAULT_OGP_MOUNT_PLACEMENT;
+
+  const background = await sharp(params.templatePng)
+    .resize(W, H, { fit: "cover" })
+    .png()
+    .toBuffer();
+
+  // 台紙を等比縮小(幅 placement.width)
+  const mountMeta = await sharp(params.mountPng).metadata();
+  const srcW = mountMeta.width ?? 1024;
+  const srcH = mountMeta.height ?? 1608;
+  const width = Math.round(p.width);
+  const height = Math.round((width * srcH) / srcW);
+  const resizedMount = await sharp(params.mountPng)
+    .resize(width, height)
+    .png()
+    .toBuffer();
+
+  // ソフトシャドウ(SVG)の上に台紙を載せ、ひとつのレイヤーにする
+  const pad = 30;
+  const shadowSvg = Buffer.from(
+    `<svg width="${width + pad * 2}" height="${height + pad * 2}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="8"/>
+        </filter>
+      </defs>
+      <rect x="${pad}" y="${pad + 7}" width="${width}" height="${height}" rx="8" fill="#8a5a3a" opacity="0.38" filter="url(#blur)"/>
+    </svg>`,
+  );
+  const mountLayer = await sharp(shadowSvg)
+    .composite([{ input: resizedMount, left: pad, top: pad }])
+    .png()
+    .toBuffer();
+
+  const rotated = await sharp(mountLayer)
+    .rotate(p.rotate, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+  const rotatedMeta = await sharp(rotated).metadata();
+  const rw = rotatedMeta.width ?? width;
+  const rh = rotatedMeta.height ?? height;
+
+  const left = Math.round(p.cx - rw / 2);
+  const top = Math.round(p.cy - rh / 2);
+
+  // キャンバスからはみ出す部分をクロップ
+  const cropLeft = Math.max(0, -left);
+  const cropTop = Math.max(0, -top);
+  const cropWidth = Math.min(rw - cropLeft, W - Math.max(0, left));
+  const cropHeight = Math.min(rh - cropTop, H - Math.max(0, top));
+  if (cropWidth <= 0 || cropHeight <= 0) {
+    throw new Error("ogp mount placement is out of canvas");
+  }
+  const clipped = await sharp(rotated)
+    .extract({
+      left: cropLeft,
+      top: cropTop,
+      width: cropWidth,
+      height: cropHeight,
+    })
+    .png()
+    .toBuffer();
+
+  return sharp(background)
+    .composite([
+      { input: clipped, left: Math.max(0, left), top: Math.max(0, top) },
+    ])
+    .png()
+    .toBuffer();
+}
+
 function escapeXml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
