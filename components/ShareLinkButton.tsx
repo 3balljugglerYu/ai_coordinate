@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,14 +65,20 @@ export function ShareLinkButton({
   children,
 }: ShareLinkButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  // SSR とハイドレーション初回は必ず PC 分岐を描画し、マウント後に UA 判定で
+  // モバイル分岐へ切り替える(レンダー中に navigator を参照すると SSR との
+  // 構造差で hydration mismatch になる)。両分岐ともトリガーの見た目は
+  // 同一なので、切替によるちらつきはない。
+  const [isMobile, setIsMobile] = useState(false);
   const { toast } = useToast();
 
-  const resolveUrl = () => (typeof url === "function" ? url() : url);
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      setIsMobile(/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    }
+  }, []);
 
-  const isMobile = () => {
-    if (typeof navigator === "undefined") return false;
-    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  };
+  const resolveUrl = () => (typeof url === "function" ? url() : url);
 
   const showError = (description: string) => {
     toast({
@@ -154,7 +160,7 @@ export function ShareLinkButton({
     </Button>
   );
 
-  if (isMobile()) {
+  if (isMobile) {
     return triggerButton(() => {
       void handleMobileShare();
     });
