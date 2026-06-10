@@ -297,6 +297,15 @@ export function getAdminUserIds(): string[] {
 }
 
 /**
+ * フル管理者かどうかを判定する。
+ * moderation / 未投稿閲覧 / admin route など、運用権限が必要な箇所ではこれを使う。
+ */
+export function isFullAdmin(userId: string | null | undefined): boolean {
+  if (!userId) return false;
+  return getAdminUserIds().includes(userId);
+}
+
+/**
  * プレビュー権限ユーザー (= admin_only コンテンツ閲覧のみ許可) のIDリストを取得。
  * /admin/* 管理画面・requireAdmin で守られている API は許可しない (=擬似 admin)。
  * カンマ区切り、空なら空配列。
@@ -313,7 +322,7 @@ export function getAdminPreviewUserIds(): string[] {
 export function isAdminViewer(userId: string | null | undefined): boolean {
   if (!userId) return false;
   return (
-    getAdminUserIds().includes(userId) ||
+    isFullAdmin(userId) ||
     getAdminPreviewUserIds().includes(userId)
   );
 }

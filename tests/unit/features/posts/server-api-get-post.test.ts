@@ -22,6 +22,7 @@ jest.mock("@/lib/auth", () => ({
 
 jest.mock("@/lib/env", () => ({
   getAdminUserIds: jest.fn(() => []),
+  isFullAdmin: jest.fn(() => false),
 }));
 
 jest.mock("@/features/generation/lib/prompt-visibility", () => ({

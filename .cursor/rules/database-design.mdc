@@ -348,7 +348,7 @@ alwaysApply: false
 - 主要カラム: `user_id`, `category_id`, `category_key`, `threshold_at_completion`, `mount_image_path`, `mount_status`, `mount_error`, `completed_at`, `created_at`, `updated_at`
 - 外部キー: `user_id -> auth.users.id` (`ON DELETE CASCADE`), `category_id -> preset_categories.id` (`ON DELETE RESTRICT`)
 - 制約: `(user_id, category_id)` UNIQUE、`mount_status IN ('generating','completed','failed')`
-- 備考: コレクション台紙生成の予約・完了状態。生成済み台紙は `generated-images/collection-mounts/{userId}/{categoryKey}/mount.png` に保存し、公開ページ `/m/{id}` で link-only 表示する。
+- 備考: コレクション台紙生成の予約・完了状態。生成済み台紙は `generated-images/collection-mounts/{userId}/{categoryKey}/mount-{timestamp}.png` に保存し、公開ページ `/m/{id}` で link-only 表示する。
 - RLS: 本人 `SELECT` のみ。書き込みは `reserve_collection_completion`（authenticated）と service role route 専用の `finalize_collection_completion` / `fail_collection_completion` に限定
 
 #### `prompt_overrides`

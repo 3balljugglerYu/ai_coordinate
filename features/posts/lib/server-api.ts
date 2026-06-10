@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUser } from "@/lib/auth";
-import { isAdminViewer as checkIsAdminViewer } from "@/lib/env";
+import { isFullAdmin } from "@/lib/env";
 import { sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
 import type {
@@ -690,7 +690,7 @@ export const getPost = cache(async (
 ): Promise<Post | null> => {
   const supabase = supabaseOverride ?? (await createClient());
   const useCache = !!supabaseOverride;
-  const isAdminViewer = checkIsAdminViewer(currentUserId);
+  const isFullAdminViewer = isFullAdmin(currentUserId);
 
   // まず画像を取得（is_postedの条件なし）
   const { data, error } = await supabase
@@ -707,7 +707,7 @@ export const getPost = cache(async (
 
   // 投稿済みの場合は全ユーザーが閲覧可能
   // 未投稿の場合は所有者または管理者のみ閲覧可能
-  if (!data.is_posted && !isPostOwner && !isAdminViewer) {
+  if (!data.is_posted && !isPostOwner && !isFullAdminViewer) {
     return null;
   }
 
@@ -715,7 +715,7 @@ export const getPost = cache(async (
     data.is_posted &&
     data.moderation_status &&
     data.moderation_status !== "visible" &&
-    !isAdminViewer
+    !isFullAdminViewer
   ) {
     // 投稿者本人は自分の pending 投稿を閲覧できる（フィードから消えていることに気づかせる）。
     // ただし removed は本人にも表示しない。
@@ -726,7 +726,7 @@ export const getPost = cache(async (
     }
   }
 
-  if (currentUserId && data.user_id && !isAdminViewer) {
+  if (currentUserId && data.user_id && !isFullAdminViewer) {
     const [{ data: blockAsBlocker }, { data: blockAsBlocked }, { data: reportRow }] =
       await Promise.all([
         supabase

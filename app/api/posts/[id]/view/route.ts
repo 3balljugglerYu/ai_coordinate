@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { incrementViewCount } from "@/features/posts/lib/server-api";
 import { getPost } from "@/features/posts/lib/server-api";
 import { getUser } from "@/lib/auth";
-import { isAdminViewer as checkIsAdminViewer } from "@/lib/env";
+import { isFullAdmin } from "@/lib/env";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
@@ -18,7 +18,7 @@ export async function POST(
   try {
     const user = await getUser();
     const currentUserId = user?.id ?? null;
-    const isAdminViewer = checkIsAdminViewer(currentUserId);
+    const isFullAdminViewer = isFullAdmin(currentUserId);
 
     const { id } = await params;
 
@@ -40,7 +40,7 @@ export async function POST(
     }
 
     // 管理者閲覧は監視目的のためカウントしない
-    if (isAdminViewer) {
+    if (isFullAdminViewer) {
       return NextResponse.json({ success: true, counted: false });
     }
 

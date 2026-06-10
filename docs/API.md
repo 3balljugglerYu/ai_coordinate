@@ -162,7 +162,7 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
 
 - Behavior:
   - `reserve_collection_completion()` で N 到達を再検証し、`generating` 行を予約します。
-  - 既存 `completed` は再生成せず既存 URL を返します。
+  - 既存 `completed` は、ユーザーが選択を変えて更新する場合のみ再生成し、Storage path を更新します。
   - 既存 `generating` は `202` を返し、クライアントは後続 polling で再確認します。
   - route handler が sharp 合成、Storage upload、service-role 専用 `finalize_collection_completion()` を実行します。
 
@@ -171,7 +171,7 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
 ```json
 {
   "status": "completed",
-  "mountImageUrl": "https://.../storage/v1/object/public/generated-images/collection-mounts/user/category/mount.png",
+  "mountImageUrl": "https://.../storage/v1/object/public/generated-images/collection-mounts/user/category/mount-1717999999999.png?v=1717999999999",
   "sharePath": "/m/completion-id"
 }
 ```
