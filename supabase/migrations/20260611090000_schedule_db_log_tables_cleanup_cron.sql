@@ -38,10 +38,12 @@ BEGIN
     PERFORM cron.unschedule(v_existing_job_id);
   END IF;
 
+  -- start_time 基準で削除する (= クラッシュ等で end_time が NULL のまま残った
+  -- 行も確実に掃除するため。start_time は常に記録される)
   PERFORM cron.schedule(
     'cleanup_cron_job_run_details_daily',
     '0 19 * * *',
-    $$DELETE FROM cron.job_run_details WHERE end_time < now() - interval '7 days'$$
+    $$DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days'$$
   );
 END;
 $do$;
@@ -49,6 +51,12 @@ $do$;
 -- net._http_response の VACUUM (毎週日曜 19:30 UTC = JST 月曜 4:30)
 -- NOTE: VACUUM はトランザクション内で実行できないため、pg_cron の
 --       バックグラウンドワーカー経由で直接実行する (公式サポートパターン)。
+-- 権限検証 (2026-06-11、本番 PostgreSQL 17.6 にて):
+--   - postgres ロールでの VACUUM net._http_response → 成功
+--     (cron ジョブも postgres ロールで実行されるため実行時エラーにならない)
+--   - 代替案の ALTER TABLE net._http_response SET (autovacuum_*) は
+--     「must be owner of table _http_response」(owner は supabase_admin) で
+--     実行不可のため採用できない。週次 VACUUM はその範囲での安全網。
 DO $do$
 DECLARE
   v_existing_job_id BIGINT;
