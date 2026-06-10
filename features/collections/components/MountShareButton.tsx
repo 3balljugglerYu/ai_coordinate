@@ -1,69 +1,70 @@
 "use client";
 
 import { useState } from "react";
-import { shareMount } from "../lib/share-mount";
+import { ShareLinkButton } from "@/components/ShareLinkButton";
+import { useToast } from "@/components/ui/use-toast";
+import { shareOrDownloadGeneratedImage } from "@/features/generation/lib/download-image";
+import { MOUNT_SHARE_MESSAGES } from "../lib/mount-share-messages";
+import { buildPublicMountUrl, trackMountShareEvent } from "../lib/share-mount";
 
 /**
  * 公開台紙ページで「所有者のみ」に表示するシェア/保存ボタン。
- * シェアは公開ページURLの URL 共有(shareMount)。保存は台紙画像のダウンロード。
+ * シェアは posts と同じ汎用 ShareLinkButton(モバイル=シェアシート、
+ * PC=コピー/Web Share メニュー)で、成功時に share-event を計測する。
+ * 保存は style 画面の生成一覧と同じ共通ヘルパに委譲する
+ * (モバイル=Web Share のシェアシート、PC=ブラウザDL)。
  */
 export function MountShareButton({
   completionId,
   mountImageUrl,
-  displayName,
 }: {
   completionId: string;
   mountImageUrl: string;
-  displayName: string;
 }) {
-  const [busy, setBusy] = useState(false);
-
-  async function handleShare() {
-    setBusy(true);
-    try {
-      await shareMount(completionId, mountImageUrl);
-    } catch {
-      // ユーザーキャンセル等は無視
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [downloading, setDownloading] = useState(false);
+  const { toast } = useToast();
 
   async function handleDownload() {
-    setBusy(true);
+    setDownloading(true);
     try {
-      const res = await fetch(mountImageUrl, { mode: "cors" });
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = `${displayName || "collection"}-mount.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      // 失敗時は新規タブで開く(最低限の保存導線)
-      window.open(mountImageUrl, "_blank", "noopener,noreferrer");
+      // リストタブの ja.ts と同じ文言を直書き(i18n は Phase 7)。
+      await shareOrDownloadGeneratedImage(
+        { id: completionId, url: mountImageUrl },
+        {
+          accessDenied:
+            "画像へのアクセス権限がありません。認証が必要な可能性があります。",
+          fetchFailed: (statusText) =>
+            `画像の取得に失敗しました: ${statusText}`,
+        },
+      );
+    } catch (error) {
+      console.error("ダウンロードエラー:", error);
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : "画像のダウンロードに失敗しました",
+        variant: "destructive",
+      });
     } finally {
-      setBusy(false);
+      setDownloading(false);
     }
   }
 
   return (
     <div className="flex flex-wrap justify-center gap-3">
-      <button
-        type="button"
-        onClick={handleShare}
-        disabled={busy}
-        className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+      <ShareLinkButton
+        url={() => buildPublicMountUrl(completionId, mountImageUrl)}
+        messages={MOUNT_SHARE_MESSAGES}
+        onShared={() => trackMountShareEvent(completionId)}
+        className="px-5"
       >
         台紙をシェアする
-      </button>
+      </ShareLinkButton>
       <button
         type="button"
         onClick={handleDownload}
-        disabled={busy}
+        disabled={downloading}
         className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
       >
         画像を保存

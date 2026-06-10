@@ -3,7 +3,6 @@
 import { CollectionProgressModal } from "@/features/collections/components/CollectionProgressModal";
 import { CollectionMountComposer } from "@/features/collections/components/CollectionMountComposer";
 import { useCollectionProgress } from "@/features/collections/hooks/useCollectionProgress";
-import { shareMount } from "@/features/collections/lib/share-mount";
 
 /**
  * 全画面共通のコレクション進捗チェッカー。AppShell にマウントし、
@@ -30,11 +29,6 @@ export function CollectionProgressChecker() {
         open={!!celebration}
         celebration={celebration}
         onClose={dismiss}
-        onShare={(c) => {
-          if (c.completionId) {
-            void shareMount(c.completionId, c.mountImageUrl).catch(() => {});
-          }
-        }}
         onCreateMount={openComposerFromCelebration}
       />
       {composer ? (

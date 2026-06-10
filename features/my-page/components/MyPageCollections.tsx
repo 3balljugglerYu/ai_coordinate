@@ -14,7 +14,6 @@ import {
 } from "@/features/collections/components/CollectionMountComposer";
 import { CollectionProgressRing } from "@/features/collections/components/CollectionProgressRing";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
-import { shareMount } from "@/features/collections/lib/share-mount";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
 
 interface ComposerTarget {
@@ -309,11 +308,6 @@ export function MyPageCollections({
         open={!!celebration}
         celebration={celebration}
         onClose={() => setCelebration(null)}
-        onShare={(c) => {
-          if (c.completionId) {
-            void shareMount(c.completionId, c.mountImageUrl).catch(() => {});
-          }
-        }}
         onCreateMount={openComposerFromCelebration}
       />
 

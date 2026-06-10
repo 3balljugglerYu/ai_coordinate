@@ -9,7 +9,13 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
+import { MOUNT_SHARE_MESSAGES } from "@/features/collections/lib/mount-share-messages";
+import {
+  buildPublicMountUrl,
+  trackMountShareEvent,
+} from "@/features/collections/lib/share-mount";
 
 export interface CollectionCelebration {
   categoryKey: string;
@@ -39,8 +45,6 @@ interface Props {
   open: boolean;
   celebration: CollectionCelebration | null;
   onClose: () => void;
-  /** シェアボタン押下(公開ページURLのシェア)。 */
-  onShare?: (celebration: CollectionCelebration) => void;
   /** N種到達かつ台紙未作成のとき「台紙を作成する」ボタン押下で呼ばれる */
   onCreateMount?: (celebration: CollectionCelebration) => void;
 }
@@ -202,7 +206,6 @@ export function CollectionProgressModal({
   open,
   celebration,
   onClose,
-  onShare,
   onCreateMount,
 }: Props) {
   // リングと %バッジは fromCount → toCount を rAF で滑らかにアニメさせる。
@@ -282,7 +285,7 @@ export function CollectionProgressModal({
 
   if (!celebration) return null;
 
-  const { displayName, toCount, threshold } = celebration;
+  const { displayName, toCount, threshold, completionId } = celebration;
   const mountImageUrl = cMountImageUrl;
   const characterImageUrl = cCharacterImageUrl;
   const collectedImageUrls = cCollectedImageUrls;
@@ -397,14 +400,17 @@ export function CollectionProgressModal({
                 onError={onImgLoad}
               />
             </div>
-            {onShare ? (
-              <button
-                type="button"
-                onClick={() => onShare(celebration)}
-                className="w-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.4)] transition-transform hover:-translate-y-0.5"
+            {completionId ? (
+              /* posts / /m と同じ共有 UI(モバイル=シェアシート、PC=コピー/Web Share
+                 メニュー)。成功時に share-event を計測する。 */
+              <ShareLinkButton
+                url={() => buildPublicMountUrl(completionId, mountImageUrl)}
+                messages={MOUNT_SHARE_MESSAGES}
+                onShared={() => trackMountShareEvent(completionId)}
+                className="h-auto w-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.4)] transition-transform hover:-translate-y-0.5"
               >
                 台紙をシェアする
-              </button>
+              </ShareLinkButton>
             ) : null}
             {celebration.sharePath ? (
               <Link
