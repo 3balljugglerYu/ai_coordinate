@@ -28,7 +28,8 @@ interface StylePresetPreviewCardData {
   hasBackgroundPrompt: boolean;
   /**
    * 紐づく preset_categories のサマリ。`coordinate` (= default) はバッジ非表示で
-   * 既存挙動と同じ見た目を保つ。それ以外のカテゴリのみバッジを左上に表示する。
+   * 既存挙動と同じ見た目を保つ。それ以外のカテゴリのみバッジをサムネ画像の
+   * 左下に表示する(キャラの顔まわりをバッジで覆わないための配置)。
    */
   category?: StylePresetPreviewCardCategory;
 }
@@ -103,7 +104,7 @@ export function StylePresetPreviewCard({
           />
           {shouldShowBadge && preset.category && (
             <span
-              className="absolute left-1.5 top-1.5 inline-flex max-w-[80%] items-center truncate rounded px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
+              className="absolute bottom-1.5 left-1.5 inline-flex max-w-[80%] items-center truncate rounded px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
               style={{
                 backgroundColor: preset.category.badgeColor,
                 color: preset.category.badgeTextColor,
