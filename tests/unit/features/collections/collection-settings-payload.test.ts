@@ -114,4 +114,60 @@ describe("parseCollectionSettings", () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.payload.isCollectionSeries).toBe(false);
   });
+
+  test("表示期間: 有効な ISO 文字列は正規化して受理、null はクリア", () => {
+    const r = parseCollectionSettings(
+      {
+        collection_display_starts_at: "2026-07-01T00:00:00+09:00",
+        collection_display_ends_at: null,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.collectionDisplayStartsAt).toBe(
+        new Date("2026-07-01T00:00:00+09:00").toISOString(),
+      );
+      expect(r.payload.collectionDisplayEndsAt).toBeNull();
+    }
+  });
+
+  test("表示期間: 解釈できない日時文字列は拒否", () => {
+    expect(
+      parseCollectionSettings(
+        { collection_display_starts_at: "not-a-date" },
+        OFF,
+      ).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings({ collection_display_ends_at: "" }, OFF).ok,
+    ).toBe(false);
+  });
+
+  test("表示期間: 開始 >= 終了は拒否", () => {
+    const r = parseCollectionSettings(
+      {
+        collection_display_starts_at: "2026-07-31T00:00:00Z",
+        collection_display_ends_at: "2026-07-01T00:00:00Z",
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  test("表示期間 PATCH: 既存の開始と矛盾する終了のみの変更は拒否", () => {
+    const r = parseCollectionSettings(
+      { collection_display_ends_at: "2026-06-01T00:00:00Z" },
+      { ...ON, collectionDisplayStartsAt: "2026-07-01T00:00:00Z" },
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  test("表示期間 PATCH: 既存の開始より後の終了のみの変更は ok", () => {
+    const r = parseCollectionSettings(
+      { collection_display_ends_at: "2026-08-01T00:00:00Z" },
+      { ...ON, collectionDisplayStartsAt: "2026-07-01T00:00:00Z" },
+    );
+    expect(r.ok).toBe(true);
+  });
 });

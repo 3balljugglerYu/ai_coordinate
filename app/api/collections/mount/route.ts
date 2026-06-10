@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { isAdminViewer } from "@/lib/env";
+import { isCollectionDisplayPeriodActive } from "@/features/collections/lib/collection-display-period";
 import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
 import { composeMount } from "@/features/collections/lib/compose-mount";
 import {
@@ -78,6 +79,47 @@ export async function POST(request: NextRequest) {
       return jsonError("不正な選択です", "INVALID_SELECTIONS", 400);
     }
     selections = selectionsRaw as Record<string, string>;
+  }
+
+  // 2.5) 表示期間ガード。期間外は「達成済み(completed)ユーザーの台紙更新」のみ
+  // 許可する(admin はプレビュー可)。reserve より前に弾くことで、期間外の未達成
+  // ユーザーが completion 行を新規作成してしまうのを防ぐ。
+  const adminForGuard = createAdminClient();
+  const { data: categoryGuard } = await adminForGuard
+    .from("preset_categories")
+    .select("id, visibility, collection_display_starts_at, collection_display_ends_at")
+    .eq("key", categoryKey)
+    .eq("is_collection_series", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!categoryGuard) {
+    return jsonError("コレクションが見つかりません", "CATEGORY_NOT_FOUND", 404);
+  }
+  const isAdmin = isAdminViewer(user.id);
+  if (categoryGuard.visibility !== "public" && !isAdmin) {
+    return jsonError("コレクションが見つかりません", "CATEGORY_NOT_FOUND", 404);
+  }
+  const periodActive = isCollectionDisplayPeriodActive({
+    collectionDisplayStartsAt:
+      (categoryGuard.collection_display_starts_at as string | null) ?? null,
+    collectionDisplayEndsAt:
+      (categoryGuard.collection_display_ends_at as string | null) ?? null,
+  });
+  if (!isAdmin && !periodActive) {
+    const { data: completed } = await adminForGuard
+      .from("collection_completions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("category_id", categoryGuard.id as string)
+      .eq("mount_status", "completed")
+      .maybeSingle();
+    if (!completed) {
+      return jsonError(
+        "コレクションの開催期間外です",
+        "OUT_OF_DISPLAY_PERIOD",
+        403,
+      );
+    }
   }
 
   // 3) 予約(N到達をサーバー側で再検証。冪等)

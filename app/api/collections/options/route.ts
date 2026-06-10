@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminViewer } from "@/lib/env";
+import { isCollectionDisplayPeriodActive } from "@/features/collections/lib/collection-display-period";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
@@ -45,6 +46,20 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  // 表示期間外は「達成済み(completed)ユーザーの台紙更新」のみ許可(admin はプレビュー可)
+  if (!isAdmin && !isCollectionDisplayPeriodActive(category)) {
+    const { data: completed } = await admin
+      .from("collection_completions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("category_id", category.id)
+      .eq("mount_status", "completed")
+      .maybeSingle();
+    if (!completed) {
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+  }
   const { data: presets, error: presetError } = await admin
     .from("style_presets")
     .select("id, sort_order")

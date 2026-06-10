@@ -49,6 +49,46 @@ export function MyPageCollections({
   // タップのたびにモーダルを再マウントしてバーを 0 から再アニメさせるための nonce
   const [celebrationNonce, setCelebrationNonce] = useState(0);
   const [composer, setComposer] = useState<ComposerTarget | null>(null);
+  // 「台紙を更新する」の表示可否と threshold のカテゴリ別キャッシュ。
+  // マウント時に先読みし、サムネクリック時は即時反映する。
+  const [recomposeInfo, setRecomposeInfo] = useState<
+    Record<string, { threshold: number; canRecompose: boolean }>
+  >({});
+
+  const loadRecomposeInfo = useCallback(async (categoryKey: string) => {
+    try {
+      const r = await fetch(
+        `/api/collections/options?categoryKey=${encodeURIComponent(categoryKey)}`,
+        { cache: "no-store" },
+      );
+      if (!r.ok) return null;
+      const d = (await r.json()) as {
+        threshold?: number | null;
+        outfits?: { images: unknown[] }[];
+      };
+      const outfits = d.outfits ?? [];
+      const threshold = d.threshold ?? 0;
+      const info = {
+        threshold,
+        canRecompose:
+          threshold > 0 &&
+          outfits.length >= threshold &&
+          outfits.some((o) => o.images.length > 1),
+      };
+      setRecomposeInfo((prev) => ({ ...prev, [categoryKey]: info }));
+      return info;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // 完了サムネのカテゴリぶんを先読み(数件想定)。失敗してもシェア等には影響しない。
+  useEffect(() => {
+    const keys = [...new Set(completedMounts.map((m) => m.categoryKey))];
+    void (async () => {
+      await Promise.all(keys.map((key) => loadRecomposeInfo(key)));
+    })();
+  }, [completedMounts, loadRecomposeInfo]);
 
   const refreshProgress = useCallback(async () => {
     try {
@@ -116,22 +156,41 @@ export function MyPageCollections({
   /**
    * サムネクリックで「台紙 + シェアボタン」のモーダル(完了モード)を表示。
    * 拡大表示と兼ねるため CollectionProgressModal の完了ビューを再利用する。
+   * 「台紙を更新する」(canRecompose) と threshold は先読みキャッシュから即時反映し、
+   * 未取得ならフォールバックで取得して反映する
+   * (進捗カードが非表示でも完了サムネから台紙を更新できるようにするため)。
    */
   function openMountModal(m: CompletedMountView) {
+    const cached = recomposeInfo[m.categoryKey];
     setCelebrationNonce((n) => n + 1);
     setCelebration({
       categoryKey: m.categoryKey,
       displayName: m.displayName,
       fromCount: 0,
       toCount: 0,
-      threshold: 0,
+      threshold: cached?.threshold ?? 0,
       isCompleted: true,
       mountImageUrl: m.mountImageUrl,
       sharePath: `/m/${m.completionId}`,
       completionId: m.completionId,
       characterImageUrl: null,
       collectedImageUrls: [],
+      canRecompose: cached?.canRecompose ?? false,
     });
+    if (!cached) {
+      void loadRecomposeInfo(m.categoryKey).then((info) => {
+        if (!info) return;
+        setCelebration((prev) =>
+          prev && prev.completionId === m.completionId
+            ? {
+                ...prev,
+                threshold: info.threshold,
+                canRecompose: info.canRecompose,
+              }
+            : prev,
+        );
+      });
+    }
   }
 
   function openSeriesModal(series: CollectionProgress) {

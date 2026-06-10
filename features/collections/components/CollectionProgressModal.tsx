@@ -28,6 +28,11 @@ export interface CollectionCelebration {
   characterImageUrl: string | null;
   /** 集めたシール画像(衣装ごと最新1枚)の公開URL。?枠に重ねる */
   collectedImageUrls: string[];
+  /**
+   * 完了ビューに「台紙を更新する」を出すか(任意)。
+   * いずれかの衣装で2枚以上生成済み(=選び直す余地がある)のときだけ true を渡す。
+   */
+  canRecompose?: boolean;
 }
 
 interface Props {
@@ -210,6 +215,8 @@ export function CollectionProgressModal({
   // すべての画像 (土台/中央/各シール/台紙) のロードが終わってからアニメ開始。
   // アニメだけ走って画像が後から出る現象を避ける。Image の onLoad で加算し、
   // 必要枚数に到達したら ready=true。
+  // onError も加算する: 1枚でも読み込みに失敗すると ready が永遠に立たず
+  // モーダルが透明のまま(オーバーレイだけ)になるデッドロックを防ぐ。
   const [loadedCount, setLoadedCount] = useState(0);
   const onImgLoad = () => setLoadedCount((c) => c + 1);
 
@@ -333,7 +340,39 @@ export function CollectionProgressModal({
 
         {/* すべての画像のロード完了まで opacity:0。
               アニメ(rAF)もこのフラグで開始を gate しているため、
-              絵とアニメが同時に開始される。 */}
+              絵とアニメが同時に開始される。ロード中は上にスピナーを重ねる
+              (生成直後など画像が未キャッシュだと数秒かかるため)。 */}
+        <div className="relative">
+        {!ready ? (
+          <div
+            role="status"
+            aria-label="読み込み中"
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[1.4rem] bg-white/75"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden
+              className="h-9 w-9 animate-spin text-amber-500 motion-reduce:animate-none"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeOpacity="0.25"
+                strokeWidth="3"
+              />
+              <path
+                d="M12 2a10 10 0 0 1 10 10"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="text-sm font-medium text-amber-600">準備中…</span>
+          </div>
+        ) : null}
         <div
           style={{
             opacity: ready ? 1 : 0,
@@ -355,6 +394,7 @@ export function CollectionProgressModal({
                 sizes="224px"
                 className="object-cover"
                 onLoad={onImgLoad}
+                onError={onImgLoad}
               />
             </div>
             {onShare ? (
@@ -364,6 +404,24 @@ export function CollectionProgressModal({
                 className="w-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.4)] transition-transform hover:-translate-y-0.5"
               >
                 台紙をシェアする
+              </button>
+            ) : null}
+            {celebration.sharePath ? (
+              <Link
+                href={celebration.sharePath}
+                className="block w-full rounded-full border-2 border-amber-300 bg-white px-6 py-3 text-base font-bold text-amber-600 transition-colors hover:bg-amber-50"
+              >
+                シェアページへ
+              </Link>
+            ) : null}
+            {/* 選び直す余地がある(いずれかの衣装で2枚以上生成済み)ときだけ表示 */}
+            {celebration.canRecompose && onCreateMount ? (
+              <button
+                type="button"
+                onClick={() => onCreateMount(celebration)}
+                className="w-full rounded-full border-2 border-amber-300 bg-white px-6 py-3 text-base font-bold text-amber-600 transition-colors hover:bg-amber-50"
+              >
+                台紙を更新する
               </button>
             ) : null}
             <Link
@@ -387,6 +445,7 @@ export function CollectionProgressModal({
               priority
               className="object-contain"
               onLoad={onImgLoad}
+              onError={onImgLoad}
             />
 
             {/* 中央: admin 設定画像で円を塗りつぶし(焼き込みキャラを隠す) */}
@@ -407,6 +466,7 @@ export function CollectionProgressModal({
                   sizes="320px"
                   className="object-cover"
                   onLoad={onImgLoad}
+                  onError={onImgLoad}
                 />
               </div>
             ) : null}
@@ -491,6 +551,7 @@ export function CollectionProgressModal({
                     sizes="56px"
                     className="object-cover"
                     onLoad={onImgLoad}
+                    onError={onImgLoad}
                   />
                 </div>
               );
@@ -551,6 +612,7 @@ export function CollectionProgressModal({
             </Link>
           </div>
         )}
+        </div>
         </div>
       </DialogContent>
     </Dialog>

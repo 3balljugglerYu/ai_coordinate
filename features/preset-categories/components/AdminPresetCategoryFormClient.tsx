@@ -34,8 +34,27 @@ interface FormState {
   mountTemplatePath: string | null;
   mountLayout: "" | "grid_3" | "grid_4" | "grid_6";
   collectionCharacterPath: string | null;
+  /** datetime-local 形式("YYYY-MM-DDTHH:mm")。空文字 = 未設定 */
+  collectionDisplayStartsAt: string;
+  collectionDisplayEndsAt: string;
   displayOrder: number;
   isActive: boolean;
+}
+
+/** ISO 日時 → datetime-local 入力値(ローカル時刻)。未設定/不正は空文字 */
+function isoToDatetimeLocal(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** datetime-local 入力値(ローカル時刻) → ISO 日時。空文字/不正は null */
+function datetimeLocalToIso(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function toFormState(initial?: PresetCategoryAdmin): FormState {
@@ -62,9 +81,25 @@ function toFormState(initial?: PresetCategoryAdmin): FormState {
     mountTemplatePath: initial?.mountTemplatePath ?? null,
     mountLayout: initial?.mountLayout ?? "",
     collectionCharacterPath: initial?.collectionCharacterPath ?? null,
+    collectionDisplayStartsAt: isoToDatetimeLocal(
+      initial?.collectionDisplayStartsAt ?? null,
+    ),
+    collectionDisplayEndsAt: isoToDatetimeLocal(
+      initial?.collectionDisplayEndsAt ?? null,
+    ),
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
+}
+
+/** generated-images(public バケット)に保存されたキャラ画像の公開URL */
+function characterPublicUrl(path: string): string {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generated-images/${path}`;
+}
+
+/** private バケットの台紙テンプレを admin API 経由で配信するURL */
+function mountTemplatePreviewUrl(path: string): string {
+  return `/api/admin/collection-mount-template?path=${encodeURIComponent(path)}`;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -181,6 +216,12 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               collection_character_path: form.collectionCharacterPath,
+              collection_display_starts_at: datetimeLocalToIso(
+                form.collectionDisplayStartsAt,
+              ),
+              collection_display_ends_at: datetimeLocalToIso(
+                form.collectionDisplayEndsAt,
+              ),
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -206,6 +247,12 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               collection_character_path: form.collectionCharacterPath,
+              collection_display_starts_at: datetimeLocalToIso(
+                form.collectionDisplayStartsAt,
+              ),
+              collection_display_ends_at: datetimeLocalToIso(
+                form.collectionDisplayEndsAt,
+              ),
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -714,6 +761,43 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
           </label>
         </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              進捗カードの表示開始日時（任意）
+            </span>
+            <input
+              type="datetime-local"
+              value={form.collectionDisplayStartsAt}
+              onChange={(e) =>
+                update("collectionDisplayStartsAt", e.target.value)
+              }
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              未設定なら即時表示。
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              進捗カードの表示終了日時（任意）
+            </span>
+            <input
+              type="datetime-local"
+              value={form.collectionDisplayEndsAt}
+              onChange={(e) =>
+                update("collectionDisplayEndsAt", e.target.value)
+              }
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              終了後はマイページの進捗カード・進捗モーダルが非表示になります。完了サムネ・シェア・達成済みユーザーの台紙更新、/style
+              での生成は終了後も可能です。
+            </span>
+          </label>
+        </div>
+
         <div className="block">
           <span className="text-sm font-medium text-slate-700">
             台紙テンプレ（キャラを抜いた空PNG）
@@ -736,6 +820,14 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
                 ? `登録済み: ${form.mountTemplatePath}`
                 : "PNG・256〜4096px。アップロードすると保存パスが設定されます。"}
           </span>
+          {form.mountTemplatePath && !uploadingTemplate ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={mountTemplatePreviewUrl(form.mountTemplatePath)}
+              alt="登録済みの台紙テンプレのプレビュー"
+              className="mt-2 max-h-56 w-auto rounded-md border border-slate-200 bg-slate-50"
+            />
+          ) : null}
         </div>
 
         <div className="block">
@@ -760,6 +852,15 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
                 ? `登録済み: ${form.collectionCharacterPath}`
                 : "PNG/JPEG/WebP。進捗リング中央に表示するキャラ画像。未設定なら「N/M種」のテキスト表示。"}
           </span>
+          {form.collectionCharacterPath && !uploadingCharacter ? (
+            /* 実際の表示と同じ円形トリミングでプレビューする */
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={characterPublicUrl(form.collectionCharacterPath)}
+              alt="登録済みの進捗リング中央キャラ画像のプレビュー"
+              className="mt-2 h-24 w-24 rounded-full border border-slate-200 object-cover"
+            />
+          ) : null}
         </div>
       </fieldset>
 

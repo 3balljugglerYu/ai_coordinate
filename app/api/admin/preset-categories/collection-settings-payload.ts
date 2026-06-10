@@ -18,6 +18,8 @@ export interface CollectionSettingsPayload {
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   collectionCharacterPath?: string | null;
+  collectionDisplayStartsAt?: string | null;
+  collectionDisplayEndsAt?: string | null;
 }
 
 export interface CollectionSettingsExisting {
@@ -25,6 +27,17 @@ export interface CollectionSettingsExisting {
   completionThreshold: number | null;
   mountTemplatePath: string | null;
   mountLayout: MountLayoutKey | null;
+  /** 省略時は null(未設定)として扱う */
+  collectionDisplayStartsAt?: string | null;
+  collectionDisplayEndsAt?: string | null;
+}
+
+/** ISO 8601 等、Date が解釈できる日時文字列なら正規化した ISO を返す */
+function parseTimestamp(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toISOString();
 }
 
 export type ParseCollectionSettingsResult =
@@ -91,6 +104,59 @@ export function parseCollectionSettings(
     } else {
       payload.collectionCharacterPath = v.trim();
     }
+  }
+
+  // 任意: 進捗カードの表示期間(NULL=制限なし)。コレクション無効時も保持できる
+  if (body.collection_display_starts_at !== undefined) {
+    const v = body.collection_display_starts_at;
+    if (v === null) {
+      payload.collectionDisplayStartsAt = null;
+    } else {
+      const parsed = parseTimestamp(v);
+      if (!parsed) {
+        return {
+          ok: false,
+          error: "collection_display_starts_at must be a valid datetime string or null",
+        };
+      }
+      payload.collectionDisplayStartsAt = parsed;
+    }
+  }
+
+  if (body.collection_display_ends_at !== undefined) {
+    const v = body.collection_display_ends_at;
+    if (v === null) {
+      payload.collectionDisplayEndsAt = null;
+    } else {
+      const parsed = parseTimestamp(v);
+      if (!parsed) {
+        return {
+          ok: false,
+          error: "collection_display_ends_at must be a valid datetime string or null",
+        };
+      }
+      payload.collectionDisplayEndsAt = parsed;
+    }
+  }
+
+  // 反映後の実効値で開始 < 終了を検証(DB の CHECK と同等。多層防御)
+  const effectiveStartsAt =
+    payload.collectionDisplayStartsAt !== undefined
+      ? payload.collectionDisplayStartsAt
+      : (existing.collectionDisplayStartsAt ?? null);
+  const effectiveEndsAt =
+    payload.collectionDisplayEndsAt !== undefined
+      ? payload.collectionDisplayEndsAt
+      : (existing.collectionDisplayEndsAt ?? null);
+  if (
+    effectiveStartsAt !== null &&
+    effectiveEndsAt !== null &&
+    Date.parse(effectiveStartsAt) >= Date.parse(effectiveEndsAt)
+  ) {
+    return {
+      ok: false,
+      error: "表示期間は 開始日時 < 終了日時 となるように設定してください",
+    };
   }
 
   // 反映後の実効値で R-02 を検証

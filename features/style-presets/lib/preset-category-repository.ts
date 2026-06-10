@@ -47,6 +47,8 @@ export interface PresetCategoryRow {
   mount_template_path?: string | null;
   mount_layout?: string | null;
   collection_character_path?: string | null;
+  collection_display_starts_at?: string | null;
+  collection_display_ends_at?: string | null;
   display_order: number;
   is_active: boolean;
   created_by: string | null;
@@ -79,6 +81,8 @@ export interface PresetCategoryAdmin {
   mountTemplatePath: string | null;
   mountLayout: MountLayoutKey | null;
   collectionCharacterPath: string | null;
+  collectionDisplayStartsAt: string | null;
+  collectionDisplayEndsAt: string | null;
   displayOrder: number;
   isActive: boolean;
   createdBy: string | null;
@@ -110,6 +114,8 @@ export interface PresetCategoryInsert {
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   collectionCharacterPath?: string | null;
+  collectionDisplayStartsAt?: string | null;
+  collectionDisplayEndsAt?: string | null;
   displayOrder?: number;
   isActive?: boolean;
   createdBy?: string | null;
@@ -137,6 +143,8 @@ export interface PresetCategoryUpdate {
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   collectionCharacterPath?: string | null;
+  collectionDisplayStartsAt?: string | null;
+  collectionDisplayEndsAt?: string | null;
   displayOrder?: number;
   isActive?: boolean;
   updatedBy?: string | null;
@@ -179,6 +187,8 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     mountTemplatePath: row.mount_template_path ?? null,
     mountLayout: isMountLayoutKey(row.mount_layout) ? row.mount_layout : null,
     collectionCharacterPath: row.collection_character_path ?? null,
+    collectionDisplayStartsAt: row.collection_display_starts_at ?? null,
+    collectionDisplayEndsAt: row.collection_display_ends_at ?? null,
     displayOrder: row.display_order,
     isActive: row.is_active,
     createdBy: row.created_by,
@@ -279,6 +289,8 @@ export async function createPresetCategory(
       mount_template_path: input.mountTemplatePath ?? null,
       mount_layout: input.mountLayout ?? null,
       collection_character_path: input.collectionCharacterPath ?? null,
+      collection_display_starts_at: input.collectionDisplayStartsAt ?? null,
+      collection_display_ends_at: input.collectionDisplayEndsAt ?? null,
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
       created_by: input.createdBy ?? null,
@@ -337,6 +349,10 @@ export async function updatePresetCategory(
   if (input.mountLayout !== undefined) payload.mount_layout = input.mountLayout;
   if (input.collectionCharacterPath !== undefined)
     payload.collection_character_path = input.collectionCharacterPath;
+  if (input.collectionDisplayStartsAt !== undefined)
+    payload.collection_display_starts_at = input.collectionDisplayStartsAt;
+  if (input.collectionDisplayEndsAt !== undefined)
+    payload.collection_display_ends_at = input.collectionDisplayEndsAt;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
   if (input.isActive !== undefined) payload.is_active = input.isActive;
   if (input.updatedBy !== undefined) payload.updated_by = input.updatedBy;

@@ -337,6 +337,8 @@ export async function PATCH(
     completionThreshold: existing.completionThreshold,
     mountTemplatePath: existing.mountTemplatePath,
     mountLayout: existing.mountLayout,
+    collectionDisplayStartsAt: existing.collectionDisplayStartsAt,
+    collectionDisplayEndsAt: existing.collectionDisplayEndsAt,
   });
   if (!collectionResult.ok) {
     return NextResponse.json({ error: collectionResult.error }, { status: 400 });

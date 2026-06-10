@@ -7,6 +7,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const TEMPLATE_BUCKET = "collection-mount-templates";
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
+// POST が発行する保存パス({categoryKey}/{UUID}.png)のみ配信を許可する
+const TEMPLATE_PATH_PATTERN =
+  /^[a-z][a-z0-9_]{1,49}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.png$/;
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB(バケットの file_size_limit と一致)
 const MIN_DIMENSION = 256;
 const MAX_DIMENSION = 4096;
@@ -99,4 +102,38 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ path, width, height });
+}
+
+/**
+ * GET /api/admin/collection-mount-template?path={categoryKey}/{UUID}.png
+ * private バケットの台紙テンプレを admin 向けに配信する(編集フォームのプレビュー用)。
+ */
+export async function GET(request: NextRequest) {
+  try {
+    await requireAdmin();
+  } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
+    throw error;
+  }
+
+  const path = request.nextUrl.searchParams.get("path") ?? "";
+  if (!TEMPLATE_PATH_PATTERN.test(path)) {
+    return NextResponse.json({ error: "不正なパスです" }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage.from(TEMPLATE_BUCKET).download(path);
+  if (error || !data) {
+    return NextResponse.json({ error: "テンプレが見つかりません" }, { status: 404 });
+  }
+
+  return new NextResponse(data, {
+    headers: {
+      "Content-Type": "image/png",
+      // パスは UUID 付きで再アップロード時は別パスになるためキャッシュ可
+      "Cache-Control": "private, max-age=3600",
+    },
+  });
 }
