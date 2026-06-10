@@ -455,10 +455,30 @@ export function StylePageClient({
 
   // プリセット切り替え時に preset 固有の入力 (userPrompt / 参考画像) をリセットする。
   // 別 preset で意図しない入力が引き継がれてクレジット浪費しないための防御。
+  // userPrompt は category 単位で localStorage に「前回の入力」を保存しており、
+  // 復元することで「ユーザーがまた来た時にも同じ追記を再利用できる」UX を提供する。
   useEffect(() => {
     setUserReferenceImage(null);
-    setUserPromptInputValue("");
-  }, [selectedPreset?.id]);
+    if (!selectedPreset?.category.showUserPromptInput) {
+      setUserPromptInputValue("");
+      return;
+    }
+    const key = selectedPreset.category.key;
+    const maxLen =
+      selectedPreset.category.userPromptMaxLength ?? GENERATION_PROMPT_MAX_LENGTH;
+    try {
+      const saved = window.localStorage.getItem(`user-prompt:${key}`);
+      setUserPromptInputValue(saved ? saved.slice(0, maxLen) : "");
+    } catch {
+      // localStorage 不可(プライベートモード等) → 復元せず空で開始
+      setUserPromptInputValue("");
+    }
+  }, [
+    selectedPreset?.id,
+    selectedPreset?.category.key,
+    selectedPreset?.category.showUserPromptInput,
+    selectedPreset?.category.userPromptMaxLength,
+  ]);
 
   const shouldShowSourceImageTypeControl =
     selectedPreset?.category.showSourceImageTypeControl ?? true;
@@ -1234,6 +1254,20 @@ export function StylePageClient({
       ) {
         formData.set("userPrompt", userPromptInputValue);
       }
+      // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
+      // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
+      if (selectedPreset.category.showUserPromptInput) {
+        try {
+          const k = `user-prompt:${selectedPreset.category.key}`;
+          if (userPromptInputValue.trim().length > 0) {
+            window.localStorage.setItem(k, userPromptInputValue);
+          } else {
+            window.localStorage.removeItem(k);
+          }
+        } catch {
+          // private mode 等で書けなくても無視
+        }
+      }
 
       const response = await fetch("/style/generate", {
         method: "POST",
@@ -1327,6 +1361,20 @@ export function StylePageClient({
         userPromptInputValue.trim().length > 0
       ) {
         formData.set("userPrompt", userPromptInputValue);
+      }
+      // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
+      // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
+      if (selectedPreset.category.showUserPromptInput) {
+        try {
+          const k = `user-prompt:${selectedPreset.category.key}`;
+          if (userPromptInputValue.trim().length > 0) {
+            window.localStorage.setItem(k, userPromptInputValue);
+          } else {
+            window.localStorage.removeItem(k);
+          }
+        } catch {
+          // private mode 等で書けなくても無視
+        }
       }
 
       if (selectedRemoteSource?.kind === "stock") {
