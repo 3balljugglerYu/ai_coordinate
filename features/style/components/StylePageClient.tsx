@@ -33,6 +33,10 @@ import { ImageSourcePicker } from "@/features/generation/components/ImageSourceP
 import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
 import { PromptInputField } from "@/features/generation/components/PromptInputField";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
+import {
+  loadUserPromptForCategory,
+  saveUserPromptForCategory,
+} from "@/features/style/lib/user-prompt-recall";
 import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
 import type { SourceImageStock } from "@/features/generation/lib/database";
@@ -463,16 +467,13 @@ export function StylePageClient({
       setUserPromptInputValue("");
       return;
     }
-    const key = selectedPreset.category.key;
-    const maxLen =
-      selectedPreset.category.userPromptMaxLength ?? GENERATION_PROMPT_MAX_LENGTH;
-    try {
-      const saved = window.localStorage.getItem(`user-prompt:${key}`);
-      setUserPromptInputValue(saved ? saved.slice(0, maxLen) : "");
-    } catch {
-      // localStorage 不可(プライベートモード等) → 復元せず空で開始
-      setUserPromptInputValue("");
-    }
+    setUserPromptInputValue(
+      loadUserPromptForCategory(
+        selectedPreset.category.key,
+        selectedPreset.category.userPromptMaxLength ??
+          GENERATION_PROMPT_MAX_LENGTH,
+      ),
+    );
   }, [
     selectedPreset?.id,
     selectedPreset?.category.key,
@@ -1257,16 +1258,10 @@ export function StylePageClient({
       // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
       // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
       if (selectedPreset.category.showUserPromptInput) {
-        try {
-          const k = `user-prompt:${selectedPreset.category.key}`;
-          if (userPromptInputValue.trim().length > 0) {
-            window.localStorage.setItem(k, userPromptInputValue);
-          } else {
-            window.localStorage.removeItem(k);
-          }
-        } catch {
-          // private mode 等で書けなくても無視
-        }
+        saveUserPromptForCategory(
+          selectedPreset.category.key,
+          userPromptInputValue,
+        );
       }
 
       const response = await fetch("/style/generate", {
@@ -1365,16 +1360,10 @@ export function StylePageClient({
       // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
       // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
       if (selectedPreset.category.showUserPromptInput) {
-        try {
-          const k = `user-prompt:${selectedPreset.category.key}`;
-          if (userPromptInputValue.trim().length > 0) {
-            window.localStorage.setItem(k, userPromptInputValue);
-          } else {
-            window.localStorage.removeItem(k);
-          }
-        } catch {
-          // private mode 等で書けなくても無視
-        }
+        saveUserPromptForCategory(
+          selectedPreset.category.key,
+          userPromptInputValue,
+        );
       }
 
       if (selectedRemoteSource?.kind === "stock") {
