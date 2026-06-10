@@ -28,6 +28,7 @@ interface FormState {
   showUserPromptInput: boolean;
   userPromptLabel: string;
   userPromptPlaceholder: string;
+  userPromptMaxLength: number | null;
   visibility: "public" | "admin_only";
   isCollectionSeries: boolean;
   completionThreshold: number | null;
@@ -75,6 +76,7 @@ function toFormState(initial?: PresetCategoryAdmin): FormState {
     showUserPromptInput: initial?.showUserPromptInput ?? false,
     userPromptLabel: initial?.userPromptLabel ?? "",
     userPromptPlaceholder: initial?.userPromptPlaceholder ?? "",
+    userPromptMaxLength: initial?.userPromptMaxLength ?? null,
     visibility: initial?.visibility ?? "admin_only",
     isCollectionSeries: initial?.isCollectionSeries ?? false,
     completionThreshold: initial?.completionThreshold ?? null,
@@ -210,6 +212,7 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_user_prompt_input: form.showUserPromptInput,
               user_prompt_label: form.userPromptLabel.trim() || null,
               user_prompt_placeholder: form.userPromptPlaceholder.trim() || null,
+              user_prompt_max_length: form.userPromptMaxLength,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: form.completionThreshold,
@@ -241,6 +244,7 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               show_user_prompt_input: form.showUserPromptInput,
               user_prompt_label: form.userPromptLabel.trim() || null,
               user_prompt_placeholder: form.userPromptPlaceholder.trim() || null,
+              user_prompt_max_length: form.userPromptMaxLength,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: form.completionThreshold,
@@ -690,6 +694,32 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
                 最大 200 文字
               </span>
             </label>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                入力できる最大文字数（任意）
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={1500}
+                step={1}
+                value={form.userPromptMaxLength ?? ""}
+                onChange={(e) =>
+                  update(
+                    "userPromptMaxLength",
+                    e.target.value === ""
+                      ? null
+                      : Math.floor(Number(e.target.value)),
+                  )
+                }
+                placeholder="例: 10"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                1〜1500。未設定なら既定の 1500 文字。名前入力用途なら 10
+                文字などに絞れます。
+              </span>
+            </label>
           </div>
         ) : null}
       </fieldset>
@@ -792,7 +822,8 @@ export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             />
             <span className="mt-1 block text-xs text-slate-500">
-              終了後はマイページの進捗カード・進捗モーダルが非表示になります。完了サムネ・シェア・達成済みユーザーの台紙更新、/style
+              終了後はマイページの進捗カード・進捗モーダルが非表示になります（admin
+              にも適用）。完了サムネ・シェア・達成済みユーザーの台紙更新、/style
               での生成は終了後も可能です。
             </span>
           </label>

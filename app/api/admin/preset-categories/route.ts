@@ -12,6 +12,7 @@ import {
 } from "@/features/style-presets/lib/preset-category-repository";
 import { parseCollectionSettings } from "./collection-settings-payload";
 import type { MountLayoutKey } from "@/features/collections/lib/mount-layouts";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -75,6 +76,7 @@ interface ParsedCreatePayload {
   showUserPromptInput?: boolean;
   userPromptLabel?: string | null;
   userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
   visibility?: "public" | "admin_only";
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
@@ -340,6 +342,26 @@ export async function POST(request: NextRequest) {
       );
     }
     payload.userPromptPlaceholder = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_prompt_max_length !== undefined) {
+    const v = body.user_prompt_max_length;
+    if (v === null) {
+      payload.userPromptMaxLength = null;
+    } else if (
+      typeof v !== "number" ||
+      !Number.isInteger(v) ||
+      v < 1 ||
+      v > GENERATION_PROMPT_MAX_LENGTH
+    ) {
+      return NextResponse.json(
+        {
+          error: `user_prompt_max_length must be an integer between 1 and ${GENERATION_PROMPT_MAX_LENGTH}, or null`,
+        },
+        { status: 400 },
+      );
+    } else {
+      payload.userPromptMaxLength = v;
+    }
   }
   if (body.visibility !== undefined) {
     if (

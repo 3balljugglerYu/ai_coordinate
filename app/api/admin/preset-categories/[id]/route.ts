@@ -12,6 +12,7 @@ import {
   updatePresetCategory,
 } from "@/features/style-presets/lib/preset-category-repository";
 import { parseCollectionSettings } from "../collection-settings-payload";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
@@ -293,6 +294,26 @@ export async function PATCH(
       );
     }
     update.userPromptPlaceholder = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_prompt_max_length !== undefined) {
+    const v = body.user_prompt_max_length;
+    if (v === null) {
+      update.userPromptMaxLength = null;
+    } else if (
+      typeof v !== "number" ||
+      !Number.isInteger(v) ||
+      v < 1 ||
+      v > GENERATION_PROMPT_MAX_LENGTH
+    ) {
+      return NextResponse.json(
+        {
+          error: `user_prompt_max_length must be an integer between 1 and ${GENERATION_PROMPT_MAX_LENGTH}, or null`,
+        },
+        { status: 400 },
+      );
+    } else {
+      update.userPromptMaxLength = v;
+    }
   }
   if (body.visibility !== undefined) {
     if (

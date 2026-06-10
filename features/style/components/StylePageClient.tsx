@@ -550,6 +550,10 @@ export function StylePageClient({
   }, [effectiveAuthState, guestSaveImage, selectedPreset?.id]);
 
   const isCompletingGeneration = generationPhase === "completing";
+  // ユーザープロンプト入力の最大文字数(カテゴリ別設定を優先、未設定は既定値)
+  const userPromptMaxLength =
+    selectedPreset?.category.userPromptMaxLength ??
+    GENERATION_PROMPT_MAX_LENGTH;
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
     : 1;
@@ -1761,13 +1765,13 @@ export function StylePageClient({
                   selectedPreset.category.userPromptPlaceholder ??
                   t("userPromptPlaceholder")
                 }
-                hint={t("userPromptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
+                hint={t("userPromptHint", { max: userPromptMaxLength })}
                 clearLabel={t("userPromptClear")}
                 characterCount={t("userPromptCharacterCount", {
                   current: userPromptInputValue.length,
-                  max: GENERATION_PROMPT_MAX_LENGTH,
+                  max: userPromptMaxLength,
                 })}
-                maxLength={GENERATION_PROMPT_MAX_LENGTH}
+                maxLength={userPromptMaxLength}
                 disabled={isGenerating}
                 id="user-prompt"
               />

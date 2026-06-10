@@ -47,8 +47,9 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // 表示期間外は「達成済み(completed)ユーザーの台紙更新」のみ許可(admin はプレビュー可)
-  if (!isAdmin && !isCollectionDisplayPeriodActive(category)) {
+  // 表示期間外は「達成済み(completed)ユーザーの台紙更新」のみ許可。
+  // ユーザー視点と同じ見え方になるよう、期間は admin にも適用する。
+  if (!isCollectionDisplayPeriodActive(category)) {
     const { data: completed } = await admin
       .from("collection_completions")
       .select("id")

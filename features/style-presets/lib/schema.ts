@@ -53,6 +53,8 @@ export interface StylePresetCategoryRef {
   userPromptLabel: string | null;
   /** /style のプロンプト textarea placeholder(任意, null なら i18n デフォルト) */
   userPromptPlaceholder: string | null;
+  /** /style のプロンプト textarea 最大文字数(任意, null なら既定 1500) */
+  userPromptMaxLength: number | null;
   visibility: StylePresetCategoryVisibility;
   isActive: boolean;
 }

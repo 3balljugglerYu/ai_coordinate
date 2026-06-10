@@ -82,8 +82,9 @@ export async function POST(request: NextRequest) {
   }
 
   // 2.5) 表示期間ガード。期間外は「達成済み(completed)ユーザーの台紙更新」のみ
-  // 許可する(admin はプレビュー可)。reserve より前に弾くことで、期間外の未達成
-  // ユーザーが completion 行を新規作成してしまうのを防ぐ。
+  // 許可する(ユーザー視点と同じ見え方になるよう、期間は admin にも適用)。
+  // reserve より前に弾くことで、期間外の未達成ユーザーが completion 行を
+  // 新規作成してしまうのを防ぐ。
   const adminForGuard = createAdminClient();
   const { data: categoryGuard } = await adminForGuard
     .from("preset_categories")
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
     collectionDisplayEndsAt:
       (categoryGuard.collection_display_ends_at as string | null) ?? null,
   });
-  if (!isAdmin && !periodActive) {
+  if (!periodActive) {
     const { data: completed } = await adminForGuard
       .from("collection_completions")
       .select("id")

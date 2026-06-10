@@ -41,6 +41,7 @@ export interface PresetCategoryRow {
   show_user_prompt_input?: boolean | null;
   user_prompt_label?: string | null;
   user_prompt_placeholder?: string | null;
+  user_prompt_max_length?: number | null;
   visibility?: StylePresetCategoryVisibility | null;
   is_collection_series?: boolean | null;
   completion_threshold?: number | null;
@@ -75,6 +76,7 @@ export interface PresetCategoryAdmin {
   showUserPromptInput: boolean;
   userPromptLabel: string | null;
   userPromptPlaceholder: string | null;
+  userPromptMaxLength: number | null;
   visibility: StylePresetCategoryVisibility;
   isCollectionSeries: boolean;
   completionThreshold: number | null;
@@ -108,6 +110,7 @@ export interface PresetCategoryInsert {
   showUserPromptInput?: boolean;
   userPromptLabel?: string | null;
   userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
@@ -137,6 +140,7 @@ export interface PresetCategoryUpdate {
   showUserPromptInput?: boolean;
   userPromptLabel?: string | null;
   userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
@@ -181,6 +185,7 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     showUserPromptInput: row.show_user_prompt_input ?? false,
     userPromptLabel: row.user_prompt_label ?? null,
     userPromptPlaceholder: row.user_prompt_placeholder ?? null,
+    userPromptMaxLength: row.user_prompt_max_length ?? null,
     visibility: normalizeVisibility(row.visibility),
     isCollectionSeries: row.is_collection_series ?? false,
     completionThreshold: row.completion_threshold ?? null,
@@ -283,6 +288,7 @@ export async function createPresetCategory(
       show_user_prompt_input: input.showUserPromptInput ?? false,
       user_prompt_label: input.userPromptLabel ?? null,
       user_prompt_placeholder: input.userPromptPlaceholder ?? null,
+      user_prompt_max_length: input.userPromptMaxLength ?? null,
       visibility: input.visibility ?? "admin_only",
       is_collection_series: input.isCollectionSeries ?? false,
       completion_threshold: input.completionThreshold ?? null,
@@ -338,6 +344,8 @@ export async function updatePresetCategory(
     payload.user_prompt_label = input.userPromptLabel;
   if (input.userPromptPlaceholder !== undefined)
     payload.user_prompt_placeholder = input.userPromptPlaceholder;
+  if (input.userPromptMaxLength !== undefined)
+    payload.user_prompt_max_length = input.userPromptMaxLength;
   if (input.visibility !== undefined)
     payload.visibility = input.visibility;
   if (input.isCollectionSeries !== undefined)

@@ -38,6 +38,7 @@ interface StylePresetCategoryRow {
   show_user_prompt_input?: boolean | null;
   user_prompt_label?: string | null;
   user_prompt_placeholder?: string | null;
+  user_prompt_max_length?: number | null;
   visibility?: StylePresetCategoryVisibility | string | null;
   is_active: boolean;
 }
@@ -70,7 +71,7 @@ interface StylePresetRow {
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, visibility, is_active)";
+  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
@@ -133,6 +134,7 @@ function mapCategoryRefStrict(
       showUserPromptInput: false,
       userPromptLabel: null,
       userPromptPlaceholder: null,
+      userPromptMaxLength: null,
       visibility: "public",
       isActive: true,
     };
@@ -155,6 +157,7 @@ function mapCategoryRefStrict(
     showUserPromptInput: embedded.show_user_prompt_input ?? false,
     userPromptLabel: embedded.user_prompt_label ?? null,
     userPromptPlaceholder: embedded.user_prompt_placeholder ?? null,
+    userPromptMaxLength: embedded.user_prompt_max_length ?? null,
     visibility: normalizeCategoryVisibility(embedded.visibility),
     isActive: embedded.is_active,
   };
