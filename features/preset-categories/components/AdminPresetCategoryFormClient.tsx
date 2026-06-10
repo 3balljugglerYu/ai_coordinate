@@ -9,6 +9,15 @@ type Mode = "create" | "edit";
 interface Props {
   mode: Mode;
   initial?: PresetCategoryAdmin;
+  /**
+   * initial の collectionDisplayStartsAt / EndsAt を datetime-local 形式 (JST)
+   * に変換した文字列。サーバー Component で formatDatetimeLocalJst() 等を使い
+   * 算出して渡す。`new Date()` を Client 側の useState 初期化で呼ぶと SSR/CSR
+   * 間でタイムゾーン差により Hydration Mismatch が起きるため、サーバー側で
+   * 決め打ち JST 変換しておく。
+   */
+  initialCollectionDisplayStartsAtLocal?: string;
+  initialCollectionDisplayEndsAtLocal?: string;
 }
 
 interface FormState {
@@ -42,23 +51,22 @@ interface FormState {
   isActive: boolean;
 }
 
-/** ISO 日時 → datetime-local 入力値(ローカル時刻)。未設定/不正は空文字 */
-function isoToDatetimeLocal(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** datetime-local 入力値(ローカル時刻) → ISO 日時。空文字/不正は null */
+/**
+ * datetime-local 入力値(JST 局所時刻) → ISO 日時。空文字/不正は null。
+ * ブラウザの `new Date("YYYY-MM-DDTHH:mm")` はブラウザのローカル TZ で
+ * 解釈される。admin は JST 前提のため、JST→UTC 換算が一意に決まる。
+ * (この関数は submit 時にのみクライアントで呼ばれるので Hydration の影響なし)
+ */
 function datetimeLocalToIso(value: string): string | null {
   if (!value) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-function toFormState(initial?: PresetCategoryAdmin): FormState {
+function toFormState(
+  initial?: PresetCategoryAdmin,
+  initialDates?: { startsAtLocal?: string; endsAtLocal?: string },
+): FormState {
   return {
     key: initial?.key ?? "",
     displayNameJa: initial?.displayNameJa ?? "",
@@ -83,12 +91,10 @@ function toFormState(initial?: PresetCategoryAdmin): FormState {
     mountTemplatePath: initial?.mountTemplatePath ?? null,
     mountLayout: initial?.mountLayout ?? "",
     collectionCharacterPath: initial?.collectionCharacterPath ?? null,
-    collectionDisplayStartsAt: isoToDatetimeLocal(
-      initial?.collectionDisplayStartsAt ?? null,
-    ),
-    collectionDisplayEndsAt: isoToDatetimeLocal(
-      initial?.collectionDisplayEndsAt ?? null,
-    ),
+    // Hydration Mismatch を避けるため、サーバー側で JST 変換済みの文字列を
+    // props 経由で受け取る (props が無いケース = create mode のため空文字)。
+    collectionDisplayStartsAt: initialDates?.startsAtLocal ?? "",
+    collectionDisplayEndsAt: initialDates?.endsAtLocal ?? "",
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -113,9 +119,19 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function AdminPresetCategoryFormClient({ mode, initial }: Props) {
+export function AdminPresetCategoryFormClient({
+  mode,
+  initial,
+  initialCollectionDisplayStartsAtLocal,
+  initialCollectionDisplayEndsAtLocal,
+}: Props) {
   const router = useRouter();
-  const [form, setForm] = useState<FormState>(() => toFormState(initial));
+  const [form, setForm] = useState<FormState>(() =>
+    toFormState(initial, {
+      startsAtLocal: initialCollectionDisplayStartsAtLocal,
+      endsAtLocal: initialCollectionDisplayEndsAtLocal,
+    }),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);

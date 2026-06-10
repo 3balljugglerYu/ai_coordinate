@@ -4,6 +4,7 @@ import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
 import { AdminPresetCategoryFormClient } from "@/features/preset-categories/components/AdminPresetCategoryFormClient";
+import { formatDatetimeLocalJst } from "@/lib/datetime/format-datetime-local-jst";
 
 export const metadata = {
   title: "プリセットカテゴリ編集 | Admin",
@@ -43,7 +44,16 @@ export default async function AdminPresetCategoryEditPage({
           `key` は不変です (変更したい場合は新規作成 + 旧 category を inactive にしてください)。
         </p>
       </header>
-      <AdminPresetCategoryFormClient mode="edit" initial={category} />
+      <AdminPresetCategoryFormClient
+        mode="edit"
+        initial={category}
+        initialCollectionDisplayStartsAtLocal={formatDatetimeLocalJst(
+          category.collectionDisplayStartsAt,
+        )}
+        initialCollectionDisplayEndsAtLocal={formatDatetimeLocalJst(
+          category.collectionDisplayEndsAt,
+        )}
+      />
     </div>
   );
 }
