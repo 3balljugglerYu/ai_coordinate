@@ -33,6 +33,10 @@ import { ImageSourcePicker } from "@/features/generation/components/ImageSourceP
 import { ImageSourcePickerTrigger } from "@/features/generation/components/ImageSourcePickerTrigger";
 import { PromptInputField } from "@/features/generation/components/PromptInputField";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
+import {
+  loadUserPromptForCategory,
+  saveUserPromptForCategory,
+} from "@/features/style/lib/user-prompt-recall";
 import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
 import type { SourceImageStock } from "@/features/generation/lib/database";
@@ -455,10 +459,27 @@ export function StylePageClient({
 
   // プリセット切り替え時に preset 固有の入力 (userPrompt / 参考画像) をリセットする。
   // 別 preset で意図しない入力が引き継がれてクレジット浪費しないための防御。
+  // userPrompt は category 単位で localStorage に「前回の入力」を保存しており、
+  // 復元することで「ユーザーがまた来た時にも同じ追記を再利用できる」UX を提供する。
   useEffect(() => {
     setUserReferenceImage(null);
-    setUserPromptInputValue("");
-  }, [selectedPreset?.id]);
+    if (!selectedPreset?.category.showUserPromptInput) {
+      setUserPromptInputValue("");
+      return;
+    }
+    setUserPromptInputValue(
+      loadUserPromptForCategory(
+        selectedPreset.category.key,
+        selectedPreset.category.userPromptMaxLength ??
+          GENERATION_PROMPT_MAX_LENGTH,
+      ),
+    );
+  }, [
+    selectedPreset?.id,
+    selectedPreset?.category.key,
+    selectedPreset?.category.showUserPromptInput,
+    selectedPreset?.category.userPromptMaxLength,
+  ]);
 
   const shouldShowSourceImageTypeControl =
     selectedPreset?.category.showSourceImageTypeControl ?? true;
@@ -1234,6 +1255,14 @@ export function StylePageClient({
       ) {
         formData.set("userPrompt", userPromptInputValue);
       }
+      // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
+      // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
+      if (selectedPreset.category.showUserPromptInput) {
+        saveUserPromptForCategory(
+          selectedPreset.category.key,
+          userPromptInputValue,
+        );
+      }
 
       const response = await fetch("/style/generate", {
         method: "POST",
@@ -1327,6 +1356,14 @@ export function StylePageClient({
         userPromptInputValue.trim().length > 0
       ) {
         formData.set("userPrompt", userPromptInputValue);
+      }
+      // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
+      // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
+      if (selectedPreset.category.showUserPromptInput) {
+        saveUserPromptForCategory(
+          selectedPreset.category.key,
+          userPromptInputValue,
+        );
       }
 
       if (selectedRemoteSource?.kind === "stock") {
