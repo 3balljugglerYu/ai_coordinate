@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getPublicMountByToken } from "@/features/collections/lib/public-mount-server-api";
+import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MountShareButton } from "@/features/collections/components/MountShareButton";
 
 interface PublicMountPageProps {
@@ -79,7 +80,10 @@ export default async function PublicMountPage({
         {mount.displayNameJa} コンプリート台紙
       </h1>
 
-      <div className="relative aspect-[525/612] w-full max-w-sm overflow-hidden rounded-xl border border-gray-200 shadow-md">
+      <div
+        className="relative w-full max-w-sm overflow-hidden rounded-xl border border-gray-200 shadow-md"
+        style={{ aspectRatio: mountAspectForCategory(mount.categoryKey) }}
+      >
         <Image
           src={mount.mountImageUrl}
           alt={`${mount.displayNameJa} コンプリート台紙`}

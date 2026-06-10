@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { CollectionKpi } from "@/features/admin-dashboard/lib/get-collection-kpi";
 import type { CollectionCompletersPage } from "@/features/admin-dashboard/lib/get-collection-completions";
+import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 
 export interface AdminCollectionSeries {
   key: string;
@@ -164,7 +165,10 @@ export function AdminCollectionsView({
               {completers.items.map((c) => (
                 <li key={c.completionId} className="flex items-center gap-3 px-4 py-3">
                   {c.mountImageUrl ? (
-                    <div className="relative aspect-[525/612] h-14 shrink-0 overflow-hidden rounded border border-slate-200">
+                    <div
+                      className="relative h-14 shrink-0 overflow-hidden rounded border border-slate-200"
+                      style={{ aspectRatio: mountAspectForCategory(selectedKey) }}
+                    >
                       <Image
                         src={c.mountImageUrl}
                         alt="台紙"

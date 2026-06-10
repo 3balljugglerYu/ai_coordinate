@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "code-review@claude-plugins-official": true
-  },
   "permissions": {
     "allow": [
       "WebSearch",
@@ -43,7 +40,24 @@
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
       "Bash(git worktree *)",
-      "Bash(bash scripts/worktree-add.sh *)"
+      "Bash(bash scripts/worktree-add.sh *)",
+      "Bash(git merge *)",
+      "Read(//Users/hide/Documents/persta/ウエハースシール/**)",
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)",
+      "Bash(NODE_PATH=/Users/hide/ai_coordinate/node_modules node /tmp/make-frame6.js)",
+      "Bash(ls -la \"/Users/hide/Documents/persta/ウエハースシール/6p_modal_collections.webp\" && cp \"/Users/hide/Documents/persta/ウエハースシール/6p_modal_collections.webp\" /Users/hide/ai_coordinate/public/collections/wafer/modal-frame-6.webp && ls -la /Users/hide/ai_coordinate/public/collections/wafer/modal-frame-6.webp)",
+      "Bash(supabase migration *)",
+      "Bash(gh auth *)",
+      "Bash(bash scripts/git-commit-and-push.sh --yes -m 'feat\\(collections\\): 6枠台紙\\(grid_6\\)のコレクション対応を追加 *)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/private/tmp",
+      "/Users/hide/Documents/persta/ウエハースシール"
     ]
+  },
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true
   }
 }

@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 
 export interface CollectionCelebration {
   categoryKey: string;
@@ -74,13 +75,19 @@ const MODAL_LAYOUTS: Record<string, ModalLayout> = {
     button: { left: 7.9, top: 83.8, width: 84.2, height: 10.8 },
     slots: { cx: [23.9, 41.21, 57.69, 75.46], cy: 75.1, d: 14.0 },
   },
-  // ※6スロット用カテゴリは別途、6個 ?枠が描かれた土台 PNG を用意し
-  //   ここに同じ形式で追加する。例:
-  // collectible_wafer_sticker_6: {
-  //   frame: "/collections/wafer/modal-frame-6.webp",
-  //   ...
-  //   slots: { cx: [<6個の中心x>], cy: ..., d: ... },
-  // },
+  // ウエハース 神コレクション(6スロット)。modal-frame-6.webp (1085x1449) 実測。
+  // 金リング: 中心 (49.77%, 44.24%)、直径 62.2%(W)
+  // ※key は admin で作成する 6枠カテゴリの key と一致させること。
+  collectible_wafer_sticker_god_6p: {
+    frame: "/collections/wafer/modal-frame-6.webp",
+    frameAspect: 1085 / 1449,
+    disc: { left: 18.66, top: 20.94, size: 62.21 },
+    ring: { left: 16.68, top: 19.46, size: 66.18 },
+    badge: { cx: 73.1, cy: 61.7, size: 26.0 },
+    button: { left: 8.1, top: 84.5, width: 84.2, height: 10.8 },
+    // ?円(直径12.3%)よりやや小さくし、4スロット版と同様に灰色の縁を残す
+    slots: { cx: [11.66, 27.05, 42.07, 57.28, 72.3, 87.42], cy: 75.67, d: 10.9 },
+  },
 };
 
 // 進捗リング(SVG)の定数
@@ -337,7 +344,10 @@ export function CollectionProgressModal({
           /* ===== 完成: 台紙を表示 ===== */
           <div className="space-y-4 text-center">
             <h2 className="text-xl font-bold text-amber-500">コンプリート！</h2>
-            <div className="relative mx-auto aspect-[525/612] w-56 overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]">
+            <div
+              className="relative mx-auto w-56 overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]"
+              style={{ aspectRatio: mountAspectForCategory(celebration.categoryKey) }}
+            >
               <Image
                 src={mountImageUrl ?? ""}
                 alt={`${displayName} コンプリート台紙`}

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 
 interface OutfitOption {
   presetId: string;
@@ -154,13 +155,14 @@ export function CollectionMountComposer({
             <p className="text-center text-sm text-gray-500">
               台紙を作成中…
             </p>
-            {/* スケルトン: 台紙のアスペクト(525/612) と 2×2 スロットを模した
+            {/* スケルトン: 台紙のアスペクトと 2×2 スロットを模した
                 shimmer プレースホルダ */}
             <div
               role="status"
               aria-live="polite"
               aria-label="台紙を作成中"
-              className="relative mx-auto aspect-[525/612] w-56 overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-amber-50 via-rose-50 to-violet-50"
+              className="relative mx-auto w-56 overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-amber-50 via-rose-50 to-violet-50"
+              style={{ aspectRatio: mountAspectForCategory(categoryKey) }}
             >
               <style>{`
                 @keyframes coll-shimmer {

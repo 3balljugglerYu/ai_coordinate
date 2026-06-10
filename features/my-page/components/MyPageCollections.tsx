@@ -13,6 +13,7 @@ import {
   type MountGeneratedResult,
 } from "@/features/collections/components/CollectionMountComposer";
 import { CollectionProgressRing } from "@/features/collections/components/CollectionProgressRing";
+import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { shareMount } from "@/features/collections/lib/share-mount";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
 
@@ -177,7 +178,8 @@ export function MyPageCollections({
               key={m.completionId}
               type="button"
               onClick={() => openMountModal(m)}
-              className="relative aspect-[525/612] w-24 overflow-hidden rounded-md border border-gray-200"
+              className="relative w-24 overflow-hidden rounded-md border border-gray-200"
+              style={{ aspectRatio: mountAspectForCategory(m.categoryKey) }}
               aria-label={`${m.displayName} の台紙を表示`}
             >
               <Image
