@@ -98,7 +98,6 @@ export default async function PublicMountPage({
         <MountShareButton
           completionId={mount.completionId}
           mountImageUrl={mount.mountImageUrl}
-          displayName={mount.displayNameJa}
         />
       ) : null}
 
