@@ -170,4 +170,105 @@ describe("parseCollectionSettings", () => {
     );
     expect(r.ok).toBe(true);
   });
+
+  // ---------------- 型違反系の単純拒否分岐 ----------------
+
+  test("is_collection_series が boolean 以外は拒否", () => {
+    const r = parseCollectionSettings({ is_collection_series: "true" }, OFF);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/is_collection_series/);
+  });
+
+  test("mount_template_path が string 以外は拒否", () => {
+    const r = parseCollectionSettings({ mount_template_path: 123 }, OFF);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/mount_template_path/);
+  });
+
+  test("mount_template_path に null を渡すとクリアされる", () => {
+    const r = parseCollectionSettings({ mount_template_path: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.mountTemplatePath).toBeNull();
+  });
+
+  test("mount_layout に null を渡すとクリアされる", () => {
+    const r = parseCollectionSettings({ mount_layout: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.mountLayout).toBeNull();
+  });
+
+  // ---------------- collection_character_path ----------------
+
+  test("collection_character_path: 文字列はトリムして採用", () => {
+    const r = parseCollectionSettings(
+      { collection_character_path: "  wafer/char.png  " },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.collectionCharacterPath).toBe("wafer/char.png");
+  });
+
+  test("collection_character_path: null はクリア扱い", () => {
+    const r = parseCollectionSettings(
+      { collection_character_path: null },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.collectionCharacterPath).toBeNull();
+  });
+
+  test("collection_character_path: 数値など string/null 以外は拒否", () => {
+    const r = parseCollectionSettings(
+      { collection_character_path: 42 },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/collection_character_path/);
+  });
+
+  test("collection_character_path: 空文字は拒否", () => {
+    const r = parseCollectionSettings(
+      { collection_character_path: "   " },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/collection_character_path/);
+  });
+
+  // ---------------- 表示期間: null での明示クリア ----------------
+
+  test("collection_display_starts_at に null を渡すとクリア (existing の値を上書き)", () => {
+    const r = parseCollectionSettings(
+      { collection_display_starts_at: null },
+      {
+        ...ON,
+        collectionDisplayStartsAt: "2026-07-01T00:00:00Z",
+        collectionDisplayEndsAt: "2026-08-01T00:00:00Z",
+      },
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.collectionDisplayStartsAt).toBeNull();
+  });
+
+  test("collection_display_ends_at に null を渡すとクリア", () => {
+    const r = parseCollectionSettings(
+      { collection_display_ends_at: null },
+      {
+        ...ON,
+        collectionDisplayStartsAt: "2026-07-01T00:00:00Z",
+        collectionDisplayEndsAt: "2026-08-01T00:00:00Z",
+      },
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.collectionDisplayEndsAt).toBeNull();
+  });
+
+  test("collection_display_ends_at に解釈不能な文字列は拒否", () => {
+    const r = parseCollectionSettings(
+      { collection_display_ends_at: "not-a-date" },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/collection_display_ends_at/);
+  });
 });
