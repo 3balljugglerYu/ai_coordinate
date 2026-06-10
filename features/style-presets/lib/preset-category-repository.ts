@@ -8,6 +8,10 @@ import {
   normalizeStyleOutputAspectRatioMode,
   type StyleOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
+import {
+  isMountLayoutKey,
+  type MountLayoutKey,
+} from "@/features/collections/lib/mount-layouts";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -35,7 +39,17 @@ export interface PresetCategoryRow {
   show_background_change_control?: boolean | null;
   show_generation_model_control?: boolean | null;
   show_user_prompt_input?: boolean | null;
+  user_prompt_label?: string | null;
+  user_prompt_placeholder?: string | null;
+  user_prompt_max_length?: number | null;
   visibility?: StylePresetCategoryVisibility | null;
+  is_collection_series?: boolean | null;
+  completion_threshold?: number | null;
+  mount_template_path?: string | null;
+  mount_layout?: string | null;
+  collection_character_path?: string | null;
+  collection_display_starts_at?: string | null;
+  collection_display_ends_at?: string | null;
   display_order: number;
   is_active: boolean;
   created_by: string | null;
@@ -60,7 +74,17 @@ export interface PresetCategoryAdmin {
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
   showUserPromptInput: boolean;
+  userPromptLabel: string | null;
+  userPromptPlaceholder: string | null;
+  userPromptMaxLength: number | null;
   visibility: StylePresetCategoryVisibility;
+  isCollectionSeries: boolean;
+  completionThreshold: number | null;
+  mountTemplatePath: string | null;
+  mountLayout: MountLayoutKey | null;
+  collectionCharacterPath: string | null;
+  collectionDisplayStartsAt: string | null;
+  collectionDisplayEndsAt: string | null;
   displayOrder: number;
   isActive: boolean;
   createdBy: string | null;
@@ -84,7 +108,17 @@ export interface PresetCategoryInsert {
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
   visibility?: StylePresetCategoryVisibility;
+  isCollectionSeries?: boolean;
+  completionThreshold?: number | null;
+  mountTemplatePath?: string | null;
+  mountLayout?: MountLayoutKey | null;
+  collectionCharacterPath?: string | null;
+  collectionDisplayStartsAt?: string | null;
+  collectionDisplayEndsAt?: string | null;
   displayOrder?: number;
   isActive?: boolean;
   createdBy?: string | null;
@@ -104,7 +138,17 @@ export interface PresetCategoryUpdate {
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
   visibility?: StylePresetCategoryVisibility;
+  isCollectionSeries?: boolean;
+  completionThreshold?: number | null;
+  mountTemplatePath?: string | null;
+  mountLayout?: MountLayoutKey | null;
+  collectionCharacterPath?: string | null;
+  collectionDisplayStartsAt?: string | null;
+  collectionDisplayEndsAt?: string | null;
   displayOrder?: number;
   isActive?: boolean;
   updatedBy?: string | null;
@@ -139,7 +183,17 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     showBackgroundChangeControl: row.show_background_change_control ?? true,
     showGenerationModelControl: row.show_generation_model_control ?? true,
     showUserPromptInput: row.show_user_prompt_input ?? false,
+    userPromptLabel: row.user_prompt_label ?? null,
+    userPromptPlaceholder: row.user_prompt_placeholder ?? null,
+    userPromptMaxLength: row.user_prompt_max_length ?? null,
     visibility: normalizeVisibility(row.visibility),
+    isCollectionSeries: row.is_collection_series ?? false,
+    completionThreshold: row.completion_threshold ?? null,
+    mountTemplatePath: row.mount_template_path ?? null,
+    mountLayout: isMountLayoutKey(row.mount_layout) ? row.mount_layout : null,
+    collectionCharacterPath: row.collection_character_path ?? null,
+    collectionDisplayStartsAt: row.collection_display_starts_at ?? null,
+    collectionDisplayEndsAt: row.collection_display_ends_at ?? null,
     displayOrder: row.display_order,
     isActive: row.is_active,
     createdBy: row.created_by,
@@ -232,7 +286,17 @@ export async function createPresetCategory(
       show_background_change_control: input.showBackgroundChangeControl ?? true,
       show_generation_model_control: input.showGenerationModelControl ?? true,
       show_user_prompt_input: input.showUserPromptInput ?? false,
+      user_prompt_label: input.userPromptLabel ?? null,
+      user_prompt_placeholder: input.userPromptPlaceholder ?? null,
+      user_prompt_max_length: input.userPromptMaxLength ?? null,
       visibility: input.visibility ?? "admin_only",
+      is_collection_series: input.isCollectionSeries ?? false,
+      completion_threshold: input.completionThreshold ?? null,
+      mount_template_path: input.mountTemplatePath ?? null,
+      mount_layout: input.mountLayout ?? null,
+      collection_character_path: input.collectionCharacterPath ?? null,
+      collection_display_starts_at: input.collectionDisplayStartsAt ?? null,
+      collection_display_ends_at: input.collectionDisplayEndsAt ?? null,
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
       created_by: input.createdBy ?? null,
@@ -276,8 +340,27 @@ export async function updatePresetCategory(
     payload.show_generation_model_control = input.showGenerationModelControl;
   if (input.showUserPromptInput !== undefined)
     payload.show_user_prompt_input = input.showUserPromptInput;
+  if (input.userPromptLabel !== undefined)
+    payload.user_prompt_label = input.userPromptLabel;
+  if (input.userPromptPlaceholder !== undefined)
+    payload.user_prompt_placeholder = input.userPromptPlaceholder;
+  if (input.userPromptMaxLength !== undefined)
+    payload.user_prompt_max_length = input.userPromptMaxLength;
   if (input.visibility !== undefined)
     payload.visibility = input.visibility;
+  if (input.isCollectionSeries !== undefined)
+    payload.is_collection_series = input.isCollectionSeries;
+  if (input.completionThreshold !== undefined)
+    payload.completion_threshold = input.completionThreshold;
+  if (input.mountTemplatePath !== undefined)
+    payload.mount_template_path = input.mountTemplatePath;
+  if (input.mountLayout !== undefined) payload.mount_layout = input.mountLayout;
+  if (input.collectionCharacterPath !== undefined)
+    payload.collection_character_path = input.collectionCharacterPath;
+  if (input.collectionDisplayStartsAt !== undefined)
+    payload.collection_display_starts_at = input.collectionDisplayStartsAt;
+  if (input.collectionDisplayEndsAt !== undefined)
+    payload.collection_display_ends_at = input.collectionDisplayEndsAt;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
   if (input.isActive !== undefined) payload.is_active = input.isActive;
   if (input.updatedBy !== undefined) payload.updated_by = input.updatedBy;

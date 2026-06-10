@@ -11,10 +11,14 @@ import {
   STYLE_OUTPUT_ASPECT_RATIO_MODES,
   updatePresetCategory,
 } from "@/features/style-presets/lib/preset-category-repository";
+import { parseCollectionSettings } from "../collection-settings-payload";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
 const MAX_USER_GUIDANCE_LENGTH = 1000;
+const MAX_USER_PROMPT_LABEL_LENGTH = 80;
+const MAX_USER_PROMPT_PLACEHOLDER_LENGTH = 200;
 
 function revalidatePresetCategoriesCache(id: string): void {
   revalidateTag("style-presets", "max");
@@ -248,6 +252,69 @@ export async function PATCH(
     }
     update.showUserPromptInput = body.show_user_prompt_input;
   }
+  if (body.user_prompt_label !== undefined) {
+    if (body.user_prompt_label !== null && typeof body.user_prompt_label !== "string") {
+      return NextResponse.json(
+        { error: "user_prompt_label must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_prompt_label === "string"
+        ? body.user_prompt_label.trim()
+        : "";
+    if (trimmed.length > MAX_USER_PROMPT_LABEL_LENGTH) {
+      return NextResponse.json(
+        { error: `user_prompt_label must be <= ${MAX_USER_PROMPT_LABEL_LENGTH} chars` },
+        { status: 400 },
+      );
+    }
+    update.userPromptLabel = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_prompt_placeholder !== undefined) {
+    if (
+      body.user_prompt_placeholder !== null &&
+      typeof body.user_prompt_placeholder !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "user_prompt_placeholder must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_prompt_placeholder === "string"
+        ? body.user_prompt_placeholder.trim()
+        : "";
+    if (trimmed.length > MAX_USER_PROMPT_PLACEHOLDER_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `user_prompt_placeholder must be <= ${MAX_USER_PROMPT_PLACEHOLDER_LENGTH} chars`,
+        },
+        { status: 400 },
+      );
+    }
+    update.userPromptPlaceholder = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_prompt_max_length !== undefined) {
+    const v = body.user_prompt_max_length;
+    if (v === null) {
+      update.userPromptMaxLength = null;
+    } else if (
+      typeof v !== "number" ||
+      !Number.isInteger(v) ||
+      v < 1 ||
+      v > GENERATION_PROMPT_MAX_LENGTH
+    ) {
+      return NextResponse.json(
+        {
+          error: `user_prompt_max_length must be an integer between 1 and ${GENERATION_PROMPT_MAX_LENGTH}, or null`,
+        },
+        { status: 400 },
+      );
+    } else {
+      update.userPromptMaxLength = v;
+    }
+  }
   if (body.visibility !== undefined) {
     if (
       typeof body.visibility !== "string" ||
@@ -284,6 +351,20 @@ export async function PATCH(
     }
     update.isActive = body.is_active;
   }
+
+  // コレクション設定(既存値とマージして R-02 を検証)
+  const collectionResult = parseCollectionSettings(body, {
+    isCollectionSeries: existing.isCollectionSeries,
+    completionThreshold: existing.completionThreshold,
+    mountTemplatePath: existing.mountTemplatePath,
+    mountLayout: existing.mountLayout,
+    collectionDisplayStartsAt: existing.collectionDisplayStartsAt,
+    collectionDisplayEndsAt: existing.collectionDisplayEndsAt,
+  });
+  if (!collectionResult.ok) {
+    return NextResponse.json({ error: collectionResult.error }, { status: 400 });
+  }
+  Object.assign(update, collectionResult.payload);
 
   try {
     const updated = await updatePresetCategory(id, {

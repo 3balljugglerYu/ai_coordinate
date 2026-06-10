@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "code-review@claude-plugins-official": true
-  },
   "permissions": {
     "allow": [
       "WebSearch",
@@ -43,7 +40,33 @@
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
       "Bash(git worktree *)",
-      "Bash(bash scripts/worktree-add.sh *)"
+      "Bash(bash scripts/worktree-add.sh *)",
+      "Bash(git merge *)",
+      "Read(//Users/hide/Documents/persta/ウエハースシール/**)",
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)",
+      "Bash(NODE_PATH=/Users/hide/ai_coordinate/node_modules node /tmp/make-frame6.js)",
+      "Bash(ls -la \"/Users/hide/Documents/persta/ウエハースシール/6p_modal_collections.webp\" && cp \"/Users/hide/Documents/persta/ウエハースシール/6p_modal_collections.webp\" /Users/hide/ai_coordinate/public/collections/wafer/modal-frame-6.webp && ls -la /Users/hide/ai_coordinate/public/collections/wafer/modal-frame-6.webp)",
+      "Bash(supabase migration *)",
+      "Bash(gh auth *)",
+      "Bash(bash scripts/git-commit-and-push.sh --yes -m 'feat\\(collections\\): 6枠台紙\\(grid_6\\)のコレクション対応を追加 *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/ --max-time 3)",
+      "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:3000/api/admin/collection-mount-template?path=collectible_wafer_sticker_god_6p/02575ab6-2de8-4498-a84c-ebea3661be58.png\" --max-time 15)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:3000/api/admin/collection-mount-template?path=../evil.png\" --max-time 15)",
+      "Bash(supabase db *)",
+      "Bash(git remote *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(bash scripts/git-commit-push-pr.sh --help)",
+      "Bash(bash scripts/git-commit-push-pr.sh --yes -m 'chore: ハーネス権限設定の更新を取り込み *)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/private/tmp",
+      "/Users/hide/Documents/persta/ウエハースシール"
     ]
+  },
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true
   }
 }

@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { CachedMyPageImageGallery } from "@/features/my-page/components/CachedMyPageImageGallery";
 import { CachedMyPagePercoinBalance } from "@/features/my-page/components/CachedMyPagePercoinBalance";
+import { CachedMyPageCollections } from "@/features/my-page/components/CachedMyPageCollections";
 import { CachedMyPageProfileHeader } from "@/features/my-page/components/CachedMyPageProfileHeader";
 import { CachedMyPageUserStats } from "@/features/my-page/components/CachedMyPageUserStats";
 import { ProfileHeaderSkeleton } from "@/features/my-page/components/ProfileHeaderSkeleton";
@@ -36,6 +37,10 @@ export default async function MyPagePage() {
 
           <Suspense fallback={<UserStatsSkeleton />}>
             <CachedMyPageUserStats userId={user.id} />
+          </Suspense>
+
+          <Suspense fallback={null}>
+            <CachedMyPageCollections userId={user.id} />
           </Suspense>
 
           <Suspense fallback={<PercoinBalanceSkeleton />}>

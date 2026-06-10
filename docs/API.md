@@ -122,6 +122,106 @@ curl -X POST "http://localhost:3000/api/internal/account-purge" \
 
 ## Detailed Endpoint Notes
 
+### `GET /api/collections/progress`
+
+ログインユーザーのアクティブなコレクションシリーズ進捗を返します。
+
+- Access: `user session`。未ログイン時は `{ "items": [] }`
+- Data source: `get_collection_progress()` RPC。RPC は `auth.uid()` を使い、`visibility='public'` かつ `is_active=true` のシリーズだけを返します。
+- Response:
+
+```json
+{
+  "items": [
+    {
+      "categoryId": "uuid",
+      "categoryKey": "wafer",
+      "displayNameJa": "ウエハース",
+      "displayNameEn": "Wafer",
+      "completionThreshold": 4,
+      "uniqueOutfitCount": 3,
+      "isCompleted": false,
+      "mountStatus": null,
+      "mountImagePath": null,
+      "completedAt": null
+    }
+  ]
+}
+```
+
+### `POST /api/collections/mount`
+
+コレクション達成時に台紙を生成します。cookie 認証 mutation route のため Same-Origin `Origin` 検証を行います。
+
+- Access: `user session`
+- Request body:
+
+```json
+{ "categoryKey": "wafer" }
+```
+
+- Behavior:
+  - `reserve_collection_completion()` で N 到達を再検証し、`generating` 行を予約します。
+  - 既存 `completed` は、ユーザーが選択を変えて更新する場合のみ再生成し、Storage path を更新します。
+  - 既存 `generating` は `202` を返し、クライアントは後続 polling で再確認します。
+  - route handler が sharp 合成、Storage upload、service-role 専用 `finalize_collection_completion()` を実行します。
+
+- Success response:
+
+```json
+{
+  "status": "completed",
+  "mountImageUrl": "https://.../storage/v1/object/public/generated-images/collection-mounts/user/category/mount-1717999999999.png?v=1717999999999",
+  "sharePath": "/m/completion-id"
+}
+```
+
+- Main errors:
+  - `400`: categoryKey 不正、N 未到達、設定不整合
+  - `401`: 未認証
+  - `403`: Same-Origin 検証失敗
+  - `409`: 再試行準備ができていない
+  - `500`: 台紙合成、Storage upload、完了確定失敗
+
+### `POST /api/collections/share-event`
+
+完了済み台紙の所有者が公開ページ URL を共有したとき、`mount_shared` イベントを記録します。
+
+- Access: `user session`
+- Request body:
+
+```json
+{ "completionId": "uuid" }
+```
+
+- Security: Same-Origin `Origin` 検証を行い、RLS で本人の `completed` completion だけを確認してから記録します。
+
+### `POST /api/admin/collection-mount-template`
+
+admin が台紙テンプレ PNG を private `collection-mount-templates` bucket にアップロードします。
+
+- Access: `admin session`
+- Request body:
+
+```json
+{
+  "categoryKey": "wafer",
+  "imageBase64": "data:image/png;base64,..."
+}
+```
+
+- Validation: category key、PNG format、10MB 上限、256〜4096px の寸法。
+
+### `GET /api/admin/collections`
+
+admin がシリーズ別 KPI と達成者一覧を取得します。
+
+- Access: `admin session`
+- Query:
+  - `categoryKey`: collection series key
+  - `page`: 0-based page number
+- Response: `{ "kpi": { ... }, "completers": { "items": [], "total": 0, "page": 0, "pageSize": 20 } }`
+
 ### `GET /api/posts`
 
 投稿一覧を取得します。

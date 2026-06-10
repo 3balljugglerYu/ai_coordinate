@@ -10,11 +10,16 @@ import {
   STYLE_PRESET_CATEGORY_VISIBILITY_VALUES,
   STYLE_OUTPUT_ASPECT_RATIO_MODES,
 } from "@/features/style-presets/lib/preset-category-repository";
+import { parseCollectionSettings } from "./collection-settings-payload";
+import type { MountLayoutKey } from "@/features/collections/lib/mount-layouts";
+import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
 const MAX_USER_GUIDANCE_LENGTH = 1000;
+const MAX_USER_PROMPT_LABEL_LENGTH = 80;
+const MAX_USER_PROMPT_PLACEHOLDER_LENGTH = 200;
 
 function revalidatePresetCategoriesCache(): void {
   // style preset の表示 cacheTag を流用 (preset → category の JOIN 結果が更新される)
@@ -69,7 +74,14 @@ interface ParsedCreatePayload {
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
   showUserPromptInput?: boolean;
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
   visibility?: "public" | "admin_only";
+  isCollectionSeries?: boolean;
+  completionThreshold?: number | null;
+  mountTemplatePath?: string | null;
+  mountLayout?: MountLayoutKey | null;
   displayOrder?: number;
   isActive?: boolean;
 }
@@ -288,6 +300,69 @@ export async function POST(request: NextRequest) {
     }
     payload.showUserPromptInput = body.show_user_prompt_input;
   }
+  if (body.user_prompt_label !== undefined) {
+    if (body.user_prompt_label !== null && typeof body.user_prompt_label !== "string") {
+      return NextResponse.json(
+        { error: "user_prompt_label must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_prompt_label === "string"
+        ? body.user_prompt_label.trim()
+        : "";
+    if (trimmed.length > MAX_USER_PROMPT_LABEL_LENGTH) {
+      return NextResponse.json(
+        { error: `user_prompt_label must be <= ${MAX_USER_PROMPT_LABEL_LENGTH} chars` },
+        { status: 400 },
+      );
+    }
+    payload.userPromptLabel = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_prompt_placeholder !== undefined) {
+    if (
+      body.user_prompt_placeholder !== null &&
+      typeof body.user_prompt_placeholder !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "user_prompt_placeholder must be string or null" },
+        { status: 400 },
+      );
+    }
+    const trimmed =
+      typeof body.user_prompt_placeholder === "string"
+        ? body.user_prompt_placeholder.trim()
+        : "";
+    if (trimmed.length > MAX_USER_PROMPT_PLACEHOLDER_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `user_prompt_placeholder must be <= ${MAX_USER_PROMPT_PLACEHOLDER_LENGTH} chars`,
+        },
+        { status: 400 },
+      );
+    }
+    payload.userPromptPlaceholder = trimmed.length > 0 ? trimmed : null;
+  }
+  if (body.user_prompt_max_length !== undefined) {
+    const v = body.user_prompt_max_length;
+    if (v === null) {
+      payload.userPromptMaxLength = null;
+    } else if (
+      typeof v !== "number" ||
+      !Number.isInteger(v) ||
+      v < 1 ||
+      v > GENERATION_PROMPT_MAX_LENGTH
+    ) {
+      return NextResponse.json(
+        {
+          error: `user_prompt_max_length must be an integer between 1 and ${GENERATION_PROMPT_MAX_LENGTH}, or null`,
+        },
+        { status: 400 },
+      );
+    } else {
+      payload.userPromptMaxLength = v;
+    }
+  }
   if (body.visibility !== undefined) {
     if (
       typeof body.visibility !== "string" ||
@@ -324,6 +399,18 @@ export async function POST(request: NextRequest) {
     }
     payload.isActive = body.is_active;
   }
+
+  // コレクション設定(新規は既存値なし=すべて off/null から判定)
+  const collectionResult = parseCollectionSettings(body, {
+    isCollectionSeries: false,
+    completionThreshold: null,
+    mountTemplatePath: null,
+    mountLayout: null,
+  });
+  if (!collectionResult.ok) {
+    return NextResponse.json({ error: collectionResult.error }, { status: 400 });
+  }
+  Object.assign(payload, collectionResult.payload);
 
   try {
     const created = await createPresetCategory({

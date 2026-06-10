@@ -116,6 +116,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "image",
   },
   {
+    path: "/admin/collections",
+    label: "コレクション",
+    description: "シリーズ別 KPI と達成者一覧を確認",
+    iconKey: "rectangle-horizontal",
+  },
+  {
     path: "/admin/style-templates",
     label: "スタイルテンプレート審査",
     description: "ユーザー投稿テンプレを審査・管理",

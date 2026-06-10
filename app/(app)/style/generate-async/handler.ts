@@ -9,7 +9,7 @@ import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
-import { env, getAdminUserIds } from "@/lib/env";
+import { env, isAdminViewer } from "@/lib/env";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
   createAsyncGenerationJobRepository,
@@ -151,7 +151,7 @@ export async function postStyleGenerateAsyncRoute(
       ? normalizeModelName(rawModel)
       : DEFAULT_GENERATION_MODEL;
 
-    const isAdminUser = getAdminUserIds().includes(user.id);
+    const isAdminUser = isAdminViewer(user.id);
     const preset = await getPublishedStylePresetForGenerationFn(styleId, {
       includeAdminOnly: isAdminUser,
     });
@@ -279,9 +279,12 @@ export async function postStyleGenerateAsyncRoute(
       preset.category.showUserPromptInput && userPromptRaw.trim().length > 0
         ? userPromptRaw
         : null;
+    // 上限はカテゴリ別設定(user_prompt_max_length)を優先、未設定は既定値
+    const userPromptMaxLength =
+      preset.category.userPromptMaxLength ?? GENERATION_PROMPT_MAX_LENGTH;
     if (
       preset.category.showUserPromptInput &&
-      userPromptRaw.length > GENERATION_PROMPT_MAX_LENGTH
+      userPromptRaw.length > userPromptMaxLength
     ) {
       return jsonError(
         copy.invalidStylePreset,

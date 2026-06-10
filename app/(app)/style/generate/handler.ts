@@ -331,9 +331,12 @@ export async function postStyleGenerateRoute(
       preset.category.showUserPromptInput && userPromptRaw.trim().length > 0
         ? userPromptRaw
         : null;
+    // 上限はカテゴリ別設定(user_prompt_max_length)を優先、未設定は既定値
+    const userPromptMaxLength =
+      preset.category.userPromptMaxLength ?? GENERATION_PROMPT_MAX_LENGTH;
     if (
       preset.category.showUserPromptInput &&
-      userPromptRaw.length > GENERATION_PROMPT_MAX_LENGTH
+      userPromptRaw.length > userPromptMaxLength
     ) {
       return jsonError(
         copy.invalidStylePreset,

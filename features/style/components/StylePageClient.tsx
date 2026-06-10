@@ -90,6 +90,7 @@ import { GenerationSubmitButton } from "@/features/generation/components/Generat
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { AuthModal } from "@/features/auth/components/AuthModal";
+import { COLLECTION_PROGRESS_REFRESH_EVENT } from "@/features/collections/hooks/useCollectionProgress";
 import {
   readPreferredModel,
   writePreferredModel,
@@ -549,6 +550,10 @@ export function StylePageClient({
   }, [effectiveAuthState, guestSaveImage, selectedPreset?.id]);
 
   const isCompletingGeneration = generationPhase === "completing";
+  // ユーザープロンプト入力の最大文字数(カテゴリ別設定を優先、未設定は既定値)
+  const userPromptMaxLength =
+    selectedPreset?.category.userPromptMaxLength ??
+    GENERATION_PROMPT_MAX_LENGTH;
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
     : 1;
@@ -1448,6 +1453,11 @@ export function StylePageClient({
       }).catch(() => {
         // Tracking failures should not affect the page UX.
       });
+      // コレクション進捗を即時再チェック(全画面チェッカーへ通知)。
+      // 非同期生成で他画面にいてもポーリングが拾うが、style画面では即時に出す。
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+      }
     } catch (error) {
       handleGenerationError(
         error instanceof Error ? error.message : t("unknownError")
@@ -1747,15 +1757,21 @@ export function StylePageClient({
               <PromptInputField
                 value={userPromptInputValue}
                 onChange={setUserPromptInputValue}
-                label={t("userPromptLabel")}
-                placeholder={t("userPromptPlaceholder")}
-                hint={t("userPromptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
+                label={
+                  selectedPreset.category.userPromptLabel ??
+                  t("userPromptLabel")
+                }
+                placeholder={
+                  selectedPreset.category.userPromptPlaceholder ??
+                  t("userPromptPlaceholder")
+                }
+                hint={t("userPromptHint", { max: userPromptMaxLength })}
                 clearLabel={t("userPromptClear")}
                 characterCount={t("userPromptCharacterCount", {
                   current: userPromptInputValue.length,
-                  max: GENERATION_PROMPT_MAX_LENGTH,
+                  max: userPromptMaxLength,
                 })}
-                maxLength={GENERATION_PROMPT_MAX_LENGTH}
+                maxLength={userPromptMaxLength}
                 disabled={isGenerating}
                 id="user-prompt"
               />
