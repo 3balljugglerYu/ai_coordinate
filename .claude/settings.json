@@ -54,7 +54,11 @@
       "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)",
       "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:3000/api/admin/collection-mount-template?path=collectible_wafer_sticker_god_6p/02575ab6-2de8-4498-a84c-ebea3661be58.png\" --max-time 15)",
       "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:3000/api/admin/collection-mount-template?path=../evil.png\" --max-time 15)",
-      "Bash(supabase db *)"
+      "Bash(supabase db *)",
+      "Bash(git remote *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(bash scripts/git-commit-push-pr.sh --help)",
+      "Bash(bash scripts/git-commit-push-pr.sh --yes -m 'chore: ハーネス権限設定の更新を取り込み *)"
     ],
     "additionalDirectories": [
       "/tmp",
