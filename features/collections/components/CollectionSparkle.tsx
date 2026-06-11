@@ -33,22 +33,27 @@ interface Sparkle {
   left: number;
   top: number;
   size: number;
-  color: string;
   delay: number;
   duration: number;
 }
 
-// モジュールロード時に1回だけ生成(毎レンダーの再計算を避ける)。
+// モジュールロード時に1回だけ生成(毎レンダーの再計算を避ける)。色は描画時に割り当てる。
 const SPARKLES: Sparkle[] = Array.from({ length: SPARKLE_COUNT }, (_, i) => ({
   left: rand(i, 1) * 100,
   top: rand(i, 2) * 100,
   size: 16 + rand(i, 3) * 22,
-  color: SPARKLE_COLORS[i % SPARKLE_COLORS.length],
   delay: rand(i, 4) * 2400,
   duration: 1200 + rand(i, 5) * 1400,
 }));
 
-export function CollectionSparkle({ show }: { show: boolean }) {
+export function CollectionSparkle({
+  show,
+  colors = SPARKLE_COLORS,
+}: {
+  show: boolean;
+  /** きらめきの色パレット(任意・デフォルトは白/金/水色) */
+  colors?: readonly string[];
+}) {
   if (!show) return null;
 
   return (
@@ -74,7 +79,7 @@ export function CollectionSparkle({ show }: { show: boolean }) {
               top: `${s.top}%`,
               width: `${s.size}px`,
               height: `${s.size}px`,
-              color: s.color,
+              color: colors[i % colors.length],
               transformOrigin: "center",
               willChange: "transform, opacity",
               animation: `coll-sparkle-twinkle ${s.duration}ms ${s.delay}ms ease-in-out infinite`,

@@ -9,6 +9,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
+import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
+
+/** コンポーザ背景用のオレンジ系きらめきパレット */
+const MOUNT_SPARKLE_COLORS = [
+  "#FB923C",
+  "#F97316",
+  "#FDBA74",
+  "#FCD34D",
+  "#FBBF24",
+] as const;
 
 interface OutfitOption {
   presetId: string;
@@ -41,7 +51,6 @@ type Status = "loading" | "selecting" | "generating" | "error";
  */
 export function CollectionMountComposer({
   categoryKey,
-  displayName,
   threshold,
   onClose,
   onGenerated,
@@ -140,9 +149,12 @@ export function CollectionMountComposer({
   return (
     <Dialog open onOpenChange={(open) => (!open ? onClose() : undefined)}>
       <DialogContent className="max-h-[85vh] w-[min(92vw,460px)] overflow-y-auto">
+        {/* 背景: オレンジのきらめき。他モーダルと同じ「前面に1枚重ねる」方式
+            (pointer-events-none・コンテンツ構造は触らない)。 */}
+        <CollectionSparkle show colors={MOUNT_SPARKLE_COLORS} />
         <DialogHeader>
           <DialogTitle className="text-center">
-            {displayName} の台紙を作る
+            コレクションシートをつくる
           </DialogTitle>
         </DialogHeader>
 
@@ -212,14 +224,14 @@ export function CollectionMountComposer({
         {status === "selecting" ? (
           <div className="space-y-4">
             <p className="text-center text-xs text-gray-500">
-              台紙に載せる画像を衣装ごとに選んでください
+              コレクションシートに載せる画像を選択してください。
             </p>
             {outfits.map((o, i) => (
               <div key={o.presetId}>
                 <p className="mb-1 text-xs font-medium text-gray-600">
                   No.{String(i + 1).padStart(2, "0")}
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {o.images.map((img) => {
                     const isSelected = selected[o.presetId] === img.id;
                     return (
@@ -229,8 +241,8 @@ export function CollectionMountComposer({
                         onClick={() =>
                           setSelected((s) => ({ ...s, [o.presetId]: img.id }))
                         }
-                        className={`relative aspect-square w-16 overflow-hidden rounded-md border-2 ${
-                          isSelected ? "border-primary" : "border-transparent"
+                        className={`relative aspect-square w-full overflow-hidden rounded-md border-2 ${
+                          isSelected ? "border-orange-500" : "border-transparent"
                         }`}
                         aria-pressed={isSelected}
                       >
@@ -238,7 +250,7 @@ export function CollectionMountComposer({
                           src={img.url}
                           alt=""
                           fill
-                          sizes="64px"
+                          sizes="130px"
                           className="object-cover"
                         />
                       </button>
@@ -250,9 +262,9 @@ export function CollectionMountComposer({
             <button
               type="button"
               onClick={() => void generate(selected)}
-              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="w-full rounded-md bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-sm font-bold text-white shadow-[0_3px_0_rgba(234,88,12,0.4)] hover:opacity-90"
             >
-              この内容で台紙を作る
+              この内容で作成する
             </button>
           </div>
         ) : null}
