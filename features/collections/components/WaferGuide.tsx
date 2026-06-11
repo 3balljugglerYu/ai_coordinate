@@ -348,9 +348,9 @@ export function WaferGuide({
                       tintByProgress={false}
                       className="w-[84px]"
                     >
-                      {!characterUrl && ratio >= 1 ? (
+                      {!characterUrl && ratio >= 1 && (
                         <span className="text-[10px] font-bold text-amber-500">完成</span>
-                      ) : null}
+                      )}
                     </CollectionProgressRing>
                   </div>
                 );
