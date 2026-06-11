@@ -56,6 +56,18 @@ const STYLE_BASE_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Ima
 
 3. Strict Framing: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a body part is not in the original frame, do not add it. Preserve the exact crop, camera angle, and composition of \`image_0.png\`.`;
 
+// free_pose モード (framing_mode="free_pose") 用の前文。
+// identity (顔・髪型・体型・画風) は厳守しつつ、ポーズ・カメラアングル・構図は
+// Styling Direction / ユーザー指示を優先する。locked 用と異なり style suffix
+// (illustration/real) は併用しない (画風維持の指示を本文 2. に内包しているため)。
+const STYLE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
+
+1. Outfit Transformation (REQUIRED): You MUST replace the person's current clothing with the outfit described in the "Styling Direction" below. The output image MUST visibly show the new outfit. Returning the original outfit unchanged is a failure.
+
+2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Do not alter the person's identity.
+
+3. Flexible Pose & Framing: You MAY change the pose, camera angle, framing, crop, and composition. If the "Styling Direction" or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. If they do not, choose a natural pose and framing that best presents the outfit. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
+
 // ============================================================================
 // Coordinate 系 (buildPrompt の coordinate 分岐内テキスト)
 // ============================================================================
@@ -67,6 +79,15 @@ const COORDINATE_BASE_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-t
 2. Pose & Identity Preservation: Maintain the exact facial features, hair style, and pose of the person in \`image_0.png\`. Do not alter the person's identity.
 
 3. Strict Framing: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a body part is not in the original frame, do not add it. Preserve the exact crop, camera angle, and composition of \`image_0.png\`.`;
+
+// free_pose モード用 (STYLE_BASE_PREFIX_FREE_POSE_DEFAULT のコメント参照)。
+const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
+
+1. Outfit Transformation (REQUIRED): You MUST replace the person's current clothing with the outfit described under "New Outfit" below. The output image MUST visibly show the new outfit. Returning the original outfit unchanged is a failure.
+
+2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Do not alter the person's identity.
+
+3. Flexible Pose & Framing: You MAY change the pose, camera angle, framing, crop, and composition. If the "New Outfit" description or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. If they do not, choose a natural pose and framing that best presents the outfit. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
 
 // ============================================================================
 // Inspire 系 (buildInspirePrompt 内テキスト)
@@ -84,6 +105,16 @@ const REINFORCEMENT_COORDINATE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): Th
 `;
 
 const REINFORCEMENT_STYLE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the Styling Direction. You MUST strictly apply the outfit replacement on the body parts already visible in \`image_0.png\`, within the existing frame, and any background instruction below. Do not return the original image unchanged. Do not extend the crop, widen the framing, or add body parts (legs, feet, lower body) that were not visible in \`image_0.png\`.
+
+`;
+
+// free_pose モード用のリトライ強化 prefix。locked 用と異なりフレーム固定を再強制しない
+// (再強制すると base_prefix_free_pose の Flexible Pose & Framing と矛盾するため)。
+const REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the New Outfit described below. You MUST strictly apply the outfit replacement while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. The pose, camera angle, and framing are allowed to change as instructed below. Do not return the original image unchanged.
+
+`;
+
+const REINFORCEMENT_STYLE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the Styling Direction. You MUST strictly apply the outfit replacement while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. The pose, camera angle, and framing are allowed to change as instructed below. Do not return the original image unchanged.
 
 `;
 
@@ -191,6 +222,14 @@ export const PROMPT_REGISTRY = {
     defaultContent: STYLE_BASE_PREFIX_DEFAULT,
     supportedVariables: [],
   },
+  "style.base_prefix_free_pose": {
+    category: "style",
+    description:
+      "Style: free_pose モード (ポーズ・アングル自由化) の CRITICAL INSTRUCTION 前文。" +
+      "identity と画風維持を内包するため illustration/real suffix は併用しない",
+    defaultContent: STYLE_BASE_PREFIX_FREE_POSE_DEFAULT,
+    supportedVariables: [],
+  },
   "style.illustration_suffix": {
     category: "style",
     description: "Style: イラスト入力の場合のスタイル指示",
@@ -219,12 +258,35 @@ export const PROMPT_REGISTRY = {
       'You MUST restyle the background within the existing framing so that it matches the "Background Direction" below and complements the selected outfit. Replace or redesign the original background accordingly. Preserve the camera angle, crop, composition, pose, facial features, and character identity.',
     supportedVariables: [],
   },
+  "style.keep_background_suffix_free_pose": {
+    category: "style",
+    description:
+      "Style: free_pose モードの背景維持指示 (アングルが変わっても同じ環境を新視点で描く)",
+    defaultContent:
+      "Keep the background environment, location, and overall mood consistent with `image_0.png`. If the pose or camera angle changes, depict the same environment from the new viewpoint instead of replacing it with a different location.",
+    supportedVariables: [],
+  },
+  "style.change_background_suffix_free_pose": {
+    category: "style",
+    description: "Style: free_pose モードの背景変更指示 (フレーミング固定を課さない)",
+    defaultContent:
+      'You MUST restyle the background so that it matches the "Background Direction" below and complements the selected outfit. The background composition may be designed freely to suit the new pose, camera angle, and framing. Preserve the character identity.',
+    supportedVariables: [],
+  },
 
   // ── Coordinate (通常コーディネート) ─────────────────────────────────────
   "coordinate.base_prefix": {
     category: "coordinate",
     description: "Coordinate: 通常生成の CRITICAL INSTRUCTION 前文 (3 ステップ)",
     defaultContent: COORDINATE_BASE_PREFIX_DEFAULT,
+    supportedVariables: [],
+  },
+  "coordinate.base_prefix_free_pose": {
+    category: "coordinate",
+    description:
+      "Coordinate: free_pose モード (ポーズ・アングル自由化) の CRITICAL INSTRUCTION 前文。" +
+      "identity と画風維持を内包するため real/illustration style suffix は併用しない",
+    defaultContent: COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT,
     supportedVariables: [],
   },
   "coordinate.real_style_suffix": {
@@ -253,6 +315,22 @@ export const PROMPT_REGISTRY = {
     description: "Coordinate: 背景変更 (ai_auto) 時の指示",
     defaultContent:
       "You MUST restyle the background within the existing framing so that it complements the new outfit's style and color palette. Replace or redesign the original background accordingly. Preserve the camera angle, crop, composition, pose, facial features, and character identity.",
+    supportedVariables: [],
+  },
+  "coordinate.keep_background_suffix_free_pose": {
+    category: "coordinate",
+    description:
+      "Coordinate: free_pose モードの背景維持指示 (アングルが変わっても同じ環境を新視点で描く)",
+    defaultContent:
+      "Keep the background environment, location, and overall mood consistent with `image_0.png`. If the pose or camera angle changes, depict the same environment from the new viewpoint instead of replacing it with a different location.",
+    supportedVariables: [],
+  },
+  "coordinate.change_background_suffix_free_pose": {
+    category: "coordinate",
+    description:
+      "Coordinate: free_pose モードの背景変更 (ai_auto) 指示 (フレーミング固定を課さない)",
+    defaultContent:
+      "You MUST restyle the background so that it complements the new outfit's style and color palette. The background composition may be designed freely to suit the new pose, camera angle, and framing. Preserve the character identity.",
     supportedVariables: [],
   },
 
@@ -330,6 +408,23 @@ export const PROMPT_REGISTRY = {
     category: "reinforcement",
     description: "Style 系のリトライ強化 prefix (attempt ≥ 2 で前置)",
     defaultContent: REINFORCEMENT_STYLE_DEFAULT,
+    supportedVariables: ["attempt"],
+    previewSamples: { attempt: "2" },
+  },
+  "reinforcement.coordinate_attempt_2plus_free_pose": {
+    category: "reinforcement",
+    description:
+      "Coordinate 系 free_pose モードのリトライ強化 prefix (attempt ≥ 2 で前置)。" +
+      "フレーム固定を再強制しない。末尾の改行 2 つは生成プロンプトとの区切りで重要",
+    defaultContent: REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT,
+    supportedVariables: ["attempt"],
+    previewSamples: { attempt: "2" },
+  },
+  "reinforcement.style_attempt_2plus_free_pose": {
+    category: "reinforcement",
+    description:
+      "Style 系 free_pose モードのリトライ強化 prefix (attempt ≥ 2 で前置)。フレーム固定を再強制しない",
+    defaultContent: REINFORCEMENT_STYLE_FREE_POSE_DEFAULT,
     supportedVariables: ["attempt"],
     previewSamples: { attempt: "2" },
   },

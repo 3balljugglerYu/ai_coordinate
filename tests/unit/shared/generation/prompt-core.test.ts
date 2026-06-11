@@ -144,6 +144,101 @@ Minimal monochrome look`;
     });
   });
 
+  describe("buildPrompt_coordinate_framingMode", () => {
+    const outfitDescription = "オーバーサイズの白シャツとワイドデニム";
+
+    test("free_pose_keepはfree_pose前文とfree_pose背景維持suffixを使いstyle_suffixを含まない", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "keep",
+        sourceImageType: "real",
+        framingMode: "free_pose",
+      });
+
+      expect(result).toContain("Flexible Pose & Framing");
+      expect(result).not.toContain("Strict Framing");
+      expect(result).not.toContain(
+        "Outfit Transformation within the Existing Frame"
+      );
+      expect(result).not.toContain("85mm portrait lens");
+      expect(result).toContain(
+        "depict the same environment from the new viewpoint"
+      );
+      expect(result).not.toContain(
+        "Keep the entire original background unchanged"
+      );
+      expect(result).toContain(`New Outfit:\n\n${outfitDescription}`);
+    });
+
+    test("free_pose_ai_autoはフレーミング固定を課さない背景変更suffixを使う", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "ai_auto",
+        sourceImageType: "illustration",
+        framingMode: "free_pose",
+      });
+
+      expect(result).toContain(
+        "designed freely to suit the new pose, camera angle, and framing"
+      );
+      expect(result).not.toContain("within the existing framing");
+      expect(result).not.toContain(
+        "Maintain the exact illustration touch and artistic style"
+      );
+    });
+
+    test("free_pose_include_in_promptは背景suffixを含まない", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "include_in_prompt",
+        sourceImageType: "illustration",
+        framingMode: "free_pose",
+      });
+
+      expect(result).toContain("Flexible Pose & Framing");
+      expect(result).not.toContain("depict the same environment");
+      expect(result).not.toContain("designed freely to suit the new pose");
+    });
+
+    test("framingMode省略とlockedは完全一致する_後方互換", () => {
+      const omitted = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "keep",
+        sourceImageType: "real",
+      });
+      const locked = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "keep",
+        sourceImageType: "real",
+        framingMode: "locked",
+      });
+
+      expect(locked).toBe(omitted);
+      expect(omitted).toContain("Strict Framing");
+    });
+
+    test("templatesでbase_prefix_free_poseをoverrideできる", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "keep",
+        sourceImageType: "illustration",
+        framingMode: "free_pose",
+        templates: {
+          "coordinate.base_prefix_free_pose": "CUSTOM FREE POSE PREFIX",
+        },
+      });
+
+      expect(result).toContain("CUSTOM FREE POSE PREFIX");
+      expect(result).not.toContain("Flexible Pose & Framing");
+    });
+  });
+
   describe("buildCoordinateAttemptReinforcementPrefix", () => {
     test("attempt1は空文字を返す", () => {
       expect(buildCoordinateAttemptReinforcementPrefix(1)).toBe("");
@@ -163,6 +258,25 @@ Minimal monochrome look`;
       expect(buildCoordinateAttemptReinforcementPrefix(3)).toContain(
         "RETRY NOTICE (attempt 3)"
       );
+    });
+
+    test("free_poseのattempt1は空文字を返す", () => {
+      expect(
+        buildCoordinateAttemptReinforcementPrefix(1, undefined, "free_pose")
+      ).toBe("");
+    });
+
+    test("free_poseのattempt2以降は枠維持制約を含まない変種を使う", () => {
+      const prefix = buildCoordinateAttemptReinforcementPrefix(
+        2,
+        undefined,
+        "free_pose"
+      );
+
+      expect(prefix).toContain("RETRY NOTICE (attempt 2)");
+      expect(prefix).not.toContain("Do not extend the crop");
+      expect(prefix).toContain("allowed to change");
+      expect(prefix.endsWith("\n\n")).toBe(true);
     });
   });
 });

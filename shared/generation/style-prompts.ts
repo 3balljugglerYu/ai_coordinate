@@ -14,6 +14,7 @@
 import { PROMPT_REGISTRY } from "./prompt-registry.ts";
 import { applyTemplate } from "./prompt-template.ts";
 import type { SourceImageType } from "./prompt-core.ts";
+import type { FramingMode } from "./framing-mode.ts";
 
 // 後方互換: 既存 import 元のために registry default を再 export する
 export const STYLE_PROMPT_BASE_PREFIX =
@@ -83,8 +84,19 @@ export interface BuildStyleGenerationPromptOptions {
    * preset_categories.skip_base_prefix = true (= ちびキャラ等の raw モード)
    * のときに使う。共通プロンプトの「フレーム維持・identity 保持」が
    * フォルム変形系の生成と整合しないため。
+   *
+   * skipBasePrefix=true のときは framingMode より優先される (raw 勝ち)。
    */
   skipBasePrefix?: boolean;
+  /**
+   * "free_pose" のとき base_prefix の代わりに style.base_prefix_free_pose を使い、
+   * 背景 suffix も free_pose 変種に差し替える。illustration/real の style suffix は
+   * 付与しない (画風維持の指示が free_pose 前文に内包されており、既存 suffix の
+   * 「camera angle / composition 維持」がポーズ自由化と矛盾するため)。
+   *
+   * 省略 / "locked" は現行挙動と完全に等価。
+   */
+  framingMode?: FramingMode;
 }
 
 export function buildStyleGenerationPrompt(
@@ -103,17 +115,34 @@ export function buildStyleGenerationPrompt(
     return sections.join("\n\n");
   }
 
-  const promptSuffix =
-    params.sourceImageType === "real"
+  const freePose = options.framingMode === "free_pose";
+
+  // free_pose では illustration/real suffix を付与しない (interface コメント参照)
+  const promptSuffix = freePose
+    ? null
+    : params.sourceImageType === "real"
       ? resolveTemplate(params.templates, "style.real_suffix")
       : resolveTemplate(params.templates, "style.illustration_suffix");
   const backgroundInstruction = params.backgroundChange
-    ? resolveTemplate(params.templates, "style.change_background_suffix")
-    : resolveTemplate(params.templates, "style.keep_background_suffix");
+    ? resolveTemplate(
+        params.templates,
+        freePose
+          ? "style.change_background_suffix_free_pose"
+          : "style.change_background_suffix",
+      )
+    : resolveTemplate(
+        params.templates,
+        freePose
+          ? "style.keep_background_suffix_free_pose"
+          : "style.keep_background_suffix",
+      );
 
   let promptSections: string[] = [
-    resolveTemplate(params.templates, "style.base_prefix"),
-    promptSuffix,
+    resolveTemplate(
+      params.templates,
+      freePose ? "style.base_prefix_free_pose" : "style.base_prefix",
+    ),
+    ...(promptSuffix === null ? [] : [promptSuffix]),
     backgroundInstruction,
     `Styling Direction:\n${params.stylingPrompt}`,
   ];
@@ -140,10 +169,16 @@ export function buildStyleGenerationPrompt(
 export function buildStyleAttemptReinforcementPrefix(
   attempt: number,
   templates?: Record<string, string>,
+  framingMode?: FramingMode,
 ): string {
   if (attempt <= 1) {
     return "";
   }
-  const template = resolveTemplate(templates, "reinforcement.style_attempt_2plus");
+  const template = resolveTemplate(
+    templates,
+    framingMode === "free_pose"
+      ? "reinforcement.style_attempt_2plus_free_pose"
+      : "reinforcement.style_attempt_2plus",
+  );
   return applyTemplate(template, { attempt });
 }
