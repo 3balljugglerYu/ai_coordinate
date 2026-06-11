@@ -22,6 +22,12 @@ jest.mock("@/features/generation/lib/model-config", () => ({
   ),
 }));
 
+// framingMode (free_pose) の admin viewer ゲートをテストごとに制御する
+jest.mock("@/lib/env", () => ({
+  ...jest.requireActual("@/lib/env"),
+  isAdminViewer: jest.fn(() => false),
+}));
+
 import { NextRequest } from "next/server";
 import { postStyleGenerateAsyncRoute } from "@/app/(app)/style/generate-async/handler";
 import type { AsyncGenerationJobRepository } from "@/features/generation/lib/async-generation-job-repository";
@@ -31,6 +37,12 @@ import {
   STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
   STYLE_PROMPT_REAL_SUFFIX,
 } from "@/shared/generation/style-prompts";
+import { PROMPT_REGISTRY } from "@/shared/generation/prompt-registry";
+import { isAdminViewer } from "@/lib/env";
+
+const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
+  typeof isAdminViewer
+>;
 
 type JsonRecord = Record<string, unknown>;
 const STYLE_ID = "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1";
@@ -157,6 +169,8 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
+    isAdminViewerMock.mockReset();
+    isAdminViewerMock.mockReturnValue(false);
     jobRepository = createAsyncGenerationJobRepositoryMock();
     getPublishedStylePresetForGenerationFn = jest
       .fn()
@@ -888,6 +902,138 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       const body = await readJson(response);
       expect(response.status).toBe(400);
       expect(body.errorCode).toBe("STYLE_MISSING_UPLOAD_IMAGE");
+    });
+  });
+
+  describe("framingMode (admin viewer 限定先行公開)", () => {
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildFormData(framingMode?: string): FormData {
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+      formData.set("sourceImageType", "illustration");
+      formData.set("backgroundChange", "false");
+      formData.set("model", "gemini-3.1-flash-image-preview-512");
+      if (framingMode !== undefined) {
+        formData.set("framingMode", framingMode);
+      }
+      return formData;
+    }
+
+    test("非 admin の free_pose は 400 STYLE_FRAMING_MODE_NOT_ALLOWED", async () => {
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("free_pose")),
+        dependencies(),
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_FRAMING_MODE_NOT_ALLOWED");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("未知の framingMode 値は 400 STYLE_INVALID_FRAMING_MODE", async () => {
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("totally_free")),
+        dependencies(),
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_INVALID_FRAMING_MODE");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("admin の free_pose は free_pose プレフィックスで生成され metadata に記録される", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("free_pose")),
+        dependencies(),
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      const expectedPrompt = [
+        PROMPT_REGISTRY["style.base_prefix_free_pose"].defaultContent,
+        PROMPT_REGISTRY["style.keep_background_suffix_free_pose"]
+          .defaultContent,
+        "Styling Direction:\nRAW PROMPT\nSECOND LINE",
+      ].join("\n\n");
+      expect(jobData.prompt_text).toBe(expectedPrompt);
+      expect(jobData.generation_metadata).toEqual(
+        expect.objectContaining({ framingMode: "free_pose" }),
+      );
+      // 既存の oneTapStyle metadata も維持される
+      expect(jobData.generation_metadata).toEqual(
+        expect.objectContaining({
+          oneTapStyle: expect.objectContaining({ billingMode: "paid" }),
+        }),
+      );
+    });
+
+    test("admin でも raw カテゴリ (skip_base_prefix) では free_pose を無視して raw 出力", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+      getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+        buildStylePresetForGeneration({
+          category: { ...TEST_COORDINATE_CATEGORY, skipBasePrefix: true },
+        }),
+      );
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("free_pose")),
+        dependencies(),
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.prompt_text).toBe(
+        "Styling Direction:\nRAW PROMPT\nSECOND LINE",
+      );
+      expect(jobData.generation_metadata).not.toEqual(
+        expect.objectContaining({ framingMode: expect.anything() }),
+      );
+    });
+
+    test("framingMode 省略時は locked 挙動で metadata にキーが入らない (後方互換)", async () => {
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData()),
+        dependencies(),
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.prompt_text).toBe(
+        buildExpectedPrompt({
+          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        }),
+      );
+      expect(jobData.generation_metadata).not.toEqual(
+        expect.objectContaining({ framingMode: expect.anything() }),
+      );
+    });
+
+    test("locked を明示しても admin 検証なしで通り、現行挙動と一致する", async () => {
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("locked")),
+        dependencies(),
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.prompt_text).toBe(
+        buildExpectedPrompt({
+          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        }),
+      );
     });
   });
 });

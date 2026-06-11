@@ -23,3 +23,22 @@ export const DEFAULT_FRAMING_MODE: FramingMode = "locked";
 export function parseFramingMode(value: unknown): FramingMode | null {
   return value === "locked" || value === "free_pose" ? value : null;
 }
+
+/**
+ * image_jobs.generation_metadata (JSONB) から framingMode を読み取る。
+ * キーなし・不正値は locked (= 現行挙動) にフォールバックする。
+ * worker (Deno) / Next.js の両方から使う。
+ */
+export function getFramingModeFromGenerationMetadata(
+  metadata: unknown,
+): FramingMode {
+  if (typeof metadata === "object" && metadata !== null) {
+    const parsed = parseFramingMode(
+      (metadata as Record<string, unknown>).framingMode,
+    );
+    if (parsed) {
+      return parsed;
+    }
+  }
+  return DEFAULT_FRAMING_MODE;
+}

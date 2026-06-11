@@ -27,6 +27,10 @@ import {
   getPercoinCost,
   isModelAvailableForGeneration,
 } from "@/features/generation/lib/model-config";
+import {
+  parseFramingMode,
+  type FramingMode,
+} from "@/shared/generation/framing-mode";
 import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
@@ -160,6 +164,32 @@ export async function postStyleGenerateAsyncRoute(
     }
     if (preset.category.visibility === "admin_only" && !isAdminUser) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    }
+
+    // framing_mode (admin viewer 限定の先行公開)。未知値は 400。
+    // free_pose は非 admin から送られたら 400 (UI 非表示はセキュリティではないためサーバでも遮断)。
+    // raw モード (skip_base_prefix=true) カテゴリでは無視して locked 扱い (REQ-5)。
+    const framingModeEntry = formData.get("framingMode");
+    let effectiveFramingMode: FramingMode = "locked";
+    if (typeof framingModeEntry === "string" && framingModeEntry.length > 0) {
+      const parsedFramingMode = parseFramingMode(framingModeEntry);
+      if (!parsedFramingMode) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_INVALID_FRAMING_MODE",
+          400
+        );
+      }
+      if (parsedFramingMode === "free_pose" && !isAdminUser) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_FRAMING_MODE_NOT_ALLOWED",
+          400
+        );
+      }
+      effectiveFramingMode = preset.category.skipBasePrefix
+        ? "locked"
+        : parsedFramingMode;
     }
     const effectiveSourceImageType: SourceImageType =
       preset.category.showSourceImageTypeControl
@@ -333,7 +363,11 @@ export async function postStyleGenerateAsyncRoute(
         userPromptInput: effectiveUserPromptInput,
       },
       // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
-      { skipBasePrefix: preset.category.skipBasePrefix },
+      // free_pose は admin viewer 限定 (上で検証済み)。raw モードでは locked に丸め済み。
+      {
+        skipBasePrefix: preset.category.skipBasePrefix,
+        framingMode: effectiveFramingMode,
+      },
     );
 
     // 3 経路のうち選択された 1 つから inputImageUrl と resolvedStockId を確定。
@@ -465,16 +499,24 @@ export async function postStyleGenerateAsyncRoute(
       generation_type: "one_tap_style",
       model: effectiveModel,
       background_mode: backgroundChangeToBackgroundMode(effectiveBackgroundChange),
-      generation_metadata: buildOneTapStyleGenerationMetadata(
-        {
-          ...preset,
-          outputAspectRatioMode: preset.category.outputAspectRatioMode,
-        },
-        "paid",
-        {
-          reservedAttemptId: null,
-        },
-      ),
+      generation_metadata: {
+        ...buildOneTapStyleGenerationMetadata(
+          {
+            ...preset,
+            outputAspectRatioMode: preset.category.outputAspectRatioMode,
+          },
+          "paid",
+          {
+            reservedAttemptId: null,
+          },
+        ),
+        // free_pose のみ記録 (locked はキーなし = 既存レコードと一貫)。
+        // worker のリトライ強化 prefix 選択と、完了 RPC 経由で generated_images への
+        // 恒久記録 (品質比較用) に使う。
+        ...(effectiveFramingMode === "free_pose"
+          ? { framingMode: effectiveFramingMode }
+          : {}),
+      },
       status: "queued",
       processing_stage: "queued",
       attempts: 0,

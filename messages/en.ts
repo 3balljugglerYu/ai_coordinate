@@ -1445,6 +1445,7 @@ export const enMessages = {
       "The result shown here will be replaced with a new image. Saved images remain available from My Page. Do you want to continue?",
     resultReplaceConfirmActionAuthenticated: "Generate again",
     invalidStylePreset: "The selected style is invalid.",
+    invalidFramingMode: "The free pose & angle option is invalid.",
     invalidUsageEvent: "The usage event is invalid.",
     guestRateLimitCheckFailed:
       "We could not verify the usage limit. Please try again in a little while.",

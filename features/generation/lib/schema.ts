@@ -9,6 +9,7 @@ import {
   SOURCE_IMAGE_TYPES,
 } from "../types";
 import { GENERATION_PROMPT_MAX_LENGTH } from "./prompt-validation";
+import { FRAMING_MODES } from "@/shared/generation/framing-mode";
 
 /**
  * 画像生成機能のZodスキーマ
@@ -94,6 +95,14 @@ export const generationRequestSchema = z.object({
     .optional()
     .default(DEFAULT_GENERATION_MODEL)
     .transform(normalizeModelName), // データベース保存用に正規化
+  /**
+   * framing_mode (admin viewer 限定先行公開)。
+   * "free_pose" は image_0 の identity は維持しつつポーズ・カメラアングル・構図を
+   * プロンプト指定優先にする。省略 / "locked" は現行挙動。
+   * generationType='coordinate' のときのみ指定可能（superRefine で整合性検証）。
+   * 権限検証 (admin viewer か) は handler 側で行う。
+   */
+  framingMode: z.enum(FRAMING_MODES).optional(),
   // Inspire 専用: 参照するスタイルテンプレ ID と override 組み合わせ。
   // generationType='inspire' のときのみ意味を持つ（superRefine で整合性検証）。
   styleTemplateId: z.string().uuid().optional(),
@@ -185,6 +194,16 @@ export const generationRequestSchema = z.object({
         message: "overrides は inspire 生成時のみ指定できます",
       });
     }
+  }
+
+  // framingMode は coordinate 生成時のみ指定可能
+  // (one_tap_style は /style/generate-async 経路、inspire は angle/pose の専用 override を持つ)
+  if (data.framingMode && data.generationType !== "coordinate") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["framingMode"],
+      message: "framingMode は coordinate 生成時のみ指定できます",
+    });
   }
 }).transform((data) => {
   const backgroundMode = resolveBackgroundMode(

@@ -1383,6 +1383,7 @@ export const jaMessages = {
       "この画面の生成結果は新しい画像で上書きされます。保存済みの画像はマイページから確認できます。このまま続けますか？",
     resultReplaceConfirmActionAuthenticated: "再生成する",
     invalidStylePreset: "無効なスタイルです。",
+    invalidFramingMode: "ポーズ・アングル自由化の指定が無効です。",
     invalidUsageEvent: "無効な利用イベントです。",
     guestRateLimitCheckFailed: "利用回数の確認に失敗しました。少し時間をおいて再試行してください。",
     guestRouteAuthForbidden:

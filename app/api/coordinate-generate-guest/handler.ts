@@ -200,6 +200,8 @@ export async function postCoordinateGenerateGuestRoute(
     }
 
     // プロンプト構築（インジェクション対策と種類別整形は buildPrompt が担当）
+    // framingMode はゲスト同期経路では解釈しない (= 常に locked)。
+    // free_pose は admin viewer 限定で、admin は認証済みのため /api/generate-async を通る。
     let composedPrompt: string;
     try {
       const promptTemplates = await resolveAllPromptTemplates();
