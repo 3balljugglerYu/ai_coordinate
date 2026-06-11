@@ -6,6 +6,7 @@ import type {
   BackgroundMode,
   SourceImageType,
 } from "@/shared/generation/prompt-core";
+import type { FramingMode } from "@/shared/generation/framing-mode";
 import {
   DEFAULT_GPT_IMAGE_2_MODEL,
   GPT_IMAGE_2_CANONICAL_MODELS,
@@ -298,6 +299,12 @@ export interface GenerationRequest {
   count?: number; // 1-4枚
   generationType?: GenerationType;
   model?: GeminiModel;
+  /**
+   * framing_mode (admin viewer 限定先行公開)。"free_pose" のとき image_0 の identity は
+   * 維持しつつポーズ・カメラアングル・構図をプロンプト指定優先にする。
+   * 省略 = locked = 現行挙動。coordinate 生成時のみ有効 (サーバ側 schema で検証)。
+   */
+  framingMode?: FramingMode;
 }
 
 export interface GenerationResponse {

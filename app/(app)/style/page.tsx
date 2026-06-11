@@ -124,6 +124,8 @@ export default async function StylePage({ searchParams }: StylePageProps) {
               // が結果表示を担うため、即時結果パネルは非表示にする。
               showResultPanel={!user}
               subscriptionPlan={profile?.subscription_plan ?? "free"}
+              // framing_mode (free_pose) は admin viewer 限定の先行公開 (サーバ側でも検証)
+              canUseFreePose={isAdminViewerFlag}
             />
 
             {/* 生成結果一覧（認証ユーザーのみ）。/coordinate と同じ UI を再利用。 */}

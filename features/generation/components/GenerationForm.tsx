@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ import type {
   SourceImageType,
   PickerSourceItem,
 } from "../types";
+import type { FramingMode } from "@/shared/generation/framing-mode";
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
@@ -71,6 +73,8 @@ interface GenerationFormProps {
     backgroundMode: BackgroundMode;
     count: number;
     model: GeminiModel;
+    /** framing_mode (admin viewer 限定)。チェック ON のときのみ "free_pose" が入る */
+    framingMode?: FramingMode;
   }) => void;
   isGenerating?: boolean;
   /**
@@ -84,6 +88,11 @@ interface GenerationFormProps {
    * 再生成すると in-memory の結果が失われ上限エラーになるため、生成ボタンを無効化する。
    */
   guestGenerationLocked?: boolean;
+  /**
+   * framing_mode (free_pose) のチェックボックスを表示するか。
+   * admin viewer 限定の先行公開 (サーバ側 generate-async でも検証される)。
+   */
+  canUseFreePose?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -100,6 +109,7 @@ export function GenerationForm({
   isGenerating = false,
   authState = "authenticated",
   guestGenerationLocked = false,
+  canUseFreePose = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
@@ -147,6 +157,11 @@ export function GenerationForm({
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
+  // framing_mode (admin viewer 限定先行公開)。true = free_pose で生成。
+  // ゲスト同期経路は framingMode を解釈しないため、認証済みのときのみ表示する。
+  const [freePoseEnabled, setFreePoseEnabled] = useState(false);
+  const shouldShowFreePoseControl =
+    canUseFreePose && authState === "authenticated";
   const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
@@ -277,6 +292,10 @@ export function GenerationForm({
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
       model: effectiveSelectedModel,
+      // framing_mode: チェック ON のときのみ free_pose を渡す (省略 = locked = 現行挙動)
+      ...(shouldShowFreePoseControl && freePoseEnabled
+        ? { framingMode: "free_pose" as const }
+        : {}),
     });
   };
 
@@ -613,6 +632,32 @@ export function GenerationForm({
             ))}
           </RadioGroup>
         </div>
+
+        {/* framing_mode (admin viewer 限定の先行公開) */}
+        {shouldShowFreePoseControl ? (
+          <div className="flex items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+            <Checkbox
+              id="coordinate-free-pose"
+              checked={freePoseEnabled}
+              onCheckedChange={(checked) =>
+                setFreePoseEnabled(checked === true)
+              }
+              disabled={isGenerating || isTutorialInProgress}
+              className="mt-0.5"
+            />
+            <div className="min-w-0 space-y-1">
+              <Label
+                htmlFor="coordinate-free-pose"
+                className="cursor-pointer text-sm font-medium text-slate-900"
+              >
+                {t("freePoseLabel")}
+              </Label>
+              <p className="text-xs leading-5 text-slate-500">
+                {t("freePoseDescription")}
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         <GenerationModelControls
           value={effectiveSelectedModel}

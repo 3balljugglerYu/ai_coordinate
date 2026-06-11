@@ -852,6 +852,9 @@ export const zhCnMessages = {
       "在搭配提示词中直接指定背景。",
     backgroundKeepLabel: "保留当前背景",
     backgroundKeepDescription: "保持当前背景不变。",
+    freePoseLabel: "自由姿势与视角（β）",
+    freePoseDescription:
+      "在保持角色外观的同时，允许姿势和相机视角发生变化。可在提示词中指定姿势和构图。关闭时保持原图构图（与现在相同）。",
     modelLabel: "选择生成模型",
     modelTooltipAria: "显示渲染质量的差异",
     modelTooltipContent: "💡 越接近 High，脸部和服装的细节越不容易崩坏。\nLow：生成快。约 30 秒。\nMedium：均衡。约 70 秒。\nHigh：细节不易崩坏。约 180 秒。",
@@ -1361,6 +1364,9 @@ export const zhCnMessages = {
       "关闭时尽量保留原始背景。开启时则会一并应用本预设的背景方向。",
     backgroundChangeDisabledHint:
       "此造型不支持背景更换。",
+    freePoseLabel: "自由姿势与视角（β）",
+    freePoseDescription:
+      "在保持角色外观的同时，允许姿势和相机视角发生变化。关闭时保持原图构图（与现在相同）。",
     expandReferenceCardAria: "将参考卡恢复到原始大小",
     collapseReferenceCardAria: "收起参考卡",
     expandReferenceCardTitle: "恢复",
@@ -1443,6 +1449,7 @@ export const zhCnMessages = {
       "本页显示的结果会被新图片替换。已保存的图片仍可在我的页面查看。要继续吗?",
     resultReplaceConfirmActionAuthenticated: "重新生成",
     invalidStylePreset: "所选造型无效。",
+    invalidFramingMode: "姿势与视角自由化选项无效。",
     invalidUsageEvent: "使用事件无效。",
     guestRateLimitCheckFailed:
       "无法确认使用上限。请稍后重试。",

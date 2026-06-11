@@ -853,6 +853,9 @@ export const koMessages = {
       "코디 프롬프트 안에서 배경을 직접 지정합니다.",
     backgroundKeepLabel: "현재 배경 유지",
     backgroundKeepDescription: "현재 배경을 그대로 유지합니다.",
+    freePoseLabel: "포즈·앵글 자유화 (β)",
+    freePoseDescription:
+      "캐릭터의 외모는 유지하면서 포즈와 카메라 앵글이 바뀌는 것을 허용합니다. 프롬프트로 포즈와 구도를 지정할 수 있습니다. OFF일 때는 원본 이미지의 구도를 유지합니다(기존 동작).",
     modelLabel: "생성 모델 선택",
     modelTooltipAria: "렌더링 품질 차이 표시",
     modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성. 약 30초.\nMedium: 균형 중시. 약 70초.\nHigh: 디테일이 잘 깨지지 않음. 약 180초.",
@@ -1362,6 +1365,9 @@ export const koMessages = {
       "OFF일 때는 원래 배경을 최대한 유지합니다. ON일 때는 이 프리셋의 배경 방향성도 함께 적용됩니다.",
     backgroundChangeDisabledHint:
       "이 스타일은 배경 변경을 지원하지 않습니다.",
+    freePoseLabel: "포즈·앵글 자유화 (β)",
+    freePoseDescription:
+      "캐릭터의 외모는 유지하면서 포즈와 카메라 앵글이 바뀌는 것을 허용합니다. OFF일 때는 원본 이미지의 구도를 유지합니다(기존 동작).",
     expandReferenceCardAria: "참조 카드를 원래 크기로 복원",
     collapseReferenceCardAria: "참조 카드 접기",
     expandReferenceCardTitle: "복원",
@@ -1445,6 +1451,7 @@ export const koMessages = {
       "이 화면의 결과는 새 이미지로 교체됩니다. 저장된 이미지는 마이 페이지에서 계속 확인할 수 있습니다. 계속하시겠습니까?",
     resultReplaceConfirmActionAuthenticated: "다시 생성",
     invalidStylePreset: "선택한 스타일이 유효하지 않습니다.",
+    invalidFramingMode: "포즈·앵글 자유화 옵션이 유효하지 않습니다.",
     invalidUsageEvent: "이용 이벤트가 유효하지 않습니다.",
     guestRateLimitCheckFailed:
       "이용 한도를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",

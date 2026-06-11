@@ -856,6 +856,9 @@ export const frMessages = {
       "Spécifiez l'arrière-plan dans le prompt de la tenue.",
     backgroundKeepLabel: "Conserver l'arrière-plan actuel",
     backgroundKeepDescription: "Conservez l'arrière-plan actuel sans modification.",
+    freePoseLabel: "Pose et angle libres (bêta)",
+    freePoseDescription:
+      "Conserve l'apparence du personnage tout en autorisant le changement de pose et d'angle de caméra. Vous pouvez décrire la pose et la composition dans votre prompt. Si désactivé, la composition d'origine est préservée (comportement actuel).",
     modelLabel: "Sélectionnez un modèle de génération",
     modelTooltipAria: "Afficher les différences de qualité de rendu",
     modelTooltipContent: "💡 Plus c'est élevé, moins les visages et vêtements se déforment.\nLow : génération rapide. ~30 s.\nMedium : équilibré. ~70 s.\nHigh : détails stables. ~180 s.",
@@ -1366,6 +1369,9 @@ export const frMessages = {
       "Lorsqu'il est désactivé, l'arrière-plan d'origine est conservé autant que possible. Lorsqu'il est activé, la direction d'arrière-plan de ce préréglage est aussi appliquée.",
     backgroundChangeDisabledHint:
       "Ce style ne prend pas en charge le changement d'arrière-plan.",
+    freePoseLabel: "Pose et angle libres (bêta)",
+    freePoseDescription:
+      "Conserve l'apparence du personnage tout en autorisant le changement de pose et d'angle de caméra. Si désactivé, la composition d'origine est préservée (comportement actuel).",
     expandReferenceCardAria: "Restaurer la carte de référence à sa taille d'origine",
     collapseReferenceCardAria: "Réduire la carte de référence",
     expandReferenceCardTitle: "Restaurer",
@@ -1449,6 +1455,7 @@ export const frMessages = {
       "Le résultat affiché ici sera remplacé par une nouvelle image. Les images enregistrées restent disponibles dans Mon espace. Voulez-vous continuer ?",
     resultReplaceConfirmActionAuthenticated: "Régénérer",
     invalidStylePreset: "Le style sélectionné est invalide.",
+    invalidFramingMode: "L'option pose et angle libres est invalide.",
     invalidUsageEvent: "L'événement d'utilisation est invalide.",
     guestRateLimitCheckFailed:
       "Impossible de vérifier la limite d'utilisation. Veuillez réessayer dans un instant.",

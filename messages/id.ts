@@ -855,6 +855,9 @@ export const idMessages = {
       "Tentukan latar belakang di dalam prompt outfit.",
     backgroundKeepLabel: "Pertahankan latar belakang saat ini",
     backgroundKeepDescription: "Pertahankan latar belakang saat ini tanpa perubahan.",
+    freePoseLabel: "Pose & sudut bebas (beta)",
+    freePoseDescription:
+      "Mempertahankan penampilan karakter sambil mengizinkan perubahan pose dan sudut kamera. Anda dapat menjelaskan pose dan komposisi di prompt. Saat OFF, komposisi gambar asli dipertahankan (perilaku saat ini).",
     modelLabel: "Pilih model generasi",
     modelTooltipAria: "Tampilkan perbedaan kualitas rendering",
     modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",
@@ -1365,6 +1368,9 @@ export const idMessages = {
       "Saat OFF, latar belakang asli dipertahankan semaksimal mungkin. Saat ON, arah latar belakang preset ini juga diterapkan.",
     backgroundChangeDisabledHint:
       "Gaya ini tidak mendukung pengubahan latar belakang.",
+    freePoseLabel: "Pose & sudut bebas (beta)",
+    freePoseDescription:
+      "Mempertahankan penampilan karakter sambil mengizinkan perubahan pose dan sudut kamera. Saat OFF, komposisi gambar asli dipertahankan (perilaku saat ini).",
     expandReferenceCardAria: "Pulihkan kartu referensi ke ukuran penuh",
     collapseReferenceCardAria: "Tutup kartu referensi",
     expandReferenceCardTitle: "Pulihkan",
@@ -1448,6 +1454,7 @@ export const idMessages = {
       "Hasil yang ditampilkan di sini akan diganti dengan gambar baru. Gambar yang tersimpan tetap tersedia di Halaman saya. Lanjutkan?",
     resultReplaceConfirmActionAuthenticated: "Hasilkan ulang",
     invalidStylePreset: "Gaya yang dipilih tidak valid.",
+    invalidFramingMode: "Opsi pose & sudut bebas tidak valid.",
     invalidUsageEvent: "Event pemakaian tidak valid.",
     guestRateLimitCheckFailed:
       "Tidak bisa memverifikasi batas pemakaian. Coba lagi sebentar.",

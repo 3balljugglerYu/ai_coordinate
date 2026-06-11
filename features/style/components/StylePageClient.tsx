@@ -121,6 +121,12 @@ interface StylePageClientProps {
    * モデル選択ロックには影響しない（ゲストロジック側で処理される）。
    */
   subscriptionPlan?: SubscriptionPlan;
+  /**
+   * framing_mode (free_pose) のチェックボックスを表示するか。
+   * admin viewer 限定の先行公開のため、page 側で isAdminViewer を判定して渡す。
+   * UI 非表示はセキュリティではなく、サーバ側 (generate-async) でも検証される。
+   */
+  canUseFreePose?: boolean;
 }
 
 interface StyleErrorState {
@@ -356,6 +362,7 @@ export function StylePageClient({
   initialSelectedPresetId,
   showResultPanel = true,
   subscriptionPlan = "free",
+  canUseFreePose = false,
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -401,6 +408,8 @@ export function StylePageClient({
   }, [uploadedImage?.previewUrl]);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
+  // framing_mode (admin viewer 限定先行公開)。true = free_pose で生成。
+  const [freePoseEnabled, setFreePoseEnabled] = useState(false);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
@@ -529,6 +538,14 @@ export function StylePageClient({
     shouldShowBackgroundChangeControl && Boolean(selectedPreset?.hasBackgroundPrompt);
   const isBackgroundChangeDisabled =
     isGenerating || isGuestResultLocked || !isBackgroundChangeAvailable;
+  // framing_mode チェックボックスの表示条件:
+  //  - admin viewer (canUseFreePose) かつ認証済み (ゲスト同期経路は framingMode を解釈しない)
+  //  - raw モードカテゴリ (skipBasePrefix) ではサーバ側で無視されるため表示しない
+  const shouldShowFreePoseControl =
+    canUseFreePose &&
+    shouldUseAsyncGeneration &&
+    !(selectedPreset?.category.skipBasePrefix ?? false);
+  const effectiveFreePoseEnabled = shouldShowFreePoseControl && freePoseEnabled;
   const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
   const isGenerateDisabled =
     !selectedPreset ||
@@ -1344,6 +1361,11 @@ export function StylePageClient({
       formData.set("sourceImageType", effectiveSourceImageType);
       formData.set("backgroundChange", effectiveBackgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
+      // framing_mode: free_pose のときのみ送る (省略 = locked = 現行挙動)。
+      // admin viewer 限定で、サーバ側 (generate-async) でも検証される。
+      if (effectiveFreePoseEnabled) {
+        formData.set("framingMode", "free_pose");
+      }
       if (
         selectedPreset.imageInputMode === "dual" &&
         selectedPreset.dualReferenceSource === "user_upload" &&
@@ -1848,6 +1870,31 @@ export function StylePageClient({
                       </p>
                     </div>
                   </div>
+                </div>
+              </div>
+            ) : null}
+
+            {shouldShowFreePoseControl ? (
+              <div className="flex items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                <Checkbox
+                  id="style-free-pose"
+                  checked={freePoseEnabled}
+                  onCheckedChange={(checked) =>
+                    setFreePoseEnabled(checked === true)
+                  }
+                  disabled={isGenerating || isGuestResultLocked}
+                  className="mt-0.5"
+                />
+                <div className="min-w-0 space-y-1">
+                  <Label
+                    htmlFor="style-free-pose"
+                    className="cursor-pointer text-sm font-medium text-slate-900"
+                  >
+                    {t("freePoseLabel")}
+                  </Label>
+                  <p className="text-xs leading-5 text-slate-500">
+                    {t("freePoseDescription")}
+                  </p>
                 </div>
               </div>
             ) : null}

@@ -856,6 +856,9 @@ export const esMessages = {
       "Especifica el fondo dentro del prompt del conjunto.",
     backgroundKeepLabel: "Mantener el fondo actual",
     backgroundKeepDescription: "Mantén el fondo actual sin cambios.",
+    freePoseLabel: "Pose y ángulo libres (beta)",
+    freePoseDescription:
+      "Mantiene la apariencia del personaje mientras permite que cambien la pose y el ángulo de cámara. Puedes describir la pose y la composición en tu prompt. Si está desactivado, se conserva la composición original (comportamiento actual).",
     modelLabel: "Selecciona un modelo de generación",
     modelTooltipAria: "Mostrar las diferencias en la calidad de renderizado",
     modelTooltipContent: "💡 Cuanto más alto, menos fallos en rostros y ropa.\nLow: genera rápido. ~30 s.\nMedium: equilibrado. ~70 s.\nHigh: detalles estables. ~180 s.",
@@ -1366,6 +1369,9 @@ export const esMessages = {
       "Cuando está apagado, se conserva el fondo original todo lo posible. Cuando está encendido, también se aplica la dirección de fondo de este preset.",
     backgroundChangeDisabledHint:
       "Este estilo no permite cambiar el fondo.",
+    freePoseLabel: "Pose y ángulo libres (beta)",
+    freePoseDescription:
+      "Mantiene la apariencia del personaje mientras permite que cambien la pose y el ángulo de cámara. Si está desactivado, se conserva la composición original (comportamiento actual).",
     expandReferenceCardAria: "Restaurar la tarjeta de referencia a su tamaño completo",
     collapseReferenceCardAria: "Contraer la tarjeta de referencia",
     expandReferenceCardTitle: "Restaurar",
@@ -1449,6 +1455,7 @@ export const esMessages = {
       "El resultado mostrado aquí se reemplazará por una nueva imagen. Las imágenes guardadas siguen disponibles en Mi página. ¿Quieres continuar?",
     resultReplaceConfirmActionAuthenticated: "Generar de nuevo",
     invalidStylePreset: "El estilo seleccionado no es válido.",
+    invalidFramingMode: "La opción de pose y ángulo libres no es válida.",
     invalidUsageEvent: "El evento de uso no es válido.",
     guestRateLimitCheckFailed:
       "No pudimos verificar el límite de uso. Inténtalo de nuevo en un momento.",

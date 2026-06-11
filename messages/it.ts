@@ -856,6 +856,9 @@ export const itMessages = {
       "Specifica lo sfondo all'interno del prompt dell'outfit.",
     backgroundKeepLabel: "Mantieni lo sfondo attuale",
     backgroundKeepDescription: "Mantieni lo sfondo attuale invariato.",
+    freePoseLabel: "Posa e angolazione libere (beta)",
+    freePoseDescription:
+      "Mantiene l'aspetto del personaggio consentendo però cambiamenti di posa e angolazione della camera. Puoi descrivere posa e composizione nel prompt. Se disattivato, la composizione originale viene preservata (comportamento attuale).",
     modelLabel: "Seleziona un modello di generazione",
     modelTooltipAria: "Mostra le differenze nella qualità di rendering",
     modelTooltipContent: "💡 Più alto è, meno volti e abiti si rompono.\nLow: generazione veloce. ~30 s.\nMedium: bilanciato. ~70 s.\nHigh: dettagli stabili. ~180 s.",
@@ -1366,6 +1369,9 @@ export const itMessages = {
       "Quando è disattivato, lo sfondo originale viene mantenuto il più possibile. Quando è attivo, viene applicata anche la direzione di sfondo di questo preset.",
     backgroundChangeDisabledHint:
       "Questo stile non supporta il cambio dello sfondo.",
+    freePoseLabel: "Posa e angolazione libere (beta)",
+    freePoseDescription:
+      "Mantiene l'aspetto del personaggio consentendo però cambiamenti di posa e angolazione della camera. Se disattivato, la composizione originale viene preservata (comportamento attuale).",
     expandReferenceCardAria: "Ripristina la carta di riferimento alla dimensione originale",
     collapseReferenceCardAria: "Comprimi la carta di riferimento",
     expandReferenceCardTitle: "Ripristina",
@@ -1449,6 +1455,7 @@ export const itMessages = {
       "Il risultato mostrato qui sarà sostituito da una nuova immagine. Le immagini salvate restano disponibili in La mia pagina. Vuoi continuare?",
     resultReplaceConfirmActionAuthenticated: "Genera di nuovo",
     invalidStylePreset: "Lo stile selezionato non è valido.",
+    invalidFramingMode: "L'opzione posa e angolazione libere non è valida.",
     invalidUsageEvent: "L'evento di utilizzo non è valido.",
     guestRateLimitCheckFailed:
       "Impossibile verificare il limite di utilizzo. Riprova tra poco.",

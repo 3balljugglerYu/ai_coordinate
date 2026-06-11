@@ -827,6 +827,9 @@ export const jaMessages = {
     backgroundIncludeInPromptDescription: "衣装プロンプト内に背景指定を含めて生成します",
     backgroundKeepLabel: "背景は変更しない",
     backgroundKeepDescription: "現在の背景を維持します",
+    freePoseLabel: "ポーズ・アングルを自由にする（β）",
+    freePoseDescription:
+      "キャラクターの見た目は維持しつつ、ポーズやカメラアングルが変わることを許可します。プロンプトでポーズや構図を指定できます。OFF のときは元画像の構図を維持します（これまで通り）。",
     modelLabel: "生成モデルを選択",
     modelTooltipAria: "レンダリング品質の違いを表示",
     modelTooltipContent: "─ Low ─\n服の方向性や雰囲気を早く確認する時に利用。細かい装飾・素材感・小物・顔や手の安定性は弱くなりやすい。\n\n─ Medium ─\n通常用途。キャラクターの印象を保ちつつ、服の形・色・全体バランスを比較的安定して反映しやすい。\n\n─ High ─\n仕上げ向き。衣装の細部、柄、素材感、レイヤー、アクセサリー、光や影などをより細かく描き込みやすい。\n\nレンダリング品質を上げると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
@@ -1304,6 +1307,9 @@ export const jaMessages = {
       "OFF のときは背景をできるだけ維持し、ON のときはこのスタイル用の背景指示も反映します。",
     backgroundChangeDisabledHint:
       "このスタイルは背景変更に対応していません。",
+    freePoseLabel: "ポーズ・アングルを自由にする（β）",
+    freePoseDescription:
+      "キャラクターの見た目は維持しつつ、ポーズやカメラアングルが変わることを許可します。OFF のときは元画像の構図を維持します（これまで通り）。",
     expandReferenceCardAria: "参照カードを元サイズに戻す",
     collapseReferenceCardAria: "参照カードを縮小する",
     expandReferenceCardTitle: "戻す",

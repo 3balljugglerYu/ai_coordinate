@@ -856,6 +856,9 @@ export const ptMessages = {
       "Especifique o fundo dentro do prompt do look.",
     backgroundKeepLabel: "Manter o fundo atual",
     backgroundKeepDescription: "Mantém o fundo atual sem alterações.",
+    freePoseLabel: "Pose e ângulo livres (beta)",
+    freePoseDescription:
+      "Mantém a aparência do personagem enquanto permite que a pose e o ângulo da câmera mudem. Você pode descrever a pose e a composição no seu prompt. Quando desativado, a composição original é preservada (comportamento atual).",
     modelLabel: "Selecione um modelo de geração",
     modelTooltipAria: "Mostrar as diferenças na qualidade de renderização",
     modelTooltipContent: "💡 Quanto mais alto, menos falhas em rostos e roupas.\nLow: gera rápido. ~30 s.\nMedium: equilibrado. ~70 s.\nHigh: detalhes estáveis. ~180 s.",
@@ -1366,6 +1369,9 @@ export const ptMessages = {
       "Quando desligado, o fundo original é preservado o máximo possível. Quando ligado, a direção de fundo deste preset também é aplicada.",
     backgroundChangeDisabledHint:
       "Este estilo não suporta mudança de fundo.",
+    freePoseLabel: "Pose e ângulo livres (beta)",
+    freePoseDescription:
+      "Mantém a aparência do personagem enquanto permite que a pose e o ângulo da câmera mudem. Quando desativado, a composição original é preservada (comportamento atual).",
     expandReferenceCardAria: "Restaurar o cartão de referência ao tamanho original",
     collapseReferenceCardAria: "Recolher o cartão de referência",
     expandReferenceCardTitle: "Restaurar",
@@ -1449,6 +1455,7 @@ export const ptMessages = {
       "O resultado mostrado aqui será substituído por uma nova imagem. As imagens salvas continuam disponíveis em Minha página. Quer continuar?",
     resultReplaceConfirmActionAuthenticated: "Gerar novamente",
     invalidStylePreset: "O estilo selecionado é inválido.",
+    invalidFramingMode: "A opção de pose e ângulo livres é inválida.",
     invalidUsageEvent: "O evento de uso é inválido.",
     guestRateLimitCheckFailed:
       "Não foi possível verificar o limite de uso. Tente novamente em instantes.",

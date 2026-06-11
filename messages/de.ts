@@ -856,6 +856,9 @@ export const deMessages = {
       "Spezifiziere den Hintergrund innerhalb des Outfit-Prompts.",
     backgroundKeepLabel: "Aktuellen Hintergrund behalten",
     backgroundKeepDescription: "Den aktuellen Hintergrund unverändert lassen.",
+    freePoseLabel: "Freie Pose & Kamerawinkel (Beta)",
+    freePoseDescription:
+      "Behält das Aussehen des Charakters bei, erlaubt aber Änderungen von Pose und Kamerawinkel. Pose und Komposition können im Prompt beschrieben werden. Wenn deaktiviert, bleibt die ursprüngliche Komposition erhalten (bisheriges Verhalten).",
     modelLabel: "Wähle ein Generierungsmodell",
     modelTooltipAria: "Unterschiede der Renderqualität anzeigen",
     modelTooltipContent: "💡 Je höher, desto weniger werden Gesicht und Kleidung verzerrt.\nLow: schnelle Generierung. ca. 30 s.\nMedium: ausgewogen. ca. 70 s.\nHigh: stabile Details. ca. 180 s.",
@@ -1366,6 +1369,9 @@ export const deMessages = {
       "Wenn AUS, wird der Originalhintergrund möglichst beibehalten. Wenn AN, wird auch die Hintergrundrichtung dieses Presets angewendet.",
     backgroundChangeDisabledHint:
       "Dieser Stil unterstützt keine Hintergrundänderungen.",
+    freePoseLabel: "Freie Pose & Kamerawinkel (Beta)",
+    freePoseDescription:
+      "Behält das Aussehen des Charakters bei, erlaubt aber Änderungen von Pose und Kamerawinkel. Wenn deaktiviert, bleibt die ursprüngliche Komposition erhalten (bisheriges Verhalten).",
     expandReferenceCardAria: "Referenzkarte auf volle Größe wiederherstellen",
     collapseReferenceCardAria: "Referenzkarte einklappen",
     expandReferenceCardTitle: "Wiederherstellen",
@@ -1449,6 +1455,7 @@ export const deMessages = {
       "Das hier gezeigte Ergebnis wird durch ein neues Bild ersetzt. Gespeicherte Bilder bleiben in Meiner Seite verfügbar. Möchtest du fortfahren?",
     resultReplaceConfirmActionAuthenticated: "Erneut generieren",
     invalidStylePreset: "Der gewählte Stil ist ungültig.",
+    invalidFramingMode: "Die Option für freie Pose und Kamerawinkel ist ungültig.",
     invalidUsageEvent: "Das Nutzungsereignis ist ungültig.",
     guestRateLimitCheckFailed:
       "Nutzungsbeschränkung konnte nicht geprüft werden. Bitte versuche es gleich erneut.",

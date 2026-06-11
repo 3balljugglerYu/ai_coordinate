@@ -853,6 +853,9 @@ export const enMessages = {
       "Specify the background within the outfit prompt.",
     backgroundKeepLabel: "Keep current background",
     backgroundKeepDescription: "Keep the current background unchanged.",
+    freePoseLabel: "Free pose & angle (beta)",
+    freePoseDescription:
+      "Keeps the character's appearance while allowing the pose and camera angle to change. You can describe the pose and composition in your prompt. When OFF, the original composition is preserved (current behavior).",
     modelLabel: "Select a generation model",
     modelTooltipAria: "Show how the rendering quality differs",
     modelTooltipContent: "💡 The higher the quality, the less faces and clothing details break.\nLow: generates quickly. ~30 sec.\nMedium: balanced. ~70 sec.\nHigh: details stay intact. ~180 sec.",
@@ -1362,6 +1365,9 @@ export const enMessages = {
       "When OFF, the original background is preserved as much as possible. When ON, this preset's background direction is applied as well.",
     backgroundChangeDisabledHint:
       "This style does not support background changes.",
+    freePoseLabel: "Free pose & angle (beta)",
+    freePoseDescription:
+      "Keeps the character's appearance while allowing the pose and camera angle to change. When OFF, the original composition is preserved (current behavior).",
     expandReferenceCardAria: "Restore the reference card to full size",
     collapseReferenceCardAria: "Collapse the reference card",
     expandReferenceCardTitle: "Restore",

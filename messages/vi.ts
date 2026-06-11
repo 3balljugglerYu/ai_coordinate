@@ -853,6 +853,9 @@ export const viMessages = {
       "Chỉ định nền ngay trong prompt của trang phục.",
     backgroundKeepLabel: "Giữ nền hiện tại",
     backgroundKeepDescription: "Giữ nguyên nền hiện tại.",
+    freePoseLabel: "Tự do tư thế & góc máy (beta)",
+    freePoseDescription:
+      "Giữ nguyên ngoại hình nhân vật trong khi cho phép thay đổi tư thế và góc máy. Bạn có thể mô tả tư thế và bố cục trong prompt. Khi tắt, bố cục ảnh gốc được giữ nguyên (hành vi hiện tại).",
     modelLabel: "Chọn mô hình tạo",
     modelTooltipAria: "Hiển thị sự khác biệt về chất lượng kết xuất",
     modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh. khoảng 30 giây.\nMedium: cân bằng. khoảng 70 giây.\nHigh: chi tiết ổn định. khoảng 180 giây.",
@@ -1363,6 +1366,9 @@ export const viMessages = {
       "Khi tắt, nền gốc được giữ tối đa có thể. Khi bật, hướng nền của preset cũng được áp dụng.",
     backgroundChangeDisabledHint:
       "Phong cách này không hỗ trợ thay đổi nền.",
+    freePoseLabel: "Tự do tư thế & góc máy (beta)",
+    freePoseDescription:
+      "Giữ nguyên ngoại hình nhân vật trong khi cho phép thay đổi tư thế và góc máy. Khi tắt, bố cục ảnh gốc được giữ nguyên (hành vi hiện tại).",
     expandReferenceCardAria: "Khôi phục thẻ tham chiếu về kích thước đầy đủ",
     collapseReferenceCardAria: "Thu gọn thẻ tham chiếu",
     expandReferenceCardTitle: "Khôi phục",
@@ -1446,6 +1452,7 @@ export const viMessages = {
       "Kết quả hiển thị tại đây sẽ được thay bằng hình mới. Hình đã lưu vẫn có trong Trang của tôi. Tiếp tục?",
     resultReplaceConfirmActionAuthenticated: "Tạo lại",
     invalidStylePreset: "Phong cách đã chọn không hợp lệ.",
+    invalidFramingMode: "Tùy chọn tự do tư thế và góc máy không hợp lệ.",
     invalidUsageEvent: "Sự kiện sử dụng không hợp lệ.",
     guestRateLimitCheckFailed:
       "Không xác minh được giới hạn sử dụng. Vui lòng thử lại sau ít phút.",
