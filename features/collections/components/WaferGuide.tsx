@@ -326,7 +326,7 @@ export function WaferGuide({
           </Reveal>
           <Reveal delay={100}>
             <p className="mt-2 text-center text-sm text-[#7a6a58]">
-              一種あつめるたびに、まんなかの円がくるりと色づくよ
+              一種あつめるたびに、まんなかの円が満ちていくよ
             </p>
           </Reveal>
           <Reveal delay={200}>
@@ -345,6 +345,7 @@ export function WaferGuide({
                       ratio={ratio}
                       complete={ratio >= 1}
                       imageUrl={characterUrl}
+                      tintByProgress={false}
                       className="w-[84px]"
                     >
                       {!characterUrl && ratio >= 1 ? (
