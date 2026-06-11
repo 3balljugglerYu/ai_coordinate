@@ -46,7 +46,8 @@ export async function getCollectionProgressForUser(
   }
   const rows = (data ?? []) as CollectionProgressRow[];
   const withCharacter = await attachCharacterImages(rows.map(mapProgressRow));
-  return attachCollectedImages(withCharacter, userId);
+  const withCollected = await attachCollectedImages(withCharacter, userId);
+  return attachCompletionIds(withCollected, userId);
 }
 
 function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
@@ -63,7 +64,45 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     completedAt: row.completed_at,
     characterImageUrl: null,
     collectedImageUrls: [],
+    completionId: null,
   };
+}
+
+/**
+ * 完了済み(mount完成)シリーズに collection_completions.id を付与する。
+ * フィード側の完了モーダルでシェア導線(台紙シェア/シェアページ)を出すのに使う。
+ * mount_image_path 一致で現在アクティブな台紙の completion 行を引き当てる。
+ */
+async function attachCompletionIds(
+  items: CollectionProgress[],
+  userId: string,
+): Promise<CollectionProgress[]> {
+  const targets = items.filter((i) => i.isCompleted && i.mountImagePath);
+  if (targets.length === 0) return items;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("collection_completions")
+    .select("id, category_key, mount_image_path")
+    .eq("user_id", userId)
+    .eq("mount_status", "completed");
+  if (error) {
+    // completion_id の付与失敗は致命ではない(シェア導線が出ないだけ)
+    return items;
+  }
+  const idByKeyPath = new Map<string, string>();
+  for (const row of data ?? []) {
+    const key = `${row.category_key as string}:::${row.mount_image_path as string}`;
+    idByKeyPath.set(key, row.id as string);
+  }
+  return items.map((i) =>
+    i.isCompleted && i.mountImagePath
+      ? {
+          ...i,
+          completionId:
+            idByKeyPath.get(`${i.categoryKey}:::${i.mountImagePath}`) ?? null,
+        }
+      : i,
+  );
 }
 
 /**

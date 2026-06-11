@@ -175,6 +175,8 @@ export function MyPageCollections({
       characterImageUrl: null,
       collectedImageUrls: [],
       canRecompose: cached?.canRecompose ?? false,
+      // 完了済み台紙の見返しなので紙吹雪は出さない(毎回の祝い演出は過剰)。
+      suppressConfetti: true,
     });
     if (!cached) {
       void loadRecomposeInfo(m.categoryKey).then((info) => {
