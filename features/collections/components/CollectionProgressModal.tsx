@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { CollectionConfetti } from "@/features/collections/components/CollectionConfetti";
+import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MOUNT_SHARE_MESSAGES } from "@/features/collections/lib/mount-share-messages";
 import {
@@ -41,11 +42,11 @@ export interface CollectionCelebration {
    */
   canRecompose?: boolean;
   /**
-   * 紙吹雪演出を抑制するか(任意・デフォルトは出す)。
-   * マイページの完了サムネを後から見返すケースなど、毎回の祝い演出が過剰な
-   * 場面で true を渡す。
+   * モーダル表示時の演出種別(任意・デフォルト "confetti")。
+   * - "confetti": 左右からクラッカー風の紙吹雪(初コンプの祝い)
+   * - "sparkle": ダイヤのきらめき(完了台紙の見返しなど落ち着いた場面)
    */
-  suppressConfetti?: boolean;
+  celebrationEffect?: "confetti" | "sparkle";
 }
 
 interface Props {
@@ -293,6 +294,7 @@ export function CollectionProgressModal({
   if (!celebration) return null;
 
   const { displayName, toCount, threshold, completionId } = celebration;
+  const effect = celebration.celebrationEffect ?? "confetti";
   const mountImageUrl = cMountImageUrl;
   const characterImageUrl = cCharacterImageUrl;
   const collectedImageUrls = cCollectedImageUrls;
@@ -343,16 +345,35 @@ export function CollectionProgressModal({
             animation: coll-wave 2.6s ease-in-out
               var(--coll-wave-delay, 0s) infinite;
           }
+          /* 完了台紙の背後で放射状に射す後光(オーラ)。ゆっくり回転し、
+             外周は mask でフェードして余白を上品に光で満たす。 */
+          .coll-aura {
+            border-radius: 9999px;
+            background: repeating-conic-gradient(
+              rgba(253, 224, 71, 0.34) 0deg 6deg,
+              transparent 6deg 19deg
+            );
+            -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 66%);
+            mask-image: radial-gradient(circle, #000 16%, transparent 66%);
+            transform: translate(-50%, -50%);
+            animation: coll-aura-spin 16s linear infinite;
+          }
+          @keyframes coll-aura-spin {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to   { transform: translate(-50%, -50%) rotate(360deg); }
+          }
           @media (prefers-reduced-motion: reduce) {
             @keyframes coll-pop { from,to { transform: scale(1); } }
-            .coll-stamp-in, .coll-wave { animation: none !important; }
+            .coll-stamp-in, .coll-wave, .coll-aura { animation: none !important; }
           }
         `}</style>
 
-        {/* モーダル表示のたびに左右からクラッカーのように吹き出す紙吹雪(全画像ロード後に発火)。
-              body 直下の Portal に出すため Dialog の overflow には影響されない。
-              suppressConfetti の celebration(マイページの完了サムネ再表示等)では出さない。 */}
-        <CollectionConfetti show={ready && !celebration.suppressConfetti} />
+        {/* モーダル表示のたびの祝い演出(全画像ロード後に発火)。
+              - confetti: 左右からクラッカー風の紙吹雪。body 直下の Portal に出すため
+                Dialog の overflow には影響されない。
+              - sparkle: ダイヤのきらめき(完了台紙の見返し等)。モーダル枠内を彩る。 */}
+        <CollectionConfetti show={ready && effect === "confetti"} />
+        <CollectionSparkle show={ready && effect === "sparkle"} />
 
         {/* a11y 用タイトル */}
         <DialogTitle className="sr-only">
@@ -419,20 +440,30 @@ export function CollectionProgressModal({
         {showMount ? (
           /* ===== 完成: 台紙を表示 ===== */
           <div className="space-y-4 text-center">
-            <h2 className="text-xl font-bold text-amber-500">コンプリート！</h2>
-            <div
-              className="relative mx-auto w-56 overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]"
-              style={{ aspectRatio: mountAspectForCategory(celebration.categoryKey) }}
-            >
-              <Image
-                src={mountImageUrl ?? ""}
-                alt={`${displayName} コンプリート台紙`}
-                fill
-                sizes="224px"
-                className="object-cover"
-                onLoad={onImgLoad}
-                onError={onImgLoad}
+            <h2 className="relative z-10 text-xl font-bold text-amber-500">
+              コンプリート！
+            </h2>
+            {/* 台紙 + 背後の後光(オーラ)。後光は台紙中心に合わせ、台紙幅より
+                大きく広げて左右余白を光で満たす。 */}
+            <div className="relative mx-auto w-56">
+              <div
+                className="coll-aura pointer-events-none absolute left-1/2 top-1/2 -z-10 aspect-square w-[210%]"
+                aria-hidden
               />
+              <div
+                className="relative overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]"
+                style={{ aspectRatio: mountAspectForCategory(celebration.categoryKey) }}
+              >
+                <Image
+                  src={mountImageUrl ?? ""}
+                  alt={`${displayName} コンプリート台紙`}
+                  fill
+                  sizes="224px"
+                  className="object-cover"
+                  onLoad={onImgLoad}
+                  onError={onImgLoad}
+                />
+              </div>
             </div>
             {completionId ? (
               /* posts / /m と同じ共有 UI(モバイル=シェアシート、PC=コピー/Web Share

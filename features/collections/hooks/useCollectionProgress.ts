@@ -96,6 +96,8 @@ export function useCollectionProgress() {
           completionId: series.completionId,
           characterImageUrl: series.characterImageUrl,
           collectedImageUrls: series.collectedImageUrls ?? [],
+          // フィードの自動コンプリート祝いはダイヤのきらめき演出にする。
+          celebrationEffect: "sparkle",
         });
         break;
       }
