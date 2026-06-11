@@ -255,7 +255,7 @@ export function WaferGuide({
             </span>
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-6">
               <div className="flex flex-col items-center gap-1">
-                <span className="text-xs text-[#9a8a78]">イラスト・キャラデザ</span>
+                <span className="text-xs text-[#9a8a78]">プロンプト提供</span>
                 <XLink handle="@mario335599" url="https://x.com/mario335599" />
               </div>
               <div className="flex flex-col items-center gap-1">
