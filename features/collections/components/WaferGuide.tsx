@@ -458,7 +458,19 @@ export function WaferGuide({
             完成した台紙は、SNSでシェアして自慢しよう！
           </p>
         </Reveal>
-        <Reveal delay={80}>
+        <Reveal delay={70}>
+          <div className="relative mx-auto mb-8 w-full max-w-lg overflow-hidden rounded-2xl border border-amber-200/70 shadow-[0_8px_24px_rgba(120,90,50,0.14)]">
+            <Image
+              src="/collections/wafer/god-share.webp"
+              alt="神コレクションをシェアした投稿イメージ（全6種コンプリート）"
+              width={1000}
+              height={525}
+              sizes="(max-width: 640px) 90vw, 512px"
+              className="h-auto w-full"
+            />
+          </div>
+        </Reveal>
+        <Reveal delay={140}>
           <Link
             href="/style"
             className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-10 py-4 text-lg font-bold text-white shadow-[0_5px_0_rgba(234,88,12,0.3)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
