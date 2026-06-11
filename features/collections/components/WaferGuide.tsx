@@ -235,7 +235,7 @@ export function WaferGuide({
             className="mt-9 inline-flex items-center gap-2 rounded-full bg-orange-500 px-8 py-3.5 text-base font-bold text-white shadow-[0_5px_0_rgba(234,88,12,0.3)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
             style={{ fontFamily: HEADING_FONT }}
           >
-            いますぐつくってみる
+            いますぐあつめる
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-5 w-5">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
@@ -277,7 +277,7 @@ export function WaferGuide({
           </Reveal>
           <Reveal delay={100}>
             <p className="mt-2 text-center text-sm text-[#7a6a58]">
-              神話の姿になったうちの子（ノアナ）。ぜんぶで{threshold}種類！
+              神話の姿になったうちの子を集めよう！ぜんぶで{threshold}種類！
             </p>
           </Reveal>
 
@@ -476,7 +476,7 @@ export function WaferGuide({
             className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-10 py-4 text-lg font-bold text-white shadow-[0_5px_0_rgba(234,88,12,0.3)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
             style={{ fontFamily: HEADING_FONT }}
           >
-            うちの子で作ってみる
+            いますぐあつめる
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-5 w-5">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
