@@ -356,11 +356,6 @@ export function WaferGuide({
               })}
             </div>
           </Reveal>
-          <Reveal delay={300}>
-            <p className="mt-9 text-center text-sm font-bold text-amber-600">
-              {threshold}柱コンプリートで、フルカラー＆ピカーン！
-            </p>
-          </Reveal>
         </div>
       </section>
 
