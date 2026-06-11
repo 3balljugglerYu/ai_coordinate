@@ -3,7 +3,7 @@
  *
  * - 「画像を保存」: モバイル/PC 分岐・Web Share・DL フォールバックは共通ヘルパ側の
  *   `download-image.test.ts` で網羅済み。ここでは委譲・失敗トースト・busy を検証。
- * - 「台紙をシェアする」: posts と同じ共通コンポーネント `ShareLinkButton` を
+ * - 「シェアする」: posts と同じ共通コンポーネント `ShareLinkButton` を
  *   実体のまま使い（メニュー部の ui/dropdown-menu はパススルーモック）、
  *   PC メニューからのコピー・計測(trackMountShareEvent)・未対応エラーを検証。
  *   コンポーネント自体の振る舞いは share-link-button.test.tsx で網羅済み。
@@ -143,7 +143,7 @@ describe("MountShareButton: 画像を保存", () => {
     render(<MountShareButton {...defaultProps} />);
     const downloadButton = screen.getByRole("button", { name: "画像を保存" });
     const shareTrigger = screen.getByRole("button", {
-      name: "台紙をシェアする",
+      name: "シェアする",
     });
 
     fireEvent.click(downloadButton);
@@ -214,7 +214,7 @@ describe("MountShareButton: 画像を保存", () => {
   });
 });
 
-describe("MountShareButton: 台紙をシェアする (PC, posts と同一挙動)", () => {
+describe("MountShareButton: シェアする (PC, posts と同一挙動)", () => {
   // jsdom の既定 UA はデスクトップ扱いなので PC メニュー経路になる
 
   test("「リンクをコピー」で公開URLをコピーし copied トーストと share-event 計測", async () => {

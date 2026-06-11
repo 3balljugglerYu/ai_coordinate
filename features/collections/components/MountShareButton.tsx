@@ -59,7 +59,7 @@ export function MountShareButton({
         onShared={() => trackMountShareEvent(completionId)}
         className="px-5"
       >
-        台紙をシェアする
+        シェアする
       </ShareLinkButton>
       <button
         type="button"

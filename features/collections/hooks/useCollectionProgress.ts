@@ -90,10 +90,14 @@ export function useCollectionProgress() {
           threshold: series.completionThreshold,
           isCompleted: series.isCompleted,
           mountImageUrl: buildPublicMountUrl(series.mountImagePath),
-          sharePath: null,
-          completionId: null,
+          // 完了台紙が確定しているシリーズはシェア導線(台紙シェア/シェアページ)を出す。
+          // マイページの完了サムネタップ(openMountModal)と同じ挙動に揃える。
+          sharePath: series.completionId ? `/m/${series.completionId}` : null,
+          completionId: series.completionId,
           characterImageUrl: series.characterImageUrl,
           collectedImageUrls: series.collectedImageUrls ?? [],
+          // フィードの自動コンプリート祝いはダイヤのきらめき演出にする。
+          celebrationEffect: "sparkle",
         });
         break;
       }

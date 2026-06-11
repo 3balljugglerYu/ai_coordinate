@@ -7,6 +7,7 @@ import { getUser } from "@/lib/auth";
 import { getPublicMountByToken } from "@/features/collections/lib/public-mount-server-api";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MountShareButton } from "@/features/collections/components/MountShareButton";
+import { MountCelebrationBackground } from "@/features/collections/components/MountCelebrationBackground";
 
 interface PublicMountPageProps {
   params: Promise<{ token: string }>;
@@ -75,9 +76,13 @@ export default async function PublicMountPage({
   const isOwner = viewer?.id === mount.ownerId;
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center gap-6 px-4 py-8">
-      <h1 className="text-center text-xl font-bold text-gray-900">
-        {mount.displayNameJa} コンプリート台紙
+    <>
+      <MountCelebrationBackground />
+      <main className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center gap-6 px-4 py-8">
+      <h1 className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 bg-clip-text text-center text-2xl font-extrabold text-transparent">
+        {mount.displayNameJa}
+        <br />
+        コンプリート！
       </h1>
 
       <div
@@ -104,17 +109,10 @@ export default async function PublicMountPage({
       <section className="w-full rounded-xl bg-gray-50 p-5 text-center">
         <p className="text-sm font-medium text-gray-800">
           あなたのうちの子でも作れる！
+          <br />
+          シールを集めてコンプリートを目指そう！
         </p>
-        <p className="mt-1 text-xs text-gray-500">
-          シールを集めてコンプリート台紙を作ろう。
-        </p>
-        <Link
-          href="/style"
-          className="mt-3 inline-block rounded-md bg-primary px-6 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Persta で作ってみる
-        </Link>
-        <div className="mt-2">
+        <div className="mt-3">
           <Link
             href="/collections/wafer"
             className="text-xs text-gray-500 underline hover:text-gray-700"
@@ -123,6 +121,7 @@ export default async function PublicMountPage({
           </Link>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }

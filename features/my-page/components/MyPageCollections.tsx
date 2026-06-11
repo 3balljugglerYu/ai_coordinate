@@ -175,6 +175,8 @@ export function MyPageCollections({
       characterImageUrl: null,
       collectedImageUrls: [],
       canRecompose: cached?.canRecompose ?? false,
+      // 完了済み台紙の見返しなので、紙吹雪ではなくダイヤのきらめき演出にする。
+      celebrationEffect: "sparkle",
     });
     if (!cached) {
       void loadRecomposeInfo(m.categoryKey).then((info) => {

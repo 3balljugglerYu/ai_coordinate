@@ -18,6 +18,11 @@ export interface CollectionProgress {
   characterImageUrl: string | null;
   /** 集めたシール(衣装ごと最新1枚)の公開URL。display_order 昇順。モーダルのシール一覧用 */
   collectedImageUrls: string[];
+  /**
+   * 完了台紙の collection_completions.id(mount完成済みのみ。それ以外は null)。
+   * フィード側の完了モーダルでシェア導線(台紙シェア/シェアページ)を出すのに使う。
+   */
+  completionId: string | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */

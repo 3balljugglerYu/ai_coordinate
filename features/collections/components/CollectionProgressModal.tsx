@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   Dialog,
   DialogClose,
@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
+import { CollectionConfetti } from "@/features/collections/components/CollectionConfetti";
+import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MOUNT_SHARE_MESSAGES } from "@/features/collections/lib/mount-share-messages";
 import {
@@ -39,6 +41,12 @@ export interface CollectionCelebration {
    * いずれかの衣装で2枚以上生成済み(=選び直す余地がある)のときだけ true を渡す。
    */
   canRecompose?: boolean;
+  /**
+   * モーダル表示時の演出種別(任意・デフォルト "confetti")。
+   * - "confetti": 左右からクラッカー風の紙吹雪(初コンプの祝い)
+   * - "sparkle": ダイヤのきらめき(完了台紙の見返しなど落ち着いた場面)
+   */
+  celebrationEffect?: "confetti" | "sparkle";
 }
 
 interface Props {
@@ -94,8 +102,8 @@ const MODAL_LAYOUTS: Record<string, ModalLayout> = {
     ring: { left: 16.68, top: 19.46, size: 66.18 },
     badge: { cx: 73.1, cy: 61.7, size: 26.0 },
     button: { left: 8.1, top: 84.5, width: 84.2, height: 10.8 },
-    // ?円(直径12.3%)よりやや小さくし、4スロット版と同様に灰色の縁を残す
-    slots: { cx: [11.66, 27.05, 42.07, 57.28, 72.3, 87.42], cy: 75.67, d: 10.9 },
+    // ?円(直径12.3%)をわずかに覆うサイズ。シールを大きく見せる(縁はほぼ消える)
+    slots: { cx: [11.66, 27.05, 42.07, 57.28, 72.3, 87.42], cy: 75.67, d: 13.0 },
   },
 };
 
@@ -286,6 +294,7 @@ export function CollectionProgressModal({
   if (!celebration) return null;
 
   const { displayName, toCount, threshold, completionId } = celebration;
+  const effect = celebration.celebrationEffect ?? "confetti";
   const mountImageUrl = cMountImageUrl;
   const characterImageUrl = cCharacterImageUrl;
   const collectedImageUrls = cCollectedImageUrls;
@@ -315,10 +324,56 @@ export function CollectionProgressModal({
             92% { transform: scale(0.96); }
             100% { transform: scale(1); }
           }
+          /* 新しく集まったシールが"ポンッ"と押されるスタンプイン */
+          @keyframes coll-stamp-in {
+            0%   { transform: scale(0) rotate(-14deg); opacity: 0; }
+            55%  { transform: scale(1.2) rotate(5deg); opacity: 1; }
+            78%  { transform: scale(0.92) rotate(-2deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+          }
+          /* スタンプ後も並び全体がゆっくり波打つアイドルアニメ(transform のみで軽量) */
+          @keyframes coll-wave {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-16%); }
+          }
+          .coll-stamp-in {
+            transform-origin: center;
+            animation: coll-stamp-in 600ms cubic-bezier(.2,.7,.3,1.5)
+              var(--coll-stamp-delay, 0s) both;
+          }
+          .coll-wave {
+            animation: coll-wave 2.6s ease-in-out
+              var(--coll-wave-delay, 0s) infinite;
+          }
+          /* 完了台紙の背後で放射状に射す後光(オーラ)。ゆっくり回転し、
+             外周は mask でフェードして余白を上品に光で満たす。 */
+          .coll-aura {
+            border-radius: 9999px;
+            background: repeating-conic-gradient(
+              rgba(253, 224, 71, 0.34) 0deg 6deg,
+              transparent 6deg 19deg
+            );
+            -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 66%);
+            mask-image: radial-gradient(circle, #000 16%, transparent 66%);
+            transform: translate(-50%, -50%);
+            animation: coll-aura-spin 16s linear infinite;
+          }
+          @keyframes coll-aura-spin {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to   { transform: translate(-50%, -50%) rotate(360deg); }
+          }
           @media (prefers-reduced-motion: reduce) {
             @keyframes coll-pop { from,to { transform: scale(1); } }
+            .coll-stamp-in, .coll-wave, .coll-aura { animation: none !important; }
           }
         `}</style>
+
+        {/* モーダル表示のたびの祝い演出(全画像ロード後に発火)。
+              - confetti: 左右からクラッカー風の紙吹雪。body 直下の Portal に出すため
+                Dialog の overflow には影響されない。
+              - sparkle: ダイヤのきらめき(完了台紙の見返し等)。モーダル枠内を彩る。 */}
+        <CollectionConfetti show={ready && effect === "confetti"} />
+        <CollectionSparkle show={ready && effect === "sparkle"} />
 
         {/* a11y 用タイトル */}
         <DialogTitle className="sr-only">
@@ -385,20 +440,30 @@ export function CollectionProgressModal({
         {showMount ? (
           /* ===== 完成: 台紙を表示 ===== */
           <div className="space-y-4 text-center">
-            <h2 className="text-xl font-bold text-amber-500">コンプリート！</h2>
-            <div
-              className="relative mx-auto w-56 overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]"
-              style={{ aspectRatio: mountAspectForCategory(celebration.categoryKey) }}
-            >
-              <Image
-                src={mountImageUrl ?? ""}
-                alt={`${displayName} コンプリート台紙`}
-                fill
-                sizes="224px"
-                className="object-cover"
-                onLoad={onImgLoad}
-                onError={onImgLoad}
+            <h2 className="relative z-10 text-xl font-bold text-amber-500">
+              コンプリート！
+            </h2>
+            {/* 台紙 + 背後の後光(オーラ)。後光は台紙中心に合わせ、台紙幅より
+                大きく広げて左右余白を光で満たす。 */}
+            <div className="relative mx-auto w-56">
+              <div
+                className="coll-aura pointer-events-none absolute left-1/2 top-1/2 -z-10 aspect-square w-[210%]"
+                aria-hidden
               />
+              <div
+                className="relative overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]"
+                style={{ aspectRatio: mountAspectForCategory(celebration.categoryKey) }}
+              >
+                <Image
+                  src={mountImageUrl ?? ""}
+                  alt={`${displayName} コンプリート台紙`}
+                  fill
+                  sizes="224px"
+                  className="object-cover"
+                  onLoad={onImgLoad}
+                  onError={onImgLoad}
+                />
+              </div>
             </div>
             {completionId ? (
               /* posts / /m と同じ共有 UI(モバイル=シェアシート、PC=コピー/Web Share
@@ -535,30 +600,45 @@ export function CollectionProgressModal({
               <AchievementBadge percent={Math.round(ratio * 100)} />
             </div>
 
-            {/* 集めたシール(?枠に重ねる)。slots.cx 上限まで。それ以上の集まりは表示しない。 */}
+            {/* 集めたシール(?枠に重ねる)。slots.cx 上限まで。それ以上の集まりは表示しない。
+                外側=波打ち(translateY)・内側=スタンプイン(scale/rotate)と transform を
+                分離して両アニメを合成する。今回増えた分だけ"ポンッ"と押す。 */}
             {layout.slots.cx.map((cx, i) => {
               const url = collectedImageUrls[i];
               if (!url) return null;
+              // fromCount→toCount で今回増えた分が「新規」。複数なら順番にスタンプ。
+              const isNew =
+                i >= celebration.fromCount && i < celebration.toCount;
+              const stampDelay = isNew ? (i - celebration.fromCount) * 0.1 : 0;
               return (
                 <div
                   key={i}
-                  className="absolute overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)]"
-                  style={{
-                    left: `${cx - layout.slots.d / 2}%`,
-                    top: `${layout.slots.cy - slotHeightPct / 2}%`,
-                    width: `${layout.slots.d}%`,
-                    aspectRatio: "1 / 1",
-                  }}
+                  className={`absolute ${ready ? "coll-wave" : ""}`}
+                  style={
+                    {
+                      left: `${cx - layout.slots.d / 2}%`,
+                      top: `${layout.slots.cy - slotHeightPct / 2}%`,
+                      width: `${layout.slots.d}%`,
+                      aspectRatio: "1 / 1",
+                      // 波の位相を slot ごとにずらして"波打ち"に。新規はスタンプ着地後に波へ。
+                      "--coll-wave-delay": `${isNew ? stampDelay + 0.62 : i * 0.16}s`,
+                      "--coll-stamp-delay": `${stampDelay}s`,
+                    } as CSSProperties
+                  }
                 >
-                  <Image
-                    src={url}
-                    alt=""
-                    fill
-                    sizes="56px"
-                    className="object-cover"
-                    onLoad={onImgLoad}
-                    onError={onImgLoad}
-                  />
+                  <div
+                    className={`h-full w-full overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)] ${ready && isNew ? "coll-stamp-in" : ""}`}
+                  >
+                    <Image
+                      src={url}
+                      alt=""
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                      onLoad={onImgLoad}
+                      onError={onImgLoad}
+                    />
+                  </div>
                 </div>
               );
             })}
