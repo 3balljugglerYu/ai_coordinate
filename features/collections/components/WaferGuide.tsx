@@ -149,11 +149,19 @@ export function WaferGuide({
   // 0 →… → threshold が満ちていく様子(4ステップ)
   const ringStages = [0, Math.round(threshold / 3), Math.round((threshold * 2) / 3), threshold];
 
-  const steps = [
+  const steps: {
+    n: string;
+    t: string;
+    b: string;
+    href?: string;
+    image?: string;
+  }[] = [
     {
       n: "01",
       t: "神コレのスタイルで生成",
       b: "One-Tap Style ページで「神コレ」シリーズのスタイル（オーディン・ゼウスなど）を選んで、うちの子の神シールを生成！",
+      href: "/style",
+      image: "/collections/wafer/style-page-event.webp",
     },
     {
       n: "02",
@@ -407,6 +415,33 @@ export function WaferGuide({
                       {s.t}
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-[#7a6a58]">{s.b}</p>
+                    {s.href ? (
+                      <Link
+                        href={s.href}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-700 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                        style={{ fontFamily: HEADING_FONT }}
+                      >
+                        Style ページをひらく
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-4 w-4">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
+                      </Link>
+                    ) : null}
+                    {s.image ? (
+                      <Link
+                        href={s.href ?? "/style"}
+                        className="mt-3 block overflow-hidden rounded-2xl border border-amber-100 shadow-[0_4px_14px_rgba(120,90,50,0.1)] transition-transform hover:-translate-y-0.5"
+                      >
+                        <Image
+                          src={s.image}
+                          alt="One-Tap Style ページで「神コレ」シリーズのスタイルを選ぶ画面"
+                          width={1794}
+                          height={1002}
+                          sizes="(max-width: 768px) 88vw, 560px"
+                          className="h-auto w-full"
+                        />
+                      </Link>
+                    ) : null}
                   </div>
                 </div>
               </Reveal>
