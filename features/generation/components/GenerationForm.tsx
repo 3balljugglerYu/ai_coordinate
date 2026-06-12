@@ -46,6 +46,7 @@ import type {
   SourceImageType,
   PickerSourceItem,
 } from "../types";
+import type { FramingMode } from "@/shared/generation/framing-mode";
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
@@ -71,6 +72,8 @@ interface GenerationFormProps {
     backgroundMode: BackgroundMode;
     count: number;
     model: GeminiModel;
+    /** framing_mode (admin viewer 限定)。チェック ON のときのみ "free_pose" が入る */
+    framingMode?: FramingMode;
   }) => void;
   isGenerating?: boolean;
   /**
@@ -84,6 +87,11 @@ interface GenerationFormProps {
    * 再生成すると in-memory の結果が失われ上限エラーになるため、生成ボタンを無効化する。
    */
   guestGenerationLocked?: boolean;
+  /**
+   * framing_mode (free_pose) のチェックボックスを表示するか。
+   * admin viewer 限定の先行公開 (サーバ側 generate-async でも検証される)。
+   */
+  canUseFreePose?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -100,6 +108,7 @@ export function GenerationForm({
   isGenerating = false,
   authState = "authenticated",
   guestGenerationLocked = false,
+  canUseFreePose = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
@@ -125,6 +134,28 @@ export function GenerationForm({
       description: t("backgroundKeepDescription"),
     },
   ];
+  // ポーズ・アングル設定 (admin viewer 限定)。背景設定と同じ並び順 (お任せ → 指定 → 維持)
+  const poseModeOptions: Array<{
+    value: FramingMode;
+    label: string;
+    description: string;
+  }> = [
+    {
+      value: "ai_pose",
+      label: t("poseModeAiAutoLabel"),
+      description: t("poseModeAiAutoDescription"),
+    },
+    {
+      value: "free_pose",
+      label: t("poseModeIncludeInPromptLabel"),
+      description: t("poseModeIncludeInPromptDescription"),
+    },
+    {
+      value: "locked",
+      label: t("poseModeKeepLabel"),
+      description: t("poseModeKeepDescription"),
+    },
+  ];
   const sourceImageTypeOptions: Array<{
     value: SourceImageType;
     label: string;
@@ -147,6 +178,12 @@ export function GenerationForm({
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
+  // framing_mode (admin viewer 限定先行公開)。背景設定と同じ 3 択ラジオで
+  // 「元画像に合わせる (locked) / プロンプト内で指定 (free_pose) / AIにお任せ (ai_pose)」を選ぶ。
+  // ゲスト同期経路は framingMode を解釈しないため、認証済みのときのみ表示する。
+  const [poseMode, setPoseMode] = useState<FramingMode>("locked");
+  const shouldShowPoseModeControl =
+    canUseFreePose && authState === "authenticated";
   const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
@@ -277,6 +314,10 @@ export function GenerationForm({
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
       model: effectiveSelectedModel,
+      // framing_mode: locked 以外を選んだときのみ渡す (省略 = locked = 現行挙動)
+      ...(shouldShowPoseModeControl && poseMode !== "locked"
+        ? { framingMode: poseMode }
+        : {}),
     });
   };
 
@@ -613,6 +654,42 @@ export function GenerationForm({
             ))}
           </RadioGroup>
         </div>
+
+        {/* ポーズ・アングル設定 (admin viewer 限定の先行公開)。背景設定と同じ 3 択ラジオ */}
+        {shouldShowPoseModeControl ? (
+          <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+            <Label className="text-base font-medium">
+              {t("poseModeLabel")}
+            </Label>
+            <RadioGroup
+              value={poseMode}
+              onValueChange={(value) => setPoseMode(value as FramingMode)}
+              className="mt-2 space-y-3"
+              disabled={isGenerating || isTutorialInProgress}
+            >
+              {poseModeOptions.map((option) => (
+                <div key={option.value} className="flex items-start space-x-2">
+                  <RadioGroupItem
+                    id={`pose-mode-${option.value}`}
+                    value={option.value}
+                    className="mt-0.5"
+                  />
+                  <div className="space-y-0.5">
+                    <Label
+                      htmlFor={`pose-mode-${option.value}`}
+                      className="text-sm font-medium leading-none"
+                    >
+                      {option.label}
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      {option.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+        ) : null}
 
         <GenerationModelControls
           value={effectiveSelectedModel}

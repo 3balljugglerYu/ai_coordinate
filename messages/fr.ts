@@ -856,6 +856,15 @@ export const frMessages = {
       "Spécifiez l'arrière-plan dans le prompt de la tenue.",
     backgroundKeepLabel: "Conserver l'arrière-plan actuel",
     backgroundKeepDescription: "Conservez l'arrière-plan actuel sans modification.",
+    poseModeLabel: "Pose et angle (bêta)",
+    poseModeAiAutoLabel: "Laisser l'IA décider",
+    poseModeAiAutoDescription: "L'IA choisit librement une pose et une composition adaptées à la tenue.",
+    poseModeIncludeInPromptLabel: "Décrire dans le prompt",
+    poseModeIncludeInPromptDescription:
+      "Priorise les indications de pose et d'angle de caméra écrites dans la description de la tenue.",
+    poseModeKeepLabel: "Identique à l'image d'origine",
+    poseModeKeepDescription:
+      "Conserve autant que possible la pose et l'angle de caméra d'origine (comportement actuel).",
     modelLabel: "Sélectionnez un modèle de génération",
     modelTooltipAria: "Afficher les différences de qualité de rendu",
     modelTooltipContent: "💡 Plus c'est élevé, moins les visages et vêtements se déforment.\nLow : génération rapide. ~30 s.\nMedium : équilibré. ~70 s.\nHigh : détails stables. ~180 s.",
@@ -1366,6 +1375,11 @@ export const frMessages = {
       "Lorsqu'il est désactivé, l'arrière-plan d'origine est conservé autant que possible. Lorsqu'il est activé, la direction d'arrière-plan de ce préréglage est aussi appliquée.",
     backgroundChangeDisabledHint:
       "Ce style ne prend pas en charge le changement d'arrière-plan.",
+    posePromptToggleLabel: "Spécifier la pose et l'angle (bêta)",
+    posePromptToggleDescription:
+      "Conserve l'apparence du personnage tout en permettant de spécifier la pose et l'angle de caméra. Si désactivé, la composition d'origine est préservée (comportement actuel).",
+    posePromptLabel: "Indications de pose et d'angle",
+    posePromptPlaceholder: "Ex. : Assise sur un banc de parc, plan en pied en contre-plongée",
     expandReferenceCardAria: "Restaurer la carte de référence à sa taille d'origine",
     collapseReferenceCardAria: "Réduire la carte de référence",
     expandReferenceCardTitle: "Restaurer",
@@ -1449,6 +1463,7 @@ export const frMessages = {
       "Le résultat affiché ici sera remplacé par une nouvelle image. Les images enregistrées restent disponibles dans Mon espace. Voulez-vous continuer ?",
     resultReplaceConfirmActionAuthenticated: "Régénérer",
     invalidStylePreset: "Le style sélectionné est invalide.",
+    invalidFramingMode: "L'option pose et angle libres est invalide.",
     invalidUsageEvent: "L'événement d'utilisation est invalide.",
     guestRateLimitCheckFailed:
       "Impossible de vérifier la limite d'utilisation. Veuillez réessayer dans un instant.",

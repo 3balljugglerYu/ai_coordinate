@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getUser } from "@/lib/auth";
+import { isAdminViewer } from "@/lib/env";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
@@ -85,6 +86,8 @@ export default async function CoordinatePage() {
               <GenerationFormContainer
                 subscriptionPlan={profile?.subscription_plan ?? "free"}
                 authState={isGuest ? "guest" : "authenticated"}
+                // framing_mode (free_pose) は admin viewer 限定の先行公開 (サーバ側でも検証)
+                canUseFreePose={isAdminViewer(user?.id ?? null)}
               />
             </Suspense>
 

@@ -853,6 +853,15 @@ export const enMessages = {
       "Specify the background within the outfit prompt.",
     backgroundKeepLabel: "Keep current background",
     backgroundKeepDescription: "Keep the current background unchanged.",
+    poseModeLabel: "Pose & angle (beta)",
+    poseModeAiAutoLabel: "Let AI decide",
+    poseModeAiAutoDescription: "AI freely chooses a pose and composition that suit the outfit.",
+    poseModeIncludeInPromptLabel: "Describe in prompt",
+    poseModeIncludeInPromptDescription:
+      "Follows the pose and camera angle instructions written in your outfit description.",
+    poseModeKeepLabel: "Match the original",
+    poseModeKeepDescription:
+      "Keeps the original pose and camera angle as much as possible (current behavior).",
     modelLabel: "Select a generation model",
     modelTooltipAria: "Show how the rendering quality differs",
     modelTooltipContent: "💡 The higher the quality, the less faces and clothing details break.\nLow: generates quickly. ~30 sec.\nMedium: balanced. ~70 sec.\nHigh: details stay intact. ~180 sec.",
@@ -1362,6 +1371,11 @@ export const enMessages = {
       "When OFF, the original background is preserved as much as possible. When ON, this preset's background direction is applied as well.",
     backgroundChangeDisabledHint:
       "This style does not support background changes.",
+    posePromptToggleLabel: "Specify pose & angle (beta)",
+    posePromptToggleDescription:
+      "Keeps the character's appearance while letting you specify the pose and camera angle. When OFF, the original composition is preserved (current behavior).",
+    posePromptLabel: "Pose & angle direction",
+    posePromptPlaceholder: "e.g. Sitting on a park bench, full-body shot from a low angle",
     expandReferenceCardAria: "Restore the reference card to full size",
     collapseReferenceCardAria: "Collapse the reference card",
     expandReferenceCardTitle: "Restore",
@@ -1445,6 +1459,7 @@ export const enMessages = {
       "The result shown here will be replaced with a new image. Saved images remain available from My Page. Do you want to continue?",
     resultReplaceConfirmActionAuthenticated: "Generate again",
     invalidStylePreset: "The selected style is invalid.",
+    invalidFramingMode: "The free pose & angle option is invalid.",
     invalidUsageEvent: "The usage event is invalid.",
     guestRateLimitCheckFailed:
       "We could not verify the usage limit. Please try again in a little while.",

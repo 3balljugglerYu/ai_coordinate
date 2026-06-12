@@ -856,6 +856,15 @@ export const itMessages = {
       "Specifica lo sfondo all'interno del prompt dell'outfit.",
     backgroundKeepLabel: "Mantieni lo sfondo attuale",
     backgroundKeepDescription: "Mantieni lo sfondo attuale invariato.",
+    poseModeLabel: "Posa e angolazione (beta)",
+    poseModeAiAutoLabel: "Lascia decidere all'IA",
+    poseModeAiAutoDescription: "L'IA sceglie liberamente una posa e una composizione adatte all'outfit.",
+    poseModeIncludeInPromptLabel: "Descrivi nel prompt",
+    poseModeIncludeInPromptDescription:
+      "Dà priorità alle indicazioni di posa e angolazione scritte nella descrizione dell'outfit.",
+    poseModeKeepLabel: "Come l'immagine originale",
+    poseModeKeepDescription:
+      "Mantiene il più possibile la posa e l'angolazione originali (comportamento attuale).",
     modelLabel: "Seleziona un modello di generazione",
     modelTooltipAria: "Mostra le differenze nella qualità di rendering",
     modelTooltipContent: "💡 Più alto è, meno volti e abiti si rompono.\nLow: generazione veloce. ~30 s.\nMedium: bilanciato. ~70 s.\nHigh: dettagli stabili. ~180 s.",
@@ -1366,6 +1375,11 @@ export const itMessages = {
       "Quando è disattivato, lo sfondo originale viene mantenuto il più possibile. Quando è attivo, viene applicata anche la direzione di sfondo di questo preset.",
     backgroundChangeDisabledHint:
       "Questo stile non supporta il cambio dello sfondo.",
+    posePromptToggleLabel: "Specifica posa e angolazione (beta)",
+    posePromptToggleDescription:
+      "Mantiene l'aspetto del personaggio e consente di specificare posa e angolazione della camera. Se disattivato, la composizione originale viene preservata (comportamento attuale).",
+    posePromptLabel: "Indicazioni di posa e angolazione",
+    posePromptPlaceholder: "Es.: Seduta su una panchina del parco, figura intera dal basso",
     expandReferenceCardAria: "Ripristina la carta di riferimento alla dimensione originale",
     collapseReferenceCardAria: "Comprimi la carta di riferimento",
     expandReferenceCardTitle: "Ripristina",
@@ -1449,6 +1463,7 @@ export const itMessages = {
       "Il risultato mostrato qui sarà sostituito da una nuova immagine. Le immagini salvate restano disponibili in La mia pagina. Vuoi continuare?",
     resultReplaceConfirmActionAuthenticated: "Genera di nuovo",
     invalidStylePreset: "Lo stile selezionato non è valido.",
+    invalidFramingMode: "L'opzione posa e angolazione libere non è valida.",
     invalidUsageEvent: "L'evento di utilizzo non è valido.",
     guestRateLimitCheckFailed:
       "Impossibile verificare il limite di utilizzo. Riprova tra poco.",

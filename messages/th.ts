@@ -853,6 +853,15 @@ export const thMessages = {
       "ระบุพื้นหลังภายในพรอมป์ของชุด",
     backgroundKeepLabel: "คงพื้นหลังปัจจุบัน",
     backgroundKeepDescription: "คงพื้นหลังปัจจุบันโดยไม่เปลี่ยน",
+    poseModeLabel: "ตั้งค่าท่าทางและมุมกล้อง (เบต้า)",
+    poseModeAiAutoLabel: "ให้ AI เลือก",
+    poseModeAiAutoDescription: "AI เลือกท่าทางและองค์ประกอบภาพที่เข้ากับชุดอย่างอิสระ",
+    poseModeIncludeInPromptLabel: "ระบุในพรอมป์ต",
+    poseModeIncludeInPromptDescription:
+      "ให้ความสำคัญกับคำสั่งท่าทางและมุมกล้องที่เขียนไว้ในรายละเอียดชุด",
+    poseModeKeepLabel: "ตามภาพต้นฉบับ",
+    poseModeKeepDescription:
+      "คงท่าทางและมุมกล้องของภาพต้นฉบับให้มากที่สุด (พฤติกรรมปัจจุบัน)",
     modelLabel: "เลือกโมเดลสำหรับสร้าง",
     modelTooltipAria: "แสดงความแตกต่างของคุณภาพการเรนเดอร์",
     modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว ประมาณ 30 วินาที\nMedium: สมดุล ประมาณ 70 วินาที\nHigh: รายละเอียดคงที่ ประมาณ 180 วินาที",
@@ -1362,6 +1371,11 @@ export const thMessages = {
       "เมื่อปิด พื้นหลังเดิมจะถูกคงไว้มากที่สุด เมื่อเปิด ทิศทางพื้นหลังของพรีเซ็ตนี้จะถูกนำมาใช้ด้วย",
     backgroundChangeDisabledHint:
       "สไตล์นี้ไม่รองรับการเปลี่ยนพื้นหลัง",
+    posePromptToggleLabel: "ระบุท่าทางและมุมกล้อง (เบต้า)",
+    posePromptToggleDescription:
+      "คงรูปลักษณ์ของตัวละครไว้ พร้อมให้คุณระบุท่าทางและมุมกล้องได้ เมื่อปิด จะคงองค์ประกอบภาพเดิมไว้ (พฤติกรรมปัจจุบัน)",
+    posePromptLabel: "คำสั่งท่าทางและมุมกล้อง",
+    posePromptPlaceholder: "เช่น นั่งบนม้านั่งในสวน ถ่ายเต็มตัวจากมุมต่ำ",
     expandReferenceCardAria: "คืนการ์ดอ้างอิงเป็นขนาดเต็ม",
     collapseReferenceCardAria: "ย่อการ์ดอ้างอิง",
     expandReferenceCardTitle: "คืนค่า",
@@ -1445,6 +1459,7 @@ export const thMessages = {
       "ผลลัพธ์ที่แสดงที่นี่จะถูกแทนที่ด้วยรูปใหม่ รูปที่บันทึกจะยังอยู่ในหน้าของฉัน ดำเนินการต่อหรือไม่?",
     resultReplaceConfirmActionAuthenticated: "สร้างอีกครั้ง",
     invalidStylePreset: "สไตล์ที่เลือกไม่ถูกต้อง",
+    invalidFramingMode: "ตัวเลือกปลดล็อกท่าทางและมุมกล้องไม่ถูกต้อง",
     invalidUsageEvent: "เหตุการณ์การใช้งานไม่ถูกต้อง",
     guestRateLimitCheckFailed:
       "ตรวจสอบขีดจำกัดการใช้งานไม่สำเร็จ โปรดลองอีกครั้งภายหลัง",

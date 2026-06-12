@@ -853,6 +853,15 @@ export const arMessages = {
       "حدّد الخلفية ضمن النص الموجِّه للإطلالة.",
     backgroundKeepLabel: "الإبقاء على الخلفية الحالية",
     backgroundKeepDescription: "اترك الخلفية الحالية دون تغيير.",
+    poseModeLabel: "إعداد الوضعية وزاوية الكاميرا (تجريبي)",
+    poseModeAiAutoLabel: "اترك الأمر للذكاء الاصطناعي",
+    poseModeAiAutoDescription: "يختار الذكاء الاصطناعي بحرية وضعية وتكويناً يناسبان الزي.",
+    poseModeIncludeInPromptLabel: "حدّد في النص التوجيهي",
+    poseModeIncludeInPromptDescription:
+      "يعطي الأولوية لتعليمات الوضعية وزاوية الكاميرا المكتوبة في وصف الزي.",
+    poseModeKeepLabel: "مطابقة الصورة الأصلية",
+    poseModeKeepDescription:
+      "يحافظ على وضعية الصورة الأصلية وزاوية الكاميرا قدر الإمكان (السلوك الحالي).",
     modelLabel: "اختر نموذج التوليد",
     modelTooltipAria: "عرض الفروق في جودة العرض",
     modelTooltipContent: "💡 كلما اقتربت من High، قلّت تشوّهات الوجه والملابس.\nLow: توليد سريع، حوالي 30 ثانية.\nMedium: متوازن، حوالي 70 ثانية.\nHigh: تفاصيل ثابتة، حوالي 180 ثانية.",
@@ -1363,6 +1372,11 @@ export const arMessages = {
       "عند الإيقاف، يُحتفظ بالخلفية الأصلية قدر الإمكان. عند التشغيل، يتم أيضًا تطبيق اتجاه خلفية هذا الإعداد المسبق.",
     backgroundChangeDisabledHint:
       "هذا الأسلوب لا يدعم تغيير الخلفية.",
+    posePromptToggleLabel: "تحديد الوضعية والزاوية (تجريبي)",
+    posePromptToggleDescription:
+      "يحافظ على مظهر الشخصية مع السماح لك بتحديد الوضعية وزاوية الكاميرا. عند الإيقاف، يتم الحفاظ على التكوين الأصلي (السلوك الحالي).",
+    posePromptLabel: "تعليمات الوضعية والزاوية",
+    posePromptPlaceholder: "مثال: جالسة على مقعد في الحديقة، لقطة لكامل الجسم من زاوية منخفضة",
     expandReferenceCardAria: "إعادة بطاقة المرجع إلى حجمها الكامل",
     collapseReferenceCardAria: "طي بطاقة المرجع",
     expandReferenceCardTitle: "إعادة",
@@ -1446,6 +1460,7 @@ export const arMessages = {
       "ستُستبدل النتيجة المعروضة هنا بصورة جديدة. تبقى الصور المحفوظة متاحة من صفحتي. هل تريد المتابعة؟",
     resultReplaceConfirmActionAuthenticated: "إعادة التوليد",
     invalidStylePreset: "الأسلوب المختار غير صالح.",
+    invalidFramingMode: "خيار حرية الوضعية وزاوية الكاميرا غير صالح.",
     invalidUsageEvent: "حدث الاستخدام غير صالح.",
     guestRateLimitCheckFailed:
       "تعذّر التحقق من حد الاستخدام. يُرجى المحاولة مرة أخرى بعد قليل.",

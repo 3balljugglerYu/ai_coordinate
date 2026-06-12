@@ -23,6 +23,12 @@ jest.mock("@/lib/supabase/admin", () => ({
   createAdminClient: jest.fn(),
 }));
 
+// framingMode (free_pose) の admin viewer ゲートをテストごとに制御する
+jest.mock("@/lib/env", () => ({
+  ...jest.requireActual("@/lib/env"),
+  isAdminViewer: jest.fn(() => false),
+}));
+
 jest.mock("@/features/inspire/lib/repository", () => ({
   getStyleTemplateById: jest.fn(),
 }));
@@ -41,6 +47,11 @@ import {
   type UserStyleTemplateRow,
 } from "@/features/inspire/lib/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAdminViewer } from "@/lib/env";
+
+const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
+  typeof isAdminViewer
+>;
 
 type JsonRecord = Record<string, unknown>;
 const VALID_SOURCE_IMAGE_STOCK_ID = "11111111-1111-4111-8111-111111111111";
@@ -120,6 +131,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
 
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
+    isAdminViewerMock.mockReset();
+    isAdminViewerMock.mockReturnValue(false);
     jobRepository = createAsyncGenerationJobRepositoryMock();
     invokeImageWorkerFn = jest.fn();
     createAdminClientMock = createAdminClient as jest.MockedFunction<
@@ -1073,6 +1086,127 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(delegateSpy).toHaveBeenCalledWith(request);
       expect(response).toBe(delegatedResponse);
       delegateSpy.mockRestore();
+    });
+  });
+
+  describe("framingMode (admin viewer 限定先行公開)", () => {
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildBody(extra: Record<string, unknown> = {}): JsonRecord {
+      return {
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+        ...extra,
+      };
+    }
+
+    test("非 admin の free_pose は 400 GENERATION_FRAMING_MODE_NOT_ALLOWED", async () => {
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ framingMode: "free_pose" })),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("GENERATION_FRAMING_MODE_NOT_ALLOWED");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("未知の framingMode 値は schema で 400 になる", async () => {
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ framingMode: "totally_free" })),
+        dependencies()
+      );
+
+      expect(response.status).toBe(400);
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("coordinate 以外 (inspire) への framingMode 指定は 400 になる", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+      const response = await postGenerateAsyncRoute(
+        createRequest(
+          buildBody({
+            generationType: "inspire",
+            styleTemplateId: VALID_STYLE_TEMPLATE_ID,
+            framingMode: "free_pose",
+          })
+        ),
+        dependencies()
+      );
+
+      expect(response.status).toBe(400);
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("admin の free_pose は generation_metadata.framingMode 付きでジョブ作成される", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ framingMode: "free_pose" })),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.generation_metadata).toEqual({
+        framingMode: "free_pose",
+      });
+      // prompt_text は raw のまま (free_pose の合成は worker の buildPrompt が行う)
+      expect(jobData.prompt_text).toBe("linen jacket");
+    });
+
+    test("非 admin の ai_pose も 400 GENERATION_FRAMING_MODE_NOT_ALLOWED", async () => {
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ framingMode: "ai_pose" })),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("GENERATION_FRAMING_MODE_NOT_ALLOWED");
+    });
+
+    test("admin の ai_pose は generation_metadata.framingMode=ai_pose で記録される", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ framingMode: "ai_pose" })),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.generation_metadata).toEqual({
+        framingMode: "ai_pose",
+      });
+    });
+
+    test("framingMode 省略時は generation_metadata を設定しない (後方互換)", async () => {
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody()),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect("generation_metadata" in jobData).toBe(false);
+    });
+
+    test("locked の明示指定は admin 検証なしで通り metadata も設定しない", async () => {
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ framingMode: "locked" })),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect("generation_metadata" in jobData).toBe(false);
     });
   });
 });

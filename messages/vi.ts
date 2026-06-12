@@ -853,6 +853,15 @@ export const viMessages = {
       "Chỉ định nền ngay trong prompt của trang phục.",
     backgroundKeepLabel: "Giữ nền hiện tại",
     backgroundKeepDescription: "Giữ nguyên nền hiện tại.",
+    poseModeLabel: "Cài đặt tư thế & góc máy (beta)",
+    poseModeAiAutoLabel: "Để AI quyết định",
+    poseModeAiAutoDescription: "AI tự do chọn tư thế và bố cục phù hợp với trang phục.",
+    poseModeIncludeInPromptLabel: "Chỉ định trong prompt",
+    poseModeIncludeInPromptDescription:
+      "Ưu tiên các chỉ dẫn về tư thế và góc máy viết trong mô tả trang phục.",
+    poseModeKeepLabel: "Theo ảnh gốc",
+    poseModeKeepDescription:
+      "Giữ tư thế và góc máy của ảnh gốc nhiều nhất có thể (hành vi hiện tại).",
     modelLabel: "Chọn mô hình tạo",
     modelTooltipAria: "Hiển thị sự khác biệt về chất lượng kết xuất",
     modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh. khoảng 30 giây.\nMedium: cân bằng. khoảng 70 giây.\nHigh: chi tiết ổn định. khoảng 180 giây.",
@@ -1363,6 +1372,11 @@ export const viMessages = {
       "Khi tắt, nền gốc được giữ tối đa có thể. Khi bật, hướng nền của preset cũng được áp dụng.",
     backgroundChangeDisabledHint:
       "Phong cách này không hỗ trợ thay đổi nền.",
+    posePromptToggleLabel: "Chỉ định tư thế & góc máy (beta)",
+    posePromptToggleDescription:
+      "Giữ nguyên ngoại hình nhân vật trong khi cho phép bạn chỉ định tư thế và góc máy. Khi tắt, bố cục gốc được giữ nguyên (hành vi hiện tại).",
+    posePromptLabel: "Chỉ dẫn tư thế & góc máy",
+    posePromptPlaceholder: "VD: Ngồi trên ghế công viên, chụp toàn thân từ góc thấp",
     expandReferenceCardAria: "Khôi phục thẻ tham chiếu về kích thước đầy đủ",
     collapseReferenceCardAria: "Thu gọn thẻ tham chiếu",
     expandReferenceCardTitle: "Khôi phục",
@@ -1446,6 +1460,7 @@ export const viMessages = {
       "Kết quả hiển thị tại đây sẽ được thay bằng hình mới. Hình đã lưu vẫn có trong Trang của tôi. Tiếp tục?",
     resultReplaceConfirmActionAuthenticated: "Tạo lại",
     invalidStylePreset: "Phong cách đã chọn không hợp lệ.",
+    invalidFramingMode: "Tùy chọn tự do tư thế và góc máy không hợp lệ.",
     invalidUsageEvent: "Sự kiện sử dụng không hợp lệ.",
     guestRateLimitCheckFailed:
       "Không xác minh được giới hạn sử dụng. Vui lòng thử lại sau ít phút.",

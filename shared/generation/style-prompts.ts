@@ -14,6 +14,8 @@
 import { PROMPT_REGISTRY } from "./prompt-registry.ts";
 import { applyTemplate } from "./prompt-template.ts";
 import type { SourceImageType } from "./prompt-core.ts";
+import { isUnlockedFramingMode } from "./framing-mode.ts";
+import type { FramingMode } from "./framing-mode.ts";
 
 // 後方互換: 既存 import 元のために registry default を再 export する
 export const STYLE_PROMPT_BASE_PREFIX =
@@ -55,6 +57,14 @@ export interface BuildStyleGenerationPromptParams {
    * ユーザー入力は preset / safety / system constraints を上書きできない補足指定として扱う (ADR-003)。
    */
   userPromptInput?: string | null;
+  /**
+   * ユーザーが /style 画面のポーズ・アングル入力欄に入れたテキスト (admin viewer 限定先行公開)。
+   * 非空のとき `Pose & Camera Direction:` セクションとして Styling Direction の直後に結合する。
+   * 呼び出し側 (handler) は非空のとき options.framingMode="free_pose" を併せて指定すること
+   * (locked の base_prefix はポーズ固定を指示するため、ポーズ指定と矛盾する)。
+   * raw モード (skipBasePrefix=true) では結合しない。
+   */
+  posePromptInput?: string | null;
 }
 
 // ユーザー入力前に挿入する短い guard 文。プロンプトインジェクション対策。
@@ -83,8 +93,19 @@ export interface BuildStyleGenerationPromptOptions {
    * preset_categories.skip_base_prefix = true (= ちびキャラ等の raw モード)
    * のときに使う。共通プロンプトの「フレーム維持・identity 保持」が
    * フォルム変形系の生成と整合しないため。
+   *
+   * skipBasePrefix=true のときは framingMode より優先される (raw 勝ち)。
    */
   skipBasePrefix?: boolean;
+  /**
+   * "free_pose" のとき base_prefix の代わりに style.base_prefix_free_pose を使い、
+   * 背景 suffix も free_pose 変種に差し替える。illustration/real の style suffix は
+   * 付与しない (画風維持の指示が free_pose 前文に内包されており、既存 suffix の
+   * 「camera angle / composition 維持」がポーズ自由化と矛盾するため)。
+   *
+   * 省略 / "locked" は現行挙動と完全に等価。
+   */
+  framingMode?: FramingMode;
 }
 
 export function buildStyleGenerationPrompt(
@@ -103,20 +124,43 @@ export function buildStyleGenerationPrompt(
     return sections.join("\n\n");
   }
 
-  const promptSuffix =
-    params.sourceImageType === "real"
+  // Style に ai_pose 専用プレフィックスは無いため、non-locked はすべて free_pose 扱い
+  const freePose = isUnlockedFramingMode(options.framingMode);
+
+  // free_pose では illustration/real suffix を付与しない (interface コメント参照)
+  const promptSuffix = freePose
+    ? null
+    : params.sourceImageType === "real"
       ? resolveTemplate(params.templates, "style.real_suffix")
       : resolveTemplate(params.templates, "style.illustration_suffix");
   const backgroundInstruction = params.backgroundChange
-    ? resolveTemplate(params.templates, "style.change_background_suffix")
-    : resolveTemplate(params.templates, "style.keep_background_suffix");
+    ? resolveTemplate(
+        params.templates,
+        freePose
+          ? "style.change_background_suffix_free_pose"
+          : "style.change_background_suffix",
+      )
+    : resolveTemplate(
+        params.templates,
+        freePose
+          ? "style.keep_background_suffix_free_pose"
+          : "style.keep_background_suffix",
+      );
 
   let promptSections: string[] = [
-    resolveTemplate(params.templates, "style.base_prefix"),
-    promptSuffix,
+    resolveTemplate(
+      params.templates,
+      freePose ? "style.base_prefix_free_pose" : "style.base_prefix",
+    ),
+    ...(promptSuffix === null ? [] : [promptSuffix]),
     backgroundInstruction,
     `Styling Direction:\n${params.stylingPrompt}`,
   ];
+
+  const poseDirection = params.posePromptInput?.trim();
+  if (poseDirection) {
+    promptSections.push(`Pose & Camera Direction:\n${poseDirection}`);
+  }
 
   if (params.backgroundChange && params.backgroundPrompt) {
     promptSections.push(`Background Direction:\n${params.backgroundPrompt}`);
@@ -140,10 +184,17 @@ export function buildStyleGenerationPrompt(
 export function buildStyleAttemptReinforcementPrefix(
   attempt: number,
   templates?: Record<string, string>,
+  framingMode?: FramingMode,
 ): string {
   if (attempt <= 1) {
     return "";
   }
-  const template = resolveTemplate(templates, "reinforcement.style_attempt_2plus");
+  const template = resolveTemplate(
+    templates,
+    // ai_pose もフレーム固定を再強制しない free_pose 変種を使う
+    isUnlockedFramingMode(framingMode)
+      ? "reinforcement.style_attempt_2plus_free_pose"
+      : "reinforcement.style_attempt_2plus",
+  );
   return applyTemplate(template, { attempt });
 }

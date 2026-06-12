@@ -853,6 +853,15 @@ export const koMessages = {
       "코디 프롬프트 안에서 배경을 직접 지정합니다.",
     backgroundKeepLabel: "현재 배경 유지",
     backgroundKeepDescription: "현재 배경을 그대로 유지합니다.",
+    poseModeLabel: "포즈·앵글 설정 (β)",
+    poseModeAiAutoLabel: "AI에게 맡기기",
+    poseModeAiAutoDescription: "옷에 어울리는 포즈와 구도를 AI가 자유롭게 선택합니다",
+    poseModeIncludeInPromptLabel: "프롬프트로 지정",
+    poseModeIncludeInPromptDescription:
+      "코디 내용에 적은 포즈·카메라 앵글 지시를 우선합니다",
+    poseModeKeepLabel: "원본 이미지에 맞추기",
+    poseModeKeepDescription:
+      "원본 이미지의 포즈와 카메라 앵글을 최대한 유지합니다(기존 동작)",
     modelLabel: "생성 모델 선택",
     modelTooltipAria: "렌더링 품질 차이 표시",
     modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성. 약 30초.\nMedium: 균형 중시. 약 70초.\nHigh: 디테일이 잘 깨지지 않음. 약 180초.",
@@ -1362,6 +1371,11 @@ export const koMessages = {
       "OFF일 때는 원래 배경을 최대한 유지합니다. ON일 때는 이 프리셋의 배경 방향성도 함께 적용됩니다.",
     backgroundChangeDisabledHint:
       "이 스타일은 배경 변경을 지원하지 않습니다.",
+    posePromptToggleLabel: "포즈·앵글 지정하기 (β)",
+    posePromptToggleDescription:
+      "캐릭터의 외모는 유지하면서 포즈와 카메라 앵글을 지정할 수 있습니다. OFF일 때는 원본 구도를 유지합니다(기존 동작).",
+    posePromptLabel: "포즈·앵글 지시",
+    posePromptPlaceholder: "예: 공원 벤치에 앉아, 로우 앵글로 전신 촬영",
     expandReferenceCardAria: "참조 카드를 원래 크기로 복원",
     collapseReferenceCardAria: "참조 카드 접기",
     expandReferenceCardTitle: "복원",
@@ -1445,6 +1459,7 @@ export const koMessages = {
       "이 화면의 결과는 새 이미지로 교체됩니다. 저장된 이미지는 마이 페이지에서 계속 확인할 수 있습니다. 계속하시겠습니까?",
     resultReplaceConfirmActionAuthenticated: "다시 생성",
     invalidStylePreset: "선택한 스타일이 유효하지 않습니다.",
+    invalidFramingMode: "포즈·앵글 자유화 옵션이 유효하지 않습니다.",
     invalidUsageEvent: "이용 이벤트가 유효하지 않습니다.",
     guestRateLimitCheckFailed:
       "이용 한도를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",

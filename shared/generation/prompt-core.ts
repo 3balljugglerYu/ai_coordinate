@@ -9,6 +9,8 @@
 
 import { PROMPT_REGISTRY } from "./prompt-registry.ts";
 import { applyTemplate } from "./prompt-template.ts";
+import { isUnlockedFramingMode } from "./framing-mode.ts";
+import type { FramingMode } from "./framing-mode.ts";
 
 /**
  * registry key の content を解決する。templates dict に override があれば優先、
@@ -117,6 +119,16 @@ export interface BuildPromptOptions {
    * 省略時は registry default を 100% 使う (= 既存挙動と等価、テスト容易)。
    */
   templates?: Record<string, string>;
+  /**
+   * "free_pose" のとき coordinate.base_prefix_free_pose、"ai_pose" のとき
+   * coordinate.base_prefix_ai_pose を使い、背景 suffix も free_pose 変種に
+   * 差し替える。real/illustration の style suffix は付与しない
+   * (画風維持の指示が free_pose / ai_pose 前文に内包されており、既存 suffix の
+   * 「camera angle / composition 維持」がポーズ自由化と矛盾するため)。
+   *
+   * 省略 / "locked" は現行挙動と完全に等価。coordinate 以外の generationType では無視。
+   */
+  framingMode?: FramingMode;
 }
 
 /**
@@ -156,6 +168,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
     backgroundMode,
     sourceImageType = "illustration",
     templates,
+    framingMode,
   } = options;
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
 
@@ -166,21 +179,49 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   if (generationType === "coordinate") {
-    const styleSuffix =
-      sourceImageType === "real"
+    // free_pose / ai_pose 共通の「フレーム固定解除」分岐。プレフィックスだけがモード別。
+    const unlocked = isUnlockedFramingMode(framingMode);
+
+    // unlocked では real/illustration style suffix を付与しない (BuildPromptOptions コメント参照)
+    const styleSuffix = unlocked
+      ? null
+      : sourceImageType === "real"
         ? resolveTemplate(templates, "coordinate.real_style_suffix")
         : resolveTemplate(templates, "coordinate.illustration_style_suffix");
 
     const sections: string[] = [
-      resolveTemplate(templates, "coordinate.base_prefix"),
-      styleSuffix,
+      resolveTemplate(
+        templates,
+        framingMode === "ai_pose"
+          ? "coordinate.base_prefix_ai_pose"
+          : framingMode === "free_pose"
+            ? "coordinate.base_prefix_free_pose"
+            : "coordinate.base_prefix",
+      ),
+      ...(styleSuffix === null ? [] : [styleSuffix]),
     ];
 
     if (backgroundMode === "keep") {
-      sections.push(resolveTemplate(templates, "coordinate.keep_background_suffix"));
+      sections.push(
+        resolveTemplate(
+          templates,
+          framingMode === "ai_pose"
+            ? "coordinate.keep_background_suffix_ai_pose"
+            : framingMode === "free_pose"
+              ? "coordinate.keep_background_suffix_free_pose"
+              : "coordinate.keep_background_suffix",
+        ),
+      );
     } else if (backgroundMode === "ai_auto") {
       sections.push(
-        resolveTemplate(templates, "coordinate.change_background_suffix"),
+        resolveTemplate(
+          templates,
+          framingMode === "ai_pose"
+            ? "coordinate.change_background_suffix_ai_pose"
+            : framingMode === "free_pose"
+              ? "coordinate.change_background_suffix_free_pose"
+              : "coordinate.change_background_suffix",
+        ),
       );
     }
     // include_in_prompt: ユーザー記述に背景指示を委ねるため、システム側の背景指示は追加しない
@@ -299,13 +340,19 @@ export function resolveInspireTargetSizeBaseIndex(
 export function buildCoordinateAttemptReinforcementPrefix(
   attempt: number,
   templates?: Record<string, string>,
+  framingMode?: FramingMode,
 ): string {
   if (attempt <= 1) {
     return "";
   }
   const template = resolveTemplate(
     templates,
-    "reinforcement.coordinate_attempt_2plus",
+    // モードごとに独立した key を使う (admin が個別にチューニングできるよう分離)
+    framingMode === "ai_pose"
+      ? "reinforcement.coordinate_attempt_2plus_ai_pose"
+      : framingMode === "free_pose"
+        ? "reinforcement.coordinate_attempt_2plus_free_pose"
+        : "reinforcement.coordinate_attempt_2plus",
   );
   return applyTemplate(template, { attempt });
 }

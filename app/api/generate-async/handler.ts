@@ -3,7 +3,8 @@ import { getUser } from "@/lib/auth";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
-import { env } from "@/lib/env";
+import { env, isAdminViewer } from "@/lib/env";
+import type { FramingMode } from "@/shared/generation/framing-mode";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import {
@@ -132,12 +133,25 @@ export async function postGenerateAsyncRoute(
       model,
       styleTemplateId,
       overrides,
+      framingMode,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
     if (!isModelAvailableForGeneration(effectiveModel)) {
       return jsonError(
         copy.modelTemporarilyUnavailable,
         "GENERATION_MODEL_TEMPORARILY_UNAVAILABLE",
+        400
+      );
+    }
+
+    // framing_mode (admin viewer 限定の先行公開)。coordinate 限定は schema で検証済み。
+    // locked 以外 (free_pose / ai_pose) は非 admin から送られたら 400
+    // (UI 非表示はセキュリティではないためサーバでも遮断)。
+    const effectiveFramingMode: FramingMode = framingMode ?? "locked";
+    if (effectiveFramingMode !== "locked" && !isAdminViewer(user.id)) {
+      return jsonError(
+        copy.invalidRequest,
+        "GENERATION_FRAMING_MODE_NOT_ALLOWED",
         400
       );
     }
@@ -434,6 +448,12 @@ export async function postGenerateAsyncRoute(
       override_angle: isInspireRequest ? overrides?.angle ?? true : null,
       override_pose: isInspireRequest ? overrides?.pose ?? true : null,
       override_background: isInspireRequest ? overrides?.background ?? true : null,
+      // locked 以外 (free_pose / ai_pose) のみ記録 (locked はキーなし = 既存レコードと一貫)。
+      // worker がプロンプト構築・リトライ強化の prefix 選択に使い、完了 RPC 経由で
+      // generated_images.generation_metadata へコピーされて品質比較にも使える。
+      ...(effectiveFramingMode !== "locked"
+        ? { generation_metadata: { framingMode: effectiveFramingMode } }
+        : {}),
     };
 
     const { data: job, error: insertError } =

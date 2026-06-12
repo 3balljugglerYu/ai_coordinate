@@ -13,6 +13,7 @@ import {
 import { composeCreatorLooksPrompt } from "./creator-looks-prompt.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
+import { getFramingModeFromGenerationMetadata } from "../../../shared/generation/framing-mode.ts";
 import {
   GEMINI_DISABLED_MESSAGE,
   GEMINI_PROVIDER_ERROR,
@@ -1873,6 +1874,11 @@ Deno.serve(async () => {
                           ? "real"
                           : "illustration",
                       templates: promptTemplates,
+                      // framing_mode (free_pose は admin viewer 限定、route handler で検証済み)。
+                      // metadata にキーが無い既存ジョブは locked = 現行挙動。
+                      framingMode: getFramingModeFromGenerationMetadata(
+                        job.generation_metadata,
+                      ),
                     });
                   }
 
@@ -2131,16 +2137,23 @@ Deno.serve(async () => {
               //  invocation 内メモリキャッシュにより 2 回目以降は DB 取得なし)
               const reinforcementTemplates =
                 await resolveAllPromptTemplatesForWorker(supabase);
+              // free_pose ジョブはフレーム固定を再強制しない reinforcement 変種を使う
+              // (locked 用文言の「Do not extend the crop」が free_pose prefix と矛盾するため)
+              const reinforcementFramingMode = getFramingModeFromGenerationMetadata(
+                job.generation_metadata,
+              );
               for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 const reinforcementPrefix = isOneTapStyle
                   ? buildStyleAttemptReinforcementPrefix(
                       attempt,
                       reinforcementTemplates,
+                      reinforcementFramingMode,
                     )
                   : isCoordinate
                     ? buildCoordinateAttemptReinforcementPrefix(
                         attempt,
                         reinforcementTemplates,
+                        reinforcementFramingMode,
                       )
                     : "";
                 const reinforcementApplied = reinforcementPrefix.length > 0;

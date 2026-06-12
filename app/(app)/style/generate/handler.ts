@@ -504,6 +504,8 @@ export async function postStyleGenerateRoute(
         userPromptInput: effectiveUserPromptInput,
       },
       // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
+      // framingMode はゲスト同期経路では解釈しない (= 常に locked)。
+      // free_pose は admin viewer 限定で、admin は認証済みのため /style/generate-async を通る。
       { skipBasePrefix: preset.category.skipBasePrefix },
     );
 

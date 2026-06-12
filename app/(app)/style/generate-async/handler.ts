@@ -27,6 +27,10 @@ import {
   getPercoinCost,
   isModelAvailableForGeneration,
 } from "@/features/generation/lib/model-config";
+import {
+  parseFramingMode,
+  type FramingMode,
+} from "@/shared/generation/framing-mode";
 import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
@@ -91,6 +95,10 @@ function resolveSourceImageType(entry: FormDataEntryValue | null): SourceImageTy
 function resolveBackgroundChange(entry: FormDataEntryValue | null): boolean {
   return entry === "true";
 }
+
+// ポーズ・アングル入力欄 (admin viewer 限定先行公開) の最大文字数。
+// userPrompt と異なりカテゴリ別設定は持たない (公開フェーズで必要になったら追加)。
+const STYLE_POSE_PROMPT_MAX_LENGTH = 500;
 
 /**
  * /style/generate-async (Phase 5 / ADR-008 / UCL-007 / UCL-008 / UCL-016)
@@ -160,6 +168,60 @@ export async function postStyleGenerateAsyncRoute(
     }
     if (preset.category.visibility === "admin_only" && !isAdminUser) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    }
+
+    // framing_mode (admin viewer 限定の先行公開)。未知値は 400。
+    // free_pose は非 admin から送られたら 400 (UI 非表示はセキュリティではないためサーバでも遮断)。
+    // raw モード (skip_base_prefix=true) カテゴリでは無視して locked 扱い (REQ-5)。
+    const framingModeEntry = formData.get("framingMode");
+    let effectiveFramingMode: FramingMode = "locked";
+    if (typeof framingModeEntry === "string" && framingModeEntry.length > 0) {
+      const parsedFramingMode = parseFramingMode(framingModeEntry);
+      if (!parsedFramingMode) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_INVALID_FRAMING_MODE",
+          400
+        );
+      }
+      if (parsedFramingMode === "free_pose" && !isAdminUser) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_FRAMING_MODE_NOT_ALLOWED",
+          400
+        );
+      }
+      effectiveFramingMode = preset.category.skipBasePrefix
+        ? "locked"
+        : parsedFramingMode;
+    }
+
+    // posePrompt (ポーズ・アングル入力欄、admin viewer 限定)。
+    // 非空のとき free_pose を含意する (locked の base_prefix はポーズ固定を指示するため矛盾する)。
+    // raw モードカテゴリでは無視 (framingMode と同じ丸め方針、REQ-5)。
+    const posePromptEntry = formData.get("posePrompt");
+    const posePromptTrimmed =
+      typeof posePromptEntry === "string" ? posePromptEntry.trim() : "";
+    let effectivePosePrompt: string | null = null;
+    if (posePromptTrimmed.length > 0) {
+      if (!isAdminUser) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_POSE_PROMPT_NOT_ALLOWED",
+          400
+        );
+      }
+      if (posePromptTrimmed.length > STYLE_POSE_PROMPT_MAX_LENGTH) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_POSE_PROMPT_TOO_LONG",
+          400
+        );
+      }
+      if (!preset.category.skipBasePrefix) {
+        effectivePosePrompt = posePromptTrimmed;
+        effectiveFramingMode = "free_pose";
+      }
     }
     const effectiveSourceImageType: SourceImageType =
       preset.category.showSourceImageTypeControl
@@ -331,9 +393,14 @@ export async function postStyleGenerateAsyncRoute(
         sourceImageType: effectiveSourceImageType,
         templates: promptTemplates,
         userPromptInput: effectiveUserPromptInput,
+        posePromptInput: effectivePosePrompt,
       },
       // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
-      { skipBasePrefix: preset.category.skipBasePrefix },
+      // free_pose は admin viewer 限定 (上で検証済み)。raw モードでは locked に丸め済み。
+      {
+        skipBasePrefix: preset.category.skipBasePrefix,
+        framingMode: effectiveFramingMode,
+      },
     );
 
     // 3 経路のうち選択された 1 つから inputImageUrl と resolvedStockId を確定。
@@ -465,16 +532,24 @@ export async function postStyleGenerateAsyncRoute(
       generation_type: "one_tap_style",
       model: effectiveModel,
       background_mode: backgroundChangeToBackgroundMode(effectiveBackgroundChange),
-      generation_metadata: buildOneTapStyleGenerationMetadata(
-        {
-          ...preset,
-          outputAspectRatioMode: preset.category.outputAspectRatioMode,
-        },
-        "paid",
-        {
-          reservedAttemptId: null,
-        },
-      ),
+      generation_metadata: {
+        ...buildOneTapStyleGenerationMetadata(
+          {
+            ...preset,
+            outputAspectRatioMode: preset.category.outputAspectRatioMode,
+          },
+          "paid",
+          {
+            reservedAttemptId: null,
+          },
+        ),
+        // locked 以外のみ記録 (locked はキーなし = 既存レコードと一貫)。
+        // worker のリトライ強化 prefix 選択と、完了 RPC 経由で generated_images への
+        // 恒久記録 (品質比較用) に使う。
+        ...(effectiveFramingMode !== "locked"
+          ? { framingMode: effectiveFramingMode }
+          : {}),
+      },
       status: "queued",
       processing_stage: "queued",
       attempts: 0,

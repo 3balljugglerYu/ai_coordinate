@@ -855,6 +855,15 @@ export const idMessages = {
       "Tentukan latar belakang di dalam prompt outfit.",
     backgroundKeepLabel: "Pertahankan latar belakang saat ini",
     backgroundKeepDescription: "Pertahankan latar belakang saat ini tanpa perubahan.",
+    poseModeLabel: "Pengaturan pose & sudut (beta)",
+    poseModeAiAutoLabel: "Serahkan ke AI",
+    poseModeAiAutoDescription: "AI bebas memilih pose dan komposisi yang cocok dengan outfit.",
+    poseModeIncludeInPromptLabel: "Tentukan di prompt",
+    poseModeIncludeInPromptDescription:
+      "Memprioritaskan instruksi pose dan sudut kamera yang ditulis dalam deskripsi outfit.",
+    poseModeKeepLabel: "Sesuai gambar asli",
+    poseModeKeepDescription:
+      "Mempertahankan pose dan sudut kamera asli semaksimal mungkin (perilaku saat ini).",
     modelLabel: "Pilih model generasi",
     modelTooltipAria: "Tampilkan perbedaan kualitas rendering",
     modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",
@@ -1365,6 +1374,11 @@ export const idMessages = {
       "Saat OFF, latar belakang asli dipertahankan semaksimal mungkin. Saat ON, arah latar belakang preset ini juga diterapkan.",
     backgroundChangeDisabledHint:
       "Gaya ini tidak mendukung pengubahan latar belakang.",
+    posePromptToggleLabel: "Tentukan pose & sudut (beta)",
+    posePromptToggleDescription:
+      "Mempertahankan penampilan karakter sambil memungkinkan Anda menentukan pose dan sudut kamera. Saat OFF, komposisi asli dipertahankan (perilaku saat ini).",
+    posePromptLabel: "Instruksi pose & sudut",
+    posePromptPlaceholder: "Mis.: Duduk di bangku taman, seluruh badan dari sudut rendah",
     expandReferenceCardAria: "Pulihkan kartu referensi ke ukuran penuh",
     collapseReferenceCardAria: "Tutup kartu referensi",
     expandReferenceCardTitle: "Pulihkan",
@@ -1448,6 +1462,7 @@ export const idMessages = {
       "Hasil yang ditampilkan di sini akan diganti dengan gambar baru. Gambar yang tersimpan tetap tersedia di Halaman saya. Lanjutkan?",
     resultReplaceConfirmActionAuthenticated: "Hasilkan ulang",
     invalidStylePreset: "Gaya yang dipilih tidak valid.",
+    invalidFramingMode: "Opsi pose & sudut bebas tidak valid.",
     invalidUsageEvent: "Event pemakaian tidak valid.",
     guestRateLimitCheckFailed:
       "Tidak bisa memverifikasi batas pemakaian. Coba lagi sebentar.",
