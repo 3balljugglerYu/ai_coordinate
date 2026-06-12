@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { CollectionProgressRing } from "./CollectionProgressRing";
 
 /* eslint-disable @next/next/no-page-custom-font -- 日本語の動的サブセットを使うため意図的に <link> で読み込む */
 
@@ -86,7 +85,7 @@ function XLink({ handle, url }: { handle: string; url: string }) {
   );
 }
 
-// 完成台紙(complete.PNG)の並び順に合わせる:
+// 完成シート(complete.PNG)の並び順に合わせる:
 // オーディン → ゼウス → イシス → アテナ → アルテミス → アフロディーテ
 const GODS = [
   {
@@ -139,44 +138,72 @@ const GODS = [
   },
 ];
 
-export function WaferGuide({
-  characterUrl,
-  threshold,
-}: {
-  characterUrl: string | null;
-  threshold: number;
-}) {
-  // 0 →… → threshold が満ちていく様子(4ステップ)
-  const ringStages = [0, Math.round(threshold / 3), Math.round((threshold * 2) / 3), threshold];
-
+export function WaferGuide({ threshold }: { threshold: number }) {
   const steps: {
     n: string;
     t: string;
     b: string;
     href?: string;
-    image?: string;
+    image?: {
+      src: string;
+      alt: string;
+      width: number;
+      height: number;
+      sizes: string;
+      // 縦長画像はカード内で幅を絞る
+      maxWidthClass?: string;
+    };
   }[] = [
     {
       n: "01",
       t: "神コレのスタイルで生成",
       b: "One-Tap Style ページで「神コレ」シリーズのスタイル（オーディン・ゼウスなど）を選んで、うちの子の神シールを生成！",
       href: "/style",
-      image: "/collections/wafer/style-page-event.webp",
+      image: {
+        src: "/collections/wafer/style-page-event.webp",
+        alt: "One-Tap Style ページで「神コレ」シリーズのスタイルを選ぶ画面",
+        width: 1794,
+        height: 1002,
+        sizes: "(max-width: 768px) 88vw, 560px",
+      },
     },
     {
       n: "02",
       t: "あつめて枠を埋める",
-      b: "生成するたびに、コレクション台紙の枠がひとつずつ埋まっていきます。",
+      b: "生成するたびに、コレクションシートの枠がひとつずつ埋まっていきます。",
+      image: {
+        src: "/collections/wafer/god-modal-preview.webp",
+        alt: "生成時に表示される神コレクションの進捗モーダル。6つの枠が埋まっていく様子",
+        width: 700,
+        height: 900,
+        sizes: "(max-width: 480px) 60vw, 240px",
+        maxWidthClass: "max-w-[240px]",
+      },
     },
     {
       n: "03",
       t: `${threshold}柱そろえてコンプリート`,
-      b: `${threshold}種類そろえると、${threshold}枚を飾れる限定コンプリート台紙が完成！`,
+      b: `${threshold}種類そろえると、${threshold}枚を飾れる限定コンプリートシートが完成！`,
+      image: {
+        src: "/collections/wafer/god-complete-sample.webp",
+        alt: "神コレクションのコンプリートシートサンプル(6柱の神シールが並んだ完成イメージ)",
+        width: 1024,
+        height: 1608,
+        sizes: "(max-width: 480px) 55vw, 220px",
+        maxWidthClass: "max-w-[220px]",
+      },
     },
     {
       n: "04",
       t: "ダウンロード＆シェア",
-      b: "完成した台紙はそのまま画像でダウンロード。SNS でシェアして自慢しよう！",
+      b: "完成したシートはそのまま画像でダウンロード。SNS でシェアして自慢しよう！",
+      image: {
+        src: "/collections/wafer/god-share.webp",
+        alt: "神コレクションをシェアした投稿イメージ（全6種コンプリート）",
+        width: 1000,
+        height: 525,
+        sizes: "(max-width: 768px) 88vw, 560px",
+      },
     },
   ];
 
@@ -185,7 +212,24 @@ export function WaferGuide({
       <style>{`
         @keyframes pe-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
         .pe-float { animation: pe-float 7s ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce){ .pe-float{ animation:none } }
+        /* 完成シートの背後で放射状に射す後光(オーラ)。
+           CollectionProgressModal の coll-aura と同じ見た目。 */
+        .wafer-aura {
+          border-radius: 9999px;
+          background: repeating-conic-gradient(
+            rgba(253, 224, 71, 0.34) 0deg 6deg,
+            transparent 6deg 19deg
+          );
+          -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 66%);
+          mask-image: radial-gradient(circle, #000 16%, transparent 66%);
+          transform: translate(-50%, -50%);
+          animation: wafer-aura-spin 16s linear infinite;
+        }
+        @keyframes wafer-aura-spin {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to   { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce){ .pe-float, .wafer-aura { animation:none } }
       `}</style>
       <link
         href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap"
@@ -218,7 +262,15 @@ export function WaferGuide({
           <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
             うちの子が、神話の女神・神さまに。
             <br />
-            全{threshold}種あつめて、きらめく台紙をコンプリート。
+            全{threshold}種あつめて、きらめくシートをコンプリート。
+          </p>
+        </Reveal>
+        <Reveal delay={250}>
+          <p
+            className="mt-4 inline-block rounded-full border border-amber-200 bg-white/80 px-5 py-1.5 text-sm font-bold text-amber-600"
+            style={{ fontFamily: HEADING_FONT }}
+          >
+            企画期間：6/13 (土) 20:00 〜 6/21 (日) 21:59
           </p>
         </Reveal>
 
@@ -248,6 +300,9 @@ export function WaferGuide({
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </Link>
+          <p className="mt-3 text-xs text-[#9a8a78]">
+            企画がスタートしたら対象の「神コレ」シリーズが表示されます！
+          </p>
         </Reveal>
       </section>
 
@@ -262,15 +317,35 @@ export function WaferGuide({
               ✦ COLLABORATION ✦
             </span>
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-6">
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-2">
                 <span className="text-xs text-[#9a8a78]">プロンプト提供</span>
+                <Image
+                  src="/collections/wafer/user-icons/mario-icon.webp"
+                  alt="@mario335599 のアイコン"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-full border border-amber-200/70 object-cover shadow-sm"
+                />
                 <XLink handle="@mario335599" url="https://x.com/mario335599" />
               </div>
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-2">
                 <span className="text-xs text-[#9a8a78]">企画・主催</span>
+                <Image
+                  src="/collections/wafer/user-icons/mikifuku-icon.webp"
+                  alt="@mickey_fuku のアイコン"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-full border border-amber-200/70 object-cover shadow-sm"
+                />
                 <XLink handle="@mickey_fuku" url="https://x.com/mickey_fuku" />
               </div>
             </div>
+            <span
+              className="text-xs font-bold text-amber-500"
+              style={{ fontFamily: HEADING_FONT }}
+            >
+              フォローしてね！いいことあるかも！
+            </span>
           </div>
         </Reveal>
       </section>
@@ -315,79 +390,6 @@ export function WaferGuide({
         </div>
       </section>
 
-      {/* ===== あつめると満ちる(リング) ===== */}
-      <section className="relative overflow-hidden px-6 py-16">
-        <Sparkle className="pe-float absolute right-8 top-10 h-6 w-6 text-amber-300" />
-        <div className="mx-auto max-w-3xl">
-          <Reveal>
-            <h2 className="text-center text-2xl text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
-              あつめるほど、満ちていく
-            </h2>
-          </Reveal>
-          <Reveal delay={100}>
-            <p className="mt-2 text-center text-sm text-[#7a6a58]">
-              一種あつめるたびに、まんなかの円が満ちていくよ
-            </p>
-          </Reveal>
-          <Reveal delay={200}>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-8">
-              {ringStages.map((count, idx) => {
-                const ratio = threshold > 0 ? count / threshold : 0;
-                return (
-                  <div key={idx} className="flex flex-col items-center gap-2">
-                    <span
-                      className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-0.5 text-xs font-bold text-white"
-                      style={{ fontFamily: HEADING_FONT }}
-                    >
-                      {count}/{threshold}
-                    </span>
-                    <CollectionProgressRing
-                      ratio={ratio}
-                      complete={ratio >= 1}
-                      imageUrl={characterUrl}
-                      tintByProgress={false}
-                      className="w-[84px]"
-                    >
-                      {!characterUrl && ratio >= 1 && (
-                        <span className="text-[10px] font-bold text-amber-500">完成</span>
-                      )}
-                    </CollectionProgressRing>
-                  </div>
-                );
-              })}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ===== 集まっていく(生成モーダルのプレビュー) ===== */}
-      <section className="bg-white/70 px-6 py-16">
-        <div className="mx-auto max-w-2xl">
-          <Reveal>
-            <h2 className="text-center text-2xl text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
-              集まっていく、その瞬間
-            </h2>
-          </Reveal>
-          <Reveal delay={100}>
-            <p className="mt-2 text-center text-sm text-[#7a6a58]">
-              生成するたびに、台紙の枠がひとつずつ埋まっていく演出も。
-            </p>
-          </Reveal>
-          <Reveal delay={200}>
-            <div className="relative mx-auto mt-8 w-full max-w-[320px] overflow-hidden rounded-3xl border border-amber-100 shadow-[0_10px_30px_rgba(120,90,50,0.14)]">
-              <Image
-                src="/collections/wafer/god-modal-preview.webp"
-                alt="生成時に表示される神コレクションの進捗モーダル。6つの枠が埋まっていく様子"
-                width={700}
-                height={900}
-                sizes="(max-width: 480px) 88vw, 320px"
-                className="h-auto w-full"
-              />
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
       {/* ===== あそびかた ===== */}
       <section className="px-6 py-16">
         <div className="mx-auto max-w-2xl">
@@ -412,31 +414,51 @@ export function WaferGuide({
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-[#7a6a58]">{s.b}</p>
                     {s.href ? (
-                      <Link
-                        href={s.href}
-                        className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-700 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-                        style={{ fontFamily: HEADING_FONT }}
-                      >
-                        Style ページをひらく
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-4 w-4">
-                          <path d="M5 12h14M13 6l6 6-6 6" />
-                        </svg>
-                      </Link>
+                      <>
+                        <Link
+                          href={s.href}
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-700 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                          style={{ fontFamily: HEADING_FONT }}
+                        >
+                          Style ページをひらく
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-4 w-4">
+                            <path d="M5 12h14M13 6l6 6-6 6" />
+                          </svg>
+                        </Link>
+                        <p className="mt-2 text-xs text-[#9a8a78]">
+                          企画がスタートしたら対象の「神コレ」シリーズが表示されます！
+                        </p>
+                      </>
                     ) : null}
                     {s.image ? (
-                      <Link
-                        href={s.href ?? "/style"}
-                        className="mt-3 block overflow-hidden rounded-2xl border border-amber-100 shadow-[0_4px_14px_rgba(120,90,50,0.1)] transition-transform hover:-translate-y-0.5"
-                      >
-                        <Image
-                          src={s.image}
-                          alt="One-Tap Style ページで「神コレ」シリーズのスタイルを選ぶ画面"
-                          width={1794}
-                          height={1002}
-                          sizes="(max-width: 768px) 88vw, 560px"
-                          className="h-auto w-full"
-                        />
-                      </Link>
+                      s.href ? (
+                        <Link
+                          href={s.href}
+                          className={`mt-3 block overflow-hidden rounded-2xl border border-amber-100 shadow-[0_4px_14px_rgba(120,90,50,0.1)] transition-transform hover:-translate-y-0.5 ${s.image.maxWidthClass ?? ""}`}
+                        >
+                          <Image
+                            src={s.image.src}
+                            alt={s.image.alt}
+                            width={s.image.width}
+                            height={s.image.height}
+                            sizes={s.image.sizes}
+                            className="h-auto w-full"
+                          />
+                        </Link>
+                      ) : (
+                        <div
+                          className={`mt-3 overflow-hidden rounded-2xl border border-amber-100 shadow-[0_4px_14px_rgba(120,90,50,0.1)] ${s.image.maxWidthClass ?? ""}`}
+                        >
+                          <Image
+                            src={s.image.src}
+                            alt={s.image.alt}
+                            width={s.image.width}
+                            height={s.image.height}
+                            sizes={s.image.sizes}
+                            className="h-auto w-full"
+                          />
+                        </div>
+                      )
                     ) : null}
                   </div>
                 </div>
@@ -458,20 +480,28 @@ export function WaferGuide({
           <Reveal>
             <div className="rounded-[2rem] border-2 border-dashed border-amber-300 bg-white p-6 text-center shadow-[0_8px_24px_rgba(120,90,50,0.08)] sm:p-8">
               <h2 className="text-2xl leading-relaxed text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
-                そろえたら、特別な台紙をGET！
+                そろえたら、特別なシートをGET！
               </h2>
               <p className="mx-auto mt-4 max-w-md text-sm leading-loose text-[#7a6a58]">
-                {threshold}種そろえると、あなただけの特別なコンプリート台紙が完成。
+                {threshold}種そろえると、あなただけの特別なコンプリートシートが完成。
                 そのまま画像でダウンロードして、SNS でシェアして自慢しよう！
               </p>
-              <div className="relative mx-auto mt-6 aspect-[1024/1608] w-full max-w-[260px] overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.12)]">
-                <Image
-                  src="/collections/wafer/god-complete-sample.webp"
-                  alt="神コレクションのコンプリート台紙サンプル(6柱の神シールが並んだ完成イメージ)"
-                  fill
-                  sizes="(max-width: 480px) 70vw, 260px"
-                  className="object-cover"
+              {/* シート + 背後の後光(オーラ)。後光はシート中心に合わせ、
+                  シート幅より大きく広げて左右余白を光で満たす。 */}
+              <div className="relative isolate mx-auto mt-6 w-full max-w-[260px]">
+                <div
+                  className="wafer-aura pointer-events-none absolute left-1/2 top-1/2 -z-10 aspect-square w-[210%]"
+                  aria-hidden
                 />
+                <div className="relative aspect-[1024/1608] overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.12)]">
+                  <Image
+                    src="/collections/wafer/god-complete-sample.webp"
+                    alt="神コレクションのコンプリートシートサンプル(6柱の神シールが並んだ完成イメージ)"
+                    fill
+                    sizes="(max-width: 480px) 70vw, 260px"
+                    className="object-cover"
+                  />
+                </div>
               </div>
               <p className="mt-3 text-xs text-[#9a8a78]">＼ 完成イメージ ／</p>
             </div>
@@ -486,7 +516,7 @@ export function WaferGuide({
             className="mx-auto mb-6 max-w-md text-base font-bold text-amber-600"
             style={{ fontFamily: HEADING_FONT }}
           >
-            完成した台紙は、SNSでシェアして自慢しよう！
+            完成したシートは、SNSでシェアして自慢しよう！
           </p>
         </Reveal>
         <Reveal delay={70}>
@@ -512,10 +542,13 @@ export function WaferGuide({
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </Link>
+          <p className="mt-3 text-xs text-[#9a8a78]">
+            企画がスタートしたら対象の「神コレ」シリーズが表示されます！
+          </p>
         </Reveal>
         <Reveal delay={100}>
           <p className="mx-auto mt-6 max-w-sm text-xs leading-relaxed text-[#9a8a78]">
-            ※ あつめる・台紙の保存にはログインが必要です（未ログインでも一枚お試し生成できます）。
+            ※ あつめる・シートの保存にはログインが必要です（未ログインでも一枚お試し生成できます）。
           </p>
         </Reveal>
       </section>
