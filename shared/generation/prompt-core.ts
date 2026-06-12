@@ -205,18 +205,22 @@ export function buildPrompt(options: BuildPromptOptions): string {
       sections.push(
         resolveTemplate(
           templates,
-          unlocked
-            ? "coordinate.keep_background_suffix_free_pose"
-            : "coordinate.keep_background_suffix",
+          framingMode === "ai_pose"
+            ? "coordinate.keep_background_suffix_ai_pose"
+            : framingMode === "free_pose"
+              ? "coordinate.keep_background_suffix_free_pose"
+              : "coordinate.keep_background_suffix",
         ),
       );
     } else if (backgroundMode === "ai_auto") {
       sections.push(
         resolveTemplate(
           templates,
-          unlocked
-            ? "coordinate.change_background_suffix_free_pose"
-            : "coordinate.change_background_suffix",
+          framingMode === "ai_pose"
+            ? "coordinate.change_background_suffix_ai_pose"
+            : framingMode === "free_pose"
+              ? "coordinate.change_background_suffix_free_pose"
+              : "coordinate.change_background_suffix",
         ),
       );
     }
@@ -343,10 +347,12 @@ export function buildCoordinateAttemptReinforcementPrefix(
   }
   const template = resolveTemplate(
     templates,
-    // ai_pose もフレーム固定を再強制しない free_pose 変種を使う
-    isUnlockedFramingMode(framingMode)
-      ? "reinforcement.coordinate_attempt_2plus_free_pose"
-      : "reinforcement.coordinate_attempt_2plus",
+    // モードごとに独立した key を使う (admin が個別にチューニングできるよう分離)
+    framingMode === "ai_pose"
+      ? "reinforcement.coordinate_attempt_2plus_ai_pose"
+      : framingMode === "free_pose"
+        ? "reinforcement.coordinate_attempt_2plus_free_pose"
+        : "reinforcement.coordinate_attempt_2plus",
   );
   return applyTemplate(template, { attempt });
 }

@@ -335,7 +335,8 @@ flowchart LR
 
 ### 改訂内容
 
-- **`FramingMode` に `"ai_pose"` を追加**（locked / free_pose / ai_pose の 3 値）。`ai_pose` は「元画像のポーズを写し取らず AI が服に合う構図を選ぶ」モード。レジストリに `coordinate.base_prefix_ai_pose` を追加（計 9 キー）。背景 suffix・リトライ強化は free_pose 系を共用（`isUnlockedFramingMode()` で判定）
+- **`FramingMode` に `"ai_pose"` を追加**（locked / free_pose / ai_pose の 3 値）。`ai_pose` は「元画像のポーズを写し取らず AI が服に合う構図を選ぶ」モード
+- **モードごとにプロンプトキーを完全分離**: ai_pose は前文（`coordinate.base_prefix_ai_pose`）に加え、背景 suffix（keep/change）・リトライ強化も専用キーを持つ（計 **12 キー**）。free_pose と ai_pose を admin が独立にチューニングできる
 - **コーディネート画面**: チェックボックス → **背景設定と同じ 3 択ラジオ**（AIにお任せ = ai_pose / プロンプト内で指定 = free_pose / 元画像に合わせる = locked）。既存の背景設定 UI と対になり学習コストが低い
 - **Style 画面**: チェックボックス単体 → **チェック ON でポーズ・アングル入力欄（`posePrompt`、最大 500 字）を表示**。非空のままで生成するとサーバが free_pose を含意し、`Pose & Camera Direction:` セクションとしてプロンプトに結合。空なら従来挙動
 - **API**: style 非同期に `posePrompt` formData を追加（admin 検証 / 長さ検証 / raw カテゴリで無視）。coordinate の admin ゲートは「locked 以外」に拡張

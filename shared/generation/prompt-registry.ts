@@ -124,6 +124,11 @@ const REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{atte
 
 `;
 
+// ai_pose モード用のリトライ強化 prefix。「ポーズは AI が自由に選んでよい」ことを再確認する。
+const REINFORCEMENT_COORDINATE_AI_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the New Outfit described below. You MUST strictly apply the outfit replacement while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. The pose, camera angle, and framing may be freely chosen to present the outfit. Do not return the original image unchanged.
+
+`;
+
 const REINFORCEMENT_STYLE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the Styling Direction. You MUST strictly apply the outfit replacement while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. The pose, camera angle, and framing are allowed to change as instructed below. Do not return the original image unchanged.
 
 `;
@@ -351,6 +356,24 @@ export const PROMPT_REGISTRY = {
       "You MUST restyle the background so that it complements the new outfit's style and color palette. The background composition may be designed freely to suit the new pose, camera angle, and framing. Preserve the character identity.",
     supportedVariables: [],
   },
+  "coordinate.keep_background_suffix_ai_pose": {
+    category: "coordinate",
+    description:
+      "Coordinate: ai_pose モードの背景維持指示 (AI が選ぶ新しい視点から同じ環境を描く)。" +
+      "free_pose とは独立にチューニングできる",
+    defaultContent:
+      "Keep the background environment, location, and overall mood consistent with `image_0.png`. As the pose and camera angle change, depict the same environment from the new viewpoint instead of replacing it with a different location.",
+    supportedVariables: [],
+  },
+  "coordinate.change_background_suffix_ai_pose": {
+    category: "coordinate",
+    description:
+      "Coordinate: ai_pose モードの背景変更 (ai_auto) 指示 (新しい構図と合わせて背景も自由に設計)。" +
+      "free_pose とは独立にチューニングできる",
+    defaultContent:
+      "You MUST restyle the background so that it complements the new outfit's style and color palette. Design the background composition freely so that it forms an appealing scene together with the new pose and camera angle. Preserve the character identity.",
+    supportedVariables: [],
+  },
 
   // 注: specified_coordinate / full_body / chibi の 9 key (3 generation_type × 3 mode) は
   // UI から外れて 30 日以上利用ゼロのため撤去。再導入する場合は git log から復元可能。
@@ -435,6 +458,15 @@ export const PROMPT_REGISTRY = {
       "Coordinate 系 free_pose モードのリトライ強化 prefix (attempt ≥ 2 で前置)。" +
       "フレーム固定を再強制しない。末尾の改行 2 つは生成プロンプトとの区切りで重要",
     defaultContent: REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT,
+    supportedVariables: ["attempt"],
+    previewSamples: { attempt: "2" },
+  },
+  "reinforcement.coordinate_attempt_2plus_ai_pose": {
+    category: "reinforcement",
+    description:
+      "Coordinate 系 ai_pose モードのリトライ強化 prefix (attempt ≥ 2 で前置)。" +
+      "ポーズは AI が自由に選んでよいことを再確認する。free_pose とは独立にチューニングできる",
+    defaultContent: REINFORCEMENT_COORDINATE_AI_POSE_DEFAULT,
     supportedVariables: ["attempt"],
     previewSamples: { attempt: "2" },
   },
