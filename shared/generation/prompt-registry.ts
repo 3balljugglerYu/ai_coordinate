@@ -89,6 +89,16 @@ const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is 
 
 3. Flexible Pose & Framing: You MAY change the pose, camera angle, framing, crop, and composition. If the "New Outfit" description or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. If they do not, choose a natural pose and framing that best presents the outfit. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
 
+// ai_pose モード (framing_mode="ai_pose") 用の前文。free_pose と異なり
+// 「元画像のポーズを写し取らず、AI が服に合う構図を自由に選ぶ」ことを明示する。
+const COORDINATE_BASE_PREFIX_AI_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
+
+1. Outfit Transformation (REQUIRED): You MUST replace the person's current clothing with the outfit described under "New Outfit" below. The output image MUST visibly show the new outfit. Returning the original outfit unchanged is a failure.
+
+2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Do not alter the person's identity.
+
+3. Creative Pose & Framing: Do NOT simply copy the pose, camera angle, or composition of \`image_0.png\`. Choose a new, natural, and appealing pose, camera angle, framing, and composition that best presents the new outfit — like a fashion lookbook photo. If the "New Outfit" description or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
+
 // ============================================================================
 // Inspire 系 (buildInspirePrompt 内テキスト)
 // ============================================================================
@@ -287,6 +297,14 @@ export const PROMPT_REGISTRY = {
       "Coordinate: free_pose モード (ポーズ・アングル自由化) の CRITICAL INSTRUCTION 前文。" +
       "identity と画風維持を内包するため real/illustration style suffix は併用しない",
     defaultContent: COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT,
+    supportedVariables: [],
+  },
+  "coordinate.base_prefix_ai_pose": {
+    category: "coordinate",
+    description:
+      "Coordinate: ai_pose モード (ポーズ・アングルを AI にお任せ) の CRITICAL INSTRUCTION 前文。" +
+      "元画像のポーズを写し取らず AI が構図を選ぶ。style suffix は併用しない",
+    defaultContent: COORDINATE_BASE_PREFIX_AI_POSE_DEFAULT,
     supportedVariables: [],
   },
   "coordinate.real_style_suffix": {

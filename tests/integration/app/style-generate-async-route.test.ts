@@ -1036,4 +1036,108 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       );
     });
   });
+
+  describe("posePrompt (ポーズ・アングル入力欄、admin viewer 限定)", () => {
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildFormData(posePrompt?: string): FormData {
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+      formData.set("sourceImageType", "illustration");
+      formData.set("backgroundChange", "false");
+      formData.set("model", "gemini-3.1-flash-image-preview-512");
+      if (posePrompt !== undefined) {
+        formData.set("posePrompt", posePrompt);
+      }
+      return formData;
+    }
+
+    test("非 admin の posePrompt は 400 STYLE_POSE_PROMPT_NOT_ALLOWED", async () => {
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("Sitting on a bench")),
+        dependencies(),
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_POSE_PROMPT_NOT_ALLOWED");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("admin の posePrompt は free_pose を含意し Pose & Camera Direction が結合される", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("Sitting on a bench, low angle")),
+        dependencies(),
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.prompt_text).toContain(
+        PROMPT_REGISTRY["style.base_prefix_free_pose"].defaultContent,
+      );
+      expect(jobData.prompt_text).toContain(
+        "Pose & Camera Direction:\nSitting on a bench, low angle",
+      );
+      expect(jobData.generation_metadata).toEqual(
+        expect.objectContaining({ framingMode: "free_pose" }),
+      );
+    });
+
+    test("admin でも posePrompt が最大文字数超過なら 400 STYLE_POSE_PROMPT_TOO_LONG", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("a".repeat(501))),
+        dependencies(),
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_POSE_PROMPT_TOO_LONG");
+    });
+
+    test("raw カテゴリ (skip_base_prefix) では posePrompt を無視して raw 出力", async () => {
+      isAdminViewerMock.mockReturnValue(true);
+      getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+        buildStylePresetForGeneration({
+          category: { ...TEST_COORDINATE_CATEGORY, skipBasePrefix: true },
+        }),
+      );
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("Jumping pose")),
+        dependencies(),
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.prompt_text).toBe(
+        "Styling Direction:\nRAW PROMPT\nSECOND LINE",
+      );
+      expect(jobData.generation_metadata).not.toEqual(
+        expect.objectContaining({ framingMode: expect.anything() }),
+      );
+    });
+
+    test("空白のみの posePrompt は非 admin でも無視され 200 (従来挙動)", async () => {
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("   ")),
+        dependencies(),
+      );
+
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.prompt_text).not.toContain("Pose & Camera Direction");
+    });
+  });
 });

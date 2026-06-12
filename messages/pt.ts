@@ -856,9 +856,15 @@ export const ptMessages = {
       "Especifique o fundo dentro do prompt do look.",
     backgroundKeepLabel: "Manter o fundo atual",
     backgroundKeepDescription: "Mantém o fundo atual sem alterações.",
-    freePoseLabel: "Pose e ângulo livres (beta)",
-    freePoseDescription:
-      "Mantém a aparência do personagem enquanto permite que a pose e o ângulo da câmera mudem. Você pode descrever a pose e a composição no seu prompt. Quando desativado, a composição original é preservada (comportamento atual).",
+    poseModeLabel: "Pose e ângulo (beta)",
+    poseModeAiAutoLabel: "Deixar a IA decidir",
+    poseModeAiAutoDescription: "A IA escolhe livremente uma pose e composição que combinem com o look.",
+    poseModeIncludeInPromptLabel: "Descrever no prompt",
+    poseModeIncludeInPromptDescription:
+      "Prioriza as instruções de pose e ângulo de câmera escritas na descrição do look.",
+    poseModeKeepLabel: "Igual à imagem original",
+    poseModeKeepDescription:
+      "Mantém a pose e o ângulo de câmera originais sempre que possível (comportamento atual).",
     modelLabel: "Selecione um modelo de geração",
     modelTooltipAria: "Mostrar as diferenças na qualidade de renderização",
     modelTooltipContent: "💡 Quanto mais alto, menos falhas em rostos e roupas.\nLow: gera rápido. ~30 s.\nMedium: equilibrado. ~70 s.\nHigh: detalhes estáveis. ~180 s.",
@@ -1369,9 +1375,11 @@ export const ptMessages = {
       "Quando desligado, o fundo original é preservado o máximo possível. Quando ligado, a direção de fundo deste preset também é aplicada.",
     backgroundChangeDisabledHint:
       "Este estilo não suporta mudança de fundo.",
-    freePoseLabel: "Pose e ângulo livres (beta)",
-    freePoseDescription:
-      "Mantém a aparência do personagem enquanto permite que a pose e o ângulo da câmera mudem. Quando desativado, a composição original é preservada (comportamento atual).",
+    posePromptToggleLabel: "Especificar pose e ângulo (beta)",
+    posePromptToggleDescription:
+      "Mantém a aparência do personagem e permite especificar a pose e o ângulo de câmera. Quando desativado, a composição original é preservada (comportamento atual).",
+    posePromptLabel: "Instruções de pose e ângulo",
+    posePromptPlaceholder: "Ex.: Sentada em um banco de parque, corpo inteiro em ângulo baixo",
     expandReferenceCardAria: "Restaurar o cartão de referência ao tamanho original",
     collapseReferenceCardAria: "Recolher o cartão de referência",
     expandReferenceCardTitle: "Restaurar",

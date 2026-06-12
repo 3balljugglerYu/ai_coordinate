@@ -408,8 +408,12 @@ export function StylePageClient({
   }, [uploadedImage?.previewUrl]);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
-  // framing_mode (admin viewer 限定先行公開)。true = free_pose で生成。
-  const [freePoseEnabled, setFreePoseEnabled] = useState(false);
+  // ポーズ・アングル入力欄 (admin viewer 限定先行公開)。
+  // チェック ON で入力欄を表示し、非空のままで生成するとサーバ側が free_pose を含意する。
+  // 最大文字数はサーバ側 STYLE_POSE_PROMPT_MAX_LENGTH と揃える。
+  const POSE_PROMPT_MAX_LENGTH = 500;
+  const [posePromptEnabled, setPosePromptEnabled] = useState(false);
+  const [posePromptValue, setPosePromptValue] = useState("");
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
@@ -538,14 +542,17 @@ export function StylePageClient({
     shouldShowBackgroundChangeControl && Boolean(selectedPreset?.hasBackgroundPrompt);
   const isBackgroundChangeDisabled =
     isGenerating || isGuestResultLocked || !isBackgroundChangeAvailable;
-  // framing_mode チェックボックスの表示条件:
-  //  - admin viewer (canUseFreePose) かつ認証済み (ゲスト同期経路は framingMode を解釈しない)
+  // ポーズ・アングル入力欄の表示条件:
+  //  - admin viewer (canUseFreePose) かつ認証済み (ゲスト同期経路は posePrompt を解釈しない)
   //  - raw モードカテゴリ (skipBasePrefix) ではサーバ側で無視されるため表示しない
-  const shouldShowFreePoseControl =
+  const shouldShowPosePromptControl =
     canUseFreePose &&
     shouldUseAsyncGeneration &&
     !(selectedPreset?.category.skipBasePrefix ?? false);
-  const effectiveFreePoseEnabled = shouldShowFreePoseControl && freePoseEnabled;
+  const effectivePosePrompt =
+    shouldShowPosePromptControl && posePromptEnabled
+      ? posePromptValue.trim()
+      : "";
   const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
   const isGenerateDisabled =
     !selectedPreset ||
@@ -1361,10 +1368,10 @@ export function StylePageClient({
       formData.set("sourceImageType", effectiveSourceImageType);
       formData.set("backgroundChange", effectiveBackgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
-      // framing_mode: free_pose のときのみ送る (省略 = locked = 現行挙動)。
-      // admin viewer 限定で、サーバ側 (generate-async) でも検証される。
-      if (effectiveFreePoseEnabled) {
-        formData.set("framingMode", "free_pose");
+      // ポーズ・アングル指示: 非空のときのみ送る (省略 = 現行挙動)。
+      // サーバ側 (generate-async) が free_pose を含意し、admin viewer 検証も行う。
+      if (effectivePosePrompt.length > 0) {
+        formData.set("posePrompt", effectivePosePrompt);
       }
       if (
         selectedPreset.imageInputMode === "dual" &&
@@ -1874,28 +1881,45 @@ export function StylePageClient({
               </div>
             ) : null}
 
-            {shouldShowFreePoseControl ? (
-              <div className="flex items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
-                <Checkbox
-                  id="style-free-pose"
-                  checked={freePoseEnabled}
-                  onCheckedChange={(checked) =>
-                    setFreePoseEnabled(checked === true)
-                  }
-                  disabled={isGenerating || isGuestResultLocked}
-                  className="mt-0.5"
-                />
-                <div className="min-w-0 space-y-1">
-                  <Label
-                    htmlFor="style-free-pose"
-                    className="cursor-pointer text-sm font-medium text-slate-900"
-                  >
-                    {t("freePoseLabel")}
-                  </Label>
-                  <p className="text-xs leading-5 text-slate-500">
-                    {t("freePoseDescription")}
-                  </p>
+            {shouldShowPosePromptControl ? (
+              <div className="space-y-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="style-pose-prompt-toggle"
+                    checked={posePromptEnabled}
+                    onCheckedChange={(checked) =>
+                      setPosePromptEnabled(checked === true)
+                    }
+                    disabled={isGenerating || isGuestResultLocked}
+                    className="mt-0.5"
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <Label
+                      htmlFor="style-pose-prompt-toggle"
+                      className="cursor-pointer text-sm font-medium text-slate-900"
+                    >
+                      {t("posePromptToggleLabel")}
+                    </Label>
+                    <p className="text-xs leading-5 text-slate-500">
+                      {t("posePromptToggleDescription")}
+                    </p>
+                  </div>
                 </div>
+                {posePromptEnabled ? (
+                  <PromptInputField
+                    value={posePromptValue}
+                    onChange={setPosePromptValue}
+                    label={t("posePromptLabel")}
+                    placeholder={t("posePromptPlaceholder")}
+                    characterCount={t("userPromptCharacterCount", {
+                      current: posePromptValue.length,
+                      max: POSE_PROMPT_MAX_LENGTH,
+                    })}
+                    maxLength={POSE_PROMPT_MAX_LENGTH}
+                    disabled={isGenerating || isGuestResultLocked}
+                    id="style-pose-prompt"
+                  />
+                ) : null}
               </div>
             ) : null}
 

@@ -96,6 +96,10 @@ function resolveBackgroundChange(entry: FormDataEntryValue | null): boolean {
   return entry === "true";
 }
 
+// ポーズ・アングル入力欄 (admin viewer 限定先行公開) の最大文字数。
+// userPrompt と異なりカテゴリ別設定は持たない (公開フェーズで必要になったら追加)。
+const STYLE_POSE_PROMPT_MAX_LENGTH = 500;
+
 /**
  * /style/generate-async (Phase 5 / ADR-008 / UCL-007 / UCL-008 / UCL-016)
  *
@@ -190,6 +194,34 @@ export async function postStyleGenerateAsyncRoute(
       effectiveFramingMode = preset.category.skipBasePrefix
         ? "locked"
         : parsedFramingMode;
+    }
+
+    // posePrompt (ポーズ・アングル入力欄、admin viewer 限定)。
+    // 非空のとき free_pose を含意する (locked の base_prefix はポーズ固定を指示するため矛盾する)。
+    // raw モードカテゴリでは無視 (framingMode と同じ丸め方針、REQ-5)。
+    const posePromptEntry = formData.get("posePrompt");
+    const posePromptTrimmed =
+      typeof posePromptEntry === "string" ? posePromptEntry.trim() : "";
+    let effectivePosePrompt: string | null = null;
+    if (posePromptTrimmed.length > 0) {
+      if (!isAdminUser) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_POSE_PROMPT_NOT_ALLOWED",
+          400
+        );
+      }
+      if (posePromptTrimmed.length > STYLE_POSE_PROMPT_MAX_LENGTH) {
+        return jsonError(
+          copy.invalidFramingMode,
+          "STYLE_POSE_PROMPT_TOO_LONG",
+          400
+        );
+      }
+      if (!preset.category.skipBasePrefix) {
+        effectivePosePrompt = posePromptTrimmed;
+        effectiveFramingMode = "free_pose";
+      }
     }
     const effectiveSourceImageType: SourceImageType =
       preset.category.showSourceImageTypeControl
@@ -361,6 +393,7 @@ export async function postStyleGenerateAsyncRoute(
         sourceImageType: effectiveSourceImageType,
         templates: promptTemplates,
         userPromptInput: effectiveUserPromptInput,
+        posePromptInput: effectivePosePrompt,
       },
       // raw モード (preset.category.skip_base_prefix=true) なら共通 prefix を一切付与しない。
       // free_pose は admin viewer 限定 (上で検証済み)。raw モードでは locked に丸め済み。
@@ -510,10 +543,10 @@ export async function postStyleGenerateAsyncRoute(
             reservedAttemptId: null,
           },
         ),
-        // free_pose のみ記録 (locked はキーなし = 既存レコードと一貫)。
+        // locked 以外のみ記録 (locked はキーなし = 既存レコードと一貫)。
         // worker のリトライ強化 prefix 選択と、完了 RPC 経由で generated_images への
         // 恒久記録 (品質比較用) に使う。
-        ...(effectiveFramingMode === "free_pose"
+        ...(effectiveFramingMode !== "locked"
           ? { framingMode: effectiveFramingMode }
           : {}),
       },

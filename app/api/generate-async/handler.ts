@@ -145,9 +145,10 @@ export async function postGenerateAsyncRoute(
     }
 
     // framing_mode (admin viewer 限定の先行公開)。coordinate 限定は schema で検証済み。
-    // free_pose は非 admin から送られたら 400 (UI 非表示はセキュリティではないためサーバでも遮断)。
+    // locked 以外 (free_pose / ai_pose) は非 admin から送られたら 400
+    // (UI 非表示はセキュリティではないためサーバでも遮断)。
     const effectiveFramingMode: FramingMode = framingMode ?? "locked";
-    if (effectiveFramingMode === "free_pose" && !isAdminViewer(user.id)) {
+    if (effectiveFramingMode !== "locked" && !isAdminViewer(user.id)) {
       return jsonError(
         copy.invalidRequest,
         "GENERATION_FRAMING_MODE_NOT_ALLOWED",
@@ -447,10 +448,10 @@ export async function postGenerateAsyncRoute(
       override_angle: isInspireRequest ? overrides?.angle ?? true : null,
       override_pose: isInspireRequest ? overrides?.pose ?? true : null,
       override_background: isInspireRequest ? overrides?.background ?? true : null,
-      // free_pose のみ記録 (locked はキーなし = 既存レコードと一貫)。
+      // locked 以外 (free_pose / ai_pose) のみ記録 (locked はキーなし = 既存レコードと一貫)。
       // worker がプロンプト構築・リトライ強化の prefix 選択に使い、完了 RPC 経由で
       // generated_images.generation_metadata へコピーされて品質比較にも使える。
-      ...(effectiveFramingMode === "free_pose"
+      ...(effectiveFramingMode !== "locked"
         ? { generation_metadata: { framingMode: effectiveFramingMode } }
         : {}),
     };

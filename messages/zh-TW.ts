@@ -852,9 +852,15 @@ export const zhTwMessages = {
       "在穿搭提示詞中直接指定背景。",
     backgroundKeepLabel: "保留現有背景",
     backgroundKeepDescription: "保留目前背景不變。",
-    freePoseLabel: "自由姿勢與視角（β）",
-    freePoseDescription:
-      "在保持角色外觀的同時，允許姿勢和相機視角發生變化。可在提示詞中指定姿勢和構圖。關閉時保持原圖構圖（與現在相同）。",
+    poseModeLabel: "姿勢與視角設定（β）",
+    poseModeAiAutoLabel: "交給AI",
+    poseModeAiAutoDescription: "由AI自由選擇適合服裝的姿勢和構圖",
+    poseModeIncludeInPromptLabel: "在提示詞中指定",
+    poseModeIncludeInPromptDescription:
+      "優先採用換裝內容中寫明的姿勢和相機視角指示",
+    poseModeKeepLabel: "與原圖保持一致",
+    poseModeKeepDescription:
+      "盡可能保持原圖的姿勢和相機視角（與現在相同）",
     modelLabel: "選擇生成模型",
     modelTooltipAria: "顯示渲染品質的差異",
     modelTooltipContent: "💡 越接近 High，臉部和服裝的細節越不容易崩壞。\nLow：生成快。約 30 秒。\nMedium：均衡。約 70 秒。\nHigh：細節不易崩壞。約 180 秒。",
@@ -1364,9 +1370,11 @@ export const zhTwMessages = {
       "關閉時盡量保留原始背景。開啟時則會一同套用此預設的背景方向。",
     backgroundChangeDisabledHint:
       "此造型不支援更換背景。",
-    freePoseLabel: "自由姿勢與視角（β）",
-    freePoseDescription:
-      "在保持角色外觀的同時，允許姿勢和相機視角發生變化。關閉時保持原圖構圖（與現在相同）。",
+    posePromptToggleLabel: "指定姿勢與視角（β）",
+    posePromptToggleDescription:
+      "在保持角色外觀的同時，可指定姿勢和相機視角。關閉時保持原圖構圖（與現在相同）。",
+    posePromptLabel: "姿勢與視角指示",
+    posePromptPlaceholder: "例：坐在公園長椅上，低角度全身照",
     expandReferenceCardAria: "將參考卡恢復為原始大小",
     collapseReferenceCardAria: "收合參考卡",
     expandReferenceCardTitle: "恢復",

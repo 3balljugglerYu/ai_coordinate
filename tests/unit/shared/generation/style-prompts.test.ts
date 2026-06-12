@@ -207,6 +207,69 @@ describe("buildStyleGenerationPrompt - framingMode", () => {
   });
 });
 
+describe("buildStyleGenerationPrompt - posePromptInput (ポーズ・アングル入力欄)", () => {
+  const baseParams = {
+    stylingPrompt: "Wearing pajamas",
+    backgroundPrompt: null,
+    backgroundChange: false,
+    sourceImageType: "illustration" as const,
+  };
+
+  test("free_pose + posePromptInput で Pose & Camera Direction セクションを Styling Direction の後に結合する", () => {
+    const result = buildStyleGenerationPrompt(
+      { ...baseParams, posePromptInput: "Sitting on a bench, low angle shot" },
+      { framingMode: "free_pose" },
+    );
+    expect(result).toContain(
+      "Pose & Camera Direction:\nSitting on a bench, low angle shot",
+    );
+    const stylingIdx = result.indexOf("Styling Direction:");
+    const poseIdx = result.indexOf("Pose & Camera Direction:");
+    expect(poseIdx).toBeGreaterThan(stylingIdx);
+  });
+
+  test("posePromptInput は trim され、空白のみなら結合しない", () => {
+    const result = buildStyleGenerationPrompt(
+      { ...baseParams, posePromptInput: "   \n  " },
+      { framingMode: "free_pose" },
+    );
+    expect(result).not.toContain("Pose & Camera Direction");
+  });
+
+  test("posePromptInput 省略時は従来と完全一致 (後方互換)", () => {
+    const withUndefined = buildStyleGenerationPrompt(baseParams);
+    const withNull = buildStyleGenerationPrompt({
+      ...baseParams,
+      posePromptInput: null,
+    });
+    expect(withNull).toBe(withUndefined);
+  });
+
+  test("backgroundChange=true のとき Pose セクションは Background Direction より前に来る", () => {
+    const result = buildStyleGenerationPrompt(
+      {
+        ...baseParams,
+        backgroundChange: true,
+        backgroundPrompt: "Soft spring background",
+        posePromptInput: "Jumping pose",
+      },
+      { framingMode: "free_pose" },
+    );
+    const poseIdx = result.indexOf("Pose & Camera Direction:");
+    const bgIdx = result.indexOf("Background Direction:");
+    expect(poseIdx).toBeGreaterThan(-1);
+    expect(bgIdx).toBeGreaterThan(poseIdx);
+  });
+
+  test("raw モード (skipBasePrefix) では posePromptInput を結合しない", () => {
+    const result = buildStyleGenerationPrompt(
+      { ...baseParams, posePromptInput: "Jumping pose" },
+      { skipBasePrefix: true, framingMode: "free_pose" },
+    );
+    expect(result).not.toContain("Pose & Camera Direction");
+  });
+});
+
 describe("buildStyleAttemptReinforcementPrefix - framingMode", () => {
   test("attempt1 は framingMode に関わらず空文字", () => {
     expect(buildStyleAttemptReinforcementPrefix(1)).toBe("");

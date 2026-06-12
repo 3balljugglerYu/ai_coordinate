@@ -237,6 +237,26 @@ Minimal monochrome look`;
       expect(result).toContain("CUSTOM FREE POSE PREFIX");
       expect(result).not.toContain("Flexible Pose & Framing");
     });
+
+    test("ai_poseはCreative前文を使いポーズの写し取りを禁止する", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "keep",
+        sourceImageType: "real",
+        framingMode: "ai_pose",
+      });
+
+      expect(result).toContain("Creative Pose & Framing");
+      expect(result).toContain("Do NOT simply copy the pose");
+      expect(result).not.toContain("Flexible Pose & Framing");
+      expect(result).not.toContain("Strict Framing");
+      expect(result).not.toContain("85mm portrait lens");
+      // 背景 suffix は free_pose と共通の変種を使う
+      expect(result).toContain(
+        "depict the same environment from the new viewpoint"
+      );
+    });
   });
 
   describe("buildCoordinateAttemptReinforcementPrefix", () => {
@@ -277,6 +297,17 @@ Minimal monochrome look`;
       expect(prefix).not.toContain("Do not extend the crop");
       expect(prefix).toContain("allowed to change");
       expect(prefix.endsWith("\n\n")).toBe(true);
+    });
+
+    test("ai_poseも枠維持制約を含まない変種を使う", () => {
+      const prefix = buildCoordinateAttemptReinforcementPrefix(
+        2,
+        undefined,
+        "ai_pose"
+      );
+
+      expect(prefix).not.toContain("Do not extend the crop");
+      expect(prefix).toContain("allowed to change");
     });
   });
 });

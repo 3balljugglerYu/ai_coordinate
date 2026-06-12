@@ -14,6 +14,7 @@
 import { PROMPT_REGISTRY } from "./prompt-registry.ts";
 import { applyTemplate } from "./prompt-template.ts";
 import type { SourceImageType } from "./prompt-core.ts";
+import { isUnlockedFramingMode } from "./framing-mode.ts";
 import type { FramingMode } from "./framing-mode.ts";
 
 // 後方互換: 既存 import 元のために registry default を再 export する
@@ -56,6 +57,14 @@ export interface BuildStyleGenerationPromptParams {
    * ユーザー入力は preset / safety / system constraints を上書きできない補足指定として扱う (ADR-003)。
    */
   userPromptInput?: string | null;
+  /**
+   * ユーザーが /style 画面のポーズ・アングル入力欄に入れたテキスト (admin viewer 限定先行公開)。
+   * 非空のとき `Pose & Camera Direction:` セクションとして Styling Direction の直後に結合する。
+   * 呼び出し側 (handler) は非空のとき options.framingMode="free_pose" を併せて指定すること
+   * (locked の base_prefix はポーズ固定を指示するため、ポーズ指定と矛盾する)。
+   * raw モード (skipBasePrefix=true) では結合しない。
+   */
+  posePromptInput?: string | null;
 }
 
 // ユーザー入力前に挿入する短い guard 文。プロンプトインジェクション対策。
@@ -115,7 +124,8 @@ export function buildStyleGenerationPrompt(
     return sections.join("\n\n");
   }
 
-  const freePose = options.framingMode === "free_pose";
+  // Style に ai_pose 専用プレフィックスは無いため、non-locked はすべて free_pose 扱い
+  const freePose = isUnlockedFramingMode(options.framingMode);
 
   // free_pose では illustration/real suffix を付与しない (interface コメント参照)
   const promptSuffix = freePose
@@ -147,6 +157,11 @@ export function buildStyleGenerationPrompt(
     `Styling Direction:\n${params.stylingPrompt}`,
   ];
 
+  const poseDirection = params.posePromptInput?.trim();
+  if (poseDirection) {
+    promptSections.push(`Pose & Camera Direction:\n${poseDirection}`);
+  }
+
   if (params.backgroundChange && params.backgroundPrompt) {
     promptSections.push(`Background Direction:\n${params.backgroundPrompt}`);
   }
@@ -176,7 +191,8 @@ export function buildStyleAttemptReinforcementPrefix(
   }
   const template = resolveTemplate(
     templates,
-    framingMode === "free_pose"
+    // ai_pose もフレーム固定を再強制しない free_pose 変種を使う
+    isUnlockedFramingMode(framingMode)
       ? "reinforcement.style_attempt_2plus_free_pose"
       : "reinforcement.style_attempt_2plus",
   );

@@ -9,6 +9,7 @@
 
 import { PROMPT_REGISTRY } from "./prompt-registry.ts";
 import { applyTemplate } from "./prompt-template.ts";
+import { isUnlockedFramingMode } from "./framing-mode.ts";
 import type { FramingMode } from "./framing-mode.ts";
 
 /**
@@ -119,9 +120,10 @@ export interface BuildPromptOptions {
    */
   templates?: Record<string, string>;
   /**
-   * "free_pose" のとき coordinate.base_prefix_free_pose を使い、背景 suffix も
-   * free_pose 変種に差し替える。real/illustration の style suffix は付与しない
-   * (画風維持の指示が free_pose 前文に内包されており、既存 suffix の
+   * "free_pose" のとき coordinate.base_prefix_free_pose、"ai_pose" のとき
+   * coordinate.base_prefix_ai_pose を使い、背景 suffix も free_pose 変種に
+   * 差し替える。real/illustration の style suffix は付与しない
+   * (画風維持の指示が free_pose / ai_pose 前文に内包されており、既存 suffix の
    * 「camera angle / composition 維持」がポーズ自由化と矛盾するため)。
    *
    * 省略 / "locked" は現行挙動と完全に等価。coordinate 以外の generationType では無視。
@@ -177,10 +179,11 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   if (generationType === "coordinate") {
-    const freePose = framingMode === "free_pose";
+    // free_pose / ai_pose 共通の「フレーム固定解除」分岐。プレフィックスだけがモード別。
+    const unlocked = isUnlockedFramingMode(framingMode);
 
-    // free_pose では real/illustration style suffix を付与しない (BuildPromptOptions コメント参照)
-    const styleSuffix = freePose
+    // unlocked では real/illustration style suffix を付与しない (BuildPromptOptions コメント参照)
+    const styleSuffix = unlocked
       ? null
       : sourceImageType === "real"
         ? resolveTemplate(templates, "coordinate.real_style_suffix")
@@ -189,7 +192,11 @@ export function buildPrompt(options: BuildPromptOptions): string {
     const sections: string[] = [
       resolveTemplate(
         templates,
-        freePose ? "coordinate.base_prefix_free_pose" : "coordinate.base_prefix",
+        framingMode === "ai_pose"
+          ? "coordinate.base_prefix_ai_pose"
+          : framingMode === "free_pose"
+            ? "coordinate.base_prefix_free_pose"
+            : "coordinate.base_prefix",
       ),
       ...(styleSuffix === null ? [] : [styleSuffix]),
     ];
@@ -198,7 +205,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
       sections.push(
         resolveTemplate(
           templates,
-          freePose
+          unlocked
             ? "coordinate.keep_background_suffix_free_pose"
             : "coordinate.keep_background_suffix",
         ),
@@ -207,7 +214,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
       sections.push(
         resolveTemplate(
           templates,
-          freePose
+          unlocked
             ? "coordinate.change_background_suffix_free_pose"
             : "coordinate.change_background_suffix",
         ),
@@ -336,7 +343,8 @@ export function buildCoordinateAttemptReinforcementPrefix(
   }
   const template = resolveTemplate(
     templates,
-    framingMode === "free_pose"
+    // ai_pose もフレーム固定を再強制しない free_pose 変種を使う
+    isUnlockedFramingMode(framingMode)
       ? "reinforcement.coordinate_attempt_2plus_free_pose"
       : "reinforcement.coordinate_attempt_2plus",
   );

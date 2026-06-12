@@ -326,6 +326,21 @@ flowchart LR
 
 ---
 
+## 改訂 (2026-06-12): admin 実機確認を受けた UX 再設計
+
+初回実装（チェックボックス）の admin 実機確認で次の問題が判明した：
+
+1. **locked でもプロンプト内のポーズ指示で構図が変わる**（プレフィックスは強制力が弱く、ユーザー指示が勝つ）→ locked/free_pose の差が分かりにくい
+2. **Style 画面では free_pose にしてもポーズの指定元が存在しない**（プリセットにポーズ指示が無い）→ チェックが実質無意味
+
+### 改訂内容
+
+- **`FramingMode` に `"ai_pose"` を追加**（locked / free_pose / ai_pose の 3 値）。`ai_pose` は「元画像のポーズを写し取らず AI が服に合う構図を選ぶ」モード。レジストリに `coordinate.base_prefix_ai_pose` を追加（計 9 キー）。背景 suffix・リトライ強化は free_pose 系を共用（`isUnlockedFramingMode()` で判定）
+- **コーディネート画面**: チェックボックス → **背景設定と同じ 3 択ラジオ**（AIにお任せ = ai_pose / プロンプト内で指定 = free_pose / 元画像に合わせる = locked）。既存の背景設定 UI と対になり学習コストが低い
+- **Style 画面**: チェックボックス単体 → **チェック ON でポーズ・アングル入力欄（`posePrompt`、最大 500 字）を表示**。非空のままで生成するとサーバが free_pose を含意し、`Pose & Camera Direction:` セクションとしてプロンプトに結合。空なら従来挙動
+- **API**: style 非同期に `posePrompt` formData を追加（admin 検証 / 長さ検証 / raw カテゴリで無視）。coordinate の admin ゲートは「locked 以外」に拡張
+- i18n: 旧 freePose キーを削除し、poseMode 系 7 キー + posePrompt 系 4 キーを全 15 ロケールに追加
+
 ## 8. 使用スキル
 
 | スキル | 用途 | フェーズ |
