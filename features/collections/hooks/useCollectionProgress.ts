@@ -58,7 +58,10 @@ export function useCollectionProgress() {
   composerRef.current = composer;
   const processingRef = useRef(false);
 
-  const evaluate = useCallback(async () => {
+  const evaluate = useCallback(
+    async (opts?: {
+      preview?: { key: string; to?: number; from?: number };
+    }) => {
     if (processingRef.current) return;
     // 既にモーダル/コンポーザ表示中は新規検知しない(多重表示防止)
     if (celebrationRef.current || composerRef.current) return;
@@ -68,8 +71,65 @@ export function useCollectionProgress() {
         cache: "no-store",
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { items?: CollectionProgress[] };
+      const data = (await res.json()) as {
+        items?: CollectionProgress[];
+        isAdminViewer?: boolean;
+      };
       const items = data.items ?? [];
+
+      // admin 限定プレビュー: 公開前の表示確認用に進捗モーダルを任意状態で再表示する。
+      //   ?collection_reset=<categoryKey|1>            … 実データの現在状態を再表示
+      //   ?collection_reset=<key>&collection_to=4      … 4個埋まった進捗ビューを強制
+      //   ?collection_reset=<key>&collection_to=4&collection_from=3 … 4個目が埋まる瞬間
+      // collection_to を指定すると、コンプリート済みでも完了ビューに切り替えず進捗ビュー
+      // (枠が埋まる演出)を表示する。一般ユーザーが踏んでも isAdminViewer が false なら無視。
+      // ack には触れない(実進捗を汚さない)。
+      if (opts?.preview && data.isAdminViewer === true) {
+        const { key, to: rawTo, from: rawFrom } = opts.preview;
+        const target =
+          key === "1"
+            ? items[0]
+            : items.find((s) => s.categoryKey === key);
+        if (target) {
+          const threshold = target.completionThreshold;
+          const hasTo = typeof rawTo === "number" && Number.isFinite(rawTo);
+          const toCount = hasTo
+            ? Math.max(1, Math.min(rawTo as number, threshold))
+            : target.uniqueOutfitCount;
+          const fromCount =
+            typeof rawFrom === "number" && Number.isFinite(rawFrom)
+              ? Math.max(0, Math.min(rawFrom, toCount))
+              : 0;
+          // to を明示したときは進捗ビューを強制(完了ビューに切り替えない)。
+          // 未指定なら実データの完了状態を尊重する。
+          const completed = hasTo
+            ? toCount >= threshold && target.isCompleted
+            : target.isCompleted;
+          setCelebration({
+            categoryKey: target.categoryKey,
+            displayName: target.displayNameJa,
+            fromCount,
+            toCount,
+            threshold,
+            isCompleted: completed,
+            mountImageUrl: completed
+              ? buildPublicMountUrl(target.mountImagePath)
+              : null,
+            sharePath:
+              completed && target.completionId
+                ? `/m/${target.completionId}`
+                : null,
+            completionId: completed ? target.completionId : null,
+            characterImageUrl: target.characterImageUrl,
+            collectedImageUrls: (target.collectedImageUrls ?? []).slice(
+              0,
+              toCount,
+            ),
+            celebrationEffect: "sparkle",
+          });
+        }
+        return;
+      }
 
       for (const series of items) {
         const acked = getAck(series.categoryKey);
@@ -160,7 +220,26 @@ export function useCollectionProgress() {
   }, []);
 
   useEffect(() => {
-    void evaluate();
+    // 初回のみ ?collection_reset / collection_to / collection_from を読み、
+    // admin プレビューの再表示に使う。以降のポーリングには渡さない(一度きり)。
+    const params =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const resetKey = params?.get("collection_reset") ?? null;
+    if (resetKey) {
+      const toRaw = params?.get("collection_to");
+      const fromRaw = params?.get("collection_from");
+      void evaluate({
+        preview: {
+          key: resetKey,
+          to: toRaw != null ? Number.parseInt(toRaw, 10) : undefined,
+          from: fromRaw != null ? Number.parseInt(fromRaw, 10) : undefined,
+        },
+      });
+    } else {
+      void evaluate();
+    }
     const interval = window.setInterval(() => {
       void evaluate();
     }, POLL_INTERVAL_MS);

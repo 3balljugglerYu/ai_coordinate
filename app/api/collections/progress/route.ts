@@ -22,7 +22,8 @@ export async function GET() {
 
   try {
     const items = await getCollectionProgressForUser(user.id, isAdmin);
-    return NextResponse.json({ items });
+    // isAdminViewer は admin 限定の進捗モーダル再表示(?collection_reset)の許可判定に使う。
+    return NextResponse.json({ items, isAdminViewer: isAdmin });
   } catch (error) {
     console.error("[collections progress GET] failed:", error);
     return NextResponse.json({ items: [] }, { status: 500 });
