@@ -628,11 +628,11 @@ export function CollectionProgressModal({
                   }
                 >
                   <div
-                    className={`h-full w-full overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)] ${ready && isNew ? "coll-stamp-in" : ""}`}
                     // WebKit では親(coll-wave)の transform アニメ下で overflow+border-radius の
-                    // 丸クリップが初回に崩れ四角に見えることがある。GPU レイヤー化して安定させる
-                    // (新規枠は coll-stamp-in の transform で昇格済みのため差が出ていた)。
-                    style={{ transform: "translateZ(0)" }}
+                    // 丸クリップが初回に崩れ四角に見えることがある。will-change で GPU レイヤー化して
+                    // 安定させる(新規枠は coll-stamp-in の transform で昇格済みのため差が出ていた)。
+                    // transform を直接占有すると coll-stamp-in の scale/rotate と競合するため will-change を使う。
+                    className={`h-full w-full overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)] will-change-transform ${ready && isNew ? "coll-stamp-in" : ""}`}
                   >
                     <Image
                       src={url}
