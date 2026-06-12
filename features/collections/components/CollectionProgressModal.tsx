@@ -497,6 +497,7 @@ export function CollectionProgressModal({
             ) : null}
             <Link
               href="/collections/wafer"
+              onClick={onClose}
               className="inline-block text-sm font-medium text-pink-400 hover:text-pink-500"
             >
               遊び方をみる ›
@@ -628,13 +629,17 @@ export function CollectionProgressModal({
                 >
                   <div
                     className={`h-full w-full overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)] ${ready && isNew ? "coll-stamp-in" : ""}`}
+                    // WebKit では親(coll-wave)の transform アニメ下で overflow+border-radius の
+                    // 丸クリップが初回に崩れ四角に見えることがある。GPU レイヤー化して安定させる
+                    // (新規枠は coll-stamp-in の transform で昇格済みのため差が出ていた)。
+                    style={{ transform: "translateZ(0)" }}
                   >
                     <Image
                       src={url}
                       alt=""
                       fill
                       sizes="56px"
-                      className="object-cover"
+                      className="rounded-full object-cover"
                       onLoad={onImgLoad}
                       onError={onImgLoad}
                     />
@@ -665,6 +670,7 @@ export function CollectionProgressModal({
               <Link
                 href="/style"
                 aria-label="シールを生成する"
+                onClick={onClose}
                 className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
                 style={{
                   left: `${layout.button.left}%`,
@@ -686,12 +692,14 @@ export function CollectionProgressModal({
             </p>
             <Link
               href="/style"
+              onClick={onClose}
               className="inline-block w-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.4)]"
             >
               シールを生成する
             </Link>
             <Link
               href="/collections/wafer"
+              onClick={onClose}
               className="inline-block text-sm font-medium text-pink-400 hover:text-pink-500"
             >
               遊び方をみる ›
