@@ -265,6 +265,14 @@ export function WaferGuide({ threshold }: { threshold: number }) {
             全{threshold}種あつめて、きらめくシートをコンプリート。
           </p>
         </Reveal>
+        <Reveal delay={250}>
+          <p
+            className="mt-4 inline-block rounded-full border border-amber-200 bg-white/80 px-5 py-1.5 text-sm font-bold text-amber-600"
+            style={{ fontFamily: HEADING_FONT }}
+          >
+            企画期間：6/13 (土) 20:00 〜 6/21 (日) 21:59
+          </p>
+        </Reveal>
 
         {/* 神さま勢ぞろい */}
         <Reveal delay={300}>
@@ -292,6 +300,9 @@ export function WaferGuide({ threshold }: { threshold: number }) {
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </Link>
+          <p className="mt-3 text-xs text-[#9a8a78]">
+            企画がスタートしたら対象の「神コレ」シリーズが表示されます！
+          </p>
         </Reveal>
       </section>
 
@@ -329,6 +340,12 @@ export function WaferGuide({ threshold }: { threshold: number }) {
                 <XLink handle="@mickey_fuku" url="https://x.com/mickey_fuku" />
               </div>
             </div>
+            <span
+              className="text-xs font-bold text-amber-500"
+              style={{ fontFamily: HEADING_FONT }}
+            >
+              フォローしてね！いいことあるかも！
+            </span>
           </div>
         </Reveal>
       </section>
@@ -397,16 +414,21 @@ export function WaferGuide({ threshold }: { threshold: number }) {
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-[#7a6a58]">{s.b}</p>
                     {s.href ? (
-                      <Link
-                        href={s.href}
-                        className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-700 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-                        style={{ fontFamily: HEADING_FONT }}
-                      >
-                        Style ページをひらく
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-4 w-4">
-                          <path d="M5 12h14M13 6l6 6-6 6" />
-                        </svg>
-                      </Link>
+                      <>
+                        <Link
+                          href={s.href}
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-700 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                          style={{ fontFamily: HEADING_FONT }}
+                        >
+                          Style ページをひらく
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-4 w-4">
+                            <path d="M5 12h14M13 6l6 6-6 6" />
+                          </svg>
+                        </Link>
+                        <p className="mt-2 text-xs text-[#9a8a78]">
+                          企画がスタートしたら対象の「神コレ」シリーズが表示されます！
+                        </p>
+                      </>
                     ) : null}
                     {s.image ? (
                       s.href ? (
@@ -520,6 +542,9 @@ export function WaferGuide({ threshold }: { threshold: number }) {
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </Link>
+          <p className="mt-3 text-xs text-[#9a8a78]">
+            企画がスタートしたら対象の「神コレ」シリーズが表示されます！
+          </p>
         </Reveal>
         <Reveal delay={100}>
           <p className="mx-auto mt-6 max-w-sm text-xs leading-relaxed text-[#9a8a78]">
