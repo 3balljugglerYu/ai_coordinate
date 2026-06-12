@@ -70,36 +70,17 @@ function Sparkle({ className }: { className?: string }) {
   );
 }
 
-function XLink({
-  handle,
-  url,
-  avatarSrc,
-}: {
-  handle: string;
-  url: string;
-  /** 丸抜きで表示するアイコン画像 (任意)。掲載は本人の承諾を得たものに限る */
-  avatarSrc?: string;
-}) {
+function XLink({ handle, url }: { handle: string; url: string }) {
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 rounded-full bg-[#1d1d1f] py-1.5 pe-3 ps-1.5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+      className="inline-flex items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3 py-1.5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
     >
-      {avatarSrc ? (
-        <Image
-          src={avatarSrc}
-          alt=""
-          width={24}
-          height={24}
-          className="h-6 w-6 shrink-0 rounded-full object-cover"
-        />
-      ) : (
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="ms-1.5 h-3.5 w-3.5">
-          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-        </svg>
-      )}
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="h-3.5 w-3.5">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
       {handle}
     </a>
   );
@@ -281,21 +262,27 @@ export function WaferGuide({
               ✦ COLLABORATION ✦
             </span>
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-6">
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-2">
                 <span className="text-xs text-[#9a8a78]">プロンプト提供</span>
-                <XLink
-                  handle="@mario335599"
-                  url="https://x.com/mario335599"
-                  avatarSrc="/collections/wafer/user-icons/mario-icon.webp"
+                <Image
+                  src="/collections/wafer/user-icons/mario-icon.webp"
+                  alt="@mario335599 のアイコン"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-full border border-amber-200/70 object-cover shadow-sm"
                 />
+                <XLink handle="@mario335599" url="https://x.com/mario335599" />
               </div>
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-2">
                 <span className="text-xs text-[#9a8a78]">企画・主催</span>
-                <XLink
-                  handle="@mickey_fuku"
-                  url="https://x.com/mickey_fuku"
-                  avatarSrc="/collections/wafer/user-icons/mikifuku-icon.webp"
+                <Image
+                  src="/collections/wafer/user-icons/mikifuku-icon.webp"
+                  alt="@mickey_fuku のアイコン"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-full border border-amber-200/70 object-cover shadow-sm"
                 />
+                <XLink handle="@mickey_fuku" url="https://x.com/mickey_fuku" />
               </div>
             </div>
           </div>
