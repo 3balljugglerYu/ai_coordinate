@@ -211,6 +211,11 @@ export function TutorialTourProvider() {
       showProgress: true,
       animate: !prefersReducedMotion(),
       allowClose: false,
+      // Persta 共通のポップなトーン（/style と統一。globals.css 参照）
+      popoverClass: "persta-tour-popover",
+      overlayOpacity: 0.6,
+      stagePadding: 8,
+      stageRadius: 16,
       prevBtnText: t("prevButton"),
       nextBtnText: t("nextButton"),
       steps,
@@ -474,6 +479,11 @@ export function TutorialTourProvider() {
         showProgress: true,
         animate: !prefersReducedMotion(),
         allowClose: true,
+        // Persta 共通のポップなトーン（/style と統一。globals.css 参照）
+        popoverClass: "persta-tour-popover",
+        overlayOpacity: 0.6,
+        stagePadding: 8,
+        stageRadius: 16,
         prevBtnText: t("prevButton"),
         nextBtnText: t("nextButton"),
         doneBtnText: t("doneButton"),

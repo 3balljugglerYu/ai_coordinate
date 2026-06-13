@@ -102,7 +102,7 @@ export function StyleTourButton() {
         overlayOpacity: 0.6,
         stagePadding: 8,
         stageRadius: 16,
-        popoverClass: "style-tour-popover",
+        popoverClass: "persta-tour-popover",
         prevBtnText: t("tourPrevButton"),
         nextBtnText: t("tourNextButton"),
         doneBtnText: t("tourDoneButton"),
