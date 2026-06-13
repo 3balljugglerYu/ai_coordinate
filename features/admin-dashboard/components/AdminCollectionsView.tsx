@@ -16,6 +16,7 @@ import type {
 } from "@/features/admin-dashboard/lib/dashboard-range";
 import {
   buildCollectionOutfitDailyCsv,
+  buildCollectionSummaryCsv,
   buildCollectionTrendCsv,
 } from "@/features/admin-dashboard/lib/build-collection-trend-csv";
 import { AdminCollectionRangeControls } from "./AdminCollectionRangeControls";
@@ -190,6 +191,11 @@ export function AdminCollectionsView({
   const outfitDailyCsvFilename = csvSpan
     ? `collection-${selectedKey}-outfit-${csvSpan}.csv`
     : `collection-${selectedKey}-outfit.csv`;
+  const summaryCsv =
+    kpi && uuFunnel ? buildCollectionSummaryCsv(kpi, uuFunnel) : "";
+  const summaryCsvFilename = csvSpan
+    ? `collection-${selectedKey}-summary-${csvSpan}.csv`
+    : `collection-${selectedKey}-summary.csv`;
 
   return (
     <div className="space-y-6">
@@ -232,11 +238,17 @@ export function AdminCollectionsView({
 
       {kpi ? (
         <div className="space-y-3">
-          <p className="text-xs text-slate-500">
-            {currentRange === "custom"
-              ? `集計期間: ${currentFromLabel} 〜 ${currentToLabel}（前期間比つき）`
-              : `集計期間: 直近 ${currentRange}（前期間比つき）`}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-500">
+              {currentRange === "custom"
+                ? `集計期間: ${currentFromLabel} 〜 ${currentToLabel}（前期間比つき）`
+                : `集計期間: 直近 ${currentRange}（前期間比つき）`}
+            </p>
+            <AdminCsvExportButtons
+              csv={summaryCsv}
+              filename={summaryCsvFilename}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {kpiCards.map((c) => (
               <div

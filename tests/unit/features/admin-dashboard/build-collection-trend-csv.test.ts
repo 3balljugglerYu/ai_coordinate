@@ -1,12 +1,15 @@
 import {
   COLLECTION_TREND_CSV_HEADERS,
   buildCollectionOutfitDailyCsv,
+  buildCollectionSummaryCsv,
   buildCollectionTrendCsv,
 } from "@/features/admin-dashboard/lib/build-collection-trend-csv";
 import type {
   CollectionKpi,
+  CollectionKpiMetric,
   CollectionTrendPoint,
 } from "@/features/admin-dashboard/lib/build-collection-kpi";
+import type { CollectionUuFunnel } from "@/features/admin-dashboard/lib/build-collection-uu-funnel";
 
 function point(overrides: Partial<CollectionTrendPoint>): CollectionTrendPoint {
   return {
@@ -82,5 +85,57 @@ describe("buildCollectionOutfitDailyCsv", () => {
     expect(lines[0]).toBe("日付,オーディン,ゼウス");
     expect(lines[1]).toBe("2026-06-10,1,2");
     expect(lines[2]).toBe("2026-06-11,2,3");
+  });
+});
+
+describe("buildCollectionSummaryCsv", () => {
+  function metric(
+    current: number,
+    previous: number,
+    member?: number,
+    guest?: number,
+  ): CollectionKpiMetric {
+    return {
+      current,
+      previous,
+      deltaPct: previous === 0 ? null : 0,
+      deltaDirection: "flat",
+      ...(member !== undefined ? { member } : {}),
+      ...(guest !== undefined ? { guest } : {}),
+    };
+  }
+
+  test("KPI 期間合計 + UU ファネルを 指標×値 で出力する", () => {
+    const kpi = {
+      completions: metric(10, 5),
+      seriesGenerations: metric(100, 80),
+      visitsMember: metric(50, 40),
+      visitsGuest: metric(200, 150),
+      generates: metric(60, 50, 40, 20),
+      downloads: metric(30, 20, 25, 5),
+      saveClicks: metric(8, 6),
+      signupClicks: metric(12, 10),
+      shares: metric(4, 2),
+      mountsFailed: metric(1, 0),
+    } as unknown as CollectionKpi;
+    const uuFunnel: CollectionUuFunnel = {
+      generatesUu: 35,
+      completionsUu: 10,
+      sharesUu: 4,
+      reachRatePct: 28.6,
+      registeredUu: 20,
+      registeredCompletedUu: 6,
+      registeredReachRatePct: 30,
+      registeredNotCompletedUu: 14,
+      completedNotSharedUu: 6,
+    };
+
+    const lines = buildCollectionSummaryCsv(kpi, uuFunnel).split("\r\n");
+    expect(lines[0]).toBe("指標,今期間,前期間,前期間比(%),ログイン,ゲスト");
+    expect(lines[1]).toBe("コンプリート達成数,10,5,0,,");
+    expect(lines).toContain("生成成功,60,50,0,40,20");
+    expect(lines).toContain("シェア,4,2,0,,");
+    expect(lines).toContain("生成UU,35,,,,");
+    expect(lines).toContain("コンプリート到達率(%),28.6,,,,");
   });
 });
