@@ -3,8 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import type { PresetCategoryAdmin } from "@/features/style-presets/lib/preset-category-repository";
+import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
+import { getModelDisplayInfo } from "@/features/generation/lib/model-display";
 
 type Mode = "create" | "edit";
+
+/** 「生成モデル選択を表示」OFF 時にサーバー側で使われる既定モデルの表示名。 */
+const DEFAULT_GENERATION_MODEL_LABEL =
+  getModelDisplayInfo(DEFAULT_GENERATION_MODEL).displayName;
 
 interface Props {
   mode: Mode;
@@ -648,7 +654,7 @@ export function AdminPresetCategoryFormClient({
             <span className="font-medium">生成モデル選択を表示</span>
             <br />
             <span className="text-xs text-slate-500">
-              OFF の場合、/style ではモデル選択を表示せず、既定モデルで生成します。
+              OFF の場合、/style ではモデル選択を表示せず、既定モデル（{DEFAULT_GENERATION_MODEL_LABEL}）で生成します。
             </span>
           </span>
         </label>
