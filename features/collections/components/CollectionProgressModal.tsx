@@ -372,7 +372,12 @@ export function CollectionProgressModal({
               - confetti: 左右からクラッカー風の紙吹雪。body 直下の Portal に出すため
                 Dialog の overflow には影響されない。
               - sparkle: ダイヤのきらめき(完了台紙の見返し等)。モーダル枠内を彩る。 */}
-        <CollectionConfetti show={ready && effect === "confetti"} />
+        {/* confetti(クラッカー)は「初コンプの祝い」専用。未完了(0%や途中)では
+            出さないよう完了状態(cIsCompleted)もゲートに加える。sparkle は進捗中も
+            出す想定のためゲートしない。 */}
+        <CollectionConfetti
+          show={ready && effect === "confetti" && cIsCompleted}
+        />
         <CollectionSparkle show={ready && effect === "sparkle"} />
 
         {/* a11y 用タイトル */}

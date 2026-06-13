@@ -114,6 +114,12 @@ beforeEach(() => {
   mockBuildPublicMountUrl.mockClear();
   mockTrackMountShareEvent.mockReset();
   mockCopyText.mockResolvedValue(undefined);
+  // ready=true で進捗アニメ effect が走ると matchMedia を参照するため、jsdom 用にモック。
+  window.matchMedia = jest.fn().mockReturnValue({
+    matches: false,
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  }) as unknown as typeof window.matchMedia;
 });
 
 afterEach(() => {
@@ -194,5 +200,77 @@ describe("CollectionProgressModal: 完了ビューのシェア (PC)", () => {
       );
     });
     expect(mockTrackMountShareEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("CollectionProgressModal: クラッカー(confetti)演出の表示条件", () => {
+  // レイアウト未定義カテゴリ + mount画像なしにすると totalImages=0 で
+  // ready が即 true になり、画像ロードを待たずに confetti の表示判定を検証できる。
+  const baseProgress: CollectionCelebration = {
+    categoryKey: "no_layout_category",
+    displayName: "うちの子",
+    fromCount: 0,
+    toCount: 0,
+    threshold: 4,
+    isCompleted: false,
+    mountImageUrl: null,
+    sharePath: null,
+    completionId: null,
+    characterImageUrl: null,
+    collectedImageUrls: [],
+  };
+
+  test("未完了(0%)ではクラッカーを表示しない", async () => {
+    renderModal({ ...baseProgress, isCompleted: false, toCount: 0 });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("collection-confetti"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("未完了(途中)でもクラッカーを表示しない", async () => {
+    renderModal({
+      ...baseProgress,
+      isCompleted: false,
+      fromCount: 1,
+      toCount: 2,
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("collection-confetti"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("完了時(effect未指定=confettiデフォルト)はクラッカーを表示する", async () => {
+    renderModal({
+      ...baseProgress,
+      isCompleted: true,
+      fromCount: 4,
+      toCount: 4,
+    });
+
+    expect(
+      await screen.findByTestId("collection-confetti"),
+    ).toBeInTheDocument();
+  });
+
+  test("完了でも celebrationEffect='sparkle' ならクラッカーは出さない", async () => {
+    renderModal({
+      ...baseProgress,
+      isCompleted: true,
+      fromCount: 4,
+      toCount: 4,
+      celebrationEffect: "sparkle",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("collection-confetti"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
