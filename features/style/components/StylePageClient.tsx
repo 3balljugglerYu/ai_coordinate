@@ -1975,12 +1975,8 @@ export function StylePageClient({
                     type="button"
                     onClick={() => setShowAuthModal(true)}
                     className="min-h-[48px] w-full rounded-full border-0 bg-gradient-to-r from-pink-500 to-orange-400 text-base font-bold text-white shadow-[0_6px_16px_rgba(236,72,153,0.28)] transition hover:from-pink-600 hover:to-orange-500"
-                  >
-                    {t("guestCategoryLoginAction")}
-                  </Button>
-                  <p className="text-center text-xs leading-5 text-slate-500">
-                    {t("guestCategoryLoginHint")}
-                  </p>
+                  >{t("guestCategoryLoginAction")}</Button>
+                  <p className="text-center text-xs leading-5 text-slate-500">{t("guestCategoryLoginHint")}</p>
                 </div>
               ) : (
                 <GenerationSubmitButton

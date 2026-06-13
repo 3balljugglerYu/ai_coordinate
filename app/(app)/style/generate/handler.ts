@@ -257,11 +257,13 @@ export async function postStyleGenerateRoute(
     }
     // ゲストの無料生成は category.key が "coordinate" のプリセットのみ許可。
     // それ以外はログイン必須（クライアントでも制御するが defense-in-depth）。
-    if (preset.category.key !== "coordinate") {
+    // この経路に到達するのは未認証ユーザーのみ（認証済みは上で 403 済み）だが、
+    // 意図を明示するため !user を併記。未認証のため 401 を返す。
+    if (!user && preset.category.key !== "coordinate") {
       return jsonError(
         copy.guestCategoryLoginHint,
         "STYLE_CATEGORY_REQUIRES_AUTH",
-        403
+        401
       );
     }
     const effectiveSourceImageType: SourceImageType =

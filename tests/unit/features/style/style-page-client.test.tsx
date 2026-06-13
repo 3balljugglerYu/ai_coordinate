@@ -130,6 +130,11 @@ jest.mock("@/features/posts/components/PostModal", () => ({
     ) : null,
 }));
 
+jest.mock("@/features/auth/components/AuthModal", () => ({
+  AuthModal: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="mock-auth-modal" /> : null,
+}));
+
 jest.mock("@/features/generation/lib/normalize-source-image", () => ({
   normalizeSourceImage: async (file: File) => file,
 }));
@@ -1897,6 +1902,36 @@ describe("StylePageClient", () => {
     expect(
       screen.queryByRole("button", { name: "Log in to generate!" })
     ).not.toBeInTheDocument();
+  });
+
+  test("未ログインユーザーがログインCTAを押すと認証モーダルを開く", async () => {
+    const chibiCategory = {
+      ...TEST_COORDINATE_CATEGORY,
+      id: "cat-chibi",
+      key: "chibi",
+      displayNameJa: "ちびキャラ",
+      displayNameEn: "Chibi",
+    } as const;
+    const chibiPreset: StylePresetPublicSummary = {
+      ...presets[0],
+      id: "chibi-preset-3",
+      category: chibiCategory,
+    };
+
+    render(
+      <StylePageClient presets={[chibiPreset]} initialAuthState="guest" />
+    );
+
+    const cta = await screen.findByRole("button", {
+      name: "Log in to generate!",
+    });
+    expect(screen.queryByTestId("mock-auth-modal")).not.toBeInTheDocument();
+
+    fireEvent.click(cta);
+
+    expect(
+      await screen.findByTestId("mock-auth-modal")
+    ).toBeInTheDocument();
   });
 
   test("ログインユーザーが上限到達時_翌日案内カードを表示して生成を止める", async () => {

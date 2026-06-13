@@ -922,7 +922,7 @@ describe("StyleGenerateRoute integration tests", () => {
     });
     const body = await readJson(response);
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     expect(body.errorCode).toBe("STYLE_CATEGORY_REQUIRES_AUTH");
     // 生成枠の消費や provider 呼び出しは行わない
     expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
@@ -959,7 +959,7 @@ describe("StyleGenerateRoute integration tests", () => {
     });
     const body = await readJson(response);
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     expect(body.errorCode).toBe("STYLE_CATEGORY_REQUIRES_AUTH");
     expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
     expect(fetchFn).not.toHaveBeenCalled();
