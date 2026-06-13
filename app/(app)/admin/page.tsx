@@ -10,7 +10,9 @@ import { listPresetCategories } from "@/features/style-presets/lib/preset-catego
 import { getAdminDashboardData } from "@/features/admin-dashboard/lib/get-admin-dashboard-data";
 import {
   formatAdminDateTimeLabel,
+  getCustomDashboardRangeBounds,
   getOneTapStyleRangeBounds,
+  parseCustomDashboardRange,
   parseDashboardRange,
   parseOneTapStyleDashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
@@ -24,6 +26,9 @@ interface AdminDashboardPageProps {
     styleRange?: string;
     styleFrom?: string;
     styleTo?: string;
+    collectionRange?: string;
+    collectionFrom?: string;
+    collectionTo?: string;
   }>;
 }
 
@@ -44,6 +49,19 @@ export default async function AdminDashboardPage({
   const formattedStyleFrom = formatAdminDateTimeLabel(oneTapStyleRangeBounds.fromIso);
   const formattedStyleTo = formatAdminDateTimeLabel(oneTapStyleRangeBounds.toIso);
   const data = await getAdminDashboardData(range, oneTapStyleRangeBounds);
+
+  const collectionRange = parseCustomDashboardRange(params.collectionRange);
+  const collectionRangeBounds = getCustomDashboardRangeBounds({
+    range: collectionRange,
+    from: params.collectionFrom,
+    to: params.collectionTo,
+  });
+  const formattedCollectionFrom = formatAdminDateTimeLabel(
+    collectionRangeBounds.fromIso,
+  );
+  const formattedCollectionTo = formatAdminDateTimeLabel(
+    collectionRangeBounds.toIso,
+  );
 
   let collectionSeries: AdminCollectionSeries[] = [];
   if (tab === "collections") {
@@ -66,7 +84,15 @@ export default async function AdminDashboardPage({
       currentStyleTo={oneTapStyleRangeBounds.toIso}
     >
       {tab === "collections" ? (
-        <AdminCollectionsView series={collectionSeries} currentRange={range} />
+        <AdminCollectionsView
+          series={collectionSeries}
+          globalRange={range}
+          currentRange={collectionRangeBounds.range}
+          currentFrom={collectionRangeBounds.fromIso}
+          currentTo={collectionRangeBounds.toIso}
+          currentFromLabel={formattedCollectionFrom}
+          currentToLabel={formattedCollectionTo}
+        />
       ) : tab === "one-tap-style" ? (
         <AdminOneTapStyleFocusView
           analytics={data.oneTapStyleDetailed}

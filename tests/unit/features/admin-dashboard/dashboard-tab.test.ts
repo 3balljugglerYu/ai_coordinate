@@ -24,4 +24,18 @@ describe("dashboard-tab", () => {
       "/admin?range=30d&tab=collections",
     );
   });
+
+  test("collections の custom 期間 href に collectionRange/From/To を含む", () => {
+    const href = buildAdminDashboardHref({
+      range: "30d",
+      tab: "collections",
+      collectionRange: "custom",
+      collectionFrom: "2026-06-01T00:00:00.000Z",
+      collectionTo: "2026-06-10T00:00:00.000Z",
+    });
+    expect(href).toContain("tab=collections");
+    expect(href).toContain("collectionRange=custom");
+    expect(href).toContain("collectionFrom=");
+    expect(href).toContain("collectionTo=");
+  });
 });

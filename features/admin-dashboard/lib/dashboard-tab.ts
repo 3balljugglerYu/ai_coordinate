@@ -23,6 +23,9 @@ export function buildAdminDashboardHref(params: {
   styleRange?: string;
   styleFrom?: string | null;
   styleTo?: string | null;
+  collectionRange?: string;
+  collectionFrom?: string | null;
+  collectionTo?: string | null;
 }): string {
   const searchParams = new URLSearchParams();
   searchParams.set("range", params.range);
@@ -38,6 +41,18 @@ export function buildAdminDashboardHref(params: {
 
   if (params.styleTo) {
     searchParams.set("styleTo", params.styleTo);
+  }
+
+  if (params.collectionRange) {
+    searchParams.set("collectionRange", params.collectionRange);
+  }
+
+  if (params.collectionFrom) {
+    searchParams.set("collectionFrom", params.collectionFrom);
+  }
+
+  if (params.collectionTo) {
+    searchParams.set("collectionTo", params.collectionTo);
   }
 
   return `/admin?${searchParams.toString()}`;

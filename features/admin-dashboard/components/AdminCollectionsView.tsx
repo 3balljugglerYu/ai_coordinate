@@ -9,7 +9,11 @@ import type {
   CollectionKpiMetric,
 } from "@/features/admin-dashboard/lib/get-collection-kpi";
 import type { CollectionCompletersPage } from "@/features/admin-dashboard/lib/get-collection-completions";
-import type { DashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
+import type {
+  CustomDashboardRange,
+  DashboardRange,
+} from "@/features/admin-dashboard/lib/dashboard-range";
+import { AdminCollectionRangeControls } from "./AdminCollectionRangeControls";
 import { AdminCollectionTrendChartPanel } from "./AdminCollectionTrendChartPanel";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 
@@ -48,10 +52,20 @@ function MetricDelta({ metric }: { metric: CollectionKpiMetric }) {
 
 export function AdminCollectionsView({
   series,
+  globalRange,
   currentRange,
+  currentFrom,
+  currentTo,
+  currentFromLabel,
+  currentToLabel,
 }: {
   series: AdminCollectionSeries[];
-  currentRange: DashboardRange;
+  globalRange: DashboardRange;
+  currentRange: CustomDashboardRange;
+  currentFrom: string | null;
+  currentTo: string | null;
+  currentFromLabel: string;
+  currentToLabel: string;
 }) {
   const [selectedKey, setSelectedKey] = useState(series[0]?.key ?? "");
   const [page, setPage] = useState(0);
@@ -60,15 +74,29 @@ export function AdminCollectionsView({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
-    async (categoryKey: string, pageIndex: number, range: DashboardRange) => {
+    async (
+      categoryKey: string,
+      pageIndex: number,
+      range: CustomDashboardRange,
+      from: string | null,
+      to: string | null,
+    ) => {
       if (!categoryKey) return;
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(
-          `/api/admin/collections?categoryKey=${encodeURIComponent(categoryKey)}&page=${pageIndex}&range=${range}`,
-          { cache: "no-store" },
-        );
+        const query = new URLSearchParams({
+          categoryKey,
+          page: String(pageIndex),
+          range,
+        });
+        if (range === "custom" && from && to) {
+          query.set("from", from);
+          query.set("to", to);
+        }
+        const res = await fetch(`/api/admin/collections?${query.toString()}`, {
+          cache: "no-store",
+        });
         if (!res.ok) {
           setError(`取得に失敗しました (${res.status})`);
           setData(null);
@@ -86,8 +114,8 @@ export function AdminCollectionsView({
   );
 
   useEffect(() => {
-    void load(selectedKey, page, currentRange);
-  }, [load, selectedKey, page, currentRange]);
+    void load(selectedKey, page, currentRange, currentFrom, currentTo);
+  }, [load, selectedKey, page, currentRange, currentFrom, currentTo]);
 
   if (series.length === 0) {
     return (
@@ -140,6 +168,15 @@ export function AdminCollectionsView({
         ))}
       </div>
 
+      <AdminCollectionRangeControls
+        globalRange={globalRange}
+        currentRange={currentRange}
+        currentFrom={currentFrom}
+        currentTo={currentTo}
+        currentFromLabel={currentFromLabel}
+        currentToLabel={currentToLabel}
+      />
+
       {error ? (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -151,7 +188,9 @@ export function AdminCollectionsView({
       {kpi ? (
         <div className="space-y-3">
           <p className="text-xs text-slate-500">
-            数値は画面上部の期間タブ（{currentRange}）での集計です。前期間比つき。
+            {currentRange === "custom"
+              ? `集計期間: ${currentFromLabel} 〜 ${currentToLabel}（前期間比つき）`
+              : `集計期間: 直近 ${currentRange}（前期間比つき）`}
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {kpiCards.map((c) => (

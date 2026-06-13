@@ -4,8 +4,8 @@ import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-cate
 import { getCollectionKpi } from "@/features/admin-dashboard/lib/get-collection-kpi";
 import { getCollectionCompleters } from "@/features/admin-dashboard/lib/get-collection-completions";
 import {
-  getRangeBounds,
-  parseDashboardRange,
+  getCustomDashboardRangeBounds,
+  parseCustomDashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
@@ -28,10 +28,14 @@ export async function GET(request: NextRequest) {
   const categoryKey = request.nextUrl.searchParams.get("categoryKey") ?? "";
   const pageRaw = request.nextUrl.searchParams.get("page") ?? "0";
   const page = Number.parseInt(pageRaw, 10);
-  const range = parseDashboardRange(
+  const range = parseCustomDashboardRange(
     request.nextUrl.searchParams.get("range") ?? undefined,
   );
-  const { currentStart, previousStart, now } = getRangeBounds(range);
+  const { currentStart, previousStart, now } = getCustomDashboardRangeBounds({
+    range,
+    from: request.nextUrl.searchParams.get("from") ?? undefined,
+    to: request.nextUrl.searchParams.get("to") ?? undefined,
+  });
 
   if (!KEY_PATTERN.test(categoryKey)) {
     return NextResponse.json({ error: "invalid categoryKey" }, { status: 400 });
