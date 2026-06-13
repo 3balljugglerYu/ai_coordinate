@@ -1,5 +1,8 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { useCollectionProgress } from "@/features/collections/hooks/useCollectionProgress";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import {
+  COLLECTION_PROGRESS_REFRESH_EVENT,
+  useCollectionProgress,
+} from "@/features/collections/hooks/useCollectionProgress";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
 
 const WAFER_KEY = "collectible_wafer_sticker_god_6p";
@@ -122,6 +125,19 @@ describe("useCollectionProgress の admin プレビュー", () => {
     expect(result.current.celebration).toBeNull();
   });
 
+  it("admin でも collection_reset のキーに一致するシリーズが無ければ表示しない", async () => {
+    mockProgressResponse({
+      items: [makeSeries({ categoryKey: "other-series" })],
+      isAdminViewer: true,
+    });
+    setUrl(`/ja?collection_reset=does-not-exist&collection_to=4`);
+
+    const { result } = renderHook(() => useCollectionProgress());
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(result.current.celebration).toBeNull();
+  });
+
   it("プレビューは ack を変更しない(実進捗を汚さない)", async () => {
     window.localStorage.setItem(`collection-ack:${WAFER_KEY}`, "2");
     mockProgressResponse({ items: [makeSeries()], isAdminViewer: true });
@@ -131,5 +147,196 @@ describe("useCollectionProgress の admin プレビュー", () => {
 
     await waitFor(() => expect(result.current.celebration).not.toBeNull());
     expect(window.localStorage.getItem(`collection-ack:${WAFER_KEY}`)).toBe("2");
+  });
+});
+
+describe("useCollectionProgress の即時イベント リトライ(読み取り競合対策)", () => {
+  const progressSeries = (count: number): CollectionProgress =>
+    makeSeries({
+      uniqueOutfitCount: count,
+      isCompleted: false,
+      mountStatus: null,
+      mountImagePath: null,
+      completionId: null,
+      collectedImageUrls: [],
+    });
+
+  const okJson = (items: CollectionProgress[]) => ({
+    ok: true,
+    json: async () => ({ items, isAdminViewer: false }),
+  });
+
+  const flushMicrotasks = async () => {
+    for (let i = 0; i < 6; i += 1) {
+      await Promise.resolve();
+    }
+  };
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    setUrl("/");
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it("生成直後にカウント未反映でも、バックオフ再評価で進捗モーダルを表示する", async () => {
+    // 既に1種は通知済み(ack=1)。新しいプリセット生成で 2 になるはずだが、
+    // 即時イベント時点では RPC にまだ反映されておらず 1 のまま(=空振り)。
+    window.localStorage.setItem(`collection-ack:${WAFER_KEY}`, "1");
+
+    const fetchMock = jest
+      .fn()
+      // マウント時の初回評価: 増分なし(1<=1)
+      .mockResolvedValueOnce(okJson([progressSeries(1)]))
+      // 即時イベントの初回評価: まだ未反映で 1 のまま(空振り)
+      .mockResolvedValueOnce(okJson([progressSeries(1)]))
+      // バックオフ後の再評価: 2 に反映 → モーダル表示
+      .mockResolvedValue(okJson([progressSeries(2)]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useCollectionProgress());
+
+    // マウント評価を消化
+    await act(async () => {
+      await flushMicrotasks();
+    });
+    expect(result.current.celebration).toBeNull();
+
+    // 即時イベント発火(初回は空振り)
+    await act(async () => {
+      window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+      await flushMicrotasks();
+    });
+    expect(result.current.celebration).toBeNull();
+
+    // バックオフ(1500ms)経過 → 再評価でカウント反映 → 表示
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+      await flushMicrotasks();
+    });
+
+    expect(result.current.celebration).not.toBeNull();
+    expect(result.current.celebration!.toCount).toBe(2);
+  });
+
+  it("1回目の再評価でも未反映なら、2回目(4秒後)の再評価で表示する", async () => {
+    window.localStorage.setItem(`collection-ack:${WAFER_KEY}`, "1");
+
+    const fetchMock = jest
+      .fn()
+      // マウント評価: 増分なし
+      .mockResolvedValueOnce(okJson([progressSeries(1)]))
+      // 即時イベント初回: 未反映
+      .mockResolvedValueOnce(okJson([progressSeries(1)]))
+      // 1回目リトライ(1.5s): まだ未反映
+      .mockResolvedValueOnce(okJson([progressSeries(1)]))
+      // 2回目リトライ(4s): 反映 → 表示
+      .mockResolvedValue(okJson([progressSeries(2)]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useCollectionProgress());
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+      await flushMicrotasks();
+    });
+    expect(result.current.celebration).toBeNull();
+
+    // 1回目リトライ(1.5s): まだ出ない
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+      await flushMicrotasks();
+    });
+    expect(result.current.celebration).toBeNull();
+
+    // 2回目リトライ(4s): 表示
+    await act(async () => {
+      jest.advanceTimersByTime(4000);
+      await flushMicrotasks();
+    });
+    expect(result.current.celebration).not.toBeNull();
+    expect(result.current.celebration!.toCount).toBe(2);
+  });
+
+  it("リトライを尽くしても未反映ならモーダルは表示しない", async () => {
+    window.localStorage.setItem(`collection-ack:${WAFER_KEY}`, "1");
+    // 常に未反映(1のまま)
+    const fetchMock = jest.fn().mockResolvedValue(okJson([progressSeries(1)]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useCollectionProgress());
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+      await flushMicrotasks();
+      jest.advanceTimersByTime(1500);
+      await flushMicrotasks();
+      jest.advanceTimersByTime(4000);
+      await flushMicrotasks();
+    });
+
+    expect(result.current.celebration).toBeNull();
+  });
+
+  it("リトライ待機中にアンマウントされたら以降の再評価(fetch)をしない", async () => {
+    window.localStorage.setItem(`collection-ack:${WAFER_KEY}`, "1");
+    // 常に未反映 → リトライが続く想定だが、アンマウントで止まること
+    const fetchMock = jest.fn().mockResolvedValue(okJson([progressSeries(1)]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { unmount } = renderHook(() => useCollectionProgress());
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    // 即時イベント(初回空振り) → リトライ待機に入る
+    await act(async () => {
+      window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+      await flushMicrotasks();
+    });
+    const callsBeforeUnmount = fetchMock.mock.calls.length;
+
+    // 待機中にアンマウント → タイマーを進めても追加 fetch しない
+    unmount();
+    await act(async () => {
+      jest.advanceTimersByTime(6000);
+      await flushMicrotasks();
+    });
+    expect(fetchMock.mock.calls.length).toBe(callsBeforeUnmount);
+  });
+
+  it("リトライ待機中に別経路で表示済みになったら追加の再評価をしない", async () => {
+    window.localStorage.setItem(`collection-ack:${WAFER_KEY}`, "0");
+
+    // 初回(マウント)で既に増分あり(1>0) → 表示される。
+    const fetchMock = jest.fn().mockResolvedValue(okJson([progressSeries(1)]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useCollectionProgress());
+    await act(async () => {
+      await flushMicrotasks();
+    });
+    expect(result.current.celebration).not.toBeNull();
+
+    const callsAfterMount = fetchMock.mock.calls.length;
+
+    // 表示中に即時イベントが来ても、ガードで弾かれ追加 fetch しない。
+    await act(async () => {
+      window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+      await flushMicrotasks();
+      jest.advanceTimersByTime(6000);
+      await flushMicrotasks();
+    });
+    expect(fetchMock.mock.calls.length).toBe(callsAfterMount);
   });
 });
