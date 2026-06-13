@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, Check, Copy, Download } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type {
   CollectionKpi,
@@ -15,6 +15,7 @@ import type {
 } from "@/features/admin-dashboard/lib/dashboard-range";
 import { buildCollectionTrendCsv } from "@/features/admin-dashboard/lib/build-collection-trend-csv";
 import { AdminCollectionRangeControls } from "./AdminCollectionRangeControls";
+import { AdminCsvExportButtons } from "./AdminCsvExportButtons";
 import { AdminCollectionTrendChartPanel } from "./AdminCollectionTrendChartPanel";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 
@@ -73,7 +74,6 @@ export function AdminCollectionsView({
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const load = useCallback(
     async (
@@ -148,38 +148,11 @@ export function AdminCollectionsView({
       ]
     : [];
 
-  function handleCopyCsv() {
-    if (!kpi) return;
-    const csv = buildCollectionTrendCsv(kpi.trend);
-    void navigator.clipboard.writeText(csv).then(
-      () => {
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 2000);
-      },
-      () => setError("クリップボードへのコピーに失敗しました"),
-    );
-  }
-
-  function handleDownloadCsv() {
-    if (!kpi) return;
-    const csv = buildCollectionTrendCsv(kpi.trend);
-    // 先頭に BOM を付け、Excel で UTF-8(日本語)が文字化けしないようにする
-    const blob = new Blob(["\uFEFF" + csv], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const span =
-      kpi.trend.length > 0
-        ? `${kpi.trend[0].bucket}_${kpi.trend[kpi.trend.length - 1].bucket}`
-        : "all";
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `collection-${selectedKey}-${span}.csv`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-  }
+  const trendCsv = kpi ? buildCollectionTrendCsv(kpi.trend) : "";
+  const trendCsvFilename =
+    kpi && kpi.trend.length > 0
+      ? `collection-${selectedKey}-${kpi.trend[0].bucket}_${kpi.trend[kpi.trend.length - 1].bucket}.csv`
+      : `collection-${selectedKey}.csv`;
 
   return (
     <div className="space-y-6">
@@ -250,28 +223,7 @@ export function AdminCollectionsView({
         <div className="rounded-md border border-slate-200 bg-white p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-slate-800">日別トレンド</h3>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopyCsv}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" aria-hidden />
-                )}
-                {copied ? "コピーしました" : "CSVをコピー"}
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadCsv}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <Download className="h-3.5 w-3.5" aria-hidden />
-                CSVダウンロード
-              </button>
-            </div>
+            <AdminCsvExportButtons csv={trendCsv} filename={trendCsvFilename} />
           </div>
           <AdminCollectionTrendChartPanel data={kpi.trend} />
         </div>
