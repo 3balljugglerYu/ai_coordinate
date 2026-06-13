@@ -57,6 +57,10 @@ export function useCollectionProgress() {
   const composerRef = useRef<CollectionComposerTarget | null>(null);
   composerRef.current = composer;
   const processingRef = useRef(false);
+  // リトライ(setTimeout)待機中などにアンマウントされた後、不要な fetch /
+  // state 更新を走らせないためのマウント状態フラグ。effect 開始時に true へ
+  // 戻すことで StrictMode の二重マウントにも対応する。
+  const isMountedRef = useRef(true);
 
   // 戻り値: 新たに表示した/既に表示中なら true、増分なし/取得失敗なら false。
   // false のときは即時イベント側で短いバックオフ再評価を行う(読み取り競合対策)。
@@ -64,6 +68,8 @@ export function useCollectionProgress() {
     async (opts?: {
       preview?: { key: string; to?: number; from?: number };
     }): Promise<boolean> => {
+    // アンマウント後は何もしない。
+    if (!isMountedRef.current) return false;
     // 別評価が実行中。リトライ側で再試行させるため false を返す。
     if (processingRef.current) return false;
     // 既にモーダル/コンポーザ表示中は新規検知しない(多重表示防止)。表示済みなので true。
@@ -187,6 +193,8 @@ export function useCollectionProgress() {
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, delay);
       });
+      // 待機中にアンマウントされたら以降の評価(fetch)を行わない。
+      if (!isMountedRef.current) return;
       // 待機中に他経路(ポーリング等)で表示済みになったら打ち切る。
       if (celebrationRef.current || composerRef.current) return;
       if (await evaluate()) return;
@@ -245,6 +253,8 @@ export function useCollectionProgress() {
   }, []);
 
   useEffect(() => {
+    // StrictMode の再マウントでも再開できるよう、effect 開始時に true へ戻す。
+    isMountedRef.current = true;
     // 初回のみ ?collection_reset / collection_to / collection_from を読み、
     // admin プレビューの再表示に使う。以降のポーリングには渡さない(一度きり)。
     const params =
@@ -275,6 +285,8 @@ export function useCollectionProgress() {
     };
     window.addEventListener(COLLECTION_PROGRESS_REFRESH_EVENT, onRefresh);
     return () => {
+      // アンマウント後はリトライ待機中の再評価(fetch / state 更新)を止める。
+      isMountedRef.current = false;
       window.clearInterval(interval);
       window.removeEventListener(COLLECTION_PROGRESS_REFRESH_EVENT, onRefresh);
     };
