@@ -48,7 +48,9 @@ export function AdminDashboardView({
   const description =
     currentTab === "one-tap-style"
       ? "One-Tap Style の利用状況、上限到達、スタイル別パフォーマンスを確認できます。"
-      : "運営状況と主要KPIをまとめて確認できます。";
+      : currentTab === "collections"
+        ? "コレクション企画のシリーズ別KPIと日別推移、達成者を確認できます。"
+        : "運営状況と主要KPIをまとめて確認できます。";
 
   return (
     <div className="space-y-8">

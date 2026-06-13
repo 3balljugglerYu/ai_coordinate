@@ -1,7 +1,12 @@
 import { AdminDashboardView } from "@/features/admin-dashboard/components/AdminDashboardView";
+import {
+  AdminCollectionsView,
+  type AdminCollectionSeries,
+} from "@/features/admin-dashboard/components/AdminCollectionsView";
 import { AdminOneTapStyleFocusView } from "@/features/admin-dashboard/components/AdminOneTapStyleFocusView";
 import { AdminPageAnalyticsSectionServer } from "@/features/admin-dashboard/components/AdminPageAnalyticsSectionServer";
 import { parseAdminDashboardTab } from "@/features/admin-dashboard/lib/dashboard-tab";
+import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
 import { getAdminDashboardData } from "@/features/admin-dashboard/lib/get-admin-dashboard-data";
 import {
   formatAdminDateTimeLabel,
@@ -40,6 +45,18 @@ export default async function AdminDashboardPage({
   const formattedStyleTo = formatAdminDateTimeLabel(oneTapStyleRangeBounds.toIso);
   const data = await getAdminDashboardData(range, oneTapStyleRangeBounds);
 
+  let collectionSeries: AdminCollectionSeries[] = [];
+  if (tab === "collections") {
+    const categories = await listPresetCategories({ includeInactive: true });
+    collectionSeries = categories
+      .filter((c) => c.isCollectionSeries)
+      .map((c) => ({
+        key: c.key,
+        displayName: c.displayNameJa,
+        threshold: c.completionThreshold ?? 0,
+      }));
+  }
+
   return (
     <AdminDashboardView
       data={data}
@@ -48,7 +65,9 @@ export default async function AdminDashboardPage({
       currentStyleFrom={oneTapStyleRangeBounds.fromIso}
       currentStyleTo={oneTapStyleRangeBounds.toIso}
     >
-      {tab === "one-tap-style" ? (
+      {tab === "collections" ? (
+        <AdminCollectionsView series={collectionSeries} currentRange={range} />
+      ) : tab === "one-tap-style" ? (
         <AdminOneTapStyleFocusView
           analytics={data.oneTapStyleDetailed}
           currentRange={range}

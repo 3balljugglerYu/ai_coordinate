@@ -3,6 +3,10 @@ import { requireAdmin } from "@/lib/auth";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { getCollectionKpi } from "@/features/admin-dashboard/lib/get-collection-kpi";
 import { getCollectionCompleters } from "@/features/admin-dashboard/lib/get-collection-completions";
+import {
+  getRangeBounds,
+  parseDashboardRange,
+} from "@/features/admin-dashboard/lib/dashboard-range";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 const PAGE_SIZE = 20;
@@ -24,6 +28,10 @@ export async function GET(request: NextRequest) {
   const categoryKey = request.nextUrl.searchParams.get("categoryKey") ?? "";
   const pageRaw = request.nextUrl.searchParams.get("page") ?? "0";
   const page = Number.parseInt(pageRaw, 10);
+  const range = parseDashboardRange(
+    request.nextUrl.searchParams.get("range") ?? undefined,
+  );
+  const { currentStart, previousStart, now } = getRangeBounds(range);
 
   if (!KEY_PATTERN.test(categoryKey)) {
     return NextResponse.json({ error: "invalid categoryKey" }, { status: 400 });
@@ -39,7 +47,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const [kpi, completers] = await Promise.all([
-      getCollectionKpi({ categoryKey, categoryId: category.id }),
+      getCollectionKpi({
+        categoryKey,
+        categoryId: category.id,
+        currentStart,
+        previousStart,
+        now,
+      }),
       getCollectionCompleters({
         categoryKey,
         page: Number.isFinite(page) ? page : 0,

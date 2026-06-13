@@ -2,9 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import type { CollectionKpi } from "@/features/admin-dashboard/lib/get-collection-kpi";
+import type {
+  CollectionKpi,
+  CollectionKpiMetric,
+} from "@/features/admin-dashboard/lib/get-collection-kpi";
 import type { CollectionCompletersPage } from "@/features/admin-dashboard/lib/get-collection-completions";
+import type { DashboardRange } from "@/features/admin-dashboard/lib/dashboard-range";
+import { AdminCollectionTrendChartPanel } from "./AdminCollectionTrendChartPanel";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 
 export interface AdminCollectionSeries {
@@ -18,10 +24,34 @@ interface ApiResponse {
   completers: CollectionCompletersPage;
 }
 
+function MetricDelta({ metric }: { metric: CollectionKpiMetric }) {
+  if (metric.deltaPct === null) {
+    return (
+      <span className="text-[11px] font-medium uppercase tracking-wide text-violet-600">
+        New
+      </span>
+    );
+  }
+
+  if (metric.deltaDirection === "flat") {
+    return <span className="text-[11px] font-medium text-slate-400">±0%</span>;
+  }
+
+  const Icon = metric.deltaDirection === "up" ? ArrowUpRight : ArrowDownRight;
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500">
+      <Icon className="h-3 w-3" aria-hidden />
+      {metric.deltaPct.toLocaleString("ja-JP")}%
+    </span>
+  );
+}
+
 export function AdminCollectionsView({
   series,
+  currentRange,
 }: {
   series: AdminCollectionSeries[];
+  currentRange: DashboardRange;
 }) {
   const [selectedKey, setSelectedKey] = useState(series[0]?.key ?? "");
   const [page, setPage] = useState(0);
@@ -29,32 +59,35 @@ export function AdminCollectionsView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (categoryKey: string, pageIndex: number) => {
-    if (!categoryKey) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/admin/collections?categoryKey=${encodeURIComponent(categoryKey)}&page=${pageIndex}`,
-        { cache: "no-store" },
-      );
-      if (!res.ok) {
-        setError(`取得に失敗しました (${res.status})`);
+  const load = useCallback(
+    async (categoryKey: string, pageIndex: number, range: DashboardRange) => {
+      if (!categoryKey) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/admin/collections?categoryKey=${encodeURIComponent(categoryKey)}&page=${pageIndex}&range=${range}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) {
+          setError(`取得に失敗しました (${res.status})`);
+          setData(null);
+          return;
+        }
+        setData((await res.json()) as ApiResponse);
+      } catch {
+        setError("取得に失敗しました");
         setData(null);
-        return;
+      } finally {
+        setLoading(false);
       }
-      setData((await res.json()) as ApiResponse);
-    } catch {
-      setError("取得に失敗しました");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
-    void load(selectedKey, page);
-  }, [load, selectedKey, page]);
+    void load(selectedKey, page, currentRange);
+  }, [load, selectedKey, page, currentRange]);
 
   if (series.length === 0) {
     return (
@@ -70,18 +103,18 @@ export function AdminCollectionsView({
     ? Math.max(1, Math.ceil(completers.total / completers.pageSize))
     : 1;
 
-  const kpiCards: { label: string; value: number }[] = kpi
+  const kpiCards: { label: string; metric: CollectionKpiMetric }[] = kpi
     ? [
-        { label: "コンプリート達成数", value: kpi.completions },
-        { label: "台紙生成数", value: kpi.completions },
-        { label: "シリーズ生成数(成功)", value: kpi.seriesGenerations },
-        { label: "訪問(ログイン)", value: kpi.visitsMember },
-        { label: "訪問(ゲスト)", value: kpi.visitsGuest },
-        { label: "生成成功", value: kpi.generates },
-        { label: "ダウンロード", value: kpi.downloads },
-        { label: "保存クリック", value: kpi.saveClicks },
-        { label: "登録CTAクリック", value: kpi.signupClicks },
-        { label: "台紙生成失敗", value: kpi.mountsFailed },
+        { label: "コンプリート達成数", metric: kpi.completions },
+        { label: "台紙生成数", metric: kpi.completions },
+        { label: "シリーズ生成数(成功)", metric: kpi.seriesGenerations },
+        { label: "訪問(ログイン)", metric: kpi.visitsMember },
+        { label: "訪問(ゲスト)", metric: kpi.visitsGuest },
+        { label: "生成成功", metric: kpi.generates },
+        { label: "ダウンロード", metric: kpi.downloads },
+        { label: "保存クリック", metric: kpi.saveClicks },
+        { label: "登録CTAクリック", metric: kpi.signupClicks },
+        { label: "台紙生成失敗", metric: kpi.mountsFailed },
       ]
     : [];
 
@@ -116,18 +149,35 @@ export function AdminCollectionsView({
       {loading ? <p className="text-sm text-slate-500">読み込み中…</p> : null}
 
       {kpi ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {kpiCards.map((c) => (
-            <div
-              key={c.label}
-              className="rounded-md border border-slate-200 bg-white p-3"
-            >
-              <p className="text-xs text-slate-500">{c.label}</p>
-              <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
-                {c.value.toLocaleString()}
-              </p>
-            </div>
-          ))}
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">
+            数値は画面上部の期間タブ（{currentRange}）での集計です。前期間比つき。
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {kpiCards.map((c) => (
+              <div
+                key={c.label}
+                className="rounded-md border border-slate-200 bg-white p-3"
+              >
+                <p className="text-xs text-slate-500">{c.label}</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                  {c.metric.current.toLocaleString()}
+                </p>
+                <div className="mt-1">
+                  <MetricDelta metric={c.metric} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {kpi ? (
+        <div className="rounded-md border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-800">
+            日別トレンド
+          </h3>
+          <AdminCollectionTrendChartPanel data={kpi.trend} />
         </div>
       ) : null}
 
@@ -153,7 +203,7 @@ export function AdminCollectionsView({
         <div className="rounded-md border border-slate-200 bg-white">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-800">
-              達成者一覧（{completers.total.toLocaleString()}人）
+              達成者一覧（累計 {completers.total.toLocaleString()}人）
             </h3>
           </div>
           {completers.items.length === 0 ? (
