@@ -19,6 +19,11 @@ export function AdminCsvExportButtons({
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
+    // 非secure context など navigator.clipboard が undefined の環境では
+    // 直接呼ぶと TypeError でクラッシュするため、存在チェックしてから使う。
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
     void navigator.clipboard
       .writeText(csv)
       .then(() => {
@@ -26,7 +31,7 @@ export function AdminCsvExportButtons({
         window.setTimeout(() => setCopied(false), 2000);
       })
       .catch(() => {
-        // クリップボードが使えない環境(非secure context 等)は黙って無視
+        // クリップボードが使えない環境は黙って無視(ダウンロードは利用可)
       });
   }
 

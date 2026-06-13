@@ -94,14 +94,10 @@ export interface CollectionEventRow {
 export function extractOneTapStyleId(
   metadata: Record<string, unknown> | null,
 ): string | null {
-  if (!metadata || typeof metadata !== "object") {
-    return null;
-  }
-  const oneTapStyle = (metadata as Record<string, unknown>)["oneTapStyle"];
-  if (!oneTapStyle || typeof oneTapStyle !== "object") {
-    return null;
-  }
-  const id = (oneTapStyle as Record<string, unknown>)["id"];
+  const oneTapStyle = metadata?.["oneTapStyle"] as
+    | Record<string, unknown>
+    | undefined;
+  const id = oneTapStyle?.["id"];
   return typeof id === "string" ? id : null;
 }
 

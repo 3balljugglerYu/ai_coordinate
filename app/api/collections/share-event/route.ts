@@ -50,8 +50,9 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       authState: "authenticated",
       eventType: "mount_shared",
-      // series 別集計のため category_key を style_id に格納する(KPI が series で絞る)
-      styleId: (data.category_key as string | null) ?? null,
+      // series 別集計のため category_key を style_id に格納する(KPI が series で絞る)。
+      // null-data は上の !data ガードで 404 済み。空文字も念のため null 化する。
+      styleId: (data.category_key as string | null) || null,
     });
   } catch (e) {
     console.error("[collections share-event] record failed:", e);

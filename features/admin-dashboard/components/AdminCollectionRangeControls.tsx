@@ -47,10 +47,10 @@ export function AdminCollectionRangeControls({
   const router = useRouter();
   const [selectedRange, setSelectedRange] =
     useState<CustomDashboardRange>(currentRange);
-  const [fromValue, setFromValue] = useState(() =>
-    toDateTimeLocalValue(currentFrom),
-  );
-  const [toValue, setToValue] = useState(() => toDateTimeLocalValue(currentTo));
+  // SSR/CSR の Hydration Mismatch を避けるため、ローカル時刻(getTimezoneOffset)に
+  // 依存する初期値は使わず、マウント後の useEffect(下) で設定する。
+  const [fromValue, setFromValue] = useState("");
+  const [toValue, setToValue] = useState("");
 
   useEffect(() => {
     setSelectedRange(currentRange);
