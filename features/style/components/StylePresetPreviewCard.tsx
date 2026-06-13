@@ -46,6 +46,12 @@ interface StylePresetPreviewCardProps {
    * 省略時は 'ja'。
    */
   locale?: "ja" | "en";
+  /**
+   * 未ログインでは生成できないカテゴリのとき表示するロックラベル。
+   * 指定すると画像を半透明オーバーレイで覆い、中央にこのラベルを出す
+   * (例: 「ログインで生成可能！」)。選択操作自体は引き続き可能。
+   */
+  lockedLabel?: string;
 }
 
 export function buildStylePresetImageSrc(
@@ -70,8 +76,10 @@ export function StylePresetPreviewCard({
   onClick,
   buttonRef,
   locale = "ja",
+  lockedLabel,
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
+  const isLocked = typeof lockedLabel === "string" && lockedLabel.length > 0;
   // 'coordinate' は default カテゴリで既存挙動と同じ見た目を保つため、バッジを描画しない。
   const shouldShowBadge =
     preset.category != null && preset.category.key !== "coordinate";
@@ -113,6 +121,13 @@ export function StylePresetPreviewCard({
             >
               {badgeText}
             </span>
+          )}
+          {isLocked && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/65 px-2 backdrop-blur-[1px]">
+              <span className="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-3 py-1 text-center text-[11px] font-bold leading-tight text-white shadow-md">
+                {lockedLabel}
+              </span>
+            </div>
           )}
         </div>
         <div

@@ -1621,18 +1621,30 @@ export function StylePageClient({
           onClickCapture={handlePresetStripClickCapture}
           onDragStart={(event) => event.preventDefault()}
         >
-          {presets.map((preset) => (
-            <StylePresetPreviewCard
-              key={preset.id}
-              preset={preset}
-              isSelected={preset.id === selectedPreset?.id}
-              onClick={() => handlePresetSelect(preset.id)}
-              buttonRef={buildPresetButtonRef(preset.id)}
-              alt={t("styleCardAlt", { name: preset.title })}
-              disabled={isGenerating || isGuestResultLocked}
-              locale={styleCardLocale}
-            />
-          ))}
+          {presets.map((preset) => {
+            // ゲストは coordinate 以外のカテゴリを生成できないため、カードを
+            // 半透明にして「ログインで生成可能！」ラベルを重ねる。
+            const isGuestLockedCard =
+              effectiveAuthState !== "authenticated" &&
+              preset.category.key !== "coordinate";
+            return (
+              <StylePresetPreviewCard
+                key={preset.id}
+                preset={preset}
+                isSelected={preset.id === selectedPreset?.id}
+                onClick={() => handlePresetSelect(preset.id)}
+                buttonRef={buildPresetButtonRef(preset.id)}
+                alt={t("styleCardAlt", { name: preset.title })}
+                disabled={isGenerating || isGuestResultLocked}
+                locale={styleCardLocale}
+                lockedLabel={
+                  isGuestLockedCard
+                    ? t("guestCategoryLoginAction")
+                    : undefined
+                }
+              />
+            );
+          })}
         </div>
       </section>
 
