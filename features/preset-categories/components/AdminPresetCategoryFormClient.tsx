@@ -686,16 +686,16 @@ export function AdminPresetCategoryFormClient({
               <span className="text-sm font-medium text-slate-700">
                 ラベル(textarea の見出し)
               </span>
-              <input
-                type="text"
+              <textarea
                 value={form.userPromptLabel}
                 onChange={(e) => update("userPromptLabel", e.target.value)}
-                maxLength={80}
-                placeholder="例: 追加スタイルの指示(任意)"
+                maxLength={120}
+                rows={2}
+                placeholder={"例: 名前を記載してください(任意)\n【神の名前＋名前】になります"}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
               <span className="mt-1 block text-xs text-slate-500">
-                最大 80 文字
+                最大 120 文字。改行を入れるとユーザー画面でもそのまま改行表示されます(本文と説明文を分けたいときに利用)。
               </span>
             </label>
             <label className="block">
