@@ -76,6 +76,7 @@ export function CollectionConfetti({ show }: { show: boolean }) {
     <div
       className="pointer-events-none fixed inset-0 z-[60] overflow-hidden motion-reduce:hidden"
       aria-hidden
+      data-testid="collection-confetti"
     >
       <style>{`
         /* 横移動: 発射直後が速く、空気抵抗で減速 */
