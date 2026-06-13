@@ -20,14 +20,21 @@ export function isTutorialActiveOrPending(opts: {
     return false;
   }
 
-  const inProgress =
-    window.sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) === "true";
-  if (inProgress) {
-    return true;
+  try {
+    const inProgress =
+      window.sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) ===
+      "true";
+    if (inProgress) {
+      return true;
+    }
+
+    const declined =
+      window.localStorage.getItem(TUTORIAL_STORAGE_KEYS.DECLINED) === "true";
+
+    return opts.isAuthenticated && !opts.tutorialCompleted && !declined;
+  } catch {
+    // プライベートモード等でストレージにアクセスできない場合はクラッシュさせず、
+    // 抑制しない(= バナーを出してよい)安全側に倒す。
+    return false;
   }
-
-  const declined =
-    window.localStorage.getItem(TUTORIAL_STORAGE_KEYS.DECLINED) === "true";
-
-  return opts.isAuthenticated && !opts.tutorialCompleted && !declined;
 }

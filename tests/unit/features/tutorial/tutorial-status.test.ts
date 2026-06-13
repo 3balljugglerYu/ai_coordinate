@@ -52,4 +52,21 @@ describe("isTutorialActiveOrPending", () => {
       }),
     ).toBe(false);
   });
+
+  it("ストレージアクセスが例外でも false を返す(クラッシュさせない)", () => {
+    const spy = jest
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
+
+    expect(
+      isTutorialActiveOrPending({
+        isAuthenticated: true,
+        tutorialCompleted: false,
+      }),
+    ).toBe(false);
+
+    spy.mockRestore();
+  });
 });
