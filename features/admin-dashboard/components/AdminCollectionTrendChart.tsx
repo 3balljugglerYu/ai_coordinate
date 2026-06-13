@@ -127,6 +127,15 @@ export default function AdminCollectionTrendChart({
             dot={false}
             activeDot={{ r: 5 }}
           />
+          <Line
+            type="monotone"
+            dataKey="shares"
+            name="シェア"
+            stroke="#0D9488"
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 5 }}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -133,20 +133,40 @@ export function AdminCollectionsView({
     ? Math.max(1, Math.ceil(completers.total / completers.pageSize))
     : 1;
 
-  const kpiCards: { label: string; metric: CollectionKpiMetric }[] = kpi
-    ? [
-        { label: "コンプリート達成数", metric: kpi.completions },
-        { label: "台紙生成数", metric: kpi.completions },
-        { label: "シリーズ生成数(成功)", metric: kpi.seriesGenerations },
-        { label: "訪問(ログイン)", metric: kpi.visitsMember },
-        { label: "訪問(ゲスト)", metric: kpi.visitsGuest },
-        { label: "生成成功", metric: kpi.generates },
-        { label: "ダウンロード", metric: kpi.downloads },
-        { label: "保存クリック", metric: kpi.saveClicks },
-        { label: "登録CTAクリック", metric: kpi.signupClicks },
-        { label: "台紙生成失敗", metric: kpi.mountsFailed },
-      ]
-    : [];
+  const kpiCards: { label: string; metric: CollectionKpiMetric; sub?: string }[] =
+    kpi
+      ? [
+          { label: "コンプリート達成数", metric: kpi.completions },
+          { label: "台紙生成数", metric: kpi.completions },
+          { label: "シリーズ生成数(成功)", metric: kpi.seriesGenerations },
+          { label: "訪問(ログイン)", metric: kpi.visitsMember },
+          { label: "訪問(ゲスト)", metric: kpi.visitsGuest },
+          {
+            label: "生成成功",
+            metric: kpi.generates,
+            sub:
+              kpi.generates.member !== undefined
+                ? `ログイン ${kpi.generates.member.toLocaleString()} / お試し ${(
+                    kpi.generates.guest ?? 0
+                  ).toLocaleString()}`
+                : undefined,
+          },
+          {
+            label: "ダウンロード",
+            metric: kpi.downloads,
+            sub:
+              kpi.downloads.member !== undefined
+                ? `ログイン ${kpi.downloads.member.toLocaleString()} / ゲスト ${(
+                    kpi.downloads.guest ?? 0
+                  ).toLocaleString()}`
+                : undefined,
+          },
+          { label: "保存クリック", metric: kpi.saveClicks },
+          { label: "登録CTAクリック", metric: kpi.signupClicks },
+          { label: "シェア", metric: kpi.shares },
+          { label: "台紙生成失敗", metric: kpi.mountsFailed },
+        ]
+      : [];
 
   const trendCsv = kpi ? buildCollectionTrendCsv(kpi.trend) : "";
   const trendCsvFilename =
@@ -213,6 +233,9 @@ export function AdminCollectionsView({
                 <div className="mt-1">
                   <MetricDelta metric={c.metric} />
                 </div>
+                {c.sub ? (
+                  <p className="mt-1 text-[11px] text-slate-500">{c.sub}</p>
+                ) : null}
               </div>
             ))}
           </div>

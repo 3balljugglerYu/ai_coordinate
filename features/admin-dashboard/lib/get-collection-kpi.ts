@@ -43,29 +43,38 @@ export async function getCollectionKpi(params: {
     .order("display_order", { ascending: true });
   const presetIds = (presets ?? []).map((p) => p.id as string);
 
-  const [completionsResult, imageJobsResult, eventsResult] = await Promise.all([
-    supabase
-      .from("collection_completions")
-      .select("mount_status, completed_at")
-      .eq("category_key", params.categoryKey)
-      .gte("completed_at", startIso)
-      .lte("completed_at", endIso),
-    supabase
-      .from("image_jobs")
-      .select("created_at, generation_metadata")
-      .eq("style_preset_category_key", params.categoryKey)
-      .eq("status", "succeeded")
-      .gte("created_at", startIso)
-      .lte("created_at", endIso),
-    presetIds.length > 0
-      ? supabase
-          .from("style_usage_events")
-          .select("auth_state, event_type, created_at")
-          .in("style_id", presetIds)
-          .gte("created_at", startIso)
-          .lte("created_at", endIso)
-      : Promise.resolve({ data: [] as CollectionEventRow[], error: null }),
-  ]);
+  const [completionsResult, imageJobsResult, eventsResult, sharesResult] =
+    await Promise.all([
+      supabase
+        .from("collection_completions")
+        .select("mount_status, completed_at")
+        .eq("category_key", params.categoryKey)
+        .gte("completed_at", startIso)
+        .lte("completed_at", endIso),
+      supabase
+        .from("image_jobs")
+        .select("created_at, generation_metadata")
+        .eq("style_preset_category_key", params.categoryKey)
+        .eq("status", "succeeded")
+        .gte("created_at", startIso)
+        .lte("created_at", endIso),
+      presetIds.length > 0
+        ? supabase
+            .from("style_usage_events")
+            .select("auth_state, event_type, created_at")
+            .in("style_id", presetIds)
+            .gte("created_at", startIso)
+            .lte("created_at", endIso)
+        : Promise.resolve({ data: [] as CollectionEventRow[], error: null }),
+      // mount_shared は style_id を持たないため series で絞れない。
+      // 期間中の全コレクションのシェア数を取得する(稼働コレが1つなら実質その series)。
+      supabase
+        .from("style_usage_events")
+        .select("auth_state, event_type, created_at")
+        .eq("event_type", "mount_shared")
+        .gte("created_at", startIso)
+        .lte("created_at", endIso),
+    ]);
 
   return buildCollectionKpi({
     categoryKey: params.categoryKey,
@@ -73,6 +82,7 @@ export async function getCollectionKpi(params: {
     completionRows: (completionsResult.data ?? []) as CollectionCompletionRow[],
     imageJobRows: (imageJobsResult.data ?? []) as CollectionImageJobRow[],
     eventRows: (eventsResult.data ?? []) as CollectionEventRow[],
+    shareRows: (sharesResult.data ?? []) as CollectionEventRow[],
     currentStart: params.currentStart,
     previousStart: params.previousStart,
     now: params.now,

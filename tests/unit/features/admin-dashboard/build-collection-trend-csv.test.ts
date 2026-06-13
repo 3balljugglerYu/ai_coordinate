@@ -10,10 +10,16 @@ function point(overrides: Partial<CollectionTrendPoint>): CollectionTrendPoint {
     label: "6/10",
     completions: 0,
     seriesGenerations: 0,
+    visitsMember: 0,
+    visitsGuest: 0,
     generates: 0,
+    generatesGuest: 0,
     downloads: 0,
+    downloadsMember: 0,
+    downloadsGuest: 0,
     saveClicks: 0,
     signupClicks: 0,
+    shares: 0,
     ...overrides,
   };
 }
@@ -25,27 +31,32 @@ describe("buildCollectionTrendCsv", () => {
     );
   });
 
-  test("各日の指標を生値で出力し CRLF 区切りにする", () => {
+  test("各日の指標(ログイン/ゲスト内訳含む)を生値で出力し CRLF 区切りにする", () => {
     const csv = buildCollectionTrendCsv([
       point({
         bucket: "2026-06-10",
         completions: 3,
         seriesGenerations: 12,
+        visitsMember: 20,
+        visitsGuest: 30,
         generates: 8,
+        generatesGuest: 5,
         downloads: 5,
+        downloadsMember: 2,
+        downloadsGuest: 3,
         saveClicks: 2,
         signupClicks: 1,
+        shares: 4,
       }),
       point({ bucket: "2026-06-11", completions: 1000 }),
     ]);
 
     const lines = csv.split("\r\n");
     expect(lines[0]).toBe(
-      "日付,コンプリート達成数,シリーズ生成数,生成成功,ダウンロード,保存クリック,登録CTAクリック",
+      "日付,コンプリート達成数,シリーズ生成数,訪問(ログイン),訪問(ゲスト),生成成功,お試し生成(ゲスト),ダウンロード,ダウンロード(ログイン),ダウンロード(ゲスト),保存クリック,登録CTAクリック,シェア",
     );
-    expect(lines[1]).toBe("2026-06-10,3,12,8,5,2,1");
-    // 区切り記号なしの生値(スプレッドシートで数値として扱える)
-    expect(lines[2]).toBe("2026-06-11,1000,0,0,0,0,0");
+    expect(lines[1]).toBe("2026-06-10,3,12,20,30,8,5,5,2,3,2,1,4");
+    expect(lines[2]).toBe("2026-06-11,1000,0,0,0,0,0,0,0,0,0,0,0");
     expect(lines).toHaveLength(3);
   });
 });

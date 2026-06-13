@@ -17,6 +17,9 @@ export interface CollectionKpiMetric {
   previous: number;
   deltaPct: number | null;
   deltaDirection: DeltaDirection;
+  // current 期間のログイン/ゲスト内訳(分離可能な指標のみ設定)
+  member?: number;
+  guest?: number;
 }
 
 export interface CollectionTrendPoint {
@@ -24,10 +27,16 @@ export interface CollectionTrendPoint {
   label: string; // "M/D"
   completions: number;
   seriesGenerations: number;
+  visitsMember: number;
+  visitsGuest: number;
   generates: number;
+  generatesGuest: number; // お試し生成(未ログイン)
   downloads: number;
+  downloadsMember: number;
+  downloadsGuest: number;
   saveClicks: number;
   signupClicks: number;
+  shares: number;
 }
 
 export interface CollectionKpi {
@@ -41,6 +50,7 @@ export interface CollectionKpi {
   downloads: CollectionKpiMetric;
   saveClicks: CollectionKpiMetric;
   signupClicks: CollectionKpiMetric;
+  shares: CollectionKpiMetric;
   outfitCounts: OutfitGenerationCount[];
   trend: CollectionTrendPoint[];
 }
@@ -104,9 +114,19 @@ function calculateDelta(current: number, previous: number): {
   return { deltaPct: 0, deltaDirection: "flat" };
 }
 
-function toMetric(current: number, previous: number): CollectionKpiMetric {
+function toMetric(
+  current: number,
+  previous: number,
+  auth?: { member: number; guest: number },
+): CollectionKpiMetric {
   const { deltaPct, deltaDirection } = calculateDelta(current, previous);
-  return { current, previous, deltaPct, deltaDirection };
+  const base: CollectionKpiMetric = {
+    current,
+    previous,
+    deltaPct,
+    deltaDirection,
+  };
+  return auth ? { ...base, member: auth.member, guest: auth.guest } : base;
 }
 
 interface RangeCounter {
@@ -122,6 +142,9 @@ function createCounter(): RangeCounter {
  * 指定シリーズの KPI を期間付きで集計する純関数(I/O なし・テスト対象)。
  * - current = [currentStart, now], previous = [previousStart, currentStart]
  * - trend は currentStart..now を JST 日別でゼロ埋めした配列
+ * - visits / generates / downloads はログイン(member) / ゲスト(guest) 内訳も集計
+ * - shareRows は mount_shared イベント(style_id を持たないため別取得)。
+ *   現状コレクション横断のため series 固有ではない点に注意(category 付与は別途)。
  * - 達成者ロスター(累計)は別関数 getCollectionCompleters の責務(ここには含めない)
  */
 export function buildCollectionKpi(params: {
@@ -130,6 +153,7 @@ export function buildCollectionKpi(params: {
   completionRows: CollectionCompletionRow[];
   imageJobRows: CollectionImageJobRow[];
   eventRows: CollectionEventRow[];
+  shareRows: CollectionEventRow[];
   currentStart: Date;
   previousStart: Date;
   now: Date;
@@ -140,6 +164,7 @@ export function buildCollectionKpi(params: {
     completionRows,
     imageJobRows,
     eventRows,
+    shareRows,
     currentStart,
     previousStart,
     now,
@@ -154,10 +179,16 @@ export function buildCollectionKpi(params: {
         label: formatJstDateLabel(key),
         completions: 0,
         seriesGenerations: 0,
+        visitsMember: 0,
+        visitsGuest: 0,
         generates: 0,
+        generatesGuest: 0,
         downloads: 0,
+        downloadsMember: 0,
+        downloadsGuest: 0,
         saveClicks: 0,
         signupClicks: 0,
+        shares: 0,
       },
     ]),
   );
@@ -175,6 +206,12 @@ export function buildCollectionKpi(params: {
   const downloads = createCounter();
   const saveClicks = createCounter();
   const signupClicks = createCounter();
+  const shares = createCounter();
+  // current 期間の member/guest 内訳
+  let generatesMemberCur = 0;
+  let generatesGuestCur = 0;
+  let downloadsMemberCur = 0;
+  let downloadsGuestCur = 0;
   const outfitMap = new Map<string, number>();
 
   // collection_completions(completed / failed)
@@ -223,7 +260,7 @@ export function buildCollectionKpi(params: {
     }
   }
 
-  // style_usage_events: 企画ファネル
+  // style_usage_events: 企画ファネル(visit/generate/download/save/signup)
   for (const row of eventRows) {
     const cur = inCurrent(row.created_at);
     const prev = !cur && inPrevious(row.created_at);
@@ -231,21 +268,36 @@ export function buildCollectionKpi(params: {
       continue;
     }
     const bucket = cur ? trendMap.get(toJstDateKey(row.created_at)) : undefined;
+    const isGuest = row.auth_state === "guest";
+    const isMember = row.auth_state === "authenticated";
 
     switch (row.event_type) {
       case "visit":
-        if (row.auth_state === "authenticated") {
-          if (cur) visitsMember.current += 1;
-          else visitsMember.previous += 1;
-        } else if (row.auth_state === "guest") {
-          if (cur) visitsGuest.current += 1;
-          else visitsGuest.previous += 1;
+        if (isMember) {
+          if (cur) {
+            visitsMember.current += 1;
+            if (bucket) bucket.visitsMember += 1;
+          } else {
+            visitsMember.previous += 1;
+          }
+        } else if (isGuest) {
+          if (cur) {
+            visitsGuest.current += 1;
+            if (bucket) bucket.visitsGuest += 1;
+          } else {
+            visitsGuest.previous += 1;
+          }
         }
         break;
       case "generate":
         if (cur) {
           generates.current += 1;
-          if (bucket) bucket.generates += 1;
+          if (isMember) generatesMemberCur += 1;
+          else if (isGuest) generatesGuestCur += 1;
+          if (bucket) {
+            bucket.generates += 1;
+            if (isGuest) bucket.generatesGuest += 1;
+          }
         } else {
           generates.previous += 1;
         }
@@ -253,7 +305,13 @@ export function buildCollectionKpi(params: {
       case "download":
         if (cur) {
           downloads.current += 1;
-          if (bucket) bucket.downloads += 1;
+          if (isMember) downloadsMemberCur += 1;
+          else if (isGuest) downloadsGuestCur += 1;
+          if (bucket) {
+            bucket.downloads += 1;
+            if (isMember) bucket.downloadsMember += 1;
+            else if (isGuest) bucket.downloadsGuest += 1;
+          }
         } else {
           downloads.previous += 1;
         }
@@ -279,6 +337,22 @@ export function buildCollectionKpi(params: {
     }
   }
 
+  // mount_shared(台紙シェア)。style_id を持たないため別取得。
+  for (const row of shareRows) {
+    if (row.event_type !== "mount_shared") {
+      continue;
+    }
+    const cur = inCurrent(row.created_at);
+    const prev = !cur && inPrevious(row.created_at);
+    if (cur) {
+      shares.current += 1;
+      const bucket = trendMap.get(toJstDateKey(row.created_at));
+      if (bucket) bucket.shares += 1;
+    } else if (prev) {
+      shares.previous += 1;
+    }
+  }
+
   // 衣装別: preset の display_order を維持(0 件も含めて表示)
   const outfitCounts: OutfitGenerationCount[] = presetIds.map((presetId) => ({
     presetId,
@@ -295,10 +369,17 @@ export function buildCollectionKpi(params: {
     ),
     visitsMember: toMetric(visitsMember.current, visitsMember.previous),
     visitsGuest: toMetric(visitsGuest.current, visitsGuest.previous),
-    generates: toMetric(generates.current, generates.previous),
-    downloads: toMetric(downloads.current, downloads.previous),
+    generates: toMetric(generates.current, generates.previous, {
+      member: generatesMemberCur,
+      guest: generatesGuestCur,
+    }),
+    downloads: toMetric(downloads.current, downloads.previous, {
+      member: downloadsMemberCur,
+      guest: downloadsGuestCur,
+    }),
     saveClicks: toMetric(saveClicks.current, saveClicks.previous),
     signupClicks: toMetric(signupClicks.current, signupClicks.previous),
+    shares: toMetric(shares.current, shares.previous),
     outfitCounts,
     trend: dayKeys.map((key) => trendMap.get(key)!),
   };

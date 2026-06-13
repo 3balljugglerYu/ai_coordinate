@@ -16,6 +16,7 @@ function build(params: {
   completionRows?: CollectionCompletionRow[];
   imageJobRows?: CollectionImageJobRow[];
   eventRows?: CollectionEventRow[];
+  shareRows?: CollectionEventRow[];
 }) {
   return buildCollectionKpi({
     categoryKey: "wafer",
@@ -23,6 +24,7 @@ function build(params: {
     completionRows: params.completionRows ?? [],
     imageJobRows: params.imageJobRows ?? [],
     eventRows: params.eventRows ?? [],
+    shareRows: params.shareRows ?? [],
     currentStart: CURRENT_START,
     previousStart: PREVIOUS_START,
     now: NOW,
@@ -102,6 +104,7 @@ describe("buildCollectionKpi", () => {
       kpi.downloads,
       kpi.saveClicks,
       kpi.signupClicks,
+      kpi.shares,
     ];
     for (const metric of metrics) {
       expect(metric.current).toBe(0);
@@ -185,11 +188,53 @@ describe("buildCollectionKpi", () => {
     expect(kpi.saveClicks.current).toBe(1);
     expect(kpi.signupClicks.current).toBe(1);
 
-    // 当日(06-10)のトレンドにファネルが入る
+    // 生成/DL の member/guest 内訳(A-2 お試し / A-6 DL分離)
+    expect(kpi.generates.member).toBe(1);
+    expect(kpi.generates.guest).toBe(0);
+    expect(kpi.downloads.member).toBe(0);
+    expect(kpi.downloads.guest).toBe(1);
+
+    // 当日(06-10)のトレンドにファネルが入る(日別の訪問・分割も)
     const jun10 = kpi.trend.find((p) => p.bucket === "2026-06-10");
+    expect(jun10?.visitsMember).toBe(1);
+    expect(jun10?.visitsGuest).toBe(2);
     expect(jun10?.generates).toBe(1);
     expect(jun10?.downloads).toBe(1);
+    expect(jun10?.downloadsGuest).toBe(1);
     expect(jun10?.signupClicks).toBe(1);
+  });
+
+  test("お試し生成(ゲスト)を generatesGuest として日別にも集計する", () => {
+    const kpi = build({
+      presetIds: ["preset-a"],
+      eventRows: [
+        { auth_state: "guest", event_type: "generate", created_at: "2026-06-10T00:00:00.000Z" },
+        { auth_state: "guest", event_type: "generate", created_at: "2026-06-10T02:00:00.000Z" },
+        { auth_state: "authenticated", event_type: "generate", created_at: "2026-06-10T03:00:00.000Z" },
+      ],
+    });
+
+    expect(kpi.generates.current).toBe(3);
+    expect(kpi.generates.guest).toBe(2);
+    expect(kpi.generates.member).toBe(1);
+    const jun10 = kpi.trend.find((p) => p.bucket === "2026-06-10");
+    expect(jun10?.generatesGuest).toBe(2);
+    expect(jun10?.generates).toBe(3);
+  });
+
+  test("mount_shared(シェア)を shareRows から集計する", () => {
+    const kpi = build({
+      shareRows: [
+        { auth_state: "authenticated", event_type: "mount_shared", created_at: "2026-06-10T00:00:00.000Z" },
+        { auth_state: "authenticated", event_type: "mount_shared", created_at: "2026-06-02T00:00:00.000Z" }, // previous
+        { auth_state: "authenticated", event_type: "visit", created_at: "2026-06-10T00:00:00.000Z" }, // mount_shared 以外は無視
+      ],
+    });
+
+    expect(kpi.shares.current).toBe(1);
+    expect(kpi.shares.previous).toBe(1);
+    const jun10 = kpi.trend.find((p) => p.bucket === "2026-06-10");
+    expect(jun10?.shares).toBe(1);
   });
 });
 
