@@ -58,19 +58,22 @@ export function useCollectionProgress() {
   composerRef.current = composer;
   const processingRef = useRef(false);
 
+  // 戻り値: 新たに表示した/既に表示中なら true、増分なし/取得失敗なら false。
+  // false のときは即時イベント側で短いバックオフ再評価を行う(読み取り競合対策)。
   const evaluate = useCallback(
     async (opts?: {
       preview?: { key: string; to?: number; from?: number };
-    }) => {
-    if (processingRef.current) return;
-    // 既にモーダル/コンポーザ表示中は新規検知しない(多重表示防止)
-    if (celebrationRef.current || composerRef.current) return;
+    }): Promise<boolean> => {
+    // 別評価が実行中。リトライ側で再試行させるため false を返す。
+    if (processingRef.current) return false;
+    // 既にモーダル/コンポーザ表示中は新規検知しない(多重表示防止)。表示済みなので true。
+    if (celebrationRef.current || composerRef.current) return true;
     processingRef.current = true;
     try {
       const res = await fetch("/api/collections/progress", {
         cache: "no-store",
       });
-      if (!res.ok) return;
+      if (!res.ok) return false;
       const data = (await res.json()) as {
         items?: CollectionProgress[];
         isAdminViewer?: boolean;
@@ -127,8 +130,9 @@ export function useCollectionProgress() {
             ),
             celebrationEffect: "sparkle",
           });
+          return true;
         }
-        return;
+        return false;
       }
 
       for (const series of items) {
@@ -159,14 +163,35 @@ export function useCollectionProgress() {
           // フィードの自動コンプリート祝いはダイヤのきらめき演出にする。
           celebrationEffect: "sparkle",
         });
-        break;
+        return true;
       }
+      // どのシリーズも増分なし。即時イベント側でリトライ対象にするため false。
+      return false;
     } catch {
-      // ネットワーク等の失敗は無視(次回ポーリングで再評価)
+      // ネットワーク等の失敗は無視(次回ポーリング/リトライで再評価)
+      return false;
     } finally {
       processingRef.current = false;
     }
   }, []);
+
+  // 即時イベント(style 生成完了)用のリトライ付き評価。
+  // 生成直後は image_jobs.status='succeeded' が RPC に反映される前に
+  // evaluate() が走ると増分を検知できないため(読み取り競合)、表示できる
+  // まで短いバックオフで数回だけ再評価する。ポーリングはリトライ不要なので
+  // 素の evaluate() を使う。
+  const evaluateWithRetry = useCallback(async () => {
+    const RETRY_DELAYS_MS = [1500, 4000];
+    if (await evaluate()) return;
+    for (const delay of RETRY_DELAYS_MS) {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, delay);
+      });
+      // 待機中に他経路(ポーリング等)で表示済みになったら打ち切る。
+      if (celebrationRef.current || composerRef.current) return;
+      if (await evaluate()) return;
+    }
+  }, [evaluate]);
 
   const dismiss = useCallback(() => {
     setCelebration(null);
@@ -243,15 +268,17 @@ export function useCollectionProgress() {
     const interval = window.setInterval(() => {
       void evaluate();
     }, POLL_INTERVAL_MS);
+    // style 生成完了などの即時トリガーは、読み取り競合で初回が空振りしても
+    // 表示できるまで短いバックオフで再評価する。
     const onRefresh = () => {
-      void evaluate();
+      void evaluateWithRetry();
     };
     window.addEventListener(COLLECTION_PROGRESS_REFRESH_EVENT, onRefresh);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener(COLLECTION_PROGRESS_REFRESH_EVENT, onRefresh);
     };
-  }, [evaluate]);
+  }, [evaluate, evaluateWithRetry]);
 
   return {
     celebration,
