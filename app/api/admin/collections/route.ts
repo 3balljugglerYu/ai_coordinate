@@ -1,7 +1,10 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
-import { getCollectionKpi } from "@/features/admin-dashboard/lib/get-collection-kpi";
+import {
+  getCollectionKpi,
+  getCollectionUuFunnel,
+} from "@/features/admin-dashboard/lib/get-collection-kpi";
 import { getCollectionCompleters } from "@/features/admin-dashboard/lib/get-collection-completions";
 import {
   getCustomDashboardRangeBounds,
@@ -50,12 +53,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [kpi, completers] = await Promise.all([
+    const [kpi, uuFunnel, completers] = await Promise.all([
       getCollectionKpi({
         categoryKey,
         categoryId: category.id,
         currentStart,
         previousStart,
+        now,
+      }),
+      getCollectionUuFunnel({
+        categoryKey,
+        categoryId: category.id,
+        currentStart,
         now,
       }),
       getCollectionCompleters({
@@ -64,7 +73,7 @@ export async function GET(request: NextRequest) {
         pageSize: PAGE_SIZE,
       }),
     ]);
-    return NextResponse.json({ kpi, completers });
+    return NextResponse.json({ kpi, uuFunnel, completers });
   } catch (error) {
     console.error("[admin collections GET] failed:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import type {
   CollectionKpi,
   CollectionKpiMetric,
+  CollectionUuFunnel,
 } from "@/features/admin-dashboard/lib/get-collection-kpi";
 import type { CollectionCompletersPage } from "@/features/admin-dashboard/lib/get-collection-completions";
 import type {
@@ -30,7 +31,12 @@ export interface AdminCollectionSeries {
 
 interface ApiResponse {
   kpi: CollectionKpi;
+  uuFunnel: CollectionUuFunnel;
   completers: CollectionCompletersPage;
+}
+
+function formatRatePct(value: number | null): string {
+  return value === null ? "N/A" : `${value.toLocaleString("ja-JP")}%`;
 }
 
 function MetricDelta({ metric }: { metric: CollectionKpiMetric }) {
@@ -131,6 +137,7 @@ export function AdminCollectionsView({
   }
 
   const kpi = data?.kpi;
+  const uuFunnel = data?.uuFunnel;
   const completers = data?.completers;
   const totalPages = completers
     ? Math.max(1, Math.ceil(completers.total / completers.pageSize))
@@ -259,6 +266,70 @@ export function AdminCollectionsView({
             <AdminCsvExportButtons csv={trendCsv} filename={trendCsvFilename} />
           </div>
           <AdminCollectionTrendChartPanel data={kpi.trend} />
+        </div>
+      ) : null}
+
+      {uuFunnel ? (
+        <div className="rounded-md border border-slate-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-slate-800">
+            ユニークユーザー・ファネル（ログインのみ）
+          </h3>
+          <p className="mb-3 mt-1 text-[11px] text-slate-500">
+            生成→コンプリート→シェアのUU歩留まり、および期間内に新規登録したUUのコンプリート到達。
+            ゲストは識別子を持たずUU計測できないためログイン側のみです。
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              { label: "生成UU", value: uuFunnel.generatesUu },
+              { label: "コンプリートUU", value: uuFunnel.completionsUu },
+              { label: "シェアUU", value: uuFunnel.sharesUu },
+              { label: "期間内登録UU", value: uuFunnel.registeredUu },
+              { label: "登録→コンプリート", value: uuFunnel.registeredCompletedUu },
+            ].map((c) => (
+              <div
+                key={c.label}
+                className="rounded-md border border-slate-200 bg-white p-3"
+              >
+                <p className="text-xs text-slate-500">{c.label}</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                  {c.value.toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                dt: "コンプリート到達率 (B-2)",
+                dd: formatRatePct(uuFunnel.reachRatePct),
+                note: "コンプリートUU / 生成UU",
+              },
+              {
+                dt: "登録→コンプリート率 (A-5)",
+                dd: formatRatePct(uuFunnel.registeredReachRatePct),
+                note: "期間内登録UUのうち到達",
+              },
+              {
+                dt: "登録後 未コンプリート (A-8)",
+                dd: `${uuFunnel.registeredNotCompletedUu.toLocaleString()}人`,
+                note: "登録したが6柱未完走",
+              },
+              {
+                dt: "コンプリート後 未シェア (A-8)",
+                dd: `${uuFunnel.completedNotSharedUu.toLocaleString()}人`,
+                note: "完走したが未シェア",
+              },
+            ].map((item) => (
+              <div
+                key={item.dt}
+                className="rounded-md border border-slate-200 bg-slate-50/70 px-3 py-2"
+              >
+                <dt className="text-xs text-slate-500">{item.dt}</dt>
+                <dd className="font-semibold text-slate-900">{item.dd}</dd>
+                <p className="mt-0.5 text-[11px] text-slate-400">{item.note}</p>
+              </div>
+            ))}
+          </dl>
         </div>
       ) : null}
 
