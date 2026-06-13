@@ -64,8 +64,18 @@ export function PromptInputField({
 
   return (
     <div {...containerProps}>
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={id} className="text-base font-medium">
+      {/*
+        ラベルが長い場合 (例: /style のカテゴリ別ガイド文) でも、スマホで
+        「クリア」ボタンが折り返しテキストの脇に窮屈に挟まらないよう、
+        モバイルはラベルの下にボタンを配置し、sm 以上で従来の横並びに戻す。
+      */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        {/* 管理画面で改行を入れたラベルをそのまま反映する (whitespace-pre-line)。
+            複数行でも詰まりすぎないよう leading-none を leading-snug で上書き。 */}
+        <Label
+          htmlFor={id}
+          className="whitespace-pre-line text-base font-medium leading-snug"
+        >
           {label}
         </Label>
         {showClearButton && (
@@ -73,7 +83,7 @@ export function PromptInputField({
             type="button"
             size="sm"
             variant="ghost"
-            className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900"
+            className="h-7 self-end px-2 text-xs text-gray-600 hover:text-gray-900 sm:self-auto"
             onClick={() => onChange("")}
             disabled={value.length === 0 || disabled}
             aria-label={clearLabel}

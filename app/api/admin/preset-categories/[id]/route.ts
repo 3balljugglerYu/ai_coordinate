@@ -17,7 +17,7 @@ import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
 const MAX_USER_GUIDANCE_LENGTH = 1000;
-const MAX_USER_PROMPT_LABEL_LENGTH = 80;
+const MAX_USER_PROMPT_LABEL_LENGTH = 120;
 const MAX_USER_PROMPT_PLACEHOLDER_LENGTH = 200;
 
 function revalidatePresetCategoriesCache(id: string): void {
