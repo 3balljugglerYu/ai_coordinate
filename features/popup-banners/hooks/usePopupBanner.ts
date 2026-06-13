@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   onAuthStateChange,
 } from "@/features/auth/lib/auth-client";
+import { isTutorialActiveOrPending } from "@/features/tutorial/lib/tutorial-status";
 import {
   buildPopupBannerHistoryEntry,
   buildPopupBannerHistoryMap,
@@ -143,6 +144,7 @@ export function usePopupBanner(
     null
   );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [tutorialCompleted, setTutorialCompleted] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const sentImpressionIdsRef = useRef<Set<string>>(new Set());
 
@@ -159,10 +161,12 @@ export function usePopupBanner(
       }
 
       setIsAuthenticated(Boolean(user));
+      setTutorialCompleted(user?.user_metadata?.tutorial_completed === true);
     });
 
     const subscription = onAuthStateChange((user) => {
       setIsAuthenticated(Boolean(user));
+      setTutorialCompleted(user?.user_metadata?.tutorial_completed === true);
     });
 
     return () => {
@@ -180,6 +184,19 @@ export function usePopupBanner(
 
     async function initialize() {
       setIsReady(false);
+
+      // チュートリアル表示中(または開始予定)はバナーを出さない。
+      // ホームでチュートリアルとバナーが重なり、進行を妨げるのを防ぐ。
+      if (
+        isTutorialActiveOrPending({
+          isAuthenticated: isAuthenticated === true,
+          tutorialCompleted,
+        })
+      ) {
+        setCurrentBanner(null);
+        setIsReady(true);
+        return;
+      }
 
       const resolved = isAuthenticated
         ? await loadRemoteHistory()
@@ -211,7 +228,7 @@ export function usePopupBanner(
     return () => {
       cancelled = true;
     };
-  }, [banners, isAuthenticated]);
+  }, [banners, isAuthenticated, tutorialCompleted]);
 
   const markBannerDisplayed = useCallback(
     (bannerId: string) => {
