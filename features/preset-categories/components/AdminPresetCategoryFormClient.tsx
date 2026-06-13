@@ -654,8 +654,7 @@ export function AdminPresetCategoryFormClient({
             <span className="font-medium">生成モデル選択を表示</span>
             <br />
             <span className="text-xs text-slate-500">
-              OFF の場合、/style ではモデル選択を表示せず、既定モデル（
-              {DEFAULT_GENERATION_MODEL_LABEL}）で生成します。
+              OFF の場合、/style ではモデル選択を表示せず、既定モデル（{DEFAULT_GENERATION_MODEL_LABEL}）で生成します。
             </span>
           </span>
         </label>
