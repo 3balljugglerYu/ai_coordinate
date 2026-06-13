@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   // 所有者確認(本人の completed 行のみ。RLS で他人の行は見えない)
   const { data, error } = await supabase
     .from("collection_completions")
-    .select("id")
+    .select("id, category_key")
     .eq("id", completionId)
     .eq("mount_status", "completed")
     .maybeSingle();
@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       authState: "authenticated",
       eventType: "mount_shared",
+      // series 別集計のため category_key を style_id に格納する(KPI が series で絞る)。
+      // null-data は上の !data ガードで 404 済み。空文字も念のため null 化する。
+      styleId: (data.category_key as string | null) || null,
     });
   } catch (e) {
     console.error("[collections share-event] record failed:", e);

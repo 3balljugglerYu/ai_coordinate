@@ -1,8 +1,15 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
-import { getCollectionKpi } from "@/features/admin-dashboard/lib/get-collection-kpi";
+import {
+  getCollectionKpi,
+  getCollectionUuFunnel,
+} from "@/features/admin-dashboard/lib/get-collection-kpi";
 import { getCollectionCompleters } from "@/features/admin-dashboard/lib/get-collection-completions";
+import {
+  getCustomDashboardRangeBounds,
+  parseCustomDashboardRange,
+} from "@/features/admin-dashboard/lib/dashboard-range";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 const PAGE_SIZE = 20;
@@ -24,6 +31,14 @@ export async function GET(request: NextRequest) {
   const categoryKey = request.nextUrl.searchParams.get("categoryKey") ?? "";
   const pageRaw = request.nextUrl.searchParams.get("page") ?? "0";
   const page = Number.parseInt(pageRaw, 10);
+  const range = parseCustomDashboardRange(
+    request.nextUrl.searchParams.get("range") ?? undefined,
+  );
+  const { currentStart, previousStart, now } = getCustomDashboardRangeBounds({
+    range,
+    from: request.nextUrl.searchParams.get("from") ?? undefined,
+    to: request.nextUrl.searchParams.get("to") ?? undefined,
+  });
 
   if (!KEY_PATTERN.test(categoryKey)) {
     return NextResponse.json({ error: "invalid categoryKey" }, { status: 400 });
@@ -38,15 +53,27 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [kpi, completers] = await Promise.all([
-      getCollectionKpi({ categoryKey, categoryId: category.id }),
+    const [kpi, uuFunnel, completers] = await Promise.all([
+      getCollectionKpi({
+        categoryKey,
+        categoryId: category.id,
+        currentStart,
+        previousStart,
+        now,
+      }),
+      getCollectionUuFunnel({
+        categoryKey,
+        categoryId: category.id,
+        currentStart,
+        now,
+      }),
       getCollectionCompleters({
         categoryKey,
         page: Number.isFinite(page) ? page : 0,
         pageSize: PAGE_SIZE,
       }),
     ]);
-    return NextResponse.json({ kpi, completers });
+    return NextResponse.json({ kpi, uuFunnel, completers });
   } catch (error) {
     console.error("[admin collections GET] failed:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

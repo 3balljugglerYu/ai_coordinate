@@ -128,6 +128,14 @@ export function getOneTapStyleRangeBounds(params: {
   };
 }
 
+// ---- 任意期間(custom)対応 range の共用エイリアス ----
+// One-Tap Style 用に実装した「プリセット + 任意日時」range を、
+// コレクションタブなど他タブでも共用するための別名(ロジックは同一)。
+export type CustomDashboardRange = OneTapStyleDashboardRange;
+export const CUSTOM_DASHBOARD_RANGE_OPTIONS = ONE_TAP_STYLE_DASHBOARD_RANGE_OPTIONS;
+export const parseCustomDashboardRange = parseOneTapStyleDashboardRange;
+export const getCustomDashboardRangeBounds = getOneTapStyleRangeBounds;
+
 export function isWithinDateRange(
   value: string,
   start: Date,

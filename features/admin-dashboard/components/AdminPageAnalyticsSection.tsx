@@ -18,6 +18,11 @@ import { AdminTopPagesCard } from "./AdminTopPagesCard";
 import { AdminTopTransitionsCard } from "./AdminTopTransitionsCard";
 import { AdminOneTapStyleCard } from "./AdminOneTapStyleCard";
 import { AdminTrendChartPanel } from "./AdminTrendChartPanel";
+import { AdminCsvExportButtons } from "./AdminCsvExportButtons";
+import {
+  buildDashboardTrendCsv,
+  csvDateSpanSuffix,
+} from "@/features/admin-dashboard/lib/admin-csv";
 
 interface AdminPageAnalyticsGa4SectionProps {
   ga4: Ga4DashboardData;
@@ -145,18 +150,27 @@ export function AdminTrendAndFunnelSection({
   funnel,
   modelMix,
 }: AdminTrendAndFunnelSectionProps) {
+  const trendCsv = buildDashboardTrendCsv(trend);
+  const trendCsvFilename = `dashboard-trend-${csvDateSpanSuffix(
+    trend.map((point) => point.bucket),
+  )}.csv`;
+
   return (
     <section className="space-y-4">
       <Card className="border-violet-200/60 bg-white/95 shadow-sm">
         <CardHeader className="pb-4">
-          <CardTitle
-            className="text-lg text-slate-900"
-            style={{
-              fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
-            }}
-          >
-            ユーザー・生成トレンド
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle
+              className="text-lg text-slate-900"
+              style={{
+                fontFamily:
+                  "var(--font-admin-heading), ui-monospace, monospace",
+              }}
+            >
+              ユーザー・生成トレンド
+            </CardTitle>
+            <AdminCsvExportButtons csv={trendCsv} filename={trendCsvFilename} />
+          </div>
         </CardHeader>
         <CardContent>
           <AdminTrendChartPanel data={trend} />

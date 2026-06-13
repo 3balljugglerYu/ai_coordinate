@@ -24,6 +24,11 @@ import type {
 } from "../lib/dashboard-types";
 import { computeWardrobeConversionRatePct } from "../lib/build-one-tap-style-summary";
 import { AdminOneTapStyleTrendChartPanel } from "./AdminOneTapStyleTrendChartPanel";
+import { AdminCsvExportButtons } from "./AdminCsvExportButtons";
+import {
+  buildOneTapStyleTrendCsv,
+  csvDateSpanSuffix,
+} from "../lib/admin-csv";
 
 interface AdminOneTapStyleCardProps {
   analytics: DashboardOneTapStyleAnalytics;
@@ -219,6 +224,17 @@ export function AdminOneTapStyleCard({
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-800">
+              日別トレンド
+            </p>
+            <AdminCsvExportButtons
+              csv={buildOneTapStyleTrendCsv(analytics.trend)}
+              filename={`onetap-style-trend-${csvDateSpanSuffix(
+                analytics.trend.map((point) => point.bucket),
+              )}.csv`}
+            />
+          </div>
           <AdminOneTapStyleTrendChartPanel data={analytics.trend} />
         </div>
       </CardContent>
