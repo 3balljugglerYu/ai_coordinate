@@ -86,7 +86,11 @@ const onAuthStateChangeMock = onAuthStateChange as jest.MockedFunction<
 describe("usePopupBanner", () => {
   const originalFetch = global.fetch;
   let fetchMock: jest.MockedFunction<typeof fetch>;
-  let authStateChangeCallback: ((user: { id: string } | null) => void) | null;
+  type AuthUser = {
+    id: string;
+    user_metadata?: { tutorial_completed?: boolean };
+  };
+  let authStateChangeCallback: ((user: AuthUser | null) => void) | null;
   let unsubscribeMock: jest.Mock;
 
   beforeEach(() => {
@@ -101,14 +105,17 @@ describe("usePopupBanner", () => {
       configurable: true,
       value: fetchMock,
     });
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" } as Awaited<
-      ReturnType<typeof getCurrentUser>
-    >);
+    // 既定はチュートリアル完了済みユーザー(バナー表示の前提)。
+    // 未完了ユーザーはチュートリアルが出るためバナーは抑制される。
+    getCurrentUserMock.mockResolvedValue({
+      id: "user-1",
+      user_metadata: { tutorial_completed: true },
+    } as unknown as Awaited<ReturnType<typeof getCurrentUser>>);
     onAuthStateChangeMock.mockImplementation((callback) => {
-      authStateChangeCallback = callback as (user: { id: string } | null) => void;
+      authStateChangeCallback = callback as (user: AuthUser | null) => void;
       return {
         unsubscribe: unsubscribeMock,
-      } as ReturnType<typeof onAuthStateChange>;
+      } as unknown as ReturnType<typeof onAuthStateChange>;
     });
   });
 
@@ -461,7 +468,10 @@ describe("usePopupBanner", () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     act(() => {
-      authStateChangeCallback?.({ id: "user-1" });
+      authStateChangeCallback?.({
+        id: "user-1",
+        user_metadata: { tutorial_completed: true },
+      });
     });
 
     await waitFor(() => {
@@ -533,6 +543,55 @@ describe("usePopupBanner", () => {
       expect(result.current.currentBanner?.id).toBe("banner-a");
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("チュートリアル未完了ユーザー(開始予定)はバナーを抑制する", async () => {
+    getCurrentUserMock.mockResolvedValue({
+      id: "user-1",
+      user_metadata: {},
+    } as unknown as Awaited<ReturnType<typeof getCurrentUser>>);
+    const banners = [createBanner("banner-a", 1)];
+
+    const { result } = renderHook(() => usePopupBanner(banners));
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    expect(result.current.currentBanner).toBeNull();
+    // バナー履歴 API も呼ばれない(チュートリアル優先)
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("チュートリアル進行中(in_progress)はバナーを抑制する", async () => {
+    window.sessionStorage.setItem("tutorial_in_progress", "true");
+    const banners = [createBanner("banner-a", 1)];
+
+    const { result } = renderHook(() => usePopupBanner(banners));
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    expect(result.current.currentBanner).toBeNull();
+  });
+
+  test("チュートリアルをスキップ(declined)したユーザーにはバナーを出す", async () => {
+    window.localStorage.setItem("tutorial_declined", "true");
+    getCurrentUserMock.mockResolvedValue({
+      id: "user-1",
+      user_metadata: {},
+    } as unknown as Awaited<ReturnType<typeof getCurrentUser>>);
+    fetchMock.mockResolvedValue(createJsonResponse([]));
+    const banners = [createBanner("banner-a", 1)];
+
+    const { result } = renderHook(() => usePopupBanner(banners));
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    expect(result.current.currentBanner?.id).toBe("banner-a");
   });
 
   test("currentBanner がない状態で close と click を呼んでも何もしない", async () => {
