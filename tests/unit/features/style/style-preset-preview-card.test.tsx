@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 
 jest.mock("next/image", () => ({
@@ -94,5 +94,42 @@ describe("StylePresetPreviewCard - バッジ表示", () => {
     // inline style はそのまま attribute として出る
     expect(badge.style.backgroundColor).toBe("rgb(236, 72, 153)"); // #ec4899
     expect(badge.style.color).toBe("rgb(255, 255, 255)");
+  });
+});
+
+describe("StylePresetPreviewCard - ロック表示", () => {
+  test("lockedLabel を渡すとロックラベルを表示する", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: CHIBI_CATEGORY })}
+        alt="alt"
+        lockedLabel="ログインで生成可能！"
+      />,
+    );
+    expect(screen.getByText("ログインで生成可能！")).toBeInTheDocument();
+  });
+
+  test("lockedLabel が無ければロックラベルを表示しない", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: CHIBI_CATEGORY })}
+        alt="alt"
+      />,
+    );
+    expect(screen.queryByText("ログインで生成可能！")).toBeNull();
+  });
+
+  test("ロック中でも選択操作 (onClick) は可能", () => {
+    const onClick = jest.fn();
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: CHIBI_CATEGORY })}
+        alt="alt"
+        lockedLabel="ログインで生成可能！"
+        onClick={onClick}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button"));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

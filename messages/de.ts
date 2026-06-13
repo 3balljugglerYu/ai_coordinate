@@ -1394,6 +1394,8 @@ export const deMessages = {
     guestLoginCtaTitle: "Ohne Anmeldung ausprobieren",
     guestLoginCtaDescription: "Teste ChatGPT Image 2.0 einmal täglich kostenlos. Melde dich nach dem Erstellen an (kostenlose Registrierung), um dein Bild zu speichern.",
     guestLoginCtaAction: "Anmelden / Registrieren",
+    guestCategoryLoginAction: "Zum Generieren anmelden!",
+    guestCategoryLoginHint: "Melde dich an, um mit allen Stilen zu generieren!",
     generateButton: "Styling starten",
     generatingButton: "Wird generiert...",
     // Status card heading

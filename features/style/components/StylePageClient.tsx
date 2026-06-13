@@ -554,13 +554,20 @@ export function StylePageClient({
       ? posePromptValue.trim()
       : "";
   const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
+  // ゲストの無料生成（1日1回）は category.key が "coordinate" のプリセットのみ許可。
+  // それ以外のカテゴリは生成させず「ログインで生成可能！」CTA を出す（サーバ側でも検証）。
+  const isGuestRestrictedCategory =
+    effectiveAuthState !== "authenticated" &&
+    selectedPreset != null &&
+    selectedPreset.category.key !== "coordinate";
   const isGenerateDisabled =
     !selectedPreset ||
     !hasSourceImage ||
     isGenerating ||
     isGuestDailyLimitReached ||
     shouldDisablePaidContinuation ||
-    isGuestResultLocked;
+    isGuestResultLocked ||
+    isGuestRestrictedCategory;
   const hasGeneratedResult = Boolean(resultImageUrl);
   const activeAsyncResultImageUrl =
     shouldUseAsyncGeneration && isGenerating
@@ -1614,18 +1621,30 @@ export function StylePageClient({
           onClickCapture={handlePresetStripClickCapture}
           onDragStart={(event) => event.preventDefault()}
         >
-          {presets.map((preset) => (
-            <StylePresetPreviewCard
-              key={preset.id}
-              preset={preset}
-              isSelected={preset.id === selectedPreset?.id}
-              onClick={() => handlePresetSelect(preset.id)}
-              buttonRef={buildPresetButtonRef(preset.id)}
-              alt={t("styleCardAlt", { name: preset.title })}
-              disabled={isGenerating || isGuestResultLocked}
-              locale={styleCardLocale}
-            />
-          ))}
+          {presets.map((preset) => {
+            // ゲストは coordinate 以外のカテゴリを生成できないため、カードを
+            // 半透明にして「ログインで生成可能！」ラベルを重ねる。
+            const isGuestLockedCard =
+              effectiveAuthState !== "authenticated" &&
+              preset.category.key !== "coordinate";
+            return (
+              <StylePresetPreviewCard
+                key={preset.id}
+                preset={preset}
+                isSelected={preset.id === selectedPreset?.id}
+                onClick={() => handlePresetSelect(preset.id)}
+                buttonRef={buildPresetButtonRef(preset.id)}
+                alt={t("styleCardAlt", { name: preset.title })}
+                disabled={isGenerating || isGuestResultLocked}
+                locale={styleCardLocale}
+                lockedLabel={
+                  isGuestLockedCard
+                    ? t("guestCategoryLoginAction")
+                    : undefined
+                }
+              />
+            );
+          })}
         </div>
       </section>
 
@@ -1950,19 +1969,32 @@ export function StylePageClient({
             ) : null}
 
             <div data-tour="style-tour-generate">
-              <GenerationSubmitButton
-                onClick={handleGenerate}
-                disabled={isGenerateDisabled}
-                isGenerating={isGenerating}
-                generateLabel={t("generateButton")}
-                generatingLabel={t("generatingButton")}
-                costAmount={showGenerateCost ? selectedModelPercoinCost : null}
-              />
+              {isGuestRestrictedCategory ? (
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    onClick={() => setShowAuthModal(true)}
+                    className="min-h-[48px] w-full rounded-full border-0 bg-gradient-to-r from-pink-500 to-orange-400 text-base font-bold text-white shadow-[0_6px_16px_rgba(236,72,153,0.28)] transition hover:from-pink-600 hover:to-orange-500"
+                  >{t("guestCategoryLoginAction")}</Button>
+                  <p className="text-center text-xs leading-5 text-slate-500">{t("guestCategoryLoginHint")}</p>
+                </div>
+              ) : (
+                <GenerationSubmitButton
+                  onClick={handleGenerate}
+                  disabled={isGenerateDisabled}
+                  isGenerating={isGenerating}
+                  generateLabel={t("generateButton")}
+                  generatingLabel={t("generatingButton")}
+                  costAmount={showGenerateCost ? selectedModelPercoinCost : null}
+                />
+              )}
             </div>
-            <div className="space-y-1 text-xs leading-5 text-slate-500">
-              <p>{t("generateHint")}</p>
-              <p>{t("generateRetryHint")}</p>
-            </div>
+            {!isGuestRestrictedCategory ? (
+              <div className="space-y-1 text-xs leading-5 text-slate-500">
+                <p>{t("generateHint")}</p>
+                <p>{t("generateRetryHint")}</p>
+              </div>
+            ) : null}
 
             {typeof remainingDailyNoticeCount === "number" ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">

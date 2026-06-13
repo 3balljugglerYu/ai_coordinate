@@ -564,11 +564,10 @@ describe("StyleGenerateRoute integration tests", () => {
   test("postStyleGenerateRoute_カテゴリが正方形固定ならGeminiへ1:1を送る", async () => {
     getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
       buildStylePresetForGeneration({
+        // 正方形固定の挙動確認が主眼。ゲスト経路は coordinate カテゴリのみ許可
+        // されるため key は coordinate のままアスペクト比モードだけ square にする。
         category: {
           ...TEST_COORDINATE_CATEGORY,
-          key: "chibi",
-          displayNameJa: "ちびキャラ",
-          displayNameEn: "Chibi",
           outputAspectRatioMode: "square",
         },
       })
@@ -891,6 +890,77 @@ describe("StyleGenerateRoute integration tests", () => {
 
     expect(response.status).toBe(400);
     expect(body.errorCode).toBe("STYLE_INVALID_STYLE");
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_coordinate以外の公開カテゴリはguest生成不可(403)", async () => {
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "chibi",
+          displayNameJa: "ちびキャラ",
+          displayNameEn: "Chibi",
+          visibility: "public",
+        },
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(401);
+    expect(body.errorCode).toBe("STYLE_CATEGORY_REQUIRES_AUTH");
+    // 生成枠の消費や provider 呼び出しは行わない
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_神コレ(collectible_wafer_sticker_god_6p)公開時もguest生成不可(403)", async () => {
+    // 企画開始時に公開予定のカテゴリ。公開（visibility: public）に変わっても
+    // 未ログインユーザーは生成できないことを、実カテゴリキーで明示的に固定する。
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "collectible_wafer_sticker_god_6p",
+          displayNameJa: "神コレ",
+          displayNameEn: "Collectible Wafer Sticker (God) 6P",
+          visibility: "public",
+        },
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(401);
+    expect(body.errorCode).toBe("STYLE_CATEGORY_REQUIRES_AUTH");
     expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
     expect(fetchFn).not.toHaveBeenCalled();
   });
