@@ -243,6 +243,52 @@ describe("buildCollectionKpi", () => {
     const jun10 = kpi.trend.find((p) => p.bucket === "2026-06-10");
     expect(jun10?.shares).toBe(1);
   });
+
+  test("previous 期間の各イベントを previous に計上し、未知イベントは無視する", () => {
+    const prevAt = "2026-06-02T00:00:00.000Z"; // previous window
+    const kpi = build({
+      presetIds: ["preset-a"],
+      completionRows: [{ mount_status: "failed", completed_at: prevAt }],
+      eventRows: [
+        { auth_state: "authenticated", event_type: "visit", created_at: prevAt },
+        { auth_state: "guest", event_type: "visit", created_at: prevAt },
+        { auth_state: "authenticated", event_type: "generate", created_at: prevAt },
+        { auth_state: "authenticated", event_type: "download", created_at: prevAt },
+        { auth_state: "authenticated", event_type: "wardrobe_save_click", created_at: prevAt },
+        { auth_state: "guest", event_type: "signup_click", created_at: prevAt },
+        { auth_state: "authenticated", event_type: "rate_limited", created_at: prevAt }, // 未知→無視
+      ],
+      shareRows: [
+        { auth_state: "authenticated", event_type: "mount_shared", created_at: prevAt },
+      ],
+    });
+
+    expect(kpi.mountsFailed.previous).toBe(1);
+    expect(kpi.visitsMember.previous).toBe(1);
+    expect(kpi.visitsGuest.previous).toBe(1);
+    expect(kpi.generates.previous).toBe(1);
+    expect(kpi.downloads.previous).toBe(1);
+    expect(kpi.saveClicks.previous).toBe(1);
+    expect(kpi.signupClicks.previous).toBe(1);
+    expect(kpi.shares.previous).toBe(1);
+    // current は全て0(previous のみ)
+    expect(kpi.visitsMember.current).toBe(0);
+    expect(kpi.generates.current).toBe(0);
+  });
+
+  test("ダウンロードの member 内訳と日別 downloadsMember を集計する", () => {
+    const kpi = build({
+      presetIds: ["preset-a"],
+      eventRows: [
+        { auth_state: "authenticated", event_type: "download", created_at: "2026-06-10T00:00:00.000Z" },
+      ],
+    });
+
+    expect(kpi.downloads.member).toBe(1);
+    expect(kpi.downloads.guest).toBe(0);
+    const jun10 = kpi.trend.find((p) => p.bucket === "2026-06-10");
+    expect(jun10?.downloadsMember).toBe(1);
+  });
 });
 
 describe("extractOneTapStyleId", () => {

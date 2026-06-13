@@ -138,4 +138,34 @@ describe("buildCollectionSummaryCsv", () => {
     expect(lines).toContain("生成UU,35,,,,");
     expect(lines).toContain("コンプリート到達率(%),28.6,,,,");
   });
+
+  test("到達率が null の場合は空欄で出力する", () => {
+    const kpi = {
+      completions: metric(0, 0),
+      seriesGenerations: metric(0, 0),
+      visitsMember: metric(0, 0),
+      visitsGuest: metric(0, 0),
+      generates: metric(0, 0, 0, 0),
+      downloads: metric(0, 0, 0, 0),
+      saveClicks: metric(0, 0),
+      signupClicks: metric(0, 0),
+      shares: metric(0, 0),
+      mountsFailed: metric(0, 0),
+    } as unknown as CollectionKpi;
+    const uuFunnel: CollectionUuFunnel = {
+      generatesUu: 0,
+      completionsUu: 0,
+      sharesUu: 0,
+      reachRatePct: null,
+      registeredUu: 0,
+      registeredCompletedUu: 0,
+      registeredReachRatePct: null,
+      registeredNotCompletedUu: 0,
+      completedNotSharedUu: 0,
+    };
+
+    const lines = buildCollectionSummaryCsv(kpi, uuFunnel).split("\r\n");
+    expect(lines).toContain("コンプリート到達率(%),,,,,");
+    expect(lines).toContain("登録→コンプリート率(%),,,,,");
+  });
 });
