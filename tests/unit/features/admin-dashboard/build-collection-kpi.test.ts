@@ -20,7 +20,7 @@ function build(params: {
 }) {
   return buildCollectionKpi({
     categoryKey: "wafer",
-    presetIds: params.presetIds ?? [],
+    presets: (params.presetIds ?? []).map((id) => ({ id, label: id })),
     completionRows: params.completionRows ?? [],
     imageJobRows: params.imageJobRows ?? [],
     eventRows: params.eventRows ?? [],
@@ -162,9 +162,16 @@ describe("buildCollectionKpi", () => {
     expect(kpi.seriesGenerations.previous).toBe(1);
     // presetIds の順序を保ち、preset に無い id や metadata 欠落は除外
     expect(kpi.outfitCounts).toEqual([
-      { presetId: "preset-a", count: 2 },
-      { presetId: "preset-b", count: 1 },
+      { presetId: "preset-a", label: "preset-a", count: 2 },
+      { presetId: "preset-b", label: "preset-b", count: 1 },
     ]);
+
+    // B-3: 日別 × 柱別(counts は柱順 [preset-a, preset-b])
+    const outfitJun10 = kpi.outfitDaily.find((p) => p.bucket === "2026-06-10");
+    const outfitJun11 = kpi.outfitDaily.find((p) => p.bucket === "2026-06-11");
+    expect(outfitJun10?.counts).toEqual([2, 0]);
+    expect(outfitJun11?.counts).toEqual([0, 1]);
+    expect(kpi.outfitDaily).toHaveLength(8);
   });
 
   test("style_usage_events のファネルを集計(visit は auth で分割)", () => {

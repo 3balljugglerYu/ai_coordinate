@@ -1,4 +1,4 @@
-import type { CollectionTrendPoint } from "./build-collection-kpi";
+import type { CollectionKpi, CollectionTrendPoint } from "./build-collection-kpi";
 import { toCsvString } from "./admin-csv";
 
 export const COLLECTION_TREND_CSV_HEADERS = [
@@ -42,4 +42,15 @@ export function buildCollectionTrendCsv(trend: CollectionTrendPoint[]): string {
       point.shares,
     ]),
   );
+}
+
+/**
+ * 日別 × 柱別の生成数(B-3)を CSV 文字列にする。
+ * - ヘッダー: 日付, <柱名...>(outfitCounts の柱順)
+ * - 各行: その日の各柱の生成数
+ */
+export function buildCollectionOutfitDailyCsv(kpi: CollectionKpi): string {
+  const headers = ["日付", ...kpi.outfitCounts.map((outfit) => outfit.label)];
+  const rows = kpi.outfitDaily.map((point) => [point.bucket, ...point.counts]);
+  return toCsvString(headers, rows);
 }

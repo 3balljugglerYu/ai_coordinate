@@ -5,9 +5,22 @@ import {
   toJstDateKey,
 } from "./dashboard-range";
 
+export interface CollectionPreset {
+  id: string;
+  label: string; // 柱名(style_presets.title)
+}
+
 export interface OutfitGenerationCount {
   presetId: string;
+  label: string;
   count: number;
+}
+
+/** 日別 × 柱別 の生成数(B-3)。counts は outfitCounts と同じ柱順に並ぶ。 */
+export interface CollectionOutfitDailyPoint {
+  bucket: string;
+  label: string;
+  counts: number[];
 }
 
 export type DeltaDirection = "up" | "down" | "flat";
@@ -52,6 +65,7 @@ export interface CollectionKpi {
   signupClicks: CollectionKpiMetric;
   shares: CollectionKpiMetric;
   outfitCounts: OutfitGenerationCount[];
+  outfitDaily: CollectionOutfitDailyPoint[];
   trend: CollectionTrendPoint[];
 }
 
@@ -143,13 +157,13 @@ function createCounter(): RangeCounter {
  * - current = [currentStart, now], previous = [previousStart, currentStart]
  * - trend は currentStart..now を JST 日別でゼロ埋めした配列
  * - visits / generates / downloads はログイン(member) / ゲスト(guest) 内訳も集計
- * - shareRows は mount_shared イベント(style_id を持たないため別取得)。
- *   現状コレクション横断のため series 固有ではない点に注意(category 付与は別途)。
+ * - outfitCounts(柱別合計) と outfitDaily(日別×柱別, B-3) を柱(preset)順に出力
+ * - shareRows は mount_shared イベント(style_id を持たないため別取得)
  * - 達成者ロスター(累計)は別関数 getCollectionCompleters の責務(ここには含めない)
  */
 export function buildCollectionKpi(params: {
   categoryKey: string;
-  presetIds: string[];
+  presets: CollectionPreset[];
   completionRows: CollectionCompletionRow[];
   imageJobRows: CollectionImageJobRow[];
   eventRows: CollectionEventRow[];
@@ -160,7 +174,7 @@ export function buildCollectionKpi(params: {
 }): CollectionKpi {
   const {
     categoryKey,
-    presetIds,
+    presets,
     completionRows,
     imageJobRows,
     eventRows,
@@ -170,6 +184,7 @@ export function buildCollectionKpi(params: {
     now,
   } = params;
 
+  const presetIds = presets.map((preset) => preset.id);
   const dayKeys = enumerateJstDateKeys(currentStart, now);
   const trendMap = new Map<string, CollectionTrendPoint>(
     dayKeys.map((key) => [
@@ -191,6 +206,10 @@ export function buildCollectionKpi(params: {
         shares: 0,
       },
     ]),
+  );
+  // 日別 × 柱別(B-3): dayKey -> (presetId -> count)
+  const outfitDailyMap = new Map<string, Map<string, number>>(
+    dayKeys.map((key) => [key, new Map<string, number>()]),
   );
 
   const inCurrent = (value: string) => isWithinDateRange(value, currentStart, now);
@@ -239,7 +258,7 @@ export function buildCollectionKpi(params: {
     }
   }
 
-  // image_jobs(成功ジョブ): シリーズ生成数 + 衣装別
+  // image_jobs(成功ジョブ): シリーズ生成数 + 衣装別(合計 + 日別)
   for (const row of imageJobRows) {
     const cur = inCurrent(row.created_at);
     const prev = !cur && inPrevious(row.created_at);
@@ -249,11 +268,16 @@ export function buildCollectionKpi(params: {
 
     if (cur) {
       seriesGenerations.current += 1;
-      const bucket = trendMap.get(toJstDateKey(row.created_at));
+      const dayKey = toJstDateKey(row.created_at);
+      const bucket = trendMap.get(dayKey);
       if (bucket) bucket.seriesGenerations += 1;
       const presetId = extractOneTapStyleId(row.generation_metadata);
       if (presetId) {
         outfitMap.set(presetId, (outfitMap.get(presetId) ?? 0) + 1);
+        const dayMap = outfitDailyMap.get(dayKey);
+        if (dayMap) {
+          dayMap.set(presetId, (dayMap.get(presetId) ?? 0) + 1);
+        }
       }
     } else {
       seriesGenerations.previous += 1;
@@ -353,11 +377,20 @@ export function buildCollectionKpi(params: {
     }
   }
 
-  // 衣装別: preset の display_order を維持(0 件も含めて表示)
-  const outfitCounts: OutfitGenerationCount[] = presetIds.map((presetId) => ({
-    presetId,
-    count: outfitMap.get(presetId) ?? 0,
+  // 衣装別(柱別): preset の display_order を維持(0 件も含めて表示)
+  const outfitCounts: OutfitGenerationCount[] = presets.map((preset) => ({
+    presetId: preset.id,
+    label: preset.label,
+    count: outfitMap.get(preset.id) ?? 0,
   }));
+  const outfitDaily: CollectionOutfitDailyPoint[] = dayKeys.map((key) => {
+    const dayMap = outfitDailyMap.get(key);
+    return {
+      bucket: key,
+      label: formatJstDateLabel(key),
+      counts: presetIds.map((presetId) => dayMap?.get(presetId) ?? 0),
+    };
+  });
 
   return {
     categoryKey,
@@ -381,6 +414,7 @@ export function buildCollectionKpi(params: {
     signupClicks: toMetric(signupClicks.current, signupClicks.previous),
     shares: toMetric(shares.current, shares.previous),
     outfitCounts,
+    outfitDaily,
     trend: dayKeys.map((key) => trendMap.get(key)!),
   };
 }

@@ -13,7 +13,10 @@ import type {
   CustomDashboardRange,
   DashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
-import { buildCollectionTrendCsv } from "@/features/admin-dashboard/lib/build-collection-trend-csv";
+import {
+  buildCollectionOutfitDailyCsv,
+  buildCollectionTrendCsv,
+} from "@/features/admin-dashboard/lib/build-collection-trend-csv";
 import { AdminCollectionRangeControls } from "./AdminCollectionRangeControls";
 import { AdminCsvExportButtons } from "./AdminCsvExportButtons";
 import { AdminCollectionTrendChartPanel } from "./AdminCollectionTrendChartPanel";
@@ -168,11 +171,18 @@ export function AdminCollectionsView({
         ]
       : [];
 
-  const trendCsv = kpi ? buildCollectionTrendCsv(kpi.trend) : "";
-  const trendCsvFilename =
+  const csvSpan =
     kpi && kpi.trend.length > 0
-      ? `collection-${selectedKey}-${kpi.trend[0].bucket}_${kpi.trend[kpi.trend.length - 1].bucket}.csv`
-      : `collection-${selectedKey}.csv`;
+      ? `${kpi.trend[0].bucket}_${kpi.trend[kpi.trend.length - 1].bucket}`
+      : null;
+  const trendCsv = kpi ? buildCollectionTrendCsv(kpi.trend) : "";
+  const trendCsvFilename = csvSpan
+    ? `collection-${selectedKey}-${csvSpan}.csv`
+    : `collection-${selectedKey}.csv`;
+  const outfitDailyCsv = kpi ? buildCollectionOutfitDailyCsv(kpi) : "";
+  const outfitDailyCsvFilename = csvSpan
+    ? `collection-${selectedKey}-outfit-${csvSpan}.csv`
+    : `collection-${selectedKey}-outfit.csv`;
 
   return (
     <div className="space-y-6">
@@ -254,14 +264,23 @@ export function AdminCollectionsView({
 
       {kpi && kpi.outfitCounts.length > 0 ? (
         <div className="rounded-md border border-slate-200 bg-white p-4">
-          <h3 className="mb-2 text-sm font-semibold text-slate-800">
-            衣装別の生成数
-          </h3>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-slate-800">
+              柱別の生成数
+            </h3>
+            <AdminCsvExportButtons
+              csv={outfitDailyCsv}
+              filename={outfitDailyCsvFilename}
+            />
+          </div>
+          <p className="mb-2 text-[11px] text-slate-500">
+            CSV は「日別 × 柱別」のクロス集計です（1日1柱お披露目の効果検証用）。
+          </p>
           <ul className="space-y-1 text-sm text-slate-700">
             {kpi.outfitCounts.map((o, i) => (
-              <li key={o.presetId} className="flex justify-between">
-                <span className="font-mono text-xs text-slate-500">
-                  #{i + 1} {o.presetId.slice(0, 8)}
+              <li key={o.presetId} className="flex justify-between gap-3">
+                <span className="truncate text-slate-700">
+                  #{i + 1} {o.label}
                 </span>
                 <span className="tabular-nums">{o.count.toLocaleString()}</span>
               </li>

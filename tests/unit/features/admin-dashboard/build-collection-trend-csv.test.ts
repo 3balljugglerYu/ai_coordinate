@@ -1,8 +1,12 @@
 import {
   COLLECTION_TREND_CSV_HEADERS,
+  buildCollectionOutfitDailyCsv,
   buildCollectionTrendCsv,
 } from "@/features/admin-dashboard/lib/build-collection-trend-csv";
-import type { CollectionTrendPoint } from "@/features/admin-dashboard/lib/build-collection-kpi";
+import type {
+  CollectionKpi,
+  CollectionTrendPoint,
+} from "@/features/admin-dashboard/lib/build-collection-kpi";
 
 function point(overrides: Partial<CollectionTrendPoint>): CollectionTrendPoint {
   return {
@@ -58,5 +62,25 @@ describe("buildCollectionTrendCsv", () => {
     expect(lines[1]).toBe("2026-06-10,3,12,20,30,8,5,5,2,3,2,1,4");
     expect(lines[2]).toBe("2026-06-11,1000,0,0,0,0,0,0,0,0,0,0,0");
     expect(lines).toHaveLength(3);
+  });
+});
+
+describe("buildCollectionOutfitDailyCsv", () => {
+  test("日付 × 柱名 のクロス集計を出力する", () => {
+    const kpi = {
+      outfitCounts: [
+        { presetId: "a", label: "オーディン", count: 3 },
+        { presetId: "b", label: "ゼウス", count: 5 },
+      ],
+      outfitDaily: [
+        { bucket: "2026-06-10", label: "6/10", counts: [1, 2] },
+        { bucket: "2026-06-11", label: "6/11", counts: [2, 3] },
+      ],
+    } as unknown as CollectionKpi;
+
+    const lines = buildCollectionOutfitDailyCsv(kpi).split("\r\n");
+    expect(lines[0]).toBe("日付,オーディン,ゼウス");
+    expect(lines[1]).toBe("2026-06-10,1,2");
+    expect(lines[2]).toBe("2026-06-11,2,3");
   });
 });

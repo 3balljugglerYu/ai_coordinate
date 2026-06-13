@@ -35,13 +35,17 @@ export async function getCollectionKpi(params: {
   const startIso = params.previousStart.toISOString();
   const endIso = params.now.toISOString();
 
-  // 当該カテゴリの preset 一覧(衣装別の表示順 + ファネル絞り込みに使う)
-  const { data: presets } = await supabase
+  // 当該カテゴリの preset 一覧(柱名ラベル + 表示順 + ファネル絞り込みに使う)
+  const { data: presetRows } = await supabase
     .from("style_presets")
-    .select("id, display_order")
+    .select("id, display_order, title")
     .eq("category_id", params.categoryId)
     .order("display_order", { ascending: true });
-  const presetIds = (presets ?? []).map((p) => p.id as string);
+  const presets = (presetRows ?? []).map((p) => ({
+    id: p.id as string,
+    label: (p.title as string | null) ?? (p.id as string).slice(0, 8),
+  }));
+  const presetIds = presets.map((p) => p.id);
 
   const [completionsResult, imageJobsResult, eventsResult, sharesResult] =
     await Promise.all([
@@ -78,7 +82,7 @@ export async function getCollectionKpi(params: {
 
   return buildCollectionKpi({
     categoryKey: params.categoryKey,
-    presetIds,
+    presets,
     completionRows: (completionsResult.data ?? []) as CollectionCompletionRow[],
     imageJobRows: (imageJobsResult.data ?? []) as CollectionImageJobRow[],
     eventRows: (eventsResult.data ?? []) as CollectionEventRow[],
