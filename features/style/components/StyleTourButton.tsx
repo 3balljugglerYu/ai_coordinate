@@ -41,7 +41,8 @@ function resolveStepElement(step: DriveStep | undefined): Element | null {
 function runTransitionFlow(
   driverObj: Driver,
   targetIndex: number,
-  onComplete: () => void
+  onComplete: () => void,
+  isActive?: () => boolean
 ) {
   const steps = driverObj.getConfig().steps ?? [];
   const targetEl = resolveStepElement(steps[targetIndex]);
@@ -58,6 +59,9 @@ function runTransitionFlow(
 
   setTimeout(() => {
     document.body.removeAttribute("data-tour-transitioning");
+    // タイマー待機中にアンマウント・破棄された場合は、破棄済み driver への
+    // moveNext / movePrevious 呼び出しを避ける
+    if (isActive && !isActive()) return;
     onComplete();
   }, SCROLL_TRANSITION_MS);
 }
@@ -70,6 +74,7 @@ function runTransitionFlow(
 export function StyleTourButton() {
   const t = useTranslations("style");
   const driverRef = useRef<Driver | null>(null);
+  const isInitializingRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -79,88 +84,105 @@ export function StyleTourButton() {
   }, []);
 
   const startTour = async () => {
-    // 連打や多重起動を防ぐ（既にツアー中なら何もしない）
-    if (driverRef.current) return;
+    // 連打や多重起動を防ぐ（既にツアー中、または driver.js の遅延読み込み中なら何もしない）
+    if (driverRef.current || isInitializingRef.current) return;
 
-    const driver = await loadDriver();
-    if (driverRef.current) return;
+    isInitializingRef.current = true;
+    try {
+      const driver = await loadDriver();
+      if (driverRef.current) return;
 
-    const driverObj = driver({
-      showProgress: true,
-      progressText: "{{current}} / {{total}}",
-      animate: !prefersReducedMotion(),
-      allowClose: true,
-      // ハイライト中の要素もタップ不可にして、説明中の押し間違いを防ぐ
-      disableActiveInteraction: true,
-      overlayOpacity: 0.6,
-      stagePadding: 8,
-      stageRadius: 16,
-      popoverClass: "style-tour-popover",
-      prevBtnText: t("tourPrevButton"),
-      nextBtnText: t("tourNextButton"),
-      doneBtnText: t("tourDoneButton"),
-      steps: getStyleTourSteps({
-        presetTitle: t("tourStepPresetTitle"),
-        presetDescription: t("tourStepPresetDescription"),
-        characterTitle: t("tourStepCharacterTitle"),
-        characterDescription: t("tourStepCharacterDescription"),
-        generateTitle: t("tourStepGenerateTitle"),
-        generateDescription: t("tourStepGenerateDescription"),
-      }),
-      onNextClick: (_el, _step, opts) => {
-        const d = opts.driver;
-        if (d.isLastStep()) {
-          // 最終ステップの「さっそく試す！」: 閉じたあと、すぐ操作を始められる
-          // ようスタイル選択セクションまでスクロールして戻す
-          d.destroy();
-          requestAnimationFrame(() => {
-            const presetSection = document.querySelector(
-              '[data-tour="style-tour-preset"]'
-            );
-            if (!presetSection) return;
-            // スティッキーヘッダー（約57px）に「スタイル選択」見出しが
-            // 隠れないよう、ヘッダー分のマージンを引いてスクロールする
-            const STICKY_HEADER_OFFSET = 72;
-            const top =
-              presetSection.getBoundingClientRect().top +
-              window.scrollY -
-              STICKY_HEADER_OFFSET;
-            window.scrollTo({
-              top: Math.max(top, 0),
-              behavior: prefersReducedMotion() ? "auto" : "smooth",
+      const driverObj = driver({
+        showProgress: true,
+        progressText: "{{current}} / {{total}}",
+        animate: !prefersReducedMotion(),
+        allowClose: true,
+        // ハイライト中の要素もタップ不可にして、説明中の押し間違いを防ぐ
+        disableActiveInteraction: true,
+        overlayOpacity: 0.6,
+        stagePadding: 8,
+        stageRadius: 16,
+        popoverClass: "style-tour-popover",
+        prevBtnText: t("tourPrevButton"),
+        nextBtnText: t("tourNextButton"),
+        doneBtnText: t("tourDoneButton"),
+        steps: getStyleTourSteps({
+          presetTitle: t("tourStepPresetTitle"),
+          presetDescription: t("tourStepPresetDescription"),
+          characterTitle: t("tourStepCharacterTitle"),
+          characterDescription: t("tourStepCharacterDescription"),
+          generateTitle: t("tourStepGenerateTitle"),
+          generateDescription: t("tourStepGenerateDescription"),
+        }),
+        onNextClick: (_el, _step, opts) => {
+          const d = opts.driver;
+          if (d.isLastStep()) {
+            // 最終ステップの「さっそく試す！」: 閉じたあと、すぐ操作を始められる
+            // ようスタイル選択セクションまでスクロールして戻す
+            d.destroy();
+            requestAnimationFrame(() => {
+              const presetSection = document.querySelector(
+                '[data-tour="style-tour-preset"]'
+              );
+              if (!presetSection) return;
+              // スティッキーヘッダー（約57px）に「スタイル選択」見出しが
+              // 隠れないよう、ヘッダー分のマージンを引いてスクロールする
+              const STICKY_HEADER_OFFSET = 72;
+              const top =
+                presetSection.getBoundingClientRect().top +
+                window.scrollY -
+                STICKY_HEADER_OFFSET;
+              window.scrollTo({
+                top: Math.max(top, 0),
+                behavior: prefersReducedMotion() ? "auto" : "smooth",
+              });
             });
-          });
-          return;
-        }
-        const nextIndex = (d.getActiveIndex() ?? 0) + 1;
-        runTransitionFlow(d, nextIndex, () => d.moveNext());
-      },
-      onPrevClick: (_el, _step, opts) => {
-        const d = opts.driver;
-        if (d.isFirstStep()) return;
-        const prevIndex = (d.getActiveIndex() ?? 0) - 1;
-        runTransitionFlow(d, prevIndex, () => d.movePrevious());
-      },
-      onHighlighted: (element) => {
-        // 初回表示時: ハイライト要素を画面中央付近に寄せる（既存チュートリアルと同じ挙動）
-        if (element && element !== document.body) {
-          requestAnimationFrame(() => {
-            element.scrollIntoView({
-              behavior: prefersReducedMotion() ? "auto" : "smooth",
-              block: "center",
-              inline: "nearest",
+            return;
+          }
+          const nextIndex = (d.getActiveIndex() ?? 0) + 1;
+          runTransitionFlow(
+            d,
+            nextIndex,
+            () => d.moveNext(),
+            () => driverRef.current === d
+          );
+        },
+        onPrevClick: (_el, _step, opts) => {
+          const d = opts.driver;
+          if (d.isFirstStep()) return;
+          const prevIndex = (d.getActiveIndex() ?? 0) - 1;
+          runTransitionFlow(
+            d,
+            prevIndex,
+            () => d.movePrevious(),
+            () => driverRef.current === d
+          );
+        },
+        onHighlighted: (element) => {
+          // 初回表示時: ハイライト要素を画面中央付近に寄せる（既存チュートリアルと同じ挙動）
+          if (element && element !== document.body) {
+            requestAnimationFrame(() => {
+              element.scrollIntoView({
+                behavior: prefersReducedMotion() ? "auto" : "smooth",
+                block: "center",
+                inline: "nearest",
+              });
             });
-          });
-        }
-      },
-      onDestroyed: () => {
-        document.body.removeAttribute("data-tour-transitioning");
-        driverRef.current = null;
-      },
-    });
+          }
+        },
+        onDestroyed: () => {
+          document.body.removeAttribute("data-tour-transitioning");
+          driverRef.current = null;
+        },
+      });
 
-    driverRef.current = driverObj;
-    driverObj.drive(0);
+      driverRef.current = driverObj;
+      driverObj.drive(0);
+    } catch (error) {
+      console.error("Failed to start style tour:", error);
+    } finally {
+      isInitializingRef.current = false;
+    }
   };
 
   return (
