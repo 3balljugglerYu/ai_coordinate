@@ -1595,7 +1595,7 @@ export function StylePageClient({
 
   return (
     <div className="space-y-8">
-      <section className="space-y-3">
+      <section className="space-y-3" data-tour="style-tour-preset">
         <div className="space-y-1">
           <h2 className="text-xl font-semibold text-gray-900">
             {t("sectionTitle")}
@@ -1630,104 +1630,107 @@ export function StylePageClient({
       </section>
 
       <section className="space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {t("characterSectionTitle")}
-          </h2>
-          <p className="text-sm leading-6 text-slate-500">
-            {t("characterSectionDescription")}
-          </p>
-        </div>
-        <section
-          data-testid="style-reference-card"
-          className={`relative ml-auto rounded-xl border border-slate-200 bg-white shadow-sm transition-[width,padding] duration-200 ${
-            isReferenceCardCollapsed ? "w-[50%] p-2" : "w-full p-4"
-          }`}
-        >
-          <button
-            type="button"
-            onClick={() => setIsReferenceCardCollapsed((previous) => !previous)}
-            className={`absolute z-30 inline-flex h-6 w-6 items-center justify-center rounded border border-slate-300 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 ${
-              isReferenceCardCollapsed ? "right-1 top-1" : "right-2 top-2"
+        {/* チュートリアル Step2: 見出しごとハイライトする */}
+        <div data-tour="style-tour-character" className="space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {t("characterSectionTitle")}
+            </h2>
+            <p className="text-sm leading-6 text-slate-500">
+              {t("characterSectionDescription")}
+            </p>
+          </div>
+          <section
+            data-testid="style-reference-card"
+            className={`relative ml-auto rounded-xl border border-slate-200 bg-white shadow-sm transition-[width,padding] duration-200 ${
+              isReferenceCardCollapsed ? "w-[50%] p-2" : "w-full p-4"
             }`}
-            disabled={isGenerating}
-            aria-label={
-              isReferenceCardCollapsed
-                ? t("expandReferenceCardAria")
-                : t("collapseReferenceCardAria")
-            }
-            title={
-              isReferenceCardCollapsed
-                ? t("expandReferenceCardTitle")
-                : t("collapseReferenceCardTitle")
-            }
           >
-            {isReferenceCardCollapsed ? (
-              <Maximize2 size={12} aria-hidden="true" />
-            ) : (
-              <Minimize2 size={12} aria-hidden="true" />
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsReferenceCardCollapsed((previous) => !previous)}
+              className={`absolute z-30 inline-flex h-6 w-6 items-center justify-center rounded border border-slate-300 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 ${
+                isReferenceCardCollapsed ? "right-1 top-1" : "right-2 top-2"
+              }`}
+              disabled={isGenerating}
+              aria-label={
+                isReferenceCardCollapsed
+                  ? t("expandReferenceCardAria")
+                  : t("collapseReferenceCardAria")
+              }
+              title={
+                isReferenceCardCollapsed
+                  ? t("expandReferenceCardTitle")
+                  : t("collapseReferenceCardTitle")
+              }
+            >
+              {isReferenceCardCollapsed ? (
+                <Maximize2 size={12} aria-hidden="true" />
+              ) : (
+                <Minimize2 size={12} aria-hidden="true" />
+              )}
+            </button>
 
-          <div
-            className={`grid grid-cols-2 ${
-              isReferenceCardCollapsed ? "gap-1 md:gap-1" : "gap-3 md:gap-6"
-            }`}
-          >
-            <div className="min-w-0">
-              <ImageUploader
-                onImageUpload={handleUpload}
-                onImageRemove={handleUploadRemove}
-                value={
-                  uploadedImage ??
-                  (selectedRemoteSource
-                    ? { previewUrl: selectedRemoteSource.previewUrl }
-                    : null)
-                }
-                label={t("uploadLabel")}
-                addImageLabel={t("addImageAction")}
-                compact={isReferenceCardCollapsed}
-                disabled={isGenerating || isGuestResultLocked}
-                aspectRatio={selectedPresetAspectRatio}
-                filledPreviewMode="natural"
-              />
+            <div
+              className={`grid grid-cols-2 ${
+                isReferenceCardCollapsed ? "gap-1 md:gap-1" : "gap-3 md:gap-6"
+              }`}
+            >
+              <div className="min-w-0">
+                <ImageUploader
+                  onImageUpload={handleUpload}
+                  onImageRemove={handleUploadRemove}
+                  value={
+                    uploadedImage ??
+                    (selectedRemoteSource
+                      ? { previewUrl: selectedRemoteSource.previewUrl }
+                      : null)
+                  }
+                  label={t("uploadLabel")}
+                  addImageLabel={t("addImageAction")}
+                  compact={isReferenceCardCollapsed}
+                  disabled={isGenerating || isGuestResultLocked}
+                  aspectRatio={selectedPresetAspectRatio}
+                  filledPreviewMode="natural"
+                />
+              </div>
+
+              {selectedPreset ? (
+                <StyleReferencePanel
+                  label={t("styleLabel")}
+                  imageSrc={selectedPreset.thumbnailImageUrl}
+                  imageAlt={t("styleImageAlt")}
+                  className={isReferenceCardCollapsed ? "min-w-0 space-y-1" : "min-w-0 space-y-3"}
+                  collapsed={isReferenceCardCollapsed}
+                  aspectRatio={selectedPresetAspectRatio}
+                  tooltip={(() => {
+                    const guidance =
+                      (styleCardLocale === "en"
+                        ? selectedPreset.category.userGuidanceEn
+                        : selectedPreset.category.userGuidanceJa) ?? null;
+                    if (!guidance) return null;
+                    return (
+                      <LabelInfoTooltip
+                        ariaLabel={t("userGuidanceTooltipAria")}
+                        content={
+                          <span className="whitespace-pre-line">{guidance}</span>
+                        }
+                        contentClassName="max-w-[20rem] px-3 py-2 text-sm leading-6"
+                      />
+                    );
+                  })()}
+                />
+              ) : null}
             </div>
 
-            {selectedPreset ? (
-              <StyleReferencePanel
-                label={t("styleLabel")}
-                imageSrc={selectedPreset.thumbnailImageUrl}
-                imageAlt={t("styleImageAlt")}
-                className={isReferenceCardCollapsed ? "min-w-0 space-y-1" : "min-w-0 space-y-3"}
-                collapsed={isReferenceCardCollapsed}
-                aspectRatio={selectedPresetAspectRatio}
-                tooltip={(() => {
-                  const guidance =
-                    (styleCardLocale === "en"
-                      ? selectedPreset.category.userGuidanceEn
-                      : selectedPreset.category.userGuidanceJa) ?? null;
-                  if (!guidance) return null;
-                  return (
-                    <LabelInfoTooltip
-                      ariaLabel={t("userGuidanceTooltipAria")}
-                      content={
-                        <span className="whitespace-pre-line">{guidance}</span>
-                      }
-                      contentClassName="max-w-[20rem] px-3 py-2 text-sm leading-6"
-                    />
-                  );
-                })()}
+            <div className="mt-3">
+              <ImageSourcePickerTrigger
+                onClick={picker.openPicker}
+                disabled={isGenerating || isGuestResultLocked}
               />
-            ) : null}
-          </div>
-
-          <div className="mt-3">
-            <ImageSourcePickerTrigger
-              onClick={picker.openPicker}
-              disabled={isGenerating || isGuestResultLocked}
-            />
-          </div>
-        </section>
+            </div>
+          </section>
+        </div>
 
         <Card className="p-6">
           <div className="space-y-6">
@@ -1946,14 +1949,16 @@ export function StylePageClient({
               />
             ) : null}
 
-            <GenerationSubmitButton
-              onClick={handleGenerate}
-              disabled={isGenerateDisabled}
-              isGenerating={isGenerating}
-              generateLabel={t("generateButton")}
-              generatingLabel={t("generatingButton")}
-              costAmount={showGenerateCost ? selectedModelPercoinCost : null}
-            />
+            <div data-tour="style-tour-generate">
+              <GenerationSubmitButton
+                onClick={handleGenerate}
+                disabled={isGenerateDisabled}
+                isGenerating={isGenerating}
+                generateLabel={t("generateButton")}
+                generatingLabel={t("generatingButton")}
+                costAmount={showGenerateCost ? selectedModelPercoinCost : null}
+              />
+            </div>
             <div className="space-y-1 text-xs leading-5 text-slate-500">
               <p>{t("generateHint")}</p>
               <p>{t("generateRetryHint")}</p>

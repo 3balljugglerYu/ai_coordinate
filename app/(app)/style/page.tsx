@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { StylePageShareButton } from "@/features/style/components/StylePageShareButton";
+import { StyleTourButton } from "@/features/style/components/StyleTourButton";
 import { GuestGenerationTrialCta } from "@/features/generation/components/GuestGenerationTrialCta";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
@@ -95,6 +96,8 @@ export default async function StylePage({ searchParams }: StylePageProps) {
               </h1>
               <StylePageShareButton />
             </div>
+            {/* モバイルでタイトルを圧縮しないよう、チュートリアルボタンはタイトル下に左詰めで置く */}
+            <StyleTourButton />
             <p className="text-sm font-medium text-gray-700">
               {t("pageDescription")}
             </p>
