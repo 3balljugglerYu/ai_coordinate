@@ -50,21 +50,27 @@ export function TutorialStartModal({
         }
       }}
     >
-      <DialogContent showCloseButton={false} className="sm:max-w-md">
+      <DialogContent
+        showCloseButton={false}
+        className="overflow-hidden rounded-3xl border-0 bg-[linear-gradient(160deg,#ffffff_0%,#fff5f9_55%,#fff3e8_100%)] p-6 shadow-[0_18px_48px_rgba(236,72,153,0.22),0_6px_16px_rgba(15,23,42,0.08)] sm:max-w-md"
+      >
         {showDeclinedMessage ? (
           <>
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-xl font-bold text-transparent">
                 {t("startDeclinedTitleLine1")}
                 <br />
                 {t("startDeclinedTitleLine2")}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-slate-600">
                 {t("startDeclinedDescription")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="sm:justify-end">
-              <Button onClick={handleCloseDeclined} className="min-h-[44px]">
+              <Button
+                onClick={handleCloseDeclined}
+                className="min-h-[44px] rounded-full border-0 bg-gradient-to-r from-pink-500 to-orange-400 font-bold text-white shadow-sm transition hover:from-pink-600 hover:to-orange-500"
+              >
                 {t("close")}
               </Button>
             </DialogFooter>
@@ -72,8 +78,10 @@ export function TutorialStartModal({
         ) : (
           <>
             <DialogHeader className="text-left">
-              <DialogTitle>{t("startTitle")}</DialogTitle>
-              <div className="relative my-4 w-full overflow-hidden rounded-lg">
+              <DialogTitle className="bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-2xl font-bold leading-snug text-transparent">
+                {t("startTitle")}
+              </DialogTitle>
+              <div className="relative my-4 w-full overflow-hidden rounded-2xl shadow-sm ring-1 ring-pink-100">
                 <Image
                   src="/tutorial_main_image.webp"
                   alt={t("startImageAlt")}
@@ -83,22 +91,21 @@ export function TutorialStartModal({
                   priority
                 />
               </div>
-              <DialogDescription className="mb-2">
+              <DialogDescription className="mb-2 text-[0.95rem] leading-relaxed text-slate-600">
                 {t("startDescription")}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="flex flex-col gap-2 sm:justify-end">
+            <DialogFooter className="flex flex-col gap-2.5 sm:justify-end">
               <Button
-                variant="info"
                 onClick={onConfirm}
-                className="min-h-[44px]"
+                className="min-h-[48px] rounded-full border-0 bg-gradient-to-r from-pink-500 to-orange-400 text-base font-bold text-white shadow-[0_6px_16px_rgba(236,72,153,0.28)] transition hover:from-pink-600 hover:to-orange-500"
               >
                 {t("startConfirm")}
               </Button>
               <Button
                 variant="outline"
                 onClick={handleDeclineClick}
-                className="min-h-[44px]"
+                className="min-h-[44px] rounded-full border-slate-200 bg-white font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
               >
                 {t("startDecline")}
               </Button>

@@ -102,7 +102,7 @@ describe("StyleTourButton", () => {
     const config = await startTourAndGetConfig();
 
     expect(config.steps).toHaveLength(3);
-    expect(config.popoverClass).toBe("style-tour-popover");
+    expect(config.popoverClass).toBe("persta-tour-popover");
     expect(config.disableActiveInteraction).toBe(true);
     expect(driverInstance.drive).toHaveBeenCalledWith(0);
   });
