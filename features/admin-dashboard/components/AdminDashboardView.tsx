@@ -81,13 +81,15 @@ export function AdminDashboardView({
             currentStyleFrom={currentStyleFrom}
             currentStyleTo={currentStyleTo}
           />
-          <AdminDashboardRangeTabs
-            currentRange={data.range}
-            currentTab={currentTab}
-            currentStyleRange={currentStyleRange}
-            currentStyleFrom={currentStyleFrom}
-            currentStyleTo={currentStyleTo}
-          />
+          {currentTab === "all" ? (
+            <AdminDashboardRangeTabs
+              currentRange={data.range}
+              currentTab={currentTab}
+              currentStyleRange={currentStyleRange}
+              currentStyleFrom={currentStyleFrom}
+              currentStyleTo={currentStyleTo}
+            />
+          ) : null}
           <p className="text-xs text-slate-500">
             最終更新 {new Date(data.updatedAt).toLocaleString("ja-JP")}
           </p>
