@@ -75,9 +75,7 @@ export function PromptInputField({
         <Label
           htmlFor={id}
           className="whitespace-pre-line text-base font-medium leading-snug"
-        >
-          {label}
-        </Label>
+        >{label}</Label>
         {showClearButton && (
           <Button
             type="button"
