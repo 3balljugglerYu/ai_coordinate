@@ -1388,6 +1388,8 @@ export const zhCnMessages = {
     guestLoginCtaTitle: "免登录体验",
     guestLoginCtaDescription: "每天可免费试用 ChatGPT Image 2.0 一次。生成后登录（免费注册）即可保存图片。",
     guestLoginCtaAction: "登录 / 注册",
+    guestCategoryLoginAction: "登录后即可生成！",
+    guestCategoryLoginHint: "登录后即可使用所有风格生成！",
     generateButton: "开始造型",
     generatingButton: "生成中...",
     // Status card heading

@@ -1390,6 +1390,8 @@ export const enMessages = {
     guestLoginCtaTitle: "Try without signing in",
     guestLoginCtaDescription: "Try ChatGPT Image 2.0 free, once a day. Log in (free sign-up) after generating to save your image.",
     guestLoginCtaAction: "Sign in / Sign up",
+    guestCategoryLoginAction: "Log in to generate!",
+    guestCategoryLoginHint: "Log in to generate with every style!",
     generateButton: "Start Styling",
     generatingButton: "Generating...",
     // Status card heading

@@ -1392,6 +1392,8 @@ export const hiMessages = {
     guestLoginCtaTitle: "बिना साइन इन किए आज़माएँ",
     guestLoginCtaDescription: "ChatGPT Image 2.0 दिन में एक बार मुफ़्त आज़माएँ। बनाने के बाद लॉगिन (मुफ़्त साइन-अप) करके अपनी इमेज सहेजें।",
     guestLoginCtaAction: "साइन इन / साइन अप",
+    guestCategoryLoginAction: "जनरेट करने के लिए लॉग इन करें!",
+    guestCategoryLoginHint: "लॉग इन करके सभी स्टाइल से जनरेट करें!",
     generateButton: "स्टाइलिंग शुरू करें",
     generatingButton: "उत्पन्न हो रहा है...",
     // Status card heading

@@ -296,6 +296,8 @@ const styleMessages = {
     "Your balance is too low. Prepare at least {cost} Percoins to continue.",
   guestRateLimitSignupHint: "Create an account to keep going right away.",
   guestRateLimitSignupAction: "Sign up to continue",
+  guestCategoryLoginAction: "Log in to generate!",
+  guestCategoryLoginHint: "Log in to generate with every style!",
   percoinBalanceLabel: "Current Percoin balance",
   percoinBalanceLoading: "Checking your Percoin balance...",
   percoinBalanceUnavailable: "We could not load your balance.",
@@ -396,6 +398,9 @@ const TEST_COORDINATE_CATEGORY = {
   showBackgroundChangeControl: true,
   showGenerationModelControl: true,
   showUserPromptInput: false,
+  userPromptLabel: null,
+  userPromptPlaceholder: null,
+  userPromptMaxLength: null,
   visibility: "public",
   isActive: true,
 } as const;
@@ -1825,6 +1830,73 @@ describe("StylePageClient", () => {
     expect(
       screen.getByRole("button", { name: /Start Styling/ })
     ).toBeDisabled();
+  });
+
+  test("未ログインユーザーがcoordinate以外のカテゴリ選択時_生成ボタンの代わりにログインCTAを出す", async () => {
+    const chibiCategory = {
+      ...TEST_COORDINATE_CATEGORY,
+      id: "cat-chibi",
+      key: "chibi",
+      displayNameJa: "ちびキャラ",
+      displayNameEn: "Chibi",
+    } as const;
+    const chibiPreset: StylePresetPublicSummary = {
+      ...presets[0],
+      id: "chibi-preset-1",
+      category: chibiCategory,
+    };
+
+    render(
+      <StylePageClient presets={[chibiPreset]} initialAuthState="guest" />
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Log in to generate!" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Log in to generate with every style!")
+    ).toBeInTheDocument();
+    // 生成ボタンは描画しない
+    expect(
+      screen.queryByRole("button", { name: /Start Styling/ })
+    ).not.toBeInTheDocument();
+  });
+
+  test("未ログインユーザーがcoordinateカテゴリ選択時_生成ボタンを出しログインCTAは出さない", async () => {
+    render(<StylePageClient presets={presets} initialAuthState="guest" />);
+
+    expect(
+      await screen.findByRole("button", { name: /Start Styling/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Log in to generate!" })
+    ).not.toBeInTheDocument();
+  });
+
+  test("ログインユーザーはcoordinate以外のカテゴリでも生成ボタンを出す", async () => {
+    const chibiCategory = {
+      ...TEST_COORDINATE_CATEGORY,
+      id: "cat-chibi",
+      key: "chibi",
+      displayNameJa: "ちびキャラ",
+      displayNameEn: "Chibi",
+    } as const;
+    const chibiPreset: StylePresetPublicSummary = {
+      ...presets[0],
+      id: "chibi-preset-2",
+      category: chibiCategory,
+    };
+
+    render(
+      <StylePageClient presets={[chibiPreset]} initialAuthState="authenticated" />
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Start Styling/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Log in to generate!" })
+    ).not.toBeInTheDocument();
   });
 
   test("ログインユーザーが上限到達時_翌日案内カードを表示して生成を止める", async () => {

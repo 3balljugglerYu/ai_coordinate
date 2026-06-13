@@ -1393,6 +1393,8 @@ export const idMessages = {
     guestLoginCtaTitle: "Coba tanpa masuk",
     guestLoginCtaDescription: "Coba ChatGPT Image 2.0 gratis, sekali sehari. Masuk (daftar gratis) setelah membuat untuk menyimpan gambarmu.",
     guestLoginCtaAction: "Masuk / Daftar",
+    guestCategoryLoginAction: "Masuk untuk membuat!",
+    guestCategoryLoginHint: "Masuk untuk membuat dengan semua gaya!",
     generateButton: "Mulai styling",
     generatingButton: "Menghasilkan...",
     // Status card heading

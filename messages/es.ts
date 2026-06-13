@@ -1394,6 +1394,8 @@ export const esMessages = {
     guestLoginCtaTitle: "Pruébalo sin iniciar sesión",
     guestLoginCtaDescription: "Prueba ChatGPT Image 2.0 gratis, una vez al día. Inicia sesión (registro gratuito) tras generar para guardar tu imagen.",
     guestLoginCtaAction: "Iniciar sesión / Registrarse",
+    guestCategoryLoginAction: "¡Inicia sesión para generar!",
+    guestCategoryLoginHint: "¡Inicia sesión para generar con todos los estilos!",
     generateButton: "Empezar styling",
     generatingButton: "Generando...",
     // Status card heading

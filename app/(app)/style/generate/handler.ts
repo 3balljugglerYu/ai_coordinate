@@ -255,6 +255,15 @@ export async function postStyleGenerateRoute(
     if (preset.category.visibility === "admin_only") {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
+    // ゲストの無料生成は category.key が "coordinate" のプリセットのみ許可。
+    // それ以外はログイン必須（クライアントでも制御するが defense-in-depth）。
+    if (preset.category.key !== "coordinate") {
+      return jsonError(
+        copy.guestCategoryLoginHint,
+        "STYLE_CATEGORY_REQUIRES_AUTH",
+        403
+      );
+    }
     const effectiveSourceImageType: SourceImageType =
       preset.category.showSourceImageTypeControl
         ? sourceImageType

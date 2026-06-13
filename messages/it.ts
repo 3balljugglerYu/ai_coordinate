@@ -1394,6 +1394,8 @@ export const itMessages = {
     guestLoginCtaTitle: "Provalo senza accedere",
     guestLoginCtaDescription: "Prova ChatGPT Image 2.0 gratis, una volta al giorno. Accedi (registrazione gratuita) dopo la generazione per salvare la tua immagine.",
     guestLoginCtaAction: "Accedi / Registrati",
+    guestCategoryLoginAction: "Accedi per generare!",
+    guestCategoryLoginHint: "Accedi per generare con tutti gli stili!",
     generateButton: "Avvia styling",
     generatingButton: "Generazione...",
     // Status card heading

@@ -1391,6 +1391,8 @@ export const viMessages = {
     guestLoginCtaTitle: "Thử mà không cần đăng nhập",
     guestLoginCtaDescription: "Dùng thử ChatGPT Image 2.0 miễn phí, mỗi ngày 1 lần. Đăng nhập (đăng ký miễn phí) sau khi tạo để lưu hình của bạn.",
     guestLoginCtaAction: "Đăng nhập / Đăng ký",
+    guestCategoryLoginAction: "Đăng nhập để tạo!",
+    guestCategoryLoginHint: "Đăng nhập để tạo với mọi phong cách!",
     generateButton: "Bắt đầu styling",
     generatingButton: "Đang tạo...",
     // Status card heading
