@@ -1520,6 +1520,7 @@ export const thMessages = {
     styleBackgroundPromptUnavailable:
       "สไตล์นี้ไม่รองรับการเปลี่ยนพื้นหลัง",
     styleImageReadFailed: "อ่านรูปสไตล์ไม่สำเร็จ",
+    sourceImageReadFailed: "ไม่สามารถอ่านรูปต้นฉบับได้ โปรดเลือกรูปใหม่แล้วลองอีกครั้ง",
     noCreditsFlow: "หน้าจอนี้ไม่ตรวจสอบหรือใช้ Percoin",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

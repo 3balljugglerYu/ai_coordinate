@@ -1523,6 +1523,7 @@ export const idMessages = {
     styleBackgroundPromptUnavailable:
       "Gaya ini tidak mendukung perubahan latar belakang.",
     styleImageReadFailed: "Gagal membaca gambar gaya.",
+    sourceImageReadFailed: "Gagal membaca gambar sumber. Silakan pilih ulang gambar lalu coba lagi.",
     noCreditsFlow: "Layar ini tidak memeriksa atau menggunakan Percoin.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

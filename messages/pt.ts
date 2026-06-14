@@ -1524,6 +1524,7 @@ export const ptMessages = {
     styleBackgroundPromptUnavailable:
       "Este estilo não suporta mudança de fundo.",
     styleImageReadFailed: "Não foi possível ler a imagem do estilo.",
+    sourceImageReadFailed: "Não foi possível ler a imagem de origem. Selecione a imagem novamente e tente de novo.",
     noCreditsFlow: "Esta tela não verifica nem consome Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

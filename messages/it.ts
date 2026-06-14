@@ -1524,6 +1524,7 @@ export const itMessages = {
     styleBackgroundPromptUnavailable:
       "Questo stile non supporta il cambio dello sfondo.",
     styleImageReadFailed: "Impossibile leggere l'immagine dello stile.",
+    sourceImageReadFailed: "Impossibile leggere l’immagine di origine. Riseleziona l’immagine e riprova.",
     noCreditsFlow: "Questa schermata non controlla né consuma Percoin.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

@@ -1522,6 +1522,7 @@ export const hiMessages = {
     styleBackgroundPromptUnavailable:
       "यह स्टाइल पृष्ठभूमि परिवर्तन का समर्थन नहीं करता।",
     styleImageReadFailed: "स्टाइल छवि पढ़ने में विफल।",
+    sourceImageReadFailed: "स्रोत छवि नहीं पढ़ी जा सकी. कृपया छवि दोबारा चुनें और फिर से प्रयास करें.",
     noCreditsFlow: "यह स्क्रीन Percoin की जाँच या उपयोग नहीं करती।",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

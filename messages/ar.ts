@@ -1521,6 +1521,7 @@ export const arMessages = {
     styleBackgroundPromptUnavailable:
       "هذا الأسلوب لا يدعم تغيير الخلفية.",
     styleImageReadFailed: "فشل قراءة صورة الأسلوب.",
+    sourceImageReadFailed: "تعذّر قراءة الصورة المصدر. يرجى إعادة اختيار الصورة والمحاولة مرة أخرى.",
     noCreditsFlow: "هذه الشاشة لا تتحقق من Percoin أو تستهلكها.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
