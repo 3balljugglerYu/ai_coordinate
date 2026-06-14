@@ -1,11 +1,7 @@
 import "server-only";
 
 import sharp from "sharp";
-import {
-  getMountLayout,
-  toPixelRect,
-  type MountLayoutKey,
-} from "./mount-layouts";
+import { toPixelRect, type NormalizedSlotRect } from "./mount-layouts";
 
 /**
  * 台紙テンプレ(空PNG)の各スロットへ、完成シール(ホロ+キャラ+名前まで焼き込み済みの
@@ -17,9 +13,10 @@ import {
 export async function composeMount(params: {
   templatePng: Buffer;
   stickers: Buffer[];
-  layout: MountLayoutKey;
+  /** 配置スロット(正規化矩形)。呼び出し側で mount_slots ?? プリセットを解決して渡す */
+  slots: NormalizedSlotRect[];
 }): Promise<Buffer> {
-  const { templatePng, stickers, layout } = params;
+  const { templatePng, stickers, slots } = params;
 
   const base = sharp(templatePng);
   const meta = await base.metadata();
@@ -29,7 +26,6 @@ export async function composeMount(params: {
     throw new Error("compose-mount: invalid template dimensions");
   }
 
-  const slots = getMountLayout(layout);
   const count = Math.min(stickers.length, slots.length);
 
   const composites = [];
