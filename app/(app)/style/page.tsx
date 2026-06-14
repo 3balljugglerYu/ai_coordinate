@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
-import { StylePageShareButton } from "@/features/style/components/StylePageShareButton";
 import { StyleTourButton } from "@/features/style/components/StyleTourButton";
 import { GuestGenerationTrialCta } from "@/features/generation/components/GuestGenerationTrialCta";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
@@ -90,12 +89,9 @@ export default async function StylePage({ searchParams }: StylePageProps) {
           ) : null}
 
           <div className="space-y-2">
-            <div className="flex items-start justify-between gap-3">
-              <h1 className="text-3xl font-bold text-gray-900">
-                {t("pageTitle")}
-              </h1>
-              <StylePageShareButton />
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {t("pageTitle")}
+            </h1>
             {/* モバイルでタイトルを圧縮しないよう、チュートリアルボタンはタイトル下に左詰めで置く */}
             <StyleTourButton />
             <p className="text-sm font-medium text-gray-700">
