@@ -2,6 +2,7 @@ import {
   alignGroup,
   applyAspect,
   clampPosition,
+  distributeEvenly,
   joinSlots,
   movePosition,
   pixelAspectRatio,
@@ -188,6 +189,68 @@ describe("alignGroup (辺そろえ・全枠が端に揃う)", () => {
       expect(p.x).toBeCloseTo(0.2, 6);
       expect(p.y).toBeCloseTo(0.1, 6);
     });
+  });
+});
+
+describe("distributeEvenly (両端固定・等間隔)", () => {
+  test("横: 両端固定で間の枠を等間隔にする", () => {
+    const state: EditorSlots = {
+      size: { w: 0.1, h: 0.1 },
+      positions: [
+        { x: 0.0, y: 0.1 }, // 左端
+        { x: 0.1, y: 0.2 }, // 偏った中間
+        { x: 0.15, y: 0.3 },
+        { x: 0.6, y: 0.4 }, // 右端
+      ],
+    };
+    const next = distributeEvenly(state, "horizontal");
+    // lo=0, hi=0.6, step=0.2 → 0, 0.2, 0.4, 0.6
+    [0, 0.2, 0.4, 0.6].forEach((expected, i) =>
+      expect(next.positions[i].x).toBeCloseTo(expected, 6),
+    );
+    // y は不変
+    expect(next.positions.map((p) => p.y)).toEqual([0.1, 0.2, 0.3, 0.4]);
+  });
+
+  test("縦: 両端固定で間の枠を等間隔にする", () => {
+    const state: EditorSlots = {
+      size: { w: 0.1, h: 0.1 },
+      positions: [
+        { x: 0.1, y: 0.0 },
+        { x: 0.2, y: 0.05 },
+        { x: 0.3, y: 0.9 },
+      ],
+    };
+    const next = distributeEvenly(state, "vertical");
+    // lo=0, hi=0.9, step=0.45 → 0, 0.45, 0.9
+    expect(next.positions.map((p) => p.y)).toEqual([0, 0.45, 0.9]);
+  });
+
+  test("順序が入れ替わっていても元のインデックスを保持して等間隔化", () => {
+    const state: EditorSlots = {
+      size: { w: 0.1, h: 0.1 },
+      positions: [
+        { x: 0.6, y: 0 }, // 実は右端
+        { x: 0.0, y: 0 }, // 実は左端
+        { x: 0.5, y: 0 },
+      ],
+    };
+    const next = distributeEvenly(state, "horizontal");
+    // ソート: idx1(0), idx2(0.5→0.3), idx0(0.6) → step=0.3
+    expect(next.positions[1].x).toBeCloseTo(0, 6);
+    expect(next.positions[2].x).toBeCloseTo(0.3, 6);
+    expect(next.positions[0].x).toBeCloseTo(0.6, 6);
+  });
+
+  test("枠が2つ以下なら変化しない", () => {
+    const state: EditorSlots = {
+      size: { w: 0.1, h: 0.1 },
+      positions: [
+        { x: 0.1, y: 0.1 },
+        { x: 0.5, y: 0.5 },
+      ],
+    };
+    expect(distributeEvenly(state, "horizontal")).toEqual(state);
   });
 });
 

@@ -5,12 +5,14 @@ import type { NormalizedSlotRect } from "@/features/collections/lib/mount-layout
 import {
   alignGroup,
   applyAspect,
+  distributeEvenly,
   joinSlots,
   movePosition,
   pixelAspectRatio,
   resizeShared,
   splitSlots,
   type Corner,
+  type DistributeAxis,
   type EditorSlots,
   type HAlign,
   type VAlign,
@@ -171,6 +173,10 @@ export function MountSlotEditor({
     onChange(joinSlots(alignGroup(splitSlots(slots), hAlign, vAlign)));
   }
 
+  function handleDistribute(axis: DistributeAxis) {
+    onChange(joinSlots(distributeEvenly(splitSlots(slots), axis)));
+  }
+
   function endDrag(e: ReactPointerEvent) {
     if (dragRef.current) {
       dragRef.current = null;
@@ -305,6 +311,25 @@ export function MountSlotEditor({
             className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50"
           >
             下寄せ
+          </button>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-slate-500">均等:</span>
+          <button
+            type="button"
+            onClick={() => handleDistribute("horizontal")}
+            disabled={state.positions.length < 3}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50 disabled:opacity-40"
+          >
+            横を等間隔
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDistribute("vertical")}
+            disabled={state.positions.length < 3}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50 disabled:opacity-40"
+          >
+            縦を等間隔
           </button>
         </div>
       </div>

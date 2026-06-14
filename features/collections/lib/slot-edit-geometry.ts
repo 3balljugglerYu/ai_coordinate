@@ -230,6 +230,37 @@ export function alignGroup(
   };
 }
 
+/** 均等配置(分布)の方向 */
+export type DistributeAxis = "horizontal" | "vertical";
+
+/**
+ * 枠を等間隔に分布する(デザインツールの「分布」と同じ)。
+ * 指定軸の両端の枠は動かさず、間の枠を等間隔に並べ直す。全枠同サイズなので
+ * 位置(左端/上端)を等間隔にすれば枠間のすき間も均等になる。枠が2つ以下なら何もしない。
+ */
+export function distributeEvenly(
+  state: EditorSlots,
+  axis: DistributeAxis,
+): EditorSlots {
+  const { size, positions } = state;
+  const n = positions.length;
+  if (n < 3) {
+    return state;
+  }
+  const key: keyof Point = axis === "horizontal" ? "x" : "y";
+  // 指定軸の値でソートした順序(元のインデックスを保持)
+  const order = positions.map((_, i) => i).sort((a, b) => positions[a][key] - positions[b][key]);
+  const lo = positions[order[0]][key];
+  const hi = positions[order[n - 1]][key];
+  const step = (hi - lo) / (n - 1);
+
+  const newPositions = positions.map((p) => ({ ...p }));
+  order.forEach((origIndex, sortedPos) => {
+    newPositions[origIndex][key] = lo + step * sortedPos;
+  });
+  return { size, positions: newPositions };
+}
+
 /** 共有サイズのピクセル比 (w_px / h_px) を返す。生成側の比率(3:4 等)と同じ尺度。 */
 export function pixelAspectRatio(
   size: Size,
