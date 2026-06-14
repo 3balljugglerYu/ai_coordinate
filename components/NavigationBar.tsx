@@ -26,6 +26,7 @@ import {
   stripLocalePrefix,
 } from "@/i18n/config";
 import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
+import { getLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 
 export function NavigationBar() {
   const pathname = usePathname();
@@ -82,6 +83,7 @@ export function NavigationBar() {
     if (user && !hasPrefetched.current) {
       router.prefetch(localizedHomePath);
       router.prefetch("/coordinate");
+      router.prefetch("/style");
       router.prefetch("/challenge");
       router.prefetch("/notifications");
       router.prefetch("/my-page");
@@ -118,7 +120,18 @@ export function NavigationBar() {
   }, []);
 
   const handleNavigation = (path: string) => {
-    const normalizedTargetPath = stripLocalePrefix(path).pathname;
+    let normalizedTargetPath = stripLocalePrefix(path).pathname;
+    let resolvedPath = path;
+
+    // 「コーディネート」入口は前回使った生成モードへ復帰させる。
+    // 前回 One-Tap Style だった場合は /style へ遷移する。
+    if (normalizedTargetPath === "/coordinate") {
+      const preferred = getLastGenerationModePath();
+      if (preferred !== "/coordinate") {
+        resolvedPath = preferred;
+        normalizedTargetPath = preferred;
+      }
+    }
 
     if (
       normalizedTargetPath === "/challenge" &&
@@ -131,7 +144,7 @@ export function NavigationBar() {
       return;
     }
 
-    let destinationPath = path;
+    let destinationPath = resolvedPath;
     let pendingTargetPath = normalizedTargetPath;
 
     if (requiresAuthForGuestNavigation(normalizedTargetPath) && !user) {
@@ -183,7 +196,12 @@ export function NavigationBar() {
           <div className="flex flex-1 items-center justify-around">
             {navItems.map(({ path, label, icon: Icon }) => {
               const normalizedItemPath = stripLocalePrefix(path).pathname;
-              const isActive = effectiveActivePathname === normalizedItemPath;
+              // 「コーディネート」入口は生成モード全体の入口として扱い、
+              // /style 滞在中もアクティブ表示する。
+              const isActive =
+                effectiveActivePathname === normalizedItemPath ||
+                (normalizedItemPath === "/coordinate" &&
+                  effectiveActivePathname === "/style");
               return (
                 <button
                   key={path}
