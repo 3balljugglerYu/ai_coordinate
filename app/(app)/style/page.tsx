@@ -72,7 +72,7 @@ export default async function StylePage({ searchParams }: StylePageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
-        <div className="mx-auto max-w-3xl space-y-8">
+        <div className="mx-auto max-w-6xl space-y-8">
           {typeof totalGenerationCount === "number" &&
           totalGenerationCount > 0 ? (
             <div
