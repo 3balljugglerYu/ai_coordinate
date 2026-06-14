@@ -1,0 +1,193 @@
+import {
+  applyAspect,
+  clampPosition,
+  joinSlots,
+  movePosition,
+  pixelAspectRatio,
+  resizeShared,
+  seedSlots,
+  splitSlots,
+  type EditorSlots,
+} from "@/features/collections/lib/slot-edit-geometry";
+import { MOUNT_LAYOUTS } from "@/features/collections/lib/mount-layouts";
+
+describe("splitSlots / joinSlots", () => {
+  test("共有サイズと位置に分解し、合成で往復する", () => {
+    const slots = [
+      { x: 0.1, y: 0.1, w: 0.2, h: 0.2 },
+      { x: 0.6, y: 0.6, w: 0.2, h: 0.2 },
+    ];
+    const state = splitSlots(slots);
+    expect(state.size).toEqual({ w: 0.2, h: 0.2 });
+    expect(state.positions).toEqual([
+      { x: 0.1, y: 0.1 },
+      { x: 0.6, y: 0.6 },
+    ]);
+    expect(joinSlots(state)).toEqual(slots);
+  });
+
+  test("共有サイズは先頭枠の w,h を採用する", () => {
+    const state = splitSlots([
+      { x: 0, y: 0, w: 0.3, h: 0.25 },
+      { x: 0.5, y: 0.5, w: 0.9, h: 0.9 },
+    ]);
+    expect(state.size).toEqual({ w: 0.3, h: 0.25 });
+    // join すると全枠が先頭サイズに揃う
+    expect(joinSlots(state).every((s) => s.w === 0.3 && s.h === 0.25)).toBe(true);
+  });
+
+  test("空配列は size 0 / positions 空", () => {
+    expect(splitSlots([])).toEqual({ size: { w: 0, h: 0 }, positions: [] });
+  });
+});
+
+describe("seedSlots", () => {
+  test("MOUNT_LAYOUTS と同値のコピーを返す(参照は別)", () => {
+    const seeded = seedSlots("grid_4");
+    expect(seeded).toEqual(MOUNT_LAYOUTS.grid_4);
+    expect(seeded[0]).not.toBe(MOUNT_LAYOUTS.grid_4[0]);
+  });
+});
+
+describe("clampPosition / movePosition", () => {
+  test("位置を 0..1(共有サイズ分の余白)内へクランプ", () => {
+    const size = { w: 0.3, h: 0.3 };
+    expect(clampPosition({ x: -0.5, y: 1.2 }, size)).toEqual({ x: 0, y: 0.7 });
+  });
+
+  test("movePosition はその枠だけ移動しクランプする", () => {
+    const size = { w: 0.2, h: 0.2 };
+    expect(movePosition({ x: 0.1, y: 0.1 }, size, 0.05, -0.05)).toEqual({
+      x: 0.15000000000000002,
+      y: 0.05,
+    });
+    // 端を超える移動はクランプ
+    expect(movePosition({ x: 0.7, y: 0.7 }, size, 0.5, 0.5)).toEqual({
+      x: 0.8,
+      y: 0.8,
+    });
+  });
+});
+
+describe("resizeShared (対角固定・全枠連動)", () => {
+  const base: EditorSlots = {
+    size: { w: 0.2, h: 0.2 },
+    positions: [
+      { x: 0.1, y: 0.1 },
+      { x: 0.6, y: 0.6 },
+    ],
+  };
+  const sq = { lockRatio: false, templateWidth: 1000, templateHeight: 1000, minPx: 24 };
+
+  test("se を引くと左上が固定されたまま全枠が同じ新サイズになる", () => {
+    const next = resizeShared(base, "se", 0.05, 0.05, sq);
+    expect(next.size.w).toBeCloseTo(0.25, 6);
+    expect(next.size.h).toBeCloseTo(0.25, 6);
+    // 左上(対角=nw)は固定 → 位置不変
+    expect(next.positions[0]).toEqual({ x: 0.1, y: 0.1 });
+    expect(next.positions[1]).toEqual({ x: 0.6, y: 0.6 });
+    // 全枠同サイズ
+    const joined = joinSlots(next);
+    expect(joined.every((s) => s.w === next.size.w && s.h === next.size.h)).toBe(true);
+  });
+
+  test("nw を引くと各枠の右下が固定されたままサイズが変わる", () => {
+    const next = resizeShared(base, "nw", -0.05, -0.05, sq);
+    expect(next.size.w).toBeCloseTo(0.25, 6);
+    expect(next.size.h).toBeCloseTo(0.25, 6);
+    // 右下(対角=se)は固定: 枠0 右下 = (0.3,0.3), 枠1 = (0.8,0.8)
+    expect(next.positions[0].x + next.size.w).toBeCloseTo(0.3, 6);
+    expect(next.positions[0].y + next.size.h).toBeCloseTo(0.3, 6);
+    expect(next.positions[1].x + next.size.w).toBeCloseTo(0.8, 6);
+    expect(next.positions[1].y + next.size.h).toBeCloseTo(0.8, 6);
+  });
+
+  test("拡大しすぎは各枠が対角固定で 0..1 に収まる最大サイズへクランプ", () => {
+    // se 拡大 → 左上固定。枠1(0.6,0.6)の右辺が 1 まで → maxW = 1-0.6 = 0.4
+    const next = resizeShared(base, "se", 0.5, 0.5, sq);
+    expect(next.size.w).toBeCloseTo(0.4, 6);
+    expect(next.size.h).toBeCloseTo(0.4, 6);
+  });
+
+  test("nw 拡大は右下固定で左辺が 0 まで → maxW = 右辺座標(0.3)", () => {
+    const next = resizeShared(base, "nw", -0.5, -0.5, sq);
+    // 枠0 右辺=0.3, 枠1 右辺=0.8 → min=0.3
+    expect(next.size.w).toBeCloseTo(0.3, 6);
+    expect(next.size.h).toBeCloseTo(0.3, 6);
+    // 枠0 は左辺 0 まで拡大
+    expect(next.positions[0].x).toBeCloseTo(0, 6);
+  });
+
+  test("最小サイズ(px)を下回らない", () => {
+    const next = resizeShared(base, "se", -0.5, -0.5, sq);
+    // minPx 24 / 1000 = 0.024
+    expect(next.size.w).toBeCloseTo(0.024, 6);
+    expect(next.size.h).toBeCloseTo(0.024, 6);
+  });
+
+  test("比率ロック: 非正方形台紙でもピクセル正方形を維持する", () => {
+    // template 1000x500。ピクセル正方形 = w*1000 == h*500
+    const start: EditorSlots = {
+      size: { w: 0.2, h: 0.4 }, // px 200x200
+      positions: [{ x: 0.1, y: 0.1 }],
+    };
+    const next = resizeShared(start, "se", 0.05, 0.0, {
+      lockRatio: true,
+      templateWidth: 1000,
+      templateHeight: 500,
+      minPx: 24,
+    });
+    // ピクセル正方形不変
+    expect(next.size.w * 1000).toBeCloseTo(next.size.h * 500, 4);
+  });
+});
+
+describe("pixelAspectRatio", () => {
+  test("正方形台紙では正規化比そのまま", () => {
+    expect(pixelAspectRatio({ w: 0.3, h: 0.4 }, 1000, 1000)).toBeCloseTo(0.75, 6);
+  });
+
+  test("非正方形台紙では実寸を反映する", () => {
+    // 1000x500: w_px=0.2*1000=200, h_px=0.4*500=200 → 1:1
+    expect(pixelAspectRatio({ w: 0.2, h: 0.4 }, 1000, 500)).toBeCloseTo(1, 6);
+  });
+});
+
+describe("applyAspect (指定ピクセル比にそろえる)", () => {
+  test("正方形台紙で 3:4 にそろえる(幅基準で高さ決定)", () => {
+    const state: EditorSlots = {
+      size: { w: 0.3, h: 0.3 },
+      positions: [{ x: 0.1, y: 0.1 }],
+    };
+    const next = applyAspect(state, 3 / 4, 1000, 1000, 24);
+    // ピクセル比 = 3/4
+    expect(pixelAspectRatio(next.size, 1000, 1000)).toBeCloseTo(0.75, 6);
+    // 幅維持・高さ拡張 (h = w / (3/4) = 0.4)
+    expect(next.size.w).toBeCloseTo(0.3, 6);
+    expect(next.size.h).toBeCloseTo(0.4, 6);
+    // 左上は不変
+    expect(next.positions[0]).toEqual({ x: 0.1, y: 0.1 });
+  });
+
+  test("はみ出す場合は比率を保ったまま全枠が収まるよう縮める", () => {
+    // 枠が下端付近: y=0.8 で 3:4(縦長) にすると h が 1-0.8=0.2 を超える
+    const state: EditorSlots = {
+      size: { w: 0.3, h: 0.1 },
+      positions: [{ x: 0.1, y: 0.8 }],
+    };
+    const next = applyAspect(state, 3 / 4, 1000, 1000, 24);
+    // 比率は維持
+    expect(pixelAspectRatio(next.size, 1000, 1000)).toBeCloseTo(0.75, 6);
+    // 高さは余白 0.2 に収まる
+    expect(next.size.h).toBeLessThanOrEqual(0.2 + 1e-9);
+  });
+
+  test("非正方形台紙でも指定比を維持する", () => {
+    const state: EditorSlots = {
+      size: { w: 0.3, h: 0.3 },
+      positions: [{ x: 0.1, y: 0.1 }],
+    };
+    const next = applyAspect(state, 16 / 9, 1000, 500, 24);
+    expect(pixelAspectRatio(next.size, 1000, 500)).toBeCloseTo(16 / 9, 4);
+  });
+});
