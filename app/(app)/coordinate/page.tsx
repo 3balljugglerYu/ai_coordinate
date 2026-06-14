@@ -8,7 +8,7 @@ import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
-import { CachedCoordinatePercoinBalance } from "@/features/credits/components/CachedCoordinatePercoinBalance";
+import { CachedGenerationPercoinBalance } from "@/features/credits/components/CachedGenerationPercoinBalance";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
@@ -69,9 +69,10 @@ export default async function CoordinatePage() {
                 <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
               }
             >
-              <CachedCoordinatePercoinBalance
+              <CachedGenerationPercoinBalance
                 userId={user.id}
                 locale={locale}
+                source="coordinate"
                 copy={{
                   balanceLabel: creditsT("balanceLabel"),
                   percoinUnit: creditsT("percoinUnit"),

@@ -6,11 +6,12 @@ import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { StyleTourButton } from "@/features/style/components/StyleTourButton";
 import { GuestGenerationTrialCta } from "@/features/generation/components/GuestGenerationTrialCta";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
+import { CachedGenerationPercoinBalance } from "@/features/credits/components/CachedGenerationPercoinBalance";
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { getTotalStyleGenerateCount } from "@/features/style/lib/style-usage-stats";
-import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config";
 import { getUser } from "@/lib/auth";
 import { isAdminViewer } from "@/lib/env";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
@@ -58,6 +59,8 @@ export default async function StylePage({ searchParams }: StylePageProps) {
 
   const t = await getTranslations("style");
   const coordinateT = await getTranslations("coordinate");
+  const creditsT = await getTranslations("credits");
+  const locale = (await getLocale()) as Locale;
   const user = await getUser();
   const isAdminViewerFlag = isAdminViewer(user?.id ?? null);
   const presets = await getPublishedStylePresets({
@@ -106,7 +109,24 @@ export default async function StylePage({ searchParams }: StylePageProps) {
               actionLabel={t("guestLoginCtaAction")}
               testId="style-guest-login-cta"
             />
-          ) : null}
+          ) : (
+            // ペルコイン残高と購入リンク（コーディネートと共通コンポーネント）
+            <Suspense
+              fallback={
+                <div className="h-16 animate-pulse rounded-lg bg-gray-200" />
+              }
+            >
+              <CachedGenerationPercoinBalance
+                userId={user.id}
+                locale={locale}
+                source="style"
+                copy={{
+                  balanceLabel: creditsT("balanceLabel"),
+                  percoinUnit: creditsT("percoinUnit"),
+                }}
+              />
+            </Suspense>
+          )}
 
           {/*
             StylePageClient と生成結果一覧を GenerationStateProvider で

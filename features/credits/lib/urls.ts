@@ -1,7 +1,7 @@
 import { ROUTES } from "@/constants";
 
 /** ペルコイン購入ページへの遷移元（戻るボタンの遷移先を制御） */
-export type PercoinPurchaseReferrer = "coordinate";
+export type PercoinPurchaseReferrer = "coordinate" | "style";
 
 /**
  * ペルコイン購入ページのURLを生成

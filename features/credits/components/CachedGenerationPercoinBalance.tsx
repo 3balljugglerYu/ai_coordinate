@@ -2,13 +2,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { cacheLife, cacheTag } from "next/cache";
 import { getPercoinBalanceServer } from "@/features/my-page/lib/server-api";
-import { getPercoinPurchaseUrl } from "../lib/urls";
+import { getPercoinPurchaseUrl, type PercoinPurchaseReferrer } from "../lib/urls";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Locale } from "@/i18n/config";
 
-interface CachedCoordinatePercoinBalanceProps {
+interface CachedGenerationPercoinBalanceProps {
   userId: string;
   locale: Locale;
+  /** 表示元の生成ページ。キャッシュタグと購入ページの戻り先制御に使う。 */
+  source: PercoinPurchaseReferrer;
   copy: {
     balanceLabel: string;
     percoinUnit: string;
@@ -16,15 +18,20 @@ interface CachedCoordinatePercoinBalanceProps {
 }
 
 /**
- * コーディネートページ用: ペルコイン残高（use cache でサーバーキャッシュ）
+ * 生成ページ(コーディネート / One-Tap Style)共通: ペルコイン残高
+ * （use cache でサーバーキャッシュ）。
+ *
+ * source ごとにキャッシュタグを分け、購入ページへは ?from=<source> を付けて
+ * 戻るボタンの遷移先を元の生成ページに戻す。
  */
-export async function CachedCoordinatePercoinBalance({
+export async function CachedGenerationPercoinBalance({
   userId,
   locale,
+  source,
   copy,
-}: CachedCoordinatePercoinBalanceProps) {
+}: CachedGenerationPercoinBalanceProps) {
   "use cache";
-  cacheTag(`coordinate-${userId}-${locale}`);
+  cacheTag(`${source}-${userId}-${locale}`);
   cacheLife("minutes");
 
   const supabase = createAdminClient();
@@ -33,7 +40,7 @@ export async function CachedCoordinatePercoinBalance({
 
   return (
     <Link
-      href={getPercoinPurchaseUrl("coordinate")}
+      href={getPercoinPurchaseUrl(source)}
       className="mb-6 inline-flex w-fit items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 transition-opacity hover:opacity-80"
     >
       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
