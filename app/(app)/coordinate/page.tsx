@@ -48,7 +48,7 @@ export default async function CoordinatePage() {
     <div className="min-h-screen bg-gray-50">
       {!isGuest ? <RefreshOnMount /> : null}
       <div className="pt-6 md:pt-8 pb-8 px-4">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-6xl animate-page-enter motion-reduce:animate-none">
           {/* 静的コンテンツ: タイトルと説明文 */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">
