@@ -3,6 +3,7 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { NormalizedSlotRect } from "@/features/collections/lib/mount-layouts";
 import {
+  alignGroup,
   applyAspect,
   joinSlots,
   movePosition,
@@ -11,6 +12,8 @@ import {
   splitSlots,
   type Corner,
   type EditorSlots,
+  type HAlign,
+  type VAlign,
 } from "@/features/collections/lib/slot-edit-geometry";
 import { GEMINI_SUPPORTED_ASPECT_RATIOS } from "@/shared/generation/gemini-aspect-ratio";
 
@@ -164,6 +167,10 @@ export function MountSlotEditor({
     onChange(joinSlots(next));
   }
 
+  function handleAlign(hAlign: HAlign | null, vAlign: VAlign | null) {
+    onChange(joinSlots(alignGroup(splitSlots(slots), hAlign, vAlign)));
+  }
+
   function endDrag(e: ReactPointerEvent) {
     if (dragRef.current) {
       dragRef.current = null;
@@ -248,6 +255,58 @@ export function MountSlotEditor({
             ))}
           </div>
         ))}
+      </div>
+
+      {/* 枠全体(グループ)の整列。相対配置・サイズは保ったまま平行移動する。 */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
+        <div className="flex items-center gap-1">
+          <span className="text-slate-500">横:</span>
+          <button
+            type="button"
+            onClick={() => handleAlign("left", null)}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50"
+          >
+            左寄せ
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAlign("center", null)}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50"
+          >
+            中央
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAlign("right", null)}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50"
+          >
+            右寄せ
+          </button>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-slate-500">縦:</span>
+          <button
+            type="button"
+            onClick={() => handleAlign(null, "top")}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50"
+          >
+            上寄せ
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAlign(null, "middle")}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50"
+          >
+            中央
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAlign(null, "bottom")}
+            className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50"
+          >
+            下寄せ
+          </button>
+        </div>
       </div>
 
       <div className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">

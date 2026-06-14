@@ -170,6 +170,66 @@ export function resizeShared(
   return { size: { w, h }, positions: newPositions };
 }
 
+/** 横方向の整列 */
+export type HAlign = "left" | "center" | "right";
+/** 縦方向の整列 */
+export type VAlign = "top" | "middle" | "bottom";
+
+/**
+ * 全枠の「辺」をそろえる(デザインツールの整列と同じ)。グループ全体を動かすのではなく、
+ * 各枠の端を枠群の端にそろえる。全枠は同サイズなので結果は重なる(例: 左寄せ=全枠が同じ
+ * 左端の縦並びになる)。
+ * - 横: left=一番左の枠の左端, right=一番右の枠の右端, center=枠群の水平中央
+ * - 縦: top=一番上の枠の上端, bottom=一番下の枠の下端, middle=枠群の垂直中央
+ * hAlign / vAlign を null にするとその軸は動かさない(片軸だけの整列が可能)。
+ */
+export function alignGroup(
+  state: EditorSlots,
+  hAlign: HAlign | null,
+  vAlign: VAlign | null,
+): EditorSlots {
+  const { size, positions } = state;
+  if (positions.length === 0) {
+    return state;
+  }
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const p of positions) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  // 全枠同サイズなので右端そろえ=最大x、中央そろえ=左端の中点に揃う
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  const targetX = (): number | null => {
+    if (hAlign === "left") return minX;
+    if (hAlign === "right") return maxX;
+    if (hAlign === "center") return centerX;
+    return null;
+  };
+  const targetY = (): number | null => {
+    if (vAlign === "top") return minY;
+    if (vAlign === "bottom") return maxY;
+    if (vAlign === "middle") return centerY;
+    return null;
+  };
+  const tx = targetX();
+  const ty = targetY();
+
+  return {
+    size,
+    positions: positions.map((p) => ({
+      x: tx === null ? p.x : tx,
+      y: ty === null ? p.y : ty,
+    })),
+  };
+}
+
 /** 共有サイズのピクセル比 (w_px / h_px) を返す。生成側の比率(3:4 等)と同じ尺度。 */
 export function pixelAspectRatio(
   size: Size,

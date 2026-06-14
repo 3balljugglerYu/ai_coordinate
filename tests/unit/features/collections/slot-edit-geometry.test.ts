@@ -1,4 +1,5 @@
 import {
+  alignGroup,
   applyAspect,
   clampPosition,
   joinSlots,
@@ -139,6 +140,54 @@ describe("resizeShared (対角固定・全枠連動)", () => {
     });
     // ピクセル正方形不変
     expect(next.size.w * 1000).toBeCloseTo(next.size.h * 500, 4);
+  });
+});
+
+describe("alignGroup (辺そろえ・全枠が端に揃う)", () => {
+  // 3枠: x[0.2,0.5,0.8], y[0.1,0.3,0.6], size 0.1
+  const base: EditorSlots = {
+    size: { w: 0.1, h: 0.1 },
+    positions: [
+      { x: 0.2, y: 0.1 },
+      { x: 0.5, y: 0.3 },
+      { x: 0.8, y: 0.6 },
+    ],
+  };
+
+  test("左寄せ: 全枠の x が一番左(0.2)に揃う。y は不変", () => {
+    const next = alignGroup(base, "left", null);
+    expect(next.positions.map((p) => p.x)).toEqual([0.2, 0.2, 0.2]);
+    // y は変わらない
+    expect(next.positions.map((p) => p.y)).toEqual([0.1, 0.3, 0.6]);
+  });
+
+  test("右寄せ: 全枠の x が一番右(0.8)に揃う", () => {
+    const next = alignGroup(base, "right", null);
+    expect(next.positions.map((p) => p.x)).toEqual([0.8, 0.8, 0.8]);
+  });
+
+  test("水平中央: 全枠の x が中点(0.5)に揃う", () => {
+    const next = alignGroup(base, "center", null);
+    next.positions.forEach((p) => expect(p.x).toBeCloseTo(0.5, 6));
+  });
+
+  test("上寄せ: 全枠の y が一番上(0.1)に揃う。x は不変", () => {
+    const next = alignGroup(base, null, "top");
+    expect(next.positions.map((p) => p.y)).toEqual([0.1, 0.1, 0.1]);
+    expect(next.positions.map((p) => p.x)).toEqual([0.2, 0.5, 0.8]);
+  });
+
+  test("下寄せ: 全枠の y が一番下(0.6)に揃う", () => {
+    const next = alignGroup(base, null, "bottom");
+    expect(next.positions.map((p) => p.y)).toEqual([0.6, 0.6, 0.6]);
+  });
+
+  test("横と縦を同時に指定すると全枠が1点(左上端)に重なる", () => {
+    const next = alignGroup(base, "left", "top");
+    next.positions.forEach((p) => {
+      expect(p.x).toBeCloseTo(0.2, 6);
+      expect(p.y).toBeCloseTo(0.1, 6);
+    });
   });
 });
 
