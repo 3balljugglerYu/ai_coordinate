@@ -2,6 +2,8 @@ import {
   MOUNT_LAYOUTS,
   getMountLayout,
   isMountLayoutKey,
+  parseNormalizedSlots,
+  resolveMountSlots,
   slotCountForLayout,
   toPixelRect,
   type MountLayoutKey,
@@ -50,5 +52,49 @@ describe("mount-layouts", () => {
   test("grid_4 の同一行スロットは重ならない(左右で分かれる)", () => {
     const [tl, tr] = MOUNT_LAYOUTS.grid_4;
     expect(tl.x + tl.w).toBeLessThanOrEqual(tr.x);
+  });
+});
+
+describe("parseNormalizedSlots", () => {
+  test("正常な配列をパースする", () => {
+    expect(parseNormalizedSlots([{ x: 0.1, y: 0.2, w: 0.3, h: 0.4 }])).toEqual([
+      { x: 0.1, y: 0.2, w: 0.3, h: 0.4 },
+    ]);
+  });
+
+  test("配列でない/空/要素不正は null", () => {
+    expect(parseNormalizedSlots(null)).toBeNull();
+    expect(parseNormalizedSlots({})).toBeNull();
+    expect(parseNormalizedSlots([])).toBeNull();
+    expect(parseNormalizedSlots([{ x: 0.1, y: 0.2, w: 0.3 }])).toBeNull(); // h 欠落
+    expect(parseNormalizedSlots([{ x: "a", y: 0, w: 0, h: 0 }])).toBeNull();
+  });
+});
+
+describe("resolveMountSlots (mount_slots 優先・無ければプリセット)", () => {
+  test("mount_slots が null なら mount_layout のプリセットにフォールバック(神コレ grid_6 不変)", () => {
+    const slots = resolveMountSlots(null, "grid_6");
+    expect(slots).toEqual(MOUNT_LAYOUTS.grid_6);
+    expect(slots).toHaveLength(6);
+  });
+
+  test("mount_slots が有効ならそれを優先する(任意N)", () => {
+    const custom = [
+      { x: 0.1, y: 0.1, w: 0.3, h: 0.3 },
+      { x: 0.5, y: 0.5, w: 0.3, h: 0.3 },
+    ];
+    expect(resolveMountSlots(custom, "grid_6")).toEqual(custom);
+  });
+
+  test("mount_slots が不正なら mount_layout にフォールバック", () => {
+    expect(resolveMountSlots("not-array", "grid_4")).toEqual(
+      MOUNT_LAYOUTS.grid_4,
+    );
+    expect(resolveMountSlots([], "grid_4")).toEqual(MOUNT_LAYOUTS.grid_4);
+  });
+
+  test("mount_slots も mount_layout も無効なら例外", () => {
+    expect(() => resolveMountSlots(null, null)).toThrow();
+    expect(() => resolveMountSlots(undefined, "grid_99")).toThrow();
   });
 });

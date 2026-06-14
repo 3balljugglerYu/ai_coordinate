@@ -272,3 +272,98 @@ describe("parseCollectionSettings", () => {
     if (!r.ok) expect(r.error).toMatch(/collection_display_ends_at/);
   });
 });
+
+describe("parseCollectionSettings - mount_slots(カスタム枠) / 任意N / 台紙実寸", () => {
+  const SLOTS = [
+    { x: 0.1, y: 0.1, w: 0.3, h: 0.3 },
+    { x: 0.6, y: 0.1, w: 0.3, h: 0.3 },
+  ];
+
+  test("mount_slots を指定し threshold=スロット数なら layout 無しでも ok", () => {
+    const r = parseCollectionSettings(
+      {
+        is_collection_series: true,
+        completion_threshold: 2,
+        mount_template_path: "wafer/t.png",
+        mount_slots: SLOTS,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.mountSlots).toEqual(SLOTS);
+  });
+
+  test("mount_slots のスロット数が threshold と不一致なら拒否", () => {
+    const r = parseCollectionSettings(
+      {
+        is_collection_series: true,
+        completion_threshold: 3,
+        mount_template_path: "wafer/t.png",
+        mount_slots: SLOTS,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  test("mount_slots が配列でない/要素不正は拒否", () => {
+    expect(parseCollectionSettings({ mount_slots: "x" }, OFF).ok).toBe(false);
+    expect(
+      parseCollectionSettings({ mount_slots: [{ x: 0.1, y: 0.1, w: 0.3 }] }, OFF)
+        .ok,
+    ).toBe(false);
+  });
+
+  test("mount_slots の枠が 0..1 をはみ出すと拒否", () => {
+    expect(
+      parseCollectionSettings(
+        { mount_slots: [{ x: 0.9, y: 0.1, w: 0.3, h: 0.3 }] },
+        OFF,
+      ).ok,
+    ).toBe(false);
+  });
+
+  test("浮動小数点誤差レベルの超過(EPS以内)は許容する", () => {
+    // 0.1 + 0.2 = 0.30000000000000004 → x+w が 1 をごくわずかに超える
+    const r = parseCollectionSettings(
+      { mount_slots: [{ x: 0.7, y: 0.1, w: 0.1 + 0.2, h: 0.2 }] },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  test("mount_slots=null は許可(プリセットに戻す)", () => {
+    const r = parseCollectionSettings({ mount_slots: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.mountSlots).toBeNull();
+  });
+
+  test("mount_template_width/height は正の整数のみ", () => {
+    expect(parseCollectionSettings({ mount_template_width: 1024 }, OFF).ok).toBe(
+      true,
+    );
+    expect(parseCollectionSettings({ mount_template_width: 0 }, OFF).ok).toBe(
+      false,
+    );
+    expect(parseCollectionSettings({ mount_template_height: -5 }, OFF).ok).toBe(
+      false,
+    );
+    expect(
+      parseCollectionSettings({ mount_template_height: null }, OFF).ok,
+    ).toBe(true);
+  });
+
+  test("既存に mount_slots があり threshold だけ更新でも slots 数と整合", () => {
+    const existingWithSlots: CollectionSettingsExisting = {
+      isCollectionSeries: true,
+      completionThreshold: 2,
+      mountTemplatePath: "wafer/t.png",
+      mountLayout: null,
+      mountSlots: SLOTS,
+    };
+    expect(
+      parseCollectionSettings({ completion_threshold: 3 }, existingWithSlots).ok,
+    ).toBe(false);
+    expect(parseCollectionSettings({}, existingWithSlots).ok).toBe(true);
+  });
+});

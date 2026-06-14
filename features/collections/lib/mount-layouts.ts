@@ -71,6 +71,61 @@ export function getMountLayout(layout: MountLayoutKey): NormalizedSlotRect[] {
   return slots;
 }
 
+/**
+ * DB の mount_slots(unknown jsonb)を正規化矩形配列へパースする。
+ * 配列でない/空/要素が {x,y,w,h:number} でない場合は null を返す。
+ */
+export function parseNormalizedSlots(
+  value: unknown,
+): NormalizedSlotRect[] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+  const slots: NormalizedSlotRect[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      return null;
+    }
+    const { x, y, w, h } = item as Record<string, unknown>;
+    if (
+      typeof x !== "number" ||
+      !Number.isFinite(x) ||
+      typeof y !== "number" ||
+      !Number.isFinite(y) ||
+      typeof w !== "number" ||
+      !Number.isFinite(w) ||
+      typeof h !== "number" ||
+      !Number.isFinite(h)
+    ) {
+      return null;
+    }
+    slots.push({ x, y, w, h });
+  }
+  return slots;
+}
+
+/**
+ * 台紙合成に使うスロットを解決する。
+ * - mount_slots(カスタム枠)が有効ならそれを優先(任意N対応)
+ * - 無ければ mount_layout(grid_3/4/6)のプリセットへフォールバック(後方互換)
+ * - どちらも無効なら例外
+ */
+export function resolveMountSlots(
+  mountSlots: unknown,
+  mountLayout: unknown,
+): NormalizedSlotRect[] {
+  const custom = parseNormalizedSlots(mountSlots);
+  if (custom) {
+    return custom;
+  }
+  if (isMountLayoutKey(mountLayout)) {
+    return getMountLayout(mountLayout);
+  }
+  throw new Error(
+    "resolveMountSlots: neither valid mount_slots nor mount_layout",
+  );
+}
+
 /** 正規化矩形をテンプレ実寸のピクセル矩形へ換算する(整数に丸め) */
 export function toPixelRect(
   rect: NormalizedSlotRect,

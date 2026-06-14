@@ -10,7 +10,9 @@ import {
 } from "@/shared/generation/style-output-aspect-ratio";
 import {
   isMountLayoutKey,
+  parseNormalizedSlots,
   type MountLayoutKey,
+  type NormalizedSlotRect,
 } from "@/features/collections/lib/mount-layouts";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
@@ -47,6 +49,9 @@ export interface PresetCategoryRow {
   completion_threshold?: number | null;
   mount_template_path?: string | null;
   mount_layout?: string | null;
+  mount_slots?: unknown;
+  mount_template_width?: number | null;
+  mount_template_height?: number | null;
   collection_character_path?: string | null;
   collection_display_starts_at?: string | null;
   collection_display_ends_at?: string | null;
@@ -82,6 +87,9 @@ export interface PresetCategoryAdmin {
   completionThreshold: number | null;
   mountTemplatePath: string | null;
   mountLayout: MountLayoutKey | null;
+  mountSlots: NormalizedSlotRect[] | null;
+  mountTemplateWidth: number | null;
+  mountTemplateHeight: number | null;
   collectionCharacterPath: string | null;
   collectionDisplayStartsAt: string | null;
   collectionDisplayEndsAt: string | null;
@@ -116,6 +124,9 @@ export interface PresetCategoryInsert {
   completionThreshold?: number | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
+  mountSlots?: NormalizedSlotRect[] | null;
+  mountTemplateWidth?: number | null;
+  mountTemplateHeight?: number | null;
   collectionCharacterPath?: string | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
@@ -146,6 +157,9 @@ export interface PresetCategoryUpdate {
   completionThreshold?: number | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
+  mountSlots?: NormalizedSlotRect[] | null;
+  mountTemplateWidth?: number | null;
+  mountTemplateHeight?: number | null;
   collectionCharacterPath?: string | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
@@ -191,6 +205,15 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     completionThreshold: row.completion_threshold ?? null,
     mountTemplatePath: row.mount_template_path ?? null,
     mountLayout: isMountLayoutKey(row.mount_layout) ? row.mount_layout : null,
+    mountSlots: parseNormalizedSlots(row.mount_slots),
+    mountTemplateWidth:
+      typeof row.mount_template_width === "number"
+        ? row.mount_template_width
+        : null,
+    mountTemplateHeight:
+      typeof row.mount_template_height === "number"
+        ? row.mount_template_height
+        : null,
     collectionCharacterPath: row.collection_character_path ?? null,
     collectionDisplayStartsAt: row.collection_display_starts_at ?? null,
     collectionDisplayEndsAt: row.collection_display_ends_at ?? null,
@@ -294,6 +317,9 @@ export async function createPresetCategory(
       completion_threshold: input.completionThreshold ?? null,
       mount_template_path: input.mountTemplatePath ?? null,
       mount_layout: input.mountLayout ?? null,
+      mount_slots: input.mountSlots ?? null,
+      mount_template_width: input.mountTemplateWidth ?? null,
+      mount_template_height: input.mountTemplateHeight ?? null,
       collection_character_path: input.collectionCharacterPath ?? null,
       collection_display_starts_at: input.collectionDisplayStartsAt ?? null,
       collection_display_ends_at: input.collectionDisplayEndsAt ?? null,
@@ -355,6 +381,11 @@ export async function updatePresetCategory(
   if (input.mountTemplatePath !== undefined)
     payload.mount_template_path = input.mountTemplatePath;
   if (input.mountLayout !== undefined) payload.mount_layout = input.mountLayout;
+  if (input.mountSlots !== undefined) payload.mount_slots = input.mountSlots;
+  if (input.mountTemplateWidth !== undefined)
+    payload.mount_template_width = input.mountTemplateWidth;
+  if (input.mountTemplateHeight !== undefined)
+    payload.mount_template_height = input.mountTemplateHeight;
   if (input.collectionCharacterPath !== undefined)
     payload.collection_character_path = input.collectionCharacterPath;
   if (input.collectionDisplayStartsAt !== undefined)

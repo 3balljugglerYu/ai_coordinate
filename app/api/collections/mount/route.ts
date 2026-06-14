@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { isAdminViewer } from "@/lib/env";
 import { isCollectionDisplayPeriodActive } from "@/features/collections/lib/collection-display-period";
-import { isMountLayoutKey, slotCountForLayout } from "@/features/collections/lib/mount-layouts";
+import { resolveMountSlots } from "@/features/collections/lib/mount-layouts";
 import { composeMount } from "@/features/collections/lib/compose-mount";
 import {
   composeMountOgp,
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     const { data: category, error: categoryError } = await admin
       .from("preset_categories")
       .select(
-        "id, mount_template_path, mount_layout, completion_threshold, visibility, display_name_ja, ogp_template_path, ogp_mount_placement",
+        "id, mount_template_path, mount_layout, mount_slots, completion_threshold, visibility, display_name_ja, ogp_template_path, ogp_mount_placement",
       )
       .eq("key", categoryKey)
       .eq("is_collection_series", true)
@@ -198,18 +198,19 @@ export async function POST(request: NextRequest) {
     if (category.visibility !== "public" && !isAdminViewer(user.id)) {
       throw new Error(`category not public: ${categoryKey}`);
     }
-    const layout = category.mount_layout as unknown;
     const templatePath = category.mount_template_path as string | null;
     const threshold =
       typeof category.completion_threshold === "number"
         ? category.completion_threshold
         : null;
-    if (!isMountLayoutKey(layout) || !templatePath) {
-      throw new Error("collection settings incomplete (layout/template)");
+    if (!templatePath) {
+      throw new Error("collection settings incomplete (template)");
     }
-    const slotCount = slotCountForLayout(layout);
+    // mount_slots(カスタム枠)があれば優先、無ければ mount_layout のプリセットへフォールバック
+    const slots = resolveMountSlots(category.mount_slots, category.mount_layout);
+    const slotCount = slots.length;
     if (threshold !== slotCount) {
-      throw new Error(`collection threshold/layout mismatch: ${threshold ?? "null"} vs ${slotCount}`);
+      throw new Error(`collection threshold/slots mismatch: ${threshold ?? "null"} vs ${slotCount}`);
     }
 
     const templatePng = await downloadBuffer(admin, TEMPLATE_BUCKET, templatePath);
@@ -234,7 +235,7 @@ export async function POST(request: NextRequest) {
       reps.map((r) => downloadBuffer(admin, GENERATED_IMAGES_BUCKET, r.storagePath)),
     );
 
-    const mountPng = await composeMount({ templatePng, stickers, layout });
+    const mountPng = await composeMount({ templatePng, stickers, slots });
 
     // パスにタイムスタンプが含まれるため毎回新規パス。事前 remove は不要。
     const { error: uploadError } = await admin.storage

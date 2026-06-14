@@ -1,7 +1,9 @@
 import {
   isMountLayoutKey,
+  parseNormalizedSlots,
   slotCountForLayout,
   type MountLayoutKey,
+  type NormalizedSlotRect,
 } from "@/features/collections/lib/mount-layouts";
 
 /**
@@ -17,6 +19,9 @@ export interface CollectionSettingsPayload {
   completionThreshold?: number | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
+  mountSlots?: NormalizedSlotRect[] | null;
+  mountTemplateWidth?: number | null;
+  mountTemplateHeight?: number | null;
   collectionCharacterPath?: string | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
@@ -28,6 +33,7 @@ export interface CollectionSettingsExisting {
   mountTemplatePath: string | null;
   mountLayout: MountLayoutKey | null;
   /** 省略時は null(未設定)として扱う */
+  mountSlots?: NormalizedSlotRect[] | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
 }
@@ -91,6 +97,62 @@ export function parseCollectionSettings(
       return { ok: false, error: "mount_layout must be one of grid_3 / grid_4 / grid_6" };
     } else {
       payload.mountLayout = v;
+    }
+  }
+
+  if (body.mount_slots !== undefined) {
+    const v = body.mount_slots;
+    if (v === null) {
+      payload.mountSlots = null;
+    } else {
+      const parsed = parseNormalizedSlots(v);
+      if (!parsed) {
+        return {
+          ok: false,
+          error: "mount_slots は {x,y,w,h}(0..1) の配列で指定してください",
+        };
+      }
+      // Phase 2 エディタは px 除算+丸めで正規化座標を作るため、x+w / y+h が
+      // 浮動小数点誤差で 1 をごくわずかに超え得る。EPS で誤差を許容する。
+      const SLOT_EPS = 1e-6;
+      for (const r of parsed) {
+        if (
+          r.x < -SLOT_EPS ||
+          r.y < -SLOT_EPS ||
+          r.w <= 0 ||
+          r.h <= 0 ||
+          r.x + r.w > 1 + SLOT_EPS ||
+          r.y + r.h > 1 + SLOT_EPS
+        ) {
+          return {
+            ok: false,
+            error: "mount_slots の各枠は 0..1 の範囲かつテンプレ内に収めてください",
+          };
+        }
+      }
+      payload.mountSlots = parsed;
+    }
+  }
+
+  if (body.mount_template_width !== undefined) {
+    const v = body.mount_template_width;
+    if (v === null) {
+      payload.mountTemplateWidth = null;
+    } else if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) {
+      return { ok: false, error: "mount_template_width must be a positive integer" };
+    } else {
+      payload.mountTemplateWidth = v;
+    }
+  }
+
+  if (body.mount_template_height !== undefined) {
+    const v = body.mount_template_height;
+    if (v === null) {
+      payload.mountTemplateHeight = null;
+    } else if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) {
+      return { ok: false, error: "mount_template_height must be a positive integer" };
+    } else {
+      payload.mountTemplateHeight = v;
     }
   }
 
@@ -175,25 +237,35 @@ export function parseCollectionSettings(
       payload.mountLayout !== undefined
         ? payload.mountLayout
         : existing.mountLayout,
+    mountSlots:
+      payload.mountSlots !== undefined
+        ? payload.mountSlots
+        : (existing.mountSlots ?? null),
   };
 
   if (effective.isCollectionSeries) {
+    const hasSlots =
+      Array.isArray(effective.mountSlots) && effective.mountSlots.length > 0;
     if (
       effective.completionThreshold === null ||
       effective.completionThreshold <= 0 ||
       !effective.mountTemplatePath ||
-      effective.mountLayout === null
+      (effective.mountLayout === null && !hasSlots)
     ) {
       return {
         ok: false,
         error:
-          "コレクション有効時は コンプリート必要数(N) / 台紙テンプレ / レイアウト がすべて必要です",
+          "コレクション有効時は コンプリート必要数(N) / 台紙テンプレ / (レイアウト または カスタム枠) が必要です",
       };
     }
-    if (effective.completionThreshold !== slotCountForLayout(effective.mountLayout)) {
+    // mount_slots(カスタム枠)があればそのスロット数、無ければレイアウトのスロット数と一致させる
+    const expectedSlotCount = hasSlots
+      ? effective.mountSlots!.length
+      : slotCountForLayout(effective.mountLayout!);
+    if (effective.completionThreshold !== expectedSlotCount) {
       return {
         ok: false,
-        error: "コンプリート必要数(N)は選択した台紙レイアウトのスロット数と一致させてください",
+        error: "コンプリート必要数(N)は枠(スロット)数と一致させてください",
       };
     }
   }
