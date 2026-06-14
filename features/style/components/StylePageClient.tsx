@@ -1248,6 +1248,36 @@ export function StylePageClient({
     setGenerationPhase("idle");
   };
 
+  /**
+   * 元画像を normalize する。失敗（ブラウザが File をデコードできない等）時は、
+   * 原因切り分け用の診断情報を console に残し、ユーザーには選び直しを促す
+   * 分かりやすいメッセージ（サイズ/形式付き）を投げる。
+   * normalize は generate POST の前に走るためコインは消費されない。
+   */
+  const normalizeSourceOrThrow = async (
+    image: UploadedImage,
+  ): Promise<File> => {
+    try {
+      return await normalizeSourceImage(image.file);
+    } catch (error) {
+      const sizeMb = image.file
+        ? (image.file.size / (1024 * 1024)).toFixed(1)
+        : "?";
+      const fileType = image.file?.type || "unknown";
+      console.error("[style] source image read failed", {
+        name: image.file?.name,
+        size: image.file?.size,
+        type: fileType,
+        width: image.width,
+        height: image.height,
+        error,
+      });
+      throw new Error(
+        `${t("sourceImageReadFailed")}（${sizeMb}MB / ${fileType}）`,
+      );
+    }
+  };
+
   const generateImageWithSynchronousPreview = async () => {
     if (!selectedPreset || !uploadedImage || isGenerating) {
       return;
@@ -1265,7 +1295,7 @@ export function StylePageClient({
     setErrorState(null);
 
     try {
-      const normalizedFile = await normalizeSourceImage(uploadedImage.file);
+      const normalizedFile = await normalizeSourceOrThrow(uploadedImage);
 
       const formData = new FormData();
       formData.set("styleId", selectedPreset.id);
@@ -1410,7 +1440,7 @@ export function StylePageClient({
         formData.set("sourceImageGeneratedId", selectedRemoteSource.id);
       } else if (uploadedImage) {
         // 直接アップロード: normalize してから File として送る。
-        const normalizedFile = await normalizeSourceImage(uploadedImage.file);
+        const normalizedFile = await normalizeSourceOrThrow(uploadedImage);
         formData.set("uploadImage", normalizedFile);
       }
 

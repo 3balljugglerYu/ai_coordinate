@@ -1520,6 +1520,7 @@ export const koMessages = {
     styleBackgroundPromptUnavailable:
       "이 스타일은 배경 변경을 지원하지 않습니다.",
     styleImageReadFailed: "스타일 이미지를 읽지 못했습니다.",
+    sourceImageReadFailed: "원본 이미지를 불러오지 못했습니다. 이미지를 다시 선택한 후 다시 시도해 주세요.",
     noCreditsFlow: "이 화면에서는 Percoin을 확인하거나 사용하지 않습니다.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

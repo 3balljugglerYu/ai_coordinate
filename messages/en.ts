@@ -1520,6 +1520,7 @@ export const enMessages = {
     styleBackgroundPromptUnavailable:
       "This style does not support background changes.",
     styleImageReadFailed: "Failed to read the style image.",
+    sourceImageReadFailed: "Couldn't read the source image. Please re-select the image and try again.",
     noCreditsFlow: "This screen does not check or consume Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

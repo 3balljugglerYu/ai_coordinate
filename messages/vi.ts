@@ -1521,6 +1521,7 @@ export const viMessages = {
     styleBackgroundPromptUnavailable:
       "Phong cách này không hỗ trợ thay đổi nền.",
     styleImageReadFailed: "Không đọc được hình phong cách.",
+    sourceImageReadFailed: "Không đọc được ảnh nguồn. Vui lòng chọn lại ảnh và thử lại.",
     noCreditsFlow: "Màn hình này không kiểm tra hoặc tiêu Percoin.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

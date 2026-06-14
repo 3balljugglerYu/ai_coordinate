@@ -1524,6 +1524,7 @@ export const esMessages = {
     styleBackgroundPromptUnavailable:
       "Este estilo no permite cambiar el fondo.",
     styleImageReadFailed: "No se pudo leer la imagen del estilo.",
+    sourceImageReadFailed: "No se pudo leer la imagen de origen. Vuelve a seleccionar la imagen e inténtalo de nuevo.",
     noCreditsFlow: "Esta pantalla no comprueba ni consume Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

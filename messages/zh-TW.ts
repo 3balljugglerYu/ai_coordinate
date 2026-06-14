@@ -1518,6 +1518,7 @@ export const zhTwMessages = {
     styleBackgroundPromptUnavailable:
       "此造型不支援更換背景。",
     styleImageReadFailed: "讀取造型圖片失敗。",
+    sourceImageReadFailed: "無法讀取原始圖片。請重新選擇圖片後再試。",
     noCreditsFlow: "本頁不會查詢或消耗 Percoin。",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

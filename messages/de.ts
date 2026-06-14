@@ -1524,6 +1524,7 @@ export const deMessages = {
     styleBackgroundPromptUnavailable:
       "Dieser Stil unterstützt keine Hintergrundänderungen.",
     styleImageReadFailed: "Stilbild konnte nicht gelesen werden.",
+    sourceImageReadFailed: "Das Quellbild konnte nicht gelesen werden. Bitte wähle das Bild erneut aus und versuche es noch einmal.",
     noCreditsFlow: "Dieser Bildschirm prüft oder verbraucht keine Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

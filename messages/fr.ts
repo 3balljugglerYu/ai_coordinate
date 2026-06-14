@@ -1524,6 +1524,7 @@ export const frMessages = {
     styleBackgroundPromptUnavailable:
       "Ce style ne prend pas en charge le changement d'arrière-plan.",
     styleImageReadFailed: "Impossible de lire l'image du style.",
+    sourceImageReadFailed: "Impossible de lire l’image source. Veuillez resélectionner l’image et réessayer.",
     noCreditsFlow: "Cet écran ne vérifie ni ne consomme de Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",

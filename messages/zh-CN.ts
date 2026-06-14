@@ -1518,6 +1518,7 @@ export const zhCnMessages = {
     styleBackgroundPromptUnavailable:
       "此造型不支持背景更换。",
     styleImageReadFailed: "读取造型图片失败。",
+    sourceImageReadFailed: "无法读取原始图片。请重新选择图片后再试。",
     noCreditsFlow: "本页面不会查询或消耗 Percoin。",
     userGuidanceTooltipAria: "Open guidance for this style",
     userReferenceImageLabel: "Reference image (image_1)",
