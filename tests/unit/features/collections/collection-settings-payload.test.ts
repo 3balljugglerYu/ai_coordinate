@@ -323,6 +323,15 @@ describe("parseCollectionSettings - mount_slots(カスタム枠) / 任意N / 台
     ).toBe(false);
   });
 
+  test("浮動小数点誤差レベルの超過(EPS以内)は許容する", () => {
+    // 0.1 + 0.2 = 0.30000000000000004 → x+w が 1 をごくわずかに超える
+    const r = parseCollectionSettings(
+      { mount_slots: [{ x: 0.7, y: 0.1, w: 0.1 + 0.2, h: 0.2 }] },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+  });
+
   test("mount_slots=null は許可(プリセットに戻す)", () => {
     const r = parseCollectionSettings({ mount_slots: null }, OFF);
     expect(r.ok).toBe(true);

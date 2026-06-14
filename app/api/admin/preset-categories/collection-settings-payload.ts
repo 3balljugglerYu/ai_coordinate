@@ -112,14 +112,17 @@ export function parseCollectionSettings(
           error: "mount_slots は {x,y,w,h}(0..1) の配列で指定してください",
         };
       }
+      // Phase 2 エディタは px 除算+丸めで正規化座標を作るため、x+w / y+h が
+      // 浮動小数点誤差で 1 をごくわずかに超え得る。EPS で誤差を許容する。
+      const SLOT_EPS = 1e-6;
       for (const r of parsed) {
         if (
-          r.x < 0 ||
-          r.y < 0 ||
+          r.x < -SLOT_EPS ||
+          r.y < -SLOT_EPS ||
           r.w <= 0 ||
           r.h <= 0 ||
-          r.x + r.w > 1 ||
-          r.y + r.h > 1
+          r.x + r.w > 1 + SLOT_EPS ||
+          r.y + r.h > 1 + SLOT_EPS
         ) {
           return {
             ok: false,
