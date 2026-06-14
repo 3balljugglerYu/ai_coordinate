@@ -358,6 +358,7 @@ export async function PATCH(
     completionThreshold: existing.completionThreshold,
     mountTemplatePath: existing.mountTemplatePath,
     mountLayout: existing.mountLayout,
+    mountSlots: existing.mountSlots,
     collectionDisplayStartsAt: existing.collectionDisplayStartsAt,
     collectionDisplayEndsAt: existing.collectionDisplayEndsAt,
   });
