@@ -80,6 +80,13 @@ interface ModalLayout {
   slots: { cx: number[]; cy: number; d: number };
 }
 
+// ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
+const READY_TIMEOUT_MS = 3500;
+
+// 紙吹雪(confetti)の発火フォールバック。台紙画像のロード(ready)を待たずに、
+// モーダルが開いたらこの時間以内に必ず発火させる(初回コンプリートの取りこぼし対策)。
+const CONFETTI_FALLBACK_MS = 600;
+
 const MODAL_LAYOUTS: Record<string, ModalLayout> = {
   // ウエハース(4スロット)
   collectible_wafer_sticker: {
@@ -230,9 +237,17 @@ export function CollectionProgressModal({
   // モーダルが透明のまま(オーバーレイだけ)になるデッドロックを防ぐ。
   const [loadedCount, setLoadedCount] = useState(0);
   const onImgLoad = () => setLoadedCount((c) => c + 1);
+  // ready の保険。画像の onLoad/onError が何らかの理由で発火しない場合
+  // (モバイルのキャッシュ済み画像で onLoad が来ない等)に、モーダルが
+  // 「準備中…」のまま見えなくなるのを防ぐ。一定時間で強制的に ready にする。
+  // celebration ごとに key で再マウントされるため state はリセットされる。
+  const [forceReady, setForceReady] = useState(false);
+  // 紙吹雪を発火してよいか。台紙画像のロードを待たず、モーダルが出たら発火する。
+  const [confettiArmed, setConfettiArmed] = useState(false);
 
   // ready を effect の deps に入れるため、useEffect より前で算出する(null-safe)。
   const cIsCompleted = celebration?.isCompleted ?? false;
+  const cEffect = celebration?.celebrationEffect ?? "confetti";
   const cMountImageUrl = celebration?.mountImageUrl ?? null;
   const cCharacterImageUrl = celebration?.characterImageUrl ?? null;
   const cCollectedImageUrls = celebration?.collectedImageUrls ?? [];
@@ -240,11 +255,15 @@ export function CollectionProgressModal({
   const cLayout = celebration
     ? (MODAL_LAYOUTS[celebration.categoryKey] ?? null)
     : null;
-  // ready ゲートはスロット数で打ち切る。集めたシールがスロット数より多い場合
-  // (=例: 4スロット PNG に対し threshold=6 で 6枚集まった等)に、表示されない
-  // シールの onLoad を待ち続けてデッドロックするのを防ぐ。
+  // ready ゲートは「実際に描画されるシール枚数」で数える。
+  // シールは下の map で url が無いスロット(!url)を描画しないため、totalImages を
+  // collectedImageUrls.length で数えると、欠け(null/空)があるとき描画 < 期待となり
+  // loadedCount が永遠に届かず ready が立たない(モーダルが準備中のまま見えない)。
+  // よって、スロット数で打ち切ったうえで非 null のみを数える。
   const cSlotsShown = cLayout
-    ? Math.min(cCollectedImageUrls.length, cLayout.slots.cx.length)
+    ? cCollectedImageUrls
+        .slice(0, cLayout.slots.cx.length)
+        .filter(Boolean).length
     : 0;
   const totalImages = !celebration
     ? 0
@@ -255,7 +274,32 @@ export function CollectionProgressModal({
       : cLayout
         ? 1 + (cCharacterImageUrl ? 1 : 0) + cSlotsShown
         : 0;
-  const ready = totalImages === 0 || loadedCount >= totalImages;
+  const ready = totalImages === 0 || loadedCount >= totalImages || forceReady;
+
+  // ready 保険: 開いてから一定時間ロードが完了しなければ強制的に表示する。
+  // (画像の onLoad/onError が来ないケースでモーダルが見えなくなるのを防ぐ)
+  useEffect(() => {
+    if (!open || !celebration || ready) return;
+    const timer = window.setTimeout(
+      () => setForceReady(true),
+      READY_TIMEOUT_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [open, celebration, ready]);
+
+  // 紙吹雪の発火: 完了かつ confetti 演出のとき、台紙画像のロード(ready)を待たず、
+  // ready なら即・未ロードでも CONFETTI_FALLBACK_MS 以内に必ず armed にする。
+  // これで初回コンプリート(台紙画像が未キャッシュで ready が遅い)でも取りこぼさない。
+  useEffect(() => {
+    if (!open || !celebration || cEffect !== "confetti" || !cIsCompleted) {
+      return;
+    }
+    // ready なら即(次tick)・未ロードでも fallback 以内に発火。
+    // 同期 setState(cascading render)を避けるためタイマー経由にする。
+    const delay = ready ? 0 : CONFETTI_FALLBACK_MS;
+    const timer = window.setTimeout(() => setConfettiArmed(true), delay);
+    return () => window.clearTimeout(timer);
+  }, [open, celebration, cEffect, cIsCompleted, ready]);
 
   // ready (全画像ロード完了) を gate にして rAF を開始する。
   // 親が key で再マウントするので state は再初期化される。
@@ -372,12 +416,10 @@ export function CollectionProgressModal({
               - confetti: 左右からクラッカー風の紙吹雪。body 直下の Portal に出すため
                 Dialog の overflow には影響されない。
               - sparkle: ダイヤのきらめき(完了台紙の見返し等)。モーダル枠内を彩る。 */}
-        {/* confetti(クラッカー)は「初コンプの祝い」専用。未完了(0%や途中)では
-            出さないよう完了状態(cIsCompleted)もゲートに加える。sparkle は進捗中も
-            出す想定のためゲートしない。 */}
-        <CollectionConfetti
-          show={ready && effect === "confetti" && cIsCompleted}
-        />
+        {/* confetti(クラッカー)は「初コンプの祝い」専用(完了 + confetti 演出)。
+            台紙画像のロード(ready)を待たず confettiArmed で発火するため、初回
+            コンプリートでも確実に飛ぶ(armed の条件に完了/演出種別を含む)。 */}
+        <CollectionConfetti show={confettiArmed} />
         <CollectionSparkle show={ready && effect === "sparkle"} />
 
         {/* a11y 用タイトル */}
