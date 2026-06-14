@@ -19,6 +19,19 @@ export interface NormalizeSourceImageMessages {
   imageContextUnavailable?: string;
 }
 
+/**
+ * 元画像の読み込み失敗時にユーザーへ出すメッセージを組み立てる。
+ * 原因切り分け用に file のサイズ(MB)と MIME 形式を半角括弧で付与する
+ * (全16ロケールで表示されるため半角に統一)。
+ */
+export function formatSourceImageReadError(
+  baseMessage: string,
+  file: { size: number; type: string },
+): string {
+  const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+  return `${baseMessage} (${sizeMb}MB / ${file.type || "unknown"})`;
+}
+
 function loadImageElement(
   file: File,
   messages?: NormalizeSourceImageMessages

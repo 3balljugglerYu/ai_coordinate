@@ -88,7 +88,10 @@ import {
 } from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
-import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
+import {
+  formatSourceImageReadError,
+  normalizeSourceImage,
+} from "@/features/generation/lib/normalize-source-image";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
@@ -1260,20 +1263,16 @@ export function StylePageClient({
     try {
       return await normalizeSourceImage(image.file);
     } catch (error) {
-      const sizeMb = image.file
-        ? (image.file.size / (1024 * 1024)).toFixed(1)
-        : "?";
-      const fileType = image.file?.type || "unknown";
       console.error("[style] source image read failed", {
-        name: image.file?.name,
-        size: image.file?.size,
-        type: fileType,
+        name: image.file.name,
+        size: image.file.size,
+        type: image.file.type,
         width: image.width,
         height: image.height,
         error,
       });
       throw new Error(
-        `${t("sourceImageReadFailed")}（${sizeMb}MB / ${fileType}）`,
+        formatSourceImageReadError(t("sourceImageReadFailed"), image.file),
       );
     }
   };
