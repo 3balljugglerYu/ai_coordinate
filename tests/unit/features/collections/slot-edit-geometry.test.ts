@@ -177,6 +177,24 @@ describe("resizeShared (対角固定・全枠連動)", () => {
     expect(next.size.w).toBeCloseTo(0.7, 6);
     expect(next.size.h).toBeCloseTo(0.7, 6);
   });
+
+  test("比率ロック: 縦移動が主軸のとき高さ起点で比率維持する", () => {
+    // 正方形台紙・正方形枠。dy が dx より大きい → 高さ起点で w を算出
+    const start: EditorSlots = {
+      size: { w: 0.2, h: 0.2 },
+      positions: [{ x: 0.1, y: 0.1 }],
+    };
+    const next = resizeShared(start, "se", 0.0, 0.1, {
+      lockRatio: true,
+      templateWidth: 1000,
+      templateHeight: 1000,
+      minPx: 24,
+      bounded: false,
+    });
+    // 正方形(ratio=1)を維持し、高さ起点で拡大
+    expect(next.size.w).toBeCloseTo(next.size.h, 6);
+    expect(next.size.h).toBeGreaterThan(0.2);
+  });
 });
 
 describe("outOfBoundsIndices", () => {
@@ -465,5 +483,26 @@ describe("applyAspect (指定ピクセル比にそろえる)", () => {
     };
     const next = applyAspect(state, 16 / 9, 1000, 500, 24);
     expect(pixelAspectRatio(next.size, 1000, 500)).toBeCloseTo(16 / 9, 4);
+  });
+
+  test("空配列 / ratioPx<=0 はそのまま返す(ガード)", () => {
+    const empty: EditorSlots = { size: { w: 0, h: 0 }, positions: [] };
+    expect(applyAspect(empty, 0.75, 1000, 1000, 24)).toBe(empty);
+    const state: EditorSlots = {
+      size: { w: 0.3, h: 0.3 },
+      positions: [{ x: 0.1, y: 0.1 }],
+    };
+    expect(applyAspect(state, 0, 1000, 1000, 24)).toBe(state);
+  });
+
+  test("極端に縦長の比率は最小幅(minPx)が効く", () => {
+    // ratioPx=0.01(極端縦長) → 幅が minW を下回るので minW に張り付く
+    const state: EditorSlots = {
+      size: { w: 0.05, h: 0.3 },
+      positions: [{ x: 0.1, y: 0.1 }],
+    };
+    const next = applyAspect(state, 0.01, 1000, 1000, 24);
+    // minW = 24/1000 = 0.024 以上
+    expect(next.size.w).toBeGreaterThanOrEqual(0.024 - 1e-9);
   });
 });

@@ -218,12 +218,13 @@ export function AdminPresetCategoryFormClient({
         setError(payload.error ?? "台紙テンプレのアップロードに失敗しました");
         return;
       }
-      // path と実寸をまとめて反映(実寸は枠エディタのアスペクト換算に使う)
+      // path と実寸をまとめて反映(実寸は枠エディタのアスペクト換算に使う)。
+      // 台紙差し替え時に別アスペクトの旧寸法が残らないよう、取得できなければ null にする。
       setForm((prev) => ({
         ...prev,
         mountTemplatePath: payload.path ?? null,
-        mountTemplateWidth: payload.width ?? prev.mountTemplateWidth,
-        mountTemplateHeight: payload.height ?? prev.mountTemplateHeight,
+        mountTemplateWidth: payload.width ?? null,
+        mountTemplateHeight: payload.height ?? null,
       }));
     } catch (err) {
       console.error("[AdminPresetCategoryFormClient] template upload failed:", err);

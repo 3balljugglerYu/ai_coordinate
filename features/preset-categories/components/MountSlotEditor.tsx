@@ -174,7 +174,8 @@ export function MountSlotEditor({
       startY: e.clientY,
       start: splitSlots(slots),
     };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // キャプチャの設定/解除先をコンテナに統一する(解除は endDrag=コンテナの onPointerUp)
+    containerRef.current?.setPointerCapture(e.pointerId);
   }
 
   function beginResize(e: ReactPointerEvent, corner: Corner) {
@@ -188,7 +189,8 @@ export function MountSlotEditor({
       startY: e.clientY,
       start: splitSlots(slots),
     };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // キャプチャの設定/解除先をコンテナに統一する(解除は endDrag=コンテナの onPointerUp)
+    containerRef.current?.setPointerCapture(e.pointerId);
   }
 
   function handlePointerMove(e: ReactPointerEvent) {
