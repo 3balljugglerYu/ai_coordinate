@@ -5,11 +5,13 @@ import type { NormalizedSlotRect } from "@/features/collections/lib/mount-layout
 import {
   alignGroup,
   applyAspect,
+  clampPosition,
   distributeEvenly,
   joinSlots,
   movePosition,
   pixelAspectRatio,
   resizeShared,
+  snapPosition,
   splitSlots,
   type Corner,
   type DistributeAxis,
@@ -21,6 +23,9 @@ import { GEMINI_SUPPORTED_ASPECT_RATIOS } from "@/shared/generation/gemini-aspec
 
 /** 1枠の最小辺(px)。これ以下にはリサイズできない。 */
 const MIN_SLOT_PX = 24;
+
+/** 他の枠の辺にスナップする閾値(画面px)。 */
+const SNAP_PX = 5;
 
 /** 比率が未検出のときの既定ラベル */
 const DEFAULT_ASPECT = "1:1";
@@ -88,6 +93,11 @@ export function MountSlotEditor({
   const [selection, setSelection] = useState<number[]>([0]);
   // スマホ用の複数選択モード(ON 中はタップで選択の追加/解除)
   const [multiSelectMode, setMultiSelectMode] = useState(false);
+  // ドラッグ中に表示するスナップガイド線(正規化位置, 無ければ null)
+  const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({
+    x: null,
+    y: null,
+  });
 
   // 比率は常に固定(リサイズで比率を維持する)
   const lockRatio = true;
@@ -149,12 +159,27 @@ export function MountSlotEditor({
     const { dxNorm, dyNorm } = toNorm(e.clientX - drag.startX, e.clientY - drag.startY);
 
     if (drag.kind === "move") {
+      const moved = movePosition(
+        drag.start.positions[drag.index],
+        drag.start.size,
+        dxNorm,
+        dyNorm,
+      );
+      // 他の枠の辺へスナップ(5px を正規化換算)
+      const rect = containerRef.current?.getBoundingClientRect();
+      const thX = SNAP_PX / (rect?.width ?? 1);
+      const thY = SNAP_PX / (rect?.height ?? 1);
+      const others = drag.start.positions.filter((_, i) => i !== drag.index);
+      const snapped = snapPosition(moved, drag.start.size, others, thX, thY);
+      const finalPos = clampPosition(
+        { x: snapped.x, y: snapped.y },
+        drag.start.size,
+      );
+      setGuides({ x: snapped.guideX, y: snapped.guideY });
       const next: EditorSlots = {
         size: drag.start.size,
         positions: drag.start.positions.map((p, i) =>
-          i === drag.index
-            ? movePosition(p, drag.start.size, dxNorm, dyNorm)
-            : p,
+          i === drag.index ? finalPos : p,
         ),
       };
       onChange(joinSlots(next));
@@ -199,6 +224,7 @@ export function MountSlotEditor({
   function endDrag(e: ReactPointerEvent) {
     if (dragRef.current) {
       dragRef.current = null;
+      setGuides({ x: null, y: null });
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
@@ -290,6 +316,20 @@ export function MountSlotEditor({
             ))}
           </div>
         ))}
+
+        {/* スナップガイド線(ドラッグ中に他の枠の辺と一致したとき表示) */}
+        {guides.x !== null ? (
+          <div
+            className="pointer-events-none absolute top-0 bottom-0 w-px bg-rose-500"
+            style={{ left: pct(guides.x) }}
+          />
+        ) : null}
+        {guides.y !== null ? (
+          <div
+            className="pointer-events-none absolute left-0 right-0 h-px bg-rose-500"
+            style={{ top: pct(guides.y) }}
+          />
+        ) : null}
       </div>
 
       {/* 枠全体(グループ)の整列。相対配置・サイズは保ったまま平行移動する。 */}

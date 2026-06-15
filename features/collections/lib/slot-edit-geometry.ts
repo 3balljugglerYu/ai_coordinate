@@ -103,6 +103,81 @@ export function movePosition(
   return clampPosition({ x: pos.x + dxNorm, y: pos.y + dyNorm }, size);
 }
 
+/** snapPosition の結果。x/y は吸着後の左上、guideX/Y は表示するガイド線(正規化, 無ければ null)。 */
+export interface SnapResult {
+  x: number;
+  y: number;
+  guideX: number | null;
+  guideY: number | null;
+}
+
+/**
+ * ドラッグ中の枠を他の枠の辺(左/中央/右・上/中央/下)に吸着させる(スマートガイド)。
+ * しきい値(正規化)以内に近づいたら、その辺へ位置を合わせる。x/y は独立に判定する。
+ * 全枠同サイズ前提。閾値は画面px換算した正規化値を渡す。
+ */
+export function snapPosition(
+  pos: Point,
+  size: Size,
+  others: Point[],
+  thresholdX: number,
+  thresholdY: number,
+): SnapResult {
+  // ドラッグ枠の候補辺(左上からのオフセット付き)
+  const draggedX = [
+    { off: 0, v: pos.x },
+    { off: size.w / 2, v: pos.x + size.w / 2 },
+    { off: size.w, v: pos.x + size.w },
+  ];
+  const draggedY = [
+    { off: 0, v: pos.y },
+    { off: size.h / 2, v: pos.y + size.h / 2 },
+    { off: size.h, v: pos.y + size.h },
+  ];
+  const otherX: number[] = [];
+  const otherY: number[] = [];
+  for (const o of others) {
+    otherX.push(o.x, o.x + size.w / 2, o.x + size.w);
+    otherY.push(o.y, o.y + size.h / 2, o.y + size.h);
+  }
+
+  let bestX: number | null = null;
+  let guideX: number | null = null;
+  let bestXDist = thresholdX;
+  for (const d of draggedX) {
+    for (const ov of otherX) {
+      const dist = Math.abs(d.v - ov);
+      // より近いものだけ採用(同距離は先勝ち=左/中央/右の順で intent に近い辺を優先)
+      if (dist < bestXDist) {
+        bestXDist = dist;
+        bestX = ov - d.off;
+        guideX = ov;
+      }
+    }
+  }
+
+  let bestY: number | null = null;
+  let guideY: number | null = null;
+  let bestYDist = thresholdY;
+  for (const d of draggedY) {
+    for (const ov of otherY) {
+      const dist = Math.abs(d.v - ov);
+      if (dist < bestYDist) {
+        bestYDist = dist;
+        bestY = ov - d.off;
+        guideY = ov;
+      }
+    }
+  }
+
+  return {
+    x: bestX ?? pos.x,
+    y: bestY ?? pos.y,
+    guideX,
+    guideY,
+  };
+}
+
 /**
  * いずれかの枠の四隅ハンドルをドラッグして「共有サイズ」を変更する。
  * 対角固定: ドラッグした角の **対角を固定** したまま新サイズへ全枠が連動する

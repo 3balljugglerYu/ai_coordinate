@@ -9,6 +9,7 @@ import {
   resizeShared,
   seedSlots,
   setSlotCount,
+  snapPosition,
   splitSlots,
   type EditorSlots,
 } from "@/features/collections/lib/slot-edit-geometry";
@@ -328,6 +329,42 @@ describe("distributeEvenly (両端固定・等間隔)", () => {
       ],
     };
     expect(distributeEvenly(state, "horizontal", [0, 1])).toBe(state);
+  });
+});
+
+describe("snapPosition (他の枠の辺へ吸着)", () => {
+  const size = { w: 0.2, h: 0.2 };
+  const others = [{ x: 0.5, y: 0.3 }]; // 上端 0.3
+
+  test("上端が他枠の上端付近(閾値内)なら吸着しガイドを返す", () => {
+    // y=0.31, 他枠上端0.3, 閾値0.02 → 吸着して y=0.3
+    const r = snapPosition({ x: 0.1, y: 0.31 }, size, others, 0.02, 0.02);
+    expect(r.y).toBeCloseTo(0.3, 6);
+    expect(r.guideY).toBeCloseTo(0.3, 6);
+  });
+
+  test("閾値外なら吸着しない(ガイドなし)", () => {
+    const r = snapPosition({ x: 0.1, y: 0.36 }, size, others, 0.02, 0.02);
+    expect(r.y).toBeCloseTo(0.36, 6);
+    expect(r.guideY).toBeNull();
+  });
+
+  test("左端が他枠の左端付近なら吸着する", () => {
+    const r = snapPosition({ x: 0.49, y: 0.7 }, size, others, 0.02, 0.02);
+    expect(r.x).toBeCloseTo(0.5, 6);
+    expect(r.guideX).toBeCloseTo(0.5, 6);
+  });
+
+  test("ドラッグ枠の中央が他枠の中央に吸着する", () => {
+    // 他枠中央 x = 0.5+0.1 = 0.6。ドラッグ枠中央(x+0.1)が0.6付近 → x=0.5
+    const r = snapPosition({ x: 0.505, y: 0.7 }, size, others, 0.02, 0.02);
+    // 左端0.505は他枠左端0.5に近いので左端吸着 → x=0.5
+    expect(r.x).toBeCloseTo(0.5, 6);
+  });
+
+  test("他枠が無ければ素通り", () => {
+    const r = snapPosition({ x: 0.1, y: 0.31 }, size, [], 0.02, 0.02);
+    expect(r).toEqual({ x: 0.1, y: 0.31, guideX: null, guideY: null });
   });
 });
 
