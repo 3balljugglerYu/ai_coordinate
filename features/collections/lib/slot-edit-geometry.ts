@@ -118,6 +118,18 @@ export function clampPosition(pos: Point, size: Size): Point {
 }
 
 /**
+ * 移動の上限を「枠が台紙から完全に離れる位置まで」に緩くクランプする。
+ * 近い辺が台紙の反対側の辺に達するまで動かせる(=完全に外へ出せるが無限には飛ばない)。
+ * x: -w(右辺が台紙左端0)〜1(左辺が台紙右端1) / y: -h〜1。
+ */
+export function clampPositionLoose(pos: Point, size: Size): Point {
+  return {
+    x: clamp(pos.x, -size.w, 1),
+    y: clamp(pos.y, -size.h, 1),
+  };
+}
+
+/**
  * その枠だけを移動する(共有サイズは不変)。
  * bounded=true なら台紙内にクランプ、false なら台紙外も許可(確定時に判定)。
  */

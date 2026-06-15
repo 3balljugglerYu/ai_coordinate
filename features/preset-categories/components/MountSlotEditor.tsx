@@ -5,6 +5,7 @@ import type { NormalizedSlotRect } from "@/features/collections/lib/mount-layout
 import {
   alignGroup,
   applyAspect,
+  clampPositionLoose,
   distributeEvenly,
   joinSlots,
   movePosition,
@@ -215,11 +216,16 @@ export function MountSlotEditor({
       const thY = SNAP_PX / (rect?.height ?? 1);
       const others = drag.start.positions.filter((_, i) => i !== drag.index);
       const snapped = snapPosition(moved, drag.start.size, others, thX, thY);
+      // 移動は「完全に台紙から離れる位置まで」に制限(無限に飛ばさない)
+      const finalPos = clampPositionLoose(
+        { x: snapped.x, y: snapped.y },
+        drag.start.size,
+      );
       setGuides({ x: snapped.guideX, y: snapped.guideY });
       const next: EditorSlots = {
         size: drag.start.size,
         positions: drag.start.positions.map((p, i) =>
-          i === drag.index ? { x: snapped.x, y: snapped.y } : p,
+          i === drag.index ? finalPos : p,
         ),
       };
       onChange(joinSlots(next));

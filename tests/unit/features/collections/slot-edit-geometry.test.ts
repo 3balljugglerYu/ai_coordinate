@@ -2,6 +2,7 @@ import {
   alignGroup,
   applyAspect,
   clampPosition,
+  clampPositionLoose,
   distributeEvenly,
   joinSlots,
   movePosition,
@@ -58,6 +59,22 @@ describe("clampPosition / movePosition", () => {
   test("位置を 0..1(共有サイズ分の余白)内へクランプ", () => {
     const size = { w: 0.3, h: 0.3 };
     expect(clampPosition({ x: -0.5, y: 1.2 }, size)).toEqual({ x: 0, y: 0.7 });
+  });
+
+  test("clampPositionLoose は完全に離れる位置まで許容する", () => {
+    const size = { w: 0.3, h: 0.2 };
+    // 右/下へは x:1, y:1 まで(左辺/上辺が台紙の反対端)
+    expect(clampPositionLoose({ x: 5, y: 5 }, size)).toEqual({ x: 1, y: 1 });
+    // 左/上へは x:-w, y:-h まで(右辺/下辺が台紙の手前端0)
+    expect(clampPositionLoose({ x: -5, y: -5 }, size)).toEqual({
+      x: -0.3,
+      y: -0.2,
+    });
+    // 範囲内はそのまま
+    expect(clampPositionLoose({ x: 0.5, y: 0.4 }, size)).toEqual({
+      x: 0.5,
+      y: 0.4,
+    });
   });
 
   test("movePosition はその枠だけ移動しクランプする", () => {
