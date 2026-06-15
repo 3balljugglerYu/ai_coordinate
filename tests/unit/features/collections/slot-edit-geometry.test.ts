@@ -5,6 +5,7 @@ import {
   distributeEvenly,
   joinSlots,
   movePosition,
+  outOfBoundsIndices,
   pixelAspectRatio,
   resizeShared,
   seedSlots,
@@ -81,7 +82,13 @@ describe("resizeShared (対角固定・全枠連動)", () => {
       { x: 0.6, y: 0.6 },
     ],
   };
-  const sq = { lockRatio: false, templateWidth: 1000, templateHeight: 1000, minPx: 24 };
+  const sq = {
+    lockRatio: false,
+    templateWidth: 1000,
+    templateHeight: 1000,
+    minPx: 24,
+    bounded: true,
+  };
 
   test("se を引くと左上が固定されたまま全枠が同じ新サイズになる", () => {
     const next = resizeShared(base, "se", 0.05, 0.05, sq);
@@ -140,9 +147,35 @@ describe("resizeShared (対角固定・全枠連動)", () => {
       templateWidth: 1000,
       templateHeight: 500,
       minPx: 24,
+      bounded: true,
     });
     // ピクセル正方形不変
     expect(next.size.w * 1000).toBeCloseTo(next.size.h * 500, 4);
+  });
+
+  test("bounded=false なら台紙外まで拡大できる(クランプしない)", () => {
+    // 通常(bounded)なら maxW=0.4 でクランプされる大きな拡大量
+    const next = resizeShared(base, "se", 0.5, 0.5, { ...sq, bounded: false });
+    // 0.4 を超えて 0.2+0.5=0.7 まで拡大
+    expect(next.size.w).toBeCloseTo(0.7, 6);
+    expect(next.size.h).toBeCloseTo(0.7, 6);
+  });
+});
+
+describe("outOfBoundsIndices", () => {
+  test("台紙外の枠インデックスを返す", () => {
+    const slots = [
+      { x: 0.1, y: 0.1, w: 0.2, h: 0.2 }, // 内
+      { x: 0.9, y: 0.1, w: 0.2, h: 0.2 }, // 右はみ出し(1.1)
+      { x: -0.05, y: 0.5, w: 0.2, h: 0.2 }, // 左はみ出し
+    ];
+    expect(outOfBoundsIndices(slots)).toEqual([1, 2]);
+  });
+
+  test("全て内側なら空配列", () => {
+    expect(
+      outOfBoundsIndices([{ x: 0, y: 0, w: 1, h: 1 }]),
+    ).toEqual([]);
   });
 });
 

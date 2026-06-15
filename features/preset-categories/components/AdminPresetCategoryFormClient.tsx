@@ -11,6 +11,7 @@ import {
 } from "@/features/collections/lib/mount-layouts";
 import {
   joinSlots,
+  outOfBoundsIndices,
   seedSlots,
   setSlotCount,
   splitSlots,
@@ -326,6 +327,18 @@ export function AdminPresetCategoryFormClient({
         );
         setBusy(false);
         return;
+      }
+
+      // 枠が台紙からはみ出している場合は保存しない(枠調整で台紙内に収める)
+      if (form.isCollectionSeries && form.mountSlots) {
+        const oob = outOfBoundsIndices(form.mountSlots);
+        if (oob.length > 0) {
+          setError(
+            `枠 ${oob.map((i) => i + 1).join(", ")} が台紙からはみ出しています。枠調整で台紙内に収めてから保存してください。`,
+          );
+          setBusy(false);
+          return;
+        }
       }
 
       const body =

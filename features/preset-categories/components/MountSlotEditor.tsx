@@ -5,10 +5,10 @@ import type { NormalizedSlotRect } from "@/features/collections/lib/mount-layout
 import {
   alignGroup,
   applyAspect,
-  clampPosition,
   distributeEvenly,
   joinSlots,
   movePosition,
+  outOfBoundsIndices,
   pixelAspectRatio,
   resizeShared,
   snapPosition,
@@ -102,12 +102,18 @@ export function MountSlotEditor({
     x: null,
     y: null,
   });
+  // 「確定」押下時の判定結果(null=未判定)
+  const [confirmResult, setConfirmResult] = useState<
+    null | { ok: boolean; idx: number[] }
+  >(null);
 
   // 比率は常に固定(リサイズで比率を維持する)
   const lockRatio = true;
   const state = splitSlots(slots);
   // 数値表示用の代表枠(最後に触れた枠)
   const primary = selection[selection.length - 1] ?? 0;
+  // 台紙からはみ出している枠(赤表示・確定不可の対象)
+  const oobSet = new Set(outOfBoundsIndices(slots));
 
   function toggleSelection(index: number) {
     setSelection((prev) =>
@@ -134,6 +140,12 @@ export function MountSlotEditor({
     if (prev) {
       onChange(prev);
     }
+  }
+
+  /** 確定: 全枠が台紙(0..1)内かを判定して結果を表示する。 */
+  function handleConfirm() {
+    const idx = outOfBoundsIndices(slots);
+    setConfirmResult({ ok: idx.length === 0, idx });
   }
 
   /** ポインタ移動量(px)を正規化(0..1)へ換算する。コンテナ実描画寸法で割る。 */
@@ -189,11 +201,13 @@ export function MountSlotEditor({
     }
 
     if (drag.kind === "move") {
+      // 台紙外も許可(bounded=false)。確定/送信時にはみ出しを判定する。
       const moved = movePosition(
         drag.start.positions[drag.index],
         drag.start.size,
         dxNorm,
         dyNorm,
+        false,
       );
       // 他の枠の辺へスナップ(5px を正規化換算)
       const rect = containerRef.current?.getBoundingClientRect();
@@ -201,15 +215,11 @@ export function MountSlotEditor({
       const thY = SNAP_PX / (rect?.height ?? 1);
       const others = drag.start.positions.filter((_, i) => i !== drag.index);
       const snapped = snapPosition(moved, drag.start.size, others, thX, thY);
-      const finalPos = clampPosition(
-        { x: snapped.x, y: snapped.y },
-        drag.start.size,
-      );
       setGuides({ x: snapped.guideX, y: snapped.guideY });
       const next: EditorSlots = {
         size: drag.start.size,
         positions: drag.start.positions.map((p, i) =>
-          i === drag.index ? finalPos : p,
+          i === drag.index ? { x: snapped.x, y: snapped.y } : p,
         ),
       };
       onChange(joinSlots(next));
@@ -221,6 +231,7 @@ export function MountSlotEditor({
       templateWidth,
       templateHeight,
       minPx: MIN_SLOT_PX,
+      bounded: false,
     });
     onChange(joinSlots(next));
   }
@@ -274,7 +285,7 @@ export function MountSlotEditor({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
       <div
         ref={containerRef}
-        className="relative w-full max-w-md select-none overflow-hidden rounded-md border border-slate-300 bg-slate-100 lg:shrink-0"
+        className="relative w-full max-w-md select-none overflow-visible rounded-md border border-slate-300 bg-slate-100 lg:shrink-0"
         style={{ aspectRatio: `${templateWidth} / ${templateHeight}`, touchAction: "none" }}
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
@@ -295,9 +306,11 @@ export function MountSlotEditor({
             key={index}
             onPointerDown={(e) => beginMove(e, index)}
             className={`absolute cursor-move border-2 ${
-              selection.includes(index)
-                ? "border-sky-500 bg-sky-500/10"
-                : "border-slate-400/80 bg-slate-400/5"
+              oobSet.has(index)
+                ? "border-rose-500 bg-rose-500/10"
+                : selection.includes(index)
+                  ? "border-sky-500 bg-sky-500/10"
+                  : "border-slate-400/80 bg-slate-400/5"
             }`}
             style={{
               left: pct(pos.x),
@@ -440,6 +453,27 @@ export function MountSlotEditor({
             縦を等間隔
           </button>
         </div>
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={handleConfirm}
+            className="self-start rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white hover:bg-slate-800"
+          >
+            チェック（はみ出し判定）
+          </button>
+          {confirmResult ? (
+            confirmResult.ok ? (
+              <p className="font-medium text-emerald-600">
+                OK: すべての枠が台紙内に収まっています。
+              </p>
+            ) : (
+              <p className="font-medium text-rose-600">
+                枠 {confirmResult.idx.map((i) => i + 1).join(", ")}{" "}
+                が台紙からはみ出しています。
+              </p>
+            )
+          ) : null}
+        </div>
       </div>
       </div>
 
@@ -458,8 +492,14 @@ export function MountSlotEditor({
           枠 {primary + 1} の位置: x {pct(state.positions[primary]?.x ?? 0)}, y{" "}
           {pct(state.positions[primary]?.y ?? 0)}
         </p>
+        {oobSet.size > 0 ? (
+          <p className="mt-1 font-medium text-rose-600">
+            台紙からはみ出している枠があります（枠{" "}
+            {[...oobSet].map((i) => i + 1).join(", ")}）。台紙内に収めてから保存してください。
+          </p>
+        ) : null}
         <p className="mt-1 text-slate-400">
-          枠の中央をドラッグで移動、四隅の青ハンドルでサイズ変更。複数選択は PC=Shift+クリック / スマホ=複数選択モードをON。
+          枠の中央をドラッグで移動、四隅の青ハンドルでサイズ変更。台紙外まで自由に調整できます。「チェック」で台紙内かを判定します。複数選択は PC=Shift+クリック / スマホ=複数選択モードをON。
         </p>
       </div>
     </div>

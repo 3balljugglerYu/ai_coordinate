@@ -46,11 +46,35 @@ export interface ResizeOptions {
   templateHeight: number;
   /** 1枠の最小辺(px) */
   minPx: number;
+  /** true なら全枠が 0..1 に収まるよう上限クランプ。false なら台紙外も許可(確定時に判定) */
+  bounded: boolean;
 }
+
+/** 枠が台紙(0..1)からはみ出している判定の許容誤差。API の SLOT_EPS と一致させる。 */
+export const BOUNDS_EPS = 1e-6;
 
 function clamp(value: number, min: number, max: number): number {
   if (max < min) return min;
   return Math.min(Math.max(value, min), max);
+}
+
+/** 台紙(0..1)からはみ出している枠のインデックス一覧を返す。 */
+export function outOfBoundsIndices(
+  slots: NormalizedSlotRect[],
+  eps: number = BOUNDS_EPS,
+): number[] {
+  const result: number[] = [];
+  slots.forEach((s, i) => {
+    if (
+      s.x < -eps ||
+      s.y < -eps ||
+      s.x + s.w > 1 + eps ||
+      s.y + s.h > 1 + eps
+    ) {
+      result.push(i);
+    }
+  });
+  return result;
 }
 
 /**
@@ -93,14 +117,19 @@ export function clampPosition(pos: Point, size: Size): Point {
   };
 }
 
-/** その枠だけを移動する(共有サイズは不変)。台紙内にクランプ。 */
+/**
+ * その枠だけを移動する(共有サイズは不変)。
+ * bounded=true なら台紙内にクランプ、false なら台紙外も許可(確定時に判定)。
+ */
 export function movePosition(
   pos: Point,
   size: Size,
   dxNorm: number,
   dyNorm: number,
+  bounded: boolean = true,
 ): Point {
-  return clampPosition({ x: pos.x + dxNorm, y: pos.y + dyNorm }, size);
+  const moved = { x: pos.x + dxNorm, y: pos.y + dyNorm };
+  return bounded ? clampPosition(moved, size) : moved;
 }
 
 /** snapPosition の結果。x/y は吸着後の左上、guideX/Y は表示するガイド線(正規化, 無ければ null)。 */
@@ -209,14 +238,19 @@ export function resizeShared(
   // 各枠でアンカー(対角)を固定したまま 0..1 に収まる最大サイズ。
   // 西アンカー(右辺固定): 左辺が 0 まで → maxW = 右辺座標(x+w)
   // 東アンカー(左辺固定): 右辺が 1 まで → maxW = 1 - x
-  let maxW = 1;
-  let maxH = 1;
-  for (const p of positions) {
-    maxW = Math.min(maxW, isWest ? p.x + size.w : 1 - p.x);
-    maxH = Math.min(maxH, isNorth ? p.y + size.h : 1 - p.y);
+  // bounded=false のときは上限なし(台紙外まで許可・確定時に判定)。
+  let maxW = Number.POSITIVE_INFINITY;
+  let maxH = Number.POSITIVE_INFINITY;
+  if (opts.bounded) {
+    maxW = 1;
+    maxH = 1;
+    for (const p of positions) {
+      maxW = Math.min(maxW, isWest ? p.x + size.w : 1 - p.x);
+      maxH = Math.min(maxH, isNorth ? p.y + size.h : 1 - p.y);
+    }
+    maxW = Math.max(maxW, 0);
+    maxH = Math.max(maxH, 0);
   }
-  maxW = Math.max(maxW, 0);
-  maxH = Math.max(maxH, 0);
 
   let w: number;
   let h: number;
