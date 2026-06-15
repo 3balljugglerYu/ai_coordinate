@@ -9,7 +9,12 @@ import {
   isMountLayoutKey,
   type NormalizedSlotRect,
 } from "@/features/collections/lib/mount-layouts";
-import { seedSlots } from "@/features/collections/lib/slot-edit-geometry";
+import {
+  joinSlots,
+  seedSlots,
+  setSlotCount,
+  splitSlots,
+} from "@/features/collections/lib/slot-edit-geometry";
 import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
 
 type Mode = "create" | "edit";
@@ -248,6 +253,52 @@ export function AdminPresetCategoryFormClient({
   /** カスタム枠を破棄し、レイアウトのプリセットに戻す。 */
   function handleClearSlots() {
     update("mountSlots", null);
+  }
+
+  /**
+   * 台紙レイアウト変更。既存の枠調整があれば確認のうえ、そのレイアウトで枠を再生成する
+   * (枠数=N も同期)。キャンセル時は選択を元に戻す(form.mountLayout を変えない)。
+   * 調整がまだ無ければ即座に seed して枠エディタを表示する。
+   */
+  function handleLayoutChange(value: FormState["mountLayout"]) {
+    if (value === "") {
+      update("mountLayout", "");
+      return;
+    }
+    const hasCustom = !!form.mountSlots && form.mountSlots.length > 0;
+    if (
+      hasCustom &&
+      !confirm(`現在の枠調整を破棄して ${value} で枠を作り直しますか?`)
+    ) {
+      return; // 選択は据え置き(controlled なので元に戻る)
+    }
+    const seeded = seedSlots(value);
+    setForm((prev) => ({
+      ...prev,
+      mountLayout: value,
+      mountSlots: seeded,
+      completionThreshold: seeded.length,
+    }));
+  }
+
+  /**
+   * コンプリート数 N 変更。カスタム枠があるときは枠の数を N に増減する
+   * (既存枠は保持・増加分はデフォルト位置に追加・減少分は末尾を削除)。
+   * カスタム枠がまだ無ければ数値だけ更新する。
+   */
+  function handleThresholdChange(raw: string) {
+    const n = raw === "" ? null : Math.floor(Number(raw));
+    const hasCustom = !!form.mountSlots && form.mountSlots.length > 0;
+    if (n === null || !Number.isFinite(n) || n < 1 || !hasCustom) {
+      update("completionThreshold", n);
+      return;
+    }
+    const resized = joinSlots(setSlotCount(splitSlots(form.mountSlots!), n));
+    setForm((prev) => ({
+      ...prev,
+      completionThreshold: n,
+      mountSlots: resized,
+    }));
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -845,12 +896,7 @@ export function AdminPresetCategoryFormClient({
               min={1}
               step={1}
               value={form.completionThreshold ?? ""}
-              onChange={(e) =>
-                update(
-                  "completionThreshold",
-                  e.target.value === "" ? null : Math.floor(Number(e.target.value)),
-                )
-              }
+              onChange={(e) => handleThresholdChange(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               placeholder="4"
             />
@@ -863,10 +909,7 @@ export function AdminPresetCategoryFormClient({
             <select
               value={form.mountLayout}
               onChange={(e) =>
-                update(
-                  "mountLayout",
-                  e.target.value as FormState["mountLayout"],
-                )
+                handleLayoutChange(e.target.value as FormState["mountLayout"])
               }
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             >
@@ -876,7 +919,7 @@ export function AdminPresetCategoryFormClient({
               <option value="grid_6">grid_6（6枠・2×3）</option>
             </select>
             <span className="mt-1 block text-xs text-slate-500">
-              スロット数（=枠数）は N と一致させてください。
+              レイアウトを変えると枠が作り直されます（調整済みなら確認します）。N を変えると枠数も増減します。
             </span>
           </label>
         </div>

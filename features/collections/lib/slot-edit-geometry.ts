@@ -170,6 +170,34 @@ export function resizeShared(
   return { size: { w, h }, positions: newPositions };
 }
 
+/**
+ * 枠の数を targetCount に合わせる(共有サイズは維持)。
+ * - 減らす場合: 末尾の枠を削除
+ * - 増やす場合: 既存枠はそのまま、足りない分をデフォルト位置(少しずつずらした左上)に追加
+ * 既存枠の位置・サイズは保持する。
+ */
+export function setSlotCount(
+  state: EditorSlots,
+  targetCount: number,
+): EditorSlots {
+  const { size, positions } = state;
+  if (targetCount <= 0) {
+    return { size, positions: [] };
+  }
+  if (targetCount === positions.length) {
+    return state;
+  }
+  if (targetCount < positions.length) {
+    return { size, positions: positions.slice(0, targetCount) };
+  }
+  const next = positions.map((p) => ({ ...p }));
+  for (let k = positions.length; k < targetCount; k++) {
+    const offset = 0.04 * (k - positions.length + 1);
+    next.push(clampPosition({ x: 0.1 + offset, y: 0.1 + offset }, size));
+  }
+  return { size, positions: next };
+}
+
 /** 横方向の整列 */
 export type HAlign = "left" | "center" | "right";
 /** 縦方向の整列 */

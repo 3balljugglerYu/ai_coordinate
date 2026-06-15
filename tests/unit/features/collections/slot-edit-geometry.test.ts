@@ -8,6 +8,7 @@ import {
   pixelAspectRatio,
   resizeShared,
   seedSlots,
+  setSlotCount,
   splitSlots,
   type EditorSlots,
 } from "@/features/collections/lib/slot-edit-geometry";
@@ -141,6 +142,41 @@ describe("resizeShared (対角固定・全枠連動)", () => {
     });
     // ピクセル正方形不変
     expect(next.size.w * 1000).toBeCloseTo(next.size.h * 500, 4);
+  });
+});
+
+describe("setSlotCount (枠数の増減)", () => {
+  const base: EditorSlots = {
+    size: { w: 0.2, h: 0.2 },
+    positions: [
+      { x: 0.1, y: 0.1 },
+      { x: 0.5, y: 0.5 },
+    ],
+  };
+
+  test("増やすと既存枠は保持し不足分を追加する", () => {
+    const next = setSlotCount(base, 4);
+    expect(next.positions).toHaveLength(4);
+    // 既存2枠は不変
+    expect(next.positions[0]).toEqual({ x: 0.1, y: 0.1 });
+    expect(next.positions[1]).toEqual({ x: 0.5, y: 0.5 });
+    // 追加枠は共有サイズ・0..1内
+    next.positions.slice(2).forEach((p) => {
+      expect(p.x).toBeGreaterThanOrEqual(0);
+      expect(p.x).toBeLessThanOrEqual(1 - base.size.w);
+    });
+    // サイズは維持
+    expect(next.size).toEqual({ w: 0.2, h: 0.2 });
+  });
+
+  test("減らすと末尾を削除する", () => {
+    const next = setSlotCount(base, 1);
+    expect(next.positions).toEqual([{ x: 0.1, y: 0.1 }]);
+  });
+
+  test("同数なら変化なし、0以下は空", () => {
+    expect(setSlotCount(base, 2)).toBe(base);
+    expect(setSlotCount(base, 0).positions).toEqual([]);
   });
 });
 
