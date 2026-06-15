@@ -59,7 +59,9 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
       ) : (
         // ペルコイン残高と購入リンク（コーディネートと共通コンポーネント）
         <Suspense
-          fallback={<div className="h-16 animate-pulse rounded-lg bg-gray-200" />}
+          fallback={
+            <div className="h-16 w-64 animate-pulse rounded-lg bg-gray-200" />
+          }
         >
           <CachedGenerationPercoinBalance
             userId={user.id}

@@ -47,7 +47,7 @@ export async function CoordinatePageBody() {
         // ペルコイン残高と購入リンク
         <Suspense
           fallback={
-            <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
+            <div className="mb-6 h-16 w-64 animate-pulse rounded-lg bg-gray-200" />
           }
         >
           <CachedGenerationPercoinBalance

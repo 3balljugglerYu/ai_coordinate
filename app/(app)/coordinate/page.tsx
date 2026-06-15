@@ -52,7 +52,7 @@ export default async function CoordinatePage() {
 function CoordinatePageBodyFallback() {
   return (
     <>
-      <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
+      <div className="mb-6 h-16 w-64 animate-pulse rounded-lg bg-gray-200" />
       <GenerationFormSkeleton />
     </>
   );
