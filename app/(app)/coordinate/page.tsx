@@ -1,24 +1,10 @@
-import { connection } from "next/server";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
-import { getUser } from "@/lib/auth";
-import { isAdminViewer } from "@/lib/env";
-import { RefreshOnMount } from "@/components/RefreshOnMount";
-import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
-import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
-import { CachedGenerationPercoinBalance } from "@/features/credits/components/CachedGenerationPercoinBalance";
-import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
-import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
-import { getUserProfileServer } from "@/features/my-page/lib/server-api";
-import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config";
+import { CoordinatePageBody } from "@/features/generation/components/CoordinatePageBody";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
-import { CoordinateGuestLoginCta } from "@/features/generation/components/CoordinateGuestLoginCta";
-import {
-  CoordinateGeneratedListHashScroll,
-  COORDINATE_GENERATED_LIST_ID,
-} from "@/features/generation/components/CoordinateGeneratedListHashScroll";
 
 export async function generateMetadata(): Promise<Metadata> {
   const localeValue = await getLocale();
@@ -34,22 +20,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CoordinatePage() {
-  await connection();
-
+  // 静的ヘッダ(タイトル/説明)に必要なのは翻訳のみ。データ取得・認証は
+  // 下の <Suspense> 配下に隔離し、ヘッダを即時描画する。
   const t = await getTranslations("coordinate");
-  const creditsT = await getTranslations("credits");
-  const locale = (await getLocale()) as Locale;
-  // Phase 6 / UCL-005: 未ログインユーザーも /coordinate を開けるようにする。
-  const user = await getUser();
-  const isGuest = user === null;
-  const profile = isGuest ? null : await getUserProfileServer(user.id);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isGuest ? <RefreshOnMount /> : null}
       <div className="pt-6 md:pt-8 pb-8 px-4">
         <div className="mx-auto max-w-6xl animate-page-enter motion-reduce:animate-none">
-          {/* 静的コンテンツ: タイトルと説明文 */}
+          {/* 静的コンテンツ: タイトルと説明文(データに依存しないので即時表示) */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">
               {t("pageTitle")}
@@ -59,59 +38,22 @@ export default async function CoordinatePage() {
             </p>
           </div>
 
-          {isGuest ? (
-            // UCL-005: 未ログイン時は上部にログイン誘導 CTA を常時表示
-            <CoordinateGuestLoginCta />
-          ) : (
-            // ペルコイン残高と購入リンク
-            <Suspense
-              fallback={
-                <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
-              }
-            >
-              <CachedGenerationPercoinBalance
-                userId={user.id}
-                locale={locale}
-                source="coordinate"
-                copy={{
-                  balanceLabel: creditsT("balanceLabel"),
-                  percoinUnit: creditsT("percoinUnit"),
-                }}
-              />
-            </Suspense>
-          )}
-
-          {/* GenerationForm と 生成結果一覧を GenerationStateProvider でラップ */}
-          <GenerationStateProvider>
-            <Suspense fallback={<GenerationFormSkeleton />}>
-              <GenerationFormContainer
-                subscriptionPlan={profile?.subscription_plan ?? "free"}
-                authState={isGuest ? "guest" : "authenticated"}
-                // framing_mode (free_pose) は admin viewer 限定の先行公開 (サーバ側でも検証)
-                canUseFreePose={isAdminViewer(user?.id ?? null)}
-              />
-            </Suspense>
-
-            {/* 生成結果一覧 (認証ユーザーのみ。ゲストは GuestResultPreview を見る) */}
-            {!isGuest ? (
-              <div id={COORDINATE_GENERATED_LIST_ID} className="mt-8 scroll-mt-20">
-                <CoordinateGeneratedListHashScroll />
-                <Suspense fallback={<GeneratedImageGallerySkeleton />}>
-                  <CachedGeneratedImageGallery
-                    userId={user.id}
-                    generationType="coordinate"
-                    cacheTag={`coordinate-${user.id}`}
-                    title={t("resultsTitle")}
-                    detailFromParam="coordinate"
-                    returnToImageIdKey="persta-ai:coordinate-return-to-image-id"
-                    applyActionMode="dispatch-event"
-                  />
-                </Suspense>
-              </div>
-            ) : null}
-          </GenerationStateProvider>
+          {/* ユーザー依存の本体(認証・残高・生成フォーム・生成結果)をストリーミング */}
+          <Suspense fallback={<CoordinatePageBodyFallback />}>
+            <CoordinatePageBody />
+          </Suspense>
         </div>
       </div>
     </div>
+  );
+}
+
+/** CoordinatePageBody の読み込み中スケルトン(残高バー + 生成フォーム想定)。 */
+function CoordinatePageBodyFallback() {
+  return (
+    <>
+      <div className="mb-6 h-16 animate-pulse rounded-lg bg-gray-200" />
+      <GenerationFormSkeleton />
+    </>
   );
 }
