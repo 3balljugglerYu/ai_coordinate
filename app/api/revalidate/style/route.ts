@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
       return jsonError(copy.authRequired, "REVALIDATE_AUTH_REQUIRED", 401);
     }
 
-    // revalidateTag: use cache のキャッシュを無効化（/coordinate と引数を揃える）
-    revalidateTag(`style-${user.id}`, "max");
+    // revalidateTag: use cache のキャッシュを無効化。生成完了に伴う再検証なので
+    // 即時無効化({ expire: 0 })を指定する。
+    revalidateTag(`style-${user.id}`, { expire: 0 });
     // revalidatePath: ページ全体のキャッシュを即時無効化（router.refresh で最新データを取得するため）
     revalidatePath("/style");
     return NextResponse.json({ success: true });

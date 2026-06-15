@@ -1003,12 +1003,8 @@ export function StylePageClient({
         (strip.clientWidth - selectedButton.clientWidth) / 2
     );
 
-    // scrollTo 未実装の環境(jsdom 等)では scrollLeft 代入にフォールバックする。
-    if (typeof strip.scrollTo === "function") {
-      strip.scrollTo({ left: targetLeft, behavior: "smooth" });
-    } else {
-      strip.scrollLeft = targetLeft;
-    }
+    // scrollTo 未実装の環境(SSR/古い jsdom 等)では何もしない。
+    strip.scrollTo?.({ left: targetLeft, behavior: "smooth" });
   }, [selectedPresetId]);
 
   useEffect(() => {
