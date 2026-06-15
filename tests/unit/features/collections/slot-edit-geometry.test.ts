@@ -226,6 +226,16 @@ describe("alignGroup (辺そろえ・全枠が端に揃う)", () => {
       expect(p.y).toBeCloseTo(0.1, 6);
     });
   });
+
+  test("indices を渡すと選択枠だけ整列し、他は不変", () => {
+    // 枠0(y=0.1) と 枠1(y=0.3) だけ上そろえ → 両方 y=0.1。枠2 は不変。
+    const next = alignGroup(base, null, "top", [0, 1]);
+    expect(next.positions[0].y).toBeCloseTo(0.1, 6);
+    expect(next.positions[1].y).toBeCloseTo(0.1, 6);
+    expect(next.positions[2].y).toBeCloseTo(0.6, 6); // 不変
+    // x は全て不変
+    expect(next.positions.map((p) => p.x)).toEqual([0.2, 0.5, 0.8]);
+  });
 });
 
 describe("distributeEvenly (両端固定・等間隔)", () => {

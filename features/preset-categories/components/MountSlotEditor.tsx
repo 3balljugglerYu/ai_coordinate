@@ -85,11 +85,24 @@ export function MountSlotEditor({
   const [aspectLabel, setAspectLabel] = useState(() =>
     detectAspectLabel(slots, templateWidth, templateHeight),
   );
-  const [selected, setSelected] = useState(0);
+  // 選択中の枠(複数選択可)。整列は選択枠が2つ以上ならその枠だけに効く。
+  const [selection, setSelection] = useState<number[]>([0]);
+  // スマホ用の複数選択モード(ON 中はタップで選択の追加/解除)
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
 
   // 比率プリセットが選ばれている間はリサイズで比率を維持する
   const lockRatio = aspectLabel !== FREE_ASPECT;
   const state = splitSlots(slots);
+  // 数値表示用の代表枠(最後に触れた枠)
+  const primary = selection[selection.length - 1] ?? 0;
+
+  function toggleSelection(index: number) {
+    setSelection((prev) =>
+      prev.includes(index)
+        ? prev.filter((i) => i !== index)
+        : [...prev, index],
+    );
+  }
 
   /** ポインタ移動量(px)を正規化(0..1)へ換算する。コンテナ実描画寸法で割る。 */
   function toNorm(dxPx: number, dyPx: number): { dxNorm: number; dyNorm: number } {
@@ -102,7 +115,12 @@ export function MountSlotEditor({
   function beginMove(e: ReactPointerEvent, index: number) {
     e.preventDefault();
     e.stopPropagation();
-    setSelected(index);
+    // Shift/Cmd(PC) または 複数選択モード(スマホ) のときは選択トグルのみ(移動しない)
+    if (e.shiftKey || e.metaKey || multiSelectMode) {
+      toggleSelection(index);
+      return;
+    }
+    setSelection([index]);
     dragRef.current = {
       kind: "move",
       index,
@@ -113,10 +131,9 @@ export function MountSlotEditor({
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  function beginResize(e: ReactPointerEvent, corner: Corner, index: number) {
+  function beginResize(e: ReactPointerEvent, corner: Corner) {
     e.preventDefault();
     e.stopPropagation();
-    setSelected(index);
     dragRef.current = {
       kind: "resize",
       corner,
@@ -170,7 +187,9 @@ export function MountSlotEditor({
   }
 
   function handleAlign(hAlign: HAlign | null, vAlign: VAlign | null) {
-    onChange(joinSlots(alignGroup(splitSlots(slots), hAlign, vAlign)));
+    // 2つ以上選択されていればその枠だけを対象に、そうでなければ全枠を整列する
+    const indices = selection.length >= 2 ? selection : undefined;
+    onChange(joinSlots(alignGroup(splitSlots(slots), hAlign, vAlign, indices)));
   }
 
   function handleDistribute(axis: DistributeAxis) {
@@ -192,26 +211,37 @@ export function MountSlotEditor({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-slate-700">枠調整モード</span>
-        <label className="flex items-center gap-2 text-xs text-slate-600">
-          <span>枠の比率</span>
-          <select
-            value={aspectLabel}
-            onChange={(e) => handleAspectChange(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-          >
-            <option value={FREE_ASPECT}>自由（ロック解除）</option>
-            {GEMINI_SUPPORTED_ASPECT_RATIOS.map((r) => (
-              <option key={r.label} value={r.label}>
-                {r.label}
-                {r.label === "1:1"
-                  ? "（正方形）"
-                  : r.value < 1
-                    ? "（縦長）"
-                    : "（横長）"}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={multiSelectMode}
+              onChange={(e) => setMultiSelectMode(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            複数選択モード（スマホ用・タップで追加）
+          </label>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <span>枠の比率</span>
+            <select
+              value={aspectLabel}
+              onChange={(e) => handleAspectChange(e.target.value)}
+              className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+            >
+              <option value={FREE_ASPECT}>自由（ロック解除）</option>
+              {GEMINI_SUPPORTED_ASPECT_RATIOS.map((r) => (
+                <option key={r.label} value={r.label}>
+                  {r.label}
+                  {r.label === "1:1"
+                    ? "（正方形）"
+                    : r.value < 1
+                      ? "（縦長）"
+                      : "（横長）"}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div
@@ -237,7 +267,7 @@ export function MountSlotEditor({
             key={index}
             onPointerDown={(e) => beginMove(e, index)}
             className={`absolute cursor-move border-2 ${
-              index === selected
+              selection.includes(index)
                 ? "border-sky-500 bg-sky-500/10"
                 : "border-slate-400/80 bg-slate-400/5"
             }`}
@@ -254,7 +284,7 @@ export function MountSlotEditor({
             {CORNERS.map(({ corner, className, cursor }) => (
               <span
                 key={corner}
-                onPointerDown={(e) => beginResize(e, corner, index)}
+                onPointerDown={(e) => beginResize(e, corner)}
                 className={`absolute h-3 w-3 rounded-sm border border-white bg-sky-500 ${className}`}
                 style={{ cursor }}
               />
@@ -340,11 +370,15 @@ export function MountSlotEditor({
           （1枠をリサイズすると全 {state.positions.length} 枠が同じサイズに連動します）
         </p>
         <p className="mt-1">
-          枠 {selected + 1} の位置: x {pct(state.positions[selected]?.x ?? 0)}, y{" "}
-          {pct(state.positions[selected]?.y ?? 0)}
+          選択中: {selection.length >= 1 ? `枠 ${selection.map((i) => i + 1).join(", ")}` : "なし"}
+          {selection.length >= 2 ? "（整列は選択枠だけに効きます）" : "（整列は全枠に効きます）"}
+        </p>
+        <p className="mt-1">
+          枠 {primary + 1} の位置: x {pct(state.positions[primary]?.x ?? 0)}, y{" "}
+          {pct(state.positions[primary]?.y ?? 0)}
         </p>
         <p className="mt-1 text-slate-400">
-          枠の中央をドラッグで移動、四隅の青ハンドルでサイズ変更。
+          枠の中央をドラッグで移動、四隅の青ハンドルでサイズ変更。複数選択は PC=Shift+クリック / スマホ=複数選択モードをON。
         </p>
       </div>
     </div>

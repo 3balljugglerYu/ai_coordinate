@@ -204,57 +204,70 @@ export type HAlign = "left" | "center" | "right";
 export type VAlign = "top" | "middle" | "bottom";
 
 /**
- * 全枠の「辺」をそろえる(デザインツールの整列と同じ)。グループ全体を動かすのではなく、
- * 各枠の端を枠群の端にそろえる。全枠は同サイズなので結果は重なる(例: 左寄せ=全枠が同じ
+ * 枠の「辺」をそろえる(デザインツールの整列と同じ)。グループ全体を動かすのではなく、
+ * 各枠の端を(対象枠群の)端にそろえる。全枠は同サイズなので結果は重なる(例: 左寄せ=同じ
  * 左端の縦並びになる)。
- * - 横: left=一番左の枠の左端, right=一番右の枠の右端, center=枠群の水平中央
- * - 縦: top=一番上の枠の上端, bottom=一番下の枠の下端, middle=枠群の垂直中央
+ * - 横: left=一番左の左端, right=一番右の右端, center=対象群の水平中央
+ * - 縦: top=一番上の上端, bottom=一番下の下端, middle=対象群の垂直中央
  * hAlign / vAlign を null にするとその軸は動かさない(片軸だけの整列が可能)。
+ * indices を渡すとその枠だけを対象に整列する(複数選択での部分整列)。省略時は全枠。
  */
 export function alignGroup(
   state: EditorSlots,
   hAlign: HAlign | null,
   vAlign: VAlign | null,
+  indices?: number[],
 ): EditorSlots {
   const { size, positions } = state;
   if (positions.length === 0) {
     return state;
   }
+  const targetSet =
+    indices && indices.length > 0
+      ? new Set(indices)
+      : new Set(positions.map((_, i) => i));
+
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
-  for (const p of positions) {
+  positions.forEach((p, i) => {
+    if (!targetSet.has(i)) return;
     minX = Math.min(minX, p.x);
     minY = Math.min(minY, p.y);
     maxX = Math.max(maxX, p.x);
     maxY = Math.max(maxY, p.y);
-  }
+  });
   // 全枠同サイズなので右端そろえ=最大x、中央そろえ=左端の中点に揃う
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
 
-  const targetX = (): number | null => {
-    if (hAlign === "left") return minX;
-    if (hAlign === "right") return maxX;
-    if (hAlign === "center") return centerX;
-    return null;
-  };
-  const targetY = (): number | null => {
-    if (vAlign === "top") return minY;
-    if (vAlign === "bottom") return maxY;
-    if (vAlign === "middle") return centerY;
-    return null;
-  };
-  const tx = targetX();
-  const ty = targetY();
+  const tx =
+    hAlign === "left"
+      ? minX
+      : hAlign === "right"
+        ? maxX
+        : hAlign === "center"
+          ? centerX
+          : null;
+  const ty =
+    vAlign === "top"
+      ? minY
+      : vAlign === "bottom"
+        ? maxY
+        : vAlign === "middle"
+          ? centerY
+          : null;
 
   return {
     size,
-    positions: positions.map((p) => ({
-      x: tx === null ? p.x : tx,
-      y: ty === null ? p.y : ty,
-    })),
+    positions: positions.map((p, i) => {
+      if (!targetSet.has(i)) return p;
+      return {
+        x: tx === null ? p.x : tx,
+        y: ty === null ? p.y : ty,
+      };
+    }),
   };
 }
 
