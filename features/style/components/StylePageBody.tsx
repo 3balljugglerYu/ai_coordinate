@@ -15,7 +15,16 @@ import { isAdminViewer } from "@/lib/env";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
-import { applyCollectionUnlockGating } from "@/features/collections/lib/collection-unlock-gating";
+import {
+  applyCollectionUnlockGating,
+  type CollectionUnlockContext,
+} from "@/features/collections/lib/collection-unlock-gating";
+
+// ゲート対象カテゴリが無い/未ログイン時に使う空コンテキスト(除去・解放判定とも no-op)。
+const EMPTY_UNLOCK_CONTEXT: CollectionUnlockContext = {
+  prerequisiteCompletedKeys: new Set(),
+  distinctGeneratedByCategoryKey: new Map(),
+};
 
 interface StylePageBodyProps {
   searchParams?: Promise<{
@@ -45,20 +54,22 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
   // 解放ゲート(unlock gating)はユーザー依存のため、グローバルキャッシュの外で適用する。
   //  - 前提条件カテゴリ未完走 → 解放対象カテゴリのプリセットを一覧から除去
   //  - 完走済み → 段階解放(drip)で未解放ぶんに locked フラグを立てる
-  // 未ログイン時はゲート対象(前提条件付き)を出さないため、空コンテキストで除去のみ行う。
-  const presets = user
-    ? applyCollectionUnlockGating(
-        cachedPresets,
-        await resolveCollectionUnlockContext(
+  // 解放ルール付きカテゴリ(unlockPrerequisiteKey != null)が一覧に無ければ完全 no-op。
+  // その場合は authed client の生成すらスキップする(従来カテゴリのみのときの無駄を避ける)。
+  const hasGatedCategory = cachedPresets.some(
+    (preset) => preset.category.unlockPrerequisiteKey != null,
+  );
+  const presets =
+    user && hasGatedCategory
+      ? applyCollectionUnlockGating(
           cachedPresets,
-          user.id,
-          await createClient(),
-        ),
-      )
-    : applyCollectionUnlockGating(cachedPresets, {
-        prerequisiteCompletedKeys: new Set(),
-        distinctGeneratedByCategoryKey: new Map(),
-      });
+          await resolveCollectionUnlockContext(
+            cachedPresets,
+            user.id,
+            await createClient(),
+          ),
+        )
+      : applyCollectionUnlockGating(cachedPresets, EMPTY_UNLOCK_CONTEXT);
   const profile = user ? await getUserProfileServer(user.id) : null;
   const params = (await searchParams) ?? {};
 
