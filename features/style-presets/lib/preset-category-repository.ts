@@ -10,6 +10,7 @@ import {
 } from "@/shared/generation/style-output-aspect-ratio";
 import {
   isMountLayoutKey,
+  parseNormalizedRect,
   parseNormalizedSlots,
   type MountLayoutKey,
   type NormalizedSlotRect,
@@ -55,6 +56,11 @@ export interface PresetCategoryRow {
   collection_character_path?: string | null;
   collection_display_starts_at?: string | null;
   collection_display_ends_at?: string | null;
+  progress_modal_frame_path?: string | null;
+  progress_modal_frame_width?: number | null;
+  progress_modal_frame_height?: number | null;
+  progress_modal_slots?: unknown;
+  progress_modal_button?: unknown;
   display_order: number;
   is_active: boolean;
   created_by: string | null;
@@ -93,6 +99,11 @@ export interface PresetCategoryAdmin {
   collectionCharacterPath: string | null;
   collectionDisplayStartsAt: string | null;
   collectionDisplayEndsAt: string | null;
+  progressModalFramePath: string | null;
+  progressModalFrameWidth: number | null;
+  progressModalFrameHeight: number | null;
+  progressModalSlots: NormalizedSlotRect[] | null;
+  progressModalButton: NormalizedSlotRect | null;
   displayOrder: number;
   isActive: boolean;
   createdBy: string | null;
@@ -130,6 +141,11 @@ export interface PresetCategoryInsert {
   collectionCharacterPath?: string | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
+  progressModalFramePath?: string | null;
+  progressModalFrameWidth?: number | null;
+  progressModalFrameHeight?: number | null;
+  progressModalSlots?: NormalizedSlotRect[] | null;
+  progressModalButton?: NormalizedSlotRect | null;
   displayOrder?: number;
   isActive?: boolean;
   createdBy?: string | null;
@@ -163,6 +179,11 @@ export interface PresetCategoryUpdate {
   collectionCharacterPath?: string | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
+  progressModalFramePath?: string | null;
+  progressModalFrameWidth?: number | null;
+  progressModalFrameHeight?: number | null;
+  progressModalSlots?: NormalizedSlotRect[] | null;
+  progressModalButton?: NormalizedSlotRect | null;
   displayOrder?: number;
   isActive?: boolean;
   updatedBy?: string | null;
@@ -217,6 +238,17 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     collectionCharacterPath: row.collection_character_path ?? null,
     collectionDisplayStartsAt: row.collection_display_starts_at ?? null,
     collectionDisplayEndsAt: row.collection_display_ends_at ?? null,
+    progressModalFramePath: row.progress_modal_frame_path ?? null,
+    progressModalFrameWidth:
+      typeof row.progress_modal_frame_width === "number"
+        ? row.progress_modal_frame_width
+        : null,
+    progressModalFrameHeight:
+      typeof row.progress_modal_frame_height === "number"
+        ? row.progress_modal_frame_height
+        : null,
+    progressModalSlots: parseNormalizedSlots(row.progress_modal_slots),
+    progressModalButton: parseNormalizedRect(row.progress_modal_button),
     displayOrder: row.display_order,
     isActive: row.is_active,
     createdBy: row.created_by,
@@ -323,6 +355,11 @@ export async function createPresetCategory(
       collection_character_path: input.collectionCharacterPath ?? null,
       collection_display_starts_at: input.collectionDisplayStartsAt ?? null,
       collection_display_ends_at: input.collectionDisplayEndsAt ?? null,
+      progress_modal_frame_path: input.progressModalFramePath ?? null,
+      progress_modal_frame_width: input.progressModalFrameWidth ?? null,
+      progress_modal_frame_height: input.progressModalFrameHeight ?? null,
+      progress_modal_slots: input.progressModalSlots ?? null,
+      progress_modal_button: input.progressModalButton ?? null,
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
       created_by: input.createdBy ?? null,
@@ -392,6 +429,16 @@ export async function updatePresetCategory(
     payload.collection_display_starts_at = input.collectionDisplayStartsAt;
   if (input.collectionDisplayEndsAt !== undefined)
     payload.collection_display_ends_at = input.collectionDisplayEndsAt;
+  if (input.progressModalFramePath !== undefined)
+    payload.progress_modal_frame_path = input.progressModalFramePath;
+  if (input.progressModalFrameWidth !== undefined)
+    payload.progress_modal_frame_width = input.progressModalFrameWidth;
+  if (input.progressModalFrameHeight !== undefined)
+    payload.progress_modal_frame_height = input.progressModalFrameHeight;
+  if (input.progressModalSlots !== undefined)
+    payload.progress_modal_slots = input.progressModalSlots;
+  if (input.progressModalButton !== undefined)
+    payload.progress_modal_button = input.progressModalButton;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
   if (input.isActive !== undefined) payload.is_active = input.isActive;
   if (input.updatedBy !== undefined) payload.updated_by = input.updatedBy;

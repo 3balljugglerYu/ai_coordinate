@@ -70,6 +70,14 @@ interface FormState {
   /** datetime-local 形式("YYYY-MM-DDTHH:mm")。空文字 = 未設定 */
   collectionDisplayStartsAt: string;
   collectionDisplayEndsAt: string;
+  /** 進捗モーダルの土台フレーム画像パス(public バケット)。null なら DB 駆動レイアウト無効 */
+  progressModalFramePath: string | null;
+  progressModalFrameWidth: number | null;
+  progressModalFrameHeight: number | null;
+  /** 進捗モーダルのシール枠(正規化矩形配列)。 */
+  progressModalSlots: NormalizedSlotRect[] | null;
+  /** 進捗モーダルのボタン領域(単一の正規化矩形)。 */
+  progressModalButton: NormalizedSlotRect | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -121,6 +129,11 @@ function toFormState(
     // props 経由で受け取る (props が無いケース = create mode のため空文字)。
     collectionDisplayStartsAt: initialDates?.startsAtLocal ?? "",
     collectionDisplayEndsAt: initialDates?.endsAtLocal ?? "",
+    progressModalFramePath: initial?.progressModalFramePath ?? null,
+    progressModalFrameWidth: initial?.progressModalFrameWidth ?? null,
+    progressModalFrameHeight: initial?.progressModalFrameHeight ?? null,
+    progressModalSlots: initial?.progressModalSlots ?? null,
+    progressModalButton: initial?.progressModalButton ?? null,
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -162,6 +175,7 @@ export function AdminPresetCategoryFormClient({
   const [error, setError] = useState<string | null>(null);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const [uploadingCharacter, setUploadingCharacter] = useState(false);
+  const [uploadingModalFrame, setUploadingModalFrame] = useState(false);
 
   async function handleCharacterUpload(file: File) {
     if (!/^[a-z][a-z0-9_]{1,49}$/.test(form.key.trim())) {
@@ -191,6 +205,49 @@ export function AdminPresetCategoryFormClient({
       setError("キャラ画像のアップロードに失敗しました");
     } finally {
       setUploadingCharacter(false);
+    }
+  }
+
+  async function handleModalFrameUpload(file: File) {
+    if (!/^[a-z][a-z0-9_]{1,49}$/.test(form.key.trim())) {
+      setError("モーダルフレームをアップロードする前に key を入力してください");
+      return;
+    }
+    setUploadingModalFrame(true);
+    setError(null);
+    try {
+      const imageBase64 = await fileToBase64(file);
+      const res = await fetch("/api/admin/collection-progress-modal-frame", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryKey: form.key.trim(), imageBase64 }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as {
+        path?: string;
+        width?: number;
+        height?: number;
+        error?: string;
+      };
+      if (!res.ok || !payload.path) {
+        setError(payload.error ?? "モーダルフレームのアップロードに失敗しました");
+        return;
+      }
+      // path と実寸をまとめて反映(実寸は枠エディタのアスペクト換算に使う)。
+      // 差し替え時に別アスペクトの旧寸法が残らないよう、取得できなければ null にする。
+      setForm((prev) => ({
+        ...prev,
+        progressModalFramePath: payload.path ?? null,
+        progressModalFrameWidth: payload.width ?? null,
+        progressModalFrameHeight: payload.height ?? null,
+      }));
+    } catch (err) {
+      console.error(
+        "[AdminPresetCategoryFormClient] modal frame upload failed:",
+        err,
+      );
+      setError("モーダルフレームのアップロードに失敗しました");
+    } finally {
+      setUploadingModalFrame(false);
     }
   }
 
@@ -255,6 +312,26 @@ export function AdminPresetCategoryFormClient({
   /** カスタム枠を破棄し、レイアウトのプリセットに戻す。 */
   function handleClearSlots() {
     update("mountSlots", null);
+  }
+
+  /** 進捗モーダルのシール枠 6 枠を grid_6 プリセットから初期化する。 */
+  function handleSeedModalSlots() {
+    update("progressModalSlots", seedSlots("grid_6"));
+  }
+
+  /** 進捗モーダルのシール枠を破棄する。 */
+  function handleClearModalSlots() {
+    update("progressModalSlots", null);
+  }
+
+  /** 進捗モーダルのボタン領域をデフォルト位置(下部)で初期化する。 */
+  function handleSeedModalButton() {
+    update("progressModalButton", { x: 0.1, y: 0.85, w: 0.8, h: 0.09 });
+  }
+
+  /** 進捗モーダルのボタン領域を破棄する。 */
+  function handleClearModalButton() {
+    update("progressModalButton", null);
   }
 
   /**
@@ -377,6 +454,11 @@ export function AdminPresetCategoryFormClient({
               collection_display_ends_at: datetimeLocalToIso(
                 form.collectionDisplayEndsAt,
               ),
+              progress_modal_frame_path: form.progressModalFramePath,
+              progress_modal_frame_width: form.progressModalFrameWidth,
+              progress_modal_frame_height: form.progressModalFrameHeight,
+              progress_modal_slots: form.progressModalSlots,
+              progress_modal_button: form.progressModalButton,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -412,6 +494,11 @@ export function AdminPresetCategoryFormClient({
               collection_display_ends_at: datetimeLocalToIso(
                 form.collectionDisplayEndsAt,
               ),
+              progress_modal_frame_path: form.progressModalFramePath,
+              progress_modal_frame_width: form.progressModalFrameWidth,
+              progress_modal_frame_height: form.progressModalFrameHeight,
+              progress_modal_slots: form.progressModalSlots,
+              progress_modal_button: form.progressModalButton,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -1097,6 +1184,148 @@ export function AdminPresetCategoryFormClient({
               className="mt-2 h-24 w-24 rounded-full border border-slate-200 object-cover"
             />
           ) : null}
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-4 rounded-md border border-slate-200 p-4">
+        <legend className="px-1 text-sm font-semibold text-slate-800">
+          進捗モーダル設定（任意）
+        </legend>
+        <p className="text-xs text-slate-500">
+          進捗モーダル(コンプリート前の祝い画面)の土台フレーム・シール枠・ボタン位置をカテゴリごとに設定します。
+          未設定のカテゴリは従来のハードコード台座（神コレ/ウエハース等）で表示されます。
+          コレクション設定（上）とは独立です。
+        </p>
+
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">
+            モーダル土台フレーム（PNG / WebP）
+          </span>
+          <input
+            type="file"
+            accept="image/png,image/webp"
+            disabled={uploadingModalFrame}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleModalFrameUpload(file);
+              e.target.value = "";
+            }}
+            className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-slate-50 file:px-3 file:py-1.5 file:text-sm"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            {uploadingModalFrame
+              ? "アップロード中…"
+              : form.progressModalFramePath
+                ? `登録済み: ${form.progressModalFramePath}`
+                : "PNG/WebP・256〜4096px。アップロードすると保存パスと実寸が設定されます。"}
+          </span>
+          {form.progressModalFramePath && !uploadingModalFrame ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={characterPublicUrl(form.progressModalFramePath)}
+              alt="登録済みのモーダル土台フレームのプレビュー"
+              className="mt-2 max-h-56 w-auto rounded-md border border-slate-200 bg-slate-50"
+            />
+          ) : null}
+        </div>
+
+        {/* シール枠(6枠)の調整。フレームと実寸が揃っているときだけ操作可能。 */}
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">
+            シール枠（6枠）の調整
+          </span>
+          {!form.progressModalFramePath ||
+          form.progressModalFrameWidth === null ||
+          form.progressModalFrameHeight === null ? (
+            <p className="mt-1 text-xs text-slate-500">
+              モーダル土台フレームをアップロードすると、シール枠をドラッグで調整できます。
+            </p>
+          ) : form.progressModalSlots && form.progressModalSlots.length > 0 ? (
+            <div className="mt-2 space-y-2">
+              <MountSlotEditor
+                templateUrl={characterPublicUrl(form.progressModalFramePath)}
+                templateWidth={form.progressModalFrameWidth}
+                templateHeight={form.progressModalFrameHeight}
+                slots={form.progressModalSlots}
+                onChange={(slots) => update("progressModalSlots", slots)}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSeedModalSlots}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  6枠を再生成（grid_6 配置）
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearModalSlots}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  シール枠を破棄
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-slate-500">
+                「6枠を初期化」すると grid_6 配置を元にシール枠をドラッグ調整できます。
+              </p>
+              <button
+                type="button"
+                onClick={handleSeedModalSlots}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                6枠を初期化
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ボタン領域(1枠)の調整。フレームと実寸が揃っているときだけ操作可能。 */}
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">
+            ボタン領域（「台紙を作成する」）の調整
+          </span>
+          {!form.progressModalFramePath ||
+          form.progressModalFrameWidth === null ||
+          form.progressModalFrameHeight === null ? (
+            <p className="mt-1 text-xs text-slate-500">
+              モーダル土台フレームをアップロードすると、ボタン領域をドラッグで調整できます。
+            </p>
+          ) : form.progressModalButton ? (
+            <div className="mt-2 space-y-2">
+              <MountSlotEditor
+                templateUrl={characterPublicUrl(form.progressModalFramePath)}
+                templateWidth={form.progressModalFrameWidth}
+                templateHeight={form.progressModalFrameHeight}
+                slots={[form.progressModalButton]}
+                onChange={(slots) =>
+                  update("progressModalButton", slots[0] ?? null)
+                }
+              />
+              <button
+                type="button"
+                onClick={handleClearModalButton}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                ボタン領域を破棄
+              </button>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-slate-500">
+                「ボタン領域を初期化」すると下部にボタン枠が置かれ、ドラッグ調整できます。
+              </p>
+              <button
+                type="button"
+                onClick={handleSeedModalButton}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                ボタン領域を初期化
+              </button>
+            </div>
+          )}
         </div>
       </fieldset>
 

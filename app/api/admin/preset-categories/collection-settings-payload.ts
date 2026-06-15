@@ -1,5 +1,6 @@
 import {
   isMountLayoutKey,
+  parseNormalizedRect,
   parseNormalizedSlots,
   slotCountForLayout,
   type MountLayoutKey,
@@ -25,6 +26,11 @@ export interface CollectionSettingsPayload {
   collectionCharacterPath?: string | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
+  progressModalFramePath?: string | null;
+  progressModalFrameWidth?: number | null;
+  progressModalFrameHeight?: number | null;
+  progressModalSlots?: NormalizedSlotRect[] | null;
+  progressModalButton?: NormalizedSlotRect | null;
 }
 
 export interface CollectionSettingsExisting {
@@ -153,6 +159,108 @@ export function parseCollectionSettings(
       return { ok: false, error: "mount_template_height must be a positive integer" };
     } else {
       payload.mountTemplateHeight = v;
+    }
+  }
+
+  // ===== 進捗モーダル(CollectionProgressModal)のカスタム設定 =====
+  // すべて任意・独立(is_collection_series との相互依存は持たせない)。
+  // progress_modal_frame_path が設定されたカテゴリだけがモーダルを DB 駆動で描画し、
+  // 未設定なら従来どおりハードコード MODAL_LAYOUTS にフォールバックする。
+  const PROGRESS_SLOT_EPS = 1e-6;
+
+  if (body.progress_modal_frame_path !== undefined) {
+    const v = body.progress_modal_frame_path;
+    if (v === null) {
+      payload.progressModalFramePath = null;
+    } else if (typeof v !== "string" || v.trim().length === 0) {
+      return {
+        ok: false,
+        error: "progress_modal_frame_path must be a non-empty string or null",
+      };
+    } else {
+      payload.progressModalFramePath = v.trim();
+    }
+  }
+
+  if (body.progress_modal_frame_width !== undefined) {
+    const v = body.progress_modal_frame_width;
+    if (v === null) {
+      payload.progressModalFrameWidth = null;
+    } else if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) {
+      return { ok: false, error: "progress_modal_frame_width must be a positive integer" };
+    } else {
+      payload.progressModalFrameWidth = v;
+    }
+  }
+
+  if (body.progress_modal_frame_height !== undefined) {
+    const v = body.progress_modal_frame_height;
+    if (v === null) {
+      payload.progressModalFrameHeight = null;
+    } else if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) {
+      return { ok: false, error: "progress_modal_frame_height must be a positive integer" };
+    } else {
+      payload.progressModalFrameHeight = v;
+    }
+  }
+
+  if (body.progress_modal_slots !== undefined) {
+    const v = body.progress_modal_slots;
+    if (v === null) {
+      payload.progressModalSlots = null;
+    } else {
+      const parsed = parseNormalizedSlots(v);
+      if (!parsed) {
+        return {
+          ok: false,
+          error: "progress_modal_slots は {x,y,w,h}(0..1) の配列で指定してください",
+        };
+      }
+      for (const r of parsed) {
+        if (
+          r.x < -PROGRESS_SLOT_EPS ||
+          r.y < -PROGRESS_SLOT_EPS ||
+          r.w <= 0 ||
+          r.h <= 0 ||
+          r.x + r.w > 1 + PROGRESS_SLOT_EPS ||
+          r.y + r.h > 1 + PROGRESS_SLOT_EPS
+        ) {
+          return {
+            ok: false,
+            error: "progress_modal_slots の各枠は 0..1 の範囲かつフレーム内に収めてください",
+          };
+        }
+      }
+      payload.progressModalSlots = parsed;
+    }
+  }
+
+  if (body.progress_modal_button !== undefined) {
+    const v = body.progress_modal_button;
+    if (v === null) {
+      payload.progressModalButton = null;
+    } else {
+      const rect = parseNormalizedRect(v);
+      if (!rect) {
+        return {
+          ok: false,
+          error: "progress_modal_button は {x,y,w,h}(0..1) のオブジェクトで指定してください",
+        };
+      }
+      if (
+        rect.x < -PROGRESS_SLOT_EPS ||
+        rect.y < -PROGRESS_SLOT_EPS ||
+        rect.w <= 0 ||
+        rect.h <= 0 ||
+        rect.x + rect.w > 1 + PROGRESS_SLOT_EPS ||
+        rect.y + rect.h > 1 + PROGRESS_SLOT_EPS
+      ) {
+        return {
+          ok: false,
+          error: "progress_modal_button は 0..1 の範囲かつフレーム内に収めてください",
+        };
+      }
+      payload.progressModalButton = rect;
     }
   }
 

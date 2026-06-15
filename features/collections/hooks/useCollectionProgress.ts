@@ -136,6 +136,11 @@ export function useCollectionProgress() {
               0,
               toCount,
             ),
+            progressModalFrameUrl: target.progressModalFrameUrl,
+            progressModalFrameWidth: target.progressModalFrameWidth,
+            progressModalFrameHeight: target.progressModalFrameHeight,
+            progressModalSlots: target.progressModalSlots,
+            progressModalButton: target.progressModalButton,
             celebrationEffect: "sparkle",
           });
           return true;
@@ -170,6 +175,11 @@ export function useCollectionProgress() {
           mountTemplateHeight: series.mountTemplateHeight,
           characterImageUrl: series.characterImageUrl,
           collectedImageUrls: series.collectedImageUrls ?? [],
+          progressModalFrameUrl: series.progressModalFrameUrl,
+          progressModalFrameWidth: series.progressModalFrameWidth,
+          progressModalFrameHeight: series.progressModalFrameHeight,
+          progressModalSlots: series.progressModalSlots,
+          progressModalButton: series.progressModalButton,
           // フィードの自動コンプリート祝いはダイヤのきらめき演出にする。
           celebrationEffect: "sparkle",
         });
@@ -248,6 +258,12 @@ export function useCollectionProgress() {
       mountTemplateHeight: result.mountTemplateHeight,
       characterImageUrl: target?.characterImageUrl ?? null,
       collectedImageUrls: [],
+      // コンポーザ生成後は完了台紙(showMount)を表示するため進捗モーダルレイアウトは不要。
+      progressModalFrameUrl: null,
+      progressModalFrameWidth: null,
+      progressModalFrameHeight: null,
+      progressModalSlots: null,
+      progressModalButton: null,
     });
   }, []);
 

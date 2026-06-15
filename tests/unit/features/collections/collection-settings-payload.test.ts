@@ -367,3 +367,153 @@ describe("parseCollectionSettings - mount_slots(カスタム枠) / 任意N / 台
     expect(parseCollectionSettings({}, existingWithSlots).ok).toBe(true);
   });
 });
+
+describe("parseCollectionSettings - 進捗モーダル設定(任意・独立)", () => {
+  const MODAL_SLOTS = [
+    { x: 0.05, y: 0.7, w: 0.14, h: 0.14 },
+    { x: 0.25, y: 0.7, w: 0.14, h: 0.14 },
+    { x: 0.45, y: 0.7, w: 0.14, h: 0.14 },
+  ];
+  const BUTTON = { x: 0.1, y: 0.85, w: 0.8, h: 0.09 };
+
+  test("frame path / 実寸 / slots / button が揃えば ok でそのまま採用", () => {
+    const r = parseCollectionSettings(
+      {
+        progress_modal_frame_path: "collection-progress-modals/k/abc.png",
+        progress_modal_frame_width: 1086,
+        progress_modal_frame_height: 1448,
+        progress_modal_slots: MODAL_SLOTS,
+        progress_modal_button: BUTTON,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.progressModalFramePath).toBe(
+        "collection-progress-modals/k/abc.png",
+      );
+      expect(r.payload.progressModalFrameWidth).toBe(1086);
+      expect(r.payload.progressModalFrameHeight).toBe(1448);
+      expect(r.payload.progressModalSlots).toEqual(MODAL_SLOTS);
+      expect(r.payload.progressModalButton).toEqual(BUTTON);
+    }
+  });
+
+  test("is_collection_series が false でも進捗モーダル設定だけで ok(独立)", () => {
+    const r = parseCollectionSettings(
+      {
+        is_collection_series: false,
+        progress_modal_frame_path: "collection-progress-modals/k/abc.png",
+        progress_modal_frame_width: 1024,
+        progress_modal_frame_height: 1024,
+        progress_modal_slots: MODAL_SLOTS,
+        progress_modal_button: BUTTON,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  test("進捗モーダル設定は is_collection_series=true の必須要件を増やさない", () => {
+    // コレクション有効化の必須(N/テンプレ/レイアウト)が揃っていれば、
+    // 進捗モーダル設定が無くても ok のまま。
+    const r = parseCollectionSettings(
+      {
+        is_collection_series: true,
+        completion_threshold: 4,
+        mount_template_path: "wafer/t.png",
+        mount_layout: "grid_4",
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  test("frame path の空文字は拒否、null は許可(クリア)", () => {
+    expect(
+      parseCollectionSettings({ progress_modal_frame_path: "  " }, OFF).ok,
+    ).toBe(false);
+    const r = parseCollectionSettings(
+      { progress_modal_frame_path: null },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressModalFramePath).toBeNull();
+  });
+
+  test("frame width/height は正の整数のみ、null は許可", () => {
+    expect(
+      parseCollectionSettings({ progress_modal_frame_width: 1024 }, OFF).ok,
+    ).toBe(true);
+    expect(
+      parseCollectionSettings({ progress_modal_frame_width: 0 }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings({ progress_modal_frame_height: 1.5 }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings({ progress_modal_frame_height: null }, OFF).ok,
+    ).toBe(true);
+  });
+
+  test("slots が配列でない/要素不正は拒否", () => {
+    expect(
+      parseCollectionSettings({ progress_modal_slots: "x" }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings(
+        { progress_modal_slots: [{ x: 0.1, y: 0.1, w: 0.3 }] },
+        OFF,
+      ).ok,
+    ).toBe(false);
+  });
+
+  test("slots の枠が 0..1 をはみ出すと拒否", () => {
+    expect(
+      parseCollectionSettings(
+        { progress_modal_slots: [{ x: 0.9, y: 0.1, w: 0.3, h: 0.3 }] },
+        OFF,
+      ).ok,
+    ).toBe(false);
+  });
+
+  test("slots=null は許可(クリア)", () => {
+    const r = parseCollectionSettings({ progress_modal_slots: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressModalSlots).toBeNull();
+  });
+
+  test("button が配列やオブジェクト不正は拒否、null は許可", () => {
+    expect(
+      parseCollectionSettings({ progress_modal_button: [BUTTON] }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings(
+        { progress_modal_button: { x: 0.1, y: 0.1, w: 0.2 } },
+        OFF,
+      ).ok,
+    ).toBe(false);
+    const r = parseCollectionSettings({ progress_modal_button: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressModalButton).toBeNull();
+  });
+
+  test("button が 0..1 をはみ出すと拒否", () => {
+    expect(
+      parseCollectionSettings(
+        { progress_modal_button: { x: 0.5, y: 0.9, w: 0.8, h: 0.2 } },
+        OFF,
+      ).ok,
+    ).toBe(false);
+  });
+
+  test("空 body は進捗モーダル設定を payload に含めない(no-op)", () => {
+    const r = parseCollectionSettings({}, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.progressModalFramePath).toBeUndefined();
+      expect(r.payload.progressModalSlots).toBeUndefined();
+      expect(r.payload.progressModalButton).toBeUndefined();
+    }
+  });
+});

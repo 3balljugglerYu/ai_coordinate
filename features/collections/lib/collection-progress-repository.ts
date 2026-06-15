@@ -3,6 +3,11 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildPublicGeneratedImageUrl } from "./public-mount-server-api";
+import {
+  parseNormalizedRect,
+  parseNormalizedSlots,
+  type NormalizedSlotRect,
+} from "./mount-layouts";
 import { getRepresentativeImagesForCategory } from "./representative-images";
 import type {
   CollectionProgress,
@@ -67,6 +72,11 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     completionId: null,
     mountTemplateWidth: null,
     mountTemplateHeight: null,
+    progressModalFrameUrl: null,
+    progressModalFrameWidth: null,
+    progressModalFrameHeight: null,
+    progressModalSlots: null,
+    progressModalButton: null,
   };
 }
 
@@ -146,7 +156,7 @@ async function attachCharacterImages(
   const { data, error } = await supabase
     .from("preset_categories")
     .select(
-      "id, collection_character_path, mount_template_width, mount_template_height",
+      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button",
     )
     .in("id", categoryIds);
   if (error) {
@@ -158,6 +168,16 @@ async function attachCharacterImages(
     string,
     { width: number | null; height: number | null }
   >();
+  const modalById = new Map<
+    string,
+    {
+      frameUrl: string | null;
+      frameWidth: number | null;
+      frameHeight: number | null;
+      slots: NormalizedSlotRect[] | null;
+      button: NormalizedSlotRect | null;
+    }
+  >();
   for (const row of data ?? []) {
     pathById.set(
       row.id as string,
@@ -167,13 +187,32 @@ async function attachCharacterImages(
       width: (row.mount_template_width as number | null) ?? null,
       height: (row.mount_template_height as number | null) ?? null,
     });
+    const fw = row.progress_modal_frame_width as number | null;
+    const fh = row.progress_modal_frame_height as number | null;
+    modalById.set(row.id as string, {
+      frameUrl: buildPublicGeneratedImageUrl(
+        (row.progress_modal_frame_path as string | null) ?? null,
+      ),
+      frameWidth: typeof fw === "number" ? fw : null,
+      frameHeight: typeof fh === "number" ? fh : null,
+      slots: parseNormalizedSlots(row.progress_modal_slots),
+      button: parseNormalizedRect(row.progress_modal_button),
+    });
   }
-  return items.map((i) => ({
-    ...i,
-    characterImageUrl: buildPublicGeneratedImageUrl(
-      pathById.get(i.categoryId) ?? null,
-    ),
-    mountTemplateWidth: dimsById.get(i.categoryId)?.width ?? null,
-    mountTemplateHeight: dimsById.get(i.categoryId)?.height ?? null,
-  }));
+  return items.map((i) => {
+    const modal = modalById.get(i.categoryId);
+    return {
+      ...i,
+      characterImageUrl: buildPublicGeneratedImageUrl(
+        pathById.get(i.categoryId) ?? null,
+      ),
+      mountTemplateWidth: dimsById.get(i.categoryId)?.width ?? null,
+      mountTemplateHeight: dimsById.get(i.categoryId)?.height ?? null,
+      progressModalFrameUrl: modal?.frameUrl ?? null,
+      progressModalFrameWidth: modal?.frameWidth ?? null,
+      progressModalFrameHeight: modal?.frameHeight ?? null,
+      progressModalSlots: modal?.slots ?? null,
+      progressModalButton: modal?.button ?? null,
+    };
+  });
 }
