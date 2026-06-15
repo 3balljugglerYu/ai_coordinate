@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
   // 3) 予約(N到達をサーバー側で再検証。冪等)
   const { data: reserveData, error: reserveError } = await supabase.rpc(
     "reserve_collection_completion",
-    { p_category_key: categoryKey },
+    { p_category_key: categoryKey, p_allow_admin_only: isAdmin },
   );
   if (reserveError) {
     // threshold_not_reached / collection_series_not_found 等はクライアント起因

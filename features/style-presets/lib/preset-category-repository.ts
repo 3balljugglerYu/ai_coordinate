@@ -61,6 +61,7 @@ export interface PresetCategoryRow {
   progress_modal_frame_height?: number | null;
   progress_modal_slots?: unknown;
   progress_modal_button?: unknown;
+  progress_modal_center?: unknown;
   display_order: number;
   is_active: boolean;
   created_by: string | null;
@@ -104,6 +105,7 @@ export interface PresetCategoryAdmin {
   progressModalFrameHeight: number | null;
   progressModalSlots: NormalizedSlotRect[] | null;
   progressModalButton: NormalizedSlotRect | null;
+  progressModalCenter: NormalizedSlotRect | null;
   displayOrder: number;
   isActive: boolean;
   createdBy: string | null;
@@ -146,6 +148,7 @@ export interface PresetCategoryInsert {
   progressModalFrameHeight?: number | null;
   progressModalSlots?: NormalizedSlotRect[] | null;
   progressModalButton?: NormalizedSlotRect | null;
+  progressModalCenter?: NormalizedSlotRect | null;
   displayOrder?: number;
   isActive?: boolean;
   createdBy?: string | null;
@@ -184,6 +187,7 @@ export interface PresetCategoryUpdate {
   progressModalFrameHeight?: number | null;
   progressModalSlots?: NormalizedSlotRect[] | null;
   progressModalButton?: NormalizedSlotRect | null;
+  progressModalCenter?: NormalizedSlotRect | null;
   displayOrder?: number;
   isActive?: boolean;
   updatedBy?: string | null;
@@ -249,6 +253,7 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
         : null,
     progressModalSlots: parseNormalizedSlots(row.progress_modal_slots),
     progressModalButton: parseNormalizedRect(row.progress_modal_button),
+    progressModalCenter: parseNormalizedRect(row.progress_modal_center),
     displayOrder: row.display_order,
     isActive: row.is_active,
     createdBy: row.created_by,
@@ -360,6 +365,7 @@ export async function createPresetCategory(
       progress_modal_frame_height: input.progressModalFrameHeight ?? null,
       progress_modal_slots: input.progressModalSlots ?? null,
       progress_modal_button: input.progressModalButton ?? null,
+      progress_modal_center: input.progressModalCenter ?? null,
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
       created_by: input.createdBy ?? null,
@@ -439,6 +445,8 @@ export async function updatePresetCategory(
     payload.progress_modal_slots = input.progressModalSlots;
   if (input.progressModalButton !== undefined)
     payload.progress_modal_button = input.progressModalButton;
+  if (input.progressModalCenter !== undefined)
+    payload.progress_modal_center = input.progressModalCenter;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
   if (input.isActive !== undefined) payload.is_active = input.isActive;
   if (input.updatedBy !== undefined) payload.updated_by = input.updatedBy;

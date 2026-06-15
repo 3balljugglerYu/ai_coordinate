@@ -36,6 +36,11 @@ export interface CollectionProgress {
   progressModalFrameHeight: number | null;
   progressModalSlots: NormalizedSlotRect[] | null;
   progressModalButton: NormalizedSlotRect | null;
+  /**
+   * 進捗モーダル中央画像の位置(正規化矩形)。表示する画像は characterImageUrl
+   * (= collection_character_path)を流用する。位置だけを admin がここで設定する。
+   */
+  progressModalCenter: NormalizedSlotRect | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */

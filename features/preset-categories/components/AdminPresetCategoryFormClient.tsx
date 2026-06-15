@@ -78,6 +78,8 @@ interface FormState {
   progressModalSlots: NormalizedSlotRect[] | null;
   /** 進捗モーダルのボタン領域(単一の正規化矩形)。 */
   progressModalButton: NormalizedSlotRect | null;
+  /** 進捗モーダルの中央画像領域(単一の正規化矩形)。表示画像はキャラ画像を流用。 */
+  progressModalCenter: NormalizedSlotRect | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -134,6 +136,7 @@ function toFormState(
     progressModalFrameHeight: initial?.progressModalFrameHeight ?? null,
     progressModalSlots: initial?.progressModalSlots ?? null,
     progressModalButton: initial?.progressModalButton ?? null,
+    progressModalCenter: initial?.progressModalCenter ?? null,
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -334,6 +337,16 @@ export function AdminPresetCategoryFormClient({
     update("progressModalButton", null);
   }
 
+  /** 進捗モーダルの中央画像領域をデフォルト位置(中央寄りの四角)で初期化する。 */
+  function handleSeedModalCenter() {
+    update("progressModalCenter", { x: 0.17, y: 0.21, w: 0.66, h: 0.44 });
+  }
+
+  /** 進捗モーダルの中央画像領域を破棄する。 */
+  function handleClearModalCenter() {
+    update("progressModalCenter", null);
+  }
+
   /**
    * 台紙レイアウト変更。既存の枠調整があれば確認のうえ、そのレイアウトで枠を再生成する
    * (枠数=N も同期)。キャンセル時は選択を元に戻す(form.mountLayout を変えない)。
@@ -459,6 +472,7 @@ export function AdminPresetCategoryFormClient({
               progress_modal_frame_height: form.progressModalFrameHeight,
               progress_modal_slots: form.progressModalSlots,
               progress_modal_button: form.progressModalButton,
+              progress_modal_center: form.progressModalCenter,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -499,6 +513,7 @@ export function AdminPresetCategoryFormClient({
               progress_modal_frame_height: form.progressModalFrameHeight,
               progress_modal_slots: form.progressModalSlots,
               progress_modal_button: form.progressModalButton,
+              progress_modal_center: form.progressModalCenter,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -1323,6 +1338,56 @@ export function AdminPresetCategoryFormClient({
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 ボタン領域を初期化
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 中央画像領域(1枠)の調整。フレームと実寸が揃っているときだけ操作可能。
+            ここに表示される画像は中央キャラ画像(collection_character_path)を流用する。 */}
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">
+            中央画像の位置
+          </span>
+          {!form.progressModalFramePath ||
+          form.progressModalFrameWidth === null ||
+          form.progressModalFrameHeight === null ? (
+            <p className="mt-1 text-xs text-slate-500">
+              モーダル土台フレームをアップロードすると、中央画像の位置をドラッグで調整できます。
+            </p>
+          ) : form.progressModalCenter ? (
+            <div className="mt-2 space-y-2">
+              <MountSlotEditor
+                templateUrl={characterPublicUrl(form.progressModalFramePath)}
+                templateWidth={form.progressModalFrameWidth}
+                templateHeight={form.progressModalFrameHeight}
+                slots={[form.progressModalCenter]}
+                onChange={(slots) =>
+                  update("progressModalCenter", slots[0] ?? null)
+                }
+              />
+              <p className="text-xs text-slate-500">
+                ※ ここに表示される画像は「中央キャラ画像（collection_character_path）」を流用します。位置だけをここで調整します。
+              </p>
+              <button
+                type="button"
+                onClick={handleClearModalCenter}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                中央画像の位置を破棄
+              </button>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-slate-500">
+                「中央画像の位置を初期化」すると中央付近に枠が置かれ、ドラッグ調整できます。表示される画像は中央キャラ画像（collection_character_path）を流用します。
+              </p>
+              <button
+                type="button"
+                onClick={handleSeedModalCenter}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                中央画像の位置を初期化
               </button>
             </div>
           )}

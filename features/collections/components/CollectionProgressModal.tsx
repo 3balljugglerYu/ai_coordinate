@@ -61,6 +61,11 @@ export interface CollectionCelebration {
   progressModalFrameHeight?: number | null;
   progressModalSlots?: NormalizedSlotRect[] | null;
   progressModalButton?: NormalizedSlotRect | null;
+  /**
+   * 中央画像領域(正規化矩形)。設定があるとき、フレーム中央の四角に
+   * characterImageUrl(= collection_character_path)を敷く。
+   */
+  progressModalCenter?: NormalizedSlotRect | null;
 }
 
 interface Props {
@@ -104,6 +109,11 @@ interface ModalLayout {
    * 設定があるときは button(%)より優先して描画する。
    */
   buttonRect?: NormalizedSlotRect | null;
+  /**
+   * DB 駆動レイアウト用の中央画像領域(正規化 0..1)。
+   * 設定があるとき、フレーム中央に characterImageUrl を敷く。
+   */
+  centerRect?: NormalizedSlotRect | null;
 }
 
 // ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
@@ -303,6 +313,7 @@ export function CollectionProgressModal({
           slots: { cx: [], cy: 0, d: 0 },
           slotRects: celebration.progressModalSlots ?? [],
           buttonRect: celebration.progressModalButton ?? null,
+          centerRect: celebration.progressModalCenter ?? null,
         }
       : null;
   const cLayout = celebration
@@ -330,7 +341,10 @@ export function CollectionProgressModal({
         ? 1
         : 0
       : cLayout
-        ? 1 + (cCharacterImageUrl && cLayout.disc ? 1 : 0) + cSlotsShown
+        ? 1 +
+          (cCharacterImageUrl && cLayout.disc ? 1 : 0) +
+          (cCharacterImageUrl && cLayout.centerRect ? 1 : 0) +
+          cSlotsShown
         : 0;
   const ready = totalImages === 0 || loadedCount >= totalImages || forceReady;
 
@@ -643,6 +657,30 @@ export function CollectionProgressModal({
               onLoad={onImgLoad}
               onError={onImgLoad}
             />
+
+            {/* DB 駆動: 中央画像領域(centerRect)に characterImageUrl を敷く。
+                フレームの中央四角の内側に収まるよう、フレーム描画の後に重ねる。 */}
+            {layout.centerRect && characterImageUrl ? (
+              <div
+                className="absolute overflow-hidden rounded-[1.2rem]"
+                style={{
+                  left: `${layout.centerRect.x * 100}%`,
+                  top: `${layout.centerRect.y * 100}%`,
+                  width: `${layout.centerRect.w * 100}%`,
+                  height: `${layout.centerRect.h * 100}%`,
+                }}
+              >
+                <Image
+                  src={characterImageUrl}
+                  alt=""
+                  fill
+                  sizes="320px"
+                  className="object-cover"
+                  onLoad={onImgLoad}
+                  onError={onImgLoad}
+                />
+              </div>
+            ) : null}
 
             {/* 中央: admin 設定画像で円を塗りつぶし(焼き込みキャラを隠す) */}
             {characterImageUrl && layout.disc ? (

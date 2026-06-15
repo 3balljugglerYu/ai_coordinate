@@ -77,6 +77,7 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     progressModalFrameHeight: null,
     progressModalSlots: null,
     progressModalButton: null,
+    progressModalCenter: null,
   };
 }
 
@@ -156,7 +157,7 @@ async function attachCharacterImages(
   const { data, error } = await supabase
     .from("preset_categories")
     .select(
-      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button",
+      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center",
     )
     .in("id", categoryIds);
   if (error) {
@@ -176,6 +177,7 @@ async function attachCharacterImages(
       frameHeight: number | null;
       slots: NormalizedSlotRect[] | null;
       button: NormalizedSlotRect | null;
+      center: NormalizedSlotRect | null;
     }
   >();
   for (const row of data ?? []) {
@@ -197,6 +199,7 @@ async function attachCharacterImages(
       frameHeight: typeof fh === "number" ? fh : null,
       slots: parseNormalizedSlots(row.progress_modal_slots),
       button: parseNormalizedRect(row.progress_modal_button),
+      center: parseNormalizedRect(row.progress_modal_center),
     });
   }
   return items.map((i) => {
@@ -213,6 +216,7 @@ async function attachCharacterImages(
       progressModalFrameHeight: modal?.frameHeight ?? null,
       progressModalSlots: modal?.slots ?? null,
       progressModalButton: modal?.button ?? null,
+      progressModalCenter: modal?.center ?? null,
     };
   });
 }

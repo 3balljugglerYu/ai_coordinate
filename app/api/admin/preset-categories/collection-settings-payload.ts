@@ -31,6 +31,7 @@ export interface CollectionSettingsPayload {
   progressModalFrameHeight?: number | null;
   progressModalSlots?: NormalizedSlotRect[] | null;
   progressModalButton?: NormalizedSlotRect | null;
+  progressModalCenter?: NormalizedSlotRect | null;
 }
 
 export interface CollectionSettingsExisting {
@@ -261,6 +262,35 @@ export function parseCollectionSettings(
         };
       }
       payload.progressModalButton = rect;
+    }
+  }
+
+  if (body.progress_modal_center !== undefined) {
+    const v = body.progress_modal_center;
+    if (v === null) {
+      payload.progressModalCenter = null;
+    } else {
+      const rect = parseNormalizedRect(v);
+      if (!rect) {
+        return {
+          ok: false,
+          error: "progress_modal_center は {x,y,w,h}(0..1) のオブジェクトで指定してください",
+        };
+      }
+      if (
+        rect.x < -PROGRESS_SLOT_EPS ||
+        rect.y < -PROGRESS_SLOT_EPS ||
+        rect.w <= 0 ||
+        rect.h <= 0 ||
+        rect.x + rect.w > 1 + PROGRESS_SLOT_EPS ||
+        rect.y + rect.h > 1 + PROGRESS_SLOT_EPS
+      ) {
+        return {
+          ok: false,
+          error: "progress_modal_center は 0..1 の範囲かつフレーム内に収めてください",
+        };
+      }
+      payload.progressModalCenter = rect;
     }
   }
 

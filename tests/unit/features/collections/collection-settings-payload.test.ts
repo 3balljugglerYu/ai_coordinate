@@ -375,6 +375,7 @@ describe("parseCollectionSettings - 進捗モーダル設定(任意・独立)", 
     { x: 0.45, y: 0.7, w: 0.14, h: 0.14 },
   ];
   const BUTTON = { x: 0.1, y: 0.85, w: 0.8, h: 0.09 };
+  const CENTER = { x: 0.17, y: 0.21, w: 0.66, h: 0.44 };
 
   test("frame path / 実寸 / slots / button が揃えば ok でそのまま採用", () => {
     const r = parseCollectionSettings(
@@ -514,6 +515,45 @@ describe("parseCollectionSettings - 進捗モーダル設定(任意・独立)", 
       expect(r.payload.progressModalFramePath).toBeUndefined();
       expect(r.payload.progressModalSlots).toBeUndefined();
       expect(r.payload.progressModalButton).toBeUndefined();
+      expect(r.payload.progressModalCenter).toBeUndefined();
     }
+  });
+
+  // ---------------- progress_modal_center(中央画像領域) ----------------
+
+  test("center が有効な矩形なら ok でそのまま採用", () => {
+    const r = parseCollectionSettings(
+      { progress_modal_center: CENTER },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressModalCenter).toEqual(CENTER);
+  });
+
+  test("center=null は許可(クリア)", () => {
+    const r = parseCollectionSettings({ progress_modal_center: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressModalCenter).toBeNull();
+  });
+
+  test("center が配列やオブジェクト不正は拒否", () => {
+    expect(
+      parseCollectionSettings({ progress_modal_center: [CENTER] }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings(
+        { progress_modal_center: { x: 0.1, y: 0.1, w: 0.2 } },
+        OFF,
+      ).ok,
+    ).toBe(false);
+  });
+
+  test("center が 0..1 をはみ出すと拒否", () => {
+    expect(
+      parseCollectionSettings(
+        { progress_modal_center: { x: 0.5, y: 0.7, w: 0.8, h: 0.5 } },
+        OFF,
+      ).ok,
+    ).toBe(false);
   });
 });
