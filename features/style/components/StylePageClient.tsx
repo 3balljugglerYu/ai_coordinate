@@ -978,15 +978,11 @@ export function StylePageClient({
   ]);
 
   useEffect(() => {
-    if (!selectedPresetId) {
-      return;
-    }
+    if (!selectedPresetId) return;
 
     const strip = presetStripRef.current;
     const selectedButton = presetButtonRefs.current.get(selectedPresetId);
-    if (!strip || !selectedButton) {
-      return;
-    }
+    if (!strip || !selectedButton) return;
 
     // 横スクロールのストリップ内でのみ選択プリセットを中央寄せする。
     // scrollIntoView は縦方向のページスクロールも巻き込み、読み込み直後に
