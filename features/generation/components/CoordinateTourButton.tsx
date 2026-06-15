@@ -119,7 +119,24 @@ export function CoordinateTourButton() {
         onNextClick: (_el, _step, opts) => {
           const d = opts.driver;
           if (d.isLastStep()) {
+            // 完了時: 閉じたあと、すぐ操作を始められるよう最初の対象
+            // (画像アップロード)まで上にスクロールして戻す（StyleTourButton と同じ）
             d.destroy();
+            requestAnimationFrame(() => {
+              const uploadSection = document.querySelector(
+                '[data-tour="tour-image-upload"]'
+              );
+              if (!uploadSection) return;
+              const STICKY_HEADER_OFFSET = 72;
+              const top =
+                uploadSection.getBoundingClientRect().top +
+                window.scrollY -
+                STICKY_HEADER_OFFSET;
+              window.scrollTo({
+                top: Math.max(top, 0),
+                behavior: prefersReducedMotion() ? "auto" : "smooth",
+              });
+            });
             return;
           }
           const nextIndex = (d.getActiveIndex() ?? 0) + 1;
