@@ -86,6 +86,10 @@ export function MountSlotEditor({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  // 操作前のスナップショット履歴(元に戻す用)。1ドラッグにつき1件だけ積む。
+  const historyRef = useRef<NormalizedSlotRect[][]>([]);
+  const dragPushedRef = useRef(false);
+  const [historyLen, setHistoryLen] = useState(0);
   const [aspectLabel, setAspectLabel] = useState(() =>
     detectAspectLabel(slots, templateWidth, templateHeight),
   );
@@ -113,6 +117,25 @@ export function MountSlotEditor({
     );
   }
 
+  /** 操作前の slots をスナップショットして履歴に積む。 */
+  function pushHistory(prev: NormalizedSlotRect[]) {
+    historyRef.current.push(prev.map((s) => ({ ...s })));
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    setHistoryLen(historyRef.current.length);
+  }
+
+  function handleUndo() {
+    // 枠数が外部(レイアウト/N変更)で変わった後の古い履歴は破棄しながら戻す
+    let prev = historyRef.current.pop();
+    while (prev && prev.length !== slots.length) {
+      prev = historyRef.current.pop();
+    }
+    setHistoryLen(historyRef.current.length);
+    if (prev) {
+      onChange(prev);
+    }
+  }
+
   /** ポインタ移動量(px)を正規化(0..1)へ換算する。コンテナ実描画寸法で割る。 */
   function toNorm(dxPx: number, dyPx: number): { dxNorm: number; dyNorm: number } {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -130,6 +153,7 @@ export function MountSlotEditor({
       return;
     }
     setSelection([index]);
+    dragPushedRef.current = false;
     dragRef.current = {
       kind: "move",
       index,
@@ -143,6 +167,7 @@ export function MountSlotEditor({
   function beginResize(e: ReactPointerEvent, corner: Corner) {
     e.preventDefault();
     e.stopPropagation();
+    dragPushedRef.current = false;
     dragRef.current = {
       kind: "resize",
       corner,
@@ -157,6 +182,11 @@ export function MountSlotEditor({
     const drag = dragRef.current;
     if (!drag) return;
     const { dxNorm, dyNorm } = toNorm(e.clientX - drag.startX, e.clientY - drag.startY);
+    // ドラッグで実際に動いた最初の1回だけ、操作前の状態を履歴に積む
+    if (!dragPushedRef.current) {
+      pushHistory(joinSlots(drag.start));
+      dragPushedRef.current = true;
+    }
 
     if (drag.kind === "move") {
       const moved = movePosition(
@@ -199,6 +229,7 @@ export function MountSlotEditor({
     setAspectLabel(label);
     const entry = GEMINI_SUPPORTED_ASPECT_RATIOS.find((r) => r.label === label);
     if (!entry) return;
+    pushHistory(slots);
     const next = applyAspect(
       splitSlots(slots),
       entry.value,
@@ -212,12 +243,14 @@ export function MountSlotEditor({
   function handleAlign(hAlign: HAlign | null, vAlign: VAlign | null) {
     // 2つ以上選択されていればその枠だけを対象に、そうでなければ全枠を整列する
     const indices = selection.length >= 2 ? selection : undefined;
+    pushHistory(slots);
     onChange(joinSlots(alignGroup(splitSlots(slots), hAlign, vAlign, indices)));
   }
 
   function handleDistribute(axis: DistributeAxis) {
     // 2つ以上選択されていればその枠だけを対象に、そうでなければ全枠を分布する
     const indices = selection.length >= 2 ? selection : undefined;
+    pushHistory(slots);
     onChange(joinSlots(distributeEvenly(splitSlots(slots), axis, indices)));
   }
 
@@ -235,43 +268,13 @@ export function MountSlotEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-medium text-slate-700">枠調整モード</span>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input
-              type="checkbox"
-              checked={multiSelectMode}
-              onChange={(e) => setMultiSelectMode(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            複数選択モード（スマホ用・タップで追加）
-          </label>
-          <label className="flex items-center gap-2 text-xs text-slate-600">
-            <span>枠の比率</span>
-            <select
-              value={aspectLabel}
-              onChange={(e) => handleAspectChange(e.target.value)}
-              className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-            >
-              {GEMINI_SUPPORTED_ASPECT_RATIOS.map((r) => (
-                <option key={r.label} value={r.label}>
-                  {r.label}
-                  {r.label === "1:1"
-                    ? "（正方形）"
-                    : r.value < 1
-                      ? "（縦長）"
-                      : "（横長）"}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+      <span className="block text-sm font-medium text-slate-700">枠調整モード</span>
 
+      {/* PC では画像の右にボタンを並べる。スマホ(lg 未満)では縦積み。 */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
       <div
         ref={containerRef}
-        className="relative w-full max-w-md select-none overflow-hidden rounded-md border border-slate-300 bg-slate-100"
+        className="relative w-full max-w-md select-none overflow-hidden rounded-md border border-slate-300 bg-slate-100 lg:shrink-0"
         style={{ aspectRatio: `${templateWidth} / ${templateHeight}`, touchAction: "none" }}
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
@@ -333,7 +336,43 @@ export function MountSlotEditor({
       </div>
 
       {/* 枠全体(グループ)の整列。相対配置・サイズは保ったまま平行移動する。 */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600 lg:flex-col lg:flex-nowrap lg:items-start lg:gap-y-3">
+        <button
+          type="button"
+          onClick={handleUndo}
+          disabled={historyLen === 0}
+          className="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50 disabled:opacity-40"
+        >
+          ← 元に戻す{historyLen > 0 ? `（${historyLen}）` : ""}
+        </button>
+        <label className="flex items-center gap-2">
+          <span className="text-slate-500">比率:</span>
+          <select
+            value={aspectLabel}
+            onChange={(e) => handleAspectChange(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+          >
+            {GEMINI_SUPPORTED_ASPECT_RATIOS.map((r) => (
+              <option key={r.label} value={r.label}>
+                {r.label}
+                {r.label === "1:1"
+                  ? "（正方形）"
+                  : r.value < 1
+                    ? "（縦長）"
+                    : "（横長）"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={multiSelectMode}
+            onChange={(e) => setMultiSelectMode(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+          複数選択モード（スマホ用・タップで追加）
+        </label>
         <div className="flex items-center gap-1">
           <span className="text-slate-500">横:</span>
           <button
@@ -401,6 +440,7 @@ export function MountSlotEditor({
             縦を等間隔
           </button>
         </div>
+      </div>
       </div>
 
       <div className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
