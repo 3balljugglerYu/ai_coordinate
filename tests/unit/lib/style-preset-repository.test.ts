@@ -196,6 +196,8 @@ describe("style-preset repository", () => {
           userPromptMaxLength: null,
           visibility: "public",
           isActive: true,
+          unlockPrerequisiteKey: null,
+          progressiveBatchSize: null,
         },
         imageInputMode: "single",
         dualReferenceSource: "admin",

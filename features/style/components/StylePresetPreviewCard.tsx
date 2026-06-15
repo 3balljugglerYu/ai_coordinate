@@ -2,6 +2,7 @@
 
 import type { Ref } from "react";
 import Image from "next/image";
+import { Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 const PRESET_NAME_MAX_CHARACTERS = 16;
@@ -52,6 +53,14 @@ interface StylePresetPreviewCardProps {
    * (例: 「ログインで生成可能！」)。選択操作自体は引き続き可能。
    */
   lockedLabel?: string;
+  /**
+   * 段階解放(drip)でまだ解放されていないプリセットのとき true。
+   * サムネをシルエット(暗転 + ぼかし)にし、🔒 とラベルを重ね、選択・生成不可
+   * (button を描画せず非クリックにする)。`dripLockedLabel` で文言を渡す。
+   */
+  dripLocked?: boolean;
+  /** dripLocked=true のとき中央に表示する文言(例: 「あとで とうじょう」)。 */
+  dripLockedLabel?: string;
 }
 
 export function buildStylePresetImageSrc(
@@ -77,6 +86,8 @@ export function StylePresetPreviewCard({
   buttonRef,
   locale = "ja",
   lockedLabel,
+  dripLocked = false,
+  dripLockedLabel,
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
   const isLocked = typeof lockedLabel === "string" && lockedLabel.length > 0;
@@ -108,9 +119,25 @@ export function StylePresetPreviewCard({
             fill
             sizes={`${STYLE_PRESET_CARD_WIDTH_PX}px`}
             className="object-cover object-top"
-            priority={selected}
+            style={
+              dripLocked
+                ? { filter: "grayscale(1) brightness(0.18) blur(2px)" }
+                : undefined
+            }
+            priority={selected && !dripLocked}
           />
-          {shouldShowBadge && preset.category && (
+          {dripLocked && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-slate-900/55 px-2 text-center">
+              <Lock className="h-6 w-6 text-white/90" aria-hidden="true" />
+              {typeof dripLockedLabel === "string" &&
+                dripLockedLabel.length > 0 && (
+                  <span className="text-[11px] font-bold leading-tight text-white drop-shadow">
+                    {dripLockedLabel}
+                  </span>
+                )}
+            </div>
+          )}
+          {!dripLocked && shouldShowBadge && preset.category && (
             <span
               className="absolute bottom-1.5 left-1.5 inline-flex max-w-[80%] items-center truncate rounded px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
               style={{
@@ -122,7 +149,7 @@ export function StylePresetPreviewCard({
               {badgeText}
             </span>
           )}
-          {isLocked && (
+          {!dripLocked && isLocked && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/65 px-2 backdrop-blur-[1px]">
               <span className="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-3 py-1 text-center text-[11px] font-bold leading-tight text-white shadow-md">
                 {lockedLabel}
@@ -145,8 +172,16 @@ export function StylePresetPreviewCard({
     </Card>
   );
 
-  if (!onClick) {
-    return <div className="w-fit">{card}</div>;
+  // dripLocked は選択・生成不可。button を描画せず非クリックなカードとして並べる。
+  if (!onClick || dripLocked) {
+    return (
+      <div
+        className="w-fit flex-shrink-0"
+        aria-disabled={dripLocked ? true : undefined}
+      >
+        {card}
+      </div>
+    );
   }
 
   return (
