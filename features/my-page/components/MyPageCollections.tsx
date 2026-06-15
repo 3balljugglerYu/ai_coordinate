@@ -27,6 +27,8 @@ export interface CompletedMountView {
   categoryKey: string;
   displayName: string;
   mountImageUrl: string;
+  mountTemplateWidth: number | null;
+  mountTemplateHeight: number | null;
 }
 
 /**
@@ -138,6 +140,8 @@ export function MyPageCollections({
         mountImageUrl: result.mountImageUrl,
         sharePath: result.sharePath,
         completionId: result.completionId,
+        mountTemplateWidth: result.mountTemplateWidth,
+        mountTemplateHeight: result.mountTemplateHeight,
         characterImageUrl: null,
         collectedImageUrls: [],
       });
@@ -172,6 +176,8 @@ export function MyPageCollections({
       mountImageUrl: m.mountImageUrl,
       sharePath: `/m/${m.completionId}`,
       completionId: m.completionId,
+      mountTemplateWidth: m.mountTemplateWidth,
+      mountTemplateHeight: m.mountTemplateHeight,
       characterImageUrl: null,
       collectedImageUrls: [],
       canRecompose: cached?.canRecompose ?? false,
@@ -209,6 +215,8 @@ export function MyPageCollections({
       mountImageUrl: null,
       sharePath: null,
       completionId: null,
+      mountTemplateWidth: series.mountTemplateWidth,
+      mountTemplateHeight: series.mountTemplateHeight,
       characterImageUrl: series.characterImageUrl,
       collectedImageUrls: series.collectedImageUrls ?? [],
     });
@@ -239,7 +247,13 @@ export function MyPageCollections({
               type="button"
               onClick={() => openMountModal(m)}
               className="relative w-24 overflow-hidden rounded-md border border-gray-200"
-              style={{ aspectRatio: mountAspectForCategory(m.categoryKey) }}
+              style={{
+                aspectRatio: mountAspectForCategory(
+                  m.categoryKey,
+                  m.mountTemplateWidth,
+                  m.mountTemplateHeight,
+                ),
+              }}
               aria-label={`${m.displayName} の台紙を表示`}
             >
               <Image

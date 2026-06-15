@@ -22,6 +22,9 @@ export interface PublicMount {
   displayNameEn: string;
   mountImageUrl: string;
   completedAt: string | null;
+  /** 台紙テンプレ実寸(px)。表示アスペクト算出用。無ければ null */
+  mountTemplateWidth: number | null;
+  mountTemplateHeight: number | null;
 }
 
 /**
@@ -39,7 +42,7 @@ export async function getPublicMountByToken(
   const { data, error } = await supabase
     .from("collection_completions")
     .select(
-      "id, user_id, category_key, mount_image_path, completed_at, preset_categories(display_name_ja, display_name_en)",
+      "id, user_id, category_key, mount_image_path, completed_at, preset_categories(display_name_ja, display_name_en, mount_template_width, mount_template_height)",
     )
     .eq("id", token)
     .eq("mount_status", "completed")
@@ -61,6 +64,8 @@ export async function getPublicMountByToken(
   const catRecord = (cat ?? {}) as {
     display_name_ja?: string;
     display_name_en?: string;
+    mount_template_width?: number | null;
+    mount_template_height?: number | null;
   };
 
   return {
@@ -71,5 +76,7 @@ export async function getPublicMountByToken(
     displayNameEn: catRecord.display_name_en ?? "",
     mountImageUrl,
     completedAt: (data.completed_at as string | null) ?? null,
+    mountTemplateWidth: catRecord.mount_template_width ?? null,
+    mountTemplateHeight: catRecord.mount_template_height ?? null,
   };
 }

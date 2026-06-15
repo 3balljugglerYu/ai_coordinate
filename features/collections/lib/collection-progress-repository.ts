@@ -65,6 +65,8 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     characterImageUrl: null,
     collectedImageUrls: [],
     completionId: null,
+    mountTemplateWidth: null,
+    mountTemplateHeight: null,
   };
 }
 
@@ -143,23 +145,35 @@ async function attachCharacterImages(
   const categoryIds = items.map((i) => i.categoryId);
   const { data, error } = await supabase
     .from("preset_categories")
-    .select("id, collection_character_path")
+    .select(
+      "id, collection_character_path, mount_template_width, mount_template_height",
+    )
     .in("id", categoryIds);
   if (error) {
     // キャラ画像の付与失敗は致命ではない(リングはテキスト表示にフォールバック)
     return items;
   }
   const pathById = new Map<string, string | null>();
+  const dimsById = new Map<
+    string,
+    { width: number | null; height: number | null }
+  >();
   for (const row of data ?? []) {
     pathById.set(
       row.id as string,
       (row.collection_character_path as string | null) ?? null,
     );
+    dimsById.set(row.id as string, {
+      width: (row.mount_template_width as number | null) ?? null,
+      height: (row.mount_template_height as number | null) ?? null,
+    });
   }
   return items.map((i) => ({
     ...i,
     characterImageUrl: buildPublicGeneratedImageUrl(
       pathById.get(i.categoryId) ?? null,
     ),
+    mountTemplateWidth: dimsById.get(i.categoryId)?.width ?? null,
+    mountTemplateHeight: dimsById.get(i.categoryId)?.height ?? null,
   }));
 }

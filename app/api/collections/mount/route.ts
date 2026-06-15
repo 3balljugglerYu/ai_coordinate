@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     const { data: category, error: categoryError } = await admin
       .from("preset_categories")
       .select(
-        "id, mount_template_path, mount_layout, mount_slots, completion_threshold, visibility, display_name_ja, ogp_template_path, ogp_mount_placement",
+        "id, mount_template_path, mount_layout, mount_slots, mount_template_width, mount_template_height, completion_threshold, visibility, display_name_ja, ogp_template_path, ogp_mount_placement",
       )
       .eq("key", categoryKey)
       .eq("is_collection_series", true)
@@ -355,6 +355,10 @@ export async function POST(request: NextRequest) {
       status: "completed",
       mountImageUrl: versioned,
       sharePath,
+      mountTemplateWidth:
+        (category.mount_template_width as number | null) ?? null,
+      mountTemplateHeight:
+        (category.mount_template_height as number | null) ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
