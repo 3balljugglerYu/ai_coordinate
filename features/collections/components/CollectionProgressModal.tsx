@@ -76,9 +76,11 @@ interface Props {
 interface ModalLayout {
   frame: string;
   frameAspect: number;
-  disc: { left: number; top: number; size: number };
-  ring: { left: number; top: number; size: number };
-  badge: { cx: number; cy: number; size: number };
+  // disc(中央キャラ円)・ring(進捗リング)・badge(%達成)は台座デザインにより
+  // 持たないことがある(例: ぷち神は中央が四角フレームでリング/バッジ無し)。任意。
+  disc?: { left: number; top: number; size: number };
+  ring?: { left: number; top: number; size: number };
+  badge?: { cx: number; cy: number; size: number };
   button: { left: number; top: number; width: number; height: number };
   slots: { cx: number[]; cy: number; d: number };
 }
@@ -114,6 +116,15 @@ const MODAL_LAYOUTS: Record<string, ModalLayout> = {
     button: { left: 8.1, top: 84.5, width: 84.2, height: 10.8 },
     // ?円(直径12.3%)をわずかに覆うサイズ。シールを大きく見せる(縁はほぼ消える)
     slots: { cx: [11.66, 27.05, 42.07, 57.28, 72.3, 87.42], cy: 75.67, d: 13.0 },
+  },
+  // ぷち神コレクション(6スロット)。専用台座 modal-frame-petit-6.webp (1086x1448) 実測。
+  // 中央は四角い「限定フレーム」のため、丸キャラ disc・進捗リング・%バッジは持たない
+  // (= 進捗は下段スロットの埋まりで表現)。スロット中心は画像解析で実測した値。
+  collectible_wafer_sticker_god_petit_6p: {
+    frame: "/collections/wafer/modal-frame-petit-6.webp",
+    frameAspect: 1086 / 1448,
+    button: { left: 10.5, top: 85.5, width: 79.0, height: 8.5 },
+    slots: { cx: [13.2, 26.6, 42.0, 57.3, 72.8, 85.9], cy: 78.0, d: 13.3 },
   },
 };
 
@@ -577,7 +588,7 @@ export function CollectionProgressModal({
             />
 
             {/* 中央: admin 設定画像で円を塗りつぶし(焼き込みキャラを隠す) */}
-            {characterImageUrl ? (
+            {characterImageUrl && layout.disc ? (
               <div
                 className="absolute overflow-hidden rounded-full"
                 style={{
@@ -599,7 +610,8 @@ export function CollectionProgressModal({
               </div>
             ) : null}
 
-            {/* 進捗リング(円の縁に重ねる・枠だけアニメ) */}
+            {/* 進捗リング(円の縁に重ねる・枠だけアニメ)。台座にリング定義があるときだけ描画。 */}
+            {layout.ring ? (
             <div
               className="absolute"
               style={{
@@ -643,8 +655,10 @@ export function CollectionProgressModal({
                 />
               </svg>
             </div>
+            ) : null}
 
-            {/* %達成バッジ(リング右下) */}
+            {/* %達成バッジ(リング右下)。台座にバッジ定義があるときだけ描画。 */}
+            {layout.badge ? (
             <div
               className="pointer-events-none absolute"
               style={{
@@ -656,6 +670,7 @@ export function CollectionProgressModal({
             >
               <AchievementBadge percent={Math.round(ratio * 100)} />
             </div>
+            ) : null}
 
             {/* 集めたシール(?枠に重ねる)。slots.cx 上限まで。それ以上の集まりは表示しない。
                 外側=波打ち(translateY)・内側=スタンプイン(scale/rotate)と transform を
