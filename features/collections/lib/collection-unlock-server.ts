@@ -89,9 +89,13 @@ async function resolveCompletedPrerequisiteKeys(
 }
 
 /**
- * ゲート対象カテゴリごとの distinct 生成体数を image_jobs から集計する。
- * RPC(get_collection_progress)の unique_count と同じ集計ロジックを踏襲。
- * admin client で user_id を明示して引く(対象カテゴリの RLS / visibility に依存しない)。
+ * ゲート対象カテゴリごとの distinct 生成体数を DB 側 RPC で集計する。
+ *
+ * 以前は image_jobs を select してアプリ側でメモリ集計していたが、PostgREST の
+ * デフォルト行制限(1000行)に達すると不正確になり得るため、集計を DB に寄せた
+ * (count_distinct_styles_by_category / get_collection_progress と同じロジック)。
+ * service_role 専用 RPC なので admin client から user_id を明示して呼ぶ。
+ * 取得失敗時は 0 のまま返し、安全側(非解放)に倒す。
  */
 async function resolveDistinctGeneratedCounts(
   categoryKeys: ReadonlySet<string>,
@@ -104,41 +108,29 @@ async function resolveDistinctGeneratedCounts(
 
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("image_jobs")
-      .select("style_preset_category_key, generation_metadata")
-      .eq("user_id", userId)
-      .eq("status", "succeeded")
-      .in("style_preset_category_key", Array.from(categoryKeys));
+    const { data, error } = await supabase.rpc(
+      "count_distinct_styles_by_category",
+      {
+        p_user_id: userId,
+        p_category_keys: Array.from(categoryKeys),
+      },
+    );
 
     if (error) {
       console.error(
-        "[collection-unlock-server] failed to count distinct generated",
+        "[collection-unlock-server] failed to count distinct generated via RPC",
         error,
       );
       return counts;
     }
 
-    // カテゴリ key ごとに oneTapStyle.id の DISTINCT 数を数える。
-    const distinctIdsByKey = new Map<string, Set<string>>();
-    for (const row of data ?? []) {
-      const key = row.style_preset_category_key as string | null;
+    for (const row of (data ?? []) as Array<{
+      category_key: string | null;
+      unique_count: number | null;
+    }>) {
+      const key = row.category_key;
       if (!key || !categoryKeys.has(key)) continue;
-      const metadata = row.generation_metadata as
-        | { oneTapStyle?: { id?: unknown } }
-        | null;
-      const presetId = metadata?.oneTapStyle?.id;
-      if (typeof presetId !== "string" || presetId.length === 0) continue;
-      let ids = distinctIdsByKey.get(key);
-      if (!ids) {
-        ids = new Set<string>();
-        distinctIdsByKey.set(key, ids);
-      }
-      ids.add(presetId);
-    }
-
-    for (const [key, ids] of distinctIdsByKey) {
-      counts.set(key, ids.size);
+      counts.set(key, Number(row.unique_count) || 0);
     }
   } catch (error) {
     console.error(
