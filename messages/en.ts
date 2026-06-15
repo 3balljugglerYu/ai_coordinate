@@ -829,6 +829,9 @@ export const enMessages = {
   },
   coordinate: {
     tourButton: "Tutorial",
+    tourStepUploadDescription: "Upload the character image you want to restyle here.",
+    tourStepPromptDescription: "Describe the kind of outfit you want.",
+    tourStepGenerateDescription: "Select “Start styling” to begin.",
     pageTitle: "Coordinate",
     pageDescription: "Upload a character image and enjoy styling with AI.",
     resultsTitle: "Generated results",

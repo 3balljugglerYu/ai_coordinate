@@ -832,6 +832,9 @@ export const frMessages = {
   },
   coordinate: {
     tourButton: "Tutoriel",
+    tourStepUploadDescription: "Téléchargez ici l’image du personnage que vous souhaitez restyler.",
+    tourStepPromptDescription: "Décrivez le type de tenue souhaité.",
+    tourStepGenerateDescription: "Sélectionnez « Démarrer le styling ».",
     pageTitle: "Coordonner",
     pageDescription: "Téléchargez l'image d'un personnage et amusez-vous avec le styling par IA.",
     resultsTitle: "Résultats générés",

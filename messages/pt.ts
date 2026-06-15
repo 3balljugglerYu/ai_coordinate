@@ -832,6 +832,9 @@ export const ptMessages = {
   },
   coordinate: {
     tourButton: "Tutorial",
+    tourStepUploadDescription: "Faça upload aqui da imagem de personagem que você quer restilizar.",
+    tourStepPromptDescription: "Descreva o tipo de look que você quer.",
+    tourStepGenerateDescription: "Selecione \"Iniciar styling\" para começar.",
     pageTitle: "Coordenar",
     pageDescription: "Faça upload de uma imagem de personagem e curta o styling com IA.",
     resultsTitle: "Resultados gerados",

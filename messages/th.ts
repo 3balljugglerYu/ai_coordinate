@@ -829,6 +829,9 @@ export const thMessages = {
   },
   coordinate: {
     tourButton: "บทช่วยสอน",
+    tourStepUploadDescription: "อัปโหลดที่นี่เพื่อรูปตัวละครที่ต้องการจัดสไตล์ใหม่",
+    tourStepPromptDescription: "อธิบายชุดที่ต้องการ",
+    tourStepGenerateDescription: "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม",
     pageTitle: "จัดเซ็ต",
     pageDescription: "อัปโหลดรูปตัวละครและสนุกกับการจัดสไตล์ด้วย AI",
     resultsTitle: "ผลลัพธ์ที่สร้าง",

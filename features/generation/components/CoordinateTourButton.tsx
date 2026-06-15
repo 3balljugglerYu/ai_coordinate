@@ -105,12 +105,16 @@ export function CoordinateTourButton() {
         nextBtnText: t("nextButton"),
         doneBtnText: t("doneButton"),
         steps: getCoordinateTourSteps({
+          // タイトルと操作ボタンは tutorial の既存キーを流用。説明文は
+          // 新規ユーザー向け(体験用画像/プロンプトのセット、コイン返却)を
+          // 前提としており簡易ツアーには不正確なため、coordinate 専用の
+          // 説明文に差し替える。
           uploadTitle: t("stepUploadTitle"),
-          uploadDescription: t("stepUploadDescription"),
+          uploadDescription: coordinateT("tourStepUploadDescription"),
           promptTitle: t("stepPromptTitle"),
-          promptDescription: t("stepPromptDescription"),
+          promptDescription: coordinateT("tourStepPromptDescription"),
           generateTitle: t("stepGenerateTitle"),
-          generateDescription: t("stepGenerateDescription"),
+          generateDescription: coordinateT("tourStepGenerateDescription"),
         }),
         onNextClick: (_el, _step, opts) => {
           const d = opts.driver;

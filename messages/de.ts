@@ -832,6 +832,9 @@ export const deMessages = {
   },
   coordinate: {
     tourButton: "Tutorial",
+    tourStepUploadDescription: "Lade hier das Charakterbild hoch, das du restylen willst.",
+    tourStepPromptDescription: "Beschreibe das gewünschte Outfit.",
+    tourStepGenerateDescription: "Wähle \"Styling starten\", um zu beginnen.",
     pageTitle: "Koordinieren",
     pageDescription: "Lade ein Charakterbild hoch und genieße Styling mit KI.",
     resultsTitle: "Generierte Ergebnisse",
