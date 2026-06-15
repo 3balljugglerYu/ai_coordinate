@@ -805,6 +805,7 @@ export const jaMessages = {
       "定期的に使うなら、都度購入よりサブスクの方がコスパよく運用できます。",
   },
   coordinate: {
+    tourButton: "チュートリアル",
     pageTitle: "コーディネート",
     pageDescription: "人物画像をアップロードして、着せ替えを楽しみましょう",
     resultsTitle: "生成結果一覧",

@@ -831,6 +831,7 @@ export const esMessages = {
       "Si usas Persta con regularidad, suscribirte suele ser más rentable que comprar Percoins de uno en uno.",
   },
   coordinate: {
+    tourButton: "Tutorial",
     pageTitle: "Coordinar",
     pageDescription: "Sube una imagen de personaje y disfruta del styling con IA.",
     resultsTitle: "Resultados generados",

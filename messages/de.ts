@@ -831,6 +831,7 @@ export const deMessages = {
       "Wenn du Persta regelmäßig nutzt, ist ein Abo meist günstiger als der Einzelkauf von Percoins.",
   },
   coordinate: {
+    tourButton: "Tutorial",
     pageTitle: "Koordinieren",
     pageDescription: "Lade ein Charakterbild hoch und genieße Styling mit KI.",
     resultsTitle: "Generierte Ergebnisse",

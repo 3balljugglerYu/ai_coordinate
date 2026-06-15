@@ -831,6 +831,7 @@ export const ptMessages = {
       "Se você usa Persta com regularidade, uma assinatura costuma ser mais econômica do que comprar Percoins um a um.",
   },
   coordinate: {
+    tourButton: "Tutorial",
     pageTitle: "Coordenar",
     pageDescription: "Faça upload de uma imagem de personagem e curta o styling com IA.",
     resultsTitle: "Resultados gerados",

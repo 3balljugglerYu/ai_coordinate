@@ -828,6 +828,7 @@ export const arMessages = {
       "إذا كنت تستخدم Persta بانتظام، فإن الاشتراك عادةً أكثر اقتصادًا من شراء Percoin قطعة قطعة.",
   },
   coordinate: {
+    tourButton: "الدليل التعليمي",
     pageTitle: "تنسيق",
     pageDescription: "ارفع صورة شخصية واستمتع بتنسيق الإطلالات بالذكاء الاصطناعي.",
     resultsTitle: "النتائج المُنشأة",

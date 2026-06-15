@@ -829,6 +829,7 @@ export const hiMessages = {
       "यदि आप Persta का नियमित रूप से उपयोग करते हैं, तो सदस्यता आमतौर पर एक-एक करके Percoin खरीदने से ज़्यादा किफ़ायती है।",
   },
   coordinate: {
+    tourButton: "ट्यूटोरियल",
     pageTitle: "कोऑर्डिनेट",
     pageDescription: "एक कैरेक्टर छवि अपलोड करें और AI के साथ स्टाइलिंग का आनंद लें।",
     resultsTitle: "उत्पन्न परिणाम",

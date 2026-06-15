@@ -827,6 +827,7 @@ export const zhTwMessages = {
       "若你定期使用 Persta，相較於逐次購買 Percoin，訂閱通常更划算。",
   },
   coordinate: {
+    tourButton: "教學",
     pageTitle: "穿搭",
     pageDescription: "上傳角色圖片，享受 AI 造型樂趣。",
     resultsTitle: "生成結果",

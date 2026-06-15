@@ -831,6 +831,7 @@ export const frMessages = {
       "Si vous utilisez Persta régulièrement, un abonnement est généralement plus avantageux que d'acheter des Percoins à l'unité.",
   },
   coordinate: {
+    tourButton: "Tutoriel",
     pageTitle: "Coordonner",
     pageDescription: "Téléchargez l'image d'un personnage et amusez-vous avec le styling par IA.",
     resultsTitle: "Résultats générés",

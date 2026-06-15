@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
 import { CoordinatePageBody } from "@/features/generation/components/CoordinatePageBody";
+import { CoordinateTourButton } from "@/features/generation/components/CoordinateTourButton";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
@@ -33,6 +34,10 @@ export default async function CoordinatePage() {
             <h1 className="text-3xl font-bold text-gray-900">
               {t("pageTitle")}
             </h1>
+            {/* 簡易チュートリアル(One-Tap Style と同じ画面内ツアー) */}
+            <div className="mt-2">
+              <CoordinateTourButton />
+            </div>
             <p className="mt-2 text-sm text-gray-600">
               {t("pageDescription")}
             </p>
