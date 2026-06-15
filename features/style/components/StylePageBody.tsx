@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
+import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { StylePageClient } from "./StylePageClient";
 import { GuestGenerationTrialCta } from "@/features/generation/components/GuestGenerationTrialCta";
 import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
@@ -43,6 +44,11 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
 
   return (
     <>
+      {/* coordinate と同様、ログイン時はマウント時に router.refresh() して
+          クライアント Router Cache を最新化し、残高が毎回スケルトンに
+          戻らないようにする。 */}
+      {user ? <RefreshOnMount /> : null}
+
       {!user ? (
         <GuestGenerationTrialCta
           title={t("guestLoginCtaTitle")}
