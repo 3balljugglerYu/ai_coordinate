@@ -34,13 +34,19 @@ export function GenerationModeTabs() {
   const styleT = useTranslations("style");
 
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
+  // 現在の pathname からロケールプレフィックス(例: /ja)を取り出し、遷移先 URL に
+  // 付与してロケールを維持する(これらのルートは現状プレフィックス無しだが、
+  // 将来 locale 付きになっても崩れないようにする)。
+  const localePrefix = pathname
+    ? pathname.slice(0, pathname.length - normalizedPathname.length)
+    : "";
   const activeIndex = TABS.findIndex((tab) => tab.path === normalizedPathname);
 
   // 両ルートを先読みして遷移を体感ゼロに近づける。
   useEffect(() => {
     if (activeIndex === -1) return;
-    TABS.forEach((tab) => router.prefetch(tab.path));
-  }, [router, activeIndex]);
+    TABS.forEach((tab) => router.prefetch(`${localePrefix}${tab.path}`));
+  }, [router, activeIndex, localePrefix]);
 
   // 滞在中のモードを「直近に使った生成モード」として記憶する。
   // ボトムナビ/サイドバーの「コーディネート」入口がこれを読み、前回モードへ復帰する。
@@ -87,7 +93,7 @@ export function GenerationModeTabs() {
             return (
               <Link
                 key={tab.path}
-                href={tab.path}
+                href={`${localePrefix}${tab.path}`}
                 prefetch
                 role="tab"
                 aria-selected={isActive}

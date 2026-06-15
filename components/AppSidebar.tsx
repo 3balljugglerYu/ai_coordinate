@@ -153,7 +153,9 @@ export function AppSidebar() {
     if (normalizedTargetPath === "/coordinate") {
       const preferred = getLastGenerationModePath();
       if (preferred !== "/coordinate") {
-        resolvedPath = preferred;
+        // path 内の "/coordinate" のみ差し替え、ロケールプレフィックスや
+        // クエリ・ハッシュ等の付随情報を維持する。
+        resolvedPath = path.replace("/coordinate", preferred);
         normalizedTargetPath = preferred;
       }
     }
