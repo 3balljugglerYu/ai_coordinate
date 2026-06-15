@@ -34,6 +34,7 @@ import {
   stripLocalePrefix,
 } from "@/i18n/config";
 import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
+import { getLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 
@@ -99,6 +100,7 @@ export function AppSidebar() {
     if (user && !hasPrefetched.current) {
       router.prefetch(localizedHomePath);
       router.prefetch("/coordinate");
+      router.prefetch("/style");
       router.prefetch("/challenge");
       router.prefetch("/notifications");
       router.prefetch("/my-page");
@@ -143,7 +145,20 @@ export function AppSidebar() {
   };
 
   const handleNavigation = (path: string) => {
-    const normalizedTargetPath = stripLocalePrefix(path).pathname;
+    let normalizedTargetPath = stripLocalePrefix(path).pathname;
+    let resolvedPath = path;
+
+    // 「コーディネート」入口は前回使った生成モードへ復帰させる。
+    // 前回 One-Tap Style だった場合は /style へ遷移する。
+    if (normalizedTargetPath === "/coordinate") {
+      const preferred = getLastGenerationModePath();
+      if (preferred !== "/coordinate") {
+        // path 内の "/coordinate" のみ差し替え、ロケールプレフィックスや
+        // クエリ・ハッシュ等の付随情報を維持する。
+        resolvedPath = path.replace("/coordinate", preferred);
+        normalizedTargetPath = preferred;
+      }
+    }
 
     if (
       normalizedTargetPath === "/challenge" &&
@@ -169,7 +184,7 @@ export function AppSidebar() {
         markMissionTabSnoozed();
       }
 
-      router.push(path);
+      router.push(resolvedPath);
     });
   };
 
@@ -218,8 +233,13 @@ export function AppSidebar() {
 
       <div className="flex-1 space-y-1">
         {navItems.map(({ path, label, icon: Icon }) => {
+          const normalizedItemPath = stripLocalePrefix(path).pathname;
+          // 「コーディネート」入口は生成モード全体の入口として扱い、
+          // /style 滞在中もアクティブ表示する。
           const isActive =
-            normalizedPathname === stripLocalePrefix(path).pathname;
+            normalizedPathname === normalizedItemPath ||
+            (normalizedItemPath === "/coordinate" &&
+              normalizedPathname === "/style");
           return (
             <button
               key={path}

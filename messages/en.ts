@@ -828,6 +828,10 @@ export const enMessages = {
       "If you use Persta regularly, a subscription is usually more cost-effective than buying Percoins one by one.",
   },
   coordinate: {
+    tourButton: "Tutorial",
+    tourStepUploadDescription: "Upload the character image you want to restyle here.",
+    tourStepPromptDescription: "Describe the kind of outfit you want.",
+    tourStepGenerateDescription: "Select “Start styling” to begin.",
     pageTitle: "Coordinate",
     pageDescription: "Upload a character image and enjoy styling with AI.",
     resultsTitle: "Generated results",

@@ -830,6 +830,10 @@ export const idMessages = {
       "Jika kamu menggunakan Persta secara rutin, langganan biasanya lebih hemat dibanding membeli Percoin satuan.",
   },
   coordinate: {
+    tourButton: "Tutorial",
+    tourStepUploadDescription: "Unggah di sini gambar karakter yang ingin kamu styling ulang.",
+    tourStepPromptDescription: "Jelaskan jenis outfit yang kamu inginkan.",
+    tourStepGenerateDescription: "Pilih \"Mulai styling\" untuk memulai.",
     pageTitle: "Koordinat",
     pageDescription: "Unggah gambar karakter dan nikmati styling dengan AI.",
     resultsTitle: "Hasil yang dihasilkan",

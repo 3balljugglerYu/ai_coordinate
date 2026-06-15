@@ -981,20 +981,29 @@ export function StylePageClient({
   ]);
 
   useEffect(() => {
-    if (!selectedPresetId) {
-      return;
-    }
+    if (!selectedPresetId) return;
 
+    const strip = presetStripRef.current;
     const selectedButton = presetButtonRefs.current.get(selectedPresetId);
-    if (typeof selectedButton?.scrollIntoView !== "function") {
-      return;
-    }
+    if (!strip || !selectedButton) return;
 
-    selectedButton.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
+    // 横スクロールのストリップ内でのみ選択プリセットを中央寄せする。
+    // scrollIntoView は縦方向のページスクロールも巻き込み、読み込み直後に
+    // ページが少し下がって見える原因になるため、strip.scrollLeft を直接
+    // 操作して横スクロールに限定する。初期表示の presets[0] は左端のため
+    // targetLeft が負になり Math.max(0, ...) で 0 にクランプされ、スクロール
+    // は発生しない。
+    const stripRect = strip.getBoundingClientRect();
+    const buttonRect = selectedButton.getBoundingClientRect();
+    const targetLeft = Math.max(
+      0,
+      strip.scrollLeft +
+        (buttonRect.left - stripRect.left) -
+        (strip.clientWidth - selectedButton.clientWidth) / 2
+    );
+
+    // scrollTo 未実装の環境(SSR/古い jsdom 等)では何もしない。
+    strip.scrollTo?.({ left: targetLeft, behavior: "smooth" });
   }, [selectedPresetId]);
 
   useEffect(() => {

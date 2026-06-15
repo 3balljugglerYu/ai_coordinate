@@ -828,6 +828,10 @@ export const thMessages = {
       "หากคุณใช้ Persta เป็นประจำ การสมัครสมาชิกมักคุ้มกว่าการซื้อ Percoin ทีละแพ็ก",
   },
   coordinate: {
+    tourButton: "บทช่วยสอน",
+    tourStepUploadDescription: "อัปโหลดที่นี่เพื่อรูปตัวละครที่ต้องการจัดสไตล์ใหม่",
+    tourStepPromptDescription: "อธิบายชุดที่ต้องการ",
+    tourStepGenerateDescription: "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม",
     pageTitle: "จัดเซ็ต",
     pageDescription: "อัปโหลดรูปตัวละครและสนุกกับการจัดสไตล์ด้วย AI",
     resultsTitle: "ผลลัพธ์ที่สร้าง",

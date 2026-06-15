@@ -828,6 +828,10 @@ export const viMessages = {
       "Nếu bạn dùng Persta thường xuyên, đăng ký thường tiết kiệm hơn so với mua Percoin từng lần.",
   },
   coordinate: {
+    tourButton: "Hướng dẫn",
+    tourStepUploadDescription: "Tải lên đây hình nhân vật bạn muốn phối lại.",
+    tourStepPromptDescription: "Mô tả loại trang phục bạn muốn.",
+    tourStepGenerateDescription: "Chọn \"Bắt đầu styling\" để bắt đầu.",
     pageTitle: "Phối đồ",
     pageDescription: "Tải hình nhân vật và tận hưởng styling với AI.",
     resultsTitle: "Kết quả đã tạo",

@@ -828,6 +828,10 @@ export const koMessages = {
       "Persta를 정기적으로 사용한다면 Percoin을 한 번씩 구매하는 것보다 구독이 더 합리적입니다.",
   },
   coordinate: {
+    tourButton: "튜토리얼",
+    tourStepUploadDescription: "다시 스타일링하고 싶은 캐릭터 이미지를 여기에 업로드합니다.",
+    tourStepPromptDescription: "원하는 코디를 설명해 주세요.",
+    tourStepGenerateDescription: "“스타일링 시작”을 선택해 시작해 주세요.",
     pageTitle: "코디",
     pageDescription: "캐릭터 이미지를 업로드하고 AI 스타일링을 즐겨보세요.",
     resultsTitle: "생성 결과",

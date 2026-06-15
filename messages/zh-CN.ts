@@ -827,6 +827,10 @@ export const zhCnMessages = {
       "如果你定期使用 Persta，相比逐次购买 Percoin，订阅通常更划算。",
   },
   coordinate: {
+    tourButton: "教程",
+    tourStepUploadDescription: "在此上传想要重新造型的角色图片。",
+    tourStepPromptDescription: "请描述想要的搭配。",
+    tourStepGenerateDescription: "选择 “开始造型” 即可开始。",
     pageTitle: "搭配",
     pageDescription: "上传角色图片，享受 AI 造型乐趣。",
     resultsTitle: "生成结果",

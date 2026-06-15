@@ -831,6 +831,10 @@ export const itMessages = {
       "Se usi Persta regolarmente, un abbonamento di solito è più conveniente che acquistare Percoin uno per uno.",
   },
   coordinate: {
+    tourButton: "Tutorial",
+    tourStepUploadDescription: "Carica qui l’immagine del personaggio che vuoi restilizzare.",
+    tourStepPromptDescription: "Descrivi il tipo di outfit che desideri.",
+    tourStepGenerateDescription: "Seleziona \"Avvia styling\" per iniziare.",
     pageTitle: "Coordina",
     pageDescription: "Carica un'immagine di personaggio e divertiti con lo styling con IA.",
     resultsTitle: "Risultati generati",

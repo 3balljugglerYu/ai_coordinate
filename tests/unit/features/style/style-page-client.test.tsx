@@ -449,6 +449,7 @@ describe("StylePageClient", () => {
   let asyncGenerateResponseQueue: Array<Response | Promise<Response>>;
   let generationStatusResponseQueue: Array<Response | Promise<Response>>;
   let scrollIntoViewMock: jest.Mock;
+  let scrollToMock: jest.Mock;
 
   const createJsonResponse = (body: Record<string, unknown>, ok = true) =>
     ({
@@ -573,6 +574,13 @@ describe("StylePageClient", () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: scrollIntoViewMock,
+    });
+    // jsdom には Element.scrollTo が無い。プリセットストリップの横スクロール
+    // 中央寄せで使うためモックする。
+    scrollToMock = jest.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: scrollToMock,
     });
     // jsdom には URL.revokeObjectURL が無いため polyfill。
     // StylePageClient が blob URL の cleanup でこれを呼ぶ。
@@ -778,7 +786,7 @@ describe("StylePageClient", () => {
     );
   });
 
-  test("詳細画面から選択付きで遷移した場合は選択カードまで自動スクロールする", () => {
+  test("詳細画面から選択付きで遷移した場合は選択カードを横スクロールで中央寄せする", () => {
     render(
       <StylePageClient
         presets={presets}
@@ -786,11 +794,11 @@ describe("StylePageClient", () => {
       />
     );
 
-    expect(scrollIntoViewMock).toHaveBeenCalledWith({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
+    // 縦方向のページスクロール(scrollIntoView)は使わず、ストリップの
+    // 横スクロール(scrollTo: left 指定)で中央寄せする。
+    expect(scrollToMock).toHaveBeenCalledWith(
+      expect.objectContaining({ left: expect.any(Number), behavior: "smooth" })
+    );
   });
 
   test("スタイル画像URLをそのまま参照する", () => {

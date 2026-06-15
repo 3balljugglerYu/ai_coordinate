@@ -1,20 +1,10 @@
-import { connection } from "next/server";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
-import { StylePageClient } from "@/features/style/components/StylePageClient";
-import { StylePageShareButton } from "@/features/style/components/StylePageShareButton";
 import { StyleTourButton } from "@/features/style/components/StyleTourButton";
-import { GuestGenerationTrialCta } from "@/features/generation/components/GuestGenerationTrialCta";
-import { CachedGeneratedImageGallery } from "@/features/generation/components/CachedGeneratedImageGallery";
-import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
-import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
-import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
-import { getTotalStyleGenerateCount } from "@/features/style/lib/style-usage-stats";
+import { StylePageBody } from "@/features/style/components/StylePageBody";
+import { StyleTotalGenerationCount } from "@/features/style/components/StyleTotalGenerationCount";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
-import { getUser } from "@/lib/auth";
-import { isAdminViewer } from "@/lib/env";
-import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
 interface StylePageProps {
@@ -55,47 +45,26 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function StylePage({ searchParams }: StylePageProps) {
-  await connection();
-
+  // 静的ヘッダ(タイトル/説明)に必要なのは翻訳のみ。データ取得・認証は
+  // 下の <Suspense> 配下に隔離し、ヘッダを即時描画する。
   const t = await getTranslations("style");
-  const coordinateT = await getTranslations("coordinate");
-  const user = await getUser();
-  const isAdminViewerFlag = isAdminViewer(user?.id ?? null);
-  const presets = await getPublishedStylePresets({
-    includeAdminOnly: isAdminViewerFlag,
-  });
-  const profile = user ? await getUserProfileServer(user.id) : null;
-  const params = (await searchParams) ?? {};
-  const totalGenerationCount = await getTotalStyleGenerateCount().catch(
-    () => null
-  );
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
-        <div className="mx-auto max-w-3xl space-y-8">
-          {typeof totalGenerationCount === "number" &&
-          totalGenerationCount > 0 ? (
-            <div
-              data-testid="style-total-generation-count"
-              className="relative overflow-hidden rounded-xl border border-[#B7BDC6] bg-[linear-gradient(135deg,#F9FBFF_0%,#E6F0FF_20%,#E5E4E2_45%,#CBD6E3_70%,#FFFFFF_100%)] px-4 py-3 text-center shadow-[0_0_12px_rgba(216,235,255,0.8),0_0_28px_rgba(216,235,255,0.45)] transition-shadow hover:shadow-[0_0_16px_rgba(216,235,255,0.9),0_0_32px_rgba(216,235,255,0.6)]"
-            >
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent,45%,#D8EBFF,55%,transparent)] bg-[length:250%_100%] animate-shine opacity-60 mix-blend-overlay" />
-              <span className="relative z-10 block text-sm font-semibold text-slate-900">
-                {t("totalGenerationCount", {
-                  count: totalGenerationCount.toLocaleString(),
-                })}
-              </span>
-            </div>
-          ) : null}
+        <div className="mx-auto max-w-6xl space-y-8 animate-page-enter motion-reduce:animate-none">
+          {/* 累計生成枚数(動的): 高さ確保のスケルトンでレイアウトシフトを防ぐ */}
+          <Suspense
+            fallback={<div className="h-[52px] animate-pulse rounded-xl bg-gray-200" />}
+          >
+            <StyleTotalGenerationCount />
+          </Suspense>
 
+          {/* 静的ヘッダ: データに依存しないので即時表示される */}
           <div className="space-y-2">
-            <div className="flex items-start justify-between gap-3">
-              <h1 className="text-3xl font-bold text-gray-900">
-                {t("pageTitle")}
-              </h1>
-              <StylePageShareButton />
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {t("pageTitle")}
+            </h1>
             {/* モバイルでタイトルを圧縮しないよう、チュートリアルボタンはタイトル下に左詰めで置く */}
             <StyleTourButton />
             <p className="text-sm font-medium text-gray-700">
@@ -103,53 +72,30 @@ export default async function StylePage({ searchParams }: StylePageProps) {
             </p>
           </div>
 
-          {!user ? (
-            <GuestGenerationTrialCta
-              title={t("guestLoginCtaTitle")}
-              description={t("guestLoginCtaDescription")}
-              actionLabel={t("guestLoginCtaAction")}
-              testId="style-guest-login-cta"
-            />
-          ) : null}
-
-          {/*
-            StylePageClient と生成結果一覧を GenerationStateProvider で
-            包むことで、/coordinate と同じく生成中はリスト側にスケルトンが
-            出る。StylePageClient 内部で setIsGenerating / setGeneratingCount を
-            呼ぶことでギャラリーが状態を購読する。
-          */}
-          <GenerationStateProvider>
-            <StylePageClient
-              presets={presets}
-              initialAuthState={user ? "authenticated" : "guest"}
-              initialSelectedPresetId={params.style ?? null}
-              // ログインユーザーは生成結果一覧（下に並ぶ <CachedGeneratedImageGallery>）
-              // が結果表示を担うため、即時結果パネルは非表示にする。
-              showResultPanel={!user}
-              subscriptionPlan={profile?.subscription_plan ?? "free"}
-              // framing_mode (free_pose) は admin viewer 限定の先行公開 (サーバ側でも検証)
-              canUseFreePose={isAdminViewerFlag}
-            />
-
-            {/* 生成結果一覧（認証ユーザーのみ）。/coordinate と同じ UI を再利用。 */}
-            {user ? (
-              <div className="mt-8 scroll-mt-20">
-                <Suspense fallback={<GeneratedImageGallerySkeleton />}>
-                  <CachedGeneratedImageGallery
-                    userId={user.id}
-                    generationType="one_tap_style"
-                    cacheTag={`style-${user.id}`}
-                    title={coordinateT("resultsTitle")}
-                    detailFromParam="style"
-                    returnToImageIdKey="persta-ai:style-return-to-image-id"
-                    applyActionMode="navigate-coordinate"
-                  />
-                </Suspense>
-              </div>
-            ) : null}
-          </GenerationStateProvider>
+          {/* ユーザー依存の本体(認証・プリセット・生成結果)をストリーミング */}
+          <Suspense fallback={<StylePageBodyFallback />}>
+            <StylePageBody searchParams={searchParams} />
+          </Suspense>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** StylePageBody の読み込み中スケルトン(残高バー + カード列 + フォーム想定)。 */
+function StylePageBodyFallback() {
+  return (
+    <div className="space-y-8">
+      <div className="h-16 w-64 animate-pulse rounded-lg bg-gray-200" />
+      <div className="flex gap-4 overflow-hidden">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-[240px] w-[180px] shrink-0 animate-pulse rounded-xl bg-gray-200"
+          />
+        ))}
+      </div>
+      <div className="h-40 animate-pulse rounded-xl bg-gray-200" />
     </div>
   );
 }
