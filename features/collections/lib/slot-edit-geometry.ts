@@ -277,20 +277,26 @@ export type DistributeAxis = "horizontal" | "vertical";
 /**
  * 枠を等間隔に分布する(デザインツールの「分布」と同じ)。
  * 指定軸の両端の枠は動かさず、間の枠を等間隔に並べ直す。全枠同サイズなので
- * 位置(左端/上端)を等間隔にすれば枠間のすき間も均等になる。枠が2つ以下なら何もしない。
+ * 位置(左端/上端)を等間隔にすれば枠間のすき間も均等になる。対象が3つ未満なら何もしない。
+ * indices を渡すとその枠だけを対象に分布する(複数選択での部分分布)。省略時は全枠。
  */
 export function distributeEvenly(
   state: EditorSlots,
   axis: DistributeAxis,
+  indices?: number[],
 ): EditorSlots {
   const { size, positions } = state;
-  const n = positions.length;
+  const targetIdx =
+    indices && indices.length > 0 ? indices : positions.map((_, i) => i);
+  const n = targetIdx.length;
   if (n < 3) {
     return state;
   }
   const key: keyof Point = axis === "horizontal" ? "x" : "y";
-  // 指定軸の値でソートした順序(元のインデックスを保持)
-  const order = positions.map((_, i) => i).sort((a, b) => positions[a][key] - positions[b][key]);
+  // 対象枠を指定軸の値でソート(元のインデックスを保持)
+  const order = targetIdx
+    .slice()
+    .sort((a, b) => positions[a][key] - positions[b][key]);
   const lo = positions[order[0]][key];
   const hi = positions[order[n - 1]][key];
   const step = (hi - lo) / (n - 1);

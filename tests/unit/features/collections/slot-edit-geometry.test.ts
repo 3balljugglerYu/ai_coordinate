@@ -298,6 +298,37 @@ describe("distributeEvenly (両端固定・等間隔)", () => {
     };
     expect(distributeEvenly(state, "horizontal")).toEqual(state);
   });
+
+  test("indices を渡すと選択枠だけ等間隔にし、他は不変", () => {
+    const state: EditorSlots = {
+      size: { w: 0.1, h: 0.1 },
+      positions: [
+        { x: 0.0, y: 0 }, // 対象(端)
+        { x: 0.9, y: 0 }, // 非対象(動かない)
+        { x: 0.1, y: 0 }, // 対象(中間)
+        { x: 0.6, y: 0 }, // 対象(端)
+      ],
+    };
+    // 対象 = idx0(0), idx2(0.1), idx3(0.6) → lo=0,hi=0.6,step=0.3 → 0,0.3,0.6
+    const next = distributeEvenly(state, "horizontal", [0, 2, 3]);
+    expect(next.positions[0].x).toBeCloseTo(0, 6);
+    expect(next.positions[2].x).toBeCloseTo(0.3, 6);
+    expect(next.positions[3].x).toBeCloseTo(0.6, 6);
+    // 非対象は不変
+    expect(next.positions[1].x).toBeCloseTo(0.9, 6);
+  });
+
+  test("対象(選択)が3未満なら変化しない", () => {
+    const state: EditorSlots = {
+      size: { w: 0.1, h: 0.1 },
+      positions: [
+        { x: 0.1, y: 0 },
+        { x: 0.5, y: 0 },
+        { x: 0.9, y: 0 },
+      ],
+    };
+    expect(distributeEvenly(state, "horizontal", [0, 1])).toBe(state);
+  });
 });
 
 describe("pixelAspectRatio", () => {

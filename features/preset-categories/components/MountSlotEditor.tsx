@@ -22,22 +22,22 @@ import { GEMINI_SUPPORTED_ASPECT_RATIOS } from "@/shared/generation/gemini-aspec
 /** 1枠の最小辺(px)。これ以下にはリサイズできない。 */
 const MIN_SLOT_PX = 24;
 
-/** アスペクト比セレクタの「自由(ロック解除)」を表す番兵値 */
-const FREE_ASPECT = "free";
+/** 比率が未検出のときの既定ラベル */
+const DEFAULT_ASPECT = "1:1";
 
-/** 現在のピクセル比に最も近いプリセット比を許容誤差内で検出。無ければ "free"。 */
+/** 現在のピクセル比に最も近いプリセット比のラベルを返す。 */
 function detectAspectLabel(
   slots: NormalizedSlotRect[],
   templateWidth: number,
   templateHeight: number,
 ): string {
-  if (slots.length === 0) return FREE_ASPECT;
+  if (slots.length === 0) return DEFAULT_ASPECT;
   const ratio = pixelAspectRatio(
     { w: slots[0].w, h: slots[0].h },
     templateWidth,
     templateHeight,
   );
-  let best = FREE_ASPECT;
+  let best = DEFAULT_ASPECT;
   let bestDiff = Number.POSITIVE_INFINITY;
   for (const entry of GEMINI_SUPPORTED_ASPECT_RATIOS) {
     const diff = Math.abs(entry.value - ratio) / entry.value;
@@ -46,8 +46,7 @@ function detectAspectLabel(
       best = entry.label;
     }
   }
-  // 相対誤差 2% 以内なら一致とみなす。それ以外は自由。
-  return bestDiff <= 0.02 ? best : FREE_ASPECT;
+  return best;
 }
 
 const CORNERS: { corner: Corner; className: string; cursor: string }[] = [
@@ -90,8 +89,8 @@ export function MountSlotEditor({
   // スマホ用の複数選択モード(ON 中はタップで選択の追加/解除)
   const [multiSelectMode, setMultiSelectMode] = useState(false);
 
-  // 比率プリセットが選ばれている間はリサイズで比率を維持する
-  const lockRatio = aspectLabel !== FREE_ASPECT;
+  // 比率は常に固定(リサイズで比率を維持する)
+  const lockRatio = true;
   const state = splitSlots(slots);
   // 数値表示用の代表枠(最後に触れた枠)
   const primary = selection[selection.length - 1] ?? 0;
@@ -173,7 +172,6 @@ export function MountSlotEditor({
 
   function handleAspectChange(label: string) {
     setAspectLabel(label);
-    if (label === FREE_ASPECT) return; // 自由: 比率ロックを外すだけ
     const entry = GEMINI_SUPPORTED_ASPECT_RATIOS.find((r) => r.label === label);
     if (!entry) return;
     const next = applyAspect(
@@ -193,7 +191,9 @@ export function MountSlotEditor({
   }
 
   function handleDistribute(axis: DistributeAxis) {
-    onChange(joinSlots(distributeEvenly(splitSlots(slots), axis)));
+    // 2つ以上選択されていればその枠だけを対象に、そうでなければ全枠を分布する
+    const indices = selection.length >= 2 ? selection : undefined;
+    onChange(joinSlots(distributeEvenly(splitSlots(slots), axis, indices)));
   }
 
   function endDrag(e: ReactPointerEvent) {
@@ -228,7 +228,6 @@ export function MountSlotEditor({
               onChange={(e) => handleAspectChange(e.target.value)}
               className="rounded-md border border-slate-300 px-2 py-1 text-xs"
             >
-              <option value={FREE_ASPECT}>自由（ロック解除）</option>
               {GEMINI_SUPPORTED_ASPECT_RATIOS.map((r) => (
                 <option key={r.label} value={r.label}>
                   {r.label}
@@ -371,7 +370,9 @@ export function MountSlotEditor({
         </p>
         <p className="mt-1">
           選択中: {selection.length >= 1 ? `枠 ${selection.map((i) => i + 1).join(", ")}` : "なし"}
-          {selection.length >= 2 ? "（整列は選択枠だけに効きます）" : "（整列は全枠に効きます）"}
+          {selection.length >= 2
+            ? "（整列・均等は選択枠だけに効きます）"
+            : "（整列・均等は全枠に効きます）"}
         </p>
         <p className="mt-1">
           枠 {primary + 1} の位置: x {pct(state.positions[primary]?.x ?? 0)}, y{" "}
