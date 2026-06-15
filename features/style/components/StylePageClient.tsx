@@ -996,12 +996,19 @@ export function StylePageClient({
     // は発生しない。
     const stripRect = strip.getBoundingClientRect();
     const buttonRect = selectedButton.getBoundingClientRect();
-    const targetLeft =
+    const targetLeft = Math.max(
+      0,
       strip.scrollLeft +
-      (buttonRect.left - stripRect.left) -
-      (strip.clientWidth - selectedButton.clientWidth) / 2;
+        (buttonRect.left - stripRect.left) -
+        (strip.clientWidth - selectedButton.clientWidth) / 2
+    );
 
-    strip.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+    // scrollTo 未実装の環境(jsdom 等)では scrollLeft 代入にフォールバックする。
+    if (typeof strip.scrollTo === "function") {
+      strip.scrollTo({ left: targetLeft, behavior: "smooth" });
+    } else {
+      strip.scrollLeft = targetLeft;
+    }
   }, [selectedPresetId]);
 
   useEffect(() => {
