@@ -18,11 +18,12 @@ import type { CollectionUnlockContext } from "./collection-unlock-gating";
  *     RPC に現れ、そこから `isCompleted` を取得できる → 完走判定に使う。
  *   - 一方、解放対象カテゴリ(例: collectible_wafer_sticker_god_petit_6p)は
  *     `is_collection_series = false` かつ `visibility = 'admin_only'` のため RPC に現れない。
- *     よって distinct 生成体数は RPC では取れず、`image_jobs` を直接集計する
+ *     よって distinct 生成体数は get_collection_progress では取れず、専用の
+ *     service_role RPC `count_distinct_styles_by_category` で DB 側集計する
  *     (RPC 内の unique_count と同じロジック: status='succeeded' かつ
  *      generation_metadata->'oneTapStyle'->>'id' の DISTINCT 数)。
- *   この「完走は RPC / distinct は直接集計」のハイブリッドが、対象カテゴリの
- *   series/visibility 設定に依存せず最も堅牢。
+ *   この「完走は get_collection_progress / distinct は専用 RPC」のハイブリッドが、
+ *   対象カテゴリの series/visibility 設定に依存せず最も堅牢。
  *
  * @param presets 解放判定の対象となりうるプリセット一覧(キャッシュ済みの公開一覧)
  * @param userId 認証済みユーザー ID
