@@ -31,6 +31,8 @@ export interface MountGeneratedResult {
   mountImageUrl: string;
   sharePath: string | null;
   completionId: string | null;
+  mountTemplateWidth: number | null;
+  mountTemplateHeight: number | null;
 }
 
 interface Props {
@@ -74,6 +76,8 @@ export function CollectionMountComposer({
           status?: string;
           mountImageUrl?: string;
           sharePath?: string;
+          mountTemplateWidth?: number | null;
+          mountTemplateHeight?: number | null;
           error?: string;
         };
         if (res.ok && data.status === "completed" && data.mountImageUrl) {
@@ -84,6 +88,8 @@ export function CollectionMountComposer({
             completionId: data.sharePath
               ? data.sharePath.replace("/m/", "")
               : null,
+            mountTemplateWidth: data.mountTemplateWidth ?? null,
+            mountTemplateHeight: data.mountTemplateHeight ?? null,
           });
           return;
         }

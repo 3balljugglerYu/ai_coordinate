@@ -5,6 +5,10 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // dev サーバへ LAN 内の別端末(スマホ実機確認など)からアクセスする際の
+  // クロスオリジン保護を許可する。production では無視される dev 専用設定。
+  // 個人IPは埋め込まずプライベートレンジのワイルドカードのみ許可する。
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.16.*.*"],
   async redirects() {
     return [
       {

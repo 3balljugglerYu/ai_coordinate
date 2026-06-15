@@ -29,6 +29,9 @@ export interface CollectionCelebration {
   threshold: number;
   isCompleted: boolean;
   mountImageUrl: string | null;
+  /** 台紙テンプレ実寸(px)。表示アスペクト算出用。無ければ null(従来表にフォールバック) */
+  mountTemplateWidth?: number | null;
+  mountTemplateHeight?: number | null;
   sharePath: string | null;
   /** 公開ページ token(= collection_completions.id)。シェアに使う */
   completionId: string | null;
@@ -499,7 +502,13 @@ export function CollectionProgressModal({
               />
               <div
                 className="relative overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.18)]"
-                style={{ aspectRatio: mountAspectForCategory(celebration.categoryKey) }}
+                style={{
+                  aspectRatio: mountAspectForCategory(
+                    celebration.categoryKey,
+                    celebration.mountTemplateWidth,
+                    celebration.mountTemplateHeight,
+                  ),
+                }}
               >
                 <Image
                   src={mountImageUrl ?? ""}

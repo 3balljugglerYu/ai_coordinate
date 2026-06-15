@@ -5,6 +5,18 @@ import { useState, type FormEvent } from "react";
 import type { PresetCategoryAdmin } from "@/features/style-presets/lib/preset-category-repository";
 import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
 import { getModelDisplayInfo } from "@/features/generation/lib/model-display";
+import {
+  isMountLayoutKey,
+  type NormalizedSlotRect,
+} from "@/features/collections/lib/mount-layouts";
+import {
+  joinSlots,
+  outOfBoundsIndices,
+  seedSlots,
+  setSlotCount,
+  splitSlots,
+} from "@/features/collections/lib/slot-edit-geometry";
+import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
 
 type Mode = "create" | "edit";
 
@@ -49,6 +61,11 @@ interface FormState {
   completionThreshold: number | null;
   mountTemplatePath: string | null;
   mountLayout: "" | "grid_3" | "grid_4" | "grid_6";
+  /** カスタム枠(正規化矩形配列)。null なら mountLayout プリセットを使用 */
+  mountSlots: NormalizedSlotRect[] | null;
+  /** 台紙テンプレ実寸(px)。アップロード時に取得。枠エディタのアスペクト換算に使う */
+  mountTemplateWidth: number | null;
+  mountTemplateHeight: number | null;
   collectionCharacterPath: string | null;
   /** datetime-local 形式("YYYY-MM-DDTHH:mm")。空文字 = 未設定 */
   collectionDisplayStartsAt: string;
@@ -96,6 +113,9 @@ function toFormState(
     completionThreshold: initial?.completionThreshold ?? null,
     mountTemplatePath: initial?.mountTemplatePath ?? null,
     mountLayout: initial?.mountLayout ?? "",
+    mountSlots: initial?.mountSlots ?? null,
+    mountTemplateWidth: initial?.mountTemplateWidth ?? null,
+    mountTemplateHeight: initial?.mountTemplateHeight ?? null,
     collectionCharacterPath: initial?.collectionCharacterPath ?? null,
     // Hydration Mismatch を避けるため、サーバー側で JST 変換済みの文字列を
     // props 経由で受け取る (props が無いケース = create mode のため空文字)。
@@ -190,13 +210,22 @@ export function AdminPresetCategoryFormClient({
       });
       const payload = (await res.json().catch(() => ({}))) as {
         path?: string;
+        width?: number;
+        height?: number;
         error?: string;
       };
       if (!res.ok || !payload.path) {
         setError(payload.error ?? "台紙テンプレのアップロードに失敗しました");
         return;
       }
-      update("mountTemplatePath", payload.path);
+      // path と実寸をまとめて反映(実寸は枠エディタのアスペクト換算に使う)。
+      // 台紙差し替え時に別アスペクトの旧寸法が残らないよう、取得できなければ null にする。
+      setForm((prev) => ({
+        ...prev,
+        mountTemplatePath: payload.path ?? null,
+        mountTemplateWidth: payload.width ?? null,
+        mountTemplateHeight: payload.height ?? null,
+      }));
     } catch (err) {
       console.error("[AdminPresetCategoryFormClient] template upload failed:", err);
       setError("台紙テンプレのアップロードに失敗しました");
@@ -209,12 +238,110 @@ export function AdminPresetCategoryFormClient({
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  /** 選択中のグリッドレイアウトから枠を seed し、N(threshold)も枠数に合わせる。 */
+  function handleSeedSlots() {
+    if (!isMountLayoutKey(form.mountLayout)) {
+      setError("枠を初期化する前に台紙レイアウトを選択してください");
+      return;
+    }
+    const seeded = seedSlots(form.mountLayout);
+    setForm((prev) => ({
+      ...prev,
+      mountSlots: seeded,
+      completionThreshold: seeded.length,
+    }));
+  }
+
+  /** カスタム枠を破棄し、レイアウトのプリセットに戻す。 */
+  function handleClearSlots() {
+    update("mountSlots", null);
+  }
+
+  /**
+   * 台紙レイアウト変更。既存の枠調整があれば確認のうえ、そのレイアウトで枠を再生成する
+   * (枠数=N も同期)。キャンセル時は選択を元に戻す(form.mountLayout を変えない)。
+   * 調整がまだ無ければ即座に seed して枠エディタを表示する。
+   */
+  function handleLayoutChange(value: FormState["mountLayout"]) {
+    if (value === "") {
+      update("mountLayout", "");
+      return;
+    }
+    const hasCustom = !!form.mountSlots && form.mountSlots.length > 0;
+    if (
+      hasCustom &&
+      !confirm(`現在の枠調整を破棄して ${value} で枠を作り直しますか?`)
+    ) {
+      return; // 選択は据え置き(controlled なので元に戻る)
+    }
+    const seeded = seedSlots(value);
+    setForm((prev) => ({
+      ...prev,
+      mountLayout: value,
+      mountSlots: seeded,
+      completionThreshold: seeded.length,
+    }));
+  }
+
+  /**
+   * コンプリート数 N 変更。カスタム枠があるときは枠の数を N に増減する
+   * (既存枠は保持・増加分はデフォルト位置に追加・減少分は末尾を削除)。
+   * カスタム枠がまだ無ければ数値だけ更新する。
+   */
+  function handleThresholdChange(raw: string) {
+    const n = raw === "" ? null : Math.floor(Number(raw));
+    const hasCustom = !!form.mountSlots && form.mountSlots.length > 0;
+    if (n === null || !Number.isFinite(n) || n < 1 || !hasCustom) {
+      update("completionThreshold", n);
+      return;
+    }
+    const resized = joinSlots(setSlotCount(splitSlots(form.mountSlots!), n));
+    setForm((prev) => ({
+      ...prev,
+      completionThreshold: n,
+      mountSlots: resized,
+    }));
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setError(null);
 
     try {
+      // カスタム枠がある場合、枠数とコンプリート必要数 N を一致させる(API も検証する)。
+      // 枠数を真値とし threshold を同期する。
+      const effectiveThreshold =
+        form.mountSlots && form.mountSlots.length > 0
+          ? form.mountSlots.length
+          : form.completionThreshold;
+
+      if (
+        form.isCollectionSeries &&
+        form.mountSlots &&
+        form.mountSlots.length > 0 &&
+        form.completionThreshold !== null &&
+        form.completionThreshold !== form.mountSlots.length
+      ) {
+        setError(
+          `枠の数(${form.mountSlots.length})とコンプリート必要数 N(${form.completionThreshold})が一致していません`,
+        );
+        setBusy(false);
+        return;
+      }
+
+      // 枠が台紙からはみ出している場合は保存しない(枠調整で台紙内に収める)
+      if (form.isCollectionSeries && form.mountSlots) {
+        const oob = outOfBoundsIndices(form.mountSlots);
+        if (oob.length > 0) {
+          setError(
+            `枠 ${oob.map((i) => i + 1).join(", ")} が台紙からはみ出しています。枠調整で台紙内に収めてから保存してください。`,
+          );
+          setBusy(false);
+          return;
+        }
+      }
+
       const body =
         mode === "create"
           ? {
@@ -237,9 +364,12 @@ export function AdminPresetCategoryFormClient({
               user_prompt_max_length: form.userPromptMaxLength,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
-              completion_threshold: form.completionThreshold,
+              completion_threshold: effectiveThreshold,
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
+              mount_slots: form.mountSlots,
+              mount_template_width: form.mountTemplateWidth,
+              mount_template_height: form.mountTemplateHeight,
               collection_character_path: form.collectionCharacterPath,
               collection_display_starts_at: datetimeLocalToIso(
                 form.collectionDisplayStartsAt,
@@ -269,9 +399,12 @@ export function AdminPresetCategoryFormClient({
               user_prompt_max_length: form.userPromptMaxLength,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
-              completion_threshold: form.completionThreshold,
+              completion_threshold: effectiveThreshold,
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
+              mount_slots: form.mountSlots,
+              mount_template_width: form.mountTemplateWidth,
+              mount_template_height: form.mountTemplateHeight,
               collection_character_path: form.collectionCharacterPath,
               collection_display_starts_at: datetimeLocalToIso(
                 form.collectionDisplayStartsAt,
@@ -777,12 +910,7 @@ export function AdminPresetCategoryFormClient({
               min={1}
               step={1}
               value={form.completionThreshold ?? ""}
-              onChange={(e) =>
-                update(
-                  "completionThreshold",
-                  e.target.value === "" ? null : Math.floor(Number(e.target.value)),
-                )
-              }
+              onChange={(e) => handleThresholdChange(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               placeholder="4"
             />
@@ -795,10 +923,7 @@ export function AdminPresetCategoryFormClient({
             <select
               value={form.mountLayout}
               onChange={(e) =>
-                update(
-                  "mountLayout",
-                  e.target.value as FormState["mountLayout"],
-                )
+                handleLayoutChange(e.target.value as FormState["mountLayout"])
               }
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             >
@@ -808,7 +933,7 @@ export function AdminPresetCategoryFormClient({
               <option value="grid_6">grid_6（6枠・2×3）</option>
             </select>
             <span className="mt-1 block text-xs text-slate-500">
-              スロット数（=枠数）は N と一致させてください。
+              レイアウトを変えると枠が作り直されます（調整済みなら確認します）。N を変えると枠数も増減します。
             </span>
           </label>
         </div>
@@ -881,6 +1006,64 @@ export function AdminPresetCategoryFormClient({
               className="mt-2 max-h-56 w-auto rounded-md border border-slate-200 bg-slate-50"
             />
           ) : null}
+        </div>
+
+        {/* 枠(スロット)の調整。台紙テンプレと実寸が揃っているときだけ操作可能。 */}
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">
+            枠（スロット）の調整
+          </span>
+          {!form.mountTemplatePath ? (
+            <p className="mt-1 text-xs text-slate-500">
+              台紙テンプレをアップロードすると、枠をドラッグで調整できます。未調整なら台紙レイアウト（grid_3/4/6）のプリセット枠が使われます。
+            </p>
+          ) : form.mountTemplateWidth === null ||
+            form.mountTemplateHeight === null ? (
+            <p className="mt-1 text-xs text-amber-600">
+              この台紙には実寸情報がありません。台紙テンプレをもう一度アップロードすると枠調整が有効になります（既存の台紙は再アップロード不要・プリセット枠で動作します）。
+            </p>
+          ) : form.mountSlots && form.mountSlots.length > 0 ? (
+            <div className="mt-2 space-y-2">
+              <MountSlotEditor
+                templateUrl={mountTemplatePreviewUrl(form.mountTemplatePath)}
+                templateWidth={form.mountTemplateWidth}
+                templateHeight={form.mountTemplateHeight}
+                slots={form.mountSlots}
+                onChange={(slots) => update("mountSlots", slots)}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSeedSlots}
+                  disabled={!isMountLayoutKey(form.mountLayout)}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  選択中レイアウトから枠を再生成
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearSlots}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  カスタム枠を破棄（プリセットに戻す）
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-slate-500">
+                台紙レイアウト（grid_3/4/6）を選んで「枠を初期化」すると、その配置を元に枠をドラッグ調整できます。
+              </p>
+              <button
+                type="button"
+                onClick={handleSeedSlots}
+                disabled={!isMountLayoutKey(form.mountLayout)}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                選択中レイアウトから枠を初期化
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="block">

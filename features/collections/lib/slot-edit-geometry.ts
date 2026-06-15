@@ -1,0 +1,499 @@
+/**
+ * 台紙スロット(枠)エディタの幾何計算(純関数)。
+ *
+ * 編集モデル(運営確定仕様):
+ * - サイズは全枠で共有(`size:{w,h}`)。どれか1枠をリサイズすると全枠が同じサイズに連動。
+ * - 位置は枠ごと自由(`positions:{x,y}[]`、各枠の左上)。移動はその枠だけ動く。
+ *
+ * 座標はすべて正規化(0..1)。リサイズ時の「正方形維持(比率ロック)」だけは台紙実寸
+ * (templateWidth/Height)を使ってピクセル空間でのアスペクトを保つ。
+ *
+ * 保存形式は従来どおり NormalizedSlotRect[]([{x,y,w,h}])。本モジュールの
+ * split/join で「共有サイズ+位置配列」と相互変換する(ADR-004)。
+ * UI から切り離した純関数なのでユニットテスト可能。
+ */
+
+import {
+  MOUNT_LAYOUTS,
+  type MountLayoutKey,
+  type NormalizedSlotRect,
+} from "@/features/collections/lib/mount-layouts";
+
+export interface Size {
+  w: number;
+  h: number;
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/** 四隅ハンドルの識別子(n=上, s=下, w=左, e=右) */
+export type Corner = "nw" | "ne" | "sw" | "se";
+
+/** エディタ内部状態: 共有サイズ + 枠ごとの左上位置 */
+export interface EditorSlots {
+  size: Size;
+  positions: Point[];
+}
+
+export interface ResizeOptions {
+  /** 比率ロック(正方形維持): ピクセル空間で現在のアスペクトを保つ */
+  lockRatio: boolean;
+  /** 台紙テンプレ実寸(px)。ピクセル換算・最小サイズ・比率ロックに使用 */
+  templateWidth: number;
+  templateHeight: number;
+  /** 1枠の最小辺(px) */
+  minPx: number;
+  /** true なら全枠が 0..1 に収まるよう上限クランプ。false なら台紙外も許可(確定時に判定) */
+  bounded: boolean;
+}
+
+/** 枠が台紙(0..1)からはみ出している判定の許容誤差。API の SLOT_EPS と一致させる。 */
+export const BOUNDS_EPS = 1e-6;
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+/** 台紙(0..1)からはみ出している枠のインデックス一覧を返す。 */
+export function outOfBoundsIndices(
+  slots: NormalizedSlotRect[],
+  eps: number = BOUNDS_EPS,
+): number[] {
+  const result: number[] = [];
+  slots.forEach((s, i) => {
+    if (
+      s.x < -eps ||
+      s.y < -eps ||
+      s.x + s.w > 1 + eps ||
+      s.y + s.h > 1 + eps
+    ) {
+      result.push(i);
+    }
+  });
+  return result;
+}
+
+/**
+ * NormalizedSlotRect[] を「共有サイズ + 位置配列」へ分解する。
+ * 共有サイズは先頭枠の w,h を採用(全枠同サイズ前提。差異があれば先頭に揃う)。
+ * 空配列なら size は 0、positions も空。
+ */
+export function splitSlots(slots: NormalizedSlotRect[]): EditorSlots {
+  if (slots.length === 0) {
+    return { size: { w: 0, h: 0 }, positions: [] };
+  }
+  const first = slots[0];
+  return {
+    size: { w: first.w, h: first.h },
+    positions: slots.map((s) => ({ x: s.x, y: s.y })),
+  };
+}
+
+/** 「共有サイズ + 位置配列」を NormalizedSlotRect[] へ合成する(保存形式) */
+export function joinSlots(state: EditorSlots): NormalizedSlotRect[] {
+  return state.positions.map((p) => ({
+    x: p.x,
+    y: p.y,
+    w: state.size.w,
+    h: state.size.h,
+  }));
+}
+
+/** グリッドレイアウトから初期枠を seed する(N 変更時の再 seed 用) */
+export function seedSlots(layout: MountLayoutKey): NormalizedSlotRect[] {
+  // 参照を共有しないようコピーを返す
+  return MOUNT_LAYOUTS[layout].map((s) => ({ ...s }));
+}
+
+/** 1枠の左上位置を 0..1 内(右端/下端が共有サイズ分はみ出さない範囲)へクランプ */
+export function clampPosition(pos: Point, size: Size): Point {
+  return {
+    x: clamp(pos.x, 0, 1 - size.w),
+    y: clamp(pos.y, 0, 1 - size.h),
+  };
+}
+
+/**
+ * 移動の上限を「枠が台紙から完全に離れる位置まで」に緩くクランプする。
+ * 近い辺が台紙の反対側の辺に達するまで動かせる(=完全に外へ出せるが無限には飛ばない)。
+ * x: -w(右辺が台紙左端0)〜1(左辺が台紙右端1) / y: -h〜1。
+ */
+export function clampPositionLoose(pos: Point, size: Size): Point {
+  return {
+    x: clamp(pos.x, -size.w, 1),
+    y: clamp(pos.y, -size.h, 1),
+  };
+}
+
+/**
+ * その枠だけを移動する(共有サイズは不変)。
+ * bounded=true なら台紙内にクランプ、false なら台紙外も許可(確定時に判定)。
+ */
+export function movePosition(
+  pos: Point,
+  size: Size,
+  dxNorm: number,
+  dyNorm: number,
+  bounded: boolean = true,
+): Point {
+  const moved = { x: pos.x + dxNorm, y: pos.y + dyNorm };
+  return bounded ? clampPosition(moved, size) : moved;
+}
+
+/** snapPosition の結果。x/y は吸着後の左上、guideX/Y は表示するガイド線(正規化, 無ければ null)。 */
+export interface SnapResult {
+  x: number;
+  y: number;
+  guideX: number | null;
+  guideY: number | null;
+}
+
+/**
+ * ドラッグ中の枠を他の枠の辺(左/中央/右・上/中央/下)に吸着させる(スマートガイド)。
+ * しきい値(正規化)以内に近づいたら、その辺へ位置を合わせる。x/y は独立に判定する。
+ * 全枠同サイズ前提。閾値は画面px換算した正規化値を渡す。
+ */
+export function snapPosition(
+  pos: Point,
+  size: Size,
+  others: Point[],
+  thresholdX: number,
+  thresholdY: number,
+): SnapResult {
+  // ドラッグ枠の候補辺(左上からのオフセット付き)
+  const draggedX = [
+    { off: 0, v: pos.x },
+    { off: size.w / 2, v: pos.x + size.w / 2 },
+    { off: size.w, v: pos.x + size.w },
+  ];
+  const draggedY = [
+    { off: 0, v: pos.y },
+    { off: size.h / 2, v: pos.y + size.h / 2 },
+    { off: size.h, v: pos.y + size.h },
+  ];
+  const otherX: number[] = [];
+  const otherY: number[] = [];
+  for (const o of others) {
+    otherX.push(o.x, o.x + size.w / 2, o.x + size.w);
+    otherY.push(o.y, o.y + size.h / 2, o.y + size.h);
+  }
+
+  let bestX: number | null = null;
+  let guideX: number | null = null;
+  let bestXDist = thresholdX;
+  for (const d of draggedX) {
+    for (const ov of otherX) {
+      const dist = Math.abs(d.v - ov);
+      // より近いものだけ採用(同距離は先勝ち=左/中央/右の順で intent に近い辺を優先)
+      if (dist < bestXDist) {
+        bestXDist = dist;
+        bestX = ov - d.off;
+        guideX = ov;
+      }
+    }
+  }
+
+  let bestY: number | null = null;
+  let guideY: number | null = null;
+  let bestYDist = thresholdY;
+  for (const d of draggedY) {
+    for (const ov of otherY) {
+      const dist = Math.abs(d.v - ov);
+      if (dist < bestYDist) {
+        bestYDist = dist;
+        bestY = ov - d.off;
+        guideY = ov;
+      }
+    }
+  }
+
+  return {
+    x: bestX ?? pos.x,
+    y: bestY ?? pos.y,
+    guideX,
+    guideY,
+  };
+}
+
+/**
+ * いずれかの枠の四隅ハンドルをドラッグして「共有サイズ」を変更する。
+ * 対角固定: ドラッグした角の **対角を固定** したまま新サイズへ全枠が連動する
+ * (例: 左上を引くと各枠の右下が固定されたままサイズが変わる)。
+ * 比率ロック時はピクセル空間のアスペクトを維持。各枠はアンカー(対角)を固定したまま
+ * 0..1 に収まる最大サイズへクランプする。
+ */
+export function resizeShared(
+  state: EditorSlots,
+  corner: Corner,
+  dxNorm: number,
+  dyNorm: number,
+  opts: ResizeOptions,
+): EditorSlots {
+  const { size, positions } = state;
+  // 動く辺の符号(東=右辺が動く/西=左辺が動く, 南=下辺が動く/北=上辺が動く)
+  const sx = corner === "ne" || corner === "se" ? 1 : -1;
+  const sy = corner === "sw" || corner === "se" ? 1 : -1;
+  // 西(左上/左下)は左辺が動く=右辺がアンカー。北(左上/右上)は上辺が動く=下辺がアンカー。
+  const isWest = corner === "nw" || corner === "sw";
+  const isNorth = corner === "nw" || corner === "ne";
+
+  let desiredW = size.w + sx * dxNorm;
+  const desiredH = size.h + sy * dyNorm;
+
+  const minW = opts.minPx / opts.templateWidth;
+  const minH = opts.minPx / opts.templateHeight;
+
+  // 各枠でアンカー(対角)を固定したまま 0..1 に収まる最大サイズ。
+  // 西アンカー(右辺固定): 左辺が 0 まで → maxW = 右辺座標(x+w)
+  // 東アンカー(左辺固定): 右辺が 1 まで → maxW = 1 - x
+  // bounded=false のときは上限なし(台紙外まで許可・確定時に判定)。
+  let maxW = Number.POSITIVE_INFINITY;
+  let maxH = Number.POSITIVE_INFINITY;
+  if (opts.bounded) {
+    maxW = 1;
+    maxH = 1;
+    for (const p of positions) {
+      maxW = Math.min(maxW, isWest ? p.x + size.w : 1 - p.x);
+      maxH = Math.min(maxH, isNorth ? p.y + size.h : 1 - p.y);
+    }
+    maxW = Math.max(maxW, 0);
+    maxH = Math.max(maxH, 0);
+  }
+
+  let w: number;
+  let h: number;
+  if (opts.lockRatio) {
+    // 現在のアスペクト(h/w)を保つ。ポインタ移動の大きい軸を主軸にする。
+    const ratio = size.w > 0 ? size.h / size.w : 1;
+    if (Math.abs(dyNorm) > Math.abs(dxNorm)) {
+      desiredW = ratio > 0 ? desiredH / ratio : desiredW;
+    }
+    const lowW = Math.max(minW, minH / (ratio || 1));
+    const highW = Math.min(maxW, ratio > 0 ? maxH / ratio : maxW);
+    w = clamp(desiredW, lowW, highW);
+    h = w * ratio;
+  } else {
+    w = clamp(desiredW, minW, maxW);
+    h = clamp(desiredH, minH, maxH);
+  }
+
+  // 各枠はアンカー(対角)を固定したまま新サイズへ。
+  // 西アンカーなら右辺(x+size.w)を保つ → x = (x+size.w) - w
+  // 北アンカーなら下辺(y+size.h)を保つ → y = (y+size.h) - h
+  const newPositions = positions.map((p) => ({
+    x: isWest ? p.x + size.w - w : p.x,
+    y: isNorth ? p.y + size.h - h : p.y,
+  }));
+  return { size: { w, h }, positions: newPositions };
+}
+
+/**
+ * 枠の数を targetCount に合わせる(共有サイズは維持)。
+ * - 減らす場合: 末尾の枠を削除
+ * - 増やす場合: 既存枠はそのまま、足りない分をデフォルト位置(少しずつずらした左上)に追加
+ * 既存枠の位置・サイズは保持する。
+ */
+export function setSlotCount(
+  state: EditorSlots,
+  targetCount: number,
+): EditorSlots {
+  const { size, positions } = state;
+  if (targetCount <= 0) {
+    return { size, positions: [] };
+  }
+  if (targetCount === positions.length) {
+    return state;
+  }
+  if (targetCount < positions.length) {
+    return { size, positions: positions.slice(0, targetCount) };
+  }
+  const next = positions.map((p) => ({ ...p }));
+  for (let k = positions.length; k < targetCount; k++) {
+    const offset = 0.04 * (k - positions.length + 1);
+    next.push(clampPosition({ x: 0.1 + offset, y: 0.1 + offset }, size));
+  }
+  return { size, positions: next };
+}
+
+/** 横方向の整列 */
+export type HAlign = "left" | "center" | "right";
+/** 縦方向の整列 */
+export type VAlign = "top" | "middle" | "bottom";
+
+/**
+ * 枠の「辺」をそろえる(デザインツールの整列と同じ)。グループ全体を動かすのではなく、
+ * 各枠の端を(対象枠群の)端にそろえる。全枠は同サイズなので結果は重なる(例: 左寄せ=同じ
+ * 左端の縦並びになる)。
+ * - 横: left=一番左の左端, right=一番右の右端, center=対象群の水平中央
+ * - 縦: top=一番上の上端, bottom=一番下の下端, middle=対象群の垂直中央
+ * hAlign / vAlign を null にするとその軸は動かさない(片軸だけの整列が可能)。
+ * indices を渡すとその枠だけを対象に整列する(複数選択での部分整列)。省略時は全枠。
+ */
+export function alignGroup(
+  state: EditorSlots,
+  hAlign: HAlign | null,
+  vAlign: VAlign | null,
+  indices?: number[],
+): EditorSlots {
+  const { size, positions } = state;
+  if (positions.length === 0) {
+    return state;
+  }
+  const targetSet =
+    indices && indices.length > 0
+      ? new Set(indices)
+      : new Set(positions.map((_, i) => i));
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  positions.forEach((p, i) => {
+    if (!targetSet.has(i)) return;
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  });
+  // 全枠同サイズなので右端そろえ=最大x、中央そろえ=左端の中点に揃う
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  const tx =
+    hAlign === "left"
+      ? minX
+      : hAlign === "right"
+        ? maxX
+        : hAlign === "center"
+          ? centerX
+          : null;
+  const ty =
+    vAlign === "top"
+      ? minY
+      : vAlign === "bottom"
+        ? maxY
+        : vAlign === "middle"
+          ? centerY
+          : null;
+
+  return {
+    size,
+    positions: positions.map((p, i) => {
+      if (!targetSet.has(i)) return p;
+      return {
+        x: tx === null ? p.x : tx,
+        y: ty === null ? p.y : ty,
+      };
+    }),
+  };
+}
+
+/** 均等配置(分布)の方向 */
+export type DistributeAxis = "horizontal" | "vertical";
+
+/**
+ * 枠を等間隔に分布する(デザインツールの「分布」と同じ)。
+ * 指定軸の両端の枠は動かさず、間の枠を等間隔に並べ直す。全枠同サイズなので
+ * 位置(左端/上端)を等間隔にすれば枠間のすき間も均等になる。対象が3つ未満なら何もしない。
+ * indices を渡すとその枠だけを対象に分布する(複数選択での部分分布)。省略時は全枠。
+ */
+export function distributeEvenly(
+  state: EditorSlots,
+  axis: DistributeAxis,
+  indices?: number[],
+): EditorSlots {
+  const { size, positions } = state;
+  const targetIdx =
+    indices && indices.length > 0 ? indices : positions.map((_, i) => i);
+  const n = targetIdx.length;
+  if (n < 3) {
+    return state;
+  }
+  const key: keyof Point = axis === "horizontal" ? "x" : "y";
+  // 対象枠を指定軸の値でソート(元のインデックスを保持)
+  const order = targetIdx
+    .slice()
+    .sort((a, b) => positions[a][key] - positions[b][key]);
+  const lo = positions[order[0]][key];
+  const hi = positions[order[n - 1]][key];
+  const step = (hi - lo) / (n - 1);
+
+  const newPositions = positions.map((p) => ({ ...p }));
+  order.forEach((origIndex, sortedPos) => {
+    newPositions[origIndex][key] = lo + step * sortedPos;
+  });
+  return { size, positions: newPositions };
+}
+
+/** 共有サイズのピクセル比 (w_px / h_px) を返す。生成側の比率(3:4 等)と同じ尺度。 */
+export function pixelAspectRatio(
+  size: Size,
+  templateWidth: number,
+  templateHeight: number,
+): number {
+  const wPx = size.w * templateWidth;
+  const hPx = size.h * templateHeight;
+  return hPx > 0 ? wPx / hPx : 1;
+}
+
+/**
+ * 共有サイズを指定の **ピクセル比(ratioPx = w_px / h_px)** にそろえる。
+ * 例: ratioPx = 3/4 で枠を 3:4(縦長) に。生成の GEMINI_SUPPORTED_ASPECT_RATIOS と
+ * 同じ尺度。各枠は左上(位置)を保ったまま幅基準で高さを決め、はみ出す場合は比率を
+ * 保ったまま全枠が 0..1 に収まる最大サイズへ縮める。最小サイズも比率を保って適用。
+ */
+export function applyAspect(
+  state: EditorSlots,
+  ratioPx: number,
+  templateWidth: number,
+  templateHeight: number,
+  minPx: number,
+): EditorSlots {
+  const { size, positions } = state;
+  if (positions.length === 0 || ratioPx <= 0) {
+    return state;
+  }
+  // 左上固定で各枠が収まる上限(幅/高さ)
+  let maxW = 1;
+  let maxH = 1;
+  for (const p of positions) {
+    maxW = Math.min(maxW, 1 - p.x);
+    maxH = Math.min(maxH, 1 - p.y);
+  }
+  const minW = minPx / templateWidth;
+  const minH = minPx / templateHeight;
+
+  // ピクセル比 R = (w*tW)/(h*tH) より h = w*tW/(R*tH), w = h*R*tH/tW
+  const hFromW = (w: number) => (w * templateWidth) / (ratioPx * templateHeight);
+  const wFromH = (h: number) => (h * ratioPx * templateHeight) / templateWidth;
+
+  // 現在の幅を起点に、比率を保ったまま max/min に収める
+  let w = size.w;
+  let h = hFromW(w);
+  if (h > maxH) {
+    h = maxH;
+    w = wFromH(h);
+  }
+  if (w > maxW) {
+    w = maxW;
+    h = hFromW(w);
+  }
+  if (w < minW) {
+    w = minW;
+    h = hFromW(w);
+  }
+  if (h < minH) {
+    h = minH;
+    w = wFromH(h);
+  }
+  // 最小が最大を超える極端なケースの安全クランプ(比率は崩れうる)
+  w = Math.min(w, maxW);
+  h = Math.min(h, maxH);
+
+  // 左上は保持(位置不変)
+  return { size: { w, h }, positions: positions.map((p) => ({ ...p })) };
+}

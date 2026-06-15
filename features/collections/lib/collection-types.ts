@@ -23,6 +23,9 @@ export interface CollectionProgress {
    * フィード側の完了モーダルでシェア導線(台紙シェア/シェアページ)を出すのに使う。
    */
   completionId: string | null;
+  /** 台紙テンプレ実寸(px)。完了モーダルの表示アスペクト算出用。無ければ null */
+  mountTemplateWidth: number | null;
+  mountTemplateHeight: number | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */

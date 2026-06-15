@@ -87,7 +87,13 @@ export default async function PublicMountPage({
 
       <div
         className="relative w-full max-w-sm overflow-hidden rounded-xl border border-gray-200 shadow-md"
-        style={{ aspectRatio: mountAspectForCategory(mount.categoryKey) }}
+        style={{
+          aspectRatio: mountAspectForCategory(
+            mount.categoryKey,
+            mount.mountTemplateWidth,
+            mount.mountTemplateHeight,
+          ),
+        }}
       >
         <Image
           src={mount.mountImageUrl}

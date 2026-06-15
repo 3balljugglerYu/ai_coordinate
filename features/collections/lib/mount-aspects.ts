@@ -14,6 +14,24 @@ const MOUNT_ASPECTS: Record<string, string> = {
   collectible_wafer_sticker_god_6p: "1024 / 1608",
 };
 
-export function mountAspectForCategory(categoryKey: string): string {
+/**
+ * 台紙の表示アスペクト比(CSS aspect-ratio 文字列)を返す。
+ * 1. DB に保存された台紙テンプレ実寸(width/height)があればそれを最優先で使う
+ *    (運営が任意サイズの台紙をアップロードしてもクロップされない)。
+ * 2. 無ければカテゴリ別のハードコード表 → 既定値にフォールバック(後方互換)。
+ */
+export function mountAspectForCategory(
+  categoryKey: string,
+  width?: number | null,
+  height?: number | null,
+): string {
+  if (
+    typeof width === "number" &&
+    typeof height === "number" &&
+    width > 0 &&
+    height > 0
+  ) {
+    return `${width} / ${height}`;
+  }
   return MOUNT_ASPECTS[categoryKey] ?? DEFAULT_MOUNT_ASPECT;
 }

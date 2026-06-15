@@ -129,6 +129,8 @@ export function useCollectionProgress() {
                 ? `/m/${target.completionId}`
                 : null,
             completionId: completed ? target.completionId : null,
+            mountTemplateWidth: target.mountTemplateWidth,
+            mountTemplateHeight: target.mountTemplateHeight,
             characterImageUrl: target.characterImageUrl,
             collectedImageUrls: (target.collectedImageUrls ?? []).slice(
               0,
@@ -164,6 +166,8 @@ export function useCollectionProgress() {
           // マイページの完了サムネタップ(openMountModal)と同じ挙動に揃える。
           sharePath: series.completionId ? `/m/${series.completionId}` : null,
           completionId: series.completionId,
+          mountTemplateWidth: series.mountTemplateWidth,
+          mountTemplateHeight: series.mountTemplateHeight,
           characterImageUrl: series.characterImageUrl,
           collectedImageUrls: series.collectedImageUrls ?? [],
           // フィードの自動コンプリート祝いはダイヤのきらめき演出にする。
@@ -240,6 +244,8 @@ export function useCollectionProgress() {
       mountImageUrl: result.mountImageUrl,
       sharePath: result.sharePath,
       completionId: result.completionId,
+      mountTemplateWidth: result.mountTemplateWidth,
+      mountTemplateHeight: result.mountTemplateHeight,
       characterImageUrl: target?.characterImageUrl ?? null,
       collectedImageUrls: [],
     });
