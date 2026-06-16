@@ -840,9 +840,11 @@ export function CollectionProgressModal({
                 onClick={() => onCreateMount(celebration)}
                 aria-label={cIsCompleted ? "台紙を更新する" : "台紙を作成する"}
                 className={
-                  layout.buttonRect
-                    ? "absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
-                    : "absolute flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                  // 共通クラス + DB台座(buttonRect)以外はオレンジ CTA の装飾を追加。
+                  "absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
+                  (layout.buttonRect
+                    ? ""
+                    : " flex items-center justify-center bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)]")
                 }
                 style={{
                   left: `${buttonBox.left}%`,
@@ -854,11 +856,11 @@ export function CollectionProgressModal({
                     : "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
                 }}
               >
-                {layout.buttonRect
-                  ? null
-                  : cIsCompleted
+                {!layout.buttonRect
+                  ? cIsCompleted
                     ? "台紙を更新する →"
-                    : "台紙を作成する →"}
+                    : "台紙を作成する →"
+                  : null}
               </button>
             ) : (
               <Link
