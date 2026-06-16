@@ -106,6 +106,72 @@ describe("getPresetCategoryById", () => {
     expect(result?.visibility).toBe("public");
   });
 
+  test("progress_modal_* 列を camelCase ドメインへマップする(色/中央/ボタン)", async () => {
+    const row: PresetCategoryRow = {
+      ...SAMPLE_ROW,
+      progress_modal_frame_path: "frames/frame-1.webp",
+      progress_modal_frame_width: 1086,
+      progress_modal_frame_height: 1448,
+      progress_modal_slots: [
+        { x: 0.1, y: 0.7, w: 0.13, h: 0.13 },
+        { x: 0.3, y: 0.7, w: 0.13, h: 0.13 },
+      ],
+      progress_modal_button: { x: 0.1, y: 0.85, w: 0.8, h: 0.09 },
+      progress_modal_center: { x: 0.3, y: 0.2, w: 0.4, h: 0.3 },
+      progress_modal_ring_color: "#22C55E",
+      progress_modal_badge_color: "#16A34A",
+      progress_modal_badge_text_color: "#FFFFFF",
+      progress_modal_badge_bg_color: "#166534",
+    };
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({ data: row, error: null }),
+    });
+
+    const result = await getPresetCategoryById(SAMPLE_ROW.id);
+    expect(result?.progressModalFramePath).toBe("frames/frame-1.webp");
+    expect(result?.progressModalFrameWidth).toBe(1086);
+    expect(result?.progressModalFrameHeight).toBe(1448);
+    expect(result?.progressModalSlots).toEqual([
+      { x: 0.1, y: 0.7, w: 0.13, h: 0.13 },
+      { x: 0.3, y: 0.7, w: 0.13, h: 0.13 },
+    ]);
+    expect(result?.progressModalButton).toEqual({
+      x: 0.1,
+      y: 0.85,
+      w: 0.8,
+      h: 0.09,
+    });
+    expect(result?.progressModalCenter).toEqual({
+      x: 0.3,
+      y: 0.2,
+      w: 0.4,
+      h: 0.3,
+    });
+    expect(result?.progressModalRingColor).toBe("#22C55E");
+    expect(result?.progressModalBadgeColor).toBe("#16A34A");
+    expect(result?.progressModalBadgeTextColor).toBe("#FFFFFF");
+    expect(result?.progressModalBadgeBgColor).toBe("#166534");
+  });
+
+  test("progress_modal_* 色列が null なら null にフォールバックする", async () => {
+    const row: PresetCategoryRow = {
+      ...SAMPLE_ROW,
+      progress_modal_ring_color: null,
+      progress_modal_badge_color: null,
+      progress_modal_badge_text_color: null,
+      progress_modal_badge_bg_color: null,
+    };
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({ data: row, error: null }),
+    });
+
+    const result = await getPresetCategoryById(SAMPLE_ROW.id);
+    expect(result?.progressModalRingColor).toBeNull();
+    expect(result?.progressModalBadgeColor).toBeNull();
+    expect(result?.progressModalBadgeTextColor).toBeNull();
+    expect(result?.progressModalBadgeBgColor).toBeNull();
+  });
+
   test("行が無ければ null を返す", async () => {
     createAdminClientMock.mockReturnValue({
       from: buildSingleChain({ data: null, error: null }),

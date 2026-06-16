@@ -228,6 +228,10 @@ export function MyPageCollections({
       progressModalSlots: series.progressModalSlots,
       progressModalButton: series.progressModalButton,
       progressModalCenter: series.progressModalCenter,
+      progressModalRingColor: series.progressModalRingColor,
+      progressModalBadgeColor: series.progressModalBadgeColor,
+      progressModalBadgeTextColor: series.progressModalBadgeTextColor,
+      progressModalBadgeBgColor: series.progressModalBadgeBgColor,
     });
   }
 
@@ -297,6 +301,7 @@ export function MyPageCollections({
                     complete={completed}
                     imageUrl={s.characterImageUrl}
                     tintByProgress={false}
+                    color={s.progressModalRingColor}
                     className="w-16 shrink-0"
                   >
                     {!s.characterImageUrl ? (

@@ -17,6 +17,7 @@ import {
   splitSlots,
 } from "@/features/collections/lib/slot-edit-geometry";
 import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
+import { ProgressModalColorPreview } from "@/features/preset-categories/components/ProgressModalColorPreview";
 
 type Mode = "create" | "edit";
 
@@ -80,6 +81,14 @@ interface FormState {
   progressModalButton: NormalizedSlotRect | null;
   /** 進捗モーダルの中央画像領域(単一の正規化矩形)。表示画像はキャラ画像を流用。 */
   progressModalCenter: NormalizedSlotRect | null;
+  /** 進捗リングの色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalRingColor: string | null;
+  /** %達成バッジの色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalBadgeColor: string | null;
+  /** %達成バッジの文字色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalBadgeTextColor: string | null;
+  /** %達成バッジの背景色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalBadgeBgColor: string | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -137,6 +146,10 @@ function toFormState(
     progressModalSlots: initial?.progressModalSlots ?? null,
     progressModalButton: initial?.progressModalButton ?? null,
     progressModalCenter: initial?.progressModalCenter ?? null,
+    progressModalRingColor: initial?.progressModalRingColor ?? null,
+    progressModalBadgeColor: initial?.progressModalBadgeColor ?? null,
+    progressModalBadgeTextColor: initial?.progressModalBadgeTextColor ?? null,
+    progressModalBadgeBgColor: initial?.progressModalBadgeBgColor ?? null,
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -159,6 +172,86 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("file read failed"));
     reader.readAsDataURL(file);
   });
+}
+
+const HEX6_RE = /^#[0-9A-Fa-f]{6}$/;
+
+/**
+ * 色入力フィールド(スウォッチ + HEX テキスト欄 + 「デフォルトに戻す」)。
+ * value=null は「未設定(デフォルト配色)」。HEX テキストは自由入力でき、
+ * 有効な #RRGGBB になったときだけ確定する(空にすると null=デフォルトに戻る)。
+ * ネイティブの type=color パレットは RGB/HEX 表記を制御できないため、
+ * HEX を直接読み書きできるテキスト欄を併設する。
+ */
+function ColorField({
+  label,
+  value,
+  defaultSwatch,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  defaultSwatch: string;
+  onChange: (value: string | null) => void;
+}) {
+  const [text, setText] = useState(value ?? "");
+  // スウォッチ操作・リセット等で外部 value が変わったらテキストも同期する。
+  // useEffect ではなく「レンダー中に派生 state を調整」する公式パターンを使う。
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    setText(value ?? "");
+  }
+
+  const handleText = (raw: string) => {
+    setText(raw);
+    const t = raw.trim();
+    if (t === "") {
+      onChange(null);
+      return;
+    }
+    const norm = (t.startsWith("#") ? t : `#${t}`).toUpperCase();
+    if (HEX6_RE.test(norm)) {
+      onChange(norm);
+    }
+    // 途中入力(無効な hex)は確定しない。確定済みの値は維持される。
+  };
+
+  return (
+    <div className="block">
+      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="color"
+          value={value ?? defaultSwatch}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          className="h-10 w-16 rounded-md border border-slate-300"
+          aria-label={`${label}(スウォッチ)`}
+        />
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => handleText(e.target.value)}
+          placeholder="#RRGGBB"
+          maxLength={7}
+          spellCheck={false}
+          className="h-10 w-28 rounded-md border border-slate-300 px-2 font-mono text-sm uppercase"
+          aria-label={`${label}(HEX)`}
+        />
+        {value == null ? (
+          <span className="text-xs text-slate-500">未設定(デフォルト配色)</span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            デフォルトに戻す
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function AdminPresetCategoryFormClient({
@@ -473,6 +566,10 @@ export function AdminPresetCategoryFormClient({
               progress_modal_slots: form.progressModalSlots,
               progress_modal_button: form.progressModalButton,
               progress_modal_center: form.progressModalCenter,
+              progress_modal_ring_color: form.progressModalRingColor,
+              progress_modal_badge_color: form.progressModalBadgeColor,
+              progress_modal_badge_text_color: form.progressModalBadgeTextColor,
+              progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -514,6 +611,10 @@ export function AdminPresetCategoryFormClient({
               progress_modal_slots: form.progressModalSlots,
               progress_modal_button: form.progressModalButton,
               progress_modal_center: form.progressModalCenter,
+              progress_modal_ring_color: form.progressModalRingColor,
+              progress_modal_badge_color: form.progressModalBadgeColor,
+              progress_modal_badge_text_color: form.progressModalBadgeTextColor,
+              progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -1391,6 +1492,51 @@ export function AdminPresetCategoryFormClient({
               </button>
             </div>
           )}
+        </div>
+
+        {/* 進捗リング/%達成バッジの配色。null(未設定)なら従来デフォルト配色
+            (オレンジのリング/ゴールドのバッジ)を使う(= 厳密な no-op)。
+            左に各色のカラー入力、右にライブプレビュー(リング + %達成バッジ)を並べる。 */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex-1 space-y-4">
+        <ColorField
+          label="進捗リングの色"
+          value={form.progressModalRingColor}
+          defaultSwatch="#F97316"
+          onChange={(v) => update("progressModalRingColor", v)}
+        />
+        <ColorField
+          label="%達成バッジの色"
+          value={form.progressModalBadgeColor}
+          defaultSwatch="#F59E0B"
+          onChange={(v) => update("progressModalBadgeColor", v)}
+        />
+        <ColorField
+          label="バッジの文字色"
+          value={form.progressModalBadgeTextColor}
+          defaultSwatch="#F97316"
+          onChange={(v) => update("progressModalBadgeTextColor", v)}
+        />
+        <ColorField
+          label="バッジの背景色"
+          value={form.progressModalBadgeBgColor}
+          defaultSwatch="#FEF3C7"
+          onChange={(v) => update("progressModalBadgeBgColor", v)}
+        />
+        </div>
+
+        {/* ライブプレビュー: 上で選んだ色がリング/バッジにどう反映されるか確認できる。 */}
+        <div className="shrink-0">
+          <span className="mb-1 block text-sm font-medium text-slate-700">
+            プレビュー
+          </span>
+          <ProgressModalColorPreview
+            ringColor={form.progressModalRingColor}
+            badgeColor={form.progressModalBadgeColor}
+            badgeTextColor={form.progressModalBadgeTextColor}
+            badgeBgColor={form.progressModalBadgeBgColor}
+          />
+        </div>
         </div>
       </fieldset>
 

@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
+import { AchievementBadge } from "@/features/collections/components/AchievementBadge";
 import { CollectionConfetti } from "@/features/collections/components/CollectionConfetti";
 import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
@@ -66,6 +67,18 @@ export interface CollectionCelebration {
    * characterImageUrl(= collection_character_path)を敷く。
    */
   progressModalCenter?: NormalizedSlotRect | null;
+  /**
+   * 進捗リング・%達成バッジの色(#RRGGBB)。設定があるとき、リングのアークと
+   * %達成バッジをこの色で描く。null なら従来のデフォルト配色(オレンジ/ゴールド)。
+   */
+  progressModalRingColor?: string | null;
+  progressModalBadgeColor?: string | null;
+  /**
+   * %達成バッジの文字色・内側背景色(#RRGGBB)。設定があるとき、バッジの
+   * %数字・達成！ラベルの色と内側スカロップの背景をこの色で描く。null なら従来配色。
+   */
+  progressModalBadgeTextColor?: string | null;
+  progressModalBadgeBgColor?: string | null;
 }
 
 interface Props {
@@ -114,6 +127,26 @@ interface ModalLayout {
    * 設定があるとき、フレーム中央に characterImageUrl を敷く。
    */
   centerRect?: NormalizedSlotRect | null;
+  /**
+   * 進捗リングのアーク色(#RRGGBB)。設定があるときグラデーションの代わりに
+   * この単色を使う。null なら従来のゴールド→オレンジのグラデーション。
+   */
+  ringColor?: string | null;
+  /**
+   * %達成バッジの色(#RRGGBB)。設定があるとき外側スカロップ/王冠をこの色で塗る。
+   * null なら従来のゴールド配色。
+   */
+  badgeColor?: string | null;
+  /**
+   * %達成バッジの文字色(#RRGGBB)。設定があるとき % 数字・達成！ラベルをこの色で塗る。
+   * null なら従来配色(% はオレンジ #F97316 / 達成！は #B45309)。
+   */
+  badgeTextColor?: string | null;
+  /**
+   * %達成バッジの内側背景色(#RRGGBB)。設定があるとき内側スカロップをこの色で塗る。
+   * null なら従来のクリーム地グラデーション(url(#badgeFill))。
+   */
+  badgeBgColor?: string | null;
 }
 
 // ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
@@ -163,105 +196,6 @@ const MODAL_LAYOUTS: Record<string, ModalLayout> = {
 const RING_R = 47;
 const RING_C = 2 * Math.PI * RING_R;
 
-/**
- * スカロップ(波打ち)型のゴールドバッジ + 王冠 + 「○○%／達成！」を描く SVG。
- * 画像素材を持たずインラインで完結し、画面幅に応じて拡縮しても崩れない。
- */
-function AchievementBadge({ percent }: { percent: number }) {
-  // 10弁のスカロップを極座標で生成(内/外を交互に)
-  const cx = 50;
-  const cy = 50;
-  const petals = 10;
-  const rOuter = 44;
-  const rInner = 38;
-  const pts: string[] = [];
-  for (let i = 0; i < petals * 2; i++) {
-    const a = (i * Math.PI) / petals - Math.PI / 2;
-    const r = i % 2 === 0 ? rOuter : rInner;
-    const x = cx + r * Math.cos(a);
-    const y = cy + r * Math.sin(a);
-    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
-  }
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      className="h-full w-full drop-shadow-[0_2px_4px_rgba(180,90,20,0.35)]"
-      aria-hidden
-    >
-      <defs>
-        <radialGradient id="badgeFill" cx="50%" cy="42%" r="60%">
-          <stop offset="0%" stopColor="#FFFBEB" />
-          <stop offset="70%" stopColor="#FEF3C7" />
-          <stop offset="100%" stopColor="#FDE68A" />
-        </radialGradient>
-        <linearGradient id="badgeStroke" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#FCD34D" />
-          <stop offset="100%" stopColor="#F59E0B" />
-        </linearGradient>
-      </defs>
-      {/* 外側スカロップ(濃ゴールド) */}
-      <polygon
-        points={pts.join(" ")}
-        fill="url(#badgeStroke)"
-      />
-      {/* 内側スカロップ(中身)。やや小さい同形で重ねて縁取りを作る */}
-      <polygon
-        points={pts
-          .map((p) => {
-            const [x, y] = p.split(",").map(Number);
-            return `${(cx + (x - cx) * 0.86).toFixed(2)},${(cy + (y - cy) * 0.86).toFixed(2)}`;
-          })
-          .join(" ")}
-        fill="url(#badgeFill)"
-      />
-      {/* 王冠(シンプル) - %が真ん中にくるよう下にシフト */}
-      <g transform="translate(50 31)">
-        <path
-          d="M -7 6 L -7 -1 L -3 3 L 0 -4 L 3 3 L 7 -1 L 7 6 Z"
-          fill="#F59E0B"
-          stroke="#FFFFFF"
-          strokeWidth="0.6"
-          strokeLinejoin="round"
-        />
-        <circle cx="-7" cy="-1" r="1.2" fill="#F59E0B" />
-        <circle cx="0" cy="-4" r="1.3" fill="#F59E0B" />
-        <circle cx="7" cy="-1" r="1.2" fill="#F59E0B" />
-      </g>
-      {/* 「○○%」(オレンジ・大きめ) - バッジ中央に配置
-            カウントアップ後半でぴょこっと拡縮(coll-pop)。SVG <text> は
-            transform-box=fill-box で自身の中心を回転原点にできる。 */}
-      <text
-        x="50"
-        y="57"
-        textAnchor="middle"
-        fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
-        fontWeight="700"
-        fontSize="20"
-        fill="#F97316"
-        style={{
-          transformBox: "fill-box",
-          transformOrigin: "center",
-          animation: "coll-pop 1400ms ease-out both",
-        }}
-      >
-        {percent}%
-      </text>
-      {/* 「達成！」 - %の直下 */}
-      <text
-        x="50"
-        y="69"
-        textAnchor="middle"
-        fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
-        fontWeight="700"
-        fontSize="9"
-        fill="#B45309"
-      >
-        達成！
-      </text>
-    </svg>
-  );
-}
-
 export function CollectionProgressModal({
   open,
   celebration,
@@ -299,23 +233,55 @@ export function CollectionProgressModal({
   const cShowMount = cIsCompleted && !!cMountImageUrl;
   // admin がカテゴリごとに設定した DB 駆動レイアウト。フレーム画像+実寸がそろっている
   // ときだけ有効。設定が無ければ従来どおりハードコード MODAL_LAYOUTS を使う。
-  const dbLayout: ModalLayout | null =
-    celebration &&
-    celebration.progressModalFrameUrl &&
-    celebration.progressModalFrameWidth &&
-    celebration.progressModalFrameHeight
-      ? {
-          frame: celebration.progressModalFrameUrl,
-          frameAspect:
-            celebration.progressModalFrameWidth /
-            celebration.progressModalFrameHeight,
-          button: { left: 0, top: 0, width: 0, height: 0 },
-          slots: { cx: [], cy: 0, d: 0 },
-          slotRects: celebration.progressModalSlots ?? [],
-          buttonRect: celebration.progressModalButton ?? null,
-          centerRect: celebration.progressModalCenter ?? null,
-        }
-      : null;
+  const dbLayout: ModalLayout | null = (() => {
+    if (
+      !celebration ||
+      !celebration.progressModalFrameUrl ||
+      !celebration.progressModalFrameWidth ||
+      !celebration.progressModalFrameHeight
+    ) {
+      return null;
+    }
+    const frameAspect =
+      celebration.progressModalFrameWidth /
+      celebration.progressModalFrameHeight;
+    const centerRect = celebration.progressModalCenter ?? null;
+    // 中央(centerRect)から進捗リング・%達成バッジの位置を自動導出する(神コレと同じ見た目)。
+    // ring.size は幅%。縦方向は size*frameAspect で正方(=真円)になるよう換算する。
+    let ring: ModalLayout["ring"];
+    let badge: ModalLayout["badge"];
+    if (centerRect) {
+      const cxPct = (centerRect.x + centerRect.w / 2) * 100; // 横中心(幅%)
+      const cyPct = (centerRect.y + centerRect.h / 2) * 100; // 縦中心(高さ%)
+      const ringSize = centerRect.w * 100 * 1.08; // 中央円より少し大きい(幅%)
+      ring = {
+        left: cxPct - ringSize / 2,
+        top: cyPct - (ringSize * frameAspect) / 2,
+        size: ringSize,
+      };
+      const r = ringSize / 2;
+      badge = {
+        cx: cxPct + r * 0.707, // リングの右下(約45°)に配置
+        cy: cyPct + r * frameAspect * 0.707,
+        size: ringSize * 0.4,
+      };
+    }
+    return {
+      frame: celebration.progressModalFrameUrl,
+      frameAspect,
+      button: { left: 0, top: 0, width: 0, height: 0 },
+      slots: { cx: [], cy: 0, d: 0 },
+      slotRects: celebration.progressModalSlots ?? [],
+      buttonRect: celebration.progressModalButton ?? null,
+      centerRect,
+      ring,
+      badge,
+      ringColor: celebration.progressModalRingColor ?? null,
+      badgeColor: celebration.progressModalBadgeColor ?? null,
+      badgeTextColor: celebration.progressModalBadgeTextColor ?? null,
+      badgeBgColor: celebration.progressModalBadgeBgColor ?? null,
+    };
+  })();
   const cLayout = celebration
     ? (dbLayout ?? MODAL_LAYOUTS[celebration.categoryKey] ?? null)
     : null;
@@ -659,10 +625,10 @@ export function CollectionProgressModal({
             />
 
             {/* DB 駆動: 中央画像領域(centerRect)に characterImageUrl を敷く。
-                フレームの中央四角の内側に収まるよう、フレーム描画の後に重ねる。 */}
+                神コレと同様に丸クロップ(rounded-full)。centerRect を正方にすると真円。 */}
             {layout.centerRect && characterImageUrl ? (
               <div
-                className="absolute overflow-hidden rounded-[1.2rem]"
+                className="absolute overflow-hidden rounded-full"
                 style={{
                   left: `${layout.centerRect.x * 100}%`,
                   top: `${layout.centerRect.y * 100}%`,
@@ -741,7 +707,7 @@ export function CollectionProgressModal({
                   cy="50"
                   r={RING_R}
                   fill="none"
-                  stroke="url(#collArc)"
+                  stroke={layout.ringColor ?? "url(#collArc)"}
                   strokeWidth="3.6"
                   strokeLinecap="round"
                   strokeDasharray={RING_C}
@@ -763,7 +729,12 @@ export function CollectionProgressModal({
                 aspectRatio: "1 / 1",
               }}
             >
-              <AchievementBadge percent={Math.round(ratio * 100)} />
+              <AchievementBadge
+                percent={Math.round(ratio * 100)}
+                color={layout.badgeColor}
+                textColor={layout.badgeTextColor}
+                bgColor={layout.badgeBgColor}
+              />
             </div>
             ) : null}
 
@@ -861,19 +832,35 @@ export function CollectionProgressModal({
                   かぶせる(土台PNGの「シールを生成する」を覆い隠す)。
                 それ以外は透明クリック領域で /style へ遷移。 */}
             {toCount >= threshold && onCreateMount ? (
+              // DB 駆動台座(buttonRect あり)は、フレームにボタンが焼き込まれているので
+              // コード側は透明クリック領域だけにする(オレンジ CTA を重ねない)。
+              // ハードコード台座(神コレ等)は従来どおりオレンジ CTA を重ねる。
               <button
                 type="button"
                 onClick={() => onCreateMount(celebration)}
-                className="absolute flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                aria-label={cIsCompleted ? "台紙を更新する" : "台紙を作成する"}
+                className={
+                  // 共通クラス + DB台座(buttonRect)以外はオレンジ CTA の装飾を追加。
+                  "absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
+                  (layout.buttonRect
+                    ? ""
+                    : " flex items-center justify-center bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)]")
+                }
                 style={{
                   left: `${buttonBox.left}%`,
                   top: `${buttonBox.top}%`,
                   width: `${buttonBox.width}%`,
                   height: `${buttonBox.height}%`,
-                  fontFamily: "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                  fontFamily: layout.buttonRect
+                    ? undefined
+                    : "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
                 }}
               >
-                {cIsCompleted ? "台紙を更新する →" : "台紙を作成する →"}
+                {!layout.buttonRect
+                  ? cIsCompleted
+                    ? "台紙を更新する →"
+                    : "台紙を作成する →"
+                  : null}
               </button>
             ) : (
               <Link
