@@ -174,6 +174,86 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+const HEX6_RE = /^#[0-9A-Fa-f]{6}$/;
+
+/**
+ * 色入力フィールド(スウォッチ + HEX テキスト欄 + 「デフォルトに戻す」)。
+ * value=null は「未設定(デフォルト配色)」。HEX テキストは自由入力でき、
+ * 有効な #RRGGBB になったときだけ確定する(空にすると null=デフォルトに戻る)。
+ * ネイティブの type=color パレットは RGB/HEX 表記を制御できないため、
+ * HEX を直接読み書きできるテキスト欄を併設する。
+ */
+function ColorField({
+  label,
+  value,
+  defaultSwatch,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  defaultSwatch: string;
+  onChange: (value: string | null) => void;
+}) {
+  const [text, setText] = useState(value ?? "");
+  // スウォッチ操作・リセット等で外部 value が変わったらテキストも同期する。
+  // useEffect ではなく「レンダー中に派生 state を調整」する公式パターンを使う。
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    setText(value ?? "");
+  }
+
+  const handleText = (raw: string) => {
+    setText(raw);
+    const t = raw.trim();
+    if (t === "") {
+      onChange(null);
+      return;
+    }
+    const norm = (t.startsWith("#") ? t : `#${t}`).toUpperCase();
+    if (HEX6_RE.test(norm)) {
+      onChange(norm);
+    }
+    // 途中入力(無効な hex)は確定しない。確定済みの値は維持される。
+  };
+
+  return (
+    <div className="block">
+      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="color"
+          value={value ?? defaultSwatch}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          className="h-10 w-16 rounded-md border border-slate-300"
+          aria-label={`${label}(スウォッチ)`}
+        />
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => handleText(e.target.value)}
+          placeholder="#RRGGBB"
+          maxLength={7}
+          spellCheck={false}
+          className="h-10 w-28 rounded-md border border-slate-300 px-2 font-mono text-sm uppercase"
+          aria-label={`${label}(HEX)`}
+        />
+        {value == null ? (
+          <span className="text-xs text-slate-500">未設定(デフォルト配色)</span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            デフォルトに戻す
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AdminPresetCategoryFormClient({
   mode,
   initial,
@@ -1419,105 +1499,30 @@ export function AdminPresetCategoryFormClient({
             左に各色のカラー入力、右にライブプレビュー(リング + %達成バッジ)を並べる。 */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="flex-1 space-y-4">
-        <div className="block">
-          <span className="text-sm font-medium text-slate-700">進捗リングの色</span>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              type="color"
-              value={form.progressModalRingColor ?? "#F97316"}
-              onChange={(e) => update("progressModalRingColor", e.target.value)}
-              className="h-10 w-16 rounded-md border border-slate-300"
-            />
-            <span className="text-xs text-slate-500">
-              {form.progressModalRingColor ?? "未設定(デフォルト配色)"}
-            </span>
-            {form.progressModalRingColor && (
-              <button
-                type="button"
-                onClick={() => update("progressModalRingColor", null)}
-                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                デフォルトに戻す
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="block">
-          <span className="text-sm font-medium text-slate-700">%達成バッジの色</span>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              type="color"
-              value={form.progressModalBadgeColor ?? "#F59E0B"}
-              onChange={(e) => update("progressModalBadgeColor", e.target.value)}
-              className="h-10 w-16 rounded-md border border-slate-300"
-            />
-            <span className="text-xs text-slate-500">
-              {form.progressModalBadgeColor ?? "未設定(デフォルト配色)"}
-            </span>
-            {form.progressModalBadgeColor && (
-              <button
-                type="button"
-                onClick={() => update("progressModalBadgeColor", null)}
-                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                デフォルトに戻す
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="block">
-          <span className="text-sm font-medium text-slate-700">バッジの文字色</span>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              type="color"
-              value={form.progressModalBadgeTextColor ?? "#F97316"}
-              onChange={(e) =>
-                update("progressModalBadgeTextColor", e.target.value)
-              }
-              className="h-10 w-16 rounded-md border border-slate-300"
-            />
-            <span className="text-xs text-slate-500">
-              {form.progressModalBadgeTextColor ?? "未設定(デフォルト配色)"}
-            </span>
-            {form.progressModalBadgeTextColor && (
-              <button
-                type="button"
-                onClick={() => update("progressModalBadgeTextColor", null)}
-                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                デフォルトに戻す
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="block">
-          <span className="text-sm font-medium text-slate-700">バッジの背景色</span>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              type="color"
-              value={form.progressModalBadgeBgColor ?? "#FEF3C7"}
-              onChange={(e) =>
-                update("progressModalBadgeBgColor", e.target.value)
-              }
-              className="h-10 w-16 rounded-md border border-slate-300"
-            />
-            <span className="text-xs text-slate-500">
-              {form.progressModalBadgeBgColor ?? "未設定(デフォルト配色)"}
-            </span>
-            {form.progressModalBadgeBgColor && (
-              <button
-                type="button"
-                onClick={() => update("progressModalBadgeBgColor", null)}
-                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                デフォルトに戻す
-              </button>
-            )}
-          </div>
-        </div>
+        <ColorField
+          label="進捗リングの色"
+          value={form.progressModalRingColor}
+          defaultSwatch="#F97316"
+          onChange={(v) => update("progressModalRingColor", v)}
+        />
+        <ColorField
+          label="%達成バッジの色"
+          value={form.progressModalBadgeColor}
+          defaultSwatch="#F59E0B"
+          onChange={(v) => update("progressModalBadgeColor", v)}
+        />
+        <ColorField
+          label="バッジの文字色"
+          value={form.progressModalBadgeTextColor}
+          defaultSwatch="#F97316"
+          onChange={(v) => update("progressModalBadgeTextColor", v)}
+        />
+        <ColorField
+          label="バッジの背景色"
+          value={form.progressModalBadgeBgColor}
+          defaultSwatch="#FEF3C7"
+          onChange={(v) => update("progressModalBadgeBgColor", v)}
+        />
         </div>
 
         {/* ライブプレビュー: 上で選んだ色がリング/バッジにどう反映されるか確認できる。 */}
