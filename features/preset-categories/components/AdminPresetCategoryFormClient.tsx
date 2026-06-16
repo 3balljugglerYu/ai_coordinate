@@ -17,6 +17,7 @@ import {
   splitSlots,
 } from "@/features/collections/lib/slot-edit-geometry";
 import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
+import { ProgressModalColorPreview } from "@/features/preset-categories/components/ProgressModalColorPreview";
 
 type Mode = "create" | "edit";
 
@@ -1414,7 +1415,10 @@ export function AdminPresetCategoryFormClient({
         </div>
 
         {/* 進捗リング/%達成バッジの配色。null(未設定)なら従来デフォルト配色
-            (オレンジのリング/ゴールドのバッジ)を使う(= 厳密な no-op)。 */}
+            (オレンジのリング/ゴールドのバッジ)を使う(= 厳密な no-op)。
+            左に各色のカラー入力、右にライブプレビュー(リング + %達成バッジ)を並べる。 */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex-1 space-y-4">
         <div className="block">
           <span className="text-sm font-medium text-slate-700">進捗リングの色</span>
           <div className="mt-1 flex items-center gap-2">
@@ -1513,6 +1517,21 @@ export function AdminPresetCategoryFormClient({
               </button>
             )}
           </div>
+        </div>
+        </div>
+
+        {/* ライブプレビュー: 上で選んだ色がリング/バッジにどう反映されるか確認できる。 */}
+        <div className="shrink-0">
+          <span className="mb-1 block text-sm font-medium text-slate-700">
+            プレビュー
+          </span>
+          <ProgressModalColorPreview
+            ringColor={form.progressModalRingColor}
+            badgeColor={form.progressModalBadgeColor}
+            badgeTextColor={form.progressModalBadgeTextColor}
+            badgeBgColor={form.progressModalBadgeBgColor}
+          />
+        </div>
         </div>
       </fieldset>
 
