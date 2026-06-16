@@ -144,6 +144,8 @@ export function useCollectionProgress() {
             progressModalCenter: target.progressModalCenter,
             progressModalRingColor: target.progressModalRingColor,
             progressModalBadgeColor: target.progressModalBadgeColor,
+            progressModalBadgeTextColor: target.progressModalBadgeTextColor,
+            progressModalBadgeBgColor: target.progressModalBadgeBgColor,
             celebrationEffect: "sparkle",
           });
           return true;
@@ -186,6 +188,8 @@ export function useCollectionProgress() {
           progressModalCenter: series.progressModalCenter,
           progressModalRingColor: series.progressModalRingColor,
           progressModalBadgeColor: series.progressModalBadgeColor,
+          progressModalBadgeTextColor: series.progressModalBadgeTextColor,
+          progressModalBadgeBgColor: series.progressModalBadgeBgColor,
           // フィードの自動コンプリート祝いはダイヤのきらめき演出にする。
           celebrationEffect: "sparkle",
         });
@@ -273,6 +277,8 @@ export function useCollectionProgress() {
       progressModalCenter: null,
       progressModalRingColor: null,
       progressModalBadgeColor: null,
+      progressModalBadgeTextColor: null,
+      progressModalBadgeBgColor: null,
     });
   }, []);
 

@@ -84,6 +84,10 @@ interface FormState {
   progressModalRingColor: string | null;
   /** %達成バッジの色(#RRGGBB)。null=従来デフォルト配色 */
   progressModalBadgeColor: string | null;
+  /** %達成バッジの文字色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalBadgeTextColor: string | null;
+  /** %達成バッジの背景色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalBadgeBgColor: string | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -143,6 +147,8 @@ function toFormState(
     progressModalCenter: initial?.progressModalCenter ?? null,
     progressModalRingColor: initial?.progressModalRingColor ?? null,
     progressModalBadgeColor: initial?.progressModalBadgeColor ?? null,
+    progressModalBadgeTextColor: initial?.progressModalBadgeTextColor ?? null,
+    progressModalBadgeBgColor: initial?.progressModalBadgeBgColor ?? null,
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -481,6 +487,8 @@ export function AdminPresetCategoryFormClient({
               progress_modal_center: form.progressModalCenter,
               progress_modal_ring_color: form.progressModalRingColor,
               progress_modal_badge_color: form.progressModalBadgeColor,
+              progress_modal_badge_text_color: form.progressModalBadgeTextColor,
+              progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -524,6 +532,8 @@ export function AdminPresetCategoryFormClient({
               progress_modal_center: form.progressModalCenter,
               progress_modal_ring_color: form.progressModalRingColor,
               progress_modal_badge_color: form.progressModalBadgeColor,
+              progress_modal_badge_text_color: form.progressModalBadgeTextColor,
+              progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -1445,6 +1455,58 @@ export function AdminPresetCategoryFormClient({
               <button
                 type="button"
                 onClick={() => update("progressModalBadgeColor", null)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                デフォルトに戻す
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">バッジの文字色</span>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="color"
+              value={form.progressModalBadgeTextColor ?? "#F97316"}
+              onChange={(e) =>
+                update("progressModalBadgeTextColor", e.target.value)
+              }
+              className="h-10 w-16 rounded-md border border-slate-300"
+            />
+            <span className="text-xs text-slate-500">
+              {form.progressModalBadgeTextColor ?? "未設定(デフォルト配色)"}
+            </span>
+            {form.progressModalBadgeTextColor && (
+              <button
+                type="button"
+                onClick={() => update("progressModalBadgeTextColor", null)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                デフォルトに戻す
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">バッジの背景色</span>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="color"
+              value={form.progressModalBadgeBgColor ?? "#FEF3C7"}
+              onChange={(e) =>
+                update("progressModalBadgeBgColor", e.target.value)
+              }
+              className="h-10 w-16 rounded-md border border-slate-300"
+            />
+            <span className="text-xs text-slate-500">
+              {form.progressModalBadgeBgColor ?? "未設定(デフォルト配色)"}
+            </span>
+            {form.progressModalBadgeBgColor && (
+              <button
+                type="button"
+                onClick={() => update("progressModalBadgeBgColor", null)}
                 className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 デフォルトに戻す

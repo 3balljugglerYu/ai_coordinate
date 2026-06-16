@@ -72,6 +72,12 @@ export interface CollectionCelebration {
    */
   progressModalRingColor?: string | null;
   progressModalBadgeColor?: string | null;
+  /**
+   * %達成バッジの文字色・内側背景色(#RRGGBB)。設定があるとき、バッジの
+   * %数字・達成！ラベルの色と内側スカロップの背景をこの色で描く。null なら従来配色。
+   */
+  progressModalBadgeTextColor?: string | null;
+  progressModalBadgeBgColor?: string | null;
 }
 
 interface Props {
@@ -130,6 +136,16 @@ interface ModalLayout {
    * null なら従来のゴールド配色。
    */
   badgeColor?: string | null;
+  /**
+   * %達成バッジの文字色(#RRGGBB)。設定があるとき % 数字・達成！ラベルをこの色で塗る。
+   * null なら従来配色(% はオレンジ #F97316 / 達成！は #B45309)。
+   */
+  badgeTextColor?: string | null;
+  /**
+   * %達成バッジの内側背景色(#RRGGBB)。設定があるとき内側スカロップをこの色で塗る。
+   * null なら従来のクリーム地グラデーション(url(#badgeFill))。
+   */
+  badgeBgColor?: string | null;
 }
 
 // ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
@@ -186,9 +202,13 @@ const RING_C = 2 * Math.PI * RING_R;
 function AchievementBadge({
   percent,
   color,
+  textColor,
+  bgColor,
 }: {
   percent: number;
   color?: string | null;
+  textColor?: string | null;
+  bgColor?: string | null;
 }) {
   // 10弁のスカロップを極座標で生成(内/外を交互に)
   const cx = 50;
@@ -234,7 +254,7 @@ function AchievementBadge({
             return `${(cx + (x - cx) * 0.86).toFixed(2)},${(cy + (y - cy) * 0.86).toFixed(2)}`;
           })
           .join(" ")}
-        fill="url(#badgeFill)"
+        fill={bgColor ?? "url(#badgeFill)"}
       />
       {/* 王冠(シンプル) - %が真ん中にくるよう下にシフト。color 指定時はその色。 */}
       <g transform="translate(50 31)">
@@ -259,7 +279,7 @@ function AchievementBadge({
         fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
         fontWeight="700"
         fontSize="20"
-        fill="#F97316"
+        fill={textColor ?? "#F97316"}
         style={{
           transformBox: "fill-box",
           transformOrigin: "center",
@@ -276,7 +296,7 @@ function AchievementBadge({
         fontFamily="'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif"
         fontWeight="700"
         fontSize="9"
-        fill="#B45309"
+        fill={textColor ?? "#B45309"}
       >
         達成！
       </text>
@@ -366,6 +386,8 @@ export function CollectionProgressModal({
       badge,
       ringColor: celebration.progressModalRingColor ?? null,
       badgeColor: celebration.progressModalBadgeColor ?? null,
+      badgeTextColor: celebration.progressModalBadgeTextColor ?? null,
+      badgeBgColor: celebration.progressModalBadgeBgColor ?? null,
     };
   })();
   const cLayout = celebration
@@ -818,6 +840,8 @@ export function CollectionProgressModal({
               <AchievementBadge
                 percent={Math.round(ratio * 100)}
                 color={layout.badgeColor}
+                textColor={layout.badgeTextColor}
+                bgColor={layout.badgeBgColor}
               />
             </div>
             ) : null}

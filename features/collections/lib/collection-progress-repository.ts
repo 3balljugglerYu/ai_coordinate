@@ -80,6 +80,8 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     progressModalCenter: null,
     progressModalRingColor: null,
     progressModalBadgeColor: null,
+    progressModalBadgeTextColor: null,
+    progressModalBadgeBgColor: null,
   };
 }
 
@@ -159,7 +161,7 @@ async function attachCharacterImages(
   const { data, error } = await supabase
     .from("preset_categories")
     .select(
-      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center, progress_modal_ring_color, progress_modal_badge_color",
+      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center, progress_modal_ring_color, progress_modal_badge_color, progress_modal_badge_text_color, progress_modal_badge_bg_color",
     )
     .in("id", categoryIds);
   if (error) {
@@ -182,6 +184,8 @@ async function attachCharacterImages(
       center: NormalizedSlotRect | null;
       ringColor: string | null;
       badgeColor: string | null;
+      badgeTextColor: string | null;
+      badgeBgColor: string | null;
     }
   >();
   for (const row of data ?? []) {
@@ -206,6 +210,10 @@ async function attachCharacterImages(
       center: parseNormalizedRect(row.progress_modal_center),
       ringColor: (row.progress_modal_ring_color as string | null) ?? null,
       badgeColor: (row.progress_modal_badge_color as string | null) ?? null,
+      badgeTextColor:
+        (row.progress_modal_badge_text_color as string | null) ?? null,
+      badgeBgColor:
+        (row.progress_modal_badge_bg_color as string | null) ?? null,
     });
   }
   return items.map((i) => {
@@ -225,6 +233,8 @@ async function attachCharacterImages(
       progressModalCenter: modal?.center ?? null,
       progressModalRingColor: modal?.ringColor ?? null,
       progressModalBadgeColor: modal?.badgeColor ?? null,
+      progressModalBadgeTextColor: modal?.badgeTextColor ?? null,
+      progressModalBadgeBgColor: modal?.badgeBgColor ?? null,
     };
   });
 }

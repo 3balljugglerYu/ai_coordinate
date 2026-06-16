@@ -64,6 +64,8 @@ export interface PresetCategoryRow {
   progress_modal_center?: unknown;
   progress_modal_ring_color?: string | null;
   progress_modal_badge_color?: string | null;
+  progress_modal_badge_text_color?: string | null;
+  progress_modal_badge_bg_color?: string | null;
   display_order: number;
   is_active: boolean;
   created_by: string | null;
@@ -110,6 +112,8 @@ export interface PresetCategoryAdmin {
   progressModalCenter: NormalizedSlotRect | null;
   progressModalRingColor: string | null;
   progressModalBadgeColor: string | null;
+  progressModalBadgeTextColor: string | null;
+  progressModalBadgeBgColor: string | null;
   displayOrder: number;
   isActive: boolean;
   createdBy: string | null;
@@ -155,6 +159,8 @@ export interface PresetCategoryInsert {
   progressModalCenter?: NormalizedSlotRect | null;
   progressModalRingColor?: string | null;
   progressModalBadgeColor?: string | null;
+  progressModalBadgeTextColor?: string | null;
+  progressModalBadgeBgColor?: string | null;
   displayOrder?: number;
   isActive?: boolean;
   createdBy?: string | null;
@@ -196,6 +202,8 @@ export interface PresetCategoryUpdate {
   progressModalCenter?: NormalizedSlotRect | null;
   progressModalRingColor?: string | null;
   progressModalBadgeColor?: string | null;
+  progressModalBadgeTextColor?: string | null;
+  progressModalBadgeBgColor?: string | null;
   displayOrder?: number;
   isActive?: boolean;
   updatedBy?: string | null;
@@ -264,6 +272,8 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     progressModalCenter: parseNormalizedRect(row.progress_modal_center),
     progressModalRingColor: row.progress_modal_ring_color ?? null,
     progressModalBadgeColor: row.progress_modal_badge_color ?? null,
+    progressModalBadgeTextColor: row.progress_modal_badge_text_color ?? null,
+    progressModalBadgeBgColor: row.progress_modal_badge_bg_color ?? null,
     displayOrder: row.display_order,
     isActive: row.is_active,
     createdBy: row.created_by,
@@ -378,6 +388,8 @@ export async function createPresetCategory(
       progress_modal_center: input.progressModalCenter ?? null,
       progress_modal_ring_color: input.progressModalRingColor ?? null,
       progress_modal_badge_color: input.progressModalBadgeColor ?? null,
+      progress_modal_badge_text_color: input.progressModalBadgeTextColor ?? null,
+      progress_modal_badge_bg_color: input.progressModalBadgeBgColor ?? null,
       display_order: input.displayOrder ?? 0,
       is_active: input.isActive ?? true,
       created_by: input.createdBy ?? null,
@@ -463,6 +475,10 @@ export async function updatePresetCategory(
     payload.progress_modal_ring_color = input.progressModalRingColor;
   if (input.progressModalBadgeColor !== undefined)
     payload.progress_modal_badge_color = input.progressModalBadgeColor;
+  if (input.progressModalBadgeTextColor !== undefined)
+    payload.progress_modal_badge_text_color = input.progressModalBadgeTextColor;
+  if (input.progressModalBadgeBgColor !== undefined)
+    payload.progress_modal_badge_bg_color = input.progressModalBadgeBgColor;
   if (input.displayOrder !== undefined) payload.display_order = input.displayOrder;
   if (input.isActive !== undefined) payload.is_active = input.isActive;
   if (input.updatedBy !== undefined) payload.updated_by = input.updatedBy;

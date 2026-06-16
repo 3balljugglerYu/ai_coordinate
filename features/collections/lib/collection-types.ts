@@ -47,6 +47,12 @@ export interface CollectionProgress {
    */
   progressModalRingColor: string | null;
   progressModalBadgeColor: string | null;
+  /**
+   * %達成バッジの文字色・内側背景色(#RRGGBB)。null なら従来デフォルト配色
+   * (% はオレンジ/達成！は茶/背景はクリーム)を使う。
+   */
+  progressModalBadgeTextColor: string | null;
+  progressModalBadgeBgColor: string | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */

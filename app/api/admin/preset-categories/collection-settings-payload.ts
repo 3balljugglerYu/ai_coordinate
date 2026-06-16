@@ -36,6 +36,10 @@ export interface CollectionSettingsPayload {
   progressModalRingColor?: string | null;
   /** %達成バッジの色(#RRGGBB)または null(デフォルト配色) */
   progressModalBadgeColor?: string | null;
+  /** %達成バッジの文字色(#RRGGBB)または null(デフォルト配色) */
+  progressModalBadgeTextColor?: string | null;
+  /** %達成バッジの背景色(#RRGGBB)または null(デフォルト配色) */
+  progressModalBadgeBgColor?: string | null;
 }
 
 export interface CollectionSettingsExisting {
@@ -327,6 +331,34 @@ export function parseCollectionSettings(
       };
     } else {
       payload.progressModalBadgeColor = v;
+    }
+  }
+
+  if (body.progress_modal_badge_text_color !== undefined) {
+    const v = body.progress_modal_badge_text_color;
+    if (v === null) {
+      payload.progressModalBadgeTextColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error: "progress_modal_badge_text_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.progressModalBadgeTextColor = v;
+    }
+  }
+
+  if (body.progress_modal_badge_bg_color !== undefined) {
+    const v = body.progress_modal_badge_bg_color;
+    if (v === null) {
+      payload.progressModalBadgeBgColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error: "progress_modal_badge_bg_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.progressModalBadgeBgColor = v;
     }
   }
 

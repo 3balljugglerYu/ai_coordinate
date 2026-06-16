@@ -21,6 +21,7 @@ export function CollectionProgressRing({
   complete = false,
   imageUrl,
   tintByProgress = true,
+  color,
   className,
   children,
 }: {
@@ -30,6 +31,11 @@ export function CollectionProgressRing({
   imageUrl?: string | null;
   /** true: 進捗に応じて画像がグレー→カラーに変化。false: 常にフルカラー(枠だけアニメ) */
   tintByProgress?: boolean;
+  /**
+   * 進捗アークの色(#RRGGBB)。設定があるときグラデーションの代わりにこの単色を使う
+   * (進捗モーダルのリング色と揃える)。null/未指定なら従来のゴールド→オレンジのグラデ。
+   */
+  color?: string | null;
   className?: string;
   children?: ReactNode;
 }) {
@@ -63,7 +69,7 @@ export function CollectionProgressRing({
           cy={VIEWBOX / 2}
           r={R}
           fill="none"
-          stroke="url(#collRingGrad)"
+          stroke={color ?? "url(#collRingGrad)"}
           strokeWidth={STROKE}
           strokeLinecap="round"
           strokeDasharray={C}
