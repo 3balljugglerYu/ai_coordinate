@@ -3,7 +3,9 @@ import {
   applyCollectionUnlockGating,
   type CollectionUnlockContext,
 } from "@/features/collections/lib/collection-unlock-gating";
+import { buildCollectionUnlockAnnouncements } from "@/features/collections/lib/collection-unlock-announcement";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
+import { PetitUnlockAnnouncer } from "@/features/collections/components/PetitUnlockAnnouncer";
 import { createClient } from "@/lib/supabase/server";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
 
@@ -51,5 +53,19 @@ export async function CachedHomeStylePresetSection({
   // ホームは locked(未解放=シルエット)に未対応のため、未解放分は出さない。
   const presets = gated.filter((preset) => !preset.locked);
 
-  return <HomeStylePresetCarousel presets={presets} />;
+  // 解放お知らせ(初回バナー / 段階解放モーダル)。解放コンテキストはここで解決済みなので
+  // 二重取得を避けて流用する。前提未完走・ゲートなしなら空配列(= 何も出ない)。
+  const unlockAnnouncements = buildCollectionUnlockAnnouncements(
+    cachedPresets,
+    unlockContext,
+  );
+
+  return (
+    <>
+      {unlockAnnouncements.length > 0 && (
+        <PetitUnlockAnnouncer announcements={unlockAnnouncements} />
+      )}
+      <HomeStylePresetCarousel presets={presets} />
+    </>
+  );
 }
