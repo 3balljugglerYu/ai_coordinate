@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import {
   type UnlockAnnouncementMode,
 } from "@/features/collections/lib/collection-unlock-announcement";
 import { getCollectionAck } from "@/features/collections/lib/collection-ack";
+import { setUnlockAnnouncerActive } from "@/features/collections/lib/unlock-announcer-signal";
 
 // クライアントでのみ true を返す SSR セーフなゲート(setState-in-effect を避けるため
 // useSyncExternalStore を使う)。サーバー/ハイドレーション中は false で何も描画しない。
@@ -165,6 +166,14 @@ export function PetitUnlockAnnouncer({
   if (previewMode && acknowledgedKey) {
     visible = null;
   }
+
+  // 解放お知らせを表示中はポップアップバナーを抑止する(解放お知らせ優先)。
+  // React state ではなく外部シグナルへの反映なので effect で行う。
+  const isVisible = !!visible;
+  useEffect(() => {
+    setUnlockAnnouncerActive(isVisible);
+    return () => setUnlockAnnouncerActive(false);
+  }, [isVisible]);
 
   if (!visible || typeof document === "undefined") return null;
 
