@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
@@ -124,7 +124,17 @@ export function PetitUnlockAnnouncer({
   // 「閉じた/CTA押した」を記録すると、その回は再表示しない(localStorage も更新する)。
   const [acknowledgedKey, setAcknowledgedKey] = useState<string | null>(null);
 
-  // 表示判定は render 時に導出する(setState-in-effect を避ける)。
+  // 通常時の表示判定(localStorage 読み取り)は useMemo で包み、毎レンダーの
+  // localStorage.getItem / JSON.parse を避ける。依存が変わったときだけ再評価する
+  // (setState-in-effect を避けるため render 時導出のまま、コストだけ抑える)。
+  const resolvedActive = useMemo<ActiveAnnouncement | null>(
+    () =>
+      !previewMode && isClient && announcements.length > 0
+        ? resolveActiveAnnouncement(announcements)
+        : null,
+    [previewMode, isClient, announcements],
+  );
+
   // プレビュー時は localStorage を無視して該当モードを強制表示する。
   let visible: ActiveAnnouncement | null = null;
   if (previewMode && isClient && announcements.length > 0) {
@@ -138,13 +148,11 @@ export function PetitUnlockAnnouncer({
         : announcement.unlockedPresets;
     visible = { mode: previewMode, announcement, newlyUnlocked };
   } else if (!previewMode) {
-    const active =
-      isClient && announcements.length > 0
-        ? resolveActiveAnnouncement(announcements)
-        : null;
+    // 「閉じた」判定は memo 外で行う(localStorage を再読み込みしない)。
     visible =
-      active && active.announcement.categoryKey !== acknowledgedKey
-        ? active
+      resolvedActive &&
+      resolvedActive.announcement.categoryKey !== acknowledgedKey
+        ? resolvedActive
         : null;
   }
 
