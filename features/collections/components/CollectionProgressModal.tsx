@@ -66,6 +66,12 @@ export interface CollectionCelebration {
    * characterImageUrl(= collection_character_path)を敷く。
    */
   progressModalCenter?: NormalizedSlotRect | null;
+  /**
+   * 進捗リング・%達成バッジの色(#RRGGBB)。設定があるとき、リングのアークと
+   * %達成バッジをこの色で描く。null なら従来のデフォルト配色(オレンジ/ゴールド)。
+   */
+  progressModalRingColor?: string | null;
+  progressModalBadgeColor?: string | null;
 }
 
 interface Props {
@@ -114,6 +120,16 @@ interface ModalLayout {
    * 設定があるとき、フレーム中央に characterImageUrl を敷く。
    */
   centerRect?: NormalizedSlotRect | null;
+  /**
+   * 進捗リングのアーク色(#RRGGBB)。設定があるときグラデーションの代わりに
+   * この単色を使う。null なら従来のゴールド→オレンジのグラデーション。
+   */
+  ringColor?: string | null;
+  /**
+   * %達成バッジの色(#RRGGBB)。設定があるとき外側スカロップ/王冠をこの色で塗る。
+   * null なら従来のゴールド配色。
+   */
+  badgeColor?: string | null;
 }
 
 // ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
@@ -167,7 +183,13 @@ const RING_C = 2 * Math.PI * RING_R;
  * スカロップ(波打ち)型のゴールドバッジ + 王冠 + 「○○%／達成！」を描く SVG。
  * 画像素材を持たずインラインで完結し、画面幅に応じて拡縮しても崩れない。
  */
-function AchievementBadge({ percent }: { percent: number }) {
+function AchievementBadge({
+  percent,
+  color,
+}: {
+  percent: number;
+  color?: string | null;
+}) {
   // 10弁のスカロップを極座標で生成(内/外を交互に)
   const cx = 50;
   const cy = 50;
@@ -199,10 +221,10 @@ function AchievementBadge({ percent }: { percent: number }) {
           <stop offset="100%" stopColor="#F59E0B" />
         </linearGradient>
       </defs>
-      {/* 外側スカロップ(濃ゴールド) */}
+      {/* 外側スカロップ(濃ゴールド)。color 指定時はその単色で塗る。 */}
       <polygon
         points={pts.join(" ")}
-        fill="url(#badgeStroke)"
+        fill={color ?? "url(#badgeStroke)"}
       />
       {/* 内側スカロップ(中身)。やや小さい同形で重ねて縁取りを作る */}
       <polygon
@@ -214,18 +236,18 @@ function AchievementBadge({ percent }: { percent: number }) {
           .join(" ")}
         fill="url(#badgeFill)"
       />
-      {/* 王冠(シンプル) - %が真ん中にくるよう下にシフト */}
+      {/* 王冠(シンプル) - %が真ん中にくるよう下にシフト。color 指定時はその色。 */}
       <g transform="translate(50 31)">
         <path
           d="M -7 6 L -7 -1 L -3 3 L 0 -4 L 3 3 L 7 -1 L 7 6 Z"
-          fill="#F59E0B"
+          fill={color ?? "#F59E0B"}
           stroke="#FFFFFF"
           strokeWidth="0.6"
           strokeLinejoin="round"
         />
-        <circle cx="-7" cy="-1" r="1.2" fill="#F59E0B" />
-        <circle cx="0" cy="-4" r="1.3" fill="#F59E0B" />
-        <circle cx="7" cy="-1" r="1.2" fill="#F59E0B" />
+        <circle cx="-7" cy="-1" r="1.2" fill={color ?? "#F59E0B"} />
+        <circle cx="0" cy="-4" r="1.3" fill={color ?? "#F59E0B"} />
+        <circle cx="7" cy="-1" r="1.2" fill={color ?? "#F59E0B"} />
       </g>
       {/* 「○○%」(オレンジ・大きめ) - バッジ中央に配置
             カウントアップ後半でぴょこっと拡縮(coll-pop)。SVG <text> は
@@ -342,6 +364,8 @@ export function CollectionProgressModal({
       centerRect,
       ring,
       badge,
+      ringColor: celebration.progressModalRingColor ?? null,
+      badgeColor: celebration.progressModalBadgeColor ?? null,
     };
   })();
   const cLayout = celebration
@@ -769,7 +793,7 @@ export function CollectionProgressModal({
                   cy="50"
                   r={RING_R}
                   fill="none"
-                  stroke="url(#collArc)"
+                  stroke={layout.ringColor ?? "url(#collArc)"}
                   strokeWidth="3.6"
                   strokeLinecap="round"
                   strokeDasharray={RING_C}
@@ -791,7 +815,10 @@ export function CollectionProgressModal({
                 aspectRatio: "1 / 1",
               }}
             >
-              <AchievementBadge percent={Math.round(ratio * 100)} />
+              <AchievementBadge
+                percent={Math.round(ratio * 100)}
+                color={layout.badgeColor}
+              />
             </div>
             ) : null}
 

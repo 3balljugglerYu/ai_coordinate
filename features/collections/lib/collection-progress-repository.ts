@@ -78,6 +78,8 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     progressModalSlots: null,
     progressModalButton: null,
     progressModalCenter: null,
+    progressModalRingColor: null,
+    progressModalBadgeColor: null,
   };
 }
 
@@ -157,7 +159,7 @@ async function attachCharacterImages(
   const { data, error } = await supabase
     .from("preset_categories")
     .select(
-      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center",
+      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center, progress_modal_ring_color, progress_modal_badge_color",
     )
     .in("id", categoryIds);
   if (error) {
@@ -178,6 +180,8 @@ async function attachCharacterImages(
       slots: NormalizedSlotRect[] | null;
       button: NormalizedSlotRect | null;
       center: NormalizedSlotRect | null;
+      ringColor: string | null;
+      badgeColor: string | null;
     }
   >();
   for (const row of data ?? []) {
@@ -200,6 +204,8 @@ async function attachCharacterImages(
       slots: parseNormalizedSlots(row.progress_modal_slots),
       button: parseNormalizedRect(row.progress_modal_button),
       center: parseNormalizedRect(row.progress_modal_center),
+      ringColor: (row.progress_modal_ring_color as string | null) ?? null,
+      badgeColor: (row.progress_modal_badge_color as string | null) ?? null,
     });
   }
   return items.map((i) => {
@@ -217,6 +223,8 @@ async function attachCharacterImages(
       progressModalSlots: modal?.slots ?? null,
       progressModalButton: modal?.button ?? null,
       progressModalCenter: modal?.center ?? null,
+      progressModalRingColor: modal?.ringColor ?? null,
+      progressModalBadgeColor: modal?.badgeColor ?? null,
     };
   });
 }

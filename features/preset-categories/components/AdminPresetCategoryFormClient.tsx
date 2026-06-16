@@ -80,6 +80,10 @@ interface FormState {
   progressModalButton: NormalizedSlotRect | null;
   /** 進捗モーダルの中央画像領域(単一の正規化矩形)。表示画像はキャラ画像を流用。 */
   progressModalCenter: NormalizedSlotRect | null;
+  /** 進捗リングの色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalRingColor: string | null;
+  /** %達成バッジの色(#RRGGBB)。null=従来デフォルト配色 */
+  progressModalBadgeColor: string | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -137,6 +141,8 @@ function toFormState(
     progressModalSlots: initial?.progressModalSlots ?? null,
     progressModalButton: initial?.progressModalButton ?? null,
     progressModalCenter: initial?.progressModalCenter ?? null,
+    progressModalRingColor: initial?.progressModalRingColor ?? null,
+    progressModalBadgeColor: initial?.progressModalBadgeColor ?? null,
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -473,6 +479,8 @@ export function AdminPresetCategoryFormClient({
               progress_modal_slots: form.progressModalSlots,
               progress_modal_button: form.progressModalButton,
               progress_modal_center: form.progressModalCenter,
+              progress_modal_ring_color: form.progressModalRingColor,
+              progress_modal_badge_color: form.progressModalBadgeColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -514,6 +522,8 @@ export function AdminPresetCategoryFormClient({
               progress_modal_slots: form.progressModalSlots,
               progress_modal_button: form.progressModalButton,
               progress_modal_center: form.progressModalCenter,
+              progress_modal_ring_color: form.progressModalRingColor,
+              progress_modal_badge_color: form.progressModalBadgeColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -1391,6 +1401,56 @@ export function AdminPresetCategoryFormClient({
               </button>
             </div>
           )}
+        </div>
+
+        {/* 進捗リング/%達成バッジの配色。null(未設定)なら従来デフォルト配色
+            (オレンジのリング/ゴールドのバッジ)を使う(= 厳密な no-op)。 */}
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">進捗リングの色</span>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="color"
+              value={form.progressModalRingColor ?? "#F97316"}
+              onChange={(e) => update("progressModalRingColor", e.target.value)}
+              className="h-10 w-16 rounded-md border border-slate-300"
+            />
+            <span className="text-xs text-slate-500">
+              {form.progressModalRingColor ?? "未設定(デフォルト配色)"}
+            </span>
+            {form.progressModalRingColor && (
+              <button
+                type="button"
+                onClick={() => update("progressModalRingColor", null)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                デフォルトに戻す
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="block">
+          <span className="text-sm font-medium text-slate-700">%達成バッジの色</span>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="color"
+              value={form.progressModalBadgeColor ?? "#F59E0B"}
+              onChange={(e) => update("progressModalBadgeColor", e.target.value)}
+              className="h-10 w-16 rounded-md border border-slate-300"
+            />
+            <span className="text-xs text-slate-500">
+              {form.progressModalBadgeColor ?? "未設定(デフォルト配色)"}
+            </span>
+            {form.progressModalBadgeColor && (
+              <button
+                type="button"
+                onClick={() => update("progressModalBadgeColor", null)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                デフォルトに戻す
+              </button>
+            )}
+          </div>
         </div>
       </fieldset>
 

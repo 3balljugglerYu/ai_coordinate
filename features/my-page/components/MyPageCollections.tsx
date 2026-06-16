@@ -228,6 +228,8 @@ export function MyPageCollections({
       progressModalSlots: series.progressModalSlots,
       progressModalButton: series.progressModalButton,
       progressModalCenter: series.progressModalCenter,
+      progressModalRingColor: series.progressModalRingColor,
+      progressModalBadgeColor: series.progressModalBadgeColor,
     });
   }
 

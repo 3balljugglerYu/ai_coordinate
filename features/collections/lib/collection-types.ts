@@ -41,6 +41,12 @@ export interface CollectionProgress {
    * (= collection_character_path)を流用する。位置だけを admin がここで設定する。
    */
   progressModalCenter: NormalizedSlotRect | null;
+  /**
+   * 進捗リング・%達成バッジの色(#RRGGBB)。null なら従来デフォルト配色
+   * (オレンジのリング/ゴールドのバッジ)を使う。
+   */
+  progressModalRingColor: string | null;
+  progressModalBadgeColor: string | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */

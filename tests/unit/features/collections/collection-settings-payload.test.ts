@@ -556,4 +556,77 @@ describe("parseCollectionSettings - 進捗モーダル設定(任意・独立)", 
       ).ok,
     ).toBe(false);
   });
+
+  // ---------------- progress_modal_ring_color / progress_modal_badge_color ----------------
+
+  test("ring/badge color: 有効な #RRGGBB はそのまま採用", () => {
+    const r = parseCollectionSettings(
+      {
+        progress_modal_ring_color: "#F97316",
+        progress_modal_badge_color: "#1E90FF",
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.progressModalRingColor).toBe("#F97316");
+      expect(r.payload.progressModalBadgeColor).toBe("#1E90FF");
+    }
+  });
+
+  test("ring/badge color: 大文字小文字混在の hex も受理", () => {
+    const r = parseCollectionSettings(
+      { progress_modal_ring_color: "#aabBcc" },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressModalRingColor).toBe("#aabBcc");
+  });
+
+  test("ring/badge color: null はクリア(デフォルト配色に戻す)", () => {
+    const r = parseCollectionSettings(
+      {
+        progress_modal_ring_color: null,
+        progress_modal_badge_color: null,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.progressModalRingColor).toBeNull();
+      expect(r.payload.progressModalBadgeColor).toBeNull();
+    }
+  });
+
+  test("ring color: hex でない文字列は拒否", () => {
+    expect(
+      parseCollectionSettings({ progress_modal_ring_color: "orange" }, OFF).ok,
+    ).toBe(false);
+    // 3桁短縮形は許可しない
+    expect(
+      parseCollectionSettings({ progress_modal_ring_color: "#FFF" }, OFF).ok,
+    ).toBe(false);
+    // # 抜けは拒否
+    expect(
+      parseCollectionSettings({ progress_modal_ring_color: "F97316" }, OFF).ok,
+    ).toBe(false);
+  });
+
+  test("badge color: 文字列以外(数値)は拒否", () => {
+    const r = parseCollectionSettings(
+      { progress_modal_badge_color: 16711680 },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/progress_modal_badge_color/);
+  });
+
+  test("空 body は ring/badge color を payload に含めない(no-op)", () => {
+    const r = parseCollectionSettings({}, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.progressModalRingColor).toBeUndefined();
+      expect(r.payload.progressModalBadgeColor).toBeUndefined();
+    }
+  });
 });
