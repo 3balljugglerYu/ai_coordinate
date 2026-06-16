@@ -153,6 +153,36 @@ describe("getPresetCategoryById", () => {
     expect(result?.progressModalBadgeBgColor).toBe("#166534");
   });
 
+  test("unlock_prerequisite_key / progressive_batch_size を camelCase へマップする", async () => {
+    const row: PresetCategoryRow = {
+      ...SAMPLE_ROW,
+      unlock_prerequisite_key: "god_collection",
+      progressive_batch_size: 3,
+    };
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({ data: row, error: null }),
+    });
+
+    const result = await getPresetCategoryById(SAMPLE_ROW.id);
+    expect(result?.unlockPrerequisiteKey).toBe("god_collection");
+    expect(result?.progressiveBatchSize).toBe(3);
+  });
+
+  test("unlock_prerequisite_key / progressive_batch_size が null なら null にフォールバックする", async () => {
+    const row: PresetCategoryRow = {
+      ...SAMPLE_ROW,
+      unlock_prerequisite_key: null,
+      progressive_batch_size: null,
+    };
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({ data: row, error: null }),
+    });
+
+    const result = await getPresetCategoryById(SAMPLE_ROW.id);
+    expect(result?.unlockPrerequisiteKey).toBeNull();
+    expect(result?.progressiveBatchSize).toBeNull();
+  });
+
   test("progress_modal_* 色列が null なら null にフォールバックする", async () => {
     const row: PresetCategoryRow = {
       ...SAMPLE_ROW,
