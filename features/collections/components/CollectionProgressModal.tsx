@@ -299,23 +299,51 @@ export function CollectionProgressModal({
   const cShowMount = cIsCompleted && !!cMountImageUrl;
   // admin がカテゴリごとに設定した DB 駆動レイアウト。フレーム画像+実寸がそろっている
   // ときだけ有効。設定が無ければ従来どおりハードコード MODAL_LAYOUTS を使う。
-  const dbLayout: ModalLayout | null =
-    celebration &&
-    celebration.progressModalFrameUrl &&
-    celebration.progressModalFrameWidth &&
-    celebration.progressModalFrameHeight
-      ? {
-          frame: celebration.progressModalFrameUrl,
-          frameAspect:
-            celebration.progressModalFrameWidth /
-            celebration.progressModalFrameHeight,
-          button: { left: 0, top: 0, width: 0, height: 0 },
-          slots: { cx: [], cy: 0, d: 0 },
-          slotRects: celebration.progressModalSlots ?? [],
-          buttonRect: celebration.progressModalButton ?? null,
-          centerRect: celebration.progressModalCenter ?? null,
-        }
-      : null;
+  const dbLayout: ModalLayout | null = (() => {
+    if (
+      !celebration ||
+      !celebration.progressModalFrameUrl ||
+      !celebration.progressModalFrameWidth ||
+      !celebration.progressModalFrameHeight
+    ) {
+      return null;
+    }
+    const frameAspect =
+      celebration.progressModalFrameWidth /
+      celebration.progressModalFrameHeight;
+    const centerRect = celebration.progressModalCenter ?? null;
+    // 中央(centerRect)から進捗リング・%達成バッジの位置を自動導出する(神コレと同じ見た目)。
+    // ring.size は幅%。縦方向は size*frameAspect で正方(=真円)になるよう換算する。
+    let ring: ModalLayout["ring"];
+    let badge: ModalLayout["badge"];
+    if (centerRect) {
+      const cxPct = (centerRect.x + centerRect.w / 2) * 100; // 横中心(幅%)
+      const cyPct = (centerRect.y + centerRect.h / 2) * 100; // 縦中心(高さ%)
+      const ringSize = centerRect.w * 100 * 1.08; // 中央円より少し大きい(幅%)
+      ring = {
+        left: cxPct - ringSize / 2,
+        top: cyPct - (ringSize * frameAspect) / 2,
+        size: ringSize,
+      };
+      const r = ringSize / 2;
+      badge = {
+        cx: cxPct + r * 0.707, // リングの右下(約45°)に配置
+        cy: cyPct + r * frameAspect * 0.707,
+        size: ringSize * 0.4,
+      };
+    }
+    return {
+      frame: celebration.progressModalFrameUrl,
+      frameAspect,
+      button: { left: 0, top: 0, width: 0, height: 0 },
+      slots: { cx: [], cy: 0, d: 0 },
+      slotRects: celebration.progressModalSlots ?? [],
+      buttonRect: celebration.progressModalButton ?? null,
+      centerRect,
+      ring,
+      badge,
+    };
+  })();
   const cLayout = celebration
     ? (dbLayout ?? MODAL_LAYOUTS[celebration.categoryKey] ?? null)
     : null;
