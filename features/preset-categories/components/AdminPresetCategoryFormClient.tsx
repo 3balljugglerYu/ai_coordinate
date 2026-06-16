@@ -1231,6 +1231,8 @@ export function AdminPresetCategoryFormClient({
                 step={1}
                 value={form.progressiveBatchSize ?? ""}
                 onChange={(e) => {
+                  // 入力中に値を消さないため、任意の整数を state に許容する。
+                  // 不正値(0/負)は min={1}(ネイティブ)+ 保存時のバリデーションで弾く。
                   if (e.target.value === "") {
                     update("progressiveBatchSize", null);
                     return;
@@ -1238,7 +1240,7 @@ export function AdminPresetCategoryFormClient({
                   const n = Number.parseInt(e.target.value, 10);
                   update(
                     "progressiveBatchSize",
-                    Number.isFinite(n) && n >= 1 ? n : null,
+                    Number.isNaN(n) ? null : n,
                   );
                 }}
                 placeholder="空=一括解放"
