@@ -92,8 +92,14 @@ function resolveActiveAnnouncement(
  */
 export function PetitUnlockAnnouncer({
   announcements,
+  previewMode,
 }: {
   announcements: CollectionUnlockAnnouncement[];
+  /**
+   * 開発/E2E プレビュー用。"initial"/"drip" を渡すと localStorage を無視して該当 UI を強制表示する
+   * (本番導線では undefined。URL クエリ petitUnlockPreview から page.tsx 経由で渡す)。
+   */
+  previewMode?: "initial" | "drip";
 }) {
   // クライアントでのみ true。SSR/ハイドレーション中は false で何も出さない(localStorage 不可)。
   const isClient = useSyncExternalStore(
@@ -104,20 +110,47 @@ export function PetitUnlockAnnouncer({
   // 「閉じた/CTA押した」を記録すると、その回は再表示しない(localStorage も更新する)。
   const [acknowledgedKey, setAcknowledgedKey] = useState<string | null>(null);
 
-  // 表示判定は render 時に localStorage から導出する(setState-in-effect を避ける)。
-  const active =
-    isClient && announcements.length > 0
-      ? resolveActiveAnnouncement(announcements)
-      : null;
-  const visible =
-    active && active.announcement.categoryKey !== acknowledgedKey
-      ? active
-      : null;
+  // 表示判定は render 時に導出する(setState-in-effect を避ける)。
+  // プレビュー時は localStorage を無視して該当モードを強制表示する。
+  let visible: ActiveAnnouncement | null = null;
+  if (previewMode && isClient && announcements.length > 0) {
+    const announcement = announcements[0];
+    const newlyUnlocked =
+      previewMode === "drip"
+        ? announcement.unlockedPresets.slice(
+            Math.max(0, announcement.unlockedCount - 2),
+            announcement.unlockedCount,
+          )
+        : announcement.unlockedPresets;
+    visible = { mode: previewMode, announcement, newlyUnlocked };
+  } else if (!previewMode) {
+    const active =
+      isClient && announcements.length > 0
+        ? resolveActiveAnnouncement(announcements)
+        : null;
+    visible =
+      active && active.announcement.categoryKey !== acknowledgedKey
+        ? active
+        : null;
+  }
 
   function acknowledge() {
-    if (!active) return;
-    writeSeen(active.announcement.categoryKey, active.announcement.unlockedCount);
-    setAcknowledgedKey(active.announcement.categoryKey);
+    if (previewMode) {
+      // プレビューは記録しない(閉じるだけ)。
+      setAcknowledgedKey(announcements[0]?.categoryKey ?? "preview");
+      return;
+    }
+    if (!visible) return;
+    writeSeen(
+      visible.announcement.categoryKey,
+      visible.announcement.unlockedCount,
+    );
+    setAcknowledgedKey(visible.announcement.categoryKey);
+  }
+
+  // プレビューで閉じたら消す。
+  if (previewMode && acknowledgedKey) {
+    visible = null;
   }
 
   if (!visible || typeof document === "undefined") return null;
