@@ -381,3 +381,119 @@ describe("CollectionProgressModal: 完了時の紙吹雪は画像ロードを待
     }
   });
 });
+
+describe("CollectionProgressModal: DB 駆動レイアウト(progressModal* 設定)", () => {
+  // admin が設定する DB 駆動レイアウト。frameUrl+実寸がそろっているので
+  // MODAL_LAYOUTS より優先され、centerRect から ring/badge を自動導出する。
+  const dbProgress = (
+    overrides: Partial<CollectionCelebration> = {},
+  ): CollectionCelebration => ({
+    categoryKey: "db_driven_category",
+    displayName: "DB駆動",
+    fromCount: 0,
+    toCount: 2,
+    threshold: 6,
+    isCompleted: false,
+    mountImageUrl: null,
+    sharePath: null,
+    completionId: null,
+    characterImageUrl: "CHAR",
+    collectedImageUrls: ["S1", "S2"],
+    progressModalFrameUrl: "https://cdn.example.com/frames/frame-1.webp",
+    progressModalFrameWidth: 1086,
+    progressModalFrameHeight: 1448,
+    progressModalSlots: [
+      { x: 0.1, y: 0.7, w: 0.13, h: 0.13 },
+      { x: 0.3, y: 0.7, w: 0.13, h: 0.13 },
+    ],
+    progressModalButton: { x: 0.1, y: 0.85, w: 0.8, h: 0.09 },
+    progressModalCenter: { x: 0.3, y: 0.2, w: 0.4, h: 0.3 },
+    ...overrides,
+  });
+
+  test("DB 色設定あり: フレーム/中央/スロット画像 + リング/バッジ/%文字に指定色を反映", () => {
+    render(
+      <CollectionProgressModal
+        open
+        celebration={dbProgress({
+          progressModalRingColor: "#22C55E",
+          progressModalBadgeColor: "#16A34A",
+          progressModalBadgeTextColor: "#FFFFFF",
+          progressModalBadgeBgColor: "#166534",
+        })}
+        onClose={jest.fn()}
+      />,
+    );
+
+    const imgSrcs = Array.from(document.querySelectorAll("img")).map(
+      (img) => img.getAttribute("src") ?? "",
+    );
+    // フレーム / 中央キャラ / 集めたシール(S1/S2)が描画される
+    expect(
+      imgSrcs.some((src) => src.includes("frame-1.webp")),
+    ).toBe(true);
+    expect(imgSrcs).toContain("CHAR");
+    expect(imgSrcs).toContain("S1");
+    expect(imgSrcs).toContain("S2");
+
+    // 進捗アークの circle に ringColor が反映される
+    const arcStrokes = Array.from(
+      document.querySelectorAll("svg circle"),
+    ).map((c) => c.getAttribute("stroke"));
+    expect(arcStrokes).toContain("#22C55E");
+
+    // バッジ外側 polygon=badgeColor、内側 polygon=badgeBgColor
+    const polygonFills = Array.from(
+      document.querySelectorAll("polygon"),
+    ).map((p) => p.getAttribute("fill"));
+    expect(polygonFills).toContain("#16A34A");
+    expect(polygonFills).toContain("#166534");
+
+    // % 文字に badgeTextColor が反映される
+    const textFills = Array.from(document.querySelectorAll("text")).map((t) =>
+      t.getAttribute("fill"),
+    );
+    expect(textFills).toContain("#FFFFFF");
+  });
+
+  test("DB 色設定なし(null): リング/バッジ/%文字は従来デフォルト配色になる", () => {
+    render(
+      <CollectionProgressModal
+        open
+        celebration={dbProgress({
+          progressModalRingColor: null,
+          progressModalBadgeColor: null,
+          progressModalBadgeTextColor: null,
+          progressModalBadgeBgColor: null,
+        })}
+        onClose={jest.fn()}
+      />,
+    );
+
+    // フレームは DB 駆動のまま描画される(色だけデフォルト)
+    const imgSrcs = Array.from(document.querySelectorAll("img")).map(
+      (img) => img.getAttribute("src") ?? "",
+    );
+    expect(
+      imgSrcs.some((src) => src.includes("frame-1.webp")),
+    ).toBe(true);
+
+    // 進捗アークはグラデーション参照(デフォルト)
+    const arcStrokes = Array.from(
+      document.querySelectorAll("svg circle"),
+    ).map((c) => c.getAttribute("stroke"));
+    expect(arcStrokes).toContain("url(#collArc)");
+
+    // バッジ外側はゴールドのグラデ参照(デフォルト)
+    const polygonFills = Array.from(
+      document.querySelectorAll("polygon"),
+    ).map((p) => p.getAttribute("fill"));
+    expect(polygonFills).toContain("url(#badgeStroke)");
+
+    // % 文字はオレンジ #F97316(デフォルト)
+    const textFills = Array.from(document.querySelectorAll("text")).map((t) =>
+      t.getAttribute("fill"),
+    );
+    expect(textFills).toContain("#F97316");
+  });
+});
