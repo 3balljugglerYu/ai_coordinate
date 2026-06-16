@@ -38,17 +38,15 @@ export async function CachedHomeStylePresetSection({
   const hasGatedCategory = cachedPresets.some(
     (preset) => preset.category.unlockPrerequisiteKey != null,
   );
-  const gated =
-    userId && hasGatedCategory
-      ? applyCollectionUnlockGating(
-          cachedPresets,
-          await resolveCollectionUnlockContext(
-            cachedPresets,
-            userId,
-            await createClient(),
-          ),
-        )
-      : applyCollectionUnlockGating(cachedPresets, EMPTY_UNLOCK_CONTEXT);
+  let unlockContext: CollectionUnlockContext = EMPTY_UNLOCK_CONTEXT;
+  if (userId && hasGatedCategory) {
+    unlockContext = await resolveCollectionUnlockContext(
+      cachedPresets,
+      userId,
+      await createClient(),
+    );
+  }
+  const gated = applyCollectionUnlockGating(cachedPresets, unlockContext);
 
   // ホームは locked(未解放=シルエット)に未対応のため、未解放分は出さない。
   const presets = gated.filter((preset) => !preset.locked);
