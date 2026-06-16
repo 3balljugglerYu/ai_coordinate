@@ -9,6 +9,7 @@ import {
   type CollectionUnlockAnnouncement,
   type UnlockAnnouncementMode,
 } from "@/features/collections/lib/collection-unlock-announcement";
+import { getCollectionAck } from "@/features/collections/lib/collection-ack";
 
 // クライアントでのみ true を返す SSR セーフなゲート(setState-in-effect を避けるため
 // useSyncExternalStore を使う)。サーバー/ハイドレーション中は false で何も描画しない。
@@ -63,6 +64,18 @@ function resolveActiveAnnouncement(
 ): ActiveAnnouncement | null {
   const seenMap = readSeenMap();
   for (const announcement of announcements) {
+    // 前提カテゴリ(神コレ)のコンプリート演出が「まだ確認されていない」間はお知らせを出さない。
+    // コンプリート演出は表示時に collection-ack を現在のユニーク数へ進めるため、
+    // ack がその値以上になっていれば「演出は既に出た(=確認フェーズに入った)」とみなせる。
+    // これにより「コンプリート演出 → 閉じる → 次に解放お知らせ」の順序になり、重ならない。
+    if (
+      announcement.prerequisiteAckCount > 0 &&
+      getCollectionAck(announcement.prerequisiteKey) <
+        announcement.prerequisiteAckCount
+    ) {
+      continue;
+    }
+
     const hasSeen = Object.prototype.hasOwnProperty.call(
       seenMap,
       announcement.categoryKey,

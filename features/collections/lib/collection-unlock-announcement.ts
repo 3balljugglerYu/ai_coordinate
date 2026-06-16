@@ -22,6 +22,14 @@ export interface CollectionUnlockAnnouncement {
     title: string;
     thumbnailUrl: string;
   }[];
+  /** 前提カテゴリ(例: 神コレ)の key。コンプリート演出の ack 比較に使う。 */
+  prerequisiteKey: string;
+  /**
+   * 前提カテゴリの「ユニーク生成数」(コンプリート演出が ack する値)。
+   * クライアントは collection-ack がこの値以上(=コンプリート演出を確認済み)のときだけ
+   * お知らせを出し、演出と重ならないようにする。0 なら比較を行わない(常に出す)。
+   */
+  prerequisiteAckCount: number;
 }
 
 /**
@@ -67,12 +75,18 @@ export function buildCollectionUnlockAnnouncements(
         thumbnailUrl: preset.thumbnailImageUrl,
       }));
 
+    const prerequisiteKey = items[0].category.unlockPrerequisiteKey ?? "";
+    const prerequisiteAckCount =
+      context.prerequisiteUniqueCountByKey?.get(prerequisiteKey) ?? 0;
+
     announcements.push({
       categoryKey,
       categoryDisplayName: items[0].category.displayNameJa,
       unlockedCount,
       totalCount: total,
       unlockedPresets,
+      prerequisiteKey,
+      prerequisiteAckCount,
     });
   }
 

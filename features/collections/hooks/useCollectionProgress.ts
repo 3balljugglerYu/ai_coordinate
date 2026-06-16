@@ -4,23 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
 import type { CollectionCelebration } from "@/features/collections/components/CollectionProgressModal";
 import type { MountGeneratedResult } from "@/features/collections/components/CollectionMountComposer";
+import {
+  getCollectionAck as getAck,
+  setCollectionAck as setAck,
+} from "@/features/collections/lib/collection-ack";
 
-const ACK_PREFIX = "collection-ack:";
 const POLL_INTERVAL_MS = 10000;
 /** style 画面などからの即時再チェック用イベント */
 export const COLLECTION_PROGRESS_REFRESH_EVENT = "collection-progress-refresh";
-
-function getAck(categoryKey: string): number {
-  if (typeof window === "undefined") return 0;
-  const raw = window.localStorage.getItem(ACK_PREFIX + categoryKey);
-  const n = raw ? Number.parseInt(raw, 10) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
-
-function setAck(categoryKey: string, count: number): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(ACK_PREFIX + categoryKey, String(count));
-}
 
 function buildPublicMountUrl(path: string | null): string | null {
   if (!path) return null;

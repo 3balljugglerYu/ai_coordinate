@@ -112,6 +112,7 @@ describe("buildCollectionUnlockAnnouncements", () => {
     const result = buildCollectionUnlockAnnouncements(presets, {
       prerequisiteCompletedKeys: new Set([PREREQ_KEY]),
       distinctGeneratedByCategoryKey: new Map([[PETIT_KEY, 0]]),
+      prerequisiteUniqueCountByKey: new Map([[PREREQ_KEY, 6]]),
     });
     expect(result).toHaveLength(1);
     const announcement = result[0];
@@ -124,6 +125,25 @@ describe("buildCollectionUnlockAnnouncements", () => {
       "petit-5",
       "petit-4",
     ]);
+    // コンプリート演出 ack 比較用に、前提カテゴリ key とユニーク数が載る。
+    expect(announcement.prerequisiteKey).toBe(PREREQ_KEY);
+    expect(announcement.prerequisiteAckCount).toBe(6);
+  });
+
+  test("前提のユニーク数が未提供なら prerequisiteAckCount=0(比較せず常に出す)", () => {
+    const petit = makeCategory(PETIT_KEY, {
+      unlockPrerequisiteKey: PREREQ_KEY,
+      progressiveBatchSize: 2,
+    });
+    const presets = Array.from({ length: 6 }, (_, i) =>
+      makePreset(`petit-${i}`, petit),
+    );
+    const result = buildCollectionUnlockAnnouncements(presets, {
+      prerequisiteCompletedKeys: new Set([PREREQ_KEY]),
+      distinctGeneratedByCategoryKey: new Map([[PETIT_KEY, 0]]),
+      // prerequisiteUniqueCountByKey 省略
+    });
+    expect(result[0].prerequisiteAckCount).toBe(0);
   });
 
   test("段階解放のスライス用に解放順全件が並ぶ(distinct=2 → 解放4)", () => {
