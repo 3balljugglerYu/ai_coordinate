@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import {
+  COLLECTION_PROGRESS_DISMISSED_EVENT,
   COLLECTION_PROGRESS_REFRESH_EVENT,
   useCollectionProgress,
 } from "@/features/collections/hooks/useCollectionProgress";
@@ -135,6 +136,43 @@ describe("useCollectionProgress の admin プレビュー", () => {
     const { result } = renderHook(() => useCollectionProgress());
 
     await new Promise((r) => setTimeout(r, 50));
+    expect(result.current.celebration).toBeNull();
+  });
+
+  it("dismiss すると COLLECTION_PROGRESS_DISMISSED_EVENT を categoryKey 付きで発火する", async () => {
+    // ack=0 + 進捗(uniqueOutfitCount=1)で celebration を出す。
+    mockProgressResponse({
+      items: [
+        makeSeries({
+          uniqueOutfitCount: 1,
+          isCompleted: false,
+          mountStatus: null,
+          mountImagePath: null,
+          completionId: null,
+          collectedImageUrls: [],
+        }),
+      ],
+      isAdminViewer: false,
+    });
+    window.localStorage.setItem(`collection-ack:${WAFER_KEY}`, "0");
+    setUrl("/ja");
+
+    const { result } = renderHook(() => useCollectionProgress());
+    await waitFor(() => expect(result.current.celebration).not.toBeNull());
+
+    const handler = jest.fn();
+    window.addEventListener(COLLECTION_PROGRESS_DISMISSED_EVENT, handler);
+    act(() => {
+      result.current.dismiss();
+    });
+    window.removeEventListener(COLLECTION_PROGRESS_DISMISSED_EVENT, handler);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const event = handler.mock.calls[0][0] as CustomEvent<{
+      categoryKey: string;
+    }>;
+    expect(event.detail.categoryKey).toBe(WAFER_KEY);
+    // モーダルは閉じている。
     expect(result.current.celebration).toBeNull();
   });
 

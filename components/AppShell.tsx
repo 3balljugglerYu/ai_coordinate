@@ -8,6 +8,7 @@ import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { AppSidebar } from "@/components/AppSidebar";
 import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
 import { CollectionProgressChecker } from "@/components/CollectionProgressChecker";
+import { CollectionUnlockDripListener } from "@/features/collections/components/CollectionUnlockDripListener";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
 import { stripLocalePrefix } from "@/i18n/config";
@@ -64,6 +65,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Suspense>
       <Suspense fallback={null}>
         <CollectionProgressChecker />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CollectionUnlockDripListener />
       </Suspense>
       <Suspense fallback={null}>
         <BonusNotificationToastListener />

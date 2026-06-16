@@ -12,6 +12,12 @@ import {
 const POLL_INTERVAL_MS = 10000;
 /** style 画面などからの即時再チェック用イベント */
 export const COLLECTION_PROGRESS_REFRESH_EVENT = "collection-progress-refresh";
+/**
+ * 進捗モーダルを閉じたときに発火するイベント。detail.categoryKey に閉じたカテゴリを載せる。
+ * 段階解放モーダル(B)を進捗モーダルのクローズ直後に出すため CollectionUnlockDripListener が購読する。
+ */
+export const COLLECTION_PROGRESS_DISMISSED_EVENT =
+  "collection-progress-dismissed";
 
 function buildPublicMountUrl(path: string | null): string | null {
   if (!path) return null;
@@ -217,7 +223,16 @@ export function useCollectionProgress() {
   }, [evaluate]);
 
   const dismiss = useCallback(() => {
+    // 閉じたカテゴリ key を控えてからモーダルを閉じ、段階解放モーダル(B)の判定用に通知する。
+    const dismissedKey = celebrationRef.current?.categoryKey ?? null;
     setCelebration(null);
+    if (dismissedKey && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(COLLECTION_PROGRESS_DISMISSED_EVENT, {
+          detail: { categoryKey: dismissedKey },
+        }),
+      );
+    }
     window.setTimeout(() => {
       void evaluate();
     }, 300);
