@@ -13,6 +13,7 @@ import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { CollectionConfetti } from "@/features/collections/components/CollectionConfetti";
 import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
+import type { NormalizedSlotRect } from "@/features/collections/lib/mount-layouts";
 import { MOUNT_SHARE_MESSAGES } from "@/features/collections/lib/mount-share-messages";
 import {
   buildPublicMountUrl,
@@ -50,6 +51,21 @@ export interface CollectionCelebration {
    * - "sparkle": ダイヤのきらめき(完了台紙の見返しなど落ち着いた場面)
    */
   celebrationEffect?: "confetti" | "sparkle";
+  /**
+   * 進捗モーダルの DB 駆動レイアウト(admin がカテゴリごとに設定)。
+   * progressModalFrameUrl が設定されているときは MODAL_LAYOUTS より優先して描画する。
+   * 未設定(null)なら従来どおりハードコード MODAL_LAYOUTS にフォールバック。
+   */
+  progressModalFrameUrl?: string | null;
+  progressModalFrameWidth?: number | null;
+  progressModalFrameHeight?: number | null;
+  progressModalSlots?: NormalizedSlotRect[] | null;
+  progressModalButton?: NormalizedSlotRect | null;
+  /**
+   * 中央画像領域(正規化矩形)。設定があるとき、フレーム中央の四角に
+   * characterImageUrl(= collection_character_path)を敷く。
+   */
+  progressModalCenter?: NormalizedSlotRect | null;
 }
 
 interface Props {
@@ -76,11 +92,28 @@ interface Props {
 interface ModalLayout {
   frame: string;
   frameAspect: number;
-  disc: { left: number; top: number; size: number };
-  ring: { left: number; top: number; size: number };
-  badge: { cx: number; cy: number; size: number };
+  // disc(中央キャラ円)・ring(進捗リング)・badge(%達成)は台座デザインにより
+  // 持たないことがある(例: ぷち神は中央が四角フレームでリング/バッジ無し)。任意。
+  disc?: { left: number; top: number; size: number };
+  ring?: { left: number; top: number; size: number };
+  badge?: { cx: number; cy: number; size: number };
   button: { left: number; top: number; width: number; height: number };
   slots: { cx: number[]; cy: number; d: number };
+  /**
+   * DB 駆動レイアウト用のスロット矩形(正規化 0..1)。
+   * 設定があるときは slots(cx/cy/d)より優先して描画する。
+   */
+  slotRects?: NormalizedSlotRect[];
+  /**
+   * DB 駆動レイアウト用のボタン領域(正規化 0..1)。
+   * 設定があるときは button(%)より優先して描画する。
+   */
+  buttonRect?: NormalizedSlotRect | null;
+  /**
+   * DB 駆動レイアウト用の中央画像領域(正規化 0..1)。
+   * 設定があるとき、フレーム中央に characterImageUrl を敷く。
+   */
+  centerRect?: NormalizedSlotRect | null;
 }
 
 // ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
@@ -114,6 +147,15 @@ const MODAL_LAYOUTS: Record<string, ModalLayout> = {
     button: { left: 8.1, top: 84.5, width: 84.2, height: 10.8 },
     // ?円(直径12.3%)をわずかに覆うサイズ。シールを大きく見せる(縁はほぼ消える)
     slots: { cx: [11.66, 27.05, 42.07, 57.28, 72.3, 87.42], cy: 75.67, d: 13.0 },
+  },
+  // ぷち神コレクション(6スロット)。専用台座 modal-frame-petit-6.webp (1086x1448) 実測。
+  // 中央は四角い「限定フレーム」のため、丸キャラ disc・進捗リング・%バッジは持たない
+  // (= 進捗は下段スロットの埋まりで表現)。スロット中心は画像解析で実測した値。
+  collectible_wafer_sticker_god_petit_6p: {
+    frame: "/collections/wafer/modal-frame-petit-6.webp",
+    frameAspect: 1086 / 1448,
+    button: { left: 10.5, top: 85.5, width: 79.0, height: 8.5 },
+    slots: { cx: [13.2, 26.6, 42.0, 57.3, 72.8, 85.9], cy: 78.0, d: 13.3 },
   },
 };
 
@@ -255,18 +297,42 @@ export function CollectionProgressModal({
   const cCharacterImageUrl = celebration?.characterImageUrl ?? null;
   const cCollectedImageUrls = celebration?.collectedImageUrls ?? [];
   const cShowMount = cIsCompleted && !!cMountImageUrl;
+  // admin がカテゴリごとに設定した DB 駆動レイアウト。フレーム画像+実寸がそろっている
+  // ときだけ有効。設定が無ければ従来どおりハードコード MODAL_LAYOUTS を使う。
+  const dbLayout: ModalLayout | null =
+    celebration &&
+    celebration.progressModalFrameUrl &&
+    celebration.progressModalFrameWidth &&
+    celebration.progressModalFrameHeight
+      ? {
+          frame: celebration.progressModalFrameUrl,
+          frameAspect:
+            celebration.progressModalFrameWidth /
+            celebration.progressModalFrameHeight,
+          button: { left: 0, top: 0, width: 0, height: 0 },
+          slots: { cx: [], cy: 0, d: 0 },
+          slotRects: celebration.progressModalSlots ?? [],
+          buttonRect: celebration.progressModalButton ?? null,
+          centerRect: celebration.progressModalCenter ?? null,
+        }
+      : null;
   const cLayout = celebration
-    ? (MODAL_LAYOUTS[celebration.categoryKey] ?? null)
+    ? (dbLayout ?? MODAL_LAYOUTS[celebration.categoryKey] ?? null)
     : null;
+  // DB 駆動レイアウト(slotRects)のときは矩形配列の長さ、従来は slots.cx の長さで
+  // 「描画されるシール枠数」を決める。
+  const cSlotCount = cLayout
+    ? cLayout.slotRects
+      ? cLayout.slotRects.length
+      : cLayout.slots.cx.length
+    : 0;
   // ready ゲートは「実際に描画されるシール枚数」で数える。
   // シールは下の map で url が無いスロット(!url)を描画しないため、totalImages を
   // collectedImageUrls.length で数えると、欠け(null/空)があるとき描画 < 期待となり
   // loadedCount が永遠に届かず ready が立たない(モーダルが準備中のまま見えない)。
   // よって、スロット数で打ち切ったうえで非 null のみを数える。
   const cSlotsShown = cLayout
-    ? cCollectedImageUrls
-        .slice(0, cLayout.slots.cx.length)
-        .filter(Boolean).length
+    ? cCollectedImageUrls.slice(0, cSlotCount).filter(Boolean).length
     : 0;
   const totalImages = !celebration
     ? 0
@@ -275,7 +341,10 @@ export function CollectionProgressModal({
         ? 1
         : 0
       : cLayout
-        ? 1 + (cCharacterImageUrl ? 1 : 0) + cSlotsShown
+        ? 1 +
+          (cCharacterImageUrl && cLayout.disc ? 1 : 0) +
+          (cCharacterImageUrl && cLayout.centerRect ? 1 : 0) +
+          cSlotsShown
         : 0;
   const ready = totalImages === 0 || loadedCount >= totalImages || forceReady;
 
@@ -353,6 +422,19 @@ export function CollectionProgressModal({
   // シールは正方形。幅%(=slots.d, コンテナ幅基準)を高さ%(コンテナ高さ基準)へ換算する。
   // 正方になるよう height% = slots.d × (W/H) = slots.d × frameAspect。
   const slotHeightPct = layout ? layout.slots.d * layout.frameAspect : 0;
+
+  // ボタン領域(% 指定)。DB 駆動の buttonRect 優先、無ければ従来 button(%)。
+  const buttonBox =
+    layout && layout.buttonRect
+      ? {
+          left: layout.buttonRect.x * 100,
+          top: layout.buttonRect.y * 100,
+          width: layout.buttonRect.w * 100,
+          height: layout.buttonRect.h * 100,
+        }
+      : layout
+        ? layout.button
+        : { left: 0, top: 0, width: 0, height: 0 };
 
   return (
     <Dialog open={open} onOpenChange={(next) => (!next ? onClose() : undefined)}>
@@ -576,8 +658,32 @@ export function CollectionProgressModal({
               onError={onImgLoad}
             />
 
+            {/* DB 駆動: 中央画像領域(centerRect)に characterImageUrl を敷く。
+                フレームの中央四角の内側に収まるよう、フレーム描画の後に重ねる。 */}
+            {layout.centerRect && characterImageUrl ? (
+              <div
+                className="absolute overflow-hidden rounded-[1.2rem]"
+                style={{
+                  left: `${layout.centerRect.x * 100}%`,
+                  top: `${layout.centerRect.y * 100}%`,
+                  width: `${layout.centerRect.w * 100}%`,
+                  height: `${layout.centerRect.h * 100}%`,
+                }}
+              >
+                <Image
+                  src={characterImageUrl}
+                  alt=""
+                  fill
+                  sizes="320px"
+                  className="object-cover"
+                  onLoad={onImgLoad}
+                  onError={onImgLoad}
+                />
+              </div>
+            ) : null}
+
             {/* 中央: admin 設定画像で円を塗りつぶし(焼き込みキャラを隠す) */}
-            {characterImageUrl ? (
+            {characterImageUrl && layout.disc ? (
               <div
                 className="absolute overflow-hidden rounded-full"
                 style={{
@@ -599,7 +705,8 @@ export function CollectionProgressModal({
               </div>
             ) : null}
 
-            {/* 進捗リング(円の縁に重ねる・枠だけアニメ) */}
+            {/* 進捗リング(円の縁に重ねる・枠だけアニメ)。台座にリング定義があるときだけ描画。 */}
+            {layout.ring ? (
             <div
               className="absolute"
               style={{
@@ -643,8 +750,10 @@ export function CollectionProgressModal({
                 />
               </svg>
             </div>
+            ) : null}
 
-            {/* %達成バッジ(リング右下) */}
+            {/* %達成バッジ(リング右下)。台座にバッジ定義があるときだけ描画。 */}
+            {layout.badge ? (
             <div
               className="pointer-events-none absolute"
               style={{
@@ -656,53 +765,97 @@ export function CollectionProgressModal({
             >
               <AchievementBadge percent={Math.round(ratio * 100)} />
             </div>
+            ) : null}
 
-            {/* 集めたシール(?枠に重ねる)。slots.cx 上限まで。それ以上の集まりは表示しない。
+            {/* 集めたシール(?枠に重ねる)。
+                - DB 駆動(slotRects): admin が設定した矩形にシールを敷き詰める。
+                - 従来(slots.cx/cy/d): 中心+直径から正方クリップで配置。
+                どちらも slot 上限まで。それ以上の集まりは表示しない。
                 外側=波打ち(translateY)・内側=スタンプイン(scale/rotate)と transform を
                 分離して両アニメを合成する。今回増えた分だけ"ポンッ"と押す。 */}
-            {layout.slots.cx.map((cx, i) => {
-              const url = collectedImageUrls[i];
-              if (!url) return null;
-              // fromCount→toCount で今回増えた分が「新規」。複数なら順番にスタンプ。
-              const isNew =
-                i >= celebration.fromCount && i < celebration.toCount;
-              const stampDelay = isNew ? (i - celebration.fromCount) * 0.1 : 0;
-              return (
-                <div
-                  key={i}
-                  className={`absolute ${ready ? "coll-wave" : ""}`}
-                  style={
-                    {
-                      left: `${cx - layout.slots.d / 2}%`,
-                      top: `${layout.slots.cy - slotHeightPct / 2}%`,
-                      width: `${layout.slots.d}%`,
-                      aspectRatio: "1 / 1",
-                      // 波の位相を slot ごとにずらして"波打ち"に。新規はスタンプ着地後に波へ。
-                      "--coll-wave-delay": `${isNew ? stampDelay + 0.62 : i * 0.16}s`,
-                      "--coll-stamp-delay": `${stampDelay}s`,
-                    } as CSSProperties
-                  }
-                >
-                  <div
-                    // WebKit では親(coll-wave)の transform アニメ下で overflow+border-radius の
-                    // 丸クリップが初回に崩れ四角に見えることがある。will-change で GPU レイヤー化して
-                    // 安定させる(新規枠は coll-stamp-in の transform で昇格済みのため差が出ていた)。
-                    // transform を直接占有すると coll-stamp-in の scale/rotate と競合するため will-change を使う。
-                    className={`h-full w-full overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)] will-change-transform ${ready && isNew ? "coll-stamp-in" : ""}`}
-                  >
-                    <Image
-                      src={url}
-                      alt=""
-                      fill
-                      sizes="56px"
-                      className="rounded-full object-cover"
-                      onLoad={onImgLoad}
-                      onError={onImgLoad}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+            {layout.slotRects
+              ? layout.slotRects.map((rect, i) => {
+                  const url = collectedImageUrls[i];
+                  if (!url) return null;
+                  const isNew =
+                    i >= celebration.fromCount && i < celebration.toCount;
+                  const stampDelay = isNew
+                    ? (i - celebration.fromCount) * 0.1
+                    : 0;
+                  return (
+                    <div
+                      key={i}
+                      className={`absolute ${ready ? "coll-wave" : ""}`}
+                      style={
+                        {
+                          left: `${rect.x * 100}%`,
+                          top: `${rect.y * 100}%`,
+                          width: `${rect.w * 100}%`,
+                          height: `${rect.h * 100}%`,
+                          "--coll-wave-delay": `${isNew ? stampDelay + 0.62 : i * 0.16}s`,
+                          "--coll-stamp-delay": `${stampDelay}s`,
+                        } as CSSProperties
+                      }
+                    >
+                      <div
+                        className={`h-full w-full overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)] will-change-transform ${ready && isNew ? "coll-stamp-in" : ""}`}
+                      >
+                        <Image
+                          src={url}
+                          alt=""
+                          fill
+                          sizes="56px"
+                          className="rounded-full object-cover"
+                          onLoad={onImgLoad}
+                          onError={onImgLoad}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              : layout.slots.cx.map((cx, i) => {
+                  const url = collectedImageUrls[i];
+                  if (!url) return null;
+                  // fromCount→toCount で今回増えた分が「新規」。複数なら順番にスタンプ。
+                  const isNew =
+                    i >= celebration.fromCount && i < celebration.toCount;
+                  const stampDelay = isNew ? (i - celebration.fromCount) * 0.1 : 0;
+                  return (
+                    <div
+                      key={i}
+                      className={`absolute ${ready ? "coll-wave" : ""}`}
+                      style={
+                        {
+                          left: `${cx - layout.slots.d / 2}%`,
+                          top: `${layout.slots.cy - slotHeightPct / 2}%`,
+                          width: `${layout.slots.d}%`,
+                          aspectRatio: "1 / 1",
+                          // 波の位相を slot ごとにずらして"波打ち"に。新規はスタンプ着地後に波へ。
+                          "--coll-wave-delay": `${isNew ? stampDelay + 0.62 : i * 0.16}s`,
+                          "--coll-stamp-delay": `${stampDelay}s`,
+                        } as CSSProperties
+                      }
+                    >
+                      <div
+                        // WebKit では親(coll-wave)の transform アニメ下で overflow+border-radius の
+                        // 丸クリップが初回に崩れ四角に見えることがある。will-change で GPU レイヤー化して
+                        // 安定させる(新規枠は coll-stamp-in の transform で昇格済みのため差が出ていた)。
+                        // transform を直接占有すると coll-stamp-in の scale/rotate と競合するため will-change を使う。
+                        className={`h-full w-full overflow-hidden rounded-full border-2 border-white shadow-[0_2px_6px_rgba(120,90,50,0.25)] will-change-transform ${ready && isNew ? "coll-stamp-in" : ""}`}
+                      >
+                        <Image
+                          src={url}
+                          alt=""
+                          fill
+                          sizes="56px"
+                          className="rounded-full object-cover"
+                          onLoad={onImgLoad}
+                          onError={onImgLoad}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
 
             {/* N種到達かつ台紙未作成 → 「台紙を作成する」CTA を土台の生成ボタン領域に
                   かぶせる(土台PNGの「シールを生成する」を覆い隠す)。
@@ -713,10 +866,10 @@ export function CollectionProgressModal({
                 onClick={() => onCreateMount(celebration)}
                 className="absolute flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
                 style={{
-                  left: `${layout.button.left}%`,
-                  top: `${layout.button.top}%`,
-                  width: `${layout.button.width}%`,
-                  height: `${layout.button.height}%`,
+                  left: `${buttonBox.left}%`,
+                  top: `${buttonBox.top}%`,
+                  width: `${buttonBox.width}%`,
+                  height: `${buttonBox.height}%`,
                   fontFamily: "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
                 }}
               >
@@ -729,10 +882,10 @@ export function CollectionProgressModal({
                 onClick={onClose}
                 className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
                 style={{
-                  left: `${layout.button.left}%`,
-                  top: `${layout.button.top}%`,
-                  width: `${layout.button.width}%`,
-                  height: `${layout.button.height}%`,
+                  left: `${buttonBox.left}%`,
+                  top: `${buttonBox.top}%`,
+                  width: `${buttonBox.width}%`,
+                  height: `${buttonBox.height}%`,
                 }}
               />
             )}

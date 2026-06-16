@@ -4,6 +4,8 @@ import {
   MAX_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
+import { authorizeStylePresetUnlock } from "@/features/collections/lib/collection-unlock-server";
+import { createClient } from "@/lib/supabase/server";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
@@ -168,6 +170,32 @@ export async function postStyleGenerateAsyncRoute(
     }
     if (preset.category.visibility === "admin_only" && !isAdminUser) {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    }
+
+    // 解放ゲート(unlock gating)のサーバー側認可。
+    // unlock_prerequisite_key が設定されたカテゴリのみ:
+    //  - 前提条件カテゴリを完走していなければ 403
+    //  - 段階解放(drip)で未解放のプリセットなら 403
+    // 既存カテゴリ(両列 null)は no-op で従来どおり許可される。
+    // UI でのカード非表示はセキュリティではないため、ここで必ず弾く。
+    if (preset.category.unlockPrerequisiteKey) {
+      const authedClient = await createClient();
+      const unlockAuth = await authorizeStylePresetUnlock(
+        preset.category,
+        preset.id,
+        user.id,
+        authedClient,
+        { includeAdminOnly: isAdminUser },
+      );
+      if (!unlockAuth.allowed) {
+        return jsonError(
+          copy.invalidStylePreset,
+          unlockAuth.reason === "prerequisite_incomplete"
+            ? "STYLE_UNLOCK_PREREQUISITE_INCOMPLETE"
+            : "STYLE_UNLOCK_PRESET_LOCKED",
+          403,
+        );
+      }
     }
 
     // framing_mode (admin viewer 限定の先行公開)。未知値は 400。

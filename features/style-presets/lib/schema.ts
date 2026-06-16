@@ -57,6 +57,16 @@ export interface StylePresetCategoryRef {
   userPromptMaxLength: number | null;
   visibility: StylePresetCategoryVisibility;
   isActive: boolean;
+  /**
+   * 解放の前提条件となる別カテゴリの key。設定時、当該カテゴリを完走したユーザーにのみ
+   * このカテゴリを解放する。null なら前提条件なし(従来どおり無条件公開)。
+   */
+  unlockPrerequisiteKey: string | null;
+  /**
+   * カテゴリ内プリセットを段階解放する単位(例: 2 なら 2 体ずつ)。null/0以下なら一括解放。
+   * 判定式は features/collections/lib/collection-unlock.ts を参照。
+   */
+  progressiveBatchSize: number | null;
 }
 
 export interface StylePresetAdmin {
@@ -94,6 +104,12 @@ export interface StylePresetPublicSummary {
   category: StylePresetCategoryRef;
   imageInputMode: ImageInputMode;
   dualReferenceSource: DualReferenceSource;
+  /**
+   * 段階解放(drip)でまだ解放されていないプリセットのとき true。
+   * /style では「コンプリートで解放」のシルエットカードとして表示し、選択・生成不可にする。
+   * 未指定/false は通常の解放済みプリセット。
+   */
+  locked?: boolean;
 }
 
 export interface StylePresetGenerationRecord extends StylePresetPublicSummary {

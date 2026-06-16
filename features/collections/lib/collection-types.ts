@@ -1,4 +1,4 @@
-import type { MountLayoutKey } from "./mount-layouts";
+import type { MountLayoutKey, NormalizedSlotRect } from "./mount-layouts";
 
 /**
  * 手書き型(DB生成型は未使用のため)。get_collection_progress RPC の返却 1 行に対応。
@@ -26,6 +26,21 @@ export interface CollectionProgress {
   /** 台紙テンプレ実寸(px)。完了モーダルの表示アスペクト算出用。無ければ null */
   mountTemplateWidth: number | null;
   mountTemplateHeight: number | null;
+  /**
+   * 進捗モーダル(CollectionProgressModal)の DB 駆動レイアウト用。
+   * progressModalFrameUrl が設定されたカテゴリだけがモーダルを DB 駆動で描画し、
+   * 未設定なら従来どおりハードコード MODAL_LAYOUTS にフォールバックする。
+   */
+  progressModalFrameUrl: string | null;
+  progressModalFrameWidth: number | null;
+  progressModalFrameHeight: number | null;
+  progressModalSlots: NormalizedSlotRect[] | null;
+  progressModalButton: NormalizedSlotRect | null;
+  /**
+   * 進捗モーダル中央画像の位置(正規化矩形)。表示する画像は characterImageUrl
+   * (= collection_character_path)を流用する。位置だけを admin がここで設定する。
+   */
+  progressModalCenter: NormalizedSlotRect | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */

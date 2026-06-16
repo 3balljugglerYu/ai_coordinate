@@ -1395,6 +1395,7 @@ export const koMessages = {
     guestLoginCtaDescription: "ChatGPT Image 2.0을 하루 1회 무료로 사용해 보세요. 생성 후 로그인(무료 가입)하면 이미지를 저장할 수 있어요.",
     guestLoginCtaAction: "로그인 / 회원가입",
     guestCategoryLoginAction: "로그인하면 생성 가능!",
+    styleDripLockedLabel: "곧 등장",
     guestCategoryLoginHint: "로그인하면 모든 스타일로 생성할 수 있어요!",
     generateButton: "스타일링 시작",
     generatingButton: "생성 중...",

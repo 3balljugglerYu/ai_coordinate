@@ -1393,6 +1393,7 @@ export const zhTwMessages = {
     guestLoginCtaDescription: "每天可免費試用 ChatGPT Image 2.0 一次。生成後登入（免費註冊）即可儲存圖片。",
     guestLoginCtaAction: "登入 / 註冊",
     guestCategoryLoginAction: "登入後即可生成！",
+    styleDripLockedLabel: "敬請期待",
     guestCategoryLoginHint: "登入後即可使用所有風格生成！",
     generateButton: "開始造型",
     generatingButton: "生成中...",

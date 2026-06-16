@@ -105,6 +105,31 @@ export function parseNormalizedSlots(
 }
 
 /**
+ * DB の単一矩形(unknown jsonb)を正規化矩形へパースする。
+ * オブジェクトでない/{x,y,w,h:number} でない場合は null を返す。
+ * (進捗モーダルのボタン領域など、1 枠だけを持つフィールド用)
+ */
+export function parseNormalizedRect(value: unknown): NormalizedSlotRect | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const { x, y, w, h } = value as Record<string, unknown>;
+  if (
+    typeof x !== "number" ||
+    !Number.isFinite(x) ||
+    typeof y !== "number" ||
+    !Number.isFinite(y) ||
+    typeof w !== "number" ||
+    !Number.isFinite(w) ||
+    typeof h !== "number" ||
+    !Number.isFinite(h)
+  ) {
+    return null;
+  }
+  return { x, y, w, h };
+}
+
+/**
  * 台紙合成に使うスロットを解決する。
  * - mount_slots(カスタム枠)が有効ならそれを優先(任意N対応)
  * - 無ければ mount_layout(grid_3/4/6)のプリセットへフォールバック(後方互換)

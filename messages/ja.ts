@@ -1337,6 +1337,7 @@ export const jaMessages = {
     guestLoginCtaDescription: "ChatGPT Image 2.0 を 1 日 1 回まで無料でお試しいただけます。生成後にログイン（無料登録）すると画像を保存できます。",
     guestLoginCtaAction: "ログイン / 新規登録",
     guestCategoryLoginAction: "ログインで生成可能！",
+    styleDripLockedLabel: "あとで とうじょう",
     guestCategoryLoginHint: "ログインすると、すべてのスタイルで生成できます！",
     generateButton: "コーデ開始！",
     generatingButton: "生成中...",

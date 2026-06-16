@@ -1660,21 +1660,35 @@ export function StylePageClient({
           onDragStart={(event) => event.preventDefault()}
         >
           {presets.map((preset) => {
+            // 段階解放(drip)で未解放のプリセットはシルエットの「あとで とうじょう」
+            // カードとして表示し、選択・生成不可にする(サーバ側でも検証)。
+            const isDripLocked = preset.locked === true;
             // ゲストは coordinate 以外のカテゴリを生成できないため、カードを
             // 半透明にして「ログインで生成可能！」ラベルを重ねる。
             const isGuestLockedCard =
+              !isDripLocked &&
               effectiveAuthState !== "authenticated" &&
               preset.category.key !== "coordinate";
             return (
               <StylePresetPreviewCard
                 key={preset.id}
                 preset={preset}
-                isSelected={preset.id === selectedPreset?.id}
-                onClick={() => handlePresetSelect(preset.id)}
-                buttonRef={buildPresetButtonRef(preset.id)}
+                isSelected={!isDripLocked && preset.id === selectedPreset?.id}
+                onClick={
+                  isDripLocked
+                    ? undefined
+                    : () => handlePresetSelect(preset.id)
+                }
+                buttonRef={
+                  isDripLocked ? undefined : buildPresetButtonRef(preset.id)
+                }
                 alt={t("styleCardAlt", { name: preset.title })}
                 disabled={isGenerating || isGuestResultLocked}
                 locale={styleCardLocale}
+                dripLocked={isDripLocked}
+                dripLockedLabel={
+                  isDripLocked ? t("styleDripLockedLabel") : undefined
+                }
                 lockedLabel={
                   isGuestLockedCard
                     ? t("guestCategoryLoginAction")
