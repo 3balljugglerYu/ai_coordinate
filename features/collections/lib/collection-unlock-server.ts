@@ -189,17 +189,23 @@ export async function authorizeStylePresetUnlock(
 
   // 2) 段階解放の範囲内チェック。
   //    sort_order 上の index と総数を、公開一覧(sort_order 昇順)から導出する。
+  //    解放ゲート付きカテゴリは解放順を sort_order の降順にするため index を反転し、
+  //    applyCollectionUnlockGating(配信側)の降順表示・降順解放と一致させる。
+  //    この関数は冒頭で unlockPrerequisiteKey 無しを return 済みなので、ここは常にゲート付き。
   const published = await listPublishedStylePresets({
     includeAdminOnly: options.includeAdminOnly === true,
   });
   const sameCategory = published.filter((p) => p.category.key === category.key);
   const total = sameCategory.length;
-  const indexInCategory = sameCategory.findIndex((p) => p.id === presetId);
+  const ascendingIndex = sameCategory.findIndex((p) => p.id === presetId);
 
   // 一覧に存在しない(= 配信対象外)場合は安全側で拒否。
-  if (indexInCategory < 0) {
+  if (ascendingIndex < 0) {
     return { allowed: false, reason: "preset_locked" };
   }
+
+  // 降順 index(末尾=sort_order 最大 を index 0 とする)。
+  const indexInCategory = total - 1 - ascendingIndex;
 
   const distinctCounts = await resolveDistinctGeneratedCounts(
     new Set([category.key]),

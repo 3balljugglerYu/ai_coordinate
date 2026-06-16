@@ -21,11 +21,18 @@ export interface CollectionUnlockContext {
  * - `unlockPrerequisiteKey` が null のカテゴリ → 一切変更しない(従来挙動)。
  * - 前提条件カテゴリが未完走のユーザー → そのカテゴリのプリセットを「一覧から完全に除去」
  *   (ティザーを出さない方針)。
- * - 完走済みユーザー → プリセットは残すが、sort_order 昇順で解放数を超えるものに
- *   `locked: true` を立て、UI 側でシルエット(選択・生成不可)として表示する。
+ * - 完走済みユーザー → プリセットは残すが、解放数を超えるものに `locked: true` を立て、
+ *   UI 側でシルエット(選択・生成不可)として表示する。
  *
  * 入力 `presets` は sort_order 昇順で並んでいる前提(listPublishedStylePresets の order)。
- * カテゴリ内での出現順をそのまま sort_order 上の index とみなす。
+ * **表示順は一切変更しない**(昇順のまま)。
+ *
+ * 解放順(解放ゲート付きカテゴリは sort_order の「多い順」から解放する):
+ *   解放ゲート付きカテゴリ(例: ぷち神)は、表示は sort_order 昇順のままで、段階解放だけを
+ *   sort_order の大きい方(末尾)から行う。これにより「シルエット(あとでとうじょう)が前に
+ *   まとまり、解放済みが末尾にまとまる」並びになる(例: total=6/解放2なら、先頭4つがシルエット、
+ *   末尾2つ=sort 5・4 のアフロディーテ・アルテミスが解放)。解放判定の index だけを反転し、
+ *   並べ替えは行わない。前提条件なしの従来カテゴリは従来どおり昇順で先頭から解放。
  */
 export function applyCollectionUnlockGating(
   presets: readonly StylePresetPublicSummary[],
@@ -44,8 +51,8 @@ export function applyCollectionUnlockGating(
 
   for (const preset of presets) {
     const category = preset.category;
-    const indexInCategory = seenCountByCategoryKey.get(category.key) ?? 0;
-    seenCountByCategoryKey.set(category.key, indexInCategory + 1);
+    const ascendingIndex = seenCountByCategoryKey.get(category.key) ?? 0;
+    seenCountByCategoryKey.set(category.key, ascendingIndex + 1);
 
     // 前提条件なし(従来カテゴリ) → そのまま通す。
     if (!category.unlockPrerequisiteKey) {
@@ -59,11 +66,14 @@ export function applyCollectionUnlockGating(
     }
 
     // 完走済み → 段階解放。解放数を超えるものは locked にして残す。
+    // 解放ゲート付きカテゴリは sort_order の多い方(末尾)から解放するため、解放判定の
+    // index を反転する(表示順は昇順のまま並べ替えない)。
     const distinctGenerated =
       context.distinctGeneratedByCategoryKey.get(category.key) ?? 0;
     const total = totalByCategoryKey.get(category.key) ?? 0;
+    const unlockIndex = total - 1 - ascendingIndex;
     const unlocked = isPresetUnlocked(
-      indexInCategory,
+      unlockIndex,
       distinctGenerated,
       category.progressiveBatchSize,
       total,

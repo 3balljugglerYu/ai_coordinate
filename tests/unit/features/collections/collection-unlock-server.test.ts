@@ -180,19 +180,26 @@ describe("authorizeStylePresetUnlock", () => {
     expect(result).toEqual({ allowed: false, reason: "prerequisite_incomplete" });
   });
 
-  it("解放範囲内のプリセットは許可(distinct0/batch2/index0)", async () => {
+  // 解放ゲート付きカテゴリは sort_order の降順で解放する(末尾=sort最大 を先に解放)。
+  it("解放範囲内のプリセットは許可(distinct0/batch2 → 降順で末尾2つ)", async () => {
     setProgress([{ categoryKey: PREREQ, isCompleted: true }]);
     setDistinctRpc([{ category_key: PETIT, unique_count: 0 }]);
     const cat = categoryRef(PETIT, PREREQ, 2);
+    // 一覧は sort_order 昇順(p0..p5)。distinct0/batch2 → 解放数2。
     mockListPublished.mockResolvedValue(
       ["p0", "p1", "p2", "p3", "p4", "p5"].map((id) => presetSummary(id, cat)),
     );
 
-    const result = await authorizeStylePresetUnlock(cat, "p0", "user-1", dummyClient);
-    expect(result).toEqual({ allowed: true });
+    // 降順 index: p5→0, p4→1 が解放。
+    await expect(
+      authorizeStylePresetUnlock(cat, "p5", "user-1", dummyClient),
+    ).resolves.toEqual({ allowed: true });
+    await expect(
+      authorizeStylePresetUnlock(cat, "p4", "user-1", dummyClient),
+    ).resolves.toEqual({ allowed: true });
   });
 
-  it("未解放(index>=unlockedCount)は preset_locked で拒否", async () => {
+  it("未解放(降順 index>=unlockedCount)は preset_locked で拒否", async () => {
     setProgress([{ categoryKey: PREREQ, isCompleted: true }]);
     setDistinctRpc([{ category_key: PETIT, unique_count: 0 }]);
     const cat = categoryRef(PETIT, PREREQ, 2);
@@ -200,8 +207,8 @@ describe("authorizeStylePresetUnlock", () => {
       ["p0", "p1", "p2", "p3", "p4", "p5"].map((id) => presetSummary(id, cat)),
     );
 
-    // distinct0/batch2 → unlocked 2 → index4(p4) は未解放
-    const result = await authorizeStylePresetUnlock(cat, "p4", "user-1", dummyClient);
+    // distinct0/batch2 → unlocked 2。p0 は昇順 index0 だが降順では index5 = 未解放。
+    const result = await authorizeStylePresetUnlock(cat, "p0", "user-1", dummyClient);
     expect(result).toEqual({ allowed: false, reason: "preset_locked" });
   });
 
