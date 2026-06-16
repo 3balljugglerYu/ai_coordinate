@@ -659,10 +659,10 @@ export function CollectionProgressModal({
             />
 
             {/* DB 駆動: 中央画像領域(centerRect)に characterImageUrl を敷く。
-                フレームの中央四角の内側に収まるよう、フレーム描画の後に重ねる。 */}
+                神コレと同様に丸クロップ(rounded-full)。centerRect を正方にすると真円。 */}
             {layout.centerRect && characterImageUrl ? (
               <div
-                className="absolute overflow-hidden rounded-[1.2rem]"
+                className="absolute overflow-hidden rounded-full"
                 style={{
                   left: `${layout.centerRect.x * 100}%`,
                   top: `${layout.centerRect.y * 100}%`,
@@ -861,19 +861,33 @@ export function CollectionProgressModal({
                   かぶせる(土台PNGの「シールを生成する」を覆い隠す)。
                 それ以外は透明クリック領域で /style へ遷移。 */}
             {toCount >= threshold && onCreateMount ? (
+              // DB 駆動台座(buttonRect あり)は、フレームにボタンが焼き込まれているので
+              // コード側は透明クリック領域だけにする(オレンジ CTA を重ねない)。
+              // ハードコード台座(神コレ等)は従来どおりオレンジ CTA を重ねる。
               <button
                 type="button"
                 onClick={() => onCreateMount(celebration)}
-                className="absolute flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                aria-label={cIsCompleted ? "台紙を更新する" : "台紙を作成する"}
+                className={
+                  layout.buttonRect
+                    ? "absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                    : "absolute flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                }
                 style={{
                   left: `${buttonBox.left}%`,
                   top: `${buttonBox.top}%`,
                   width: `${buttonBox.width}%`,
                   height: `${buttonBox.height}%`,
-                  fontFamily: "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                  fontFamily: layout.buttonRect
+                    ? undefined
+                    : "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
                 }}
               >
-                {cIsCompleted ? "台紙を更新する →" : "台紙を作成する →"}
+                {layout.buttonRect
+                  ? null
+                  : cIsCompleted
+                    ? "台紙を更新する →"
+                    : "台紙を作成する →"}
               </button>
             ) : (
               <Link
