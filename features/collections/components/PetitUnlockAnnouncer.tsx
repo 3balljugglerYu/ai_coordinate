@@ -97,7 +97,7 @@ function resolveActiveAnnouncement(
 /**
  * ぷち神など「解放ゲート付きカテゴリ」の解放お知らせを、ホーム再訪時に出すクライアント。
  *
- * - 初回(まだ一度も見ていない & 解放数>0) → トップバナー(A): 「ぷち神コレクション解放！」
+ * - 初回(まだ一度も見ていない & 解放数>0) → 初回解放モーダル(A): キャラ画像 + 「解放されました！」
  * - 段階解放(前回より解放数が増えた) → モーダル(B): 「新たに N体 解放！」+ サムネ
  *
  * 「前回見た解放数」は localStorage に保存し、表示後に現在値へ更新する(=同じ解放では再表示しない)。
@@ -170,7 +170,7 @@ export function PetitUnlockAnnouncer({
 
   const node =
     visible.mode === "initial" ? (
-      <InitialBanner
+      <InitialUnlockModal
         title={visible.announcement.categoryDisplayName}
         onClose={acknowledge}
       />
@@ -185,8 +185,35 @@ export function PetitUnlockAnnouncer({
   return createPortal(node, document.body);
 }
 
-/** A: 初回解放のトップバナー(画面上部に固定)。 */
-function InitialBanner({
+// ぷち神の進捗モーダル(#C670FF / #F3E0FF)に合わせた爽やかな紫基調の配色。
+// ボタン背景/hover は Tailwind の arbitrary class(bg-[#C670FF] hover:bg-[#B14DF0])で指定する。
+const ACCENT_HOVER = "#B14DF0";
+const ACCENT_TEXT = "#8B3DC9";
+const ACCENT_SOFT_BG = "#F3E0FF";
+
+/** モーダル右上の閉じる(×)ボタン。 */
+function CloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label="閉じる"
+      className="absolute right-3 top-3 rounded-full p-1.5 text-[#B388D9] transition hover:bg-[#F3E0FF]"
+    >
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden>
+        <path
+          d="M4 4l8 8M12 4l-8 8"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
+/** A: 初回解放モーダル(解放キャラのステッカー画像を見せる)。 */
+function InitialUnlockModal({
   title,
   onClose,
 }: {
@@ -194,47 +221,58 @@ function InitialBanner({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-x-0 top-16 z-50 flex justify-center px-3">
-      <div className="flex w-full max-w-md items-center gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-rose-50 px-4 py-3 shadow-lg">
-        <span className="text-2xl" aria-hidden>
-          ✨
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-gradient-to-b from-[#F8EEFF] to-white p-6 text-center shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <CloseButton onClose={onClose} />
+        <span
+          className="inline-block rounded-full px-3 py-1 text-xs font-bold tracking-wide"
+          style={{ backgroundColor: ACCENT_SOFT_BG, color: ACCENT_HOVER }}
+        >
+          NEW
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-amber-900">
-            {title}が解放されました！
-          </p>
-          <p className="mt-0.5 text-xs text-amber-800">
-            コンプリート報酬の新しいスタイルが登場。さっそく作ってみましょう。
-          </p>
+        <h2 className="mt-2 text-lg font-bold" style={{ color: ACCENT_TEXT }}>
+          {title}が解放されました！
+        </h2>
+
+        <div className="mx-auto mt-4 w-52 overflow-hidden rounded-2xl shadow-md ring-1 ring-[#E6C8FF]">
+          <Image
+            src="/collections/petit-unlock-hero.png"
+            alt={title}
+            width={600}
+            height={600}
+            className="h-auto w-full"
+            priority
+          />
         </div>
-        <Link
-          href="/style"
-          onClick={onClose}
-          className="shrink-0 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-amber-600"
-        >
-          見る
-        </Link>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="閉じる"
-          className="shrink-0 rounded-full p-1 text-amber-700 transition hover:bg-amber-100"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden
+
+        <p className="mt-4 text-sm text-[#7A5A93]">
+          コンプリート報酬の新しいスタイルが登場。さっそく作ってみましょう。
+        </p>
+
+        <div className="mt-6 flex flex-col gap-2">
+          <Link
+            href="/style"
+            onClick={onClose}
+            className="rounded-full bg-[#C670FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#B14DF0]"
           >
-            <path
-              d="M4 4l8 8M12 4l-8 8"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+            つくりに行く
+          </Link>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#9B7AB5] transition hover:bg-[#F3E0FF]"
+          >
+            あとで
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -259,16 +297,20 @@ function DripModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl"
+        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-gradient-to-b from-[#F8EEFF] to-white p-6 text-center shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <p className="text-3xl" aria-hidden>
-          🎉
-        </p>
-        <h2 className="mt-2 text-lg font-bold text-slate-900">
+        <CloseButton onClose={onClose} />
+        <span
+          className="inline-block rounded-full px-3 py-1 text-xs font-bold tracking-wide"
+          style={{ backgroundColor: ACCENT_SOFT_BG, color: ACCENT_HOVER }}
+        >
+          NEW
+        </span>
+        <h2 className="mt-2 text-lg font-bold" style={{ color: ACCENT_TEXT }}>
           新たに{count}体 解放！
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-[#7A5A93]">
           {title}の続きが登場しました。
         </p>
 
@@ -276,7 +318,7 @@ function DripModal({
           <div className="mt-4 flex flex-wrap justify-center gap-3">
             {newlyUnlocked.map((preset) => (
               <div key={preset.id} className="w-20">
-                <div className="relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                <div className="relative aspect-square overflow-hidden rounded-xl bg-[#F8EEFF] ring-1 ring-[#E6C8FF]">
                   <Image
                     src={preset.thumbnailUrl}
                     alt={preset.title}
@@ -285,7 +327,7 @@ function DripModal({
                     className="object-cover"
                   />
                 </div>
-                <p className="mt-1 truncate text-[11px] text-slate-600">
+                <p className="mt-1 truncate text-[11px] text-[#7A5A93]">
                   {preset.title}
                 </p>
               </div>
@@ -297,14 +339,14 @@ function DripModal({
           <Link
             href="/style"
             onClick={onClose}
-            className="rounded-full bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-600"
+            className="rounded-full bg-[#C670FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#B14DF0]"
           >
             つくりに行く
           </Link>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#9B7AB5] transition hover:bg-[#F3E0FF]"
           >
             あとで
           </button>
