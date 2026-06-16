@@ -9,6 +9,7 @@ import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBan
 import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
 import { CachedHomePostListSection } from "@/features/home/components/CachedHomePostListSection";
 import { CachedHomeStylePresetSection } from "@/features/home/components/CachedHomeStylePresetSection";
+import { HomePetitUnlockPreview } from "@/features/home/components/HomePetitUnlockPreview";
 import { CachedHomeUserStyleTemplateSection } from "@/features/home/components/CachedHomeUserStyleTemplateSection";
 import { HomeBannerSkeleton } from "@/features/home/components/HomeBannerSkeleton";
 import { HomeHeading } from "@/features/home/components/HomeHeading";
@@ -143,7 +144,7 @@ export default async function LocaleHome({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ popupBannerE2E?: string }>;
+  searchParams: Promise<{ popupBannerE2E?: string; petitUnlockPreview?: string }>;
 }) {
   const { locale: localeParam } = await params;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
@@ -155,12 +156,26 @@ export default async function LocaleHome({
   // 公開前カテゴリ(admin_only)を admin / プレビュー admin にだけ表示する
   const isAdminViewer = checkIsAdminViewer(currentUser?.id ?? null);
 
+  // 解放お知らせのプレビュー(開発/E2E のみ)。?petitUnlockPreview=initial|drip で強制表示。
+  const previewParam = (await searchParams).petitUnlockPreview;
+  const petitUnlockPreview =
+    (previewParam === "initial" || previewParam === "drip") &&
+    (process.env.NODE_ENV !== "production" ||
+      process.env.PLAYWRIGHT_E2E === "1")
+      ? previewParam
+      : null;
+
   return (
     <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
       <HomeStructuredData locale={locale} />
       <Suspense fallback={null}>
         <HomePopupBannerSection searchParams={searchParams} />
       </Suspense>
+      {petitUnlockPreview && (
+        <Suspense fallback={null}>
+          <HomePetitUnlockPreview mode={petitUnlockPreview} />
+        </Suspense>
+      )}
       <HomeHeading />
       <Suspense fallback={<HomeBannerSkeleton />}>
         <CachedHomeBannerSection />

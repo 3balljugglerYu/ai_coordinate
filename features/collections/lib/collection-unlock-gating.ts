@@ -12,6 +12,11 @@ import { isPresetUnlocked } from "./collection-unlock";
 export interface CollectionUnlockContext {
   prerequisiteCompletedKeys: ReadonlySet<string>;
   distinctGeneratedByCategoryKey: ReadonlyMap<string, number>;
+  /**
+   * 前提カテゴリ key -> その「ユニーク生成数」(コンプリート演出が ack する値)。
+   * 解放お知らせを「コンプリート演出の確認後」に出すための比較に使う(任意)。
+   */
+  prerequisiteUniqueCountByKey?: ReadonlyMap<string, number>;
 }
 
 /**

@@ -1,11 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   getCurrentUser,
   onAuthStateChange,
 } from "@/features/auth/lib/auth-client";
 import { isTutorialActiveOrPending } from "@/features/tutorial/lib/tutorial-status";
+import {
+  getUnlockAnnouncerActive,
+  getUnlockAnnouncerActiveServer,
+  subscribeUnlockAnnouncer,
+} from "@/features/collections/lib/unlock-announcer-signal";
 import {
   buildPopupBannerHistoryEntry,
   buildPopupBannerHistoryMap,
@@ -147,6 +158,14 @@ export function usePopupBanner(
   const [tutorialCompleted, setTutorialCompleted] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const sentImpressionIdsRef = useRef<Set<string>>(new Set());
+
+  // 解放お知らせ(ぷち神など)が表示中はポップアップバナーを抑止する(解放お知らせ優先)。
+  // 解放お知らせを閉じるとシグナルが false になり、バナーが改めて表示される。
+  const unlockAnnouncerActive = useSyncExternalStore(
+    subscribeUnlockAnnouncer,
+    getUnlockAnnouncerActive,
+    getUnlockAnnouncerActiveServer,
+  );
 
   useEffect(() => {
     sentImpressionIdsRef.current = readSentImpressionIds();
@@ -291,7 +310,9 @@ export function usePopupBanner(
   }
 
   return {
-    currentBanner,
+    // 解放お知らせ表示中は null を返してバナーを出さない(impression も記録しない)。
+    // シグナルが false に戻ると currentBanner が復活し、バナーが表示される。
+    currentBanner: unlockAnnouncerActive ? null : currentBanner,
     isReady,
     closeBanner: (dismissForever = false) =>
       applyAction(dismissForever ? "dismiss_forever" : "close"),

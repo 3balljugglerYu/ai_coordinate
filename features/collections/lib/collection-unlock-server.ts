@@ -53,30 +53,37 @@ export async function resolveCollectionUnlockContext(
     };
   }
 
-  const [prerequisiteCompletedKeys, distinctGeneratedByCategoryKey] =
+  const [prerequisiteProgress, distinctGeneratedByCategoryKey] =
     await Promise.all([
       resolveCompletedPrerequisiteKeys(prerequisiteKeys, authedClient),
       resolveDistinctGeneratedCounts(gatedCategoryKeys, userId),
     ]);
 
-  return { prerequisiteCompletedKeys, distinctGeneratedByCategoryKey };
+  return {
+    prerequisiteCompletedKeys: prerequisiteProgress.completedKeys,
+    distinctGeneratedByCategoryKey,
+    prerequisiteUniqueCountByKey: prerequisiteProgress.uniqueCountByKey,
+  };
 }
 
 /**
- * get_collection_progress RPC から「完走済み(mount完成)の前提条件カテゴリ key」を抽出する。
+ * get_collection_progress RPC から「完走済み(mount完成)の前提条件カテゴリ key」と、
+ * その「ユニーク生成数」(コンプリート演出が ack する値)を抽出する。
  * RPC は auth.uid() を使うため、必ず cookie 認証済みクライアントを渡すこと。
  * 取得失敗時は「未完走」として安全側に倒す(解放対象を出さない)。
  */
 async function resolveCompletedPrerequisiteKeys(
   prerequisiteKeys: ReadonlySet<string>,
   authedClient: SupabaseClient,
-): Promise<Set<string>> {
-  const completed = new Set<string>();
+): Promise<{ completedKeys: Set<string>; uniqueCountByKey: Map<string, number> }> {
+  const completedKeys = new Set<string>();
+  const uniqueCountByKey = new Map<string, number>();
   try {
     const progress = await getCollectionProgress(authedClient);
     for (const row of progress) {
       if (row.isCompleted && prerequisiteKeys.has(row.categoryKey)) {
-        completed.add(row.categoryKey);
+        completedKeys.add(row.categoryKey);
+        uniqueCountByKey.set(row.categoryKey, row.uniqueOutfitCount);
       }
     }
   } catch (error) {
@@ -86,7 +93,7 @@ async function resolveCompletedPrerequisiteKeys(
       error,
     );
   }
-  return completed;
+  return { completedKeys, uniqueCountByKey };
 }
 
 /**
@@ -179,7 +186,7 @@ export async function authorizeStylePresetUnlock(
   }
 
   // 1) 前提条件カテゴリの完走チェック。
-  const completedKeys = await resolveCompletedPrerequisiteKeys(
+  const { completedKeys } = await resolveCompletedPrerequisiteKeys(
     new Set([category.unlockPrerequisiteKey]),
     authedClient,
   );
