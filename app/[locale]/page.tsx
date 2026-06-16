@@ -166,7 +166,10 @@ export default async function LocaleHome({
         <CachedHomeBannerSection />
       </Suspense>
       <Suspense fallback={<HomeStylePresetCarouselSkeleton />}>
-        <CachedHomeStylePresetSection isAdminViewer={isAdminViewer} />
+        <CachedHomeStylePresetSection
+          isAdminViewer={isAdminViewer}
+          userId={currentUser?.id ?? null}
+        />
       </Suspense>
       {/*
         Inspire ホームカルーセル（ADR-013）。
