@@ -1,6 +1,6 @@
 # ユーザーストーリー
 
-英語版: [`user-stories.en.md`](./user-stories.en.md)
+英語版: [`user-stories.en.md`](./user-stories.en.md) ※英語版は本更新では未同期
 
 - 最終更新日: `2026-06-16`
 - 想定読者: このリポジトリで作業する開発者、プロダクトオーナー、デザイナー

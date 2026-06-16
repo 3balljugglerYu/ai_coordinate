@@ -1,6 +1,6 @@
 # 要件定義書
 
-英語版: [`requirements.en.md`](./requirements.en.md)
+英語版: [`requirements.en.md`](./requirements.en.md) ※英語版は本更新では未同期
 
 - 最終更新日: `2026-06-16`
 - 想定読者: このリポジトリで作業する開発者、プロダクトオーナー、デザイナー
@@ -23,7 +23,7 @@ Persta.AI(ペルスタ)
 - **コミュニティ**: 投稿/いいね/コメント/フォロー、ミッション、通知・運営アナウンス
 
 ### 技術要件
-- **AI生成エンジン**: 複数モデルを用途別に切替(Nano Banana 系を中心に、Inspire 等で OpenAI gpt-image / Gemini も使用)。正本は `features/generation/lib/model-config.ts`
+- **AI生成エンジン**: 複数モデルを用途別に切替(Gemini の Nano Banana 系モデルを中心に、OpenAI gpt-image も使用)。正本は `features/generation/lib/model-config.ts`
 - **国際化(i18n)**: next-intl による 15 ロケール対応(`ja, en, ko, zh-CN, zh-TW, es, pt, fr, de, it, id, th, vi, hi, ar`、Arabic は RTL)。公開ルートは `app/[locale]/` のロケール接頭辞ルーティング
 - **画像保存先**: Supabase (Storage)
 - **データベース**: Supabase (PostgreSQL)
@@ -410,8 +410,8 @@ Persta.AI(ペルスタ)
 - 新規解放時は解放お知らせ(初回モーダル/段階解放モーダル)で通知
 
 #### 8.4 生成方式とレート制限
-- ゲスト: 同期生成(`/style/generate`)。1日1回まで無料(`/coordinate` と枠を共有)
-- 認証ユーザー: 非同期生成(`/style/generate-async`、`image_jobs` ジョブ + ステータスポーリング)。モデル別ペルコインを消費
+- ゲスト: 同期生成(`app/api/style/generate`)。1日1回まで無料(`/coordinate` と枠を共有)
+- 認証ユーザー: 非同期生成(`app/api/style/generate-async`、`image_jobs` ジョブ + ステータスポーリング)。モデル別ペルコインを消費
 
 ### 9. コレクション機能(神コレ / ぷち神)
 
@@ -500,7 +500,7 @@ Persta.AI(ペルスタ)
 
 ### 14. ゲスト生成・ワードローブ救済機能
 
-- 未ログインでもコーディネート/One-Tap Style を生成可能(`app/api/coordinate-generate-guest`、`/style/generate`)
+- 未ログインでもコーディネート/One-Tap Style を生成可能(`app/api/coordinate-generate-guest`、`app/api/style/generate`)
 - ゲスト生成結果は一時的。ログイン後に 1 枚をワードローブへ救済保存(`app/api/wardrobe/claim`、生涯 1 回・3MB 上限)
 - ログイン転換ファネルの中核。レート制限はゲスト/認証で別管理
 
@@ -518,7 +518,7 @@ Persta.AI(ペルスタ)
 
 ### 17. 運営・管理機能(Admin)
 
-- 管理ダッシュボード(`/dashboard`): サインアップ・生成数・売上・モデレーション件数等の KPI、ファネル分析、CSV エクスポート
+- 管理ダッシュボード(`/admin`、`features/admin-dashboard/`): サインアップ・生成数・売上・モデレーション件数等の KPI、ファネル分析、CSV エクスポート(`/dashboard` は別物の認証必須プレースホルダ)
 - 各種管理画面: アナウンス、バナー、ポップアップバナー、カタログ、コレクション、プリセット/カテゴリ、スタイルテンプレート(Inspire)、ボーナス付与、ユーザー管理(凍結/再開)、生成プロンプト上書き(`/admin/generation-prompts`)、監査ログ(`/admin/audit-log`)
 
 ## 非機能要件
