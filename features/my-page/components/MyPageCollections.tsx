@@ -219,6 +219,15 @@ export function MyPageCollections({
       mountTemplateHeight: series.mountTemplateHeight,
       characterImageUrl: series.characterImageUrl,
       collectedImageUrls: series.collectedImageUrls ?? [],
+      // admin がカテゴリごとに設定した進捗モーダルの DB 駆動レイアウト。
+      // これを渡さないと CollectionProgressModal が MODAL_LAYOUTS(ハードコード)に
+      // フォールバックし、admin 設定のフレーム/スロット/中央画像が反映されない。
+      progressModalFrameUrl: series.progressModalFrameUrl,
+      progressModalFrameWidth: series.progressModalFrameWidth,
+      progressModalFrameHeight: series.progressModalFrameHeight,
+      progressModalSlots: series.progressModalSlots,
+      progressModalButton: series.progressModalButton,
+      progressModalCenter: series.progressModalCenter,
     });
   }
 
