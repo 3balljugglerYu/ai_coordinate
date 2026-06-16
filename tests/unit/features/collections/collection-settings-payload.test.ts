@@ -271,6 +271,79 @@ describe("parseCollectionSettings", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/collection_display_ends_at/);
   });
+
+  // ---------------- 解放ゲート: unlock_prerequisite_key ----------------
+
+  test("unlock_prerequisite_key: 文字列はトリムして採用", () => {
+    const r = parseCollectionSettings(
+      { unlock_prerequisite_key: "  god_collection  " },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.unlockPrerequisiteKey).toBe("god_collection");
+  });
+
+  test("unlock_prerequisite_key: 空文字は null(ゲートなし)に正規化", () => {
+    const r = parseCollectionSettings({ unlock_prerequisite_key: "  " }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.unlockPrerequisiteKey).toBeNull();
+  });
+
+  test("unlock_prerequisite_key: null はクリア(ゲートなし)", () => {
+    const r = parseCollectionSettings({ unlock_prerequisite_key: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.unlockPrerequisiteKey).toBeNull();
+  });
+
+  test("unlock_prerequisite_key: string/null 以外は拒否", () => {
+    const r = parseCollectionSettings({ unlock_prerequisite_key: 42 }, OFF);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/unlock_prerequisite_key/);
+  });
+
+  test("空 body は unlock_prerequisite_key を payload に含めない(no-op)", () => {
+    const r = parseCollectionSettings({}, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.unlockPrerequisiteKey).toBeUndefined();
+  });
+
+  // ---------------- 段階解放: progressive_batch_size ----------------
+
+  test("progressive_batch_size: 1 以上の整数はそのまま採用", () => {
+    const r = parseCollectionSettings({ progressive_batch_size: 3 }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressiveBatchSize).toBe(3);
+  });
+
+  test("progressive_batch_size: null はクリア(一括解放)", () => {
+    const r = parseCollectionSettings({ progressive_batch_size: null }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressiveBatchSize).toBeNull();
+  });
+
+  test("progressive_batch_size: 0 / 負 / 非整数は拒否", () => {
+    expect(
+      parseCollectionSettings({ progressive_batch_size: 0 }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings({ progressive_batch_size: -2 }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings({ progressive_batch_size: 1.5 }, OFF).ok,
+    ).toBe(false);
+  });
+
+  test("progressive_batch_size: 数値以外は拒否", () => {
+    const r = parseCollectionSettings({ progressive_batch_size: "3" }, OFF);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/progressive_batch_size/);
+  });
+
+  test("空 body は progressive_batch_size を payload に含めない(no-op)", () => {
+    const r = parseCollectionSettings({}, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload.progressiveBatchSize).toBeUndefined();
+  });
 });
 
 describe("parseCollectionSettings - mount_slots(カスタム枠) / 任意N / 台紙実寸", () => {

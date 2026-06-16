@@ -18,6 +18,10 @@ import {
 export interface CollectionSettingsPayload {
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  /** 完走必須の前提カテゴリ key(完走者限定の解放ゲート)。null=ゲートなし */
+  unlockPrerequisiteKey?: string | null;
+  /** プリセットを N 体ずつ段階解放する単位(正の整数)。null=最初から全部 */
+  progressiveBatchSize?: number | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   mountSlots?: NormalizedSlotRect[] | null;
@@ -90,6 +94,37 @@ export function parseCollectionSettings(
       return { ok: false, error: "completion_threshold must be a positive integer" };
     } else {
       payload.completionThreshold = v;
+    }
+  }
+
+  // 解放ゲート: 完走必須の前提カテゴリ key(完走者限定)。空文字は null(ゲートなし)に正規化。
+  if (body.unlock_prerequisite_key !== undefined) {
+    const v = body.unlock_prerequisite_key;
+    if (v === null) {
+      payload.unlockPrerequisiteKey = null;
+    } else if (typeof v !== "string") {
+      return {
+        ok: false,
+        error: "unlock_prerequisite_key must be a non-empty string or null",
+      };
+    } else {
+      const trimmed = v.trim();
+      payload.unlockPrerequisiteKey = trimmed.length > 0 ? trimmed : null;
+    }
+  }
+
+  // 段階解放の単位 N(正の整数)。DB CHECK は > 0 または NULL。
+  if (body.progressive_batch_size !== undefined) {
+    const v = body.progressive_batch_size;
+    if (v === null) {
+      payload.progressiveBatchSize = null;
+    } else if (typeof v !== "number" || !Number.isInteger(v) || v < 1) {
+      return {
+        ok: false,
+        error: "progressive_batch_size must be an integer >= 1, or null",
+      };
+    } else {
+      payload.progressiveBatchSize = v;
     }
   }
 

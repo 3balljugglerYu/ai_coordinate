@@ -37,6 +37,11 @@ interface Props {
    */
   initialCollectionDisplayStartsAtLocal?: string;
   initialCollectionDisplayEndsAtLocal?: string;
+  /**
+   * 解放ゲートの「前提カテゴリ」selectで使う候補。コレクションシリーズのみ・
+   * 編集時は自身を除外したものをサーバー側で渡す。省略時は空配列(ゲートなしのみ)。
+   */
+  prerequisiteOptions?: { key: string; displayNameJa: string }[];
 }
 
 interface FormState {
@@ -60,6 +65,10 @@ interface FormState {
   visibility: "public" | "admin_only";
   isCollectionSeries: boolean;
   completionThreshold: number | null;
+  /** 解放の前提カテゴリ key(完走者限定)。null=ゲートなし */
+  unlockPrerequisiteKey: string | null;
+  /** 段階解放の単位(正の整数)。null=最初から全部解放 */
+  progressiveBatchSize: number | null;
   mountTemplatePath: string | null;
   mountLayout: "" | "grid_3" | "grid_4" | "grid_6";
   /** カスタム枠(正規化矩形配列)。null なら mountLayout プリセットを使用 */
@@ -130,6 +139,8 @@ function toFormState(
     visibility: initial?.visibility ?? "admin_only",
     isCollectionSeries: initial?.isCollectionSeries ?? false,
     completionThreshold: initial?.completionThreshold ?? null,
+    unlockPrerequisiteKey: initial?.unlockPrerequisiteKey ?? null,
+    progressiveBatchSize: initial?.progressiveBatchSize ?? null,
     mountTemplatePath: initial?.mountTemplatePath ?? null,
     mountLayout: initial?.mountLayout ?? "",
     mountSlots: initial?.mountSlots ?? null,
@@ -259,6 +270,7 @@ export function AdminPresetCategoryFormClient({
   initial,
   initialCollectionDisplayStartsAtLocal,
   initialCollectionDisplayEndsAtLocal,
+  prerequisiteOptions = [],
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(() =>
@@ -548,6 +560,8 @@ export function AdminPresetCategoryFormClient({
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: effectiveThreshold,
+              unlock_prerequisite_key: form.unlockPrerequisiteKey,
+              progressive_batch_size: form.progressiveBatchSize,
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               mount_slots: form.mountSlots,
@@ -593,6 +607,8 @@ export function AdminPresetCategoryFormClient({
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: effectiveThreshold,
+              unlock_prerequisite_key: form.unlockPrerequisiteKey,
+              progressive_batch_size: form.progressiveBatchSize,
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               mount_slots: form.mountSlots,
@@ -1177,6 +1193,64 @@ export function AdminPresetCategoryFormClient({
               での生成は終了後も可能です。
             </span>
           </label>
+        </div>
+
+        <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <p className="text-sm font-semibold text-slate-800">解放ゲート</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                解放の前提カテゴリ
+              </span>
+              <select
+                value={form.unlockPrerequisiteKey ?? ""}
+                onChange={(e) =>
+                  update("unlockPrerequisiteKey", e.target.value || null)
+                }
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">なし（ゲートなし）</option>
+                {prerequisiteOptions.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.displayNameJa}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-slate-500">
+                このカテゴリを完走したユーザーにのみ表示します（完走者限定）。
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                段階解放の単位
+              </span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={form.progressiveBatchSize ?? ""}
+                onChange={(e) => {
+                  // 入力中に値を消さないため、任意の整数を state に許容する。
+                  // 不正値(0/負)は min={1}(ネイティブ)+ 保存時のバリデーションで弾く。
+                  if (e.target.value === "") {
+                    update("progressiveBatchSize", null);
+                    return;
+                  }
+                  const n = Number.parseInt(e.target.value, 10);
+                  update(
+                    "progressiveBatchSize",
+                    Number.isNaN(n) ? null : n,
+                  );
+                }}
+                placeholder="空=一括解放"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                カテゴリ内のプリセットを何体ずつ解放するか（空=最初から全部）。
+              </span>
+            </label>
+          </div>
         </div>
 
         <div className="block">

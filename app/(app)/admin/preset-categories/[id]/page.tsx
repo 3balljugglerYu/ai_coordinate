@@ -2,7 +2,10 @@ import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
-import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
+import {
+  getPresetCategoryById,
+  listPresetCategories,
+} from "@/features/style-presets/lib/preset-category-repository";
 import { AdminPresetCategoryFormClient } from "@/features/preset-categories/components/AdminPresetCategoryFormClient";
 import { formatDatetimeLocalJst } from "@/lib/datetime/format-datetime-local-jst";
 
@@ -29,6 +32,12 @@ export default async function AdminPresetCategoryEditPage({
     notFound();
   }
 
+  // 解放ゲートの前提カテゴリ候補: コレクションシリーズのみ・自分自身は除外。
+  const allCategories = await listPresetCategories({ includeInactive: false });
+  const prerequisiteOptions = allCategories
+    .filter((c) => c.isCollectionSeries && c.id !== category.id)
+    .map((c) => ({ key: c.key, displayNameJa: c.displayNameJa }));
+
   return (
     <div className="space-y-6">
       <header>
@@ -53,6 +62,7 @@ export default async function AdminPresetCategoryEditPage({
         initialCollectionDisplayEndsAtLocal={formatDatetimeLocalJst(
           category.collectionDisplayEndsAt,
         )}
+        prerequisiteOptions={prerequisiteOptions}
       />
     </div>
   );

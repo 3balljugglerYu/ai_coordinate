@@ -48,6 +48,8 @@ export interface PresetCategoryRow {
   visibility?: StylePresetCategoryVisibility | null;
   is_collection_series?: boolean | null;
   completion_threshold?: number | null;
+  unlock_prerequisite_key?: string | null;
+  progressive_batch_size?: number | null;
   mount_template_path?: string | null;
   mount_layout?: string | null;
   mount_slots?: unknown;
@@ -96,6 +98,8 @@ export interface PresetCategoryAdmin {
   visibility: StylePresetCategoryVisibility;
   isCollectionSeries: boolean;
   completionThreshold: number | null;
+  unlockPrerequisiteKey: string | null;
+  progressiveBatchSize: number | null;
   mountTemplatePath: string | null;
   mountLayout: MountLayoutKey | null;
   mountSlots: NormalizedSlotRect[] | null;
@@ -143,6 +147,8 @@ export interface PresetCategoryInsert {
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  unlockPrerequisiteKey?: string | null;
+  progressiveBatchSize?: number | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   mountSlots?: NormalizedSlotRect[] | null;
@@ -186,6 +192,8 @@ export interface PresetCategoryUpdate {
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  unlockPrerequisiteKey?: string | null;
+  progressiveBatchSize?: number | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   mountSlots?: NormalizedSlotRect[] | null;
@@ -244,6 +252,8 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     visibility: normalizeVisibility(row.visibility),
     isCollectionSeries: row.is_collection_series ?? false,
     completionThreshold: row.completion_threshold ?? null,
+    unlockPrerequisiteKey: row.unlock_prerequisite_key ?? null,
+    progressiveBatchSize: row.progressive_batch_size ?? null,
     mountTemplatePath: row.mount_template_path ?? null,
     mountLayout: isMountLayoutKey(row.mount_layout) ? row.mount_layout : null,
     mountSlots: parseNormalizedSlots(row.mount_slots),
@@ -372,6 +382,8 @@ export async function createPresetCategory(
       visibility: input.visibility ?? "admin_only",
       is_collection_series: input.isCollectionSeries ?? false,
       completion_threshold: input.completionThreshold ?? null,
+      unlock_prerequisite_key: input.unlockPrerequisiteKey ?? null,
+      progressive_batch_size: input.progressiveBatchSize ?? null,
       mount_template_path: input.mountTemplatePath ?? null,
       mount_layout: input.mountLayout ?? null,
       mount_slots: input.mountSlots ?? null,
@@ -445,6 +457,10 @@ export async function updatePresetCategory(
     payload.is_collection_series = input.isCollectionSeries;
   if (input.completionThreshold !== undefined)
     payload.completion_threshold = input.completionThreshold;
+  if (input.unlockPrerequisiteKey !== undefined)
+    payload.unlock_prerequisite_key = input.unlockPrerequisiteKey;
+  if (input.progressiveBatchSize !== undefined)
+    payload.progressive_batch_size = input.progressiveBatchSize;
   if (input.mountTemplatePath !== undefined)
     payload.mount_template_path = input.mountTemplatePath;
   if (input.mountLayout !== undefined) payload.mount_layout = input.mountLayout;
