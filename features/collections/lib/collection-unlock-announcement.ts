@@ -30,6 +30,18 @@ export interface CollectionUnlockAnnouncement {
    * お知らせを出し、演出と重ならないようにする。0 なら比較を行わない(常に出す)。
    */
   prerequisiteAckCount: number;
+  /**
+   * 解放お知らせモーダルのカスタム表示設定(admin がカテゴリ単位で設定)。
+   * いずれも null なら現行ハードコード(画像/文言/紫基調の配色)にフォールバックする。
+   * heroImagePath は storage パス(public バケット)。URL 化はクライアントで行う。
+   */
+  heroImagePath: string | null;
+  initialBody: string | null;
+  dripBody: string | null;
+  accentColor: string | null;
+  accentHoverColor: string | null;
+  titleColor: string | null;
+  softColor: string | null;
 }
 
 /**
@@ -79,14 +91,22 @@ export function buildCollectionUnlockAnnouncements(
     const prerequisiteAckCount =
       context.prerequisiteUniqueCountByKey?.get(prerequisiteKey) ?? 0;
 
+    const category = items[0].category;
     announcements.push({
       categoryKey,
-      categoryDisplayName: items[0].category.displayNameJa,
+      categoryDisplayName: category.displayNameJa,
       unlockedCount,
       totalCount: total,
       unlockedPresets,
       prerequisiteKey,
       prerequisiteAckCount,
+      heroImagePath: category.unlockAnnouncementHeroPath,
+      initialBody: category.unlockAnnouncementInitialBody,
+      dripBody: category.unlockAnnouncementDripBody,
+      accentColor: category.unlockAnnouncementAccentColor,
+      accentHoverColor: category.unlockAnnouncementAccentHoverColor,
+      titleColor: category.unlockAnnouncementTitleColor,
+      softColor: category.unlockAnnouncementSoftColor,
     });
   }
 

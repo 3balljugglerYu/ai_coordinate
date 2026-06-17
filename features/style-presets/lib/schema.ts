@@ -67,6 +67,18 @@ export interface StylePresetCategoryRef {
    * 判定式は features/collections/lib/collection-unlock.ts を参照。
    */
   progressiveBatchSize: number | null;
+  /**
+   * 解放お知らせモーダル(PetitUnlockAnnouncer)のカスタム設定。
+   * いずれも null なら現行のハードコード(画像 /collections/petit-unlock-hero.png ・
+   * 紫基調の文言/配色)にフォールバックする。features/collections/components/UnlockModals.tsx 参照。
+   */
+  unlockAnnouncementHeroPath: string | null;
+  unlockAnnouncementInitialBody: string | null;
+  unlockAnnouncementDripBody: string | null;
+  unlockAnnouncementAccentColor: string | null;
+  unlockAnnouncementAccentHoverColor: string | null;
+  unlockAnnouncementTitleColor: string | null;
+  unlockAnnouncementSoftColor: string | null;
 }
 
 export interface StylePresetAdmin {

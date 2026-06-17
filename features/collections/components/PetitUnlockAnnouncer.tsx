@@ -18,6 +18,14 @@ import {
   UnlockDripModal,
 } from "@/features/collections/components/UnlockModals";
 
+/** storage パス(public バケット generated-images 配下) → 公開 URL。null/未設定なら null。 */
+function buildPublicGeneratedImageUrl(path: string | null): string | null {
+  if (!path) return null;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/generated-images/${path}`;
+}
+
 // クライアントでのみ true を返す SSR セーフなゲート(setState-in-effect を避けるため
 // useSyncExternalStore を使う)。サーバー/ハイドレーション中は false で何も描画しない。
 const noopSubscribe = () => () => {};
@@ -158,17 +166,30 @@ export function PetitUnlockAnnouncer({
 
   if (!visible || typeof document === "undefined") return null;
 
+  const ann = visible.announcement;
+  const colors = {
+    accent: ann.accentColor,
+    accentHover: ann.accentHoverColor,
+    title: ann.titleColor,
+    soft: ann.softColor,
+  };
+
   const node =
     visible.mode === "initial" ? (
       <InitialUnlockModal
-        title={visible.announcement.categoryDisplayName}
+        title={ann.categoryDisplayName}
         onClose={acknowledge}
+        heroImageUrl={buildPublicGeneratedImageUrl(ann.heroImagePath)}
+        body={ann.initialBody}
+        colors={colors}
       />
     ) : (
       <UnlockDripModal
-        title={visible.announcement.categoryDisplayName}
+        title={ann.categoryDisplayName}
         newlyUnlocked={visible.newlyUnlocked}
         onClose={acknowledge}
+        body={ann.dripBody}
+        colors={colors}
       />
     );
 

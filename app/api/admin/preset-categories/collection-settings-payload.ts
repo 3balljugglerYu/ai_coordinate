@@ -22,6 +22,20 @@ export interface CollectionSettingsPayload {
   unlockPrerequisiteKey?: string | null;
   /** プリセットを N 体ずつ段階解放する単位(正の整数)。null=最初から全部 */
   progressiveBatchSize?: number | null;
+  /** 解放お知らせ初回モーダルのヒーロー画像パス(public バケット)。null=固定画像にフォールバック */
+  unlockAnnouncementHeroPath?: string | null;
+  /** 解放お知らせ初回モーダルの本文。null=現行ハードコード文 */
+  unlockAnnouncementInitialBody?: string | null;
+  /** 解放お知らせ段階解放モーダルの本文。null=現行ハードコード文 */
+  unlockAnnouncementDripBody?: string | null;
+  /** 解放お知らせのボタン/アクセント色(#RRGGBB)。null=#C670FF */
+  unlockAnnouncementAccentColor?: string | null;
+  /** 解放お知らせのボタン hover 色(#RRGGBB)。null=#B14DF0 */
+  unlockAnnouncementAccentHoverColor?: string | null;
+  /** 解放お知らせの見出し文字色(#RRGGBB)。null=#8B3DC9 */
+  unlockAnnouncementTitleColor?: string | null;
+  /** 解放お知らせの NEW ピル/淡い面の背景色(#RRGGBB)。null=#F3E0FF */
+  unlockAnnouncementSoftColor?: string | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   mountSlots?: NormalizedSlotRect[] | null;
@@ -394,6 +408,126 @@ export function parseCollectionSettings(
       };
     } else {
       payload.progressModalBadgeBgColor = v;
+    }
+  }
+
+  // ===== 解放お知らせモーダル(PetitUnlockAnnouncer)のカスタム設定 =====
+  // すべて任意・独立。NULL なら現行ハードコード(画像/文言/紫基調の配色)にフォールバック。
+  const UNLOCK_BODY_MAX_LENGTH = 200;
+
+  if (body.unlock_announcement_hero_path !== undefined) {
+    const v = body.unlock_announcement_hero_path;
+    if (v === null) {
+      payload.unlockAnnouncementHeroPath = null;
+    } else if (typeof v !== "string" || v.trim().length === 0) {
+      return {
+        ok: false,
+        error:
+          "unlock_announcement_hero_path must be a non-empty string or null",
+      };
+    } else {
+      payload.unlockAnnouncementHeroPath = v.trim();
+    }
+  }
+
+  if (body.unlock_announcement_initial_body !== undefined) {
+    const v = body.unlock_announcement_initial_body;
+    if (v === null) {
+      payload.unlockAnnouncementInitialBody = null;
+    } else if (typeof v !== "string") {
+      return {
+        ok: false,
+        error: "unlock_announcement_initial_body must be a string or null",
+      };
+    } else {
+      const trimmed = v.trim();
+      if (trimmed.length > UNLOCK_BODY_MAX_LENGTH) {
+        return {
+          ok: false,
+          error: `unlock_announcement_initial_body must be <= ${UNLOCK_BODY_MAX_LENGTH} chars`,
+        };
+      }
+      payload.unlockAnnouncementInitialBody =
+        trimmed.length > 0 ? trimmed : null;
+    }
+  }
+
+  if (body.unlock_announcement_drip_body !== undefined) {
+    const v = body.unlock_announcement_drip_body;
+    if (v === null) {
+      payload.unlockAnnouncementDripBody = null;
+    } else if (typeof v !== "string") {
+      return {
+        ok: false,
+        error: "unlock_announcement_drip_body must be a string or null",
+      };
+    } else {
+      const trimmed = v.trim();
+      if (trimmed.length > UNLOCK_BODY_MAX_LENGTH) {
+        return {
+          ok: false,
+          error: `unlock_announcement_drip_body must be <= ${UNLOCK_BODY_MAX_LENGTH} chars`,
+        };
+      }
+      payload.unlockAnnouncementDripBody = trimmed.length > 0 ? trimmed : null;
+    }
+  }
+
+  // 色 4 種: #RRGGBB or null。HEX_COLOR_RE(進捗モーダル配色と同一)で検証。
+  if (body.unlock_announcement_accent_color !== undefined) {
+    const v = body.unlock_announcement_accent_color;
+    if (v === null) {
+      payload.unlockAnnouncementAccentColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error: "unlock_announcement_accent_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.unlockAnnouncementAccentColor = v;
+    }
+  }
+
+  if (body.unlock_announcement_accent_hover_color !== undefined) {
+    const v = body.unlock_announcement_accent_hover_color;
+    if (v === null) {
+      payload.unlockAnnouncementAccentHoverColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error:
+          "unlock_announcement_accent_hover_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.unlockAnnouncementAccentHoverColor = v;
+    }
+  }
+
+  if (body.unlock_announcement_title_color !== undefined) {
+    const v = body.unlock_announcement_title_color;
+    if (v === null) {
+      payload.unlockAnnouncementTitleColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error: "unlock_announcement_title_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.unlockAnnouncementTitleColor = v;
+    }
+  }
+
+  if (body.unlock_announcement_soft_color !== undefined) {
+    const v = body.unlock_announcement_soft_color;
+    if (v === null) {
+      payload.unlockAnnouncementSoftColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error: "unlock_announcement_soft_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.unlockAnnouncementSoftColor = v;
     }
   }
 

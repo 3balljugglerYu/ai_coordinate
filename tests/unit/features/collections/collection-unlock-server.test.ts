@@ -61,6 +61,13 @@ function categoryRef(
     isActive: true,
     unlockPrerequisiteKey,
     progressiveBatchSize,
+    unlockAnnouncementHeroPath: null,
+    unlockAnnouncementInitialBody: null,
+    unlockAnnouncementDripBody: null,
+    unlockAnnouncementAccentColor: null,
+    unlockAnnouncementAccentHoverColor: null,
+    unlockAnnouncementTitleColor: null,
+    unlockAnnouncementSoftColor: null,
   };
 }
 
