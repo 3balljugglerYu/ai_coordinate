@@ -52,7 +52,55 @@ export async function getCollectionProgressForUser(
   const rows = (data ?? []) as CollectionProgressRow[];
   const withCharacter = await attachCharacterImages(rows.map(mapProgressRow));
   const withCollected = await attachCollectedImages(withCharacter, userId);
-  return attachCompletionIds(withCollected, userId);
+  const withCompletion = await attachCompletionIds(withCollected, userId);
+  // 解放ゲート: 前提カテゴリ未完走のゲート付きカテゴリ(例: ぷち神)はここで除外する。
+  return filterLockedCategories(withCompletion, supabase);
+}
+
+/**
+ * 解放ゲート(unlock_prerequisite_key)をマイページの進捗一覧にも適用する。
+ *
+ * `/style`・ホーム(applyCollectionUnlockGating)と同じポリシーで、
+ * `unlock_prerequisite_key` が設定されたカテゴリは「前提カテゴリを完走(= 台紙 mount を
+ * 作成し is_completed=true)」したときだけ表示する。前提未完走なら一覧から除外する。
+ * admin プレビュー(admin_only の取り込み)とは独立の判定であり、admin も前提完走が必要。
+ *
+ * 前提カテゴリの完走状態は、同じ進捗配列内の該当行(神コレ等。public/series なので必ず含まれる)
+ * の isCompleted から判定する。ゲート情報の取得に失敗したときは回帰を避けるため全件返す。
+ */
+async function filterLockedCategories(
+  items: CollectionProgress[],
+  supabase: SupabaseClient,
+): Promise<CollectionProgress[]> {
+  if (items.length === 0) return items;
+  const { data, error } = await supabase
+    .from("preset_categories")
+    .select("key, unlock_prerequisite_key")
+    .in(
+      "key",
+      items.map((i) => i.categoryKey),
+    );
+  if (error) {
+    // ゲート判定不能。over-hiding を避け、従来挙動(全件)にフォールバックする。
+    console.error("[collection-progress] unlock gate query failed:", error);
+    return items;
+  }
+  const prerequisiteByKey = new Map<string, string | null>();
+  for (const row of data ?? []) {
+    prerequisiteByKey.set(
+      row.key as string,
+      (row.unlock_prerequisite_key as string | null) ?? null,
+    );
+  }
+  // 完走(台紙作成 = is_completed)済みカテゴリの key 集合。
+  const completedKeys = new Set(
+    items.filter((i) => i.isCompleted).map((i) => i.categoryKey),
+  );
+  return items.filter((item) => {
+    const prerequisite = prerequisiteByKey.get(item.categoryKey) ?? null;
+    if (!prerequisite) return true; // ゲートなし → 常に表示
+    return completedKeys.has(prerequisite); // 前提が完走済みのときだけ表示
+  });
 }
 
 function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
