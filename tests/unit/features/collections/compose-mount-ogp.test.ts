@@ -2,6 +2,8 @@ import sharp from "sharp";
 
 import {
   DEFAULT_OGP_MOUNT_PLACEMENT,
+  DEFAULT_OGP_TEMPLATE_PATH,
+  composeDefaultOgp,
   composeMountOgpFromTemplate,
   ogpPathFromMountPath,
   parseOgpMountPlacement,
@@ -49,6 +51,29 @@ describe("parseOgpMountPlacement", () => {
         rotate: Number.NaN,
       }),
     ).toEqual(DEFAULT_OGP_MOUNT_PLACEMENT);
+  });
+});
+
+describe("composeDefaultOgp", () => {
+  test("デフォルト画像を 1200x630 の PNG にして返す(カード合成なし)", async () => {
+    // 1731x909 のデフォルト画像を想定
+    const defaultPng = await solidPng(1731, 909, [120, 200, 160]);
+    const out = await composeDefaultOgp(defaultPng);
+    const meta = await sharp(out).metadata();
+    expect(meta.format).toBe("png");
+    expect(meta.width).toBe(1200);
+    expect(meta.height).toBe(630);
+    // 元画像の色(カード等を重ねていない)がそのまま出る
+    const { data } = await sharp(out)
+      .extract({ left: 600, top: 315, width: 4, height: 4 })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    expect(data[1]).toBeGreaterThan(150); // G が支配的(元画像の色)
+  });
+
+  test("デフォルトOGPテンプレのパスは _default 配下", () => {
+    expect(DEFAULT_OGP_TEMPLATE_PATH).toBe("_default/ogp-default.png");
   });
 });
 
