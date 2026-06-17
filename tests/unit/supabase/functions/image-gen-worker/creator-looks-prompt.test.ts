@@ -46,6 +46,38 @@ describe("composeCreatorLooksPrompt", () => {
     // Constraints セクションも残る
     expect(result).toContain("Constraints:");
   });
+
+  const CAMERA = "TOP PRIORITY RULE — image_1 is an OUTFIT-ONLY reference: ...";
+
+  test("cameraDirective を渡すと(背景ON)冒頭に前置され hidden_prompt が続く", () => {
+    const result = composeCreatorLooksPrompt(SAMPLE_HIDDEN_PROMPT, true, CAMERA);
+    expect(result.startsWith(CAMERA)).toBe(true);
+    expect(result).toContain(SAMPLE_HIDDEN_PROMPT);
+    expect(result).toBe(`${CAMERA}\n\n${SAMPLE_HIDDEN_PROMPT}`);
+  });
+
+  test("cameraDirective を渡すと(背景OFF)冒頭に前置され、背景除去+keep も両立", () => {
+    const result = composeCreatorLooksPrompt(SAMPLE_HIDDEN_PROMPT, false, CAMERA);
+    expect(result.startsWith(CAMERA)).toBe(true);
+    // 背景除去 + keep 指示は引き続き効く
+    expect(result).not.toContain(
+      "Background: spring cherry blossom park with soft sunlight",
+    );
+    expect(result).toContain(
+      "Background: keep the original background of `image_0.png` unchanged.",
+    );
+    expect(result).toContain("Styling Direction:");
+  });
+
+  test("cameraDirective が空文字なら前置しない(従来挙動)", () => {
+    expect(composeCreatorLooksPrompt(SAMPLE_HIDDEN_PROMPT, true, "")).toBe(
+      SAMPLE_HIDDEN_PROMPT,
+    );
+    // デフォルト引数(未指定)も同じ
+    expect(composeCreatorLooksPrompt(SAMPLE_HIDDEN_PROMPT, true)).toBe(
+      SAMPLE_HIDDEN_PROMPT,
+    );
+  });
 });
 
 describe("stripBackgroundSection", () => {

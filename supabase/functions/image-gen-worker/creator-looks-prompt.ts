@@ -23,21 +23,24 @@ const KEEP_BACKGROUND_DIRECTIVE = "Background: keep the original background of `
  *
  * @param hiddenPrompt VLM 抽出済みの構造化プロンプト
  * @param overrideBackground true なら Background セクション含む、false なら除去 + keep 指示
+ * @param cameraDirective 生成プロンプト管理(creator_looks.camera_directive)で編集可能な、
+ *   image_1 を「衣装専用参照」に限定しカメラ/構図を image_0 に固定する最優先ルール。
+ *   空文字なら付与しない(フォールバック)。背景 ON/OFF どちらでも冒頭に前置する。
  */
 export function composeCreatorLooksPrompt(
   hiddenPrompt: string,
   overrideBackground: boolean,
+  cameraDirective = "",
 ): string {
-  if (overrideBackground) {
-    return hiddenPrompt;
-  }
+  const body = overrideBackground
+    ? hiddenPrompt
+    : // Background セクションを除去 + 「元背景を維持」指示を末尾に追加
+      // (= 既存 Inspire の override_background=false 相当を gpt-image-2 に伝える)
+      `${stripBackgroundSection(hiddenPrompt)}\n\n${KEEP_BACKGROUND_DIRECTIVE}`;
 
-  // Background セクションを除去
-  const withoutBackground = stripBackgroundSection(hiddenPrompt);
-
-  // 末尾に「元背景を維持」指示を追加
-  // (= 既存 Inspire の override_background=false 相当を gpt-image-2 に伝える)
-  return `${withoutBackground}\n\n${KEEP_BACKGROUND_DIRECTIVE}`;
+  // カメラ/構図固定の最優先ルールを冒頭に前置する(実機テストで冒頭配置が最も効いた)。
+  const head = cameraDirective.trim();
+  return head ? `${head}\n\n${body}` : body;
 }
 
 /**
