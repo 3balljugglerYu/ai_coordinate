@@ -1395,7 +1395,7 @@ export const enMessages = {
     guestLoginCtaDescription: "Try ChatGPT Image 2.0 free, once a day. Log in (free sign-up) after generating to save your image.",
     guestLoginCtaAction: "Sign in / Sign up",
     guestCategoryLoginAction: "Log in to generate!",
-    styleDripLockedLabel: "Coming soon",
+    styleDripLockedLabel: "Generate to unlock",
     guestCategoryLoginHint: "Log in to generate with every style!",
     generateButton: "Start Styling",
     generatingButton: "Generating...",

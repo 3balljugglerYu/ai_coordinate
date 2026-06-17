@@ -1396,7 +1396,7 @@ export const arMessages = {
     guestLoginCtaDescription: "جرّب ChatGPT Image 2.0 مجانًا مرة واحدة يوميًا. سجّل الدخول (تسجيل مجاني) بعد الإنشاء لحفظ صورتك.",
     guestLoginCtaAction: "تسجيل الدخول / إنشاء حساب",
     guestCategoryLoginAction: "سجّل الدخول للإنشاء!",
-    styleDripLockedLabel: "قريبًا",
+    styleDripLockedLabel: "أنشئ لإلغاء القفل",
     guestCategoryLoginHint: "سجّل الدخول للإنشاء بكل الأنماط!",
     generateButton: "بدء التنسيق",
     generatingButton: "جارٍ التوليد...",

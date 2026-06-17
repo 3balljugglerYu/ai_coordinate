@@ -1399,7 +1399,7 @@ export const frMessages = {
     guestLoginCtaDescription: "Essayez ChatGPT Image 2.0 gratuitement, une fois par jour. Connectez-vous (inscription gratuite) après la génération pour enregistrer votre image.",
     guestLoginCtaAction: "Se connecter / S'inscrire",
     guestCategoryLoginAction: "Connectez-vous pour générer !",
-    styleDripLockedLabel: "Bientôt disponible",
+    styleDripLockedLabel: "Générer pour débloquer",
     guestCategoryLoginHint: "Connectez-vous pour générer avec tous les styles !",
     generateButton: "Démarrer le styling",
     generatingButton: "Génération...",
