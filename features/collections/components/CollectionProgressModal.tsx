@@ -626,6 +626,7 @@ export function CollectionProgressModal({
           </div>
         ) : layout ? (
           /* ===== 進捗: 土台PNG + リング + シール重畳 ===== */
+          <>
           <div
             className="relative w-full overflow-hidden rounded-[1.4rem]"
             style={{ aspectRatio: `${layout.frameAspect}` }}
@@ -850,48 +851,107 @@ export function CollectionProgressModal({
                 達成後は DB台座/ハードコード台座とも、コード側で状態別テキスト(カード作成/更新)を
                   描画して土台PNGのボタンを覆い隠す。色は admin 設定(buttonColor/buttonTextColor)が
                   あればそれ、無ければ従来のオレンジ地/白文字。 */}
-            {toCount >= threshold && onCreateMount ? (
-              <button
-                type="button"
-                onClick={() => onCreateMount(celebration)}
-                aria-label={cIsCompleted ? "カードを更新する" : "カードを作成する"}
-                className={
-                  "absolute flex items-center justify-center rounded-full px-4 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
-                  // admin の塗り色が無ければ従来のオレンジグラデーション+影を使う。
-                  (layout.buttonColor
-                    ? ""
-                    : " bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_4px_0_rgba(234,88,12,0.45)]")
-                }
-                style={{
-                  left: `${buttonBox.left}%`,
-                  top: `${buttonBox.top}%`,
-                  width: `${buttonBox.width}%`,
-                  height: `${buttonBox.height}%`,
-                  color: layout.buttonTextColor ?? "#ffffff",
-                  fontFamily:
-                    "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
-                  ...(layout.buttonColor
-                    ? { backgroundColor: layout.buttonColor }
-                    : {}),
-                }}
-              >
-                {cIsCompleted ? "カードを更新する →" : "カードを作成する →"}
-              </button>
-            ) : (
-              <Link
-                href="/style"
-                aria-label="シールを生成する"
-                onClick={onClose}
-                className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
-                style={{
-                  left: `${buttonBox.left}%`,
-                  top: `${buttonBox.top}%`,
-                  width: `${buttonBox.width}%`,
-                  height: `${buttonBox.height}%`,
-                }}
-              />
-            )}
+            {/* ボタン領域(progress_modal_button)がある台座だけ、フレーム上に重ねて描画する。
+                未設定(buttonBox サイズ0)のときはここでは出さず、後段でフレーム下に通常配置する。 */}
+            {buttonBox.width > 0 ? (
+              toCount >= threshold && onCreateMount ? (
+                <button
+                  type="button"
+                  onClick={() => onCreateMount(celebration)}
+                  aria-label={
+                    cIsCompleted ? "カードを更新する" : "カードを作成する"
+                  }
+                  className={
+                    "absolute flex items-center justify-center rounded-full px-4 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
+                    (layout.buttonColor
+                      ? ""
+                      : " bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_4px_0_rgba(234,88,12,0.45)]")
+                  }
+                  style={{
+                    left: `${buttonBox.left}%`,
+                    top: `${buttonBox.top}%`,
+                    width: `${buttonBox.width}%`,
+                    height: `${buttonBox.height}%`,
+                    color: layout.buttonTextColor ?? "#ffffff",
+                    fontFamily:
+                      "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                    ...(layout.buttonColor
+                      ? { backgroundColor: layout.buttonColor }
+                      : {}),
+                  }}
+                >
+                  {cIsCompleted ? "カードを更新する →" : "カードを作成する →"}
+                </button>
+              ) : (
+                <Link
+                  href="/style"
+                  aria-label="シールを生成する"
+                  onClick={onClose}
+                  className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                  style={{
+                    left: `${buttonBox.left}%`,
+                    top: `${buttonBox.top}%`,
+                    width: `${buttonBox.width}%`,
+                    height: `${buttonBox.height}%`,
+                  }}
+                />
+              )
+            ) : null}
           </div>
+          {/* ボタン領域(progress_modal_button)未設定の DB 駆動台座は、フレーム内に
+              ボタンスペースが無いため CTA をフレーム下に通常配置で表示する。 */}
+          {buttonBox.width === 0 ? (
+            <div className="mt-3 flex justify-center">
+              {toCount >= threshold && onCreateMount ? (
+                <button
+                  type="button"
+                  onClick={() => onCreateMount(celebration)}
+                  aria-label={
+                    cIsCompleted ? "カードを更新する" : "カードを作成する"
+                  }
+                  className={
+                    "flex items-center justify-center rounded-full px-6 py-3 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
+                    (layout.buttonColor
+                      ? ""
+                      : " bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_4px_0_rgba(234,88,12,0.45)]")
+                  }
+                  style={{
+                    color: layout.buttonTextColor ?? "#ffffff",
+                    fontFamily:
+                      "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                    ...(layout.buttonColor
+                      ? { backgroundColor: layout.buttonColor }
+                      : {}),
+                  }}
+                >
+                  {cIsCompleted ? "カードを更新する →" : "カードを作成する →"}
+                </button>
+              ) : (
+                <Link
+                  href="/style"
+                  aria-label="シールを生成する"
+                  onClick={onClose}
+                  className={
+                    "flex items-center justify-center rounded-full px-6 py-3 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
+                    (layout.buttonColor
+                      ? ""
+                      : " bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_4px_0_rgba(234,88,12,0.45)]")
+                  }
+                  style={{
+                    color: layout.buttonTextColor ?? "#ffffff",
+                    fontFamily:
+                      "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                    ...(layout.buttonColor
+                      ? { backgroundColor: layout.buttonColor }
+                      : {}),
+                  }}
+                >
+                  シールを生成する
+                </Link>
+              )}
+            </div>
+          ) : null}
+          </>
         ) : (
           /* ===== フォールバック(土台画像未登録シリーズ) ===== */
           <div className="space-y-4 text-center">

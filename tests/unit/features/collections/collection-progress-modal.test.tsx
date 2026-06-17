@@ -539,6 +539,23 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
     expect(btn.getAttribute("style")).toContain("color: rgb(255, 255, 255)");
   });
 
+  test("ボタン領域(progress_modal_button)未設定でも CTA はフレーム下に表示される", () => {
+    const { progressModalButton, ...noButtonArea } = createState;
+    void progressModalButton; // 未使用(意図的に除外)
+    render(
+      <CollectionProgressModal
+        open
+        celebration={noButtonArea as CollectionCelebration}
+        onClose={jest.fn()}
+        onCreateMount={jest.fn()}
+      />,
+    );
+    // buttonRect が無くても(buttonBox=0)、フレーム下に通常配置で CTA が出る
+    expect(
+      screen.getByRole("button", { name: "カードを作成する" }),
+    ).toHaveTextContent("カードを作成する →");
+  });
+
   test("達成・カード作成済み(更新可): CTAは「カードを更新する →」", () => {
     render(
       <CollectionProgressModal
