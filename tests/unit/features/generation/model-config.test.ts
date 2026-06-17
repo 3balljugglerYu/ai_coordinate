@@ -1,5 +1,6 @@
 import {
   getPercoinCost,
+  creatorLooksCost,
   GUEST_ALLOWED_MODELS,
   isCanonicalGuestAllowedModel,
   isModelAvailableForGeneration,
@@ -13,6 +14,24 @@ import {
 import { loadConfigWithGemini } from "@/tests/helpers/load-config-with-gemini";
 
 describe("model-config / model identification helpers", () => {
+  describe("creatorLooksCost", () => {
+    it("衣装のみ/背景のみ=モデルコスト、衣装＋背景=ceil(×2×0.9)", () => {
+      // gemini-3.1-flash-image-preview-512 = 10
+      expect(creatorLooksCost("gemini-3.1-flash-image-preview-512", "outfit_only")).toBe(10);
+      expect(creatorLooksCost("gemini-3.1-flash-image-preview-512", "background_only")).toBe(10);
+      expect(
+        creatorLooksCost("gemini-3.1-flash-image-preview-512", "outfit_and_background"),
+      ).toBe(18); // ceil(10*2*0.9)=18
+    });
+
+    it("1024モデル(20)では 20/36/20 にスケール", () => {
+      expect(creatorLooksCost("gemini-3.1-flash-image-preview-1024", "outfit_only")).toBe(20);
+      expect(
+        creatorLooksCost("gemini-3.1-flash-image-preview-1024", "outfit_and_background"),
+      ).toBe(36); // ceil(20*2*0.9)=36
+    });
+  });
+
   describe("getPercoinCost", () => {
     it("returns the GPT Image 2 percoin matrix", () => {
       expect(getPercoinCost("gpt-image-2-low-1k")).toBe(10);

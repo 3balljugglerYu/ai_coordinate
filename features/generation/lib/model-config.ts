@@ -10,6 +10,7 @@ import {
   type GeminiModel,
 } from "../types";
 import { GPT_IMAGE_2_PERCOIN_COSTS } from "@/shared/generation/openai-image-model";
+import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 
 export { DEFAULT_GENERATION_MODEL };
 
@@ -171,6 +172,26 @@ export function resolveEffectiveModelForAuthState(
 export function getPercoinCost(model: string | null | undefined): number {
   const normalized = normalizeModelName(model);
   return MODEL_PERCOIN_COSTS[normalized as keyof typeof MODEL_PERCOIN_COSTS] ?? 10;
+}
+
+/** Creator Looks の2段階(衣装＋背景)生成の割引率(1回ぶん×2に対して 10% 引き)。 */
+export const CREATOR_LOOKS_TWO_STAGE_DISCOUNT = 0.9;
+
+/**
+ * Creator Looks 生成のモード別ペルコイン消費量。
+ * - 衣装のみ / 背景のみ(1回): モデルコスト
+ * - 衣装＋背景(2段階): ceil(モデルコスト × 2 × 0.9)
+ * 残高チェック(API)と実消費(worker)で必ずこの関数を共用すること(不整合防止)。
+ */
+export function creatorLooksCost(
+  model: string | null | undefined,
+  mode: CreatorLooksMode,
+): number {
+  const base = getPercoinCost(model);
+  if (mode === "outfit_and_background") {
+    return Math.ceil(base * 2 * CREATOR_LOOKS_TWO_STAGE_DISCOUNT);
+  }
+  return base;
 }
 
 /**
