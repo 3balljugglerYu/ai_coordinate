@@ -284,6 +284,48 @@ describe("createPresetCategory", () => {
     expect(insertedArg.show_user_prompt_input).toBe(true);
   });
 
+  test("createPresetCategory: 解放お知らせ設定(画像/本文/色)を insert にそのまま反映", async () => {
+    const fromBuilder = buildMutationChain({ data: SAMPLE_ROW, error: null });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await createPresetCategory({
+      key: "chibi",
+      displayNameJa: "ちびキャラ",
+      displayNameEn: "Chibi",
+      unlockAnnouncementHeroPath: "heroes/petit/a.png",
+      unlockAnnouncementInitialBody: "初回文",
+      unlockAnnouncementDripBody: "段階文",
+      unlockAnnouncementAccentColor: "#C670FF",
+      unlockAnnouncementAccentHoverColor: "#B14DF0",
+      unlockAnnouncementTitleColor: "#8B3DC9",
+      unlockAnnouncementSoftColor: "#F3E0FF",
+    });
+
+    const insertedArg = (fromBuilder.insert as jest.Mock).mock.calls[0]?.[0];
+    expect(insertedArg.unlock_announcement_hero_path).toBe("heroes/petit/a.png");
+    expect(insertedArg.unlock_announcement_initial_body).toBe("初回文");
+    expect(insertedArg.unlock_announcement_drip_body).toBe("段階文");
+    expect(insertedArg.unlock_announcement_accent_color).toBe("#C670FF");
+    expect(insertedArg.unlock_announcement_accent_hover_color).toBe("#B14DF0");
+    expect(insertedArg.unlock_announcement_title_color).toBe("#8B3DC9");
+    expect(insertedArg.unlock_announcement_soft_color).toBe("#F3E0FF");
+  });
+
+  test("createPresetCategory: 解放お知らせ設定の省略時は insert で全て null", async () => {
+    const fromBuilder = buildMutationChain({ data: SAMPLE_ROW, error: null });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await createPresetCategory({
+      key: "chibi",
+      displayNameJa: "ちびキャラ",
+      displayNameEn: "Chibi",
+    });
+
+    const insertedArg = (fromBuilder.insert as jest.Mock).mock.calls[0]?.[0];
+    expect(insertedArg.unlock_announcement_hero_path).toBeNull();
+    expect(insertedArg.unlock_announcement_accent_color).toBeNull();
+  });
+
   test("DB error なら例外", async () => {
     const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
     const fromBuilder = buildMutationChain({
@@ -385,6 +427,41 @@ describe("updatePresetCategory", () => {
 
     const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
     expect(updatedArg.show_user_prompt_input).toBeUndefined();
+  });
+
+  test("updatePresetCategory: 解放お知らせ設定を含めると update payload に乗る(null も明示反映)", async () => {
+    const fromBuilder = buildMutationChain({ data: SAMPLE_ROW, error: null });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await updatePresetCategory(SAMPLE_ROW.id, {
+      unlockAnnouncementHeroPath: "heroes/petit/b.png",
+      unlockAnnouncementInitialBody: "更新初回文",
+      unlockAnnouncementDripBody: null,
+      unlockAnnouncementAccentColor: "#111111",
+      unlockAnnouncementAccentHoverColor: "#222222",
+      unlockAnnouncementTitleColor: "#333333",
+      unlockAnnouncementSoftColor: "#444444",
+    });
+
+    const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
+    expect(updatedArg.unlock_announcement_hero_path).toBe("heroes/petit/b.png");
+    expect(updatedArg.unlock_announcement_initial_body).toBe("更新初回文");
+    expect(updatedArg.unlock_announcement_drip_body).toBeNull();
+    expect(updatedArg.unlock_announcement_accent_color).toBe("#111111");
+    expect(updatedArg.unlock_announcement_accent_hover_color).toBe("#222222");
+    expect(updatedArg.unlock_announcement_title_color).toBe("#333333");
+    expect(updatedArg.unlock_announcement_soft_color).toBe("#444444");
+  });
+
+  test("updatePresetCategory: 解放お知らせ設定を省略すると update payload に含まれない", async () => {
+    const fromBuilder = buildMutationChain({ data: SAMPLE_ROW, error: null });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await updatePresetCategory(SAMPLE_ROW.id, { badgeColor: "#abcdef" });
+
+    const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
+    expect(updatedArg.unlock_announcement_hero_path).toBeUndefined();
+    expect(updatedArg.unlock_announcement_accent_color).toBeUndefined();
   });
 
   test("getPresetCategoryById: 取得結果の showUserPromptInput マッパー (true/null fallback)", async () => {
