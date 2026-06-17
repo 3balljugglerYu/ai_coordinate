@@ -1792,6 +1792,16 @@ export const arMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "ما الذي تريد إنشاءه",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "الملابس فقط",
+    modeOutfitOnlyDescription: "تغيير الملابس فقط مع إبقاء الخلفية كما هي.",
+    modeOutfitAndBackgroundLabel: "الملابس + الخلفية",
+    modeOutfitAndBackgroundDescription:
+      "تغيير الملابس والخلفية معًا إلى عالم صانع المحتوى. يحافظ الإنشاء على مرحلتين على زاوية الكاميرا مع إظهار المشهد بوضوح.",
+    modeBackgroundOnlyLabel: "الخلفية فقط",
+    modeBackgroundOnlyDescription:
+      "تغيير الخلفية فقط إلى عالم صانع المحتوى مع إبقاء الملابس كما هي.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "نموذج الإنشاء",

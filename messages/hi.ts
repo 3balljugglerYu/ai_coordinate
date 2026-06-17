@@ -1793,6 +1793,17 @@ export const hiMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "क्या जेनरेट करना है",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "केवल आउटफिट",
+    modeOutfitOnlyDescription:
+      "केवल आउटफिट बदलें। बैकग्राउंड वैसा ही रहता है।",
+    modeOutfitAndBackgroundLabel: "आउटफिट + बैकग्राउंड",
+    modeOutfitAndBackgroundDescription:
+      "आउटफिट और बैकग्राउंड दोनों को क्रिएटर की दुनिया के अनुसार बदलें। दो-चरण जेनरेशन आपके कैमरा एंगल को बनाए रखते हुए सीन को साफ-सुथरे ढंग से रेंडर करता है।",
+    modeBackgroundOnlyLabel: "केवल बैकग्राउंड",
+    modeBackgroundOnlyDescription:
+      "केवल बैकग्राउंड को क्रिएटर की दुनिया के अनुसार बदलें। आउटफिट वैसा ही रहता है।",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "जनरेशन मॉडल",

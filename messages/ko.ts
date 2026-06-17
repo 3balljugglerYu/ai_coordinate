@@ -1791,6 +1791,16 @@ export const koMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "무엇을 생성할까요",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "의상만",
+    modeOutfitOnlyDescription: "의상만 변경합니다. 배경은 그대로 유지됩니다.",
+    modeOutfitAndBackgroundLabel: "의상 + 배경",
+    modeOutfitAndBackgroundDescription:
+      "의상과 배경을 모두 크리에이터의 세계로 변경합니다. 2단계 생성으로 카메라 앵글을 유지하면서 장면을 깔끔하게 렌더링합니다.",
+    modeBackgroundOnlyLabel: "배경만",
+    modeBackgroundOnlyDescription:
+      "배경만 크리에이터의 세계로 변경합니다. 의상은 그대로 유지됩니다.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "생성 모델",

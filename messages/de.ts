@@ -1795,6 +1795,17 @@ export const deMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "Was generiert werden soll",
+    modeCost: "{cost} Percoin",
+    modeOutfitOnlyLabel: "Nur Outfit",
+    modeOutfitOnlyDescription:
+      "Ändert nur das Outfit. Der Hintergrund bleibt unverändert.",
+    modeOutfitAndBackgroundLabel: "Outfit + Hintergrund",
+    modeOutfitAndBackgroundDescription:
+      "Ändert Outfit und Hintergrund passend zur Welt des Creators. Die zweistufige Generierung behält deinen Kamerawinkel bei und stellt die Szene sauber dar.",
+    modeBackgroundOnlyLabel: "Nur Hintergrund",
+    modeBackgroundOnlyDescription:
+      "Ändert nur den Hintergrund passend zur Welt des Creators. Das Outfit bleibt unverändert.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "Generierungsmodell",

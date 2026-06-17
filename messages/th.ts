@@ -1791,6 +1791,16 @@ export const thMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "ต้องการสร้างอะไร",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "เฉพาะชุด",
+    modeOutfitOnlyDescription: "เปลี่ยนเฉพาะชุด พื้นหลังคงเดิม",
+    modeOutfitAndBackgroundLabel: "ชุด + พื้นหลัง",
+    modeOutfitAndBackgroundDescription:
+      "เปลี่ยนทั้งชุดและพื้นหลังให้เป็นโลกของครีเอเตอร์ การสร้างแบบสองขั้นตอนช่วยรักษามุมกล้องของคุณไว้พร้อมเรนเดอร์ฉากได้อย่างคมชัด",
+    modeBackgroundOnlyLabel: "เฉพาะพื้นหลัง",
+    modeBackgroundOnlyDescription:
+      "เปลี่ยนเฉพาะพื้นหลังให้เป็นโลกของครีเอเตอร์ ชุดคงเดิม",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "โมเดลการสร้าง",

@@ -1794,6 +1794,17 @@ export const idMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "Apa yang ingin dibuat",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "Hanya outfit",
+    modeOutfitOnlyDescription:
+      "Ubah hanya outfit. Latar belakang tetap seperti semula.",
+    modeOutfitAndBackgroundLabel: "Outfit + latar belakang",
+    modeOutfitAndBackgroundDescription:
+      "Ubah outfit dan latar belakang sekaligus ke dunia kreator. Pembuatan dua tahap mempertahankan sudut kamera Anda sambil merender adegan dengan bersih.",
+    modeBackgroundOnlyLabel: "Hanya latar belakang",
+    modeBackgroundOnlyDescription:
+      "Ubah hanya latar belakang ke dunia kreator. Outfit tetap seperti semula.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "Model generasi",

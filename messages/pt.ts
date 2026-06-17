@@ -1795,6 +1795,17 @@ export const ptMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "O que gerar",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "Apenas o look",
+    modeOutfitOnlyDescription:
+      "Altera apenas o look. O fundo permanece como está.",
+    modeOutfitAndBackgroundLabel: "Look + fundo",
+    modeOutfitAndBackgroundDescription:
+      "Altera o look e o fundo para o mundo do criador. A geração em duas etapas mantém o ângulo da câmera enquanto renderiza a cena com nitidez.",
+    modeBackgroundOnlyLabel: "Apenas o fundo",
+    modeBackgroundOnlyDescription:
+      "Altera apenas o fundo para o mundo do criador. O look permanece como está.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "Modelo de geração",

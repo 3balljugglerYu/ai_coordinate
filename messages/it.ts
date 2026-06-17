@@ -1795,6 +1795,17 @@ export const itMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "Cosa generare",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "Solo outfit",
+    modeOutfitOnlyDescription:
+      "Cambia solo l'outfit. Lo sfondo resta invariato.",
+    modeOutfitAndBackgroundLabel: "Outfit + sfondo",
+    modeOutfitAndBackgroundDescription:
+      "Cambia sia l'outfit sia lo sfondo nel mondo del creator. La generazione in due fasi mantiene l'angolazione della fotocamera rendendo la scena in modo nitido.",
+    modeBackgroundOnlyLabel: "Solo sfondo",
+    modeBackgroundOnlyDescription:
+      "Cambia solo lo sfondo nel mondo del creator. L'outfit resta invariato.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "Modello di generazione",
