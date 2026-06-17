@@ -1395,7 +1395,7 @@ export const thMessages = {
     guestLoginCtaDescription: "ทดลองใช้ ChatGPT Image 2.0 ฟรีวันละ 1 ครั้ง เข้าสู่ระบบ (สมัครฟรี) หลังสร้างเพื่อบันทึกรูปของคุณ",
     guestLoginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
     guestCategoryLoginAction: "เข้าสู่ระบบเพื่อสร้าง!",
-    styleDripLockedLabel: "เร็ว ๆ นี้",
+    styleDripLockedLabel: "สร้างเพื่อปลดล็อก",
     guestCategoryLoginHint: "เข้าสู่ระบบเพื่อสร้างด้วยทุกสไตล์!",
     generateButton: "เริ่มจัดสไตล์",
     generatingButton: "กำลังสร้าง...",

@@ -1396,7 +1396,7 @@ export const viMessages = {
     guestLoginCtaDescription: "Dùng thử ChatGPT Image 2.0 miễn phí, mỗi ngày 1 lần. Đăng nhập (đăng ký miễn phí) sau khi tạo để lưu hình của bạn.",
     guestLoginCtaAction: "Đăng nhập / Đăng ký",
     guestCategoryLoginAction: "Đăng nhập để tạo!",
-    styleDripLockedLabel: "Sắp ra mắt",
+    styleDripLockedLabel: "Tạo để mở khóa",
     guestCategoryLoginHint: "Đăng nhập để tạo với mọi phong cách!",
     generateButton: "Bắt đầu styling",
     generatingButton: "Đang tạo...",
