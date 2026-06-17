@@ -93,10 +93,10 @@ export function CollectionMountComposer({
           });
           return;
         }
-        setErrorMsg(data.error ?? "台紙の生成に失敗しました");
+        setErrorMsg(data.error ?? "カードの生成に失敗しました");
         setStatus("error");
       } catch {
-        setErrorMsg("台紙の生成に失敗しました");
+        setErrorMsg("カードの生成に失敗しました");
         setStatus("error");
       }
     },
@@ -122,7 +122,7 @@ export function CollectionMountComposer({
         const list = (data.outfits ?? []).slice(0, threshold);
         if (!active) return;
         if (list.length < threshold) {
-          setErrorMsg("台紙に必要な衣装がそろっていません");
+          setErrorMsg("カードに必要な衣装がそろっていません");
           setStatus("error");
           return;
         }
@@ -160,7 +160,7 @@ export function CollectionMountComposer({
         <CollectionSparkle show colors={MOUNT_SPARKLE_COLORS} />
         <DialogHeader>
           <DialogTitle className="text-center">
-            コレクションシートをつくる
+            コレクションカードをつくる
           </DialogTitle>
         </DialogHeader>
 
@@ -171,14 +171,14 @@ export function CollectionMountComposer({
         {status === "generating" ? (
           <div className="space-y-3 py-3">
             <p className="text-center text-sm text-gray-500">
-              台紙を作成中…
+              カードを作成中…
             </p>
             {/* スケルトン: 台紙のアスペクトと 2×2 スロットを模した
                 shimmer プレースホルダ */}
             <div
               role="status"
               aria-live="polite"
-              aria-label="台紙を作成中"
+              aria-label="カードを作成中"
               className="relative mx-auto w-56 overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-amber-50 via-rose-50 to-violet-50"
               style={{ aspectRatio: mountAspectForCategory(categoryKey) }}
             >
@@ -230,7 +230,7 @@ export function CollectionMountComposer({
         {status === "selecting" ? (
           <div className="space-y-4">
             <p className="text-center text-xs text-gray-500">
-              コレクションシートに載せる画像を選択してください。
+              コレクションカードに載せる画像を選択してください。
             </p>
             {outfits.map((o, i) => (
               <div key={o.presetId}>

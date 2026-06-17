@@ -79,6 +79,12 @@ export interface CollectionCelebration {
    */
   progressModalBadgeTextColor?: string | null;
   progressModalBadgeBgColor?: string | null;
+  /**
+   * 下部 CTA ボタンの塗り色・文字色(#RRGGBB)。設定があるとき CTA ボタンをこの色で描く。
+   * null なら従来配色(オレンジ地/白文字)。
+   */
+  progressModalButtonColor?: string | null;
+  progressModalButtonTextColor?: string | null;
 }
 
 interface Props {
@@ -147,6 +153,15 @@ interface ModalLayout {
    * null なら従来のクリーム地グラデーション(url(#badgeFill))。
    */
   badgeBgColor?: string | null;
+  /**
+   * 下部 CTA ボタンの塗り色(#RRGGBB)。設定があるとき CTA ボタンをこの単色で塗る。
+   * null なら従来のオレンジグラデーション。
+   */
+  buttonColor?: string | null;
+  /**
+   * 下部 CTA ボタンの文字色(#RRGGBB)。null なら白(#FFFFFF)。
+   */
+  buttonTextColor?: string | null;
 }
 
 // ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
@@ -280,6 +295,8 @@ export function CollectionProgressModal({
       badgeColor: celebration.progressModalBadgeColor ?? null,
       badgeTextColor: celebration.progressModalBadgeTextColor ?? null,
       badgeBgColor: celebration.progressModalBadgeBgColor ?? null,
+      buttonColor: celebration.progressModalButtonColor ?? null,
+      buttonTextColor: celebration.progressModalButtonTextColor ?? null,
     };
   })();
   const cLayout = celebration
@@ -560,7 +577,7 @@ export function CollectionProgressModal({
               >
                 <Image
                   src={mountImageUrl ?? ""}
-                  alt={`${displayName} コンプリート台紙`}
+                  alt={`${displayName} コンプリートカード`}
                   fill
                   sizes="224px"
                   className="object-cover"
@@ -578,7 +595,7 @@ export function CollectionProgressModal({
                 onShared={() => trackMountShareEvent(completionId)}
                 className="h-auto w-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.4)] transition-transform hover:-translate-y-0.5"
               >
-                台紙をシェアする
+                カードをシェアする
               </ShareLinkButton>
             ) : null}
             {celebration.sharePath ? (
@@ -596,7 +613,7 @@ export function CollectionProgressModal({
                 onClick={() => onCreateMount(celebration)}
                 className="w-full rounded-full border-2 border-amber-300 bg-white px-6 py-3 text-base font-bold text-amber-600 transition-colors hover:bg-amber-50"
               >
-                台紙を更新する
+                カードを更新する
               </button>
             ) : null}
             <Link
@@ -828,39 +845,37 @@ export function CollectionProgressModal({
                   );
                 })}
 
-            {/* N種到達かつ台紙未作成 → 「台紙を作成する」CTA を土台の生成ボタン領域に
-                  かぶせる(土台PNGの「シールを生成する」を覆い隠す)。
-                それ以外は透明クリック領域で /style へ遷移。 */}
+            {/* N種到達(達成)後の CTA。達成前(toCount<threshold)は従来どおり透明クリック領域で
+                  /style へ遷移し、土台PNGの「シールを生成する」をそのまま見せる(達成前は正しい文言)。
+                達成後は DB台座/ハードコード台座とも、コード側で状態別テキスト(カード作成/更新)を
+                  描画して土台PNGのボタンを覆い隠す。色は admin 設定(buttonColor/buttonTextColor)が
+                  あればそれ、無ければ従来のオレンジ地/白文字。 */}
             {toCount >= threshold && onCreateMount ? (
-              // DB 駆動台座(buttonRect あり)は、フレームにボタンが焼き込まれているので
-              // コード側は透明クリック領域だけにする(オレンジ CTA を重ねない)。
-              // ハードコード台座(神コレ等)は従来どおりオレンジ CTA を重ねる。
               <button
                 type="button"
                 onClick={() => onCreateMount(celebration)}
-                aria-label={cIsCompleted ? "台紙を更新する" : "台紙を作成する"}
+                aria-label={cIsCompleted ? "カードを更新する" : "カードを作成する"}
                 className={
-                  // 共通クラス + DB台座(buttonRect)以外はオレンジ CTA の装飾を追加。
-                  "absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
-                  (layout.buttonRect
+                  "absolute flex items-center justify-center rounded-full px-4 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
+                  // admin の塗り色が無ければ従来のオレンジグラデーション+影を使う。
+                  (layout.buttonColor
                     ? ""
-                    : " flex items-center justify-center bg-gradient-to-r from-amber-400 to-orange-500 px-4 text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.45)]")
+                    : " bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_4px_0_rgba(234,88,12,0.45)]")
                 }
                 style={{
                   left: `${buttonBox.left}%`,
                   top: `${buttonBox.top}%`,
                   width: `${buttonBox.width}%`,
                   height: `${buttonBox.height}%`,
-                  fontFamily: layout.buttonRect
-                    ? undefined
-                    : "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                  color: layout.buttonTextColor ?? "#ffffff",
+                  fontFamily:
+                    "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                  ...(layout.buttonColor
+                    ? { backgroundColor: layout.buttonColor }
+                    : {}),
                 }}
               >
-                {!layout.buttonRect
-                  ? cIsCompleted
-                    ? "台紙を更新する →"
-                    : "台紙を作成する →"
-                  : null}
+                {cIsCompleted ? "カードを更新する →" : "カードを作成する →"}
               </button>
             ) : (
               <Link

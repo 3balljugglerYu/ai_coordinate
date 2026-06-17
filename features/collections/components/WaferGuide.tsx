@@ -85,7 +85,7 @@ function XLink({ handle, url }: { handle: string; url: string }) {
   );
 }
 
-// 完成シート(complete.PNG)の並び順に合わせる:
+// 完成カード(complete.PNG)の並び順に合わせる:
 // オーディン → ゼウス → イシス → アテナ → アルテミス → アフロディーテ
 const GODS = [
   {
@@ -170,7 +170,7 @@ export function WaferGuide({ threshold }: { threshold: number }) {
     {
       n: "02",
       t: "あつめて枠を埋める",
-      b: "生成するたびに、コレクションシートの枠がひとつずつ埋まっていきます。",
+      b: "生成するたびに、コレクションカードの枠がひとつずつ埋まっていきます。",
       image: {
         src: "/collections/wafer/god-modal-preview.webp",
         alt: "生成時に表示される神コレクションの進捗モーダル。6つの枠が埋まっていく様子",
@@ -183,10 +183,10 @@ export function WaferGuide({ threshold }: { threshold: number }) {
     {
       n: "03",
       t: `${threshold}柱そろえてコンプリート`,
-      b: `${threshold}種類そろえると、${threshold}枚を飾れる限定コンプリートシートが完成！`,
+      b: `${threshold}種類そろえると、${threshold}枚を飾れる限定コンプリートカードが完成！`,
       image: {
         src: "/collections/wafer/god-complete-sample.webp",
-        alt: "神コレクションのコンプリートシートサンプル(6柱の神シールが並んだ完成イメージ)",
+        alt: "神コレクションのコンプリートカードサンプル(6柱の神シールが並んだ完成イメージ)",
         width: 1024,
         height: 1608,
         sizes: "(max-width: 480px) 55vw, 220px",
@@ -196,7 +196,7 @@ export function WaferGuide({ threshold }: { threshold: number }) {
     {
       n: "04",
       t: "ダウンロード＆シェア",
-      b: "完成したシートはそのまま画像でダウンロード。SNS でシェアして自慢しよう！",
+      b: "完成したカードはそのまま画像でダウンロード。SNS でシェアして自慢しよう！",
       image: {
         src: "/collections/wafer/god-share.webp",
         alt: "神コレクションをシェアした投稿イメージ（全6種コンプリート）",
@@ -212,7 +212,7 @@ export function WaferGuide({ threshold }: { threshold: number }) {
       <style>{`
         @keyframes pe-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
         .pe-float { animation: pe-float 7s ease-in-out infinite; }
-        /* 完成シートの背後で放射状に射す後光(オーラ)。
+        /* 完成カードの背後で放射状に射す後光(オーラ)。
            CollectionProgressModal の coll-aura と同じ見た目。 */
         .wafer-aura {
           border-radius: 9999px;
@@ -262,7 +262,7 @@ export function WaferGuide({ threshold }: { threshold: number }) {
           <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
             うちの子が、神話の女神・神さまに。
             <br />
-            全{threshold}種あつめて、きらめくシートをコンプリート。
+            全{threshold}種あつめて、きらめくカードをコンプリート。
           </p>
         </Reveal>
         <Reveal delay={250}>
@@ -480,14 +480,14 @@ export function WaferGuide({ threshold }: { threshold: number }) {
           <Reveal>
             <div className="rounded-[2rem] border-2 border-dashed border-amber-300 bg-white p-6 text-center shadow-[0_8px_24px_rgba(120,90,50,0.08)] sm:p-8">
               <h2 className="text-2xl leading-relaxed text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
-                そろえたら、特別なシートをGET！
+                そろえたら、特別なカードをGET！
               </h2>
               <p className="mx-auto mt-4 max-w-md text-sm leading-loose text-[#7a6a58]">
-                {threshold}種そろえると、あなただけの特別なコンプリートシートが完成。
+                {threshold}種そろえると、あなただけの特別なコンプリートカードが完成。
                 そのまま画像でダウンロードして、SNS でシェアして自慢しよう！
               </p>
-              {/* シート + 背後の後光(オーラ)。後光はシート中心に合わせ、
-                  シート幅より大きく広げて左右余白を光で満たす。 */}
+              {/* カード + 背後の後光(オーラ)。後光はカード中心に合わせ、
+                  カード幅より大きく広げて左右余白を光で満たす。 */}
               <div className="relative isolate mx-auto mt-6 w-full max-w-[260px]">
                 <div
                   className="wafer-aura pointer-events-none absolute left-1/2 top-1/2 -z-10 aspect-square w-[210%]"
@@ -496,7 +496,7 @@ export function WaferGuide({ threshold }: { threshold: number }) {
                 <div className="relative aspect-[1024/1608] overflow-hidden rounded-2xl border border-amber-100 shadow-[0_6px_18px_rgba(120,90,50,0.12)]">
                   <Image
                     src="/collections/wafer/god-complete-sample.webp"
-                    alt="神コレクションのコンプリートシートサンプル(6柱の神シールが並んだ完成イメージ)"
+                    alt="神コレクションのコンプリートカードサンプル(6柱の神シールが並んだ完成イメージ)"
                     fill
                     sizes="(max-width: 480px) 70vw, 260px"
                     className="object-cover"
@@ -516,7 +516,7 @@ export function WaferGuide({ threshold }: { threshold: number }) {
             className="mx-auto mb-6 max-w-md text-base font-bold text-amber-600"
             style={{ fontFamily: HEADING_FONT }}
           >
-            完成したシートは、SNSでシェアして自慢しよう！
+            完成したカードは、SNSでシェアして自慢しよう！
           </p>
         </Reveal>
         <Reveal delay={70}>
@@ -548,7 +548,7 @@ export function WaferGuide({ threshold }: { threshold: number }) {
         </Reveal>
         <Reveal delay={100}>
           <p className="mx-auto mt-6 max-w-sm text-xs leading-relaxed text-[#9a8a78]">
-            ※ あつめる・シートの保存にはログインが必要です（未ログインでも一枚お試し生成できます）。
+            ※ あつめる・カードの保存にはログインが必要です（未ログインでも一枚お試し生成できます）。
           </p>
         </Reveal>
       </section>

@@ -15,7 +15,7 @@ interface PublicMountPageProps {
 
 // 注: i18n は Phase 7 で整える。当面は企画(JP)向けに日本語コピーを用いる。
 const SHARE_DESCRIPTION =
-  "うちの子のシールを集めて作ったコンプリート台紙。あなたのうちの子でも作れます。";
+  "うちの子のシールを集めて作ったコンプリートカード。あなたのうちの子でも作れます。";
 
 export async function generateMetadata({
   params,
@@ -23,8 +23,8 @@ export async function generateMetadata({
   const { token } = await params;
   const mount = await getPublicMountByToken(token);
   const title = mount
-    ? `${mount.displayNameJa} コンプリート台紙 | Persta.AI`
-    : "コンプリート台紙 | Persta.AI";
+    ? `${mount.displayNameJa} コンプリートカード | Persta.AI`
+    : "コンプリートカード | Persta.AI";
 
   // link-only(一覧化しない)。検索インデックスには載せない。
   const base: Metadata = {
@@ -97,7 +97,7 @@ export default async function PublicMountPage({
       >
         <Image
           src={mount.mountImageUrl}
-          alt={`${mount.displayNameJa} コンプリート台紙`}
+          alt={`${mount.displayNameJa} コンプリートカード`}
           fill
           sizes="(max-width: 480px) 92vw, 384px"
           className="object-cover"
