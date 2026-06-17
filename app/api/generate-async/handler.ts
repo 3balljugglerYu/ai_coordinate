@@ -9,8 +9,18 @@ import { ensureSameOrigin } from "@/lib/security/same-origin";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import {
   getPercoinCost,
+  creatorLooksCost,
   isModelAvailableForGeneration,
 } from "@/features/generation/lib/model-config";
+import {
+  type CreatorLooksMode,
+  overridesForCreatorLooksMode,
+  maxStagesForCreatorLooksMode,
+} from "@/shared/generation/creator-looks-mode";
+import {
+  getCreatorLooksTwoStageVisibility,
+  isTwoStageModeAvailable,
+} from "@/features/inspire/lib/creator-looks-two-stage";
 import {
   DEFAULT_GENERATION_MODEL,
   isOpenAIImageModel,
@@ -134,8 +144,12 @@ export async function postGenerateAsyncRoute(
       styleTemplateId,
       overrides,
       framingMode,
+      creatorLooksMode,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
+    // Creator Looks 投稿テンプレ(is_creator_looks)に対してのみ有効な生成モード。
+    // 一般 inspire には適用しない。inspire 検証ブロックで template 確認後に確定する。
+    let effectiveCreatorLooksMode: CreatorLooksMode | null = null;
     if (!isModelAvailableForGeneration(effectiveModel)) {
       return jsonError(
         copy.modelTemporarilyUnavailable,
@@ -202,6 +216,24 @@ export async function postGenerateAsyncRoute(
             "CREATOR_LOOKS_NOT_AVAILABLE",
             403
           );
+        }
+
+        // 生成モードを確定(未指定は衣装のみ)。
+        effectiveCreatorLooksMode = creatorLooksMode ?? "outfit_only";
+
+        // 2段階(衣装＋背景)モードの公開ガード。
+        // admin_only のときは admin/プレビュー権限ユーザー以外には許可しない
+        // (UI 非表示はセキュリティではないためサーバでも遮断)。
+        if (effectiveCreatorLooksMode === "outfit_and_background") {
+          const visibility =
+            await getCreatorLooksTwoStageVisibility(adminClient);
+          if (!isTwoStageModeAvailable(visibility, isAdminViewer(user.id))) {
+            return jsonError(
+              "この生成モードは現在利用できません",
+              "CREATOR_LOOKS_TWO_STAGE_NOT_AVAILABLE",
+              403
+            );
+          }
         }
       }
 
@@ -397,7 +429,11 @@ export async function postGenerateAsyncRoute(
       : "single_job";
 
     // ペルコイン残高チェック
-    const percoinCost = getPercoinCost(effectiveModel);
+    // Creator Looks はモード別コスト(衣装＋背景=ceil(モデルコスト×2×0.9))。
+    // 実消費(worker)も同じ creatorLooksCost を使うこと(不整合防止)。
+    const percoinCost = effectiveCreatorLooksMode
+      ? creatorLooksCost(effectiveModel, effectiveCreatorLooksMode)
+      : getPercoinCost(effectiveModel);
     const requiredPercoinCost = percoinCost * acceptedImageCount;
 
     // 現在の残高を取得
@@ -419,6 +455,24 @@ export async function postGenerateAsyncRoute(
         copy.insufficientBalance(requiredPercoinCost, currentBalance),
         "GENERATION_INSUFFICIENT_BALANCE",
         400
+      );
+    }
+
+    // Creator Looks 生成モードが指定されていれば override_* をモードから導出する
+    // (overrides より優先)。それ以外は従来の overrides をそのまま使う。
+    const resolvedOverrides = effectiveCreatorLooksMode
+      ? overridesForCreatorLooksMode(effectiveCreatorLooksMode)
+      : overrides;
+
+    // generation_metadata: framingMode(locked 以外)と Creator Looks モード/段階数を統合。
+    const generationMetadata: Record<string, unknown> = {};
+    if (effectiveFramingMode !== "locked") {
+      generationMetadata.framingMode = effectiveFramingMode;
+    }
+    if (effectiveCreatorLooksMode) {
+      generationMetadata.creatorLooksMode = effectiveCreatorLooksMode;
+      generationMetadata.creatorLooksMaxStages = maxStagesForCreatorLooksMode(
+        effectiveCreatorLooksMode,
       );
     }
 
@@ -444,15 +498,17 @@ export async function postGenerateAsyncRoute(
         : null,
       // Inspire override の 4 bool。未指定時は「すべて維持」のデフォルトを入れる。
       // 整合性は schema 側の superRefine で「1 つ以上 true」をバリデーション済み。
-      override_outfit: isInspireRequest ? overrides?.outfit ?? true : null,
-      override_angle: isInspireRequest ? overrides?.angle ?? true : null,
-      override_pose: isInspireRequest ? overrides?.pose ?? true : null,
-      override_background: isInspireRequest ? overrides?.background ?? true : null,
-      // locked 以外 (free_pose / ai_pose) のみ記録 (locked はキーなし = 既存レコードと一貫)。
-      // worker がプロンプト構築・リトライ強化の prefix 選択に使い、完了 RPC 経由で
+      override_outfit: isInspireRequest ? resolvedOverrides?.outfit ?? true : null,
+      override_angle: isInspireRequest ? resolvedOverrides?.angle ?? true : null,
+      override_pose: isInspireRequest ? resolvedOverrides?.pose ?? true : null,
+      override_background: isInspireRequest
+        ? resolvedOverrides?.background ?? true
+        : null,
+      // generation_metadata: framingMode(locked 以外) と Creator Looks モード/段階数。
+      // worker がプロンプト構築・2段階生成判定に使い、完了 RPC 経由で
       // generated_images.generation_metadata へコピーされて品質比較にも使える。
-      ...(effectiveFramingMode !== "locked"
-        ? { generation_metadata: { framingMode: effectiveFramingMode } }
+      ...(Object.keys(generationMetadata).length > 0
+        ? { generation_metadata: generationMetadata }
         : {}),
     };
 
