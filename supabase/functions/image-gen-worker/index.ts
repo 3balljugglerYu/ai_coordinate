@@ -1851,6 +1851,9 @@ Deno.serve(async () => {
                     fullPrompt = composeCreatorLooksPrompt(
                       creatorLooksHiddenPrompt,
                       job.override_background ?? true,
+                      // admin 編集可のカメラ/構図固定ルール(creator_looks.camera_directive)。
+                      // promptTemplates は default + override をマージ済みなので必ず存在する。
+                      promptTemplates["creator_looks.camera_directive"] ?? "",
                     );
                   } else if (job.generation_type === "inspire") {
                     fullPrompt = buildInspirePrompt({

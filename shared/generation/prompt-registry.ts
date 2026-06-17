@@ -225,6 +225,11 @@ No pose change.
 No identity change.
 No art style change.`;
 
+// Creator Looks: 生成時に hidden_prompt 冒頭へ前置するカメラ/構図固定の最優先ルール。
+// image_1(参照画像)を視覚的に渡すと構図・背景までコピーされる問題への対策。
+const CREATOR_LOOKS_CAMERA_DIRECTIVE_DEFAULT = `TOP PRIORITY RULE — image_1 is an OUTFIT-ONLY reference:
+Copy ONLY the outfit, garments, and accessories from image_1. You MUST completely ignore image_1's background, scenery, camera angle, perspective, pose, framing, and composition — never reproduce any of them. Keep image_0's exact camera angle, viewpoint, framing, crop, and pose unchanged. The background follows the separate background instruction; never copy the background or layout from image_1. Whenever anything other than the outfit conflicts between the two images, image_0 always wins.`;
+
 // ============================================================================
 // レジストリ本体
 // ============================================================================
@@ -486,6 +491,15 @@ export const PROMPT_REGISTRY = {
       "Creator Looks: クリエイター投稿画像から衣装+背景プロンプトを抽出する meta-prompt (VLM 入力)。" +
       "出力は user_style_template_secrets に保存され、通常ユーザーには公開しない。",
     defaultContent: CREATOR_LOOKS_META_EXTRACTOR_DEFAULT,
+    supportedVariables: [],
+  },
+  "creator_looks.camera_directive": {
+    category: "creator_looks",
+    description:
+      "Creator Looks: 生成時に hidden_prompt 冒頭へ前置する最優先ルール。" +
+      "image_1 を「衣装専用の参照」に限定し、背景・構図・カメラアングルは image_0 を維持させる" +
+      "(image_1 の構図がコピーされる問題への対策)。背景 ON/OFF どちらでも前置される。",
+    defaultContent: CREATOR_LOOKS_CAMERA_DIRECTIVE_DEFAULT,
     supportedVariables: [],
   },
 } as const satisfies Record<string, PromptDefinition>;
