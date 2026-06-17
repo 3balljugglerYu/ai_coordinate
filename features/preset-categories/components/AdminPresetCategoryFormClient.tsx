@@ -1845,6 +1845,8 @@ export function AdminPresetCategoryFormClient({
             badgeColor={form.progressModalBadgeColor}
             badgeTextColor={form.progressModalBadgeTextColor}
             badgeBgColor={form.progressModalBadgeBgColor}
+            buttonColor={form.progressModalButtonColor}
+            buttonTextColor={form.progressModalButtonTextColor}
           />
         </div>
         </div>
