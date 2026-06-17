@@ -10,6 +10,8 @@ import { composeMount } from "@/features/collections/lib/compose-mount";
 import {
   composeMountOgp,
   composeMountOgpFromTemplate,
+  composeDefaultOgp,
+  DEFAULT_OGP_TEMPLATE_PATH,
   ogpPathFromMountPath,
   parseOgpMountPlacement,
 } from "@/features/collections/lib/compose-mount-ogp";
@@ -259,6 +261,7 @@ export async function POST(request: NextRequest) {
         const ogpTemplatePath = category.ogp_template_path as string | null;
         let ogpPng: Buffer | null = null;
         if (ogpTemplatePath) {
+          // カテゴリ専用テンプレートあり: テンプレに台紙(カード)を合成する。
           try {
             const ogpTemplatePng = await downloadBuffer(
               admin,
@@ -272,11 +275,28 @@ export async function POST(request: NextRequest) {
             });
           } catch (templateError) {
             console.error(
-              "collection mount OGP template compose failed (fallback to default design):",
+              "collection mount OGP template compose failed (fallback to default image):",
               templateError,
             );
           }
+        } else {
+          // テンプレート未設定カテゴリのデフォルト: 共通のブランドOGP画像を
+          // そのまま使う(カード合成なし)。SVG プログラム生成は最終フォールバックに残す。
+          try {
+            const defaultPng = await downloadBuffer(
+              admin,
+              TEMPLATE_BUCKET,
+              DEFAULT_OGP_TEMPLATE_PATH,
+            );
+            ogpPng = await composeDefaultOgp(defaultPng);
+          } catch (defaultError) {
+            console.error(
+              "collection mount default OGP image failed (fallback to programmatic design):",
+              defaultError,
+            );
+          }
         }
+        // テンプレ/デフォルト画像とも取得失敗した場合の最終フォールバック(OGP 無しを避ける)。
         ogpPng ??= await composeMountOgp({
           mountPng,
           displayName: (category.display_name_ja as string | null) ?? "",

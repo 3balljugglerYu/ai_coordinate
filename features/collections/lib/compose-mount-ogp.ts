@@ -239,6 +239,24 @@ export const DEFAULT_OGP_MOUNT_PLACEMENT: OgpMountPlacement = {
 };
 
 /**
+ * カテゴリに OGP テンプレート(ogp_template_path)が無いときに使う、共通デフォルト
+ * OGP 画像の保存パス(collection-mount-templates bucket)。
+ * カード(台紙)は重ねず、この画像をそのまま 1200x630 にして OGP とする。
+ */
+export const DEFAULT_OGP_TEMPLATE_PATH = "_default/ogp-default.png";
+
+/**
+ * デフォルト OGP 画像を 1200x630 に整えて返す(カード合成なし)。
+ * テンプレート未設定カテゴリのフォールバックで使う。
+ */
+export async function composeDefaultOgp(defaultPng: Buffer): Promise<Buffer> {
+  return sharp(defaultPng)
+    .resize(1200, 630, { fit: "cover" })
+    .png()
+    .toBuffer();
+}
+
+/**
  * preset_categories.ogp_mount_placement(JSONB) を検証して返す。
  * 不正・欠損フィールドは既定値で補う。
  */
