@@ -190,3 +190,129 @@ describe("getCollectionProgressForUser: progress-modal フィールド結合", (
     );
   });
 });
+
+describe("getCollectionProgressForUser: 解放ゲート(unlock_prerequisite_key)適用", () => {
+  const GOD = {
+    category_id: "god-id",
+    category_key: "god",
+    display_name_ja: "神コレ",
+    display_name_en: "God",
+    completion_threshold: 6,
+    unique_outfit_count: 6,
+    is_completed: false,
+    mount_status: null,
+    mount_image_path: null,
+    completed_at: null,
+  };
+  const PETIT = {
+    category_id: "petit-id",
+    category_key: "petit",
+    display_name_ja: "ぷち神",
+    display_name_en: "Petit",
+    completion_threshold: 6,
+    unique_outfit_count: 2,
+    is_completed: false,
+    mount_status: null,
+    mount_image_path: null,
+    completed_at: null,
+  };
+
+  /**
+   * RPC は [神コレ, ぷち神] を返す(admin プレビュー想定)。
+   * preset_categories は key と unlock_prerequisite_key を返す。
+   * 神コレの完走状態(godCompleted)で台紙作成済みかを切り替える。
+   */
+  function buildGateClient(godCompleted: boolean) {
+    const rpc = jest.fn().mockResolvedValue({
+      data: [{ ...GOD, is_completed: godCompleted }, PETIT],
+      error: null,
+    });
+    const categoryRows = [
+      { id: "god-id", key: "god", unlock_prerequisite_key: null },
+      { id: "petit-id", key: "petit", unlock_prerequisite_key: "god" },
+    ];
+    const from = jest.fn((table: string) => {
+      if (table === "preset_categories") {
+        return {
+          select: jest.fn(() => ({
+            in: jest
+              .fn()
+              .mockResolvedValue({ data: categoryRows, error: null }),
+          })),
+        };
+      }
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+          })),
+        })),
+      };
+    });
+    return { rpc, from };
+  }
+
+  test("前提(神コレ)が未完走ならゲート付きカテゴリ(ぷち神)を除外する", async () => {
+    createAdminClientMock.mockImplementation(() => buildGateClient(false));
+
+    const result = await getCollectionProgressForUser("user-1", true);
+
+    const keys = result.map((r) => r.categoryKey);
+    expect(keys).toContain("god");
+    expect(keys).not.toContain("petit");
+  });
+
+  test("前提(神コレ)が完走済みならゲート付きカテゴリ(ぷち神)を表示する", async () => {
+    createAdminClientMock.mockImplementation(() => buildGateClient(true));
+
+    const result = await getCollectionProgressForUser("user-1", true);
+
+    const keys = result.map((r) => r.categoryKey);
+    expect(keys).toContain("god");
+    expect(keys).toContain("petit");
+  });
+
+  test("ゲートなしカテゴリ(神コレ)は前提に関係なく常に表示する", async () => {
+    createAdminClientMock.mockImplementation(() => buildGateClient(false));
+
+    const result = await getCollectionProgressForUser("user-1", true);
+
+    expect(result.some((r) => r.categoryKey === "god")).toBe(true);
+  });
+
+  test("ゲート情報の取得に失敗したら回帰回避で全件返す(over-hiding しない)", async () => {
+    createAdminClientMock.mockImplementation(() => {
+      const client = buildGateClient(false);
+      client.from = jest.fn((table: string) => {
+        if (table === "preset_categories") {
+          return {
+            select: jest.fn(() => ({
+              in: jest
+                .fn()
+                .mockResolvedValue({ data: null, error: { message: "boom" } }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+            })),
+          })),
+        };
+      });
+      return client;
+    });
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const result = await getCollectionProgressForUser("user-1", true);
+
+    // ゲート判定不能 → 全件(神コレ + ぷち神)返す
+    const keys = result.map((r) => r.categoryKey);
+    expect(keys).toContain("god");
+    expect(keys).toContain("petit");
+    consoleError.mockRestore();
+  });
+});
