@@ -521,13 +521,14 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
     progressModalButtonTextColor: "#FFFFFF",
   };
 
-  test("達成・カード未作成: CTAは「カードを作成する →」で admin のボタン色が反映される", () => {
+  test("達成・カード未作成: CTAは「カードを作成する →」で admin色反映、押下でカード生成が呼ばれる", () => {
+    const onCreateMount = jest.fn();
     render(
       <CollectionProgressModal
         open
         celebration={createState}
         onClose={jest.fn()}
-        onCreateMount={jest.fn()}
+        onCreateMount={onCreateMount}
       />,
     );
     const btn = screen.getByRole("button", { name: "カードを作成する" });
@@ -537,23 +538,58 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
       "background-color: rgb(198, 112, 255)",
     );
     expect(btn.getAttribute("style")).toContain("color: rgb(255, 255, 255)");
+    // 押下で onCreateMount(=カード生成)が発火する
+    fireEvent.click(btn);
+    expect(onCreateMount).toHaveBeenCalledTimes(1);
   });
 
-  test("ボタン領域(progress_modal_button)未設定でも CTA はフレーム下に表示される", () => {
+  test("ボタン領域(progress_modal_button)未設定でも CTA はフレーム下に表示され押下で発火", () => {
     const { progressModalButton, ...noButtonArea } = createState;
     void progressModalButton; // 未使用(意図的に除外)
+    const onCreateMount = jest.fn();
     render(
       <CollectionProgressModal
         open
         celebration={noButtonArea as CollectionCelebration}
         onClose={jest.fn()}
-        onCreateMount={jest.fn()}
+        onCreateMount={onCreateMount}
       />,
     );
     // buttonRect が無くても(buttonBox=0)、フレーム下に通常配置で CTA が出る
-    expect(
-      screen.getByRole("button", { name: "カードを作成する" }),
-    ).toHaveTextContent("カードを作成する →");
+    const btn = screen.getByRole("button", { name: "カードを作成する" });
+    expect(btn).toHaveTextContent("カードを作成する →");
+    fireEvent.click(btn);
+    expect(onCreateMount).toHaveBeenCalledTimes(1);
+  });
+
+  test("達成前(未コンプリート)・ボタン領域あり: フレーム上に「シールを生成する」リンク(/style)", () => {
+    render(
+      <CollectionProgressModal
+        open
+        celebration={{ ...createState, fromCount: 0, toCount: 2 }}
+        onClose={jest.fn()}
+        onCreateMount={jest.fn()}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "シールを生成する" });
+    expect(link).toHaveAttribute("href", "/style");
+  });
+
+  test("達成前(未コンプリート)・ボタン領域なし: フレーム下に「シールを生成する」リンク(/style)", () => {
+    const { progressModalButton, ...noButtonArea } = createState;
+    void progressModalButton;
+    render(
+      <CollectionProgressModal
+        open
+        celebration={
+          { ...noButtonArea, fromCount: 0, toCount: 2 } as CollectionCelebration
+        }
+        onClose={jest.fn()}
+        onCreateMount={jest.fn()}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "シールを生成する" });
+    expect(link).toHaveAttribute("href", "/style");
   });
 
   test("達成・カード作成済み(更新可): CTAは「カードを更新する →」", () => {

@@ -311,6 +311,23 @@ describe("createPresetCategory", () => {
     expect(insertedArg.unlock_announcement_soft_color).toBe("#F3E0FF");
   });
 
+  test("createPresetCategory: 進捗モーダルCTAボタン色を insert に反映", async () => {
+    const fromBuilder = buildMutationChain({ data: SAMPLE_ROW, error: null });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await createPresetCategory({
+      key: "chibi",
+      displayNameJa: "ちびキャラ",
+      displayNameEn: "Chibi",
+      progressModalButtonColor: "#C670FF",
+      progressModalButtonTextColor: "#FFFFFF",
+    });
+
+    const insertedArg = (fromBuilder.insert as jest.Mock).mock.calls[0]?.[0];
+    expect(insertedArg.progress_modal_button_color).toBe("#C670FF");
+    expect(insertedArg.progress_modal_button_text_color).toBe("#FFFFFF");
+  });
+
   test("createPresetCategory: 解放お知らせ設定の省略時は insert で全て null", async () => {
     const fromBuilder = buildMutationChain({ data: SAMPLE_ROW, error: null });
     createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
@@ -427,6 +444,20 @@ describe("updatePresetCategory", () => {
 
     const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
     expect(updatedArg.show_user_prompt_input).toBeUndefined();
+  });
+
+  test("updatePresetCategory: 進捗モーダルCTAボタン色を update payload に反映", async () => {
+    const fromBuilder = buildMutationChain({ data: SAMPLE_ROW, error: null });
+    createAdminClientMock.mockReturnValue({ from: jest.fn(() => fromBuilder) });
+
+    await updatePresetCategory(SAMPLE_ROW.id, {
+      progressModalButtonColor: "#C670FF",
+      progressModalButtonTextColor: "#FFFFFF",
+    });
+
+    const updatedArg = (fromBuilder.update as jest.Mock).mock.calls[0]?.[0];
+    expect(updatedArg.progress_modal_button_color).toBe("#C670FF");
+    expect(updatedArg.progress_modal_button_text_color).toBe("#FFFFFF");
   });
 
   test("updatePresetCategory: 解放お知らせ設定を含めると update payload に乗る(null も明示反映)", async () => {
