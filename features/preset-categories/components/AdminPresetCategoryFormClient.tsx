@@ -98,6 +98,20 @@ interface FormState {
   progressModalBadgeTextColor: string | null;
   /** %達成バッジの背景色(#RRGGBB)。null=従来デフォルト配色 */
   progressModalBadgeBgColor: string | null;
+  /** 解放お知らせ初回モーダルのヒーロー画像パス(public バケット)。null=固定画像 */
+  unlockAnnouncementHeroPath: string | null;
+  /** 解放お知らせ初回モーダルの本文。null=現行ハードコード文 */
+  unlockAnnouncementInitialBody: string | null;
+  /** 解放お知らせ段階解放モーダルの本文。null=現行ハードコード文 */
+  unlockAnnouncementDripBody: string | null;
+  /** 解放お知らせのボタン/アクセント色(#RRGGBB)。null=#C670FF */
+  unlockAnnouncementAccentColor: string | null;
+  /** 解放お知らせのボタン hover 色(#RRGGBB)。null=#B14DF0 */
+  unlockAnnouncementAccentHoverColor: string | null;
+  /** 解放お知らせの見出し文字色(#RRGGBB)。null=#8B3DC9 */
+  unlockAnnouncementTitleColor: string | null;
+  /** 解放お知らせの NEW ピル/淡い面の背景色(#RRGGBB)。null=#F3E0FF */
+  unlockAnnouncementSoftColor: string | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -161,6 +175,14 @@ function toFormState(
     progressModalBadgeColor: initial?.progressModalBadgeColor ?? null,
     progressModalBadgeTextColor: initial?.progressModalBadgeTextColor ?? null,
     progressModalBadgeBgColor: initial?.progressModalBadgeBgColor ?? null,
+    unlockAnnouncementHeroPath: initial?.unlockAnnouncementHeroPath ?? null,
+    unlockAnnouncementInitialBody: initial?.unlockAnnouncementInitialBody ?? null,
+    unlockAnnouncementDripBody: initial?.unlockAnnouncementDripBody ?? null,
+    unlockAnnouncementAccentColor: initial?.unlockAnnouncementAccentColor ?? null,
+    unlockAnnouncementAccentHoverColor:
+      initial?.unlockAnnouncementAccentHoverColor ?? null,
+    unlockAnnouncementTitleColor: initial?.unlockAnnouncementTitleColor ?? null,
+    unlockAnnouncementSoftColor: initial?.unlockAnnouncementSoftColor ?? null,
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
   };
@@ -284,6 +306,41 @@ export function AdminPresetCategoryFormClient({
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const [uploadingCharacter, setUploadingCharacter] = useState(false);
   const [uploadingModalFrame, setUploadingModalFrame] = useState(false);
+  const [uploadingUnlockHero, setUploadingUnlockHero] = useState(false);
+
+  async function handleUnlockHeroUpload(file: File) {
+    if (!/^[a-z][a-z0-9_]{1,49}$/.test(form.key.trim())) {
+      setError("ヒーロー画像をアップロードする前に key を入力してください");
+      return;
+    }
+    setUploadingUnlockHero(true);
+    setError(null);
+    try {
+      const imageBase64 = await fileToBase64(file);
+      const res = await fetch("/api/admin/collection-unlock-hero", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryKey: form.key.trim(), imageBase64 }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as {
+        path?: string;
+        error?: string;
+      };
+      if (!res.ok || !payload.path) {
+        setError(payload.error ?? "ヒーロー画像のアップロードに失敗しました");
+        return;
+      }
+      update("unlockAnnouncementHeroPath", payload.path);
+    } catch (err) {
+      console.error(
+        "[AdminPresetCategoryFormClient] unlock hero upload failed:",
+        err,
+      );
+      setError("ヒーロー画像のアップロードに失敗しました");
+    } finally {
+      setUploadingUnlockHero(false);
+    }
+  }
 
   async function handleCharacterUpload(file: File) {
     if (!/^[a-z][a-z0-9_]{1,49}$/.test(form.key.trim())) {
@@ -584,6 +641,17 @@ export function AdminPresetCategoryFormClient({
               progress_modal_badge_color: form.progressModalBadgeColor,
               progress_modal_badge_text_color: form.progressModalBadgeTextColor,
               progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
+              unlock_announcement_hero_path: form.unlockAnnouncementHeroPath,
+              unlock_announcement_initial_body:
+                form.unlockAnnouncementInitialBody,
+              unlock_announcement_drip_body: form.unlockAnnouncementDripBody,
+              unlock_announcement_accent_color:
+                form.unlockAnnouncementAccentColor,
+              unlock_announcement_accent_hover_color:
+                form.unlockAnnouncementAccentHoverColor,
+              unlock_announcement_title_color:
+                form.unlockAnnouncementTitleColor,
+              unlock_announcement_soft_color: form.unlockAnnouncementSoftColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             }
@@ -631,6 +699,17 @@ export function AdminPresetCategoryFormClient({
               progress_modal_badge_color: form.progressModalBadgeColor,
               progress_modal_badge_text_color: form.progressModalBadgeTextColor,
               progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
+              unlock_announcement_hero_path: form.unlockAnnouncementHeroPath,
+              unlock_announcement_initial_body:
+                form.unlockAnnouncementInitialBody,
+              unlock_announcement_drip_body: form.unlockAnnouncementDripBody,
+              unlock_announcement_accent_color:
+                form.unlockAnnouncementAccentColor,
+              unlock_announcement_accent_hover_color:
+                form.unlockAnnouncementAccentHoverColor,
+              unlock_announcement_title_color:
+                form.unlockAnnouncementTitleColor,
+              unlock_announcement_soft_color: form.unlockAnnouncementSoftColor,
               display_order: form.displayOrder,
               is_active: form.isActive,
             };
@@ -1250,6 +1329,138 @@ export function AdminPresetCategoryFormClient({
                 カテゴリ内のプリセットを何体ずつ解放するか（空=最初から全部）。
               </span>
             </label>
+          </div>
+        </div>
+
+        {/* 解放お知らせモーダル(PetitUnlockAnnouncer)のカスタム設定。
+            すべて任意・独立。未設定なら現行ハードコード(画像/文言/紫基調の配色)に
+            フォールバックする(= 厳密な no-op)。解放ゲート付きカテゴリでのみ実際に表示される。 */}
+        <div className="space-y-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              解放お知らせ設定（任意）
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              解放ゲートを完走したユーザーがホームで見る「解放されました！」モーダルの
+              ヒーロー画像・本文・配色をカテゴリごとに設定します。未設定の項目は標準の紫基調にフォールバックします。
+            </p>
+          </div>
+
+          {/* ヒーロー画像(初回モーダル) */}
+          <div className="block">
+            <span className="text-sm font-medium text-slate-700">
+              ヒーロー画像（初回モーダル・任意）
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/webp,image/jpeg"
+              disabled={uploadingUnlockHero}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleUnlockHeroUpload(file);
+                e.target.value = "";
+              }}
+              className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-slate-300 disabled:opacity-50"
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              {uploadingUnlockHero
+                ? "アップロード中..."
+                : form.unlockAnnouncementHeroPath
+                  ? `登録済み: ${form.unlockAnnouncementHeroPath}`
+                  : "PNG/WebP/JPEG。推奨は正方形(例 600×600)。未設定なら標準のヒーロー画像を表示。"}
+            </span>
+            {form.unlockAnnouncementHeroPath && !uploadingUnlockHero ? (
+              <div className="mt-2 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={characterPublicUrl(form.unlockAnnouncementHeroPath)}
+                  alt="登録済みのヒーロー画像のプレビュー"
+                  className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => update("unlockAnnouncementHeroPath", null)}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  クリア（標準画像に戻す）
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          {/* 本文(初回 / 段階) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                初回モーダルの本文
+              </span>
+              <textarea
+                value={form.unlockAnnouncementInitialBody ?? ""}
+                maxLength={200}
+                rows={3}
+                onChange={(e) =>
+                  update(
+                    "unlockAnnouncementInitialBody",
+                    e.target.value.length > 0 ? e.target.value : null,
+                  )
+                }
+                placeholder="空=標準文（コンプリート報酬の新しいスタイルが登場…）"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                最大200文字。空欄なら標準文を表示。
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                段階解放モーダルの本文
+              </span>
+              <textarea
+                value={form.unlockAnnouncementDripBody ?? ""}
+                maxLength={200}
+                rows={3}
+                onChange={(e) =>
+                  update(
+                    "unlockAnnouncementDripBody",
+                    e.target.value.length > 0 ? e.target.value : null,
+                  )
+                }
+                placeholder="空=標準文（○○の続きが登場しました。）"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                最大200文字。空欄なら標準文を表示。
+              </span>
+            </label>
+          </div>
+
+          {/* 配色(4色)。null なら標準の紫基調にフォールバック。 */}
+          <div className="space-y-4">
+            <ColorField
+              label="ボタン/アクセント色"
+              value={form.unlockAnnouncementAccentColor}
+              defaultSwatch="#C670FF"
+              onChange={(v) => update("unlockAnnouncementAccentColor", v)}
+            />
+            <ColorField
+              label="ボタン hover 色"
+              value={form.unlockAnnouncementAccentHoverColor}
+              defaultSwatch="#B14DF0"
+              onChange={(v) => update("unlockAnnouncementAccentHoverColor", v)}
+            />
+            <ColorField
+              label="見出しの文字色"
+              value={form.unlockAnnouncementTitleColor}
+              defaultSwatch="#8B3DC9"
+              onChange={(v) => update("unlockAnnouncementTitleColor", v)}
+            />
+            <ColorField
+              label="NEW ピル/淡い面の背景色"
+              value={form.unlockAnnouncementSoftColor}
+              defaultSwatch="#F3E0FF"
+              onChange={(v) => update("unlockAnnouncementSoftColor", v)}
+            />
           </div>
         </div>
 

@@ -50,6 +50,13 @@ export interface PresetCategoryRow {
   completion_threshold?: number | null;
   unlock_prerequisite_key?: string | null;
   progressive_batch_size?: number | null;
+  unlock_announcement_hero_path?: string | null;
+  unlock_announcement_initial_body?: string | null;
+  unlock_announcement_drip_body?: string | null;
+  unlock_announcement_accent_color?: string | null;
+  unlock_announcement_accent_hover_color?: string | null;
+  unlock_announcement_title_color?: string | null;
+  unlock_announcement_soft_color?: string | null;
   mount_template_path?: string | null;
   mount_layout?: string | null;
   mount_slots?: unknown;
@@ -100,6 +107,13 @@ export interface PresetCategoryAdmin {
   completionThreshold: number | null;
   unlockPrerequisiteKey: string | null;
   progressiveBatchSize: number | null;
+  unlockAnnouncementHeroPath: string | null;
+  unlockAnnouncementInitialBody: string | null;
+  unlockAnnouncementDripBody: string | null;
+  unlockAnnouncementAccentColor: string | null;
+  unlockAnnouncementAccentHoverColor: string | null;
+  unlockAnnouncementTitleColor: string | null;
+  unlockAnnouncementSoftColor: string | null;
   mountTemplatePath: string | null;
   mountLayout: MountLayoutKey | null;
   mountSlots: NormalizedSlotRect[] | null;
@@ -149,6 +163,13 @@ export interface PresetCategoryInsert {
   completionThreshold?: number | null;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
+  unlockAnnouncementHeroPath?: string | null;
+  unlockAnnouncementInitialBody?: string | null;
+  unlockAnnouncementDripBody?: string | null;
+  unlockAnnouncementAccentColor?: string | null;
+  unlockAnnouncementAccentHoverColor?: string | null;
+  unlockAnnouncementTitleColor?: string | null;
+  unlockAnnouncementSoftColor?: string | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   mountSlots?: NormalizedSlotRect[] | null;
@@ -194,6 +215,13 @@ export interface PresetCategoryUpdate {
   completionThreshold?: number | null;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
+  unlockAnnouncementHeroPath?: string | null;
+  unlockAnnouncementInitialBody?: string | null;
+  unlockAnnouncementDripBody?: string | null;
+  unlockAnnouncementAccentColor?: string | null;
+  unlockAnnouncementAccentHoverColor?: string | null;
+  unlockAnnouncementTitleColor?: string | null;
+  unlockAnnouncementSoftColor?: string | null;
   mountTemplatePath?: string | null;
   mountLayout?: MountLayoutKey | null;
   mountSlots?: NormalizedSlotRect[] | null;
@@ -254,6 +282,14 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     completionThreshold: row.completion_threshold ?? null,
     unlockPrerequisiteKey: row.unlock_prerequisite_key ?? null,
     progressiveBatchSize: row.progressive_batch_size ?? null,
+    unlockAnnouncementHeroPath: row.unlock_announcement_hero_path ?? null,
+    unlockAnnouncementInitialBody: row.unlock_announcement_initial_body ?? null,
+    unlockAnnouncementDripBody: row.unlock_announcement_drip_body ?? null,
+    unlockAnnouncementAccentColor: row.unlock_announcement_accent_color ?? null,
+    unlockAnnouncementAccentHoverColor:
+      row.unlock_announcement_accent_hover_color ?? null,
+    unlockAnnouncementTitleColor: row.unlock_announcement_title_color ?? null,
+    unlockAnnouncementSoftColor: row.unlock_announcement_soft_color ?? null,
     mountTemplatePath: row.mount_template_path ?? null,
     mountLayout: isMountLayoutKey(row.mount_layout) ? row.mount_layout : null,
     mountSlots: parseNormalizedSlots(row.mount_slots),
@@ -384,6 +420,17 @@ export async function createPresetCategory(
       completion_threshold: input.completionThreshold ?? null,
       unlock_prerequisite_key: input.unlockPrerequisiteKey ?? null,
       progressive_batch_size: input.progressiveBatchSize ?? null,
+      unlock_announcement_hero_path: input.unlockAnnouncementHeroPath ?? null,
+      unlock_announcement_initial_body:
+        input.unlockAnnouncementInitialBody ?? null,
+      unlock_announcement_drip_body: input.unlockAnnouncementDripBody ?? null,
+      unlock_announcement_accent_color:
+        input.unlockAnnouncementAccentColor ?? null,
+      unlock_announcement_accent_hover_color:
+        input.unlockAnnouncementAccentHoverColor ?? null,
+      unlock_announcement_title_color:
+        input.unlockAnnouncementTitleColor ?? null,
+      unlock_announcement_soft_color: input.unlockAnnouncementSoftColor ?? null,
       mount_template_path: input.mountTemplatePath ?? null,
       mount_layout: input.mountLayout ?? null,
       mount_slots: input.mountSlots ?? null,
@@ -461,6 +508,24 @@ export async function updatePresetCategory(
     payload.unlock_prerequisite_key = input.unlockPrerequisiteKey;
   if (input.progressiveBatchSize !== undefined)
     payload.progressive_batch_size = input.progressiveBatchSize;
+  if (input.unlockAnnouncementHeroPath !== undefined)
+    payload.unlock_announcement_hero_path = input.unlockAnnouncementHeroPath;
+  if (input.unlockAnnouncementInitialBody !== undefined)
+    payload.unlock_announcement_initial_body =
+      input.unlockAnnouncementInitialBody;
+  if (input.unlockAnnouncementDripBody !== undefined)
+    payload.unlock_announcement_drip_body = input.unlockAnnouncementDripBody;
+  if (input.unlockAnnouncementAccentColor !== undefined)
+    payload.unlock_announcement_accent_color =
+      input.unlockAnnouncementAccentColor;
+  if (input.unlockAnnouncementAccentHoverColor !== undefined)
+    payload.unlock_announcement_accent_hover_color =
+      input.unlockAnnouncementAccentHoverColor;
+  if (input.unlockAnnouncementTitleColor !== undefined)
+    payload.unlock_announcement_title_color =
+      input.unlockAnnouncementTitleColor;
+  if (input.unlockAnnouncementSoftColor !== undefined)
+    payload.unlock_announcement_soft_color = input.unlockAnnouncementSoftColor;
   if (input.mountTemplatePath !== undefined)
     payload.mount_template_path = input.mountTemplatePath;
   if (input.mountLayout !== undefined) payload.mount_layout = input.mountLayout;

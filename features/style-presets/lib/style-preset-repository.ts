@@ -43,6 +43,13 @@ interface StylePresetCategoryRow {
   is_active: boolean;
   unlock_prerequisite_key?: string | null;
   progressive_batch_size?: number | null;
+  unlock_announcement_hero_path?: string | null;
+  unlock_announcement_initial_body?: string | null;
+  unlock_announcement_drip_body?: string | null;
+  unlock_announcement_accent_color?: string | null;
+  unlock_announcement_accent_hover_color?: string | null;
+  unlock_announcement_title_color?: string | null;
+  unlock_announcement_soft_color?: string | null;
 }
 
 interface StylePresetRow {
@@ -73,7 +80,7 @@ interface StylePresetRow {
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, unlock_prerequisite_key, progressive_batch_size)";
+  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, unlock_prerequisite_key, progressive_batch_size, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
@@ -141,6 +148,13 @@ function mapCategoryRefStrict(
       isActive: true,
       unlockPrerequisiteKey: null,
       progressiveBatchSize: null,
+      unlockAnnouncementHeroPath: null,
+      unlockAnnouncementInitialBody: null,
+      unlockAnnouncementDripBody: null,
+      unlockAnnouncementAccentColor: null,
+      unlockAnnouncementAccentHoverColor: null,
+      unlockAnnouncementTitleColor: null,
+      unlockAnnouncementSoftColor: null,
     };
   }
   return {
@@ -166,6 +180,18 @@ function mapCategoryRefStrict(
     isActive: embedded.is_active,
     unlockPrerequisiteKey: embedded.unlock_prerequisite_key ?? null,
     progressiveBatchSize: embedded.progressive_batch_size ?? null,
+    unlockAnnouncementHeroPath: embedded.unlock_announcement_hero_path ?? null,
+    unlockAnnouncementInitialBody:
+      embedded.unlock_announcement_initial_body ?? null,
+    unlockAnnouncementDripBody: embedded.unlock_announcement_drip_body ?? null,
+    unlockAnnouncementAccentColor:
+      embedded.unlock_announcement_accent_color ?? null,
+    unlockAnnouncementAccentHoverColor:
+      embedded.unlock_announcement_accent_hover_color ?? null,
+    unlockAnnouncementTitleColor:
+      embedded.unlock_announcement_title_color ?? null,
+    unlockAnnouncementSoftColor:
+      embedded.unlock_announcement_soft_color ?? null,
   };
 }
 

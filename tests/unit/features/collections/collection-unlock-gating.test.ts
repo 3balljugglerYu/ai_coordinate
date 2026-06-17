@@ -27,6 +27,13 @@ function makeCategory(
     isActive: true,
     unlockPrerequisiteKey: null,
     progressiveBatchSize: null,
+    unlockAnnouncementHeroPath: null,
+    unlockAnnouncementInitialBody: null,
+    unlockAnnouncementDripBody: null,
+    unlockAnnouncementAccentColor: null,
+    unlockAnnouncementAccentHoverColor: null,
+    unlockAnnouncementTitleColor: null,
+    unlockAnnouncementSoftColor: null,
     ...overrides,
   };
 }

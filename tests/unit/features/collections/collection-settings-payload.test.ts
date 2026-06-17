@@ -792,3 +792,111 @@ describe("parseCollectionSettings - 進捗モーダル設定(任意・独立)", 
     }
   });
 });
+
+describe("parseCollectionSettings - 解放お知らせ設定(任意・独立)", () => {
+  test("hero path: 非空文字列は trim して採用、null はそのまま", () => {
+    const r = parseCollectionSettings(
+      { unlock_announcement_hero_path: "  heroes/petit/a.png  " },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.unlockAnnouncementHeroPath).toBe("heroes/petit/a.png");
+    }
+
+    const rNull = parseCollectionSettings(
+      { unlock_announcement_hero_path: null },
+      OFF,
+    );
+    expect(rNull.ok).toBe(true);
+    if (rNull.ok) {
+      expect(rNull.payload.unlockAnnouncementHeroPath).toBeNull();
+    }
+  });
+
+  test("hero path: 空文字は拒否", () => {
+    const r = parseCollectionSettings(
+      { unlock_announcement_hero_path: "   " },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/unlock_announcement_hero_path/);
+  });
+
+  test("本文: trim して採用、空文字は null に正規化", () => {
+    const r = parseCollectionSettings(
+      {
+        unlock_announcement_initial_body: "  新スタイル登場！  ",
+        unlock_announcement_drip_body: "",
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.unlockAnnouncementInitialBody).toBe("新スタイル登場！");
+      expect(r.payload.unlockAnnouncementDripBody).toBeNull();
+    }
+  });
+
+  test("本文: 200文字超は拒否", () => {
+    const r = parseCollectionSettings(
+      { unlock_announcement_initial_body: "あ".repeat(201) },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/unlock_announcement_initial_body/);
+  });
+
+  test("本文: 文字列以外(数値)は拒否", () => {
+    const r = parseCollectionSettings(
+      { unlock_announcement_drip_body: 123 },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/unlock_announcement_drip_body/);
+  });
+
+  test("色4種: #RRGGBB を採用、null はそのまま", () => {
+    const r = parseCollectionSettings(
+      {
+        unlock_announcement_accent_color: "#C670FF",
+        unlock_announcement_accent_hover_color: "#B14DF0",
+        unlock_announcement_title_color: "#8B3DC9",
+        unlock_announcement_soft_color: null,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.unlockAnnouncementAccentColor).toBe("#C670FF");
+      expect(r.payload.unlockAnnouncementAccentHoverColor).toBe("#B14DF0");
+      expect(r.payload.unlockAnnouncementTitleColor).toBe("#8B3DC9");
+      expect(r.payload.unlockAnnouncementSoftColor).toBeNull();
+    }
+  });
+
+  test("色: 不正な HEX(3桁/#抜け)は拒否", () => {
+    expect(
+      parseCollectionSettings(
+        { unlock_announcement_accent_color: "#FFF" },
+        OFF,
+      ).ok,
+    ).toBe(false);
+    const r = parseCollectionSettings(
+      { unlock_announcement_soft_color: "F3E0FF" },
+      OFF,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/unlock_announcement_soft_color/);
+  });
+
+  test("空 body は解放お知らせ項目を payload に含めない(no-op)", () => {
+    const r = parseCollectionSettings({}, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.unlockAnnouncementHeroPath).toBeUndefined();
+      expect(r.payload.unlockAnnouncementInitialBody).toBeUndefined();
+      expect(r.payload.unlockAnnouncementAccentColor).toBeUndefined();
+    }
+  });
+});

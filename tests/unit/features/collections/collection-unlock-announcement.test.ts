@@ -30,6 +30,13 @@ function makeCategory(
     isActive: true,
     unlockPrerequisiteKey: null,
     progressiveBatchSize: null,
+    unlockAnnouncementHeroPath: null,
+    unlockAnnouncementInitialBody: null,
+    unlockAnnouncementDripBody: null,
+    unlockAnnouncementAccentColor: null,
+    unlockAnnouncementAccentHoverColor: null,
+    unlockAnnouncementTitleColor: null,
+    unlockAnnouncementSoftColor: null,
     ...overrides,
   };
 }
@@ -169,5 +176,55 @@ describe("buildCollectionUnlockAnnouncements", () => {
     expect(
       result[0].unlockedPresets.slice(2, 4).map((p) => p.id),
     ).toEqual(["petit-3", "petit-2"]);
+  });
+
+  test("カテゴリの解放お知らせ設定(画像/本文/色)が announcement に載る", () => {
+    const petit = makeCategory(PETIT_KEY, {
+      unlockPrerequisiteKey: PREREQ_KEY,
+      progressiveBatchSize: 2,
+      unlockAnnouncementHeroPath: "heroes/petit/a.png",
+      unlockAnnouncementInitialBody: "初回カスタム文",
+      unlockAnnouncementDripBody: "段階カスタム文",
+      unlockAnnouncementAccentColor: "#123456",
+      unlockAnnouncementAccentHoverColor: "#654321",
+      unlockAnnouncementTitleColor: "#abcdef",
+      unlockAnnouncementSoftColor: "#fedcba",
+    });
+    const presets = Array.from({ length: 6 }, (_, i) =>
+      makePreset(`petit-${i}`, petit),
+    );
+    const result = buildCollectionUnlockAnnouncements(presets, {
+      prerequisiteCompletedKeys: new Set([PREREQ_KEY]),
+      distinctGeneratedByCategoryKey: new Map([[PETIT_KEY, 0]]),
+    });
+    expect(result).toHaveLength(1);
+    const a = result[0];
+    expect(a.heroImagePath).toBe("heroes/petit/a.png");
+    expect(a.initialBody).toBe("初回カスタム文");
+    expect(a.dripBody).toBe("段階カスタム文");
+    expect(a.accentColor).toBe("#123456");
+    expect(a.accentHoverColor).toBe("#654321");
+    expect(a.titleColor).toBe("#abcdef");
+    expect(a.softColor).toBe("#fedcba");
+  });
+
+  test("解放お知らせ設定が未設定(null)なら announcement も null(フォールバック委譲)", () => {
+    const petit = makeCategory(PETIT_KEY, {
+      unlockPrerequisiteKey: PREREQ_KEY,
+      progressiveBatchSize: 2,
+    });
+    const presets = Array.from({ length: 6 }, (_, i) =>
+      makePreset(`petit-${i}`, petit),
+    );
+    const result = buildCollectionUnlockAnnouncements(presets, {
+      prerequisiteCompletedKeys: new Set([PREREQ_KEY]),
+      distinctGeneratedByCategoryKey: new Map([[PETIT_KEY, 0]]),
+    });
+    const a = result[0];
+    expect(a.heroImagePath).toBeNull();
+    expect(a.initialBody).toBeNull();
+    expect(a.dripBody).toBeNull();
+    expect(a.accentColor).toBeNull();
+    expect(a.softColor).toBeNull();
   });
 });
