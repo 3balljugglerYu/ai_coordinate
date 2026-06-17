@@ -887,14 +887,27 @@ export function CollectionProgressModal({
                   href="/style"
                   aria-label="シールを生成する"
                   onClick={onClose}
-                  className="absolute rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
+                  className={
+                    "absolute flex items-center justify-center rounded-full px-4 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
+                    (layout.buttonColor
+                      ? ""
+                      : " bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_4px_0_rgba(234,88,12,0.45)]")
+                  }
                   style={{
                     left: `${buttonBox.left}%`,
                     top: `${buttonBox.top}%`,
                     width: `${buttonBox.width}%`,
                     height: `${buttonBox.height}%`,
+                    color: layout.buttonTextColor ?? "#ffffff",
+                    fontFamily:
+                      "'Mochiy Pop One','Zen Maru Gothic',system-ui,sans-serif",
+                    ...(layout.buttonColor
+                      ? { backgroundColor: layout.buttonColor }
+                      : {}),
                   }}
-                />
+                >
+                  シールを生成する
+                </Link>
               )
             ) : null}
           </div>

@@ -562,7 +562,7 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
     expect(onCreateMount).toHaveBeenCalledTimes(1);
   });
 
-  test("達成前(未コンプリート)・ボタン領域あり: フレーム上に「シールを生成する」リンク(/style)", () => {
+  test("達成前(未コンプリート)・ボタン領域あり: 「シールを生成する」が文字付きで表示され /style へ", () => {
     render(
       <CollectionProgressModal
         open
@@ -573,6 +573,12 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
     );
     const link = screen.getByRole("link", { name: "シールを生成する" });
     expect(link).toHaveAttribute("href", "/style");
+    // 透明ではなく文字が表示される(達成前で何も見えない不具合の回帰防止)
+    expect(link).toHaveTextContent("シールを生成する");
+    // admin のボタン色が反映される
+    expect(link.getAttribute("style")).toContain(
+      "background-color: rgb(198, 112, 255)",
+    );
   });
 
   test("達成前(未コンプリート)・ボタン領域なし: フレーム下に「シールを生成する」リンク(/style)", () => {
