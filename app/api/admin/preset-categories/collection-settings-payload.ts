@@ -58,6 +58,10 @@ export interface CollectionSettingsPayload {
   progressModalBadgeTextColor?: string | null;
   /** %達成バッジの背景色(#RRGGBB)または null(デフォルト配色) */
   progressModalBadgeBgColor?: string | null;
+  /** CTAボタンの塗り色(#RRGGBB)または null(デフォルト=オレンジ) */
+  progressModalButtonColor?: string | null;
+  /** CTAボタンの文字色(#RRGGBB)または null(デフォルト=白) */
+  progressModalButtonTextColor?: string | null;
 }
 
 export interface CollectionSettingsExisting {
@@ -408,6 +412,35 @@ export function parseCollectionSettings(
       };
     } else {
       payload.progressModalBadgeBgColor = v;
+    }
+  }
+
+  if (body.progress_modal_button_color !== undefined) {
+    const v = body.progress_modal_button_color;
+    if (v === null) {
+      payload.progressModalButtonColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error: "progress_modal_button_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.progressModalButtonColor = v;
+    }
+  }
+
+  if (body.progress_modal_button_text_color !== undefined) {
+    const v = body.progress_modal_button_text_color;
+    if (v === null) {
+      payload.progressModalButtonTextColor = null;
+    } else if (typeof v !== "string" || !HEX_COLOR_RE.test(v)) {
+      return {
+        ok: false,
+        error:
+          "progress_modal_button_text_color must be a #RRGGBB hex color or null",
+      };
+    } else {
+      payload.progressModalButtonTextColor = v;
     }
   }
 

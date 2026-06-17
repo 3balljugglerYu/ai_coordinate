@@ -9,7 +9,7 @@ const WAFER_KEY = "collectible_wafer_sticker_god_6p";
 const OGP_IMAGE = "/og/wafer-god.jpg";
 const PAGE_TITLE = "うちの子の神コレクション｜6柱そろえてコンプリート | Persta.AI";
 const PAGE_DESCRIPTION =
-  "うちの子が神話の女神・神さまに。オーディン・ゼウス・イシス・アテナ・アルテミス・アフロディーテの全6種をあつめて、限定コンプリートシートを完成させよう。ダウンロードして SNS でシェア！";
+  "うちの子が神話の女神・神さまに。オーディン・ゼウス・イシス・アテナ・アルテミス・アフロディーテの全6種をあつめて、限定コンプリートカードを完成させよう。ダウンロードして SNS でシェア！";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "うちの子の神コレクション｜6柱そろえてコンプリート",
     description:
-      "うちの子を神話の女神に。全6種をあつめてコンプリートシートをつくろう。",
+      "うちの子を神話の女神に。全6種をあつめてコンプリートカードをつくろう。",
     type: "website",
     siteName: "Persta.AI",
     images: [
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "うちの子の神コレクション｜6柱そろえてコンプリート",
     description:
-      "うちの子を神話の女神に。全6種をあつめてコンプリートシートをつくろう。",
+      "うちの子を神話の女神に。全6種をあつめてコンプリートカードをつくろう。",
     images: [OGP_IMAGE],
   },
 };

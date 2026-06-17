@@ -232,6 +232,8 @@ export function MyPageCollections({
       progressModalBadgeColor: series.progressModalBadgeColor,
       progressModalBadgeTextColor: series.progressModalBadgeTextColor,
       progressModalBadgeBgColor: series.progressModalBadgeBgColor,
+      progressModalButtonColor: series.progressModalButtonColor,
+      progressModalButtonTextColor: series.progressModalButtonTextColor,
     });
   }
 
@@ -267,11 +269,11 @@ export function MyPageCollections({
                   m.mountTemplateHeight,
                 ),
               }}
-              aria-label={`${m.displayName} の台紙を表示`}
+              aria-label={`${m.displayName} のカードを表示`}
             >
               <Image
                 src={m.mountImageUrl}
-                alt={`${m.displayName} コンプリート台紙`}
+                alt={`${m.displayName} コンプリートカード`}
                 fill
                 sizes="96px"
                 className="object-cover"

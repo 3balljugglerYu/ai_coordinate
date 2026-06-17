@@ -53,6 +53,12 @@ export interface CollectionProgress {
    */
   progressModalBadgeTextColor: string | null;
   progressModalBadgeBgColor: string | null;
+  /**
+   * 進捗モーダル下部 CTA ボタンの塗り色・文字色(#RRGGBB)。null なら従来配色
+   * (オレンジ地/白文字)を使う。
+   */
+  progressModalButtonColor: string | null;
+  progressModalButtonTextColor: string | null;
 }
 
 /** RPC の生レスポンス行(snake_case) */

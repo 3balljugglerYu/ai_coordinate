@@ -791,6 +791,46 @@ describe("parseCollectionSettings - 進捗モーダル設定(任意・独立)", 
       expect(r.payload.progressModalBadgeBgColor).toBeUndefined();
     }
   });
+
+  test("CTAボタン色: #RRGGBB を採用、null はそのまま", () => {
+    const r = parseCollectionSettings(
+      {
+        progress_modal_button_color: "#C670FF",
+        progress_modal_button_text_color: null,
+      },
+      OFF,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.progressModalButtonColor).toBe("#C670FF");
+      expect(r.payload.progressModalButtonTextColor).toBeNull();
+    }
+  });
+
+  test("CTAボタン色: 不正な HEX は拒否", () => {
+    const r1 = parseCollectionSettings(
+      { progress_modal_button_color: "#FFF" },
+      OFF,
+    );
+    expect(r1.ok).toBe(false);
+    if (!r1.ok) expect(r1.error).toMatch(/progress_modal_button_color/);
+
+    const r2 = parseCollectionSettings(
+      { progress_modal_button_text_color: "FFFFFF" },
+      OFF,
+    );
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.error).toMatch(/progress_modal_button_text_color/);
+  });
+
+  test("空 body は CTAボタン色を payload に含めない(no-op)", () => {
+    const r = parseCollectionSettings({}, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.progressModalButtonColor).toBeUndefined();
+      expect(r.payload.progressModalButtonTextColor).toBeUndefined();
+    }
+  });
 });
 
 describe("parseCollectionSettings - 解放お知らせ設定(任意・独立)", () => {

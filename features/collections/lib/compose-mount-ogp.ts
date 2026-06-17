@@ -6,7 +6,7 @@ import sharp from "sharp";
 
 /**
  * X(Twitter) summary_large_image / Facebook 等の OGP カードに最適化された
- * 1200x630(=2:1) の OGP 画像を、生成済みの「縦長コンプリート台紙」と
+ * 1200x630(=2:1) の OGP 画像を、生成済みの「縦長コンプリートカード」と
  * シリーズ名から合成する。
  *
  * デザイン方針(Persta.AI ブランド):
@@ -14,7 +14,7 @@ import sharp from "sharp";
  *  - ロゴ(public/icons/icon-512.png のパステル虹色キャラ)を左下に置く
  *  - 中央に台紙を大きく(高さ 540)、ソフトな影とほんのり後光
  *  - 細かなパステルの紙吹雪きらめき(過剰装飾は撤去)
- *  - 右上に COMPLETE バッジ、下に「{シリーズ名} コンプリート台紙」キャプション
+ *  - 右上に COMPLETE バッジ、下に「{シリーズ名} コンプリートカード」キャプション
  *
  * 注意:
  *  - sharp の SVG テキスト描画は OS のフォントを使う(Vercel/Linux は Noto Sans CJK
@@ -140,7 +140,7 @@ export async function composeMountOgp(params: {
       <!-- メインタイトル -->
       <text x="70" y="282" font-size="42" font-weight="800" fill="#3D2A14">うちの子の</text>
       <text x="70" y="346" font-size="50" font-weight="800" fill="#E77B2C">${safeName}</text>
-      <text x="70" y="402" font-size="34" font-weight="700" fill="#3D2A14">コンプリート台紙</text>
+      <text x="70" y="402" font-size="34" font-weight="700" fill="#3D2A14">コンプリートカード</text>
       <!-- サブコピー -->
       <text x="70" y="448" font-size="16" font-weight="500" fill="#7A6A58">あつめたシールが、ひとつの宝物に。</text>
     </g>
@@ -261,7 +261,7 @@ export function parseOgpMountPlacement(raw: unknown): OgpMountPlacement {
 }
 
 /**
- * カテゴリ別デザインテンプレート(1200x630)に実物のコンプリート台紙を
+ * カテゴリ別デザインテンプレート(1200x630)に実物のコンプリートカードを
  * 重ねて OGP 画像を生成する。テンプレートが設定されていないカテゴリは
  * 従来の composeMountOgp(SVG 合成)を使うこと。
  *

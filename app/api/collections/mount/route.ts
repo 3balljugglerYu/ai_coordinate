@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     selections = selectionsRaw as Record<string, string>;
   }
 
-  // 2.5) 表示期間ガード。期間外は「達成済み(completed)ユーザーの台紙更新」のみ
+  // 2.5) 表示期間ガード。期間外は「達成済み(completed)ユーザーのカード更新」のみ
   // 許可する(ユーザー視点と同じ見え方になるよう、期間は admin にも適用)。
   // reserve より前に弾くことで、期間外の未達成ユーザーが completion 行を
   // 新規作成してしまうのを防ぐ。
@@ -132,13 +132,13 @@ export async function POST(request: NextRequest) {
   );
   if (reserveError) {
     // threshold_not_reached / collection_series_not_found 等はクライアント起因
-    return jsonError("台紙を生成できませんでした", "RESERVE_FAILED", 400);
+    return jsonError("カードを生成できませんでした", "RESERVE_FAILED", 400);
   }
   const reserved = (
     Array.isArray(reserveData) ? reserveData[0] : reserveData
   ) as ReserveCollectionResultRow | undefined;
   if (!reserved) {
-    return jsonError("台紙を生成できませんでした", "RESERVE_EMPTY", 500);
+    return jsonError("カードを生成できませんでした", "RESERVE_EMPTY", 500);
   }
 
   const admin = createAdminClient();
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
   const mountImageUrl = publicUrlData.publicUrl;
   const sharePath = `/m/${completionId}`;
 
-  // 既に完了済みの台紙に対する「選択を変えて作り直す(=更新)」リクエストは許可する。
+  // 既に完了済みのカードに対する「選択を変えて作り直す(=更新)」リクエストは許可する。
   // 競合(generating 進行中 / failed リトライ未準備)は従来通りハンドル。
   const isUpdate = reserved.mount_status === "completed";
   if (!isUpdate) {
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
       );
     }
     if (reserved.mount_status === "failed" && reserved.newly_reserved === false) {
-      return jsonError("台紙生成の再試行準備ができていません", "MOUNT_RETRY_NOT_READY", 409);
+      return jsonError("カード生成の再試行準備ができていません", "MOUNT_RETRY_NOT_READY", 409);
     }
   }
 
@@ -375,6 +375,6 @@ export async function POST(request: NextRequest) {
       // fail 記録自体の失敗は致命ではない(本体エラーを優先して返す)
     }
     console.error("collection mount generation failed:", message);
-    return jsonError("台紙の生成に失敗しました", "MOUNT_GENERATION_FAILED", 500);
+    return jsonError("カードの生成に失敗しました", "MOUNT_GENERATION_FAILED", 500);
   }
 }

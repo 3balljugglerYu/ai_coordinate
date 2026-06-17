@@ -130,6 +130,8 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     progressModalBadgeColor: null,
     progressModalBadgeTextColor: null,
     progressModalBadgeBgColor: null,
+    progressModalButtonColor: null,
+    progressModalButtonTextColor: null,
   };
 }
 
@@ -209,7 +211,7 @@ async function attachCharacterImages(
   const { data, error } = await supabase
     .from("preset_categories")
     .select(
-      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center, progress_modal_ring_color, progress_modal_badge_color, progress_modal_badge_text_color, progress_modal_badge_bg_color",
+      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center, progress_modal_ring_color, progress_modal_badge_color, progress_modal_badge_text_color, progress_modal_badge_bg_color, progress_modal_button_color, progress_modal_button_text_color",
     )
     .in("id", categoryIds);
   if (error) {
@@ -234,6 +236,8 @@ async function attachCharacterImages(
       badgeColor: string | null;
       badgeTextColor: string | null;
       badgeBgColor: string | null;
+      buttonColor: string | null;
+      buttonTextColor: string | null;
     }
   >();
   for (const row of data ?? []) {
@@ -262,6 +266,9 @@ async function attachCharacterImages(
         (row.progress_modal_badge_text_color as string | null) ?? null,
       badgeBgColor:
         (row.progress_modal_badge_bg_color as string | null) ?? null,
+      buttonColor: (row.progress_modal_button_color as string | null) ?? null,
+      buttonTextColor:
+        (row.progress_modal_button_text_color as string | null) ?? null,
     });
   }
   return items.map((i) => {
@@ -283,6 +290,8 @@ async function attachCharacterImages(
       progressModalBadgeColor: modal?.badgeColor ?? null,
       progressModalBadgeTextColor: modal?.badgeTextColor ?? null,
       progressModalBadgeBgColor: modal?.badgeBgColor ?? null,
+      progressModalButtonColor: modal?.buttonColor ?? null,
+      progressModalButtonTextColor: modal?.buttonTextColor ?? null,
     };
   });
 }

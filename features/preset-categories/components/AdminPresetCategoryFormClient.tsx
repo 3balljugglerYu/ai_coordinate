@@ -98,6 +98,10 @@ interface FormState {
   progressModalBadgeTextColor: string | null;
   /** %達成バッジの背景色(#RRGGBB)。null=従来デフォルト配色 */
   progressModalBadgeBgColor: string | null;
+  /** CTAボタンの塗り色(#RRGGBB)。null=従来のオレンジ */
+  progressModalButtonColor: string | null;
+  /** CTAボタンの文字色(#RRGGBB)。null=白 */
+  progressModalButtonTextColor: string | null;
   /** 解放お知らせ初回モーダルのヒーロー画像パス(public バケット)。null=固定画像 */
   unlockAnnouncementHeroPath: string | null;
   /** 解放お知らせ初回モーダルの本文。null=現行ハードコード文 */
@@ -175,6 +179,9 @@ function toFormState(
     progressModalBadgeColor: initial?.progressModalBadgeColor ?? null,
     progressModalBadgeTextColor: initial?.progressModalBadgeTextColor ?? null,
     progressModalBadgeBgColor: initial?.progressModalBadgeBgColor ?? null,
+    progressModalButtonColor: initial?.progressModalButtonColor ?? null,
+    progressModalButtonTextColor:
+      initial?.progressModalButtonTextColor ?? null,
     unlockAnnouncementHeroPath: initial?.unlockAnnouncementHeroPath ?? null,
     unlockAnnouncementInitialBody: initial?.unlockAnnouncementInitialBody ?? null,
     unlockAnnouncementDripBody: initial?.unlockAnnouncementDripBody ?? null,
@@ -641,6 +648,9 @@ export function AdminPresetCategoryFormClient({
               progress_modal_badge_color: form.progressModalBadgeColor,
               progress_modal_badge_text_color: form.progressModalBadgeTextColor,
               progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
+              progress_modal_button_color: form.progressModalButtonColor,
+              progress_modal_button_text_color:
+                form.progressModalButtonTextColor,
               unlock_announcement_hero_path: form.unlockAnnouncementHeroPath,
               unlock_announcement_initial_body:
                 form.unlockAnnouncementInitialBody,
@@ -699,6 +709,9 @@ export function AdminPresetCategoryFormClient({
               progress_modal_badge_color: form.progressModalBadgeColor,
               progress_modal_badge_text_color: form.progressModalBadgeTextColor,
               progress_modal_badge_bg_color: form.progressModalBadgeBgColor,
+              progress_modal_button_color: form.progressModalButtonColor,
+              progress_modal_button_text_color:
+                form.progressModalButtonTextColor,
               unlock_announcement_hero_path: form.unlockAnnouncementHeroPath,
               unlock_announcement_initial_body:
                 form.unlockAnnouncementInitialBody,
@@ -1808,6 +1821,18 @@ export function AdminPresetCategoryFormClient({
           defaultSwatch="#FEF3C7"
           onChange={(v) => update("progressModalBadgeBgColor", v)}
         />
+        <ColorField
+          label="CTAボタンの塗り色"
+          value={form.progressModalButtonColor}
+          defaultSwatch="#F97316"
+          onChange={(v) => update("progressModalButtonColor", v)}
+        />
+        <ColorField
+          label="CTAボタンの文字色"
+          value={form.progressModalButtonTextColor}
+          defaultSwatch="#FFFFFF"
+          onChange={(v) => update("progressModalButtonTextColor", v)}
+        />
         </div>
 
         {/* ライブプレビュー: 上で選んだ色がリング/バッジにどう反映されるか確認できる。 */}
@@ -1820,6 +1845,8 @@ export function AdminPresetCategoryFormClient({
             badgeColor={form.progressModalBadgeColor}
             badgeTextColor={form.progressModalBadgeTextColor}
             badgeBgColor={form.progressModalBadgeBgColor}
+            buttonColor={form.progressModalButtonColor}
+            buttonTextColor={form.progressModalButtonTextColor}
           />
         </div>
         </div>
