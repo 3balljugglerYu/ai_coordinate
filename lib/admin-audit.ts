@@ -27,7 +27,8 @@ export type AdminAuditAction =
   | "prompt_override_reset"
   | "preset_category_create"
   | "preset_category_update"
-  | "preset_category_deactivate";
+  | "preset_category_deactivate"
+  | "creator_looks_two_stage_visibility_update";
 
 export interface AdminAuditLogParams {
   adminUserId: string;

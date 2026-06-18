@@ -116,6 +116,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "image",
   },
   {
+    path: "/admin/creator-looks-two-stage",
+    label: "Creator Looks設定",
+    description: "衣装＋背景の2段階生成モードの公開レベルを管理",
+    iconKey: "file-text",
+  },
+  {
     path: "/admin/style-templates",
     label: "スタイルテンプレート審査",
     description: "ユーザー投稿テンプレを審査・管理",
