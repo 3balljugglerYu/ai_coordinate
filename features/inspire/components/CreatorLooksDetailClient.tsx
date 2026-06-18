@@ -204,9 +204,14 @@ export function CreatorLooksDetailClient({
             const id = `creator-looks-mode-${opt.mode}`;
             const selected = creatorLooksMode === opt.mode;
             return (
-              <Label
+              // label 内に RadioGroupItem(button) をネストすると invalid HTML になるため、
+              // div をカード枠にして RadioGroupItem を外出しし、Label は text に htmlFor で紐付ける。
+              // カード全体クリックでの選択は onClick で維持する。
+              <div
                 key={opt.mode}
-                htmlFor={id}
+                onClick={() => {
+                  if (!submitting) setCreatorLooksMode(opt.mode);
+                }}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 ${
                   selected
                     ? "border-primary bg-primary/5"
@@ -214,18 +219,21 @@ export function CreatorLooksDetailClient({
                 }`}
               >
                 <RadioGroupItem id={id} value={opt.mode} className="mt-0.5" />
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <Label
+                  htmlFor={id}
+                  className="min-w-0 flex-1 cursor-pointer space-y-1"
+                >
+                  <span className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{opt.label}</span>
                     <span className="shrink-0 text-xs font-medium text-muted-foreground">
                       {t("modeCost", { cost })}
                     </span>
-                  </div>
-                  <p className="text-xs leading-5 text-muted-foreground">
+                  </span>
+                  <span className="block text-xs leading-5 text-muted-foreground">
                     {opt.description}
-                  </p>
-                </div>
-              </Label>
+                  </span>
+                </Label>
+              </div>
             );
           })}
         </RadioGroup>

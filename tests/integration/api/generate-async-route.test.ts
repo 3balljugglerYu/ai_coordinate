@@ -33,6 +33,15 @@ jest.mock("@/features/inspire/lib/repository", () => ({
   getStyleTemplateById: jest.fn(),
 }));
 
+// Creator Looks 生成モードのガード判定をテストごとに制御する
+jest.mock("@/lib/auth/creator-looks", () => ({
+  isCreatorLooksEnabledForUser: jest.fn(() => Promise.resolve(true)),
+}));
+jest.mock("@/features/inspire/lib/creator-looks-two-stage", () => ({
+  ...jest.requireActual("@/features/inspire/lib/creator-looks-two-stage"),
+  getCreatorLooksTwoStageVisibility: jest.fn(),
+}));
+
 import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/generate-async/route";
 import {
@@ -48,10 +57,20 @@ import {
 } from "@/features/inspire/lib/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminViewer } from "@/lib/env";
+import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
+import { getCreatorLooksTwoStageVisibility } from "@/features/inspire/lib/creator-looks-two-stage";
 
 const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
   typeof isAdminViewer
 >;
+const isCreatorLooksEnabledForUserMock =
+  isCreatorLooksEnabledForUser as jest.MockedFunction<
+    typeof isCreatorLooksEnabledForUser
+  >;
+const getCreatorLooksTwoStageVisibilityMock =
+  getCreatorLooksTwoStageVisibility as jest.MockedFunction<
+    typeof getCreatorLooksTwoStageVisibility
+  >;
 
 type JsonRecord = Record<string, unknown>;
 const VALID_SOURCE_IMAGE_STOCK_ID = "11111111-1111-4111-8111-111111111111";
@@ -331,6 +350,119 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         );
       }
     );
+  });
+
+  describe("Creator Looks 生成モード", () => {
+    const CREATOR_LOOKS_TEMPLATE = {
+      ...VISIBLE_STYLE_TEMPLATE,
+      is_creator_looks: true,
+    };
+
+    function callCreatorLooks(creatorLooksMode: string) {
+      return postGenerateAsyncRoute(
+        createRequest({
+          prompt: "creator-looks",
+          sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+          generationType: "inspire",
+          styleTemplateId: VALID_STYLE_TEMPLATE_ID,
+          model: "gpt-image-2-low-1k", // 10 percoin
+          creatorLooksMode,
+        }),
+        {
+          getUserFn,
+          jobRepository,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        }
+      );
+    }
+
+    beforeEach(() => {
+      getStyleTemplateByIdMock.mockResolvedValue({
+        data: CREATOR_LOOKS_TEMPLATE,
+        error: null,
+      });
+      isCreatorLooksEnabledForUserMock.mockReset();
+      isCreatorLooksEnabledForUserMock.mockResolvedValue(true);
+      getCreatorLooksTwoStageVisibilityMock.mockReset();
+      getCreatorLooksTwoStageVisibilityMock.mockResolvedValue("public");
+
+      // Creator Looks 投稿は cool-down(image_jobs) と hidden_prompt(secrets) を
+      // admin client で参照する。cool-down=0件 / hidden_prompt=準備済み を返す。
+      const imageJobs = {
+        select() {
+          return imageJobs;
+        },
+        eq() {
+          return imageJobs;
+        },
+        gte() {
+          return Promise.resolve({ count: 0, error: null });
+        },
+      };
+      const secrets = {
+        select() {
+          return secrets;
+        },
+        eq() {
+          return secrets;
+        },
+        maybeSingle() {
+          return Promise.resolve({
+            data: { template_id: VALID_STYLE_TEMPLATE_ID },
+            error: null,
+          });
+        },
+      };
+      createAdminClientMock.mockReturnValue({
+        from: (table: string) => (table === "image_jobs" ? imageJobs : secrets),
+      } as unknown as ReturnType<typeof createAdminClient>);
+    });
+
+    test("background_only は override_outfit=false/background=true で1段保存する", async () => {
+      const response = await callCreatorLooks("background_only");
+      expect(response.status).toBe(200);
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          override_outfit: false,
+          override_background: true,
+          generation_metadata: expect.objectContaining({
+            creatorLooksMode: "background_only",
+            creatorLooksMaxStages: 1,
+          }),
+        })
+      );
+    });
+
+    test("outfit_and_background は公開時 override両true・2段・metadataを保存する", async () => {
+      const response = await callCreatorLooks("outfit_and_background");
+      expect(response.status).toBe(200);
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          override_outfit: true,
+          override_background: true,
+          generation_metadata: expect.objectContaining({
+            creatorLooksMode: "outfit_and_background",
+            creatorLooksMaxStages: 2,
+          }),
+        })
+      );
+    });
+
+    test("outfit_and_background は admin_only かつ非adminなら403で拒否する", async () => {
+      getCreatorLooksTwoStageVisibilityMock.mockResolvedValue("admin_only");
+      isAdminViewerMock.mockReturnValue(false);
+      const response = await callCreatorLooks("outfit_and_background");
+      expect(response.status).toBe(403);
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("outfit_and_background は admin_only でも admin なら許可する", async () => {
+      getCreatorLooksTwoStageVisibilityMock.mockResolvedValue("admin_only");
+      isAdminViewerMock.mockReturnValue(true);
+      const response = await callCreatorLooks("outfit_and_background");
+      expect(response.status).toBe(200);
+    });
   });
 
   describe("GASYNC-002 postGenerateAsyncRoute", () => {
