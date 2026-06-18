@@ -104,3 +104,51 @@ function isSectionHeader(trimmedLine: string): boolean {
   // Background は呼出側で先に判定済みなのでここでは戻ってこない
   return SECTION_HEADER_RE.test(trimmedLine);
 }
+
+/**
+ * hidden_prompt から Background セクションの「説明本文」を取り出す(stripBackgroundSection の逆)。
+ * "Background:" 行から次の空行 or 次の見出しまでを連結して返す。見つからなければ空文字。
+ * 背景のみ生成 / 2段階の段階2(背景変更)で、背景の世界観テキストとして使う。
+ */
+export function extractBackgroundSection(text: string): string {
+  const lines = text.split("\n");
+  const collected: string[] = [];
+  let capturing = false;
+
+  for (const line of lines) {
+    const trimmed = line.trimStart();
+    if (!capturing && trimmed.startsWith(BACKGROUND_HEADER)) {
+      capturing = true;
+      // "Background:" の後ろに同一行で説明が続くケースを拾う
+      const inline = trimmed.slice(BACKGROUND_HEADER.length).trim();
+      if (inline) collected.push(inline);
+      continue;
+    }
+    if (capturing) {
+      if (trimmed === "" || isSectionHeader(trimmed)) break;
+      collected.push(trimmed);
+    }
+  }
+  return collected.join(" ").trim();
+}
+
+/**
+ * 「背景だけ」を変える段階のプロンプトを組み立てる(image_1 は渡さない前提)。
+ *
+ * - 背景のみモード: 元のキャラ(image_0)の衣装・ポーズ・カメラを保ったまま背景だけ世界観に変える。
+ * - 2段階の段階2: 段階1の出力(衣装着せ済み)を image_0 として渡し、背景だけ変える。
+ *
+ * image_1 を渡さないため背景のアングルが image_1 にコピーされない(= 本対策の肝)。
+ * 背景の世界観は hidden_prompt の Background 記述をテキストとして使う。
+ */
+export function composeBackgroundStagePrompt(hiddenPrompt: string): string {
+  const bg = extractBackgroundSection(hiddenPrompt);
+  const background = bg
+    ? `Background: ${bg}`
+    : "Background: a scene that matches the outfit's mood and world.";
+  return [
+    "Change ONLY the background of `image_0.png`. Keep the character, face, hairstyle, body, outfit, accessories, pose, hand positions, camera angle, viewpoint, framing, crop, and art style of `image_0.png` exactly unchanged.",
+    background,
+    "Redraw the background from image_0's own viewpoint so it fits the existing pose and framing. Do not add or remove any subject. Do not change the clothing.",
+  ].join("\n\n");
+}

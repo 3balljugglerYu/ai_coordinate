@@ -1720,6 +1720,17 @@ export const jaMessages = {
     backgroundCheckboxLabel: "背景もクリエイターの世界に合わせて変更する",
     backgroundCheckboxDescription:
       "OFF のときは元の背景をできるだけ維持し、ON のときはクリエイターの作品から背景を抽出して反映します。",
+    modeLabel: "生成内容",
+    modeCost: "{cost} ペルコイン",
+    modeOutfitOnlyLabel: "衣装だけ",
+    modeOutfitOnlyDescription:
+      "衣装だけを着せ替えます。背景は元のままです。",
+    modeOutfitAndBackgroundLabel: "衣装＋背景",
+    modeOutfitAndBackgroundDescription:
+      "衣装も背景もクリエイターの世界観に変えます。2段階生成でアングルを保ったままキレイに仕上げます。",
+    modeBackgroundOnlyLabel: "背景だけ",
+    modeBackgroundOnlyDescription:
+      "背景だけをクリエイターの世界観に変えます。衣装は元のままです。",
     poseAngleNote:
       "※ カメラアングルとポーズは変わりません。今後のアップデートで対応予定です。",
     modelLabel: "生成モデル",

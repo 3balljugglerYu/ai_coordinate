@@ -3,6 +3,8 @@
 import {
   composeCreatorLooksPrompt,
   stripBackgroundSection,
+  extractBackgroundSection,
+  composeBackgroundStagePrompt,
 } from "@/supabase/functions/image-gen-worker/creator-looks-prompt";
 
 const SAMPLE_HIDDEN_PROMPT = `CRITICAL INSTRUCTION:
@@ -148,5 +150,42 @@ Constraints:`;
     const input = "A\n\n\n\nB";
     const out = stripBackgroundSection(input);
     expect(out).toBe("A\n\nB");
+  });
+});
+
+describe("extractBackgroundSection", () => {
+  test("Background セクションの本文を取り出す", () => {
+    expect(extractBackgroundSection(SAMPLE_HIDDEN_PROMPT)).toBe(
+      "spring cherry blossom park with soft sunlight",
+    );
+  });
+
+  test("複数行の Background も連結して取り出す", () => {
+    const t = "Styling Direction:\nHead: x\n\nBackground: a sunny\nbeach resort\n\nConstraints:\nNo";
+    expect(extractBackgroundSection(t)).toBe("a sunny beach resort");
+  });
+
+  test("Background が無ければ空文字", () => {
+    expect(extractBackgroundSection("Styling Direction:\nHead: x")).toBe("");
+  });
+});
+
+describe("composeBackgroundStagePrompt", () => {
+  test("背景のみ変更(衣装維持)の指示と Background 記述を含む", () => {
+    const result = composeBackgroundStagePrompt(SAMPLE_HIDDEN_PROMPT);
+    expect(result).toContain("Change ONLY the background");
+    expect(result).toContain(
+      "Background: spring cherry blossom park with soft sunlight",
+    );
+    // 衣装・キャラを維持する指示
+    expect(result).toContain("unchanged");
+    expect(result).toContain("Do not change the clothing");
+  });
+
+  test("Background 記述が無いときはフォールバック文を使う", () => {
+    const result = composeBackgroundStagePrompt("Styling Direction:\nHead: x");
+    expect(result).toContain(
+      "Background: a scene that matches the outfit's mood and world.",
+    );
   });
 });

@@ -10,6 +10,7 @@ import {
 } from "../types";
 import { GENERATION_PROMPT_MAX_LENGTH } from "./prompt-validation";
 import { FRAMING_MODES } from "@/shared/generation/framing-mode";
+import { CREATOR_LOOKS_MODES } from "@/shared/generation/creator-looks-mode";
 
 /**
  * 画像生成機能のZodスキーマ
@@ -114,6 +115,9 @@ export const generationRequestSchema = z.object({
       background: z.boolean(),
     })
     .optional(),
+  // Creator Looks 専用: 生成モード(衣装のみ/衣装＋背景2段階/背景のみ)。
+  // 指定時は handler 側で overrides より優先して override_* を導出する。
+  creatorLooksMode: z.enum(CREATOR_LOOKS_MODES).optional(),
 }).superRefine((data, ctx) => {
   const hasSourceImageStockId =
     typeof data.sourceImageStockId === "string" &&

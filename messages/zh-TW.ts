@@ -1789,6 +1789,16 @@ export const zhTwMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "生成內容",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "僅服裝",
+    modeOutfitOnlyDescription: "僅更換服裝，背景維持不變。",
+    modeOutfitAndBackgroundLabel: "服裝 + 背景",
+    modeOutfitAndBackgroundDescription:
+      "將服裝與背景一併更換為創作者的世界。兩階段生成可保留你的鏡頭角度，同時俐落地算繪場景。",
+    modeBackgroundOnlyLabel: "僅背景",
+    modeBackgroundOnlyDescription:
+      "僅將背景更換為創作者的世界，服裝維持不變。",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "生成模型",

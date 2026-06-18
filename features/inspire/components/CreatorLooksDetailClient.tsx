@@ -4,17 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from "@/features/generation/components/ImageUploader";
 import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
 import {
-  getPercoinCost,
+  creatorLooksCost,
   isFreePlanAllowedModel,
 } from "@/features/generation/lib/model-config";
+import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import type {
   UploadedImage,
@@ -44,6 +45,12 @@ interface CreatorLooksDetailClientProps {
    * 未指定なら "free" 扱い (= fail-closed、課金モデル選択は upsell へ誘導)。
    */
   subscriptionPlan?: string;
+  /**
+   * 2段階(衣装＋背景)モードをこのユーザーに表示してよいか。
+   * Server 側で公開レベル(admin_only/public)と admin 判定から解決して渡す。
+   * false のときは「衣装のみ / 背景のみ」だけ表示する。
+   */
+  twoStageAvailable?: boolean;
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -62,13 +69,15 @@ async function fileToBase64(file: File): Promise<string> {
 export function CreatorLooksDetailClient({
   templateId,
   subscriptionPlan,
+  twoStageAvailable = false,
 }: CreatorLooksDetailClientProps) {
   const t = useTranslations("creatorLooksDetail");
   const { toast } = useToast();
   const router = useRouter();
 
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
-  const [backgroundEnabled, setBackgroundEnabled] = useState(true);
+  const [creatorLooksMode, setCreatorLooksMode] =
+    useState<CreatorLooksMode>("outfit_only");
   const [submitting, setSubmitting] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
@@ -77,7 +86,35 @@ export function CreatorLooksDetailClient({
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
 
   const isFreePlan = subscriptionPlan === "free" || !subscriptionPlan;
-  const totalPercoinCost = getPercoinCost(selectedModel) * 1;
+
+  // 表示するモード(2段階は公開許可があるときだけ)。
+  const modeOptions: Array<{
+    mode: CreatorLooksMode;
+    label: string;
+    description: string;
+  }> = [
+    {
+      mode: "outfit_only",
+      label: t("modeOutfitOnlyLabel"),
+      description: t("modeOutfitOnlyDescription"),
+    },
+    ...(twoStageAvailable
+      ? [
+          {
+            mode: "outfit_and_background" as CreatorLooksMode,
+            label: t("modeOutfitAndBackgroundLabel"),
+            description: t("modeOutfitAndBackgroundDescription"),
+          },
+        ]
+      : []),
+    {
+      mode: "background_only",
+      label: t("modeBackgroundOnlyLabel"),
+      description: t("modeBackgroundOnlyDescription"),
+    },
+  ];
+
+  const totalPercoinCost = creatorLooksCost(selectedModel, creatorLooksMode);
   // Style / InspirePageClient と同じ: 「コーデ開始」押下直後 (= fetch 中で jobId 未取得) から
   // ステータスバーを表示するため、submitting または activeJobId のどちらかで InspireGenerationFlow を
   // マウントする。jobId が null の間は内部で「準備中」表示。
@@ -105,14 +142,8 @@ export function CreatorLooksDetailClient({
           styleTemplateId: templateId,
           sourceImageBase64: base64,
           sourceImageMimeType: normalized.type,
-          // Creator Looks: 衣装は必ず移植 / 背景はユーザー選択
-          // アングル / ポーズは現状常に false (= 将来 UI で開放、計画 §A-4)
-          overrides: {
-            outfit: true,
-            angle: false,
-            pose: false,
-            background: backgroundEnabled,
-          },
+          // Creator Looks: 生成モードを送る(override_* は API 側でモードから導出)。
+          creatorLooksMode,
         }),
       });
       if (response.status === 429) {
@@ -159,29 +190,53 @@ export function CreatorLooksDetailClient({
         />
       </div>
 
-      {/* 背景設定 (= モックアップ 03 / 既存 Style 画面 backgroundChange パターンを踏襲) */}
+      {/* 生成モード選択 (= 衣装のみ / 衣装＋背景(2段階) / 背景のみ) */}
       <div className="space-y-2">
-        <Label className="text-base font-medium">{t("backgroundLabel")}</Label>
-        <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-          <Checkbox
-            id="creator-looks-background"
-            checked={backgroundEnabled}
-            onCheckedChange={(v) => setBackgroundEnabled(v === true)}
-            disabled={submitting}
-            className="mt-0.5"
-          />
-          <div className="min-w-0 space-y-1">
-            <Label
-              htmlFor="creator-looks-background"
-              className="cursor-pointer text-sm font-medium"
-            >
-              {t("backgroundCheckboxLabel")}
-            </Label>
-            <p className="text-xs leading-5 text-muted-foreground">
-              {t("backgroundCheckboxDescription")}
-            </p>
-          </div>
-        </div>
+        <Label className="text-base font-medium">{t("modeLabel")}</Label>
+        <RadioGroup
+          value={creatorLooksMode}
+          onValueChange={(v) => setCreatorLooksMode(v as CreatorLooksMode)}
+          disabled={submitting}
+          className="gap-2"
+        >
+          {modeOptions.map((opt) => {
+            const cost = creatorLooksCost(selectedModel, opt.mode);
+            const id = `creator-looks-mode-${opt.mode}`;
+            const selected = creatorLooksMode === opt.mode;
+            return (
+              // label 内に RadioGroupItem(button) をネストすると invalid HTML になるため、
+              // div をカード枠にして RadioGroupItem を外出しし、Label は text に htmlFor で紐付ける。
+              // カード全体クリックでの選択は onClick で維持する。
+              <div
+                key={opt.mode}
+                onClick={() => {
+                  if (!submitting) setCreatorLooksMode(opt.mode);
+                }}
+                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 ${
+                  selected
+                    ? "border-primary bg-primary/5"
+                    : "border-slate-200 bg-slate-50"
+                }`}
+              >
+                <RadioGroupItem id={id} value={opt.mode} className="mt-0.5" />
+                <Label
+                  htmlFor={id}
+                  className="min-w-0 flex-1 cursor-pointer space-y-1"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{opt.label}</span>
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      {t("modeCost", { cost })}
+                    </span>
+                  </span>
+                  <span className="block text-xs leading-5 text-muted-foreground">
+                    {opt.description}
+                  </span>
+                </Label>
+              </div>
+            );
+          })}
+        </RadioGroup>
       </div>
 
       {/* カメラアングル / ポーズ注釈 (= モックアップ 03 の小さい注釈) */}

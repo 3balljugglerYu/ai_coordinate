@@ -1795,6 +1795,17 @@ export const esMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "Qué generar",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "Solo el outfit",
+    modeOutfitOnlyDescription:
+      "Cambia solo el outfit. El fondo se mantiene igual.",
+    modeOutfitAndBackgroundLabel: "Outfit + fondo",
+    modeOutfitAndBackgroundDescription:
+      "Cambia el outfit y el fondo al mundo del creador. La generación en dos fases conserva tu ángulo de cámara mientras representa la escena con nitidez.",
+    modeBackgroundOnlyLabel: "Solo el fondo",
+    modeBackgroundOnlyDescription:
+      "Cambia solo el fondo al mundo del creador. El outfit se mantiene igual.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "Modelo de generación",

@@ -2,6 +2,13 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Sparkles } from "lucide-react";
 import { CreatorLooksDetailClient } from "./CreatorLooksDetailClient";
+import { getUser } from "@/lib/auth";
+import { isAdminViewer } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getCreatorLooksTwoStageVisibility,
+  isTwoStageModeAvailable,
+} from "../lib/creator-looks-two-stage";
 
 /**
  * Creator Looks 投稿の詳細ページ (= /inspire/[templateId] で is_creator_looks=true 時)
@@ -37,6 +44,16 @@ export async function CreatorLooksDetailSection({
 
   const displayTitle = title?.trim() || t("untitled");
   const displayNickname = submitterNickname?.trim() || t("anonymousCreator");
+
+  // 2段階(衣装＋背景)モードをこのユーザーに見せてよいか(公開レベル × admin判定)。
+  const user = await getUser();
+  const twoStageVisibility = await getCreatorLooksTwoStageVisibility(
+    createAdminClient(),
+  );
+  const twoStageAvailable = isTwoStageModeAvailable(
+    twoStageVisibility,
+    user ? isAdminViewer(user.id) : false,
+  );
 
   return (
     <section className="space-y-6">
@@ -82,6 +99,7 @@ export async function CreatorLooksDetailSection({
       <CreatorLooksDetailClient
         templateId={templateId}
         subscriptionPlan={subscriptionPlan}
+        twoStageAvailable={twoStageAvailable}
       />
     </section>
   );

@@ -10,10 +10,17 @@ import {
   resolveBackgroundMode,
   resolveInspireTargetSizeBaseIndex,
 } from "../../../shared/generation/prompt-core.ts";
-import { composeCreatorLooksPrompt } from "./creator-looks-prompt.ts";
+import {
+  composeCreatorLooksPrompt,
+  composeBackgroundStagePrompt,
+} from "./creator-looks-prompt.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import { getFramingModeFromGenerationMetadata } from "../../../shared/generation/framing-mode.ts";
+import {
+  getCreatorLooksModeFromGenerationMetadata,
+  creatorLooksModeFromOverrides,
+} from "../../../shared/generation/creator-looks-mode.ts";
 import {
   GEMINI_DISABLED_MESSAGE,
   GEMINI_PROVIDER_ERROR,
@@ -931,6 +938,104 @@ function extractImagesFromGeminiResponse(response: GeminiResponse): Array<{ mime
   }
 
   return images;
+}
+
+/**
+ * Creator Looks 2段階生成(衣装＋背景)の「段階1: 衣装着せ(背景維持)」を1回だけ実行し、
+ * 中間画像(衣装を着せた image_0)を返す(方式A)。
+ *
+ * - image_0(ユーザーキャラ) + image_1(参照画像) + 衣装プロンプトで生成する。
+ * - リトライ・計測・課金はしない(本体の段階2側で計測/課金/返金する)。
+ * - Gemini / OpenAI(gpt-image-2) の両モデルに対応。アスペクト比は image_0 基準。
+ * - 戻り値は段階2の image_0 として使う。
+ */
+async function generateCreatorLooksOutfitStage(params: {
+  dbModel: string;
+  apiModel: string;
+  geminiApiKey: string;
+  image0: InputImageData;
+  image1: InputImageData;
+  prompt: string;
+}): Promise<InputImageData> {
+  const { dbModel, apiModel, geminiApiKey, image0, image1, prompt } = params;
+
+  if (isOpenAIImageModel(dbModel)) {
+    const gptImage2 = parseGptImage2Model(dbModel);
+    if (!gptImage2) {
+      throw new Error(`Invalid GPT Image 2 model: ${dbModel}`);
+    }
+    const [result] = await callOpenAIImageEditMultiInputBatch({
+      prompt,
+      inputImages: [image0, image1],
+      // 衣装着せの出力フレームは image_0(ユーザーキャラ)基準に固定する。
+      targetSizeBaseIndex: 0,
+      timeoutMs: resolveOpenAIRequestTimeoutMs(gptImage2),
+      quality: gptImage2.quality,
+      sizeTier: gptImage2.sizeTier,
+      n: 1,
+    });
+    if (!result) {
+      throw new Error("Creator Looks stage1(outfit) produced no image");
+    }
+    return { base64: result.data, mimeType: result.mimeType };
+  }
+
+  // ===== Gemini 経路 =====
+  const aspectDims = parseImageDimensions(
+    decodeBase64(image0.base64),
+    image0.mimeType,
+  );
+  const aspectRatio = resolveGeminiAspectRatio(aspectDims);
+  const imageSize = extractImageSize(dbModel);
+  const requiresResponseModalities =
+    apiModel === "gemini-3.1-flash-image-preview";
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          { inline_data: { mime_type: image0.mimeType, data: image0.base64 } },
+          { inline_data: { mime_type: image1.mimeType, data: image1.base64 } },
+          { text: prompt },
+        ],
+      },
+    ],
+    safetySettings: [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+    ],
+    generationConfig: buildGeminiGenerationConfig({
+      imageSize,
+      aspectRatio,
+      requiresResponseModalities,
+    }),
+  };
+
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent`;
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": geminiApiKey,
+    },
+    body: JSON.stringify(requestBody),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Creator Looks stage1(outfit) Gemini request failed: ${response.status}`,
+    );
+  }
+  const data = (await response.json()) as GeminiResponse;
+  if (isGeminiSafetyBlocked(data)) {
+    throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+  }
+  const images = extractImagesFromGeminiResponse(data);
+  if (images.length === 0) {
+    throw new Error("Creator Looks stage1(outfit) produced no image");
+  }
+  return { base64: images[0].data, mimeType: images[0].mimeType };
 }
 
 /**
@@ -1883,6 +1988,68 @@ Deno.serve(async () => {
                         job.generation_metadata,
                       ),
                     });
+                  }
+
+                  // === Creator Looks 生成モード処理(方式A) ===
+                  // outfit_and_background: 段階1(衣装着せ・背景維持)を先に生成し、その出力を
+                  //   image_0 に差し替え image_1 を外して、本体生成を段階2(背景変更)にする。
+                  // background_only: image_1 を渡さず、image_0 の衣装を保ったまま背景だけ変える。
+                  // outfit_only: 既存どおり(composeCreatorLooksPrompt で背景維持・衣装着せ)。
+                  if (creatorLooksHiddenPrompt && resolvedInputImageData) {
+                    const clMode =
+                      getCreatorLooksModeFromGenerationMetadata(
+                        job.generation_metadata,
+                      ) ??
+                      creatorLooksModeFromOverrides(
+                        job.override_outfit ?? true,
+                        job.override_background ?? true,
+                      );
+                    if (
+                      clMode === "background_only" &&
+                      resolvedInspireTemplateImage
+                    ) {
+                      const image1Base64 = resolvedInspireTemplateImage.base64;
+                      const idx = parts.findIndex(
+                        (p) => p.inline_data?.data === image1Base64,
+                      );
+                      if (idx >= 0) parts.splice(idx, 1);
+                      resolvedInspireTemplateImage = null;
+                      fullPrompt = composeBackgroundStagePrompt(
+                        creatorLooksHiddenPrompt,
+                      );
+                    } else if (
+                      clMode === "outfit_and_background" &&
+                      resolvedInspireTemplateImage
+                    ) {
+                      // 段階1: 衣装着せ(image_0 + image_1, 背景維持)
+                      const cameraDirective =
+                        promptTemplates["creator_looks.camera_directive"] ?? "";
+                      const stage1 = await generateCreatorLooksOutfitStage({
+                        dbModel,
+                        apiModel,
+                        geminiApiKey: geminiApiKey ?? "",
+                        image0: resolvedInputImageData,
+                        image1: resolvedInspireTemplateImage,
+                        prompt: composeCreatorLooksPrompt(
+                          creatorLooksHiddenPrompt,
+                          false,
+                          cameraDirective,
+                        ),
+                      });
+                      // 段階2用に差し替え: image_0=段階1出力 / image_1なし / 背景プロンプト
+                      resolvedInputImageData = stage1;
+                      resolvedInspireTemplateImage = null;
+                      fullPrompt = composeBackgroundStagePrompt(
+                        creatorLooksHiddenPrompt,
+                      );
+                      parts.length = 0;
+                      parts.push({
+                        inline_data: {
+                          mime_type: stage1.mimeType,
+                          data: stage1.base64,
+                        },
+                      });
+                    }
                   }
 
                   parts.push({

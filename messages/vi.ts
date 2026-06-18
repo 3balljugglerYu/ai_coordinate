@@ -1792,6 +1792,16 @@ export const viMessages = {
       "Also change background to match the creator's world",
     backgroundCheckboxDescription:
       "When OFF, the original background is preserved as much as possible. When ON, the background from the creator's image is extracted and applied.",
+    modeLabel: "Tạo nội dung gì",
+    modeCost: "{cost} percoin",
+    modeOutfitOnlyLabel: "Chỉ trang phục",
+    modeOutfitOnlyDescription: "Chỉ thay đổi trang phục. Phông nền giữ nguyên.",
+    modeOutfitAndBackgroundLabel: "Trang phục + phông nền",
+    modeOutfitAndBackgroundDescription:
+      "Thay đổi cả trang phục và phông nền theo thế giới của nhà sáng tạo. Quá trình tạo hai giai đoạn giữ nguyên góc máy của bạn trong khi dựng cảnh sắc nét.",
+    modeBackgroundOnlyLabel: "Chỉ phông nền",
+    modeBackgroundOnlyDescription:
+      "Chỉ thay đổi phông nền theo thế giới của nhà sáng tạo. Trang phục giữ nguyên.",
     poseAngleNote:
       "* Camera angle and pose are preserved. Future update planned.",
     modelLabel: "Mô hình tạo",
