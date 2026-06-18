@@ -18,6 +18,7 @@ import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import { getFramingModeFromGenerationMetadata } from "../../../shared/generation/framing-mode.ts";
 import {
+  type CreatorLooksMode,
   getCreatorLooksModeFromGenerationMetadata,
   creatorLooksModeFromOverrides,
 } from "../../../shared/generation/creator-looks-mode.ts";
@@ -724,11 +725,40 @@ function getRequestedImageCount(job: { requested_image_count?: unknown }): numbe
   return Math.min(requested, 4);
 }
 
+// Creator Looks 2段階(衣装＋背景)の割引率。
+// features/generation/lib/model-config.ts の CREATOR_LOOKS_TWO_STAGE_DISCOUNT と必ず一致させること。
+const CREATOR_LOOKS_TWO_STAGE_DISCOUNT = 0.9;
+
+/**
+ * Creator Looks のモード別ペルコイン消費量(API 残高チェックの creatorLooksCost と一致させる)。
+ * - 衣装のみ / 背景のみ(1回): モデルコスト
+ * - 衣装＋背景(2段階): ceil(モデルコスト × 2 × 0.9)
+ */
+function creatorLooksWorkerCost(
+  model: string | null,
+  mode: CreatorLooksMode,
+): number {
+  const base = getPercoinCost(model);
+  if (mode === "outfit_and_background") {
+    return Math.ceil(base * 2 * CREATOR_LOOKS_TWO_STAGE_DISCOUNT);
+  }
+  return base;
+}
+
 function getGenerationPercoinAmount(job: {
   model: string | null;
   requested_image_count?: unknown;
+  generation_metadata?: unknown;
 }): number {
   const normalizedModel = normalizeModelName(job.model);
+  // Creator Looks 生成モード(metadata)があればモード別コスト(2段階=ceil(×2×0.9))を使う。
+  // (= API 層の残高チェックと一致させ、過少/過大課金を防ぐ。Creator Looks は count=1 固定)
+  const clMode = getCreatorLooksModeFromGenerationMetadata(
+    job.generation_metadata,
+  );
+  if (clMode) {
+    return creatorLooksWorkerCost(normalizedModel, clMode);
+  }
   const count = isOpenAIImageModel(normalizedModel)
     ? getRequestedImageCount(job)
     : 1;
