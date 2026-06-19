@@ -230,6 +230,18 @@ No art style change.`;
 const CREATOR_LOOKS_CAMERA_DIRECTIVE_DEFAULT = `TOP PRIORITY RULE — image_1 is an OUTFIT-ONLY reference:
 Copy ONLY the outfit, garments, and accessories from image_1. You MUST completely ignore image_1's background, scenery, camera angle, perspective, pose, framing, and composition — never reproduce any of them. Keep image_0's exact camera angle, viewpoint, framing, crop, and pose unchanged. The background follows the separate background instruction; never copy the background or layout from image_1. Whenever anything other than the outfit conflicts between the two images, image_0 always wins.`;
 
+// Creator Looks: 2段階生成の段階2(背景変更)/背景のみモードで使う背景プロンプト。
+// image_1 を渡さずテキストのみで背景を生成するため、image_0 の画風に合わせる指示を強く持たせる。
+// {background} に hidden_prompt から抽出した背景の世界観テキストが差し込まれる。
+const CREATOR_LOOKS_BACKGROUND_DIRECTIVE_DEFAULT = `Change ONLY the background of image_0.png. Keep the character, face, hairstyle, body, outfit, accessories, pose, hand positions, camera angle, viewpoint, framing, crop, and art style of image_0.png exactly unchanged.
+
+BACKGROUND STYLE — MOST IMPORTANT:
+Draw the new background in the EXACT same illustration style as image_0.png — same linework, shading method, color treatment, texture, brushwork, level of detail, and overall finish. It must look as if the same artist painted the background as part of the original illustration. Do NOT render the background in a photorealistic style or any art style different from image_0.png.
+
+Background: {{background}}
+
+Redraw the background from image_0's own viewpoint so it fits the existing pose and framing. Do not add or remove any subject. Do not change the clothing.`;
+
 // ============================================================================
 // レジストリ本体
 // ============================================================================
@@ -501,6 +513,16 @@ export const PROMPT_REGISTRY = {
       "(image_1 の構図がコピーされる問題への対策)。背景 ON/OFF どちらでも前置される。",
     defaultContent: CREATOR_LOOKS_CAMERA_DIRECTIVE_DEFAULT,
     supportedVariables: [],
+  },
+  "creator_looks.background_directive": {
+    category: "creator_looks",
+    description:
+      "Creator Looks: 2段階生成の段階2(背景変更)/背景のみモードで使う背景プロンプト。" +
+      "image_1 を渡さずテキストのみで背景を生成するため、image_0 の画風に合わせる指示を強く持つ。" +
+      "{{background}} に hidden_prompt から抽出した背景の世界観テキストが差し込まれる。",
+    defaultContent: CREATOR_LOOKS_BACKGROUND_DIRECTIVE_DEFAULT,
+    supportedVariables: ["background"],
+    previewSamples: { background: "spring cherry blossom park with soft sunlight" },
   },
 } as const satisfies Record<string, PromptDefinition>;
 

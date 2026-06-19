@@ -188,4 +188,32 @@ describe("composeBackgroundStagePrompt", () => {
       "Background: a scene that matches the outfit's mood and world.",
     );
   });
+
+  test("backgroundDirective(admin編集可)の {{background}} に世界観を差し込む", () => {
+    const directive =
+      "BACKGROUND STYLE: match image_0 art style.\n\nBackground: {{background}}\n\nRedraw.";
+    const result = composeBackgroundStagePrompt(SAMPLE_HIDDEN_PROMPT, directive);
+    expect(result).toContain("BACKGROUND STYLE: match image_0 art style.");
+    expect(result).toContain(
+      "Background: spring cherry blossom park with soft sunlight",
+    );
+    // フォールバックの固定文ではなく directive が使われる
+    expect(result.startsWith("BACKGROUND STYLE")).toBe(true);
+  });
+
+  test("backgroundDirective に {background} が無ければ末尾に Background を補う", () => {
+    const result = composeBackgroundStagePrompt(
+      SAMPLE_HIDDEN_PROMPT,
+      "Keep image_0 art style.",
+    );
+    expect(result).toBe(
+      "Keep image_0 art style.\n\nBackground: spring cherry blossom park with soft sunlight",
+    );
+  });
+
+  test("backgroundDirective が空文字なら従来の固定文(フォールバック)", () => {
+    const result = composeBackgroundStagePrompt(SAMPLE_HIDDEN_PROMPT, "");
+    expect(result).toContain("Change ONLY the background");
+    expect(result).toContain("Do not change the clothing");
+  });
 });

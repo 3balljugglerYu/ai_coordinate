@@ -140,15 +140,31 @@ export function extractBackgroundSection(text: string): string {
  *
  * image_1 を渡さないため背景のアングルが image_1 にコピーされない(= 本対策の肝)。
  * 背景の世界観は hidden_prompt の Background 記述をテキストとして使う。
+ *
+ * @param hiddenPrompt VLM 抽出済みの構造化プロンプト(Background セクションを含む)
+ * @param backgroundDirective admin 編集可の背景プロンプト(creator_looks.background_directive)。
+ *   {background} に hidden_prompt から抽出した背景の世界観テキストが差し込まれる。
+ *   空文字なら従来の固定文にフォールバックする。
  */
-export function composeBackgroundStagePrompt(hiddenPrompt: string): string {
+export function composeBackgroundStagePrompt(
+  hiddenPrompt: string,
+  backgroundDirective = "",
+): string {
   const bg = extractBackgroundSection(hiddenPrompt);
-  const background = bg
-    ? `Background: ${bg}`
-    : "Background: a scene that matches the outfit's mood and world.";
+  const background = bg || "a scene that matches the outfit's mood and world.";
+
+  const directive = backgroundDirective.trim();
+  if (directive) {
+    // {{background}} があれば置換、無ければ末尾に Background 行を補う。
+    return directive.includes("{{background}}")
+      ? directive.split("{{background}}").join(background)
+      : `${directive}\n\nBackground: ${background}`;
+  }
+
+  // フォールバック(従来の固定文)。
   return [
     "Change ONLY the background of `image_0.png`. Keep the character, face, hairstyle, body, outfit, accessories, pose, hand positions, camera angle, viewpoint, framing, crop, and art style of `image_0.png` exactly unchanged.",
-    background,
+    `Background: ${background}`,
     "Redraw the background from image_0's own viewpoint so it fits the existing pose and framing. Do not add or remove any subject. Do not change the clothing.",
   ].join("\n\n");
 }
