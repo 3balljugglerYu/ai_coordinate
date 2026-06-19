@@ -2046,6 +2046,7 @@ Deno.serve(async () => {
                       resolvedInspireTemplateImage = null;
                       fullPrompt = composeBackgroundStagePrompt(
                         creatorLooksHiddenPrompt,
+                        promptTemplates["creator_looks.background_directive"] ?? "",
                       );
                     } else if (
                       clMode === "outfit_and_background" &&
@@ -2071,6 +2072,7 @@ Deno.serve(async () => {
                       resolvedInspireTemplateImage = null;
                       fullPrompt = composeBackgroundStagePrompt(
                         creatorLooksHiddenPrompt,
+                        promptTemplates["creator_looks.background_directive"] ?? "",
                       );
                       parts.length = 0;
                       parts.push({
