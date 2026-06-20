@@ -278,6 +278,70 @@ describe("style-preset repository", () => {
     );
   });
 
+  test("listPublishedStylePresets_provider埋め込みが配列で返っても先頭を採用する", async () => {
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnValueOnce({
+        order: jest.fn().mockResolvedValue({
+          data: [
+            {
+              id: "preset-provider-arr",
+              slug: "godly-dress-odin",
+              title: "神話ドレス_オーディン",
+              styling_prompt: "prompt",
+              background_prompt: null,
+              thumbnail_image_url: "https://example.com/style.webp",
+              thumbnail_storage_path: null,
+              thumbnail_width: 912,
+              thumbnail_height: 1173,
+              sort_order: 0,
+              status: "published",
+              category_id: "category-godly",
+              image_input_mode: "single",
+              reference_image_url: null,
+              reference_image_storage_path: null,
+              reference_image_width: null,
+              reference_image_height: null,
+              category: {
+                ...TEST_CATEGORY_ROW,
+                id: "category-godly",
+                key: "godly_dress",
+                provider_user_id: "user-mario",
+                // PostgREST が to-one を配列で返すケース
+                provider: [
+                  {
+                    id: "user-mario",
+                    nickname: "mario335599",
+                    avatar_url: "https://example.com/avatar.webp",
+                  },
+                ],
+              },
+              created_by: null,
+              updated_by: null,
+              created_at: "2026-06-20T00:00:00.000Z",
+              updated_at: "2026-06-20T00:00:00.000Z",
+            },
+          ],
+          error: null,
+        }),
+      }),
+    };
+
+    mockCreateAdminClient.mockReturnValue({
+      from: jest.fn(() => query),
+    } as never);
+
+    const presets = await listPublishedStylePresets();
+
+    expect(presets[0]?.category).toEqual(
+      expect.objectContaining({
+        providerNickname: "mario335599",
+        providerAvatarUrl: "https://example.com/avatar.webp",
+      }),
+    );
+  });
+
   test("listPublishedStylePresets_運営限定カテゴリは既定で除外し管理者指定では含める", async () => {
     const publicRow = {
       id: "preset-public",
