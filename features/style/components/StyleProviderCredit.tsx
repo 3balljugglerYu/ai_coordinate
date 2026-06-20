@@ -47,15 +47,15 @@ export function StyleProviderCredit({
 
   let content;
   if (iconOnly && avatarUrl) {
-    // アイコンのみ(白フチで画像上でも視認できるように)。アクセシブル名は alt が担う。
-    const px = isLarge ? 28 : 24;
+    // アイコンのみ。アクセシブル名は alt が担う。薄いフチで白背景でも輪郭が出る。
+    const px = isLarge ? 28 : 20;
     content = (
       <Image
         src={avatarUrl}
         alt={labelText}
         width={px}
         height={px}
-        className="rounded-full object-cover shadow ring-2 ring-white/80"
+        className="rounded-full object-cover ring-1 ring-black/10"
       />
     );
   } else {

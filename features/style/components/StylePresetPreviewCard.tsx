@@ -153,16 +153,6 @@ export function StylePresetPreviewCard({
               {badgeText}
             </span>
           )}
-          {!dripLocked &&
-            preset.category?.providerNickname && (
-              <StyleProviderCredit
-                nickname={preset.category.providerNickname}
-                avatarUrl={preset.category.providerAvatarUrl ?? null}
-                locale={locale}
-                iconOnly
-                className="absolute bottom-7 left-1.5 z-10"
-              />
-            )}
           {!dripLocked && isLocked && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/65 px-2 backdrop-blur-[1px]">
               <span className="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-3 py-1 text-center text-[11px] font-bold leading-tight text-white shadow-md">
@@ -172,9 +162,18 @@ export function StylePresetPreviewCard({
           )}
         </div>
         <div
-          className="flex items-center border-t bg-white px-3"
+          className="flex items-center gap-1.5 border-t bg-white px-3"
           style={{ height: STYLE_PRESET_CARD_TITLE_HEIGHT_PX }}
         >
+          {preset.category?.providerNickname && (
+            <StyleProviderCredit
+              nickname={preset.category.providerNickname}
+              avatarUrl={preset.category.providerAvatarUrl ?? null}
+              locale={locale}
+              iconOnly
+              className="flex shrink-0 items-center"
+            />
+          )}
           <p
             className="truncate text-sm font-medium text-slate-900"
             title={preset.title}
