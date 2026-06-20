@@ -52,7 +52,8 @@ export function StyleProviderCredit({
     content = (
       <Image
         src={avatarUrl}
-        alt={labelText}
+        // href 経由でリンク化する場合、親 Link の aria-label と二重読み上げになるため alt を空にする。
+        alt={href ? "" : labelText}
         width={px}
         height={px}
         className="rounded-full object-cover ring-1 ring-black/10"
