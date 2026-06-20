@@ -15,12 +15,19 @@ import {
 import { CollectionProgressRing } from "@/features/collections/components/CollectionProgressRing";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
+import {
+  buildMyPageCollectionSections,
+  remainingOutfits,
+} from "@/features/collections/lib/my-page-collection-sections";
 
 interface ComposerTarget {
   categoryKey: string;
   displayName: string;
   threshold: number;
 }
+
+/** 完成台紙アルバムで「もっと見る」前に表示する枚数。 */
+const MOUNTS_PREVIEW_LIMIT = 6;
 
 export interface CompletedMountView {
   completionId: string;
@@ -50,6 +57,7 @@ export function MyPageCollections({
   // タップのたびにモーダルを再マウントしてバーを 0 から再アニメさせるための nonce
   const [celebrationNonce, setCelebrationNonce] = useState(0);
   const [composer, setComposer] = useState<ComposerTarget | null>(null);
+  const [showAllMounts, setShowAllMounts] = useState(false);
   // 「台紙を更新する」の表示可否と threshold のカテゴリ別キャッシュ。
   // マウント時に先読みし、サムネクリック時は即時反映する。
   const [recomposeInfo, setRecomposeInfo] = useState<
@@ -152,7 +160,18 @@ export function MyPageCollections({
     [composer, refreshProgress, router],
   );
 
-  if (completedMounts.length === 0 && progress.length === 0) {
+  // 状態別セクション分け(未着手 0/N はここで除外される)。
+  // 看板の数字は完成台紙(別ソース)のカテゴリと union して矛盾を防ぐ。
+  const sections = buildMyPageCollectionSections(
+    progress,
+    completedMounts.map((m) => m.categoryKey),
+  );
+  // 完成台紙(server prop) も着手の一形態。いずれも無ければ非参加ユーザーなので丸ごと隠す。
+  const hasAnything =
+    completedMounts.length > 0 ||
+    sections.hasEngagement ||
+    sections.completedCount > 0;
+  if (!hasAnything) {
     return null;
   }
 
@@ -250,89 +269,183 @@ export function MyPageCollections({
     });
   }
 
+  const visibleMounts = showAllMounts
+    ? completedMounts
+    : completedMounts.slice(0, MOUNTS_PREVIEW_LIMIT);
+
   return (
     <Card className="mt-4 mb-6 gap-2 px-5 py-3">
-      <h2 className="text-base font-semibold text-gray-900">コレクション</h2>
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-base font-semibold text-gray-900">コレクション</h2>
+        {sections.totalSeries > 0 ? (
+          <span className="text-xs text-gray-500">
+            全{sections.totalSeries}中{" "}
+            <span className="font-semibold text-amber-600">
+              {sections.completedCount}
+            </span>
+            完成
+          </span>
+        ) : null}
+      </div>
 
-      {completedMounts.length > 0 ? (
-        <div className="mb-4 flex flex-wrap gap-3">
-          {completedMounts.map((m) => (
-            <button
-              key={m.completionId}
-              type="button"
-              onClick={() => openMountModal(m)}
-              className="relative w-24 overflow-hidden rounded-md border border-gray-200"
-              style={{
-                aspectRatio: mountAspectForCategory(
-                  m.categoryKey,
-                  m.mountTemplateWidth,
-                  m.mountTemplateHeight,
-                ),
-              }}
-              aria-label={`${m.displayName} のカードを表示`}
-            >
-              <Image
-                src={m.mountImageUrl}
-                alt={`${m.displayName} コンプリートカード`}
-                fill
-                sizes="96px"
-                className="object-cover"
-              />
-            </button>
-          ))}
-        </div>
+      {/* あと少し!(残り1〜2着を最上段で後押し) */}
+      {sections.almostDone.length > 0 ? (
+        <section className="mt-2 space-y-2">
+          <h3 className="text-sm font-semibold text-amber-600">
+            ✨ あと少し！
+          </h3>
+          {sections.almostDone.map((s) => {
+            const remaining = remainingOutfits(s);
+            // 全着収集済み(残り0)は台紙作成へ、それ以外は生成画面へ誘導。
+            const readyToMount = remaining === 0;
+            const filled = s.collectedImageUrls.slice(0, s.uniqueOutfitCount);
+            const ghostCount = remaining; // 真の残り数(画像URL欠損に影響されない)
+            const ctaLabel = readyToMount
+              ? "コンプ！台紙を作る →"
+              : `あと${remaining}着 着せる →`;
+            const handleClick = readyToMount
+              ? () => openSeriesModal(s)
+              : () => router.push("/style");
+            return (
+              <button
+                key={s.categoryKey}
+                type="button"
+                onClick={handleClick}
+                className="flex w-full items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-left hover:bg-amber-100"
+                aria-label={
+                  readyToMount
+                    ? `${s.displayNameJa} の台紙を作る`
+                    : `${s.displayNameJa} を続ける(あと${remaining}着)`
+                }
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-gray-800">
+                    {s.displayNameJa}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    {filled.map((url, i) => (
+                      <span
+                        key={`f-${i}`}
+                        className="relative h-6 w-6 overflow-hidden rounded-full border border-amber-300"
+                      >
+                        <Image
+                          src={url}
+                          alt=""
+                          fill
+                          sizes="24px"
+                          className="object-cover"
+                        />
+                      </span>
+                    ))}
+                    {Array.from({ length: ghostCount }).map((_, i) => (
+                      <span
+                        key={`g-${i}`}
+                        className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-amber-300 text-[10px] text-amber-400"
+                        aria-hidden="true"
+                      >
+                        ?
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <span className="shrink-0 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white">
+                  {ctaLabel}
+                </span>
+              </button>
+            );
+          })}
+        </section>
       ) : null}
 
-      {progress.length > 0 ? (
-        <ul className="space-y-3">
-          {progress.map((s) => {
-            const ratio =
-              s.completionThreshold > 0
-                ? Math.min(1, s.uniqueOutfitCount / s.completionThreshold)
-                : 0;
-            const completed = s.uniqueOutfitCount >= s.completionThreshold;
-            return (
-              <li key={s.categoryKey}>
-                <button
-                  type="button"
-                  onClick={() => openSeriesModal(s)}
-                  className="flex w-full items-center gap-4 rounded-lg border border-gray-200 p-3 text-left hover:bg-gray-50"
-                >
-                  <CollectionProgressRing
-                    ratio={ratio}
-                    complete={completed}
-                    imageUrl={s.characterImageUrl}
-                    tintByProgress={false}
-                    color={s.progressModalRingColor}
-                    className="w-16 shrink-0"
+      {/* 進行中(達成間近順) */}
+      {sections.inProgress.length > 0 ? (
+        <section className="mt-3 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700">進行中</h3>
+          <ul className="space-y-3">
+            {sections.inProgress.map((s) => {
+              const ratio =
+                s.completionThreshold > 0
+                  ? Math.min(1, s.uniqueOutfitCount / s.completionThreshold)
+                  : 0;
+              return (
+                <li key={s.categoryKey}>
+                  <button
+                    type="button"
+                    onClick={() => openSeriesModal(s)}
+                    className="flex w-full items-center gap-4 rounded-lg border border-gray-200 p-3 text-left hover:bg-gray-50"
                   >
-                    {!s.characterImageUrl ? (
-                      completed ? (
-                        <span className="text-xs font-bold text-amber-500">
-                          完成
-                        </span>
-                      ) : (
+                    <CollectionProgressRing
+                      ratio={ratio}
+                      complete={false}
+                      imageUrl={s.characterImageUrl}
+                      tintByProgress={false}
+                      color={s.progressModalRingColor}
+                      className="w-16 shrink-0"
+                    >
+                      {!s.characterImageUrl ? (
                         <span className="text-sm font-bold tabular-nums text-gray-900">
                           {s.uniqueOutfitCount}/{s.completionThreshold}
                         </span>
-                      )
-                    ) : null}
-                  </CollectionProgressRing>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-gray-800">
-                      {s.displayNameJa}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {s.uniqueOutfitCount} / {s.completionThreshold} 種
-                      {s.isCompleted ? "（達成）" : ""}
-                    </p>
-                  </div>
-                </button>
-                {/* 台紙作成・更新はモーダル内 CTA に集約(行下のボタンは廃止) */}
-              </li>
-            );
-          })}
-        </ul>
+                      ) : null}
+                    </CollectionProgressRing>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-gray-800">
+                        {s.displayNameJa}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {s.uniqueOutfitCount} / {s.completionThreshold} 種
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* 完成した台紙(アルバム) */}
+      {completedMounts.length > 0 ? (
+        <section className="mt-3 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700">完成した台紙</h3>
+          <div className="flex flex-wrap gap-3">
+            {visibleMounts.map((m) => (
+              <button
+                key={m.completionId}
+                type="button"
+                onClick={() => openMountModal(m)}
+                className="relative w-24 overflow-hidden rounded-md border border-gray-200"
+                style={{
+                  aspectRatio: mountAspectForCategory(
+                    m.categoryKey,
+                    m.mountTemplateWidth,
+                    m.mountTemplateHeight,
+                  ),
+                }}
+                aria-label={`${m.displayName} のカードを表示`}
+              >
+                <Image
+                  src={m.mountImageUrl}
+                  alt={`${m.displayName} コンプリートカード`}
+                  fill
+                  sizes="96px"
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+          {completedMounts.length > MOUNTS_PREVIEW_LIMIT ? (
+            <button
+              type="button"
+              onClick={() => setShowAllMounts((v) => !v)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700"
+            >
+              {showAllMounts
+                ? "▴ 閉じる"
+                : `▸ もっと見る（${completedMounts.length}）`}
+            </button>
+          ) : null}
+        </section>
       ) : null}
 
       <CollectionProgressModal
