@@ -97,6 +97,51 @@ describe("StylePresetPreviewCard - バッジ表示", () => {
   });
 });
 
+const PROVIDER_CATEGORY = {
+  key: "godly_dress",
+  displayNameJa: "神話の女神ドレス",
+  displayNameEn: "Mythic Goddess Dress",
+  badgeColor: "#7c3aed",
+  badgeTextColor: "#ffffff",
+  providerNickname: "mario335599",
+  providerAvatarUrl: "https://example.com/avatar.webp",
+} as const;
+
+describe("StylePresetPreviewCard - 提供者クレジット", () => {
+  test("providerNickname があると提供者アイコン(アイコンのみ)を表示する", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: PROVIDER_CATEGORY })}
+        alt="alt"
+      />,
+    );
+    // カードはアイコンのみ: アバター img の代替テキストでクレジットを表現し、名前テキストは出さない
+    expect(screen.getByAltText("提供 mario335599")).toBeInTheDocument();
+    expect(screen.queryByText("提供 mario335599")).toBeNull();
+  });
+
+  test("locale='en' ではアイコンの代替テキストが『by <nickname>』になる", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: PROVIDER_CATEGORY })}
+        alt="alt"
+        locale="en"
+      />,
+    );
+    expect(screen.getByAltText("by mario335599")).toBeInTheDocument();
+  });
+
+  test("providerNickname が無いカテゴリではクレジットを表示しない", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: CHIBI_CATEGORY })}
+        alt="alt"
+      />,
+    );
+    expect(screen.queryByAltText(/提供|by/)).toBeNull();
+  });
+});
+
 describe("StylePresetPreviewCard - ロック表示", () => {
   test("lockedLabel を渡すとロックラベルを表示する", () => {
     render(

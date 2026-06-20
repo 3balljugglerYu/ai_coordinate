@@ -4,6 +4,7 @@ import type { Ref } from "react";
 import Image from "next/image";
 import { Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 
 const PRESET_NAME_MAX_CHARACTERS = 16;
 const STYLE_PRESET_CARD_WIDTH_PX = 180;
@@ -18,6 +19,9 @@ interface StylePresetPreviewCardCategory {
   displayNameEn: string;
   badgeColor: string;
   badgeTextColor: string;
+  /** 提供者クレジット(設定時のみカテゴリラベルの上に「提供 <nickname>」を表示)。 */
+  providerNickname?: string | null;
+  providerAvatarUrl?: string | null;
 }
 
 interface StylePresetPreviewCardData {
@@ -158,9 +162,18 @@ export function StylePresetPreviewCard({
           )}
         </div>
         <div
-          className="flex items-center border-t bg-white px-3"
+          className="flex items-center gap-1.5 border-t bg-white px-3"
           style={{ height: STYLE_PRESET_CARD_TITLE_HEIGHT_PX }}
         >
+          {preset.category?.providerNickname && (
+            <StyleProviderCredit
+              nickname={preset.category.providerNickname}
+              avatarUrl={preset.category.providerAvatarUrl ?? null}
+              locale={locale}
+              iconOnly
+              className="flex shrink-0 items-center"
+            />
+          )}
           <p
             className="truncate text-sm font-medium text-slate-900"
             title={preset.title}
