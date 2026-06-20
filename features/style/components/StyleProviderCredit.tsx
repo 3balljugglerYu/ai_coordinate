@@ -59,12 +59,12 @@ export function StyleProviderCredit({
       />
     );
   } else {
-    // アバター + 名前のピル。リンク時のアクセシブル名は可視テキストが担う。
+    // アバター + 名前のピル(可視表示は名前のみ。「提供/by」はリンクの aria-label が担う)。
     const px = isLarge ? 20 : 14;
     content = (
       <span
         className={`inline-flex items-center rounded-full bg-black/55 font-semibold leading-tight text-white shadow-sm backdrop-blur-[1px] ${
-          isLarge ? "gap-1.5 px-2.5 py-1 text-sm" : "gap-1 px-1.5 py-0.5 text-[10px]"
+          isLarge ? "gap-1.5 px-2.5 py-1 text-xs" : "gap-1 px-1.5 py-0.5 text-[10px]"
         }`}
       >
         {avatarUrl ? (
@@ -77,7 +77,7 @@ export function StyleProviderCredit({
           />
         ) : null}
         <span className={isLarge ? "max-w-[180px] truncate" : "max-w-[88px] truncate"}>
-          {labelText}
+          {nickname}
         </span>
       </span>
     );
@@ -91,6 +91,7 @@ export function StyleProviderCredit({
         rel="noopener noreferrer"
         // 親(画像カード等)のクリック・選択ハンドラと競合させない。
         onClick={(event) => event.stopPropagation()}
+        aria-label={labelText}
         className={className}
       >
         {content}
