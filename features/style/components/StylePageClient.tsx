@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 import {
   useCallback,
   useEffect,
@@ -220,6 +221,7 @@ function StyleReferencePanel({
   collapsed = false,
   aspectRatio,
   tooltip,
+  providerOverlay,
 }: {
   label: string;
   imageSrc: string;
@@ -232,6 +234,11 @@ function StyleReferencePanel({
    * preset カテゴリの user_guidance を画像内に表示するために使う。
    */
   tooltip?: React.ReactNode;
+  /**
+   * 画像コンテナの左下に絶対配置で重ねる任意の要素 (提供者クレジットを想定)。
+   * タップで提供者プロフィールへ遷移できる。
+   */
+  providerOverlay?: React.ReactNode;
 }) {
   return (
     <div className={className ?? "space-y-3"}>
@@ -262,6 +269,13 @@ function StyleReferencePanel({
               className={`absolute z-10 ${collapsed ? "right-1 top-1" : "right-2 top-2"}`}
             >
               {tooltip}
+            </div>
+          ) : null}
+          {providerOverlay ? (
+            <div
+              className={`absolute z-10 ${collapsed ? "bottom-1 left-1" : "bottom-2 left-2"}`}
+            >
+              {providerOverlay}
             </div>
           ) : null}
         </div>
@@ -1790,6 +1804,17 @@ export function StylePageClient({
                       />
                     );
                   })()}
+                  providerOverlay={
+                    selectedPreset.category.providerUserId &&
+                    selectedPreset.category.providerNickname ? (
+                      <StyleProviderCredit
+                        nickname={selectedPreset.category.providerNickname}
+                        avatarUrl={selectedPreset.category.providerAvatarUrl ?? null}
+                        href={`/users/${selectedPreset.category.providerUserId}`}
+                        locale={styleCardLocale}
+                      />
+                    ) : null
+                  }
                 />
               ) : null}
             </div>

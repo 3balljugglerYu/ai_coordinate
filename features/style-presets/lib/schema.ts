@@ -58,6 +58,15 @@ export interface StylePresetCategoryRef {
   visibility: StylePresetCategoryVisibility;
   isActive: boolean;
   /**
+   * 提供者(クリエイター)の profiles.id。コラボ/提供スタイルのクレジット表示に使う。
+   * 未設定(従来カテゴリ)なら null/undefined。リポジトリ層では常に値を埋める optional 属性。
+   */
+  providerUserId?: string | null;
+  /** 提供者の表示名(profiles.nickname をライブ取得)。provider 未設定なら null。 */
+  providerNickname?: string | null;
+  /** 提供者のアバター URL(profiles.avatar_url をライブ取得)。未設定なら null。 */
+  providerAvatarUrl?: string | null;
+  /**
    * 解放の前提条件となる別カテゴリの key。設定時、当該カテゴリを完走したユーザーにのみ
    * このカテゴリを解放する。null なら前提条件なし(従来どおり無条件公開)。
    */

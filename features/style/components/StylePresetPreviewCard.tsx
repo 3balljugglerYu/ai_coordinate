@@ -4,6 +4,7 @@ import type { Ref } from "react";
 import Image from "next/image";
 import { Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 
 const PRESET_NAME_MAX_CHARACTERS = 16;
 const STYLE_PRESET_CARD_WIDTH_PX = 180;
@@ -18,6 +19,9 @@ interface StylePresetPreviewCardCategory {
   displayNameEn: string;
   badgeColor: string;
   badgeTextColor: string;
+  /** 提供者クレジット(設定時のみカテゴリラベルの上に「提供 <nickname>」を表示)。 */
+  providerNickname?: string | null;
+  providerAvatarUrl?: string | null;
 }
 
 interface StylePresetPreviewCardData {
@@ -149,6 +153,15 @@ export function StylePresetPreviewCard({
               {badgeText}
             </span>
           )}
+          {!dripLocked &&
+            preset.category?.providerNickname && (
+              <StyleProviderCredit
+                nickname={preset.category.providerNickname}
+                avatarUrl={preset.category.providerAvatarUrl ?? null}
+                locale={locale}
+                className="absolute bottom-7 left-1.5 z-10 max-w-[80%]"
+              />
+            )}
           {!dripLocked && isLocked && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/65 px-2 backdrop-blur-[1px]">
               <span className="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-3 py-1 text-center text-[11px] font-bold leading-tight text-white shadow-md">
