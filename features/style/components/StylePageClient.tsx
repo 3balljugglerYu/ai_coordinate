@@ -1812,6 +1812,7 @@ export function StylePageClient({
                         avatarUrl={selectedPreset.category.providerAvatarUrl ?? null}
                         href={`/users/${selectedPreset.category.providerUserId}`}
                         locale={styleCardLocale}
+                        size="lg"
                       />
                     ) : null
                   }

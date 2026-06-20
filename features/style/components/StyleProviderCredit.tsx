@@ -16,12 +16,19 @@ interface StyleProviderCreditProps {
   href?: string | null;
   /** "提供" / "by" の接頭辞を選ぶための locale。省略時は 'ja'。 */
   locale?: "ja" | "en";
-  /** リンク/ラベルのラッパに付与する追加 class(主に絶対配置の位置指定用)。 */
+  /** ラッパに付与する追加 class(主に絶対配置の位置指定用)。 */
   className?: string;
+  /**
+   * true のときアバターアイコンのみ表示する(名前テキストを出さない)。
+   * 小さな一覧カード向け。avatarUrl が無い場合は名前ピルにフォールバックする。
+   */
+  iconOnly?: boolean;
+  /** 表示サイズ。'sm'(既定, カード)/ 'lg'(/style の選択画像オーバーレイ用)。 */
+  size?: "sm" | "lg";
 }
 
 /**
- * /style とホームのスタイルカードに出す「提供 <nickname>」クレジット。
+ * /style とホームのスタイルカードに出す提供者クレジット。
  * 提供者は preset_categories.provider_user_id (= profiles) からライブ取得した
  * nickname / avatar_url を表示する。href 指定時はプロフィールへの別タブリンクになる。
  */
@@ -31,24 +38,50 @@ export function StyleProviderCredit({
   href,
   locale = "ja",
   className,
+  iconOnly = false,
+  size = "sm",
 }: StyleProviderCreditProps) {
   const prefix = locale === "en" ? "by" : "提供";
   const labelText = `${prefix} ${nickname}`;
+  const isLarge = size === "lg";
 
-  const chip = (
-    <span className="inline-flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white shadow-sm backdrop-blur-[1px]">
-      {avatarUrl ? (
-        <Image
-          src={avatarUrl}
-          alt=""
-          width={14}
-          height={14}
-          className="h-3.5 w-3.5 rounded-full object-cover"
-        />
-      ) : null}
-      <span className="max-w-[88px] truncate">{labelText}</span>
-    </span>
-  );
+  let content;
+  if (iconOnly && avatarUrl) {
+    // アイコンのみ(白フチで画像上でも視認できるように)。アクセシブル名は alt が担う。
+    const px = isLarge ? 28 : 24;
+    content = (
+      <Image
+        src={avatarUrl}
+        alt={labelText}
+        width={px}
+        height={px}
+        className="rounded-full object-cover shadow ring-2 ring-white/80"
+      />
+    );
+  } else {
+    // アバター + 名前のピル。リンク時のアクセシブル名は可視テキストが担う。
+    const px = isLarge ? 20 : 14;
+    content = (
+      <span
+        className={`inline-flex items-center rounded-full bg-black/55 font-semibold leading-tight text-white shadow-sm backdrop-blur-[1px] ${
+          isLarge ? "gap-1.5 px-2.5 py-1 text-sm" : "gap-1 px-1.5 py-0.5 text-[10px]"
+        }`}
+      >
+        {avatarUrl ? (
+          <Image
+            src={avatarUrl}
+            alt=""
+            width={px}
+            height={px}
+            className="rounded-full object-cover"
+          />
+        ) : null}
+        <span className={isLarge ? "max-w-[180px] truncate" : "max-w-[88px] truncate"}>
+          {labelText}
+        </span>
+      </span>
+    );
+  }
 
   if (href) {
     return (
@@ -58,17 +91,12 @@ export function StyleProviderCredit({
         rel="noopener noreferrer"
         // 親(画像カード等)のクリック・選択ハンドラと競合させない。
         onClick={(event) => event.stopPropagation()}
-        aria-label={labelText}
         className={className}
       >
-        {chip}
+        {content}
       </Link>
     );
   }
 
-  return (
-    <span aria-label={labelText} className={className}>
-      {chip}
-    </span>
-  );
+  return <span className={className}>{content}</span>;
 }

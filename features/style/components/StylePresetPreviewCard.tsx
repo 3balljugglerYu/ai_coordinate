@@ -159,7 +159,8 @@ export function StylePresetPreviewCard({
                 nickname={preset.category.providerNickname}
                 avatarUrl={preset.category.providerAvatarUrl ?? null}
                 locale={locale}
-                className="absolute bottom-7 left-1.5 z-10 max-w-[80%]"
+                iconOnly
+                className="absolute bottom-7 left-1.5 z-10"
               />
             )}
           {!dripLocked && isLocked && (

@@ -108,17 +108,19 @@ const PROVIDER_CATEGORY = {
 } as const;
 
 describe("StylePresetPreviewCard - 提供者クレジット", () => {
-  test("providerNickname があると『提供 <nickname>』を表示する", () => {
+  test("providerNickname があると提供者アイコン(アイコンのみ)を表示する", () => {
     render(
       <StylePresetPreviewCard
         preset={makePreset({ category: PROVIDER_CATEGORY })}
         alt="alt"
       />,
     );
-    expect(screen.getByText("提供 mario335599")).toBeInTheDocument();
+    // カードはアイコンのみ: アバター img の代替テキストでクレジットを表現し、名前テキストは出さない
+    expect(screen.getByAltText("提供 mario335599")).toBeInTheDocument();
+    expect(screen.queryByText("提供 mario335599")).toBeNull();
   });
 
-  test("locale='en' では『by <nickname>』を表示する", () => {
+  test("locale='en' ではアイコンの代替テキストが『by <nickname>』になる", () => {
     render(
       <StylePresetPreviewCard
         preset={makePreset({ category: PROVIDER_CATEGORY })}
@@ -126,7 +128,7 @@ describe("StylePresetPreviewCard - 提供者クレジット", () => {
         locale="en"
       />,
     );
-    expect(screen.getByText("by mario335599")).toBeInTheDocument();
+    expect(screen.getByAltText("by mario335599")).toBeInTheDocument();
   });
 
   test("providerNickname が無いカテゴリではクレジットを表示しない", () => {
@@ -136,7 +138,7 @@ describe("StylePresetPreviewCard - 提供者クレジット", () => {
         alt="alt"
       />,
     );
-    expect(screen.queryByText(/提供/)).toBeNull();
+    expect(screen.queryByAltText(/提供|by/)).toBeNull();
   });
 });
 
