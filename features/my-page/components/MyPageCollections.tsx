@@ -422,7 +422,6 @@ export function MyPageCollections({
       {/* 完成した台紙(アルバム) */}
       {completedMounts.length > 0 ? (
         <section className="mt-3 space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">完成した台紙</h3>
           <div className="flex flex-wrap gap-3">
             {visibleMounts.map((m) => (
               <button
