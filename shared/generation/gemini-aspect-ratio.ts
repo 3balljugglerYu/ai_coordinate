@@ -48,6 +48,18 @@ const MAX_RATIO = 16 / 9;
 const FALLBACK_RATIO: GeminiAspectRatio = "1:1";
 
 /**
+ * "16:9" などの比率ラベルを {width, height} に変換する。
+ * OpenAI(GPT Image 2)の出力サイズ決定(getGptImage2TargetSize)に渡す用途。
+ */
+export function aspectLabelToDimensions(label: GeminiAspectRatio): {
+  width: number;
+  height: number;
+} {
+  const [w, h] = label.split(":").map(Number);
+  return { width: w, height: h };
+}
+
+/**
  * 入力画像の dimensions から Gemini 用 aspectRatio ラベルを解決する。
  *
  * - dimensions が null / 無効値 (width<=0 / height<=0) → "1:1" にフォールバック

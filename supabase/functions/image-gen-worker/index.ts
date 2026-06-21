@@ -47,12 +47,13 @@ import {
 } from "../../../shared/generation/openai-image-model.ts";
 import type { GptImage2CanonicalModel } from "../../../shared/generation/openai-image-model.ts";
 import {
+  aspectLabelToDimensions,
   resolveGeminiAspectRatio,
   type GeminiAspectRatio,
 } from "../../../shared/generation/gemini-aspect-ratio.ts";
 import {
+  normalizeStyleOutputAspectRatioMode,
   resolveOutputAspectRatio,
-  shouldForceSquareStyleOutput,
 } from "../../../shared/generation/style-output-aspect-ratio.ts";
 import {
   callOpenAIImageEditBatch,
@@ -2222,12 +2223,22 @@ Deno.serve(async () => {
                 }
                 const openAIRequestTimeoutMs =
                   resolveOpenAIRequestTimeoutMs(gptImage2);
-                // OpenAI(GPT Image 2)は 1:1 固定のみ対応。明示 "1:1" / 旧 "square" を正方形にする。
-                const targetSize = shouldForceSquareStyleOutput(
-                  oneTapStyleMetadata?.outputAspectRatioMode,
-                )
-                  ? getGptImage2TargetSize(gptImage2.sizeTier, null)
-                  : undefined;
+                // 出力比率: one_tap_style で明示比率なら、その比率の寸法から OpenAI 出力サイズを決める
+                // (GPT Image 2 も 9:16〜16:9 を出力可能)。source / 非one_tap は undefined にして
+                // 呼び出し側の入力画像ベース(従来挙動)に委ねる。
+                const oneTapAspectMode =
+                  job.generation_type === "one_tap_style"
+                    ? normalizeStyleOutputAspectRatioMode(
+                        oneTapStyleMetadata?.outputAspectRatioMode,
+                      )
+                    : "source";
+                const targetSize =
+                  oneTapAspectMode === "source"
+                    ? undefined
+                    : getGptImage2TargetSize(
+                        gptImage2.sizeTier,
+                        aspectLabelToDimensions(oneTapAspectMode),
+                      );
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
