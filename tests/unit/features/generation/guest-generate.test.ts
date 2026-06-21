@@ -333,7 +333,7 @@ describe("guest-generate", () => {
         uploadImage: new File([createPngHeader(1600, 900)], "wide.png", {
           type: "image/png",
         }),
-        outputAspectRatioMode: "square",
+        outputAspectRatioMode: "1:1",
         geminiApiKey: "key",
         fetchFn: fetchFn as unknown as typeof fetch,
       });
@@ -663,7 +663,7 @@ describe("guest-generate", () => {
         uploadImage: new File([createPngHeader(1600, 900)], "wide.png", {
           type: "image/png",
         }),
-        outputAspectRatioMode: "square",
+        outputAspectRatioMode: "1:1",
         geminiApiKey: "(unused)",
         openaiApiKey: "openai-key",
         openaiClient,

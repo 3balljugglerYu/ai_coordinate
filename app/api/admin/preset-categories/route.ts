@@ -8,8 +8,11 @@ import {
   listPresetCategories,
   PRESET_CATEGORY_IMAGE_INPUT_MODES,
   STYLE_PRESET_CATEGORY_VISIBILITY_VALUES,
-  STYLE_OUTPUT_ASPECT_RATIO_MODES,
 } from "@/features/style-presets/lib/preset-category-repository";
+import {
+  isStyleOutputAspectRatioMode,
+  type StyleOutputAspectRatioMode,
+} from "@/shared/generation/style-output-aspect-ratio";
 import { parseCollectionSettings } from "./collection-settings-payload";
 import type { MountLayoutKey } from "@/features/collections/lib/mount-layouts";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
@@ -67,7 +70,7 @@ interface ParsedCreatePayload {
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
   defaultImageInputMode?: "single" | "dual";
-  outputAspectRatioMode?: "source" | "square";
+  outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
   userGuidanceEn?: string | null;
   showSourceImageTypeControl?: boolean;
@@ -211,20 +214,21 @@ export async function POST(request: NextRequest) {
       | "dual";
   }
   if (body.output_aspect_ratio_mode !== undefined) {
-    if (
-      typeof body.output_aspect_ratio_mode !== "string" ||
-      !STYLE_OUTPUT_ASPECT_RATIO_MODES.includes(
-        body.output_aspect_ratio_mode as "source" | "square",
-      )
-    ) {
+    // 後方互換: 旧 "square" は "1:1" として受け付ける。
+    const mode =
+      body.output_aspect_ratio_mode === "square"
+        ? "1:1"
+        : body.output_aspect_ratio_mode;
+    if (!isStyleOutputAspectRatioMode(mode)) {
       return NextResponse.json(
-        { error: "output_aspect_ratio_mode must be 'source' or 'square'" },
+        {
+          error:
+            "output_aspect_ratio_mode must be 'source' or one of 9:16,4:5,3:4,2:3,1:1,3:2,4:3,5:4,16:9",
+        },
         { status: 400 },
       );
     }
-    payload.outputAspectRatioMode = body.output_aspect_ratio_mode as
-      | "source"
-      | "square";
+    payload.outputAspectRatioMode = mode;
   }
   if (body.user_guidance_ja !== undefined) {
     if (body.user_guidance_ja !== null && typeof body.user_guidance_ja !== "string") {

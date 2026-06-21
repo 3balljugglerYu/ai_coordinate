@@ -8,9 +8,9 @@ import {
   getPresetCategoryById,
   PRESET_CATEGORY_IMAGE_INPUT_MODES,
   STYLE_PRESET_CATEGORY_VISIBILITY_VALUES,
-  STYLE_OUTPUT_ASPECT_RATIO_MODES,
   updatePresetCategory,
 } from "@/features/style-presets/lib/preset-category-repository";
+import { isStyleOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import { parseCollectionSettings } from "../collection-settings-payload";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 
@@ -157,20 +157,21 @@ export async function PATCH(
       | "dual";
   }
   if (body.output_aspect_ratio_mode !== undefined) {
-    if (
-      typeof body.output_aspect_ratio_mode !== "string" ||
-      !STYLE_OUTPUT_ASPECT_RATIO_MODES.includes(
-        body.output_aspect_ratio_mode as "source" | "square",
-      )
-    ) {
+    // 後方互換: 旧 "square" は "1:1" として受け付ける。
+    const mode =
+      body.output_aspect_ratio_mode === "square"
+        ? "1:1"
+        : body.output_aspect_ratio_mode;
+    if (!isStyleOutputAspectRatioMode(mode)) {
       return NextResponse.json(
-        { error: "output_aspect_ratio_mode must be 'source' or 'square'" },
+        {
+          error:
+            "output_aspect_ratio_mode must be 'source' or one of 9:16,4:5,3:4,2:3,1:1,3:2,4:3,5:4,16:9",
+        },
         { status: 400 },
       );
     }
-    update.outputAspectRatioMode = body.output_aspect_ratio_mode as
-      | "source"
-      | "square";
+    update.outputAspectRatioMode = mode;
   }
   if (body.user_guidance_ja !== undefined) {
     if (

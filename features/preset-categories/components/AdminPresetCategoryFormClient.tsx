@@ -16,6 +16,10 @@ import {
   setSlotCount,
   splitSlots,
 } from "@/features/collections/lib/slot-edit-geometry";
+import {
+  EXPLICIT_OUTPUT_ASPECT_RATIOS,
+  type StyleOutputAspectRatioMode,
+} from "@/shared/generation/style-output-aspect-ratio";
 import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
 import { ProgressModalColorPreview } from "@/features/preset-categories/components/ProgressModalColorPreview";
 
@@ -52,7 +56,7 @@ interface FormState {
   badgeTextColor: string;
   skipBasePrefix: boolean;
   defaultImageInputMode: "single" | "dual";
-  outputAspectRatioMode: "source" | "square";
+  outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string;
   userGuidanceEn: string;
   showSourceImageTypeControl: boolean;
@@ -922,16 +926,25 @@ export function AdminPresetCategoryFormClient({
             onChange={(e) =>
               update(
                 "outputAspectRatioMode",
-                e.target.value as "source" | "square",
+                e.target.value as StyleOutputAspectRatioMode,
               )
             }
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           >
-            <option value="source">アップロード画像に合わせる</option>
-            <option value="square">正方形固定 (1:1)</option>
+            <option value="source">アップロード画像に合わせる(自動)</option>
+            {EXPLICIT_OUTPUT_ASPECT_RATIOS.map((ratio) => {
+              const [w, h] = ratio.split(":").map(Number);
+              const orientation =
+                w === h ? "正方形" : w > h ? "横長" : "縦長";
+              return (
+                <option key={ratio} value={ratio}>
+                  {ratio}（{orientation}）
+                </option>
+              );
+            })}
           </select>
           <span className="mt-1 block text-xs text-slate-500">
-            正方形固定にすると、このカテゴリの preset 生成は Gemini / OpenAI ともに 1:1 で出力します。
+            「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。比率を明示指定すると、このカテゴリの生成は常にその比率で出力します(Gemini)。OpenAI は 1:1 のみ固定に対応。
           </span>
         </label>
 

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeStyleOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
   buildStylePresetSlug,
   normalizeStylePresetOptionalPrompt,
@@ -186,8 +187,9 @@ function mapCategoryRefStrict(
     badgeColor: embedded.badge_color,
     badgeTextColor: embedded.badge_text_color,
     skipBasePrefix: embedded.skip_base_prefix,
-    outputAspectRatioMode:
-      embedded.output_aspect_ratio_mode === "square" ? "square" : "source",
+    outputAspectRatioMode: normalizeStyleOutputAspectRatioMode(
+      embedded.output_aspect_ratio_mode,
+    ),
     userGuidanceJa: embedded.user_guidance_ja ?? null,
     userGuidanceEn: embedded.user_guidance_en ?? null,
     showSourceImageTypeControl: embedded.show_source_image_type_control ?? true,
