@@ -51,6 +51,11 @@ import {
   type AsyncGenerationStatus,
 } from "@/features/generation/lib/async-api";
 import {
+  clearActiveStyleJob,
+  persistActiveStyleJob,
+  readActiveStyleJob,
+} from "@/features/style/lib/active-async-job-storage";
+import {
   buildCoordinatePreparingCopy,
   buildCoordinateStageCopy,
 } from "@/features/generation/lib/coordinate-stage-copy";
@@ -155,6 +160,10 @@ type ResultConfirmationIntent = "change" | "regenerate";
 type GenerationPhase = "idle" | "running" | "completing";
 
 const RESULT_REVEAL_DELAY_MS = 5000;
+// 画面離脱で stop() された際に pollGenerationStatus が reject する内部用メッセージ。
+// 生成失敗ではないため、この値のときはエラー表示せず、復帰時の再ポーリングに委ねる。
+// (ユーザーには出さない内部 sentinel)
+const STYLE_POLLING_STOPPED_SENTINEL = "style:polling-stopped";
 const PREPARING_PROGRESS_PERCENT = 10;
 const PREPARING_PROGRESS_TRANSITION_MS = 3000;
 // Phase 5 で選択モデル単価に基づく動的コストへ移行 (selectedModelPercoinCost)。
@@ -1401,6 +1410,137 @@ export function StylePageClient({
     }
   };
 
+  // 非同期ジョブ成功時の確定処理(結果表示 + 一覧再取得 + 各種通知)。
+  // 通常生成と復帰時の両方から呼ぶため切り出す。styleId は復帰時に
+  // selectedPreset と一致しないことがあるので明示的に受け取る。
+  const finalizeStyleAsyncSuccess = (
+    finalStatus: AsyncGenerationStatus,
+    styleId: string,
+  ) => {
+    if (!finalStatus.resultImageUrl) {
+      return;
+    }
+    setResultImageUrl(finalStatus.resultImageUrl);
+    setQueuedResultImageUrl(finalStatus.resultImageUrl);
+    setResultGeneratedImageId(finalStatus.generatedImageId ?? null);
+    setGenerationPhase("completing");
+    refreshRateLimitStatus();
+    void refreshPercoinBalance();
+    // 生成結果一覧（use cache）を最新化。/coordinate と同じく
+    // revalidate API → router.refresh() の順で叩いて、現在マウント中の
+    // ページの RSC ペイロードを再フェッチさせる（router.refresh が無いと
+    // 生成完了後にスケルトンが出っぱなしになる）。
+    void (async () => {
+      try {
+        await fetch("/api/revalidate/style", { method: "POST" });
+      } catch {
+        // 無効化失敗時も refresh は継続する
+      }
+      router.refresh();
+    })();
+    if (styleId) {
+      void recordStyleUsageClientEvent({
+        eventType: "generate",
+        styleId,
+      }).catch(() => {
+        // Tracking failures should not affect the page UX.
+      });
+    }
+    // コレクション進捗を即時再チェック(全画面チェッカーへ通知)。
+    // 非同期生成で他画面にいてもポーリングが拾うが、style画面では即時に出す。
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
+    }
+  };
+
+  // jobId のポーリングを開始し、結果を確定する。通常生成・復帰の両方で使う。
+  // 画面離脱で stop() された場合(pollingStopped sentinel)は、エラーにせず
+  // sessionStorage を保持したまま静かに抜ける(復帰時に再開して表示する)。
+  const pollAndFinalizeStyleJob = async (jobId: string, styleId: string) => {
+    const { promise, stop } = pollGenerationStatus(jobId, {
+      interval: getStyleAsyncPollingIntervalMs,
+      messages: { pollingStopped: STYLE_POLLING_STOPPED_SENTINEL },
+      onStatusUpdate: (status) => {
+        setActiveAsyncJobStatus(status);
+      },
+    });
+    activePollStopRef.current = stop;
+
+    try {
+      const finalStatus = await promise;
+      stopActivePolling();
+      setActiveAsyncJobStatus(finalStatus);
+
+      if (finalStatus.status !== "succeeded" || !finalStatus.resultImageUrl) {
+        clearActiveStyleJob();
+        handleGenerationError(finalStatus.errorMessage || t("generationFailed"));
+        refreshRateLimitStatus();
+        void refreshPercoinBalance();
+        return;
+      }
+
+      clearActiveStyleJob();
+      finalizeStyleAsyncSuccess(finalStatus, styleId);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t("unknownError");
+      if (message === STYLE_POLLING_STOPPED_SENTINEL) {
+        // 画面離脱でポーリングを中断しただけ。ジョブはサーバーで継続するため
+        // エラー表示せず、永続化を残して復帰時の再ポーリングに委ねる。
+        return;
+      }
+      clearActiveStyleJob();
+      handleGenerationError(message);
+      void refreshPercoinBalance();
+    }
+  };
+
+  // 画面復帰(remount)時に、離脱中も継続していた非同期ジョブを復元する。
+  // sessionStorage に jobId が残っていれば現在の状態を取得し、
+  //  - 完了済み → 結果を表示(通常完了と同じ流れ)
+  //  - 進行中   → 再ポーリングを開始
+  // を行う。取得失敗・失敗ジョブは静かに片付ける(古いエラーを蒸し返さない)。
+  useEffect(() => {
+    const persisted = readActiveStyleJob();
+    if (!persisted) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const status = await getGenerationStatus(persisted.jobId).catch(
+        () => null,
+      );
+      if (cancelled) {
+        return;
+      }
+      if (!status) {
+        clearActiveStyleJob();
+        return;
+      }
+      if (status.status === "succeeded") {
+        clearActiveStyleJob();
+        if (status.resultImageUrl) {
+          setActiveAsyncJobStatus(status);
+          finalizeStyleAsyncSuccess(status, persisted.styleId);
+        }
+        return;
+      }
+      if (status.status === "failed") {
+        clearActiveStyleJob();
+        return;
+      }
+      // 進行中: UI を生成中に戻して再ポーリングを開始する
+      setGenerationPhase("running");
+      setActiveAsyncJobStatus(status);
+      await pollAndFinalizeStyleJob(persisted.jobId, persisted.styleId);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // マウント時に一度だけ実行する(復帰=remount を契機にする)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const generateImageWithAsyncJob = async () => {
     if (
       !selectedPreset ||
@@ -1533,56 +1673,12 @@ export function StylePageClient({
       }));
       setActiveAsyncJobStatus(latestKnownStatus);
 
-      const { promise, stop } = pollGenerationStatus(payload.jobId, {
-        interval: getStyleAsyncPollingIntervalMs,
-        onStatusUpdate: (status) => {
-          setActiveAsyncJobStatus(status);
-        },
-      });
-      activePollStopRef.current = stop;
-
-      const finalStatus = await promise;
-      stopActivePolling();
-      setActiveAsyncJobStatus(finalStatus);
-
-      if (finalStatus.status !== "succeeded" || !finalStatus.resultImageUrl) {
-        handleGenerationError(
-          finalStatus.errorMessage || t("generationFailed")
-        );
-        refreshRateLimitStatus();
-        void refreshPercoinBalance();
-        return;
-      }
-
-      setResultImageUrl(finalStatus.resultImageUrl);
-      setQueuedResultImageUrl(finalStatus.resultImageUrl);
-      setResultGeneratedImageId(finalStatus.generatedImageId ?? null);
-      setGenerationPhase("completing");
-      refreshRateLimitStatus();
-      void refreshPercoinBalance();
-      // 生成結果一覧（use cache）を最新化。/coordinate と同じく
-      // revalidate API → router.refresh() の順で叩いて、現在マウント中の
-      // ページの RSC ペイロードを再フェッチさせる（router.refresh が無いと
-      // 生成完了後にスケルトンが出っぱなしになる）。
-      void (async () => {
-        try {
-          await fetch("/api/revalidate/style", { method: "POST" });
-        } catch {
-          // 無効化失敗時も refresh は継続する
-        }
-        router.refresh();
-      })();
-      void recordStyleUsageClientEvent({
-        eventType: "generate",
+      // 進行中ジョブを保持: 画面離脱→復帰しても復元・再ポーリングできるようにする。
+      persistActiveStyleJob({
+        jobId: payload.jobId,
         styleId: selectedPreset.id,
-      }).catch(() => {
-        // Tracking failures should not affect the page UX.
       });
-      // コレクション進捗を即時再チェック(全画面チェッカーへ通知)。
-      // 非同期生成で他画面にいてもポーリングが拾うが、style画面では即時に出す。
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event(COLLECTION_PROGRESS_REFRESH_EVENT));
-      }
+      await pollAndFinalizeStyleJob(payload.jobId, selectedPreset.id);
     } catch (error) {
       handleGenerationError(
         error instanceof Error ? error.message : t("unknownError")
