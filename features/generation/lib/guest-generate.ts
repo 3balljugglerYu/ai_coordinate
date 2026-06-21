@@ -28,10 +28,11 @@ import {
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getGptImage2TargetSize } from "@/shared/generation/openai-image-model";
 import {
+  normalizeStyleOutputAspectRatioMode,
   resolveOutputAspectRatio,
-  shouldForceSquareStyleOutput,
   type StyleOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
+import { aspectLabelToDimensions } from "@/shared/generation/gemini-aspect-ratio";
 import {
   isOpenAIProviderErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
@@ -286,11 +287,18 @@ async function dispatchOpenAI(
     };
   }
   try {
-    const targetSize = shouldForceSquareStyleOutput(
+    // 明示比率なら、その比率の寸法から OpenAI 出力サイズを決める(GPT Image 2 も非正方形可)。
+    // source は undefined にして入力画像ベース(従来挙動)に委ねる。
+    const aspectMode = normalizeStyleOutputAspectRatioMode(
       input.outputAspectRatioMode,
-    )
-      ? getGptImage2TargetSize(gptImage2.sizeTier, null)
-      : undefined;
+    );
+    const targetSize =
+      aspectMode === "source"
+        ? undefined
+        : getGptImage2TargetSize(
+            gptImage2.sizeTier,
+            aspectLabelToDimensions(aspectMode),
+          );
     let result: OpenAIImageEditResult;
     if (input.referenceImage) {
       const referenceArrayBuffer = await input.referenceImage.arrayBuffer();

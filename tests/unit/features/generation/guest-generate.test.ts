@@ -676,6 +676,30 @@ describe("guest-generate", () => {
       );
     });
 
+    test("outputAspectRatioMode=16:9 は OpenAI でも横長 targetSize になる(入力1:1でも)", async () => {
+      const openaiClient = jest.fn().mockResolvedValue({
+        data: "OPENAI_BASE64",
+        mimeType: "image/png",
+      });
+
+      await dispatchGuestImageGeneration({
+        model: "gpt-image-2-low-1k",
+        promptText: "x",
+        // 入力は正方形だが、明示 16:9 なので出力は横長になるべき
+        uploadImage: new File([createPngHeader(1024, 1024)], "sq.png", {
+          type: "image/png",
+        }),
+        outputAspectRatioMode: "16:9",
+        geminiApiKey: "(unused)",
+        openaiApiKey: "openai-key",
+        openaiClient,
+      });
+
+      const call = openaiClient.mock.calls[0][0] as { targetSize: string };
+      const [w, h] = call.targetSize.split("x").map(Number);
+      expect(w).toBeGreaterThan(h); // 横長
+    });
+
     test("openaiClient が SAFETY エラーを throw すると safety_blocked", async () => {
       const openaiClient = jest.fn().mockRejectedValue(
         new Error("safety_policy_blocked")
