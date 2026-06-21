@@ -51,6 +51,10 @@ import {
   type GeminiAspectRatio,
 } from "../../../shared/generation/gemini-aspect-ratio.ts";
 import {
+  resolveOutputAspectRatio,
+  shouldForceSquareStyleOutput,
+} from "../../../shared/generation/style-output-aspect-ratio.ts";
+import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
   parseImageDimensions,
@@ -2156,12 +2160,15 @@ Deno.serve(async () => {
                         aspectBaseImage.mimeType,
                       )
                     : null;
-                  const forceSquareOneTapStyleOutput =
-                    job.generation_type === "one_tap_style" &&
-                    oneTapStyleMetadata?.outputAspectRatioMode === "square";
+                  // one_tap_style は preset カテゴリの出力比率モードを尊重する
+                  // (source=入力比率に自動スナップ / 明示比率=その比率で出力)。
+                  // それ以外(coordinate / inspire 等)は従来どおり入力比率に自動スナップ。
                   const aspectRatio: GeminiAspectRatio =
-                    forceSquareOneTapStyleOutput
-                      ? "1:1"
+                    job.generation_type === "one_tap_style"
+                      ? resolveOutputAspectRatio(
+                          oneTapStyleMetadata?.outputAspectRatioMode,
+                          aspectDims,
+                        )
                       : resolveGeminiAspectRatio(aspectDims);
 
                   // gemini-3.1-flash-image-preview のみ candidateCount / responseModalities を追加。
@@ -2215,10 +2222,12 @@ Deno.serve(async () => {
                 }
                 const openAIRequestTimeoutMs =
                   resolveOpenAIRequestTimeoutMs(gptImage2);
-                const targetSize =
-                  oneTapStyleMetadata?.outputAspectRatioMode === "square"
-                    ? getGptImage2TargetSize(gptImage2.sizeTier, null)
-                    : undefined;
+                // OpenAI(GPT Image 2)は 1:1 固定のみ対応。明示 "1:1" / 旧 "square" を正方形にする。
+                const targetSize = shouldForceSquareStyleOutput(
+                  oneTapStyleMetadata?.outputAspectRatioMode,
+                )
+                  ? getGptImage2TargetSize(gptImage2.sizeTier, null)
+                  : undefined;
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
