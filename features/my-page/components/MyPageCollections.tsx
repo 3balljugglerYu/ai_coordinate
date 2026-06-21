@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Check, Sparkles } from "lucide-react";
@@ -269,8 +270,24 @@ export function MyPageCollections({
     completedMounts.length > 0 ||
     sections.hasEngagement ||
     sections.completedCount > 0;
+  // 未参加ユーザーにも図鑑への入口だけは出す(0/N の羅列は出さず、発見導線のみ)。
   if (!hasAnything) {
-    return null;
+    return (
+      <Card className="mt-4 mb-6 gap-2 px-5 py-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">コレクション</h2>
+          <Link
+            href="/collections"
+            className="text-xs font-semibold text-amber-600 hover:text-amber-700"
+          >
+            図鑑をみる →
+          </Link>
+        </div>
+        <p className="text-sm text-gray-500">
+          集めて図鑑を完成させよう✨
+        </p>
+      </Card>
+    );
   }
 
   /**
@@ -373,17 +390,25 @@ export function MyPageCollections({
 
   return (
     <Card className="mt-4 mb-6 gap-2 px-5 py-3">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-gray-900">コレクション</h2>
-        {sections.totalSeries > 0 ? (
-          <span className="text-xs text-gray-500">
-            全{sections.totalSeries}中{" "}
-            <span className="font-semibold text-amber-600">
-              {sections.completedCount}
+        <div className="flex items-baseline gap-3">
+          {sections.totalSeries > 0 ? (
+            <span className="text-xs text-gray-500">
+              全{sections.totalSeries}中{" "}
+              <span className="font-semibold text-amber-600">
+                {sections.completedCount}
+              </span>
+              完成
             </span>
-            完成
-          </span>
-        ) : null}
+          ) : null}
+          <Link
+            href="/collections"
+            className="shrink-0 text-xs font-semibold text-amber-600 hover:text-amber-700"
+          >
+            図鑑をみる →
+          </Link>
+        </div>
       </div>
 
       {/* あと少し!(残り0〜2着を最上段で後押し) */}
