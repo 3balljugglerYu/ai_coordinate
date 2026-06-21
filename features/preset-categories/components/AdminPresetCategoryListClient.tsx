@@ -61,9 +61,9 @@ export function AdminPresetCategoryListClient({ categories }: Props) {
                       </span>
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
                         出力比率:{" "}
-                        {category.outputAspectRatioMode === "square"
-                          ? "正方形固定"
-                          : "アップロード画像に合わせる"}
+                        {category.outputAspectRatioMode === "source"
+                          ? "アップロードに合わせる"
+                          : category.outputAspectRatioMode}
                       </span>
                       <span
                         className={`rounded px-1.5 py-0.5 text-xs font-medium ${

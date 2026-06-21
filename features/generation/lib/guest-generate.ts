@@ -6,7 +6,6 @@ import {
   parseImageDimensions,
   type OpenAIImageEditResult,
 } from "@/features/generation/lib/openai-image";
-import { resolveGeminiAspectRatio } from "@/shared/generation/gemini-aspect-ratio";
 import {
   GUEST_ALLOWED_MODELS,
   parseGuestRequestedModel,
@@ -29,6 +28,7 @@ import {
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getGptImage2TargetSize } from "@/shared/generation/openai-image-model";
 import {
+  resolveOutputAspectRatio,
   shouldForceSquareStyleOutput,
   type StyleOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
@@ -363,9 +363,11 @@ async function dispatchGemini(
   const imageSize = extractImageSize(input.model as GeminiOnlyModel);
   const { part: imagePart, dimensions: inputDimensions } =
     await fileToInlineDataPartWithDimensions(input.uploadImage);
-  const aspectRatio = shouldForceSquareStyleOutput(input.outputAspectRatioMode)
-    ? "1:1"
-    : resolveGeminiAspectRatio(inputDimensions);
+  // モード="source" は入力比率を自動スナップ、明示比率はその比率で出力する。
+  const aspectRatio = resolveOutputAspectRatio(
+    input.outputAspectRatioMode,
+    inputDimensions,
+  );
   const parts: GeminiContentPart[] = [
     { text: input.promptText },
     imagePart,
