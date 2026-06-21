@@ -932,12 +932,16 @@ export function AdminPresetCategoryFormClient({
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="source">アップロード画像に合わせる(自動)</option>
-            {EXPLICIT_OUTPUT_ASPECT_RATIOS.map((ratio) => (
-              <option key={ratio} value={ratio}>
-                {ratio}
-                {ratio === "1:1" ? "(正方形)" : ""}
-              </option>
-            ))}
+            {EXPLICIT_OUTPUT_ASPECT_RATIOS.map((ratio) => {
+              const [w, h] = ratio.split(":").map(Number);
+              const orientation =
+                w === h ? "正方形" : w > h ? "横長" : "縦長";
+              return (
+                <option key={ratio} value={ratio}>
+                  {ratio}（{orientation}）
+                </option>
+              );
+            })}
           </select>
           <span className="mt-1 block text-xs text-slate-500">
             「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。比率を明示指定すると、このカテゴリの生成は常にその比率で出力します(Gemini)。OpenAI は 1:1 のみ固定に対応。
