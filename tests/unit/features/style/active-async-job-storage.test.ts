@@ -43,4 +43,35 @@ describe("active-async-job-storage", () => {
     );
     expect(readActiveStyleJob()).toEqual({ jobId: "job-9", styleId: "" });
   });
+
+  test("storage の各操作が throw しても安全に処理する(quota/アクセス拒否等)", () => {
+    const original = window.sessionStorage;
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      value: {
+        getItem: () => {
+          throw new Error("access denied");
+        },
+        setItem: () => {
+          throw new Error("quota exceeded");
+        },
+        removeItem: () => {
+          throw new Error("blocked");
+        },
+        clear: () => {},
+      },
+    });
+    try {
+      expect(() =>
+        persistActiveStyleJob({ jobId: "job-1", styleId: "style-1" }),
+      ).not.toThrow();
+      expect(readActiveStyleJob()).toBeNull();
+      expect(() => clearActiveStyleJob()).not.toThrow();
+    } finally {
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
 });

@@ -690,6 +690,7 @@ describe("StylePageClient", () => {
   afterEach(() => {
     jest.useRealTimers();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     global.fetch = originalFetch;
     mockToast.mockReset();
     mockDismissToast.mockReset();
@@ -1098,6 +1099,43 @@ describe("StylePageClient", () => {
 
     // ゲストは1枚生成後、結果消失と上限エラーを防ぐため再生成ボタンは無効のまま。
     expect(screen.getByRole("button", { name: /Start Styling/ })).toBeDisabled();
+  });
+
+  test("復帰時_sessionStorageの完了済みジョブを再開し結果を確定する_エラーにしない", async () => {
+    // 生成中に離脱して走り続けていたジョブを保持している状態を再現する。
+    window.sessionStorage.setItem(
+      "persta:style:active-async-job",
+      JSON.stringify({ jobId: "style-job-001", styleId: "resumed-style-id" }),
+    );
+    // 復帰時の状態取得は「完了済み」を返す。
+    generationStatusResponseQueue = [
+      createJsonResponse({
+        id: "style-job-001",
+        status: "succeeded",
+        processingStage: "completed",
+        resultImageUrl: "https://cdn.example.com/generated-style-result.png",
+        previewImageUrl: null,
+        errorMessage: null,
+        generatedImageId: "generated-image-001",
+      }),
+    ];
+
+    render(<StylePageClient presets={presets} />);
+
+    // 復帰 → getGenerationStatus(succeeded) → 確定処理(利用イベント記録)が走る。
+    await waitFor(() =>
+      expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+        eventType: "generate",
+        styleId: "resumed-style-id",
+      }),
+    );
+
+    // 完了確定したので保持はクリアされ、誤エラーも出ない。
+    await waitFor(() =>
+      expect(
+        window.sessionStorage.getItem("persta:style:active-async-job"),
+      ).toBeNull(),
+    );
   });
 
   test("reduced motion が有効な場合は生成ステータスへのスクロールを即時にする", async () => {
