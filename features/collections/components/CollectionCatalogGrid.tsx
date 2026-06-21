@@ -1,21 +1,24 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import {
+  CollectionProgressModal,
+  type CollectionCelebration,
+} from "@/features/collections/components/CollectionProgressModal";
 import type {
   CollectionCatalogAvailability,
   CollectionCatalogEntry,
   CollectionCatalogState,
 } from "@/features/collections/lib/collection-catalog-view";
 
-/**
- * 図鑑カードのタップ先。専用ガイドがあるシリーズはそこへ、無ければ集める導線(/style)へ。
- */
-const GUIDE_HREF_BY_KEY: Record<string, string> = {
-  collectible_wafer_sticker_god_6p: "/collections/wafer",
-};
-
-function hrefForEntry(entry: CollectionCatalogEntry): string {
-  return GUIDE_HREF_BY_KEY[entry.key] ?? "/style";
+/** generated-images(public バケット)の保存パスから公開URLを組み立てる(クライアント可)。 */
+function buildMountUrl(path: string | null): string | null {
+  if (!path) return null;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/generated-images/${path}`;
 }
 
 function StateBadge({
@@ -31,7 +34,6 @@ function StateBadge({
   threshold: number;
   locale: "ja" | "en";
 }) {
-  // 完成は実績としていつでも優先表示。
   if (state === "completed") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-white">
@@ -40,7 +42,6 @@ function StateBadge({
       </span>
     );
   }
-  // 期間外: 集めようと誘わず、終了/近日を正直に出す。
   if (availability === "ended") {
     return (
       <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-bold text-gray-600">
@@ -76,6 +77,11 @@ export function CollectionCatalogGrid({
   entries: CollectionCatalogEntry[];
   locale: "ja" | "en";
 }) {
+  const [celebration, setCelebration] = useState<CollectionCelebration | null>(
+    null,
+  );
+  const [nonce, setNonce] = useState(0);
+
   if (entries.length === 0) {
     return (
       <p className="py-16 text-center text-sm text-gray-500">
@@ -86,34 +92,59 @@ export function CollectionCatalogGrid({
     );
   }
 
+  // コンプリート済みのカードをタップ → 完成台紙(コンプリート)モーダルを開く。
+  function openCompleted(entry: CollectionCatalogEntry, name: string) {
+    setNonce((n) => n + 1);
+    setCelebration({
+      categoryKey: entry.key,
+      displayName: name,
+      fromCount: entry.completionThreshold,
+      toCount: entry.completionThreshold,
+      threshold: entry.completionThreshold,
+      isCompleted: true,
+      mountImageUrl: buildMountUrl(entry.mountImagePath),
+      mountTemplateWidth: entry.mountTemplateWidth,
+      mountTemplateHeight: entry.mountTemplateHeight,
+      sharePath: entry.completionId ? `/m/${entry.completionId}` : null,
+      completionId: entry.completionId,
+      characterImageUrl: null,
+      collectedImageUrls: [],
+      celebrationEffect: "sparkle",
+    });
+  }
+
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {entries.map((entry) => {
-        const name = locale === "en" ? entry.displayNameEn : entry.displayNameJa;
-        const ratio =
-          entry.completionThreshold > 0
-            ? Math.min(1, entry.uniqueOutfitCount / entry.completionThreshold)
-            : 0;
-        // 終了したコレクションはどこにも遷移させない(リンク無効)。
-        const clickable = entry.availability !== "ended";
-        const showProgressBar =
-          entry.state === "in_progress" && entry.availability === "available";
-        const subLabel =
-          entry.state === "completed"
-            ? locale === "en"
-              ? "Completed"
-              : "コンプリート済み"
-            : entry.availability === "ended"
-              ? ""
-              : entry.availability === "upcoming"
-                ? locale === "en"
-                  ? "Coming soon"
-                  : "近日公開"
-                : locale === "en"
-                  ? `Collect all ${entry.completionThreshold}`
-                  : `${entry.completionThreshold}種あつめよう`;
-        const cardInner = (
-          <>
+    <>
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {entries.map((entry) => {
+          const name =
+            locale === "en" ? entry.displayNameEn : entry.displayNameJa;
+          const ratio =
+            entry.completionThreshold > 0
+              ? Math.min(1, entry.uniqueOutfitCount / entry.completionThreshold)
+              : 0;
+          // コンプリート者だけタップ可能(=モーダル)。それ以外はどこにも遷移しない。
+          const isClickable = entry.state === "completed";
+          const showProgressBar =
+            entry.state === "in_progress" &&
+            entry.availability === "available";
+          const subLabel =
+            entry.state === "completed"
+              ? locale === "en"
+                ? "Completed"
+                : "コンプリート済み"
+              : entry.availability === "ended"
+                ? ""
+                : entry.availability === "upcoming"
+                  ? locale === "en"
+                    ? "Coming soon"
+                    : "近日公開"
+                  : locale === "en"
+                    ? `Collect all ${entry.completionThreshold}`
+                    : `${entry.completionThreshold}種あつめよう`;
+
+          const cardInner = (
+            <>
               <div className="relative aspect-square bg-gray-100">
                 {entry.imageUrl ? (
                   <Image
@@ -164,25 +195,36 @@ export function CollectionCatalogGrid({
                   <p className="mt-1 text-xs text-gray-400">{subLabel}</p>
                 ) : null}
               </div>
-          </>
-        );
-        return (
-          <li key={entry.key}>
-            {clickable ? (
-              <Link
-                href={hrefForEntry(entry)}
-                className="block overflow-hidden rounded-2xl border border-gray-200 bg-white transition-colors hover:bg-gray-50"
-              >
-                {cardInner}
-              </Link>
-            ) : (
-              <div className="block cursor-default overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                {cardInner}
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+            </>
+          );
+
+          return (
+            <li key={entry.key}>
+              {isClickable ? (
+                <button
+                  type="button"
+                  onClick={() => openCompleted(entry, name)}
+                  className="block w-full overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-colors hover:bg-gray-50"
+                  aria-label={`${name} のコンプリートカードを表示`}
+                >
+                  {cardInner}
+                </button>
+              ) : (
+                <div className="block overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                  {cardInner}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <CollectionProgressModal
+        key={celebration ? `${celebration.categoryKey}-${nonce}` : "none"}
+        open={!!celebration}
+        celebration={celebration}
+        onClose={() => setCelebration(null)}
+      />
+    </>
   );
 }

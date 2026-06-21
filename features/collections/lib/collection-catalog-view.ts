@@ -27,6 +27,11 @@ export interface CollectionCatalogEntry {
   remaining: number;
   state: CollectionCatalogState;
   availability: CollectionCatalogAvailability;
+  /** 完成台紙(コンプリートモーダル表示用)。未完成は null。 */
+  completionId: string | null;
+  mountImagePath: string | null;
+  mountTemplateWidth: number | null;
+  mountTemplateHeight: number | null;
 }
 
 /** 表示期間 [starts, ends) に対する now の開催状況を返す。null は制限なし=available。 */
@@ -102,6 +107,10 @@ export function buildCollectionCatalogView(
         remaining,
         state,
         availability,
+        completionId: p?.completionId ?? null,
+        mountImagePath: p?.mountImagePath ?? null,
+        mountTemplateWidth: p?.mountTemplateWidth ?? null,
+        mountTemplateHeight: p?.mountTemplateHeight ?? null,
       };
     })
     .sort((a, b) => entryRank(a) - entryRank(b));
