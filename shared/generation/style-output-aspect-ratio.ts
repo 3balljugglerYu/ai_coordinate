@@ -12,7 +12,7 @@ import {
   GEMINI_SUPPORTED_ASPECT_RATIOS,
   resolveGeminiAspectRatio,
   type GeminiAspectRatio,
-} from "./gemini-aspect-ratio";
+} from "./gemini-aspect-ratio.ts";
 
 /** 明示指定できる比率(自動選択が使う9段階と一致)。 */
 export const EXPLICIT_OUTPUT_ASPECT_RATIOS: readonly GeminiAspectRatio[] =

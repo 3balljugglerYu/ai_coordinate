@@ -157,7 +157,12 @@ export async function PATCH(
       | "dual";
   }
   if (body.output_aspect_ratio_mode !== undefined) {
-    if (!isStyleOutputAspectRatioMode(body.output_aspect_ratio_mode)) {
+    // 後方互換: 旧 "square" は "1:1" として受け付ける。
+    const mode =
+      body.output_aspect_ratio_mode === "square"
+        ? "1:1"
+        : body.output_aspect_ratio_mode;
+    if (!isStyleOutputAspectRatioMode(mode)) {
       return NextResponse.json(
         {
           error:
@@ -166,7 +171,7 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    update.outputAspectRatioMode = body.output_aspect_ratio_mode;
+    update.outputAspectRatioMode = mode;
   }
   if (body.user_guidance_ja !== undefined) {
     if (
