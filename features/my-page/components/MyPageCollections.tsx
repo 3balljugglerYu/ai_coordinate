@@ -35,7 +35,7 @@ function CollectionAlbumCard({
   onOpen: () => void;
 }) {
   const remaining = remainingOutfits(series);
-  const filledImages = series.collectedImageUrls.slice(
+  const filledImages = (series.collectedImageUrls ?? []).slice(
     0,
     series.uniqueOutfitCount,
   );

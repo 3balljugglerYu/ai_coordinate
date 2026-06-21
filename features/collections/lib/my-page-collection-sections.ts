@@ -86,12 +86,14 @@ export function buildMyPageCollectionSections(
 
   const engaged = progress.filter(isEngagedActive).sort(byRemainingThenProgress);
 
+  // engaged は isEngagedActive 済みなので、残り着数の閾値だけで2分割できる。
   // 残り0(全着収集済みだが台紙未作成)も「あと少し!」に含め、台紙作成へ誘導する。
   const almostDone = engaged.filter(
     (p) => remainingOutfits(p) <= ALMOST_DONE_REMAINING_THRESHOLD,
   );
-  const almostDoneKeys = new Set(almostDone.map((p) => p.categoryKey));
-  const inProgress = engaged.filter((p) => !almostDoneKeys.has(p.categoryKey));
+  const inProgress = engaged.filter(
+    (p) => remainingOutfits(p) > ALMOST_DONE_REMAINING_THRESHOLD,
+  );
 
   return {
     almostDone,
