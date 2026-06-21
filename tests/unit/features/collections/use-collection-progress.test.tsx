@@ -110,6 +110,24 @@ describe("useCollectionProgress の admin プレビュー", () => {
     expect(c.isCompleted).toBe(true);
   });
 
+  it("完了済みでも collection_from 併用なら100%まで埋まる進捗ビューを強制する", async () => {
+    // makeSeries は isCompleted:true(完了済み)。from を指定すると台紙ビューでなく
+    // 進捗ビュー(5→6で100%になるアニメ)を強制する。
+    mockProgressResponse({ items: [makeSeries()], isAdminViewer: true });
+    setUrl(`/ja?collection_reset=${WAFER_KEY}&collection_to=6&collection_from=5`);
+
+    const { result } = renderHook(() => useCollectionProgress());
+
+    await waitFor(() => expect(result.current.celebration).not.toBeNull());
+    const c = result.current.celebration!;
+    expect(c.fromCount).toBe(5);
+    expect(c.toCount).toBe(6);
+    // 完了済み(isCompleted:true)でも from 併用で進捗ビューを強制
+    expect(c.isCompleted).toBe(false);
+    expect(c.mountImageUrl).toBeNull();
+    expect(c.completionId).toBeNull();
+  });
+
   it("非 admin では collection_reset を無視する", async () => {
     mockProgressResponse({
       items: [makeSeries({ uniqueOutfitCount: 6 })],
