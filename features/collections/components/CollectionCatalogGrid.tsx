@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import type {
+  CollectionCatalogAvailability,
   CollectionCatalogEntry,
   CollectionCatalogState,
 } from "@/features/collections/lib/collection-catalog-view";
@@ -19,20 +20,38 @@ function hrefForEntry(entry: CollectionCatalogEntry): string {
 
 function StateBadge({
   state,
+  availability,
   remaining,
   threshold,
   locale,
 }: {
   state: CollectionCatalogState;
+  availability: CollectionCatalogAvailability;
   remaining: number;
   threshold: number;
   locale: "ja" | "en";
 }) {
+  // 完成は実績としていつでも優先表示。
   if (state === "completed") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-white">
         <Sparkles className="h-3 w-3" aria-hidden="true" />
         {locale === "en" ? "Complete" : "コンプ済み"}
+      </span>
+    );
+  }
+  // 期間外: 集めようと誘わず、終了/近日を正直に出す。
+  if (availability === "ended") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-bold text-gray-600">
+        {locale === "en" ? "Ended" : "終了・また登場"}
+      </span>
+    );
+  }
+  if (availability === "upcoming") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">
+        {locale === "en" ? "Coming soon" : "近日"}
       </span>
     );
   }
@@ -75,6 +94,26 @@ export function CollectionCatalogGrid({
           entry.completionThreshold > 0
             ? Math.min(1, entry.uniqueOutfitCount / entry.completionThreshold)
             : 0;
+        const dimmed =
+          entry.availability === "ended" || entry.availability === "upcoming";
+        const showProgressBar =
+          entry.state === "in_progress" && entry.availability === "available";
+        const subLabel =
+          entry.state === "completed"
+            ? locale === "en"
+              ? "Completed"
+              : "コンプリート済み"
+            : entry.availability === "ended"
+              ? locale === "en"
+                ? "Coming back soon"
+                : "また登場します"
+              : entry.availability === "upcoming"
+                ? locale === "en"
+                  ? "Coming soon"
+                  : "近日公開"
+                : locale === "en"
+                  ? `Collect all ${entry.completionThreshold}`
+                  : `${entry.completionThreshold}種あつめよう`;
         return (
           <li key={entry.key}>
             <Link
@@ -88,11 +127,7 @@ export function CollectionCatalogGrid({
                     alt={name}
                     fill
                     sizes="(max-width: 640px) 50vw, 200px"
-                    className={`object-cover ${
-                      entry.state === "not_started"
-                        ? "opacity-90"
-                        : "opacity-100"
-                    }`}
+                    className={`object-cover ${dimmed ? "opacity-60 grayscale" : "opacity-100"}`}
                   />
                 ) : (
                   <div
@@ -105,6 +140,7 @@ export function CollectionCatalogGrid({
                 <div className="absolute left-1.5 top-1.5">
                   <StateBadge
                     state={entry.state}
+                    availability={entry.availability}
                     remaining={entry.remaining}
                     threshold={entry.completionThreshold}
                     locale={locale}
@@ -118,7 +154,7 @@ export function CollectionCatalogGrid({
                 >
                   {name}
                 </p>
-                {entry.state === "in_progress" ? (
+                {showProgressBar ? (
                   <div className="mt-1.5 flex items-center gap-1.5">
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                       <div
@@ -131,11 +167,7 @@ export function CollectionCatalogGrid({
                     </span>
                   </div>
                 ) : (
-                  <p className="mt-1 text-xs text-gray-400">
-                    {locale === "en"
-                      ? `Collect all ${entry.completionThreshold}`
-                      : `${entry.completionThreshold}種あつめよう`}
-                  </p>
+                  <p className="mt-1 text-xs text-gray-400">{subLabel}</p>
                 )}
               </div>
             </Link>

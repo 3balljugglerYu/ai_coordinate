@@ -14,6 +14,9 @@ export type CollectionCatalogState =
   | "in_progress"
   | "not_started";
 
+/** 開催状況: 集められる / 終了(復刻待ち) / 近日(開始前)。 */
+export type CollectionCatalogAvailability = "available" | "ended" | "upcoming";
+
 export interface CollectionCatalogEntry {
   key: string;
   displayNameJa: string;
@@ -23,15 +26,42 @@ export interface CollectionCatalogEntry {
   uniqueOutfitCount: number;
   remaining: number;
   state: CollectionCatalogState;
+  availability: CollectionCatalogAvailability;
 }
 
-function stateRank(s: CollectionCatalogState): number {
-  return s === "in_progress" ? 0 : s === "not_started" ? 1 : 2;
+/** 表示期間 [starts, ends) に対する now の開催状況を返す。null は制限なし=available。 */
+function computeAvailability(
+  startsAt: string | null,
+  endsAt: string | null,
+  now: Date,
+): CollectionCatalogAvailability {
+  if (startsAt) {
+    const s = new Date(startsAt);
+    if (!Number.isNaN(s.getTime()) && now < s) return "upcoming";
+  }
+  if (endsAt) {
+    const e = new Date(endsAt);
+    if (!Number.isNaN(e.getTime()) && now >= e) return "ended";
+  }
+  return "available";
+}
+
+/**
+ * 並び順: 集める導線が活きるものを上に。
+ * 進行中 → 未着手(開催中) → 近日 → 終了 → 完成。
+ */
+function entryRank(entry: CollectionCatalogEntry): number {
+  if (entry.state === "completed") return 4;
+  if (entry.availability === "ended") return 3;
+  if (entry.availability === "upcoming") return 2;
+  if (entry.state === "in_progress") return 0;
+  return 1; // 開催中の未着手
 }
 
 export function buildCollectionCatalogView(
   catalog: readonly CollectionCatalogItem[],
   progress: readonly CollectionProgress[],
+  now: Date = new Date(),
 ): CollectionCatalogEntry[] {
   const progressByKey = new Map(progress.map((p) => [p.categoryKey, p]));
   const completedKeys = new Set(
@@ -57,6 +87,11 @@ export function buildCollectionCatalogView(
         : uniqueOutfitCount > 0
           ? "in_progress"
           : "not_started";
+      const availability = computeAvailability(
+        item.collectionDisplayStartsAt,
+        item.collectionDisplayEndsAt,
+        now,
+      );
       return {
         key: item.key,
         displayNameJa: item.displayNameJa,
@@ -66,7 +101,8 @@ export function buildCollectionCatalogView(
         uniqueOutfitCount,
         remaining,
         state,
+        availability,
       };
     })
-    .sort((a, b) => stateRank(a.state) - stateRank(b.state));
+    .sort((a, b) => entryRank(a) - entryRank(b));
 }

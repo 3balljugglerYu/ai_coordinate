@@ -17,6 +17,8 @@ function makeCatalogItem(
     mountTemplateUrl: null,
     displayOrder: 0,
     unlockPrerequisiteKey: null,
+    collectionDisplayStartsAt: null,
+    collectionDisplayEndsAt: null,
   };
   return { ...base, ...overrides };
 }
@@ -118,6 +120,81 @@ describe("buildCollectionCatalogView", () => {
       [makeProgress("base", 6, true)],
     );
     expect(view.map((e) => e.key).sort()).toEqual(["base", "gated"]);
+  });
+
+  test("表示期間が過ぎたコレクションは availability='ended'(集めようと誘わない)", () => {
+    const now = new Date("2026-06-22T00:00:00Z");
+    const view = buildCollectionCatalogView(
+      [
+        makeCatalogItem({
+          key: "ended",
+          collectionDisplayStartsAt: "2026-06-13T11:00:00Z",
+          collectionDisplayEndsAt: "2026-06-21T13:00:00Z",
+        }),
+      ],
+      [],
+      now,
+    );
+    expect(view[0]?.availability).toBe("ended");
+  });
+
+  test("開始前のコレクションは availability='upcoming'", () => {
+    const now = new Date("2026-06-10T00:00:00Z");
+    const view = buildCollectionCatalogView(
+      [
+        makeCatalogItem({
+          key: "future",
+          collectionDisplayStartsAt: "2026-06-13T11:00:00Z",
+          collectionDisplayEndsAt: "2026-06-21T13:00:00Z",
+        }),
+      ],
+      [],
+      now,
+    );
+    expect(view[0]?.availability).toBe("upcoming");
+  });
+
+  test("期間内・期間なしは availability='available'", () => {
+    const now = new Date("2026-06-15T00:00:00Z");
+    const view = buildCollectionCatalogView(
+      [
+        makeCatalogItem({ key: "noperiod" }),
+        makeCatalogItem({
+          key: "inperiod",
+          collectionDisplayStartsAt: "2026-06-13T11:00:00Z",
+          collectionDisplayEndsAt: "2026-06-21T13:00:00Z",
+        }),
+      ],
+      [],
+      now,
+    );
+    expect(view.every((e) => e.availability === "available")).toBe(true);
+  });
+
+  test("並び順: 開催中 → 近日 → 終了 → 完成", () => {
+    const now = new Date("2026-06-15T00:00:00Z");
+    const view = buildCollectionCatalogView(
+      [
+        makeCatalogItem({
+          key: "ended",
+          collectionDisplayEndsAt: "2026-06-14T00:00:00Z",
+        }),
+        makeCatalogItem({
+          key: "upcoming",
+          collectionDisplayStartsAt: "2026-06-20T00:00:00Z",
+        }),
+        makeCatalogItem({ key: "available" }),
+        makeCatalogItem({ key: "done" }),
+      ],
+      [makeProgress("done", 6, true)],
+      now,
+    );
+    expect(view.map((e) => e.key)).toEqual([
+      "available",
+      "upcoming",
+      "ended",
+      "done",
+    ]);
   });
 
   test("characterImageUrl が無ければ mountTemplateUrl にフォールバック", () => {
