@@ -86,9 +86,10 @@ export function useCollectionProgress() {
       // admin 限定プレビュー: 公開前の表示確認用に進捗モーダルを任意状態で再表示する。
       //   ?collection_reset=<categoryKey|1>            … 実データの現在状態を再表示
       //   ?collection_reset=<key>&collection_to=4      … 4個埋まった進捗ビューを強制
-      //   ?collection_reset=<key>&collection_to=4&collection_from=3 … 4個目が埋まる瞬間
-      // collection_to を指定すると、コンプリート済みでも完了ビューに切り替えず進捗ビュー
-      // (枠が埋まる演出)を表示する。一般ユーザーが踏んでも isAdminViewer が false なら無視。
+      //   ?collection_reset=<key>&collection_to=6&collection_from=5 … 6個目が埋まり100%になる瞬間
+      // collection_from を併せて指定すると、コンプリート済みでも完了ビューに切り替えず
+      // 進捗ビュー(枠が埋まる100%演出)を強制表示する。from 未指定で to>=閾値かつ実データ完了の
+      // ときだけ完了(台紙)ビューを出す。一般ユーザーが踏んでも isAdminViewer が false なら無視。
       // ack には触れない(実進捗を汚さない)。
       if (opts?.preview && data.isAdminViewer === true) {
         const { key, to: rawTo, from: rawFrom } = opts.preview;
@@ -102,15 +103,19 @@ export function useCollectionProgress() {
           const toCount = hasTo
             ? Math.max(1, Math.min(rawTo as number, threshold))
             : target.uniqueOutfitCount;
-          const fromCount =
-            typeof rawFrom === "number" && Number.isFinite(rawFrom)
-              ? Math.max(0, Math.min(rawFrom, toCount))
-              : 0;
-          // to を明示したときは進捗ビューを強制(完了ビューに切り替えない)。
-          // 未指定なら実データの完了状態を尊重する。
-          const completed = hasTo
-            ? toCount >= threshold && target.isCompleted
-            : target.isCompleted;
+          const hasFrom =
+            typeof rawFrom === "number" && Number.isFinite(rawFrom);
+          const fromCount = hasFrom
+            ? Math.max(0, Math.min(rawFrom as number, toCount))
+            : 0;
+          // collection_from を併せて指定したときは「枠が埋まる100%アニメ」を見たい意図なので、
+          // コンプリート済みでも完了ビューに切り替えず進捗ビューを強制する。
+          // from 未指定 + to>=閾値 + 実データ完了 のときだけ完了(台紙)ビューを出す。
+          const completed = hasFrom
+            ? false
+            : hasTo
+              ? toCount >= threshold && target.isCompleted
+              : target.isCompleted;
           setCelebration({
             categoryKey: target.categoryKey,
             displayName: target.displayNameJa,

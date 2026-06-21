@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Check, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
   CollectionProgressModal,
@@ -12,15 +13,119 @@ import {
   CollectionMountComposer,
   type MountGeneratedResult,
 } from "@/features/collections/components/CollectionMountComposer";
-import { CollectionProgressRing } from "@/features/collections/components/CollectionProgressRing";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
+import {
+  buildMyPageCollectionSections,
+  remainingOutfits,
+} from "@/features/collections/lib/my-page-collection-sections";
+
+/**
+ * シールアルバム型のコレクションカード(マイページ)。
+ * 集めた衣装サムネ + 未取得スロット(?) + 進捗バーで「集める」体験を表現する。
+ * カード全体タップで進捗モーダルを開く(CTAボタンは持たない)。
+ * highlighted=true(あと少し!)は桃色アクセント + 残り数バッジを付ける。
+ */
+function CollectionAlbumCard({
+  series,
+  highlighted,
+  onOpen,
+}: {
+  series: CollectionProgress;
+  highlighted: boolean;
+  onOpen: () => void;
+}) {
+  const remaining = remainingOutfits(series);
+  const filledImages = (series.collectedImageUrls ?? []).slice(
+    0,
+    series.uniqueOutfitCount,
+  );
+  // 収集済みだがサムネURLが取れなかった分(画像欠損)はチェック済みスロットで埋める。
+  const filledNoImage = Math.max(
+    0,
+    series.uniqueOutfitCount - filledImages.length,
+  );
+  const ratio =
+    series.completionThreshold > 0
+      ? Math.min(1, series.uniqueOutfitCount / series.completionThreshold)
+      : 0;
+  const badgeLabel = remaining === 0 ? "コンプ！" : `あと${remaining}種`;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`w-full rounded-2xl border p-3 text-left transition-colors ${
+        highlighted
+          ? "border-amber-200 bg-amber-50 hover:bg-amber-100"
+          : "border-gray-200 bg-white hover:bg-gray-50"
+      }`}
+      aria-label={`${series.displayNameJa}(${series.uniqueOutfitCount}/${series.completionThreshold}種、${remaining === 0 ? "台紙を作れます" : `あと${remaining}種`})`}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="truncate text-sm font-semibold text-gray-800">
+          {series.displayNameJa}
+        </p>
+        {highlighted ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-white">
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+            {badgeLabel}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {filledImages.map((url, i) => (
+          <span
+            key={`f-${i}`}
+            className="relative h-10 w-10 overflow-hidden rounded-lg border border-amber-200 bg-gray-100"
+          >
+            <Image src={url} alt="" fill sizes="40px" className="object-cover" />
+          </span>
+        ))}
+        {Array.from({ length: filledNoImage }).map((_, i) => (
+          <span
+            key={`fn-${i}`}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-amber-200 bg-amber-100 text-amber-500"
+            aria-hidden="true"
+          >
+            <Check className="h-4 w-4" />
+          </span>
+        ))}
+        {Array.from({ length: remaining }).map((_, i) => (
+          <span
+            key={`g-${i}`}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs font-bold text-gray-300"
+            aria-hidden="true"
+          >
+            ?
+          </span>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+          <div
+            className="h-full rounded-full bg-amber-400"
+            style={{ width: `${Math.round(ratio * 100)}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-xs font-medium tabular-nums text-gray-500">
+          {series.uniqueOutfitCount}/{series.completionThreshold} 種
+        </span>
+      </div>
+    </button>
+  );
+}
 
 interface ComposerTarget {
   categoryKey: string;
   displayName: string;
   threshold: number;
 }
+
+/** 完成台紙アルバムで「もっと見る」前に表示する枚数。 */
+const MOUNTS_PREVIEW_LIMIT = 6;
 
 export interface CompletedMountView {
   completionId: string;
@@ -50,6 +155,7 @@ export function MyPageCollections({
   // タップのたびにモーダルを再マウントしてバーを 0 から再アニメさせるための nonce
   const [celebrationNonce, setCelebrationNonce] = useState(0);
   const [composer, setComposer] = useState<ComposerTarget | null>(null);
+  const [showAllMounts, setShowAllMounts] = useState(false);
   // 「台紙を更新する」の表示可否と threshold のカテゴリ別キャッシュ。
   // マウント時に先読みし、サムネクリック時は即時反映する。
   const [recomposeInfo, setRecomposeInfo] = useState<
@@ -152,7 +258,18 @@ export function MyPageCollections({
     [composer, refreshProgress, router],
   );
 
-  if (completedMounts.length === 0 && progress.length === 0) {
+  // 状態別セクション分け(未着手 0/N はここで除外される)。
+  // 看板の数字は完成台紙(別ソース)のカテゴリと union して矛盾を防ぐ。
+  const sections = buildMyPageCollectionSections(
+    progress,
+    completedMounts.map((m) => m.categoryKey),
+  );
+  // 完成台紙(server prop) も着手の一形態。いずれも無ければ非参加ユーザーなので丸ごと隠す。
+  const hasAnything =
+    completedMounts.length > 0 ||
+    sections.hasEngagement ||
+    sections.completedCount > 0;
+  if (!hasAnything) {
     return null;
   }
 
@@ -250,89 +367,99 @@ export function MyPageCollections({
     });
   }
 
+  const visibleMounts = showAllMounts
+    ? completedMounts
+    : completedMounts.slice(0, MOUNTS_PREVIEW_LIMIT);
+
   return (
     <Card className="mt-4 mb-6 gap-2 px-5 py-3">
-      <h2 className="text-base font-semibold text-gray-900">コレクション</h2>
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-base font-semibold text-gray-900">コレクション</h2>
+        {sections.totalSeries > 0 ? (
+          <span className="text-xs text-gray-500">
+            全{sections.totalSeries}中{" "}
+            <span className="font-semibold text-amber-600">
+              {sections.completedCount}
+            </span>
+            完成
+          </span>
+        ) : null}
+      </div>
 
-      {completedMounts.length > 0 ? (
-        <div className="mb-4 flex flex-wrap gap-3">
-          {completedMounts.map((m) => (
-            <button
-              key={m.completionId}
-              type="button"
-              onClick={() => openMountModal(m)}
-              className="relative w-24 overflow-hidden rounded-md border border-gray-200"
-              style={{
-                aspectRatio: mountAspectForCategory(
-                  m.categoryKey,
-                  m.mountTemplateWidth,
-                  m.mountTemplateHeight,
-                ),
-              }}
-              aria-label={`${m.displayName} のカードを表示`}
-            >
-              <Image
-                src={m.mountImageUrl}
-                alt={`${m.displayName} コンプリートカード`}
-                fill
-                sizes="96px"
-                className="object-cover"
-              />
-            </button>
+      {/* あと少し!(残り0〜2着を最上段で後押し) */}
+      {sections.almostDone.length > 0 ? (
+        <section className="mt-2 space-y-2">
+          <h3 className="flex items-center gap-1 text-sm font-semibold text-amber-600">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            あと少し！
+          </h3>
+          {sections.almostDone.map((s) => (
+            <CollectionAlbumCard
+              key={s.categoryKey}
+              series={s}
+              highlighted
+              onOpen={() => openSeriesModal(s)}
+            />
           ))}
-        </div>
+        </section>
       ) : null}
 
-      {progress.length > 0 ? (
-        <ul className="space-y-3">
-          {progress.map((s) => {
-            const ratio =
-              s.completionThreshold > 0
-                ? Math.min(1, s.uniqueOutfitCount / s.completionThreshold)
-                : 0;
-            const completed = s.uniqueOutfitCount >= s.completionThreshold;
-            return (
-              <li key={s.categoryKey}>
-                <button
-                  type="button"
-                  onClick={() => openSeriesModal(s)}
-                  className="flex w-full items-center gap-4 rounded-lg border border-gray-200 p-3 text-left hover:bg-gray-50"
-                >
-                  <CollectionProgressRing
-                    ratio={ratio}
-                    complete={completed}
-                    imageUrl={s.characterImageUrl}
-                    tintByProgress={false}
-                    color={s.progressModalRingColor}
-                    className="w-16 shrink-0"
-                  >
-                    {!s.characterImageUrl ? (
-                      completed ? (
-                        <span className="text-xs font-bold text-amber-500">
-                          完成
-                        </span>
-                      ) : (
-                        <span className="text-sm font-bold tabular-nums text-gray-900">
-                          {s.uniqueOutfitCount}/{s.completionThreshold}
-                        </span>
-                      )
-                    ) : null}
-                  </CollectionProgressRing>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-gray-800">
-                      {s.displayNameJa}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {s.uniqueOutfitCount} / {s.completionThreshold} 種
-                      {s.isCompleted ? "（達成）" : ""}
-                    </p>
-                  </div>
-                </button>
-                {/* 台紙作成・更新はモーダル内 CTA に集約(行下のボタンは廃止) */}
-              </li>
-            );
-          })}
-        </ul>
+      {/* 進行中(達成間近順) */}
+      {sections.inProgress.length > 0 ? (
+        <section className="mt-3 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700">進行中</h3>
+          {sections.inProgress.map((s) => (
+            <CollectionAlbumCard
+              key={s.categoryKey}
+              series={s}
+              highlighted={false}
+              onOpen={() => openSeriesModal(s)}
+            />
+          ))}
+        </section>
+      ) : null}
+
+      {/* 完成した台紙(アルバム) */}
+      {completedMounts.length > 0 ? (
+        <section className="mt-3 space-y-2">
+          <div className="flex flex-wrap gap-3">
+            {visibleMounts.map((m) => (
+              <button
+                key={m.completionId}
+                type="button"
+                onClick={() => openMountModal(m)}
+                className="relative w-24 overflow-hidden rounded-md border border-gray-200"
+                style={{
+                  aspectRatio: mountAspectForCategory(
+                    m.categoryKey,
+                    m.mountTemplateWidth,
+                    m.mountTemplateHeight,
+                  ),
+                }}
+                aria-label={`${m.displayName} のカードを表示`}
+              >
+                <Image
+                  src={m.mountImageUrl}
+                  alt={`${m.displayName} コンプリートカード`}
+                  fill
+                  sizes="96px"
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+          {completedMounts.length > MOUNTS_PREVIEW_LIMIT ? (
+            <button
+              type="button"
+              onClick={() => setShowAllMounts((v) => !v)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700"
+            >
+              {showAllMounts
+                ? "▴ 閉じる"
+                : `▸ もっと見る（${completedMounts.length}）`}
+            </button>
+          ) : null}
+        </section>
       ) : null}
 
       <CollectionProgressModal
