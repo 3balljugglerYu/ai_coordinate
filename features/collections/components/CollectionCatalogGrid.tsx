@@ -94,8 +94,8 @@ export function CollectionCatalogGrid({
           entry.completionThreshold > 0
             ? Math.min(1, entry.uniqueOutfitCount / entry.completionThreshold)
             : 0;
-        const dimmed =
-          entry.availability === "ended" || entry.availability === "upcoming";
+        // 終了したコレクションはどこにも遷移させない(リンク無効)。
+        const clickable = entry.availability !== "ended";
         const showProgressBar =
           entry.state === "in_progress" && entry.availability === "available";
         const subLabel =
@@ -112,12 +112,8 @@ export function CollectionCatalogGrid({
                 : locale === "en"
                   ? `Collect all ${entry.completionThreshold}`
                   : `${entry.completionThreshold}種あつめよう`;
-        return (
-          <li key={entry.key}>
-            <Link
-              href={hrefForEntry(entry)}
-              className="block overflow-hidden rounded-2xl border border-gray-200 bg-white transition-colors hover:bg-gray-50"
-            >
+        const cardInner = (
+          <>
               <div className="relative aspect-square bg-gray-100">
                 {entry.imageUrl ? (
                   <Image
@@ -125,7 +121,7 @@ export function CollectionCatalogGrid({
                     alt={name}
                     fill
                     sizes="(max-width: 640px) 50vw, 200px"
-                    className={`object-cover ${dimmed ? "opacity-60 grayscale" : "opacity-100"}`}
+                    className="object-cover"
                   />
                 ) : (
                   <div
@@ -168,7 +164,22 @@ export function CollectionCatalogGrid({
                   <p className="mt-1 text-xs text-gray-400">{subLabel}</p>
                 ) : null}
               </div>
-            </Link>
+          </>
+        );
+        return (
+          <li key={entry.key}>
+            {clickable ? (
+              <Link
+                href={hrefForEntry(entry)}
+                className="block overflow-hidden rounded-2xl border border-gray-200 bg-white transition-colors hover:bg-gray-50"
+              >
+                {cardInner}
+              </Link>
+            ) : (
+              <div className="block cursor-default overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                {cardInner}
+              </div>
+            )}
           </li>
         );
       })}
