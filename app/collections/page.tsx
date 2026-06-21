@@ -39,10 +39,8 @@ export default async function CollectionsIndexPage() {
   let userId: string | null = null;
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    userId = user?.id ?? null;
+    const { data } = await supabase.auth.getUser();
+    userId = data?.user?.id ?? null;
   } catch {
     // 取得失敗はゲスト扱い(図鑑は匿名でも閲覧可能)
   }

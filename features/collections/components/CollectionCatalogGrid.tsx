@@ -149,7 +149,7 @@ export function CollectionCatalogGrid({
                 {entry.imageUrl ? (
                   <Image
                     src={entry.imageUrl}
-                    alt={name}
+                    alt=""
                     fill
                     sizes="(max-width: 640px) 50vw, 200px"
                     className="object-cover"

@@ -87,11 +87,12 @@ export function buildCollectionCatalogView(
         0,
         item.completionThreshold - uniqueOutfitCount,
       );
-      const state: CollectionCatalogState = isCompleted
-        ? "completed"
-        : uniqueOutfitCount > 0
-          ? "in_progress"
-          : "not_started";
+      let state: CollectionCatalogState = "not_started";
+      if (isCompleted) {
+        state = "completed";
+      } else if (uniqueOutfitCount > 0) {
+        state = "in_progress";
+      }
       const availability = computeAvailability(
         item.collectionDisplayStartsAt,
         item.collectionDisplayEndsAt,
