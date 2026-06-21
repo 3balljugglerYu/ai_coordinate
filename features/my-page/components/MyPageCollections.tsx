@@ -13,6 +13,7 @@ import {
   CollectionMountComposer,
   type MountGeneratedResult,
 } from "@/features/collections/components/CollectionMountComposer";
+import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import type { CollectionProgress } from "@/features/collections/lib/collection-types";
 import {
   buildMyPageCollectionSections,
@@ -123,6 +124,9 @@ interface ComposerTarget {
   threshold: number;
 }
 
+/** 完成台紙アルバムで「もっと見る」前に表示する枚数。 */
+const MOUNTS_PREVIEW_LIMIT = 6;
+
 export interface CompletedMountView {
   completionId: string;
   categoryKey: string;
@@ -151,6 +155,47 @@ export function MyPageCollections({
   // タップのたびにモーダルを再マウントしてバーを 0 から再アニメさせるための nonce
   const [celebrationNonce, setCelebrationNonce] = useState(0);
   const [composer, setComposer] = useState<ComposerTarget | null>(null);
+  const [showAllMounts, setShowAllMounts] = useState(false);
+  // 「台紙を更新する」の表示可否と threshold のカテゴリ別キャッシュ。
+  // マウント時に先読みし、サムネクリック時は即時反映する。
+  const [recomposeInfo, setRecomposeInfo] = useState<
+    Record<string, { threshold: number; canRecompose: boolean }>
+  >({});
+
+  const loadRecomposeInfo = useCallback(async (categoryKey: string) => {
+    try {
+      const r = await fetch(
+        `/api/collections/options?categoryKey=${encodeURIComponent(categoryKey)}`,
+        { cache: "no-store" },
+      );
+      if (!r.ok) return null;
+      const d = (await r.json()) as {
+        threshold?: number | null;
+        outfits?: { images: unknown[] }[];
+      };
+      const outfits = d.outfits ?? [];
+      const threshold = d.threshold ?? 0;
+      const info = {
+        threshold,
+        canRecompose:
+          threshold > 0 &&
+          outfits.length >= threshold &&
+          outfits.some((o) => o.images.length > 1),
+      };
+      setRecomposeInfo((prev) => ({ ...prev, [categoryKey]: info }));
+      return info;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // 完了サムネのカテゴリぶんを先読み(数件想定)。失敗してもシェア等には影響しない。
+  useEffect(() => {
+    const keys = [...new Set(completedMounts.map((m) => m.categoryKey))];
+    void (async () => {
+      await Promise.all(keys.map((key) => loadRecomposeInfo(key)));
+    })();
+  }, [completedMounts, loadRecomposeInfo]);
 
   const refreshProgress = useCallback(async () => {
     try {
@@ -207,7 +252,7 @@ export function MyPageCollections({
         collectedImageUrls: [],
       });
       void refreshProgress();
-      // サーバー側 cache(看板の完成数など)を反映するため再描画
+      // サーバー側 cache(完了台紙サムネ)を反映するため再描画
       router.refresh();
     },
     [composer, refreshProgress, router],
@@ -226,6 +271,50 @@ export function MyPageCollections({
     sections.completedCount > 0;
   if (!hasAnything) {
     return null;
+  }
+
+  /**
+   * サムネクリックで「台紙 + シェアボタン」のモーダル(完了モード)を表示。
+   * 拡大表示と兼ねるため CollectionProgressModal の完了ビューを再利用する。
+   * 「台紙を更新する」(canRecompose) と threshold は先読みキャッシュから即時反映し、
+   * 未取得ならフォールバックで取得して反映する
+   * (進捗カードが非表示でも完了サムネから台紙を更新できるようにするため)。
+   */
+  function openMountModal(m: CompletedMountView) {
+    const cached = recomposeInfo[m.categoryKey];
+    setCelebrationNonce((n) => n + 1);
+    setCelebration({
+      categoryKey: m.categoryKey,
+      displayName: m.displayName,
+      fromCount: 0,
+      toCount: 0,
+      threshold: cached?.threshold ?? 0,
+      isCompleted: true,
+      mountImageUrl: m.mountImageUrl,
+      sharePath: `/m/${m.completionId}`,
+      completionId: m.completionId,
+      mountTemplateWidth: m.mountTemplateWidth,
+      mountTemplateHeight: m.mountTemplateHeight,
+      characterImageUrl: null,
+      collectedImageUrls: [],
+      canRecompose: cached?.canRecompose ?? false,
+      // 完了済み台紙の見返しなので、紙吹雪ではなくダイヤのきらめき演出にする。
+      celebrationEffect: "sparkle",
+    });
+    if (!cached) {
+      void loadRecomposeInfo(m.categoryKey).then((info) => {
+        if (!info) return;
+        setCelebration((prev) =>
+          prev && prev.completionId === m.completionId
+            ? {
+                ...prev,
+                threshold: info.threshold,
+                canRecompose: info.canRecompose,
+              }
+            : prev,
+        );
+      });
+    }
   }
 
   function openSeriesModal(series: CollectionProgress) {
@@ -278,6 +367,10 @@ export function MyPageCollections({
     });
   }
 
+  const visibleMounts = showAllMounts
+    ? completedMounts
+    : completedMounts.slice(0, MOUNTS_PREVIEW_LIMIT);
+
   return (
     <Card className="mt-4 mb-6 gap-2 px-5 py-3">
       <div className="flex items-baseline justify-between">
@@ -323,6 +416,50 @@ export function MyPageCollections({
               onOpen={() => openSeriesModal(s)}
             />
           ))}
+        </section>
+      ) : null}
+
+      {/* 完成した台紙(アルバム) */}
+      {completedMounts.length > 0 ? (
+        <section className="mt-3 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700">完成した台紙</h3>
+          <div className="flex flex-wrap gap-3">
+            {visibleMounts.map((m) => (
+              <button
+                key={m.completionId}
+                type="button"
+                onClick={() => openMountModal(m)}
+                className="relative w-24 overflow-hidden rounded-md border border-gray-200"
+                style={{
+                  aspectRatio: mountAspectForCategory(
+                    m.categoryKey,
+                    m.mountTemplateWidth,
+                    m.mountTemplateHeight,
+                  ),
+                }}
+                aria-label={`${m.displayName} のカードを表示`}
+              >
+                <Image
+                  src={m.mountImageUrl}
+                  alt={`${m.displayName} コンプリートカード`}
+                  fill
+                  sizes="96px"
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+          {completedMounts.length > MOUNTS_PREVIEW_LIMIT ? (
+            <button
+              type="button"
+              onClick={() => setShowAllMounts((v) => !v)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700"
+            >
+              {showAllMounts
+                ? "▴ 閉じる"
+                : `▸ もっと見る（${completedMounts.length}）`}
+            </button>
+          ) : null}
         </section>
       ) : null}
 
