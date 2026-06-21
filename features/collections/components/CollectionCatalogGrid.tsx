@@ -44,7 +44,7 @@ function StateBadge({
   if (availability === "ended") {
     return (
       <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-bold text-gray-600">
-        {locale === "en" ? "Ended" : "終了・また登場"}
+        {locale === "en" ? "Ended" : "終了"}
       </span>
     );
   }
@@ -104,9 +104,7 @@ export function CollectionCatalogGrid({
               ? "Completed"
               : "コンプリート済み"
             : entry.availability === "ended"
-              ? locale === "en"
-                ? "Coming back soon"
-                : "また登場します"
+              ? ""
               : entry.availability === "upcoming"
                 ? locale === "en"
                   ? "Coming soon"
@@ -166,9 +164,9 @@ export function CollectionCatalogGrid({
                       {entry.uniqueOutfitCount}/{entry.completionThreshold}
                     </span>
                   </div>
-                ) : (
+                ) : subLabel ? (
                   <p className="mt-1 text-xs text-gray-400">{subLabel}</p>
-                )}
+                ) : null}
               </div>
             </Link>
           </li>
