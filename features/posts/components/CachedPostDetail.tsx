@@ -47,9 +47,12 @@ export async function CachedPostDetail({
   // メタデータへ注入する。これで詳細ページのカードにもクレジット(/style・ホームと同じ)が出る。
   const oneTapMeta = getOneTapStylePresetMetadata(post);
   if (oneTapMeta) {
+    // 提供者クレジット表示用の lookup。投稿自体は公開済みで、取り出すのは提供者の
+    // 公開情報(ニックネーム/アイコン)のみのため、カテゴリが admin_only でも取得する
+    // (character_remix のような admin_only カテゴリのプリセットでもクレジットを出す)。
     const presetSummary = await getPublishedStylePresetById(
       oneTapMeta.id,
-      {},
+      { includeAdminOnly: true },
       supabase,
     ).catch(() => null);
     const provider = presetSummary
