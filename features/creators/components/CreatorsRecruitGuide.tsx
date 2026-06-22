@@ -11,11 +11,9 @@ const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 // 手づくり感のある丸ゴシック見出し
 const HEADING_FONT = "'Zen Maru Gothic', system-ui, sans-serif";
 
-// ===== 応募導線(X / Discord) =====
-// 運営X(DM応募先)。Discord 招待URLは決まり次第ここに入れる。空なら Discord ボタンは非表示。
+// ===== 応募導線(X DM) =====
 const APPLY_X_HANDLE = "@mickey_fuku";
 const APPLY_X_URL = "https://x.com/mickey_fuku";
-const DISCORD_INVITE_URL = "";
 
 export interface GalleryImage {
   src: string;
@@ -94,14 +92,6 @@ function XIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
-
-function DiscordIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      <path d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3c-.2.36-.43.85-.59 1.236a18.27 18.27 0 0 0-3.937 0A12.6 12.6 0 0 0 11.44 3a19.74 19.74 0 0 0-3.762 1.369C3.95 7.92 3.23 11.38 3.59 14.79a19.93 19.93 0 0 0 5.99 3.03c.48-.66.91-1.36 1.28-2.1-.7-.26-1.37-.59-2-.98.17-.12.33-.25.49-.38a14.2 14.2 0 0 0 12.12 0c.16.14.32.26.49.38-.63.39-1.3.72-2 .98.37.74.8 1.44 1.28 2.1a19.9 19.9 0 0 0 5.99-3.03c.42-3.95-.72-7.38-3.03-10.42ZM9.68 12.85c-.97 0-1.77-.89-1.77-1.98s.78-1.98 1.77-1.98 1.79.9 1.77 1.98c0 1.09-.78 1.98-1.77 1.98Zm6.64 0c-.97 0-1.77-.89-1.77-1.98s.78-1.98 1.77-1.98 1.79.9 1.77 1.98c0 1.09-.78 1.98-1.77 1.98Z" />
     </svg>
   );
 }
@@ -186,13 +176,13 @@ export function CreatorsRecruitGuide({
     {
       no: "01",
       title: "相談する",
-      body: "X(DM)または Discord から「掲載したい / 話を聞きたい」とご連絡ください。作品やSNSを見せていただけるとスムーズです。",
+      body: "X(DM)から「掲載したい / 話を聞きたい」とご連絡ください。作品やSNSを見せていただけるとスムーズです。",
       tape: "bg-amber-200/80",
     },
     {
       no: "02",
-      title: "運営と一緒に調整",
-      body: "どんなプロンプト・世界観で載せるかを一緒に詰めます。クオリティは運営が伴走します。",
+      title: "一緒に決める",
+      body: "どのように載せるかを一緒に決めましょう。",
       tape: "bg-rose-200/80",
     },
     {
@@ -329,7 +319,7 @@ export function CreatorsRecruitGuide({
             <div className="mt-9">
               <ConsultButton />
               <p className="mt-3 text-xs text-[#9a8a78]">
-                X(DM){DISCORD_INVITE_URL ? " / Discord" : ""} から気軽にどうぞ。「ちょっと話を聞きたい」だけでも大歓迎です。
+                X(DM)から気軽にどうぞ。「ちょっと話を聞きたい」だけでも大歓迎です。
               </p>
             </div>
           </Reveal>
@@ -639,18 +629,6 @@ export function CreatorsRecruitGuide({
           <Reveal delay={200}>
             <div className="mt-8 flex flex-col items-center gap-3">
               <ConsultButton />
-              {DISCORD_INVITE_URL ? (
-                <a
-                  href={DISCORD_INVITE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#5865F2] px-7 py-3 text-sm font-bold text-white shadow-[0_5px_0_rgba(76,85,196,0.35)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200"
-                  style={{ fontFamily: HEADING_FONT }}
-                >
-                  <DiscordIcon className="h-5 w-5" />
-                  Discord で相談する
-                </a>
-              ) : null}
               <p className="mt-1 text-xs text-[#9a8a78]">
                 X の {APPLY_X_HANDLE} まで、お気軽にDMください。
               </p>
