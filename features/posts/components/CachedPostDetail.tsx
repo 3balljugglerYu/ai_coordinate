@@ -32,7 +32,7 @@ export async function CachedPostDetail({
   cacheLife("minutes");
 
   const supabase = createAdminClient();
-  const post = await getPost(postId, currentUserId, true, supabase);
+  let post = await getPost(postId, currentUserId, true, supabase);
 
   if (!post) {
     notFound();
@@ -55,18 +55,24 @@ export async function CachedPostDetail({
     const provider = presetSummary
       ? resolveStylePresetProvider(presetSummary)
       : null;
-    if (
-      provider &&
-      post.generation_metadata &&
-      typeof post.generation_metadata === "object"
-    ) {
-      const oneTapStyle = (post.generation_metadata as Record<string, unknown>)
-        .oneTapStyle;
+    const metadata = post.generation_metadata;
+    if (provider && metadata && typeof metadata === "object") {
+      const meta = metadata as Record<string, unknown>;
+      const oneTapStyle = meta.oneTapStyle;
       if (oneTapStyle && typeof oneTapStyle === "object") {
-        const target = oneTapStyle as Record<string, unknown>;
-        target.providerUserId = provider.userId;
-        target.providerNickname = provider.nickname;
-        target.providerAvatarUrl = provider.avatarUrl;
+        // use cache のキャッシュ対象を直接書き換えない。非破壊的に再生成する。
+        post = {
+          ...post,
+          generation_metadata: {
+            ...meta,
+            oneTapStyle: {
+              ...(oneTapStyle as Record<string, unknown>),
+              providerUserId: provider.userId,
+              providerNickname: provider.nickname,
+              providerAvatarUrl: provider.avatarUrl,
+            },
+          },
+        };
       }
     }
   }
