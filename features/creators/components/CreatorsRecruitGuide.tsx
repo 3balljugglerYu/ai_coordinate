@@ -405,13 +405,28 @@ export function CreatorsRecruitGuide({
         <div className="mx-auto max-w-md">
           <Reveal>
             <h2
-              className="text-center text-2xl text-[#5b4b3a]"
+              className="text-center text-2xl leading-snug text-[#5b4b3a]"
               style={{ fontFamily: HEADING_FONT }}
             >
-              掲載されると、こうなる
+              One-Tap Style ページに“あなた”の名前を
             </h2>
+            <p className="mt-4 text-sm leading-relaxed text-[#7a6a58]">
+              掲載されると、One-Tap Style ページに、あなたのアイコンとニックネームが表示されます。タップするとあなたのプロフィールページにアクセスできます。自己紹介に X の URL を掲載することも可能です。
+            </p>
+            <div className="mt-5 text-center">
+              <Link
+                href="/style"
+                className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-6 py-3 text-sm font-bold text-amber-700 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                style={{ fontFamily: HEADING_FONT }}
+              >
+                One-Tap Style へ
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-4 w-4">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+            </div>
           </Reveal>
-          <div className="mt-8 grid gap-5">
+          <div className="mt-10 grid gap-5">
             {benefits.map((b, i) => (
               <Reveal key={b.title} delay={i * 80}>
                 <div className="overflow-hidden rounded-3xl border border-amber-100 bg-[#FBF6EE]">
