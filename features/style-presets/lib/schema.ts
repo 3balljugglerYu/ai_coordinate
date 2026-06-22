@@ -126,6 +126,16 @@ export interface StylePresetPublicSummary {
   imageInputMode: ImageInputMode;
   dualReferenceSource: DualReferenceSource;
   /**
+   * プリセット単位の提供者(style_presets.provider_user_id = profiles.id)。
+   * 未設定ならカテゴリ単位(category.providerUserId)にフォールバックする。
+   * character_remix のように 1 カテゴリに複数提供者が混在する場合に使う。
+   */
+  providerUserId?: string | null;
+  /** 提供者の表示名(profiles.nickname をライブ取得)。 */
+  providerNickname?: string | null;
+  /** 提供者のアイコン(profiles.avatar_url をライブ取得)。 */
+  providerAvatarUrl?: string | null;
+  /**
    * 段階解放(drip)でまだ解放されていないプリセットのとき true。
    * /style では「コンプリートで解放」のシルエットカードとして表示し、選択・生成不可にする。
    * 未指定/false は通常の解放済みプリセット。
@@ -188,6 +198,47 @@ export interface StylePresetUpdate {
 export const stylePresetReorderSchema = z.object({
   order: z.array(z.string().uuid()).min(1),
 });
+
+export interface ResolvedStylePresetProvider {
+  /** プロフィールへのリンク用。nickname のみで userId 不明な場合は null(その場合リンクなし表示)。 */
+  userId: string | null;
+  nickname: string;
+  avatarUrl: string | null;
+}
+
+/**
+ * カード(ホーム/style一覧)・/style 選択画面に表示する「提供者クレジット」を解決する。
+ * プリセット単位(style_presets.provider_user_id)を優先し、無ければ
+ * カテゴリ単位(preset_categories.provider_user_id)へフォールバックする。
+ * 表示に必要な nickname があるときだけ返す。userId はプロフィールリンク用(任意)。
+ */
+export function resolveStylePresetProvider(preset: {
+  providerUserId?: string | null;
+  providerNickname?: string | null;
+  providerAvatarUrl?: string | null;
+  category?: {
+    providerUserId?: string | null;
+    providerNickname?: string | null;
+    providerAvatarUrl?: string | null;
+  } | null;
+}): ResolvedStylePresetProvider | null {
+  if (preset.providerNickname) {
+    return {
+      userId: preset.providerUserId ?? null,
+      nickname: preset.providerNickname,
+      avatarUrl: preset.providerAvatarUrl ?? null,
+    };
+  }
+  const cat = preset.category;
+  if (cat?.providerNickname) {
+    return {
+      userId: cat.providerUserId ?? null,
+      nickname: cat.providerNickname,
+      avatarUrl: cat.providerAvatarUrl ?? null,
+    };
+  }
+  return null;
+}
 
 export function normalizeStylePresetTitle(title: string): string {
   return title.trim();
