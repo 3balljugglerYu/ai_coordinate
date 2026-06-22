@@ -212,16 +212,24 @@ export interface ResolvedStylePresetProvider {
  * カテゴリ単位(preset_categories.provider_user_id)へフォールバックする。
  * 表示に必要な nickname があるときだけ返す。userId はプロフィールリンク用(任意)。
  */
-export function resolveStylePresetProvider(preset: {
-  providerUserId?: string | null;
-  providerNickname?: string | null;
-  providerAvatarUrl?: string | null;
-  category?: {
-    providerUserId?: string | null;
-    providerNickname?: string | null;
-    providerAvatarUrl?: string | null;
-  } | null;
-}): ResolvedStylePresetProvider | null {
+export function resolveStylePresetProvider(
+  preset:
+    | {
+        providerUserId?: string | null;
+        providerNickname?: string | null;
+        providerAvatarUrl?: string | null;
+        category?: {
+          providerUserId?: string | null;
+          providerNickname?: string | null;
+          providerAvatarUrl?: string | null;
+        } | null;
+      }
+    | null
+    | undefined,
+): ResolvedStylePresetProvider | null {
+  if (!preset) {
+    return null;
+  }
   if (preset.providerNickname) {
     return {
       userId: preset.providerUserId ?? null,

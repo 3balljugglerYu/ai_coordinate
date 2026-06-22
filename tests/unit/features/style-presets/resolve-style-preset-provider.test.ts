@@ -43,6 +43,11 @@ describe("resolveStylePresetProvider", () => {
     expect(resolveStylePresetProvider({})).toBeNull();
   });
 
+  test("null / undefined を渡しても安全に null を返す", () => {
+    expect(resolveStylePresetProvider(null)).toBeNull();
+    expect(resolveStylePresetProvider(undefined)).toBeNull();
+  });
+
   test("userId はあるが nickname が無い場合はカテゴリへフォールバック", () => {
     // プリセットは userId のみ(nickname 欠落)→ 表示できないのでカテゴリへ
     expect(

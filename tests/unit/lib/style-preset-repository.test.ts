@@ -211,6 +211,9 @@ describe("style-preset repository", () => {
         },
         imageInputMode: "single",
         dualReferenceSource: "admin",
+        providerUserId: null,
+        providerNickname: null,
+        providerAvatarUrl: null,
       },
     ]);
   });

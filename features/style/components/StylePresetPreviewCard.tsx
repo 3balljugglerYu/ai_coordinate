@@ -21,6 +21,7 @@ interface StylePresetPreviewCardCategory {
   badgeColor: string;
   badgeTextColor: string;
   /** 提供者クレジット(設定時のみカテゴリラベルの上に「提供 <nickname>」を表示)。 */
+  providerUserId?: string | null;
   providerNickname?: string | null;
   providerAvatarUrl?: string | null;
 }
