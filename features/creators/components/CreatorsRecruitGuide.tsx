@@ -347,8 +347,8 @@ export function CreatorsRecruitGuide({
               <div className="flex items-center gap-3">
                 <div className="relative h-12 w-12 overflow-hidden rounded-full border border-amber-200">
                   <Image
-                    src="/collections/wafer/god/athena.webp"
-                    alt="mario さんの作品"
+                    src="/collections/wafer/user-icons/mario-icon.webp"
+                    alt="mario さんのアイコン"
                     fill
                     sizes="48px"
                     className="object-cover"
