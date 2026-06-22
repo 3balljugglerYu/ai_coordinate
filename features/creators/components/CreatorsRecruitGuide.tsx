@@ -143,7 +143,7 @@ export function CreatorsRecruitGuide({
     image?: GalleryImage;
   }[] = [
     {
-      title: "名前とアイコンで、ずっと載る",
+      title: "あなたの名前とアイコンを常に表示",
       body: "あなたの作品は、ニックネームとアイコン付きで掲載。使った人はあなたのプロフィールへ飛べます。",
       icon: (
         <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6Z" />
