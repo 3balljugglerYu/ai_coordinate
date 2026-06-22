@@ -459,7 +459,7 @@ export function CreatorsRecruitGuide({
             className="px-6 text-center text-2xl text-[#5b4b3a]"
             style={{ fontFamily: HEADING_FONT }}
           >
-            あなたのプロンプトが、ここに並ぶ
+            プロンプト登録されているのは70種類以上
           </p>
         </Reveal>
         <div className="relative mt-8">
@@ -482,7 +482,7 @@ export function CreatorsRecruitGuide({
         </div>
         <Reveal delay={120}>
           <p className="mt-6 px-6 text-center text-sm leading-relaxed text-[#7a6a58]">
-            人気が出れば、あなたのプロンプトが何人ものうちの子に。
+            あなたのプロンプトが何人ものうちの子に。
             <br />
             使われるほど、あなたの名前が広がっていきます。
           </p>
