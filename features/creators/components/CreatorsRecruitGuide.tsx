@@ -17,14 +17,19 @@ const APPLY_X_HANDLE = "@mickey_fuku";
 const APPLY_X_URL = "https://x.com/mickey_fuku";
 const DISCORD_INVITE_URL = "";
 
-// 掲載実績(現状は mario さんの神コレ)。実在画像を素材に使う。
-const FEATURED_LOOKS = [
-  { src: "/collections/wafer/god/aphrodite.webp", alt: "アフロディーテ" },
-  { src: "/collections/wafer/god/zeus.webp", alt: "ゼウス" },
-  { src: "/collections/wafer/god/isis.webp", alt: "イシス" },
-  { src: "/collections/wafer/god/athena.webp", alt: "アテナ" },
-  { src: "/collections/wafer/god/artemis.webp", alt: "アルテミス" },
-  { src: "/collections/wafer/god/odin.webp", alt: "オーディン" },
+export interface GalleryImage {
+  src: string;
+  alt: string;
+}
+
+// ギャラリー/タイルが空のときのフォールバック(神コレ画像)
+const FALLBACK_LOOKS: GalleryImage[] = [
+  { src: "/collections/wafer/god/aphrodite.webp", alt: "作例" },
+  { src: "/collections/wafer/god/zeus.webp", alt: "作例" },
+  { src: "/collections/wafer/god/isis.webp", alt: "作例" },
+  { src: "/collections/wafer/god/athena.webp", alt: "作例" },
+  { src: "/collections/wafer/god/artemis.webp", alt: "作例" },
+  { src: "/collections/wafer/god/odin.webp", alt: "作例" },
 ];
 
 function Reveal({
@@ -101,9 +106,9 @@ function DiscordIcon({ className }: { className?: string }) {
   );
 }
 
-function ApplyButton({
+function ConsultButton({
   size = "lg",
-  label = "掲載を相談する",
+  label = "気軽に相談する",
 }: {
   size?: "lg" | "sm";
   label?: string;
@@ -123,7 +128,11 @@ function ApplyButton({
   );
 }
 
-export function CreatorsRecruitGuide() {
+export function CreatorsRecruitGuide({
+  galleryImages = [],
+}: {
+  galleryImages?: GalleryImage[];
+}) {
   const [barShown, setBarShown] = useState(false);
 
   useEffect(() => {
@@ -133,7 +142,16 @@ export function CreatorsRecruitGuide() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const benefits = [
+  const looks = galleryImages.length > 0 ? galleryImages : FALLBACK_LOOKS;
+  const heroTiles = looks.slice(0, 6);
+  const marquee = looks.slice(0, 12);
+
+  const benefits: {
+    title: string;
+    body: string;
+    icon: ReactNode;
+    image?: GalleryImage;
+  }[] = [
     {
       title: "名前とアイコンで、ずっと載る",
       body: "あなたの作品は、ニックネームとアイコン付きで掲載。使った人はあなたのプロフィールへ飛べます。",
@@ -156,8 +174,8 @@ export function CreatorsRecruitGuide() {
       ),
     },
     {
-      title: "一着が、みんなの定番になる",
-      body: "一度載れば、何人ものうちの子に着られ続ける。あなたのコーデが“資産”として積み上がります。",
+      title: "プロンプトが、みんなの定番になる",
+      body: "一度載れば、何人ものうちの子に使われ続ける。あなたのプロンプトが“資産”として積み上がります。",
       icon: (
         <path d="M12 .6 9.2 7.6 1.7 8.1l5.7 4.8L5.5 20l6.5-3.9L18.5 20l-1.9-7.1 5.7-4.8-7.5-.5L12 .6Z" />
       ),
@@ -167,14 +185,14 @@ export function CreatorsRecruitGuide() {
   const steps = [
     {
       no: "01",
-      title: "応募する",
-      body: "X(DM)または Discord から「掲載したい」とご連絡ください。作品やSNSを見せていただけるとスムーズです。",
+      title: "相談する",
+      body: "X(DM)または Discord から「掲載したい / 話を聞きたい」とご連絡ください。作品やSNSを見せていただけるとスムーズです。",
       tape: "bg-amber-200/80",
     },
     {
       no: "02",
       title: "運営と一緒に調整",
-      body: "どんなコーデ・世界観で載せるかを一緒に詰めます。クオリティは運営が伴走します。",
+      body: "どんなプロンプト・世界観で載せるかを一緒に詰めます。クオリティは運営が伴走します。",
       tape: "bg-rose-200/80",
     },
     {
@@ -185,8 +203,8 @@ export function CreatorsRecruitGuide() {
     },
     {
       no: "04",
-      title: "みんながワンタップで着せる",
-      body: "全国のうちの子が、あなたの一着に。使われるほど、あなたの名前が広がります。",
+      title: "みんながワンタップで使う",
+      body: "全国のうちの子が、あなたのプロンプトで変身。使われるほど、あなたの名前が広がります。",
       tape: "bg-violet-200/80",
     },
   ];
@@ -194,7 +212,7 @@ export function CreatorsRecruitGuide() {
   const faqs = [
     {
       q: "誰でも応募できますか？",
-      a: "はい、基本オープンに歓迎しています。特に魅力的な作品・シリーズは「神コレ」のような特別コラボ枠として大きくフィーチャーすることもあります。",
+      a: "はい、基本オープンに歓迎しています。特に魅力的なプロンプト・シリーズは「神コレ」のような特別コラボ枠として大きくフィーチャーすることもあります。",
     },
     {
       q: "私のプロンプト(レシピ)は公開されますか？",
@@ -213,8 +231,8 @@ export function CreatorsRecruitGuide() {
       a: "現在は、名前・アイコンの掲載とファンへの露出が中心です。条件は個別にご相談ください。",
     },
     {
-      q: "どんな作品が向いていますか？",
-      a: "「うちの子に着せたい！」と思わせる、魅力的なコーデや世界観。あなたらしい個性が一番の武器です。",
+      q: "どんなプロンプトが向いていますか？",
+      a: "「うちの子に使ってみたい！」と思わせる、魅力的なプロンプトや世界観。あなたらしい個性が一番の武器です。",
     },
   ];
 
@@ -223,28 +241,13 @@ export function CreatorsRecruitGuide() {
       <style>{`
         @keyframes pe-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
         .pe-float { animation: pe-float 7s ease-in-out infinite; }
-        .cr-aura {
-          border-radius: 9999px;
-          background: repeating-conic-gradient(
-            rgba(253, 224, 71, 0.34) 0deg 6deg,
-            transparent 6deg 19deg
-          );
-          -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 66%);
-          mask-image: radial-gradient(circle, #000 16%, transparent 66%);
-          transform: translate(-50%, -50%);
-          animation: cr-aura-spin 16s linear infinite;
-        }
-        @keyframes cr-aura-spin {
-          from { transform: translate(-50%, -50%) rotate(0deg); }
-          to   { transform: translate(-50%, -50%) rotate(360deg); }
-        }
         @keyframes cr-marquee {
           from { transform: translateX(0); }
           to   { transform: translateX(-50%); }
         }
         .cr-marquee-track { animation: cr-marquee 32s linear infinite; }
         @media (prefers-reduced-motion: reduce){
-          .pe-float, .cr-aura, .cr-marquee-track { animation: none; }
+          .pe-float, .cr-marquee-track { animation: none; }
         }
       `}</style>
       <link
@@ -262,18 +265,14 @@ export function CreatorsRecruitGuide() {
             className="text-sm font-bold text-[#6b5a47]"
             style={{ fontFamily: HEADING_FONT }}
           >
-            あなたの一着を、ペルスタに。
+            あなたのプロンプトを、ペルスタに。
           </p>
-          <ApplyButton size="sm" label="応募する" />
+          <ConsultButton size="sm" />
         </div>
       </div>
 
       {/* ===== Hero ===== */}
       <section className="relative overflow-hidden px-6 pb-16 pt-12 text-center">
-        <div
-          aria-hidden
-          className="cr-aura pointer-events-none absolute left-1/2 top-44 h-[460px] w-[460px]"
-        />
         <Sparkle className="pe-float absolute left-8 top-10 h-5 w-5 text-amber-300" />
         <Sparkle className="pe-float absolute right-10 top-16 h-7 w-7 text-yellow-400" />
         <div className="relative">
@@ -282,7 +281,7 @@ export function CreatorsRecruitGuide() {
               className="inline-block rounded-full border-2 border-dashed border-amber-300 bg-white/70 px-4 py-1 text-xs font-bold text-amber-600"
               style={{ fontFamily: HEADING_FONT }}
             >
-              One-Tap Style 掲載クリエイター募集
+              あなたのプロンプトを掲載しませんか！？
             </span>
           </Reveal>
           <Reveal delay={100}>
@@ -290,25 +289,25 @@ export function CreatorsRecruitGuide() {
               className="mt-5 bg-gradient-to-b from-amber-500 to-orange-600 bg-clip-text text-3xl leading-[1.45] text-transparent sm:text-4xl"
               style={{ fontFamily: HEADING_FONT }}
             >
-              あなたの“うちの子コーデ”が、
+              あなたの“プロンプト”が、
               <br />
               みんなのワンタップに。
             </h1>
           </Reveal>
           <Reveal delay={200}>
             <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
-              あなたが作ったコーデを、Persta.AI の One-Tap Style に掲載。
+              あなたが作ったプロンプトを、Persta.AI の One-Tap Style に掲載。
               <br />
-              全国のうちの子が、あなたの一着をワンタップで着られるように。
+              全国のうちの子が、あなたのプロンプトでワンタップ変身できるように。
             </p>
           </Reveal>
 
           {/* 作例タイル */}
           <Reveal delay={300}>
             <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
-              {FEATURED_LOOKS.map((look, i) => (
+              {heroTiles.map((look, i) => (
                 <div
-                  key={look.src}
+                  key={`${look.src}-${i}`}
                   className={`pe-float relative aspect-square overflow-hidden rounded-xl border border-amber-200/70 shadow-sm ${
                     i % 2 ? "translate-y-2" : ""
                   }`}
@@ -328,27 +327,21 @@ export function CreatorsRecruitGuide() {
 
           <Reveal delay={400}>
             <div className="mt-9">
-              <ApplyButton />
+              <ConsultButton />
               <p className="mt-3 text-xs text-[#9a8a78]">
-                応募は X(DM){DISCORD_INVITE_URL ? " / Discord" : ""} から。まずは気軽にご相談ください。
+                X(DM){DISCORD_INVITE_URL ? " / Discord" : ""} から気軽にどうぞ。「ちょっと話を聞きたい」だけでも大歓迎です。
               </p>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ===== 実績(これは実話) ===== */}
+      {/* ===== 掲載されたクリエイター ===== */}
       <section className="px-6 py-14">
         <div className="mx-auto max-w-md">
           <Reveal>
-            <p
-              className="text-center text-xs font-bold tracking-wide text-amber-600"
-              style={{ fontFamily: HEADING_FONT }}
-            >
-              これは、実話です
-            </p>
             <h2
-              className="mt-2 text-center text-2xl text-[#5b4b3a]"
+              className="text-center text-2xl text-[#5b4b3a]"
               style={{ fontFamily: HEADING_FONT }}
             >
               掲載されたクリエイター
@@ -387,7 +380,7 @@ export function CreatorsRecruitGuide() {
               </div>
               <p className="mt-4 text-sm leading-relaxed text-[#7a6a58]">
                 「うちの子の神コレクション」(全6種)は mario さんとのコラボ企画。
-                女神・神さまに変身するコーデが、たくさんのうちの子に着られ、SNSでシェアされました。
+                女神・神さまに変身するプロンプトが、たくさんのうちの子に使われ、SNSでシェアされました。
               </p>
               <div className="mt-4 overflow-hidden rounded-2xl border border-amber-100">
                 <Image
@@ -424,26 +417,40 @@ export function CreatorsRecruitGuide() {
               掲載されると、こうなる
             </h2>
           </Reveal>
-          <div className="mt-8 grid gap-4">
+          <div className="mt-8 grid gap-5">
             {benefits.map((b, i) => (
               <Reveal key={b.title} delay={i * 80}>
-                <div className="flex gap-4 rounded-3xl border border-amber-100 bg-[#FBF6EE] p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
-                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="h-6 w-6">
-                      {b.icon}
-                    </svg>
+                <div className="overflow-hidden rounded-3xl border border-amber-100 bg-[#FBF6EE]">
+                  <div className="flex gap-4 p-5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="h-6 w-6">
+                        {b.icon}
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <h3
+                        className="text-base font-bold text-[#5b4b3a]"
+                        style={{ fontFamily: HEADING_FONT }}
+                      >
+                        {b.title}
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-[#7a6a58]">
+                        {b.body}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <h3
-                      className="text-base font-bold text-[#5b4b3a]"
-                      style={{ fontFamily: HEADING_FONT }}
-                    >
-                      {b.title}
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-[#7a6a58]">
-                      {b.body}
-                    </p>
-                  </div>
+                  {b.image ? (
+                    <div className="border-t border-amber-100 bg-white px-5 py-4">
+                      <Image
+                        src={b.image.src}
+                        alt={b.image.alt}
+                        width={900}
+                        height={500}
+                        sizes="(max-width: 768px) 88vw, 420px"
+                        className="mx-auto h-auto w-full rounded-xl border border-amber-100"
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </Reveal>
             ))}
@@ -451,19 +458,19 @@ export function CreatorsRecruitGuide() {
         </div>
       </section>
 
-      {/* ===== 没入ギャラリー ===== */}
+      {/* ===== 没入ギャラリー(現状のStyle登録コンテンツ) ===== */}
       <section className="overflow-hidden py-14">
         <Reveal>
           <p
             className="px-6 text-center text-2xl text-[#5b4b3a]"
             style={{ fontFamily: HEADING_FONT }}
           >
-            あなたの一着が、ここに並ぶ
+            あなたのプロンプトが、ここに並ぶ
           </p>
         </Reveal>
         <div className="relative mt-8">
           <div className="flex w-max cr-marquee-track gap-4 px-4">
-            {[...FEATURED_LOOKS, ...FEATURED_LOOKS].map((look, i) => (
+            {[...marquee, ...marquee].map((look, i) => (
               <div
                 key={`${look.src}-${i}`}
                 className="relative h-44 w-32 shrink-0 overflow-hidden rounded-2xl border border-amber-200/70 shadow-[0_6px_18px_rgba(120,90,50,0.12)]"
@@ -481,7 +488,7 @@ export function CreatorsRecruitGuide() {
         </div>
         <Reveal delay={120}>
           <p className="mt-6 px-6 text-center text-sm leading-relaxed text-[#7a6a58]">
-            人気が出れば、あなたのコーデが何人ものうちの子に。
+            人気が出れば、あなたのプロンプトが何人ものうちの子に。
             <br />
             使われるほど、あなたの名前が広がっていきます。
           </p>
@@ -546,21 +553,24 @@ export function CreatorsRecruitGuide() {
                 どなたでも歓迎です
               </p>
               <p className="mt-2 text-sm leading-relaxed text-[#7a6a58]">
-                「うちの子に着せたい」を形にできる方なら、はじめての方も大歓迎。
+                プロンプトで「うちの子をこう見せたい」を形にできる方なら、はじめての方も大歓迎。
               </p>
             </div>
           </Reveal>
           <Reveal delay={100}>
-            <div className="relative overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 text-center">
+            <div className="relative overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5">
               <Sparkle className="absolute right-4 top-4 h-5 w-5 text-amber-300" />
               <p
-                className="text-base font-bold text-orange-600"
+                className="text-center text-base font-bold text-orange-600"
                 style={{ fontFamily: HEADING_FONT }}
               >
                 ✦ 特別コラボ枠 ✦
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-[#7a6a58]">
-                とくに光る作品・シリーズは、「神コレ」のような特設ページ付きの特別枠として、大きくフィーチャーします。
+              <p className="mt-3 text-sm leading-relaxed text-[#7a6a58]">
+                ご提供いただいたプロンプトの中で、コレクション要素として面白そうと感じたものは、一緒にコラボ企画をしましょう。
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-[#7a6a58]">
+                盛り上げるために、私だけでなく提供者さまにも X でのポストや、ユーザーさんへのリプライ・引用リポストを積極的にお願いすることがあります。とはいえ進め方は、私がある程度リードしますのでご安心ください。
               </p>
             </div>
           </Reveal>
@@ -609,10 +619,6 @@ export function CreatorsRecruitGuide() {
 
       {/* ===== ラスト大CTA ===== */}
       <section className="relative overflow-hidden px-6 pb-28 pt-16 text-center">
-        <div
-          aria-hidden
-          className="cr-aura pointer-events-none absolute left-1/2 top-24 h-[420px] w-[420px]"
-        />
         <div className="relative">
           <Reveal>
             <Sparkle className="mx-auto h-8 w-8 text-amber-400" />
@@ -620,19 +626,19 @@ export function CreatorsRecruitGuide() {
               className="mt-4 bg-gradient-to-b from-amber-500 to-orange-600 bg-clip-text text-3xl leading-[1.45] text-transparent"
               style={{ fontFamily: HEADING_FONT }}
             >
-              あなたの一着を、
+              あなたのプロンプトを、
               <br />
               Persta.AI に。
             </h2>
           </Reveal>
           <Reveal delay={120}>
             <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
-              「私も掲載してほしい！」と思ったら、その瞬間が応募のタイミング。
+              「私も載せてみたいかも」と思ったら、それが相談のタイミングです。
             </p>
           </Reveal>
           <Reveal delay={200}>
             <div className="mt-8 flex flex-col items-center gap-3">
-              <ApplyButton />
+              <ConsultButton />
               {DISCORD_INVITE_URL ? (
                 <a
                   href={DISCORD_INVITE_URL}
