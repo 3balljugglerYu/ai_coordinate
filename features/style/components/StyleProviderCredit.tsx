@@ -29,7 +29,8 @@ interface StyleProviderCreditProps {
 
 /**
  * /style とホームのスタイルカードに出す提供者クレジット。
- * 提供者は preset_categories.provider_user_id (= profiles) からライブ取得した
+ * 提供者はプリセット単位(style_presets.provider_user_id)を優先し、無ければ
+ * カテゴリ単位(preset_categories.provider_user_id)から (= profiles) ライブ取得した
  * nickname / avatar_url を表示する。href 指定時はプロフィールへの別タブリンクになる。
  */
 export function StyleProviderCredit({

@@ -33,6 +33,13 @@ interface StylePresetPreviewCardData {
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
   /**
+   * プリセット単位の提供者クレジット(設定時はカテゴリ単位より優先)。
+   * resolveStylePresetProvider がこれらを読むため、型契約として明示する。
+   */
+  providerUserId?: string | null;
+  providerNickname?: string | null;
+  providerAvatarUrl?: string | null;
+  /**
    * 紐づく preset_categories のサマリ。`coordinate` (= default) はバッジ非表示で
    * 既存挙動と同じ見た目を保つ。それ以外のカテゴリのみバッジをサムネ画像の
    * 左下に表示する(キャラの顔まわりをバッジで覆わないための配置)。
