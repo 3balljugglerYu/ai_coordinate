@@ -15,6 +15,11 @@ export interface OneTapStylePresetMetadata extends Record<string, unknown> {
   billingMode: OneTapStyleBillingMode;
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   reservedAttemptId?: string;
+  // 投稿詳細などのカードで提供者クレジットを出すため、サーバー側で preset id から
+  // ライブ取得した提供者情報を注入する(保存時のスナップショットには含まれない)。
+  providerUserId?: string | null;
+  providerNickname?: string | null;
+  providerAvatarUrl?: string | null;
 }
 
 export interface OneTapStyleGenerationMetadata extends Record<string, unknown> {
@@ -121,6 +126,18 @@ export function getOneTapStylePresetMetadata(
     ...(typeof oneTapStyle.reservedAttemptId === "string"
       ? { reservedAttemptId: oneTapStyle.reservedAttemptId }
       : {}),
+    providerUserId:
+      typeof oneTapStyle.providerUserId === "string"
+        ? oneTapStyle.providerUserId
+        : null,
+    providerNickname:
+      typeof oneTapStyle.providerNickname === "string"
+        ? oneTapStyle.providerNickname
+        : null,
+    providerAvatarUrl:
+      typeof oneTapStyle.providerAvatarUrl === "string"
+        ? oneTapStyle.providerAvatarUrl
+        : null,
   };
 }
 

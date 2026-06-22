@@ -9,6 +9,9 @@ import {
 } from "../lib/utils";
 import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
+import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
+import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 
 interface CachedPostDetailProps {
   postId: string;
@@ -29,7 +32,7 @@ export async function CachedPostDetail({
   cacheLife("minutes");
 
   const supabase = createAdminClient();
-  const post = await getPost(postId, currentUserId, true, supabase);
+  let post = await getPost(postId, currentUserId, true, supabase);
 
   if (!post) {
     notFound();
@@ -37,6 +40,41 @@ export async function CachedPostDetail({
 
   if (post.user_id) {
     cacheTag(`subscription-ui-${post.user_id}`);
+  }
+
+  // One-Tap Style 投稿は、保存時メタデータに提供者情報を持たないため、
+  // preset id から現在の提供者(プリセット単位優先→カテゴリ fallback)をライブ取得し、
+  // メタデータへ注入する。これで詳細ページのカードにもクレジット(/style・ホームと同じ)が出る。
+  const oneTapMeta = getOneTapStylePresetMetadata(post);
+  if (oneTapMeta) {
+    const presetSummary = await getPublishedStylePresetById(
+      oneTapMeta.id,
+      {},
+      supabase,
+    ).catch(() => null);
+    const provider = presetSummary
+      ? resolveStylePresetProvider(presetSummary)
+      : null;
+    const metadata = post.generation_metadata;
+    if (provider && metadata && typeof metadata === "object") {
+      const meta = metadata as Record<string, unknown>;
+      const oneTapStyle = meta.oneTapStyle;
+      if (oneTapStyle && typeof oneTapStyle === "object") {
+        // use cache のキャッシュ対象を直接書き換えない。非破壊的に再生成する。
+        post = {
+          ...post,
+          generation_metadata: {
+            ...meta,
+            oneTapStyle: {
+              ...(oneTapStyle as Record<string, unknown>),
+              providerUserId: provider.userId,
+              providerNickname: provider.nickname,
+              providerAvatarUrl: provider.avatarUrl,
+            },
+          },
+        };
+      }
+    }
   }
 
   const imageUrl = getPostDisplayUrl(post);
