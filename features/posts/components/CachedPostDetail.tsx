@@ -9,6 +9,9 @@ import {
 } from "../lib/utils";
 import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
+import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
+import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 
 interface CachedPostDetailProps {
   postId: string;
@@ -37,6 +40,35 @@ export async function CachedPostDetail({
 
   if (post.user_id) {
     cacheTag(`subscription-ui-${post.user_id}`);
+  }
+
+  // One-Tap Style 投稿は、保存時メタデータに提供者情報を持たないため、
+  // preset id から現在の提供者(プリセット単位優先→カテゴリ fallback)をライブ取得し、
+  // メタデータへ注入する。これで詳細ページのカードにもクレジット(/style・ホームと同じ)が出る。
+  const oneTapMeta = getOneTapStylePresetMetadata(post);
+  if (oneTapMeta) {
+    const presetSummary = await getPublishedStylePresetById(
+      oneTapMeta.id,
+      {},
+      supabase,
+    ).catch(() => null);
+    const provider = presetSummary
+      ? resolveStylePresetProvider(presetSummary)
+      : null;
+    if (
+      provider &&
+      post.generation_metadata &&
+      typeof post.generation_metadata === "object"
+    ) {
+      const oneTapStyle = (post.generation_metadata as Record<string, unknown>)
+        .oneTapStyle;
+      if (oneTapStyle && typeof oneTapStyle === "object") {
+        const target = oneTapStyle as Record<string, unknown>;
+        target.providerUserId = provider.userId;
+        target.providerNickname = provider.nickname;
+        target.providerAvatarUrl = provider.avatarUrl;
+      }
+    }
   }
 
   const imageUrl = getPostDisplayUrl(post);
