@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
+import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 
 const PRESET_NAME_MAX_CHARACTERS = 16;
 const STYLE_PRESET_CARD_WIDTH_PX = 180;
@@ -20,6 +21,7 @@ interface StylePresetPreviewCardCategory {
   badgeColor: string;
   badgeTextColor: string;
   /** 提供者クレジット(設定時のみカテゴリラベルの上に「提供 <nickname>」を表示)。 */
+  providerUserId?: string | null;
   providerNickname?: string | null;
   providerAvatarUrl?: string | null;
 }
@@ -31,6 +33,13 @@ interface StylePresetPreviewCardData {
   thumbnailWidth: number;
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
+  /**
+   * プリセット単位の提供者クレジット(設定時はカテゴリ単位より優先)。
+   * resolveStylePresetProvider がこれらを読むため、型契約として明示する。
+   */
+  providerUserId?: string | null;
+  providerNickname?: string | null;
+  providerAvatarUrl?: string | null;
   /**
    * 紐づく preset_categories のサマリ。`coordinate` (= default) はバッジ非表示で
    * 既存挙動と同じ見た目を保つ。それ以外のカテゴリのみバッジをサムネ画像の
@@ -95,6 +104,8 @@ export function StylePresetPreviewCard({
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
   const isLocked = typeof lockedLabel === "string" && lockedLabel.length > 0;
+  // 提供者クレジットはプリセット単位を優先し、無ければカテゴリ単位にフォールバック。
+  const provider = resolveStylePresetProvider(preset);
   // 'coordinate' は default カテゴリで既存挙動と同じ見た目を保つため、バッジを描画しない。
   const shouldShowBadge =
     preset.category != null && preset.category.key !== "coordinate";
@@ -165,10 +176,10 @@ export function StylePresetPreviewCard({
           className="flex items-center gap-1.5 border-t bg-white px-3"
           style={{ height: STYLE_PRESET_CARD_TITLE_HEIGHT_PX }}
         >
-          {preset.category?.providerNickname && (
+          {provider && (
             <StyleProviderCredit
-              nickname={preset.category.providerNickname}
-              avatarUrl={preset.category.providerAvatarUrl ?? null}
+              nickname={provider.nickname}
+              avatarUrl={provider.avatarUrl}
               locale={locale}
               iconOnly
               className="flex shrink-0 items-center"

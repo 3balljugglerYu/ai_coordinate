@@ -85,12 +85,16 @@ interface StylePresetRow {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  // プリセット単位の提供者(profiles.id)。カテゴリ単位と独立して設定できる。
+  provider_user_id?: string | null;
+  // PostgREST embedded select で profiles を JOIN した結果(プリセット単位 provider クレジット用)
+  provider?: ProviderProfileRow | ProviderProfileRow[] | null;
   // PostgREST embedded select で category を JOIN した結果
   category?: StylePresetCategoryRow | StylePresetCategoryRow[] | null;
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
+  "*, provider:profiles!style_presets_provider_user_id_fkey(id, nickname, avatar_url), category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
@@ -255,6 +259,7 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
 }
 
 function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
+  const provider = extractProvider(row.provider);
   return {
     id: row.id,
     title: row.title,
@@ -265,6 +270,9 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     category: mapCategoryRefStrict(row, extractCategory(row.category)),
     imageInputMode: row.image_input_mode,
     dualReferenceSource: normalizeDualReferenceSource(row.dual_reference_source),
+    providerUserId: row.provider_user_id ?? null,
+    providerNickname: provider?.nickname ?? null,
+    providerAvatarUrl: provider?.avatar_url ?? null,
   };
 }
 

@@ -71,6 +71,7 @@ import type { ImageJobProcessingStage } from "@/features/generation/lib/job-type
 import type { UploadedImage } from "@/features/generation/types";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
@@ -1900,18 +1901,20 @@ export function StylePageClient({
                       />
                     );
                   })()}
-                  providerOverlay={
-                    selectedPreset.category.providerUserId &&
-                    selectedPreset.category.providerNickname ? (
+                  providerOverlay={(() => {
+                    // プリセット単位を優先し、無ければカテゴリ単位にフォールバック。
+                    // /users リンクには userId が必要なため userId 有りのときだけ表示。
+                    const provider = resolveStylePresetProvider(selectedPreset);
+                    return provider && provider.userId ? (
                       <StyleProviderCredit
-                        nickname={selectedPreset.category.providerNickname}
-                        avatarUrl={selectedPreset.category.providerAvatarUrl ?? null}
-                        href={`/users/${selectedPreset.category.providerUserId}`}
+                        nickname={provider.nickname}
+                        avatarUrl={provider.avatarUrl}
+                        href={`/users/${provider.userId}`}
                         locale={styleCardLocale}
                         size="lg"
                       />
-                    ) : null
-                  }
+                    ) : null;
+                  })()}
                 />
               ) : null}
             </div>
