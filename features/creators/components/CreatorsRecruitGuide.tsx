@@ -497,7 +497,7 @@ export function CreatorsRecruitGuide({
         </div>
         <Reveal delay={120}>
           <p className="mt-6 px-6 text-center text-sm leading-relaxed text-[#7a6a58]">
-            あなたのプロンプトが何人ものうちの子に。
+            あなたのプロンプトがワンタップで生成可能に。
             <br />
             使われるほど、あなたの名前が広がっていきます。
           </p>
