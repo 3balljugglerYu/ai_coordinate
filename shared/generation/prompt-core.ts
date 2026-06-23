@@ -120,10 +120,9 @@ export interface BuildPromptOptions {
    */
   templates?: Record<string, string>;
   /**
-   * "free_pose" のとき coordinate.base_prefix_free_pose、"ai_pose" のとき
-   * coordinate.base_prefix_ai_pose を使い、背景 suffix も free_pose 変種に
-   * 差し替える。real/illustration の style suffix は付与しない
-   * (画風維持の指示が free_pose / ai_pose 前文に内包されており、既存 suffix の
+   * "free_pose" のとき coordinate.base_prefix_free_pose を使い、背景 suffix も
+   * free_pose 変種に差し替える。real/illustration の style suffix は付与しない
+   * (画風維持の指示が free_pose 前文に内包されており、既存 suffix の
    * 「camera angle / composition 維持」がポーズ自由化と矛盾するため)。
    *
    * 省略 / "locked" は現行挙動と完全に等価。coordinate 以外の generationType では無視。
@@ -179,7 +178,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   if (generationType === "coordinate") {
-    // free_pose / ai_pose 共通の「フレーム固定解除」分岐。プレフィックスだけがモード別。
+    // free_pose の「フレーム固定解除」分岐。
     const unlocked = isUnlockedFramingMode(framingMode);
 
     // unlocked では real/illustration style suffix を付与しない (BuildPromptOptions コメント参照)
@@ -192,11 +191,9 @@ export function buildPrompt(options: BuildPromptOptions): string {
     const sections: string[] = [
       resolveTemplate(
         templates,
-        framingMode === "ai_pose"
-          ? "coordinate.base_prefix_ai_pose"
-          : framingMode === "free_pose"
-            ? "coordinate.base_prefix_free_pose"
-            : "coordinate.base_prefix",
+        framingMode === "free_pose"
+          ? "coordinate.base_prefix_free_pose"
+          : "coordinate.base_prefix",
       ),
       ...(styleSuffix === null ? [] : [styleSuffix]),
     ];
@@ -205,28 +202,27 @@ export function buildPrompt(options: BuildPromptOptions): string {
       sections.push(
         resolveTemplate(
           templates,
-          framingMode === "ai_pose"
-            ? "coordinate.keep_background_suffix_ai_pose"
-            : framingMode === "free_pose"
-              ? "coordinate.keep_background_suffix_free_pose"
-              : "coordinate.keep_background_suffix",
+          framingMode === "free_pose"
+            ? "coordinate.keep_background_suffix_free_pose"
+            : "coordinate.keep_background_suffix",
         ),
       );
     } else if (backgroundMode === "ai_auto") {
       sections.push(
         resolveTemplate(
           templates,
-          framingMode === "ai_pose"
-            ? "coordinate.change_background_suffix_ai_pose"
-            : framingMode === "free_pose"
-              ? "coordinate.change_background_suffix_free_pose"
-              : "coordinate.change_background_suffix",
+          framingMode === "free_pose"
+            ? "coordinate.change_background_suffix_free_pose"
+            : "coordinate.change_background_suffix",
         ),
       );
     }
     // include_in_prompt: ユーザー記述に背景指示を委ねるため、システム側の背景指示は追加しない
 
-    sections.push(`New Outfit:\n\n${sanitizedDescription}`);
+    // 本文ラベル: locked は従来どおり "New Outfit"(=服置換)。free(unlocked)は
+    // 衣装と決めつけず "User's Direction" として委ね、書かれていない要素は維持させる。
+    const directionLabel = unlocked ? "User's Direction" : "New Outfit";
+    sections.push(`${directionLabel}:\n\n${sanitizedDescription}`);
 
     return sections.join("\n\n");
   }
@@ -348,11 +344,9 @@ export function buildCoordinateAttemptReinforcementPrefix(
   const template = resolveTemplate(
     templates,
     // モードごとに独立した key を使う (admin が個別にチューニングできるよう分離)
-    framingMode === "ai_pose"
-      ? "reinforcement.coordinate_attempt_2plus_ai_pose"
-      : framingMode === "free_pose"
-        ? "reinforcement.coordinate_attempt_2plus_free_pose"
-        : "reinforcement.coordinate_attempt_2plus",
+    framingMode === "free_pose"
+      ? "reinforcement.coordinate_attempt_2plus_free_pose"
+      : "reinforcement.coordinate_attempt_2plus",
   );
   return applyTemplate(template, { attempt });
 }

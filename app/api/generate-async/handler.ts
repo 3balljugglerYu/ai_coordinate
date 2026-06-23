@@ -158,17 +158,8 @@ export async function postGenerateAsyncRoute(
       );
     }
 
-    // framing_mode (admin viewer 限定の先行公開)。coordinate 限定は schema で検証済み。
-    // locked 以外 (free_pose / ai_pose) は非 admin から送られたら 400
-    // (UI 非表示はセキュリティではないためサーバでも遮断)。
+    // framing_mode は全ログインユーザーに公開 (既定=free / 「維持」で locked)。coordinate 限定は schema で検証済み。
     const effectiveFramingMode: FramingMode = framingMode ?? "locked";
-    if (effectiveFramingMode !== "locked" && !isAdminViewer(user.id)) {
-      return jsonError(
-        copy.invalidRequest,
-        "GENERATION_FRAMING_MODE_NOT_ALLOWED",
-        400
-      );
-    }
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
     const isInspireRequest = generationType === "inspire";
 

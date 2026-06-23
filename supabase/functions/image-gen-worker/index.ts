@@ -2017,7 +2017,7 @@ Deno.serve(async () => {
                           ? "real"
                           : "illustration",
                       templates: promptTemplates,
-                      // framing_mode (free_pose は admin viewer 限定、route handler で検証済み)。
+                      // framing_mode: 既定 free_pose / 「維持」で locked。全ログインユーザー対象。
                       // metadata にキーが無い既存ジョブは locked = 現行挙動。
                       framingMode: getFramingModeFromGenerationMetadata(
                         job.generation_metadata,

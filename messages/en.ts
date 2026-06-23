@@ -842,10 +842,9 @@ export const enMessages = {
     sourceImageTypeLabel: "Uploaded image style",
     sourceImageTypeIllustration: "Illustration",
     sourceImageTypeReal: "Photoreal",
-    promptLabel: "Describe the outfit",
-    promptPlaceholder: "Example: Dress them in a breezy white summer dress.",
-    promptHint:
-      "Describe the outfit you want as specifically as possible in up to {max} characters.",
+    promptLabel: "Describe the outfit, pose, etc.",
+    promptPlaceholder:
+      "Example: a breezy white summer dress. Arms spread wide. High angle.",
     promptCharacterCount: "{current}/{max} characters",
     promptTooLong: "Enter an outfit description within {max} characters.",
     backgroundLabel: "Background",
@@ -857,15 +856,10 @@ export const enMessages = {
       "Specify the background within the outfit prompt.",
     backgroundKeepLabel: "Keep current background",
     backgroundKeepDescription: "Keep the current background unchanged.",
-    poseModeLabel: "Pose & angle (beta)",
-    poseModeAiAutoLabel: "Let AI decide",
-    poseModeAiAutoDescription: "AI freely chooses a pose and composition that suit the outfit.",
-    poseModeIncludeInPromptLabel: "Describe in prompt",
-    poseModeIncludeInPromptDescription:
-      "Follows the pose and camera angle instructions written in your outfit description.",
+    poseModeLabel: "Pose & angle",
     poseModeKeepLabel: "Match the original",
     poseModeKeepDescription:
-      "Keeps the original pose and camera angle as much as possible (current behavior).",
+      "Keeps the original pose and camera angle as much as possible.",
     modelLabel: "Select a generation model",
     modelTooltipAria: "Show how the rendering quality differs",
     modelTooltipContent: "💡 The higher the quality, the less faces and clothing details break.\nLow: generates quickly. ~30 sec.\nMedium: balanced. ~70 sec.\nHigh: details stay intact. ~180 sec.",

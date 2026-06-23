@@ -97,11 +97,10 @@ export const generationRequestSchema = z.object({
     .default(DEFAULT_GENERATION_MODEL)
     .transform(normalizeModelName), // データベース保存用に正規化
   /**
-   * framing_mode (admin viewer 限定先行公開)。
-   * "free_pose" は image_0 の identity は維持しつつポーズ・カメラアングル・構図を
-   * プロンプト指定優先にする。省略 / "locked" は現行挙動。
+   * framing_mode。"free_pose"(既定)は image_0 の identity を維持しつつ、衣装/ポーズ/
+   * カメラ/背景をユーザー指示に委ねる。"locked"(「維持」チェックON)は現行どおり厳密維持。
+   * 全ログインユーザー対象 (ゲスト sync 経路は非対応)。
    * generationType='coordinate' のときのみ指定可能（superRefine で整合性検証）。
-   * 権限検証 (admin viewer か) は handler 側で行う。
    */
   framingMode: z.enum(FRAMING_MODES).optional(),
   // Inspire 専用: 参照するスタイルテンプレ ID と override 組み合わせ。

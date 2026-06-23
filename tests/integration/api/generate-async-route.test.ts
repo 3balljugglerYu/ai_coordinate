@@ -1237,16 +1237,17 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       };
     }
 
-    test("非 admin の free_pose は 400 GENERATION_FRAMING_MODE_NOT_ALLOWED", async () => {
+    test("free_pose は admin かどうかに依らず generation_metadata.framingMode 付きでジョブ作成される", async () => {
       const response = await postGenerateAsyncRoute(
         createRequest(buildBody({ framingMode: "free_pose" })),
         dependencies()
       );
-      const body = await readJson(response);
 
-      expect(response.status).toBe(400);
-      expect(body.errorCode).toBe("GENERATION_FRAMING_MODE_NOT_ALLOWED");
-      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.generation_metadata).toEqual({ framingMode: "free_pose" });
+      // prompt_text は raw のまま (free_pose の合成は worker の buildPrompt が行う)
+      expect(jobData.prompt_text).toBe("linen jacket");
     });
 
     test("未知の framingMode 値は schema で 400 になる", async () => {
@@ -1260,7 +1261,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
     });
 
     test("coordinate 以外 (inspire) への framingMode 指定は 400 になる", async () => {
-      isAdminViewerMock.mockReturnValue(true);
       const response = await postGenerateAsyncRoute(
         createRequest(
           buildBody({
@@ -1274,49 +1274,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
 
       expect(response.status).toBe(400);
       expect(jobRepository.createImageJob).not.toHaveBeenCalled();
-    });
-
-    test("admin の free_pose は generation_metadata.framingMode 付きでジョブ作成される", async () => {
-      isAdminViewerMock.mockReturnValue(true);
-
-      const response = await postGenerateAsyncRoute(
-        createRequest(buildBody({ framingMode: "free_pose" })),
-        dependencies()
-      );
-
-      expect(response.status).toBe(200);
-      const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.generation_metadata).toEqual({
-        framingMode: "free_pose",
-      });
-      // prompt_text は raw のまま (free_pose の合成は worker の buildPrompt が行う)
-      expect(jobData.prompt_text).toBe("linen jacket");
-    });
-
-    test("非 admin の ai_pose も 400 GENERATION_FRAMING_MODE_NOT_ALLOWED", async () => {
-      const response = await postGenerateAsyncRoute(
-        createRequest(buildBody({ framingMode: "ai_pose" })),
-        dependencies()
-      );
-      const body = await readJson(response);
-
-      expect(response.status).toBe(400);
-      expect(body.errorCode).toBe("GENERATION_FRAMING_MODE_NOT_ALLOWED");
-    });
-
-    test("admin の ai_pose は generation_metadata.framingMode=ai_pose で記録される", async () => {
-      isAdminViewerMock.mockReturnValue(true);
-
-      const response = await postGenerateAsyncRoute(
-        createRequest(buildBody({ framingMode: "ai_pose" })),
-        dependencies()
-      );
-
-      expect(response.status).toBe(200);
-      const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.generation_metadata).toEqual({
-        framingMode: "ai_pose",
-      });
     });
 
     test("framingMode 省略時は generation_metadata を設定しない (後方互換)", async () => {

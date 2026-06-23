@@ -156,7 +156,8 @@ Minimal monochrome look`;
         framingMode: "free_pose",
       });
 
-      expect(result).toContain("Flexible Pose & Framing");
+      expect(result).toContain("Follow the User's Direction");
+      expect(result).toContain("Identity Preservation");
       expect(result).not.toContain("Strict Framing");
       expect(result).not.toContain(
         "Outfit Transformation within the Existing Frame"
@@ -168,7 +169,7 @@ Minimal monochrome look`;
       expect(result).not.toContain(
         "Keep the entire original background unchanged"
       );
-      expect(result).toContain(`New Outfit:\n\n${outfitDescription}`);
+      expect(result).toContain(`User's Direction:\n\n${outfitDescription}`);
     });
 
     test("free_pose_ai_autoはフレーミング固定を課さない背景変更suffixを使う", () => {
@@ -198,7 +199,7 @@ Minimal monochrome look`;
         framingMode: "free_pose",
       });
 
-      expect(result).toContain("Flexible Pose & Framing");
+      expect(result).toContain("Follow the User's Direction");
       expect(result).not.toContain("depict the same environment");
       expect(result).not.toContain("designed freely to suit the new pose");
     });
@@ -238,51 +239,35 @@ Minimal monochrome look`;
       expect(result).not.toContain("Flexible Pose & Framing");
     });
 
-    test("ai_poseはCreative前文を使いポーズの写し取りを禁止する", () => {
-      const result = buildPrompt({
-        generationType: "coordinate",
-        outfitDescription,
-        backgroundMode: "keep",
-        sourceImageType: "real",
-        framingMode: "ai_pose",
-      });
-
-      expect(result).toContain("Creative Pose & Framing");
-      expect(result).toContain("Do NOT simply copy the pose");
-      expect(result).not.toContain("Flexible Pose & Framing");
-      expect(result).not.toContain("Strict Framing");
-      expect(result).not.toContain("85mm portrait lens");
-      // 背景 suffix は ai_pose 専用 key を使う
-      expect(result).toContain(
-        "depict the same environment from the new viewpoint"
-      );
+    test("free_pose でも本文(着せ替え内容)が空はエラー", () => {
+      expect(() =>
+        buildPrompt({
+          generationType: "coordinate",
+          outfitDescription: "",
+          backgroundMode: "keep",
+          sourceImageType: "illustration",
+          framingMode: "free_pose",
+        }),
+      ).toThrow();
     });
 
-    test("背景suffixはモードごとに独立したkeyを使う (templates overrideで分離を確認)", () => {
+    test("free_pose は専用の背景suffix keyを使う (templates overrideで確認)", () => {
       const templates = {
         "coordinate.keep_background_suffix_free_pose": "FREE POSE KEEP BG",
-        "coordinate.keep_background_suffix_ai_pose": "AI POSE KEEP BG",
         "coordinate.change_background_suffix_free_pose": "FREE POSE CHANGE BG",
-        "coordinate.change_background_suffix_ai_pose": "AI POSE CHANGE BG",
       };
-      const build = (
-        framingMode: "free_pose" | "ai_pose",
-        backgroundMode: "keep" | "ai_auto"
-      ) =>
+      const build = (backgroundMode: "keep" | "ai_auto") =>
         buildPrompt({
           generationType: "coordinate",
           outfitDescription,
           backgroundMode,
           sourceImageType: "illustration",
-          framingMode,
+          framingMode: "free_pose",
           templates,
         });
 
-      expect(build("free_pose", "keep")).toContain("FREE POSE KEEP BG");
-      expect(build("free_pose", "keep")).not.toContain("AI POSE KEEP BG");
-      expect(build("ai_pose", "keep")).toContain("AI POSE KEEP BG");
-      expect(build("free_pose", "ai_auto")).toContain("FREE POSE CHANGE BG");
-      expect(build("ai_pose", "ai_auto")).toContain("AI POSE CHANGE BG");
+      expect(build("keep")).toContain("FREE POSE KEEP BG");
+      expect(build("ai_auto")).toContain("FREE POSE CHANGE BG");
     });
   });
 
@@ -313,7 +298,7 @@ Minimal monochrome look`;
       ).toBe("");
     });
 
-    test("free_poseのattempt2以降は枠維持制約を含まない変種を使う", () => {
+    test("free_poseのattempt2以降は枠維持制約を含まず、衣装置換を無条件強制しない", () => {
       const prefix = buildCoordinateAttemptReinforcementPrefix(
         2,
         undefined,
@@ -322,34 +307,20 @@ Minimal monochrome look`;
 
       expect(prefix).toContain("RETRY NOTICE (attempt 2)");
       expect(prefix).not.toContain("Do not extend the crop");
-      expect(prefix).toContain("allowed to change");
+      // free 既定: User's Direction に従わせ、書かれていない衣装は維持(回帰 #1 の防止)
+      expect(prefix).toContain("User's Direction");
+      expect(prefix).toContain("keep the current outfit unchanged");
+      expect(prefix).not.toContain("strictly apply the outfit replacement");
       expect(prefix.endsWith("\n\n")).toBe(true);
     });
 
-    test("ai_poseは専用の変種を使い枠維持制約を含まない", () => {
-      const prefix = buildCoordinateAttemptReinforcementPrefix(
-        2,
-        undefined,
-        "ai_pose"
-      );
-
-      expect(prefix).not.toContain("Do not extend the crop");
-      expect(prefix).toContain("may be freely chosen");
-      // free_pose 用の文言とは別 key (独立チューニング可能)
-      expect(prefix).not.toContain("as instructed below");
-    });
-
-    test("reinforcementはモードごとに独立したkeyを使う (templates overrideで分離を確認)", () => {
+    test("free_pose は専用の reinforcement keyを使う (templates overrideで確認)", () => {
       const templates = {
         "reinforcement.coordinate_attempt_2plus_free_pose": "FREE POSE RETRY\n\n",
-        "reinforcement.coordinate_attempt_2plus_ai_pose": "AI POSE RETRY\n\n",
       };
       expect(
         buildCoordinateAttemptReinforcementPrefix(2, templates, "free_pose")
       ).toContain("FREE POSE RETRY");
-      expect(
-        buildCoordinateAttemptReinforcementPrefix(2, templates, "ai_pose")
-      ).toContain("AI POSE RETRY");
     });
   });
 });

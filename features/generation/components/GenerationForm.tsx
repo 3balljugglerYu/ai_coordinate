@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { GenerationModelControls } from "./GenerationModelControls";
@@ -72,7 +73,7 @@ interface GenerationFormProps {
     backgroundMode: BackgroundMode;
     count: number;
     model: GeminiModel;
-    /** framing_mode (admin viewer 限定)。チェック ON のときのみ "free_pose" が入る */
+    /** framing_mode。既定 free_pose / 「維持」チェックON で locked。locked は送らない(省略) */
     framingMode?: FramingMode;
   }) => void;
   isGenerating?: boolean;
@@ -87,11 +88,6 @@ interface GenerationFormProps {
    * 再生成すると in-memory の結果が失われ上限エラーになるため、生成ボタンを無効化する。
    */
   guestGenerationLocked?: boolean;
-  /**
-   * framing_mode (free_pose) のチェックボックスを表示するか。
-   * admin viewer 限定の先行公開 (サーバ側 generate-async でも検証される)。
-   */
-  canUseFreePose?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -108,7 +104,6 @@ export function GenerationForm({
   isGenerating = false,
   authState = "authenticated",
   guestGenerationLocked = false,
-  canUseFreePose = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
@@ -134,28 +129,6 @@ export function GenerationForm({
       description: t("backgroundKeepDescription"),
     },
   ];
-  // ポーズ・アングル設定 (admin viewer 限定)。背景設定と同じ並び順 (お任せ → 指定 → 維持)
-  const poseModeOptions: Array<{
-    value: FramingMode;
-    label: string;
-    description: string;
-  }> = [
-    {
-      value: "ai_pose",
-      label: t("poseModeAiAutoLabel"),
-      description: t("poseModeAiAutoDescription"),
-    },
-    {
-      value: "free_pose",
-      label: t("poseModeIncludeInPromptLabel"),
-      description: t("poseModeIncludeInPromptDescription"),
-    },
-    {
-      value: "locked",
-      label: t("poseModeKeepLabel"),
-      description: t("poseModeKeepDescription"),
-    },
-  ];
   const sourceImageTypeOptions: Array<{
     value: SourceImageType;
     label: string;
@@ -178,12 +151,11 @@ export function GenerationForm({
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
-  // framing_mode (admin viewer 限定先行公開)。背景設定と同じ 3 択ラジオで
-  // 「元画像に合わせる (locked) / プロンプト内で指定 (free_pose) / AIにお任せ (ai_pose)」を選ぶ。
-  // ゲスト同期経路は framingMode を解釈しないため、認証済みのときのみ表示する。
-  const [poseMode, setPoseMode] = useState<FramingMode>("locked");
-  const shouldShowPoseModeControl =
-    canUseFreePose && authState === "authenticated";
+  // framing_mode: 既定は free(image_0 の同一性だけ維持し、衣装/ポーズ/カメラ/背景は
+  // ユーザー指示に委ねる)。「ポーズ・カメラをできるだけ維持」チェックON で locked に切替。
+  // 全ログインユーザー対象。ゲスト同期経路は framingMode 非対応のため認証済みのみ表示。
+  const [poseMode, setPoseMode] = useState<FramingMode>("free_pose");
+  const shouldShowPoseModeControl = authState === "authenticated";
   const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
@@ -314,7 +286,7 @@ export function GenerationForm({
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
       model: effectiveSelectedModel,
-      // framing_mode: locked 以外を選んだときのみ渡す (省略 = locked = 現行挙動)
+      // framing_mode: locked 以外(=free_pose, 既定)を選んだときのみ渡す
       ...(shouldShowPoseModeControl && poseMode !== "locked"
         ? { framingMode: poseMode }
         : {}),
@@ -609,7 +581,6 @@ export function GenerationForm({
           onChange={setPrompt}
           label={t("promptLabel")}
           placeholder={t("promptPlaceholder")}
-          hint={t("promptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
           clearLabel={t("promptClear")}
           characterCount={t("promptCharacterCount", {
             current: promptLength,
@@ -655,39 +626,34 @@ export function GenerationForm({
           </RadioGroup>
         </div>
 
-        {/* ポーズ・アングル設定 (admin viewer 限定の先行公開)。背景設定と同じ 3 択ラジオ */}
+        {/* ポーズ・アングル設定。既定は free(委ねる)。チェックで「できるだけ維持(locked)」 */}
         {shouldShowPoseModeControl ? (
-          <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+          <div>
             <Label className="text-base font-medium">
               {t("poseModeLabel")}
             </Label>
-            <RadioGroup
-              value={poseMode}
-              onValueChange={(value) => setPoseMode(value as FramingMode)}
-              className="mt-2 space-y-3"
-              disabled={isGenerating || isTutorialInProgress}
-            >
-              {poseModeOptions.map((option) => (
-                <div key={option.value} className="flex items-start space-x-2">
-                  <RadioGroupItem
-                    id={`pose-mode-${option.value}`}
-                    value={option.value}
-                    className="mt-0.5"
-                  />
-                  <div className="space-y-0.5">
-                    <Label
-                      htmlFor={`pose-mode-${option.value}`}
-                      className="text-sm font-medium leading-none"
-                    >
-                      {option.label}
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      {option.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
+            <div className="mt-2 flex items-start space-x-2">
+              <Checkbox
+                id="pose-preserve"
+                checked={poseMode === "locked"}
+                onCheckedChange={(checked) =>
+                  setPoseMode(checked === true ? "locked" : "free_pose")
+                }
+                disabled={isGenerating || isTutorialInProgress}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label
+                  htmlFor="pose-preserve"
+                  className="text-sm font-medium leading-none"
+                >
+                  {t("poseModeKeepLabel")}
+                </Label>
+                <p className="text-xs text-gray-500">
+                  {t("poseModeKeepDescription")}
+                </p>
+              </div>
+            </div>
           </div>
         ) : null}
 

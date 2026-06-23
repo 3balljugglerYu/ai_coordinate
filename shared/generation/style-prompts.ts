@@ -124,7 +124,7 @@ export function buildStyleGenerationPrompt(
     return sections.join("\n\n");
   }
 
-  // Style に ai_pose 専用プレフィックスは無いため、non-locked はすべて free_pose 扱い
+  // Style の non-locked は free_pose のみ
   const freePose = isUnlockedFramingMode(options.framingMode);
 
   // free_pose では illustration/real suffix を付与しない (interface コメント参照)
@@ -191,7 +191,7 @@ export function buildStyleAttemptReinforcementPrefix(
   }
   const template = resolveTemplate(
     templates,
-    // ai_pose もフレーム固定を再強制しない free_pose 変種を使う
+    // free_pose はフレーム固定を再強制しない free_pose 変種を使う
     isUnlockedFramingMode(framingMode)
       ? "reinforcement.style_attempt_2plus_free_pose"
       : "reinforcement.style_attempt_2plus",

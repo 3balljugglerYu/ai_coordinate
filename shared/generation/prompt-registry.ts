@@ -80,24 +80,15 @@ const COORDINATE_BASE_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-t
 
 3. Strict Framing: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a body part is not in the original frame, do not add it. Preserve the exact crop, camera angle, and composition of \`image_0.png\`.`;
 
-// free_pose モード用 (STYLE_BASE_PREFIX_FREE_POSE_DEFAULT のコメント参照)。
-const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
+// free_pose モード用 (既定)。image_0 の identity だけを厳密維持し、それ以外
+// (衣装/ポーズ/カメラ/背景/構図) はユーザーの指示に委ねる。指示が無いものは image_0 を維持。
+const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these rules exactly:
 
-1. Outfit Transformation (REQUIRED): You MUST replace the person's current clothing with the outfit described under "New Outfit" below. The output image MUST visibly show the new outfit. Returning the original outfit unchanged is a failure.
+1. Identity Preservation (TOP PRIORITY, REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character. Preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Never alter the person's identity.
 
-2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Do not alter the person's identity.
+2. Follow the User's Direction below: Apply exactly what the user's direction specifies — this may include the outfit, pose, gesture, expression, camera angle, framing, composition, and background. Treat the user's direction as the primary intent for everything other than identity.
 
-3. Flexible Pose & Framing: You MAY change the pose, camera angle, framing, crop, and composition. If the "New Outfit" description or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. If they do not, choose a natural pose and framing that best presents the outfit. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
-
-// ai_pose モード (framing_mode="ai_pose") 用の前文。free_pose と異なり
-// 「元画像のポーズを写し取らず、AI が服に合う構図を自由に選ぶ」ことを明示する。
-const COORDINATE_BASE_PREFIX_AI_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
-
-1. Outfit Transformation (REQUIRED): You MUST replace the person's current clothing with the outfit described under "New Outfit" below. The output image MUST visibly show the new outfit. Returning the original outfit unchanged is a failure.
-
-2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Do not alter the person's identity.
-
-3. Creative Pose & Framing: Do NOT simply copy the pose, camera angle, or composition of \`image_0.png\`. Choose a new, natural, and appealing pose, camera angle, framing, and composition that best presents the new outfit — like a fashion lookbook photo. If the "New Outfit" description or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
+3. Keep What Is Not Specified: For anything the user's direction does NOT mention, keep it consistent with \`image_0.png\`. In particular, if no new outfit is described, keep the person's current outfit unchanged; if no pose or camera change is described, keep the original pose and camera. Where the result requires a choice that the user did not specify (e.g., framing for a new outfit), pick a natural one that best fits the direction. You may render body parts not visible in \`image_0.png\` when the new pose requires it, staying consistent with the character's identity and body shape.`;
 
 // ============================================================================
 // Inspire 系 (buildInspirePrompt 内テキスト)
@@ -120,12 +111,7 @@ const REINFORCEMENT_STYLE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The pre
 
 // free_pose モード用のリトライ強化 prefix。locked 用と異なりフレーム固定を再強制しない
 // (再強制すると base_prefix_free_pose の Flexible Pose & Framing と矛盾するため)。
-const REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the New Outfit described below. You MUST strictly apply the outfit replacement while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. The pose, camera angle, and framing are allowed to change as instructed below. Do not return the original image unchanged.
-
-`;
-
-// ai_pose モード用のリトライ強化 prefix。「ポーズは AI が自由に選んでよい」ことを再確認する。
-const REINFORCEMENT_COORDINATE_AI_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the New Outfit described below. You MUST strictly apply the outfit replacement while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. The pose, camera angle, and framing may be freely chosen to present the outfit. Do not return the original image unchanged.
+const REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed — the output was unchanged or did not reflect the User's Direction below. You MUST clearly apply the user's direction (which may specify the outfit, pose, gesture, expression, camera angle, framing, or background) while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. Do not change anything the direction does not mention — in particular, if no new outfit is described, keep the current outfit unchanged. Do not return the original image unchanged.
 
 `;
 
@@ -321,14 +307,6 @@ export const PROMPT_REGISTRY = {
     defaultContent: COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT,
     supportedVariables: [],
   },
-  "coordinate.base_prefix_ai_pose": {
-    category: "coordinate",
-    description:
-      "Coordinate: ai_pose モード (ポーズ・アングルを AI にお任せ) の CRITICAL INSTRUCTION 前文。" +
-      "元画像のポーズを写し取らず AI が構図を選ぶ。style suffix は併用しない",
-    defaultContent: COORDINATE_BASE_PREFIX_AI_POSE_DEFAULT,
-    supportedVariables: [],
-  },
   "coordinate.real_style_suffix": {
     category: "coordinate",
     description: "Coordinate: 実写入力の場合のスタイル指示",
@@ -371,24 +349,6 @@ export const PROMPT_REGISTRY = {
       "Coordinate: free_pose モードの背景変更 (ai_auto) 指示 (フレーミング固定を課さない)",
     defaultContent:
       "You MUST restyle the background so that it complements the new outfit's style and color palette. The background composition may be designed freely to suit the new pose, camera angle, and framing. Preserve the character identity.",
-    supportedVariables: [],
-  },
-  "coordinate.keep_background_suffix_ai_pose": {
-    category: "coordinate",
-    description:
-      "Coordinate: ai_pose モードの背景維持指示 (AI が選ぶ新しい視点から同じ環境を描く)。" +
-      "free_pose とは独立にチューニングできる",
-    defaultContent:
-      "Keep the background environment, location, and overall mood consistent with `image_0.png`. As the pose and camera angle change, depict the same environment from the new viewpoint instead of replacing it with a different location.",
-    supportedVariables: [],
-  },
-  "coordinate.change_background_suffix_ai_pose": {
-    category: "coordinate",
-    description:
-      "Coordinate: ai_pose モードの背景変更 (ai_auto) 指示 (新しい構図と合わせて背景も自由に設計)。" +
-      "free_pose とは独立にチューニングできる",
-    defaultContent:
-      "You MUST restyle the background so that it complements the new outfit's style and color palette. Design the background composition freely so that it forms an appealing scene together with the new pose and camera angle. Preserve the character identity.",
     supportedVariables: [],
   },
 
@@ -475,15 +435,6 @@ export const PROMPT_REGISTRY = {
       "Coordinate 系 free_pose モードのリトライ強化 prefix (attempt ≥ 2 で前置)。" +
       "フレーム固定を再強制しない。末尾の改行 2 つは生成プロンプトとの区切りで重要",
     defaultContent: REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT,
-    supportedVariables: ["attempt"],
-    previewSamples: { attempt: "2" },
-  },
-  "reinforcement.coordinate_attempt_2plus_ai_pose": {
-    category: "reinforcement",
-    description:
-      "Coordinate 系 ai_pose モードのリトライ強化 prefix (attempt ≥ 2 で前置)。" +
-      "ポーズは AI が自由に選んでよいことを再確認する。free_pose とは独立にチューニングできる",
-    defaultContent: REINFORCEMENT_COORDINATE_AI_POSE_DEFAULT,
     supportedVariables: ["attempt"],
     previewSamples: { attempt: "2" },
   },

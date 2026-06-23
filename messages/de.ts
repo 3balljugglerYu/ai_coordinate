@@ -845,10 +845,9 @@ export const deMessages = {
     sourceImageTypeLabel: "Stil des hochgeladenen Bildes",
     sourceImageTypeIllustration: "Illustration",
     sourceImageTypeReal: "Foto",
-    promptLabel: "Beschreibe das Outfit",
-    promptPlaceholder: "Beispiel: Zieh ihr ein luftiges weißes Sommerkleid an.",
-    promptHint:
-      "Beschreibe das gewünschte Outfit so genau wie möglich, in bis zu {max} Zeichen.",
+    promptLabel: "Beschreibe das Outfit, die Pose usw.",
+    promptPlaceholder:
+      "Beispiel: ein luftiges weißes Sommerkleid. Arme weit ausgebreitet. Hohe Kameraperspektive.",
     promptCharacterCount: "{current}/{max} Zeichen",
     promptTooLong: "Beschreibe das Outfit in höchstens {max} Zeichen.",
     backgroundLabel: "Hintergrund",
@@ -860,15 +859,10 @@ export const deMessages = {
       "Spezifiziere den Hintergrund innerhalb des Outfit-Prompts.",
     backgroundKeepLabel: "Aktuellen Hintergrund behalten",
     backgroundKeepDescription: "Den aktuellen Hintergrund unverändert lassen.",
-    poseModeLabel: "Pose & Kamerawinkel (Beta)",
-    poseModeAiAutoLabel: "Der KI überlassen",
-    poseModeAiAutoDescription: "Die KI wählt frei eine Pose und Komposition, die zum Outfit passen.",
-    poseModeIncludeInPromptLabel: "Im Prompt beschreiben",
-    poseModeIncludeInPromptDescription:
-      "Folgt den Pose- und Kamerawinkel-Anweisungen in der Outfit-Beschreibung.",
+    poseModeLabel: "Pose & Kamerawinkel",
     poseModeKeepLabel: "Wie das Originalbild",
     poseModeKeepDescription:
-      "Behält Pose und Kamerawinkel des Originalbilds so weit wie möglich bei (bisheriges Verhalten).",
+      "Behält Pose und Kamerawinkel des Originalbilds so weit wie möglich bei.",
     modelLabel: "Wähle ein Generierungsmodell",
     modelTooltipAria: "Unterschiede der Renderqualität anzeigen",
     modelTooltipContent: "💡 Je höher, desto weniger werden Gesicht und Kleidung verzerrt.\nLow: schnelle Generierung. ca. 30 s.\nMedium: ausgewogen. ca. 70 s.\nHigh: stabile Details. ca. 180 s.",
