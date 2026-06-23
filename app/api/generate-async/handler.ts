@@ -159,7 +159,7 @@ export async function postGenerateAsyncRoute(
     }
 
     // framing_mode (admin viewer 限定の先行公開)。coordinate 限定は schema で検証済み。
-    // locked 以外 (free_pose / ai_pose) は非 admin から送られたら 400
+    // locked 以外 (free_pose) は非 admin から送られたら 400
     // (UI 非表示はセキュリティではないためサーバでも遮断)。
     const effectiveFramingMode: FramingMode = framingMode ?? "locked";
     if (effectiveFramingMode !== "locked" && !isAdminViewer(user.id)) {

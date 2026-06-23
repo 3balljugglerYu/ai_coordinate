@@ -1293,32 +1293,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(jobData.prompt_text).toBe("linen jacket");
     });
 
-    test("非 admin の ai_pose も 400 GENERATION_FRAMING_MODE_NOT_ALLOWED", async () => {
-      const response = await postGenerateAsyncRoute(
-        createRequest(buildBody({ framingMode: "ai_pose" })),
-        dependencies()
-      );
-      const body = await readJson(response);
-
-      expect(response.status).toBe(400);
-      expect(body.errorCode).toBe("GENERATION_FRAMING_MODE_NOT_ALLOWED");
-    });
-
-    test("admin の ai_pose は generation_metadata.framingMode=ai_pose で記録される", async () => {
-      isAdminViewerMock.mockReturnValue(true);
-
-      const response = await postGenerateAsyncRoute(
-        createRequest(buildBody({ framingMode: "ai_pose" })),
-        dependencies()
-      );
-
-      expect(response.status).toBe(200);
-      const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.generation_metadata).toEqual({
-        framingMode: "ai_pose",
-      });
-    });
-
     test("framingMode 省略時は generation_metadata を設定しない (後方互換)", async () => {
       const response = await postGenerateAsyncRoute(
         createRequest(buildBody()),

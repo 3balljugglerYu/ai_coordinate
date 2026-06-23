@@ -134,17 +134,12 @@ export function GenerationForm({
       description: t("backgroundKeepDescription"),
     },
   ];
-  // ポーズ・アングル設定 (admin viewer 限定)。背景設定と同じ並び順 (お任せ → 指定 → 維持)
+  // ポーズ・アングル設定 (admin viewer 限定)。指定 → 維持 の並び順
   const poseModeOptions: Array<{
     value: FramingMode;
     label: string;
     description: string;
   }> = [
-    {
-      value: "ai_pose",
-      label: t("poseModeAiAutoLabel"),
-      description: t("poseModeAiAutoDescription"),
-    },
     {
       value: "free_pose",
       label: t("poseModeIncludeInPromptLabel"),
@@ -179,7 +174,7 @@ export function GenerationForm({
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
   // framing_mode (admin viewer 限定先行公開)。背景設定と同じ 3 択ラジオで
-  // 「元画像に合わせる (locked) / プロンプト内で指定 (free_pose) / AIにお任せ (ai_pose)」を選ぶ。
+  // 「元画像に合わせる (locked) / プロンプト内で指定 (free_pose)」を選ぶ。
   // ゲスト同期経路は framingMode を解釈しないため、認証済みのときのみ表示する。
   const [poseMode, setPoseMode] = useState<FramingMode>("locked");
   const shouldShowPoseModeControl =
