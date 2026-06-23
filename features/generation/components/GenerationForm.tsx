@@ -592,7 +592,6 @@ export function GenerationForm({
           onChange={setPrompt}
           label={t("promptLabel")}
           placeholder={t("promptPlaceholder")}
-          hint={t("promptHint", { max: GENERATION_PROMPT_MAX_LENGTH })}
           clearLabel={t("promptClear")}
           characterCount={t("promptCharacterCount", {
             current: promptLength,

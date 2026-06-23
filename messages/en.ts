@@ -842,7 +842,7 @@ export const enMessages = {
     sourceImageTypeLabel: "Uploaded image style",
     sourceImageTypeIllustration: "Illustration",
     sourceImageTypeReal: "Photoreal",
-    promptLabel: "Describe the outfit, pose, camera angle, etc.",
+    promptLabel: "Describe the outfit, pose, etc.",
     promptPlaceholder:
       "Example: a breezy white summer dress / double peace-sign pose / low-angle full body",
     promptHint:

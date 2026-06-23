@@ -819,7 +819,7 @@ export const jaMessages = {
     sourceImageTypeLabel: "アップロードした画像のタイプ",
     sourceImageTypeIllustration: "イラスト",
     sourceImageTypeReal: "リアル",
-    promptLabel: "着せ替え内容や、ポージング・アングルなどを記載",
+    promptLabel: "着せ替え内容やポージングなどを記載",
     promptPlaceholder:
       "例: 夏らしい白いワンピース／ダブルピースのポーズ／ローアングルで全身",
     promptHint: "どんな服装に変更したいか具体的に、{max}文字以内で記入してください",
