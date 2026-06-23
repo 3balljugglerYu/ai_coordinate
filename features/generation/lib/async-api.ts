@@ -119,8 +119,9 @@ export async function generateImageAsync(
       count: request.count ?? 1,
       generationType: request.generationType || "coordinate",
       model: request.model || DEFAULT_GENERATION_MODEL,
-      // framing_mode: free_pose(既定)のときのみ送る (省略 = locked = 「維持」チェックON)。
-      ...(request.framingMode === "free_pose"
+      // framing_mode は UI の選択 (free_pose / locked) を常に明示送信する。
+      // 省略に頼らず値を必ず載せることで、サーバの省略時フォールバックと UI 既定の乖離を防ぐ。
+      ...(request.framingMode
         ? { framingMode: request.framingMode }
         : {}),
     }),

@@ -14,7 +14,24 @@
 export const FRAMING_MODES = ["locked", "free_pose"] as const;
 export type FramingMode = (typeof FRAMING_MODES)[number];
 
+/**
+ * framingMode が未指定 (省略) のときのフォールバック。
+ * 用途は 2 つで、いずれも「保守的に現行挙動へ倒す」ためのもの:
+ *  1. 既存ジョブの generation_metadata に framingMode が無い場合 (getFramingModeFromGenerationMetadata)
+ *  2. リクエストが framingMode を送ってこない場合 (レガシー / 非 UI 経路)
+ * UI の既定値ではない点に注意 (UI 既定は COORDINATE_DEFAULT_FRAMING_MODE)。
+ */
 export const DEFAULT_FRAMING_MODE: FramingMode = "locked";
+
+/**
+ * コーディネート生成 UI の既定値。コーデ画面はこの値で初期化し、ユーザーが
+ * 「ポーズ・カメラをできるだけ維持」をチェックしない限り、この値を明示的に送る。
+ * DEFAULT_FRAMING_MODE (= 省略時の保守的フォールバック) とは別概念で、値も異なる:
+ *  - COORDINATE_DEFAULT_FRAMING_MODE = "free_pose" … UI が能動的に選ぶ既定
+ *  - DEFAULT_FRAMING_MODE            = "locked"    … 省略/レガシー時の保守的既定
+ * UI は常に framingMode を明示送信するため、サーバのフォールバックに依存しない。
+ */
+export const COORDINATE_DEFAULT_FRAMING_MODE: FramingMode = "free_pose";
 
 /**
  * 外部入力 (formData / JSON / metadata) を FramingMode に解釈する。
