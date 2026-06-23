@@ -50,9 +50,10 @@ function getSafeExtensionFromMimeType(mimeType: string): string {
 }
 
 export const generationRequestSchema = z.object({
+  // 通常は必須だが、coordinate の free_pose + posePrompt(服はそのまま・ポーズだけ変更)
+  // のときのみ空を許可する。必須判定は下の superRefine で行う。
   prompt: z
     .string()
-    .min(1, "着せ替え内容を入力してください")
     .max(
       GENERATION_PROMPT_MAX_LENGTH,
       `着せ替え内容は${GENERATION_PROMPT_MAX_LENGTH}文字以内で入力してください`
@@ -214,6 +215,22 @@ export const generationRequestSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["framingMode"],
       message: "framingMode は coordinate 生成時のみ指定できます",
+    });
+  }
+
+  // prompt(着せ替え内容)は原則必須。例外として coordinate の free_pose +
+  // posePrompt(服はそのまま・ポーズだけ変更)のときのみ空を許可する。
+  const promptEmpty = !data.prompt || data.prompt.trim().length === 0;
+  const poseOnlyAllowed =
+    data.generationType === "coordinate" &&
+    data.framingMode === "free_pose" &&
+    typeof data.posePrompt === "string" &&
+    data.posePrompt.trim().length > 0;
+  if (promptEmpty && !poseOnlyAllowed) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["prompt"],
+      message: "着せ替え内容を入力してください",
     });
   }
 }).transform((data) => {

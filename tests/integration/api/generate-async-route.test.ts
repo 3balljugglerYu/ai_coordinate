@@ -560,7 +560,11 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       // ============================================================
       // Arrange
       // ============================================================
-      const request = createRequest({ prompt: "" });
+      // 元画像は与え prompt 空のみを不正にする (prompt 必須は free_pose+posePrompt 時だけ緩和)。
+      const request = createRequest({
+        prompt: "",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
 
       // ============================================================
       // Act

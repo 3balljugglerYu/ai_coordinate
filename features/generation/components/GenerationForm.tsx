@@ -278,7 +278,13 @@ export function GenerationForm({
   const handleSubmit = async () => {
     const trimmedPrompt = prompt.trim();
 
-    if (!trimmedPrompt) {
+    // free_pose + ポーズ欄入力 (服はそのまま・ポーズだけ変更) のときはコーデ指示が空でも許可。
+    const poseOnlySubmit =
+      shouldShowPoseModeControl &&
+      poseMode === "free_pose" &&
+      posePromptValue.trim().length > 0;
+
+    if (!trimmedPrompt && !poseOnlySubmit) {
       alert(t("missingPrompt"));
       return;
     }
@@ -331,8 +337,13 @@ export function GenerationForm({
 
   const hasSourceImage =
     !!uploadedImage || !!selectedStock || !!selectedGenerated;
+  // 服はそのまま・ポーズだけ変更: free_pose でポーズ欄に入力があれば、コーデ指示が空でも生成可。
+  const poseOnlyReady =
+    shouldShowPoseModeControl &&
+    poseMode === "free_pose" &&
+    posePromptValue.trim().length > 0;
   const isSubmitDisabled =
-    !prompt.trim() ||
+    (!prompt.trim() && !poseOnlyReady) ||
     !hasSourceImage ||
     isGenerating ||
     isPromptTooLong ||

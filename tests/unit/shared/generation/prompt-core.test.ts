@@ -252,6 +252,34 @@ Minimal monochrome look`;
       expect(result).toContain("New Outfit:");
     });
 
+    test("free_pose + 衣装空 + posePrompt は pose_only(服維持・ポーズのみ)になる", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription: "",
+        backgroundMode: "keep",
+        sourceImageType: "illustration",
+        framingMode: "free_pose",
+        posePrompt: "ローアングルで全身",
+      });
+      // 服維持の前文 + ポーズ指定セクション、New Outfit は出さない
+      expect(result).toContain("Keep the Outfit");
+      expect(result).toContain("Pose & Camera Direction:");
+      expect(result).toContain("ローアングルで全身");
+      expect(result).not.toContain("New Outfit:");
+    });
+
+    test("衣装空 + ポーズ空 は従来どおりエラー", () => {
+      expect(() =>
+        buildPrompt({
+          generationType: "coordinate",
+          outfitDescription: "",
+          backgroundMode: "keep",
+          sourceImageType: "illustration",
+          framingMode: "free_pose",
+        }),
+      ).toThrow();
+    });
+
     test("locked では posePrompt を無視する(衣装と混線させない)", () => {
       const result = buildPrompt({
         generationType: "coordinate",

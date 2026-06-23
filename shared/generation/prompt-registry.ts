@@ -89,6 +89,15 @@ const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is 
 
 3. Flexible Pose & Framing: You MAY change the pose, camera angle, framing, crop, and composition. If the "New Outfit" description or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. If they do not, choose a natural pose and framing that best presents the outfit. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
 
+// pose_only モード用 (free_pose かつ衣装指示が空)。服は維持し、ポーズ・カメラのみ変更する。
+const COORDINATE_POSE_ONLY_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
+
+1. Keep the Outfit (REQUIRED): Keep the person's current clothing and outfit from \`image_0.png\` EXACTLY as-is. Do NOT change, replace, recolor, or restyle the clothing. Reproduce the same outfit faithfully.
+
+2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork.
+
+3. Change Pose & Camera Only: Change ONLY the pose, camera angle, framing, and composition, following the "Pose & Camera Direction" below with priority. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity, body shape, and the same outfit.`;
+
 // ============================================================================
 // Inspire 系 (buildInspirePrompt 内テキスト)
 // ============================================================================
@@ -304,6 +313,14 @@ export const PROMPT_REGISTRY = {
       "Coordinate: free_pose モード (ポーズ・アングル自由化) の CRITICAL INSTRUCTION 前文。" +
       "identity と画風維持を内包するため real/illustration style suffix は併用しない",
     defaultContent: COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT,
+    supportedVariables: [],
+  },
+  "coordinate.pose_only_prefix": {
+    category: "coordinate",
+    description:
+      "Coordinate: pose_only モード (free_pose かつ衣装指示が空) の前文。" +
+      "服は維持し、ポーズ・カメラのみ変更する。style suffix は併用しない",
+    defaultContent: COORDINATE_POSE_ONLY_PREFIX_DEFAULT,
     supportedVariables: [],
   },
   "coordinate.real_style_suffix": {
