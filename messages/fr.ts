@@ -845,10 +845,8 @@ export const frMessages = {
     sourceImageTypeLabel: "Style de l'image téléchargée",
     sourceImageTypeIllustration: "Illustration",
     sourceImageTypeReal: "Photo réaliste",
-    promptLabel: "Décrivez la tenue",
-    promptPlaceholder: "Exemple : Habillez-la d'une robe d'été blanche fluide.",
-    promptHint:
-      "Décrivez la tenue souhaitée le plus précisément possible, en {max} caractères max.",
+    promptLabel: "Décrivez la tenue, la pose, etc.",
+    promptPlaceholder: "Exemple : une robe d'été blanche fluide. Les bras grands ouverts. Vue en plongée.",
     promptCharacterCount: "{current}/{max} caractères",
     promptTooLong: "Décrivez la tenue en moins de {max} caractères.",
     backgroundLabel: "Arrière-plan",
@@ -861,11 +859,6 @@ export const frMessages = {
     backgroundKeepLabel: "Conserver l'arrière-plan actuel",
     backgroundKeepDescription: "Conservez l'arrière-plan actuel sans modification.",
     poseModeLabel: "Pose et angle",
-    poseModeAiAutoLabel: "Laisser l'IA décider",
-    poseModeAiAutoDescription: "L'IA choisit librement une pose et une composition adaptées à la tenue.",
-    poseModeIncludeInPromptLabel: "Décrire dans le prompt",
-    poseModeIncludeInPromptDescription:
-      "Priorise les indications de pose et d'angle de caméra écrites dans la description de la tenue.",
     poseModeKeepLabel: "Identique à l'image d'origine",
     poseModeKeepDescription:
       "Conserve autant que possible la pose et l'angle de caméra d'origine.",

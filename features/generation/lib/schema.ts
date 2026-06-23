@@ -50,10 +50,9 @@ function getSafeExtensionFromMimeType(mimeType: string): string {
 }
 
 export const generationRequestSchema = z.object({
-  // 通常は必須だが、coordinate の free_pose + posePrompt(服はそのまま・ポーズだけ変更)
-  // のときのみ空を許可する。必須判定は下の superRefine で行う。
   prompt: z
     .string()
+    .min(1, "着せ替え内容を入力してください")
     .max(
       GENERATION_PROMPT_MAX_LENGTH,
       `着せ替え内容は${GENERATION_PROMPT_MAX_LENGTH}文字以内で入力してください`
@@ -98,20 +97,12 @@ export const generationRequestSchema = z.object({
     .default(DEFAULT_GENERATION_MODEL)
     .transform(normalizeModelName), // データベース保存用に正規化
   /**
-   * framing_mode (admin viewer 限定先行公開)。
-   * "free_pose" は image_0 の identity は維持しつつポーズ・カメラアングル・構図を
-   * プロンプト指定優先にする。省略 / "locked" は現行挙動。
+   * framing_mode。"free_pose"(既定)は image_0 の identity を維持しつつ、衣装/ポーズ/
+   * カメラ/背景をユーザー指示に委ねる。"locked"(「維持」チェックON)は現行どおり厳密維持。
+   * 全ログインユーザー対象 (ゲスト sync 経路は非対応)。
    * generationType='coordinate' のときのみ指定可能（superRefine で整合性検証）。
-   * 権限検証 (admin viewer か) は handler 側で行う。
    */
   framingMode: z.enum(FRAMING_MODES).optional(),
-  /**
-   * ポーズ・カメラアングルの指定テキスト (admin viewer 限定先行公開)。
-   * free_pose のとき "New Outfit" とは別の `Pose & Camera Direction:` セクションとして
-   * 結合し、角度指定が衣装指示に混線して服が変わるのを防ぐ。
-   * 権限 (admin) と free_pose 整合は handler 側で検証する。
-   */
-  posePrompt: z.string().max(500).optional(),
   // Inspire 専用: 参照するスタイルテンプレ ID と override 組み合わせ。
   // generationType='inspire' のときのみ意味を持つ（superRefine で整合性検証）。
   styleTemplateId: z.string().uuid().optional(),
@@ -215,22 +206,6 @@ export const generationRequestSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["framingMode"],
       message: "framingMode は coordinate 生成時のみ指定できます",
-    });
-  }
-
-  // prompt(着せ替え内容)は原則必須。例外として coordinate の free_pose +
-  // posePrompt(服はそのまま・ポーズだけ変更)のときのみ空を許可する。
-  const promptEmpty = !data.prompt || data.prompt.trim().length === 0;
-  const poseOnlyAllowed =
-    data.generationType === "coordinate" &&
-    data.framingMode === "free_pose" &&
-    typeof data.posePrompt === "string" &&
-    data.posePrompt.trim().length > 0;
-  if (promptEmpty && !poseOnlyAllowed) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["prompt"],
-      message: "着せ替え内容を入力してください",
     });
   }
 }).transform((data) => {

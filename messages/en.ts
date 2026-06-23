@@ -845,8 +845,6 @@ export const enMessages = {
     promptLabel: "Describe the outfit, pose, etc.",
     promptPlaceholder:
       "Example: a breezy white summer dress. Arms spread wide. High angle.",
-    promptHint:
-      "Describe the outfit you want as specifically as possible in up to {max} characters.",
     promptCharacterCount: "{current}/{max} characters",
     promptTooLong: "Enter an outfit description within {max} characters.",
     backgroundLabel: "Background",
@@ -859,11 +857,6 @@ export const enMessages = {
     backgroundKeepLabel: "Keep current background",
     backgroundKeepDescription: "Keep the current background unchanged.",
     poseModeLabel: "Pose & angle",
-    poseModeAiAutoLabel: "Let AI decide",
-    poseModeAiAutoDescription: "AI freely chooses a pose and composition that suit the outfit.",
-    poseModeIncludeInPromptLabel: "Describe in prompt",
-    poseModeIncludeInPromptDescription:
-      "Follows the pose and camera angle instructions written in your outfit description.",
     poseModeKeepLabel: "Match the original",
     poseModeKeepDescription:
       "Keeps the original pose and camera angle as much as possible.",

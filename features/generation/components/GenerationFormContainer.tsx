@@ -69,12 +69,6 @@ interface GenerationFormContainerProps {
    * `GuestResultPreview` に in-memory で表示する。既定は "authenticated"。
    */
   authState?: "guest" | "authenticated";
-  /**
-   * framing_mode (free_pose) のチェックボックスを表示するか。
-   * admin viewer 限定の先行公開のため、page 側で isAdminViewer を判定して渡す。
-   * UI 非表示はセキュリティではなく、サーバ側 (generate-async) でも検証される。
-   */
-  canUseFreePose?: boolean;
 }
 
 type TrackedGenerationJobStatus = Pick<
@@ -198,7 +192,6 @@ function sumCompletedProgressUnits(
 export function GenerationFormContainer({
   subscriptionPlan,
   authState = "authenticated",
-  canUseFreePose = false,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
@@ -883,10 +876,8 @@ export function GenerationFormContainer({
     count: number;
     model: import("../types").GeminiModel;
     generationType?: import("../types").GenerationType;
-    /** framing_mode (admin viewer 限定)。free_pose のときのみ async 経路で送られる */
+    /** framing_mode。free_pose(既定)のときのみ async 経路で送られる(locked は省略) */
     framingMode?: import("@/shared/generation/framing-mode").FramingMode;
-    /** ポーズ・カメラ指定 (admin viewer 限定)。free_pose かつ非空のときのみ送られる */
-    posePrompt?: string;
   }) => {
     const showGenerationErrorToast = (message: string) => {
       toast({
@@ -1022,7 +1013,6 @@ export function GenerationFormContainer({
             generationType: data.generationType || "coordinate",
             model: data.model,
             framingMode: data.framingMode,
-            posePrompt: data.posePrompt,
           },
           asyncApiMessages
         );
@@ -1382,7 +1372,6 @@ export function GenerationFormContainer({
         isGenerating={isFormBusy}
         authState={authState}
         guestGenerationLocked={isGuest && guestResult !== null}
-        canUseFreePose={canUseFreePose}
       />
 
       {error ? (

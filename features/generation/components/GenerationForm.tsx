@@ -73,10 +73,8 @@ interface GenerationFormProps {
     backgroundMode: BackgroundMode;
     count: number;
     model: GeminiModel;
-    /** framing_mode (admin viewer 限定)。チェック ON のときのみ "free_pose" が入る */
+    /** framing_mode。既定 free_pose / 「維持」チェックON で locked。locked は送らない(省略) */
     framingMode?: FramingMode;
-    /** ポーズ・カメラ指定 (admin viewer 限定)。free_pose かつ非空のときのみ入る */
-    posePrompt?: string;
   }) => void;
   isGenerating?: boolean;
   /**
@@ -90,11 +88,6 @@ interface GenerationFormProps {
    * 再生成すると in-memory の結果が失われ上限エラーになるため、生成ボタンを無効化する。
    */
   guestGenerationLocked?: boolean;
-  /**
-   * framing_mode (free_pose) のチェックボックスを表示するか。
-   * admin viewer 限定の先行公開 (サーバ側 generate-async でも検証される)。
-   */
-  canUseFreePose?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -111,7 +104,6 @@ export function GenerationForm({
   isGenerating = false,
   authState = "authenticated",
   guestGenerationLocked = false,
-  canUseFreePose = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
@@ -159,14 +151,11 @@ export function GenerationForm({
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [prompt, setPrompt] = useState("");
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("keep");
-  // framing_mode (admin viewer 限定先行公開)。背景設定と同じ 3 択ラジオで
-  // 「元画像に合わせる (locked) / プロンプト内で指定 (free_pose)」を選ぶ。
-  // ゲスト同期経路は framingMode を解釈しないため、認証済みのときのみ表示する。
-  // 既定は free(image_0 の同一性だけ維持し、衣装/ポーズ/カメラはユーザー指示に委ねる)。
-  // 「ポーズ・カメラをできるだけ維持」チェックで locked に切り替える。
+  // framing_mode: 既定は free(image_0 の同一性だけ維持し、衣装/ポーズ/カメラ/背景は
+  // ユーザー指示に委ねる)。「ポーズ・カメラをできるだけ維持」チェックON で locked に切替。
+  // 全ログインユーザー対象。ゲスト同期経路は framingMode 非対応のため認証済みのみ表示。
   const [poseMode, setPoseMode] = useState<FramingMode>("free_pose");
-  const shouldShowPoseModeControl =
-    canUseFreePose && authState === "authenticated";
+  const shouldShowPoseModeControl = authState === "authenticated";
   const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL

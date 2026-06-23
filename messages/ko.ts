@@ -842,10 +842,8 @@ export const koMessages = {
     sourceImageTypeLabel: "업로드 이미지 스타일",
     sourceImageTypeIllustration: "일러스트",
     sourceImageTypeReal: "실사",
-    promptLabel: "코디를 설명해 주세요",
-    promptPlaceholder: "예: 산뜻한 흰색 여름 원피스를 입혀주세요.",
-    promptHint:
-      "원하는 코디를 가능한 한 구체적으로 {max}자 이내로 입력해 주세요.",
+    promptLabel: "코디 내용이나 포즈 등을 입력해 주세요",
+    promptPlaceholder: "예: 산뜻한 흰색 여름 원피스. 양팔을 활짝 벌린 모습. 하이 앵글.",
     promptCharacterCount: "{current}/{max}자",
     promptTooLong: "코디 설명은 {max}자 이내로 입력해 주세요.",
     backgroundLabel: "배경",
@@ -858,11 +856,6 @@ export const koMessages = {
     backgroundKeepLabel: "현재 배경 유지",
     backgroundKeepDescription: "현재 배경을 그대로 유지합니다.",
     poseModeLabel: "포즈·앵글 설정",
-    poseModeAiAutoLabel: "AI에게 맡기기",
-    poseModeAiAutoDescription: "옷에 어울리는 포즈와 구도를 AI가 자유롭게 선택합니다",
-    poseModeIncludeInPromptLabel: "프롬프트로 지정",
-    poseModeIncludeInPromptDescription:
-      "코디 내용에 적은 포즈·카메라 앵글 지시를 우선합니다",
     poseModeKeepLabel: "원본 이미지에 맞추기",
     poseModeKeepDescription:
       "원본 이미지의 포즈와 카메라 앵글을 최대한 유지합니다",

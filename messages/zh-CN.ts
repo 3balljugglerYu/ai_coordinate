@@ -841,10 +841,8 @@ export const zhCnMessages = {
     sourceImageTypeLabel: "上传图片风格",
     sourceImageTypeIllustration: "插画",
     sourceImageTypeReal: "真实照片",
-    promptLabel: "请描述这套搭配",
-    promptPlaceholder: "例如：让她穿上一条飘逸的白色夏装连衣裙。",
-    promptHint:
-      "请尽量具体地描述你想要的搭配，最多 {max} 字。",
+    promptLabel: "请描述搭配、姿势等内容",
+    promptPlaceholder: "例如：一条飘逸的白色夏装连衣裙。双臂张开的姿势。高角度俯拍。",
     promptCharacterCount: "{current}/{max} 字",
     promptTooLong: "搭配描述请控制在 {max} 字以内。",
     backgroundLabel: "背景",
@@ -857,11 +855,6 @@ export const zhCnMessages = {
     backgroundKeepLabel: "保留当前背景",
     backgroundKeepDescription: "保持当前背景不变。",
     poseModeLabel: "姿势与视角设置",
-    poseModeAiAutoLabel: "交给AI",
-    poseModeAiAutoDescription: "由AI自由选择适合服装的姿势和构图",
-    poseModeIncludeInPromptLabel: "在提示词中指定",
-    poseModeIncludeInPromptDescription:
-      "优先采用换装内容中写明的姿势和相机视角指示",
     poseModeKeepLabel: "与原图保持一致",
     poseModeKeepDescription:
       "尽可能保持原图的姿势和相机视角",

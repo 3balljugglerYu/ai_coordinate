@@ -209,14 +209,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
   });
 
   test("CHAR-GENERATE-ASYNC-002: invalid schema returns 400 with first issue message", async () => {
-    // 元画像は与え prompt 空のみを不正にする (prompt 必須は free_pose+posePrompt 時だけ緩和)。
-    const response = await POST(
-      createRequest({
-        prompt: "",
-        sourceImageBase64: SAMPLE_SOURCE_IMAGE_BASE64,
-        sourceImageMimeType: "image/png",
-      }),
-    );
+    const response = await POST(createRequest({ prompt: "" }));
     const body = await readJson(response);
 
     expect({

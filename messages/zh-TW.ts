@@ -841,10 +841,8 @@ export const zhTwMessages = {
     sourceImageTypeLabel: "上傳圖片風格",
     sourceImageTypeIllustration: "插圖",
     sourceImageTypeReal: "實拍",
-    promptLabel: "請描述穿搭",
-    promptPlaceholder: "例如：請讓她穿上飄逸的白色夏裝洋裝。",
-    promptHint:
-      "請盡量具體地描述想要的穿搭，最多 {max} 字。",
+    promptLabel: "請描述穿搭與姿勢等內容",
+    promptPlaceholder: "例如：飄逸的白色夏裝洋裝。雙臂張開的姿勢。高角度俯拍。",
     promptCharacterCount: "{current}/{max} 字",
     promptTooLong: "穿搭描述請控制在 {max} 字以內。",
     backgroundLabel: "背景",
@@ -857,11 +855,6 @@ export const zhTwMessages = {
     backgroundKeepLabel: "保留現有背景",
     backgroundKeepDescription: "保留目前背景不變。",
     poseModeLabel: "姿勢與視角設定",
-    poseModeAiAutoLabel: "交給AI",
-    poseModeAiAutoDescription: "由AI自由選擇適合服裝的姿勢和構圖",
-    poseModeIncludeInPromptLabel: "在提示詞中指定",
-    poseModeIncludeInPromptDescription:
-      "優先採用換裝內容中寫明的姿勢和相機視角指示",
     poseModeKeepLabel: "與原圖保持一致",
     poseModeKeepDescription:
       "盡可能保持原圖的姿勢和相機視角",

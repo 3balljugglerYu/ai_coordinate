@@ -239,37 +239,7 @@ Minimal monochrome look`;
       expect(result).not.toContain("Flexible Pose & Framing");
     });
 
-    test("free_pose + posePrompt は New Outfit と別セクションで結合する", () => {
-      const result = buildPrompt({
-        generationType: "coordinate",
-        outfitDescription,
-        backgroundMode: "keep",
-        sourceImageType: "illustration",
-        framingMode: "free_pose",
-        posePrompt: "ローアングルで全身",
-      });
-      expect(result).toContain("Pose & Camera Direction:");
-      expect(result).toContain("ローアングルで全身");
-      expect(result).toContain("User's Direction:");
-    });
-
-    test("free_pose + 衣装空 + posePrompt は pose_only(服維持・ポーズのみ)になる", () => {
-      const result = buildPrompt({
-        generationType: "coordinate",
-        outfitDescription: "",
-        backgroundMode: "keep",
-        sourceImageType: "illustration",
-        framingMode: "free_pose",
-        posePrompt: "ローアングルで全身",
-      });
-      // 服維持の前文 + ポーズ指定セクション、New Outfit は出さない
-      expect(result).toContain("Keep the Outfit");
-      expect(result).toContain("Pose & Camera Direction:");
-      expect(result).toContain("ローアングルで全身");
-      expect(result).not.toContain("New Outfit:");
-    });
-
-    test("衣装空 + ポーズ空 は従来どおりエラー", () => {
+    test("free_pose でも本文(着せ替え内容)が空はエラー", () => {
       expect(() =>
         buildPrompt({
           generationType: "coordinate",
@@ -279,19 +249,6 @@ Minimal monochrome look`;
           framingMode: "free_pose",
         }),
       ).toThrow();
-    });
-
-    test("locked では posePrompt を無視する(衣装と混線させない)", () => {
-      const result = buildPrompt({
-        generationType: "coordinate",
-        outfitDescription,
-        backgroundMode: "keep",
-        sourceImageType: "illustration",
-        framingMode: "locked",
-        posePrompt: "ローアングルで全身",
-      });
-      expect(result).not.toContain("Pose & Camera Direction:");
-      expect(result).not.toContain("ローアングルで全身");
     });
 
     test("free_pose は専用の背景suffix keyを使う (templates overrideで確認)", () => {
@@ -341,7 +298,7 @@ Minimal monochrome look`;
       ).toBe("");
     });
 
-    test("free_poseのattempt2以降は枠維持制約を含まない変種を使う", () => {
+    test("free_poseのattempt2以降は枠維持制約を含まず、衣装置換を無条件強制しない", () => {
       const prefix = buildCoordinateAttemptReinforcementPrefix(
         2,
         undefined,
@@ -350,7 +307,10 @@ Minimal monochrome look`;
 
       expect(prefix).toContain("RETRY NOTICE (attempt 2)");
       expect(prefix).not.toContain("Do not extend the crop");
-      expect(prefix).toContain("allowed to change");
+      // free 既定: User's Direction に従わせ、書かれていない衣装は維持(回帰 #1 の防止)
+      expect(prefix).toContain("User's Direction");
+      expect(prefix).toContain("keep the current outfit unchanged");
+      expect(prefix).not.toContain("strictly apply the outfit replacement");
       expect(prefix.endsWith("\n\n")).toBe(true);
     });
 

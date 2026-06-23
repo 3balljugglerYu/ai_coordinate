@@ -842,10 +842,8 @@ export const thMessages = {
     sourceImageTypeLabel: "สไตล์ของรูปที่อัปโหลด",
     sourceImageTypeIllustration: "ภาพประกอบ",
     sourceImageTypeReal: "ภาพถ่ายจริง",
-    promptLabel: "อธิบายชุดที่ต้องการ",
-    promptPlaceholder: "ตัวอย่าง: ให้ใส่เดรสฤดูร้อนสีขาวบางเบา",
-    promptHint:
-      "อธิบายชุดที่ต้องการให้เฉพาะเจาะจงที่สุดเท่าที่จะทำได้ ภายใน {max} ตัวอักษร",
+    promptLabel: "อธิบายชุด ท่าทาง ฯลฯ ที่ต้องการ",
+    promptPlaceholder: "ตัวอย่าง: ชุดเดรสฤดูร้อนสีขาวบางเบา กางแขนทั้งสองข้างออก มุมกล้องสูง",
     promptCharacterCount: "{current}/{max} ตัวอักษร",
     promptTooLong: "ใส่คำอธิบายชุดภายใน {max} ตัวอักษร",
     backgroundLabel: "พื้นหลัง",
@@ -858,11 +856,6 @@ export const thMessages = {
     backgroundKeepLabel: "คงพื้นหลังปัจจุบัน",
     backgroundKeepDescription: "คงพื้นหลังปัจจุบันโดยไม่เปลี่ยน",
     poseModeLabel: "ตั้งค่าท่าทางและมุมกล้อง",
-    poseModeAiAutoLabel: "ให้ AI เลือก",
-    poseModeAiAutoDescription: "AI เลือกท่าทางและองค์ประกอบภาพที่เข้ากับชุดอย่างอิสระ",
-    poseModeIncludeInPromptLabel: "ระบุในพรอมป์ต",
-    poseModeIncludeInPromptDescription:
-      "ให้ความสำคัญกับคำสั่งท่าทางและมุมกล้องที่เขียนไว้ในรายละเอียดชุด",
     poseModeKeepLabel: "ตามภาพต้นฉบับ",
     poseModeKeepDescription:
       "คงท่าทางและมุมกล้องของภาพต้นฉบับให้มากที่สุด",

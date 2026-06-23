@@ -842,10 +842,8 @@ export const arMessages = {
     sourceImageTypeLabel: "أسلوب الصورة المرفوعة",
     sourceImageTypeIllustration: "رسم توضيحي",
     sourceImageTypeReal: "صورة واقعية",
-    promptLabel: "صف الإطلالة",
-    promptPlaceholder: "مثال: ألبسها فستانًا صيفيًا أبيض خفيفًا.",
-    promptHint:
-      "صف الإطلالة التي تريدها بتفصيل قدر الإمكان في حدود {max} حرف.",
+    promptLabel: "صف الإطلالة والوضعية وغير ذلك",
+    promptPlaceholder: "مثال: فستان صيفي أبيض خفيف. مع فرد الذراعين على اتساعهما. من زاوية مرتفعة.",
     promptCharacterCount: "{current}/{max} حرف",
     promptTooLong: "أدخل وصف الإطلالة في حدود {max} حرف.",
     backgroundLabel: "الخلفية",
@@ -858,11 +856,6 @@ export const arMessages = {
     backgroundKeepLabel: "الإبقاء على الخلفية الحالية",
     backgroundKeepDescription: "اترك الخلفية الحالية دون تغيير.",
     poseModeLabel: "إعداد الوضعية وزاوية الكاميرا",
-    poseModeAiAutoLabel: "اترك الأمر للذكاء الاصطناعي",
-    poseModeAiAutoDescription: "يختار الذكاء الاصطناعي بحرية وضعية وتكويناً يناسبان الزي.",
-    poseModeIncludeInPromptLabel: "حدّد في النص التوجيهي",
-    poseModeIncludeInPromptDescription:
-      "يعطي الأولوية لتعليمات الوضعية وزاوية الكاميرا المكتوبة في وصف الزي.",
     poseModeKeepLabel: "مطابقة الصورة الأصلية",
     poseModeKeepDescription:
       "يحافظ على وضعية الصورة الأصلية وزاوية الكاميرا قدر الإمكان.",

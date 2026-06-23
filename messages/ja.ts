@@ -822,7 +822,6 @@ export const jaMessages = {
     promptLabel: "着せ替え内容やポージングなどを記載",
     promptPlaceholder:
       "例: 夏らしい白いワンピースの衣装。両手を広げた姿。ハイアングル。",
-    promptHint: "どんな服装に変更したいか具体的に、{max}文字以内で記入してください",
     promptCharacterCount: "{current}/{max}文字",
     promptTooLong: "着せ替え内容は{max}文字以内で入力してください",
     backgroundLabel: "背景設定",
@@ -833,11 +832,6 @@ export const jaMessages = {
     backgroundKeepLabel: "背景は変更しない",
     backgroundKeepDescription: "現在の背景を維持します",
     poseModeLabel: "ポーズ・アングル設定",
-    poseModeAiAutoLabel: "AIにお任せ",
-    poseModeAiAutoDescription: "服に合うポーズや構図をAIが自由に選びます",
-    poseModeIncludeInPromptLabel: "プロンプト内で指定",
-    poseModeIncludeInPromptDescription:
-      "着せ替え内容に書いたポーズやカメラアングルの指示を優先します",
     poseModeKeepLabel: "元画像に合わせる",
     poseModeKeepDescription:
       "元画像のポーズやカメラアングルをできる限り維持します",

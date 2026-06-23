@@ -144,7 +144,6 @@ export async function postGenerateAsyncRoute(
       styleTemplateId,
       overrides,
       framingMode,
-      posePrompt,
       creatorLooksMode,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
@@ -161,12 +160,6 @@ export async function postGenerateAsyncRoute(
 
     // framing_mode は全ログインユーザーに公開 (既定=free / 「維持」で locked)。coordinate 限定は schema で検証済み。
     const effectiveFramingMode: FramingMode = framingMode ?? "locked";
-
-    // posePrompt (ポーズ・カメラ指定)。free_pose のときのみ有効 (locked はポーズ固定のため無視)。
-    const posePromptTrimmed =
-      typeof posePrompt === "string" ? posePrompt.trim() : "";
-    const effectivePosePrompt =
-      effectiveFramingMode === "free_pose" ? posePromptTrimmed : "";
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
     const isInspireRequest = generationType === "inspire";
 
@@ -466,9 +459,6 @@ export async function postGenerateAsyncRoute(
     const generationMetadata: Record<string, unknown> = {};
     if (effectiveFramingMode !== "locked") {
       generationMetadata.framingMode = effectiveFramingMode;
-    }
-    if (effectivePosePrompt.length > 0) {
-      generationMetadata.posePrompt = effectivePosePrompt;
     }
     if (effectiveCreatorLooksMode) {
       generationMetadata.creatorLooksMode = effectiveCreatorLooksMode;

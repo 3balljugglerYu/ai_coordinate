@@ -845,10 +845,8 @@ export const ptMessages = {
     sourceImageTypeLabel: "Estilo da imagem enviada",
     sourceImageTypeIllustration: "Ilustração",
     sourceImageTypeReal: "Foto realista",
-    promptLabel: "Descreva o look",
-    promptPlaceholder: "Exemplo: Vista o personagem com um vestido branco leve de verão.",
-    promptHint:
-      "Descreva o look que você quer com o máximo de detalhes possível, em até {max} caracteres.",
+    promptLabel: "Descreva o look, a pose etc.",
+    promptPlaceholder: "Exemplo: um vestido branco leve de verão. Braços bem abertos. Ângulo de cima.",
     promptCharacterCount: "{current}/{max} caracteres",
     promptTooLong: "Descreva o look em até {max} caracteres.",
     backgroundLabel: "Fundo",
@@ -861,11 +859,6 @@ export const ptMessages = {
     backgroundKeepLabel: "Manter o fundo atual",
     backgroundKeepDescription: "Mantém o fundo atual sem alterações.",
     poseModeLabel: "Pose e ângulo",
-    poseModeAiAutoLabel: "Deixar a IA decidir",
-    poseModeAiAutoDescription: "A IA escolhe livremente uma pose e composição que combinem com o look.",
-    poseModeIncludeInPromptLabel: "Descrever no prompt",
-    poseModeIncludeInPromptDescription:
-      "Prioriza as instruções de pose e ângulo de câmera escritas na descrição do look.",
     poseModeKeepLabel: "Igual à imagem original",
     poseModeKeepDescription:
       "Mantém a pose e o ângulo de câmera originais sempre que possível.",

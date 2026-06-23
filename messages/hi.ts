@@ -843,10 +843,8 @@ export const hiMessages = {
     sourceImageTypeLabel: "अपलोड की गई छवि स्टाइल",
     sourceImageTypeIllustration: "इलस्ट्रेशन",
     sourceImageTypeReal: "फ़ोटोरीयल",
-    promptLabel: "आउटफ़िट का वर्णन करें",
-    promptPlaceholder: "उदाहरण: उन्हें हल्की सफ़ेद गर्मियों की ड्रेस पहनाएँ।",
-    promptHint:
-      "आप जो आउटफ़िट चाहते हैं उसका {max} अक्षरों में जितना संभव हो विशेष रूप से वर्णन करें।",
+    promptLabel: "आउटफ़िट, पोज़ आदि का वर्णन करें",
+    promptPlaceholder: "उदाहरण: हल्की सफ़ेद गर्मियों की ड्रेस। दोनों हाथ फैलाए हुए। हाई एंगल।",
     promptCharacterCount: "{current}/{max} अक्षर",
     promptTooLong: "{max} अक्षरों के भीतर आउटफ़िट विवरण दर्ज करें।",
     backgroundLabel: "पृष्ठभूमि",
@@ -859,11 +857,6 @@ export const hiMessages = {
     backgroundKeepLabel: "वर्तमान पृष्ठभूमि रखें",
     backgroundKeepDescription: "वर्तमान पृष्ठभूमि को अपरिवर्तित रखें।",
     poseModeLabel: "पोज़ और एंगल सेटिंग",
-    poseModeAiAutoLabel: "AI पर छोड़ें",
-    poseModeAiAutoDescription: "AI पोशाक के अनुरूप पोज़ और संरचना स्वतंत्र रूप से चुनता है।",
-    poseModeIncludeInPromptLabel: "प्रॉम्प्ट में बताएं",
-    poseModeIncludeInPromptDescription:
-      "पोशाक विवरण में लिखे पोज़ और कैमरा एंगल निर्देशों को प्राथमिकता देता है।",
     poseModeKeepLabel: "मूल छवि के अनुसार",
     poseModeKeepDescription:
       "मूल छवि के पोज़ और कैमरा एंगल को यथासंभव बनाए रखता है।",

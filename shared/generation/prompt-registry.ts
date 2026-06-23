@@ -90,15 +90,6 @@ const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is 
 
 3. Keep What Is Not Specified: For anything the user's direction does NOT mention, keep it consistent with \`image_0.png\`. In particular, if no new outfit is described, keep the person's current outfit unchanged; if no pose or camera change is described, keep the original pose and camera. Where the result requires a choice that the user did not specify (e.g., framing for a new outfit), pick a natural one that best fits the direction. You may render body parts not visible in \`image_0.png\` when the new pose requires it, staying consistent with the character's identity and body shape.`;
 
-// pose_only モード用 (free_pose かつ衣装指示が空)。服は維持し、ポーズ・カメラのみ変更する。
-const COORDINATE_POSE_ONLY_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
-
-1. Keep the Outfit (REQUIRED): Keep the person's current clothing and outfit from \`image_0.png\` EXACTLY as-is. Do NOT change, replace, recolor, or restyle the clothing. Reproduce the same outfit faithfully.
-
-2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork.
-
-3. Change Pose as Directed: Change the character's pose, gesture, and facial expression to match the "Pose & Camera Direction" below. By DEFAULT, KEEP the camera angle, framing, crop, and overall composition of \`image_0.png\` unchanged — do NOT move or rotate the camera, and do NOT re-crop or re-frame, UNLESS the direction explicitly asks for a camera/angle/framing change (for example "low angle", "close-up", "from above", "full body"). You may render body parts needed for the new pose, as long as they stay consistent with the character's identity, body shape, and the same outfit.`;
-
 // ============================================================================
 // Inspire 系 (buildInspirePrompt 内テキスト)
 // ============================================================================
@@ -120,7 +111,7 @@ const REINFORCEMENT_STYLE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The pre
 
 // free_pose モード用のリトライ強化 prefix。locked 用と異なりフレーム固定を再強制しない
 // (再強制すると base_prefix_free_pose の Flexible Pose & Framing と矛盾するため)。
-const REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed to apply the requested transformation — the output was either unchanged, only partially modified, or did not reflect the New Outfit described below. You MUST strictly apply the outfit replacement while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. The pose, camera angle, and framing are allowed to change as instructed below. Do not return the original image unchanged.
+const REINFORCEMENT_COORDINATE_FREE_POSE_DEFAULT = `RETRY NOTICE (attempt {{attempt}}): The previous generation failed — the output was unchanged or did not reflect the User's Direction below. You MUST clearly apply the user's direction (which may specify the outfit, pose, gesture, expression, camera angle, framing, or background) while keeping the character identity (face, hairstyle, body shape, rendering style) of \`image_0.png\`. Do not change anything the direction does not mention — in particular, if no new outfit is described, keep the current outfit unchanged. Do not return the original image unchanged.
 
 `;
 
@@ -314,14 +305,6 @@ export const PROMPT_REGISTRY = {
       "Coordinate: free_pose モード (ポーズ・アングル自由化) の CRITICAL INSTRUCTION 前文。" +
       "identity と画風維持を内包するため real/illustration style suffix は併用しない",
     defaultContent: COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT,
-    supportedVariables: [],
-  },
-  "coordinate.pose_only_prefix": {
-    category: "coordinate",
-    description:
-      "Coordinate: pose_only モード (free_pose かつ衣装指示が空) の前文。" +
-      "服は維持し、ポーズ・カメラのみ変更する。style suffix は併用しない",
-    defaultContent: COORDINATE_POSE_ONLY_PREFIX_DEFAULT,
     supportedVariables: [],
   },
   "coordinate.real_style_suffix": {

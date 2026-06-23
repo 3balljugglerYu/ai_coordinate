@@ -128,13 +128,6 @@ export interface BuildPromptOptions {
    * 省略 / "locked" は現行挙動と完全に等価。coordinate 以外の generationType では無視。
    */
   framingMode?: FramingMode;
-  /**
-   * ポーズ・カメラアングルの指定テキスト (admin viewer 限定先行公開)。
-   * free_pose のとき、衣装指示("New Outfit")とは別の `Pose & Camera Direction:`
-   * セクションとして結合する。これにより「アングル指定が衣装指示に混線して服が変わる」
-   * のを防ぐ。locked / 空文字 / coordinate 以外では無視。
-   */
-  posePrompt?: string | null;
 }
 
 /**
@@ -175,26 +168,18 @@ export function buildPrompt(options: BuildPromptOptions): string {
     sourceImageType = "illustration",
     templates,
     framingMode,
-    posePrompt,
   } = options;
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
-  const sanitizedPose = posePrompt ? sanitizeUserInput(posePrompt) : "";
+
+  if (!sanitizedDescription || sanitizedDescription.length === 0) {
+    throw new Error(
+      "Invalid outfit description: empty or contains only prohibited content"
+    );
+  }
 
   if (generationType === "coordinate") {
     // free_pose の「フレーム固定解除」分岐。
     const unlocked = isUnlockedFramingMode(framingMode);
-    // pose_only: free_pose かつ衣装指示が空 + ポーズ指定あり = 服は維持してポーズだけ変える。
-    const poseOnly =
-      unlocked &&
-      sanitizedDescription.length === 0 &&
-      sanitizedPose.length > 0;
-
-    // 衣装指示が空で pose_only でもないときは不正 (= 何も指示が無い)。
-    if (sanitizedDescription.length === 0 && !poseOnly) {
-      throw new Error(
-        "Invalid outfit description: empty or contains only prohibited content"
-      );
-    }
 
     // unlocked では real/illustration style suffix を付与しない (BuildPromptOptions コメント参照)
     const styleSuffix = unlocked
@@ -206,11 +191,9 @@ export function buildPrompt(options: BuildPromptOptions): string {
     const sections: string[] = [
       resolveTemplate(
         templates,
-        poseOnly
-          ? "coordinate.pose_only_prefix"
-          : framingMode === "free_pose"
-            ? "coordinate.base_prefix_free_pose"
-            : "coordinate.base_prefix",
+        framingMode === "free_pose"
+          ? "coordinate.base_prefix_free_pose"
+          : "coordinate.base_prefix",
       ),
       ...(styleSuffix === null ? [] : [styleSuffix]),
     ];
@@ -237,26 +220,11 @@ export function buildPrompt(options: BuildPromptOptions): string {
     // include_in_prompt: ユーザー記述に背景指示を委ねるため、システム側の背景指示は追加しない
 
     // 本文ラベル: locked は従来どおり "New Outfit"(=服置換)。free(unlocked)は
-    // 衣装と決めつけず "User's Direction" として委ねる。pose_only は本文無し。
-    if (!poseOnly) {
-      const directionLabel = unlocked ? "User's Direction" : "New Outfit";
-      sections.push(`${directionLabel}:\n\n${sanitizedDescription}`);
-    }
-
-    // free_pose のときのみ、ポーズ・カメラ指定を衣装指示と別セクションで結合する。
-    // 「New Outfit」に混ぜると角度指定が服の指示として解釈され服が変わるため分離する。
-    if (unlocked && sanitizedPose.length > 0) {
-      sections.push(`Pose & Camera Direction:\n\n${sanitizedPose}`);
-    }
+    // 衣装と決めつけず "User's Direction" として委ね、書かれていない要素は維持させる。
+    const directionLabel = unlocked ? "User's Direction" : "New Outfit";
+    sections.push(`${directionLabel}:\n\n${sanitizedDescription}`);
 
     return sections.join("\n\n");
-  }
-
-  // 非 coordinate (one_tap_style / inspire): 衣装指示が空は不正。
-  if (!sanitizedDescription || sanitizedDescription.length === 0) {
-    throw new Error(
-      "Invalid outfit description: empty or contains only prohibited content"
-    );
   }
 
   // specified_coordinate / full_body / chibi は UI から外れて 30 日以上利用ゼロのため

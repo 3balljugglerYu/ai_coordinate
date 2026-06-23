@@ -845,10 +845,8 @@ export const itMessages = {
     sourceImageTypeLabel: "Stile dell'immagine caricata",
     sourceImageTypeIllustration: "Illustrazione",
     sourceImageTypeReal: "Foto realistica",
-    promptLabel: "Descrivi l'outfit",
-    promptPlaceholder: "Esempio: Vestila con un abito estivo bianco e leggero.",
-    promptHint:
-      "Descrivi l'outfit desiderato il più dettagliatamente possibile, in massimo {max} caratteri.",
+    promptLabel: "Descrivi l'outfit, la posa, ecc.",
+    promptPlaceholder: "Esempio: un abito estivo bianco e leggero. Braccia spalancate. Angolazione dall'alto.",
     promptCharacterCount: "{current}/{max} caratteri",
     promptTooLong: "Inserisci una descrizione dell'outfit entro {max} caratteri.",
     backgroundLabel: "Sfondo",
@@ -861,11 +859,6 @@ export const itMessages = {
     backgroundKeepLabel: "Mantieni lo sfondo attuale",
     backgroundKeepDescription: "Mantieni lo sfondo attuale invariato.",
     poseModeLabel: "Posa e angolazione",
-    poseModeAiAutoLabel: "Lascia decidere all'IA",
-    poseModeAiAutoDescription: "L'IA sceglie liberamente una posa e una composizione adatte all'outfit.",
-    poseModeIncludeInPromptLabel: "Descrivi nel prompt",
-    poseModeIncludeInPromptDescription:
-      "Dà priorità alle indicazioni di posa e angolazione scritte nella descrizione dell'outfit.",
     poseModeKeepLabel: "Come l'immagine originale",
     poseModeKeepDescription:
       "Mantiene il più possibile la posa e l'angolazione originali.",

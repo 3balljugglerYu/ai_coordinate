@@ -845,10 +845,8 @@ export const esMessages = {
     sourceImageTypeLabel: "Estilo de la imagen subida",
     sourceImageTypeIllustration: "Ilustración",
     sourceImageTypeReal: "Foto realista",
-    promptLabel: "Describe el conjunto",
-    promptPlaceholder: "Ejemplo: Vístela con un vestido blanco de verano ligero.",
-    promptHint:
-      "Describe el conjunto que quieres con todo el detalle posible, en hasta {max} caracteres.",
+    promptLabel: "Describe el conjunto, la pose, etc.",
+    promptPlaceholder: "Ejemplo: un vestido blanco de verano ligero. Con los brazos extendidos. Ángulo picado.",
     promptCharacterCount: "{current}/{max} caracteres",
     promptTooLong: "Introduce una descripción del conjunto en menos de {max} caracteres.",
     backgroundLabel: "Fondo",
@@ -861,11 +859,6 @@ export const esMessages = {
     backgroundKeepLabel: "Mantener el fondo actual",
     backgroundKeepDescription: "Mantén el fondo actual sin cambios.",
     poseModeLabel: "Pose y ángulo",
-    poseModeAiAutoLabel: "Dejar que la IA decida",
-    poseModeAiAutoDescription: "La IA elige libremente una pose y composición que combinen con el atuendo.",
-    poseModeIncludeInPromptLabel: "Describir en el prompt",
-    poseModeIncludeInPromptDescription:
-      "Prioriza las indicaciones de pose y ángulo de cámara escritas en la descripción del atuendo.",
     poseModeKeepLabel: "Igual que la imagen original",
     poseModeKeepDescription:
       "Mantiene la pose y el ángulo de cámara originales en lo posible.",

@@ -845,10 +845,9 @@ export const deMessages = {
     sourceImageTypeLabel: "Stil des hochgeladenen Bildes",
     sourceImageTypeIllustration: "Illustration",
     sourceImageTypeReal: "Foto",
-    promptLabel: "Beschreibe das Outfit",
-    promptPlaceholder: "Beispiel: Zieh ihr ein luftiges weißes Sommerkleid an.",
-    promptHint:
-      "Beschreibe das gewünschte Outfit so genau wie möglich, in bis zu {max} Zeichen.",
+    promptLabel: "Beschreibe das Outfit, die Pose usw.",
+    promptPlaceholder:
+      "Beispiel: ein luftiges weißes Sommerkleid. Arme weit ausgebreitet. Hohe Kameraperspektive.",
     promptCharacterCount: "{current}/{max} Zeichen",
     promptTooLong: "Beschreibe das Outfit in höchstens {max} Zeichen.",
     backgroundLabel: "Hintergrund",
@@ -861,11 +860,6 @@ export const deMessages = {
     backgroundKeepLabel: "Aktuellen Hintergrund behalten",
     backgroundKeepDescription: "Den aktuellen Hintergrund unverändert lassen.",
     poseModeLabel: "Pose & Kamerawinkel",
-    poseModeAiAutoLabel: "Der KI überlassen",
-    poseModeAiAutoDescription: "Die KI wählt frei eine Pose und Komposition, die zum Outfit passen.",
-    poseModeIncludeInPromptLabel: "Im Prompt beschreiben",
-    poseModeIncludeInPromptDescription:
-      "Folgt den Pose- und Kamerawinkel-Anweisungen in der Outfit-Beschreibung.",
     poseModeKeepLabel: "Wie das Originalbild",
     poseModeKeepDescription:
       "Behält Pose und Kamerawinkel des Originalbilds so weit wie möglich bei.",

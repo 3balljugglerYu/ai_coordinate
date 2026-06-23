@@ -300,16 +300,11 @@ export interface GenerationRequest {
   generationType?: GenerationType;
   model?: GeminiModel;
   /**
-   * framing_mode (admin viewer 限定先行公開)。"free_pose" のとき image_0 の identity は
-   * 維持しつつポーズ・カメラアングル・構図をプロンプト指定優先にする。
-   * 省略 = locked = 現行挙動。coordinate 生成時のみ有効 (サーバ側 schema で検証)。
+   * framing_mode。"free_pose"(既定)は image_0 の identity を維持しつつ、衣装/ポーズ/
+   * カメラ/背景をユーザー指示に委ねる。省略 = locked(「維持」チェックON)= 厳密維持。
+   * coordinate 生成時のみ有効・全ログインユーザー対象 (サーバ側 schema で検証)。
    */
   framingMode?: FramingMode;
-  /**
-   * ポーズ・カメラ指定 (admin viewer 限定先行公開)。free_pose かつ非空のとき、
-   * "New Outfit" とは別セクションとしてプロンプトに結合する。
-   */
-  posePrompt?: string;
 }
 
 export interface GenerationResponse {

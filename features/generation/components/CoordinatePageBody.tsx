@@ -67,9 +67,6 @@ export async function CoordinatePageBody() {
           <GenerationFormContainer
             subscriptionPlan={profile?.subscription_plan ?? "free"}
             authState={isGuest ? "guest" : "authenticated"}
-            // framing 制御 (既定=free / 「維持」で locked) を全ログインユーザーに公開。
-            // 認証済みのみ (ゲスト同期経路は framingMode 非対応) は GenerationForm 側で判定。
-            canUseFreePose
           />
         </Suspense>
 
