@@ -238,6 +238,33 @@ Minimal monochrome look`;
       expect(result).not.toContain("Flexible Pose & Framing");
     });
 
+    test("free_pose + posePrompt は New Outfit と別セクションで結合する", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "keep",
+        sourceImageType: "illustration",
+        framingMode: "free_pose",
+        posePrompt: "ローアングルで全身",
+      });
+      expect(result).toContain("Pose & Camera Direction:");
+      expect(result).toContain("ローアングルで全身");
+      expect(result).toContain("New Outfit:");
+    });
+
+    test("locked では posePrompt を無視する(衣装と混線させない)", () => {
+      const result = buildPrompt({
+        generationType: "coordinate",
+        outfitDescription,
+        backgroundMode: "keep",
+        sourceImageType: "illustration",
+        framingMode: "locked",
+        posePrompt: "ローアングルで全身",
+      });
+      expect(result).not.toContain("Pose & Camera Direction:");
+      expect(result).not.toContain("ローアングルで全身");
+    });
+
     test("free_pose は専用の背景suffix keyを使う (templates overrideで確認)", () => {
       const templates = {
         "coordinate.keep_background_suffix_free_pose": "FREE POSE KEEP BG",

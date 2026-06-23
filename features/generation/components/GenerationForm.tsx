@@ -16,6 +16,7 @@ import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { PromptInputField } from "./PromptInputField";
+import { Textarea } from "@/components/ui/textarea";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
   getMaxGenerationCount,
@@ -74,6 +75,8 @@ interface GenerationFormProps {
     model: GeminiModel;
     /** framing_mode (admin viewer 限定)。チェック ON のときのみ "free_pose" が入る */
     framingMode?: FramingMode;
+    /** ポーズ・カメラ指定 (admin viewer 限定)。free_pose かつ非空のときのみ入る */
+    posePrompt?: string;
   }) => void;
   isGenerating?: boolean;
   /**
@@ -112,6 +115,8 @@ export function GenerationForm({
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
+  // ポーズ・アングル指示欄のラベルは style 側の既存キーを再利用する。
+  const styleT = useTranslations("style");
   const generationState = useGenerationState();
   const openStockTabRequestId = generationState?.openStockTabRequestId ?? 0;
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -177,6 +182,8 @@ export function GenerationForm({
   // 「元画像に合わせる (locked) / プロンプト内で指定 (free_pose)」を選ぶ。
   // ゲスト同期経路は framingMode を解釈しないため、認証済みのときのみ表示する。
   const [poseMode, setPoseMode] = useState<FramingMode>("locked");
+  const [posePromptValue, setPosePromptValue] = useState("");
+  const POSE_PROMPT_MAX_LENGTH = 500;
   const shouldShowPoseModeControl =
     canUseFreePose && authState === "authenticated";
   const [selectedCount, setSelectedCount] = useState(1);
@@ -312,6 +319,12 @@ export function GenerationForm({
       // framing_mode: locked 以外を選んだときのみ渡す (省略 = locked = 現行挙動)
       ...(shouldShowPoseModeControl && poseMode !== "locked"
         ? { framingMode: poseMode }
+        : {}),
+      // posePrompt: free_pose かつ入力があるときのみ渡す
+      ...(shouldShowPoseModeControl &&
+      poseMode === "free_pose" &&
+      posePromptValue.trim()
+        ? { posePrompt: posePromptValue.trim() }
         : {}),
     });
   };
@@ -683,6 +696,30 @@ export function GenerationForm({
                 </div>
               ))}
             </RadioGroup>
+            {poseMode === "free_pose" ? (
+              <div className="mt-3 space-y-1">
+                <Label
+                  htmlFor="pose-prompt-input"
+                  className="text-sm font-medium"
+                >
+                  {styleT("posePromptLabel")}
+                </Label>
+                <Textarea
+                  id="pose-prompt-input"
+                  value={posePromptValue}
+                  onChange={(e) =>
+                    setPosePromptValue(e.target.value.slice(0, POSE_PROMPT_MAX_LENGTH))
+                  }
+                  placeholder={styleT("posePromptPlaceholder")}
+                  rows={2}
+                  maxLength={POSE_PROMPT_MAX_LENGTH}
+                  disabled={isGenerating || isTutorialInProgress}
+                />
+                <p className="text-right text-xs text-gray-400">
+                  {posePromptValue.length}/{POSE_PROMPT_MAX_LENGTH}
+                </p>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

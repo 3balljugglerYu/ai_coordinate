@@ -305,6 +305,11 @@ export interface GenerationRequest {
    * 省略 = locked = 現行挙動。coordinate 生成時のみ有効 (サーバ側 schema で検証)。
    */
   framingMode?: FramingMode;
+  /**
+   * ポーズ・カメラ指定 (admin viewer 限定先行公開)。free_pose かつ非空のとき、
+   * "New Outfit" とは別セクションとしてプロンプトに結合する。
+   */
+  posePrompt?: string;
 }
 
 export interface GenerationResponse {

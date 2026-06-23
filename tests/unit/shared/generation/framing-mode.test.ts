@@ -3,6 +3,7 @@
 import {
   DEFAULT_FRAMING_MODE,
   FRAMING_MODES,
+  getPosePromptFromGenerationMetadata,
   isUnlockedFramingMode,
   parseFramingMode,
 } from "@/shared/generation/framing-mode";
@@ -46,6 +47,22 @@ describe("shared/generation/framing-mode", () => {
       expect(parseFramingMode(true)).toBeNull();
       expect(parseFramingMode(1)).toBeNull();
       expect(parseFramingMode({})).toBeNull();
+    });
+  });
+
+  describe("getPosePromptFromGenerationMetadata", () => {
+    test("文字列の posePrompt を返す", () => {
+      expect(
+        getPosePromptFromGenerationMetadata({ posePrompt: "ローアングル" }),
+      ).toBe("ローアングル");
+    });
+
+    test("空文字・非文字列・キーなし・非オブジェクトは null", () => {
+      expect(getPosePromptFromGenerationMetadata({ posePrompt: "  " })).toBeNull();
+      expect(getPosePromptFromGenerationMetadata({ posePrompt: 123 })).toBeNull();
+      expect(getPosePromptFromGenerationMetadata({})).toBeNull();
+      expect(getPosePromptFromGenerationMetadata(null)).toBeNull();
+      expect(getPosePromptFromGenerationMetadata("x")).toBeNull();
     });
   });
 });

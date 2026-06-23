@@ -52,3 +52,19 @@ export function getFramingModeFromGenerationMetadata(
   }
   return DEFAULT_FRAMING_MODE;
 }
+
+/**
+ * image_jobs.generation_metadata (JSONB) から posePrompt (ポーズ・カメラ指定) を読み取る。
+ * 文字列でない / 空のときは null。worker (Deno) / Next.js の両方から使う。
+ */
+export function getPosePromptFromGenerationMetadata(
+  metadata: unknown,
+): string | null {
+  if (typeof metadata === "object" && metadata !== null) {
+    const value = (metadata as Record<string, unknown>).posePrompt;
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+}

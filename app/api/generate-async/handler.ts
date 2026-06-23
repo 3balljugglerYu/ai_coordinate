@@ -144,6 +144,7 @@ export async function postGenerateAsyncRoute(
       styleTemplateId,
       overrides,
       framingMode,
+      posePrompt,
       creatorLooksMode,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
@@ -169,6 +170,21 @@ export async function postGenerateAsyncRoute(
         400
       );
     }
+
+    // posePrompt (ポーズ・カメラ指定欄、admin viewer 限定)。free_pose のときのみ有効。
+    // 非空かつ非 admin は 400 (UI 非表示はセキュリティではないためサーバでも遮断)。
+    const posePromptTrimmed =
+      typeof posePrompt === "string" ? posePrompt.trim() : "";
+    if (posePromptTrimmed.length > 0 && !isAdminViewer(user.id)) {
+      return jsonError(
+        copy.invalidRequest,
+        "GENERATION_POSE_PROMPT_NOT_ALLOWED",
+        400
+      );
+    }
+    // free_pose 以外で posePrompt が来ても無視する (locked はポーズ固定のため矛盾)。
+    const effectivePosePrompt =
+      effectiveFramingMode === "free_pose" ? posePromptTrimmed : "";
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
     const isInspireRequest = generationType === "inspire";
 
@@ -468,6 +484,9 @@ export async function postGenerateAsyncRoute(
     const generationMetadata: Record<string, unknown> = {};
     if (effectiveFramingMode !== "locked") {
       generationMetadata.framingMode = effectiveFramingMode;
+    }
+    if (effectivePosePrompt.length > 0) {
+      generationMetadata.posePrompt = effectivePosePrompt;
     }
     if (effectiveCreatorLooksMode) {
       generationMetadata.creatorLooksMode = effectiveCreatorLooksMode;

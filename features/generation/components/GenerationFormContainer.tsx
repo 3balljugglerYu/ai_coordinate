@@ -885,6 +885,8 @@ export function GenerationFormContainer({
     generationType?: import("../types").GenerationType;
     /** framing_mode (admin viewer 限定)。free_pose のときのみ async 経路で送られる */
     framingMode?: import("@/shared/generation/framing-mode").FramingMode;
+    /** ポーズ・カメラ指定 (admin viewer 限定)。free_pose かつ非空のときのみ送られる */
+    posePrompt?: string;
   }) => {
     const showGenerationErrorToast = (message: string) => {
       toast({
@@ -1020,6 +1022,7 @@ export function GenerationFormContainer({
             generationType: data.generationType || "coordinate",
             model: data.model,
             framingMode: data.framingMode,
+            posePrompt: data.posePrompt,
           },
           asyncApiMessages
         );

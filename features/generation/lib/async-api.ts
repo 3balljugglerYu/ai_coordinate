@@ -123,6 +123,12 @@ export async function generateImageAsync(
       ...(request.framingMode === "free_pose"
         ? { framingMode: request.framingMode }
         : {}),
+      // posePrompt: free_pose かつ入力があるときのみ送る。
+      ...(request.framingMode === "free_pose" &&
+      request.posePrompt &&
+      request.posePrompt.trim()
+        ? { posePrompt: request.posePrompt.trim() }
+        : {}),
     }),
   });
 

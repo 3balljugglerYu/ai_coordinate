@@ -104,6 +104,13 @@ export const generationRequestSchema = z.object({
    * 権限検証 (admin viewer か) は handler 側で行う。
    */
   framingMode: z.enum(FRAMING_MODES).optional(),
+  /**
+   * ポーズ・カメラアングルの指定テキスト (admin viewer 限定先行公開)。
+   * free_pose のとき "New Outfit" とは別の `Pose & Camera Direction:` セクションとして
+   * 結合し、角度指定が衣装指示に混線して服が変わるのを防ぐ。
+   * 権限 (admin) と free_pose 整合は handler 側で検証する。
+   */
+  posePrompt: z.string().max(500).optional(),
   // Inspire 専用: 参照するスタイルテンプレ ID と override 組み合わせ。
   // generationType='inspire' のときのみ意味を持つ（superRefine で整合性検証）。
   styleTemplateId: z.string().uuid().optional(),

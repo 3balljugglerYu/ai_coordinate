@@ -16,7 +16,10 @@ import {
 } from "./creator-looks-prompt.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
-import { getFramingModeFromGenerationMetadata } from "../../../shared/generation/framing-mode.ts";
+import {
+  getFramingModeFromGenerationMetadata,
+  getPosePromptFromGenerationMetadata,
+} from "../../../shared/generation/framing-mode.ts";
 import {
   type CreatorLooksMode,
   getCreatorLooksModeFromGenerationMetadata,
@@ -2020,6 +2023,10 @@ Deno.serve(async () => {
                       // framing_mode (free_pose は admin viewer 限定、route handler で検証済み)。
                       // metadata にキーが無い既存ジョブは locked = 現行挙動。
                       framingMode: getFramingModeFromGenerationMetadata(
+                        job.generation_metadata,
+                      ),
+                      // ポーズ・カメラ指定 (free_pose のとき別セクションで結合)。
+                      posePrompt: getPosePromptFromGenerationMetadata(
                         job.generation_metadata,
                       ),
                     });

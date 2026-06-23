@@ -128,6 +128,13 @@ export interface BuildPromptOptions {
    * 省略 / "locked" は現行挙動と完全に等価。coordinate 以外の generationType では無視。
    */
   framingMode?: FramingMode;
+  /**
+   * ポーズ・カメラアングルの指定テキスト (admin viewer 限定先行公開)。
+   * free_pose のとき、衣装指示("New Outfit")とは別の `Pose & Camera Direction:`
+   * セクションとして結合する。これにより「アングル指定が衣装指示に混線して服が変わる」
+   * のを防ぐ。locked / 空文字 / coordinate 以外では無視。
+   */
+  posePrompt?: string | null;
 }
 
 /**
@@ -168,6 +175,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
     sourceImageType = "illustration",
     templates,
     framingMode,
+    posePrompt,
   } = options;
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
 
@@ -220,6 +228,15 @@ export function buildPrompt(options: BuildPromptOptions): string {
     // include_in_prompt: ユーザー記述に背景指示を委ねるため、システム側の背景指示は追加しない
 
     sections.push(`New Outfit:\n\n${sanitizedDescription}`);
+
+    // free_pose のときのみ、ポーズ・カメラ指定を衣装指示と別セクションで結合する。
+    // 「New Outfit」に混ぜると角度指定が服の指示として解釈され服が変わるため分離する。
+    if (unlocked) {
+      const sanitizedPose = posePrompt ? sanitizeUserInput(posePrompt) : "";
+      if (sanitizedPose.length > 0) {
+        sections.push(`Pose & Camera Direction:\n\n${sanitizedPose}`);
+      }
+    }
 
     return sections.join("\n\n");
   }
