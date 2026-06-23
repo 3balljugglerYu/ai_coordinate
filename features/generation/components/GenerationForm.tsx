@@ -17,7 +17,6 @@ import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { PromptInputField } from "./PromptInputField";
-import { Textarea } from "@/components/ui/textarea";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
   getMaxGenerationCount,
@@ -116,8 +115,6 @@ export function GenerationForm({
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const subscriptionT = useTranslations("subscription");
-  // ポーズ・アングル指示欄のラベルは style 側の既存キーを再利用する。
-  const styleT = useTranslations("style");
   const generationState = useGenerationState();
   const openStockTabRequestId = generationState?.openStockTabRequestId ?? 0;
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -168,8 +165,6 @@ export function GenerationForm({
   // 既定は free(image_0 の同一性だけ維持し、衣装/ポーズ/カメラはユーザー指示に委ねる)。
   // 「ポーズ・カメラをできるだけ維持」チェックで locked に切り替える。
   const [poseMode, setPoseMode] = useState<FramingMode>("free_pose");
-  const [posePromptValue, setPosePromptValue] = useState("");
-  const POSE_PROMPT_MAX_LENGTH = 500;
   const shouldShowPoseModeControl =
     canUseFreePose && authState === "authenticated";
   const [selectedCount, setSelectedCount] = useState(1);
@@ -264,13 +259,7 @@ export function GenerationForm({
   const handleSubmit = async () => {
     const trimmedPrompt = prompt.trim();
 
-    // free_pose + ポーズ欄入力 (服はそのまま・ポーズだけ変更) のときはコーデ指示が空でも許可。
-    const poseOnlySubmit =
-      shouldShowPoseModeControl &&
-      poseMode === "free_pose" &&
-      posePromptValue.trim().length > 0;
-
-    if (!trimmedPrompt && !poseOnlySubmit) {
+    if (!trimmedPrompt) {
       alert(t("missingPrompt"));
       return;
     }
@@ -308,28 +297,17 @@ export function GenerationForm({
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
       model: effectiveSelectedModel,
-      // framing_mode: locked 以外を選んだときのみ渡す (省略 = locked = 現行挙動)
+      // framing_mode: locked 以外(=free_pose, 既定)を選んだときのみ渡す
       ...(shouldShowPoseModeControl && poseMode !== "locked"
         ? { framingMode: poseMode }
-        : {}),
-      // posePrompt: free_pose かつ入力があるときのみ渡す
-      ...(shouldShowPoseModeControl &&
-      poseMode === "free_pose" &&
-      posePromptValue.trim()
-        ? { posePrompt: posePromptValue.trim() }
         : {}),
     });
   };
 
   const hasSourceImage =
     !!uploadedImage || !!selectedStock || !!selectedGenerated;
-  // 服はそのまま・ポーズだけ変更: free_pose でポーズ欄に入力があれば、コーデ指示が空でも生成可。
-  const poseOnlyReady =
-    shouldShowPoseModeControl &&
-    poseMode === "free_pose" &&
-    posePromptValue.trim().length > 0;
   const isSubmitDisabled =
-    (!prompt.trim() && !poseOnlyReady) ||
+    !prompt.trim() ||
     !hasSourceImage ||
     isGenerating ||
     isPromptTooLong ||
@@ -688,30 +666,6 @@ export function GenerationForm({
                 </p>
               </div>
             </div>
-            {poseMode === "free_pose" ? (
-              <div className="mt-3 space-y-1">
-                <Label
-                  htmlFor="pose-prompt-input"
-                  className="text-sm font-medium"
-                >
-                  {styleT("posePromptLabel")}
-                </Label>
-                <Textarea
-                  id="pose-prompt-input"
-                  value={posePromptValue}
-                  onChange={(e) =>
-                    setPosePromptValue(e.target.value.slice(0, POSE_PROMPT_MAX_LENGTH))
-                  }
-                  placeholder={styleT("posePromptPlaceholder")}
-                  rows={2}
-                  maxLength={POSE_PROMPT_MAX_LENGTH}
-                  disabled={isGenerating || isTutorialInProgress}
-                />
-                <p className="text-right text-xs text-gray-400">
-                  {posePromptValue.length}/{POSE_PROMPT_MAX_LENGTH}
-                </p>
-              </div>
-            ) : null}
           </div>
         ) : null}
 

@@ -819,8 +819,9 @@ export const jaMessages = {
     sourceImageTypeLabel: "アップロードした画像のタイプ",
     sourceImageTypeIllustration: "イラスト",
     sourceImageTypeReal: "リアル",
-    promptLabel: "着せ替え内容を入力",
-    promptPlaceholder: "例: 夏らしい白いワンピースを着せてください",
+    promptLabel: "着せ替え内容や、ポージング・アングルなどを記載",
+    promptPlaceholder:
+      "例: 夏らしい白いワンピース／ダブルピースのポーズ／ローアングルで全身",
     promptHint: "どんな服装に変更したいか具体的に、{max}文字以内で記入してください",
     promptCharacterCount: "{current}/{max}文字",
     promptTooLong: "着せ替え内容は{max}文字以内で入力してください",
