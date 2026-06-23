@@ -860,7 +860,7 @@ export const itMessages = {
       "Specifica lo sfondo all'interno del prompt dell'outfit.",
     backgroundKeepLabel: "Mantieni lo sfondo attuale",
     backgroundKeepDescription: "Mantieni lo sfondo attuale invariato.",
-    poseModeLabel: "Posa e angolazione (beta)",
+    poseModeLabel: "Posa e angolazione",
     poseModeAiAutoLabel: "Lascia decidere all'IA",
     poseModeAiAutoDescription: "L'IA sceglie liberamente una posa e una composizione adatte all'outfit.",
     poseModeIncludeInPromptLabel: "Descrivi nel prompt",
@@ -868,7 +868,7 @@ export const itMessages = {
       "Dà priorità alle indicazioni di posa e angolazione scritte nella descrizione dell'outfit.",
     poseModeKeepLabel: "Come l'immagine originale",
     poseModeKeepDescription:
-      "Mantiene il più possibile la posa e l'angolazione originali (comportamento attuale).",
+      "Mantiene il più possibile la posa e l'angolazione originali.",
     modelLabel: "Seleziona un modello di generazione",
     modelTooltipAria: "Mostra le differenze nella qualità di rendering",
     modelTooltipContent: "💡 Più alto è, meno volti e abiti si rompono.\nLow: generazione veloce. ~30 s.\nMedium: bilanciato. ~70 s.\nHigh: dettagli stabili. ~180 s.",

@@ -858,7 +858,7 @@ export const enMessages = {
       "Specify the background within the outfit prompt.",
     backgroundKeepLabel: "Keep current background",
     backgroundKeepDescription: "Keep the current background unchanged.",
-    poseModeLabel: "Pose & angle (beta)",
+    poseModeLabel: "Pose & angle",
     poseModeAiAutoLabel: "Let AI decide",
     poseModeAiAutoDescription: "AI freely chooses a pose and composition that suit the outfit.",
     poseModeIncludeInPromptLabel: "Describe in prompt",
@@ -866,7 +866,7 @@ export const enMessages = {
       "Follows the pose and camera angle instructions written in your outfit description.",
     poseModeKeepLabel: "Match the original",
     poseModeKeepDescription:
-      "Keeps the original pose and camera angle as much as possible (current behavior).",
+      "Keeps the original pose and camera angle as much as possible.",
     modelLabel: "Select a generation model",
     modelTooltipAria: "Show how the rendering quality differs",
     modelTooltipContent: "💡 The higher the quality, the less faces and clothing details break.\nLow: generates quickly. ~30 sec.\nMedium: balanced. ~70 sec.\nHigh: details stay intact. ~180 sec.",

@@ -640,7 +640,7 @@ export function GenerationForm({
 
         {/* ポーズ・アングル設定。既定は free(委ねる)。チェックで「できるだけ維持(locked)」 */}
         {shouldShowPoseModeControl ? (
-          <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+          <div>
             <Label className="text-base font-medium">
               {t("poseModeLabel")}
             </Label>

@@ -858,7 +858,7 @@ export const hiMessages = {
       "आउटफ़िट प्रॉम्प्ट के भीतर पृष्ठभूमि निर्दिष्ट करें।",
     backgroundKeepLabel: "वर्तमान पृष्ठभूमि रखें",
     backgroundKeepDescription: "वर्तमान पृष्ठभूमि को अपरिवर्तित रखें।",
-    poseModeLabel: "पोज़ और एंगल सेटिंग (बीटा)",
+    poseModeLabel: "पोज़ और एंगल सेटिंग",
     poseModeAiAutoLabel: "AI पर छोड़ें",
     poseModeAiAutoDescription: "AI पोशाक के अनुरूप पोज़ और संरचना स्वतंत्र रूप से चुनता है।",
     poseModeIncludeInPromptLabel: "प्रॉम्प्ट में बताएं",
@@ -866,7 +866,7 @@ export const hiMessages = {
       "पोशाक विवरण में लिखे पोज़ और कैमरा एंगल निर्देशों को प्राथमिकता देता है।",
     poseModeKeepLabel: "मूल छवि के अनुसार",
     poseModeKeepDescription:
-      "मूल छवि के पोज़ और कैमरा एंगल को यथासंभव बनाए रखता है (मौजूदा व्यवहार)।",
+      "मूल छवि के पोज़ और कैमरा एंगल को यथासंभव बनाए रखता है।",
     modelLabel: "एक जनरेशन मॉडल चुनें",
     modelTooltipAria: "रेंडरिंग गुणवत्ता का अंतर दिखाएँ",
     modelTooltipContent: "💡 जितना High के क़रीब, चेहरे और कपड़ों की बारीकियाँ उतनी कम बिगड़ती हैं।\nLow: तेज़ी से बनाता है। लगभग 30 सेकंड।\nMedium: संतुलित। लगभग 70 सेकंड।\nHigh: डिटेल स्थिर। लगभग 180 सेकंड।",

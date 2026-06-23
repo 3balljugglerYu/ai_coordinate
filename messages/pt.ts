@@ -860,7 +860,7 @@ export const ptMessages = {
       "Especifique o fundo dentro do prompt do look.",
     backgroundKeepLabel: "Manter o fundo atual",
     backgroundKeepDescription: "Mantém o fundo atual sem alterações.",
-    poseModeLabel: "Pose e ângulo (beta)",
+    poseModeLabel: "Pose e ângulo",
     poseModeAiAutoLabel: "Deixar a IA decidir",
     poseModeAiAutoDescription: "A IA escolhe livremente uma pose e composição que combinem com o look.",
     poseModeIncludeInPromptLabel: "Descrever no prompt",
@@ -868,7 +868,7 @@ export const ptMessages = {
       "Prioriza as instruções de pose e ângulo de câmera escritas na descrição do look.",
     poseModeKeepLabel: "Igual à imagem original",
     poseModeKeepDescription:
-      "Mantém a pose e o ângulo de câmera originais sempre que possível (comportamento atual).",
+      "Mantém a pose e o ângulo de câmera originais sempre que possível.",
     modelLabel: "Selecione um modelo de geração",
     modelTooltipAria: "Mostrar as diferenças na qualidade de renderização",
     modelTooltipContent: "💡 Quanto mais alto, menos falhas em rostos e roupas.\nLow: gera rápido. ~30 s.\nMedium: equilibrado. ~70 s.\nHigh: detalhes estáveis. ~180 s.",

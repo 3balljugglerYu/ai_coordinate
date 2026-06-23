@@ -856,7 +856,7 @@ export const zhTwMessages = {
       "在穿搭提示詞中直接指定背景。",
     backgroundKeepLabel: "保留現有背景",
     backgroundKeepDescription: "保留目前背景不變。",
-    poseModeLabel: "姿勢與視角設定（β）",
+    poseModeLabel: "姿勢與視角設定",
     poseModeAiAutoLabel: "交給AI",
     poseModeAiAutoDescription: "由AI自由選擇適合服裝的姿勢和構圖",
     poseModeIncludeInPromptLabel: "在提示詞中指定",
@@ -864,7 +864,7 @@ export const zhTwMessages = {
       "優先採用換裝內容中寫明的姿勢和相機視角指示",
     poseModeKeepLabel: "與原圖保持一致",
     poseModeKeepDescription:
-      "盡可能保持原圖的姿勢和相機視角（與現在相同）",
+      "盡可能保持原圖的姿勢和相機視角",
     modelLabel: "選擇生成模型",
     modelTooltipAria: "顯示渲染品質的差異",
     modelTooltipContent: "💡 越接近 High，臉部和服裝的細節越不容易崩壞。\nLow：生成快。約 30 秒。\nMedium：均衡。約 70 秒。\nHigh：細節不易崩壞。約 180 秒。",

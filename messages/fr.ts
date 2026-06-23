@@ -860,7 +860,7 @@ export const frMessages = {
       "Spécifiez l'arrière-plan dans le prompt de la tenue.",
     backgroundKeepLabel: "Conserver l'arrière-plan actuel",
     backgroundKeepDescription: "Conservez l'arrière-plan actuel sans modification.",
-    poseModeLabel: "Pose et angle (bêta)",
+    poseModeLabel: "Pose et angle",
     poseModeAiAutoLabel: "Laisser l'IA décider",
     poseModeAiAutoDescription: "L'IA choisit librement une pose et une composition adaptées à la tenue.",
     poseModeIncludeInPromptLabel: "Décrire dans le prompt",
@@ -868,7 +868,7 @@ export const frMessages = {
       "Priorise les indications de pose et d'angle de caméra écrites dans la description de la tenue.",
     poseModeKeepLabel: "Identique à l'image d'origine",
     poseModeKeepDescription:
-      "Conserve autant que possible la pose et l'angle de caméra d'origine (comportement actuel).",
+      "Conserve autant que possible la pose et l'angle de caméra d'origine.",
     modelLabel: "Sélectionnez un modèle de génération",
     modelTooltipAria: "Afficher les différences de qualité de rendu",
     modelTooltipContent: "💡 Plus c'est élevé, moins les visages et vêtements se déforment.\nLow : génération rapide. ~30 s.\nMedium : équilibré. ~70 s.\nHigh : détails stables. ~180 s.",

@@ -856,7 +856,7 @@ export const zhCnMessages = {
       "在搭配提示词中直接指定背景。",
     backgroundKeepLabel: "保留当前背景",
     backgroundKeepDescription: "保持当前背景不变。",
-    poseModeLabel: "姿势与视角设置（β）",
+    poseModeLabel: "姿势与视角设置",
     poseModeAiAutoLabel: "交给AI",
     poseModeAiAutoDescription: "由AI自由选择适合服装的姿势和构图",
     poseModeIncludeInPromptLabel: "在提示词中指定",
@@ -864,7 +864,7 @@ export const zhCnMessages = {
       "优先采用换装内容中写明的姿势和相机视角指示",
     poseModeKeepLabel: "与原图保持一致",
     poseModeKeepDescription:
-      "尽可能保持原图的姿势和相机视角（与现在相同）",
+      "尽可能保持原图的姿势和相机视角",
     modelLabel: "选择生成模型",
     modelTooltipAria: "显示渲染质量的差异",
     modelTooltipContent: "💡 越接近 High，脸部和服装的细节越不容易崩坏。\nLow：生成快。约 30 秒。\nMedium：均衡。约 70 秒。\nHigh：细节不易崩坏。约 180 秒。",

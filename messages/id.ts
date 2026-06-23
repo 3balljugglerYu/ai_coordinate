@@ -859,7 +859,7 @@ export const idMessages = {
       "Tentukan latar belakang di dalam prompt outfit.",
     backgroundKeepLabel: "Pertahankan latar belakang saat ini",
     backgroundKeepDescription: "Pertahankan latar belakang saat ini tanpa perubahan.",
-    poseModeLabel: "Pengaturan pose & sudut (beta)",
+    poseModeLabel: "Pengaturan pose & sudut",
     poseModeAiAutoLabel: "Serahkan ke AI",
     poseModeAiAutoDescription: "AI bebas memilih pose dan komposisi yang cocok dengan outfit.",
     poseModeIncludeInPromptLabel: "Tentukan di prompt",
@@ -867,7 +867,7 @@ export const idMessages = {
       "Memprioritaskan instruksi pose dan sudut kamera yang ditulis dalam deskripsi outfit.",
     poseModeKeepLabel: "Sesuai gambar asli",
     poseModeKeepDescription:
-      "Mempertahankan pose dan sudut kamera asli semaksimal mungkin (perilaku saat ini).",
+      "Mempertahankan pose dan sudut kamera asli semaksimal mungkin.",
     modelLabel: "Pilih model generasi",
     modelTooltipAria: "Tampilkan perbedaan kualitas rendering",
     modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",

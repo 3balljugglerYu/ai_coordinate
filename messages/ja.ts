@@ -832,7 +832,7 @@ export const jaMessages = {
     backgroundIncludeInPromptDescription: "衣装プロンプト内に背景指定を含めて生成します",
     backgroundKeepLabel: "背景は変更しない",
     backgroundKeepDescription: "現在の背景を維持します",
-    poseModeLabel: "ポーズ・アングル設定（β）",
+    poseModeLabel: "ポーズ・アングル設定",
     poseModeAiAutoLabel: "AIにお任せ",
     poseModeAiAutoDescription: "服に合うポーズや構図をAIが自由に選びます",
     poseModeIncludeInPromptLabel: "プロンプト内で指定",
@@ -840,7 +840,7 @@ export const jaMessages = {
       "着せ替え内容に書いたポーズやカメラアングルの指示を優先します",
     poseModeKeepLabel: "元画像に合わせる",
     poseModeKeepDescription:
-      "元画像のポーズやカメラアングルをできる限り維持します（これまで通り）",
+      "元画像のポーズやカメラアングルをできる限り維持します",
     modelLabel: "生成モデルを選択",
     modelTooltipAria: "レンダリング品質の違いを表示",
     modelTooltipContent: "─ Low ─\n服の方向性や雰囲気を早く確認する時に利用。細かい装飾・素材感・小物・顔や手の安定性は弱くなりやすい。\n\n─ Medium ─\n通常用途。キャラクターの印象を保ちつつ、服の形・色・全体バランスを比較的安定して反映しやすい。\n\n─ High ─\n仕上げ向き。衣装の細部、柄、素材感、レイヤー、アクセサリー、光や影などをより細かく描き込みやすい。\n\nレンダリング品質を上げると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",

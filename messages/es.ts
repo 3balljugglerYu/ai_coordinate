@@ -860,7 +860,7 @@ export const esMessages = {
       "Especifica el fondo dentro del prompt del conjunto.",
     backgroundKeepLabel: "Mantener el fondo actual",
     backgroundKeepDescription: "Mantén el fondo actual sin cambios.",
-    poseModeLabel: "Pose y ángulo (beta)",
+    poseModeLabel: "Pose y ángulo",
     poseModeAiAutoLabel: "Dejar que la IA decida",
     poseModeAiAutoDescription: "La IA elige libremente una pose y composición que combinen con el atuendo.",
     poseModeIncludeInPromptLabel: "Describir en el prompt",
@@ -868,7 +868,7 @@ export const esMessages = {
       "Prioriza las indicaciones de pose y ángulo de cámara escritas en la descripción del atuendo.",
     poseModeKeepLabel: "Igual que la imagen original",
     poseModeKeepDescription:
-      "Mantiene la pose y el ángulo de cámara originales en lo posible (comportamiento actual).",
+      "Mantiene la pose y el ángulo de cámara originales en lo posible.",
     modelLabel: "Selecciona un modelo de generación",
     modelTooltipAria: "Mostrar las diferencias en la calidad de renderizado",
     modelTooltipContent: "💡 Cuanto más alto, menos fallos en rostros y ropa.\nLow: genera rápido. ~30 s.\nMedium: equilibrado. ~70 s.\nHigh: detalles estables. ~180 s.",

@@ -857,7 +857,7 @@ export const viMessages = {
       "Chỉ định nền ngay trong prompt của trang phục.",
     backgroundKeepLabel: "Giữ nền hiện tại",
     backgroundKeepDescription: "Giữ nguyên nền hiện tại.",
-    poseModeLabel: "Cài đặt tư thế & góc máy (beta)",
+    poseModeLabel: "Cài đặt tư thế & góc máy",
     poseModeAiAutoLabel: "Để AI quyết định",
     poseModeAiAutoDescription: "AI tự do chọn tư thế và bố cục phù hợp với trang phục.",
     poseModeIncludeInPromptLabel: "Chỉ định trong prompt",
@@ -865,7 +865,7 @@ export const viMessages = {
       "Ưu tiên các chỉ dẫn về tư thế và góc máy viết trong mô tả trang phục.",
     poseModeKeepLabel: "Theo ảnh gốc",
     poseModeKeepDescription:
-      "Giữ tư thế và góc máy của ảnh gốc nhiều nhất có thể (hành vi hiện tại).",
+      "Giữ tư thế và góc máy của ảnh gốc nhiều nhất có thể.",
     modelLabel: "Chọn mô hình tạo",
     modelTooltipAria: "Hiển thị sự khác biệt về chất lượng kết xuất",
     modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh. khoảng 30 giây.\nMedium: cân bằng. khoảng 70 giây.\nHigh: chi tiết ổn định. khoảng 180 giây.",

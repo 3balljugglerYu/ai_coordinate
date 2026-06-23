@@ -857,7 +857,7 @@ export const thMessages = {
       "ระบุพื้นหลังภายในพรอมป์ของชุด",
     backgroundKeepLabel: "คงพื้นหลังปัจจุบัน",
     backgroundKeepDescription: "คงพื้นหลังปัจจุบันโดยไม่เปลี่ยน",
-    poseModeLabel: "ตั้งค่าท่าทางและมุมกล้อง (เบต้า)",
+    poseModeLabel: "ตั้งค่าท่าทางและมุมกล้อง",
     poseModeAiAutoLabel: "ให้ AI เลือก",
     poseModeAiAutoDescription: "AI เลือกท่าทางและองค์ประกอบภาพที่เข้ากับชุดอย่างอิสระ",
     poseModeIncludeInPromptLabel: "ระบุในพรอมป์ต",
@@ -865,7 +865,7 @@ export const thMessages = {
       "ให้ความสำคัญกับคำสั่งท่าทางและมุมกล้องที่เขียนไว้ในรายละเอียดชุด",
     poseModeKeepLabel: "ตามภาพต้นฉบับ",
     poseModeKeepDescription:
-      "คงท่าทางและมุมกล้องของภาพต้นฉบับให้มากที่สุด (พฤติกรรมปัจจุบัน)",
+      "คงท่าทางและมุมกล้องของภาพต้นฉบับให้มากที่สุด",
     modelLabel: "เลือกโมเดลสำหรับสร้าง",
     modelTooltipAria: "แสดงความแตกต่างของคุณภาพการเรนเดอร์",
     modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว ประมาณ 30 วินาที\nMedium: สมดุล ประมาณ 70 วินาที\nHigh: รายละเอียดคงที่ ประมาณ 180 วินาที",

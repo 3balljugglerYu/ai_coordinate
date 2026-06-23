@@ -857,7 +857,7 @@ export const koMessages = {
       "코디 프롬프트 안에서 배경을 직접 지정합니다.",
     backgroundKeepLabel: "현재 배경 유지",
     backgroundKeepDescription: "현재 배경을 그대로 유지합니다.",
-    poseModeLabel: "포즈·앵글 설정 (β)",
+    poseModeLabel: "포즈·앵글 설정",
     poseModeAiAutoLabel: "AI에게 맡기기",
     poseModeAiAutoDescription: "옷에 어울리는 포즈와 구도를 AI가 자유롭게 선택합니다",
     poseModeIncludeInPromptLabel: "프롬프트로 지정",
@@ -865,7 +865,7 @@ export const koMessages = {
       "코디 내용에 적은 포즈·카메라 앵글 지시를 우선합니다",
     poseModeKeepLabel: "원본 이미지에 맞추기",
     poseModeKeepDescription:
-      "원본 이미지의 포즈와 카메라 앵글을 최대한 유지합니다(기존 동작)",
+      "원본 이미지의 포즈와 카메라 앵글을 최대한 유지합니다",
     modelLabel: "생성 모델 선택",
     modelTooltipAria: "렌더링 품질 차이 표시",
     modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성. 약 30초.\nMedium: 균형 중시. 약 70초.\nHigh: 디테일이 잘 깨지지 않음. 약 180초.",
