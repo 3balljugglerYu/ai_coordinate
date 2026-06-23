@@ -96,7 +96,7 @@ const COORDINATE_POSE_ONLY_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Im
 
 2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork.
 
-3. Change Pose & Camera Only: Change ONLY the pose, camera angle, framing, and composition, following the "Pose & Camera Direction" below with priority. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity, body shape, and the same outfit.`;
+3. Change Pose as Directed: Change the character's pose, gesture, and facial expression to match the "Pose & Camera Direction" below. By DEFAULT, KEEP the camera angle, framing, crop, and overall composition of \`image_0.png\` unchanged — do NOT move or rotate the camera, and do NOT re-crop or re-frame, UNLESS the direction explicitly asks for a camera/angle/framing change (for example "low angle", "close-up", "from above", "full body"). You may render body parts needed for the new pose, as long as they stay consistent with the character's identity, body shape, and the same outfit.`;
 
 // ============================================================================
 // Inspire 系 (buildInspirePrompt 内テキスト)
