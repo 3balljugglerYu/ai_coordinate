@@ -47,7 +47,10 @@ import type {
   SourceImageType,
   PickerSourceItem,
 } from "../types";
-import type { FramingMode } from "@/shared/generation/framing-mode";
+import {
+  COORDINATE_DEFAULT_FRAMING_MODE,
+  type FramingMode,
+} from "@/shared/generation/framing-mode";
 import { TUTORIAL_DEMO_IMAGE_PATH } from "@/features/tutorial/lib/constants";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
@@ -154,7 +157,9 @@ export function GenerationForm({
   // framing_mode: 既定は free(image_0 の同一性だけ維持し、衣装/ポーズ/カメラ/背景は
   // ユーザー指示に委ねる)。「ポーズ・カメラをできるだけ維持」チェックON で locked に切替。
   // 全ログインユーザー対象。ゲスト同期経路は framingMode 非対応のため認証済みのみ表示。
-  const [poseMode, setPoseMode] = useState<FramingMode>("free_pose");
+  const [poseMode, setPoseMode] = useState<FramingMode>(
+    COORDINATE_DEFAULT_FRAMING_MODE
+  );
   const shouldShowPoseModeControl = authState === "authenticated";
   const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
@@ -286,10 +291,10 @@ export function GenerationForm({
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
       model: effectiveSelectedModel,
-      // framing_mode: locked 以外(=free_pose, 既定)を選んだときのみ渡す
-      ...(shouldShowPoseModeControl && poseMode !== "locked"
-        ? { framingMode: poseMode }
-        : {}),
+      // framing_mode は UI の選択を常に明示送信する (locked も含む)。
+      // 省略に頼らないことで「サーバが省略=locked にフォールバックする」前提と
+      // UI 既定 (free) の乖離を構造的に防ぐ (COORDINATE_DEFAULT_FRAMING_MODE 参照)。
+      ...(shouldShowPoseModeControl ? { framingMode: poseMode } : {}),
     });
   };
 

@@ -4,7 +4,10 @@ import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
 import { env, isAdminViewer } from "@/lib/env";
-import type { FramingMode } from "@/shared/generation/framing-mode";
+import {
+  DEFAULT_FRAMING_MODE,
+  type FramingMode,
+} from "@/shared/generation/framing-mode";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
 import {
@@ -158,8 +161,10 @@ export async function postGenerateAsyncRoute(
       );
     }
 
-    // framing_mode は全ログインユーザーに公開 (既定=free / 「維持」で locked)。coordinate 限定は schema で検証済み。
-    const effectiveFramingMode: FramingMode = framingMode ?? "locked";
+    // framing_mode は全ログインユーザーに公開 (UI 既定=free / 「維持」で locked)。coordinate 限定は schema で検証済み。
+    // UI は常に framingMode を明示送信するため、ここに来る省略は レガシー/非 UI 経路。
+    // その場合は保守的に DEFAULT_FRAMING_MODE (locked = 現行挙動) へフォールバックする。
+    const effectiveFramingMode: FramingMode = framingMode ?? DEFAULT_FRAMING_MODE;
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
     const isInspireRequest = generationType === "inspire";
 
