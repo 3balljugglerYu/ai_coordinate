@@ -821,7 +821,7 @@ export const jaMessages = {
     sourceImageTypeReal: "リアル",
     promptLabel: "着せ替え内容やポージングなどを記載",
     promptPlaceholder:
-      "例: 夏らしい白いワンピース／ダブルピースのポーズ／ローアングルで全身",
+      "例: 夏らしい白いワンピースの衣装。両手を広げた姿。ハイアングル。",
     promptHint: "どんな服装に変更したいか具体的に、{max}文字以内で記入してください",
     promptCharacterCount: "{current}/{max}文字",
     promptTooLong: "着せ替え内容は{max}文字以内で入力してください",

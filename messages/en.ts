@@ -844,7 +844,7 @@ export const enMessages = {
     sourceImageTypeReal: "Photoreal",
     promptLabel: "Describe the outfit, pose, etc.",
     promptPlaceholder:
-      "Example: a breezy white summer dress / double peace-sign pose / low-angle full body",
+      "Example: a breezy white summer dress. Arms spread wide. High angle.",
     promptHint:
       "Describe the outfit you want as specifically as possible in up to {max} characters.",
     promptCharacterCount: "{current}/{max} characters",
