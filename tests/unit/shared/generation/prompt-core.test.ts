@@ -156,7 +156,8 @@ Minimal monochrome look`;
         framingMode: "free_pose",
       });
 
-      expect(result).toContain("Flexible Pose & Framing");
+      expect(result).toContain("Follow the User's Direction");
+      expect(result).toContain("Identity Preservation");
       expect(result).not.toContain("Strict Framing");
       expect(result).not.toContain(
         "Outfit Transformation within the Existing Frame"
@@ -168,7 +169,7 @@ Minimal monochrome look`;
       expect(result).not.toContain(
         "Keep the entire original background unchanged"
       );
-      expect(result).toContain(`New Outfit:\n\n${outfitDescription}`);
+      expect(result).toContain(`User's Direction:\n\n${outfitDescription}`);
     });
 
     test("free_pose_ai_autoはフレーミング固定を課さない背景変更suffixを使う", () => {
@@ -198,7 +199,7 @@ Minimal monochrome look`;
         framingMode: "free_pose",
       });
 
-      expect(result).toContain("Flexible Pose & Framing");
+      expect(result).toContain("Follow the User's Direction");
       expect(result).not.toContain("depict the same environment");
       expect(result).not.toContain("designed freely to suit the new pose");
     });
@@ -249,7 +250,7 @@ Minimal monochrome look`;
       });
       expect(result).toContain("Pose & Camera Direction:");
       expect(result).toContain("ローアングルで全身");
-      expect(result).toContain("New Outfit:");
+      expect(result).toContain("User's Direction:");
     });
 
     test("free_pose + 衣装空 + posePrompt は pose_only(服維持・ポーズのみ)になる", () => {

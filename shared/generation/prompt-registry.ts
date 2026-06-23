@@ -80,14 +80,15 @@ const COORDINATE_BASE_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-t
 
 3. Strict Framing: DO NOT describe or generate any body parts, clothing, or items that are not visible in \`image_0.png\`. If a body part is not in the original frame, do not add it. Preserve the exact crop, camera angle, and composition of \`image_0.png\`.`;
 
-// free_pose モード用 (STYLE_BASE_PREFIX_FREE_POSE_DEFAULT のコメント参照)。
-const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:
+// free_pose モード用 (既定)。image_0 の identity だけを厳密維持し、それ以外
+// (衣装/ポーズ/カメラ/背景/構図) はユーザーの指示に委ねる。指示が無いものは image_0 を維持。
+const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these rules exactly:
 
-1. Outfit Transformation (REQUIRED): You MUST replace the person's current clothing with the outfit described under "New Outfit" below. The output image MUST visibly show the new outfit. Returning the original outfit unchanged is a failure.
+1. Identity Preservation (TOP PRIORITY, REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character. Preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Never alter the person's identity.
 
-2. Identity Preservation (REQUIRED): Keep the person in \`image_0.png\` recognizable as the exact same character: preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Also preserve the rendering style of \`image_0.png\` — if it is a photograph, keep the output photorealistic; if it is an illustration, keep the same artistic touch and brushwork. Do not alter the person's identity.
+2. Follow the User's Direction below: Apply exactly what the user's direction specifies — this may include the outfit, pose, gesture, expression, camera angle, framing, composition, and background. Treat the user's direction as the primary intent for everything other than identity.
 
-3. Flexible Pose & Framing: You MAY change the pose, camera angle, framing, crop, and composition. If the "New Outfit" description or the user's instructions below specify a pose, camera angle, or composition, follow them with priority. If they do not, choose a natural pose and framing that best presents the outfit. You may render body parts that were not visible in \`image_0.png\`, as long as they stay consistent with the character's identity and body shape.`;
+3. Keep What Is Not Specified: For anything the user's direction does NOT mention, keep it consistent with \`image_0.png\`. In particular, if no new outfit is described, keep the person's current outfit unchanged; if no pose or camera change is described, keep the original pose and camera. Where the result requires a choice that the user did not specify (e.g., framing for a new outfit), pick a natural one that best fits the direction. You may render body parts not visible in \`image_0.png\` when the new pose requires it, staying consistent with the character's identity and body shape.`;
 
 // pose_only モード用 (free_pose かつ衣装指示が空)。服は維持し、ポーズ・カメラのみ変更する。
 const COORDINATE_POSE_ONLY_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. You MUST follow these steps exactly:

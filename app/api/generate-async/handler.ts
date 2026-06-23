@@ -159,30 +159,12 @@ export async function postGenerateAsyncRoute(
       );
     }
 
-    // framing_mode (admin viewer 限定の先行公開)。coordinate 限定は schema で検証済み。
-    // locked 以外 (free_pose) は非 admin から送られたら 400
-    // (UI 非表示はセキュリティではないためサーバでも遮断)。
+    // framing_mode は全ログインユーザーに公開 (既定=free / 「維持」で locked)。coordinate 限定は schema で検証済み。
     const effectiveFramingMode: FramingMode = framingMode ?? "locked";
-    if (effectiveFramingMode !== "locked" && !isAdminViewer(user.id)) {
-      return jsonError(
-        copy.invalidRequest,
-        "GENERATION_FRAMING_MODE_NOT_ALLOWED",
-        400
-      );
-    }
 
-    // posePrompt (ポーズ・カメラ指定欄、admin viewer 限定)。free_pose のときのみ有効。
-    // 非空かつ非 admin は 400 (UI 非表示はセキュリティではないためサーバでも遮断)。
+    // posePrompt (ポーズ・カメラ指定)。free_pose のときのみ有効 (locked はポーズ固定のため無視)。
     const posePromptTrimmed =
       typeof posePrompt === "string" ? posePrompt.trim() : "";
-    if (posePromptTrimmed.length > 0 && !isAdminViewer(user.id)) {
-      return jsonError(
-        copy.invalidRequest,
-        "GENERATION_POSE_PROMPT_NOT_ALLOWED",
-        400
-      );
-    }
-    // free_pose 以外で posePrompt が来ても無視する (locked はポーズ固定のため矛盾)。
     const effectivePosePrompt =
       effectiveFramingMode === "free_pose" ? posePromptTrimmed : "";
     const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);

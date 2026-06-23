@@ -236,9 +236,11 @@ export function buildPrompt(options: BuildPromptOptions): string {
     }
     // include_in_prompt: ユーザー記述に背景指示を委ねるため、システム側の背景指示は追加しない
 
-    // 衣装指示は pose_only でないときのみ結合する。
+    // 本文ラベル: locked は従来どおり "New Outfit"(=服置換)。free(unlocked)は
+    // 衣装と決めつけず "User's Direction" として委ねる。pose_only は本文無し。
     if (!poseOnly) {
-      sections.push(`New Outfit:\n\n${sanitizedDescription}`);
+      const directionLabel = unlocked ? "User's Direction" : "New Outfit";
+      sections.push(`${directionLabel}:\n\n${sanitizedDescription}`);
     }
 
     // free_pose のときのみ、ポーズ・カメラ指定を衣装指示と別セクションで結合する。

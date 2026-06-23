@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { GenerationModelControls } from "./GenerationModelControls";
@@ -139,23 +140,6 @@ export function GenerationForm({
       description: t("backgroundKeepDescription"),
     },
   ];
-  // ポーズ・アングル設定 (admin viewer 限定)。指定 → 維持 の並び順
-  const poseModeOptions: Array<{
-    value: FramingMode;
-    label: string;
-    description: string;
-  }> = [
-    {
-      value: "free_pose",
-      label: t("poseModeIncludeInPromptLabel"),
-      description: t("poseModeIncludeInPromptDescription"),
-    },
-    {
-      value: "locked",
-      label: t("poseModeKeepLabel"),
-      description: t("poseModeKeepDescription"),
-    },
-  ];
   const sourceImageTypeOptions: Array<{
     value: SourceImageType;
     label: string;
@@ -181,7 +165,9 @@ export function GenerationForm({
   // framing_mode (admin viewer 限定先行公開)。背景設定と同じ 3 択ラジオで
   // 「元画像に合わせる (locked) / プロンプト内で指定 (free_pose)」を選ぶ。
   // ゲスト同期経路は framingMode を解釈しないため、認証済みのときのみ表示する。
-  const [poseMode, setPoseMode] = useState<FramingMode>("locked");
+  // 既定は free(image_0 の同一性だけ維持し、衣装/ポーズ/カメラはユーザー指示に委ねる)。
+  // 「ポーズ・カメラをできるだけ維持」チェックで locked に切り替える。
+  const [poseMode, setPoseMode] = useState<FramingMode>("free_pose");
   const [posePromptValue, setPosePromptValue] = useState("");
   const POSE_PROMPT_MAX_LENGTH = 500;
   const shouldShowPoseModeControl =
@@ -674,39 +660,34 @@ export function GenerationForm({
           </RadioGroup>
         </div>
 
-        {/* ポーズ・アングル設定 (admin viewer 限定の先行公開)。背景設定と同じ 3 択ラジオ */}
+        {/* ポーズ・アングル設定。既定は free(委ねる)。チェックで「できるだけ維持(locked)」 */}
         {shouldShowPoseModeControl ? (
           <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
             <Label className="text-base font-medium">
               {t("poseModeLabel")}
             </Label>
-            <RadioGroup
-              value={poseMode}
-              onValueChange={(value) => setPoseMode(value as FramingMode)}
-              className="mt-2 space-y-3"
-              disabled={isGenerating || isTutorialInProgress}
-            >
-              {poseModeOptions.map((option) => (
-                <div key={option.value} className="flex items-start space-x-2">
-                  <RadioGroupItem
-                    id={`pose-mode-${option.value}`}
-                    value={option.value}
-                    className="mt-0.5"
-                  />
-                  <div className="space-y-0.5">
-                    <Label
-                      htmlFor={`pose-mode-${option.value}`}
-                      className="text-sm font-medium leading-none"
-                    >
-                      {option.label}
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      {option.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
+            <div className="mt-2 flex items-start space-x-2">
+              <Checkbox
+                id="pose-preserve"
+                checked={poseMode === "locked"}
+                onCheckedChange={(checked) =>
+                  setPoseMode(checked === true ? "locked" : "free_pose")
+                }
+                disabled={isGenerating || isTutorialInProgress}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label
+                  htmlFor="pose-preserve"
+                  className="text-sm font-medium leading-none"
+                >
+                  {t("poseModeKeepLabel")}
+                </Label>
+                <p className="text-xs text-gray-500">
+                  {t("poseModeKeepDescription")}
+                </p>
+              </div>
+            </div>
             {poseMode === "free_pose" ? (
               <div className="mt-3 space-y-1">
                 <Label

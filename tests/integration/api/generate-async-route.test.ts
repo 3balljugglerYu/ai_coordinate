@@ -1241,16 +1241,15 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       };
     }
 
-    test("非 admin の free_pose は 400 GENERATION_FRAMING_MODE_NOT_ALLOWED", async () => {
+    test("free_pose は admin でなくてもジョブ作成される(全ユーザー公開)", async () => {
       const response = await postGenerateAsyncRoute(
         createRequest(buildBody({ framingMode: "free_pose" })),
         dependencies()
       );
-      const body = await readJson(response);
 
-      expect(response.status).toBe(400);
-      expect(body.errorCode).toBe("GENERATION_FRAMING_MODE_NOT_ALLOWED");
-      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      expect(response.status).toBe(200);
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.generation_metadata).toEqual({ framingMode: "free_pose" });
     });
 
     test("未知の framingMode 値は schema で 400 になる", async () => {
