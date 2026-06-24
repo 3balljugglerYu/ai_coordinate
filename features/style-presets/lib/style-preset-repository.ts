@@ -492,6 +492,7 @@ export async function createStylePreset(
  */
 export async function submitCreatorStylePreset(
   input: {
+    id?: string;
     submittedByUserId: string;
     title: string;
     stylingPrompt: string;
@@ -508,7 +509,7 @@ export async function submitCreatorStylePreset(
   client?: SupabaseClient
 ): Promise<StylePresetAdmin> {
   const supabase = getSupabase(client);
-  const presetId = crypto.randomUUID();
+  const presetId = input.id ?? crypto.randomUUID();
 
   const { data, error } = await supabase.rpc("submit_creator_style_preset", {
     p_id: presetId,
