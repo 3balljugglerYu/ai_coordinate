@@ -1,0 +1,184 @@
+-- クリエイター提供プロンプト 申請システム(Phase 1): 申請/承認/却下 RPC。
+-- 計画書: docs/planning/creator-prompt-submission-plan.md
+--
+-- DB 層でビジネスルールを強制する(計画 品質観点「DB層での強制」):
+--   - 申請者は admin_users もしくは creator_looks_allowlist(is_active) に限る(fail-closed)。
+--   - 同意は全項目 true 必須。対応モデルは openai/gemini の非空サブセット、推奨は対応に含むこと。
+--   - 申請は status='pending' で作成(公開はされない=RLS で published+public のみ)。
+-- 適用は運用側で別途実施。
+
+-- 1) 申請: pending の style_preset を作成。
+CREATE OR REPLACE FUNCTION public.submit_creator_style_preset(
+  p_id UUID,
+  p_submitted_by UUID,
+  p_title TEXT,
+  p_styling_prompt TEXT,
+  p_category_id UUID,
+  p_thumbnail_image_url TEXT,
+  p_thumbnail_storage_path TEXT,
+  p_thumbnail_width INTEGER,
+  p_thumbnail_height INTEGER,
+  p_target_providers TEXT[],
+  p_recommended_provider TEXT DEFAULT NULL,
+  p_submission_consents JSONB DEFAULT NULL,
+  p_background_prompt TEXT DEFAULT NULL
+)
+RETURNS public.style_presets
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_created public.style_presets;
+  v_allowed BOOLEAN;
+BEGIN
+  -- gate: admin_users もしくは creator_looks_allowlist(active)
+  SELECT
+    EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = p_submitted_by)
+    OR EXISTS (
+      SELECT 1 FROM public.creator_looks_allowlist
+      WHERE user_id = p_submitted_by AND is_active = true
+    )
+  INTO v_allowed;
+
+  IF NOT v_allowed THEN
+    RAISE EXCEPTION 'submitter % is not allowed to submit creator prompts', p_submitted_by
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- 同意(全6項目 true 必須)
+  IF p_submission_consents IS NULL
+     OR COALESCE((p_submission_consents->>'copyright')::boolean, false) = false
+     OR COALESCE((p_submission_consents->>'third_party_ip')::boolean, false) = false
+     OR COALESCE((p_submission_consents->>'secondary_use')::boolean, false) = false
+     OR COALESCE((p_submission_consents->>'promo_use')::boolean, false) = false
+     OR COALESCE((p_submission_consents->>'no_sensitive')::boolean, false) = false
+     OR COALESCE((p_submission_consents->>'prompt_original')::boolean, false) = false
+  THEN
+    RAISE EXCEPTION 'all submission consents must be acknowledged'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- 対応モデル / 推奨モデル
+  IF p_target_providers IS NULL OR array_length(p_target_providers, 1) IS NULL THEN
+    RAISE EXCEPTION 'at least one target provider is required'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF NOT (p_target_providers <@ ARRAY['openai', 'gemini']::text[]) THEN
+    RAISE EXCEPTION 'invalid target provider' USING ERRCODE = 'check_violation';
+  END IF;
+  IF p_recommended_provider IS NOT NULL
+     AND NOT (p_recommended_provider = ANY (p_target_providers)) THEN
+    RAISE EXCEPTION 'recommended provider must be one of target providers'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- カテゴリ存在確認
+  IF NOT EXISTS (SELECT 1 FROM public.preset_categories WHERE id = p_category_id) THEN
+    RAISE EXCEPTION 'category not found' USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- pending は公開順(sort_order)に並べない。承認時に並べる。
+  INSERT INTO public.style_presets (
+    id, slug, title, styling_prompt, background_prompt,
+    thumbnail_image_url, thumbnail_storage_path, thumbnail_width, thumbnail_height,
+    sort_order, status, created_by, updated_by, category_id, image_input_mode,
+    dual_reference_source,
+    submitted_by_user_id, target_providers, recommended_provider, submission_consents
+  )
+  VALUES (
+    p_id,
+    'creator-' || replace(p_id::text, '-', ''),
+    p_title,
+    p_styling_prompt,
+    NULLIF(p_background_prompt, ''),
+    p_thumbnail_image_url,
+    p_thumbnail_storage_path,
+    COALESCE(p_thumbnail_width, 0),
+    COALESCE(p_thumbnail_height, 0),
+    0,
+    'pending',
+    p_submitted_by,
+    p_submitted_by,
+    p_category_id,
+    'single',
+    'admin',
+    p_submitted_by,
+    p_target_providers,
+    p_recommended_provider,
+    p_submission_consents
+  )
+  RETURNING * INTO v_created;
+
+  RETURN v_created;
+END;
+$$;
+
+-- 2) 承認: pending → published、提供者クレジット(provider_user_id)を申請者に設定、公開順へ配置。
+CREATE OR REPLACE FUNCTION public.approve_creator_style_preset(
+  p_id UUID,
+  p_admin UUID
+)
+RETURNS public.style_presets
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_updated public.style_presets;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended('style_presets_order', 0));
+
+  UPDATE public.style_presets
+  SET
+    status = 'published',
+    provider_user_id = COALESCE(provider_user_id, submitted_by_user_id),
+    updated_by = p_admin
+  WHERE id = p_id AND status = 'pending'
+  RETURNING * INTO v_updated;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'pending creator style preset % not found', p_id;
+  END IF;
+
+  -- 公開順の先頭に配置(新着を上に)。全体を連番へ再採番。
+  PERFORM public.place_style_preset_at_order(p_id, 0, p_admin);
+
+  SELECT * INTO v_updated FROM public.style_presets WHERE id = p_id;
+  RETURN v_updated;
+END;
+$$;
+
+-- 3) 却下: pending → rejected。
+CREATE OR REPLACE FUNCTION public.reject_creator_style_preset(
+  p_id UUID,
+  p_admin UUID
+)
+RETURNS public.style_presets
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_updated public.style_presets;
+BEGIN
+  UPDATE public.style_presets
+  SET status = 'rejected', updated_by = p_admin
+  WHERE id = p_id AND status = 'pending'
+  RETURNING * INTO v_updated;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'pending creator style preset % not found', p_id;
+  END IF;
+
+  RETURN v_updated;
+END;
+$$;
+
+COMMENT ON FUNCTION public.submit_creator_style_preset(
+  UUID, UUID, TEXT, TEXT, UUID, TEXT, TEXT, INTEGER, INTEGER, TEXT[], TEXT, JSONB, TEXT
+) IS 'クリエイター提供プロンプトを pending で申請(allowlist/admin・同意・モデルを DB 層で検証)';
+COMMENT ON FUNCTION public.approve_creator_style_preset(UUID, UUID) IS
+  'pending の creator style preset を承認(published 化 + provider_user_id 設定 + 公開順配置)';
+COMMENT ON FUNCTION public.reject_creator_style_preset(UUID, UUID) IS
+  'pending の creator style preset を却下(rejected 化)';
