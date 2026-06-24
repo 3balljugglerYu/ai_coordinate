@@ -651,6 +651,13 @@ export function CreatorsRecruitGuide({
               <p className="mt-1 text-xs text-[#9a8a78]">
                 X の {APPLY_X_HANDLE} まで、お気軽にDMください。
               </p>
+              <Link
+                href="/creators/submit"
+                className="mt-2 text-xs font-medium text-orange-600 underline-offset-4 hover:underline"
+                style={{ fontFamily: HEADING_FONT }}
+              >
+                すでに招待された方はこちら → プロンプトを提供する
+              </Link>
             </div>
           </Reveal>
         </div>
