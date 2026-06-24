@@ -122,6 +122,7 @@ export function CreatorPromptReviewPanel({
 
             <div className="mt-4 flex gap-2">
               <Button
+                type="button"
                 className="rounded-full bg-emerald-600 hover:bg-emerald-700"
                 disabled={busyId === p.id}
                 onClick={() => decide(p.id, "approve")}
@@ -129,6 +130,7 @@ export function CreatorPromptReviewPanel({
                 {busyId === p.id ? "処理中..." : "承認して公開"}
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 className="rounded-full"
                 disabled={busyId === p.id}

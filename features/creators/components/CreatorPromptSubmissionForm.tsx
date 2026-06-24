@@ -68,6 +68,10 @@ export function CreatorPromptSubmissionForm() {
 
   const handleFile = (file: File | null) => {
     setError(null);
+    // 既存の objectURL を解放(再選択時のメモリリーク防止)。
+    if (thumbnailPreview) {
+      URL.revokeObjectURL(thumbnailPreview);
+    }
     if (!file) {
       setThumbnailFile(null);
       setThumbnailPreview(null);
@@ -153,6 +157,7 @@ export function CreatorPromptSubmissionForm() {
           ホームと Style 画面にあなたの名前・アイコン付きで並びます。
         </p>
         <Button
+          type="button"
           className="mt-6 rounded-full bg-amber-500 hover:bg-amber-600"
           onClick={() => router.push("/my-page")}
         >
@@ -254,15 +259,16 @@ export function CreatorPromptSubmissionForm() {
           </p>
           <div className="flex gap-4">
             {providers.map((p) => (
-              <label key={p} className="flex items-center gap-2 text-sm">
+              <div key={p} className="flex items-center gap-2 text-sm">
                 <input
                   type="radio"
+                  id={`cp-recommended-${p}`}
                   name="cp-recommended"
                   checked={recommended === p}
                   onChange={() => setRecommended(p)}
                 />
-                {PROVIDER_LABEL[p]}
-              </label>
+                <label htmlFor={`cp-recommended-${p}`}>{PROVIDER_LABEL[p]}</label>
+              </div>
             ))}
           </div>
         </div>
@@ -333,6 +339,7 @@ export function CreatorPromptSubmissionForm() {
       ) : null}
 
       <Button
+        type="button"
         className="w-full rounded-full bg-amber-500 py-6 text-base font-bold hover:bg-amber-600 disabled:opacity-50"
         disabled={!canSubmit}
         onClick={handleSubmit}
