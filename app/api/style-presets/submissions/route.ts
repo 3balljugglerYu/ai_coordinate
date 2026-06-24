@@ -1,6 +1,6 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
-import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
+import { isCreatorPromptSubmitterAllowed } from "@/lib/auth/creator-looks";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { creatorPromptSubmissionSchema } from "@/features/style-presets/lib/creator-submission";
 import { submitCreatorStylePreset } from "@/features/style-presets/lib/style-preset-repository";
@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
     }
 
-    // 招待制ゲート(admin もしくは allowlist)。DB の submit RPC でも fail-closed で再検証。
-    const allowed = await isCreatorLooksEnabledForUser(user);
+    // ゲート: admin は機能フラグ不問で常に許可、一般は CREATOR_LOOKS_ENABLED + allowlist。
+    // DB の submit RPC でも admin_users / allowlist を fail-closed で再検証。
+    const allowed = await isCreatorPromptSubmitterAllowed(user);
     if (!allowed) {
       return NextResponse.json(
         { error: "この機能は招待されたクリエイターのみ利用できます", errorCode: "CREATOR_PROMPT_NOT_ALLOWED" },

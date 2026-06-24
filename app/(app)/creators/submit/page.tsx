@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
-import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
+import { isCreatorPromptSubmitterAllowed } from "@/lib/auth/creator-looks";
 import { CreatorPromptSubmissionForm } from "@/features/creators/components/CreatorPromptSubmissionForm";
 
 export const metadata: Metadata = {
@@ -12,12 +12,13 @@ export const metadata: Metadata = {
 
 /**
  * クリエイター提供プロンプトの申請ページ(Phase 1)。
- * ゲート: 認証必須 + 招待制(isCreatorLooksEnabledForUser = admin もしくは allowlist)。
- * 招待外には申請フォームを出さず、案内を表示する(/api と DB RPC でも二重に検証される)。
+ * ゲート: 認証必須 + isCreatorPromptSubmitterAllowed
+ *   (admin は機能フラグ不問で常に許可 / 一般は CREATOR_LOOKS_ENABLED + allowlist)。
+ * 許可外には申請フォームを出さず、案内を表示する(/api と DB RPC でも二重に検証される)。
  */
 export default async function CreatorPromptSubmitPage() {
   const user = await requireAuth();
-  const allowed = await isCreatorLooksEnabledForUser(user);
+  const allowed = await isCreatorPromptSubmitterAllowed(user);
 
   return (
     <div className="min-h-screen bg-gray-50">
