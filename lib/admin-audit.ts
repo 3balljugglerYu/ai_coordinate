@@ -28,7 +28,9 @@ export type AdminAuditAction =
   | "preset_category_create"
   | "preset_category_update"
   | "preset_category_deactivate"
-  | "creator_looks_two_stage_visibility_update";
+  | "creator_looks_two_stage_visibility_update"
+  | "creator_style_preset_approve"
+  | "creator_style_preset_reject";
 
 export interface AdminAuditLogParams {
   adminUserId: string;
