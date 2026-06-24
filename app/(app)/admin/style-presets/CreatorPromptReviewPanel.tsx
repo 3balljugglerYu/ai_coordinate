@@ -55,7 +55,8 @@ export function CreatorPromptReviewPanel({
         クリエイター提供プロンプトの申請({pendingPresets.length}件)
       </h2>
       <p className="mt-1 text-sm text-amber-800">
-        提供プロンプトと自動生成プレビューを確認し、承認(公開)または却下してください。
+        提供プロンプトと自動生成プレビューを確認し、承認(下書き保存)または却下してください。
+        承認後は下書きになり、公開のタイミングは一覧から手動で行えます。
       </p>
 
       {error ? (
@@ -130,7 +131,7 @@ export function CreatorPromptReviewPanel({
                 disabled={busyId === p.id}
                 onClick={() => decide(p.id, "approve")}
               >
-                {busyId === p.id ? "処理中..." : "承認して公開"}
+                {busyId === p.id ? "処理中..." : "承認(下書き保存)"}
               </Button>
               <Button
                 type="button"

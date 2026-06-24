@@ -63,16 +63,16 @@ describe("POST /api/admin/style-presets/submissions/[id]", () => {
     expect(mockApprove).not.toHaveBeenCalled();
   });
 
-  test("approve は承認RPCを呼び published を返し、キャッシュを無効化する", async () => {
-    mockApprove.mockResolvedValue({ id: "p-1", status: "published" } as never);
+  test("approve は承認RPCを呼び draft を返す(公開はせず=キャッシュ無効化しない)", async () => {
+    mockApprove.mockResolvedValue({ id: "p-1", status: "draft" } as never);
 
     const res = await POST(makeRequest("approve"), { params });
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ id: "p-1", status: "published" });
+    expect(body).toEqual({ id: "p-1", status: "draft" });
     expect(mockApprove).toHaveBeenCalledWith("p-1", "admin-1");
-    expect(mockRevalidate).toHaveBeenCalledTimes(1);
+    expect(mockRevalidate).not.toHaveBeenCalled();
   });
 
   test("reject は却下RPCを呼び、キャッシュ無効化はしない(公開変化なし)", async () => {

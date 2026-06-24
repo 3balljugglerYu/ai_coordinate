@@ -114,8 +114,22 @@ function SortableStylePresetCard({
             <p className="truncate text-sm font-medium text-slate-900">
               {preset.title}
             </p>
-            <Badge variant={preset.status === "published" ? "default" : "secondary"}>
-              {preset.status === "published" ? "公開" : "下書き"}
+            <Badge
+              variant={
+                preset.status === "published"
+                  ? "default"
+                  : preset.status === "rejected"
+                    ? "destructive"
+                    : "secondary"
+              }
+            >
+              {preset.status === "published"
+                ? "公開"
+                : preset.status === "pending"
+                  ? "申請中"
+                  : preset.status === "rejected"
+                    ? "却下"
+                    : "下書き"}
             </Badge>
             <Badge
               variant={

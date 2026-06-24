@@ -127,7 +127,7 @@ BEGIN
 END;
 $$;
 
--- 2) 承認: pending → published、提供者クレジット(provider_user_id)を申請者に設定、公開順へ配置。
+-- 2) 承認: pending → draft、提供者クレジット(provider_user_id)を申請者に設定。公開は運営が後で行う。
 CREATE OR REPLACE FUNCTION public.approve_creator_style_preset(
   p_id UUID,
   p_admin UUID
@@ -149,11 +149,11 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  PERFORM pg_advisory_xact_lock(hashtextextended('style_presets_order', 0));
-
+  -- 承認 = 内容OK + 提供者クレジット設定 + draft 保存。公開タイミングは運営が後で
+  -- 通常の編集(draft→published)で決める。よってここでは published にしない。
   UPDATE public.style_presets
   SET
-    status = 'published',
+    status = 'draft',
     provider_user_id = COALESCE(provider_user_id, submitted_by_user_id),
     updated_by = p_admin
   WHERE id = p_id AND status = 'pending'
@@ -163,10 +163,6 @@ BEGIN
     RAISE EXCEPTION 'pending creator style preset % not found', p_id;
   END IF;
 
-  -- 公開順の先頭に配置(新着を上に)。全体を連番へ再採番。
-  PERFORM public.place_style_preset_at_order(p_id, 0, p_admin);
-
-  SELECT * INTO v_updated FROM public.style_presets WHERE id = p_id;
   RETURN v_updated;
 END;
 $$;
@@ -210,7 +206,7 @@ COMMENT ON FUNCTION public.submit_creator_style_preset(
   UUID, UUID, TEXT, TEXT, UUID, TEXT, TEXT, INTEGER, INTEGER, TEXT[], TEXT, JSONB, TEXT
 ) IS 'クリエイター提供プロンプトを pending で申請(allowlist/admin・同意・モデルを DB 層で検証)';
 COMMENT ON FUNCTION public.approve_creator_style_preset(UUID, UUID) IS
-  'pending の creator style preset を承認(published 化 + provider_user_id 設定 + 公開順配置)';
+  'pending の creator style preset を承認(draft 化 + provider_user_id 設定)。公開は運営が後で draft→published で行う';
 COMMENT ON FUNCTION public.reject_creator_style_preset(UUID, UUID) IS
   'pending の creator style preset を却下(rejected 化)';
 

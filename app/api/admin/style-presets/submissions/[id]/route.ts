@@ -7,7 +7,6 @@ import {
   approveCreatorStylePreset,
   rejectCreatorStylePreset,
 } from "@/features/style-presets/lib/style-preset-repository";
-import { revalidateStylePresets } from "@/features/style-presets/lib/revalidate-style-presets";
 
 const decisionSchema = z.object({
   action: z.enum(["approve", "reject"]),
@@ -67,10 +66,9 @@ export async function POST(
       targetId: id,
     });
 
-    // 承認時のみ公開され /style・ホームに反映されるためキャッシュ無効化(却下は公開変化なし)。
-    if (parsed.data.action === "approve") {
-      revalidateStylePresets();
-    }
+    // 承認は draft 化(まだ非公開)、却下は rejected 化。いずれも公開状態は変わらないため
+    // ここでは公開キャッシュを無効化しない。実際の公開(draft→published)は通常の
+    // スタイル更新フローで行われ、そちら側でキャッシュ無効化される。
 
     return NextResponse.json({ id: result.id, status: result.status });
   } catch (error) {
