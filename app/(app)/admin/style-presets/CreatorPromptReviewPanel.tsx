@@ -38,7 +38,7 @@ export function CreatorPromptReviewPanel({
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(json.error ?? "処理に失敗しました");
+        setError(json.error ?? `処理に失敗しました (HTTP ${res.status})`);
         setBusyId(null);
         return;
       }

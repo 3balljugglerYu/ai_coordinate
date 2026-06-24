@@ -105,13 +105,15 @@ export function CreatorPromptSubmissionForm() {
         backgroundPrompt: backgroundPrompt.trim() || null,
         targetProviders: providers,
         recommendedProvider: recommended,
+        // 実際のチェック状態をシリアライズする(canSubmit で全 true を保証済みだが、
+        // 固定値ではなくユーザー操作の記録を送る)。サーバ側 zod は各キー z.literal(true) を要求。
         consents: {
-          copyright: true,
-          third_party_ip: true,
-          secondary_use: true,
-          promo_use: true,
-          no_sensitive: true,
-          prompt_original: true,
+          copyright: consents.copyright === true,
+          third_party_ip: consents.third_party_ip === true,
+          secondary_use: consents.secondary_use === true,
+          promo_use: consents.promo_use === true,
+          no_sensitive: consents.no_sensitive === true,
+          prompt_original: consents.prompt_original === true,
           version: "1.0",
           acknowledged_at: new Date().toISOString(),
         },

@@ -28,6 +28,9 @@ import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-confi
 import { sanitizeProviderErrorMessage } from "@/shared/generation/errors";
 
 const OPENAI_TIMEOUT_MS = 90_000;
+// プレビューは公開サムネと同じ style_presets バケット(public)に保存する。
+// プレビューは「運営テストキャラがスタイルを着た」画像で、秘匿対象の styling_prompt は
+// 含まれない。アクセスは UUID×UUID パスに依存(公開サムネと同方針)。
 const PREVIEW_BUCKET = "style_presets";
 
 const requestSchema = z.object({
@@ -80,14 +83,22 @@ export async function POST(request: NextRequest) {
   if (!preset.submitted_by_user_id) {
     return NextResponse.json({ error: "not_creator_submission" }, { status: 400 });
   }
+  // pending のみ対象(RPC/トリガと整合)。published/rejected/draft の再生成・上書きを防ぐ。
+  if (preset.status !== "pending") {
+    return NextResponse.json({ error: "not_pending" }, { status: 409 });
+  }
   if (!preset.styling_prompt) {
     return NextResponse.json({ error: "styling_prompt_missing" }, { status: 404 });
   }
   const ownerId = preset.submitted_by_user_id as string;
   const stylingPrompt = preset.styling_prompt as string;
+  // 空配列は「両方」フォールバックしない(意図が空=生成なしと区別)。空なら 400 で観測可能に。
   const targetProviders: string[] = Array.isArray(preset.target_providers)
     ? (preset.target_providers as string[])
     : ["openai", "gemini"];
+  if (targetProviders.length === 0) {
+    return NextResponse.json({ error: "no_target_providers" }, { status: 400 });
+  }
 
   // 4. テストキャラ画像取得
   const testCharacter = await fetchTestCharacterImage();

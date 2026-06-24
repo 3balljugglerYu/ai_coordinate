@@ -67,8 +67,10 @@ export async function POST(
       targetId: id,
     });
 
-    // 承認時は公開され /style・ホームに反映されるためキャッシュ無効化。
-    revalidateStylePresets();
+    // 承認時のみ公開され /style・ホームに反映されるためキャッシュ無効化(却下は公開変化なし)。
+    if (parsed.data.action === "approve") {
+      revalidateStylePresets();
+    }
 
     return NextResponse.json({ id: result.id, status: result.status });
   } catch (error) {
