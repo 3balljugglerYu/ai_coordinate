@@ -10,11 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   CREATOR_PROMPT_BODY_MAX_LENGTH,
+  CREATOR_PROMPT_CATEGORY_KEYS,
   CREATOR_PROMPT_CONSENT_KEYS,
   CREATOR_PROMPT_PROVIDERS,
   CREATOR_PROMPT_THUMBNAIL_RECOMMENDED,
   CREATOR_PROMPT_TITLE_MAX_LENGTH,
   isAllCreatorPromptConsentsAcknowledged,
+  type CreatorPromptCategoryKey,
   type CreatorPromptConsentKey,
   type CreatorPromptProvider,
 } from "@/features/style-presets/lib/creator-submission";
@@ -22,6 +24,20 @@ import {
 const PROVIDER_LABEL: Record<CreatorPromptProvider, string> = {
   openai: "ChatGPT(GPT Image)",
   gemini: "nanobanana(Gemini)",
+};
+
+const CATEGORY_LABEL: Record<
+  CreatorPromptCategoryKey,
+  { title: string; desc: string }
+> = {
+  character_remix: {
+    title: "アレンジ",
+    desc: "アップロードしたイラストそのものを、イメージに沿って変身させる",
+  },
+  character_coordinate: {
+    title: "テイスト",
+    desc: "アップロードしたキャラの衣装や背景を変更する",
+  },
 };
 
 const CONSENT_LABEL: Record<CreatorPromptConsentKey, string> = {
@@ -43,7 +59,9 @@ export function CreatorPromptSubmissionForm() {
 
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [backgroundPrompt, setBackgroundPrompt] = useState("");
+  const [categoryKey, setCategoryKey] = useState<CreatorPromptCategoryKey>(
+    "character_remix"
+  );
   const [providers, setProviders] = useState<CreatorPromptProvider[]>(["openai"]);
   const [recommended, setRecommended] = useState<CreatorPromptProvider>("openai");
   const [consents, setConsents] = useState<
@@ -106,7 +124,7 @@ export function CreatorPromptSubmissionForm() {
       const payload = {
         title: title.trim(),
         prompt: prompt.trim(),
-        backgroundPrompt: backgroundPrompt.trim() || null,
+        categoryKey,
         targetProviders: providers,
         recommendedProvider: recommended,
         // 実際のチェック状態をシリアライズする(canSubmit で全 true を保証済みだが、
@@ -215,19 +233,34 @@ export function CreatorPromptSubmissionForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="cp-bg" className="text-base font-medium">
-          背景プロンプト(任意)
-        </Label>
-        <Textarea
-          id="cp-bg"
-          value={backgroundPrompt}
-          onChange={(e) =>
-            setBackgroundPrompt(e.target.value.slice(0, CREATOR_PROMPT_BODY_MAX_LENGTH))
-          }
-          placeholder="背景を指定したい場合のみ"
-          rows={2}
-          maxLength={CREATOR_PROMPT_BODY_MAX_LENGTH}
-        />
+        <Label className="text-base font-medium">種類</Label>
+        <p className="text-xs text-gray-500">
+          どちらのスタイルかを選んでください(背景の指定はプロンプト本文に含めてください)。
+        </p>
+        <div className="space-y-2">
+          {CREATOR_PROMPT_CATEGORY_KEYS.map((key) => (
+            <label
+              key={key}
+              className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 has-[:checked]:border-amber-400 has-[:checked]:bg-amber-50"
+            >
+              <input
+                type="radio"
+                name="cp-category"
+                className="mt-1"
+                checked={categoryKey === key}
+                onChange={() => setCategoryKey(key)}
+              />
+              <span>
+                <span className="block text-sm font-medium">
+                  {CATEGORY_LABEL[key].title}
+                </span>
+                <span className="block text-xs text-gray-500">
+                  {CATEGORY_LABEL[key].desc}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-2">

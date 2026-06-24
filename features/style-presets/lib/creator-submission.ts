@@ -13,6 +13,19 @@ import { z } from "zod";
 export const CREATOR_PROMPT_PROVIDERS = ["openai", "gemini"] as const;
 export type CreatorPromptProvider = (typeof CREATOR_PROMPT_PROVIDERS)[number];
 
+/**
+ * 提供プロンプトの投入先カテゴリ(クリエイターが申請時に選択)。
+ * - character_remix(アレンジ): アップロードしたイラストそのものをイメージに沿って変身させる
+ * - character_coordinate(テイスト): アップロードしたキャラの衣装や背景を変更する
+ * いずれも raw モード(skip_base_prefix)で、背景は本文プロンプトに含める。
+ */
+export const CREATOR_PROMPT_CATEGORY_KEYS = [
+  "character_remix",
+  "character_coordinate",
+] as const;
+export type CreatorPromptCategoryKey =
+  (typeof CREATOR_PROMPT_CATEGORY_KEYS)[number];
+
 export const CREATOR_PROMPT_TITLE_MAX_LENGTH = 60;
 export const CREATOR_PROMPT_BODY_MAX_LENGTH = 4000;
 
@@ -58,12 +71,7 @@ export const creatorPromptSubmissionSchema = z
   .object({
     title: z.string().trim().min(1).max(CREATOR_PROMPT_TITLE_MAX_LENGTH),
     prompt: z.string().trim().min(1).max(CREATOR_PROMPT_BODY_MAX_LENGTH),
-    backgroundPrompt: z
-      .string()
-      .trim()
-      .max(CREATOR_PROMPT_BODY_MAX_LENGTH)
-      .optional()
-      .nullable(),
+    categoryKey: z.enum(CREATOR_PROMPT_CATEGORY_KEYS),
     targetProviders: z.array(z.enum(CREATOR_PROMPT_PROVIDERS)).min(1),
     recommendedProvider: z.enum(CREATOR_PROMPT_PROVIDERS).optional().nullable(),
     consents: creatorPromptConsentsSchema,

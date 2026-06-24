@@ -88,6 +88,9 @@ export function CreatorPromptReviewPanel({
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-slate-900">{p.title}</p>
                 <p className="mt-0.5 text-xs text-slate-500">
+                  種類: {p.category?.displayNameJa ?? p.category?.key ?? "—"}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
                   対応: {(p.targetProviders ?? []).join(", ") || "—"}
                   {p.recommendedProvider
                     ? ` / 推奨: ${p.recommendedProvider}`

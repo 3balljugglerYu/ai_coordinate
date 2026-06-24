@@ -11,8 +11,6 @@ import {
 } from "@/features/style-presets/lib/style-preset-storage";
 import { validateStylePresetImageFile } from "@/features/style-presets/lib/validate-style-preset-image-file";
 
-/** クリエイター提供プロンプトを置く公開カテゴリ key(初期 admin_only → 確認後 public)。 */
-const CREATOR_PROMPT_CATEGORY_KEY = "creator_prompts";
 
 /**
  * クリエイター提供プロンプトの申請 API(Phase 1)。
@@ -82,12 +80,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: fileError }, { status: 400 });
     }
 
-    // 公開カテゴリの解決。
-    const category = await getPresetCategoryByKey(CREATOR_PROMPT_CATEGORY_KEY);
+    const data = parsed.data;
+
+    // クリエイターが選んだ投入先カテゴリ(アレンジ/テイスト)を解決(アップロード前=安価な検証を先に)。
+    // categoryKey は zod enum で許可2種に制限済み。
+    const category = await getPresetCategoryByKey(data.categoryKey);
     if (!category) {
       console.error(
         "[creator-prompt-submission] category not found:",
-        CREATOR_PROMPT_CATEGORY_KEY
+        data.categoryKey
       );
       return NextResponse.json(
         { error: "カテゴリ設定が見つかりません(運営にお問い合わせください)" },
@@ -104,13 +105,11 @@ export async function POST(request: NextRequest) {
     );
     uploadedThumbnailPath = upload.storagePath;
 
-    const data = parsed.data;
     const created = await submitCreatorStylePreset({
       id: presetId,
       submittedByUserId: user.id,
       title: data.title,
       stylingPrompt: data.prompt,
-      backgroundPrompt: data.backgroundPrompt ?? null,
       categoryId: category.id,
       thumbnailImageUrl: upload.imageUrl,
       thumbnailStoragePath: upload.storagePath,
