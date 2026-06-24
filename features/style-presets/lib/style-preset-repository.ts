@@ -532,7 +532,13 @@ export async function submitCreatorStylePreset(
   const row = mapRpcRow(data);
   if (error || !row) {
     console.error("[style-preset-repository] submit creator rpc error:", error);
-    throw new Error(error?.message ?? "プロンプトの申請に失敗しました");
+    // PG の SQLSTATE(例: 23514 check_violation / 42501 insufficient_privilege)を
+    // 呼び出し側に伝播させる(route 側で fail-closed の 403 へマップするため)。
+    const thrown = new Error(error?.message ?? "プロンプトの申請に失敗しました");
+    if (error?.code) {
+      (thrown as Error & { code?: string }).code = error.code;
+    }
+    throw thrown;
   }
 
   const persisted = await getStylePresetForAdminById(row.id, supabase);

@@ -154,6 +154,15 @@ describe("style-preset repository", () => {
                 updated_by: null,
                 created_at: "2026-03-22T00:00:00.000Z",
                 updated_at: "2026-03-22T00:00:00.000Z",
+                // クリエイター提供プロンプトの申請メタ。秘匿/moat のため公開 summary には
+                // 絶対に含めてはならない(下の toEqual がそれを保証する回帰ガード)。
+                submitted_by_user_id: "creator-1",
+                target_providers: ["openai"],
+                recommended_provider: "openai",
+                submission_consents: { copyright: true, prompt_original: true },
+                preview_openai_image_url:
+                  "https://example.com/preview-openai.webp",
+                preview_gemini_image_url: null,
               },
             ],
             error: null,

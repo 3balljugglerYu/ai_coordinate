@@ -16,9 +16,12 @@ const CREATOR_PROMPT_CATEGORY_KEY = "creator_prompts";
 
 /**
  * クリエイター提供プロンプトの申請 API(Phase 1)。
- * - 招待制: isCreatorLooksEnabledForUser(admin もしくは allowlist)。DB の RPC でも再検証。
- * - 3:4 サムネを style_presets バケットへ保存し、styling_prompt(=提供prompt)を pending で作成。
+ * - 招待制: isCreatorLooksEnabledForUser(admin もしくは allowlist)。DB の RPC でも再検証(fail-closed)。
+ * - サムネを style_presets バケットへ保存し、styling_prompt(=提供prompt)を pending で作成。
+ *   サムネの縦横比(3:4)はクライアント表示ガイダンスで案内。サーバでの比率強制は後続 UI フェーズで対応。
  * - submittedByUserId は **サーバセッション(getUser)から解決**(クライアント body 不可)。
+ * - admin 判定: API は env(ADMIN_USER_IDS)、DB RPC は admin_users テーブルを参照。env-admin が
+ *   admin_users 未登録だと RPC で弾かれる(fail-closed)。その場合は汎用 403 を返し内部メッセージは露出しない。
  */
 export async function POST(request: NextRequest) {
   await connection();
@@ -123,19 +126,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id: created.id, status: created.status });
   } catch (error) {
     // 失敗時はアップロード済みサムネを後始末。
+    // 注(MUST-ADDRESS-003): RPC 失敗 AND この削除も失敗 の二重障害時のみ、公開バケットに
+    // 行に紐づかないサムネが孤児化しうる(機微情報なし=申請者本人のサムネ)。Phase で
+    // ストレージ GC sweeper を別途用意するまでの許容。単一障害は本クリーンアップで処理。
     if (uploadedThumbnailPath) {
       try {
         await deleteStylePresetImage(uploadedThumbnailPath);
       } catch (cleanupError) {
         console.error(
-          "[creator-prompt-submission] thumbnail cleanup failed:",
+          "[creator-prompt-submission] thumbnail cleanup failed (orphaned object):",
+          uploadedThumbnailPath,
           cleanupError
         );
       }
     }
     console.error("[creator-prompt-submission] POST error:", error);
-    const message =
-      error instanceof Error ? error.message : "申請に失敗しました";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // RPC の認可/検証エラー(allowlist 外・admin_users 未登録 等)は fail-closed の 403。
+    // 内部メッセージはクライアントに露出しない(情報漏えい防止)。
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? (error as { code?: string }).code
+        : undefined;
+    if (code === "42501" || code === "23514") {
+      return NextResponse.json(
+        {
+          error: "この機能は招待されたクリエイターのみ利用できます",
+          errorCode: "CREATOR_PROMPT_NOT_ALLOWED",
+        },
+        { status: 403 }
+      );
+    }
+    return NextResponse.json({ error: "申請に失敗しました" }, { status: 500 });
   }
 }

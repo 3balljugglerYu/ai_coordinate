@@ -5,7 +5,7 @@
 --   - 申請者は admin_users もしくは creator_looks_allowlist(is_active) に限る(fail-closed)。
 --   - 同意は全項目 true 必須。対応モデルは openai/gemini の非空サブセット、推奨は対応に含むこと。
 --   - 申請は status='pending' で作成(公開はされない=RLS で published+public のみ)。
--- 適用は運用側で別途実施。
+-- 注: 本作業では適用しない方針(ユーザーの指示により、適用は最終確認のうえ一緒に実施する)。
 
 -- 1) 申請: pending の style_preset を作成。
 CREATE OR REPLACE FUNCTION public.submit_creator_style_preset(
@@ -32,6 +32,13 @@ DECLARE
   v_created public.style_presets;
   v_allowed BOOLEAN;
 BEGIN
+  -- 呼び出し元アンカー: PostgREST 経由(auth.uid() あり)では本人としてのみ申請可。
+  -- service_role 経由(auth.uid() = NULL)は信頼し通す(API がセッションから p_submitted_by を解決)。
+  IF auth.uid() IS NOT NULL AND auth.uid() <> p_submitted_by THEN
+    RAISE EXCEPTION 'Unauthorized: caller must submit as themselves'
+      USING ERRCODE = '42501';
+  END IF;
+
   -- gate: admin_users もしくは creator_looks_allowlist(active)
   SELECT
     EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = p_submitted_by)
@@ -66,6 +73,12 @@ BEGIN
   END IF;
   IF NOT (p_target_providers <@ ARRAY['openai', 'gemini']::text[]) THEN
     RAISE EXCEPTION 'invalid target provider' USING ERRCODE = 'check_violation';
+  END IF;
+  -- 重複排除(zod と同等。直接 RPC 呼び出しでの二重トリガー防止)。
+  IF (
+    SELECT count(*) <> count(DISTINCT p) FROM unnest(p_target_providers) AS p
+  ) THEN
+    RAISE EXCEPTION 'duplicate target provider' USING ERRCODE = 'check_violation';
   END IF;
   IF p_recommended_provider IS NOT NULL
      AND NOT (p_recommended_provider = ANY (p_target_providers)) THEN
@@ -127,6 +140,15 @@ AS $$
 DECLARE
   v_updated public.style_presets;
 BEGIN
+  -- 認可: 呼び出し元アンカー + admin_users メンバーシップ(grant_admin_bonus と同パターン)。
+  IF auth.uid() IS NOT NULL AND auth.uid() <> p_admin THEN
+    RAISE EXCEPTION 'Unauthorized: caller must be the admin' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = p_admin) THEN
+    RAISE EXCEPTION 'Unauthorized: % is not an authorized admin', p_admin
+      USING ERRCODE = '42501';
+  END IF;
+
   PERFORM pg_advisory_xact_lock(hashtextextended('style_presets_order', 0));
 
   UPDATE public.style_presets
@@ -162,6 +184,15 @@ AS $$
 DECLARE
   v_updated public.style_presets;
 BEGIN
+  -- 認可: 呼び出し元アンカー + admin_users メンバーシップ。
+  IF auth.uid() IS NOT NULL AND auth.uid() <> p_admin THEN
+    RAISE EXCEPTION 'Unauthorized: caller must be the admin' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = p_admin) THEN
+    RAISE EXCEPTION 'Unauthorized: % is not an authorized admin', p_admin
+      USING ERRCODE = '42501';
+  END IF;
+
   UPDATE public.style_presets
   SET status = 'rejected', updated_by = p_admin
   WHERE id = p_id AND status = 'pending'
@@ -182,3 +213,21 @@ COMMENT ON FUNCTION public.approve_creator_style_preset(UUID, UUID) IS
   'pending の creator style preset を承認(published 化 + provider_user_id 設定 + 公開順配置)';
 COMMENT ON FUNCTION public.reject_creator_style_preset(UUID, UUID) IS
   'pending の creator style preset を却下(rejected 化)';
+
+-- 実行権限ロックダウン(リポジトリ規範: SECURITY DEFINER 変更系 RPC は PostgREST 既定公開を遮断し service_role のみに限定)。
+REVOKE EXECUTE ON FUNCTION public.submit_creator_style_preset(
+  UUID, UUID, TEXT, TEXT, UUID, TEXT, TEXT, INTEGER, INTEGER, TEXT[], TEXT, JSONB, TEXT
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.submit_creator_style_preset(
+  UUID, UUID, TEXT, TEXT, UUID, TEXT, TEXT, INTEGER, INTEGER, TEXT[], TEXT, JSONB, TEXT
+) TO service_role;
+
+REVOKE EXECUTE ON FUNCTION public.approve_creator_style_preset(UUID, UUID)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.approve_creator_style_preset(UUID, UUID)
+  TO service_role;
+
+REVOKE EXECUTE ON FUNCTION public.reject_creator_style_preset(UUID, UUID)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reject_creator_style_preset(UUID, UUID)
+  TO service_role;

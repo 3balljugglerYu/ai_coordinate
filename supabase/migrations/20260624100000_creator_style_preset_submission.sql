@@ -7,7 +7,7 @@
 --   - 承認で status='published' + provider_user_id=submitted_by_user_id(クレジット)。
 --   - クリエイター提供用の新規 public カテゴリを追加(初期 admin_only → 確認後に public 化)。
 --
--- 適用は運用側で別途実施(本ファイルはスキーマ定義のみ)。
+-- 注: 本作業では適用しない方針(ユーザーの指示により、適用は最終確認のうえ一緒に実施する)。
 
 -- 1) status の許容値に pending / rejected を追加(既存 draft/published を維持)。
 --    元の inline CHECK 名は style_presets_status_check(自動命名)。
