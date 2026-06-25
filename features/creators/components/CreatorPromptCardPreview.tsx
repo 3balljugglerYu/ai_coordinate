@@ -63,7 +63,7 @@ export function CreatorPromptCardPreview({
         </div>
 
         {/* 画面(縦長・スクロール風に下を少し切る) */}
-        <div className="h-[320px] overflow-hidden rounded-t-xl bg-gray-50 px-2.5 pt-2.5">
+        <div className="h-[348px] overflow-hidden rounded-t-xl bg-gray-50 px-2.5 pt-2.5">
           {/* セクション1: スタイル選択(横スクロールのカード列) */}
           <p className="px-0.5 text-[11px] font-semibold text-gray-900">
             スタイル選択
@@ -103,15 +103,51 @@ export function CreatorPromptCardPreview({
             </div>
           </div>
 
-          {/* セクション2: マイキャラ選択(参照カード) */}
+          {/* セクション2: マイキャラ選択(My Character | Style の2カラム。Style 側に選択スタイル=サムネを反映) */}
           <p className="mt-3 px-0.5 text-[11px] font-semibold text-gray-900">
             マイキャラ選択
           </p>
           <p className="mb-1.5 px-0.5 text-[8px] leading-tight text-gray-400">
-            うちの子の画像を選んでください
+            うちの子の画像をアップロードしてください
           </p>
-          <div className="flex h-16 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-[9px] text-gray-400 shadow-sm">
-            マイキャラ画像
+          <div className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+            <div className="grid grid-cols-2 gap-1.5">
+              {/* My Character(アップロード枠) */}
+              <div>
+                <p className="mb-0.5 text-[8px] font-medium text-gray-700">
+                  My Character
+                </p>
+                <div className="flex aspect-[3/4] flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-400">
+                  <span className="text-[12px] leading-none">⬆</span>
+                  <span className="mt-0.5 text-[7px]">画像を追加</span>
+                </div>
+              </div>
+              {/* Style(選択中スタイル=申請者のサムネを反映) */}
+              <div>
+                <p className="mb-0.5 text-[8px] font-medium text-gray-700">
+                  Style
+                </p>
+                <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-gray-100">
+                  {thumbnailUrl ? (
+                    <Image
+                      src={thumbnailUrl}
+                      alt="選択中スタイル"
+                      fill
+                      sizes="80px"
+                      className="object-cover object-top"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[7px] text-gray-400">
+                      スタイル
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-1 rounded-md border border-gray-200 py-1 text-center text-[7px] text-gray-500">
+              生成済み/ストックから選ぶ
+            </div>
           </div>
         </div>
       </div>
