@@ -361,24 +361,27 @@ export function CreatorPromptSubmissionForm({
 
       <div className="space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
         <p className="text-sm font-medium text-gray-700">同意事項</p>
-        {CREATOR_PROMPT_CONSENT_KEYS.map((key) => (
-          <div key={key} className="flex items-start gap-2">
-            <Checkbox
-              id={`cp-consent-${key}`}
-              className="mt-0.5"
-              checked={consents[key] === true}
-              onCheckedChange={(checked) =>
-                setConsents((prev) => ({ ...prev, [key]: checked === true }))
-              }
-            />
-            <Label
+        <div className="space-y-1.5">
+          {CREATOR_PROMPT_CONSENT_KEYS.map((key) => (
+            <label
+              key={key}
               htmlFor={`cp-consent-${key}`}
-              className="text-xs font-normal leading-relaxed text-gray-600"
+              className="flex cursor-pointer items-start gap-3 rounded-lg px-1 py-2.5 transition-colors hover:bg-gray-100"
             >
-              {CONSENT_LABEL[key]}
-            </Label>
-          </div>
-        ))}
+              <Checkbox
+                id={`cp-consent-${key}`}
+                className="mt-0.5 h-5 w-5"
+                checked={consents[key] === true}
+                onCheckedChange={(checked) =>
+                  setConsents((prev) => ({ ...prev, [key]: checked === true }))
+                }
+              />
+              <span className="flex-1 text-sm font-normal leading-relaxed text-gray-600">
+                {CONSENT_LABEL[key]}
+              </span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {error ? (

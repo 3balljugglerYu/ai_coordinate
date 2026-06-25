@@ -72,12 +72,11 @@ export function CreatorPromptCardPreview({
         </button>
       </div>
 
-      {/* スマホ風プレビュー(大は約3/4を埋める) */}
+      {/* スマホ風プレビュー(大は約3/4を埋める。サイズ切替はアニメーション) */}
       <div
-        className="w-[180px] sm:w-[196px]"
+        className="w-[180px] origin-bottom-right transition-transform duration-300 ease-out motion-reduce:transition-none sm:w-[196px]"
         style={{
-          transformOrigin: "bottom right",
-          transform: size === "large" ? "scale(1.85)" : undefined,
+          transform: size === "large" ? "scale(1.85)" : "scale(1)",
         }}
       >
         {/* 縦長スマホ風フレーム */}
