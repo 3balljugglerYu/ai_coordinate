@@ -20,6 +20,7 @@ import {
   type CreatorPromptConsentKey,
   type CreatorPromptProvider,
 } from "@/features/style-presets/lib/creator-submission";
+import { CreatorPromptCardPreview } from "./CreatorPromptCardPreview";
 
 const PROVIDER_LABEL: Record<CreatorPromptProvider, string> = {
   openai: "ChatGPT(GPT Image)",
@@ -379,6 +380,13 @@ export function CreatorPromptSubmissionForm() {
       >
         {submitting ? "申請中..." : "この内容で申請する"}
       </Button>
+
+      {/* /style での見え方を示すフローティングプレビュー(タイトル/種類/サムネを即時反映) */}
+      <CreatorPromptCardPreview
+        title={title}
+        thumbnailUrl={thumbnailPreview}
+        categoryLabel={CATEGORY_LABEL[categoryKey].title}
+      />
     </div>
   );
 }
