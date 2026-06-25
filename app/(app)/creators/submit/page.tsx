@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { isCreatorPromptSubmitterAllowed } from "@/lib/auth/creator-looks";
 import { CreatorPromptSubmissionForm } from "@/features/creators/components/CreatorPromptSubmissionForm";
+import { CreatorSubmitTopBar } from "@/features/creators/components/CreatorSubmitTopBar";
 
 export const metadata: Metadata = {
   title: "プロンプトを提供する | Persta.AI",
@@ -22,6 +23,7 @@ export default async function CreatorPromptSubmitPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <CreatorSubmitTopBar />
       <div className="px-4 pb-12 pt-6 md:pt-10">
         {allowed ? (
           <CreatorPromptSubmissionForm />
