@@ -20,11 +20,13 @@ export function CreatorPromptCardPreview({
   thumbnailUrl,
   badge,
   avatarUrl,
+  creditNickname,
 }: {
   title: string;
   thumbnailUrl: string | null;
   badge: CreatorPromptPreviewBadge | null;
   avatarUrl: string | null;
+  creditNickname: string | null;
 }) {
   const [minimized, setMinimized] = useState(false);
 
@@ -142,6 +144,24 @@ export function CreatorPromptCardPreview({
                       スタイル
                     </div>
                   )}
+                  {/* 提供者クレジット(実機どおり Style 画像に重ねる。アイコン+名前のピル) */}
+                  {thumbnailUrl && creditNickname ? (
+                    <span className="absolute bottom-1 left-1/2 inline-flex max-w-[90%] -translate-x-1/2 items-center gap-0.5 rounded-full bg-black/55 px-1 py-[1px] text-[7px] font-semibold leading-tight text-white shadow-sm backdrop-blur-[1px]">
+                      {avatarUrl ? (
+                        <span className="relative h-2.5 w-2.5 shrink-0 overflow-hidden rounded-full">
+                          <Image
+                            src={avatarUrl}
+                            alt=""
+                            fill
+                            sizes="10px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </span>
+                      ) : null}
+                      <span className="truncate">{creditNickname}</span>
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>

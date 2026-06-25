@@ -63,6 +63,7 @@ const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
 
 export function CreatorPromptSubmissionForm({
   submitterAvatarUrl = null,
+  submitterNickname = null,
   categoryBadges = {},
 }: {
   submitterAvatarUrl?: string | null;
@@ -400,6 +401,7 @@ export function CreatorPromptSubmissionForm({
         title={title}
         thumbnailUrl={thumbnailPreview}
         avatarUrl={submitterAvatarUrl}
+        creditNickname={submitterNickname}
         badge={
           categoryBadges[categoryKey] ?? {
             label: CATEGORY_LABEL[categoryKey].title,
