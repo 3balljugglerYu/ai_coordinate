@@ -57,9 +57,9 @@ export function CreatorPromptCardPreview({
   );
 
   return (
-    <>
-      {/* サイズ操作: 常に画面右上に固定(プレビューを拡大しても隠れない) */}
-      <div className="fixed right-3 top-3 z-50 flex items-center gap-0.5 rounded-full bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
+    <div className="fixed bottom-4 right-3 z-40 flex flex-col items-end gap-1">
+      {/* サイズ操作: プレビューのすぐ上に配置(大でも z-50 で前面) */}
+      <div className="relative z-50 flex items-center gap-0.5 rounded-full bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
         <span className="px-1 text-[10px] font-medium text-gray-500">見え方</span>
         {sizeBtn("large", "大")}
         {sizeBtn("medium", "中")}
@@ -72,17 +72,16 @@ export function CreatorPromptCardPreview({
         </button>
       </div>
 
-      {/* スマホ風プレビュー(右下固定。大は約3/4を埋める) */}
-      <div className="fixed bottom-4 right-3 z-40">
-        <div
-          className="w-[180px] sm:w-[196px]"
-          style={{
-            transformOrigin: "bottom right",
-            transform: size === "large" ? "scale(1.85)" : undefined,
-          }}
-        >
-          {/* 縦長スマホ風フレーム */}
-          <div className="overflow-hidden rounded-[2rem] border-[7px] border-gray-900 bg-gray-900 shadow-2xl">
+      {/* スマホ風プレビュー(大は約3/4を埋める) */}
+      <div
+        className="w-[180px] sm:w-[196px]"
+        style={{
+          transformOrigin: "bottom right",
+          transform: size === "large" ? "scale(1.85)" : undefined,
+        }}
+      >
+        {/* 縦長スマホ風フレーム */}
+        <div className="overflow-hidden rounded-[2rem] border-[7px] border-gray-900 bg-gray-900 shadow-2xl">
         {/* ノッチ */}
         <div className="relative flex justify-center py-1.5">
           <div className="h-1.5 w-12 rounded-full bg-gray-700" />
@@ -197,7 +196,6 @@ export function CreatorPromptCardPreview({
       </div>
       </div>
     </div>
-    </>
   );
 }
 
@@ -249,7 +247,7 @@ function PreviewCard({
         ) : null}
       </div>
 
-      {/* 下部バー: [アイコン][タイトル]。アイコンとタイトルは上下中央揃え。タイトルは最大2行まで折り返して約18字まで見せる */}
+      {/* 下部バー: [アイコン][タイトル]。アイコンとタイトルは上下中央揃え。タイトルは1行で truncate(改行しない) */}
       <div className="flex items-center gap-1 border-t bg-white px-1.5 py-1.5">
         {highlighted ? (
           avatarUrl ? (
@@ -267,9 +265,7 @@ function PreviewCard({
             <span className="h-4 w-4 shrink-0 rounded-full bg-amber-300" />
           )
         ) : null}
-        <p className="line-clamp-2 break-words text-[10px] font-medium leading-tight text-gray-800">
-          {title}
-        </p>
+        <p className="truncate text-[10px] font-medium text-gray-800">{title}</p>
       </div>
     </div>
   );
