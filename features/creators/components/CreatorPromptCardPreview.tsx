@@ -89,7 +89,7 @@ export function CreatorPromptCardPreview({
         </div>
 
         {/* 画面(縦長・スクロール風に下を少し切る) */}
-        <div className="h-[376px] overflow-hidden rounded-t-xl bg-gray-50 px-2.5 pt-2.5">
+        <div className="h-[392px] overflow-hidden rounded-t-xl bg-gray-50 px-2.5 pt-2.5">
           {/* セクション1: スタイル選択(横スクロールのカード列) */}
           <p className="px-0.5 text-[11px] font-semibold text-gray-900">
             スタイル選択
@@ -99,7 +99,7 @@ export function CreatorPromptCardPreview({
           </p>
           <div className="flex gap-1.5 overflow-hidden">
             {/* あなたのカード(ライブ反映) */}
-            <div className="w-[92px] shrink-0">
+            <div className="w-[100px] shrink-0">
               <PreviewCard
                 title={title || "タイトル"}
                 thumbnailUrl={thumbnailUrl}
@@ -109,7 +109,7 @@ export function CreatorPromptCardPreview({
               />
             </div>
             {/* 文脈用のダミー(横スクロールで続く感じ) */}
-            <div className="w-[92px] shrink-0">
+            <div className="w-[100px] shrink-0">
               <PreviewCard
                 title="ほかのスタイル"
                 thumbnailUrl={null}
@@ -118,7 +118,7 @@ export function CreatorPromptCardPreview({
                 dimmed
               />
             </div>
-            <div className="w-[92px] shrink-0">
+            <div className="w-[100px] shrink-0">
               <PreviewCard
                 title="ほかのスタイル"
                 thumbnailUrl={null}
@@ -249,11 +249,11 @@ function PreviewCard({
         ) : null}
       </div>
 
-      {/* 下部バー: [アイコン][タイトル] の1行(本物準拠) */}
-      <div className="flex items-center gap-1 border-t bg-white px-1.5 py-1.5">
+      {/* 下部バー: [アイコン][タイトル]。タイトルは最大2行まで折り返して約18字まで見せる */}
+      <div className="flex items-start gap-1 border-t bg-white px-1.5 py-1.5">
         {highlighted ? (
           avatarUrl ? (
-            <span className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full bg-gray-200">
+            <span className="relative mt-0.5 h-4 w-4 shrink-0 overflow-hidden rounded-full bg-gray-200">
               <Image
                 src={avatarUrl}
                 alt="申請者"
@@ -264,10 +264,12 @@ function PreviewCard({
               />
             </span>
           ) : (
-            <span className="h-4 w-4 shrink-0 rounded-full bg-amber-300" />
+            <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-amber-300" />
           )
         ) : null}
-        <p className="truncate text-[10px] font-medium text-gray-800">{title}</p>
+        <p className="line-clamp-2 break-words text-[10px] font-medium leading-tight text-gray-800">
+          {title}
+        </p>
       </div>
     </div>
   );
