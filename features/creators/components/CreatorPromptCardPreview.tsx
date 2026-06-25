@@ -63,40 +63,55 @@ export function CreatorPromptCardPreview({
         </div>
 
         {/* 画面(縦長・スクロール風に下を少し切る) */}
-        <div className="h-[300px] overflow-hidden rounded-t-xl bg-gray-50 px-2 pt-2.5">
-          <p className="mb-2 px-0.5 text-[12px] font-bold text-gray-900">Style</p>
-
-          <div className="grid grid-cols-2 gap-2">
+        <div className="h-[320px] overflow-hidden rounded-t-xl bg-gray-50 px-2.5 pt-2.5">
+          {/* セクション1: スタイル選択(横スクロールのカード列) */}
+          <p className="px-0.5 text-[11px] font-semibold text-gray-900">
+            スタイル選択
+          </p>
+          <p className="mb-1.5 px-0.5 text-[8px] leading-tight text-gray-400">
+            好きなスタイルを選んでください
+          </p>
+          <div className="flex gap-1.5 overflow-hidden">
             {/* あなたのカード(ライブ反映) */}
-            <PreviewCard
-              title={title || "タイトル"}
-              thumbnailUrl={thumbnailUrl}
-              badge={badge}
-              avatarUrl={avatarUrl}
-              highlighted
-            />
-            {/* 文脈用のダミー */}
-            <PreviewCard
-              title="ほかのスタイル"
-              thumbnailUrl={null}
-              badge={null}
-              avatarUrl={null}
-              dimmed
-            />
-            <PreviewCard
-              title="ほかのスタイル"
-              thumbnailUrl={null}
-              badge={null}
-              avatarUrl={null}
-              dimmed
-            />
-            <PreviewCard
-              title="ほかのスタイル"
-              thumbnailUrl={null}
-              badge={null}
-              avatarUrl={null}
-              dimmed
-            />
+            <div className="w-[58px] shrink-0">
+              <PreviewCard
+                title={title || "タイトル"}
+                thumbnailUrl={thumbnailUrl}
+                badge={badge}
+                avatarUrl={avatarUrl}
+                highlighted
+              />
+            </div>
+            {/* 文脈用のダミー(横スクロールで続く感じ) */}
+            <div className="w-[58px] shrink-0">
+              <PreviewCard
+                title="ほかのスタイル"
+                thumbnailUrl={null}
+                badge={null}
+                avatarUrl={null}
+                dimmed
+              />
+            </div>
+            <div className="w-[58px] shrink-0">
+              <PreviewCard
+                title="ほかのスタイル"
+                thumbnailUrl={null}
+                badge={null}
+                avatarUrl={null}
+                dimmed
+              />
+            </div>
+          </div>
+
+          {/* セクション2: マイキャラ選択(参照カード) */}
+          <p className="mt-3 px-0.5 text-[11px] font-semibold text-gray-900">
+            マイキャラ選択
+          </p>
+          <p className="mb-1.5 px-0.5 text-[8px] leading-tight text-gray-400">
+            うちの子の画像を選んでください
+          </p>
+          <div className="flex h-16 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-[9px] text-gray-400 shadow-sm">
+            マイキャラ画像
           </div>
         </div>
       </div>
