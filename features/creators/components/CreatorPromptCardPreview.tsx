@@ -56,31 +56,31 @@ export function CreatorPromptCardPreview({
     </button>
   );
 
-  return (
-    <div className="fixed bottom-4 right-3 z-40 flex flex-col items-end gap-1">
-      {/* サイズ操作: プレビューのすぐ上に配置(大でも z-50 で前面) */}
-      <div className="relative z-50 flex items-center gap-0.5 rounded-full bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
-        <span className="px-1 text-[10px] font-medium text-gray-500">見え方</span>
-        {sizeBtn("large", "大")}
-        {sizeBtn("medium", "中")}
-        <button
-          type="button"
-          onClick={() => setSize("minimized")}
-          className="rounded-full px-2.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100"
-        >
-          最小化
-        </button>
-      </div>
-
-      {/* スマホ風プレビュー(大は約3/4を埋める。サイズ切替はアニメーション) */}
-      <div
-        className="w-[180px] origin-bottom-right transition-transform duration-300 ease-out motion-reduce:transition-none sm:w-[196px]"
-        style={{
-          transform: size === "large" ? "scale(1.85)" : "scale(1)",
-        }}
+  const controls = (
+    <div className="flex items-center gap-0.5 rounded-full bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
+      <span className="px-1 text-[10px] font-medium text-gray-500">見え方</span>
+      {sizeBtn("large", "大")}
+      {sizeBtn("medium", "中")}
+      <button
+        type="button"
+        onClick={() => setSize("minimized")}
+        className="rounded-full px-2.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100"
       >
-        {/* 縦長スマホ風フレーム */}
-        <div className="overflow-hidden rounded-[2rem] border-[7px] border-gray-900 bg-gray-900 shadow-2xl">
+        最小化
+      </button>
+    </div>
+  );
+
+  const phoneEl = (
+    // スマホ風プレビュー(大は約3/4を埋める。サイズ切替はアニメーション)
+    <div
+      className="w-[180px] origin-bottom-right transition-transform duration-300 ease-out motion-reduce:transition-none sm:w-[196px]"
+      style={{
+        transform: size === "large" ? "scale(1.85)" : "scale(1)",
+      }}
+    >
+      {/* 縦長スマホ風フレーム */}
+      <div className="overflow-hidden rounded-[2rem] border-[7px] border-gray-900 bg-gray-900 shadow-2xl">
         {/* ノッチ */}
         <div className="relative flex justify-center py-1.5">
           <div className="h-1.5 w-12 rounded-full bg-gray-700" />
@@ -193,8 +193,24 @@ export function CreatorPromptCardPreview({
           </div>
         </div>
       </div>
-      </div>
     </div>
+  );
+
+  // phone は常に同じ位置(右下固定)に置き transform だけ変化させてサイズ切替をアニメーション。
+  // 操作メニューはサイズで配置を変える: 中=プレビュー直上 / 大=画面上部(プレビューに被らない)。
+  return (
+    <>
+      <div className="fixed bottom-4 right-3 z-40">{phoneEl}</div>
+      <div
+        className={
+          size === "large"
+            ? "fixed left-1/2 top-3 z-[60] -translate-x-1/2"
+            : "fixed bottom-[27.5rem] right-3 z-[60]"
+        }
+      >
+        {controls}
+      </div>
+    </>
   );
 }
 
