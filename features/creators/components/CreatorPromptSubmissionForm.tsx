@@ -22,6 +22,13 @@ import {
 } from "@/features/style-presets/lib/creator-submission";
 import { CreatorPromptCardPreview } from "./CreatorPromptCardPreview";
 
+/** /style での見え方プレビューに渡すカテゴリのバッジ情報(DB の preset_categories 由来)。 */
+export interface CreatorPromptCategoryBadge {
+  label: string;
+  badgeColor: string;
+  badgeTextColor: string;
+}
+
 const PROVIDER_LABEL: Record<CreatorPromptProvider, string> = {
   openai: "ChatGPT(GPT Image)",
   gemini: "nanobanana(Gemini)",
@@ -54,7 +61,14 @@ const CONSENT_LABEL: Record<CreatorPromptConsentKey, string> = {
 
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
 
-export function CreatorPromptSubmissionForm() {
+export function CreatorPromptSubmissionForm({
+  submitterAvatarUrl = null,
+  categoryBadges = {},
+}: {
+  submitterAvatarUrl?: string | null;
+  submitterNickname?: string | null;
+  categoryBadges?: Record<string, CreatorPromptCategoryBadge>;
+} = {}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -381,11 +395,18 @@ export function CreatorPromptSubmissionForm() {
         {submitting ? "申請中..." : "この内容で申請する"}
       </Button>
 
-      {/* /style での見え方を示すフローティングプレビュー(タイトル/種類/サムネを即時反映) */}
+      {/* /style での見え方を示すフローティングプレビュー(タイトル/種類/サムネ/申請者アイコンを即時反映) */}
       <CreatorPromptCardPreview
         title={title}
         thumbnailUrl={thumbnailPreview}
-        categoryLabel={CATEGORY_LABEL[categoryKey].title}
+        avatarUrl={submitterAvatarUrl}
+        badge={
+          categoryBadges[categoryKey] ?? {
+            label: CATEGORY_LABEL[categoryKey].title,
+            badgeColor: "#1f2937",
+            badgeTextColor: "#ffffff",
+          }
+        }
       />
     </div>
   );
