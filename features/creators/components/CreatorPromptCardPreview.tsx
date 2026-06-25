@@ -42,54 +42,47 @@ export function CreatorPromptCardPreview({
     );
   }
 
-  return (
-    <div className="fixed bottom-4 right-3 z-40">
-      <div
-        className="w-[168px] sm:w-[188px]"
-        style={{
-          transformOrigin: "bottom right",
-          transform: size === "large" ? "scale(1.35)" : undefined,
-        }}
-      >
-        <div className="mb-1 flex items-center justify-between gap-1">
-          <span className="rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-medium text-white">
-            /style 見え方
-          </span>
-          <div className="flex items-center gap-0.5 rounded-full bg-white/90 p-0.5 shadow">
-            <button
-              type="button"
-              onClick={() => setSize("large")}
-              className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
-                size === "large"
-                  ? "bg-amber-500 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              大
-            </button>
-            <button
-              type="button"
-              onClick={() => setSize("medium")}
-              className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
-                size === "medium"
-                  ? "bg-amber-500 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              中
-            </button>
-            <button
-              type="button"
-              onClick={() => setSize("minimized")}
-              className="rounded-full px-1.5 py-0.5 text-[9px] text-gray-600 hover:bg-gray-100"
-            >
-              最小化
-            </button>
-          </div>
-        </div>
+  const sizeBtn = (key: "large" | "medium", label: string) => (
+    <button
+      type="button"
+      onClick={() => setSize(key)}
+      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+        size === key
+          ? "bg-amber-500 text-white"
+          : "text-gray-600 hover:bg-gray-100"
+      }`}
+    >
+      {label}
+    </button>
+  );
 
-        {/* 縦長スマホ風フレーム */}
-        <div className="overflow-hidden rounded-[2rem] border-[7px] border-gray-900 bg-gray-900 shadow-2xl">
+  return (
+    <>
+      {/* サイズ操作: 常に画面右上に固定(プレビューを拡大しても隠れない) */}
+      <div className="fixed right-3 top-3 z-50 flex items-center gap-0.5 rounded-full bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
+        <span className="px-1 text-[10px] font-medium text-gray-500">見え方</span>
+        {sizeBtn("large", "大")}
+        {sizeBtn("medium", "中")}
+        <button
+          type="button"
+          onClick={() => setSize("minimized")}
+          className="rounded-full px-2.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100"
+        >
+          最小化
+        </button>
+      </div>
+
+      {/* スマホ風プレビュー(右下固定。大は約3/4を埋める) */}
+      <div className="fixed bottom-4 right-3 z-40">
+        <div
+          className="w-[180px] sm:w-[196px]"
+          style={{
+            transformOrigin: "bottom right",
+            transform: size === "large" ? "scale(1.85)" : undefined,
+          }}
+        >
+          {/* 縦長スマホ風フレーム */}
+          <div className="overflow-hidden rounded-[2rem] border-[7px] border-gray-900 bg-gray-900 shadow-2xl">
         {/* ノッチ */}
         <div className="relative flex justify-center py-1.5">
           <div className="h-1.5 w-12 rounded-full bg-gray-700" />
@@ -204,6 +197,7 @@ export function CreatorPromptCardPreview({
       </div>
       </div>
     </div>
+    </>
   );
 }
 
