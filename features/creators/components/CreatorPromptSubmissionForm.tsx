@@ -12,13 +12,11 @@ import {
   CREATOR_PROMPT_BODY_MAX_LENGTH,
   CREATOR_PROMPT_CATEGORY_KEYS,
   CREATOR_PROMPT_CONSENT_KEYS,
-  CREATOR_PROMPT_PROVIDERS,
   CREATOR_PROMPT_THUMBNAIL_RECOMMENDED,
   CREATOR_PROMPT_TITLE_MAX_LENGTH,
   isAllCreatorPromptConsentsAcknowledged,
   type CreatorPromptCategoryKey,
   type CreatorPromptConsentKey,
-  type CreatorPromptProvider,
 } from "@/features/style-presets/lib/creator-submission";
 import { CreatorPromptCardPreview } from "./CreatorPromptCardPreview";
 
@@ -29,22 +27,17 @@ export interface CreatorPromptCategoryBadge {
   badgeTextColor: string;
 }
 
-const PROVIDER_LABEL: Record<CreatorPromptProvider, string> = {
-  openai: "ChatGPT(GPT Image)",
-  gemini: "nanobanana(Gemini)",
-};
-
 const CATEGORY_LABEL: Record<
   CreatorPromptCategoryKey,
   { title: string; desc: string }
 > = {
   character_remix: {
-    title: "アレンジ",
-    desc: "アップロードしたイラストそのものを、イメージに沿って変身させる",
+    title: "アレンジ（姿そのものを変身）",
+    desc: "うちの子そのものを別の見た目に変身させるプロンプト。例：ブロック風、フィギュア風、画風チェンジ など",
   },
   character_coordinate: {
-    title: "テイスト",
-    desc: "アップロードしたキャラの衣装や背景を変更する",
+    title: "テイスト（衣装・背景を変更）",
+    desc: "うちの子はそのままに、衣装や背景・雰囲気を変えるプロンプト。例：制服コーデ、海辺の背景 など",
   },
 };
 
@@ -78,8 +71,6 @@ export function CreatorPromptSubmissionForm({
   const [categoryKey, setCategoryKey] = useState<CreatorPromptCategoryKey>(
     "character_remix"
   );
-  const [providers, setProviders] = useState<CreatorPromptProvider[]>(["openai"]);
-  const [recommended, setRecommended] = useState<CreatorPromptProvider>("openai");
   const [consents, setConsents] = useState<
     Partial<Record<CreatorPromptConsentKey, boolean>>
   >({});
@@ -88,17 +79,6 @@ export function CreatorPromptSubmissionForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-
-  const toggleProvider = (p: CreatorPromptProvider) => {
-    setProviders((prev) => {
-      const next = prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p];
-      // 推奨が対応から外れたら、残った先頭を推奨にする。
-      if (!next.includes(recommended) && next.length > 0) {
-        setRecommended(next[0]);
-      }
-      return next;
-    });
-  };
 
   const handleFile = (file: File | null) => {
     setError(null);
@@ -128,7 +108,6 @@ export function CreatorPromptSubmissionForm({
     !submitting &&
     title.trim().length > 0 &&
     prompt.trim().length > 0 &&
-    providers.length > 0 &&
     !!thumbnailFile &&
     allConsents;
 
@@ -141,8 +120,9 @@ export function CreatorPromptSubmissionForm({
         title: title.trim(),
         prompt: prompt.trim(),
         categoryKey,
-        targetProviders: providers,
-        recommendedProvider: recommended,
+        // 生成は現状 ChatGPT(GPT Image)のみのため openai 固定(対応/推奨モデルのUIは廃止)。
+        targetProviders: ["openai"],
+        recommendedProvider: "openai",
         // 実際のチェック状態をシリアライズする(canSubmit で全 true を保証済みだが、
         // 固定値ではなくユーザー操作の記録を送る)。サーバ側 zod は各キー z.literal(true) を要求。
         consents: {
@@ -215,6 +195,38 @@ export function CreatorPromptSubmissionForm({
         </p>
       </div>
 
+      {/* スタイルのタイプ: タイトルより上に配置。クリエイターに分かりやすい説明にする */}
+      <div className="space-y-2">
+        <Label className="text-base font-medium">スタイルのタイプ</Label>
+        <p className="text-xs text-gray-500">
+          あなたのプロンプトが「何を変えるか」を選んでください（背景の指定はプロンプト本文に含めてください）。
+        </p>
+        <div className="space-y-2">
+          {CREATOR_PROMPT_CATEGORY_KEYS.map((key) => (
+            <label
+              key={key}
+              className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 has-[:checked]:border-amber-400 has-[:checked]:bg-amber-50"
+            >
+              <input
+                type="radio"
+                name="cp-category"
+                className="mt-1"
+                checked={categoryKey === key}
+                onChange={() => setCategoryKey(key)}
+              />
+              <span>
+                <span className="block text-sm font-medium">
+                  {CATEGORY_LABEL[key].title}
+                </span>
+                <span className="block text-xs text-gray-500">
+                  {CATEGORY_LABEL[key].desc}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="cp-title" className="text-base font-medium">
           タイトル
@@ -247,81 +259,6 @@ export function CreatorPromptSubmissionForm({
           {prompt.length}/{CREATOR_PROMPT_BODY_MAX_LENGTH}
         </p>
       </div>
-
-      <div className="space-y-2">
-        <Label className="text-base font-medium">種類</Label>
-        <p className="text-xs text-gray-500">
-          どちらのスタイルかを選んでください(背景の指定はプロンプト本文に含めてください)。
-        </p>
-        <div className="space-y-2">
-          {CREATOR_PROMPT_CATEGORY_KEYS.map((key) => (
-            <label
-              key={key}
-              className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 has-[:checked]:border-amber-400 has-[:checked]:bg-amber-50"
-            >
-              <input
-                type="radio"
-                name="cp-category"
-                className="mt-1"
-                checked={categoryKey === key}
-                onChange={() => setCategoryKey(key)}
-              />
-              <span>
-                <span className="block text-sm font-medium">
-                  {CATEGORY_LABEL[key].title}
-                </span>
-                <span className="block text-xs text-gray-500">
-                  {CATEGORY_LABEL[key].desc}
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-base font-medium">対応モデル(1つ以上)</Label>
-        <p className="text-xs text-gray-500">
-          動作確認したモデルを選んでください。選んだモデルでプレビューを自動生成します。
-        </p>
-        <div className="space-y-2">
-          {CREATOR_PROMPT_PROVIDERS.map((p) => (
-            <div key={p} className="flex items-center gap-2">
-              <Checkbox
-                id={`cp-provider-${p}`}
-                checked={providers.includes(p)}
-                onCheckedChange={() => toggleProvider(p)}
-              />
-              <Label htmlFor={`cp-provider-${p}`} className="text-sm font-normal">
-                {PROVIDER_LABEL[p]}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {providers.length >= 2 ? (
-        <div className="space-y-2">
-          <Label className="text-base font-medium">推奨モデル</Label>
-          <p className="text-xs text-gray-500">
-            ユーザー生成時に既定で使うモデルを1つ選んでください。
-          </p>
-          <div className="flex gap-4">
-            {providers.map((p) => (
-              <div key={p} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  id={`cp-recommended-${p}`}
-                  name="cp-recommended"
-                  checked={recommended === p}
-                  onChange={() => setRecommended(p)}
-                />
-                <label htmlFor={`cp-recommended-${p}`}>{PROVIDER_LABEL[p]}</label>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       <div className="space-y-2">
         <Label className="text-base font-medium">サムネイル画像(縦長 3:4)</Label>
