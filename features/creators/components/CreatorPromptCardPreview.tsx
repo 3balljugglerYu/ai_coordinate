@@ -249,11 +249,11 @@ function PreviewCard({
         ) : null}
       </div>
 
-      {/* 下部バー: [アイコン][タイトル]。タイトルは最大2行まで折り返して約18字まで見せる */}
-      <div className="flex items-start gap-1 border-t bg-white px-1.5 py-1.5">
+      {/* 下部バー: [アイコン][タイトル]。アイコンとタイトルは上下中央揃え。タイトルは最大2行まで折り返して約18字まで見せる */}
+      <div className="flex items-center gap-1 border-t bg-white px-1.5 py-1.5">
         {highlighted ? (
           avatarUrl ? (
-            <span className="relative mt-0.5 h-4 w-4 shrink-0 overflow-hidden rounded-full bg-gray-200">
+            <span className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full bg-gray-200">
               <Image
                 src={avatarUrl}
                 alt="申請者"
@@ -264,7 +264,7 @@ function PreviewCard({
               />
             </span>
           ) : (
-            <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-amber-300" />
+            <span className="h-4 w-4 shrink-0 rounded-full bg-amber-300" />
           )
         ) : null}
         <p className="line-clamp-2 break-words text-[10px] font-medium leading-tight text-gray-800">
