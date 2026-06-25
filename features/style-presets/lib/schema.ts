@@ -10,7 +10,12 @@ export const STYLE_PRESET_ALLOWED_MIME_TYPES = [
 
 export const STYLE_PRESET_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-export const STYLE_PRESET_STATUS_VALUES = ["draft", "published"] as const;
+export const STYLE_PRESET_STATUS_VALUES = [
+  "draft",
+  "pending",
+  "published",
+  "rejected",
+] as const;
 
 export const stylePresetStatusSchema = z.enum(STYLE_PRESET_STATUS_VALUES);
 
@@ -113,6 +118,13 @@ export interface StylePresetAdmin {
   updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  // クリエイター提供プロンプト 申請(Phase 1)用。通常の admin 作成プリセットでは null。
+  submittedByUserId: string | null;
+  targetProviders: string[] | null;
+  recommendedProvider: string | null;
+  submissionConsents: Record<string, unknown> | null;
+  previewOpenaiImageUrl: string | null;
+  previewGeminiImageUrl: string | null;
 }
 
 export interface StylePresetPublicSummary {

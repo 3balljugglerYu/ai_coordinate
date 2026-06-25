@@ -36,8 +36,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     return /^\/catalog\/[^/]+(?:\/p\/[^/]+)?\/?$/.test(stripped);
   })();
+  // クリエイター提供プロンプトの申請は集中フォーム画面にするため共通 chrome
+  // (Header / Sidebar / NavigationBar / Footer) を出さない。戻るはページ側の専用ヘッダで行う。
+  const isCreatorPromptSubmit = (() => {
+    if (!pathname) return false;
+    return stripLocalePrefix(pathname).pathname === "/creators/submit";
+  })();
   const shouldBypassAppShell =
-    isAdmin || isStandaloneDocs || isCatalogReader;
+    isAdmin || isStandaloneDocs || isCatalogReader || isCreatorPromptSubmit;
 
   useEffect(() => {
     if (isAdmin) {

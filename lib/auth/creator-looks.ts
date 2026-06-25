@@ -99,3 +99,18 @@ export async function isCreatorLooksEnabledForUser(
   }
   return isInCreatorLooksAllowlist(user.id);
 }
+
+/**
+ * クリエイター提供プロンプト(申請フォーム/API)のゲート。
+ * - admin(運営)は機能フラグに関わらず常に許可(レビュー・運用のため)。DB の RPC も admin を許可済み。
+ * - 一般ユーザーは isCreatorLooksEnabledForUser(= CREATOR_LOOKS_ENABLED + allowlist)に従う。
+ * server-only(env を読むため)。
+ */
+export async function isCreatorPromptSubmitterAllowed(
+  user: Pick<User, "id"> | null | undefined,
+): Promise<boolean> {
+  if (user && isAdminUser(user)) {
+    return true;
+  }
+  return isCreatorLooksEnabledForUser(user);
+}

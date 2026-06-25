@@ -73,7 +73,7 @@ interface StylePresetRow {
   thumbnail_width: number;
   thumbnail_height: number;
   sort_order: number;
-  status: "draft" | "published";
+  status: "draft" | "pending" | "published" | "rejected";
   category_id: string;
   image_input_mode: ImageInputMode;
   dual_reference_source?: DualReferenceSource | string | null;
@@ -87,6 +87,13 @@ interface StylePresetRow {
   updated_at: string;
   // プリセット単位の提供者(profiles.id)。カテゴリ単位と独立して設定できる。
   provider_user_id?: string | null;
+  // クリエイター提供プロンプト 申請(Phase 1)用カラム(通常プリセットでは null)
+  submitted_by_user_id?: string | null;
+  target_providers?: string[] | null;
+  recommended_provider?: string | null;
+  submission_consents?: Record<string, unknown> | null;
+  preview_openai_image_url?: string | null;
+  preview_gemini_image_url?: string | null;
   // PostgREST embedded select で profiles を JOIN した結果(プリセット単位 provider クレジット用)
   provider?: ProviderProfileRow | ProviderProfileRow[] | null;
   // PostgREST embedded select で category を JOIN した結果
@@ -255,6 +262,12 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
     updatedBy: row.updated_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    submittedByUserId: row.submitted_by_user_id ?? null,
+    targetProviders: row.target_providers ?? null,
+    recommendedProvider: row.recommended_provider ?? null,
+    submissionConsents: row.submission_consents ?? null,
+    previewOpenaiImageUrl: row.preview_openai_image_url ?? null,
+    previewGeminiImageUrl: row.preview_gemini_image_url ?? null,
   };
 }
 
@@ -470,6 +483,105 @@ export async function createStylePreset(
   // RPC は category を embedded で返さないので、JOIN 済みの行を再取得する
   const persisted = await getStylePresetForAdminById(row.id, supabase);
   return persisted ?? mapRowToAdmin(row);
+}
+
+/**
+ * クリエイター提供プロンプトを pending で申請する(submit_creator_style_preset RPC)。
+ * 権限(allowlist/admin)・同意・対応モデルは DB 層(RPC)で再検証される。
+ * submittedByUserId はサーバセッションから解決した値を渡すこと(クライアント body 不可)。
+ */
+export async function submitCreatorStylePreset(
+  input: {
+    id?: string;
+    submittedByUserId: string;
+    title: string;
+    stylingPrompt: string;
+    backgroundPrompt?: string | null;
+    categoryId: string;
+    thumbnailImageUrl: string;
+    thumbnailStoragePath: string | null;
+    thumbnailWidth: number;
+    thumbnailHeight: number;
+    targetProviders: string[];
+    recommendedProvider?: string | null;
+    submissionConsents: Record<string, unknown>;
+  },
+  client?: SupabaseClient
+): Promise<StylePresetAdmin> {
+  const supabase = getSupabase(client);
+  const presetId = input.id ?? crypto.randomUUID();
+
+  const { data, error } = await supabase.rpc("submit_creator_style_preset", {
+    p_id: presetId,
+    p_submitted_by: input.submittedByUserId,
+    p_title: normalizeStylePresetTitle(input.title),
+    p_styling_prompt: normalizeStylePresetPrompt(input.stylingPrompt),
+    p_category_id: input.categoryId,
+    p_thumbnail_image_url: input.thumbnailImageUrl,
+    p_thumbnail_storage_path: input.thumbnailStoragePath,
+    p_thumbnail_width: input.thumbnailWidth,
+    p_thumbnail_height: input.thumbnailHeight,
+    p_target_providers: input.targetProviders,
+    p_recommended_provider: input.recommendedProvider ?? null,
+    p_submission_consents: input.submissionConsents,
+    p_background_prompt: normalizeStylePresetOptionalPrompt(
+      input.backgroundPrompt
+    ),
+  });
+
+  const row = mapRpcRow(data);
+  if (error || !row) {
+    console.error("[style-preset-repository] submit creator rpc error:", error);
+    // PG の SQLSTATE(例: 23514 check_violation / 42501 insufficient_privilege)を
+    // 呼び出し側に伝播させる(route 側で fail-closed の 403 へマップするため)。
+    const thrown = new Error(error?.message ?? "プロンプトの申請に失敗しました");
+    if (error?.code) {
+      (thrown as Error & { code?: string }).code = error.code;
+    }
+    throw thrown;
+  }
+
+  const persisted = await getStylePresetForAdminById(row.id, supabase);
+  return persisted ?? mapRowToAdmin(row);
+}
+
+/** pending の creator style preset を承認(published 化 + provider_user_id 設定)。 */
+export async function approveCreatorStylePreset(
+  id: string,
+  adminUserId: string,
+  client?: SupabaseClient
+): Promise<StylePresetAdmin> {
+  const supabase = getSupabase(client);
+  const { data, error } = await supabase.rpc("approve_creator_style_preset", {
+    p_id: id,
+    p_admin: adminUserId,
+  });
+  const row = mapRpcRow(data);
+  if (error || !row) {
+    console.error("[style-preset-repository] approve creator rpc error:", error);
+    throw new Error(error?.message ?? "承認に失敗しました");
+  }
+  const persisted = await getStylePresetForAdminById(row.id, supabase);
+  return persisted ?? mapRowToAdmin(row);
+}
+
+/** pending の creator style preset を却下(rejected 化)。 */
+export async function rejectCreatorStylePreset(
+  id: string,
+  adminUserId: string,
+  client?: SupabaseClient
+): Promise<StylePresetAdmin> {
+  const supabase = getSupabase(client);
+  const { data, error } = await supabase.rpc("reject_creator_style_preset", {
+    p_id: id,
+    p_admin: adminUserId,
+  });
+  const row = mapRpcRow(data);
+  if (error || !row) {
+    console.error("[style-preset-repository] reject creator rpc error:", error);
+    throw new Error(error?.message ?? "却下に失敗しました");
+  }
+  return mapRowToAdmin(row);
 }
 
 export async function updateStylePreset(

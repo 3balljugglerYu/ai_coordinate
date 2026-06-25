@@ -6,6 +6,7 @@ import { getAdminUserIds } from "@/lib/env";
 import { listStylePresetsForAdmin } from "@/features/style-presets/lib/style-preset-repository";
 import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
 import { StylePresetListClient } from "./StylePresetListClient";
+import { CreatorPromptReviewPanel } from "./CreatorPromptReviewPanel";
 
 export default async function AdminStylePresetsPage() {
   await connection();
@@ -22,6 +23,12 @@ export default async function AdminStylePresetsPage() {
     // 編集時に既存の inactive category を維持できるよう includeInactive=true
     listPresetCategories({ includeInactive: true }),
   ]);
+
+  // クリエイター提供プロンプトの申請(pending かつ申請者あり)を審査パネルに出す。
+  const pendingCreatorPresets = presets.filter(
+    (preset) =>
+      preset.status === "pending" && preset.submittedByUserId !== null
+  );
 
   return (
     <div className="space-y-6">
@@ -46,6 +53,8 @@ export default async function AdminStylePresetsPage() {
           に表示するスタイルを追加・編集・削除・並び替えできます。
         </p>
       </header>
+
+      <CreatorPromptReviewPanel pendingPresets={pendingCreatorPresets} />
 
       <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">
         <CardContent className="p-6 sm:p-8">
