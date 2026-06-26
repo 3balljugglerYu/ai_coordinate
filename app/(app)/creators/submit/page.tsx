@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { isCreatorPromptSubmitterAllowed } from "@/lib/auth/creator-looks";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
 import {
   CreatorPromptSubmissionForm,
   type CreatorPromptCategoryBadge,
 } from "@/features/creators/components/CreatorPromptSubmissionForm";
 import { CreatorSubmitTopBar } from "@/features/creators/components/CreatorSubmitTopBar";
+import { CreatorSubmitFlowGuide } from "@/features/creators/components/CreatorSubmitFlowGuide";
 import { CREATOR_PROMPT_CATEGORY_KEYS } from "@/features/style-presets/lib/creator-submission";
 
 export const metadata: Metadata = {
@@ -60,11 +62,16 @@ export default async function CreatorPromptSubmitPage() {
       <CreatorSubmitTopBar />
       <div className="px-4 pb-12 pt-6 md:pt-10">
         {allowed ? (
-          <CreatorPromptSubmissionForm
-            submitterAvatarUrl={submitterAvatarUrl}
-            submitterNickname={submitterNickname}
-            categoryBadges={categoryBadges}
-          />
+          <div className="mx-auto max-w-2xl space-y-6">
+            <CreatorSubmitFlowGuide
+              testImageUrl={env.INSPIRE_TEST_CHARACTER_IMAGE_URL || null}
+            />
+            <CreatorPromptSubmissionForm
+              submitterAvatarUrl={submitterAvatarUrl}
+              submitterNickname={submitterNickname}
+              categoryBadges={categoryBadges}
+            />
+          </div>
         ) : (
           <div className="mx-auto max-w-xl rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center">
             <p className="text-2xl">✋</p>
