@@ -175,12 +175,15 @@ export async function PATCH(
     // クリエイター(提供者クレジット)の解決:
     //   - フィールド未送信 → 現状維持(undefined)
     //   - 空文字 → null(クレジット解除)
-    //   - 値あり → allowlist 所属を必須に
+    //   - 既存と同値 → そのまま維持(allowlist 外の既存クレジットも壊さない)
+    //   - 新規/変更 → allowlist 所属を必須に
     let providerUserId: string | null | undefined;
     if (typeof providerUserIdEntry !== "string") {
       providerUserId = undefined;
     } else if (providerUserIdEntry.length === 0) {
       providerUserId = null;
+    } else if (providerUserIdEntry === (existing.providerUserId ?? null)) {
+      providerUserId = providerUserIdEntry;
     } else {
       const creators = await listAllowlistedCreators();
       if (!creators.some((c) => c.id === providerUserIdEntry)) {

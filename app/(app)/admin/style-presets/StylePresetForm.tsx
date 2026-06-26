@@ -115,6 +115,30 @@ export function StylePresetForm({
   const [providerUserId, setProviderUserId] = useState<string>(
     preset?.providerUserId ?? ""
   );
+  // 選択肢: 招待クリエイター(allowlist)に加え、既に設定済みのクリエイターが allowlist 外でも
+  // 表示・維持できるよう「現在のクレジット」を選択肢に含める(既存クレジットを壊さない)。
+  const allowlistedCreatorIds = useMemo(
+    () => new Set(creators.map((c) => c.id)),
+    [creators]
+  );
+  const creatorOptions = useMemo(() => {
+    const list = [...creators];
+    const current = preset?.providerUserId;
+    if (current && !allowlistedCreatorIds.has(current)) {
+      list.unshift({
+        id: current,
+        nickname: preset?.providerNickname ?? null,
+        avatarUrl: preset?.providerAvatarUrl ?? null,
+      });
+    }
+    return list;
+  }, [
+    creators,
+    allowlistedCreatorIds,
+    preset?.providerUserId,
+    preset?.providerNickname,
+    preset?.providerAvatarUrl,
+  ]);
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referencePreviewUrl, setReferencePreviewUrl] = useState<string | null>(
     preset?.referenceImageUrl ?? null,
@@ -411,9 +435,10 @@ export function StylePresetForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NO_PROVIDER_VALUE}>クレジット無し</SelectItem>
-                {creators.map((c) => (
+                {creatorOptions.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.nickname ?? c.id}
+                    {!allowlistedCreatorIds.has(c.id) ? "(現在のクレジット・招待外)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
