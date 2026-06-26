@@ -54,6 +54,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { StylePresetForm } from "./StylePresetForm";
 import type { StylePresetAdmin } from "@/features/style-presets/lib/schema";
 import type { PresetCategoryAdmin } from "@/features/style-presets/lib/preset-category-repository";
+import type { AllowlistedCreator } from "@/features/style-presets/lib/style-preset-repository";
 
 interface SortableStylePresetCardProps {
   preset: StylePresetAdmin;
@@ -222,11 +223,13 @@ const pointerSensorOptions = {
 interface StylePresetListClientProps {
   initialPresets: StylePresetAdmin[];
   categories: PresetCategoryAdmin[];
+  creators: AllowlistedCreator[];
 }
 
 export function StylePresetListClient({
   initialPresets,
   categories,
+  creators,
 }: StylePresetListClientProps) {
   const [presets, setPresets] = useState<StylePresetAdmin[]>(initialPresets);
   const [editingPreset, setEditingPreset] = useState<StylePresetAdmin | null>(
@@ -416,6 +419,7 @@ export function StylePresetListClient({
           </DialogHeader>
           <StylePresetForm
             categories={categories}
+            creators={creators}
             onSuccess={async () => {
               setIsCreateOpen(false);
               await reload();
@@ -441,6 +445,7 @@ export function StylePresetListClient({
             <StylePresetForm
               preset={editingPreset}
               categories={categories}
+              creators={creators}
               onSuccess={async () => {
                 setEditingPreset(null);
                 await reload();

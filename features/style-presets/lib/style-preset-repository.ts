@@ -239,6 +239,7 @@ function normalizeDualReferenceSource(
 }
 
 function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
+  const provider = extractProvider(row.provider);
   return {
     id: row.id,
     slug: row.slug,
@@ -258,6 +259,10 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
     referenceImageStoragePath: row.reference_image_storage_path,
     referenceImageWidth: row.reference_image_width,
     referenceImageHeight: row.reference_image_height,
+    // プリセット単位のクリエイター(提供者クレジット)。編集フォームの既定 + update 時の現状維持に使う。
+    providerUserId: row.provider_user_id ?? null,
+    providerNickname: provider?.nickname ?? null,
+    providerAvatarUrl: provider?.avatar_url ?? null,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
     createdAt: row.created_at,
@@ -367,6 +372,63 @@ export async function getStylePresetForAdminById(
   return data ? mapRowToAdmin(data as StylePresetRow) : null;
 }
 
+/** 提供者クレジット選択肢。id = profiles.id(= style_presets.provider_user_id に入る値)。 */
+export interface AllowlistedCreator {
+  id: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+}
+
+/**
+ * 提供者クレジット選択用: creator_looks_allowlist (is_active) のクリエイターを
+ * profiles と突き合わせて返す。allowlist.user_id は auth.users(id) なので profiles.user_id で join。
+ * 値(id)は profiles.id = style_presets.provider_user_id。
+ */
+export async function listAllowlistedCreators(
+  client?: SupabaseClient
+): Promise<AllowlistedCreator[]> {
+  const supabase = getSupabase(client);
+  const { data: rows, error } = await supabase
+    .from("creator_looks_allowlist")
+    .select("user_id")
+    .eq("is_active", true);
+  if (error) {
+    console.error("[style-preset-repository] allowlist load error:", error);
+    throw new Error("クリエイター一覧の取得に失敗しました");
+  }
+  const userIds = (rows ?? [])
+    .map((r) => String((r as { user_id: string }).user_id))
+    .filter(Boolean);
+  if (userIds.length === 0) return [];
+
+  const { data: profiles, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, nickname, avatar_url, user_id")
+    .in("user_id", userIds);
+  if (profileError) {
+    console.error(
+      "[style-preset-repository] allowlist profiles error:",
+      profileError
+    );
+    throw new Error("クリエイター一覧の取得に失敗しました");
+  }
+
+  return (profiles ?? [])
+    .map((p) => {
+      const row = p as {
+        id: string;
+        nickname: string | null;
+        avatar_url: string | null;
+      };
+      return {
+        id: String(row.id),
+        nickname: row.nickname ?? null,
+        avatarUrl: row.avatar_url ?? null,
+      };
+    })
+    .sort((a, b) => (a.nickname ?? "").localeCompare(b.nickname ?? "", "ja"));
+}
+
 export async function listPublishedStylePresets(
   options: PublishedStylePresetAccessOptions = {},
   client?: SupabaseClient
@@ -472,6 +534,7 @@ export async function createStylePreset(
     p_reference_image_width: input.referenceImageWidth ?? null,
     p_reference_image_height: input.referenceImageHeight ?? null,
     p_dual_reference_source: input.dualReferenceSource ?? "admin",
+    p_provider_user_id: input.providerUserId ?? null,
   });
 
   const row = mapRpcRow(data);
@@ -656,6 +719,11 @@ export async function updateStylePreset(
       input.dualReferenceSource !== undefined
         ? input.dualReferenceSource
         : existing.dualReferenceSource,
+    // RPC は直接代入のため、未指定なら現状値を維持して意図しない解除を防ぐ。
+    p_provider_user_id:
+      input.providerUserId !== undefined
+        ? input.providerUserId
+        : existing.providerUserId ?? null,
   });
 
   const row = mapRpcRow(data);

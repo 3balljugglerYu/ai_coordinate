@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
-import { listStylePresetsForAdmin } from "@/features/style-presets/lib/style-preset-repository";
+import {
+  listAllowlistedCreators,
+  listStylePresetsForAdmin,
+} from "@/features/style-presets/lib/style-preset-repository";
 import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
 import { StylePresetListClient } from "./StylePresetListClient";
 import { CreatorPromptReviewPanel } from "./CreatorPromptReviewPanel";
@@ -18,10 +21,12 @@ export default async function AdminStylePresetsPage() {
     redirect("/");
   }
 
-  const [presets, categories] = await Promise.all([
+  const [presets, categories, creators] = await Promise.all([
     listStylePresetsForAdmin(),
     // 編集時に既存の inactive category を維持できるよう includeInactive=true
     listPresetCategories({ includeInactive: true }),
+    // クリエイター(提供者クレジット)選択肢 = 招待クリエイター(allowlist)。
+    listAllowlistedCreators(),
   ]);
 
   // クリエイター提供プロンプトの申請(pending かつ申請者あり)を審査パネルに出す。
@@ -61,6 +66,7 @@ export default async function AdminStylePresetsPage() {
           <StylePresetListClient
             initialPresets={presets}
             categories={categories}
+            creators={creators}
           />
         </CardContent>
       </Card>

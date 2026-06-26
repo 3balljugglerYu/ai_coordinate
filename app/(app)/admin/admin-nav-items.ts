@@ -116,6 +116,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "image",
   },
   {
+    path: "/admin/creator-allowlist",
+    label: "クリエイター招待",
+    description: "申請可・クレジット選択肢になる招待クリエイターを管理",
+    iconKey: "shield-check",
+  },
+  {
     path: "/admin/creator-looks-two-stage",
     label: "Creator Looks設定",
     description: "衣装＋背景の2段階生成モードの公開レベルを管理",
