@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { isCreatorPromptSubmitterAllowed } from "@/lib/auth/creator-looks";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
 import {
   CreatorPromptSubmissionForm,
   type CreatorPromptCategoryBadge,
@@ -64,6 +65,7 @@ export default async function CreatorPromptSubmitPage() {
             submitterAvatarUrl={submitterAvatarUrl}
             submitterNickname={submitterNickname}
             categoryBadges={categoryBadges}
+            flowGuideTestImageUrl={env.INSPIRE_TEST_CHARACTER_IMAGE_URL || null}
           />
         ) : (
           <div className="mx-auto max-w-xl rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center">

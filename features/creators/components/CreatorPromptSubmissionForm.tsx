@@ -19,6 +19,7 @@ import {
   type CreatorPromptConsentKey,
 } from "@/features/style-presets/lib/creator-submission";
 import { CreatorPromptCardPreview } from "./CreatorPromptCardPreview";
+import { CreatorSubmitFlowGuide } from "./CreatorSubmitFlowGuide";
 
 /** /style での見え方プレビューに渡すカテゴリのバッジ情報(DB の preset_categories 由来)。 */
 export interface CreatorPromptCategoryBadge {
@@ -58,10 +59,13 @@ export function CreatorPromptSubmissionForm({
   submitterAvatarUrl = null,
   submitterNickname = null,
   categoryBadges = {},
+  flowGuideTestImageUrl = null,
 }: {
   submitterAvatarUrl?: string | null;
   submitterNickname?: string | null;
   categoryBadges?: Record<string, CreatorPromptCategoryBadge>;
+  /** 申請の流れ説明に表示する確認用モデル画像(INSPIRE_TEST_CHARACTER_IMAGE_URL)。 */
+  flowGuideTestImageUrl?: string | null;
 } = {}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,6 +198,9 @@ export function CreatorPromptSubmissionForm({
           <strong>あなたの名前・アイコン</strong>付きで掲載されます。
         </p>
       </div>
+
+      {/* 申請の流れ(タイトル「プロンプトを提供する 🎨」の直下に配置) */}
+      <CreatorSubmitFlowGuide testImageUrl={flowGuideTestImageUrl} />
 
       {/* スタイルのタイプ: タイトルより上に配置。クリエイターに分かりやすい説明にする */}
       <div className="space-y-2">
