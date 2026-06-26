@@ -68,7 +68,7 @@ export function CreatorSubmitFlowGuide({
           <div className="text-sm text-amber-900">
             <p className="font-semibold">承認 → 掲載</p>
             <p className="mt-0.5 text-amber-800">
-              問題なければ承認し、運営がタイミングを見て One-Tap
+              問題なければ承認し、クリエイターと相談した上で One-Tap
               Style(ホーム・Style画面)に掲載します。掲載時はサムネとあなたの名前・アイコン付きで表示されます。
             </p>
           </div>
