@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { User } from "lucide-react";
 
 interface StyleProviderCreditProps {
   /** 提供者の表示名(profiles.nickname をライブ取得した値)。 */
@@ -47,10 +48,11 @@ export function StyleProviderCredit({
   const isLarge = size === "lg";
 
   let content;
-  if (iconOnly && avatarUrl) {
-    // アイコンのみ。アクセシブル名は alt が担う。薄いフチで白背景でも輪郭が出る。
+  if (iconOnly) {
+    // アイコンのみ表示。アバター未設定でもニックネームは出さず、デフォルトアイコン
+    // (灰丸 + User、StickyHeader と同流儀)を表示する。薄いフチで白背景でも輪郭が出る。
     const px = isLarge ? 28 : 20;
-    content = (
+    content = avatarUrl ? (
       <Image
         src={avatarUrl}
         // href 経由でリンク化する場合、親 Link の aria-label と二重読み上げになるため alt を空にする。
@@ -59,6 +61,19 @@ export function StyleProviderCredit({
         height={px}
         className="rounded-full object-cover ring-1 ring-black/10"
       />
+    ) : (
+      <span
+        role="img"
+        aria-label={href ? undefined : labelText}
+        className="flex items-center justify-center rounded-full bg-gray-200 ring-1 ring-black/10"
+        style={{ width: px, height: px }}
+      >
+        <User
+          aria-hidden="true"
+          className="text-gray-500"
+          style={{ width: Math.round(px * 0.6), height: Math.round(px * 0.6) }}
+        />
+      </span>
     );
   } else {
     // アバター + 名前のピル(可視表示は名前のみ。「提供/by」はリンクの aria-label が担う)。
