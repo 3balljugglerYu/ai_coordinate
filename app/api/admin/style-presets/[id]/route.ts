@@ -11,6 +11,7 @@ import {
 import {
   deleteStylePreset,
   getStylePresetForAdminById,
+  listAllowlistedCreators,
   updateStylePreset,
 } from "@/features/style-presets/lib/style-preset-repository";
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
@@ -60,6 +61,7 @@ export async function PATCH(
     const categoryIdEntry = formData.get("category_id");
     const imageInputModeEntry = formData.get("image_input_mode");
     const dualReferenceSourceEntry = formData.get("dual_reference_source");
+    const providerUserIdEntry = formData.get("provider_user_id");
     const file = formData.get("file");
     const referenceFile = formData.get("reference_file");
     const hasNewReferenceFile =
@@ -170,6 +172,26 @@ export async function PATCH(
       }
     }
 
+    // クリエイター(提供者クレジット)の解決:
+    //   - フィールド未送信 → 現状維持(undefined)
+    //   - 空文字 → null(クレジット解除)
+    //   - 値あり → allowlist 所属を必須に
+    let providerUserId: string | null | undefined;
+    if (typeof providerUserIdEntry !== "string") {
+      providerUserId = undefined;
+    } else if (providerUserIdEntry.length === 0) {
+      providerUserId = null;
+    } else {
+      const creators = await listAllowlistedCreators();
+      if (!creators.some((c) => c.id === providerUserIdEntry)) {
+        return NextResponse.json(
+          { error: "クリエイターは招待リストから選んでください" },
+          { status: 400 }
+        );
+      }
+      providerUserId = providerUserIdEntry;
+    }
+
     // 共通の更新ペイロード
     const updatePayload = {
       title,
@@ -189,6 +211,8 @@ export async function PATCH(
       referenceImageStoragePath: existing.referenceImageStoragePath,
       referenceImageWidth: existing.referenceImageWidth,
       referenceImageHeight: existing.referenceImageHeight,
+      // provider は undefined(未送信)なら repository 側で現状維持。
+      providerUserId,
     };
 
     // 新しい reference file (= admin dual の場合のみ意味あり) を新規 object に保存し、DB 更新成功後に旧 object を削除する。

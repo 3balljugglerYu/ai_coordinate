@@ -21,10 +21,15 @@ import type {
   StylePresetStatus,
 } from "@/features/style-presets/lib/schema";
 import type { PresetCategoryAdmin } from "@/features/style-presets/lib/preset-category-repository";
+import type { AllowlistedCreator } from "@/features/style-presets/lib/style-preset-repository";
+
+/** クリエイター(提供者クレジット)未選択を表す Select 用センチネル値。 */
+const NO_PROVIDER_VALUE = "__none__";
 
 interface StylePresetFormProps {
   preset?: StylePresetAdmin;
   categories: PresetCategoryAdmin[];
+  creators: AllowlistedCreator[];
   onSuccess: () => void | Promise<void>;
   onCancel: () => void;
 }
@@ -32,6 +37,7 @@ interface StylePresetFormProps {
 export function StylePresetForm({
   preset,
   categories,
+  creators,
   onSuccess,
   onCancel,
 }: StylePresetFormProps) {
@@ -105,6 +111,10 @@ export function StylePresetForm({
   );
   const [dualReferenceSource, setDualReferenceSource] =
     useState<DualReferenceSource>(preset?.dualReferenceSource ?? "admin");
+  // クリエイター(提供者クレジット)。空文字=クレジット無し。
+  const [providerUserId, setProviderUserId] = useState<string>(
+    preset?.providerUserId ?? ""
+  );
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referencePreviewUrl, setReferencePreviewUrl] = useState<string | null>(
     preset?.referenceImageUrl ?? null,
@@ -226,6 +236,8 @@ export function StylePresetForm({
       formData.append("category_id", categoryId);
       formData.append("image_input_mode", imageInputMode);
       formData.append("dual_reference_source", dualReferenceSource);
+      // クリエイター(提供者クレジット)。空文字でクレジット無しに更新できる。
+      formData.append("provider_user_id", providerUserId);
       if (file) {
         formData.append("file", file);
       }
@@ -384,6 +396,30 @@ export function StylePresetForm({
             </Select>
             <p className="mt-1 text-xs text-slate-500">
               raw カテゴリは共通プロンプトを付与しません。新規 admin/preset-categories で追加可能。
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="provider_user_id">クリエイター(提供者クレジット)</Label>
+            <Select
+              value={providerUserId === "" ? NO_PROVIDER_VALUE : providerUserId}
+              onValueChange={(v) =>
+                setProviderUserId(v === NO_PROVIDER_VALUE ? "" : v)
+              }
+            >
+              <SelectTrigger id="provider_user_id" className="mt-1 min-h-[44px]">
+                <SelectValue placeholder="クリエイターを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_PROVIDER_VALUE}>クレジット無し</SelectItem>
+                {creators.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nickname ?? c.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-slate-500">
+              設定すると /style・ホームのカードに「提供 ◯◯」が表示されます。選択肢は招待クリエイター(allowlist)のみ。
             </p>
           </div>
           <div>

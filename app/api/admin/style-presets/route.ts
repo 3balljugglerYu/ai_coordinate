@@ -10,6 +10,7 @@ import {
 } from "@/features/style-presets/lib/schema";
 import {
   createStylePreset,
+  listAllowlistedCreators,
   listStylePresetsForAdmin,
 } from "@/features/style-presets/lib/style-preset-repository";
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
     const categoryIdEntry = formData.get("category_id");
     const imageInputModeEntry = formData.get("image_input_mode");
     const dualReferenceSourceEntry = formData.get("dual_reference_source");
+    const providerUserIdEntry = formData.get("provider_user_id");
     const file = formData.get("file");
     const referenceFile = formData.get("reference_file");
 
@@ -178,6 +180,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // クリエイター(提供者クレジット): 空なら null。指定時は allowlist 所属を必須にする。
+    const providerUserId =
+      typeof providerUserIdEntry === "string" && providerUserIdEntry.length > 0
+        ? providerUserIdEntry
+        : null;
+    if (providerUserId) {
+      const creators = await listAllowlistedCreators();
+      if (!creators.some((c) => c.id === providerUserId)) {
+        return NextResponse.json(
+          { error: "クリエイターは招待リストから選んでください" },
+          { status: 400 }
+        );
+      }
+    }
+
     const presetId = crypto.randomUUID();
     const uploaded = await uploadStylePresetImage(
       file,
@@ -225,6 +242,7 @@ export async function POST(request: NextRequest) {
       referenceImageStoragePath,
       referenceImageWidth,
       referenceImageHeight,
+      providerUserId,
     });
 
     revalidateStylePresets();

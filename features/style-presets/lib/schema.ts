@@ -114,6 +114,10 @@ export interface StylePresetAdmin {
   referenceImageStoragePath: string | null;
   referenceImageWidth: number | null;
   referenceImageHeight: number | null;
+  /** プリセット単位のクリエイター(提供者クレジット)= profiles.id。null ならクレジット無し。 */
+  providerUserId?: string | null;
+  providerNickname?: string | null;
+  providerAvatarUrl?: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
@@ -184,6 +188,8 @@ export interface StylePresetInsert {
   referenceImageStoragePath?: string | null;
   referenceImageWidth?: number | null;
   referenceImageHeight?: number | null;
+  /** プリセット単位のクリエイター(提供者クレジット)= profiles.id。null でクレジット無し。 */
+  providerUserId?: string | null;
 }
 
 export interface StylePresetUpdate {
@@ -205,6 +211,8 @@ export interface StylePresetUpdate {
   referenceImageStoragePath?: string | null;
   referenceImageWidth?: number | null;
   referenceImageHeight?: number | null;
+  /** プリセット単位のクリエイター(提供者クレジット)= profiles.id。null でクレジット解除。 */
+  providerUserId?: string | null;
 }
 
 export const stylePresetReorderSchema = z.object({
