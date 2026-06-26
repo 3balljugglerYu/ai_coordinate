@@ -77,11 +77,23 @@ describe("StyleProviderCredit", () => {
     expect(screen.queryByText("提供 mario335599")).toBeNull();
   });
 
-  test("アバター無し: 画像を出さず名前テキストのみ(非リンク)", () => {
+  test("アバター無し(非iconOnly): 画像を出さず名前テキストのみ(非リンク)", () => {
     render(<StyleProviderCredit nickname="mario335599" avatarUrl={null} />);
     expect(screen.getByText("mario335599")).toBeInTheDocument();
     expect(screen.queryByRole("img")).toBeNull();
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  test("iconOnly + アバター無し: ニックネームを出さずデフォルトアイコン(role=img)を表示", () => {
+    render(
+      <StyleProviderCredit nickname="mario335599" avatarUrl={null} iconOnly />,
+    );
+    // ニックネームのテキストは出さない
+    expect(screen.queryByText("mario335599")).toBeNull();
+    // デフォルトアイコン(灰丸 + User)を role=img + aria-label で表現
+    expect(
+      screen.getByRole("img", { name: "提供 mario335599" }),
+    ).toBeInTheDocument();
   });
 
   test("locale='en': 接頭辞が by になる", () => {
