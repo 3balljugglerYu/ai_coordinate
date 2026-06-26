@@ -30,7 +30,10 @@ export type AdminAuditAction =
   | "preset_category_deactivate"
   | "creator_looks_two_stage_visibility_update"
   | "creator_style_preset_approve"
-  | "creator_style_preset_reject";
+  | "creator_style_preset_reject"
+  | "creator_allowlist_add"
+  | "creator_allowlist_update"
+  | "creator_allowlist_remove";
 
 export interface AdminAuditLogParams {
   adminUserId: string;
