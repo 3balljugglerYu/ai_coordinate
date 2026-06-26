@@ -83,27 +83,53 @@ export async function listCreatorAllowlist(
 }
 
 /**
- * メンバー追加(冪等 upsert)。既存行があれば is_active=true に戻す。
- * 戻り値は追加/更新後の行が active かどうか。
+ * メンバー追加(冪等)。
+ * - 既存行があれば is_active=true に戻すのみ(既存の note / added_by / invited_at は保全。
+ *   note は今回明示された場合のみ上書き)。
+ * - 行が無ければ新規 insert する。
+ * upsert(onConflict) は conflict 時に payload 全カラムを UPDATE して note/added_by を破壊するため使わない。
  */
 export async function addCreatorAllowlistMember(
   params: { userId: string; note?: string | null; addedBy?: string | null },
   client?: SupabaseClient
 ): Promise<void> {
   const supabase = getSupabase(client);
-  const { error } = await supabase
+
+  const { data: existing, error: selectError } = await supabase
     .from("creator_looks_allowlist")
-    .upsert(
-      {
-        user_id: params.userId,
-        is_active: true,
-        note: params.note ?? null,
-        added_by: params.addedBy ?? null,
-      },
-      { onConflict: "user_id" }
-    );
+    .select("user_id")
+    .eq("user_id", params.userId)
+    .maybeSingle();
+  if (selectError) {
+    console.error("[creator-allowlist] add(select) error:", selectError);
+    throw new Error("招待クリエイターの追加に失敗しました");
+  }
+
+  if (existing) {
+    // 再有効化: is_active のみ確実に戻す。note は今回指定された時だけ上書き(既存を壊さない)。
+    const patch: { is_active: boolean; note?: string | null } = { is_active: true };
+    if (params.note != null) {
+      patch.note = params.note;
+    }
+    const { error } = await supabase
+      .from("creator_looks_allowlist")
+      .update(patch)
+      .eq("user_id", params.userId);
+    if (error) {
+      console.error("[creator-allowlist] add(reactivate) error:", error);
+      throw new Error("招待クリエイターの追加に失敗しました");
+    }
+    return;
+  }
+
+  const { error } = await supabase.from("creator_looks_allowlist").insert({
+    user_id: params.userId,
+    is_active: true,
+    note: params.note ?? null,
+    added_by: params.addedBy ?? null,
+  });
   if (error) {
-    console.error("[creator-allowlist] add error:", error);
+    console.error("[creator-allowlist] add(insert) error:", error);
     throw new Error("招待クリエイターの追加に失敗しました");
   }
 }

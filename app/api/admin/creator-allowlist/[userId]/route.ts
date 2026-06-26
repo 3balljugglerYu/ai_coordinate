@@ -6,9 +6,7 @@ import {
   removeCreatorAllowlistMember,
   setCreatorAllowlistActive,
 } from "@/features/creators/lib/creator-allowlist-repository";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "@/lib/is-uuid";
 
 /** PATCH: 有効/無効の切替({ isActive: boolean })。 */
 export async function PATCH(
@@ -27,7 +25,7 @@ export async function PATCH(
   }
 
   const { userId } = await params;
-  if (!UUID_PATTERN.test(userId)) {
+  if (!isUuid(userId)) {
     return NextResponse.json({ error: "ユーザーIDが不正です" }, { status: 400 });
   }
 
@@ -81,7 +79,7 @@ export async function DELETE(
   }
 
   const { userId } = await params;
-  if (!UUID_PATTERN.test(userId)) {
+  if (!isUuid(userId)) {
     return NextResponse.json({ error: "ユーザーIDが不正です" }, { status: 400 });
   }
 

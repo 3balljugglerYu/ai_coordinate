@@ -7,9 +7,7 @@ import {
   listCreatorAllowlist,
   profileExistsForUserId,
 } from "@/features/creators/lib/creator-allowlist-repository";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "@/lib/is-uuid";
 
 export async function GET() {
   await connection();
@@ -58,7 +56,7 @@ export async function POST(request: NextRequest) {
   const noteRaw = (body as { note?: unknown })?.note;
   const note = typeof noteRaw === "string" && noteRaw.length > 0 ? noteRaw : null;
 
-  if (!UUID_PATTERN.test(userId)) {
+  if (!isUuid(userId)) {
     return NextResponse.json(
       { error: "ユーザーIDが不正です" },
       { status: 400 }

@@ -182,7 +182,11 @@ export async function PATCH(
       providerUserId = undefined;
     } else if (providerUserIdEntry.length === 0) {
       providerUserId = null;
-    } else if (providerUserIdEntry === (existing.providerUserId ?? null)) {
+    } else if (
+      existing.providerUserId !== null &&
+      providerUserIdEntry === existing.providerUserId
+    ) {
+      // 既存と同値(変更なし)= グランドファーザー。allowlist 外の既存クレジットも壊さない。
       providerUserId = providerUserIdEntry;
     } else {
       const creators = await listAllowlistedCreators();

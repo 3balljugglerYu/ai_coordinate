@@ -9,7 +9,12 @@
 --   - update は直接代入(= フォームが現在値/選択値を常に送る前提。NULL でクレジット解除可)。
 --   - 「選択できるのは allowlist のクリエイターのみ」という業務制約は API 層で検証する
 --     (provider_user_id は profiles.id 参照で、列の FK のみが DB 側の保証)。
--- 注: 本作業では適用しない方針(適用は最終確認のうえ一緒に実施する)。
+--
+-- 適用順序(重要): 本マイグレーション(RPC 差し替え)を先に適用してからコードをデプロイすること。
+--   アプリは create/update で p_provider_user_id を常時送るため、未適用のままコードを出すと
+--   PostgREST のオーバーロード解決に失敗し、全プリセットの作成・更新が PGRST202 で壊れる。
+
+BEGIN;
 
 DROP FUNCTION IF EXISTS public.create_style_preset(
   UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT, UUID,
@@ -235,3 +240,5 @@ COMMENT ON FUNCTION public.update_style_preset(
   UUID, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT, UUID,
   UUID, TEXT, TEXT, TEXT, INTEGER, INTEGER, TEXT, UUID
 ) IS 'スタイル更新(p_provider_user_id でクリエイター=提供者クレジットを設定/解除可)';
+
+COMMIT;
