@@ -1259,7 +1259,7 @@ export function AdminPresetCategoryFormClient({
         {form.completionViewMode === "book" ? (
           <label className="block">
             <span className="text-sm font-medium text-slate-700">
-              本の表紙(0ページ目)画像パス
+              本の表紙(0ページ目)画像パス(任意・共通固定表紙)
             </span>
             <input
               type="text"
@@ -1268,10 +1268,10 @@ export function AdminPresetCategoryFormClient({
                 update("bookCoverPath", e.target.value.trim() || null)
               }
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              placeholder="generated-images の storage path（ユーザー生成の表紙を登録）"
+              placeholder="全員共通の固定表紙にする場合のみ generated-images の storage path"
             />
             <span className="mt-1 block text-xs text-slate-500">
-              未設定なら簡易表紙にフォールバックします。各ページと同じ 9:16 を想定。
+              既定は「コレクション先頭(sort_order 最小)プリセットのユーザー生成画像」が表紙になります(完走数 N は表紙プリセットを含めて数える)。ここにパスを入れた場合のみ全員共通の固定表紙に上書き。9:16 を想定。
             </span>
           </label>
         ) : null}

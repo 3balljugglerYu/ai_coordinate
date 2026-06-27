@@ -11,9 +11,9 @@
 
 ### 決定事項(ユーザー合意)
 - 完走表示: **本(めくり日記帳)に置き換え**(travel_to_italy のみ。従来台紙は出さない)
-- Xシェア時のOGP: **運営がOGP画像を用意**(別途登録)
-- 各ページの画像: **既定は自動(各Day最新1枚・sort_order順)+ 従来の台紙コンポーザ同様、同一Dayに複数あれば選択UIで差し替え可能**(「作り直し」で更新)
-- **本の0ページ目(表紙)**: travel_to_italy 用に**別途登録した表紙画像**を使う(`BookCover` front = 登録表紙)
+- Xシェア時のOGP: **運営がOGP画像を用意**(別途登録、`ogp_template_path`)
+- 各ページの画像: **既定は自動(各最新1枚・sort_order順)+ 従来の台紙コンポーザ同様、同一枠に複数あれば選択UIで差し替え可能**(「作り直し」で更新)
+- **本の0ページ目(表紙)**: 【改訂】共通固定表紙ではなく、**表紙も One-Tap Style プリセットとしてユーザーが生成したコンテンツ**を使う。すなわち travel_to_italy に「表紙」プリセットを1枚足し、**完走数 N は表紙を含めて 9**(8 Day + 表紙)。表紙プリセットの sort_order を最小にし、**コレクション先頭(sort_order 最小)の生成画像が `BookCover` front(0ページ目)**になる。`book_cover_path`(カテゴリ列)は「全員共通の固定表紙」にしたい場合のみ使う任意の上書き。
 
 ### 現状(調査済み)
 - `travel_to_italy`: `is_collection_series=false` / `completion_threshold=null` / `output_aspect_ratio_mode=9:16` / `visibility=admin_only` / published 8枚。

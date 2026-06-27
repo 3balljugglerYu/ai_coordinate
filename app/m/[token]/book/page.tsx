@@ -58,8 +58,18 @@ export default async function CollectionBookPage({ params }: BookPageProps) {
   const user = await getUser();
   const isOwner = Boolean(user && user.id === book.ownerId);
 
+  // 表紙(0ページ目)の決定:
+  //   - 既定: コレクションの先頭(sort_order 最小)の生成画像=「ユーザー生成の表紙」を front cover にし、
+  //     残りを中身ページにする(完走数 N は表紙を含む。例 travel_to_italy=9)。
+  //   - book_cover_path(共通固定表紙)が設定されている場合のみ、それを front cover にし全ページを中身にする。
+  const hasFixedCover = Boolean(book.coverImageUrl);
+  const coverImageUrl = book.coverImageUrl ?? book.pageImageUrls[0] ?? null;
+  const contentImageUrls = hasFixedCover
+    ? book.pageImageUrls
+    : book.pageImageUrls.slice(1);
+
   // クレジット項目は渡さない(displayName 無し)= 画像のみのスクラップブックページ。
-  const pages: CatalogPageData[] = book.pageImageUrls.map((url, i) => ({
+  const pages: CatalogPageData[] = contentImageUrls.map((url, i) => ({
     id: String(i),
     imageUrl: url,
     alt: null,
@@ -68,7 +78,7 @@ export default async function CollectionBookPage({ params }: BookPageProps) {
   return (
     <ScrapbookReader
       title={book.displayNameJa}
-      coverImageUrl={book.coverImageUrl}
+      coverImageUrl={coverImageUrl}
       pages={pages}
       isOwner={isOwner}
     />
