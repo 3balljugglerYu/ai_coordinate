@@ -75,11 +75,14 @@ export async function getRepresentativeImagesForCategory(params: {
   }
 
   // 4. 集めた衣装を sort_order 昇順に並べ、先頭 limit(=N) 個を採用
+  //    sort_order 同値(重複/未設定)時は presetId で安定化し、
+  //    book のページ順(Day順)が非決定的にならないようにする。
   return Array.from(repByPreset.values())
     .sort(
       (a, b) =>
         (sortOrderByPreset.get(a.presetId) ?? 0) -
-        (sortOrderByPreset.get(b.presetId) ?? 0),
+          (sortOrderByPreset.get(b.presetId) ?? 0) ||
+        a.presetId.localeCompare(b.presetId),
     )
     .slice(0, params.limit);
 }

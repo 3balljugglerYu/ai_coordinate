@@ -48,6 +48,8 @@ export interface PresetCategoryRow {
   visibility?: StylePresetCategoryVisibility | null;
   is_collection_series?: boolean | null;
   completion_threshold?: number | null;
+  completion_view_mode?: string | null;
+  book_cover_path?: string | null;
   unlock_prerequisite_key?: string | null;
   progressive_batch_size?: number | null;
   unlock_announcement_hero_path?: string | null;
@@ -107,6 +109,10 @@ export interface PresetCategoryAdmin {
   visibility: StylePresetCategoryVisibility;
   isCollectionSeries: boolean;
   completionThreshold: number | null;
+  /** 完走表示モード: 'mount'(単一台紙) / 'book'(めくれる日記帳)。 */
+  completionViewMode: "mount" | "book";
+  /** book 表示の表紙(0ページ目)画像の storage path。 */
+  bookCoverPath: string | null;
   unlockPrerequisiteKey: string | null;
   progressiveBatchSize: number | null;
   unlockAnnouncementHeroPath: string | null;
@@ -165,6 +171,8 @@ export interface PresetCategoryInsert {
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  completionViewMode?: "mount" | "book";
+  bookCoverPath?: string | null;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
   unlockAnnouncementHeroPath?: string | null;
@@ -219,6 +227,8 @@ export interface PresetCategoryUpdate {
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  completionViewMode?: "mount" | "book";
+  bookCoverPath?: string | null;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
   unlockAnnouncementHeroPath?: string | null;
@@ -288,6 +298,8 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     visibility: normalizeVisibility(row.visibility),
     isCollectionSeries: row.is_collection_series ?? false,
     completionThreshold: row.completion_threshold ?? null,
+    completionViewMode: row.completion_view_mode === "book" ? "book" : "mount",
+    bookCoverPath: row.book_cover_path ?? null,
     unlockPrerequisiteKey: row.unlock_prerequisite_key ?? null,
     progressiveBatchSize: row.progressive_batch_size ?? null,
     unlockAnnouncementHeroPath: row.unlock_announcement_hero_path ?? null,
@@ -429,6 +441,8 @@ export async function createPresetCategory(
       visibility: input.visibility ?? "admin_only",
       is_collection_series: input.isCollectionSeries ?? false,
       completion_threshold: input.completionThreshold ?? null,
+      completion_view_mode: input.completionViewMode ?? "mount",
+      book_cover_path: input.bookCoverPath ?? null,
       unlock_prerequisite_key: input.unlockPrerequisiteKey ?? null,
       progressive_batch_size: input.progressiveBatchSize ?? null,
       unlock_announcement_hero_path: input.unlockAnnouncementHeroPath ?? null,
@@ -518,6 +532,10 @@ export async function updatePresetCategory(
     payload.is_collection_series = input.isCollectionSeries;
   if (input.completionThreshold !== undefined)
     payload.completion_threshold = input.completionThreshold;
+  if (input.completionViewMode !== undefined)
+    payload.completion_view_mode = input.completionViewMode;
+  if (input.bookCoverPath !== undefined)
+    payload.book_cover_path = input.bookCoverPath;
   if (input.unlockPrerequisiteKey !== undefined)
     payload.unlock_prerequisite_key = input.unlockPrerequisiteKey;
   if (input.progressiveBatchSize !== undefined)

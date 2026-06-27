@@ -357,6 +357,7 @@ export async function PATCH(
   const collectionResult = parseCollectionSettings(body, {
     isCollectionSeries: existing.isCollectionSeries,
     completionThreshold: existing.completionThreshold,
+    completionViewMode: existing.completionViewMode,
     mountTemplatePath: existing.mountTemplatePath,
     mountLayout: existing.mountLayout,
     mountSlots: existing.mountSlots,

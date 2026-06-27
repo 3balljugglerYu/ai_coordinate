@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const GENERATED_IMAGES_BUCKET = "generated-images";
@@ -80,3 +81,78 @@ export async function getPublicMountByToken(
     mountTemplateHeight: catRecord.mount_template_height ?? null,
   };
 }
+
+export interface PublicCollectionBook {
+  completionId: string;
+  ownerId: string;
+  categoryKey: string;
+  displayNameJa: string;
+  /** 0ページ目の表紙画像URL(book_cover_path)。未登録なら null(簡易表紙にフォールバック)。 */
+  coverImageUrl: string | null;
+  /** 各ページ画像URL(順序付き)。 */
+  pageImageUrls: string[];
+  /** OGP/シェア用の1枚絵URL(= mount_image_path のテーマ表紙)。 */
+  ogpImageUrl: string | null;
+  completedAt: string | null;
+}
+
+/**
+ * 公開「めくれる日記帳(book)」用に token(= collection_completions.id)から完了済みの本を解決する。
+ * 完了していない / book_page_paths が無い / 存在しない場合は null。
+ */
+export const getCollectionBookByToken = cache(async (
+  token: string,
+): Promise<PublicCollectionBook | null> => {
+  if (!UUID_PATTERN.test(token)) {
+    return null;
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("collection_completions")
+    .select(
+      "id, user_id, category_key, mount_image_path, completed_at, book_page_paths, preset_categories(display_name_ja, book_cover_path)",
+    )
+    .eq("id", token)
+    .eq("mount_status", "completed")
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const rawPaths = (data as { book_page_paths?: unknown }).book_page_paths;
+  const pagePaths = Array.isArray(rawPaths)
+    ? rawPaths.filter((p): p is string => typeof p === "string")
+    : [];
+  if (pagePaths.length === 0) {
+    return null;
+  }
+
+  const pageImageUrls = pagePaths
+    .map((p) => buildPublicGeneratedImageUrl(p))
+    .filter((u): u is string => Boolean(u));
+  if (pageImageUrls.length === 0) {
+    return null;
+  }
+
+  const category = (data as { preset_categories?: unknown }).preset_categories;
+  const cat = Array.isArray(category) ? category[0] : category;
+  const catRecord = (cat ?? {}) as {
+    display_name_ja?: string;
+    book_cover_path?: string | null;
+  };
+
+  return {
+    completionId: data.id as string,
+    ownerId: data.user_id as string,
+    categoryKey: data.category_key as string,
+    displayNameJa: catRecord.display_name_ja ?? "",
+    coverImageUrl: buildPublicGeneratedImageUrl(catRecord.book_cover_path ?? null),
+    pageImageUrls,
+    ogpImageUrl: buildPublicGeneratedImageUrl(
+      (data.mount_image_path as string | null) ?? null,
+    ),
+    completedAt: (data.completed_at as string | null) ?? null,
+  };
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
@@ -57,6 +58,7 @@ export function CollectionMountComposer({
   onClose,
   onGenerated,
 }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("loading");
   const [outfits, setOutfits] = useState<OutfitOption[]>([]);
   const [selected, setSelected] = useState<Record<string, string>>({});
@@ -74,12 +76,18 @@ export function CollectionMountComposer({
         });
         const data = (await res.json().catch(() => ({}))) as {
           status?: string;
+          mode?: string;
           mountImageUrl?: string;
           sharePath?: string;
           mountTemplateWidth?: number | null;
           mountTemplateHeight?: number | null;
           error?: string;
         };
+        // book(めくれる日記帳)は結果モーダルではなく没入の本リーダーへ直接遷移する。
+        if (res.ok && data.status === "completed" && data.mode === "book" && data.sharePath) {
+          router.push(data.sharePath);
+          return;
+        }
         if (res.ok && data.status === "completed" && data.mountImageUrl) {
           onGenerated({
             categoryKey,
@@ -100,7 +108,7 @@ export function CollectionMountComposer({
         setStatus("error");
       }
     },
-    [categoryKey, onGenerated],
+    [categoryKey, onGenerated, router],
   );
 
   useEffect(() => {
