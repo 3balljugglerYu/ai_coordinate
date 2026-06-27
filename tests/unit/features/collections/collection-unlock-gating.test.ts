@@ -208,33 +208,53 @@ describe("applyCollectionUnlockGating", () => {
       return Array.from({ length: 9 }, (_, i) => makePreset(`p-${i}`, cat));
     }
 
-    test("生成0: 先頭(表紙)だけ解放、残りは locked", () => {
+    test("生成0: 表紙だけ解放 + 次の1つ(Day1)だけシルエット、その先は非表示", () => {
       const result = applyCollectionUnlockGating(seqPresets(), {
         prerequisiteCompletedKeys: new Set(),
         distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 0]]),
       });
-      // 表示順は昇順のまま9枚
-      expect(result.map((p) => p.id)).toEqual([
-        "p-0", "p-1", "p-2", "p-3", "p-4", "p-5", "p-6", "p-7", "p-8",
-      ]);
+      // 表示は2枚だけ: p-0(解放) + p-1(ティザー)。p-2..p-8 は出さない。
+      expect(result.map((p) => p.id)).toEqual(["p-0", "p-1"]);
       expect(result[0].locked).toBeUndefined(); // 表紙=解放
-      expect(result.slice(1).every((p) => p.locked === true)).toBe(true);
+      expect(result[1].locked).toBe(true); // 次の1つだけシークレット
     });
 
-    test("生成3: 先頭から4枚(表紙+Day1..3)解放、残りは locked", () => {
+    test("生成3: 表紙+Day1..3 解放 + 次の1つ(index4)だけシルエット", () => {
       const result = applyCollectionUnlockGating(seqPresets(), {
         prerequisiteCompletedKeys: new Set(),
         distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 3]]),
       });
+      // 解放4枚(index0..3)+ ティザー1枚(index4)= 5枚表示。index5.. は非表示。
+      expect(result.map((p) => p.id)).toEqual(["p-0", "p-1", "p-2", "p-3", "p-4"]);
       expect(result.slice(0, 4).every((p) => p.locked === undefined)).toBe(true);
-      expect(result.slice(4).every((p) => p.locked === true)).toBe(true);
+      expect(result[4].locked).toBe(true);
     });
 
-    test("全生成: 全解放", () => {
+    test("生成7: 8枚解放 + 最後の1つ(Day8)だけシルエット", () => {
+      const result = applyCollectionUnlockGating(seqPresets(), {
+        prerequisiteCompletedKeys: new Set(),
+        distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 7]]),
+      });
+      expect(result.length).toBe(9); // 8解放 + 最後の1ティザー
+      expect(result.slice(0, 8).every((p) => p.locked === undefined)).toBe(true);
+      expect(result[8].locked).toBe(true);
+    });
+
+    test("生成8: 最後も解放済み(生成可)・ティザーなし", () => {
+      const result = applyCollectionUnlockGating(seqPresets(), {
+        prerequisiteCompletedKeys: new Set(),
+        distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 8]]),
+      });
+      expect(result.length).toBe(9); // 全9枚 解放(最後は未生成だが生成可=シルエットでない)
+      expect(result.every((p) => p.locked === undefined)).toBe(true);
+    });
+
+    test("全生成: 全解放(ティザーなし)", () => {
       const result = applyCollectionUnlockGating(seqPresets(), {
         prerequisiteCompletedKeys: new Set(),
         distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 9]]),
       });
+      expect(result.length).toBe(9);
       expect(result.every((p) => p.locked === undefined)).toBe(true);
     });
   });
