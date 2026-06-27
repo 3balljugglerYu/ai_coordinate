@@ -481,6 +481,8 @@ async function handlePercoinCheckoutCompleted(
       mode: isStripeTestMode() ? "test" : "live",
       revenueYen: normalizeRevenueYen(session.amount_total),
       revenueSource: "stripe_checkout",
+      // 課金起点(計測用)。checkout の metadata.origin を転記(どの画面/導線から購入したか)。
+      ...(session.metadata?.origin ? { origin: session.metadata.origin } : {}),
     },
     supabaseClient: supabase,
   });
