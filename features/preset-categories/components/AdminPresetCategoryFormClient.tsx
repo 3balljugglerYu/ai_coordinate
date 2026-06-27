@@ -499,9 +499,21 @@ export function AdminPresetCategoryFormClient({
     update("mountSlots", null);
   }
 
-  /** 進捗モーダルのシール枠 6 枠を grid_6 プリセットから初期化する。 */
+  /**
+   * 進捗モーダルのシール枠を「コンプリート必要数 N」に合わせて初期化する。
+   * grid_6 を基準にしつつ、N 枠へ調整する(N>6 は余剰をデフォルト位置に追加、N<6 は末尾削除)。
+   * 台紙(mount)と同じ setSlotCount を流用し、枠数=N を保証する。
+   */
   function handleSeedModalSlots() {
-    update("progressModalSlots", seedSlots("grid_6"));
+    const n = form.completionThreshold;
+    if (n === null || !Number.isFinite(n) || n < 1) {
+      setError(
+        "シール枠を初期化する前にコンプリート必要数(N)を入力してください",
+      );
+      return;
+    }
+    const seeded = joinSlots(setSlotCount(splitSlots(seedSlots("grid_6")), n));
+    update("progressModalSlots", seeded);
   }
 
   /** 進捗モーダルのシール枠を破棄する。 */
@@ -556,22 +568,28 @@ export function AdminPresetCategoryFormClient({
   }
 
   /**
-   * コンプリート数 N 変更。カスタム枠があるときは枠の数を N に増減する
-   * (既存枠は保持・増加分はデフォルト位置に追加・減少分は末尾を削除)。
-   * カスタム枠がまだ無ければ数値だけ更新する。
+   * コンプリート数 N 変更。カスタム枠(台紙 mount_slots / 進捗モーダル progress_modal_slots)が
+   * あるときは、いずれも枠の数を N に増減する(既存枠は保持・増加分はデフォルト位置に追加・
+   * 減少分は末尾を削除)。これにより「N=9 ならシール枠も9」が動的に保たれる。
+   * カスタム枠が無ければ数値だけ更新する。
    */
   function handleThresholdChange(raw: string) {
     const n = raw === "" ? null : Math.floor(Number(raw));
-    const hasCustom = !!form.mountSlots && form.mountSlots.length > 0;
-    if (n === null || !Number.isFinite(n) || n < 1 || !hasCustom) {
+    if (n === null || !Number.isFinite(n) || n < 1) {
       update("completionThreshold", n);
       return;
     }
-    const resized = joinSlots(setSlotCount(splitSlots(form.mountSlots!), n));
     setForm((prev) => ({
       ...prev,
       completionThreshold: n,
-      mountSlots: resized,
+      mountSlots:
+        prev.mountSlots && prev.mountSlots.length > 0
+          ? joinSlots(setSlotCount(splitSlots(prev.mountSlots), n))
+          : prev.mountSlots,
+      progressModalSlots:
+        prev.progressModalSlots && prev.progressModalSlots.length > 0
+          ? joinSlots(setSlotCount(splitSlots(prev.progressModalSlots), n))
+          : prev.progressModalSlots,
     }));
   }
 
@@ -1731,10 +1749,14 @@ export function AdminPresetCategoryFormClient({
           ) : null}
         </div>
 
-        {/* シール枠(6枠)の調整。フレームと実寸が揃っているときだけ操作可能。 */}
+        {/* シール枠の調整(枠数=コンプリート必要数 N に連動)。フレームと実寸が揃っているときだけ操作可能。 */}
         <div className="block">
           <span className="text-sm font-medium text-slate-700">
-            シール枠（6枠）の調整
+            シール枠（
+            {form.completionThreshold && form.completionThreshold > 0
+              ? `${form.completionThreshold}枠`
+              : "N枠"}
+            ）の調整
           </span>
           {!form.progressModalFramePath ||
           form.progressModalFrameWidth === null ||
@@ -1757,7 +1779,7 @@ export function AdminPresetCategoryFormClient({
                   onClick={handleSeedModalSlots}
                   className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  6枠を再生成（grid_6 配置）
+                  N枠で再生成（grid_6 基準）
                 </button>
                 <button
                   type="button"
@@ -1771,14 +1793,15 @@ export function AdminPresetCategoryFormClient({
           ) : (
             <div className="mt-2 space-y-2">
               <p className="text-xs text-slate-500">
-                「6枠を初期化」すると grid_6 配置を元にシール枠をドラッグ調整できます。
+                「N枠を初期化」すると、コンプリート必要数 N に合わせた枠数(grid_6
+                基準・N&gt;6 は余剰をデフォルト位置に追加)を元にドラッグ調整できます。
               </p>
               <button
                 type="button"
                 onClick={handleSeedModalSlots}
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
-                6枠を初期化
+                N枠を初期化
               </button>
             </div>
           )}
