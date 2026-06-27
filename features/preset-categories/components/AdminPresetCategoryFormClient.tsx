@@ -69,6 +69,10 @@ interface FormState {
   visibility: "public" | "admin_only";
   isCollectionSeries: boolean;
   completionThreshold: number | null;
+  /** 完走表示モード: mount(単一台紙) / book(めくれる日記帳) */
+  completionViewMode: "mount" | "book";
+  /** book 表示の表紙(0ページ目)画像 storage path。null=簡易表紙 */
+  bookCoverPath: string | null;
   /** 解放の前提カテゴリ key(完走者限定)。null=ゲートなし */
   unlockPrerequisiteKey: string | null;
   /** 段階解放の単位(正の整数)。null=最初から全部解放 */
@@ -161,6 +165,8 @@ function toFormState(
     visibility: initial?.visibility ?? "admin_only",
     isCollectionSeries: initial?.isCollectionSeries ?? false,
     completionThreshold: initial?.completionThreshold ?? null,
+    completionViewMode: initial?.completionViewMode ?? "mount",
+    bookCoverPath: initial?.bookCoverPath ?? null,
     unlockPrerequisiteKey: initial?.unlockPrerequisiteKey ?? null,
     progressiveBatchSize: initial?.progressiveBatchSize ?? null,
     mountTemplatePath: initial?.mountTemplatePath ?? null,
@@ -628,6 +634,8 @@ export function AdminPresetCategoryFormClient({
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: effectiveThreshold,
+              completion_view_mode: form.completionViewMode,
+              book_cover_path: form.bookCoverPath,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
               progressive_batch_size: form.progressiveBatchSize,
               mount_template_path: form.mountTemplatePath,
@@ -689,6 +697,8 @@ export function AdminPresetCategoryFormClient({
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: effectiveThreshold,
+              completion_view_mode: form.completionViewMode,
+              book_cover_path: form.bookCoverPath,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
               progressive_batch_size: form.progressiveBatchSize,
               mount_template_path: form.mountTemplatePath,
@@ -1219,10 +1229,52 @@ export function AdminPresetCategoryFormClient({
             <span className="font-medium">このカテゴリをコレクションシリーズにする</span>
             <br />
             <span className="text-xs text-slate-500">
-              ON にすると、ユニーク衣装を N 種そろえるとコンプリート判定・台紙生成が走ります。ON 時は下記 N / レイアウト / 台紙テンプレが必須です。
+              ON にすると、ユニーク衣装を N 種そろえるとコンプリート判定・完走表示が走ります。
+              mount(台紙)では下記 N / レイアウト / 台紙テンプレが必須、book(日記帳)では N と表紙のみで動きます。
             </span>
           </span>
         </label>
+
+        {/* 完走表示モード: 単一台紙 or めくれる日記帳(スクラップブック) */}
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">完走表示モード</span>
+          <select
+            value={form.completionViewMode}
+            onChange={(e) =>
+              update(
+                "completionViewMode",
+                e.target.value === "book" ? "book" : "mount",
+              )
+            }
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:max-w-xs"
+          >
+            <option value="mount">mount（単一コンプリートカード/台紙）</option>
+            <option value="book">book（めくれる日記帳・スクラップブック）</option>
+          </select>
+          <span className="mt-1 block text-xs text-slate-500">
+            book は 9:16 縦長×N枚を1枚ずつめくれる本として表示・シェアします（travel_to_italy 等)。
+          </span>
+        </label>
+
+        {form.completionViewMode === "book" ? (
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              本の表紙(0ページ目)画像パス
+            </span>
+            <input
+              type="text"
+              value={form.bookCoverPath ?? ""}
+              onChange={(e) =>
+                update("bookCoverPath", e.target.value.trim() || null)
+              }
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="generated-images の storage path（ユーザー生成の表紙を登録）"
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              未設定なら簡易表紙にフォールバックします。各ページと同じ 9:16 を想定。
+            </span>
+          </label>
+        ) : null}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block">
@@ -1240,26 +1292,28 @@ export function AdminPresetCategoryFormClient({
             />
           </label>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">
-              台紙レイアウト
-            </span>
-            <select
-              value={form.mountLayout}
-              onChange={(e) =>
-                handleLayoutChange(e.target.value as FormState["mountLayout"])
-              }
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">（未選択）</option>
-              <option value="grid_3">grid_3（3枠）</option>
-              <option value="grid_4">grid_4（4枠・2×2）</option>
-              <option value="grid_6">grid_6（6枠・2×3）</option>
-            </select>
-            <span className="mt-1 block text-xs text-slate-500">
-              レイアウトを変えると枠が作り直されます（調整済みなら確認します）。N を変えると枠数も増減します。
-            </span>
-          </label>
+          {form.completionViewMode !== "book" ? (
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">
+                台紙レイアウト
+              </span>
+              <select
+                value={form.mountLayout}
+                onChange={(e) =>
+                  handleLayoutChange(e.target.value as FormState["mountLayout"])
+                }
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">（未選択）</option>
+                <option value="grid_3">grid_3（3枠）</option>
+                <option value="grid_4">grid_4（4枠・2×2）</option>
+                <option value="grid_6">grid_6（6枠・2×3）</option>
+              </select>
+              <span className="mt-1 block text-xs text-slate-500">
+                レイアウトを変えると枠が作り直されます（調整済みなら確認します）。N を変えると枠数も増減します。
+              </span>
+            </label>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
