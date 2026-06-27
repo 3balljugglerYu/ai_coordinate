@@ -1,5 +1,6 @@
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 import {
+  computeUnlockedCount,
   isPresetUnlocked,
   sequentialBatchSize,
   unlockJudgmentIndex,
@@ -82,18 +83,35 @@ export function applyCollectionUnlockGating(
       continue;
     }
 
-    // 段階解放。解放数を超えるものは locked にして残す。
-    //  - sequential: 先頭(sort_order 最小=表紙)から昇順で解放。batch 未設定は 1。
-    //  - 既存(前提付き): sort_order の末尾から降順で解放(index 反転)。
     const distinctGenerated =
       context.distinctGeneratedByCategoryKey.get(category.key) ?? 0;
     const total = totalByCategoryKey.get(category.key) ?? 0;
-    const batch = sequential
-      ? sequentialBatchSize(category.progressiveBatchSize)
-      : category.progressiveBatchSize;
-    const unlockIndex = unlockJudgmentIndex(ascendingIndex, total, sequential);
-    const unlocked = isPresetUnlocked(unlockIndex, distinctGenerated, batch, total);
 
+    if (sequential) {
+      // sequential = 先頭(sort_order 最小=表紙)から昇順で解放 + 「1つ先だけ」シークレット表示。
+      //  - index < 解放数            → 解放済み(通常表示)
+      //  - index === 解放数          → 次の1つだけシルエット(ティザー)
+      //  - index > 解放数            → まだ見せない(一覧から除去)
+      // 生成するたびにシークレットが1つずつ現れる(全シルエットを一気に見せない)。
+      const batch = sequentialBatchSize(category.progressiveBatchSize);
+      const unlockedCount = computeUnlockedCount(distinctGenerated, batch, total);
+      if (ascendingIndex < unlockedCount) {
+        result.push(preset);
+      } else if (ascendingIndex === unlockedCount) {
+        result.push({ ...preset, locked: true });
+      }
+      // ascendingIndex > unlockedCount は push しない(非表示)。
+      continue;
+    }
+
+    // 既存(前提カテゴリ付き): sort_order の末尾から降順で解放。未解放は全てシルエットで残す。
+    const unlockIndex = unlockJudgmentIndex(ascendingIndex, total, false);
+    const unlocked = isPresetUnlocked(
+      unlockIndex,
+      distinctGenerated,
+      category.progressiveBatchSize,
+      total,
+    );
     result.push(unlocked ? preset : { ...preset, locked: true });
   }
 
