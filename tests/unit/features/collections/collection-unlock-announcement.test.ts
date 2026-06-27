@@ -30,6 +30,7 @@ function makeCategory(
     isActive: true,
     unlockPrerequisiteKey: null,
     progressiveBatchSize: null,
+    sequentialUnlock: false,
     unlockAnnouncementHeroPath: null,
     unlockAnnouncementInitialBody: null,
     unlockAnnouncementDripBody: null,

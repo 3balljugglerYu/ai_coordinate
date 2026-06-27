@@ -26,6 +26,8 @@ export interface CollectionSettingsPayload {
   unlockPrerequisiteKey?: string | null;
   /** プリセットを N 体ずつ段階解放する単位(正の整数)。null=最初から全部 */
   progressiveBatchSize?: number | null;
+  /** 順番固定の1つずつ解放(sequential unlock)。true で先頭=表紙から昇順に順次解放。 */
+  sequentialUnlock?: boolean;
   /** 解放お知らせ初回モーダルのヒーロー画像パス(public バケット)。null=固定画像にフォールバック */
   unlockAnnouncementHeroPath?: string | null;
   /** 解放お知らせ初回モーダルの本文。null=現行ハードコード文 */
@@ -168,6 +170,14 @@ export function parseCollectionSettings(
     } else {
       payload.progressiveBatchSize = v;
     }
+  }
+
+  // 順番固定の1つずつ解放(sequential unlock)。
+  if (body.sequential_unlock !== undefined) {
+    if (typeof body.sequential_unlock !== "boolean") {
+      return { ok: false, error: "sequential_unlock must be boolean" };
+    }
+    payload.sequentialUnlock = body.sequential_unlock;
   }
 
   if (body.mount_template_path !== undefined) {

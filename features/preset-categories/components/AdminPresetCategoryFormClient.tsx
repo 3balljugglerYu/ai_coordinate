@@ -77,6 +77,8 @@ interface FormState {
   unlockPrerequisiteKey: string | null;
   /** 段階解放の単位(正の整数)。null=最初から全部解放 */
   progressiveBatchSize: number | null;
+  /** 順番固定の1つずつ解放(sequential unlock)。true で先頭=表紙から昇順に順次解放 */
+  sequentialUnlock: boolean;
   mountTemplatePath: string | null;
   mountLayout: "" | "grid_3" | "grid_4" | "grid_6";
   /** カスタム枠(正規化矩形配列)。null なら mountLayout プリセットを使用 */
@@ -169,6 +171,7 @@ function toFormState(
     bookCoverPath: initial?.bookCoverPath ?? null,
     unlockPrerequisiteKey: initial?.unlockPrerequisiteKey ?? null,
     progressiveBatchSize: initial?.progressiveBatchSize ?? null,
+    sequentialUnlock: initial?.sequentialUnlock ?? false,
     mountTemplatePath: initial?.mountTemplatePath ?? null,
     mountLayout: initial?.mountLayout ?? "",
     mountSlots: initial?.mountSlots ?? null,
@@ -638,6 +641,7 @@ export function AdminPresetCategoryFormClient({
               book_cover_path: form.bookCoverPath,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
               progressive_batch_size: form.progressiveBatchSize,
+              sequential_unlock: form.sequentialUnlock,
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               mount_slots: form.mountSlots,
@@ -701,6 +705,7 @@ export function AdminPresetCategoryFormClient({
               book_cover_path: form.bookCoverPath,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
               progressive_batch_size: form.progressiveBatchSize,
+              sequential_unlock: form.sequentialUnlock,
               mount_template_path: form.mountTemplatePath,
               mount_layout: form.mountLayout === "" ? null : form.mountLayout,
               mount_slots: form.mountSlots,
@@ -1410,6 +1415,22 @@ export function AdminPresetCategoryFormClient({
               </span>
             </label>
           </div>
+
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={form.sequentialUnlock}
+              onChange={(e) => update("sequentialUnlock", e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300"
+            />
+            <span className="text-sm text-slate-700">
+              <span className="font-medium">順番固定で1つずつ解放する（sequential unlock）</span>
+              <br />
+              <span className="text-xs text-slate-500">
+                ON にすると、前提カテゴリが無くても <strong>sort_order 先頭（最小）＝表紙</strong> から昇順に1つずつ解放します（前を生成すると次が解放）。段階解放の単位が空のときは1体ずつ。旅行日記など「表紙→Day1→…」の順序固定に使います。OFF の既存挙動（前提カテゴリ付きは末尾から）には影響しません。
+              </span>
+            </span>
+          </label>
         </div>
 
         {/* 解放お知らせモーダル(PetitUnlockAnnouncer)のカスタム設定。

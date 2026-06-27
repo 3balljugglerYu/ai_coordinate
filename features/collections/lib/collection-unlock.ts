@@ -58,3 +58,27 @@ export function isPresetUnlocked(
   const unlockedCount = computeUnlockedCount(distinctGenerated, batchSize, total);
   return presetIndexInSortOrder < unlockedCount;
 }
+
+/**
+ * 順番固定(sequential)解放での「実効 batch」。未設定/非正なら 1(=1つずつ解放)。
+ * sequential_unlock=true のカテゴリで batch を省略しても「前を生成したら次」が成立するようにする。
+ */
+export function sequentialBatchSize(batchSize: number | null): number {
+  return batchSize && batchSize > 0 ? batchSize : 1;
+}
+
+/**
+ * sort_order 昇順 index(0 始まり) を、解放判定で使う index に変換する。
+ *  - sequential=true: 昇順そのまま(先頭=sort_order 最小=表紙 から前へ解放)
+ *  - sequential=false(既存): total-1-ascendingIndex(末尾=sort_order 最大 から解放)
+ *
+ * 表示ゲート(collection-unlock-gating)とサーバー認可(collection-unlock-server)で
+ * 同一の方向ロジックを共有し、片側だけ向きがずれる不整合(UI解放なのに403等)を防ぐ。
+ */
+export function unlockJudgmentIndex(
+  ascendingIndex: number,
+  total: number,
+  sequential: boolean,
+): number {
+  return sequential ? ascendingIndex : total - 1 - ascendingIndex;
+}

@@ -1015,4 +1015,30 @@ describe("parseCollectionSettings - 解放お知らせ設定(任意・独立)", 
       if (rStr.ok) expect(rStr.payload.bookCoverPath).toBe("travel/cover.png");
     });
   });
+
+  describe("sequential_unlock(順番固定の1つずつ解放)", () => {
+    test("boolean を受理して payload に載せる", () => {
+      const rTrue = parseCollectionSettings({ sequential_unlock: true }, OFF);
+      expect(rTrue.ok).toBe(true);
+      if (rTrue.ok) expect(rTrue.payload.sequentialUnlock).toBe(true);
+      const rFalse = parseCollectionSettings({ sequential_unlock: false }, OFF);
+      expect(rFalse.ok).toBe(true);
+      if (rFalse.ok) expect(rFalse.payload.sequentialUnlock).toBe(false);
+    });
+
+    test("boolean 以外は拒否", () => {
+      const r = parseCollectionSettings(
+        { sequential_unlock: "yes" as unknown as boolean },
+        OFF,
+      );
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toMatch(/sequential_unlock/);
+    });
+
+    test("未指定なら payload に含めない(no-op)", () => {
+      const r = parseCollectionSettings({}, OFF);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.payload.sequentialUnlock).toBeUndefined();
+    });
+  });
 });

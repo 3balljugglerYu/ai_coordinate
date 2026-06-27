@@ -82,6 +82,14 @@ export interface StylePresetCategoryRef {
    */
   progressiveBatchSize: number | null;
   /**
+   * 順番固定の「1つずつ解放(sequential unlock)」。true のとき:
+   *  - 前提カテゴリ(unlock_prerequisite_key)が無くても段階解放を適用する(単独で順次解放可)。
+   *  - 解放方向を sort_order 昇順(先頭=表紙から前へ)にする(既存 drip は降順)。
+   *  - batch 未設定時は 1(=1つずつ)として扱う。
+   * 既存カテゴリは false で従来挙動を維持。
+   */
+  sequentialUnlock: boolean;
+  /**
    * 解放お知らせモーダル(PetitUnlockAnnouncer)のカスタム設定。
    * いずれも null なら現行のハードコード(画像 /collections/petit-unlock-hero.png ・
    * 紫基調の文言/配色)にフォールバックする。features/collections/components/UnlockModals.tsx 参照。
