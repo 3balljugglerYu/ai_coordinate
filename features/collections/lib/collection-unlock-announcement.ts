@@ -58,6 +58,9 @@ export function buildCollectionUnlockAnnouncements(
   context: CollectionUnlockContext,
 ): CollectionUnlockAnnouncement[] {
   // 解放ゲート付き かつ 前提完走済み のカテゴリだけを、出現順(sort_order 昇順)に集約する。
+  // 注: sequential_unlock(前提なし・昇順)カテゴリは「解放お知らせ」未対応。意図的にここで
+  //   スキップする(prerequisite が無いため下の continue で除外)。対応する場合は下の .reverse()
+  //   と progressiveBatchSize 前提(降順)を sequential 用に見直すこと。
   const itemsByCategoryKey = new Map<string, StylePresetPublicSummary[]>();
   for (const preset of presets) {
     const prerequisite = preset.category.unlockPrerequisiteKey;

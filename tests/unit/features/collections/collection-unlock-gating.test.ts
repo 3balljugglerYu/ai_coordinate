@@ -27,6 +27,7 @@ function makeCategory(
     isActive: true,
     unlockPrerequisiteKey: null,
     progressiveBatchSize: null,
+    sequentialUnlock: false,
     unlockAnnouncementHeroPath: null,
     unlockAnnouncementInitialBody: null,
     unlockAnnouncementDripBody: null,
@@ -193,5 +194,48 @@ describe("applyCollectionUnlockGating", () => {
       "petit-4",
       "petit-5",
     ]);
+  });
+
+  describe("sequential unlock(順番固定・前提なし・先頭=表紙から昇順)", () => {
+    const SEQ_KEY = "travel_to_italy";
+    function seqPresets() {
+      // index0=表紙(sort_order 最小), 1..8=Day1..Day8
+      const cat = makeCategory(SEQ_KEY, {
+        unlockPrerequisiteKey: null,
+        sequentialUnlock: true,
+        progressiveBatchSize: null, // 未設定 → 1扱い
+      });
+      return Array.from({ length: 9 }, (_, i) => makePreset(`p-${i}`, cat));
+    }
+
+    test("生成0: 先頭(表紙)だけ解放、残りは locked", () => {
+      const result = applyCollectionUnlockGating(seqPresets(), {
+        prerequisiteCompletedKeys: new Set(),
+        distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 0]]),
+      });
+      // 表示順は昇順のまま9枚
+      expect(result.map((p) => p.id)).toEqual([
+        "p-0", "p-1", "p-2", "p-3", "p-4", "p-5", "p-6", "p-7", "p-8",
+      ]);
+      expect(result[0].locked).toBeUndefined(); // 表紙=解放
+      expect(result.slice(1).every((p) => p.locked === true)).toBe(true);
+    });
+
+    test("生成3: 先頭から4枚(表紙+Day1..3)解放、残りは locked", () => {
+      const result = applyCollectionUnlockGating(seqPresets(), {
+        prerequisiteCompletedKeys: new Set(),
+        distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 3]]),
+      });
+      expect(result.slice(0, 4).every((p) => p.locked === undefined)).toBe(true);
+      expect(result.slice(4).every((p) => p.locked === true)).toBe(true);
+    });
+
+    test("全生成: 全解放", () => {
+      const result = applyCollectionUnlockGating(seqPresets(), {
+        prerequisiteCompletedKeys: new Set(),
+        distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 9]]),
+      });
+      expect(result.every((p) => p.locked === undefined)).toBe(true);
+    });
   });
 });

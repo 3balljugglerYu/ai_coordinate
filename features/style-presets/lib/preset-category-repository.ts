@@ -52,6 +52,7 @@ export interface PresetCategoryRow {
   book_cover_path?: string | null;
   unlock_prerequisite_key?: string | null;
   progressive_batch_size?: number | null;
+  sequential_unlock?: boolean | null;
   unlock_announcement_hero_path?: string | null;
   unlock_announcement_initial_body?: string | null;
   unlock_announcement_drip_body?: string | null;
@@ -115,6 +116,8 @@ export interface PresetCategoryAdmin {
   bookCoverPath: string | null;
   unlockPrerequisiteKey: string | null;
   progressiveBatchSize: number | null;
+  /** 順番固定の1つずつ解放(sequential unlock)。詳細は schema.ts の同名フィールド参照。 */
+  sequentialUnlock: boolean;
   unlockAnnouncementHeroPath: string | null;
   unlockAnnouncementInitialBody: string | null;
   unlockAnnouncementDripBody: string | null;
@@ -175,6 +178,7 @@ export interface PresetCategoryInsert {
   bookCoverPath?: string | null;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
+  sequentialUnlock?: boolean;
   unlockAnnouncementHeroPath?: string | null;
   unlockAnnouncementInitialBody?: string | null;
   unlockAnnouncementDripBody?: string | null;
@@ -231,6 +235,7 @@ export interface PresetCategoryUpdate {
   bookCoverPath?: string | null;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
+  sequentialUnlock?: boolean;
   unlockAnnouncementHeroPath?: string | null;
   unlockAnnouncementInitialBody?: string | null;
   unlockAnnouncementDripBody?: string | null;
@@ -302,6 +307,7 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     bookCoverPath: row.book_cover_path ?? null,
     unlockPrerequisiteKey: row.unlock_prerequisite_key ?? null,
     progressiveBatchSize: row.progressive_batch_size ?? null,
+    sequentialUnlock: row.sequential_unlock ?? false,
     unlockAnnouncementHeroPath: row.unlock_announcement_hero_path ?? null,
     unlockAnnouncementInitialBody: row.unlock_announcement_initial_body ?? null,
     unlockAnnouncementDripBody: row.unlock_announcement_drip_body ?? null,
@@ -445,6 +451,7 @@ export async function createPresetCategory(
       book_cover_path: input.bookCoverPath ?? null,
       unlock_prerequisite_key: input.unlockPrerequisiteKey ?? null,
       progressive_batch_size: input.progressiveBatchSize ?? null,
+      sequential_unlock: input.sequentialUnlock ?? false,
       unlock_announcement_hero_path: input.unlockAnnouncementHeroPath ?? null,
       unlock_announcement_initial_body:
         input.unlockAnnouncementInitialBody ?? null,
@@ -540,6 +547,8 @@ export async function updatePresetCategory(
     payload.unlock_prerequisite_key = input.unlockPrerequisiteKey;
   if (input.progressiveBatchSize !== undefined)
     payload.progressive_batch_size = input.progressiveBatchSize;
+  if (input.sequentialUnlock !== undefined)
+    payload.sequential_unlock = input.sequentialUnlock;
   if (input.unlockAnnouncementHeroPath !== undefined)
     payload.unlock_announcement_hero_path = input.unlockAnnouncementHeroPath;
   if (input.unlockAnnouncementInitialBody !== undefined)

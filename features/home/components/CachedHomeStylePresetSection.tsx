@@ -5,6 +5,7 @@ import {
 } from "@/features/collections/lib/collection-unlock-gating";
 import { buildCollectionUnlockAnnouncements } from "@/features/collections/lib/collection-unlock-announcement";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
+import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import { PetitUnlockAnnouncer } from "@/features/collections/components/PetitUnlockAnnouncer";
 import { createClient } from "@/lib/supabase/server";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
@@ -36,9 +37,9 @@ export async function CachedHomeStylePresetSection({
     includeAdminOnly: isAdminViewer,
   });
 
-  // 解放ルール付きカテゴリが無ければ完全 no-op(authed client も作らない)。
-  const hasGatedCategory = cachedPresets.some(
-    (preset) => preset.category.unlockPrerequisiteKey != null,
+  // 解放ゲート対象カテゴリ(前提カテゴリ付き or sequential)が無ければ完全 no-op(authed client も作らない)。
+  const hasGatedCategory = cachedPresets.some((preset) =>
+    categoryNeedsUnlockContext(preset.category),
   );
   let unlockContext: CollectionUnlockContext = EMPTY_UNLOCK_CONTEXT;
   if (userId && hasGatedCategory) {

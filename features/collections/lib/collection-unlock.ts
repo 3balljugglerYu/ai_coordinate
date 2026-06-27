@@ -58,3 +58,45 @@ export function isPresetUnlocked(
   const unlockedCount = computeUnlockedCount(distinctGenerated, batchSize, total);
   return presetIndexInSortOrder < unlockedCount;
 }
+
+/**
+ * 順番固定(sequential)解放での「実効 batch」。未設定/非正なら 1(=1つずつ解放)。
+ * sequential_unlock=true のカテゴリで batch を省略しても「前を生成したら次」が成立するようにする。
+ */
+export function sequentialBatchSize(batchSize: number | null): number {
+  return batchSize && batchSize > 0 ? batchSize : 1;
+}
+
+/**
+ * そのカテゴリが「解放ゲート(unlock gating)」の対象か。true のとき、配信側は
+ * 解放コンテキスト(distinct 集計等)を解決し、生成側は認可チェックを必ず行う。
+ *
+ * 対象条件(単一の真実源):
+ *  - unlock_prerequisite_key 付き(前提カテゴリ完走ゲート + 既存 drip)
+ *  - sequential_unlock(前提なしでも順次解放)
+ *
+ * 配信(StylePageBody / Home カルーセル)・生成認可(generate-async)・(将来の解放モード)で
+ * この述語を共有し、片側だけ条件が漏れる不整合(UIはロックなのに生成は素通り等)を防ぐ。
+ */
+export function categoryNeedsUnlockContext(category: {
+  unlockPrerequisiteKey: string | null;
+  sequentialUnlock: boolean;
+}): boolean {
+  return category.unlockPrerequisiteKey != null || category.sequentialUnlock === true;
+}
+
+/**
+ * sort_order 昇順 index(0 始まり) を、解放判定で使う index に変換する。
+ *  - sequential=true: 昇順そのまま(先頭=sort_order 最小=表紙 から前へ解放)
+ *  - sequential=false(既存): total-1-ascendingIndex(末尾=sort_order 最大 から解放)
+ *
+ * 表示ゲート(collection-unlock-gating)とサーバー認可(collection-unlock-server)で
+ * 同一の方向ロジックを共有し、片側だけ向きがずれる不整合(UI解放なのに403等)を防ぐ。
+ */
+export function unlockJudgmentIndex(
+  ascendingIndex: number,
+  total: number,
+  sequential: boolean,
+): number {
+  return sequential ? ascendingIndex : total - 1 - ascendingIndex;
+}

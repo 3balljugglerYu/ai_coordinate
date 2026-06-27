@@ -1,5 +1,9 @@
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
-import { isPresetUnlocked } from "./collection-unlock";
+import {
+  isPresetUnlocked,
+  sequentialBatchSize,
+  unlockJudgmentIndex,
+} from "./collection-unlock";
 
 /**
  * ユーザーごとの解放判定に必要なコンテキスト。
@@ -23,7 +27,8 @@ export interface CollectionUnlockContext {
  * /style の配信用に、解放ゲート(前提条件カテゴリの完走 + 段階解放)を
  * ユーザーごとに適用する純粋関数。
  *
- * - `unlockPrerequisiteKey` が null のカテゴリ → 一切変更しない(従来挙動)。
+ * - `unlockPrerequisiteKey` が null かつ `sequentialUnlock` でないカテゴリ → 一切変更しない(従来挙動)。
+ * - `sequentialUnlock=true` のカテゴリ → 前提なしでも sort_order 昇順(先頭=表紙)から段階解放。
  * - 前提条件カテゴリが未完走のユーザー → そのカテゴリのプリセットを「一覧から完全に除去」
  *   (ティザーを出さない方針)。
  * - 完走済みユーザー → プリセットは残すが、解放数を超えるものに `locked: true` を立て、
@@ -59,30 +64,35 @@ export function applyCollectionUnlockGating(
     const ascendingIndex = seenCountByCategoryKey.get(category.key) ?? 0;
     seenCountByCategoryKey.set(category.key, ascendingIndex + 1);
 
-    // 前提条件なし(従来カテゴリ) → そのまま通す。
-    if (!category.unlockPrerequisiteKey) {
+    const hasPrereq = Boolean(category.unlockPrerequisiteKey);
+    const sequential = category.sequentialUnlock === true;
+
+    // 前提条件カテゴリ未完走 → 一覧から除去(ティザーなし)。
+    if (
+      hasPrereq &&
+      !context.prerequisiteCompletedKeys.has(category.unlockPrerequisiteKey!)
+    ) {
+      continue;
+    }
+
+    // drip 適用条件: sequential(前提なしでも単独で順次解放) または 前提カテゴリ付き。
+    // どちらでもない従来カテゴリは無条件公開(従来挙動)。
+    if (!sequential && !hasPrereq) {
       result.push(preset);
       continue;
     }
 
-    // 前提条件カテゴリ未完走 → 一覧から除去(ティザーなし)。
-    if (!context.prerequisiteCompletedKeys.has(category.unlockPrerequisiteKey)) {
-      continue;
-    }
-
-    // 完走済み → 段階解放。解放数を超えるものは locked にして残す。
-    // 解放ゲート付きカテゴリは sort_order の多い方(末尾)から解放するため、解放判定の
-    // index を反転する(表示順は昇順のまま並べ替えない)。
+    // 段階解放。解放数を超えるものは locked にして残す。
+    //  - sequential: 先頭(sort_order 最小=表紙)から昇順で解放。batch 未設定は 1。
+    //  - 既存(前提付き): sort_order の末尾から降順で解放(index 反転)。
     const distinctGenerated =
       context.distinctGeneratedByCategoryKey.get(category.key) ?? 0;
     const total = totalByCategoryKey.get(category.key) ?? 0;
-    const unlockIndex = total - 1 - ascendingIndex;
-    const unlocked = isPresetUnlocked(
-      unlockIndex,
-      distinctGenerated,
-      category.progressiveBatchSize,
-      total,
-    );
+    const batch = sequential
+      ? sequentialBatchSize(category.progressiveBatchSize)
+      : category.progressiveBatchSize;
+    const unlockIndex = unlockJudgmentIndex(ascendingIndex, total, sequential);
+    const unlocked = isPresetUnlocked(unlockIndex, distinctGenerated, batch, total);
 
     result.push(unlocked ? preset : { ...preset, locked: true });
   }

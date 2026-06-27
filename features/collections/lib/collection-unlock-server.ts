@@ -5,7 +5,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
 import { getCollectionProgress } from "./collection-progress-repository";
-import { computeUnlockedCount } from "./collection-unlock";
+import {
+  computeUnlockedCount,
+  sequentialBatchSize,
+  unlockJudgmentIndex,
+} from "./collection-unlock";
 import type { CollectionUnlockContext } from "./collection-unlock-gating";
 
 /**
@@ -34,7 +38,8 @@ export async function resolveCollectionUnlockContext(
   userId: string,
   authedClient: SupabaseClient,
 ): Promise<CollectionUnlockContext> {
-  // 解放ゲートを持つカテゴリだけを対象にする(前提条件なしカテゴリは判定不要)。
+  // 解放ゲートを持つカテゴリ(前提付き)＋ sequential(前提なしで単独順次解放)を対象にする。
+  // sequential も distinct 集計が必要なため gatedCategoryKeys に含める。
   const gatedCategoryKeys = new Set<string>();
   const prerequisiteKeys = new Set<string>();
   for (const preset of presets) {
@@ -42,6 +47,8 @@ export async function resolveCollectionUnlockContext(
     if (prerequisite) {
       gatedCategoryKeys.add(preset.category.key);
       prerequisiteKeys.add(prerequisite);
+    } else if (preset.category.sequentialUnlock === true) {
+      gatedCategoryKeys.add(preset.category.key);
     }
   }
 
@@ -158,10 +165,12 @@ export type StylePresetUnlockAuthorization =
 /**
  * generate route のサーバー側認可: 解放ゲート付きカテゴリのプリセット生成を許可するか。
  *
- * `unlockPrerequisiteKey` が null のカテゴリ(= 既存カテゴリすべて)は常に許可(no-op)。
- * ゲート付きの場合のみ:
- *   1. 前提条件カテゴリを完走しているか(get_collection_progress RPC)
- *   2. 当該プリセットが sort_order 上で解放数の範囲内か(段階解放)
+ * ゲート対象は「unlock_prerequisite_key 付き」または「sequential_unlock=true」のカテゴリ。
+ * どちらでもないカテゴリ(両方 null/false)は常に許可(no-op)。
+ * ゲート対象の場合のみ:
+ *   1. (前提付きのとき)前提条件カテゴリを完走しているか(get_collection_progress RPC)
+ *   2. 当該プリセットが sort_order 上で解放数の範囲内か(段階解放。
+ *      sequential=昇順[先頭=表紙から] / 既存=降順[末尾から]、unlockJudgmentIndex で共有)
  * を検証する。UI 非表示はセキュリティではないため、ここで必ず弾く。
  *
  * @param category 生成対象プリセットのカテゴリ参照(unlock 列を含む)
@@ -173,32 +182,36 @@ export type StylePresetUnlockAuthorization =
 export async function authorizeStylePresetUnlock(
   category: Pick<
     StylePresetPublicSummary["category"],
-    "key" | "unlockPrerequisiteKey" | "progressiveBatchSize"
+    "key" | "unlockPrerequisiteKey" | "progressiveBatchSize" | "sequentialUnlock"
   >,
   presetId: string,
   userId: string,
   authedClient: SupabaseClient,
   options: { includeAdminOnly?: boolean } = {},
 ): Promise<StylePresetUnlockAuthorization> {
-  // ゲートなし(従来カテゴリ) → 常に許可。
-  if (!category.unlockPrerequisiteKey) {
+  const hasPrereq = Boolean(category.unlockPrerequisiteKey);
+  const sequential = category.sequentialUnlock === true;
+
+  // ゲートなし(前提なし かつ sequential でもない従来カテゴリ) → 常に許可。
+  if (!hasPrereq && !sequential) {
     return { allowed: true };
   }
 
-  // 1) 前提条件カテゴリの完走チェック。
-  const { completedKeys } = await resolveCompletedPrerequisiteKeys(
-    new Set([category.unlockPrerequisiteKey]),
-    authedClient,
-  );
-  if (!completedKeys.has(category.unlockPrerequisiteKey)) {
-    return { allowed: false, reason: "prerequisite_incomplete" };
+  // 1) 前提条件カテゴリの完走チェック(前提付きのときのみ)。
+  if (hasPrereq) {
+    const { completedKeys } = await resolveCompletedPrerequisiteKeys(
+      new Set([category.unlockPrerequisiteKey!]),
+      authedClient,
+    );
+    if (!completedKeys.has(category.unlockPrerequisiteKey!)) {
+      return { allowed: false, reason: "prerequisite_incomplete" };
+    }
   }
 
   // 2) 段階解放の範囲内チェック。
   //    sort_order 上の index と総数を、公開一覧(sort_order 昇順)から導出する。
-  //    解放ゲート付きカテゴリは解放順を sort_order の降順にするため index を反転し、
-  //    applyCollectionUnlockGating(配信側)の降順表示・降順解放と一致させる。
-  //    この関数は冒頭で unlockPrerequisiteKey 無しを return 済みなので、ここは常にゲート付き。
+  //    方向は配信側 applyCollectionUnlockGating と共有ヘルパー(unlockJudgmentIndex)で一致させる:
+  //    sequential は昇順(先頭=表紙から)、既存ゲートは降順(末尾から)。
   const published = await listPublishedStylePresets({
     includeAdminOnly: options.includeAdminOnly === true,
   });
@@ -211,19 +224,17 @@ export async function authorizeStylePresetUnlock(
     return { allowed: false, reason: "preset_locked" };
   }
 
-  // 降順 index(末尾=sort_order 最大 を index 0 とする)。
-  const indexInCategory = total - 1 - ascendingIndex;
+  const indexInCategory = unlockJudgmentIndex(ascendingIndex, total, sequential);
 
   const distinctCounts = await resolveDistinctGeneratedCounts(
     new Set([category.key]),
     userId,
   );
   const distinctGenerated = distinctCounts.get(category.key) ?? 0;
-  const unlockedCount = computeUnlockedCount(
-    distinctGenerated,
-    category.progressiveBatchSize,
-    total,
-  );
+  const batch = sequential
+    ? sequentialBatchSize(category.progressiveBatchSize)
+    : category.progressiveBatchSize;
+  const unlockedCount = computeUnlockedCount(distinctGenerated, batch, total);
 
   if (indexInCategory >= unlockedCount) {
     return { allowed: false, reason: "preset_locked" };

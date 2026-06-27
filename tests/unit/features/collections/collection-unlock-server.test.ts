@@ -38,6 +38,7 @@ function categoryRef(
   key: string,
   unlockPrerequisiteKey: string | null = null,
   progressiveBatchSize: number | null = null,
+  sequentialUnlock = false,
 ): StylePresetPublicSummary["category"] {
   return {
     id: key,
@@ -47,7 +48,7 @@ function categoryRef(
     badgeColor: "#000000",
     badgeTextColor: "#ffffff",
     skipBasePrefix: false,
-    outputAspectRatioMode: "square",
+    outputAspectRatioMode: "source",
     userGuidanceJa: null,
     userGuidanceEn: null,
     showSourceImageTypeControl: true,
@@ -61,6 +62,7 @@ function categoryRef(
     isActive: true,
     unlockPrerequisiteKey,
     progressiveBatchSize,
+    sequentialUnlock,
     unlockAnnouncementHeroPath: null,
     unlockAnnouncementInitialBody: null,
     unlockAnnouncementDripBody: null,
@@ -162,6 +164,20 @@ describe("resolveCollectionUnlockContext", () => {
 
     expect(ctx.prerequisiteCompletedKeys.size).toBe(0);
   });
+
+  it("sequential(前提なし)カテゴリも distinct 集計対象に含める", async () => {
+    const SEQ = "travel_to_italy";
+    setDistinctRpc([{ category_key: SEQ, unique_count: 3 }]);
+    const presets = [
+      presetSummary("p0", categoryRef(SEQ, null, null, true)),
+    ];
+
+    const ctx = await resolveCollectionUnlockContext(presets, "user-1", dummyClient);
+
+    // 前提なしでも sequential は distinct を解決する(= ゲート対象)。
+    expect(ctx.distinctGeneratedByCategoryKey.get(SEQ)).toBe(3);
+    expect(mockCreateAdminClient).toHaveBeenCalled();
+  });
 });
 
 describe("authorizeStylePresetUnlock", () => {
@@ -227,5 +243,47 @@ describe("authorizeStylePresetUnlock", () => {
 
     const result = await authorizeStylePresetUnlock(cat, "unknown", "user-1", dummyClient);
     expect(result).toEqual({ allowed: false, reason: "preset_locked" });
+  });
+
+  // ===== sequential_unlock(前提なし・昇順=先頭[表紙]から1つずつ)=====
+  const SEQ = "travel_to_italy";
+  // index0=表紙(sort_order 最小), 1..8=Day1..Day8
+  const seqIds = ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
+
+  it("sequential: distinct0 では先頭(表紙)のみ許可", async () => {
+    setDistinctRpc([{ category_key: SEQ, unique_count: 0 }]);
+    const cat = categoryRef(SEQ, null, null, true); // batch 未設定 → 1扱い
+    mockListPublished.mockResolvedValue(seqIds.map((id) => presetSummary(id, cat)));
+
+    await expect(
+      authorizeStylePresetUnlock(cat, "p0", "user-1", dummyClient),
+    ).resolves.toEqual({ allowed: true });
+    await expect(
+      authorizeStylePresetUnlock(cat, "p1", "user-1", dummyClient),
+    ).resolves.toEqual({ allowed: false, reason: "preset_locked" });
+  });
+
+  it("sequential: distinct3 では先頭から4枚(表紙+Day1..3)まで許可", async () => {
+    setDistinctRpc([{ category_key: SEQ, unique_count: 3 }]);
+    const cat = categoryRef(SEQ, null, null, true);
+    mockListPublished.mockResolvedValue(seqIds.map((id) => presetSummary(id, cat)));
+
+    await expect(
+      authorizeStylePresetUnlock(cat, "p3", "user-1", dummyClient),
+    ).resolves.toEqual({ allowed: true }); // 昇順 index3 < unlocked 4
+    await expect(
+      authorizeStylePresetUnlock(cat, "p4", "user-1", dummyClient),
+    ).resolves.toEqual({ allowed: false, reason: "preset_locked" }); // index4 >= 4
+  });
+
+  it("sequential: 前提カテゴリの完走チェックは行わない(progress 未設定でも許可)", async () => {
+    // setProgress を呼ばない(hasPrereq=false のため get_collection_progress に依存しない)
+    setDistinctRpc([{ category_key: SEQ, unique_count: 9 }]);
+    const cat = categoryRef(SEQ, null, null, true);
+    mockListPublished.mockResolvedValue(seqIds.map((id) => presetSummary(id, cat)));
+
+    await expect(
+      authorizeStylePresetUnlock(cat, "p8", "user-1", dummyClient),
+    ).resolves.toEqual({ allowed: true });
   });
 });
