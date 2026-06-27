@@ -15,6 +15,7 @@ import { isAdminViewer } from "@/lib/env";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
+import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import {
   applyCollectionUnlockGating,
   type CollectionUnlockContext,
@@ -54,10 +55,10 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
   // 解放ゲート(unlock gating)はユーザー依存のため、グローバルキャッシュの外で適用する。
   //  - 前提条件カテゴリ未完走 → 解放対象カテゴリのプリセットを一覧から除去
   //  - 完走済み → 段階解放(drip)で未解放ぶんに locked フラグを立てる
-  // 解放ルール付きカテゴリ(unlockPrerequisiteKey != null)が一覧に無ければ完全 no-op。
+  // 解放ゲート対象カテゴリ(前提カテゴリ付き or sequential)が一覧に無ければ完全 no-op。
   // その場合は authed client の生成すらスキップする(従来カテゴリのみのときの無駄を避ける)。
-  const hasGatedCategory = cachedPresets.some(
-    (preset) => preset.category.unlockPrerequisiteKey != null,
+  const hasGatedCategory = cachedPresets.some((preset) =>
+    categoryNeedsUnlockContext(preset.category),
   );
   const presets =
     user && hasGatedCategory

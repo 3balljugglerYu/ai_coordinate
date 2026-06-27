@@ -5,6 +5,7 @@ import {
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
 import { authorizeStylePresetUnlock } from "@/features/collections/lib/collection-unlock-server";
+import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import { createClient } from "@/lib/supabase/server";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import { getAllMessages } from "@/i18n/messages";
@@ -173,12 +174,14 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     // 解放ゲート(unlock gating)のサーバー側認可。
-    // unlock_prerequisite_key が設定されたカテゴリのみ:
-    //  - 前提条件カテゴリを完走していなければ 403
-    //  - 段階解放(drip)で未解放のプリセットなら 403
-    // 既存カテゴリ(両列 null)は no-op で従来どおり許可される。
-    // UI でのカード非表示はセキュリティではないため、ここで必ず弾く。
-    if (preset.category.unlockPrerequisiteKey) {
+    // 対象カテゴリ(categoryNeedsUnlockContext):
+    //  - unlock_prerequisite_key 付き → 前提カテゴリ未完走なら 403
+    //  - sequential_unlock → sort_order 昇順(先頭=表紙)で未解放のプリセットなら 403
+    //  - いずれも段階解放(drip)で未解放のプリセットなら 403
+    // 対象でないカテゴリ(両方 false)は authorizeStylePresetUnlock が即 {allowed:true} を返す。
+    // 「どのカテゴリがゲート対象か」は共有述語に一元化し、新しい解放モード追加時の
+    // ガード漏れ(認可バイパス)を防ぐ。UI 非表示はセキュリティではないため、ここで必ず弾く。
+    if (categoryNeedsUnlockContext(preset.category)) {
       const authedClient = await createClient();
       const unlockAuth = await authorizeStylePresetUnlock(
         preset.category,

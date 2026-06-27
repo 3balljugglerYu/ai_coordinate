@@ -27,7 +27,8 @@ export interface CollectionUnlockContext {
  * /style の配信用に、解放ゲート(前提条件カテゴリの完走 + 段階解放)を
  * ユーザーごとに適用する純粋関数。
  *
- * - `unlockPrerequisiteKey` が null のカテゴリ → 一切変更しない(従来挙動)。
+ * - `unlockPrerequisiteKey` が null かつ `sequentialUnlock` でないカテゴリ → 一切変更しない(従来挙動)。
+ * - `sequentialUnlock=true` のカテゴリ → 前提なしでも sort_order 昇順(先頭=表紙)から段階解放。
  * - 前提条件カテゴリが未完走のユーザー → そのカテゴリのプリセットを「一覧から完全に除去」
  *   (ティザーを出さない方針)。
  * - 完走済みユーザー → プリセットは残すが、解放数を超えるものに `locked: true` を立て、

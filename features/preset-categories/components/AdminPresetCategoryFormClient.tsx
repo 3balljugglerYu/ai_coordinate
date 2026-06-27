@@ -1424,10 +1424,10 @@ export function AdminPresetCategoryFormClient({
               className="mt-1 h-4 w-4 rounded border-slate-300"
             />
             <span className="text-sm text-slate-700">
-              <span className="font-medium">順番固定で1つずつ解放する（sequential unlock）</span>
+              <span className="font-medium">順番固定で順次解放する（sequential unlock）</span>
               <br />
               <span className="text-xs text-slate-500">
-                ON にすると、前提カテゴリが無くても <strong>sort_order 先頭（最小）＝表紙</strong> から昇順に1つずつ解放します（前を生成すると次が解放）。段階解放の単位が空のときは1体ずつ。旅行日記など「表紙→Day1→…」の順序固定に使います。OFF の既存挙動（前提カテゴリ付きは末尾から）には影響しません。
+                ON にすると、前提カテゴリが無くても <strong>sort_order 先頭（最小）＝表紙</strong> から昇順に解放します（前を生成すると次が解放）。解放単位は上の「段階解放の単位」に従い、<strong>空のときは1つずつ</strong>。旅行日記など「表紙→Day1→…」の順序固定に使います。OFF の既存挙動（前提カテゴリ付きは末尾から）には影響しません。
               </span>
             </span>
           </label>

@@ -165,10 +165,12 @@ export type StylePresetUnlockAuthorization =
 /**
  * generate route のサーバー側認可: 解放ゲート付きカテゴリのプリセット生成を許可するか。
  *
- * `unlockPrerequisiteKey` が null のカテゴリ(= 既存カテゴリすべて)は常に許可(no-op)。
- * ゲート付きの場合のみ:
- *   1. 前提条件カテゴリを完走しているか(get_collection_progress RPC)
- *   2. 当該プリセットが sort_order 上で解放数の範囲内か(段階解放)
+ * ゲート対象は「unlock_prerequisite_key 付き」または「sequential_unlock=true」のカテゴリ。
+ * どちらでもないカテゴリ(両方 null/false)は常に許可(no-op)。
+ * ゲート対象の場合のみ:
+ *   1. (前提付きのとき)前提条件カテゴリを完走しているか(get_collection_progress RPC)
+ *   2. 当該プリセットが sort_order 上で解放数の範囲内か(段階解放。
+ *      sequential=昇順[先頭=表紙から] / 既存=降順[末尾から]、unlockJudgmentIndex で共有)
  * を検証する。UI 非表示はセキュリティではないため、ここで必ず弾く。
  *
  * @param category 生成対象プリセットのカテゴリ参照(unlock 列を含む)
