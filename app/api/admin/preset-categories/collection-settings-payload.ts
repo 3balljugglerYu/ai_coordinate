@@ -18,6 +18,10 @@ import {
 export interface CollectionSettingsPayload {
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  /** 完走表示モード: 'mount'(単一台紙) / 'book'(めくれる日記帳)。 */
+  completionViewMode?: "mount" | "book";
+  /** book 表示の表紙(0ページ目)画像 storage path。 */
+  bookCoverPath?: string | null;
   /** 完走必須の前提カテゴリ key(完走者限定の解放ゲート)。null=ゲートなし */
   unlockPrerequisiteKey?: string | null;
   /** プリセットを N 体ずつ段階解放する単位(正の整数)。null=最初から全部 */
@@ -67,6 +71,7 @@ export interface CollectionSettingsPayload {
 export interface CollectionSettingsExisting {
   isCollectionSeries: boolean;
   completionThreshold: number | null;
+  completionViewMode?: "mount" | "book";
   mountTemplatePath: string | null;
   mountLayout: MountLayoutKey | null;
   /** 省略時は null(未設定)として扱う */
@@ -112,6 +117,25 @@ export function parseCollectionSettings(
       return { ok: false, error: "completion_threshold must be a positive integer" };
     } else {
       payload.completionThreshold = v;
+    }
+  }
+
+  if (body.completion_view_mode !== undefined) {
+    const v = body.completion_view_mode;
+    if (v !== "mount" && v !== "book") {
+      return { ok: false, error: "completion_view_mode must be 'mount' or 'book'" };
+    }
+    payload.completionViewMode = v;
+  }
+
+  if (body.book_cover_path !== undefined) {
+    const v = body.book_cover_path;
+    if (v === null) {
+      payload.bookCoverPath = null;
+    } else if (typeof v !== "string" || v.trim().length === 0) {
+      return { ok: false, error: "book_cover_path must be a non-empty string or null" };
+    } else {
+      payload.bookCoverPath = v.trim();
     }
   }
 
@@ -651,30 +675,48 @@ export function parseCollectionSettings(
         : (existing.mountSlots ?? null),
   };
 
+  // 完走表示モード(実効値)。book は台紙テンプレ/レイアウトを使わないため R-02 を分岐する。
+  const effectiveViewMode =
+    payload.completionViewMode ?? existing.completionViewMode ?? "mount";
+
   if (effective.isCollectionSeries) {
-    const hasSlots =
-      Array.isArray(effective.mountSlots) && effective.mountSlots.length > 0;
-    if (
-      effective.completionThreshold === null ||
-      effective.completionThreshold <= 0 ||
-      !effective.mountTemplatePath ||
-      (effective.mountLayout === null && !hasSlots)
-    ) {
-      return {
-        ok: false,
-        error:
-          "コレクション有効時は コンプリート必要数(N) / 台紙テンプレ / (レイアウト または カスタム枠) が必要です",
-      };
-    }
-    // mount_slots(カスタム枠)があればそのスロット数、無ければレイアウトのスロット数と一致させる
-    const expectedSlotCount = hasSlots
-      ? effective.mountSlots!.length
-      : slotCountForLayout(effective.mountLayout!);
-    if (effective.completionThreshold !== expectedSlotCount) {
-      return {
-        ok: false,
-        error: "コンプリート必要数(N)は枠(スロット)数と一致させてください",
-      };
+    if (effectiveViewMode === "book") {
+      // book: コンプリート必要数(N=ページ数)のみ必須。台紙テンプレ/レイアウト/枠は不要。
+      if (
+        effective.completionThreshold === null ||
+        effective.completionThreshold <= 0
+      ) {
+        return {
+          ok: false,
+          error: "コレクション有効(book表示)時は コンプリート必要数(N) が必要です",
+        };
+      }
+    } else {
+      // mount(従来台紙): N / 台紙テンプレ / (レイアウト or カスタム枠) が必要。
+      const hasSlots =
+        Array.isArray(effective.mountSlots) && effective.mountSlots.length > 0;
+      if (
+        effective.completionThreshold === null ||
+        effective.completionThreshold <= 0 ||
+        !effective.mountTemplatePath ||
+        (effective.mountLayout === null && !hasSlots)
+      ) {
+        return {
+          ok: false,
+          error:
+            "コレクション有効時は コンプリート必要数(N) / 台紙テンプレ / (レイアウト または カスタム枠) が必要です",
+        };
+      }
+      // mount_slots(カスタム枠)があればそのスロット数、無ければレイアウトのスロット数と一致させる
+      const expectedSlotCount = hasSlots
+        ? effective.mountSlots!.length
+        : slotCountForLayout(effective.mountLayout!);
+      if (effective.completionThreshold !== expectedSlotCount) {
+        return {
+          ok: false,
+          error: "コンプリート必要数(N)は枠(スロット)数と一致させてください",
+        };
+      }
     }
   }
 
