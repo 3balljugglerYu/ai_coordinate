@@ -43,8 +43,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!pathname) return false;
     return stripLocalePrefix(pathname).pathname === "/creators/submit";
   })();
+  // コレクション完走の「めくれる日記帳」シェアは没入ビュー(/m/<token>/book)。
+  const isCollectionBook = (() => {
+    if (!pathname) return false;
+    return /^\/m\/[^/]+\/book\/?$/.test(stripLocalePrefix(pathname).pathname);
+  })();
   const shouldBypassAppShell =
-    isAdmin || isStandaloneDocs || isCatalogReader || isCreatorPromptSubmit;
+    isAdmin ||
+    isStandaloneDocs ||
+    isCatalogReader ||
+    isCreatorPromptSubmit ||
+    isCollectionBook;
 
   useEffect(() => {
     if (isAdmin) {

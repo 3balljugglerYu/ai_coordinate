@@ -4,9 +4,13 @@ export interface CatalogPageData {
   id: string;
   imageUrl: string | null;
   alt: string | null;
-  displayName: string;
-  xAccountUrl: string;
-  sourceTweetUrl: string;
+  /**
+   * 絵師クレジット(カタログ用)。スクラップブック(日記帳)流用時は未指定で、
+   * その場合は下部グラデーション+クレジットを描画せず画像のみ全面表示する。
+   */
+  displayName?: string;
+  xAccountUrl?: string;
+  sourceTweetUrl?: string;
 }
 
 interface CatalogPageProps {
@@ -36,7 +40,7 @@ export function CatalogPage({ page, pageNumber, side }: CatalogPageProps) {
       {page.imageUrl ? (
         <Image
           src={page.imageUrl}
-          alt={page.alt ?? page.displayName}
+          alt={page.alt ?? page.displayName ?? ""}
           fill
           unoptimized
           // 本は全ページを DOM に持つ。lazy だと「めくった瞬間」に読み込みが
@@ -55,11 +59,13 @@ export function CatalogPage({ page, pageNumber, side }: CatalogPageProps) {
         </div>
       )}
 
-      {/* 下部グラデーション (クレジットの可読性確保) */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/50 to-transparent"
-      />
+      {/* 下部グラデーション (クレジットの可読性確保)。クレジットが無い(スクラップブック)時は出さない。 */}
+      {page.displayName ? (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/50 to-transparent"
+        />
+      ) : null}
 
       {/* 薄い金箔風の枠 — 表紙とトーンを統一 */}
       <div
@@ -75,7 +81,8 @@ export function CatalogPage({ page, pageNumber, side }: CatalogPageProps) {
         />
       ) : null}
 
-      {/* 下部のクレジット */}
+      {/* 下部のクレジット(カタログ用)。スクラップブックでは displayName 未指定で非表示。 */}
+      {page.displayName ? (
       <div className="absolute inset-x-0 bottom-0 z-10 px-7 pb-8 text-center">
         <h2
           className="text-2xl italic leading-snug text-[#f6e8c4] sm:text-3xl"
@@ -132,6 +139,7 @@ export function CatalogPage({ page, pageNumber, side }: CatalogPageProps) {
           — {pageNumber} —
         </p>
       </div>
+      ) : null}
     </div>
   );
 }

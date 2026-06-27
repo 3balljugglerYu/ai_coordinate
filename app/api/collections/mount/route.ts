@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
     const { data: category, error: categoryError } = await admin
       .from("preset_categories")
       .select(
-        "id, mount_template_path, mount_layout, mount_slots, mount_template_width, mount_template_height, completion_threshold, visibility, display_name_ja, ogp_template_path, ogp_mount_placement",
+        "id, mount_template_path, mount_layout, mount_slots, mount_template_width, mount_template_height, completion_threshold, visibility, display_name_ja, ogp_template_path, ogp_mount_placement, completion_view_mode, book_cover_path",
       )
       .eq("key", categoryKey)
       .eq("is_collection_series", true)
@@ -200,6 +200,134 @@ export async function POST(request: NextRequest) {
     if (category.visibility !== "public" && !isAdminViewer(user.id)) {
       throw new Error(`category not public: ${categoryKey}`);
     }
+
+    // ===== book(めくれる日記帳)モード: 台紙合成をスキップし、ページ画像のスナップショット + 表紙OGP =====
+    if ((category as { completion_view_mode?: string }).completion_view_mode === "book") {
+      const bookThreshold =
+        typeof category.completion_threshold === "number"
+          ? category.completion_threshold
+          : null;
+      if (!bookThreshold || bookThreshold <= 0) {
+        throw new Error("collection settings incomplete (book threshold)");
+      }
+      // 採用ページ(selections 優先、無ければ各Day最新・sort_order順)
+      const pageReps = selections
+        ? await resolveSelectedImages({
+            userId: user.id,
+            categoryId: category.id as string,
+            selections,
+            slotCount: bookThreshold,
+          })
+        : await getRepresentativeImagesForCategory({
+            userId: user.id,
+            categoryId: category.id as string,
+            limit: bookThreshold,
+          });
+      if (pageReps.length !== bookThreshold) {
+        throw new Error(
+          `book pages incomplete: ${pageReps.length} of ${bookThreshold}`,
+        );
+      }
+      const bookPagePaths = pageReps.map((r) => r.storagePath);
+
+      // OGP(運営登録のテーマ表紙)を public バケットへコピーし mount_image_path に使う(/m の OGP 用)。
+      const bookOgpPath = `collection-mounts/${user.id}/${categoryKey}/book-ogp-${Date.now()}.png`;
+      const ogpTemplatePath = category.ogp_template_path as string | null;
+      let bookOgpStoredPath: string | null = null;
+      if (ogpTemplatePath) {
+        try {
+          const ogpBuf = await downloadBuffer(
+            admin,
+            TEMPLATE_BUCKET,
+            ogpTemplatePath,
+          );
+          const { error: ogpUploadErr } = await admin.storage
+            .from(GENERATED_IMAGES_BUCKET)
+            .upload(bookOgpPath, ogpBuf, {
+              contentType: "image/png",
+              upsert: false,
+            });
+          if (!ogpUploadErr) bookOgpStoredPath = bookOgpPath;
+        } catch (e) {
+          console.error("book OGP copy failed:", e);
+        }
+      }
+      uploadedPath = bookOgpStoredPath; // 後続失敗時のロールバック対象
+
+      const bookMountPath = bookOgpStoredPath ?? mountStoragePath;
+
+      // 採用ページのスナップショットを保存(初回/更新とも)。
+      const { error: bookUpdateErr } = await admin
+        .from("collection_completions")
+        .update({ book_page_paths: bookPagePaths })
+        .eq("id", completionId)
+        .eq("user_id", user.id);
+      if (bookUpdateErr) {
+        throw new Error(`book pages save failed: ${bookUpdateErr.message}`);
+      }
+
+      const bookSharePath = `/m/${completionId}/book`;
+
+      if (!isUpdate) {
+        const { data: finalized, error: finalizeError } = await admin.rpc(
+          "finalize_collection_completion",
+          {
+            p_completion_id: completionId,
+            p_user_id: user.id,
+            p_mount_image_path: bookMountPath,
+          },
+        );
+        if (finalizeError) {
+          throw new Error(`finalize failed: ${finalizeError.message}`);
+        }
+        if (finalized !== true) {
+          throw new Error("finalize skipped: completion is not generating");
+        }
+        revalidateTag(`collection-completions:${user.id}`, "max");
+        await Promise.allSettled([
+          recordStyleUsageEvent({
+            userId: user.id,
+            authState: "authenticated",
+            eventType: "complete_achieved",
+          }),
+          recordStyleUsageEvent({
+            userId: user.id,
+            authState: "authenticated",
+            eventType: "mount_generated",
+          }),
+        ]);
+      } else {
+        // 作り直し: mount_image_path を差し替え、旧 OGP を削除。
+        await admin
+          .from("collection_completions")
+          .update({ mount_image_path: bookMountPath })
+          .eq("id", completionId)
+          .eq("user_id", user.id);
+        if (previousMountPath && previousMountPath !== bookMountPath) {
+          try {
+            await admin.storage
+              .from(GENERATED_IMAGES_BUCKET)
+              .remove([previousMountPath]);
+          } catch {
+            // best effort
+          }
+        }
+      }
+
+      const bookOgpUrl = bookOgpStoredPath
+        ? admin.storage
+            .from(GENERATED_IMAGES_BUCKET)
+            .getPublicUrl(bookOgpStoredPath).data.publicUrl
+        : mountImageUrl;
+
+      return NextResponse.json({
+        status: "completed",
+        mode: "book",
+        sharePath: bookSharePath,
+        mountImageUrl: bookOgpUrl,
+      });
+    }
+
     const templatePath = category.mount_template_path as string | null;
     const threshold =
       typeof category.completion_threshold === "number"
