@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
-import { getPublicMountByToken } from "@/features/collections/lib/public-mount-server-api";
+import {
+  getCollectionBookByToken,
+  getPublicMountByToken,
+} from "@/features/collections/lib/public-mount-server-api";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MountShareButton } from "@/features/collections/components/MountShareButton";
 import { MountCelebrationBackground } from "@/features/collections/components/MountCelebrationBackground";
@@ -66,6 +69,12 @@ export default async function PublicMountPage({
 }: PublicMountPageProps) {
   await connection();
   const { token } = await params;
+
+  // book(めくれる日記帳)完走は没入の本リーダーへ。/m/<id> への既存導線を全てカバーする。
+  const book = await getCollectionBookByToken(token);
+  if (book) {
+    redirect(`/m/${token}/book`);
+  }
 
   const mount = await getPublicMountByToken(token);
   if (!mount) {
