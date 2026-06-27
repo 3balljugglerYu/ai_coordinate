@@ -29,11 +29,18 @@ ALTER TABLE public.preset_categories
 ALTER TABLE public.collection_completions
   ADD COLUMN IF NOT EXISTS book_page_paths JSONB;
 
+-- 配列(または NULL)のみ許可(多層防御。アプリ側でも防御的にフィルタする)。
+ALTER TABLE public.collection_completions
+  DROP CONSTRAINT IF EXISTS collection_completions_book_page_paths_check;
+ALTER TABLE public.collection_completions
+  ADD CONSTRAINT collection_completions_book_page_paths_check
+  CHECK (book_page_paths IS NULL OR jsonb_typeof(book_page_paths) = 'array');
+
 COMMENT ON COLUMN public.preset_categories.completion_view_mode IS
   '完走表示モード: mount(単一台紙) / book(めくれる日記帳)。既定 mount。';
 COMMENT ON COLUMN public.preset_categories.book_cover_path IS
-  'book 表示の表紙(0ページ目)画像の storage path(collection-mount-templates 等)。未設定時は簡易表紙。';
+  'book 表示の表紙(0ページ目)画像の storage path。実行時/admin は generated-images(public) を使用。未設定時は簡易表紙。';
 COMMENT ON COLUMN public.collection_completions.book_page_paths IS
-  'book 表示で採用した各ページ画像 storage_path の順序付き配列(スナップショット)。';
+  'book 表示で採用した各ページ画像 storage_path(generated-images)の順序付き配列(スナップショット)。';
 
 COMMIT;

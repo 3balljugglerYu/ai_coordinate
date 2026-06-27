@@ -939,4 +939,80 @@ describe("parseCollectionSettings - 解放お知らせ設定(任意・独立)", 
       expect(r.payload.unlockAnnouncementAccentColor).toBeUndefined();
     }
   });
+
+  // ===== 完走表示モード(completion_view_mode) / book =====
+  describe("completion_view_mode (mount / book)", () => {
+    test("book で有効化: N があれば台紙テンプレ/レイアウト無しでも ok(R-02 免除)", () => {
+      const r = parseCollectionSettings(
+        {
+          is_collection_series: true,
+          completion_view_mode: "book",
+          completion_threshold: 8,
+        },
+        OFF,
+      );
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.payload.completionViewMode).toBe("book");
+        expect(r.payload.completionThreshold).toBe(8);
+      }
+    });
+
+    test("book で有効化: N 欠落は拒否", () => {
+      const r = parseCollectionSettings(
+        { is_collection_series: true, completion_view_mode: "book" },
+        OFF,
+      );
+      expect(r.ok).toBe(false);
+    });
+
+    test("既存が book のカテゴリは body に mode 無しでも台紙必須にならない", () => {
+      const existingBook: CollectionSettingsExisting = {
+        isCollectionSeries: true,
+        completionThreshold: 8,
+        completionViewMode: "book",
+        mountTemplatePath: null,
+        mountLayout: null,
+      };
+      // N だけ更新(mode 据え置き)。mount 用 R-02 にひっかからないこと。
+      const r = parseCollectionSettings({ completion_threshold: 8 }, existingBook);
+      expect(r.ok).toBe(true);
+    });
+
+    test("mount(既定)では従来どおり台紙テンプレ/レイアウトが必須", () => {
+      const r = parseCollectionSettings(
+        {
+          is_collection_series: true,
+          completion_view_mode: "mount",
+          completion_threshold: 4,
+        },
+        OFF,
+      );
+      expect(r.ok).toBe(false);
+    });
+
+    test("不正な mode は拒否", () => {
+      const r = parseCollectionSettings(
+        { completion_view_mode: "invalid" },
+        OFF,
+      );
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toMatch(/completion_view_mode/);
+    });
+
+    test("book_cover_path: 空文字は拒否 / null は受理 / 文字列は trim", () => {
+      expect(
+        parseCollectionSettings({ book_cover_path: "  " }, OFF).ok,
+      ).toBe(false);
+      const rNull = parseCollectionSettings({ book_cover_path: null }, OFF);
+      expect(rNull.ok).toBe(true);
+      if (rNull.ok) expect(rNull.payload.bookCoverPath).toBeNull();
+      const rStr = parseCollectionSettings(
+        { book_cover_path: "  travel/cover.png  " },
+        OFF,
+      );
+      expect(rStr.ok).toBe(true);
+      if (rStr.ok) expect(rStr.payload.bookCoverPath).toBe("travel/cover.png");
+    });
+  });
 });

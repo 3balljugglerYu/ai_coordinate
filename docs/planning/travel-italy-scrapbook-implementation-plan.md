@@ -36,7 +36,7 @@
 ### ADR-3: 本の画像ページはスナップショット保存 + Dayごとに選択可
 - **Decision**: 完走者が「旅行日記を作る」時、既存 `CollectionMountComposer` 同様の**選択UI**を出す(各Day既定=代表[最新1枚]、複数あれば差し替え可)。確定した「各Dayの採用画像 storage_path 8件」を `collection_completions.book_page_paths JSONB` に保存。
 - **Reason**: 同一Dayに複数生成があるユーザーが望む1枚を選べる(従来台紙のUXを踏襲)。自動選択は再生成で変わるためスナップショットで本を固定。
-- **Consequence**: 選択UI(8枠版)が必要。表示は保存パスから署名URLを発行。「作り直し」で更新可。
+- **Consequence**: 選択UI(8枠版)が必要。表示は generated-images(public)の公開URLで配信(既存の台紙共有と同方式)。「作り直し」で更新可。
 
 ### ADR-4: OGPは運営登録画像(既存テンプレ合成基盤を流用)
 - **Decision**: 運営が用意するOGP画像を `travel_to_italy.ogp_template_path` に登録(必要なら `ogp_mount_placement` で代表画像を合成)。既存 `compose-mount-ogp` を流用。
@@ -76,7 +76,7 @@ flowchart LR
 
 ### Phase 2: サーバー(本生成・取得)
 - `/api/collections/mount`(または新 `/api/collections/book`)を mode 分岐: book モードは台紙合成をスキップし、選択(無ければ代表)8枚を解決→`book_page_paths` 保存→OGP合成→finalize。
-- 公開取得: `getCollectionBook(completionId)` = 表紙 + 8ページ署名URL + 所有者判定。
+- 公開取得: `getCollectionBookByToken(completionId)` = 表紙 + 8ページ公開URL(generated-images) + 所有者判定。
 - ビルド確認: API 単体で動作。
 
 ### Phase 3: 本UI・没入ページ・選択UI
@@ -87,7 +87,7 @@ flowchart LR
 
 ### Phase 4: 導線・整合・テスト
 - 完走者の進捗モーダル/マイページに「旅行日記を見る/作る」CTA(book モード時)。
-- 整合: 図と DB/UI の状態一致、ゲスト/所有者の出し分け、署名URL TTL。
+- 整合: 図と DB/UI の状態一致、ゲスト/所有者の出し分け、公開URL(generated-images)配信。
 - 検証: lint/typecheck/test/build、実機(完走→選択→本生成→シェア→ゲスト閲覧→OGP)。
 
 ## 5. 主要修正ファイル(見込み)

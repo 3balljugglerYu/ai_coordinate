@@ -44,6 +44,15 @@ export function ScrapbookReader({
     };
   }, []);
 
+  const handleClose = () => {
+    // 直リンク(履歴なし)で来たゲストは back() が no-op になるため /collections へ。
+    if (typeof window !== "undefined" && window.history.length <= 1) {
+      router.push("/collections");
+    } else {
+      router.back();
+    }
+  };
+
   const handleShare = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
     try {
@@ -71,7 +80,7 @@ export function ScrapbookReader({
     >
       <button
         type="button"
-        onClick={() => router.back()}
+        onClick={handleClose}
         aria-label="閉じる"
         className={chromeCls(
           "absolute left-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-stone-900/70 text-white shadow-md hover:bg-stone-900",

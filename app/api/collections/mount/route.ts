@@ -202,7 +202,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ===== book(めくれる日記帳)モード: 台紙合成をスキップし、ページ画像のスナップショット + 表紙OGP =====
-    if ((category as { completion_view_mode?: string }).completion_view_mode === "book") {
+    const completionViewMode: "mount" | "book" =
+      (category as { completion_view_mode?: string | null })
+        .completion_view_mode === "book"
+        ? "book"
+        : "mount";
+    if (completionViewMode === "book") {
       const bookThreshold =
         typeof category.completion_threshold === "number"
           ? category.completion_threshold
@@ -230,41 +235,24 @@ export async function POST(request: NextRequest) {
       }
       const bookPagePaths = pageReps.map((r) => r.storagePath);
 
-      // OGP(運営登録のテーマ表紙)を public バケットへコピーし mount_image_path に使う(/m の OGP 用)。
-      const bookOgpPath = `collection-mounts/${user.id}/${categoryKey}/book-ogp-${Date.now()}.png`;
+      // OGP/シェア用の1枚絵は mount-{ts}.png(finalize が許可するパターン)に「必ず実ファイル」をアップロードする。
+      //   優先: 運営登録のテーマ表紙(ogp_template_path)。未設定なら1ページ目を流用してファイルを保証する。
+      // こうして mount_image_path が常に実在オブジェクトを指す(OGP/サムネが404にならない)。
       const ogpTemplatePath = category.ogp_template_path as string | null;
-      let bookOgpStoredPath: string | null = null;
-      if (ogpTemplatePath) {
-        try {
-          const ogpBuf = await downloadBuffer(
-            admin,
-            TEMPLATE_BUCKET,
-            ogpTemplatePath,
-          );
-          const { error: ogpUploadErr } = await admin.storage
-            .from(GENERATED_IMAGES_BUCKET)
-            .upload(bookOgpPath, ogpBuf, {
-              contentType: "image/png",
-              upsert: false,
-            });
-          if (!ogpUploadErr) bookOgpStoredPath = bookOgpPath;
-        } catch (e) {
-          console.error("book OGP copy failed:", e);
-        }
+      const ogpSourceBuf = ogpTemplatePath
+        ? await downloadBuffer(admin, TEMPLATE_BUCKET, ogpTemplatePath)
+        : await downloadBuffer(admin, GENERATED_IMAGES_BUCKET, bookPagePaths[0]);
+      const { error: ogpUploadErr } = await admin.storage
+        .from(GENERATED_IMAGES_BUCKET)
+        .upload(mountStoragePath, ogpSourceBuf, {
+          contentType: "image/png",
+          upsert: false,
+        });
+      if (ogpUploadErr) {
+        throw new Error(`book OGP upload failed: ${ogpUploadErr.message}`);
       }
-      uploadedPath = bookOgpStoredPath; // 後続失敗時のロールバック対象
-
-      const bookMountPath = bookOgpStoredPath ?? mountStoragePath;
-
-      // 採用ページのスナップショットを保存(初回/更新とも)。
-      const { error: bookUpdateErr } = await admin
-        .from("collection_completions")
-        .update({ book_page_paths: bookPagePaths })
-        .eq("id", completionId)
-        .eq("user_id", user.id);
-      if (bookUpdateErr) {
-        throw new Error(`book pages save failed: ${bookUpdateErr.message}`);
-      }
+      uploadedPath = mountStoragePath; // 後続失敗時のロールバック対象
+      const bookMountPath = mountStoragePath;
 
       const bookSharePath = `/m/${completionId}/book`;
 
@@ -283,6 +271,15 @@ export async function POST(request: NextRequest) {
         if (finalized !== true) {
           throw new Error("finalize skipped: completion is not generating");
         }
+        // finalize 成功後に採用ページを保存(failed 行に stale を残さない)。
+        const { error: bookPagesError } = await admin
+          .from("collection_completions")
+          .update({ book_page_paths: bookPagePaths })
+          .eq("id", completionId)
+          .eq("user_id", user.id);
+        if (bookPagesError) {
+          throw new Error(`book pages save failed: ${bookPagesError.message}`);
+        }
         revalidateTag(`collection-completions:${user.id}`, "max");
         await Promise.allSettled([
           recordStyleUsageEvent({
@@ -297,12 +294,20 @@ export async function POST(request: NextRequest) {
           }),
         ]);
       } else {
-        // 作り直し: mount_image_path を差し替え、旧 OGP を削除。
-        await admin
+        // 作り直し: mount_image_path と採用ページを更新。成功確認後にのみ旧ファイルを削除する
+        //   (レガシー isUpdate と同等のエラーハンドリング)。
+        const { error: updateError } = await admin
           .from("collection_completions")
-          .update({ mount_image_path: bookMountPath })
+          .update({
+            mount_image_path: bookMountPath,
+            book_page_paths: bookPagePaths,
+          })
           .eq("id", completionId)
           .eq("user_id", user.id);
+        if (updateError) {
+          throw new Error(`book update failed: ${updateError.message}`);
+        }
+        revalidateTag(`collection-completions:${user.id}`, "max");
         if (previousMountPath && previousMountPath !== bookMountPath) {
           try {
             await admin.storage
@@ -314,11 +319,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const bookOgpUrl = bookOgpStoredPath
-        ? admin.storage
-            .from(GENERATED_IMAGES_BUCKET)
-            .getPublicUrl(bookOgpStoredPath).data.publicUrl
-        : mountImageUrl;
+      const bookOgpUrl = admin.storage
+        .from(GENERATED_IMAGES_BUCKET)
+        .getPublicUrl(bookMountPath).data.publicUrl;
 
       return NextResponse.json({
         status: "completed",

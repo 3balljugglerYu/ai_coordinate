@@ -24,6 +24,40 @@ export async function generateMetadata({
   params,
 }: PublicMountPageProps): Promise<Metadata> {
   const { token } = await params;
+
+  // book(めくれる日記帳)完走は /m/<id>/book にリダイレクトする。リダイレクトを辿らない
+  // クローラ向けにも、book では台紙ではなく日記帳のタイトル/OGP を返す。
+  const book = await getCollectionBookByToken(token);
+  if (book) {
+    const bookTitle = `${book.displayNameJa} | Persta.AI`;
+    const bookDescription =
+      "うちの子の旅行日記(スクラップブック)。あなたのうちの子でも作れます。";
+    const bookBase: Metadata = {
+      title: bookTitle,
+      description: bookDescription,
+      robots: { index: false, follow: true },
+    };
+    if (!book.ogpImageUrl) return bookBase;
+    return {
+      ...bookBase,
+      openGraph: {
+        title: bookTitle,
+        description: bookDescription,
+        type: "article",
+        siteName: "Persta.AI",
+        images: [
+          { url: book.ogpImageUrl, alt: bookTitle, width: 1200, height: 630 },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: bookTitle,
+        description: bookDescription,
+        images: [book.ogpImageUrl],
+      },
+    };
+  }
+
   const mount = await getPublicMountByToken(token);
   const title = mount
     ? `${mount.displayNameJa} コンプリートカード | Persta.AI`

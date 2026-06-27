@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const GENERATED_IMAGES_BUCKET = "generated-images";
@@ -99,9 +100,9 @@ export interface PublicCollectionBook {
  * 公開「めくれる日記帳(book)」用に token(= collection_completions.id)から完了済みの本を解決する。
  * 完了していない / book_page_paths が無い / 存在しない場合は null。
  */
-export async function getCollectionBookByToken(
+export const getCollectionBookByToken = cache(async (
   token: string,
-): Promise<PublicCollectionBook | null> {
+): Promise<PublicCollectionBook | null> => {
   if (!UUID_PATTERN.test(token)) {
     return null;
   }
@@ -154,4 +155,4 @@ export async function getCollectionBookByToken(
     ),
     completedAt: (data.completed_at as string | null) ?? null,
   };
-}
+});
