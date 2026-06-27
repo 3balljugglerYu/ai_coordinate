@@ -14,6 +14,13 @@ import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 
 const checkoutBodySchema = z.object({
   packageId: z.string().min(1, "packageId is required"),
+  // 課金起点(計測用・任意): どの画面/導線から購入したか。例: purchase_page, balance_empty_modal, collection_complete。
+  origin: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9_-]{1,40}$/)
+    .optional(),
 });
 
 function handleStripeError(
@@ -97,7 +104,7 @@ export async function POST(request: NextRequest) {
       return jsonError(copy.packageIdRequired, "CREDITS_PACKAGE_ID_REQUIRED", 400);
     }
 
-    const { packageId } = parsed.data;
+    const { packageId, origin } = parsed.data;
     const percoinPackage = findPercoinPackage(packageId);
     if (!percoinPackage) {
       return jsonError(copy.invalidPackage, "CREDITS_PACKAGE_NOT_FOUND", 404);
@@ -163,6 +170,8 @@ export async function POST(request: NextRequest) {
       metadata: {
         packageId: percoinPackage.id,
         percoinAmount: String(percoinPackage.credits),
+        // 課金起点(計測用)。webhook で credit_transactions.metadata.origin に転記する。
+        ...(origin ? { origin } : {}),
       },
     });
 

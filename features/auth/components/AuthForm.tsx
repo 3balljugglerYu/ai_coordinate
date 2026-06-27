@@ -20,9 +20,21 @@ import {
 } from "@/components/ui/dialog";
 import { signIn, signUp, signInWithOAuth, type OAuthProvider } from "../lib/auth-client";
 import { parseSignupSource, type SignupSource } from "../lib/signup-source";
+import { SIGNUP_SOURCE_COOKIE } from "./SignupSourceCapture";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
 import { useWebViewDetection, buildIntentUrl } from "./WebViewBanner";
+
+/** first-touch で保存された流入元 cookie を読む(SSR では null)。 */
+function readSignupSourceCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(`${SIGNUP_SOURCE_COOKIE}=`));
+  return match
+    ? decodeURIComponent(match.slice(SIGNUP_SOURCE_COOKIE.length + 1))
+    : null;
+}
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -84,9 +96,12 @@ export function AuthForm({
 
   // URLクエリパラメータから紹介コードを取得
   const referralCode = searchParams.get("ref");
-  // prop 指定(モーダル内導線)を優先し、無ければ URL クエリから解決する。
+  // prop 指定(モーダル内導線)を優先 → URL クエリ → first-touch cookie の順で解決する。
+  // (X 等の外部リンクがホーム等に着地し、その後に登録しても流入元を拾えるようにする)
   const signupSource =
-    signupSourceProp ?? parseSignupSource(searchParams.get("signup_source"));
+    signupSourceProp ??
+    parseSignupSource(searchParams.get("signup_source")) ??
+    parseSignupSource(readSignupSourceCookie());
 
   const resolveRedirectTarget = () =>
     redirectTo ??

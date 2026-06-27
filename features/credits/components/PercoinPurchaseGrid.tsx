@@ -12,7 +12,12 @@ import { PercoinPurchaseCard } from "./PercoinPurchaseCard";
  * ペルコイン購入グリッド（自前UI + Checkout Session API）
  * Stripe Pricing Tableの4商品制限を回避し、5つすべてのパッケージを表示
  */
-export function PercoinPurchaseGrid() {
+export function PercoinPurchaseGrid({
+  origin = "purchase_page",
+}: {
+  /** 課金起点(計測用)。表示元の画面/導線を渡す。例: purchase_page, balance_empty_modal。 */
+  origin?: string;
+} = {}) {
   const t = useTranslations("credits");
   const locale = useLocale();
   const router = useRouter();
@@ -31,7 +36,7 @@ export function PercoinPurchaseGrid() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ packageId }),
+        body: JSON.stringify({ packageId, origin }),
       });
 
       const data = await response.json().catch(() => null);

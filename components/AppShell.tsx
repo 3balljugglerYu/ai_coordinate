@@ -11,6 +11,7 @@ import { CollectionProgressChecker } from "@/components/CollectionProgressChecke
 import { CollectionUnlockDripListener } from "@/features/collections/components/CollectionUnlockDripListener";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { stripLocalePrefix } from "@/i18n/config";
 
 /**
@@ -60,6 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <SignupSourceCapture />
       <Suspense fallback={<div className="h-16" />}>
         <StickyHeader />
       </Suspense>
