@@ -81,6 +81,23 @@ function FlagRibbon({ className }: { className?: string }) {
   );
 }
 
+/** X(旧Twitter)プロフィールへのリンクボタン。 */
+function XLink({ handle, url }: { handle: string; url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3 py-1.5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="h-3.5 w-3.5">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+      {handle}
+    </a>
+  );
+}
+
 interface GuidePreset {
   id: string;
   title: string;
@@ -210,6 +227,53 @@ export function ItalyTravelGuide({
           <p className="mt-3 text-xs text-[#9a8a78]">
             企画がスタートしたら対象の「イタリア旅行」シリーズが表示されます！
           </p>
+        </Reveal>
+      </section>
+
+      {/* ===== コラボ クレジット ===== */}
+      <section className="px-6 pb-6">
+        <Reveal>
+          <div
+            className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border bg-white/80 px-5 py-4 text-center"
+            style={{ borderColor: "rgba(14,138,79,0.3)" }}
+          >
+            <span
+              className="text-xs font-bold tracking-[0.2em]"
+              style={{ color: IT_GREEN, fontFamily: HEADING_FONT }}
+            >
+              ✦ COLLABORATION ✦
+            </span>
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-6">
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs text-[#9a8a78]">旅行企画案・監修</span>
+                <Image
+                  src="/collections/italy/user-icons/chanlio-icon.jpeg"
+                  alt="@kyouchanlio のアイコン"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-full border border-[#cfe7d8] object-cover shadow-sm"
+                />
+                <XLink handle="@kyouchanlio" url="https://x.com/kyouchanlio" />
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs text-[#9a8a78]">企画・主催</span>
+                <Image
+                  src="/collections/wafer/user-icons/mikifuku-icon.webp"
+                  alt="@mickey_fuku のアイコン"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-full border border-[#cfe7d8] object-cover shadow-sm"
+                />
+                <XLink handle="@mickey_fuku" url="https://x.com/mickey_fuku" />
+              </div>
+            </div>
+            <span
+              className="text-xs font-bold"
+              style={{ color: IT_GREEN }}
+            >
+              フォローしてね！いいことあるかも！
+            </span>
+          </div>
         </Reveal>
       </section>
 
