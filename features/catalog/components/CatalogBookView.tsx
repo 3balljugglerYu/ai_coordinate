@@ -37,6 +37,11 @@ interface CatalogBookViewProps {
    * (下スワイプ = true で表示 / 上スワイプ = false で非表示)。
    */
   onChromeVisibilityChange?: (visible: boolean) => void;
+  /**
+   * スクラップブック(縦長9:16)流用時は true。各ページを object-contain で全体表示する
+   * (カタログ=絵師作品は既定 false で従来どおり object-cover 全面)。
+   */
+  isScrapbook?: boolean;
 }
 
 // 本のサイズは利用可能領域 (bookContainerRef) を実測し、その縦横比に合わせて
@@ -143,6 +148,7 @@ export function CatalogBookView({
   campaignDescription,
   campaignCoverImageUrl,
   onChromeVisibilityChange,
+  isScrapbook = false,
 }: CatalogBookViewProps) {
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -577,6 +583,7 @@ export function CatalogBookView({
                     description={campaignDescription}
                     coverImageUrl={campaignCoverImageUrl}
                     variant="front"
+                    isScrapbook={isScrapbook}
                   />
                 </FlipBookPageWrapper>
 
@@ -586,6 +593,7 @@ export function CatalogBookView({
                     <CatalogPage
                       page={page}
                       pageNumber={i + 1}
+                      isScrapbook={isScrapbook}
                       side={
                         orientation === "portrait"
                           ? "single"

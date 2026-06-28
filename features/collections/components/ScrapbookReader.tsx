@@ -116,6 +116,7 @@ export function ScrapbookReader({
           campaignTitle={title}
           campaignCoverImageUrl={coverImageUrl}
           pages={pages}
+          isScrapbook
           onChromeVisibilityChange={(visible) => setChromeVisible(visible)}
         />
       </main>
