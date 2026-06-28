@@ -170,6 +170,7 @@ export function UnlockDripModal({
   onClose,
   body,
   colors,
+  unitLabel,
 }: {
   title: string;
   newlyUnlocked: CollectionUnlockAnnouncement["unlockedPresets"];
@@ -178,9 +179,12 @@ export function UnlockDripModal({
   body?: string | null;
   /** 配色(未指定なら標準の紫基調)。 */
   colors?: UnlockAnnouncementColors;
+  /** 見出し「新たに N◯ 解放！」の単位(既定「体」。sequential は「日」など)。 */
+  unitLabel?: string | null;
 }) {
   const { cssVars, titleColor } = resolveColors(colors);
   const count = newlyUnlocked.length;
+  const unit = unitLabel ?? "体";
   const bodyText = body ?? `${title}の続きが登場しました。`;
   return (
     <div
@@ -197,7 +201,8 @@ export function UnlockDripModal({
         <CloseButton onClose={onClose} />
         <NewPill />
         <h2 className="mt-2 text-lg font-bold" style={{ color: titleColor }}>
-          新たに{count}体 解放！
+          新たに{count}
+          {unit} 解放！
         </h2>
         <p className="mt-1 text-sm text-[#7A5A93]">{bodyText}</p>
 
