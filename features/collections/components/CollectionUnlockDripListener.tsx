@@ -63,13 +63,20 @@ export function CollectionUnlockDripListener() {
         );
         if (!announcement) return;
 
-        const seen = getUnlockSeen(announcement.categoryKey);
-        const mode = decideUnlockAnnouncement(seen, announcement.unlockedCount);
-        // 段階解放(drip)のみ担当。初回(seen===null)はホームの A に委ねる。
-        if (mode !== "drip" || seen === null) return;
+        // sequential は baseline(常時解放=表紙)を未記録時の既読とみなす。これにより
+        // 「はじまり生成 → Day1解放」が初回から drip として出る(前提型は従来どおり初回はAに委譲)。
+        const seenRaw = getUnlockSeen(announcement.categoryKey);
+        const baseline = announcement.baselineUnlockedCount ?? 0;
+        const effectiveSeen = seenRaw ?? (baseline > 0 ? baseline : null);
+        const mode = decideUnlockAnnouncement(
+          effectiveSeen,
+          announcement.unlockedCount,
+        );
+        // 段階解放(drip)のみ担当。初回(effectiveSeen===null=前提型で未記録)はホームの A に委ねる。
+        if (mode !== "drip" || effectiveSeen === null) return;
 
         const newlyUnlocked = announcement.unlockedPresets.slice(
-          seen,
+          effectiveSeen,
           announcement.unlockedCount,
         );
         if (newlyUnlocked.length === 0 || cancelled) return;
@@ -116,6 +123,14 @@ export function CollectionUnlockDripListener() {
       title={active.announcement.categoryDisplayName}
       newlyUnlocked={active.newlyUnlocked}
       onClose={close}
+      body={active.announcement.dripBody}
+      colors={{
+        accent: active.announcement.accentColor,
+        accentHover: active.announcement.accentHoverColor,
+        title: active.announcement.titleColor,
+        soft: active.announcement.softColor,
+      }}
+      unitLabel={active.announcement.unitLabel}
     />,
     document.body,
   );

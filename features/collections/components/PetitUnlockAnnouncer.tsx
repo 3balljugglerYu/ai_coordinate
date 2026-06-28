@@ -59,13 +59,23 @@ function resolveActiveAnnouncement(
       continue;
     }
 
-    const seen = getUnlockSeen(announcement.categoryKey);
-    const mode = decideUnlockAnnouncement(seen, announcement.unlockedCount);
+    // sequential は baseline(常時解放=表紙)分を「未記録時の既読」とみなし、
+    // baseline 超の解放だけを drip 告知する(表紙の初回バナーは出さない)。
+    const seenRaw = getUnlockSeen(announcement.categoryKey);
+    const baseline = announcement.baselineUnlockedCount ?? 0;
+    const effectiveSeen = seenRaw ?? (baseline > 0 ? baseline : null);
+    const mode = decideUnlockAnnouncement(
+      effectiveSeen,
+      announcement.unlockedCount,
+    );
     if (mode === "none") continue;
 
     const newlyUnlocked =
-      mode === "drip" && seen !== null
-        ? announcement.unlockedPresets.slice(seen, announcement.unlockedCount)
+      mode === "drip" && effectiveSeen !== null
+        ? announcement.unlockedPresets.slice(
+            effectiveSeen,
+            announcement.unlockedCount,
+          )
         : announcement.unlockedPresets.slice(0, announcement.unlockedCount);
 
     return { mode, announcement, newlyUnlocked };
@@ -190,6 +200,7 @@ export function PetitUnlockAnnouncer({
         onClose={acknowledge}
         body={ann.dripBody}
         colors={colors}
+        unitLabel={ann.unitLabel}
       />
     );
 

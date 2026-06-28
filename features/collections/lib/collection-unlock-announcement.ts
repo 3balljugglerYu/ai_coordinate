@@ -1,5 +1,5 @@
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
-import { computeUnlockedCount } from "./collection-unlock";
+import { computeUnlockedCount, sequentialBatchSize } from "./collection-unlock";
 import type { CollectionUnlockContext } from "./collection-unlock-gating";
 
 /**
@@ -31,6 +31,17 @@ export interface CollectionUnlockAnnouncement {
    */
   prerequisiteAckCount: number;
   /**
+   * 「常に解放されている基準数」。sequential では batch(=1)が初期から解放されている
+   * (例: 表紙「はじまり」)ため、その分は告知対象から除外する。クライアントは
+   * localStorage 未記録時にこの値を「既読」とみなし、基準を超えた解放だけを drip 告知する。
+   * 前提カテゴリ型(ぷち神)は 0(従来どおり初回バナーから)。
+   */
+  baselineUnlockedCount: number;
+  /**
+   * 「新たに N◯ 解放！」の単位ラベル。sequential は "日"(Day)、前提型は null(=「体」)。
+   */
+  unitLabel: string | null;
+  /**
    * 解放お知らせモーダルのカスタム表示設定(admin がカテゴリ単位で設定)。
    * いずれも null なら現行ハードコード(画像/文言/紫基調の配色)にフォールバックする。
    * heroImagePath は storage パス(public バケット)。URL 化はクライアントで行う。
@@ -57,31 +68,39 @@ export function buildCollectionUnlockAnnouncements(
   presets: readonly StylePresetPublicSummary[],
   context: CollectionUnlockContext,
 ): CollectionUnlockAnnouncement[] {
-  // 解放ゲート付き かつ 前提完走済み のカテゴリだけを、出現順(sort_order 昇順)に集約する。
-  // 注: sequential_unlock(前提なし・昇順)カテゴリは「解放お知らせ」未対応。意図的にここで
-  //   スキップする(prerequisite が無いため下の continue で除外)。対応する場合は下の .reverse()
-  //   と progressiveBatchSize 前提(降順)を sequential 用に見直すこと。
+  // 告知対象を sort_order 昇順で集約する。対象は2系統:
+  //  - 前提カテゴリ付き(例: ぷち神): 前提カテゴリ完走済みのときのみ。解放順は末尾(sort_order最大)から。
+  //  - sequential(例: travel): 前提なしでも対象。解放順は先頭(sort_order最小=表紙)から昇順。
   const itemsByCategoryKey = new Map<string, StylePresetPublicSummary[]>();
   for (const preset of presets) {
-    const prerequisite = preset.category.unlockPrerequisiteKey;
-    if (!prerequisite) continue;
-    if (!context.prerequisiteCompletedKeys.has(prerequisite)) continue;
-    const items = itemsByCategoryKey.get(preset.category.key);
+    const cat = preset.category;
+    const prerequisite = cat.unlockPrerequisiteKey;
+    const sequential = cat.sequentialUnlock === true;
+    if (prerequisite) {
+      if (!context.prerequisiteCompletedKeys.has(prerequisite)) continue;
+    } else if (!sequential) {
+      continue; // 前提も sequential も無い従来カテゴリは告知しない
+    }
+    const items = itemsByCategoryKey.get(cat.key);
     if (items) items.push(preset);
-    else itemsByCategoryKey.set(preset.category.key, [preset]);
+    else itemsByCategoryKey.set(cat.key, [preset]);
   }
 
   const announcements: CollectionUnlockAnnouncement[] = [];
   for (const [categoryKey, items] of itemsByCategoryKey) {
+    const category = items[0].category;
+    const sequential = category.sequentialUnlock === true;
     const total = items.length;
     const distinctGenerated =
       context.distinctGeneratedByCategoryKey.get(categoryKey) ?? 0;
-    const batchSize = items[0].category.progressiveBatchSize;
+    const batchSize = sequential
+      ? sequentialBatchSize(category.progressiveBatchSize)
+      : category.progressiveBatchSize;
     const unlockedCount = computeUnlockedCount(distinctGenerated, batchSize, total);
     if (unlockedCount <= 0) continue;
 
-    // 解放順(末尾=sort_order 最大 から)。items は sort_order 昇順なので reverse。
-    const unlockOrder = items.slice().reverse();
+    // 解放順: sequential=先頭から昇順(items はそのまま) / 前提型=末尾から(reverse)。
+    const unlockOrder = sequential ? items.slice() : items.slice().reverse();
     const unlockedPresets = unlockOrder
       .slice(0, unlockedCount)
       .map((preset) => ({
@@ -90,11 +109,16 @@ export function buildCollectionUnlockAnnouncements(
         thumbnailUrl: preset.thumbnailImageUrl,
       }));
 
-    const prerequisiteKey = items[0].category.unlockPrerequisiteKey ?? "";
-    const prerequisiteAckCount =
-      context.prerequisiteUniqueCountByKey?.get(prerequisiteKey) ?? 0;
+    const prerequisiteKey = category.unlockPrerequisiteKey ?? "";
+    // sequential は前提が無いので ack ゲート無し(0)。前提型は完走演出確認後に出す。
+    const prerequisiteAckCount = sequential
+      ? 0
+      : (context.prerequisiteUniqueCountByKey?.get(prerequisiteKey) ?? 0);
+    // sequential は batch 分(=先頭の表紙)が常時解放のため告知の基準とし、それ超だけ drip 告知。
+    const baselineUnlockedCount = sequential
+      ? sequentialBatchSize(category.progressiveBatchSize)
+      : 0;
 
-    const category = items[0].category;
     announcements.push({
       categoryKey,
       categoryDisplayName: category.displayNameJa,
@@ -103,6 +127,8 @@ export function buildCollectionUnlockAnnouncements(
       unlockedPresets,
       prerequisiteKey,
       prerequisiteAckCount,
+      baselineUnlockedCount,
+      unitLabel: sequential ? "日" : null,
       heroImagePath: category.unlockAnnouncementHeroPath,
       initialBody: category.unlockAnnouncementInitialBody,
       dripBody: category.unlockAnnouncementDripBody,

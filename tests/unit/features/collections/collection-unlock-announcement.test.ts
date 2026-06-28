@@ -228,4 +228,45 @@ describe("buildCollectionUnlockAnnouncements", () => {
     expect(a.accentColor).toBeNull();
     expect(a.softColor).toBeNull();
   });
+
+  describe("sequential(前提なし・昇順・baseline)", () => {
+    const SEQ_KEY = "travel_to_italy";
+    function seqPresets() {
+      const cat = makeCategory(SEQ_KEY, {
+        unlockPrerequisiteKey: null,
+        sequentialUnlock: true,
+        progressiveBatchSize: null, // batch 未設定 → 1扱い
+        displayNameJa: "うちの子のイタリア旅行",
+      });
+      // index0=はじまり(表紙), 1..8=Day1..Day8(makePreset は id=title)
+      return ["はじまり", "Day1", "Day2", "Day3", "Day4", "Day5", "Day6", "Day7", "Day8"].map(
+        (t) => makePreset(t, cat),
+      );
+    }
+
+    test("前提なしでも告知対象になり、昇順・baseline=1・単位=日", () => {
+      const result = buildCollectionUnlockAnnouncements(seqPresets(), {
+        prerequisiteCompletedKeys: new Set(),
+        distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 1]]), // はじまり生成済 → Day1解放
+      });
+      expect(result).toHaveLength(1);
+      const a = result[0];
+      expect(a.unlockedCount).toBe(2); // はじまり + Day1
+      expect(a.baselineUnlockedCount).toBe(1); // 表紙は常時解放
+      expect(a.unitLabel).toBe("日");
+      expect(a.prerequisiteAckCount).toBe(0); // 前提ackゲートなし
+      // 昇順(先頭=はじまり, 次=Day1)
+      expect(a.unlockedPresets.map((p) => p.title)).toEqual(["はじまり", "Day1"]);
+    });
+
+    test("生成0(はじまりのみ解放=baseline)でも対象に出る(クライアントが baseline で抑制)", () => {
+      const result = buildCollectionUnlockAnnouncements(seqPresets(), {
+        prerequisiteCompletedKeys: new Set(),
+        distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 0]]),
+      });
+      const a = result[0];
+      expect(a.unlockedCount).toBe(1);
+      expect(a.baselineUnlockedCount).toBe(1); // unlockedCount===baseline → クライアント側で none
+    });
+  });
 });
