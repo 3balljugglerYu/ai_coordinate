@@ -13,6 +13,7 @@ import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { AchievementBadge } from "@/features/collections/components/AchievementBadge";
 import { CollectionConfetti } from "@/features/collections/components/CollectionConfetti";
 import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
+import { collectionGuidePath } from "@/features/collections/lib/collection-guides";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import type { NormalizedSlotRect } from "@/features/collections/lib/mount-layouts";
 import { MOUNT_SHARE_MESSAGES } from "@/features/collections/lib/mount-share-messages";
@@ -617,7 +618,7 @@ export function CollectionProgressModal({
               </button>
             ) : null}
             <Link
-              href="/collections/wafer"
+              href={collectionGuidePath(celebration.categoryKey)}
               onClick={onClose}
               className="inline-block text-sm font-medium text-pink-400 hover:text-pink-500"
             >
@@ -982,7 +983,7 @@ export function CollectionProgressModal({
               シールを生成する
             </Link>
             <Link
-              href="/collections/wafer"
+              href={collectionGuidePath(celebration.categoryKey)}
               onClick={onClose}
               className="inline-block text-sm font-medium text-pink-400 hover:text-pink-500"
             >
