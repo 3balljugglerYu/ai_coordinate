@@ -143,6 +143,14 @@ export const getCollectionBookByToken = cache(async (
     book_cover_path?: string | null;
   };
 
+  // OGP(Xシェア画像)は横長バナー。book は mount_image_path(=はじまり/縦長)とは別に、
+  // ツイン ogp-{ts}.png にバナーを保存しているのでそちらを参照する(mount モードと同方式)。
+  const mountPath = (data.mount_image_path as string | null) ?? null;
+  const bookOgpPath =
+    mountPath && mountPath.includes("/mount-")
+      ? mountPath.replace("/mount-", "/ogp-")
+      : mountPath;
+
   return {
     completionId: data.id as string,
     ownerId: data.user_id as string,
@@ -150,9 +158,7 @@ export const getCollectionBookByToken = cache(async (
     displayNameJa: catRecord.display_name_ja ?? "",
     coverImageUrl: buildPublicGeneratedImageUrl(catRecord.book_cover_path ?? null),
     pageImageUrls,
-    ogpImageUrl: buildPublicGeneratedImageUrl(
-      (data.mount_image_path as string | null) ?? null,
-    ),
+    ogpImageUrl: buildPublicGeneratedImageUrl(bookOgpPath),
     completedAt: (data.completed_at as string | null) ?? null,
   };
 });
