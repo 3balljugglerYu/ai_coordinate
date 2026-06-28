@@ -235,24 +235,46 @@ export async function POST(request: NextRequest) {
       }
       const bookPagePaths = pageReps.map((r) => r.storagePath);
 
-      // OGP/シェア用の1枚絵は mount-{ts}.png(finalize が許可するパターン)に「必ず実ファイル」をアップロードする。
-      //   優先: 運営登録のテーマ表紙(ogp_template_path)。未設定なら1ページ目を流用してファイルを保証する。
-      // こうして mount_image_path が常に実在オブジェクトを指す(OGP/サムネが404にならない)。
-      const ogpTemplatePath = category.ogp_template_path as string | null;
-      const ogpSourceBuf = ogpTemplatePath
-        ? await downloadBuffer(admin, TEMPLATE_BUCKET, ogpTemplatePath)
-        : await downloadBuffer(admin, GENERATED_IMAGES_BUCKET, bookPagePaths[0]);
-      const { error: ogpUploadErr } = await admin.storage
+      // 完走モーダル/マイページに出す画像 = 「はじまり(表紙=book_page_paths[0])」の生成画像を
+      //   mount-{ts}.png(finalize 許可パターン)にコピーする。縦長なので 3:4 のモーダルにも収まる。
+      //   (旧実装は横長 OGP バナーを敷いていたが、縦長モーダルに合わないため はじまり に変更)
+      const coverBuf = await downloadBuffer(
+        admin,
+        GENERATED_IMAGES_BUCKET,
+        bookPagePaths[0],
+      );
+      const { error: coverUploadErr } = await admin.storage
         .from(GENERATED_IMAGES_BUCKET)
-        .upload(mountStoragePath, ogpSourceBuf, {
+        .upload(mountStoragePath, coverBuf, {
           contentType: "image/png",
           upsert: false,
         });
-      if (ogpUploadErr) {
-        throw new Error(`book OGP upload failed: ${ogpUploadErr.message}`);
+      if (coverUploadErr) {
+        throw new Error(`book cover upload failed: ${coverUploadErr.message}`);
       }
       uploadedPath = mountStoragePath; // 後続失敗時のロールバック対象
       const bookMountPath = mountStoragePath;
+
+      // X シェア用 OGP(横長バナー)は mount のツイン ogp-{ts}.png に保存する(mount モードと同方式)。
+      //   優先: 運営登録のテーマ表紙(ogp_template_path = 旅のきろくバナー)。未設定時は
+      //   はじまり画像を OGP にフォールバック(404 を避ける)。シェアページはこのツインを参照する。
+      const ogpTemplatePath = category.ogp_template_path as string | null;
+      const ogpTwinPath = ogpPathFromMountPath(mountStoragePath);
+      if (ogpTwinPath) {
+        try {
+          const ogpBuf = ogpTemplatePath
+            ? await downloadBuffer(admin, TEMPLATE_BUCKET, ogpTemplatePath)
+            : coverBuf;
+          await admin.storage
+            .from(GENERATED_IMAGES_BUCKET)
+            .upload(ogpTwinPath, ogpBuf, {
+              contentType: "image/png",
+              upsert: false,
+            });
+        } catch (e) {
+          console.error("book OGP twin upload failed:", e);
+        }
+      }
 
       const bookSharePath = `/m/${completionId}/book`;
 
@@ -309,10 +331,12 @@ export async function POST(request: NextRequest) {
         }
         revalidateTag(`collection-completions:${user.id}`, "max");
         if (previousMountPath && previousMountPath !== bookMountPath) {
+          // 旧 mount-{ts}.png と そのOGPツイン ogp-{ts}.png を削除(ベストエフォート)。
+          const stale = [previousMountPath];
+          const prevOgp = ogpPathFromMountPath(previousMountPath);
+          if (prevOgp) stale.push(prevOgp);
           try {
-            await admin.storage
-              .from(GENERATED_IMAGES_BUCKET)
-              .remove([previousMountPath]);
+            await admin.storage.from(GENERATED_IMAGES_BUCKET).remove(stale);
           } catch {
             // best effort
           }
