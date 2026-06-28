@@ -245,7 +245,7 @@ export function ItalyTravelGuide({
             </span>
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-6">
               <div className="flex flex-col items-center gap-2">
-                <span className="text-xs text-[#9a8a78]">プロンプト提供</span>
+                <span className="text-xs text-[#9a8a78]">旅行企画案・監修</span>
                 <Image
                   src="/collections/italy/user-icons/chanlio-icon.jpeg"
                   alt="@kyouchanlio のアイコン"
