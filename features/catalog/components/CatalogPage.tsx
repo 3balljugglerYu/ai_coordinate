@@ -19,13 +19,24 @@ interface CatalogPageProps {
   pageNumber: number;
   /** 見開き時の左右どちらか。中央折り目側の陰影を切り替える */
   side: "left" | "right" | "single";
+  /**
+   * スクラップブック(縦長9:16)流用時は true。画像を object-contain で全体表示し、
+   * 上下/左右が見切れないようにする(カタログ=絵師作品は従来どおり object-cover で全面)。
+   */
+  isScrapbook?: boolean;
 }
 
 /**
- * 本の 1 ページ。表紙 (BookCover) と同じく、作品画像をページ全面に object-cover で
- * 敷き詰め、下部グラデーション上に絵師名・リンク・ページ番号を重ねる。
+ * 本の 1 ページ。表紙 (BookCover) と同じく、作品画像をページに敷き詰める。
+ * カタログ(絵師作品)は object-cover で全面、スクラップブック(9:16)は object-contain で全体表示。
+ * 下部グラデーション上に絵師名・リンク・ページ番号を重ねる(クレジットがある場合のみ)。
  */
-export function CatalogPage({ page, pageNumber, side }: CatalogPageProps) {
+export function CatalogPage({
+  page,
+  pageNumber,
+  side,
+  isScrapbook = false,
+}: CatalogPageProps) {
   // 中央折り目側 (右ページなら左端、左ページなら右端) にうっすら陰影を付ける。
   // single (portrait) は折り目が見えないので陰影なし。
   const gutterShadow =
@@ -47,7 +58,7 @@ export function CatalogPage({ page, pageNumber, side }: CatalogPageProps) {
           // 始まり待ちが出るため eager にして全ページ画像を先読みする。
           // (画像は Storage 変換でリサイズ + WebP 化され十分軽量)
           loading="eager"
-          className="object-cover"
+          className={isScrapbook ? "object-contain" : "object-cover"}
           sizes="(max-width: 768px) 100vw, 760px"
         />
       ) : (

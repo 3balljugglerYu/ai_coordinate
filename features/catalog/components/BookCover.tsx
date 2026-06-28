@@ -10,6 +10,11 @@ interface BookCoverProps {
    * front かつ画像ありのときだけ全面の画像表紙にする。
    */
   coverImageUrl?: string | null;
+  /**
+   * スクラップブック(縦長9:16)流用時は true。表紙画像を object-contain で全体表示する
+   * (カタログは既定 false で従来どおり object-cover 全面)。
+   */
+  isScrapbook?: boolean;
 }
 
 /**
@@ -28,6 +33,7 @@ export function BookCover({
   description,
   variant,
   coverImageUrl,
+  isScrapbook = false,
 }: BookCoverProps) {
   // front かつ画像あり → サムネイル画像を全面に敷いた表紙
   if (variant === "front" && coverImageUrl) {
@@ -39,7 +45,7 @@ export function BookCover({
           fill
           unoptimized
           priority
-          className="object-cover"
+          className={isScrapbook ? "object-contain" : "object-cover"}
           sizes="(max-width: 768px) 100vw, 760px"
         />
 
