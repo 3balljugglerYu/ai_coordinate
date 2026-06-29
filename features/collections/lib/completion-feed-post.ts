@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadWebPVariants } from "@/features/generation/lib/webp-storage";
 import { buildPublicGeneratedImageUrl } from "@/features/collections/lib/public-mount-server-api";
 
@@ -20,8 +19,9 @@ export async function postCompletionToFeed(
   completionId: string,
   caption: string | null,
 ): Promise<{ postId: string }> {
-  const admin = createAdminClient();
-  const { data: completion, error } = await admin
+  // 所有権チェック前に重い WebP 処理が走らないよう、セッションクライアントで読む
+  // (collection_completions は本人のみ RLS = 非所有者は data=null で弾かれる)。
+  const { data: completion, error } = await sessionSupabase
     .from("collection_completions")
     .select("mount_image_path, mount_status")
     .eq("id", completionId)

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Home, Check } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 /**
  * 完走をホームフィードに投稿する(オプトイン)ボタン。
@@ -26,6 +27,7 @@ export function CompletionFeedPostButton({
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [caption, setCaption] = useState("");
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!ENABLED) return;
@@ -61,7 +63,18 @@ export function CompletionFeedPostButton({
       if (res.ok) {
         setPosted(true);
         setExpanded(false);
+        toast({ title: "ホームに投稿しました" });
+      } else {
+        toast({
+          variant: "destructive",
+        title: "投稿に失敗しました。時間をおいて再度お試しください。",
+        });
       }
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "通信に失敗しました。電波の良い場所でお試しください。",
+      });
     } finally {
       setBusy(false);
     }
@@ -74,7 +87,19 @@ export function CompletionFeedPostButton({
         `/api/collections/completions/${completionId}/post`,
         { method: "DELETE" },
       );
-      if (res.ok) setPosted(false);
+      if (res.ok) {
+        setPosted(false);
+      } else {
+        toast({
+          variant: "destructive",
+        title: "取り消しに失敗しました。時間をおいて再度お試しください。",
+        });
+      }
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "通信に失敗しました。電波の良い場所でお試しください。",
+      });
     } finally {
       setBusy(false);
     }

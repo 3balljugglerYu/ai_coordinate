@@ -30,6 +30,8 @@ function revalidateAfterChange(userId: string, completionId: string, postId?: st
   revalidateTag("search-posts", "max");
   revalidateTag(`user-profile-${userId}`, "max");
   revalidateTag(`my-page-${userId}`, "max");
+  // 投稿ボーナス付与でクレジット残高が変わるため、マイページ残高も失効(通常投稿と同様)
+  revalidateTag(`my-page-credits-${userId}`, "max");
   // 完走モーダルの「投稿済み」状態(CachedMyPageCollections が消費)
   revalidateTag(`collection-completions:${userId}`, "max");
   if (postId) {
@@ -107,16 +109,19 @@ export async function DELETE(
   }
 
   // 取消は is_posted=false(行は保持=再投稿で復活)。RLS により本人行のみ更新可。
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("generated_images")
     .update({ is_posted: false, posted_at: null, caption: null })
     .eq("completion_id", completionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
   if (error) {
     console.error("[completion feed post DELETE] failed:", error.message);
     return NextResponse.json({ error: "cancel_failed" }, { status: 500 });
   }
-  revalidateAfterChange(user.id, completionId);
+  // post-detail-${id} も失効させ、陳腐なメタデータが残らないようにする(MUST-ADDRESS-008)
+  revalidateAfterChange(user.id, completionId, updated?.id);
   return NextResponse.json({ posted: false });
 }
 
@@ -124,6 +129,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = flagGuard();
+  if (denied) return denied;
+
   const { id: completionId } = await params;
   const supabase = await createClient();
   const {
