@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { getPost } from "@/features/posts/lib/server-api";
@@ -134,6 +135,31 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   } catch (error) {
     // 認証エラーは無視（ゲストユーザーとして扱う）
     console.error("Auth error:", error);
+  }
+
+  // 完走フィード投稿は没入シェアページが正規の表示先。/posts/<id>(通知ディープリンク・
+  // 直接URL)で来た場合は /m/<token>(book は /book)へリダイレクトする(MUST-ADDRESS-007)。
+  // redirect() は内部で例外を投げるため try/catch の外で呼ぶ。
+  let completionRedirect: string | null = null;
+  try {
+    const supabase = await createClient();
+    const { data: post } = await supabase
+      .from("generated_images")
+      .select("completion_id, completion_view_mode")
+      .eq("id", id)
+      .maybeSingle();
+    if (post?.completion_id) {
+      completionRedirect =
+        post.completion_view_mode === "book"
+          ? `/m/${post.completion_id}/book`
+          : `/m/${post.completion_id}`;
+    }
+  } catch (error) {
+    // 取得失敗時は通常の詳細表示にフォールバック
+    console.error("completion redirect check failed:", error);
+  }
+  if (completionRedirect) {
+    redirect(completionRedirect);
   }
 
   // use cache でキャッシュして即時表示を優先（閲覧数はキャッシュ時スキップ）
