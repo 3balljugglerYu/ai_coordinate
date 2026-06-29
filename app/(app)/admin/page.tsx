@@ -66,8 +66,11 @@ export default async function AdminDashboardPage({
   let collectionSeries: AdminCollectionSeries[] = [];
   if (tab === "collections") {
     const categories = await listPresetCategories({ includeInactive: true });
+    // コレクションシリーズに加え、前提付きの報酬コレクション(例: ぷち神=
+    // unlock_prerequisite_key あり / is_collection_series=false)も admin では常に表示する。
+    // データ(完走・生成)は残るため、開催期間が終わっても KPI を確認できるようにする。
     collectionSeries = categories
-      .filter((c) => c.isCollectionSeries)
+      .filter((c) => c.isCollectionSeries || c.unlockPrerequisiteKey != null)
       .map((c) => ({
         key: c.key,
         displayName: c.displayNameJa,

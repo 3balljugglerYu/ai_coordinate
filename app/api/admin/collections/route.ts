@@ -45,7 +45,11 @@ export async function GET(request: NextRequest) {
   }
 
   const category = await getPresetCategoryByKey(categoryKey);
-  if (!category || !category.isCollectionSeries) {
+  // コレクションシリーズ or 前提付き報酬コレクション(例: ぷち神)を admin KPI 対象にする。
+  if (
+    !category ||
+    (!category.isCollectionSeries && category.unlockPrerequisiteKey == null)
+  ) {
     return NextResponse.json(
       { error: "not a collection series" },
       { status: 404 },
