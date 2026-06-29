@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { AchievementBadge } from "@/features/collections/components/AchievementBadge";
+import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
 import { CollectionConfetti } from "@/features/collections/components/CollectionConfetti";
 import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
 import { collectionGuidePath } from "@/features/collections/lib/collection-guides";
@@ -605,6 +606,13 @@ export function CollectionProgressModal({
               >
                 シェアページへ
               </Link>
+            ) : null}
+            {completionId ? (
+              <CompletionFeedPostButton
+                completionId={completionId}
+                displayName={displayName}
+                variant="cta"
+              />
             ) : null}
             {completionId ? (
               /* posts / /m と同じ共有 UI(モバイル=シェアシート、PC=コピー/Web Share

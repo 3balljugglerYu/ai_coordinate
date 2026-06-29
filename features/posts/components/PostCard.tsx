@@ -70,8 +70,18 @@ export function PostCard({
           {t("noImage")}
         </div>
       )}
+      {post.completion_id ? (
+        <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+          {locale === "en" ? "Complete" : "コンプリート"}
+        </span>
+      ) : null}
     </div>
   );
+
+  // 完走投稿は没入シェアページへ(通常投稿は従来の詳細ページ)。
+  const detailHref = post.completion_id
+    ? `/m/${post.completion_id}${post.completion_view_mode === "book" ? "/book" : ""}`
+    : getPostDetailLocalizedPath(post.id ?? "", locale);
 
   return (
     <Card
@@ -99,10 +109,7 @@ export function PostCard({
           // 閲覧数は増えない。過去の「閲覧数が異常に増える」不具合は
           // サーバーレンダー中にカウントしていた旧実装が原因であり、
           // 現行構成では prefetch を有効化しても再発しない。
-          <Link
-            href={getPostDetailLocalizedPath(post.id, locale)}
-            prefetch
-          >
+          <Link href={detailHref} prefetch={!post.completion_id}>
             {imageContent}
           </Link>
         ) : (

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { X, Share2, Maximize2, Minimize2 } from "lucide-react";
 import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 import type { CatalogPageData } from "@/features/catalog/components/CatalogPage";
+import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
 
 /**
  * コレクション完走の「めくれる日記帳(スクラップブック)」没入ビュー。
@@ -18,11 +19,14 @@ export function ScrapbookReader({
   coverImageUrl,
   pages,
   isOwner,
+  completionId,
 }: {
   title: string;
   coverImageUrl: string | null;
   pages: CatalogPageData[];
   isOwner: boolean;
+  /** 完走(collection_completions.id = token)。所有者にホーム投稿ボタンを出すのに使う。 */
+  completionId?: string | null;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -190,6 +194,22 @@ export function ScrapbookReader({
           onChromeVisibilityChange={(visible) => setChromeVisible(visible)}
         />
       </main>
+
+      {/* 所有者向け: ホームフィードへの投稿(没入ページにも常設)。chrome と同期して出し入れ。 */}
+      {isOwner && completionId ? (
+        <div
+          className={
+            "absolute bottom-5 left-1/2 z-10 -translate-x-1/2 transition-opacity duration-300 " +
+            (chromeVisible ? "opacity-100" : "pointer-events-none opacity-0")
+          }
+        >
+          <CompletionFeedPostButton
+            completionId={completionId}
+            displayName={title}
+            variant="chrome"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
