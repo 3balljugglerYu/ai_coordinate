@@ -105,7 +105,12 @@ export function CollectionCatalogGrid({
       mountImageUrl: buildMountUrl(entry.mountImagePath),
       mountTemplateWidth: entry.mountTemplateWidth,
       mountTemplateHeight: entry.mountTemplateHeight,
-      sharePath: entry.completionId ? `/m/${entry.completionId}` : null,
+      // book は redirect 元の /m/<id>(chrome付き)を経由するとチラつくため /m/<id>/book へ直行。
+      sharePath: entry.completionId
+        ? entry.completionViewMode === "book"
+          ? `/m/${entry.completionId}/book`
+          : `/m/${entry.completionId}`
+        : null,
       completionId: entry.completionId,
       characterImageUrl: null,
       collectedImageUrls: [],
