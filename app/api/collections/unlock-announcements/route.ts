@@ -4,6 +4,7 @@ import { isAdminViewer } from "@/lib/env";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
 import { buildCollectionUnlockAnnouncements } from "@/features/collections/lib/collection-unlock-announcement";
+import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 
 /**
  * GET /api/collections/unlock-announcements
@@ -29,8 +30,10 @@ export async function GET() {
 
   try {
     const presets = await getPublishedStylePresets({ includeAdminOnly: isAdmin });
-    const hasGatedCategory = presets.some(
-      (preset) => preset.category.unlockPrerequisiteKey != null,
+    // 前提カテゴリ付き or sequential が対象。sequential を見落とすと、公開中の前提
+    // カテゴリが無いとき(例: ぷち神が非公開)に travel(sequential)の告知が作られない。
+    const hasGatedCategory = presets.some((preset) =>
+      categoryNeedsUnlockContext(preset.category),
     );
     if (!hasGatedCategory) {
       return NextResponse.json({ announcements: [] });
