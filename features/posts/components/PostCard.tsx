@@ -10,7 +10,7 @@ import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostThumbUrl } from "../lib/utils";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
-import { getPostDetailLocalizedPath } from "@/lib/url-utils";
+import { getPostCardHref } from "@/lib/url-utils";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 import { cn, formatCountEnUS } from "@/lib/utils";
 
@@ -79,9 +79,7 @@ export function PostCard({
   );
 
   // 完走投稿は没入シェアページへ(通常投稿は従来の詳細ページ)。
-  const detailHref = post.completion_id
-    ? `/m/${post.completion_id}${post.completion_view_mode === "book" ? "/book" : ""}`
-    : getPostDetailLocalizedPath(post.id ?? "", locale);
+  const detailHref = getPostCardHref(post, locale);
 
   return (
     <Card

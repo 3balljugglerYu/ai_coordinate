@@ -6,6 +6,7 @@ jest.mock("@/lib/public-env", () => ({
 
 import { getSiteUrlForClient } from "@/lib/public-env";
 import {
+  getPostCardHref,
   getPostDetailLocalizedPath,
   getPostDetailPath,
   getPostDetailUrl,
@@ -30,6 +31,45 @@ describe("UrlUtils unit tests from EARS specs", () => {
     test("getPostDetailPath_予約文字を含む場合_エンコード済みパスを返す", () => {
       // Spec: URLUTIL-001
       expect(getPostDetailPath("abc/def?x=1")).toBe("/posts/abc%2Fdef%3Fx%3D1");
+    });
+  });
+
+  describe("URLUTIL-101 getPostCardHref(完走フィード投稿のタップ先分岐)", () => {
+    test("通常投稿(completion_idなし)_ロケール付き詳細パスを返す", () => {
+      expect(getPostCardHref({ id: "post-1" }, "ja")).toBe(
+        getPostDetailLocalizedPath("post-1", "ja"),
+      );
+    });
+
+    test("完走投稿(mount)_台紙の没入シェアページへ", () => {
+      expect(
+        getPostCardHref(
+          { id: "post-2", completion_id: "cmp-9", completion_view_mode: "mount" },
+          "ja",
+        ),
+      ).toBe("/m/cmp-9");
+    });
+
+    test("完走投稿(book)_本の没入シェアページへ", () => {
+      expect(
+        getPostCardHref(
+          { id: "post-3", completion_id: "cmp-7", completion_view_mode: "book" },
+          "en",
+        ),
+      ).toBe("/m/cmp-7/book");
+    });
+
+    test("完走投稿は locale に依存せず /m パスを返す", () => {
+      const ja = getPostCardHref(
+        { id: "p", completion_id: "c", completion_view_mode: "mount" },
+        "ja",
+      );
+      const en = getPostCardHref(
+        { id: "p", completion_id: "c", completion_view_mode: "mount" },
+        "en",
+      );
+      expect(ja).toBe("/m/c");
+      expect(en).toBe("/m/c");
     });
   });
 
