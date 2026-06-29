@@ -150,7 +150,8 @@ export function useCollectionProgress() {
             progressModalBadgeBgColor: target.progressModalBadgeBgColor,
             progressModalButtonColor: target.progressModalButtonColor,
             progressModalButtonTextColor: target.progressModalButtonTextColor,
-            celebrationEffect: "sparkle",
+            // 完走(N種到達)時は紙吹雪、収集途中はきらめき。
+            celebrationEffect: toCount >= threshold ? "confetti" : "sparkle",
           });
           return true;
         }
@@ -196,8 +197,9 @@ export function useCollectionProgress() {
           progressModalBadgeBgColor: series.progressModalBadgeBgColor,
           progressModalButtonColor: series.progressModalButtonColor,
           progressModalButtonTextColor: series.progressModalButtonTextColor,
-          // フィードの自動コンプリート祝いはダイヤのきらめき演出にする。
-          celebrationEffect: "sparkle",
+          // 完走(N種到達)時は紙吹雪で祝い、収集途中はきらめき演出にする。
+          celebrationEffect:
+            toCount >= series.completionThreshold ? "confetti" : "sparkle",
         });
         return true;
       }
