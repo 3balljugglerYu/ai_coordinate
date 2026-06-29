@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { getPost } from "@/features/posts/lib/server-api";
@@ -60,8 +61,14 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   }
 
   const siteUrl = getSiteUrl();
+  // 完走投稿の正規URLは没入シェアページ。canonical/OG をそちらへ向ける(MUST-ADDRESS-005)。
+  const completionPath = post.completion_id
+    ? `/m/${post.completion_id}${post.completion_view_mode === "book" ? "/book" : ""}`
+    : null;
   const postUrl = siteUrl
-    ? `${siteUrl}${localizePublicPath(`/posts/${id}`, locale)}`
+    ? completionPath
+      ? `${siteUrl}${completionPath}`
+      : `${siteUrl}${localizePublicPath(`/posts/${id}`, locale)}`
     : "";
   const imageUrl = getPostDisplayUrl(post);
 
@@ -134,6 +141,28 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   } catch (error) {
     // 認証エラーは無視（ゲストユーザーとして扱う）
     console.error("Auth error:", error);
+  }
+
+  // 完走フィード投稿は没入シェアページが正規の表示先。/posts/<id>(通知ディープリンク・
+  // 直接URL)で来た場合は /m/<token>(book は /book)へリダイレクトする。
+  // - is_posted=true のときだけ発火(取消済みは通常詳細にフォールバック: MUST-ADDRESS-007)
+  // - 既存のキャッシュ済み getPost を再利用し、余分なDB往復を避ける(MUST-ADDRESS-006)
+  // - redirect() は内部で例外を投げるため try/catch の外で呼ぶ
+  let completionRedirect: string | null = null;
+  try {
+    const post = await getPost(id, currentUserId, true);
+    if (post?.completion_id && post.is_posted) {
+      completionRedirect =
+        post.completion_view_mode === "book"
+          ? `/m/${post.completion_id}/book`
+          : `/m/${post.completion_id}`;
+    }
+  } catch (error) {
+    // 取得失敗時は通常の詳細表示にフォールバック
+    console.error("completion redirect check failed:", error);
+  }
+  if (completionRedirect) {
+    redirect(completionRedirect);
   }
 
   // use cache でキャッシュして即時表示を優先（閲覧数はキャッシュ時スキップ）

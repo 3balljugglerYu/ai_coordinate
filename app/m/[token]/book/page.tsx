@@ -81,6 +81,7 @@ export default async function CollectionBookPage({ params }: BookPageProps) {
       coverImageUrl={coverImageUrl}
       pages={pages}
       isOwner={isOwner}
+      completionId={token}
     />
   );
 }

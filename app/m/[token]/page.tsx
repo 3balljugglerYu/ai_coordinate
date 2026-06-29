@@ -11,6 +11,7 @@ import {
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MountShareButton } from "@/features/collections/components/MountShareButton";
 import { MountCelebrationBackground } from "@/features/collections/components/MountCelebrationBackground";
+import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
 
 interface PublicMountPageProps {
   params: Promise<{ token: string }>;
@@ -149,10 +150,17 @@ export default async function PublicMountPage({
       </div>
 
       {isOwner ? (
-        <MountShareButton
-          completionId={mount.completionId}
-          mountImageUrl={mount.mountImageUrl}
-        />
+        <div className="flex w-full max-w-sm flex-col items-center gap-3">
+          <MountShareButton
+            completionId={mount.completionId}
+            mountImageUrl={mount.mountImageUrl}
+          />
+          <CompletionFeedPostButton
+            completionId={mount.completionId}
+            displayName={mount.displayNameJa}
+            variant="cta"
+          />
+        </div>
       ) : null}
 
       <section className="w-full rounded-xl bg-gray-50 p-5 text-center">

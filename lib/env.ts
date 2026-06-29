@@ -64,6 +64,9 @@ const envSchema = {
   // Inspire（ユーザー投稿スタイルテンプレート機能）
   // 機能全体の kill switch
   NEXT_PUBLIC_INSPIRE_ENABLED: process.env.NEXT_PUBLIC_INSPIRE_ENABLED,
+  // 完走フィード投稿(オプトイン)機能の段階公開フラグ。'true' のときだけ導線/APIを開放
+  NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED:
+    process.env.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED,
   // ホームカルーセル個別フラグ（ADR-013）。'true' のときだけホームに露出する
   NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
     process.env.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED,
@@ -168,6 +171,8 @@ function getEnv() {
     CONTACT_EMAIL: envSchema.CONTACT_EMAIL || "yuh.products@gmail.com",
     RESEND_FROM_EMAIL: envSchema.RESEND_FROM_EMAIL || "",
     NEXT_PUBLIC_INSPIRE_ENABLED: envSchema.NEXT_PUBLIC_INSPIRE_ENABLED || "",
+    NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED:
+      envSchema.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED || "",
     NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
       envSchema.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -358,6 +363,13 @@ export function getInspireSubmissionAllowedUserIds(): string[] {
  */
 export function isInspireFeatureEnabled(): boolean {
   return env.NEXT_PUBLIC_INSPIRE_ENABLED === "true";
+}
+
+/**
+ * 完走フィード投稿(オプトイン)機能の有効/無効を判定(段階公開フラグ)
+ */
+export function isCollectionFeedPostEnabled(): boolean {
+  return env.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED === "true";
 }
 
 /**

@@ -10,7 +10,7 @@ import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostThumbUrl } from "../lib/utils";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
-import { getPostDetailLocalizedPath } from "@/lib/url-utils";
+import { getPostCardHref } from "@/lib/url-utils";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 import { cn, formatCountEnUS } from "@/lib/utils";
 
@@ -70,8 +70,16 @@ export function PostCard({
           {t("noImage")}
         </div>
       )}
+      {post.completion_id ? (
+        <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+          {locale === "en" ? "Complete" : "コンプリート"}
+        </span>
+      ) : null}
     </div>
   );
+
+  // 完走投稿は没入シェアページへ(通常投稿は従来の詳細ページ)。
+  const detailHref = getPostCardHref(post, locale);
 
   return (
     <Card
@@ -99,10 +107,7 @@ export function PostCard({
           // 閲覧数は増えない。過去の「閲覧数が異常に増える」不具合は
           // サーバーレンダー中にカウントしていた旧実装が原因であり、
           // 現行構成では prefetch を有効化しても再発しない。
-          <Link
-            href={getPostDetailLocalizedPath(post.id, locale)}
-            prefetch
-          >
+          <Link href={detailHref} prefetch={!post.completion_id}>
             {imageContent}
           </Link>
         ) : (
@@ -180,14 +185,18 @@ export function PostCard({
                 currentUserId={currentUserId}
               />
             )}
-            <div className="flex shrink-0 items-center gap-1">
-              <MessageCircle className="h-4 w-4 text-gray-500" />
-              {(post.comment_count || 0) > 0 && (
-                <span className="text-xs font-medium tabular-nums text-gray-600">
-                  {formatCountEnUS(post.comment_count || 0)}
-                </span>
-              )}
-            </div>
+            {/* 完走投稿のタップ先(没入シェアページ)にはコメントUIが無いため、
+                操作不能なコメント数は出さない(MUST-ADDRESS-011)。 */}
+            {!post.completion_id && (
+              <div className="flex shrink-0 items-center gap-1">
+                <MessageCircle className="h-4 w-4 text-gray-500" />
+                {(post.comment_count || 0) > 0 && (
+                  <span className="text-xs font-medium tabular-nums text-gray-600">
+                    {formatCountEnUS(post.comment_count || 0)}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="flex shrink-0 items-center gap-1">
               <Eye className="h-4 w-4 text-gray-500" />
               {(post.view_count || 0) > 0 && (
