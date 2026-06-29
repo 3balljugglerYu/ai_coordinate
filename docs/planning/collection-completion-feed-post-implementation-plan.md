@@ -16,6 +16,20 @@
 - **発見性(コールドスタート対策)**: 当面は**専用タブを作らず**既存フィード(新着/おすすめ)に「コンプリート」バッジ付きで混在。
 - **タップ先**: 没入シェアページ(`/m/<token>` ＝台紙 / `/m/<token>/book` ＝本)。
 
+## MRAR レビュー反映(2026-06-29)
+
+多段敵対的レビュー(document)で検出した MUST-FIX 4 / MUST-ADDRESS 5 を本書に反映済み:
+- **MUST-FIX-001**: フラグ名は `NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED`(クライアント露出に `NEXT_PUBLIC_` 必須)。
+- **MUST-FIX-002**: i18n は `messages/*.ts`(全16ロケール、`messages/types.ts` がキー一致を型強制)。
+- **MUST-FIX-003**: WebP は `uploadWebPVariants`(行不要・INSERT前)を使用。`ensureWebPVariants`(行が必要)は使わない。
+- **MUST-FIX-004**: RPC INSERT に `posted_at=now()` を必須化。
+- **MUST-ADDRESS-005**: `generation_type='one_tap_style'` は消費される(秘匿=defense-in-depth / コレクションクエリは `generation_metadata=NULL` で除外)。
+- **MUST-ADDRESS-006**: 取消は `is_posted=false`(再投稿は同一行 UPDATE 復活・ボーナス冪等)。
+- **MUST-ADDRESS-007**: `/posts/<id>` は没入シェアページへサーバーリダイレクト。
+- **MUST-ADDRESS-008**: revalidate タグを明示列挙(正規セット + `collection-completions:${userId}` + `/m/<id>` パス)。
+- **MUST-ADDRESS-009**: `completion_view_mode` は `collection_completions` に非正規化して1ホップ join。
+- 補足(OPTIONAL): `caption` 列は `generated_images` に既存=migration不要 / `ScrapbookReader` の投稿ボタンは `isOwner` でゲート / `completion_id` の `ON DELETE SET NULL` は完走削除後に孤立postになる点に留意(CASCADE 検討余地)。
+
 ---
 
 ## コードベース調査結果(Phase B)
@@ -71,13 +85,13 @@
 
 ### ADR-003: `generation_type` は拡張せず `completion_id` を真の識別子にする(確定)
 - **Context**: `generation_type` CHECK 拡張は既存参照(集計/フィルタ)への副作用監査が必要。
-- **Decision(確定)**: バッジ/タップ先/重複判定は **`completion_id` の有無**で行う。`generation_type` は**既存値で埋める**(例 `one_tap_style`、CHECK変更なし)。
+- **Decision(確定)**: バッジ/タップ先/重複判定は **`completion_id` の有無**で行う。`generation_type` は **`one_tap_style`** を採用(CHECK変更なし)。
 - **Reason**: 副作用を最小化し、最短で安全に出す。
-- **Consequence**: 将来分析で種別が必要なら `generation_type` 値追加(別PR・監査込み)。
+- **Consequence(MUST-ADDRESS-005 で正確化)**: 「機能影響なし」は誤り。`one_tap_style` は実際に消費される: (1) `shouldHidePromptForGenerationType`(`features/generation/lib/prompt-visibility.ts:10`)がプロンプトを秘匿=`prompt=''` への defense-in-depth(望ましい)。(2) コレクションクエリ3箇所(`representative-images.ts:54`/`resolve-selected-images.ts:45`/`options/route.ts:90`)も `one_tap_style` にマッチするが、いずれも `generation_metadata->oneTapStyle->>id` の AND 条件のため、**RPC が `generation_metadata` を NULL のままにすれば完走投稿は除外され安全**。将来分析で種別が必要なら値追加(別PR・監査込み)。
 
 ### ADR-004: 機能フラグで段階公開(確定)
 - **Context**: 新フィード導線は段階公開・即時停止できると安全。
-- **Decision**: env フラグ(例 `COLLECTION_FEED_POST_ENABLED`)で「ホームに投稿」導線とAPIをゲート。OFF時はボタン非表示＋API 403。Creator Looks `INSPIRE_FEATURE_ENABLED` と同パターン。
+- **Decision**: env フラグ(例 `NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED`)で「ホームに投稿」導線とAPIをゲート。OFF時はボタン非表示＋API 403。Creator Looks `NEXT_PUBLIC_INSPIRE_ENABLED` と同パターン。
 - **Reason**: デプロイと公開を分離し、問題時はコード切り戻し無しで即OFF。
 - **Consequence**: フラグ判定を UI(ボタン表示)とサーバ(API/RPC手前)の両方に置く。
 
@@ -148,7 +162,8 @@ stateDiagram-v2
     [*] --> 未投稿
     未投稿 --> 投稿済み: ホームに投稿
     投稿済み --> 非表示: 通報やadmin判断でremoved
-    投稿済み --> 削除済み: 本人が投稿を取り消す
+    投稿済み --> 取消: 本人が取り消す(is_posted=false)
+    取消 --> 投稿済み: 再投稿で復活(同一行をUPDATE)
     非表示 --> 投稿済み: admin復帰
 ```
 
@@ -197,8 +212,12 @@ flowchart LR
   いいね/コメント/通報は完走投稿でも既存機構を流用する。
 - **EARS-07(異常系)** If the completion image or WebP variants cannot be prepared, then the system shall fail the post-to-home request without creating a partial row.
   画像/WebP variants を準備できない場合、中途半端な行を作らずに失敗させる。
-- **EARS-08(イベント)** When the owner cancels a completion post, the system shall remove it from the feed (the underlying completion and `/m/<token>` remain intact).
-  本人が完走投稿を取り消したら、フィードから除く(完走本体とシェアページは保持)。
+- **EARS-08(イベント)** When the owner cancels a completion post, the system shall set `is_posted=false`(keep the row), removing it from the feed; the underlying completion and `/m/<token>` remain intact.
+  本人が取り消したら `is_posted=false`(行は保持)でフィードから除く。完走本体とシェアページは保持。
+- **EARS-08b(イベント)** When the owner re-posts a previously cancelled completion, the system shall reactivate the same row(`is_posted=true`)without re-granting the daily bonus(idempotent).
+  取り消した完走を再投稿したら、同一行を再活性化(ボーナスは冪等で再付与しない)。
+- **EARS-10(状態)** While a completion post exists, accessing `/posts/<id>` shall redirect to the immersive share page(`/m/<token>` or `/m/<token>/book`).
+  完走投稿の `/posts/<id>` アクセスは没入シェアページにリダイレクトする。
 - **EARS-09(状態)** While a completion post is `pending`/`removed` by moderation, the system shall hide it from public feed but keep the completion and share page intact.
   モデレーションで pending/removed の間は公開フィードから隠すが、完走本体とシェアページは保持する。
 
@@ -213,8 +232,8 @@ flowchart LR
 - [ ] migration 新規: `generated_images` に `completion_id UUID NULL REFERENCES collection_completions(id) ON DELETE SET NULL` を追加。
 - [ ] 部分UNIQUE index: `CREATE UNIQUE INDEX ... ON generated_images(completion_id) WHERE completion_id IS NOT NULL`(重複投稿防止 = ADR-001/002)。
 - [ ] フィード取得用 index: `(completion_id)` 参照 join 用(必要に応じて)。
-- [ ] RPC `create_collection_completion_post(p_completion_id uuid, p_caption text)`: `SECURITY DEFINER`、`auth.uid()` で所有権検証(`collection_completions.user_id` 一致 & `mount_status='completed'`)、`generated_images` へ INSERT(`is_posted=true`,`moderation_status='visible'`,`completion_id`,`prompt=''`,`caption`,画像列は helper が渡す)、`grant_daily_post_bonus(auth.uid(), <new id>)` 呼び出し、既存があればそれを返す(べき等)。`RAISE EXCEPTION` で非所有/未完走を弾く(DB層強制)。
-- [ ] `generation_type` 方針確定(ADR-003): 既存値で埋める or 値追加(その場合は `generation_type` 参照箇所を監査)。
+- [ ] RPC `create_collection_completion_post(p_completion_id uuid, p_caption text)`: `SECURITY DEFINER`、`auth.uid()` で所有権検証(`collection_completions.user_id` 一致 & `mount_status='completed'`)、`generated_images` へ INSERT。**INSERT列(必須)**: `is_posted=true`, **`posted_at=now()`(MUST-FIX-004: 欠落するとNULLS FIRSTで新着先頭固定＋時間タブ除外)**, `moderation_status='visible'`, `completion_id`, `prompt=''`, `generation_type='one_tap_style'`, **`generation_metadata=NULL`(MUST-ADDRESS-005: コレクションクエリは `generation_metadata->oneTapStyle->>id` AND 条件なのでNULLなら除外され安全)**, `caption`, 画像列(`image_url`/`storage_path`/`storage_path_display`/`storage_path_thumb`)は helper が渡す。続けて `grant_daily_post_bonus(auth.uid(), <new id>)`。**既存(同 `completion_id`)があれば**: `is_posted=false` で残っていれば UPDATE 再活性化(`is_posted=true,posted_at=now(),moderation_status='visible'`)、`is_posted=true` ならそれを返す(べき等。MUST-ADDRESS-006)。`RAISE EXCEPTION` で非所有/未完走を弾く(DB層強制)。**呼び出しはセッションクライアント経由**(admin client だと `auth.uid()` が NULL、OPTIONAL-013)。
+- [ ] `generation_type` 確定(ADR-003/MUST-ADDRESS-005): **`one_tap_style` を採用**(`shouldHidePromptForGenerationType` がプロンプト秘匿=`prompt=''` への defense-in-depth)。CHECK変更なし。識別は `completion_id`。
 - [ ] 型更新: `features/posts/types.ts`(post に `completionId`/`completionViewMode`/`shareToken` 等を追加)。
 - [ ] 参考: `supabase/migrations/20260228000001_*.sql:186-203`(ボーナスRPC)、`20250109000006_likes_comments.sql`、`20260221130000_*.sql`(RLS)。
 
@@ -222,25 +241,26 @@ flowchart LR
 目的: 完走 → 投稿の作成と、フィードへの種別/タップ先反映。
 ビルド確認: API 単体で投稿作成が動く + `getPosts` がバッジ/タップ先情報を返す。
 
-- [ ] サーバ helper: 完走の `mount_image_path` に対し WebP variants(`ensureWebPVariants` 相当、`app/api/posts/post/route.ts:135-143` 参考)を確保し、`generated_images` 行に必要な `image_url`/`storage_path`/`storage_path_display`/`storage_path_thumb` を解決して RPC を呼ぶ。
-- [ ] API ルート 新規: `POST /api/collections/completions/[id]/post`(セッション認証、所有権は RPC 側でも二重防御、`p_user_id` は body 受け取り禁止=`auth.uid()`)。**機能フラグ `COLLECTION_FEED_POST_ENABLED` OFF 時は 403**。レスポンスに投稿id/状態。caption を受け取る。
-- [ ] API ルート 新規: `DELETE`(投稿取り消し=本人のみ。`is_posted=false` か行削除。EARS-08)。
-- [ ] 「投稿済みか」判定: 完走に対する既存 post の有無を返す(モーダル表示用)。`CachedMyPageCollections`/完走データに `feedPostId` を含めるか、軽量 API で取得。
-- [ ] `getPosts()`(`features/posts/lib/server-api.ts:416-677`)拡張: 完走 post に `completion_id` と `completion_view_mode`(join)を載せ、バッジ/タップ先解決に使う。
-- [ ] フィード cache の revalidate(`data.ja.md:96-107, 220-237` の方針に合わせる)。
+- [ ] サーバ helper(MUST-FIX-003: 順序を INSERT 前に統一): 完走の `mount_image_path` から **`uploadWebPVariants(buildPublicGeneratedImageUrl(mount_image_path), mount_image_path, 3)`**(`features/generation/lib/webp-storage.ts:73`、DB行に依存しない)で `{thumbPath, displayPath}` を取得 → RPC に画像列(`image_url`/`storage_path`/`storage_path_display`/`storage_path_thumb`)として渡す。**`ensureWebPVariants` は行が既に必要なので INSERT 前では使わない**。これで EARS-07「準備不可なら部分行を作らず失敗」を維持できる(WebP 失敗時は INSERT しない)。
+- [ ] API ルート 新規: `POST /api/collections/completions/[id]/post`(セッション認証、所有権は RPC 側でも二重防御、`p_user_id` は body 受け取り禁止=`auth.uid()`)。**機能フラグ `NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED` OFF 時は 403**。レスポンスに投稿id/状態。caption を受け取る。
+- [ ] API ルート 新規: `DELETE`(投稿取り消し=本人のみ)。**MUST-ADDRESS-006: 行削除ではなく `is_posted=false`(既存 `unpostImageServer` `server-database.ts:164-167` と一致。`caption=null,posted_at=null`)**。`completion_id` 行は保持し、再投稿は上記 RPC が UPDATE 再活性化(ボーナスは同一 `related_generation_id` で再付与されない=冪等)。
+- [ ] 「投稿済みか」判定: 完走に対する既存 post(`completion_id` 一致 & `is_posted=true`)の有無を返す(モーダル表示用)。`CachedMyPageCollections`/完走データに `feedPostId` を含めるか、軽量 API で取得。
+- [ ] `getPosts()`(`features/posts/lib/server-api.ts:416-677`、現状 `.select("*")` `:517`)拡張: `completion_id` を返し、**MUST-ADDRESS-009: `completion_view_mode` は `collection_completions` に非正規化(`category_key` スナップショットと同パターンで1ホップ)**して join。バッジ/タップ先解決に使う(`preset_categories` まで2ホップ join は避ける)。
+- [ ] **MUST-ADDRESS-007: `/posts/<id>`(通知ディープリンク・直接URL)対応**。`app/posts/[id]/page.tsx` で `completion_id IS NOT NULL` の投稿はサーバーリダイレクト(`/m/<completion_id>` または `/m/<completion_id>/book`、`completion_view_mode` 準拠)。これでいいね/コメント通知からの再訪も没入シェアページに着地。
+- [ ] **MUST-ADDRESS-008: キャッシュ無効化タグを明示列挙**。`app/api/posts/post/route.ts:120-132` の正規タグセット + `collection-completions:${user.id}`(モーダル「投稿済み」状態) + `revalidatePath("/m/${completionId}")` + `revalidatePath("/m/${completionId}/book")`。
 
 ### Phase 3: UI 実装
 目的: 完走モーダルからの投稿導線と、フィードでの見せ方。
 ビルド確認: 完走モーダルに投稿ボタン表示 + フィードでバッジ/遷移が動く。
 
-- [ ] 機能フラグ `COLLECTION_FEED_POST_ENABLED` を UI 表示判定に適用(OFF時は全導線非表示)。
+- [ ] 機能フラグ `NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED` を UI 表示判定に適用(OFF時は全導線非表示)。
 - [ ] `CollectionProgressModal.tsx:599-638` に「ホームに投稿する」ボタン追加(「シェアページへ」と「シェアする」の間)。`completionId`/`displayNameJa` を使用。投稿済みは「ホームに投稿済み ✓」表示＋取り消し導線。
 - [ ] 没入シェアページにも常設(所有者のみ): book=`ScrapbookReader.tsx`(右上 chrome 群)、mount=`PublicMountPage`(`app/m/[token]/page.tsx` の `MountShareButton` 付近)。
 - [ ] 任意キャプション入力欄(既定値/プレースホルダ「『{名前}』をコンプリート！」、編集可)。
 - [ ] 投稿取り消し(本人)UI: 投稿済み状態からワンタップで取り消し → 未投稿に戻る。
 - [ ] `PostCard.tsx:127-200` に「コンプリート」バッジ(amber/peach、`completion_id` 有無で表示)。
 - [ ] `PostCard.tsx:102-107` のタップ先を、完走 post は `/m/<token>`(book は `/m/<token>/book`、`completion_view_mode` で直行)に分岐。
-- [ ] i18n: `messages/ja.json`・`messages/en.json` にボタン/バッジ/トースト文言。
+- [ ] i18n: `messages/ja.ts`・`messages/en.ts` にボタン/バッジ/トースト文言。
 
 ### Phase 4: 統合
 目的: 一連の体験が破綻なく繋がる。
@@ -266,7 +286,8 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 |
 |----------|------|----------|
-| `supabase/migrations/<ts>_add_completion_id_to_generated_images.sql` | 新規 | `completion_id` 列 + 部分UNIQUE + RPC `create_collection_completion_post` |
+| `supabase/migrations/<ts>_add_completion_id_to_generated_images.sql` | 新規 | `completion_id` 列 + 部分UNIQUE + RPC `create_collection_completion_post` + `collection_completions.completion_view_mode` 非正規化 |
+| `app/posts/[id]/page.tsx` | 修正 | 完走postは没入シェアページへリダイレクト(MUST-ADDRESS-007) |
 | `features/posts/types.ts` | 修正 | post 型に `completionId`/`completionViewMode`/`shareToken` 追加 |
 | `features/posts/lib/server-api.ts` | 修正 | `getPosts()` に完走メタ(completion_id, completion_view_mode)を載せる |
 | `features/collections/lib/completion-feed-post.ts` | 新規 | WebP variants 確保 + RPC 呼び出し helper(サーバ) |
@@ -275,7 +296,7 @@ flowchart LR
 | `features/collections/components/ScrapbookReader.tsx` | 修正 | book の投稿導線 |
 | `features/posts/components/PostCard.tsx` | 修正 | コンプリートバッジ + タップ先分岐 |
 | `features/my-page/components/CachedMyPageCollections.tsx` | 修正 | 完走の「投稿済みか」判定データを供給(任意) |
-| `messages/ja.json` / `messages/en.json` | 修正 | 文言追加 |
+| `messages/ja.ts` / `messages/en.ts` | 修正 | 文言追加 |
 
 ---
 
@@ -323,7 +344,7 @@ flowchart LR
 2. **キャプション**: ユーザー任意入力欄を出す(既定文「『{名前}』をコンプリート！」をプレースホルダ/初期値、編集可)。
 3. **投稿取り消し(DELETE)**: 初回スコープに**含める**(本人が投稿を取り消せる)。
 4. **投稿ボタンの設置場所**: 完走モーダル **＋ 没入シェアページにも常設**(book=`ScrapbookReader`/`m/<token>/book`、mount=`PublicMountPage`/`m/<token>`。いずれも所有者のみ)。
-5. **機能フラグ**: 段階公開のため **env フラグを付ける**(Creator Looks の `INSPIRE_FEATURE_ENABLED` と同パターン。例: `COLLECTION_FEED_POST_ENABLED`)。フラグOFFでボタン非表示＋API拒否。
+5. **機能フラグ**: 段階公開のため **env フラグを付ける**(Creator Looks の `NEXT_PUBLIC_INSPIRE_ENABLED` と同パターン。例: `NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED`)。フラグOFFでボタン非表示＋API拒否。
 6. **`generation_type`**: **既存値で埋める**(例 `one_tap_style`。CHECK変更なし=最短/安全)。バッジ・タップ先・重複判定は `completion_id` で行うため機能影響なし。将来分析が必要なら値追加(別PR・要監査)。
 
 > コールドスタート前提どおり「専用イベントタブ」は本計画スコープ外(効果検証後の次フェーズ)。
