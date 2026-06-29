@@ -19,7 +19,7 @@ export async function CachedMyPageCollections({ userId }: { userId: string }) {
   const { data } = await supabase
     .from("collection_completions")
     .select(
-      "id, category_key, mount_image_path, completed_at, preset_categories(display_name_ja, mount_template_width, mount_template_height)",
+      "id, category_key, mount_image_path, completed_at, preset_categories(display_name_ja, mount_template_width, mount_template_height, completion_view_mode)",
     )
     .eq("user_id", userId)
     .eq("mount_status", "completed")
@@ -37,6 +37,7 @@ export async function CachedMyPageCollections({ userId }: { userId: string }) {
             display_name_ja?: string;
             mount_template_width?: number | null;
             mount_template_height?: number | null;
+            completion_view_mode?: string | null;
           }
         | undefined;
       return {
@@ -46,6 +47,8 @@ export async function CachedMyPageCollections({ userId }: { userId: string }) {
         mountImageUrl,
         mountTemplateWidth: catRecord?.mount_template_width ?? null,
         mountTemplateHeight: catRecord?.mount_template_height ?? null,
+        completionViewMode:
+          catRecord?.completion_view_mode === "book" ? "book" : "mount",
       } satisfies CompletedMountView;
     })
     .filter((m): m is CompletedMountView => m !== null);

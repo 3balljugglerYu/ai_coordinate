@@ -135,6 +135,8 @@ export interface CompletedMountView {
   mountImageUrl: string;
   mountTemplateWidth: number | null;
   mountTemplateHeight: number | null;
+  /** 完走表示モード(mount=台紙 / book=本)。シェア導線の遷移先分岐に使う。 */
+  completionViewMode: "mount" | "book";
 }
 
 /**
@@ -308,7 +310,11 @@ export function MyPageCollections({
       threshold: cached?.threshold ?? 0,
       isCompleted: true,
       mountImageUrl: m.mountImageUrl,
-      sharePath: `/m/${m.completionId}`,
+      // book は redirect 元の /m/<id>(chrome付き)を経由するとチラつくため /m/<id>/book へ直行。
+      sharePath:
+        m.completionViewMode === "book"
+          ? `/m/${m.completionId}/book`
+          : `/m/${m.completionId}`,
       completionId: m.completionId,
       mountTemplateWidth: m.mountTemplateWidth,
       mountTemplateHeight: m.mountTemplateHeight,

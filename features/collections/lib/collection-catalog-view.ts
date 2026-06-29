@@ -29,6 +29,8 @@ export interface CollectionCatalogEntry {
   availability: CollectionCatalogAvailability;
   /** 完成台紙(コンプリートモーダル表示用)。未完成は null。 */
   completionId: string | null;
+  /** 完走表示モード(mount=台紙 / book=本)。シェア導線の遷移先分岐に使う。 */
+  completionViewMode: "mount" | "book";
   mountImagePath: string | null;
   mountTemplateWidth: number | null;
   mountTemplateHeight: number | null;
@@ -109,6 +111,7 @@ export function buildCollectionCatalogView(
         state,
         availability,
         completionId: p?.completionId ?? null,
+        completionViewMode: p?.completionViewMode ?? "mount",
         mountImagePath: p?.mountImagePath ?? null,
         mountTemplateWidth: p?.mountTemplateWidth ?? null,
         mountTemplateHeight: p?.mountTemplateHeight ?? null,
