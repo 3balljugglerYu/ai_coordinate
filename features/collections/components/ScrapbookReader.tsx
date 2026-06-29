@@ -71,9 +71,10 @@ export function ScrapbookReader({
   }, []);
 
   const handleClose = () => {
-    // 直リンク(履歴なし)で来たゲストは back() が no-op になるため /collections へ。
+    // 直リンク(履歴なし)で来たゲストは back() が no-op になるため /style へ
+    // (「自分でも作ってみる」導線=コンバージョン優先)。アプリ内遷移時は従来どおり戻る。
     if (typeof window !== "undefined" && window.history.length <= 1) {
-      router.push("/collections");
+      router.push("/style");
     } else {
       router.back();
     }
@@ -172,7 +173,7 @@ export function ScrapbookReader({
           </button>
         ) : (
           <Link
-            href="/collections"
+            href="/style"
             className="inline-flex items-center rounded-full bg-amber-500 px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-amber-600"
           >
             あなたのうちの子でも作れる！
