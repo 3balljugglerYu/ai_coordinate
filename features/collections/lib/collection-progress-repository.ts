@@ -115,6 +115,7 @@ function mapProgressRow(row: CollectionProgressRow): CollectionProgress {
     mountStatus: row.mount_status,
     mountImagePath: row.mount_image_path,
     completedAt: row.completed_at,
+    completionViewMode: "mount",
     characterImageUrl: null,
     collectedImageUrls: [],
     completionId: null,
@@ -211,7 +212,7 @@ async function attachCharacterImages(
   const { data, error } = await supabase
     .from("preset_categories")
     .select(
-      "id, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center, progress_modal_ring_color, progress_modal_badge_color, progress_modal_badge_text_color, progress_modal_badge_bg_color, progress_modal_button_color, progress_modal_button_text_color",
+      "id, completion_view_mode, collection_character_path, mount_template_width, mount_template_height, progress_modal_frame_path, progress_modal_frame_width, progress_modal_frame_height, progress_modal_slots, progress_modal_button, progress_modal_center, progress_modal_ring_color, progress_modal_badge_color, progress_modal_badge_text_color, progress_modal_badge_bg_color, progress_modal_button_color, progress_modal_button_text_color",
     )
     .in("id", categoryIds);
   if (error) {
@@ -219,6 +220,7 @@ async function attachCharacterImages(
     return items;
   }
   const pathById = new Map<string, string | null>();
+  const viewModeById = new Map<string, "mount" | "book">();
   const dimsById = new Map<
     string,
     { width: number | null; height: number | null }
@@ -244,6 +246,10 @@ async function attachCharacterImages(
     pathById.set(
       row.id as string,
       (row.collection_character_path as string | null) ?? null,
+    );
+    viewModeById.set(
+      row.id as string,
+      (row.completion_view_mode as string | null) === "book" ? "book" : "mount",
     );
     dimsById.set(row.id as string, {
       width: (row.mount_template_width as number | null) ?? null,
@@ -275,6 +281,7 @@ async function attachCharacterImages(
     const modal = modalById.get(i.categoryId);
     return {
       ...i,
+      completionViewMode: viewModeById.get(i.categoryId) ?? "mount",
       characterImageUrl: buildPublicGeneratedImageUrl(
         pathById.get(i.categoryId) ?? null,
       ),

@@ -26,6 +26,20 @@ function buildPublicMountUrl(path: string | null): string | null {
   return `${base}/storage/v1/object/public/generated-images/${path}`;
 }
 
+/**
+ * 完了モーダルの「シェアページへ」遷移先。book は redirect 元の /m/<id>(chrome付き)を
+ * 経由するとアプリシェルがチラつくため、最初から没入の /m/<id>/book へ直接遷移させる。
+ */
+function collectionSharePath(
+  completionId: string | null,
+  viewMode: "mount" | "book" | undefined,
+): string | null {
+  if (!completionId) return null;
+  return viewMode === "book"
+    ? `/m/${completionId}/book`
+    : `/m/${completionId}`;
+}
+
 export interface CollectionComposerTarget {
   categoryKey: string;
   displayName: string;
@@ -126,10 +140,12 @@ export function useCollectionProgress() {
             mountImageUrl: completed
               ? buildPublicMountUrl(target.mountImagePath)
               : null,
-            sharePath:
-              completed && target.completionId
-                ? `/m/${target.completionId}`
-                : null,
+            sharePath: completed
+              ? collectionSharePath(
+                  target.completionId,
+                  target.completionViewMode,
+                )
+              : null,
             completionId: completed ? target.completionId : null,
             mountTemplateWidth: target.mountTemplateWidth,
             mountTemplateHeight: target.mountTemplateHeight,
@@ -179,7 +195,10 @@ export function useCollectionProgress() {
           mountImageUrl: buildPublicMountUrl(series.mountImagePath),
           // 完了台紙が確定しているシリーズはシェア導線(台紙シェア/シェアページ)を出す。
           // マイページの完了サムネタップ(openMountModal)と同じ挙動に揃える。
-          sharePath: series.completionId ? `/m/${series.completionId}` : null,
+          sharePath: collectionSharePath(
+            series.completionId,
+            series.completionViewMode,
+          ),
           completionId: series.completionId,
           mountTemplateWidth: series.mountTemplateWidth,
           mountTemplateHeight: series.mountTemplateHeight,

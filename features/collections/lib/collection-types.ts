@@ -14,6 +14,11 @@ export interface CollectionProgress {
   mountStatus: "generating" | "completed" | "failed" | null;
   mountImagePath: string | null;
   completedAt: string | null;
+  /**
+   * 完走表示モード(mount=台紙 / book=めくれる日記帳)。シェア導線の遷移先分岐に使う。
+   * book は redirect 元の /m/<token> を経由せず /m/<token>/book(没入)へ直接遷移させる。
+   */
+  completionViewMode: "mount" | "book";
   /** 進捗リング中央に表示するシリーズ用キャラ画像の公開URL(無ければ null) */
   characterImageUrl: string | null;
   /** 集めたシール(衣装ごと最新1枚)の公開URL。display_order 昇順。モーダルのシール一覧用 */
