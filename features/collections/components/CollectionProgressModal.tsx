@@ -242,6 +242,10 @@ export function CollectionProgressModal({
 
   // ready を effect の deps に入れるため、useEffect より前で算出する(null-safe)。
   const cIsCompleted = celebration?.isCompleted ?? false;
+  // N種到達(台紙/本 未作成でも 100% 達成の瞬間)。紙吹雪はこの時点でも出す。
+  const cReached =
+    (celebration?.toCount ?? 0) >=
+    (celebration?.threshold ?? Number.POSITIVE_INFINITY);
   const cEffect = celebration?.celebrationEffect ?? "confetti";
   const cMountImageUrl = celebration?.mountImageUrl ?? null;
   const cCharacterImageUrl = celebration?.characterImageUrl ?? null;
@@ -347,7 +351,12 @@ export function CollectionProgressModal({
   // ready なら即・未ロードでも CONFETTI_FALLBACK_MS 以内に必ず armed にする。
   // これで初回コンプリート(台紙画像が未キャッシュで ready が遅い)でも取りこぼさない。
   useEffect(() => {
-    if (!open || !celebration || cEffect !== "confetti" || !cIsCompleted) {
+    if (
+      !open ||
+      !celebration ||
+      cEffect !== "confetti" ||
+      !(cIsCompleted || cReached)
+    ) {
       return;
     }
     // ready なら即(次tick)・未ロードでも fallback 以内に発火。
@@ -355,7 +364,7 @@ export function CollectionProgressModal({
     const delay = ready ? 0 : CONFETTI_FALLBACK_MS;
     const timer = window.setTimeout(() => setConfettiArmed(true), delay);
     return () => window.clearTimeout(timer);
-  }, [open, celebration, cEffect, cIsCompleted, ready]);
+  }, [open, celebration, cEffect, cIsCompleted, cReached, ready]);
 
   // ready (全画像ロード完了) を gate にして rAF を開始する。
   // 親が key で再マウントするので state は再初期化される。
@@ -860,7 +869,7 @@ export function CollectionProgressModal({
                   type="button"
                   onClick={() => onCreateMount(celebration)}
                   aria-label={
-                    cIsCompleted ? "カードを更新する" : "カードを作成する"
+                    cIsCompleted ? "カードを更新する" : "コンプリート！"
                   }
                   className={
                     "absolute flex items-center justify-center rounded-full px-4 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
@@ -881,7 +890,7 @@ export function CollectionProgressModal({
                       : {}),
                   }}
                 >
-                  {cIsCompleted ? "カードを更新する →" : "カードを作成する →"}
+                  {cIsCompleted ? "カードを更新する →" : "コンプリート！ →"}
                 </button>
               ) : (
                 <Link
@@ -921,7 +930,7 @@ export function CollectionProgressModal({
                   type="button"
                   onClick={() => onCreateMount(celebration)}
                   aria-label={
-                    cIsCompleted ? "カードを更新する" : "カードを作成する"
+                    cIsCompleted ? "カードを更新する" : "コンプリート！"
                   }
                   className={
                     "flex items-center justify-center rounded-full px-6 py-3 text-base font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60" +
@@ -938,7 +947,7 @@ export function CollectionProgressModal({
                       : {}),
                   }}
                 >
-                  {cIsCompleted ? "カードを更新する →" : "カードを作成する →"}
+                  {cIsCompleted ? "カードを更新する →" : "コンプリート！ →"}
                 </button>
               ) : (
                 <Link

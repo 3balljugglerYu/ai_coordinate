@@ -521,7 +521,7 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
     progressModalButtonTextColor: "#FFFFFF",
   };
 
-  test("達成・カード未作成: CTAは「カードを作成する →」で admin色反映、押下でカード生成が呼ばれる", () => {
+  test("達成・カード未作成: CTAは「コンプリート！ →」で admin色反映、押下でカード生成が呼ばれる", () => {
     const onCreateMount = jest.fn();
     render(
       <CollectionProgressModal
@@ -531,8 +531,8 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
         onCreateMount={onCreateMount}
       />,
     );
-    const btn = screen.getByRole("button", { name: "カードを作成する" });
-    expect(btn).toHaveTextContent("カードを作成する →");
+    const btn = screen.getByRole("button", { name: "コンプリート！" });
+    expect(btn).toHaveTextContent("コンプリート！ →");
     // admin 設定のボタン色が inline style に入る(jsdom は rgb 形式で直列化する)
     expect(btn.getAttribute("style")).toContain(
       "background-color: rgb(198, 112, 255)",
@@ -556,8 +556,8 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
       />,
     );
     // buttonRect が無くても(buttonBox=0)、フレーム下に通常配置で CTA が出る
-    const btn = screen.getByRole("button", { name: "カードを作成する" });
-    expect(btn).toHaveTextContent("カードを作成する →");
+    const btn = screen.getByRole("button", { name: "コンプリート！" });
+    expect(btn).toHaveTextContent("コンプリート！ →");
     fireEvent.click(btn);
     expect(onCreateMount).toHaveBeenCalledTimes(1);
   });
@@ -625,7 +625,7 @@ describe("CollectionProgressModal: 達成後 CTA の文言と配色", () => {
         onCreateMount={jest.fn()}
       />,
     );
-    const btn = screen.getByRole("button", { name: "カードを作成する" });
+    const btn = screen.getByRole("button", { name: "コンプリート！" });
     // 塗り色未設定 → backgroundColor の inline 指定はなし(オレンジは class で付与)
     expect(btn.getAttribute("style") ?? "").not.toContain("background-color");
   });
