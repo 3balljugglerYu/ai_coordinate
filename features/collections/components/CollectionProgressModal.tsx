@@ -596,7 +596,7 @@ export function CollectionProgressModal({
                 />
               </div>
             </div>
-            {/* 上(オレンジ=主CTA)=「シェアページへ」、中(白)=「カードをシェアする」。
+            {/* 上(オレンジ=主CTA)=「シェアページへ」、中(白)=「シェアする」。
                ボタンの色の位置は固定し、ラベル/動作だけ入れ替えている。 */}
             {celebration.sharePath ? (
               <Link
@@ -615,7 +615,7 @@ export function CollectionProgressModal({
                 onShared={() => trackMountShareEvent(completionId)}
                 className="h-auto w-full rounded-full border-2 border-amber-300 bg-white px-6 py-3 text-base font-bold text-amber-600 transition-colors hover:bg-amber-50"
               >
-                カードをシェアする
+                シェアする
               </ShareLinkButton>
             ) : null}
             {/* 選び直す余地がある(いずれかの衣装で2枚以上生成済み)ときだけ表示 */}
