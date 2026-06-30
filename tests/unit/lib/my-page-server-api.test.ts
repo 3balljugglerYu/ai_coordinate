@@ -44,6 +44,7 @@ type QueryCalls = {
   select: unknown[][];
   eq: unknown[][];
   in: unknown[][];
+  is: unknown[][];
   order: unknown[][];
   range: unknown[][];
   single: number;
@@ -54,6 +55,7 @@ type QueryControl = {
     select: jest.Mock;
     eq: jest.Mock;
     in: jest.Mock;
+    is: jest.Mock;
     order: jest.Mock;
     range: jest.Mock;
     single: jest.Mock;
@@ -79,6 +81,7 @@ function createAsyncQuery(config: QueryConfig = {}): QueryControl {
     select: [],
     eq: [],
     in: [],
+    is: [],
     order: [],
     range: [],
     single: 0,
@@ -95,6 +98,10 @@ function createAsyncQuery(config: QueryConfig = {}): QueryControl {
     }),
     in: jest.fn((...args: unknown[]) => {
       calls.in.push(args);
+      return builder;
+    }),
+    is: jest.fn((...args: unknown[]) => {
+      calls.is.push(args);
       return builder;
     }),
     order: jest.fn((...args: unknown[]) => {
