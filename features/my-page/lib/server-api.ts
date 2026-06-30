@@ -249,6 +249,12 @@ export const getMyImagesServer = cache(async (
       .select("*")
       .eq("user_id", userId);
 
+    // 完走フィード投稿(completion_id 付き)はツール生成ではないため「生成一覧」には出さない
+    // (ホームフィード/完了台紙アルバム専用)。「投稿(posted)」グリッドには引き続き含める。
+    if (filter !== "posted") {
+      query = query.is("completion_id", null);
+    }
+
     if (filter === "posted") {
       query = query.eq("is_posted", true).order("posted_at", { ascending: false });
     } else if (filter === "unposted") {
