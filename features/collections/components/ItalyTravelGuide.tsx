@@ -431,6 +431,16 @@ export function ItalyTravelGuide({
           </p>
         </Reveal>
       </section>
+
+      {/* ===== クリエイター相談(控えめなフッターリンク) ===== */}
+      <div className="px-6 pb-10 text-center">
+        <Link
+          href="/creators"
+          className="text-xs text-[#b3a794] underline underline-offset-2 transition-colors hover:text-[#8a7c66]"
+        >
+          コラボご希望の方・プロンプト掲載のご相談はこちら ›
+        </Link>
+      </div>
     </main>
   );
 }
