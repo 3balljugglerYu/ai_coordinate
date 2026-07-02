@@ -181,7 +181,50 @@ export function ItalyTravelGuide({
             <FlagRibbon />
           </div>
         </Reveal>
-        <Reveal delay={220}>
+
+        {/* 会期(イタリア切符風) */}
+        <Reveal delay={210}>
+          <div
+            className="mx-auto mt-6 w-full max-w-[330px] rounded-2xl border-2 border-dashed bg-white/75 px-5 py-3 text-center shadow-[0_4px_14px_rgba(120,90,50,0.10)]"
+            style={{ borderColor: IT_GREEN }}
+          >
+            <div
+              className="text-[11px] font-bold tracking-[0.22em]"
+              style={{ color: IT_RED, fontFamily: HEADING_FONT }}
+            >
+              ✦ コラボ期間 ✦
+            </div>
+            <div
+              className="mt-1 flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-bold leading-snug text-[#5b4a36]"
+              style={{ fontFamily: HEADING_FONT }}
+            >
+              <span>
+                2026/7/3
+                <span className="text-[11px] font-medium text-[#9a8a78]">(金)</span>{" "}
+                19:00
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={IT_GREEN}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                className="h-4 w-4 shrink-0"
+              >
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+              <span>
+                7/12
+                <span className="text-[11px] font-medium text-[#9a8a78]">(日)</span>{" "}
+                21:59
+              </span>
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal delay={240}>
           <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
             うちの子と、イタリアをめぐる小さな旅。
             <br />
