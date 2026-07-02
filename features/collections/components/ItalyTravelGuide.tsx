@@ -228,7 +228,7 @@ export function ItalyTravelGuide({
           <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
             うちの子と、イタリアをめぐる小さな旅。
             <br />
-            表紙から1日ずつあつめて、めくれる旅行日記をコンプリート。
+            1日ずつあつめて、めくれる旅行日記を完成させよう。
           </p>
         </Reveal>
 
@@ -427,7 +427,7 @@ export function ItalyTravelGuide({
         </Reveal>
         <Reveal delay={100}>
           <p className="mx-auto mt-6 max-w-sm text-xs leading-relaxed text-[#9a8a78]">
-            ※ あつめる・日記の保存にはログインが必要です（未ログインでも一枚お試し生成できます）。
+            ※ あつめる・日記の保存にはログインが必要です。
           </p>
         </Reveal>
       </section>
