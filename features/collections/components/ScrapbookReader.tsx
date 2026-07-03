@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, Share2, Maximize2, Minimize2 } from "lucide-react";
+import { X, Share2, Maximize2, Minimize2, ChevronUp } from "lucide-react";
 import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 import type { CatalogPageData } from "@/features/catalog/components/CatalogPage";
 import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
+import {
+  hasSeenSwipeHint,
+  markSwipeHintSeen,
+} from "@/features/collections/lib/scrapbook-swipe-hint-seen";
 
 /**
  * コレクション完走の「めくれる日記帳(スクラップブック)」没入ビュー。
@@ -32,6 +36,15 @@ export function ScrapbookReader({
   const containerRef = useRef<HTMLDivElement>(null);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // 「上スワイプでUIを隠せる」ヒントをまだ見せていないか(localStorage 由来、SSRは常に false)。
+  // canFullscreen と同じ理由(setState-in-effect 回避)で useSyncExternalStore を使う。
+  const swipeHintEligible = useSyncExternalStore(
+    () => () => {},
+    () => !hasSeenSwipeHint(),
+    () => false,
+  );
+  const [swipeHintDismissed, setSwipeHintDismissed] = useState(false);
+  const showSwipeHint = swipeHintEligible && !swipeHintDismissed;
   // Fullscreen API は iOS Safari が要素に非対応(動画のみ)。対応環境だけボタンを出す。
   // SSR セーフに client 値を取るため useSyncExternalStore を使う(setState-in-effect 回避)。
   const canFullscreen = useSyncExternalStore(
@@ -59,6 +72,14 @@ export function ScrapbookReader({
       body.style.paddingBottom = prevBodyPaddingBottom;
     };
   }, []);
+
+  // 初回(未読)のみ、本を開いた瞬間に見せたヒントの既読を記録する。
+  // ジェスチャーのみの操作で発見性が低いため一度だけ案内する。実際に上スワイプされる
+  // (chromeVisible=false)まで表示し続け、そこで消す(onChromeVisibilityChange 側で処理)。
+  useEffect(() => {
+    if (!swipeHintEligible) return;
+    markSwipeHintSeen();
+  }, [swipeHintEligible]);
 
   // 全画面状態の同期(Esc やブラウザ UI での解除にも追従)。
   useEffect(() => {
@@ -191,9 +212,26 @@ export function ScrapbookReader({
           campaignCoverImageUrl={coverImageUrl}
           pages={pages}
           isScrapbook
-          onChromeVisibilityChange={(visible) => setChromeVisible(visible)}
+          onChromeVisibilityChange={(visible) => {
+            setChromeVisible(visible);
+            // 上スワイプ(=chrome非表示化)が実際に行われたら、ヒントの役目は
+            // 終わったので自動消滅を待たず即座に消す。
+            if (!visible) setSwipeHintDismissed(true);
+          }}
         />
       </main>
+
+      {showSwipeHint ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+          aria-hidden="true"
+        >
+          <div className="flex flex-col items-center gap-2 rounded-2xl bg-stone-900/70 px-6 py-5 text-white shadow-lg">
+            <ChevronUp className="h-8 w-8 animate-bounce" />
+            <p className="text-sm font-bold">↑ 上スワイプでUIを隠せます</p>
+          </div>
+        </div>
+      ) : null}
 
       {/* 所有者向け: ホームフィードへの投稿(没入ページにも常設)。chrome と同期して出し入れ。 */}
       {isOwner && completionId ? (
