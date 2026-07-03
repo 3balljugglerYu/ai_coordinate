@@ -60,6 +60,8 @@ function categoryRef(
     userPromptMaxLength: null,
     visibility: "public",
     isActive: true,
+    collectionDisplayStartsAt: null,
+    collectionDisplayEndsAt: null,
     unlockPrerequisiteKey,
     progressiveBatchSize,
     sequentialUnlock,

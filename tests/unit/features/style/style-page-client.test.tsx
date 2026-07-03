@@ -408,6 +408,8 @@ const TEST_COORDINATE_CATEGORY = {
   userPromptMaxLength: null,
   visibility: "public",
   isActive: true,
+  collectionDisplayStartsAt: null,
+  collectionDisplayEndsAt: null,
 } as const;
 
 const presets: readonly StylePresetPublicSummary[] = [
