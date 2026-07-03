@@ -227,7 +227,15 @@ export function UnlockDripModal({
           </div>
         )}
 
-        <UnlockModalActions onClose={onClose} />
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-full bg-[var(--ann-accent)] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[var(--ann-accent-hover)]"
+          >
+            OK
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -171,4 +171,20 @@ describe("UnlockDripModal", () => {
     fireEvent.click(screen.getByLabelText("閉じる"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  test("OK ボタンで onClose が呼ばれ、A の「つくりに行く/あとで」は持たない", () => {
+    const onClose = jest.fn();
+    render(
+      <UnlockDripModal
+        title="ぷち神"
+        newlyUnlocked={newlyUnlocked}
+        onClose={onClose}
+      />,
+    );
+    // B(段階解放)は単一の OK ボタンのみ。A の「つくりに行く/あとで」は出さない。
+    expect(screen.queryByText("つくりに行く")).not.toBeInTheDocument();
+    expect(screen.queryByText("あとで")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
