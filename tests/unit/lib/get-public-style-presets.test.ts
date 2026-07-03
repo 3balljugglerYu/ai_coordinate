@@ -53,6 +53,8 @@ describe("get-public-style-presets", () => {
     showUserPromptInput: false,
     visibility: "public",
     isActive: true,
+    collectionDisplayStartsAt: null,
+    collectionDisplayEndsAt: null,
   } as const;
 
   test("getPublishedStylePresets_キャッシュタグを付けて公開一覧を返す", async () => {

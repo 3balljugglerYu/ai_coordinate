@@ -62,6 +62,9 @@ export interface StylePresetCategoryRef {
   userPromptMaxLength: number | null;
   visibility: StylePresetCategoryVisibility;
   isActive: boolean;
+  /** コレクション表示期間(NULL=無期限)。/style のプリセット一覧公開判定にも使う。 */
+  collectionDisplayStartsAt: string | null;
+  collectionDisplayEndsAt: string | null;
   /**
    * 提供者(クリエイター)の profiles.id。コラボ/提供スタイルのクレジット表示に使う。
    * 未設定(従来カテゴリ)なら null/undefined。リポジトリ層では常に値を埋める optional 属性。

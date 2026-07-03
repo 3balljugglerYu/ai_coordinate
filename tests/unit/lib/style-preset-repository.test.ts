@@ -205,6 +205,8 @@ describe("style-preset repository", () => {
           userPromptMaxLength: null,
           visibility: "public",
           isActive: true,
+          collectionDisplayStartsAt: null,
+          collectionDisplayEndsAt: null,
           providerUserId: null,
           providerNickname: null,
           providerAvatarUrl: null,

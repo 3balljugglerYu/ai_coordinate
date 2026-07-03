@@ -25,6 +25,8 @@ function makeCategory(
     userPromptMaxLength: null,
     visibility: "public",
     isActive: true,
+    collectionDisplayStartsAt: null,
+    collectionDisplayEndsAt: null,
     unlockPrerequisiteKey: null,
     progressiveBatchSize: null,
     sequentialUnlock: false,
