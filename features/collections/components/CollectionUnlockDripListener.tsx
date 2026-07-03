@@ -12,6 +12,7 @@ import {
   writeUnlockSeen,
 } from "@/features/collections/lib/collection-unlock-seen";
 import { setUnlockAnnouncerActive } from "@/features/collections/lib/unlock-announcer-signal";
+import { getUnlockAnnouncements } from "@/features/collections/lib/unlock-announcements-prefetch";
 import { COLLECTION_PROGRESS_DISMISSED_EVENT } from "@/features/collections/hooks/useCollectionProgress";
 
 interface ActiveDrip {
@@ -51,13 +52,10 @@ export function CollectionUnlockDripListener() {
 
       fetchingRef.current = true;
       try {
-        const res = await fetch("/api/collections/unlock-announcements", {
-          cache: "no-store",
-        });
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as {
-          announcements?: CollectionUnlockAnnouncement[];
-        };
+        // 進捗モーダル表示中に先読み済みならそれを再利用し(体感待ちほぼゼロ)、
+        // 無ければここでフォールバック取得する(従来と同じ待ち時間)。
+        const data = await getUnlockAnnouncements();
+        if (cancelled) return;
         const announcement = (data.announcements ?? []).find(
           (a) => a.categoryKey === categoryKey,
         );

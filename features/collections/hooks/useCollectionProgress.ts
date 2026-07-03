@@ -8,6 +8,7 @@ import {
   getCollectionAck as getAck,
   setCollectionAck as setAck,
 } from "@/features/collections/lib/collection-ack";
+import { prefetchUnlockAnnouncements } from "@/features/collections/lib/unlock-announcements-prefetch";
 
 const POLL_INTERVAL_MS = 10000;
 /** style 画面などからの即時再チェック用イベント */
@@ -251,6 +252,16 @@ export function useCollectionProgress() {
       if (await evaluate()) return;
     }
   }, [evaluate]);
+
+  // celebration(進捗モーダル)表示中に、閉じた後で出す段階解放モーダル(B)用の
+  // お知らせをバックグラウンド先読みしておく。dismiss を待たずに開始することで、
+  // ユーザーが進捗モーダルを見ている間にネットワーク待ちを終わらせ、
+  // 閉じた瞬間の体感待ちをほぼゼロにする(実データは dismiss 側で消費)。
+  useEffect(() => {
+    if (celebration) {
+      prefetchUnlockAnnouncements();
+    }
+  }, [celebration]);
 
   const dismiss = useCallback(() => {
     // 閉じたカテゴリ key を控えてからモーダルを閉じ、段階解放モーダル(B)の判定用に通知する。
