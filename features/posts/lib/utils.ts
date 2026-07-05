@@ -3,6 +3,7 @@
  */
 
 import type { SortType } from "../types";
+import { isPostImpressionsEnabled } from "@/lib/env";
 
 /**
  * SortTypeの型ガード関数
@@ -11,6 +12,21 @@ import type { SortType } from "../types";
 export function isValidSortType(value: string): value is SortType {
   const validSorts: SortType[] = ["newest", "following", "daily", "week", "month", "popular"];
   return validSorts.includes(value as SortType);
+}
+
+/**
+ * 👁 に表示する公開閲覧数を返す(クライアント・サーバー両対応)。
+ * フラグON時は impression_count(viewableインプレッション)、OFF時は従来の
+ * view_count(詳細到達)。切替は表示のみで、view_count の内部加算は継続する
+ * (docs/planning/post-impressions-implementation-plan.md EARS-03/06)。
+ */
+export function getPublicViewCount(post: {
+  view_count?: number | null;
+  impression_count?: number | null;
+}): number {
+  return isPostImpressionsEnabled()
+    ? post.impression_count || 0
+    : post.view_count || 0;
 }
 
 /**

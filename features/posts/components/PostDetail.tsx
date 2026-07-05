@@ -20,7 +20,7 @@ import { PostActions } from "./PostActions";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
 import { PostMetaLine } from "./PostMetaLine";
-import { getPostImageUrl, getPostBeforeImageUrl } from "../lib/utils";
+import { getPostImageUrl, getPostBeforeImageUrl, getPublicViewCount } from "../lib/utils";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
@@ -267,7 +267,7 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
               postId={post.id || ""}
               initialLikeCount={post.like_count || 0}
               initialCommentCount={commentCount}
-              initialViewCount={post.view_count || 0}
+              initialViewCount={getPublicViewCount(post)}
               currentUserId={currentUserId}
               ownerId={post.user_id}
               isPosted={post.is_posted}

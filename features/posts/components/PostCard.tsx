@@ -8,7 +8,7 @@ import { useInView } from "react-intersection-observer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
-import { getPostThumbUrl } from "../lib/utils";
+import { getPostThumbUrl, getPublicViewCount } from "../lib/utils";
 import { queuePostImpression } from "../lib/impressions-client";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
@@ -230,9 +230,10 @@ export function PostCard({
             )}
             <div className="flex shrink-0 items-center gap-1">
               <Eye className="h-4 w-4 text-gray-500" />
-              {(post.view_count || 0) > 0 && (
+              {/* フラグON時は impression_count、OFF時は view_count(getPublicViewCount) */}
+              {getPublicViewCount(post) > 0 && (
                 <span className="text-xs font-medium tabular-nums text-gray-600">
-                  {formatCountEnUS(post.view_count || 0)}
+                  {formatCountEnUS(getPublicViewCount(post))}
                 </span>
               )}
             </div>
