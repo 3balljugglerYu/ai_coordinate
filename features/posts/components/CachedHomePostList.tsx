@@ -24,6 +24,8 @@ export async function CachedHomePostList({ userId }: { userId: string | null }) 
       initialPostsForWeek={weekPosts}
       forceInitialLoading={false}
       skipInitialFetch
+      // viewable インプレッション計測はホームフィードのみ有効(検索等では計測しない)
+      trackImpressions
     />
   );
 }
