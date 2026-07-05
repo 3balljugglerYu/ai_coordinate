@@ -6,6 +6,7 @@ import {
   getImageAspectRatio,
   getPostDisplayUrl,
   getPostOriginalUrl,
+  getPublicViewCount,
 } from "../lib/utils";
 import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -101,7 +102,7 @@ export async function CachedPostDetail({
       postId={post.id || ""}
       initialLikeCount={post.like_count || 0}
       initialCommentCount={post.comment_count || 0}
-      initialViewCount={post.view_count || 0}
+      initialViewCount={getPublicViewCount(post)}
       ownerId={post.user_id}
       imageUrl={imageUrl}
       originalImageUrl={originalImageUrl}

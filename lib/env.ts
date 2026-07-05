@@ -70,6 +70,10 @@ const envSchema = {
   // ホームカルーセル個別フラグ（ADR-013）。'true' のときだけホームに露出する
   NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
     process.env.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED,
+  // 投稿インプレッション計測+表示切替の段階公開フラグ(ADR-005)。
+  // 'true' のとき計測が有効になり、👁の表示元が view_count → impression_count に切替わる
+  NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
+    process.env.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -175,6 +179,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED || "",
     NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
       envSchema.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED || "",
+    NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
+      envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
       envSchema.INSPIRE_TEST_CHARACTER_IMAGE_URL || "",
     INSPIRE_SUBMISSION_ALLOWED_USER_IDS:
@@ -370,6 +376,13 @@ export function isInspireFeatureEnabled(): boolean {
  */
 export function isCollectionFeedPostEnabled(): boolean {
   return env.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED === "true";
+}
+
+/**
+ * 投稿インプレッション計測+表示切替の有効/無効を判定(段階公開フラグ、ADR-005)
+ */
+export function isPostImpressionsEnabled(): boolean {
+  return env.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED === "true";
 }
 
 /**

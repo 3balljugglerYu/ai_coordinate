@@ -33,6 +33,9 @@ export interface Post extends GeneratedImageRecord {
   like_count?: number;
   comment_count?: number;
   view_count?: number;
+  // 公開閲覧数(viewableインプレッション)。フラグON時に👁の表示元となる。
+  // view_count(詳細到達)は内部分析用に併存(docs/planning/post-impressions-implementation-plan.md)
+  impression_count?: number;
   moderation_status?: "visible" | "pending" | "removed";
   // 完走フィード投稿(オプトイン)の識別とタップ先解決用。
   // completion_id があれば「コンプリート」バッジ + 没入シェアページ(/m/<id>[/book])へ遷移。

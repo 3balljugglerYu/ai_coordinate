@@ -18,6 +18,8 @@ export interface GeneratedImageRecord {
   posted_at?: string | null;
   created_at?: string;
   view_count?: number;
+  // 公開閲覧数(viewableインプレッション)。view_count(詳細到達)は内部分析用に併存
+  impression_count?: number;
   // Phase 1で追加されたカラム（optional）
   generation_type?:
     | 'coordinate'

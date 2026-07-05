@@ -28,6 +28,8 @@ interface PostListProps {
   forceInitialLoading?: boolean;
   /** 親がデータを提供している場合、初回の loadPosts をスキップ（キャッシュ表示の最適化用） */
   skipInitialFetch?: boolean;
+  /** viewable インプレッション計測を有効にする(ホームフィードのみ true) */
+  trackImpressions?: boolean;
 }
 
 export function PostList({
@@ -35,6 +37,7 @@ export function PostList({
   initialPostsForWeek = [],
   forceInitialLoading = false,
   skipInitialFetch = false,
+  trackImpressions = false,
 }: PostListProps) {
   const postsT = useTranslations("posts");
   const { toast } = useToast();
@@ -420,6 +423,7 @@ export function PostList({
           currentUserId={currentUserId}
           isHighlighted={post.id === highlightPostId}
           prioritizeImage={index < 2}
+          trackImpressions={trackImpressions}
         />
       </div>
     ))}

@@ -378,6 +378,9 @@ async function enrichPosts(
       like_count: likeCounts[postId] || 0,
       comment_count: commentCounts[postId] || 0,
       view_count: safePost.view_count || 0,
+      // 公開閲覧数(viewableインプレッション)。select("*")で取得済みの列を正規化するだけ。
+      // 反映はフィードの use cache (cacheLife) 自然失効に委ねる(即時 revalidate しない)
+      impression_count: safePost.impression_count || 0,
       range_like_count: rangeLikeCounts ? rangeLikeCounts[postId] || 0 : undefined,
     };
   });
@@ -867,6 +870,7 @@ export const getPost = cache(async (
     like_count: likeCount,
     comment_count: commentCount,
     view_count: updatedViewCount,
+    impression_count: data.impression_count || 0,
     width,
     height,
     input_image_url_fallback: inputImageUrlFallback,

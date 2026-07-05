@@ -1,24 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { useInView } from "react-intersection-observer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
-import { getPostThumbUrl } from "../lib/utils";
+import { getPostThumbUrl, getPublicViewCount } from "../lib/utils";
+import { queuePostImpression } from "../lib/impressions-client";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 import { cn, formatCountEnUS } from "@/lib/utils";
+import { isPostImpressionsEnabled } from "@/lib/env";
 
 interface PostCardProps {
   post: Post;
   currentUserId?: string | null;
   isHighlighted?: boolean;
   prioritizeImage?: boolean;
+  /**
+   * viewable インプレッション計測(可視50%×1秒)を行うか。
+   * ホームフィード(CachedHomePostList→PostList)のみ true。他画面(検索等)での
+   * 混入を防ぐため既定 false(docs/planning/post-impressions-implementation-plan.md)。
+   */
+  trackImpressions?: boolean;
 }
 
 export function PostCard({
@@ -26,10 +35,31 @@ export function PostCard({
   currentUserId,
   isHighlighted = false,
   prioritizeImage = false,
+  trackImpressions = false,
 }: PostCardProps) {
   const t = useTranslations("posts");
   const locale = useLocale() as Locale;
   const [isHidden, setIsHidden] = useState(false);
+
+  // viewable インプレッション計測(ADR-003: マウントでは数えない)。
+  // 可視50%(threshold:0.5)になってから1秒継続したときだけキューに積む。
+  // 1秒未満で画面外に出たら cleanup でタイマーを破棄する(高速スクロールは数えない)。
+  // StrictMode/BFCache の二重実行は queuePostImpression 内の sessionStorage dedup が吸収。
+  const impressionsActive = trackImpressions && isPostImpressionsEnabled();
+  const { ref: impressionRef, inView: impressionInView } = useInView({
+    threshold: 0.5,
+    skip: !impressionsActive,
+  });
+  const postId = post.id;
+  useEffect(() => {
+    if (!impressionsActive || !impressionInView || !postId) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      queuePostImpression(postId);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [impressionsActive, impressionInView, postId]);
   // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
   const imageUrl = getPostThumbUrl(post);
 
@@ -94,7 +124,8 @@ export function PostCard({
           "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-300/70 shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]"
       )}
     >
-      <div className="relative">
+      {/* viewable 判定はカード面積の大半を占める画像エリアで行う(構造変更を避けるため既存 div に ref を付与) */}
+      <div className="relative" ref={impressionRef}>
         {post.id ? (
           // prefetch を有効化して詳細ページへの遷移を高速化する。
           // ロケール付きパス（/ja/posts/xxx 等）を直接指定し、proxy の
@@ -199,9 +230,10 @@ export function PostCard({
             )}
             <div className="flex shrink-0 items-center gap-1">
               <Eye className="h-4 w-4 text-gray-500" />
-              {(post.view_count || 0) > 0 && (
+              {/* フラグON時は impression_count、OFF時は view_count(getPublicViewCount) */}
+              {getPublicViewCount(post) > 0 && (
                 <span className="text-xs font-medium tabular-nums text-gray-600">
-                  {formatCountEnUS(post.view_count || 0)}
+                  {formatCountEnUS(getPublicViewCount(post))}
                 </span>
               )}
             </div>
