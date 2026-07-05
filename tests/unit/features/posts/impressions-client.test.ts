@@ -31,6 +31,8 @@ const ID_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 function loadModule(): Mod {
   let mod: Mod;
   jest.isolateModules(() => {
+    // jest.isolateModules 内での同期ロードには require が必要(dynamic import は非同期で不可)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     mod = require("@/features/posts/lib/impressions-client") as Mod;
   });
   return mod!;
@@ -125,6 +127,36 @@ describe("impressions-client", () => {
     window.dispatchEvent(new Event("visibilitychange"));
 
     expect(beaconMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sessionStorageアクセスが例外を投げる環境でもクラッシュせず送信できる", () => {
+    // Cookie無効設定等では window.sessionStorage への「プロパティアクセス自体」が
+    // SecurityError を投げる。dedupは諦めて(DB日次UNIQUEに委ねて)送信は継続する。
+    const original = Object.getOwnPropertyDescriptor(window, "sessionStorage");
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      get() {
+        throw new Error("SecurityError: access denied");
+      },
+    });
+    try {
+      const { queuePostImpression } = loadModule();
+      expect(() => queuePostImpression(ID_A)).not.toThrow();
+      jest.advanceTimersByTime(1500);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(
+        JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string),
+      ).toEqual({ image_ids: [ID_A] });
+    } finally {
+      if (original) {
+        Object.defineProperty(window, "sessionStorage", original);
+      } else {
+        // jsdom のバージョンによっては sessionStorage が Window.prototype 側に
+        // 定義されており descriptor が取れない。その場合は自前の override を
+        // 削除してプロトタイプ参照に戻す(throwする getter を残さない)。
+        delete (window as { sessionStorage?: unknown }).sessionStorage;
+      }
+    }
   });
 
   it("フラグOFFでは何もしない", () => {

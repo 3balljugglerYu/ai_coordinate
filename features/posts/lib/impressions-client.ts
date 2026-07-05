@@ -26,11 +26,15 @@ function readSentIds(): Set<string> {
   if (typeof window === "undefined") {
     return new Set<string>();
   }
-  const raw = window.sessionStorage.getItem(SESSION_KEY);
-  if (!raw) {
-    return new Set<string>();
-  }
+  // sessionStorage はプロパティアクセス自体が SecurityError を投げ得る
+  // (Cookie無効設定・一部のプライベートモード等)ため、全体を try-catch で守る。
+  // 読めない環境では空Set(=セッションdedupなし)にフォールバックし、
+  // 整合性は DB 日次 UNIQUE(最終防波堤)に委ねる。
   try {
+    const raw = window.sessionStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      return new Set<string>();
+    }
     const parsed = JSON.parse(raw) as string[];
     return new Set(Array.isArray(parsed) ? parsed : []);
   } catch {
