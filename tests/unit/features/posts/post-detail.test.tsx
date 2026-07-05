@@ -42,6 +42,9 @@ jest.mock("@/components/ui/use-toast", () => ({
 jest.mock("@/features/posts/lib/utils", () => ({
   getPostImageUrl: (...args: unknown[]) => mockGetPostImageUrl(...args),
   getPostBeforeImageUrl: () => null,
+  // フラグOFF時の従来挙動(view_count 表示)に合わせる
+  getPublicViewCount: (post: { view_count?: number | null }) =>
+    post.view_count || 0,
 }));
 
 jest.mock("@/features/posts/components/CollapsibleText", () => ({
