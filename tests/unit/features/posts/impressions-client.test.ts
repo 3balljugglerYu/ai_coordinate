@@ -150,6 +150,11 @@ describe("impressions-client", () => {
     } finally {
       if (original) {
         Object.defineProperty(window, "sessionStorage", original);
+      } else {
+        // jsdom のバージョンによっては sessionStorage が Window.prototype 側に
+        // 定義されており descriptor が取れない。その場合は自前の override を
+        // 削除してプロトタイプ参照に戻す(throwする getter を残さない)。
+        delete (window as { sessionStorage?: unknown }).sessionStorage;
       }
     }
   });
